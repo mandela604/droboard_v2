@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Bound By Obsession · Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<!-- Reusable Droboard components. Each is self-contained: builds its own
+     UI, injects its own CSS, and appends/inserts itself automatically. -->
+<script src="component/workspace-tabs.js"></script>
+<script src="component/bottom-nav.js"></script>
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF;
+  --primary:#FF0050; --primary-hover:#E50049; --primary-soft:#FFE9F0;
+  --text:#18181B; --text-2:#71717A;
+  --border:#E8E8EC;
+  --success:#22C55E; --success-soft:#E9FBF0;
+  --warning:#F59E0B; --warning-soft:#FEF3E0;
+  --danger:#EF4444; --danger-soft:#FDEAEA;
+  --blue:#3B82F6; --blue-soft:#EAF1FE;
+  --purple:#8B5CF6; --purple-soft:#F1EBFE;
+  --shadow:0 10px 30px rgba(0,0,0,.06);
+  --r-lg:20px; --r-md:16px; --r-sm:12px; --r-pill:999px;
+  --nav-h:66px; --safe-b:env(safe-area-inset-bottom,10px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100%}
+body{padding-bottom:calc(var(--nav-h) + var(--safe-b) + 14px);-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{display:block;object-fit:cover}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:sticky;top:0;z-index:90;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
+}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:14px;flex-shrink:0}
+.icon-btn:active{transform:scale(.92)}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+
+/* ── BOOK HEADER ── */
+.book-head{padding:16px 16px 0;display:flex;gap:14px;background:var(--surface)}
+.bh-cover{width:82px;height:110px;border-radius:14px;overflow:hidden;flex-shrink:0;box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.bh-cover img{width:100%;height:100%}
+.bh-info{flex:1;min-width:0;padding-top:2px}
+.bh-title{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.25;margin-bottom:4px}
+.bh-genre{font-size:12.5px;color:var(--text-2);font-weight:500;margin-bottom:8px}
+.status-badge{display:inline-flex;font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:var(--r-pill);letter-spacing:.03em;text-transform:uppercase;margin-bottom:10px}
+.status-badge.published{background:var(--success-soft);color:#158a48}
+.status-badge.ongoing{background:var(--warning-soft);color:#b7690a}
+.status-badge.draft{background:var(--blue-soft);color:#1d5fd6}
+.bh-stats{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:8px}
+.bh-stat{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--text-2)}
+.bh-stat i{font-size:10.5px}
+.bh-updated{font-size:11px;color:var(--text-2);font-weight:500;padding-bottom:16px}
+
+.wrap{padding:16px}
+
+/* ── CHAPTERS HEADER ── */
+.chapters-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.chapters-title{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.new-chapter-btn{
+  background:var(--primary-soft);color:var(--primary);font-size:12.5px;font-weight:800;
+  padding:9px 15px;border-radius:var(--r-pill);display:flex;align-items:center;gap:6px;
+}
+.new-chapter-btn:active{transform:scale(.96)}
+
+/* ── SEARCH ── */
+.search-row{display:flex;gap:9px;margin-bottom:16px}
+.search-bar{
+  flex:1;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:11px 14px;color:var(--text-2);font-size:13px;
+}
+.search-bar i{font-size:13px}
+.filter-btn{
+  width:42px;height:42px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;flex-shrink:0;
+}
+
+/* ── CHAPTER CARDS ── */
+.chapter-list{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
+.chapter-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:13px 14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s ease;
+}
+.chapter-card:active{transform:scale(.98)}
+.ch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.ch-title-row{display:flex;align-items:center;gap:7px;min-width:0}
+.ch-title{font-size:14px;font-weight:700;line-height:1.35;letter-spacing:-.005em}
+.ch-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ch-dot.published{background:var(--success)}
+.ch-badge{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:var(--r-pill);letter-spacing:.03em;text-transform:uppercase;flex-shrink:0}
+.ch-badge.scheduled{background:var(--warning-soft);color:#b7690a}
+.ch-badge.draft{background:var(--blue-soft);color:#1d5fd6}
+.ch-more{color:var(--text-2);font-size:14px;padding:2px 4px;flex-shrink:0}
+.ch-meta-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ch-meta{font-size:11.5px;color:var(--text-2);font-weight:500}
+.ch-views{font-size:11.5px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0}
+.ch-views i{font-size:10.5px}
+
+/* ── PAGINATION (replaces the old "View All Chapters" button) ── */
+.chapters-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin:4px 0 26px;flex-wrap:wrap}
+.pg-btn{
+  min-width:34px;height:34px;padding:0 4px;border-radius:50%;background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text-2);cursor:pointer;
+}
+.pg-btn:active{transform:scale(.92)}
+.pg-btn.active{background:var(--primary-soft);border-color:var(--primary);color:var(--primary)}
+.pg-btn.disabled{opacity:.35;pointer-events:none}
+.pg-ellipsis{font-size:12px;color:var(--text-2);padding:0 3px;font-weight:700}
+.pg-info{width:100%;text-align:center;font-size:11.5px;color:var(--text-2);font-weight:600;margin-bottom:10px}
+
+/* ── BOOK TOOLS ── */
+.tools-title{font-size:18px;font-weight:700;letter-spacing:-.01em;margin-bottom:14px}
+.tool-list{display:flex;flex-direction:column;gap:10px}
+.tool-card{
+  display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s ease;
+}
+.tool-card:active{transform:scale(.98)}
+.tool-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.tool-info{flex:1;min-width:0}
+.tool-title{font-size:13.5px;font-weight:700;margin-bottom:2px}
+.tool-desc{font-size:11.5px;color:var(--text-2);line-height:1.4}
+.tool-chev{color:var(--text-2);font-size:13px;flex-shrink:0}
+
+/* ── HAMBURGER DRAWER ── */
+.drawer-overlay{
+  position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);
+  opacity:0;pointer-events:none;transition:opacity .22s ease;
+}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;
+  background:var(--surface);box-shadow:2px 0 24px rgba(0,0,0,.12);
+  transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.drawer.open{transform:translateX(0)}
+.drawer-head{
+  display:flex;align-items:center;gap:10px;padding:16px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.drawer-head .dh-logo{
+  width:34px;height:34px;border-radius:9px;background:var(--primary-soft);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
+}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:var(--bg);color:var(--text-2);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{
+  font-size:10.5px;font-weight:800;color:var(--text-2);text-transform:uppercase;
+  letter-spacing:.04em;padding:14px 12px 6px;
+}
+.drawer-item{
+  display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;
+  font-size:13.5px;font-weight:600;color:var(--text);
+}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--text-2);flex-shrink:0}
+.drawer-item:active{background:var(--bg)}
+.drawer-item.active{background:var(--primary-soft);color:var(--primary)}
+.drawer-item.active i{color:var(--primary)}
+.drawer-item-badge{
+  margin-left:auto;font-size:8.5px;font-weight:800;color:var(--primary);
+  background:var(--primary-soft);padding:2px 6px;border-radius:20px;text-transform:uppercase;
+}
+
+/* ── DESKTOP CENTERING — matches author-center.html ── */
+@media (min-width:600px){
+  .topbar{max-width:560px;margin:0 auto;padding-left:16px;padding-right:16px}
+  .book-head{max-width:560px;margin:0 auto;padding:16px 20px 0}
+  .wrap{max-width:560px;margin:0 auto;padding:16px 20px 20px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="icon-btn" onclick="location.href='author-center.html'"><i class="fas fa-chevron-left"></i></button>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" id="menuBtn"><i class="fas fa-bars"></i></button>
+    <button class="icon-btn"><i class="fas fa-gear"></i></button>
+    <button class="icon-btn"><i class="fas fa-ellipsis"></i></button>
+  </div>
+</div>
+
+<!-- BOOK HEADER -->
+<div class="book-head">
+  <div class="bh-cover"><img src="https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop" alt="Bound By Obsession"/></div>
+  <div class="bh-info">
+    <div class="bh-title">Bound By Obsession</div>
+    <div class="bh-genre">Romance · Drama</div>
+    <span class="status-badge published">Published</span>
+    <div class="bh-stats">
+      <div class="bh-stat"><i class="far fa-eye"></i> 2.3M</div>
+      <div class="bh-stat"><i class="far fa-heart"></i> 189K</div>
+      <div class="bh-stat"><i class="fas fa-list-ul"></i> <span id="bhChapterCount">56</span> Chapters</div>
+    </div>
+    <div class="bh-updated">Updated 2 hours ago</div>
+  </div>
+</div>
+
+<!-- Workspace tabs are now injected by component/workspace-tabs.js —
+     it detects "book-workspace.html" as the active tab automatically
+     and inserts itself right after .book-head. -->
+
+<div class="wrap">
+
+  <!-- CHAPTERS HEADER -->
+  <div class="chapters-head">
+    <h2 class="chapters-title">Chapters (<span id="chaptersTitleCount">56</span>)</h2>
+    <button class="new-chapter-btn"><i class="fas fa-plus"></i> New Chapter</button>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-row">
+    <div class="search-bar"><i class="fas fa-magnifying-glass"></i> Search chapters...</div>
+    <button class="filter-btn"><i class="fas fa-sliders"></i></button>
+  </div>
+
+  <!-- CHAPTER LIST (paginated, 12 per page) -->
+  <div class="pg-info" id="pgInfo"></div>
+  <div class="chapter-list" id="chapterList"></div>
+  <div class="chapters-pagination" id="chaptersPagination"></div>
+
+  <!-- BOOK TOOLS -->
+  <h2 class="tools-title">Book Tools</h2>
+  <div class="tool-list" id="toolList"></div>
+
+</div>
+
+<!-- Hamburger drawer -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="dh-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════
+   DATA
+═══════════════════════════════ */
+const CHAPTER_TITLES = [
+  'The Beginning of Obsession', "The Girl He Shouldn't Want", "Lines We Shouldn't Cross",
+  'Secrets in the Dark', 'Falling Too Deep', 'The Truth He Hides', 'When Obsession Wins',
+  'The Point of No Return', 'What She Overheard', 'The Contract He Regrets',
+  'Two Rings, One Lie', 'The Night It Unraveled', 'Her Silence Was the Warning',
+  'A Debt He Never Mentioned', 'The Photograph in His Drawer', 'Nothing Left to Hide',
+  'The Apology He Never Gave', 'Between Loyalty and Love', 'The Room She Wasn\u2019t Meant to See',
+  'A Promise Written in Fear', 'The Morning After Everything Changed', 'He Chose Silence Again',
+  'The Weight of What She Knows', 'Every Door He Locked', 'The Call She Didn\u2019t Answer',
+  'What the Letter Said', 'A Stranger at the Wedding', 'The Truth About the Trip',
+  'She Found the Second Phone', 'The Last Time He Lied', 'Nothing Was an Accident',
+  'The Voice on the Recording', 'Her Sister Knew First', 'The Deal He Made Without Her',
+  'What Was Buried in the Garden', 'The Night the Power Went Out', 'He Never Meant for Her to Find It',
+  'A Debt Repaid in Silence', 'The Question She Finally Asked', 'What the Nanny Saw',
+  'The Ring He Took Back', 'Everything He Swore Wasn\u2019t True', 'The Last Message Sent',
+  'She Packed While He Slept', 'The Confession He Owed Her', 'A House Full of Secrets',
+  'The Photograph That Changed Everything', 'What Her Mother Warned Her About',
+  'The Night He Finally Chose', 'Nothing Left to Confess', 'The Beginning of the End',
+  'A Truth Worth the Cost', 'The Last Lie He Told', 'What She Chose to Forgive',
+  'The Door She Finally Opened', 'Where They Go From Here',
+];
+
+const CHAPTERS = CHAPTER_TITLES.map((title, i) => {
+  const num = i + 1;
+  const isLast = num === CHAPTER_TITLES.length;
+  const isSecondLast = num === CHAPTER_TITLES.length - 1;
+  const status = isLast ? 'draft' : isSecondLast ? 'scheduled' : 'published';
+  const day = 10 + (i % 40);
+  const dateLabel = status === 'published' ? `Published May ${day}, 2025`
+    : status === 'scheduled' ? `Scheduled May ${day}, 2025`
+    : `Last edited May ${day}, 2025`;
+  const views = status === 'published' ? `${(45 - i * 0.15).toFixed(1)}K` : '\u2013';
+  const words = (2100 + (i * 37) % 700).toLocaleString();
+  return { num, title, words, status, date: dateLabel, views };
+});
+
+const TOOLS = [
+  { icon:'fa-book-open-reader', title:'Plotting / Story Bible', desc:'Plan your story arcs, twists, pacing and ending.', bg:'var(--purple-soft)', color:'var(--purple)' },
+  { icon:'fa-user-group', title:'Characters', desc:'Manage characters and relationships.', bg:'var(--blue-soft)', color:'var(--blue)' },
+  { icon:'fa-earth-americas', title:'World Building', desc:'Locations, kingdoms, timelines and lore.', bg:'var(--success-soft)', color:'#158a48' },
+  { icon:'fa-note-sticky', title:'Notes', desc:'Ideas and research.', bg:'var(--warning-soft)', color:'var(--warning)' },
+  { icon:'fa-calendar-days', title:'Schedule', desc:'Plan chapter releases.', bg:'var(--primary-soft)', color:'var(--primary)' },
+  { icon:'fa-comments', title:'Reader Comments', desc:'Moderate comments.', bg:'var(--blue-soft)', color:'var(--blue)' },
+  { icon:'fa-sack-dollar', title:'Revenue', desc:'Track income.', bg:'var(--success-soft)', color:'#158a48' },
+  { icon:'fa-file-signature', title:'Contract', desc:'View, sign or approve publishing contracts.', bg:'#F3E9DE', color:'#9A6A3A' },
+  { icon:'fa-gear', title:'Book Settings', desc:'Genre, visibility, cover, pricing, tags, delete book.', bg:'#F1F1F4', color:'#5c5c66' },
+];
+
+// Hamburger drawer tree — same structure as author-center.html; Chapters marked active here
+const MENU_SECTIONS = [
+  { title:'Author Center', items:[
+    { label:'Dashboard', icon:'fa-gauge', href:'author-center.html', badge:'Default' },
+    { label:'Overview', icon:'fa-chart-simple', href:'#' },
+    { label:'Analytics', icon:'fa-chart-line', href:'#' },
+    { label:'My Books', icon:'fa-book', href:'#' },
+    { label:'Quick Actions', icon:'fa-bolt', href:'#' },
+    { label:'Revenue Snapshot', icon:'fa-sack-dollar', href:'#' },
+    { label:'Notifications', icon:'fa-bell', href:'#' },
+  ]},
+  { title:'Book Workspace', items:[
+    { label:'Chapters', icon:'fa-list-ul', href:'book-workspace.html', active:true },
+    { label:'Plotting', icon:'fa-diagram-project', href:'#' },
+    { label:'Characters', icon:'fa-user-group', href:'#' },
+    { label:'Story Bible', icon:'fa-book-bookmark', href:'#' },
+    { label:'Schedule', icon:'fa-calendar-days', href:'#' },
+    { label:'Analytics', icon:'fa-chart-line', href:'#' },
+    { label:'Revenue', icon:'fa-sack-dollar', href:'#' },
+    { label:'Contract', icon:'fa-file-signature', href:'#' },
+  ]},
+  { title:'Account', items:[
+    { label:'Revenue', icon:'fa-sack-dollar', href:'#' },
+    { label:'Contracts', icon:'fa-file-signature', href:'#' },
+    { label:'Messages', icon:'fa-comment-dots', href:'#' },
+    { label:'Notifications', icon:'fa-bell', href:'#' },
+    { label:'Achievements', icon:'fa-trophy', href:'#' },
+    { label:'Settings', icon:'fa-gear', href:'#' },
+  ]},
+];
+
+/* ═══════════════════════════════
+   PAGINATION STATE — 12 chapters per page, replaces the old
+   "View All Chapters" button entirely.
+═══════════════════════════════ */
+const PAGE_SIZE = 12;
+let currentPage = 1; // 1-indexed
+const totalPages = Math.max(1, Math.ceil(CHAPTERS.length / PAGE_SIZE));
+
+function chapterBadge(ch){
+  if (ch.status === 'published') return `<span class="ch-dot published"></span>`;
+  if (ch.status === 'scheduled') return `<span class="ch-badge scheduled">Scheduled</span>`;
+  if (ch.status === 'draft') return `<span class="ch-badge draft">Draft</span>`;
+  return '';
+}
+
+function renderChapters(){
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = CHAPTERS.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('pgInfo').textContent =
+    `Showing ${start + 1}\u2013${start + pageItems.length} of ${CHAPTERS.length} chapters`;
+
+  document.getElementById('chapterList').innerHTML = pageItems.map((ch, i) => `
+    <div class="chapter-card fade" style="animation-delay:${i*0.03}s">
+      <div class="ch-top">
+        <div class="ch-title-row">
+          <span class="ch-title">${ch.num}. ${ch.title}</span>
+          ${chapterBadge(ch)}
+        </div>
+        <span class="ch-more"><i class="fas fa-ellipsis"></i></span>
+      </div>
+      <div class="ch-meta-row">
+        <span class="ch-meta">${ch.words} words &middot; ${ch.date}</span>
+        <span class="ch-views">${ch.views !== '\u2013' ? `<i class="far fa-eye"></i> ${ch.views} Reads` : '\u2013'}</span>
+      </div>
+    </div>`).join('');
+
+  renderPagination();
+}
+
+function renderPagination(){
+  if (totalPages <= 1) { document.getElementById('chaptersPagination').innerHTML = ''; return; }
+
+  const pages = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push('…');
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
+    if (currentPage < totalPages - 2) pages.push('…');
+    pages.push(totalPages);
+  }
+
+  document.getElementById('chaptersPagination').innerHTML = `
+    <div class="pg-btn${currentPage === 1 ? ' disabled' : ''}" onclick="goToPage(${currentPage - 1})">
+      <i class="fas fa-chevron-left" style="font-size:10px"></i>
+    </div>
+    ${pages.map(p => p === '…'
+      ? `<span class="pg-ellipsis">…</span>`
+      : `<div class="pg-btn${p === currentPage ? ' active' : ''}" onclick="goToPage(${p})">${p}</div>`
+    ).join('')}
+    <div class="pg-btn${currentPage === totalPages ? ' disabled' : ''}" onclick="goToPage(${currentPage + 1})">
+      <i class="fas fa-chevron-right" style="font-size:10px"></i>
+    </div>`;
+}
+
+function goToPage(p){
+  if (p < 1 || p > totalPages || p === currentPage) return;
+  currentPage = p;
+  renderChapters();
+  document.querySelector('.chapters-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderTools(){
+  document.getElementById('toolList').innerHTML = TOOLS.map(t => `
+    <div class="tool-card">
+      <div class="tool-icon" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
+      <div class="tool-info">
+        <div class="tool-title">${t.title}</div>
+        <div class="tool-desc">${t.desc}</div>
+      </div>
+      <i class="fas fa-chevron-right tool-chev"></i>
+    </div>`).join('');
+}
+
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML = MENU_SECTIONS.map(sec => `
+    <div class="drawer-section">
+      <div class="drawer-section-title">${sec.title}</div>
+      ${sec.items.map(it => `
+        <a class="drawer-item${it.active ? ' active' : ''}" href="${it.href}">
+          <i class="fas ${it.icon}"></i>${it.label}
+          ${it.badge ? `<span class="drawer-item-badge">${it.badge}</span>` : ''}
+        </a>`).join('')}
+    </div>`).join('');
+}
+
+document.getElementById('bhChapterCount').textContent = CHAPTERS.length;
+document.getElementById('chaptersTitleCount').textContent = CHAPTERS.length;
+renderChapters();
+renderTools();
+renderDrawer();
+
+/* ── Drawer open/close ── */
+const menuBtn = document.getElementById('menuBtn');
+const drawer = document.getElementById('drawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
+const drawerClose = document.getElementById('drawerClose');
+
+function openDrawer(){ drawer.classList.add('open'); drawerOverlay.classList.add('open'); }
+function closeDrawer(){ drawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
+
+menuBtn.addEventListener('click', openDrawer);
+drawerClose.addEventListener('click', closeDrawer);
+drawerOverlay.addEventListener('click', closeDrawer);
+
+/* ── Shared components: force the correct active tab on both bars.
+     workspace-tabs.js already auto-detects "chapters" from the
+     filename, but we set it explicitly since this page's canonical
+     name is book-workspace.html either way. ── */
+if (window.DroboardWorkspaceTabs) DroboardWorkspaceTabs.configure({ active: 'chapters' });
+if (window.DroboardNav) DroboardNav.configure({ active: 'profile' });
+</script>
+</body>
+</html>

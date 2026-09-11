@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Story Analytics — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);padding:10px 12px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}tr:hover td{background:var(--hover)}
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px}
+.page-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.page-btn:disabled{opacity:.4;cursor:default}
+</style>
+</head>
+<body>
+<div id="saRoot">
+  <div class="welcome-banner"><div class="welcome-eyebrow">Senior Editor · Story Analytics</div><div class="welcome-title">Story Analytics 📊</div><div class="welcome-sub">Reads, completion rates, reader retention, chapter performance, and engagement metrics for your assigned stories.</div></div>
+  <div class="panel">
+    <div class="panel-head"><h2><i class="fas fa-chart-line" style="color:var(--accent)"></i> Assigned Story Performance</h2></div>
+    <table id="analyticsTable"><thead><tr><th>Story</th><th>Author</th><th>Reads</th><th>Completion %</th><th>Retention %</th><th>Chapters</th><th>Engagement</th><th>Revenue</th></tr></thead><tbody></tbody></table>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#saRoot',{activeItem:'story-analytics',title:'Story Analytics',subtitle:'Performance metrics',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4});
+let allData=[],page=1;const PER_PAGE=3;
+async function init(){const d=await SeniorEditorData.getStoryAnalytics();allData=d.stories;render();}
+function render(){
+  const total=Math.max(1,Math.ceil(allData.length/PER_PAGE));if(page>total)page=total;
+  const start=(page-1)*PER_PAGE,items=allData.slice(start,start+PER_PAGE);
+  document.getElementById('analyticsTable').querySelector('tbody').innerHTML=items.map(s=>`<tr><td><strong>${s.title}</strong></td><td>${s.author}</td><td>${s.reads.toLocaleString()}</td><td>${s.completions}%</td><td>${s.retention}%</td><td>${s.chapters}</td><td>${s.engagement}/10</td><td style="font-weight:700;color:var(--green)">${s.revenue}</td></tr>`).join('');
+  if(total<=1){document.getElementById('pagination').innerHTML='';return;}
+  let h=`<button class="page-btn" ${page<=1?'disabled':''} data-p="${page-1}"><i class="fas fa-chevron-left"></i></button>`;
+  for(let i=1;i<=total;i++)h+=`<button class="page-btn ${i===page?'active':''}" data-p="${i}">${i}</button>`;
+  h+=`<button class="page-btn" ${page>=total?'disabled':''} data-p="${page+1}"><i class="fas fa-chevron-right"></i></button>`;
+  document.getElementById('pagination').innerHTML=h;
+  document.querySelectorAll('#pagination .page-btn:not([disabled])').forEach(b=>b.addEventListener('click',()=>{page=parseInt(b.dataset.p);render();}));
+}
+init();
+</script>
+</body>
+</html>

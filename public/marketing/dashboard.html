@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55);position:relative;overflow:hidden}
+.welcome-banner::after{content:'';position:absolute;top:-40%;right:-6%;width:260px;height:260px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);pointer-events:none}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:640px}
+.welcome-stats{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap}
+.welcome-stat b{font-size:19px;font-weight:800;display:block}
+.welcome-stat span{font-size:10.5px;opacity:.75;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.dash-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-link{font-size:11.5px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:5px}
+.panel-link:hover{text-decoration:underline}
+
+/* campaign cards */
+.cmp-card{border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:9px;cursor:pointer;transition:.15s}
+.cmp-card:hover{border-color:var(--accent)}
+.cmp-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.cmp-name{font-size:13px;font-weight:700;flex:1;min-width:140px}
+.type-chip{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--purple-bg);color:var(--purple);white-space:nowrap}
+.status-pill{font-size:9px;font-weight:800;padding:2px 9px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.live{background:var(--green-bg);color:var(--green)}
+.status-pill.scheduled{background:var(--blue-bg);color:var(--blue)}
+.status-pill.draft{background:var(--table-head);color:var(--text-faint)}
+.status-pill.paused{background:var(--amber-bg);color:var(--amber)}
+.status-pill.ended{background:var(--red-bg);color:var(--red)}
+.cmp-meta{font-size:10.5px;color:var(--text-faint);display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.cmp-stat{display:flex;align-items:center;gap:4px}
+.cmp-stat i{color:var(--text-faint);font-size:9.5px}
+.empty-note{font-size:12px;color:var(--text-faint);padding:10px 2px}
+
+/* quick actions */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qa-card{border:1px solid var(--border);border-radius:12px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.15s;background:var(--card)}
+.qa-card:hover{border-color:var(--accent);background:var(--hover)}
+.qa-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.qa-txt b{font-size:12px;font-weight:700;display:block;line-height:1.3}
+.qa-txt span{font-size:10px;color:var(--text-faint);font-weight:600}
+
+/* events / contests */
+.evt-row{display:flex;gap:12px;align-items:flex-start;padding:11px 4px;border-bottom:1px solid var(--border)}
+.evt-row:last-child{border-bottom:none}
+.evt-ico{width:34px;height:34px;border-radius:9px;background:var(--purple-bg);color:var(--purple);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.evt-body{flex:1;min-width:0}
+.evt-name{font-size:12.5px;font-weight:700}
+.evt-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.evt-detail{font-size:10.5px;color:var(--text-muted);margin-top:2px}
+
+/* analytics snapshot */
+.an-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.an-item{background:var(--table-head);border-radius:10px;padding:12px}
+.an-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.an-val{font-size:16px;font-weight:800;margin-top:3px}
+.an-val.up{color:var(--green)}
+
+/* activity feed */
+.act-row{display:flex;gap:11px;padding:10px 2px}
+.act-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.act-body{flex:1;min-width:0}
+.act-text{font-size:12px;line-height:1.5;color:var(--text)}
+.act-text b{font-weight:700}
+.act-time{font-size:10px;color:var(--text-faint);font-weight:600;margin-top:2px}
+
+.skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
+.err-note{padding:14px 16px;text-align:left;color:var(--red);font-size:11.5px;background:var(--red-bg);border-radius:10px;display:flex;align-items:center;gap:8px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.qa-grid{grid-template-columns:1fr}.welcome-stats{gap:16px}.an-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Marketing & Growth · Overview</div>
+    <div class="welcome-title" id="greetTitle">Welcome back 👋</div>
+    <div class="welcome-sub">Everything driving reads, signups, and engagement across Droboard — campaigns, banners, contests, and email, all in one place.</div>
+    <div class="welcome-stats" id="welcomeStats"></div>
+  </div>
+
+  <div class="grid-4" id="statCards"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+
+  <div class="dash-grid">
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-bullseye" style="color:var(--accent)"></i> Active Campaigns</h2>
+          <a class="panel-link" href="campaigns.html">View all <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div id="campaignsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-bolt" style="color:var(--accent)"></i> Quick Actions</h2>
+        </div>
+        <div class="qa-grid" id="qaGrid"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-gift" style="color:var(--purple)"></i> Upcoming Events & Contests</h2>
+        </div>
+        <div id="eventsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-chart-line" style="color:var(--blue)"></i> Marketing Analytics</h2>
+          <a class="panel-link" href="marketing-analytics.html">Full report <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div id="analyticsSnapshot"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-clock-rotate-left" style="color:var(--text-faint)"></i> Recent Activity</h2>
+        </div>
+        <div id="activityList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/marketing-sidebar.js"></script>
+<script src="shared/marketing-data.js"></script>
+<script>
+'use strict';
+const shell = MarketingSidebar.attach('#dashRoot',{
+  activeItem:'dashboard', title:'Dashboard', subtitle:'Growth & marketing overview',
+  user:{name:'Tari Benson',role:'Marketing Lead',avatar:'https://i.pravatar.cc/100?img=32'}, notifCount:5,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+
+function greetByHour(){
+  const h = new Date().getHours();
+  if(h<12) return 'Good morning, Tari 👋';
+  if(h<18) return 'Good afternoon, Tari 👋';
+  return 'Good evening, Tari 👋';
+}
+function fmtNum(n){
+  n = n || 0;
+  if (n >= 1000000) return (n/1000000).toFixed(n>=10000000?0:1).replace(/\.0$/,'') + 'M';
+  if (n >= 1000) return (n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'') + 'K';
+  return String(n);
+}
+function fmtDateRange(startDate, endDate){
+  if(!startDate && !endDate) return 'Not scheduled';
+  const fmt = (d) => { if(!d) return 'TBD'; const dt = new Date(d+'T00:00:00'); if(isNaN(dt)) return d; return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  return `${fmt(startDate)} – ${fmt(endDate)}`;
+}
+
+/* Each panel below renders independently. Wrapping every one of these
+   in safeRun() means one section throwing (e.g. a data field that's
+   missing or shaped differently than expected) can never leave the
+   other panels stuck on their "Loading…" skeleton — that was the bug
+   here: campaignsList referenced a field that didn't exist on the
+   dashboard payload, threw, and silently killed every panel queued
+   after it in the same function. */
+function safeRun(label, fn){
+  try { fn(); }
+  catch(e){ console.error('[Dashboard] ' + label + ' failed:', e); }
+}
+async function safeRunAsync(label, fn){
+  try { await fn(); }
+  catch(e){ console.error('[Dashboard] ' + label + ' failed:', e); }
+}
+
+function renderWelcomeStats(d){
+  document.getElementById('welcomeStats').innerHTML = `
+    <div class="welcome-stat"><b>${d.activeCampaigns}</b><span>Active Campaigns</span></div>
+    <div class="welcome-stat"><b>${d.livePromotions}</b><span>Live Promotions</span></div>
+    <div class="welcome-stat"><b>${d.upcomingEventsCount}</b><span>Upcoming Events</span></div>
+    <div class="welcome-stat"><b>${d.avgEngagementRate}</b><span>Avg Engagement</span></div>`;
+}
+
+function renderStatCards(d){
+  const stats = [
+    { n:d.activeCampaigns, l:'Active Campaigns', ico:'fa-bullseye', cls:'accent' },
+    { n:d.livePromotions, l:'Live Promotions', ico:'fa-bullhorn', cls:'green' },
+    { n:d.sponsoredPlacementsLive, l:'Sponsored Placements', ico:'fa-star', cls:'amber' },
+    { n:d.homepageBannersLive, l:'Homepage Banners Live', ico:'fa-image', cls:'blue' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+/* Active Campaigns now pulls straight from the real campaign records
+   (the same source campaigns.html reads), rather than a
+   `d.activeCampaignsList` field that never actually existed on the
+   dashboard summary object — that mismatch was the root cause of the
+   whole page getting stuck on "Loading…". */
+async function renderActiveCampaigns(){
+  const all = await MarketingData.getCampaigns();
+  const active = all
+    .filter(c => c.status === 'live' || c.status === 'scheduled')
+    .sort((a,b) => (b.status === 'live') - (a.status === 'live'))
+    .slice(0, 4);
+
+  if(!active.length){
+    document.getElementById('campaignsList').innerHTML = `<div class="empty-note">No active or scheduled campaigns right now.</div>`;
+    return;
+  }
+
+  document.getElementById('campaignsList').innerHTML = active.map(c => `
+    <div class="cmp-card" data-id="${c.id}">
+      <div class="cmp-top">
+        <span class="cmp-name">${c.name}</span>
+        <span class="type-chip">${c.type}</span>
+        <span class="status-pill ${c.status}">${c.status}</span>
+      </div>
+      <div class="cmp-meta">
+        <span class="cmp-stat"><i class="fas fa-satellite-dish"></i>${c.channel || '—'}</span>
+        <span class="cmp-stat"><i class="fas fa-eye"></i>${fmtNum(c.reach)} reach</span>
+        <span class="cmp-stat"><i class="fas fa-arrow-pointer"></i>${c.ctr || 0}% CTR</span>
+        <span class="cmp-stat"><i class="fas fa-calendar"></i>${fmtDateRange(c.startDate, c.endDate)}</span>
+      </div>
+    </div>`).join('');
+
+  document.querySelectorAll('#campaignsList .cmp-card').forEach(card => {
+    card.addEventListener('click', () => { location.href = 'campaigns.html'; });
+  });
+}
+
+function renderQuickActions(d){
+  document.getElementById('qaGrid').innerHTML = d.quickActions.map(qa=>`
+    <div class="qa-card" data-href="${qa.href||'#'}">
+      <div class="qa-ico" style="background:${BG_MAP[qa.cls]};color:${ICO_MAP[qa.cls]}"><i class="fas ${qa.icon}"></i></div>
+      <div class="qa-txt"><b>${qa.label}</b><span>Get started</span></div>
+    </div>`).join('');
+  document.querySelectorAll('.qa-card').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      const href = c.dataset.href;
+      if(href && href!=='#') location.href = href; else toast('Opening…');
+    });
+  });
+}
+
+function renderEvents(d){
+  if(!d.upcomingEvents || !d.upcomingEvents.length){
+    document.getElementById('eventsList').innerHTML = `<div class="empty-note">No upcoming events or contests scheduled.</div>`;
+    return;
+  }
+  document.getElementById('eventsList').innerHTML = d.upcomingEvents.map(e=>`
+    <div class="evt-row">
+      <div class="evt-ico"><i class="fas ${e.type==='Contest'?'fa-trophy':'fa-calendar-star'}"></i></div>
+      <div class="evt-body">
+        <div class="evt-name">${e.name}</div>
+        <div class="evt-meta">${e.type} · ${e.date}</div>
+        <div class="evt-detail">${e.detail}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderAnalytics(d){
+  const a = d.analyticsSnapshot;
+  document.getElementById('analyticsSnapshot').innerHTML = `
+    <div class="an-grid">
+      <div class="an-item"><div class="an-lbl">Impressions</div><div class="an-val">${a.impressions}</div></div>
+      <div class="an-item"><div class="an-lbl">Clicks</div><div class="an-val">${a.clicks}</div></div>
+      <div class="an-item"><div class="an-lbl">CTR</div><div class="an-val">${a.ctr}</div></div>
+      <div class="an-item"><div class="an-lbl">Conversions</div><div class="an-val">${a.conversions}</div></div>
+    </div>
+    <div style="margin-top:10px;font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:6px">
+      <i class="fas fa-arrow-trend-up" style="color:var(--green)"></i> Revenue lift this week: <b class="an-val up" style="font-size:12.5px">${a.revenueLift}</b>
+    </div>`;
+}
+
+function renderActivity(d){
+  document.getElementById('activityList').innerHTML = d.recentActivity.map(a=>`
+    <div class="act-row">
+      <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
+      <div class="act-body">
+        <div class="act-text">${a.text}</div>
+        <div class="act-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function init(){
+  document.getElementById('greetTitle').textContent = greetByHour();
+
+  let d;
+  try {
+    d = await MarketingData.getDashboard();
+  } catch(e){
+    console.error('[Dashboard] getDashboard failed:', e);
+    document.getElementById('statCards').innerHTML = `<div class="err-note"><i class="fas fa-triangle-exclamation"></i> Couldn't load dashboard data. Try refreshing the page.</div>`;
+    return;
+  }
+
+  safeRun('welcome stats', () => renderWelcomeStats(d));
+  safeRun('stat cards', () => renderStatCards(d));
+  safeRun('quick actions', () => renderQuickActions(d));
+  safeRun('upcoming events', () => renderEvents(d));
+  safeRun('analytics snapshot', () => renderAnalytics(d));
+  safeRun('recent activity', () => renderActivity(d));
+
+  // Runs independently of the block above since it awaits its own
+  // fetch — its failure (or slowness) shouldn't hold up anything else.
+  await safeRunAsync('active campaigns', renderActiveCampaigns);
+}
+
+init();
+</script>
+</body>
+</html>

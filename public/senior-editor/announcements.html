@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Announcements — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:620px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+.new-btn{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.new-btn:hover{filter:brightness(1.05)}
+
+.toolbar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:180px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:12px}
+.toolbar select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+
+.filter-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.filter-pill{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:5px;font-family:inherit}
+.filter-pill:hover{border-color:var(--accent)}
+.filter-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill-count{font-size:9px;padding:1px 5px;border-radius:10px;background:var(--table-head);color:var(--text-faint)}
+.filter-pill.on .pill-count{background:rgba(255,255,255,.25);color:#fff}
+
+.ann-card{border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:10px;transition:.15s;display:flex;gap:14px}
+.ann-card:hover{border-color:var(--accent)}
+.ann-thumb-wrap{flex-shrink:0}
+.ann-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block;background:var(--table-head)}
+.ann-thumb-placeholder{width:64px;height:64px;border-radius:10px;background:var(--table-head);display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:18px}
+.ann-body{flex:1;min-width:0}
+.ann-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.ann-title{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ann-content{font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:6px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ann-meta{font-size:11px;color:var(--text-faint);display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.ann-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+.status-pill{font-size:9px;font-weight:800;padding:2px 9px;border-radius:20px;text-transform:uppercase}
+.status-pill.published{background:var(--green-bg);color:var(--green)}
+.status-pill.scheduled{background:var(--blue-bg);color:var(--blue)}
+.status-pill.draft{background:var(--table-head);color:var(--text-faint)}
+.audience-tag{font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--purple-bg);color:var(--purple);text-transform:capitalize}
+
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.mini-btn:hover{border-color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.empty-msg{text-align:center;padding:28px;color:var(--text-faint);font-size:12.5px}
+.skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+/* ── Pagination (matches Story Management pattern) ── */
+.pgn{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.pgn-info{font-size:11.5px;color:var(--text-faint);font-weight:600}
+.pgn-btns{display:flex;gap:5px}
+.pgn-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:.13s}
+.pgn-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pgn-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pgn-btn:disabled{opacity:.3;cursor:default}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:500px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s;max-height:88vh;overflow-y:auto}
+.modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head h3{font-size:15px;font-weight:800}
+.modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
+.modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.field-group textarea, .field-group input, .field-group select{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);resize:vertical}
+.field-group textarea{min-height:90px}
+.radio-row{display:flex;gap:8px;flex-wrap:wrap}
+.radio-opt{flex:1;min-width:120px;border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:8px}
+.radio-opt.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.radio-opt input{accent-color:var(--accent)}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.modal-error.show{display:block}
+.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
+.modal-box-actions .confirm-btn{background:var(--accent);border-color:transparent;color:#fff}
+.modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+
+/* Image upload */
+.image-drop{border:1.5px dashed var(--input-border);border-radius:11px;padding:14px;text-align:center;cursor:pointer;position:relative;background:var(--input-bg)}
+.image-drop:hover{border-color:var(--accent)}
+.image-drop i{font-size:18px;color:var(--text-faint);margin-bottom:6px;display:block}
+.image-drop span{font-size:11.5px;color:var(--text-faint);font-weight:600}
+.image-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.image-preview-wrap{position:relative;border-radius:11px;overflow:hidden}
+.image-preview-wrap img{width:100%;max-height:170px;object-fit:cover;display:block}
+.image-remove-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;background:rgba(10,6,25,.65);color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
+.image-remove-btn:hover{background:rgba(224,56,77,.85)}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.ann-card{flex-direction:column}.ann-thumb,.ann-thumb-placeholder{width:100%;height:120px}.ann-actions{width:100%}.ann-actions .mini-btn{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<div id="annRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Senior Editor · Announcements</div>
+    <div class="welcome-title">Announcements 📣</div>
+    <div class="welcome-sub">Publish updates to authors, readers, or everyone — attach an image, schedule ahead, save drafts, and track what's already gone out.</div>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-bullhorn" style="color:var(--accent)"></i> All Announcements</h2>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="count-chip" id="annCount">—</span>
+        <button class="new-btn" data-action="open-create-modal"><i class="fas fa-plus"></i> New Announcement</button>
+      </div>
+    </div>
+    <div class="panel-sub">Search, filter by status or audience, and manage what's live.</div>
+
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="annSearch" placeholder="Search by title or content…"/></div>
+      <select id="audienceFilter">
+        <option value="">All Audiences</option>
+        <option value="all">Everyone</option>
+        <option value="authors">Authors</option>
+        <option value="readers">Readers</option>
+      </select>
+    </div>
+
+    <div class="filter-row" id="filterRow"></div>
+
+    <div id="annList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading announcements…</div></div>
+    <div class="pgn" id="pgn"></div>
+  </div>
+</div>
+
+<!-- Create / Edit Announcement modal -->
+<div class="modal-overlay" id="createModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3 id="createModalTitle">New Announcement</h3>
+        <p id="createModalSub">Choose who sees it and whether it goes out now, later, or stays a draft.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-create-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label>Title</label>
+        <input type="text" id="annTitleInput" placeholder="e.g. New Submission Guidelines"/>
+      </div>
+      <div class="field-group">
+        <label>Audience</label>
+        <select id="annAudienceInput">
+          <option value="all">Everyone</option>
+          <option value="authors">Authors</option>
+          <option value="readers">Readers</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Content</label>
+        <textarea id="annContentInput" placeholder="What do you want to tell them?"></textarea>
+      </div>
+      <div class="field-group">
+        <label>Image (optional)</label>
+        <div id="imageFieldArea"></div>
+      </div>
+      <div class="field-group">
+        <label>When</label>
+        <div class="radio-row" id="whenRadioRow">
+          <label class="radio-opt active" data-when="now"><input type="radio" name="whenOpt" value="now" checked/> Publish now</label>
+          <label class="radio-opt" data-when="schedule"><input type="radio" name="whenOpt" value="schedule"/> Schedule</label>
+          <label class="radio-opt" data-when="draft"><input type="radio" name="whenOpt" value="draft"/> Save as draft</label>
+        </div>
+      </div>
+      <div class="field-group" id="scheduleDateGroup" style="display:none">
+        <label>Scheduled date</label>
+        <input type="date" id="annScheduleInput"/>
+      </div>
+      <div class="modal-error" id="createModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-create-modal">Cancel</button>
+        <button class="confirm-btn" id="createConfirmBtn" data-action="submit-create"><i class="fas fa-paper-plane"></i> Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#annRoot',{
+  activeItem:'announcements', title:'Announcements', subtitle:'Publish updates to authors and readers',
+  user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
+  searchPlaceholder:'Search announcements…',
+  onSearch:(v)=>{ document.getElementById('annSearch').value = v; currentPg = 1; applyFilters(); }
+});
+
+/* ─────────────────────────────────────────
+   CONFIG
+───────────────────────────────────────── */
+const API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor';
+const PER_PAGE = 4;
+let usingDemoData = false;
+
+async function apiFetch(path, options){
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    ...options,
+  });
+  if(!res.ok){
+    let msg = `Request failed (${res.status})`;
+    try{ const body = await res.json(); if(body && body.message) msg = body.message; }catch(_){/* ignore */}
+    throw new Error(msg);
+  }
+  return res.status===204 ? null : res.json();
+}
+
+/* ─────────────────────────────────────────
+   DEMO FALLBACK DATA
+───────────────────────────────────────── */
+const todayISO = new Date().toISOString().slice(0,10);
+function fmtDate(iso){ return new Date(iso+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+
+const DEMO_ANNOUNCEMENTS = [
+  { id:'ANN-001', title:'New Submission Guidelines', audience:'authors', content:'Updated guidelines for chapter submissions are now in effect. Minimum chapter length is now 2,000 words.', image:null, status:'published', createdDate:'2026-07-25', created:fmtDate('2026-07-25'), scheduledDate:null, scheduled:'' },
+  { id:'ANN-002', title:'Platform Maintenance July 30', audience:'all', content:'The platform will be under maintenance on July 30 from 2-4 AM EST. No submissions will be accepted during this window.', image:'https://i.postimg.cc/N9jY0w4m/5.jpg', status:'published', createdDate:'2026-07-24', created:fmtDate('2026-07-24'), scheduledDate:null, scheduled:'' },
+  { id:'ANN-003', title:'Writing Contest: Summer Romance', audience:'authors', content:'Submit your best romance chapters for a chance to win $5,000 and a featured placement!', image:'https://i.postimg.cc/tY7KnJyr/images.jpg', status:'scheduled', createdDate:'2026-07-22', created:fmtDate('2026-07-22'), scheduledDate:'2026-08-01', scheduled:fmtDate('2026-08-01') },
+  { id:'ANN-004', title:'New Feature: Beta Reading', audience:'readers', content:'Readers can now sign up as beta readers for upcoming chapters. Opt in from your profile settings.', image:null, status:'draft', createdDate:'2026-07-20', created:fmtDate('2026-07-20'), scheduledDate:null, scheduled:'' },
+  { id:'ANN-005', title:'Editor Spotlight: July Picks', audience:'readers', content:'Check out this month\'s editor-selected reads across every genre, hand-picked by our senior editorial team.', image:'https://i.postimg.cc/cgLZJNmC/8.jpg', status:'published', createdDate:'2026-07-10', created:fmtDate('2026-07-10'), scheduledDate:null, scheduled:'' },
+  { id:'ANN-006', title:'Holiday Submission Freeze', audience:'authors', content:'No new chapter submissions will be accepted between Dec 24 and Jan 2 while the editorial team is off.', image:null, status:'scheduled', createdDate:'2026-07-15', created:fmtDate('2026-07-15'), scheduledDate:'2026-12-20', scheduled:fmtDate('2026-12-20') },
+];
+
+let ANNOUNCEMENTS = [];
+let filtered = [];
+let activeStatus = 'all';
+let currentPg = 1;
+let editingId = null;
+let pendingImage = null; // data URL staged in the modal before save
+
+/* ─────────────────────────────────────────
+   LOAD
+───────────────────────────────────────── */
+async function loadAnnouncements(){
+  try{
+    const data = await apiFetch('/announcements');
+    ANNOUNCEMENTS = Array.isArray(data) ? data : data.announcements;
+    usingDemoData = false;
+  }catch(err){
+    console.warn('Announcements API unavailable, falling back to demo data:', err.message);
+    ANNOUNCEMENTS = JSON.parse(JSON.stringify(DEMO_ANNOUNCEMENTS));
+    usingDemoData = true;
+  }
+  checkScheduled(true);
+  renderStats();
+  buildFilterPills();
+  applyFilters();
+}
+
+/* ─────────────────────────────────────────
+   SCHEDULE CHECK — this is what makes
+   "schedule" actually do something: any
+   scheduled item whose date has arrived
+   gets auto-published, same as a real
+   backend cron would do.
+───────────────────────────────────────── */
+function checkScheduled(silent){
+  const now = new Date();
+  let changed = false;
+  ANNOUNCEMENTS.forEach(a=>{
+    if(a.status==='scheduled' && a.scheduledDate){
+      const due = new Date(a.scheduledDate+'T00:00:00');
+      if(due <= now){
+        a.status = 'published';
+        changed = true;
+        if(!silent) toast(`📣 "${a.title}" just went live (scheduled time reached)`);
+      }
+    }
+  });
+  if(changed && !silent){ renderStats(); buildFilterPills(); applyFilters(); }
+  return changed;
+}
+setInterval(()=>checkScheduled(false), 20000);
+
+/* ─────────────────────────────────────────
+   STATS
+───────────────────────────────────────── */
+function renderStats(){
+  const published = ANNOUNCEMENTS.filter(a=>a.status==='published').length;
+  const scheduled = ANNOUNCEMENTS.filter(a=>a.status==='scheduled').length;
+  const draft = ANNOUNCEMENTS.filter(a=>a.status==='draft').length;
+  const stats = [
+    { n:ANNOUNCEMENTS.length, l:'Total Announcements', ico:'fa-bullhorn', cls:'accent', bg:'rgba(255,0,80,.1)' },
+    { n:published, l:'Published', ico:'fa-circle-check', cls:'green', bg:'var(--green-bg)' },
+    { n:scheduled, l:'Scheduled', ico:'fa-clock', cls:'blue', bg:'var(--blue-bg)' },
+    { n:draft, l:'Drafts', ico:'fa-file-pen', cls:'amber', bg:'var(--amber-bg)' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${s.bg};color:var(--${s.cls})"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+/* ─────────────────────────────────────────
+   FILTER PILLS (status)
+───────────────────────────────────────── */
+function buildFilterPills(){
+  const statuses = ['all','published','scheduled','draft'];
+  const counts = { all: ANNOUNCEMENTS.length };
+  ANNOUNCEMENTS.forEach(a=>{ counts[a.status] = (counts[a.status]||0)+1; });
+
+  document.getElementById('filterRow').innerHTML = statuses.map(st=>{
+    const label = st==='all' ? 'All' : st.charAt(0).toUpperCase()+st.slice(1);
+    return `<button class="filter-pill${st===activeStatus?' on':''}" data-status="${st}">${label}<span class="pill-count">${counts[st]||0}</span></button>`;
+  }).join('');
+
+  document.querySelectorAll('.filter-pill').forEach(p=>{
+    p.addEventListener('click', ()=>{
+      activeStatus = p.dataset.status;
+      currentPg = 1;
+      document.querySelectorAll('.filter-pill').forEach(x=>x.classList.toggle('on', x===p));
+      applyFilters();
+    });
+  });
+}
+
+/* ─────────────────────────────────────────
+   FILTER + PAGINATION
+───────────────────────────────────────── */
+function audienceLabel(v){ return v==='all' ? 'Everyone' : v.charAt(0).toUpperCase()+v.slice(1); }
+
+function applyFilters(){
+  const q = document.getElementById('annSearch').value.trim().toLowerCase();
+  const aud = document.getElementById('audienceFilter').value;
+
+  filtered = ANNOUNCEMENTS.filter(a=>{
+    const matchesSt = activeStatus==='all' || a.status===activeStatus;
+    const matchesQ = !q || a.title.toLowerCase().includes(q) || a.content.toLowerCase().includes(q);
+    const matchesAud = !aud || a.audience===aud;
+    return matchesSt && matchesQ && matchesAud;
+  });
+
+  // newest first
+  filtered.sort((a,b)=> new Date(b.createdDate) - new Date(a.createdDate));
+
+  const maxPg = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if(currentPg > maxPg) currentPg = maxPg;
+
+  document.getElementById('annCount').textContent = `${filtered.length} of ${ANNOUNCEMENTS.length}`;
+  renderPage();
+}
+
+function renderPage(){
+  const start = (currentPg-1)*PER_PAGE;
+  const page = filtered.slice(start, start+PER_PAGE);
+  const box = document.getElementById('annList');
+
+  if(!page.length){
+    box.innerHTML = `<div class="empty-msg">No announcements match your search.</div>`;
+    document.getElementById('pgn').innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = page.map(a=>`
+    <div class="ann-card" data-id="${a.id}">
+      <div class="ann-thumb-wrap">
+        ${a.image ? `<img class="ann-thumb" src="${a.image}" alt="${a.title}"/>` : `<div class="ann-thumb-placeholder"><i class="fas fa-image"></i></div>`}
+      </div>
+      <div class="ann-body">
+        <div class="ann-top">
+          <div class="ann-title">${a.title} <span class="status-pill ${a.status}">${a.status}</span> <span class="audience-tag">${audienceLabel(a.audience)}</span></div>
+        </div>
+        <div class="ann-content">${a.content}</div>
+        <div class="ann-meta">
+          <span><i class="fas fa-calendar"></i> Created ${a.created}</span>
+          ${a.scheduled ? `<span><i class="fas fa-clock"></i> Scheduled for ${a.scheduled}</span>` : ''}
+        </div>
+        <div class="ann-actions">
+          ${a.status!=='published' ? `<button class="mini-btn primary" data-action="publish-now" data-id="${a.id}"><i class="fas fa-paper-plane"></i> Publish Now</button>` : ''}
+          <button class="mini-btn" data-action="edit-ann" data-id="${a.id}"><i class="fas fa-pen"></i> Edit</button>
+          <button class="mini-btn danger" data-action="delete-ann" data-id="${a.id}"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  renderPagination();
+}
+
+function renderPagination(){
+  const total = filtered.length;
+  const maxPg = Math.ceil(total / PER_PAGE);
+  if(maxPg <= 1){ document.getElementById('pgn').innerHTML = ''; return; }
+
+  const start = (currentPg-1)*PER_PAGE+1;
+  const end = Math.min(currentPg*PER_PAGE, total);
+  let btns = '';
+  for(let i=1;i<=maxPg;i++){
+    if(maxPg>6 && i>2 && i<maxPg-1 && Math.abs(i-currentPg)>1){
+      if(i===3 || i===maxPg-2) btns += `<span style="color:var(--text-faint);padding:0 3px;font-size:12px">…</span>`;
+      continue;
+    }
+    btns += `<button class="pgn-btn${i===currentPg?' on':''}" data-pg="${i}">${i}</button>`;
+  }
+
+  document.getElementById('pgn').innerHTML = `
+    <span class="pgn-info">Showing ${start}–${end} of ${total}</span>
+    <div class="pgn-btns">
+      <button class="pgn-btn" id="pgPrev"${currentPg===1?' disabled':''}><i class="fas fa-chevron-left" style="font-size:10px"></i></button>
+      ${btns}
+      <button class="pgn-btn" id="pgNext"${currentPg===maxPg?' disabled':''}><i class="fas fa-chevron-right" style="font-size:10px"></i></button>
+    </div>`;
+
+  document.getElementById('pgPrev').addEventListener('click', ()=>{ currentPg--; renderPage(); window.scrollTo({top:0,behavior:'smooth'}); });
+  document.getElementById('pgNext').addEventListener('click', ()=>{ currentPg++; renderPage(); window.scrollTo({top:0,behavior:'smooth'}); });
+  document.querySelectorAll('.pgn-btn[data-pg]').forEach(b=>{
+    b.addEventListener('click', ()=>{ currentPg = parseInt(b.dataset.pg,10); renderPage(); window.scrollTo({top:0,behavior:'smooth'}); });
+  });
+}
+
+/* ─────────────────────────────────────────
+   IMAGE FIELD (upload / preview / remove)
+───────────────────────────────────────── */
+function renderImageField(){
+  const area = document.getElementById('imageFieldArea');
+  if(pendingImage){
+    area.innerHTML = `
+      <div class="image-preview-wrap">
+        <img src="${pendingImage}" alt="Announcement image preview"/>
+        <button type="button" class="image-remove-btn" id="removeImageBtn"><i class="fas fa-xmark"></i></button>
+      </div>`;
+    document.getElementById('removeImageBtn').addEventListener('click', ()=>{ pendingImage = null; renderImageField(); });
+  }else{
+    area.innerHTML = `
+      <label class="image-drop">
+        <i class="fas fa-cloud-arrow-up"></i>
+        <span>Click to upload an image (JPG, PNG — up to ~2MB)</span>
+        <input type="file" accept="image/*" id="imageFileInput"/>
+      </label>`;
+    document.getElementById('imageFileInput').addEventListener('change', handleImageChange);
+  }
+}
+
+function handleImageChange(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('⚠️ Please choose an image file'); return; }
+  if(file.size > 4*1024*1024){ toast('⚠️ Image is too large (max ~4MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{ pendingImage = reader.result; renderImageField(); };
+  reader.readAsDataURL(file);
+}
+
+/* ─────────────────────────────────────────
+   CREATE / EDIT MODAL
+───────────────────────────────────────── */
+let whenMode = 'now';
+
+function openCreateModal(){
+  editingId = null;
+  document.getElementById('createModalTitle').textContent = 'New Announcement';
+  document.getElementById('createModalSub').textContent = "Choose who sees it and whether it goes out now, later, or stays a draft.";
+  document.getElementById('annTitleInput').value = '';
+  document.getElementById('annAudienceInput').value = 'all';
+  document.getElementById('annContentInput').value = '';
+  document.getElementById('annScheduleInput').value = '';
+  document.getElementById('annScheduleInput').min = todayISO;
+  document.getElementById('createModalError').classList.remove('show');
+  pendingImage = null;
+  renderImageField();
+  setWhenMode('now');
+  document.getElementById('createConfirmBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Save';
+  document.getElementById('createModalOv').classList.add('open');
+}
+
+function openEditModal(id){
+  const a = ANNOUNCEMENTS.find(x=>x.id===id); if(!a) return;
+  editingId = id;
+  document.getElementById('createModalTitle').textContent = 'Edit Announcement';
+  document.getElementById('createModalSub').textContent = "Update the details below and save your changes.";
+  document.getElementById('annTitleInput').value = a.title;
+  document.getElementById('annAudienceInput').value = a.audience;
+  document.getElementById('annContentInput').value = a.content;
+  document.getElementById('annScheduleInput').value = a.scheduledDate || '';
+  document.getElementById('annScheduleInput').min = todayISO;
+  document.getElementById('createModalError').classList.remove('show');
+  pendingImage = a.image || null;
+  renderImageField();
+  setWhenMode(a.status==='published' ? 'now' : a.status);
+  document.getElementById('createConfirmBtn').innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes';
+  document.getElementById('createModalOv').classList.add('open');
+}
+
+function closeCreateModal(){
+  document.getElementById('createModalOv').classList.remove('open');
+  editingId = null;
+}
+
+function setWhenMode(mode){
+  whenMode = mode;
+  document.querySelectorAll('#whenRadioRow .radio-opt').forEach(el=>{
+    const active = el.dataset.when===mode;
+    el.classList.toggle('active', active);
+    el.querySelector('input').checked = active;
+  });
+  document.getElementById('scheduleDateGroup').style.display = mode==='schedule' ? 'block' : 'none';
+}
+
+async function submitCreate(){
+  const title = document.getElementById('annTitleInput').value.trim();
+  const audience = document.getElementById('annAudienceInput').value;
+  const content = document.getElementById('annContentInput').value.trim();
+  const scheduleDate = document.getElementById('annScheduleInput').value;
+  const errBox = document.getElementById('createModalError');
+
+  if(!title){ errBox.textContent = 'Please add a title.'; errBox.classList.add('show'); return; }
+  if(!content){ errBox.textContent = 'Please add some content.'; errBox.classList.add('show'); return; }
+  if(whenMode==='schedule' && !scheduleDate){ errBox.textContent = 'Pick a date to schedule this for.'; errBox.classList.add('show'); return; }
+  if(whenMode==='schedule' && scheduleDate < todayISO){ errBox.textContent = 'Scheduled date must be today or later.'; errBox.classList.add('show'); return; }
+  errBox.classList.remove('show');
+
+  const status = whenMode==='now' ? 'published' : whenMode==='schedule' ? 'scheduled' : 'draft';
+  const scheduledDate = whenMode==='schedule' ? scheduleDate : null;
+  const scheduled = scheduledDate ? fmtDate(scheduledDate) : '';
+
+  const btn = document.getElementById('createConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+  const payload = { title, audience, content, image: pendingImage, status, scheduledDate, scheduled };
+
+  try{
+    if(editingId){
+      const a = ANNOUNCEMENTS.find(x=>x.id===editingId);
+      try{
+        if(!usingDemoData) await apiFetch(`/announcements/${editingId}`, { method:'PUT', body: JSON.stringify(payload) });
+      }catch(_){/* demo mode / offline: apply locally anyway */}
+      Object.assign(a, payload);
+      toast(`✏️ "${a.title}" updated`);
+    }else{
+      let created = null;
+      try{
+        if(!usingDemoData){
+          const result = await apiFetch('/announcements', { method:'POST', body: JSON.stringify(payload) });
+          created = (result && result.item) ? result.item : result;
+        }
+      }catch(_){/* fall through to local create */}
+      if(!created){
+        created = Object.assign({
+          id: 'ANN-' + String(ANNOUNCEMENTS.length+1).padStart(3,'0'),
+          createdDate: todayISO,
+          created: fmtDate(todayISO),
+        }, payload);
+      }
+      ANNOUNCEMENTS.unshift(created);
+      toast(status==='published' ? '📣 Announcement published' : status==='scheduled' ? '🗓️ Announcement scheduled' : '📝 Draft saved');
+    }
+    closeCreateModal();
+    renderStats(); buildFilterPills(); applyFilters();
+  }catch(err){
+    errBox.textContent = 'Something went wrong. Please try again.';
+    errBox.classList.add('show');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = editingId ? '<i class="fas fa-floppy-disk"></i> Save Changes' : '<i class="fas fa-paper-plane"></i> Save';
+  }
+}
+
+/* ─────────────────────────────────────────
+   ROW ACTIONS
+───────────────────────────────────────── */
+async function publishNow(id){
+  const a = ANNOUNCEMENTS.find(x=>x.id===id); if(!a) return;
+  try{ if(!usingDemoData) await apiFetch(`/announcements/${id}`, { method:'PUT', body: JSON.stringify({ status:'published' }) }); }catch(_){/* demo fallback */}
+  a.status = 'published';
+  a.scheduled = '';
+  a.scheduledDate = null;
+  toast(`📣 "${a.title}" published`);
+  renderStats(); buildFilterPills(); applyFilters();
+}
+
+async function deleteAnnouncement(id){
+  const a = ANNOUNCEMENTS.find(x=>x.id===id); if(!a) return;
+  try{ if(!usingDemoData) await apiFetch(`/announcements/${id}`, { method:'DELETE' }); }catch(_){/* demo fallback */}
+  ANNOUNCEMENTS = ANNOUNCEMENTS.filter(x=>x.id!==id);
+  toast(`🗑️ "${a.title}" deleted`);
+  renderStats(); buildFilterPills(); applyFilters();
+}
+
+/* ─────────────────────────────────────────
+   EVENT DELEGATION
+───────────────────────────────────────── */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el){
+    const whenOpt = e.target.closest('.radio-opt');
+    if(whenOpt && whenOpt.closest('#whenRadioRow')) setWhenMode(whenOpt.dataset.when);
+    return;
+  }
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+
+  if(action==='open-create-modal') openCreateModal();
+  else if(action==='close-create-modal') closeCreateModal();
+  else if(action==='submit-create') submitCreate();
+  else if(action==='publish-now') publishNow(id);
+  else if(action==='edit-ann') openEditModal(id);
+  else if(action==='delete-ann') deleteAnnouncement(id);
+});
+
+document.getElementById('createModalOv').addEventListener('click', e=>{ if(e.target.id==='createModalOv') closeCreateModal(); });
+document.getElementById('annSearch').addEventListener('input', ()=>{ currentPg=1; applyFilters(); });
+document.getElementById('audienceFilter').addEventListener('change', ()=>{ currentPg=1; applyFilters(); });
+
+/* ─────────────────────────────────────────
+   INIT
+───────────────────────────────────────── */
+loadAnnouncements();
+</script>
+</body>
+</html>

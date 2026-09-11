@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Withdrawals — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.page-head h1{font-size:19px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.new-btn{background:var(--accent);color:#fff;border:none;padding:11px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.new-btn:hover{filter:brightness(1.05)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:11px;padding:10px 14px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:13px}
+.select-box{border:1px solid var(--input-border);background:var(--input-bg);border-radius:11px;padding:10px 14px;font-size:12.5px;font-family:inherit;color:var(--text);cursor:pointer}
+
+.filter-pills{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.f-pill{font-size:12px;font-weight:700;padding:8px 15px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:6px}
+.f-pill:hover{border-color:var(--accent);color:var(--accent)}
+.f-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.f-pill .cnt{font-size:10px;font-weight:800;background:rgba(0,0,0,.12);padding:1px 7px;border-radius:20px}
+.f-pill.active .cnt{background:rgba(255,255,255,.25)}
+
+.wd-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.wd-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;flex-wrap:wrap;cursor:pointer;transition:.14s}
+.wd-card:hover{border-color:var(--accent)}
+.wd-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.wd-body{flex:1;min-width:180px}
+.wd-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:3px}
+.wd-name{font-size:13.5px;font-weight:700}
+.wd-amt{font-size:14px;font-weight:800}
+.wd-meta{font-size:11px;color:var(--text-faint);display:flex;gap:12px;flex-wrap:wrap}
+.wd-meta span{display:flex;align-items:center;gap:4px}
+.method-chip{font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--blue-bg);color:var(--blue);white-space:nowrap}
+.status-pill{font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+.status-pill.approved{background:var(--green-bg);color:var(--green)}
+.status-pill.declined{background:var(--red-bg);color:var(--red)}
+.wd-actions{display:flex;gap:7px;flex-shrink:0}
+.mini-btn{font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-faint)}
+.empty-state i{font-size:32px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:13px}
+
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px}
+.page-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Detail modal ── */
+.dt-overlay{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:2000;opacity:0;pointer-events:none;transition:.2s;display:flex;align-items:flex-end;justify-content:center}
+.dt-overlay.open{opacity:1;pointer-events:auto}
+.dt-modal{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(30px);transition:.25s;padding-bottom:6px}
+.dt-overlay.open .dt-modal{transform:translateY(0)}
+.dt-head{padding:20px 22px 0;position:sticky;top:0;background:var(--card);z-index:2}
+.dt-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dt-close{width:30px;height:30px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.dt-author{display:flex;align-items:center;gap:12px}
+.dt-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover}
+.dt-author-name{font-size:15px;font-weight:800}
+.dt-author-sub{font-size:11.5px;color:var(--text-faint);margin-top:2px}
+.dt-body{padding:18px 22px}
+.dt-amt-card{background:var(--table-head);border-radius:12px;padding:16px;text-align:center;margin-bottom:16px}
+.dt-amt-num{font-size:26px;font-weight:800}
+.dt-amt-lbl{font-size:10.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;margin-top:2px}
+.dt-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.dt-meta-item{background:var(--table-head);border-radius:10px;padding:11px 12px}
+.dt-meta-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.dt-meta-val{font-size:13px;font-weight:700;margin-top:3px}
+.dt-note{background:var(--red-bg);color:var(--red);border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5;margin-bottom:16px}
+.dt-decline-box{margin-top:10px}
+.dt-decline-box textarea{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text);min-height:64px;resize:vertical}
+.dt-foot{padding:14px 22px 20px;display:flex;gap:8px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--card)}
+.dt-foot .mini-btn{flex:1;justify-content:center;padding:11px}
+
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.wd-actions{width:100%}.wd-actions .mini-btn{flex:1;justify-content:center}.dt-meta-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <div><h1>Withdrawals</h1><p>Approve or decline author payout requests.</p></div>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="toolbar">
+    <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by author name…"/></div>
+    <select class="select-box" id="methodFilter">
+      <option value="">All methods</option>
+      <option value="Bank Transfer">Bank Transfer</option>
+      <option value="PayPal">PayPal</option>
+      <option value="Wire Transfer">Wire Transfer</option>
+    </select>
+    <select class="select-box" id="sortSelect">
+      <option value="recent">Most recent</option>
+      <option value="amount-desc">Highest amount</option>
+      <option value="amount-asc">Lowest amount</option>
+    </select>
+  </div>
+
+  <div class="filter-pills" id="filterPills"></div>
+
+  <div id="wdList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading withdrawals…</div></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Detail modal -->
+<div class="dt-overlay" id="dtOverlay">
+  <div class="dt-modal" id="dtModal"></div>
+</div>
+
+<script src="shared/finance-sidebar.js"></script>
+<script src="shared/finance-data.js"></script>
+<script>
+'use strict';
+const shell = FinanceSidebar.attach('#pageRoot',{
+  activeItem:'withdrawals', title:'Withdrawals', subtitle:'Approve or decline author payout requests',
+  user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const PER_PAGE = 6;
+
+let ALL = [];
+let activeStatus = 'all';
+let searchTerm = '';
+let methodTerm = '';
+let sortMode = 'recent';
+let page = 1;
+
+function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+function timeAgo(iso){
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff/3600000);
+  if(h < 1) return 'Just now';
+  if(h < 24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+
+async function init(){
+  ALL = await FinanceData.getWithdrawals();
+  renderStatCards();
+  renderFilterPills();
+  render();
+}
+
+function renderStatCards(){
+  const pending = ALL.filter(w=>w.status==='pending');
+  const approved = ALL.filter(w=>w.status==='approved');
+  const declined = ALL.filter(w=>w.status==='declined');
+  const pendingTotal = pending.reduce((s,w)=>s+w.amount,0);
+  const stats = [
+    { n:pending.length, l:'Pending Requests', ico:'fa-hourglass-half', cls:'amber' },
+    { n:money(pendingTotal), l:'Pending Amount', ico:'fa-sack-dollar', cls:'blue' },
+    { n:approved.length, l:'Approved', ico:'fa-circle-check', cls:'green' },
+    { n:declined.length, l:'Declined', ico:'fa-circle-xmark', cls:'red' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function renderFilterPills(){
+  const counts = { all:ALL.length, pending:0, approved:0, declined:0 };
+  ALL.forEach(w=>counts[w.status]++);
+  const pills = [
+    { key:'all', label:'All' },
+    { key:'pending', label:'Pending' },
+    { key:'approved', label:'Approved' },
+    { key:'declined', label:'Declined' },
+  ];
+  document.getElementById('filterPills').innerHTML = pills.map(p=>`
+    <button class="f-pill${activeStatus===p.key?' active':''}" data-status="${p.key}">${p.label} <span class="cnt">${counts[p.key]}</span></button>`).join('');
+  document.querySelectorAll('.f-pill').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeStatus = btn.dataset.status; page=1; renderFilterPills(); render(); });
+  });
+}
+
+function getFiltered(){
+  let list = ALL.slice();
+  if(activeStatus !== 'all') list = list.filter(w=>w.status===activeStatus);
+  if(methodTerm) list = list.filter(w=>w.method===methodTerm);
+  if(searchTerm) list = list.filter(w=>w.author.toLowerCase().includes(searchTerm.toLowerCase()));
+  if(sortMode==='amount-desc') list.sort((a,b)=>b.amount-a.amount);
+  else if(sortMode==='amount-asc') list.sort((a,b)=>a.amount-b.amount);
+  else list.sort((a,b)=> new Date(b.requested) - new Date(a.requested));
+  return list;
+}
+
+function render(){
+  const filtered = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if(page > totalPages) page = totalPages;
+  const pageItems = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  const box = document.getElementById('wdList');
+  if(!pageItems.length){
+    box.innerHTML = `<div class="empty-state"><i class="fas fa-building-columns"></i><p>No withdrawal requests match your filters.</p></div>`;
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = `<div class="wd-list">${pageItems.map(w=>`
+    <div class="wd-card" data-id="${w.id}">
+      <img class="wd-avatar" src="${w.avatar}" alt="${w.author}"/>
+      <div class="wd-body">
+        <div class="wd-top">
+          <span class="wd-name">${w.author}</span>
+          <span class="wd-amt">${money(w.amount)}</span>
+          <span class="method-chip">${w.method}</span>
+          <span class="status-pill ${w.status}">${w.status}</span>
+        </div>
+        <div class="wd-meta">
+          <span><i class="fas fa-clock"></i> Requested ${timeAgo(w.requested)}</span>
+          <span><i class="fas fa-building-columns"></i> ${w.account}</span>
+        </div>
+      </div>
+      ${w.status==='pending' ? `
+      <div class="wd-actions">
+        <button class="mini-btn danger" data-action="decline" data-id="${w.id}"><i class="fas fa-xmark"></i> Decline</button>
+        <button class="mini-btn primary" data-action="approve" data-id="${w.id}"><i class="fas fa-check"></i> Approve</button>
+      </div>` : ''}
+    </div>`).join('')}</div>`;
+
+  document.querySelectorAll('.wd-card').forEach(card=>{
+    card.addEventListener('click', (e)=>{ if(e.target.closest('[data-action]')) return; openDetail(card.dataset.id); });
+  });
+
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages){
+  const box = document.getElementById('pagination');
+  if(totalPages <= 1){ box.innerHTML=''; return; }
+  let html = `<button class="page-btn" ${page===1?'disabled':''} data-p="${page-1}"><i class="fas fa-chevron-left"></i></button>`;
+  for(let i=1;i<=totalPages;i++) html += `<button class="page-btn${i===page?' active':''}" data-p="${i}">${i}</button>`;
+  html += `<button class="page-btn" ${page===totalPages?'disabled':''} data-p="${page+1}"><i class="fas fa-chevron-right"></i></button>`;
+  box.innerHTML = html;
+  box.querySelectorAll('.page-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ page = parseInt(btn.dataset.p,10); render(); window.scrollTo({top:0,behavior:'smooth'}); });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm=e.target.value; page=1; render(); });
+document.getElementById('methodFilter').addEventListener('change', e=>{ methodTerm=e.target.value; page=1; render(); });
+document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e.target.value; render(); });
+
+/* ── Detail modal ── */
+const dtOverlay = document.getElementById('dtOverlay');
+const dtModal = document.getElementById('dtModal');
+
+function openDetail(id){
+  const w = ALL.find(x=>x.id===id);
+  if(!w) return;
+  dtModal.innerHTML = `
+    <div class="dt-head">
+      <div class="dt-head-top">
+        <div class="dt-author">
+          <img class="dt-avatar" src="${w.avatar}" alt="${w.author}"/>
+          <div><div class="dt-author-name">${w.author}</div><div class="dt-author-sub">${w.id} · <span class="status-pill ${w.status}" style="margin-left:2px">${w.status}</span></div></div>
+        </div>
+        <button class="dt-close" id="dtClose"><i class="fas fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="dt-body">
+      <div class="dt-amt-card"><div class="dt-amt-num">${money(w.amount)}</div><div class="dt-amt-lbl">Requested Withdrawal</div></div>
+      <div class="dt-meta-grid">
+        <div class="dt-meta-item"><div class="dt-meta-lbl">Method</div><div class="dt-meta-val">${w.method}</div></div>
+        <div class="dt-meta-item"><div class="dt-meta-lbl">Account</div><div class="dt-meta-val" style="font-size:11.5px">${w.account}</div></div>
+        <div class="dt-meta-item"><div class="dt-meta-lbl">Requested</div><div class="dt-meta-val" style="font-size:11.5px">${fmtDate(w.requested)}</div></div>
+        <div class="dt-meta-item"><div class="dt-meta-lbl">${w.status==='pending'?'Status':'Processed'}</div><div class="dt-meta-val" style="font-size:11.5px">${w.status==='pending' ? 'Awaiting review' : fmtDate(w.processed)}</div></div>
+      </div>
+      ${w.status==='declined' && w.note ? `<div class="dt-note"><i class="fas fa-circle-info"></i> ${w.note}</div>` : ''}
+      ${w.status==='pending' ? `
+        <div class="dt-decline-box" id="dtDeclineBox" style="display:none">
+          <label style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:6px">Reason for decline</label>
+          <textarea id="dtDeclineReason" placeholder="Let the author know why this was declined…"></textarea>
+        </div>` : ''}
+    </div>
+    ${w.status==='pending' ? `
+    <div class="dt-foot">
+      <button class="mini-btn danger" id="dtDeclineBtn"><i class="fas fa-xmark"></i> Decline</button>
+      <button class="mini-btn primary" id="dtApproveBtn"><i class="fas fa-check"></i> Approve</button>
+    </div>` : ''}
+  `;
+  dtOverlay.classList.add('open');
+  document.getElementById('dtClose').addEventListener('click', closeDetail);
+
+  if(w.status==='pending'){
+    document.getElementById('dtApproveBtn').addEventListener('click', ()=>doApprove(w.id));
+    document.getElementById('dtDeclineBtn').addEventListener('click', ()=>{
+      const box = document.getElementById('dtDeclineBox');
+      const showing = box.style.display === 'block';
+      if(!showing){ box.style.display='block'; document.getElementById('dtDeclineReason').focus(); }
+      else { doDecline(w.id, document.getElementById('dtDeclineReason').value.trim()); }
+    });
+  }
+}
+function closeDetail(){ dtOverlay.classList.remove('open'); }
+dtOverlay.addEventListener('click', e=>{ if(e.target===dtOverlay) closeDetail(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeDetail(); });
+
+async function doApprove(id){
+  const w = ALL.find(x=>x.id===id);
+  await FinanceData.approveWithdrawal(id);
+  w.status='approved'; w.processed = new Date().toISOString();
+  toast(`✅ Approved ${money(w.amount)} payout for ${w.author}`);
+  closeDetail(); renderStatCards(); renderFilterPills(); render();
+}
+async function doDecline(id, reason){
+  const w = ALL.find(x=>x.id===id);
+  await FinanceData.declineWithdrawal(id, reason || 'Declined by Finance.');
+  w.status='declined'; w.note = reason || 'Declined by Finance.'; w.processed = new Date().toISOString();
+  toast(`↩️ Declined payout for ${w.author}`);
+  closeDetail(); renderStatCards(); renderFilterPills(); render();
+}
+
+/* ── Quick-action buttons on cards (bypass opening detail) ── */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el || !el.closest('.wd-card')) return;
+  e.stopPropagation();
+  const id = el.dataset.id;
+  if(el.dataset.action==='approve') doApprove(id);
+  else if(el.dataset.action==='decline'){
+    const reason = prompt('Reason for declining this withdrawal (shown to the author):', '');
+    if(reason===null) return; // cancelled
+    doDecline(id, reason.trim());
+  }
+});
+
+init();
+</script>
+</body>
+</html>

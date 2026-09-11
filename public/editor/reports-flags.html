@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Reports & Flags — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
+  .top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px}
+  .top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .top-tab .tab-count{font-size:10.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}
+  .top-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.purple{background:#ece9fb;color:#5b4bcf}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  .stat-delta.down{color:var(--red);background:var(--red-bg)}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+  .filters-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:220px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .fselect{position:relative}
+  .fselect select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}
+  .fselect i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-faint);pointer-events:none}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:900px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+  .flag-cell{display:flex;align-items:center;gap:12px}
+  .flag-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .flag-title{font-weight:700;font-size:13px}
+  .flag-desc{color:var(--text-muted);font-size:11.5px;margin-top:2px}
+  .type-pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap}
+  .type-pill.content{background:var(--amber-bg);color:var(--amber)}
+  .type-pill.spam{background:var(--red-bg);color:var(--red)}
+  .type-pill.plagiarism{background:var(--blue-bg);color:var(--blue)}
+  .type-pill.abuse{background:var(--purple-bg);color:var(--purple)}
+  .type-pill.other{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .type-pill.content{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .type-pill.spam{background:rgba(224,56,77,.16)}
+  html[data-theme="dark"] .type-pill.plagiarism{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .type-pill.abuse{background:rgba(167,139,250,.18)}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .status-pill.pending{background:rgba(217,119,6,.18)}
+  .status-pill.resolved{background:var(--blue-bg);color:var(--blue)}
+  html[data-theme="dark"] .status-pill.resolved{background:rgba(37,99,235,.18)}
+  .status-pill.dismissed{background:var(--table-head);color:var(--text-faint)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.pending .dot{background:var(--amber)}
+  .status-pill.resolved .dot{background:var(--blue)}
+  .status-pill.dismissed .dot{background:var(--text-faint)}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:14.5px;font-weight:800}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+  .two-col-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:start}
+  .stat-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+  .stat-row:last-child{border-bottom:none}
+  .stat-row .lbl{color:var(--text-muted);font-weight:600}
+  .stat-row .val{font-weight:700}
+  .stat-row .val.red{color:var(--red)}
+  .stat-row .val.green{color:var(--green)}
+  @media (max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.two-col-grid{grid-template-columns:1fr}}
+  @media (max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:680px){
+    .page-hdr-row{flex-direction:column;align-items:stretch}
+    .btn-add{justify-content:center}
+    .filters-row{flex-direction:column;align-items:stretch}
+    .fselect select{width:100%}
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Flag Details"]{align-items:flex-start}
+    td[data-label="Flag Details"]::before{display:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){.stats-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="dashboardRoot">
+  <div class="page-hdr-row">
+    <div class="top-tabs">
+      <div class="top-tab active" data-view="all">All Reports</div>
+      <div class="top-tab" data-view="pending">Pending <span class="tab-count" id="pendingCount">0</span></div>
+      <div class="top-tab" data-view="resolved">Resolved</div>
+      <div class="top-tab" data-view="dismissed">Dismissed</div>
+    </div>
+    <button class="btn-add" onclick="toast('Opening report settings…')"><i class="fas fa-sliders"></i> Report Settings</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta down">+12% from last month</span></div><div class="stat-num">47</div><div class="stat-lbl">Total Reports</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta down">+8 awaiting</span></div><div class="stat-num">18</div><div class="stat-lbl">Pending Review</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+15% from last month</span></div><div class="stat-num">24</div><div class="stat-lbl">Resolved</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-rotate-left"></i></div><span class="stat-delta">+5% from last month</span></div><div class="stat-num">5</div><div class="stat-lbl">Dismissed</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-gavel"></i></div><span class="stat-delta">-2h avg</span></div><div class="stat-num">4.2h</div><div class="stat-lbl">Avg Response Time</div></div>
+  </div>
+  <div class="filters-row">
+    <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by title, reporter, or ID..."/></div>
+    <div class="fselect"><select id="typeSelect"><option value="">All Types</option><option value="content">Content</option><option value="spam">Spam</option><option value="plagiarism">Plagiarism</option><option value="abuse">Abuse</option><option value="other">Other</option></select><i class="fas fa-chevron-down"></i></div>
+    <div class="fselect"><select id="statusSelect"><option value="">All Status</option><option value="pending">Pending</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select><i class="fas fa-chevron-down"></i></div>
+    <button class="btn-filters" onclick="toast('Opening advanced filters…')"><i class="fas fa-sliders"></i> Filters</button>
+  </div>
+  <div class="two-col-grid">
+    <div class="table-card">
+      <div class="table-wrap">
+        <table><thead><tr><th>Flag Details</th><th>Type</th><th>Reported By</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table>
+      </div>
+      <div class="pagination-row"><div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>47</b> reports</div><div class="page-btns" id="pageBtns"></div></div>
+    </div>
+    <div>
+      <div class="panel"><div class="panel-head"><h2>Report Summary</h2></div>
+        <div class="stat-row"><span class="lbl">Content Violations</span><span class="val red">18</span></div>
+        <div class="stat-row"><span class="lbl">Spam Reports</span><span class="val">12</span></div>
+        <div class="stat-row"><span class="lbl">Plagiarism Claims</span><span class="val">8</span></div>
+        <div class="stat-row"><span class="lbl">Abuse Reports</span><span class="val">6</span></div>
+        <div class="stat-row"><span class="lbl">Other</span><span class="val">3</span></div>
+      </div>
+      <div class="panel"><div class="panel-head"><h2>Quick Actions</h2></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn-add" style="width:100%;justify-content:center" onclick="toast('Opening review queue…')"><i class="fas fa-inbox"></i> Review Queue</button>
+          <button class="btn-add" style="width:100%;justify-content:center;background:var(--input-bg);color:var(--text);box-shadow:none" onclick="toast('Opening moderation log…')"><i class="fas fa-list-check"></i> Moderation Log</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="reports-flags-enhanced.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'reports-flags.html',
+  title: 'Reports & Flags',
+  subtitle: 'Review and manage all content reports and flags',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search by title, reporter, or ID...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (v) => { document.getElementById('tableSearch').value = v; refresh(); },
+});
+const FLAGS = [
+  { id:'FLG-0047', title:'Inappropriate Content in "The Ruthless CEO"', desc:'Chapter 12 contains explicit content not marked as mature.', type:'content', reporter:'Reader_2345', status:'pending', date:'Jun 17, 2026', ico:'fa-flag', bg:'#fde3e3', clr:'var(--red)' },
+  { id:'FLG-0046', title:'Spam Comments on "Bound by the Alpha"', desc:'Multiple spam comments promoting external websites.', type:'spam', reporter:'ModBot', status:'pending', date:'Jun 16, 2026', ico:'fa-bug', bg:'#fde3e3', clr:'var(--red)' },
+  { id:'FLG-0045', title:'Plagiarism: "His Hidden Luna"', desc:'Sections of this story appear to be copied from another work.', type:'plagiarism', reporter:'Author_789', status:'resolved', date:'Jun 15, 2026', ico:'fa-copy', bg:'#e3ecfd', clr:'var(--blue)' },
+  { id:'FLG-0044', title:'Harassment in Comments', desc:'User making offensive remarks towards the author.', type:'abuse', reporter:'LunaSkye', status:'pending', date:'Jun 14, 2026', ico:'fa-hand', bg:'#ece9fb', clr:'#5b4bcf' },
+  { id:'FLG-0043', title:'Fake Account Reporting', desc:'Account suspected of impersonating a verified author.', type:'other', reporter:'Admin_Team', status:'resolved', date:'Jun 13, 2026', ico:'fa-user-slash', bg:'#eef0f2', clr:'#5b6470' },
+  { id:'FLG-0042', title:'Explicit Cover Image', desc:'Book cover contains nudity that violates guidelines.', type:'content', reporter:'Reader_8901', status:'dismissed', date:'Jun 12, 2026', ico:'fa-image', bg:'#fde3e3', clr:'var(--red)' },
+  { id:'FLG-0041', title:'Copyright Infringement', desc:'Author claims their work was republished without permission.', type:'plagiarism', reporter:'MiaCarter', status:'pending', date:'Jun 11, 2026', ico:'fa-copyright', bg:'#e3ecfd', clr:'var(--blue)' },
+  { id:'FLG-0040', title:'Spam Promo in Bio', desc:'Author bio contains links to competitor platform.', type:'spam', reporter:'ModBot', status:'resolved', date:'Jun 10, 2026', ico:'fa-bug', bg:'#fde3e3', clr:'var(--red)' },
+];
+const TYPE_META = { content:{label:'Content',cls:'content'}, spam:{label:'Spam',cls:'spam'}, plagiarism:{label:'Plagiarism',cls:'plagiarism'}, abuse:{label:'Abuse',cls:'abuse'}, other:{label:'Other',cls:'other'} };
+let currentView='all';
+function statusPillHtml(s){const m={pending:{cls:'pending',label:'Pending'},resolved:{cls:'resolved',label:'Resolved'},dismissed:{cls:'dismissed',label:'Dismissed'}}[s]||m.pending;return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`}
+function viewSource(){if(currentView==='all')return FLAGS;return FLAGS.filter(r=>r.status===currentView)}
+function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const t=document.getElementById('typeSelect').value;const s=document.getElementById('statusSelect').value;let l=viewSource();if(s)l=l.filter(r=>r.status===s);if(t)l=l.filter(r=>r.type===t);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.title.toLowerCase().includes(q)||r.reporter.toLowerCase().includes(q));return l}
+function renderTable(list){const b=document.getElementById('tableBody');if(!list.length){b.innerHTML=`<tr class="empty-row"><td colspan="6"><i class="fas fa-flag"></i>No reports match this search.</td></tr>`;return}
+b.innerHTML=list.slice(0,8).map(r=>{const m=TYPE_META[r.type]||TYPE_META.other;return `<tr><td data-label="Flag Details"><div class="flag-cell"><div class="flag-ico" style="background:${r.bg};color:${r.clr}"><i class="fas ${r.ico}"></i></div><div><div class="flag-title">${r.title}</div><div class="flag-desc">${r.desc}</div></div></div></td><td data-label="Type"><span class="type-pill ${m.cls}">${m.label}</span></td><td data-label="Reported By" style="font-weight:600;font-size:12.5px">${r.reporter}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Date" style="font-weight:600;font-size:12.5px">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" title="View" onclick="toast('Opening report…')"><i class="fas fa-eye"></i></button><button class="act-btn" title="Resolve" onclick="toast('Resolving report…')"><i class="fas fa-check"></i></button><button class="act-btn" title="More" onclick="toast('More actions…')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`}).join('')}
+function renderPageInfo(c){const t={all:47,pending:18,resolved:24,dismissed:5};const total=t[currentView]??c;const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>${total.toLocaleString()}</b> reports`}
+function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
+document.querySelectorAll('.top-tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.top-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');currentView=tab.dataset.view;document.getElementById('statusSelect').value='';renderPagination();refresh()})})
+function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,6];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
+document.getElementById('tableSearch').addEventListener('input',refresh);document.getElementById('typeSelect').addEventListener('change',refresh);document.getElementById('statusSelect').addEventListener('change',(e)=>{const s=e.target.value;currentView=s||'all';document.querySelectorAll('.top-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===currentView));renderPagination();refresh()});
+document.getElementById('pendingCount').textContent=FLAGS.filter(r=>r.status==='pending').length;
+renderPagination();refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>DroBoard — Collection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --pink:#FF2D6A; --pink-deep:#D6165A; --pink-soft:#FDE3EC; --pink-line:#FBCADB;
+  --green:#16A34A; --green-soft:#E4F8EA;
+  --ink:#17151B; --ink-2:#2E2B34; --gray-600:#635F6E; --gray-400:#9A96A3;
+  --line:#EFEDF2; --divider:#F3F1F5; --white:#FFFFFF;
+  --font-display:'Playfair Display',serif;
+  --font-body:'DM Sans',-apple-system,sans-serif;
+  --nav-h:64px; --safe-b:env(safe-area-inset-bottom,12px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--divider);}
+body{font-family:var(--font-body);color:var(--ink);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padding-bottom:calc(var(--nav-h) + var(--safe-b))}
+button{font-family:inherit;border:none;background:none;cursor:pointer}
+img{display:block;object-fit:cover}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--white);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.icon-btn:active{transform:scale(.93)}
+.top-right{display:flex;gap:9px}
+
+.content{flex:1;padding-bottom:26px}
+
+.hero{display:flex;gap:14px;padding:6px 16px 0}
+.hero-cover{position:relative;width:135px;flex-shrink:0;border-radius:16px;overflow:hidden;aspect-ratio:135/175;box-shadow:0 8px 20px rgba(0,0,0,.14)}
+.hero-cover img{width:100%;height:100%}
+.hero-cover-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55) 0%,transparent 40%)}
+.hero-count{position:absolute;left:9px;bottom:9px;display:flex;align-items:center;gap:5px;color:#fff;font-size:11px;font-weight:700}
+.hero-count i{font-size:10px}
+
+.hero-info{flex:1;min-width:0;padding-top:2px}
+.coll-pill{display:inline-flex;align-items:center;gap:6px;background:var(--pink-soft);color:var(--pink-deep);font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:5px 11px;border-radius:16px;margin-bottom:10px}
+.coll-pill i{font-size:10px}
+.hero-title{font-family:var(--font-display);font-size:25px;font-weight:800;line-height:1.14;color:var(--ink);margin-bottom:9px}
+.hero-sub{font-size:12.5px;color:var(--gray-600);line-height:1.5;margin-bottom:12px}
+.hero-author{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.hero-av{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.hero-author-name{font-size:13px;font-weight:700;color:var(--ink)}
+.hero-verified{color:var(--pink);font-size:12px}
+
+.stats-row{display:flex;justify-content:space-around;align-items:center;padding:2px 16px 16px;gap:8px}
+.stat{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+.stat-top{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);font-size:14.5px;font-weight:800}
+.stat-top i{font-size:13px;color:var(--gray-400)}
+.stat-label{font-size:10.5px;color:var(--gray-400);font-weight:600;text-align:center}
+
+.action-row{display:flex;gap:10px;padding:0 16px 18px}
+.btn-share{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--white);border:1.5px solid var(--line);color:var(--ink);font-size:14px;font-weight:700;padding:13px 22px;border-radius:16px}
+.btn-follow{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--pink),var(--pink-deep));color:#fff;font-size:14px;font-weight:800;padding:13px 18px;border-radius:16px;box-shadow:0 8px 18px rgba(255,45,106,.28)}
+.btn-follow:active,.btn-share:active{transform:scale(.98)}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 16px}
+.tab{flex:1;text-align:center;padding:12px 0;font-size:14px;font-weight:700;color:var(--gray-400);position:relative;cursor:pointer}
+.tab.active{color:var(--pink)}
+.tab.active::after{content:'';position:absolute;left:20%;right:20%;bottom:-1px;height:2.5px;background:var(--pink);border-radius:3px}
+
+.tools-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.sort-btn{display:flex;align-items:center;gap:8px;background:var(--divider);border:1px solid var(--line);padding:8px 14px;border-radius:20px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.sort-btn i{font-size:10px;color:var(--gray-400)}
+.view-toggle{display:flex;gap:6px}
+.view-btn{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--divider);color:var(--gray-400);border:1px solid transparent}
+.view-btn.active{background:var(--pink-soft);color:var(--pink);border-color:var(--pink-line)}
+
+.story-list{padding:2px 16px 8px;display:flex;flex-direction:column;gap:12px}
+.story-grid{display:none;grid-template-columns:repeat(3,1fr);gap:12px 10px;padding:2px 16px 8px}
+.story-grid.active{display:grid}
+
+.curated-banner{margin:8px 16px 4px;background:var(--pink-soft);border-radius:16px;padding:14px 15px;display:flex;align-items:flex-start;gap:12px}
+.curated-icon{width:38px;height:38px;border-radius:50%;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--pink);font-size:15px;box-shadow:0 2px 6px rgba(255,45,106,.15)}
+.curated-title{font-size:13.5px;font-weight:800;color:var(--ink);margin-bottom:3px}
+.curated-sub{font-size:12px;color:var(--gray-600);line-height:1.45}
+
+.about-panel{padding:18px 16px 8px;display:none}
+.about-panel.active{display:block}
+.about-block{margin-bottom:18px}
+.about-label{font-size:11px;font-weight:800;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.about-text{font-size:13.5px;color:var(--ink-2);line-height:1.6}
+.about-tags{display:flex;flex-wrap:wrap;gap:7px}
+.about-tag{background:var(--divider);color:var(--ink-2);font-size:11.5px;font-weight:700;padding:6px 13px;border-radius:16px}
+
+.tab-content{padding-bottom:20px}
+
+@media (max-width:360px){
+  .hero{gap:10px}
+  .hero-cover{width:112px}
+  .hero-title{font-size:21px}
+  .stats-row{gap:6px}
+  .btn-share{padding:13px 16px}
+}
+@media (min-width:421px){
+  .phone{border-radius:0}
+}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="top-right">
+      <div class="icon-btn" id="bookmarkBtn"><i class="far fa-bookmark"></i></div>
+      <div class="icon-btn"><i class="fas fa-ellipsis"></i></div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- HERO (rendered by JS) -->
+    <div class="hero" id="heroSection"></div>
+
+    <!-- STATS (rendered by JS) -->
+    <div class="stats-row" id="statsSection"></div>
+
+    <!-- ACTIONS -->
+    <div class="action-row">
+      <button class="btn-share" id="shareBtn"><i class="fas fa-arrow-up-from-bracket"></i> Share</button>
+      <button class="btn-follow" id="followBtn"><i class="fas fa-plus"></i> Follow Collection</button>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="stories">Stories</div>
+      <div class="tab" data-tab="about">About</div>
+    </div>
+
+    <!-- STORIES PANEL -->
+    <div class="tab-content" id="panel-stories">
+      <div class="tools-row">
+        <div class="sort-btn" id="sortBtn">Latest First <i class="fas fa-chevron-down"></i></div>
+        <div class="view-toggle" id="viewToggle">
+          <button class="view-btn active" data-view="list"><i class="fas fa-list"></i></button>
+          <button class="view-btn" data-view="grid"><i class="fas fa-table-cells"></i></button>
+        </div>
+      </div>
+
+      <div class="story-list" id="storyList"></div>
+      <div class="story-grid" id="storyGrid"></div>
+
+      <div class="curated-banner" id="curatedBanner"></div>
+    </div>
+
+    <!-- ABOUT PANEL (rendered by JS) -->
+    <div class="about-panel" id="panel-about"></div>
+  </div>
+
+</div>
+
+<!-- SCRIPTS: data → service → component → init -->
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/collection-service.js"></script>
+<script src="../component/bottom-nav.js"></script>
+<script src="../component/collection-card.js"></script>
+<script>
+let currentView = 'list';
+let currentCollection = null;
+
+async function loadCollection() {
+  const params = new URLSearchParams(location.search);
+  const colId = params.get('id') || 'col1';
+
+  currentCollection = await CollectionData.getCollection(colId);
+  renderHero(currentCollection);
+  renderStats(currentCollection);
+  renderAbout(currentCollection);
+  renderCurated(currentCollection);
+
+  const stories = await CollectionData.getCollectionStories(colId);
+  CollectionCard.renderStoryList('storyList', stories);
+  CollectionCard.renderGridList('storyGrid', stories);
+
+  initTabs();
+  initViewToggle();
+  initButtons();
+}
+
+function renderHero(col) {
+  document.getElementById('heroSection').innerHTML = `
+    <div class="hero-cover">
+      <img src="${col.cover}" alt="${col.title} cover"/>
+      <div class="hero-cover-scrim"></div>
+      <div class="hero-count"><i class="fas fa-layer-group"></i> ${col.stories} STORIES</div>
+    </div>
+    <div class="hero-info">
+      <div class="coll-pill"><i class="fas fa-layer-group"></i> COLLECTION</div>
+      <div class="hero-title">${col.title}</div>
+      <div class="hero-sub">${col.sub}</div>
+      <div class="hero-author">
+        <img class="hero-av" src="${col.authorAv}" alt="${col.author}"/>
+        <span class="hero-author-name">${col.author}</span>
+        ${col.verified ? '<i class="fas fa-circle-check hero-verified"></i>' : ''}
+      </div>
+    </div>`;
+}
+
+function renderStats(col) {
+  document.getElementById('statsSection').innerHTML = `
+    <div class="stat"><div class="stat-top"><i class="fas fa-book-open"></i>${col.stories}</div><div class="stat-label">Stories</div></div>
+    <div class="stat"><div class="stat-top"><i class="fas fa-user-group"></i>${col.followers}</div><div class="stat-label">Followers</div></div>
+    <div class="stat"><div class="stat-top"><i class="far fa-eye"></i>${col.visits}</div><div class="stat-label">Visits</div></div>
+    <div class="stat"><div class="stat-top"><i class="fas fa-star"></i>${col.rating}</div><div class="stat-label">Rating</div></div>`;
+}
+
+function renderAbout(col) {
+  const genreTags = (col.genres || []).map(g => `<span class="about-tag">${g}</span>`).join('');
+  document.getElementById('panel-about').innerHTML = `
+    <div class="about-block">
+      <div class="about-label">About this collection</div>
+      <div class="about-text">${col.about || ''}</div>
+    </div>
+    <div class="about-block">
+      <div class="about-label">Curated by</div>
+      <div class="about-text" style="display:flex;align-items:center;gap:9px">
+        <img class="hero-av" src="${col.authorAv}" style="width:30px;height:30px" alt=""/>
+        ${col.author} ${col.verified ? '<i class="fas fa-circle-check hero-verified"></i>' : ''}
+      </div>
+    </div>
+    <div class="about-block">
+      <div class="about-label">Genres</div>
+      <div class="about-tags">${genreTags}</div>
+    </div>`;
+}
+
+function renderCurated(col) {
+  document.getElementById('curatedBanner').innerHTML = `
+    <div class="curated-icon"><i class="fas fa-award"></i></div>
+    <div>
+      <div class="curated-title">A curated collection by ${col.author}</div>
+      <div class="curated-sub">Handpicked stories full of emotion, love and unforgettable moments.</div>
+    </div>`;
+}
+
+function initTabs() {
+  document.querySelectorAll('#tabs .tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('#tabs .tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const tab = t.dataset.tab;
+      document.getElementById('panel-stories').style.display = tab === 'stories' ? 'block' : 'none';
+      document.getElementById('panel-about').classList.toggle('active', tab === 'about');
+    });
+  });
+}
+
+function initViewToggle() {
+  document.querySelectorAll('#viewToggle .view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#viewToggle .view-btn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      currentView = btn.dataset.view;
+      const listEl = document.getElementById('storyList');
+      const gridEl = document.getElementById('storyGrid');
+      const isGrid = currentView === 'grid';
+      listEl.style.display = isGrid ? 'none' : 'flex';
+      gridEl.classList.toggle('active', isGrid);
+    });
+  });
+}
+
+function initButtons() {
+  const followBtn = document.getElementById('followBtn');
+  let following = false;
+  followBtn.addEventListener('click', () => {
+    following = !following;
+    followBtn.innerHTML = following
+      ? '<i class="fas fa-check"></i> Following'
+      : '<i class="fas fa-plus"></i> Follow Collection';
+  });
+
+  const bookmarkBtn = document.getElementById('bookmarkBtn');
+  let saved = false;
+  bookmarkBtn.addEventListener('click', () => {
+    saved = !saved;
+    bookmarkBtn.innerHTML = saved ? '<i class="fas fa-bookmark"></i>' : '<i class="far fa-bookmark"></i>';
+    bookmarkBtn.style.color = saved ? 'var(--pink)' : 'var(--ink)';
+  });
+}
+
+loadCollection();
+
+if (window.DroboardNav) {
+  DroboardNav.configure({ active: 'library' });
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.DroboardNav) DroboardNav.configure({ active: 'library' });
+  });
+}
+</script>
+</body>
+</html>

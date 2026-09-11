@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Reports &amp; Actions — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+/* Slightly stronger, clearly-visible border tone layered on top of the design system's
+   very light --border, used anywhere a hairline was blending into the background. */
+:root{ --border-vis:#d8dce4; }
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border-vis);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border-vis);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:16px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);border:1px solid var(--border-vis);padding:5px 11px;border-radius:20px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;background:var(--table-head);border:1px solid var(--border-vis);border-radius:11px;padding:4px;margin-bottom:16px;width:fit-content}
+.tab-btn{font-size:11.5px;font-weight:700;font-family:inherit;padding:8px 16px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:7px}
+.tab-btn.active{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(15,23,42,.08);border:1px solid var(--border-vis)}
+.tab-count{font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:20px;background:var(--table-head);color:var(--text-faint)}
+.tab-btn.active .tab-count{background:var(--accent-bg);color:var(--accent)}
+
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--border-vis);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn.warn{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.mini-btn.warn:hover{background:var(--amber);color:#fff}
+.mini-btn.green{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.mini-btn.green:hover{background:var(--green);color:#fff}
+.mini-btn.ghost{background:transparent;border:1px solid var(--border-vis)}
+.mini-btn:disabled{opacity:.4;cursor:default;pointer-events:none}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.tb-search{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border-vis);border-radius:10px;padding:9px 13px}
+.tb-search input{border:none;background:none;outline:none;font-size:12.5px;font-family:inherit;color:var(--text);width:100%}
+.tb-search i{color:var(--text-faint);font-size:12px}
+.tb-select{font-size:12px;font-weight:600;font-family:inherit;color:var(--text);background:var(--input-bg);border:1px solid var(--border-vis);border-radius:10px;padding:9px 12px;cursor:pointer;outline:none}
+
+/* report cards */
+.rpt-list{display:flex;flex-direction:column;gap:12px}
+.rpt-card{border:1px solid var(--border-vis);border-radius:14px;padding:16px;transition:.15s}
+.rpt-card:hover{border-color:var(--accent)}
+.rpt-card.is-open{border-left:3px solid var(--red)}
+.rpt-card.is-resolved{opacity:.85}
+.rpt-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.rpt-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid var(--border-vis)}
+.rpt-title-wrap{flex:1;min-width:180px}
+.rpt-target{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rpt-sub{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.rpt-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+
+.pill{font-size:9px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;white-space:nowrap;border:1px solid transparent}
+.pill.type-author{background:var(--purple-bg);color:var(--purple);border-color:var(--purple)}
+.pill.type-editor{background:var(--blue-bg);color:var(--blue);border-color:var(--blue)}
+.pill.sev-high{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.pill.sev-medium{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
+.pill.sev-low{background:var(--table-head);color:var(--text-faint);border-color:var(--border-vis)}
+.pill.status-open{background:#fff;color:var(--red);border-color:var(--red)}
+.pill.status-dismissed{background:var(--table-head);color:var(--text-faint);border-color:var(--border-vis)}
+.pill.status-suspended{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
+.pill.status-banned{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.pill.status-removed{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.pill.status-warned{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
+.pill.status-escalated{background:var(--purple-bg);color:var(--purple);border-color:var(--purple)}
+
+.rpt-reason{font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:10px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rpt-meta{font-size:10.5px;color:var(--text-faint);margin-bottom:12px;border-top:1px solid var(--border-vis);padding-top:10px}
+
+.rpt-resolution{background:var(--input-bg);border:1px solid var(--border-vis);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;color:var(--text-muted);line-height:1.55}
+.rpt-resolution b{color:var(--text)}
+
+.rpt-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+/* pagination */
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
+.pg-info{font-size:11px;color:var(--text-faint);font-weight:600}
+.pg-controls{display:flex;align-items:center;gap:6px}
+.pg-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border-vis);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pg-btn.active{background:var(--accent);border-color:transparent;color:#fff}
+.pg-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.pg-ellipsis{font-size:11px;color:var(--text-faint);padding:0 2px}
+
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+/* ── Modal system ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border-vis);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
+.modal-box.small{max-width:420px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border-vis);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0}
+.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border-vis);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.modal-body{padding:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border-vis);flex-wrap:wrap}
+
+.form-row{margin-bottom:16px}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px;display:block}
+.form-input,.form-select,.form-textarea{width:100%;font-family:inherit;font-size:12.5px;color:var(--text);
+  background:var(--input-bg);border:1px solid var(--border-vis);border-radius:9px;padding:10px 12px;outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.5}
+.field-error{color:var(--red);font-size:10.5px;margin-top:5px;display:none}
+.form-input.invalid,.form-select.invalid,.form-textarea.invalid{border-color:var(--red)}
+
+.dt-status-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.dt-target-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.dt-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid var(--border-vis)}
+.dt-target-name{font-size:15px;font-weight:800}
+.dt-target-sub{font-size:11px;color:var(--text-faint);margin-top:2px}
+.dt-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.dt-item{background:var(--input-bg);border:1px solid var(--border-vis);border-radius:10px;padding:12px 14px}
+.dt-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:4px}
+.dt-item b{font-size:13px;font-weight:800}
+.dt-section{margin-bottom:16px}
+.dt-section h4{font-size:11.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
+.dt-section p{font-size:12.5px;line-height:1.65;color:var(--text)}
+
+.confirm-icon{width:52px;height:52px;border-radius:50%;background:var(--red-bg);border:1px solid var(--red);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;margin:4px auto 16px}
+.confirm-text{text-align:center;font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:14px}
+.confirm-text b{color:var(--text)}
+
+/* toast */
+#toastHost{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast-item{background:var(--sidebar-bg);color:#fff;font-size:12.5px;font-weight:600;padding:12px 16px;border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:9px;min-width:220px;
+  animation:toast-in .2s ease;}
+.toast-item i{color:var(--accent)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:900px){.dt-grid{grid-template-columns:1fr}.form-row.two-col{grid-template-columns:1fr}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.toolbar{flex-direction:column;align-items:stretch}.pagination{justify-content:center}#toastHost{left:16px;right:16px;bottom:16px}.toast-item{min-width:0}.rpt-actions .mini-btn{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-flag" style="color:var(--red)"></i> Flagged Reports</h2>
+      <span class="count-chip" id="resultCount">—</span>
+    </div>
+    <div class="panel-sub">Plagiarism flags from senior editors, system scans, and direct reports from authors. Only the Chief Editor can suspend, ban, or remove.</div>
+
+    <div class="tabs" id="statusTabs">
+      <button class="tab-btn" data-status="open">Open <span class="tab-count" id="tabCountOpen">0</span></button>
+      <button class="tab-btn" data-status="resolved">Resolved <span class="tab-count" id="tabCountResolved">0</span></button>
+      <button class="tab-btn" data-status="all">All <span class="tab-count" id="tabCountAll">0</span></button>
+    </div>
+
+    <div class="toolbar">
+      <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name or reason…"/></div>
+      <select class="tb-select" id="typeFilter">
+        <option value="all">All targets</option>
+        <option value="author">Authors</option>
+        <option value="editor">Senior Editors</option>
+      </select>
+      <select class="tb-select" id="severityFilter">
+        <option value="all">All severities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <select class="tb-select" id="sortSelect">
+        <option value="recent">Sort: Most recent</option>
+        <option value="severity">Sort: Severity</option>
+      </select>
+      <button class="mini-btn primary" id="fileBtn"><i class="fas fa-plus"></i> File Report</button>
+    </div>
+
+    <div class="rpt-list" id="rptList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading reports…</div></div>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- Details modal -->
+<div class="modal-overlay" id="detailsModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="fas fa-flag" style="color:var(--red)"></i> Report Details</h3>
+      <button class="modal-close" data-close="detailsModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="detailsBody"></div>
+    <div class="modal-foot" id="detailsFoot"></div>
+  </div>
+</div>
+
+<!-- Confirm action modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3 id="confirmTitle"><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Confirm Action</h3>
+      <button class="modal-close" data-close="confirmModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon" id="confirmIcon"><i class="fas fa-ban"></i></div>
+      <div class="confirm-text" id="confirmText"></div>
+      <textarea class="form-textarea" id="confirmNote" placeholder="Add a resolution note (optional but recommended)…"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="confirmModal">Cancel</button>
+      <button class="mini-btn danger" id="confirmActionBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- File report modal -->
+<div class="modal-overlay" id="fileModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="fas fa-flag" style="color:var(--accent)"></i> File a Report</h3>
+      <button class="modal-close" data-close="fileModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label">Target type</label>
+          <select class="form-select" id="nfType">
+            <option value="author">Author</option>
+            <option value="editor">Senior Editor</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Severity</label>
+          <select class="form-select" id="nfSeverity">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Target name</label>
+        <input class="form-input" id="nfTarget" placeholder="e.g. Marcus Webb Jr."/>
+        <div class="field-error" id="nfTargetErr">Target name is required.</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Reason</label>
+        <textarea class="form-textarea" id="nfReason" placeholder="Describe what happened…"></textarea>
+        <div class="field-error" id="nfReasonErr">Please describe the reason for this report.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="fileModal">Cancel</button>
+      <button class="mini-btn primary" id="nfSaveBtn"><i class="fas fa-check"></i> File Report</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+<script>
+'use strict';
+const shell = ChiefEditorSidebar.attach('#dashRoot',{
+  activeItem:'reports-actions', title:'Reports & Actions', subtitle:'Review flagged authors and senior editors',
+  user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'}, notifCount:6,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const OPEN_STATUS = 'open';
+const RESOLVED_STATUSES = ['dismissed','suspended','banned','removed','warned','escalated'];
+
+const PAGE_SIZE = 5;
+let ALL = [];
+let filtered = [];
+let currentPage = 1;
+let activeTab = 'open';
+let pendingAction = null; // { id, kind, statusValue, label }
+
+/* ── Toast ── */
+function toast(msg, icon){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.innerHTML = `<i class="fas ${icon||'fa-circle-check'}"></i><span>${msg}</span>`;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, 2600);
+}
+window.toast = toast;
+
+/* ── Modal helpers ── */
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click', ()=>closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) closeModal(ov.id); });
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') document.querySelectorAll('.modal-overlay.show').forEach(ov=>closeModal(ov.id));
+});
+
+/* ── Init ── */
+async function init(){
+  ALL = await ChiefEditorData.getReports();
+  renderStatCards();
+  renderTabs();
+  applyFilters();
+}
+
+function renderStatCards(){
+  const open = ALL.filter(r=>r.status===OPEN_STATUS).length;
+  const high = ALL.filter(r=>r.status===OPEN_STATUS && r.severity==='high').length;
+  const resolved = ALL.filter(r=>RESOLVED_STATUSES.includes(r.status)).length;
+  const stats = [
+    { n:ALL.length, l:'Total Reports', ico:'fa-flag', cls:'accent' },
+    { n:open, l:'Open', ico:'fa-circle-exclamation', cls:'red' },
+    { n:high, l:'High Severity (Open)', ico:'fa-triangle-exclamation', cls:'amber' },
+    { n:resolved, l:'Resolved', ico:'fa-circle-check', cls:'green' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function renderTabs(){
+  const open = ALL.filter(r=>r.status===OPEN_STATUS).length;
+  const resolved = ALL.filter(r=>RESOLVED_STATUSES.includes(r.status)).length;
+  document.getElementById('tabCountOpen').textContent = open;
+  document.getElementById('tabCountResolved').textContent = resolved;
+  document.getElementById('tabCountAll').textContent = ALL.length;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.status===activeTab));
+}
+
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{ activeTab = b.dataset.status; renderTabs(); applyFilters(); });
+});
+
+/* ── Filters / sort ── */
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const typeVal = document.getElementById('typeFilter').value;
+  const sevVal = document.getElementById('severityFilter').value;
+  const sortVal = document.getElementById('sortSelect').value;
+
+  filtered = ALL.filter(r=>{
+    const matchesTab = activeTab==='all' || (activeTab==='open' ? r.status===OPEN_STATUS : RESOLVED_STATUSES.includes(r.status));
+    const matchesQ = !q || r.target.toLowerCase().includes(q) || r.reason.toLowerCase().includes(q) || r.reportedBy.toLowerCase().includes(q);
+    const matchesType = typeVal==='all' || r.targetType===typeVal;
+    const matchesSev = sevVal==='all' || r.severity===sevVal;
+    return matchesTab && matchesQ && matchesType && matchesSev;
+  });
+
+  const sevRank = { high:0, medium:1, low:2 };
+  filtered.sort((a,b)=>{
+    if(sortVal==='severity') return sevRank[a.severity]-sevRank[b.severity];
+    return 0; // dataset is already roughly recent-first; 'recent' keeps natural order
+  });
+
+  currentPage = 1;
+  renderList();
+}
+
+/* ── List + pagination ── */
+function renderList(){
+  document.getElementById('resultCount').textContent = filtered.length;
+  const box = document.getElementById('rptList');
+
+  if(!filtered.length){
+    box.innerHTML = `<div class="empty-msg"><i class="fas fa-circle-check" style="font-size:20px;margin-bottom:8px;display:block;color:var(--green)"></i>Nothing here — you're all caught up.</div>`;
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  if(currentPage>totalPages) currentPage = totalPages;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const pageItems = filtered.slice(start, start+PAGE_SIZE);
+
+  box.innerHTML = pageItems.map(r=>{
+    const isOpen = r.status===OPEN_STATUS;
+    return `
+    <div class="rpt-card ${isOpen?'is-open':'is-resolved'}" data-id="${r.id}">
+      <div class="rpt-top">
+        <img class="rpt-avatar" src="${r.avatar}" alt="${r.target}"/>
+        <div class="rpt-title-wrap">
+          <div class="rpt-target">${r.target}</div>
+          <div class="rpt-sub">Reported by ${r.reportedBy} (${r.reporterType}) · ${r.filed}</div>
+        </div>
+        <div class="rpt-badges">
+          <span class="pill type-${r.targetType}">${r.targetType==='author'?'Author':'Senior Editor'}</span>
+          <span class="pill sev-${r.severity}">${r.severity}</span>
+          <span class="pill status-${r.status}">${statusLabel(r.status)}</span>
+        </div>
+      </div>
+
+      <div class="rpt-reason">${r.reason}</div>
+
+      ${!isOpen ? `<div class="rpt-resolution"><b>Resolution:</b> ${r.resolutionNote||'No note added.'} <span style="color:var(--text-faint)">— ${r.resolvedBy||'Chief Editor'}, ${r.resolvedAt||''}</span></div>` : ''}
+
+      <div class="rpt-actions">
+        <button class="mini-btn ghost" data-action="view" data-id="${r.id}"><i class="fas fa-eye"></i> Details</button>
+        ${isOpen ? actionButtons(r) : `<button class="mini-btn" data-action="reopen" data-id="${r.id}"><i class="fas fa-rotate-left"></i> Reopen</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  renderPagination(totalPages);
+}
+
+function statusLabel(s){
+  const map = { open:'Open', dismissed:'Dismissed', suspended:'Suspended', banned:'Banned', removed:'Removed', warned:'Warned', escalated:'Escalated' };
+  return map[s] || s;
+}
+
+function actionButtons(r){
+  if(r.targetType==='author'){
+    return `
+      <button class="mini-btn ghost" data-action="dismiss" data-id="${r.id}">Dismiss</button>
+      <button class="mini-btn warn" data-action="suspend" data-id="${r.id}"><i class="fas fa-pause"></i> Suspend</button>
+      <button class="mini-btn danger" data-action="ban" data-id="${r.id}"><i class="fas fa-ban"></i> Ban</button>
+      <button class="mini-btn danger" data-action="remove" data-id="${r.id}"><i class="fas fa-trash"></i> Remove</button>`;
+  }
+  return `
+    <button class="mini-btn ghost" data-action="dismiss" data-id="${r.id}">Dismiss</button>
+    <button class="mini-btn warn" data-action="warn" data-id="${r.id}"><i class="fas fa-triangle-exclamation"></i> Warn</button>
+    <button class="mini-btn danger" data-action="escalate" data-id="${r.id}"><i class="fas fa-arrow-up-right-dots"></i> Escalate</button>`;
+}
+
+function renderPagination(totalPages){
+  const box = document.getElementById('pagination');
+  if(totalPages<=1){
+    box.innerHTML = `<div class="pg-info">Showing all ${filtered.length} report${filtered.length===1?'':'s'}</div>`;
+    return;
+  }
+
+  const start = (currentPage-1)*PAGE_SIZE+1;
+  const end = Math.min(filtered.length, currentPage*PAGE_SIZE);
+
+  let pageBtns = '';
+  const pushBtn = (p) => { pageBtns += `<button class="pg-btn${p===currentPage?' active':''}" data-page="${p}">${p}</button>`; };
+  const pushEllipsis = () => { pageBtns += `<span class="pg-ellipsis">…</span>`; };
+
+  if(totalPages<=7){
+    for(let p=1;p<=totalPages;p++) pushBtn(p);
+  } else {
+    pushBtn(1);
+    if(currentPage>3) pushEllipsis();
+    const from = Math.max(2, currentPage-1);
+    const to = Math.min(totalPages-1, currentPage+1);
+    for(let p=from;p<=to;p++) pushBtn(p);
+    if(currentPage<totalPages-2) pushEllipsis();
+    pushBtn(totalPages);
+  }
+
+  box.innerHTML = `
+    <div class="pg-info">Showing ${start}–${end} of ${filtered.length} reports</div>
+    <div class="pg-controls">
+      <button class="pg-btn" id="pgPrev" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
+      ${pageBtns}
+      <button class="pg-btn" id="pgNext" ${currentPage===totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+
+  const prevBtn = document.getElementById('pgPrev');
+  const nextBtn = document.getElementById('pgNext');
+  prevBtn && prevBtn.addEventListener('click', ()=>{ currentPage--; renderList(); });
+  nextBtn && nextBtn.addEventListener('click', ()=>{ currentPage++; renderList(); });
+  box.querySelectorAll('[data-page]').forEach(b=>{
+    b.addEventListener('click', ()=>{ currentPage = parseInt(b.dataset.page,10); renderList(); });
+  });
+}
+
+/* ── Details modal ── */
+function openDetailsModal(id){
+  const r = ALL.find(x=>x.id===id); if(!r) return;
+  const isOpen = r.status===OPEN_STATUS;
+  document.getElementById('detailsBody').innerHTML = `
+    <div class="dt-target-row">
+      <img class="dt-avatar" src="${r.avatar}" alt="${r.target}"/>
+      <div>
+        <div class="dt-target-name">${r.target}</div>
+        <div class="dt-target-sub">${r.targetType==='author'?'Author':'Senior Editor'} · Filed ${r.filed}</div>
+      </div>
+    </div>
+    <div class="dt-status-row">
+      <span class="pill type-${r.targetType}">${r.targetType==='author'?'Author':'Senior Editor'}</span>
+      <span class="pill sev-${r.severity}">${r.severity} severity</span>
+      <span class="pill status-${r.status}">${statusLabel(r.status)}</span>
+    </div>
+    <div class="dt-grid">
+      <div class="dt-item"><span>Reported by</span><b>${r.reportedBy}</b></div>
+      <div class="dt-item"><span>Reporter type</span><b>${r.reporterType}</b></div>
+    </div>
+    <div class="dt-section">
+      <h4>Reason</h4>
+      <p>${r.reason}</p>
+    </div>
+    ${!isOpen ? `<div class="dt-section"><h4>Resolution</h4><p>${r.resolutionNote||'No note added.'}<br><span style="color:var(--text-faint);font-size:11px">— ${r.resolvedBy||'Chief Editor'}, ${r.resolvedAt||''}</span></p></div>` : ''}`;
+
+  document.getElementById('detailsFoot').innerHTML = `
+    <button class="mini-btn ghost" data-close="detailsModal">Close</button>
+    ${isOpen ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${actionButtons(r)}</div>` : `<button class="mini-btn" data-action="reopen" data-id="${r.id}"><i class="fas fa-rotate-left"></i> Reopen</button>`}`;
+
+  // Rebind action buttons inside the modal footer (delegation below also covers this,
+  // but details modal needs to close itself first).
+  document.querySelectorAll('#detailsFoot [data-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ closeModal('detailsModal'); });
+  });
+
+  openModal('detailsModal');
+}
+
+/* ── Actions (dismiss / suspend / ban / remove / warn / escalate / reopen) ── */
+const ACTION_META = {
+  dismiss:  { statusValue:'dismissed', label:'Dismiss', verb:'dismissed',  icon:'fa-circle-check', toastIcon:'fa-circle-check', needsConfirm:false },
+  suspend:  { statusValue:'suspended', label:'Suspend',  verb:'suspended', icon:'fa-pause',         toastIcon:'fa-circle-pause', needsConfirm:true },
+  ban:      { statusValue:'banned',    label:'Ban',       verb:'banned',    icon:'fa-ban',           toastIcon:'fa-ban',          needsConfirm:true },
+  remove:   { statusValue:'removed',   label:'Remove',    verb:'removed from the platform', icon:'fa-trash', toastIcon:'fa-trash', needsConfirm:true },
+  warn:     { statusValue:'warned',    label:'Warn',       verb:'warned',    icon:'fa-triangle-exclamation', toastIcon:'fa-triangle-exclamation', needsConfirm:true },
+  escalate: { statusValue:'escalated', label:'Escalate',   verb:'escalated for further review', icon:'fa-arrow-up-right-dots', toastIcon:'fa-arrow-up-right-dots', needsConfirm:true },
+};
+
+function runAction(id, action){
+  const r = ALL.find(x=>x.id===id); if(!r) return;
+  const meta = ACTION_META[action];
+  if(!meta) return;
+
+  if(meta.needsConfirm){
+    pendingAction = { id, action };
+    document.getElementById('confirmTitle').innerHTML = `<i class="fas ${meta.icon}" style="color:var(--red)"></i> ${meta.label} ${r.targetType==='author'?'Author':'Editor'}`;
+    document.getElementById('confirmIcon').innerHTML = `<i class="fas ${meta.icon}"></i>`;
+    document.getElementById('confirmText').innerHTML = `${meta.label} <b>${r.target}</b>? They will be marked as <b>${meta.verb}</b>.`;
+    document.getElementById('confirmNote').value = '';
+    openModal('confirmModal');
+    return;
+  }
+
+  applyResolution(r, meta.statusValue, '');
+  toast(`${r.target} — report ${meta.verb}`, meta.toastIcon);
+}
+
+document.getElementById('confirmActionBtn').addEventListener('click', ()=>{
+  if(!pendingAction) return;
+  const r = ALL.find(x=>x.id===pendingAction.id);
+  const meta = ACTION_META[pendingAction.action];
+  const note = document.getElementById('confirmNote').value.trim();
+  applyResolution(r, meta.statusValue, note);
+  toast(`${r.target} — report ${meta.verb}`, meta.toastIcon);
+  closeModal('confirmModal');
+  pendingAction = null;
+});
+
+function applyResolution(r, statusValue, note){
+  r.status = statusValue;
+  r.resolvedBy = 'Adaeze Bello';
+  r.resolvedAt = 'just now';
+  r.resolutionNote = note || defaultNote(statusValue);
+  renderStatCards();
+  renderTabs();
+  applyFilters();
+}
+
+function defaultNote(statusValue){
+  const map = {
+    dismissed: 'Reviewed and found no violation.',
+    suspended: 'Account suspended pending further review.',
+    banned: 'Account permanently banned after review.',
+    removed: 'Content or account removed from the platform.',
+    warned: 'Editor issued a formal warning.',
+    escalated: 'Escalated for further investigation.',
+  };
+  return map[statusValue] || 'Resolved.';
+}
+
+function reopenReport(id){
+  const r = ALL.find(x=>x.id===id); if(!r) return;
+  r.status = OPEN_STATUS;
+  delete r.resolvedBy; delete r.resolvedAt; delete r.resolutionNote;
+  toast(`Reopened report on ${r.target}`, 'fa-rotate-left');
+  renderStatCards();
+  renderTabs();
+  applyFilters();
+}
+
+/* ── File a new report ── */
+document.getElementById('fileBtn').addEventListener('click', ()=>{
+  document.getElementById('nfType').value = 'author';
+  document.getElementById('nfSeverity').value = 'medium';
+  document.getElementById('nfTarget').value = '';
+  document.getElementById('nfReason').value = '';
+  ['nfTarget','nfReason'].forEach(id=>document.getElementById(id).classList.remove('invalid'));
+  document.getElementById('nfTargetErr').style.display='none';
+  document.getElementById('nfReasonErr').style.display='none';
+  openModal('fileModal');
+});
+
+document.getElementById('nfSaveBtn').addEventListener('click', ()=>{
+  const target = document.getElementById('nfTarget').value.trim();
+  const reason = document.getElementById('nfReason').value.trim();
+  let valid = true;
+
+  const targetInput = document.getElementById('nfTarget');
+  const targetErr = document.getElementById('nfTargetErr');
+  if(!target){ targetInput.classList.add('invalid'); targetErr.style.display='block'; valid=false; }
+  else { targetInput.classList.remove('invalid'); targetErr.style.display='none'; }
+
+  const reasonInput = document.getElementById('nfReason');
+  const reasonErr = document.getElementById('nfReasonErr');
+  if(!reason){ reasonInput.classList.add('invalid'); reasonErr.style.display='block'; valid=false; }
+  else { reasonInput.classList.remove('invalid'); reasonErr.style.display='none'; }
+
+  if(!valid) return;
+
+  const newReport = {
+    id: 'RPT-' + String(Date.now()).slice(-6),
+    targetType: document.getElementById('nfType').value,
+    target,
+    avatar: `https://i.pravatar.cc/60?img=${Math.floor(Math.random()*70)+1}`,
+    reason,
+    reportedBy: 'Adaeze Bello',
+    reporterType: 'Chief Editor',
+    severity: document.getElementById('nfSeverity').value,
+    filed: 'just now',
+    status: OPEN_STATUS,
+  };
+  ALL.unshift(newReport);
+  closeModal('fileModal');
+  toast(`Report filed against ${target}`, 'fa-flag');
+  renderStatCards();
+  renderTabs();
+  activeTab = 'open';
+  renderTabs();
+  applyFilters();
+});
+
+/* ── Event delegation for list + modal footer actions ── */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const id = el.dataset.id;
+  const action = el.dataset.action;
+  if(action==='view') openDetailsModal(id);
+  else if(action==='reopen') reopenReport(id);
+  else if(ACTION_META[action]) runAction(id, action);
+});
+
+/* ── Filter/search listeners ── */
+let searchDebounce;
+document.getElementById('searchInput').addEventListener('input', ()=>{
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(applyFilters, 180);
+});
+document.getElementById('typeFilter').addEventListener('change', applyFilters);
+document.getElementById('severityFilter').addEventListener('change', applyFilters);
+document.getElementById('sortSelect').addEventListener('change', applyFilters);
+
+init();
+</script>
+</body>
+</html>

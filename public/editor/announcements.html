@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Announcements — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+  .btn-add i.fa-chevron-down{font-size:9px;opacity:.8;margin-left:2px}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.purple{background:#ece9fb;color:#5b4bcf}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  .stat-delta.down{color:var(--red);background:var(--red-bg)}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Two-column layout: table area + info rail ── */
+  .main-grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+
+  /* ── Sub-tabs (status) ── */
+  .sub-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border);margin-bottom:16px;overflow-x:auto}
+  .sub-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .sub-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .sub-tab .tab-count{font-size:10.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}
+  .sub-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+
+  /* ── Filters row ── */
+  .filters-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:220px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .fselect{position:relative}
+  .fselect select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}
+  .fselect i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-faint);pointer-events:none}
+  .date-range{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--text-faint);white-space:nowrap}
+  .date-range i.fa-calendar{margin-left:4px;color:var(--text-faint)}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+  .btn-filters:hover, .fselect select:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ── Table card ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:960px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+
+  .ann-cell{display:flex;align-items:center;gap:12px;min-width:260px}
+  .ann-tile{width:52px;height:52px;border-radius:11px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:2px;text-align:center}
+  .ann-tile i{font-size:15px}
+  .ann-tile span{font-size:7px;font-weight:800;letter-spacing:.02em;text-transform:uppercase;line-height:1.15;padding:0 3px}
+  .ann-title{font-weight:700;font-size:13px}
+  .ann-desc{color:var(--text-muted);font-size:11.5px;margin-top:2px;line-height:1.4;max-width:230px}
+
+  .type-pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap}
+  .type-pill.update{background:#ece9fb;color:#5b4bcf}
+  .type-pill.event{background:var(--amber-bg);color:var(--amber)}
+  .type-pill.system{background:var(--blue-bg);color:var(--blue)}
+  .type-pill.policy{background:var(--table-head);color:var(--text-faint)}
+  .type-pill.program{background:#ffe1eb;color:#ff0050}
+  .type-pill.news{background:var(--green-bg);color:var(--green)}
+  .type-pill.security{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .type-pill.update{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .type-pill.event{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .type-pill.system{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .type-pill.policy{background:rgba(255,255,255,.06)}
+  html[data-theme="dark"] .type-pill.program{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .type-pill.news{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .type-pill.security{background:rgba(224,56,77,.16)}
+
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.scheduled{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .status-pill.scheduled{background:rgba(217,119,6,.18)}
+  .status-pill.draft{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .status-pill.draft{background:rgba(255,255,255,.06)}
+  .status-pill.archived{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .status-pill.archived{background:rgba(224,56,77,.16)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.scheduled .dot{background:var(--amber)}
+  .status-pill.draft .dot{background:var(--text-faint)}
+  .status-pill.archived .dot{background:var(--red)}
+
+  .audience-cell{font-weight:600;font-size:12.5px;color:var(--text-muted)}
+  .date-cell{font-weight:600;font-size:12.5px}
+  .date-cell .sub{display:block;font-size:11px;color:var(--text-faint);font-weight:600;margin-top:1px}
+  .views-cell{font-weight:700;font-size:12.5px}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  /* ── Right rail panels ── */
+  .rail{display:flex;flex-direction:column;gap:20px}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:14.5px;font-weight:800}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+
+  /* Donut */
+  .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .donut{width:150px;height:150px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center}
+  .donut::before{content:"";position:absolute;inset:20px;border-radius:50%;background:var(--card)}
+  .donut-center{position:relative;text-align:center;z-index:1}
+  .donut-center b{display:block;font-size:24px;font-weight:800}
+  .donut-center span{font-size:10.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .legend{width:100%}
+  .legend-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:12px}
+  .legend-lbl{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text-muted)}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .legend-val{font-weight:700}
+
+  /* Quick actions */
+  .qa-list{display:flex;flex-direction:column;gap:6px}
+  .qa-item{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:10px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text)}
+  .qa-item:hover{background:var(--hover)}
+  .qa-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+  .qa-ico.purple{background:#ece9fb;color:#5b4bcf}
+  .qa-ico.pink{background:#ffe1eb;color:#ff0050}
+  .qa-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .qa-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .qa-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .qa-ico.pink{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .qa-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .qa-ico.amber{background:rgba(217,119,6,.18)}
+  .qa-item span.qa-lbl{flex:1}
+  .qa-item i.fa-chevron-right{color:var(--text-faint);font-size:11px}
+
+  /* Recent announcements */
+  .recent-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .recent-row:last-child{border-bottom:none}
+  .recent-title{font-size:12px;font-weight:700;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .recent-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+  .recent-date{font-size:10.5px;color:var(--text-faint);font-weight:600}
+
+  /* Audience reach */
+  .reach-row{display:flex;align-items:center;gap:14px}
+  .reach-ico{width:46px;height:46px;border-radius:12px;background:#ece9fb;color:#5b4bcf;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  html[data-theme="dark"] .reach-ico{background:rgba(124,92,252,.18);color:#a89bff}
+  .reach-num{font-size:22px;font-weight:800;line-height:1}
+  .reach-lbl{font-size:12px;color:var(--text-muted);font-weight:600;margin-top:3px}
+  .reach-delta{font-size:11px;font-weight:700;color:var(--green);margin-top:6px}
+
+  @media (max-width:1300px){ .main-grid{grid-template-columns:1fr} .rail{flex-direction:row;flex-wrap:wrap} .rail .panel{flex:1;min-width:260px} }
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} .rail{flex-direction:column} }
+  @media (max-width:680px){
+    .filters-row{flex-direction:column;align-items:stretch}
+    .fselect select{width:100%}
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Announcement"]{align-items:flex-start}
+    td[data-label="Announcement"]::before{display:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <button class="btn-add" id="newAnnouncementBtn"><i class="fas fa-plus"></i> Create New Announcement <i class="fas fa-chevron-down"></i></button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico purple"><i class="fas fa-bullhorn"></i></div></div>
+      <div class="stat-num">32</div>
+      <div class="stat-lbl">Total Announcements</div>
+      <span class="stat-delta">+18% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-paper-plane"></i></div></div>
+      <div class="stat-num">24</div>
+      <div class="stat-lbl">Published</div>
+      <span class="stat-delta">+20% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div></div>
+      <div class="stat-num">6</div>
+      <div class="stat-lbl">Scheduled</div>
+      <span class="stat-delta">+50% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico red"><i class="fas fa-file-pen"></i></div></div>
+      <div class="stat-num">2</div>
+      <div class="stat-lbl">Drafts</div>
+      <span class="stat-delta down">-33% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-eye"></i></div></div>
+      <div class="stat-num">45,680</div>
+      <div class="stat-lbl">Total Views</div>
+      <span class="stat-delta">+24% from last month</span>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- ── Left: table area ── -->
+    <div>
+      <!-- Sub-tabs -->
+      <div class="sub-tabs">
+        <div class="sub-tab active" data-view="all">All Announcements</div>
+        <div class="sub-tab" data-view="published">Published <span class="tab-count">24</span></div>
+        <div class="sub-tab" data-view="scheduled">Scheduled <span class="tab-count">6</span></div>
+        <div class="sub-tab" data-view="draft">Drafts <span class="tab-count">2</span></div>
+        <div class="sub-tab" data-view="archived">Archived <span class="tab-count">0</span></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-row">
+        <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by title or announcement ID..."/></div>
+        <div class="fselect"><select id="statusSelect">
+          <option value="">All Status</option>
+          <option value="published">Published</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select><i class="fas fa-chevron-down"></i></div>
+        <div class="fselect"><select id="typeSelect">
+          <option value="">All Types</option>
+          <option value="update">Update</option>
+          <option value="event">Event</option>
+          <option value="system">System</option>
+          <option value="policy">Policy</option>
+          <option value="program">Program</option>
+          <option value="news">News</option>
+          <option value="security">Security</option>
+        </select><i class="fas fa-chevron-down"></i></div>
+        <div class="date-range" onclick="toast('Opening date range picker…')">Start Date <i class="fas fa-arrow-right" style="font-size:9px"></i> End Date <i class="fas fa-calendar"></i></div>
+        <button class="btn-filters" onclick="toast('Opening advanced filters…')"><i class="fas fa-sliders"></i> Filters</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-card">
+        <div class="table-wrap">
+          <table id="mainTable">
+            <thead>
+              <tr>
+                <th>Announcement</th><th>Type</th><th>Status</th><th>Audience</th><th>Published / Scheduled</th><th>Views</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination-row">
+          <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>32</b> announcements</div>
+          <div class="page-btns" id="pageBtns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: info rail ── -->
+    <div class="rail">
+      <div class="panel">
+        <div class="panel-head"><h2>Announcement Overview</h2></div>
+        <div class="donut-wrap">
+          <div class="donut" id="overviewDonut">
+            <div class="donut-center"><b>32</b><span>Total</span></div>
+          </div>
+          <div class="legend" id="overviewLegend"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Quick Actions</h2></div>
+        <div class="qa-list" id="quickActions"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Recent Announcements</h2><a onclick="toast('Opening all announcements…')">View All</a></div>
+        <div id="recentList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Audience Reach</h2></div>
+        <div class="reach-row">
+          <div class="reach-ico"><i class="fas fa-users"></i></div>
+          <div>
+            <div class="reach-num">45,680</div>
+            <div class="reach-lbl">Total Views</div>
+          </div>
+        </div>
+        <div class="reach-delta"><i class="fas fa-arrow-up"></i> +24% from last month</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above. Uses the default nav —
+   "Announcements" already lives under Promotions & Marketing.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'announcements.html',
+  title: 'Announcements',
+  subtitle: 'Create, manage and track all platform announcements',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 0,
+  searchPlaceholder: 'Search by title or announcement ID...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (value) => {
+    document.getElementById('tableSearch').value = value;
+    refresh();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const TYPE_META = {
+  update:   { label: 'Update',   icon: 'fa-rocket',        tile: 'linear-gradient(135deg,#2d2154,#5b4bcf)' },
+  event:    { label: 'Event',    icon: 'fa-trophy',        tile: 'linear-gradient(135deg,#b8860b,#f2a900)' },
+  system:   { label: 'System',   icon: 'fa-gear',          tile: 'linear-gradient(135deg,#1f3a63,#2f7de1)' },
+  policy:   { label: 'Policy',   icon: 'fa-file-lines',    tile: 'linear-gradient(135deg,#3c8f6f,#16a34a)' },
+  program:  { label: 'Program',  icon: 'fa-star',          tile: 'linear-gradient(135deg,#c2185b,#ff0050)' },
+  news:     { label: 'News',     icon: 'fa-chart-line',    tile: 'linear-gradient(135deg,#0f766e,#14b8a6)' },
+  security: { label: 'Security', icon: 'fa-shield-halved', tile: 'linear-gradient(135deg,#3a3a45,#5c5c6b)' },
+};
+
+const ANNOUNCEMENTS = [
+  { id:'ANN-2026-0132', title:'Introducing Book Analytics', desc:'Explore detailed analytics for your books and track your performance.', type:'update', status:'published', audience:'All Authors', date:'Jun 17, 2026', time:'10:24 AM', views:'8,420' },
+  { id:'ANN-2026-0131', title:'Payment System Update', desc:'We\u2019ve improved payout speed and added new payment options.', type:'update', status:'published', audience:'All Authors', date:'Jun 15, 2026', time:'09:15 AM', views:'6,120' },
+  { id:'ANN-2026-0130', title:'Summer Writing Contest 2026', desc:'Join our annual writing contest and win exciting rewards.', type:'event', status:'published', audience:'All Authors', date:'Jun 10, 2026', time:'11:00 AM', views:'12,850' },
+  { id:'ANN-2026-0129', title:'Scheduled Maintenance', desc:'The platform will be under maintenance for system improvements.', type:'system', status:'scheduled', audience:'All Authors', date:'Jun 20, 2026', time:'02:00 AM', views:'—' },
+  { id:'ANN-2026-0128', title:'Content Guidelines Update', desc:'Please review our updated content guidelines and policies.', type:'policy', status:'draft', audience:'All Authors', date:'—', time:'', views:'—' },
+  { id:'ANN-2026-0127', title:'Author Spotlight Program', desc:'Nominate your favorite authors for our monthly spotlight!', type:'program', status:'scheduled', audience:'All Authors', date:'Jun 25, 2026', time:'10:00 AM', views:'—' },
+  { id:'ANN-2026-0126', title:'We Reached 100K Books!', desc:'Thank you for being part of this amazing journey.', type:'news', status:'published', audience:'All Authors', date:'Jun 5, 2026', time:'04:30 PM', views:'9,430' },
+  { id:'ANN-2026-0125', title:'Security Best Practices', desc:'Tips to keep your account and content safe.', type:'security', status:'draft', audience:'All Authors', date:'—', time:'', views:'—' },
+];
+
+const OVERVIEW_BREAKDOWN = [
+  { label:'Updates',  value:12, pct:37.5, color:'#5b4bcf' },
+  { label:'Events',   value:6,  pct:18.8, color:'var(--amber)' },
+  { label:'System',   value:5,  pct:15.6, color:'var(--blue)' },
+  { label:'Policies', value:4,  pct:12.5, color:'var(--text-faint)' },
+  { label:'Programs', value:3,  pct:9.4,  color:'#ff0050' },
+  { label:'News',     value:2,  pct:6.2,  color:'var(--green)' },
+];
+
+const QUICK_ACTIONS = [
+  { label:'Create Announcement',    icon:'fa-plus',     cls:'purple' },
+  { label:'Manage Categories',      icon:'fa-tags',      cls:'pink' },
+  { label:'Announcement Templates', icon:'fa-file-lines',cls:'blue' },
+  { label:'Notification Settings',  icon:'fa-bell',      cls:'amber' },
+];
+
+const RECENT = [
+  { title:'Introducing Book Analytics', status:'published', date:'Jun 17, 2026' },
+  { title:'Payment System Update',       status:'published', date:'Jun 15, 2026' },
+  { title:'Summer Writing Contest 2026', status:'published', date:'Jun 10, 2026' },
+  { title:'Scheduled Maintenance',       status:'scheduled', date:'Jun 20, 2026' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER HELPERS
+   ═══════════════════════════════════════════════════════════ */
+function statusPillHtml(status){
+  const map = {
+    published: { cls:'', label:'Published' },
+    scheduled: { cls:'scheduled', label:'Scheduled' },
+    draft:     { cls:'draft', label:'Draft' },
+    archived:  { cls:'archived', label:'Archived' },
+  };
+  const m = map[status] || map.published;
+  return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`;
+}
+
+function typePillHtml(type){
+  const m = TYPE_META[type] || TYPE_META.update;
+  return `<span class="type-pill ${type}">${m.label}</span>`;
+}
+
+function tileHtml(row){
+  const m = TYPE_META[row.type] || TYPE_META.update;
+  return `<div class="ann-tile" style="background:${m.tile}"><i class="fas ${m.icon}"></i><span>${m.label}</span></div>`;
+}
+
+let currentView = 'all';
+
+function viewSource(){
+  if (currentView === 'all') return ANNOUNCEMENTS;
+  return ANNOUNCEMENTS.filter(r => r.status === currentView);
+}
+
+function currentFiltered(){
+  const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+  const type = document.getElementById('typeSelect').value;
+  const status = document.getElementById('statusSelect').value;
+  let list = viewSource();
+  if (status) list = list.filter(r => r.status === status);
+  if (type) list = list.filter(r => r.type === type);
+  if (q) list = list.filter(r => r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q));
+  return list;
+}
+
+function renderTable(list){
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="7"><i class="fas fa-bullhorn"></i>No announcements match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(r => `
+    <tr>
+      <td data-label="Announcement">
+        <div class="ann-cell">
+          ${tileHtml(r)}
+          <div><div class="ann-title">${r.title}</div><div class="ann-desc">${r.desc}</div></div>
+        </div>
+      </td>
+      <td data-label="Type">${typePillHtml(r.type)}</td>
+      <td data-label="Status">${statusPillHtml(r.status)}</td>
+      <td data-label="Audience" class="audience-cell">${r.audience}</td>
+      <td data-label="Published / Scheduled" class="date-cell">${r.date}${r.time ? `<span class="sub">${r.time}</span>` : ''}</td>
+      <td data-label="Views" class="views-cell">${r.views}</td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="View" onclick="toast('Opening \\'${r.title}\\'…')"><i class="fas fa-eye"></i></button>
+          <button class="act-btn" title="Edit" onclick="toast('Editing \\'${r.title}\\'…')"><i class="fas fa-pen"></i></button>
+          <button class="act-btn" title="More" onclick="toast('More actions for \\'${r.title}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderPageInfo(count){
+  const totals = { all:32, published:24, scheduled:6, draft:2, archived:0 };
+  const total = totals[currentView] ?? count;
+  const shown = Math.min(8, count);
+  document.getElementById('pageInfo').innerHTML = `Showing <b>${count ? 1 : 0}</b> to <b>${shown}</b> of <b>${total.toLocaleString()}</b> announcements`;
+}
+
+function refresh(){
+  const list = currentFiltered();
+  renderTable(list);
+  renderPageInfo(list.length);
+}
+
+/* ── Sub-tab switching ── */
+document.querySelectorAll('.sub-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    document.getElementById('statusSelect').value = '';
+    renderPagination();
+    refresh();
+  });
+});
+
+/* ── Pagination (visual, matches other admin pages) ── */
+function renderPagination(){
+  const wrap = document.getElementById('pageBtns');
+  const pageSets = { all:[1,2,3,4], published:[1,2,3], scheduled:[1], draft:[1], archived:[1] };
+  const pages = pageSets[currentView] || [1];
+  wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
+    pages.map(p => `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
+    `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
+  wrap.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+/* ── Filters wiring ── */
+document.getElementById('tableSearch').addEventListener('input', refresh);
+document.getElementById('typeSelect').addEventListener('change', refresh);
+document.getElementById('statusSelect').addEventListener('change', (e) => {
+  const status = e.target.value;
+  currentView = status || 'all';
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.dataset.view === currentView));
+  renderPagination();
+  refresh();
+});
+
+/* ── Create button ── */
+document.getElementById('newAnnouncementBtn').addEventListener('click', () => toast('Opening new announcement form…'));
+
+/* ── Overview donut + legend ── */
+function renderDonut(){
+  let acc = 0;
+  const stops = OVERVIEW_BREAKDOWN.map(s => {
+    const start = acc;
+    acc += s.pct;
+    return `${s.color} ${start}% ${acc}%`;
+  }).join(', ');
+  document.getElementById('overviewDonut').style.background = `conic-gradient(${stops})`;
+
+  document.getElementById('overviewLegend').innerHTML = OVERVIEW_BREAKDOWN.map(s => `
+    <div class="legend-row">
+      <div class="legend-lbl"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</div>
+      <div class="legend-val">${s.value} (${s.pct}%)</div>
+    </div>`).join('');
+}
+
+/* ── Quick actions ── */
+function renderQuickActions(){
+  document.getElementById('quickActions').innerHTML = QUICK_ACTIONS.map(a => `
+    <div class="qa-item" onclick="toast('${a.label}…')">
+      <div class="qa-ico ${a.cls}"><i class="fas ${a.icon}"></i></div>
+      <span class="qa-lbl">${a.label}</span>
+      <i class="fas fa-chevron-right"></i>
+    </div>`).join('');
+}
+
+/* ── Recent announcements ── */
+function renderRecent(){
+  document.getElementById('recentList').innerHTML = RECENT.map(r => `
+    <div class="recent-row">
+      <div class="recent-title">${r.title}</div>
+      <div class="recent-right">
+        ${statusPillHtml(r.status)}
+        <div class="recent-date">${r.date}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+renderPagination();
+renderDonut();
+renderQuickActions();
+renderRecent();
+refresh();
+</script>
+</body>
+</html>

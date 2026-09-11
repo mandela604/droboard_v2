@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DroBoard — Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- Reusable components: search overlay turns any [data-search-trigger] element
+     into a search-opening control, bottom nav builds + appends itself to <body>.
+     See component/search-overlay.js and component/bottom-nav.js. -->
+<script src="../component/search-overlay.js"></script>
+<script src="../component/bottom-nav.js"></script>
+<script src="../services/notification-service.js"></script>
+<style>
+  :root{
+    --pink:#E91E63; --pink-deep:#C2185B; --pink-soft:#FCE7F3;
+    --purple:#7C3AED; --purple-deep:#6D28D9; --purple-soft:#F1EBFF;
+    --blue:#3B82F6; --blue-soft:#EAF2FE;
+    --green:#10B981; --green-soft:#E7FBF3;
+    --orange:#F59E0B; --orange-soft:#FEF3E2;
+    --ink:#161620; --ink-2:#3A3650; --gray-600:#65627a; --gray-400:#9793a8;
+    --line:#EDEDF2; --divider:#F0F1F5; --white:#FFFFFF;
+    --grid-gap:10px;
+    --font-display:'Manrope',sans-serif;
+    --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  }
+  [data-theme="dark"]{
+    --pink-soft:rgba(233,30,99,.16);
+    --purple-soft:rgba(124,58,237,.2); --blue-soft:rgba(59,130,246,.18);
+    --green-soft:rgba(16,185,129,.16); --orange-soft:rgba(245,158,11,.16);
+    --ink:#f0f0f5; --ink-2:#c9c8d8; --gray-600:#a09eb5; --gray-400:#8a89a0;
+    --line:rgba(255,255,255,.08); --divider:#101016; --white:#0b0b10;
+  }
+  [data-theme="dark"] .topbar{background:rgba(11,11,16,.97)}
+  [data-theme="dark"] .view-btn.active{background:#1a1a24}
+  [data-theme="dark"] .lib-act{background:#1a1a24}
+  [data-theme="dark"] .phone{box-shadow:0 0 50px rgba(0,0,0,.5)}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--divider);}
+  body{font-family:var(--font-body);color:var(--ink);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;}
+  button{font-family:inherit;border:none;background:none;cursor:pointer;}
+  img{display:block;object-fit:cover;}
+  svg.ic{display:block;flex-shrink:0;}
+  ::-webkit-scrollbar{display:none;}
+
+  .phone{width:100%;max-width:420px;min-height:100vh;background:var(--white);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden;}
+
+  /* ===== HEADER ===== */
+  .topbar{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:14px 16px 11px;}
+  .logo{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--ink);}
+  .logo span{color:var(--pink);}
+  .top-actions{display:flex;gap:8px;}
+  .icon-btn{width:37px;height:37px;border-radius:50%;background:var(--divider);display:flex;align-items:center;justify-content:center;position:relative;color:var(--ink-2);}
+  .icon-btn.pink{background:var(--pink-soft);color:var(--pink-deep);}
+  .badge-dot{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--pink);border:2px solid var(--white);}
+
+  /* ===== TABS ===== */
+  .tabs{display:flex;gap:22px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--white);overflow-x:auto;}
+  .tab{padding:11px 0;font-size:13.5px;font-weight:600;color:var(--gray-400);white-space:nowrap;position:relative;cursor:pointer;}
+  .tab.active{color:var(--pink);font-weight:700;}
+  .tab.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2.5px;border-radius:3px;background:var(--pink);}
+
+  .content{flex:1;padding-bottom:90px;background:var(--white);}
+
+  /* ===== STATS STRIP ===== */
+  .stats-strip{display:flex;gap:10px;padding:14px 16px 6px;overflow-x:auto;}
+  .stat-chip{
+    flex:1;min-width:0;background:var(--divider);border-radius:12px;padding:12px 10px;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  .stat-num{font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--ink);}
+  .stat-label{font-size:10.5px;font-weight:600;color:var(--gray-600);}
+
+  /* ===== PROMO SLIDER ===== */
+  .promo-row{padding:12px 16px 4px;}
+  .promo-slider{
+    position:relative;width:100%;height:87px;border-radius:14px;
+    overflow:hidden;background:var(--divider);
+  }
+  .promo-track{display:flex;width:100%;height:100%;will-change:transform;transition:transform .45s cubic-bezier(.4,0,.2,1);}
+  .promo-slide{
+    flex:0 0 100%;width:100%;height:100%;min-width:0;position:relative;
+    display:flex;align-items:center;gap:10px;padding:0 12px;
+    background-size:cover;background-position:center;cursor:pointer;
+  }
+  .promo-scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,6,14,.82) 0%,rgba(10,6,14,.45) 58%,rgba(10,6,14,.08) 100%);}
+  .promo-text{position:relative;z-index:2;min-width:0;flex:1;}
+  .promo-eyebrow{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#ff9db8;margin-bottom:3px;}
+  .promo-title{font-size:12.5px;font-weight:700;color:#fff;line-height:1.28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .promo-author{font-size:10px;color:rgba(255,255,255,.72);margin-top:2px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .promo-cta{
+    position:relative;z-index:2;flex-shrink:0;background:#fff;color:var(--pink-deep);
+    font-size:10px;font-weight:800;padding:7px 13px;border-radius:16px;white-space:nowrap;
+  }
+  .promo-dots{position:absolute;bottom:7px;right:10px;z-index:3;display:flex;gap:4px;}
+  .promo-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.45);transition:.25s;}
+  .promo-dot.on{width:12px;border-radius:3px;background:#fff;}
+
+  /* ===== SECTION ===== */
+  .section{margin-top:8px;}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;}
+  .sec-title{font-size:15.5px;font-weight:700;}
+  .view-all{font-size:12.5px;font-weight:600;color:var(--gray-400);}
+
+  /* ===== VIEW TOGGLE ===== */
+  .view-toggle{display:flex;gap:4px;background:var(--divider);border-radius:10px;padding:3px;}
+  .view-btn{
+    width:32px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    color:var(--gray-400);transition:all .15s ease;
+  }
+  .view-btn.active{background:var(--white);color:var(--pink);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
+  /* ===== CONTINUE READING
+     Cards are sized identically to the library grid cards (.gcard):
+     same cover aspect ratio, radius, progress bar, badge and text scale.
+     flex-basis uses the same (100% - 2*gap)/3 formula as the grid so the
+     rendered pixel size matches exactly, even though this row scrolls
+     horizontally instead of wrapping. ===== */
+  .h-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 6px;padding:0 16px 8px;}
+  .cont-card{min-width:0;cursor:pointer;}
+  .cont-cover{position:relative;width:100%;aspect-ratio:110/148;border-radius:9px;overflow:hidden;background:var(--line);margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+  .cont-cover img{width:100%;height:100%;}
+  .cont-prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.2);}
+  .cont-prog-fill{height:100%;background:var(--pink);}
+  .cont-badge{position:absolute;top:5px;left:5px;font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px;background:var(--pink);color:#fff;letter-spacing:.02em;}
+  .cont-title{font-size:11px;font-weight:700;line-height:1.3;margin-bottom:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .cont-meta{font-size:10px;color:var(--gray-400);font-weight:500;}
+
+  /* ===== FILTER CHIPS ===== */
+  .filter-row{display:flex;gap:8px;padding:6px 16px 10px;overflow-x:auto;}
+  .filter-chip{
+    flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;
+    background:var(--divider);color:var(--gray-600);border:1.5px solid transparent;cursor:pointer;
+  }
+  .filter-chip.active{background:var(--pink-soft);color:var(--pink-deep);border-color:#f8d3e2;}
+
+  /* ===== LIST VIEW ===== */
+  .lib-list{padding:0 16px;}
+  .lib-item{
+    display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);cursor:pointer;
+  }
+  .lib-item:last-child{border-bottom:none;}
+  .lib-item:active{opacity:.88;}
+  .lib-cover{
+    width:72px;height:96px;border-radius:8px;overflow:hidden;flex-shrink:0;
+    background:var(--line);box-shadow:0 2px 6px rgba(0,0,0,.06);position:relative;
+  }
+  .lib-cover img{width:100%;height:100%;}
+  .lib-body{flex:1;min-width:0;display:flex;flex-direction:column;padding-top:2px;}
+  .lib-title{font-size:14.5px;font-weight:700;line-height:1.3;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lib-author{font-size:12px;color:var(--gray-400);font-weight:500;margin-bottom:6px;}
+  .lib-preview{font-size:12px;color:var(--gray-600);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;flex:1;}
+  .lib-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;}
+  .lib-ch{font-size:11.5px;font-weight:600;color:var(--pink);}
+  .lib-pct{font-size:11px;color:var(--gray-400);font-weight:500;}
+  .lib-actions{display:flex;gap:6px;flex-shrink:0;}
+  .lib-act{
+    width:32px;height:32px;border-radius:50%;background:var(--divider);
+    display:flex;align-items:center;justify-content:center;color:var(--gray-600);
+  }
+  .lib-act.on{background:var(--pink-soft);color:var(--pink-deep);}
+
+  /* ===== GRID VIEW (4 per row) ===== */
+  .lib-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px 6px;
+    padding:0 16px 16px;
+  }
+  .gcard{cursor:pointer;min-width:0;}
+  .gcard:active{opacity:.88;}
+  .gcard-cover{
+    position:relative;width:100%;aspect-ratio:110/148;
+    border-radius:9px;overflow:hidden;background:var(--line);margin-bottom:6px;
+    box-shadow:0 2px 8px rgba(0,0,0,.07);
+  }
+  .gcard-cover img{width:100%;height:100%;}
+  .gcard-prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.2);}
+  .gcard-prog-fill{height:100%;background:var(--pink);}
+  .gcard-badge{
+    position:absolute;top:5px;left:5px;font-size:7px;font-weight:800;
+    padding:2px 5px;border-radius:4px;background:var(--pink);color:#fff;
+  }
+  .gcard-badge.done{background:var(--green);}
+  .gcard-title{
+    font-size:10.5px;font-weight:700;line-height:1.3;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:2px;
+  }
+  .gcard-meta{font-size:9.5px;color:var(--gray-400);font-weight:500;}
+
+  /* ===== PAGINATION (Your Library section) ===== */
+  .pagination{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 16px 18px;flex-wrap:wrap;}
+  .page-btn{min-width:32px;height:32px;padding:0 8px;border-radius:9px;background:var(--divider);
+    color:var(--ink-2);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .page-btn.active{background:var(--pink);color:#fff;}
+  .page-btn.nav{color:var(--gray-600);}
+  .page-btn.disabled{opacity:.35;pointer-events:none;}
+
+  /* ===== EMPTY STATE ===== */
+  .empty{padding:48px 24px;text-align:center;}
+  .empty-icon{width:64px;height:64px;border-radius:18px;background:var(--pink-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--pink);}
+  .empty-title{font-family:var(--font-display);font-size:17px;font-weight:800;margin-bottom:6px;}
+  .empty-sub{font-size:13.5px;color:var(--gray-400);line-height:1.5;margin-bottom:18px;}
+  .empty-btn{background:var(--pink);color:#fff;padding:11px 22px;border-radius:12px;font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width:360px){
+    :root{--grid-gap:8px;}
+    .gcard-title{font-size:10.5px;}
+    .lib-cover{width:64px;height:86px;}
+    .promo-title{max-width:150px;}
+  }
+  @media (min-width:421px){
+    .phone{border-radius:0;}
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="topbar">
+    <div class="logo">Dro<span>Board</span></div>
+    <div class="top-actions">
+      <div class="icon-btn" id="search-btn" data-search-trigger></div>
+      <a href="notifications.html" class="icon-btn" id="bell-btn" style="text-decoration:none;color:inherit"></a>
+      <a href="store.html" class="icon-btn pink" id="gift-btn" style="text-decoration:none;color:inherit"></a>
+      <button class="icon-btn" id="theme-btn" onclick="LibraryPage.toggleTheme()" title="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+    </div>
+  </div>
+
+  <div class="tabs" id="main-tabs">
+    <div class="tab active" data-panel="reading">Reading</div>
+    <div class="tab" data-panel="saved">Saved</div>
+    <div class="tab" data-panel="history">History</div>
+    <div class="tab" data-panel="downloads">Downloads</div>
+  </div>
+
+  <div class="content" id="content">
+
+    <!-- ========== READING PANEL ========== -->
+    <div class="panel active" id="panel-reading">
+      <div class="stats-strip">
+        <div class="stat-chip"><div class="stat-num">12</div><div class="stat-label">In Progress</div></div>
+        <div class="stat-chip"><div class="stat-num">7</div><div class="stat-label">Finished</div></div>
+        <div class="stat-chip"><div class="stat-num">48</div><div class="stat-label">Hours Read</div></div>
+      </div>
+
+      <div class="promo-row">
+        <div class="promo-slider" id="promo-slider">
+          <div class="promo-track" id="promo-track"></div>
+          <div class="promo-dots" id="promo-dots"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <h2 class="sec-title">Continue Reading</h2>
+          <span class="view-all">View All ›</span>
+        </div>
+        <div class="h-row" id="continue-row"></div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <h2 class="sec-title">Your Library</h2>
+          <div class="view-toggle" id="view-toggle">
+            <button class="view-btn" data-view="list" id="btn-list" title="List view"></button>
+            <button class="view-btn active" data-view="grid" id="btn-grid" title="Grid view"></button>
+          </div>
+        </div>
+        <div class="filter-row" id="filter-row">
+          <div class="filter-chip active" data-filter="all">All</div>
+          <div class="filter-chip" data-filter="progress">In Progress</div>
+          <div class="filter-chip" data-filter="finished">Finished</div>
+          <div class="filter-chip" data-filter="unread">Unread</div>
+        </div>
+        <div id="lib-container"></div>
+        <div class="pagination" id="lib-pagination"></div>
+      </div>
+    </div>
+
+    <!-- ========== SAVED PANEL ========== -->
+    <div class="panel" id="panel-saved">
+      <div class="section" style="margin-top:4px;">
+        <div class="sec-head">
+          <h2 class="sec-title">Saved Stories</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="view-all" id="saved-count">0</span>
+            <div class="view-toggle" id="saved-toggle">
+              <button class="view-btn" data-view="list" data-target="saved" title="List view"></button>
+              <button class="view-btn active" data-view="grid" data-target="saved" title="Grid view"></button>
+            </div>
+          </div>
+        </div>
+        <div id="saved-container"></div>
+      </div>
+    </div>
+
+    <!-- ========== HISTORY PANEL ========== -->
+    <div class="panel" id="panel-history">
+      <div class="section" style="margin-top:4px;">
+        <div class="sec-head">
+          <h2 class="sec-title">Recently Read</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="view-all">Clear ›</span>
+            <div class="view-toggle" id="history-toggle">
+              <button class="view-btn" data-view="list" data-target="history" title="List view"></button>
+              <button class="view-btn active" data-view="grid" data-target="history" title="Grid view"></button>
+            </div>
+          </div>
+        </div>
+        <div id="history-container"></div>
+      </div>
+    </div>
+
+    <!-- ========== DOWNLOADS PANEL ========== -->
+    <div class="panel" id="panel-downloads">
+      <div class="empty" id="downloads-empty">
+        <div class="empty-icon" id="empty-ic"></div>
+        <div class="empty-title">No downloads yet</div>
+        <div class="empty-sub">Download chapters to read offline.<br>Your downloads will appear here.</div>
+        <button class="empty-btn" id="empty-btn">Browse Stories</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav is no longer hand-rolled here — component/bottom-nav.js
+       builds it and appends it to <body> automatically, with "Library"
+       auto-detected as the active tab from this page's filename. -->
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../marketing/shared/marketing-data.js"></script>
+<script src="../services/ad-service.js"></script>
+<script src="../services/search-service.js"></script>
+<script src="../services/library-service.js"></script>
+<script src="../component/library-card.js"></script>
+<script>LibraryPage.init();</script>
+</body>
+</html>

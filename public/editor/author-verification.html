@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Author Verification — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row: tabs left, export button right ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
+  .top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px}
+  .top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .top-tab .tab-count{font-size:10.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}
+  .top-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
+  .stat-ico.black{background:#e7e7ea;color:#000}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .stat-ico.pink{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .stat-ico.black{background:rgba(255,255,255,.08);color:#f1f0f8}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  .stat-delta.down{color:var(--red);background:var(--red-bg)}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Table card ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}
+  .tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;flex-wrap:wrap}
+  .tc-head h2{font-size:15px;font-weight:800}
+  .tc-head-right{display:flex;align-items:center;gap:10px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;width:230px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:880px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+  .auth-cell{display:flex;align-items:center;gap:12px}
+  .auth-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
+  .auth-name{font-weight:700;font-size:13px}
+  .auth-email{color:var(--text-muted);font-size:11.5px;margin-top:1px}
+  .doc-cell{display:flex;align-items:center;gap:8px;font-weight:600;font-size:12.5px}
+  .doc-cell i{color:var(--text-faint);font-size:13px}
+  .plain-cell{font-weight:600;font-size:12.5px}
+  .reviewer-cell{display:flex;align-items:center;gap:8px}
+  .reviewer-cell img{width:22px;height:22px;border-radius:50%;object-fit:cover}
+  .reviewer-cell span{font-size:12px;font-weight:600;color:var(--text-muted)}
+  .reviewer-cell.unassigned span{color:var(--text-faint);font-style:italic;font-weight:500}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .status-pill.pending{background:rgba(217,119,6,.18)}
+  .status-pill.rejected{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .status-pill.rejected{background:rgba(224,56,77,.18)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.pending .dot{background:var(--amber)}
+  .status-pill.rejected .dot{background:var(--red)}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .act-btn.approve:hover{color:var(--green);border-color:var(--green)}
+  .act-btn.reject:hover{color:var(--red);border-color:var(--red)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  /* ── Recently reviewed panel ── */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:15px;font-weight:800}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+  .author-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+  .author-card{border:1px solid var(--border);border-radius:13px;padding:18px 12px;text-align:center;transition:.15s;cursor:pointer}
+  .author-card:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(255,0,80,.10)}
+  .author-card img{width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 10px;border:2px solid var(--border)}
+  .author-card-name{font-size:12.5px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:5px}
+  .author-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:8px}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} .author-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} .author-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:680px){
+    .tc-head{flex-direction:column;align-items:stretch}
+    .tc-head-right{flex-direction:column;align-items:stretch}
+    .tc-search{width:100%}
+    .btn-filters{justify-content:center}
+    .page-hdr-row{flex-direction:column;align-items:stretch}
+    .btn-add{justify-content:center}
+
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Author"]{align-items:flex-start}
+    td[data-label="Author"]::before{display:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} .author-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <div class="top-tabs">
+      <div class="top-tab active" data-view="all">All Requests</div>
+      <div class="top-tab" data-view="pending">Pending <span class="tab-count" id="pendingCount">0</span></div>
+      <div class="top-tab" data-view="approved">Approved</div>
+      <div class="top-tab" data-view="rejected">Rejected</div>
+    </div>
+    <button class="btn-add" id="exportBtn"><i class="fas fa-arrow-up-from-bracket"></i> Export Report</button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico pink"><i class="fas fa-user-check"></i></div><span class="stat-delta">+11 from last month</span></div>
+      <div class="stat-num">247</div>
+      <div class="stat-lbl">Total Requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-hourglass-half"></i></div><span class="stat-delta down">+6 awaiting</span></div>
+      <div class="stat-num">18</div>
+      <div class="stat-lbl">Pending Review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+3.4% from last month</span></div>
+      <div class="stat-num">204</div>
+      <div class="stat-lbl">Approved</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico red"><i class="fas fa-circle-xmark"></i></div><span class="stat-delta down">+2 from last month</span></div>
+      <div class="stat-num">25</div>
+      <div class="stat-lbl">Rejected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-clock"></i></div><span class="stat-delta">-0.4d from last month</span></div>
+      <div class="stat-num">1.8d</div>
+      <div class="stat-lbl">Avg. Review Time</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="tc-head">
+      <h2 id="tableTitle">All Verification Requests</h2>
+      <div class="tc-head-right">
+        <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by author name or email..."/></div>
+        <button class="btn-filters"><i class="fas fa-sliders"></i> Filters</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>Author</th><th>Document</th><th>Submitted</th><th>Reviewer</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination-row">
+      <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>247</b> requests</div>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+  <!-- Recently reviewed -->
+  <div class="panel" id="recentPanel">
+    <div class="panel-head"><h2>Recently Reviewed</h2><a onclick="toast('Opening full review history…')">View All</a></div>
+    <div class="author-grid" id="authorGrid"></div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'author-verification.html',
+  title: 'Author Verification',
+  subtitle: 'Review and approve author identity submissions',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search by author name or email...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (value) => {
+    document.getElementById('tableSearch').value = value;
+    refresh();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const REQUESTS = [
+  { name:'Daniel Reyes', email:'daniel.reyes@mail.com', avatar:'https://i.pravatar.cc/100?img=51', doc:'Government ID', docIcon:'fa-id-card', submitted:'Jul 4, 2026', reviewer:null, status:'pending' },
+  { name:'Julien Moreau', email:'julien.moreau@mail.com', avatar:'https://i.pravatar.cc/100?img=15', doc:'Passport', docIcon:'fa-passport', submitted:'Jul 3, 2026', reviewer:null, status:'pending' },
+  { name:'Kenji Watanabe', email:'kenji.watanabe@mail.com', avatar:'https://i.pravatar.cc/100?img=13', doc:'Driver\u2019s License', docIcon:'fa-id-card-clip', submitted:'Jul 3, 2026', reviewer:null, status:'pending' },
+  { name:'Nadia Petrov', email:'nadia.petrov@mail.com', avatar:'https://i.pravatar.cc/100?img=24', doc:'Passport', docIcon:'fa-passport', submitted:'Jul 2, 2026', reviewer:{name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47'}, status:'pending' },
+  { name:'Owen Fitzgerald', email:'owen.fitzgerald@mail.com', avatar:'https://i.pravatar.cc/100?img=6', doc:'Government ID', docIcon:'fa-id-card', submitted:'Jul 1, 2026', reviewer:{name:'Marcus Webb', avatar:'https://i.pravatar.cc/100?img=33'}, status:'pending' },
+  { name:'Sofia Lindqvist', email:'sofia.lindqvist@mail.com', avatar:'https://i.pravatar.cc/100?img=32', doc:'Passport', docIcon:'fa-passport', submitted:'Jun 29, 2026', reviewer:{name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47'}, status:'approved' },
+  { name:'Amara Okafor', email:'amara.okafor@mail.com', avatar:'https://i.pravatar.cc/100?img=45', doc:'Government ID', docIcon:'fa-id-card', submitted:'Jun 28, 2026', reviewer:{name:'Marcus Webb', avatar:'https://i.pravatar.cc/100?img=33'}, status:'approved' },
+  { name:'Isabella Rossi', email:'isabella.rossi@mail.com', avatar:'https://i.pravatar.cc/100?img=38', doc:'Driver\u2019s License', docIcon:'fa-id-card-clip', submitted:'Jun 27, 2026', reviewer:{name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47'}, status:'approved' },
+  { name:'Layla Haddad', email:'layla.haddad@mail.com', avatar:'https://i.pravatar.cc/100?img=48', doc:'Passport', docIcon:'fa-passport', submitted:'Jun 25, 2026', reviewer:{name:'Marcus Webb', avatar:'https://i.pravatar.cc/100?img=33'}, status:'approved' },
+  { name:'Priya Nair', email:'priya.nair@mail.com', avatar:'https://i.pravatar.cc/100?img=27', doc:'Government ID', docIcon:'fa-id-card', submitted:'Jun 24, 2026', reviewer:{name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47'}, status:'approved' },
+  { name:'Tobias Bergman', email:'tobias.bergman@mail.com', avatar:'https://i.pravatar.cc/100?img=8', doc:'Government ID', docIcon:'fa-id-card', submitted:'Jun 20, 2026', reviewer:{name:'Marcus Webb', avatar:'https://i.pravatar.cc/100?img=33'}, status:'rejected' },
+  { name:'Grace Wallace', email:'grace.wallace@mail.com', avatar:'https://i.pravatar.cc/100?img=44', doc:'Passport', docIcon:'fa-passport', submitted:'Jun 18, 2026', reviewer:{name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47'}, status:'rejected' },
+];
+
+const RECENT_REVIEWS = [
+  { name:'Sofia Lindqvist', avatar:'https://i.pravatar.cc/100?img=32', meta:'Approved · Jun 29', status:'approved' },
+  { name:'Amara Okafor', avatar:'https://i.pravatar.cc/100?img=45', meta:'Approved · Jun 28', status:'approved' },
+  { name:'Isabella Rossi', avatar:'https://i.pravatar.cc/100?img=38', meta:'Approved · Jun 27', status:'approved' },
+  { name:'Layla Haddad', avatar:'https://i.pravatar.cc/100?img=48', meta:'Approved · Jun 25', status:'approved' },
+  { name:'Tobias Bergman', avatar:'https://i.pravatar.cc/100?img=8', meta:'Rejected · Jun 20', status:'rejected' },
+  { name:'Grace Wallace', avatar:'https://i.pravatar.cc/100?img=44', meta:'Rejected · Jun 18', status:'rejected' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════ */
+let currentView = 'all';
+
+function statusPillHtml(status){
+  if (status === 'approved') return `<span class="status-pill"><span class="dot"></span>Approved</span>`;
+  if (status === 'pending') return `<span class="status-pill pending"><span class="dot"></span>Pending</span>`;
+  return `<span class="status-pill rejected"><span class="dot"></span>Rejected</span>`;
+}
+
+function reviewerCellHtml(reviewer){
+  if (!reviewer) return `<div class="reviewer-cell unassigned"><span>Unassigned</span></div>`;
+  return `<div class="reviewer-cell"><img src="${reviewer.avatar}" alt="${reviewer.name}"/><span>${reviewer.name}</span></div>`;
+}
+
+function viewSource(){
+  if (currentView === 'pending') return REQUESTS.filter(r => r.status === 'pending');
+  if (currentView === 'approved') return REQUESTS.filter(r => r.status === 'approved');
+  if (currentView === 'rejected') return REQUESTS.filter(r => r.status === 'rejected');
+  return REQUESTS;
+}
+
+function currentFiltered(){
+  const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+  const source = viewSource();
+  if (!q) return source;
+  return source.filter(r => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
+}
+
+function actionsCellHtml(r){
+  if (r.status === 'pending'){
+    return `<div class="actions-cell">
+      <button class="act-btn approve" title="Approve" onclick="toast('Approved \\'${r.name}\\'')"><i class="fas fa-check"></i></button>
+      <button class="act-btn reject" title="Reject" onclick="toast('Rejected \\'${r.name}\\'')"><i class="fas fa-xmark"></i></button>
+      <button class="act-btn" title="View documents" onclick="toast('Opening documents for \\'${r.name}\\'…')"><i class="fas fa-eye"></i></button>
+    </div>`;
+  }
+  return `<div class="actions-cell">
+    <button class="act-btn" title="View documents" onclick="toast('Opening documents for \\'${r.name}\\'…')"><i class="fas fa-eye"></i></button>
+    <button class="act-btn" title="More" onclick="toast('More actions for \\'${r.name}\\'')"><i class="fas fa-ellipsis"></i></button>
+  </div>`;
+}
+
+function renderTable(list){
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="6"><i class="fas fa-folder-open"></i>No verification requests match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(r => `
+    <tr>
+      <td data-label="Author">
+        <div class="auth-cell">
+          <img class="auth-avatar" src="${r.avatar}" alt="${r.name}"/>
+          <div>
+            <div class="auth-name">${r.name}</div>
+            <div class="auth-email">${r.email}</div>
+          </div>
+        </div>
+      </td>
+      <td data-label="Document"><div class="doc-cell"><i class="fas ${r.docIcon}"></i>${r.doc}</div></td>
+      <td data-label="Submitted" class="plain-cell">${r.submitted}</td>
+      <td data-label="Reviewer">${reviewerCellHtml(r.reviewer)}</td>
+      <td data-label="Status">${statusPillHtml(r.status)}</td>
+      <td data-label="Actions">${actionsCellHtml(r)}</td>
+    </tr>`).join('');
+}
+
+function renderPageInfo(count){
+  const totals = { all: 247, pending: 18, approved: 204, rejected: 25 };
+  const total = totals[currentView] ?? count;
+  const shown = Math.min(8, count);
+  document.getElementById('pageInfo').innerHTML = `Showing <b>${count ? 1 : 0}</b> to <b>${shown}</b> of <b>${total.toLocaleString()}</b> requests`;
+}
+
+function refresh(){
+  const list = currentFiltered();
+  renderTable(list);
+  renderPageInfo(list.length);
+}
+
+/* ── Top tab switching (All / Pending / Approved / Rejected) ── */
+document.querySelectorAll('.top-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    document.getElementById('tableTitle').textContent =
+      currentView === 'all' ? 'All Verification Requests' :
+      currentView === 'pending' ? 'Pending Review' :
+      currentView === 'approved' ? 'Approved Authors' : 'Rejected Requests';
+    document.getElementById('tableSearch').value = '';
+    renderPagination();
+    refresh();
+  });
+});
+
+/* ── Recently reviewed grid ── */
+function renderRecentReviews(){
+  document.getElementById('authorGrid').innerHTML = RECENT_REVIEWS.map(a => `
+    <div class="author-card" onclick="toast('Opening \\'${a.name}\\'\\'s profile…')">
+      <img src="${a.avatar}" alt="${a.name}"/>
+      <div class="author-card-name">${a.name}</div>
+      <div class="author-card-meta">${a.meta}</div>
+      ${statusPillHtml(a.status)}
+    </div>`).join('');
+}
+
+/* ── Pagination (visual, matches other admin pages) ── */
+function renderPagination(){
+  const wrap = document.getElementById('pageBtns');
+  const pages = currentView === 'all' ? [1,2,3,4,5,'...',31] : currentView === 'approved' ? [1,2,3,'...',26] : currentView === 'rejected' ? [1,2,3,4] : [1,2,3];
+  wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
+    pages.map(p => p === '...' ? `<span class="pg-dots" style="color:var(--text-faint);font-size:12px;padding:0 2px">…</span>` : `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
+    `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
+  wrap.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+/* ── Export button + search wiring ── */
+document.getElementById('exportBtn').addEventListener('click', () => {
+  toast('Exporting verification report…');
+});
+document.getElementById('tableSearch').addEventListener('input', refresh);
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+document.getElementById('pendingCount').textContent = REQUESTS.filter(r => r.status === 'pending').length;
+renderPagination();
+renderRecentReviews();
+refresh();
+</script>
+</body>
+</html>

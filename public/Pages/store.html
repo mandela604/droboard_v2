@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>DroBoard — Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --pink:#FF2D6A; --pink-deep:#D6165A; --pink-soft:#FDE3EC;
+  --green:#16A34A; --green-soft:#E4F8EA;
+  --ink:#17151B; --ink-2:#2E2B34; --gray-600:#635F6E; --gray-400:#9A96A3;
+  --line:#EFEDF2; --divider:#F3F1F5; --white:#FFFFFF;
+  --font-display:'Playfair Display',serif;
+  --font-body:'DM Sans',-apple-system,sans-serif;
+  --nav-h:64px; --safe-b:env(safe-area-inset-bottom,12px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--divider);min-height:100%}
+body{font-family:var(--font-body);color:var(--ink);display:flex;justify-content:center;overflow-x:hidden;padding-bottom:calc(var(--nav-h) + var(--safe-b))}
+img{display:block;object-fit:cover}
+button{font-family:inherit;border:none;background:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--white);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.icon-btn:active{transform:scale(.93)}
+.top-title{font-family:var(--font-display);font-size:18px;font-weight:800}
+
+.content{flex:1;padding:8px 16px 24px}
+
+/* Balance Card */
+.balance-card{
+  background:linear-gradient(135deg,var(--pink),var(--pink-deep));
+  border-radius:20px;padding:20px;color:#fff;margin-bottom:20px;
+  box-shadow:0 8px 24px rgba(255,45,106,.25)
+}
+.balance-label{font-size:11px;font-weight:700;opacity:.8;margin-bottom:4px;letter-spacing:.05em}
+.balance-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.balance-icon{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px}
+.balance-coins{font-size:32px;font-weight:800}
+.balance-level{font-size:11px;font-weight:700;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:12px;display:inline-block}
+
+/* Section */
+.section{margin-bottom:24px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:16px;font-weight:800;color:var(--ink)}
+.sec-badge{font-size:10px;font-weight:700;color:var(--pink);background:var(--pink-soft);padding:4px 10px;border-radius:12px}
+
+/* Coin Packs */
+.packs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pack-card{
+  background:var(--white);border:1.5px solid var(--line);border-radius:16px;
+  padding:16px;text-align:center;cursor:pointer;position:relative;transition:all .15s
+}
+.pack-card:active{transform:scale(.97)}
+.pack-card.selected{border-color:var(--pink);box-shadow:0 0 0 2px rgba(255,45,106,.2)}
+.pack-badge{
+  position:absolute;top:-8px;right:8px;font-size:9px;font-weight:800;
+  padding:3px 8px;border-radius:8px;color:#fff;background:var(--pink)
+}
+.pack-badge.green{background:var(--green)}
+.pack-coins{font-size:24px;font-weight:800;color:var(--ink);margin-bottom:2px}
+.pack-label{font-size:11px;color:var(--gray-400);font-weight:600;margin-bottom:8px}
+.pack-price{
+  font-size:14px;font-weight:800;color:var(--pink);
+  background:var(--pink-soft);padding:6px 14px;border-radius:12px;display:inline-block
+}
+
+/* Bundles */
+.bundle-card{
+  background:var(--white);border:1.5px solid var(--line);border-radius:16px;
+  padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;
+  margin-bottom:10px;transition:all .15s
+}
+.bundle-card:active{transform:scale(.98)}
+.bundle-icon{
+  width:52px;height:52px;border-radius:14px;display:flex;align-items:center;
+  justify-content:center;font-size:22px;color:#fff;flex-shrink:0
+}
+.bundle-info{flex:1;min-width:0}
+.bundle-name{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:2px}
+.bundle-coins{font-size:12px;color:var(--gray-600);font-weight:600}
+.bundle-bonus{font-size:11px;color:var(--green);font-weight:700}
+.bundle-price{
+  font-size:14px;font-weight:800;color:var(--pink);
+  background:var(--pink-soft);padding:6px 14px;border-radius:12px;flex-shrink:0
+}
+
+/* Ad Rewards */
+.reward-card{
+  background:var(--white);border:1px solid var(--line);border-radius:14px;
+  padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px
+}
+.reward-icon{
+  width:44px;height:44px;border-radius:12px;background:var(--divider);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  color:var(--gray-600);flex-shrink:0
+}
+.reward-info{flex:1;min-width:0}
+.reward-action{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.reward-meta{font-size:11px;color:var(--gray-400);font-weight:600}
+.reward-coins{
+  font-size:12px;font-weight:800;color:var(--green);
+  background:var(--green-soft);padding:5px 10px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;gap:4px
+}
+.reward-btn{
+  font-size:11px;font-weight:800;color:#fff;background:var(--pink);
+  padding:8px 14px;border-radius:12px;flex-shrink:0;transition:all .15s
+}
+.reward-btn:active{transform:scale(.95)}
+.reward-btn:disabled{background:var(--gray-400);cursor:not-allowed}
+
+/* Footer */
+.store-footer{text-align:center;padding:16px 0;font-size:11px;color:var(--gray-400);font-weight:600}
+.store-footer a{color:var(--pink);font-weight:700}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;padding:0 16px 12px}
+.tab-btn{flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;color:var(--gray-600);background:var(--divider);border:1.5px solid transparent;transition:all .15s}
+.tab-btn.active{color:var(--pink);background:var(--pink-soft);border-color:rgba(255,45,106,.2)}
+
+/* Subscription Cards */
+.sub-card{
+  background:var(--white);border:1.5px solid var(--line);border-radius:16px;
+  padding:16px;margin-bottom:10px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden
+}
+.sub-card:active{transform:scale(.98)}
+.sub-card.selected{border-color:var(--pink);box-shadow:0 0 0 2px rgba(255,45,106,.2)}
+.sub-badge{position:absolute;top:12px;right:12px;font-size:9px;font-weight:800;padding:4px 10px;border-radius:10px;color:#fff}
+.sub-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sub-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
+.sub-name{font-size:16px;font-weight:800;color:var(--ink)}
+.sub-price{font-size:14px;font-weight:700;color:var(--pink)}
+.sub-period{font-size:11px;color:var(--gray-400);font-weight:600}
+.sub-features{display:flex;flex-direction:column;gap:6px}
+.sub-feature{font-size:12px;color:var(--gray-600);font-weight:600;display:flex;align-items:center;gap:6px}
+.sub-feature i{color:var(--green);font-size:11px;width:16px;text-align:center}
+
+/* Merge Card - Premium */
+.merge-card{
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:16px;
+  padding:20px;color:#fff;margin-bottom:10px;cursor:pointer;position:relative;overflow:hidden
+}
+.merge-card:active{transform:scale(.98)}
+.merge-card.selected{box-shadow:0 0 0 3px rgba(124,58,237,.4)}
+.merge-badge{position:absolute;top:12px;right:12px;font-size:9px;font-weight:800;padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.2);color:#fff}
+.merge-icon{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+.merge-name{font-size:18px;font-weight:800;margin-bottom:4px}
+.merge-price{font-size:16px;font-weight:700;margin-bottom:2px}
+.merge-period{font-size:11px;opacity:.7;margin-bottom:14px}
+.merge-features{display:flex;flex-direction:column;gap:8px}
+.merge-feature{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;opacity:.9}
+.merge-feature i{font-size:11px;width:16px;text-align:center}
+.merge-cta{margin-top:16px;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);padding:12px;border-radius:12px;text-align:center;font-size:14px;font-weight:800;cursor:pointer;transition:all .15s}
+.merge-cta:active{transform:scale(.97);background:rgba(255,255,255,.3)}
+
+@media(min-width:421px){.phone{border-radius:0}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="topbar">
+    <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="top-title">Store</div>
+    <div class="icon-btn"><i class="fas fa-ellipsis"></i></div>
+  </div>
+
+  <div class="content">
+    <div class="balance-card" id="balanceCard"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="coins" onclick="switchTab('coins')">Coins</button>
+      <button class="tab-btn" data-tab="subscription" onclick="switchTab('subscription')">Subscription</button>
+    </div>
+
+    <!-- Coins Tab -->
+    <div id="tab-coins">
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Buy Coins</div>
+        </div>
+        <div class="packs-grid" id="packsGrid"></div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Bundles</div>
+          <div class="sec-badge">Save up to 50%</div>
+        </div>
+        <div id="bundlesList"></div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Earn Coins</div>
+          <div class="sec-badge">Free</div>
+        </div>
+        <div id="rewardsList"></div>
+      </div>
+    </div>
+
+    <!-- Subscription Tab -->
+    <div id="tab-subscription" style="display:none">
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Reading Plans</div>
+          <div class="sec-badge">Unlimited</div>
+        </div>
+        <div id="subsList"></div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Premium</div>
+        </div>
+        <div id="mergeSub"></div>
+      </div>
+    </div>
+
+    <div class="store-footer">
+      <p>By purchasing, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/store-service.js"></script>
+<script src="../component/bottom-nav.js"></script>
+<script>
+let selectedPack = null;
+let currentTab = 'coins';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-coins').style.display = tab === 'coins' ? '' : 'none';
+  document.getElementById('tab-subscription').style.display = tab === 'subscription' ? '' : 'none';
+}
+
+function renderBalance(data) {
+  document.getElementById('balanceCard').innerHTML = `
+    <div class="balance-label">YOUR BALANCE</div>
+    <div class="balance-row">
+      <div class="balance-icon"><i class="fas fa-coins"></i></div>
+      <div class="balance-coins">${data.balance.coins.toLocaleString()}</div>
+    </div>
+    <div class="balance-level"><i class="fas fa-gem" style="margin-right:4px"></i>${data.balance.level} Member</div>`;
+}
+
+function renderPacks(packs) {
+  document.getElementById('packsGrid').innerHTML = packs.map(p => `
+    <div class="pack-card" data-pack-id="${p.id}" onclick="selectPack('${p.id}')">
+      ${p.badge ? `<div class="pack-badge${p.badge === 'Best Value' ? ' green' : ''}">${p.badge}</div>` : ''}
+      <div class="pack-coins">${p.coins.toLocaleString()}</div>
+      <div class="pack-label">coins</div>
+      <div class="pack-price">${p.price}</div>
+    </div>`).join('');
+}
+
+function renderBundles(bundles) {
+  document.getElementById('bundlesList').innerHTML = bundles.map(b => `
+    <div class="bundle-card" onclick="toast('Opening ${b.name}...')">
+      <div class="bundle-icon" style="background:${b.color}"><i class="fas ${b.icon}"></i></div>
+      <div class="bundle-info">
+        <div class="bundle-name">${b.name}</div>
+        <div class="bundle-coins">${b.coins.toLocaleString()} coins</div>
+        <div class="bundle-bonus">+${b.bonus.toLocaleString()} bonus coins</div>
+      </div>
+      <div class="bundle-price">${b.price}</div>
+    </div>`).join('');
+}
+
+function renderRewards(rewards) {
+  document.getElementById('rewardsList').innerHTML = rewards.map(r => `
+    <div class="reward-card">
+      <div class="reward-icon"><i class="fas ${r.icon}"></i></div>
+      <div class="reward-info">
+        <div class="reward-action">${r.action}</div>
+        <div class="reward-meta">Every ${r.cooldown}</div>
+      </div>
+      <div class="reward-coins"><i class="fas fa-coins"></i>+${r.coins}</div>
+      <button class="reward-btn" ${r.available ? '' : 'disabled'} onclick="toast('Claiming ${r.coins} coins...')">Claim</button>
+    </div>`).join('');
+}
+
+function renderSubscriptions(subs) {
+  document.getElementById('subsList').innerHTML = subs.map(s => `
+    <div class="sub-card" data-sub-id="${s.id}" onclick="selectSub('${s.id}')">
+      ${s.badge ? `<div class="sub-badge" style="background:${s.color}">${s.badge}</div>` : ''}
+      <div class="sub-header">
+        <div class="sub-icon" style="background:${s.color}"><i class="fas ${s.icon}"></i></div>
+        <div>
+          <div class="sub-name">${s.name}</div>
+          <div class="sub-price">${s.price}</div>
+          <div class="sub-period">per ${s.period}</div>
+        </div>
+      </div>
+      <div class="sub-features">
+        ${s.features.map(f => `<div class="sub-feature"><i class="fas fa-check-circle"></i>${f}</div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderMergeSub(merge) {
+  document.getElementById('mergeSub').innerHTML = `
+    <div class="merge-card" data-sub-id="${merge.id}" onclick="selectSub('${merge.id}')">
+      <div class="merge-badge">${merge.badge}</div>
+      <div class="merge-icon"><i class="fas ${merge.icon}"></i></div>
+      <div class="merge-name">${merge.name}</div>
+      <div class="merge-price">${merge.price}</div>
+      <div class="merge-period">per ${merge.period}</div>
+      <div class="merge-features">
+        ${merge.features.map(f => `<div class="merge-feature"><i class="fas fa-check"></i>${f}</div>`).join('')}
+      </div>
+      <div class="merge-cta">Subscribe Now</div>
+    </div>`;
+}
+
+function selectPack(id) {
+  selectedPack = id;
+  document.querySelectorAll('.pack-card').forEach(c => c.classList.toggle('selected', c.dataset.packId === id));
+  document.querySelectorAll('.sub-card, .merge-card').forEach(c => c.classList.remove('selected'));
+  toast('Selected pack — tap to purchase');
+}
+
+function selectSub(id) {
+  document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.sub-card').forEach(c => c.classList.toggle('selected', c.dataset.subId === id));
+  document.querySelectorAll('.merge-card').forEach(c => c.classList.toggle('selected', c.dataset.subId === id));
+  toast('Selected plan — tap to subscribe');
+}
+
+function toast(msg) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1c1c22;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;font-family:var(--font-body)';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+}
+
+async function init() {
+  let data;
+  try { data = await StoreService.fetchStoreData(); } catch (e) { data = { balance: { coins: 0, level: 'Bronze' }, packs: [], bundles: [], adRewards: [], subscriptions: [], mergeSub: {} }; }
+  renderBalance(data);
+  renderPacks(data.packs);
+  renderBundles(data.bundles);
+  renderRewards(data.adRewards);
+  renderSubscriptions(data.subscriptions);
+  renderMergeSub(data.mergeSub);
+}
+
+init();
+
+if (window.DroboardNav) {
+  DroboardNav.configure({ active: 'discover' });
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.DroboardNav) DroboardNav.configure({ active: 'discover' });
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Droboard · Create Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
+  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
+  --tx-high:#e8e8e8;--tx-body:#a8b0ba;--tx-muted:#71717a;--tx-faint:#3f3f46;
+  --green:#34d399;--gold:#fbbf24;--blue:#38bdf8;--purple:#a78bfa;
+  --poll:#a78bfa;--poll-soft:rgba(167,139,250,.1);--poll-bd:rgba(167,139,250,.3);
+  --pred:#38bdf8;--pred-soft:rgba(56,189,248,.1);--pred-bd:rgba(56,189,248,.3);
+  --deb:#fbbf24;--deb-soft:rgba(251,191,36,.1);--deb-bd:rgba(251,191,36,.3);
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+body{padding-bottom:calc(var(--safe-b) + 84px)}
+::-webkit-scrollbar{width:2px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.2);border-radius:2px}
+button{font-family:inherit}
+
+/* ── TOP BAR ── */
+.top-bar{position:sticky;top:0;z-index:200;background:rgba(0,0,0,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);padding:calc(var(--safe-t) + 11px) 14px 11px;display:flex;align-items:center;gap:11px}
+.tb-back{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:#ccc;cursor:pointer;flex-shrink:0}
+.tb-back:active{transform:scale(.9)}
+.tb-title{flex:1;min-width:0}
+.tb-h{font-family:'Playfair Display',serif;font-size:14px;font-weight:800;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-sub{font-size:9.5px;color:var(--tx-muted);margin-top:1px;font-weight:600}
+.tb-save-draft{font-size:9.5px;font-weight:700;color:var(--acc3);background:rgba(255,0,80,.07);border:1px solid var(--bd-acc);padding:5px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.tb-save-draft:active{transform:scale(.94)}
+
+/* ── STEP RAIL ── */
+.step-rail{display:flex;align-items:center;padding:12px 10px 14px;background:rgba(0,0,0,.97);border-bottom:1px solid var(--bd);position:sticky;top:60px;z-index:190;gap:0;overflow-x:auto;scrollbar-width:none}
+.step-rail::-webkit-scrollbar{display:none}
+.step-dot-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex:1;min-width:52px;position:relative}
+.step-dot{width:26px;height:26px;border-radius:50%;background:var(--l2);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--tx-faint);transition:.2s;z-index:2}
+.step-dot-wrap.done .step-dot{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.35);color:var(--green)}
+.step-dot-wrap.active .step-dot{background:var(--acc);border-color:var(--acc);color:#fff;box-shadow:0 0 0 4px var(--glow-sm)}
+.step-line{position:absolute;top:13px;left:-50%;width:100%;height:1.5px;background:var(--bd);z-index:1}
+.step-dot-wrap:first-child .step-line{display:none}
+.step-dot-wrap.done .step-line,.step-dot-wrap.active .step-line{background:rgba(52,211,153,.35)}
+.step-lbl{font-size:7.8px;font-weight:700;color:var(--tx-faint);text-align:center;white-space:nowrap}
+.step-dot-wrap.active .step-lbl{color:var(--tx-high)}
+.step-dot-wrap.done .step-lbl{color:var(--green)}
+
+/* ── STAGE WRAP ── */
+.stage-wrap{padding:18px 16px 8px;max-width:640px;margin:0 auto}
+.stage{display:none}
+.stage.active{display:block;animation:fadeUp .28s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.stage-hd{margin-bottom:16px}
+.stage-eyebrow{font-size:9.5px;font-weight:800;color:var(--acc3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.stage-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:900;color:var(--tx-high);line-height:1.25;margin-bottom:6px}
+.stage-desc{font-size:12px;color:var(--tx-muted);line-height:1.55}
+
+/* ── TYPE CARDS ── */
+.type-grid{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.type-card{position:relative;background:var(--l1);border:1.5px solid var(--bd);border-radius:16px;padding:18px;cursor:pointer;transition:.18s;display:flex;gap:14px;align-items:flex-start}
+.type-card:active{transform:scale(.98)}
+.type-card.sel{border-color:var(--acc);background:rgba(255,0,80,.05);box-shadow:0 0 0 3px var(--glow-sm)}
+.type-ico{width:48px;height:48px;border-radius:13px;background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.type-card.sel .type-ico{background:var(--acc);color:#fff;border-color:var(--acc)}
+.type-body{flex:1}
+.type-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:var(--tx-high);margin-bottom:4px;display:flex;align-items:center;gap:7px}
+.type-desc{font-size:11.5px;color:var(--tx-muted);line-height:1.55}
+.type-check{position:absolute;top:14px;right:14px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:.18s}
+.type-card.sel .type-check{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* ── UPLOAD ZONE ── */
+.or-div{display:flex;align-items:center;gap:10px;margin:18px 0 12px;color:var(--tx-faint);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.or-div::before,.or-div::after{content:'';flex:1;height:1px;background:var(--bd)}
+.upload-zone{border:1.5px dashed var(--bd);border-radius:14px;padding:20px 14px;text-align:center;cursor:pointer;background:var(--l1);transition:.18s}
+.upload-zone:active{transform:scale(.99)}
+.upload-zone.has-file{border-style:solid;border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.03)}
+.uz-icon{font-size:22px;color:var(--tx-faint);margin-bottom:6px}
+.uz-title{font-size:12px;font-weight:700;color:var(--tx-body);margin-bottom:3px}
+.uz-sub{font-size:10px;color:var(--tx-faint);line-height:1.5}
+.uz-file-row{display:none;align-items:center;gap:10px;text-align:left}
+.upload-zone.has-file .uz-file-row{display:flex}
+.upload-zone.has-file .uz-default{display:none}
+.uz-file-ico{font-size:20px;color:var(--green);flex-shrink:0}
+.uz-file-name{font-size:12px;font-weight:700;color:var(--tx-high)}
+.uz-file-sub{font-size:9.5px;color:var(--tx-faint);margin-top:1px}
+.uz-file-remove{margin-left:auto;width:26px;height:26px;border-radius:50%;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;flex-shrink:0}
+
+/* ── TOGGLE ROW (continue series) ── */
+.tog-row{display:flex;align-items:center;justify-content:space-between;background:var(--l1);border:1.5px solid var(--bd);border-radius:14px;padding:13px 15px;cursor:pointer;transition:.2s;user-select:none}
+.tog-row.on{background:rgba(255,0,80,.05);border-color:rgba(255,0,80,.3)}
+.tog-label{font-size:13px;font-weight:700;color:var(--tx-high)}
+.tog-sub{font-size:10.5px;color:var(--tx-muted);margin-top:2px}
+.tog2{position:relative;width:42px;height:24px;flex-shrink:0}
+.tog2 input{display:none}
+.tog2-tr{width:100%;height:100%;background:rgba(255,255,255,.1);border-radius:20px;transition:.25s;display:flex;align-items:center;padding:0 3px}
+.tog2 input:checked + .tog2-tr{background:var(--acc)}
+.tog2-th{width:18px;height:18px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.tog2 input:checked + .tog2-tr .tog2-th{transform:translateX(18px)}
+
+/* series dropdown */
+.continue-block{display:none;margin-top:12px}
+.continue-block.open{display:block}
+.sdd-wrap{position:relative}
+.sdd-trigger{width:100%;min-height:56px;background:var(--l1);border:1.5px solid var(--bd);border-radius:14px;display:flex;align-items:center;cursor:pointer;transition:.18s}
+.sdd-trigger.open{border-color:var(--acc)}
+.sdd-ph{flex:1;padding:0 15px;font-size:12.5px;color:var(--tx-faint)}
+.sdd-sel-inner{flex:1;display:flex;align-items:center;gap:11px;padding:8px 12px}
+.sdd-sel-img{width:40px;height:40px;border-radius:9px;object-fit:cover;flex-shrink:0;border:1.5px solid var(--bd-acc)}
+.sdd-sel-title{font-size:12.5px;font-weight:700;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sdd-sel-meta{font-size:10px;color:var(--acc3);margin-top:2px;font-weight:600}
+.sdd-arrow{padding:0 15px;color:var(--tx-muted);transition:transform .2s;flex-shrink:0}
+.sdd-trigger.open .sdd-arrow{transform:rotate(180deg);color:var(--acc)}
+.sdd-menu{display:none;background:var(--l2);border:1.5px solid var(--acc);border-top:none;border-radius:0 0 14px 14px;max-height:280px;overflow-y:auto;scrollbar-width:none;margin-top:-2px}
+.sdd-menu::-webkit-scrollbar{display:none}
+.sdd-menu.show{display:block}
+.sdd-item{display:flex;align-items:center;gap:11px;padding:11px 13px;cursor:pointer;border-bottom:1px solid var(--bd2);transition:.15s}
+.sdd-item:last-child{border-bottom:none}
+.sdd-item:active{background:rgba(255,0,80,.07)}
+.sdd-item-img{width:46px;height:46px;border-radius:9px;object-fit:cover;flex-shrink:0;border:1px solid var(--bd)}
+.sdd-item-title{font-size:12px;font-weight:700;color:var(--tx-high)}
+.sdd-item-sub{font-size:9.5px;color:var(--tx-muted);margin-top:2px}
+.sel-strip{display:none;background:rgba(255,0,80,.06);border:1.5px solid var(--bd-acc);border-radius:14px;padding:11px 13px;margin-top:10px;align-items:center;gap:11px}
+.sel-strip.show{display:flex}
+.ss-img{width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0;border:1.5px solid var(--bd-acc)}
+.ss-body{flex:1;min-width:0}
+.ss-name{font-size:12.5px;font-weight:700;color:var(--tx-high)}
+.ss-meta{font-size:10px;color:var(--acc3);margin-top:2px;font-weight:600}
+.ss-clear{background:transparent;border:1px solid var(--bd);color:var(--tx-muted);font-size:10px;font-weight:700;padding:5px 11px;border-radius:20px;cursor:pointer;flex-shrink:0}
+
+/* ── FIELD GROUPS ── */
+.field-group{margin-bottom:20px}
+.field-label{font-size:10.5px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between}
+.field-hint{font-size:9.5px;color:var(--tx-faint);font-weight:600;text-transform:none;letter-spacing:0}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.pill-grid{display:flex;flex-wrap:wrap;gap:7px}
+.sel-pill{font-size:11px;font-weight:700;padding:8px 14px;border-radius:20px;border:1.5px solid var(--bd);background:var(--l1);color:var(--tx-body);cursor:pointer;transition:.16s;user-select:none}
+.sel-pill:active{transform:scale(.95)}
+.sel-pill.on{background:rgba(255,0,80,.1);border-color:var(--acc);color:var(--acc3);box-shadow:0 0 0 2px var(--glow-sm)}
+.sel-pill.disabled{opacity:.3;pointer-events:none}
+
+.tf-input,.tf-textarea{width:100%;background:var(--l1);border:1.5px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .18s}
+.tf-input:focus,.tf-textarea:focus{border-color:var(--bd-acc)}
+.tf-input::placeholder,.tf-textarea::placeholder{color:var(--tx-faint)}
+.tf-textarea{resize:vertical;min-height:90px;line-height:1.55}
+.tf-textarea.tall{min-height:170px}
+.char-count{font-size:9px;color:var(--tx-faint);text-align:right;margin-top:5px;font-weight:600}
+.char-count.warn{color:var(--gold)}
+.tf-select{width:100%;background:var(--l1);border:1.5px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none}
+.tf-select option{background:#0e0f13}
+
+/* cover upload */
+.cover-drop{border:1.5px dashed var(--bd);border-radius:14px;height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;background:var(--l1);position:relative;overflow:hidden;transition:.18s}
+.cover-drop.has-img{border-style:solid;border-color:var(--bd-acc)}
+.cover-drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cover-drop-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.75),transparent 45%);display:none}
+.cover-drop.has-img .cover-drop-scrim{display:block}
+.cover-drop-txt{font-size:11px;font-weight:700;color:var(--tx-muted);position:relative;z-index:2}
+.cover-drop.has-img .cover-drop-txt{position:absolute;bottom:10px;left:12px;color:#fff}
+.cover-drop i{font-size:20px;color:var(--tx-faint);position:relative;z-index:2}
+.cover-drop.has-img i{display:none}
+.cover-url-row{display:flex;gap:7px;margin-top:8px}
+.cover-url-row .tf-input{flex:1}
+.cover-url-btn{background:var(--l2);border:1.5px solid var(--bd);color:var(--tx-body);padding:0 14px;border-radius:12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.stock-row{display:flex;gap:7px;margin-top:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.stock-row::-webkit-scrollbar{display:none}
+.stock-thumb{flex-shrink:0;width:60px;height:42px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:.16s}
+.stock-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.stock-thumb.picked{border-color:var(--acc)}
+
+/* tags */
+.tags-wrap{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.tag-chip{display:flex;align-items:center;gap:6px;background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);color:var(--acc3);padding:5px 6px 5px 11px;border-radius:16px;font-size:10.5px;font-weight:700}
+.tag-chip i{cursor:pointer;font-size:9px;color:var(--acc3);opacity:.7}
+.tag-input-inline{background:var(--l1);border:1.5px dashed var(--bd);border-radius:16px;padding:6px 12px;font-size:11px;color:var(--tx-high);outline:none;min-width:100px;flex:1}
+
+/* ── CHAPTER BUILDER ── */
+.ch-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ch-count-lbl{font-size:11px;font-weight:700;color:var(--tx-muted)}
+.add-ch-btn{display:flex;align-items:center;gap:6px;background:var(--acc);color:#fff;border:none;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 0 14px var(--glow-sm)}
+.add-ch-btn:active{transform:scale(.95)}
+.add-ch-btn.disabled{opacity:.35;pointer-events:none;box-shadow:none}
+
+.ch-card{background:var(--l1);border:1.5px solid var(--bd);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.ch-card-hd{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.ch-num-badge{width:28px;height:28px;border-radius:50%;background:var(--l3);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:var(--tx-muted);flex-shrink:0}
+.ch-card-title-wrap{flex:1;min-width:0}
+.ch-card-title{font-size:12px;font-weight:700;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-card-sub{font-size:9.5px;color:var(--tx-faint);margin-top:1px}
+.ch-card-actions{display:flex;gap:6px;flex-shrink:0}
+.ch-mini-btn{width:28px;height:28px;border-radius:8px;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx-muted);cursor:pointer}
+.ch-mini-btn:active{transform:scale(.9)}
+.ch-mini-btn.danger:active{color:#f87171}
+.ch-arrow{font-size:11px;color:var(--tx-faint);transition:transform .22s}
+.ch-arrow.open{transform:rotate(180deg)}
+.ch-card-body{display:none;border-top:1px solid var(--bd2);padding:14px}
+.ch-card-body.open{display:block}
+.ch-field{margin-bottom:12px}
+.ch-field:last-child{margin-bottom:0}
+.ch-field-lbl{font-size:9.5px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:block}
+
+/* mini formatting toolbar */
+.mini-toolbar{display:flex;align-items:center;gap:2px;background:var(--l2);border:1px solid var(--bd);border-radius:10px 10px 0 0;padding:5px 6px;overflow-x:auto;scrollbar-width:none}
+.mini-toolbar::-webkit-scrollbar{display:none}
+.mt-btn{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx-muted);cursor:pointer;flex-shrink:0;transition:.15s}
+.mt-btn:hover{background:rgba(255,255,255,.05);color:var(--tx-high)}
+.mt-btn:active{background:rgba(255,0,80,.1);color:var(--acc)}
+.mt-lbl{font-size:9.5px;font-weight:800;color:var(--tx-muted);padding:0 7px;height:28px;display:flex;align-items:center;cursor:pointer;border-radius:7px;flex-shrink:0}
+.mt-lbl:hover{background:rgba(255,255,255,.05);color:var(--tx-high)}
+.mt-div{width:1px;height:16px;background:var(--bd);margin:0 3px;flex-shrink:0}
+.ch-writing-area{
+  min-height:150px;background:var(--l1);border:1px solid var(--bd);border-top:none;border-radius:0 0 12px 12px;
+  padding:12px 14px;color:var(--tx-high);font-size:13px;line-height:1.65;outline:none;
+}
+.ch-writing-area:empty::before{content:attr(data-placeholder);color:var(--tx-faint);pointer-events:none}
+.ch-writing-area blockquote{border-left:3px solid var(--acc);padding:2px 0 2px 12px;color:var(--tx-muted);font-style:italic;margin:8px 0}
+.ch-writing-area h1,.ch-writing-area h2{font-family:'Playfair Display',serif;color:var(--tx-high);margin:8px 0}
+.ch-word-count{font-size:9.5px;color:var(--tx-faint);text-align:right;margin-top:5px;font-weight:600}
+
+.empty-ch{text-align:center;padding:36px 16px;color:var(--tx-faint);border:1.5px dashed var(--bd);border-radius:14px}
+.empty-ch i{font-size:26px;margin-bottom:8px;display:block;color:var(--tx-faint)}
+.empty-ch p{font-size:11.5px;line-height:1.5}
+
+/* ── ENGAGEMENT (per chapter) — accordion cards ── */
+.eng-block{border-top:1px solid var(--bd2);margin-top:14px;padding-top:14px}
+.eng-block-lbl{font-size:9.5px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.eng-card{background:var(--l2);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+.eng-card.on{border-color:var(--bd-acc)}
+.eng-card-hd{display:flex;align-items:center;gap:9px;padding:10px 11px;cursor:pointer}
+.eng-tool-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.eng-tool-icon.poll{background:var(--poll-soft);border:1px solid var(--poll-bd)}
+.eng-tool-icon.pred{background:var(--pred-soft);border:1px solid var(--pred-bd)}
+.eng-tool-icon.deb{background:var(--deb-soft);border:1px solid var(--deb-bd)}
+.eng-tool-label{flex:1;min-width:0}
+.eng-tool-name{font-size:11.5px;font-weight:700}
+.eng-tool-name.poll{color:var(--poll)}
+.eng-tool-name.pred{color:var(--pred)}
+.eng-tool-name.deb{color:var(--deb)}
+.eng-tool-desc{font-size:9.5px;color:var(--tx-faint);margin-top:1px}
+.mini-tog{width:36px;height:20px;position:relative;flex-shrink:0}
+.mini-tog input{display:none}
+.mini-tog-tr{width:100%;height:100%;border-radius:20px;background:rgba(255,255,255,.1);transition:.22s;display:flex;align-items:center;padding:0 2px}
+.mini-tog input:checked + .mini-tog-tr{background:var(--acc)}
+.mini-tog-th{width:16px;height:16px;border-radius:50%;background:#fff;transition:.22s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mini-tog input:checked + .mini-tog-tr .mini-tog-th{transform:translateX(16px)}
+.eng-arrow{font-size:10px;color:var(--tx-faint);transition:transform .22s;flex-shrink:0;margin-left:2px}
+.eng-arrow.open{transform:rotate(180deg)}
+.eng-arrow.disabled{opacity:.25;pointer-events:none}
+
+.eng-card-body{display:none;padding:11px 12px 4px 12px;border-top:1px solid var(--bd2)}
+.eng-card-body.open{display:block}
+.eng-config-lbl{font-size:9px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.opt-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.opt-input{flex:1;background:var(--l1);border:1px solid var(--bd);border-radius:9px;padding:8px 11px;color:var(--tx-high);font-size:12px;outline:none}
+.opt-del{width:26px;height:26px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--tx-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.add-opt-btn{background:transparent;border:1px dashed var(--bd);color:var(--tx-muted);width:100%;padding:7px;border-radius:9px;font-size:10.5px;font-weight:700;cursor:pointer;margin-bottom:4px}
+.debate-sides-preview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;margin-bottom:4px}
+.deb-side-prev{border-radius:9px;padding:8px;text-align:center;border:1px solid var(--bd)}
+.deb-side-prev.for{background:rgba(52,211,153,.06);border-color:rgba(52,211,153,.2)}
+.deb-side-prev.against{background:rgba(248,113,113,.06);border-color:rgba(248,113,113,.2)}
+
+/* ── REVIEW ── */
+.review-card{background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.review-hero{display:flex;gap:12px;margin-bottom:14px}
+.review-cover{width:64px;height:84px;border-radius:10px;background-size:cover;background-position:center;background-color:var(--l2);flex-shrink:0;border:1px solid var(--bd)}
+.review-hero-body{flex:1;min-width:0}
+.review-hero-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:var(--tx-high);line-height:1.3;margin-bottom:6px}
+.review-badges{display:flex;flex-wrap:wrap;gap:5px}
+.review-badge{font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:8px;background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);color:var(--acc3)}
+.review-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd2);font-size:12px}
+.review-row:last-child{border-bottom:none}
+.review-row-lbl{color:var(--tx-muted);font-weight:600;flex-shrink:0}
+.review-row-val{color:var(--tx-high);font-weight:700;text-align:right}
+.review-plot{font-size:12px;color:var(--tx-body);line-height:1.6;white-space:pre-wrap}
+.review-ch-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd2)}
+.review-ch-item:last-child{border-bottom:none}
+.review-ch-num{width:22px;height:22px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--tx-muted);flex-shrink:0}
+.review-ch-txt{flex:1;font-size:11.5px;color:var(--tx-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.review-ch-words{font-size:9px;color:var(--tx-faint);flex-shrink:0}
+.review-ch-eng{display:flex;gap:3px;flex-shrink:0}
+.review-ch-eng span{font-size:12px}
+
+.settings-section{background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:4px 14px;margin-bottom:12px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd2)}
+.settings-row:last-child{border-bottom:none}
+.settings-row-label{font-size:12px;font-weight:600;color:var(--tx-high)}
+.settings-row-sub{font-size:9.5px;color:var(--tx-muted);margin-top:1px}
+
+.pub-opts{display:flex;gap:8px;margin-bottom:10px}
+.pub-opt{flex:1;padding:11px 8px;border-radius:12px;text-align:center;cursor:pointer;border:1.5px solid var(--bd);background:var(--l1);transition:.15s}
+.pub-opt.sel{border-color:var(--acc);background:rgba(255,0,80,.06)}
+.pub-opt-ico{font-size:16px;margin-bottom:3px}
+.pub-opt-lbl{font-size:10.5px;font-weight:700;color:var(--tx-body)}
+.pub-opt.sel .pub-opt-lbl{color:var(--acc3)}
+.sched-row{display:none;margin-bottom:12px}
+.sched-row.show{display:block}
+
+.warn-box{display:flex;gap:9px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:11.5px;color:#e8c874;line-height:1.5}
+.warn-box i{color:var(--gold);flex-shrink:0;margin-top:1px}
+
+.agree-row{display:flex;align-items:flex-start;gap:9px;padding:12px 0 0}
+.agree-row input{margin-top:2px;accent-color:var(--acc);width:15px;height:15px;flex-shrink:0}
+.agree-row label{font-size:11.5px;color:var(--tx-muted);line-height:1.5}
+.agree-row a{color:var(--acc3);text-decoration:underline}
+
+/* ── SUCCESS STATE ── */
+.success-wrap{display:none;flex-direction:column;align-items:center;text-align:center;padding:60px 24px 20px}
+.success-wrap.show{display:flex}
+.success-ico{width:72px;height:72px;border-radius:50%;background:rgba(52,211,153,.1);border:1.5px solid rgba(52,211,153,.3);display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--green);margin-bottom:18px}
+.success-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--tx-high);margin-bottom:8px}
+.success-sub{font-size:12.5px;color:var(--tx-muted);line-height:1.6;max-width:280px;margin-bottom:22px}
+.success-actions{display:flex;flex-direction:column;gap:9px;width:100%;max-width:280px}
+.success-btn{padding:12px;border-radius:14px;font-size:13px;font-weight:800;cursor:pointer;border:none}
+.success-btn.primary{background:var(--acc);color:#fff;box-shadow:0 0 16px var(--glow-sm)}
+.success-btn.ghost{background:var(--l1);border:1.5px solid var(--bd);color:var(--tx-body)}
+
+/* ── WIZARD NAV ── */
+.wizard-nav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(0,0,0,.97);backdrop-filter:blur(20px);border-top:1px solid var(--bd);padding:12px 16px calc(var(--safe-b) + 12px);display:flex;gap:10px}
+.wnav-btn{flex:1;padding:13px;border-radius:14px;font-size:13px;font-weight:800;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
+.wnav-btn:active{transform:scale(.97)}
+.wnav-btn.back{background:var(--l1);border:1.5px solid var(--bd);color:var(--tx-body);flex:0 0 52px}
+.wnav-btn.next{background:var(--acc);color:#fff;box-shadow:0 0 16px var(--glow-sm)}
+.wnav-btn.next.disabled{opacity:.4;pointer-events:none;box-shadow:none}
+.wnav-btn.submit{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;box-shadow:0 0 18px var(--glow)}
+
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:8px 18px;border-radius:28px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="tb-back" onclick="goBackOrExit()"><i class="fas fa-chevron-left"></i></div>
+  <div class="tb-title">
+    <div class="tb-h">Create Story</div>
+    <div class="tb-sub" id="tbSub">Step 1 · Story Type</div>
+  </div>
+  <div class="tb-save-draft" onclick="saveDraft(true)">Save draft</div>
+</div>
+
+<!-- STEP RAIL -->
+<div class="step-rail" id="stepRail"></div>
+
+<div class="stage-wrap" id="stageWrap">
+
+  <!-- ═══ STAGE: TYPE ═══ -->
+  <div class="stage" data-key="type">
+    <div class="stage-hd">
+      <div class="stage-eyebrow" id="typeEyebrow">Step</div>
+      <div class="stage-title">What are you submitting?</div>
+      <div class="stage-desc">Choose the format that fits your story.</div>
+    </div>
+    <div class="type-grid">
+      <div class="type-card" data-type="short" onclick="selectType('short')">
+        <div class="type-check"><i class="fas fa-check"></i></div>
+        <div class="type-ico"><i class="fas fa-feather"></i></div>
+        <div class="type-body">
+          <div class="type-name">Short Story</div>
+          <div class="type-desc">A single, self-contained piece. No seasons — just one complete read.</div>
+        </div>
+      </div>
+      <div class="type-card" data-type="series" onclick="selectType('series')">
+        <div class="type-check"><i class="fas fa-check"></i></div>
+        <div class="type-ico"><i class="fas fa-book-open"></i></div>
+        <div class="type-body">
+          <div class="type-name">Series</div>
+          <div class="type-desc">An ongoing story told across multiple chapters.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="or-div">or import a file</div>
+    <div class="upload-zone" id="uploadZone" onclick="triggerFileUpload()">
+      <div class="uz-default" id="uzDefault">
+        <div class="uz-icon"><i class="fas fa-file-arrow-up"></i></div>
+        <div class="uz-title">Drop or tap to upload a .txt file</div>
+        <div class="uz-sub">We'll pull in the title and drop the text into your first chapter. (.docx/.pdf: paste the text manually for now.)</div>
+      </div>
+      <div class="uz-file-row">
+        <div class="uz-file-ico"><i class="fas fa-file-circle-check"></i></div>
+        <div>
+          <div class="uz-file-name" id="uzFileName">story.txt</div>
+          <div class="uz-file-sub" id="uzFileSub">Imported</div>
+        </div>
+        <div class="uz-file-remove" onclick="event.stopPropagation();removeUpload()"><i class="fas fa-times"></i></div>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="handleFileSelect(this)"/>
+  </div>
+
+  <!-- ═══ STAGE: SERIES LINK (series only) ═══ -->
+  <div class="stage" data-key="link">
+    <div class="stage-hd">
+      <div class="stage-eyebrow">Step</div>
+      <div class="stage-title">New series, or continuing one?</div>
+      <div class="stage-desc">Link this chapter to an existing series and we'll auto-fill the season, chapter number, category and cover.</div>
+    </div>
+
+    <div class="tog-row" id="contTogRow" onclick="handleToggleClick(event)">
+      <div>
+        <div class="tog-label">📂 Continue an existing series?</div>
+        <div class="tog-sub">Pick a series you already have</div>
+      </div>
+      <label class="tog2" onclick="event.stopPropagation()">
+        <input type="checkbox" id="contChk" onchange="handleToggleChange()"/>
+        <div class="tog2-tr"><div class="tog2-th"></div></div>
+      </label>
+    </div>
+
+    <div class="continue-block" id="continueBlock">
+      <div class="sdd-wrap" id="sddWrap">
+        <div class="sdd-trigger" id="sddTrigger" onclick="toggleDropdown()">
+          <div id="sddFace"><span class="sdd-ph">Tap to choose a series…</span></div>
+          <i class="fas fa-chevron-down sdd-arrow" id="sddArrow"></i>
+        </div>
+        <div class="sdd-menu" id="sddMenu"></div>
+      </div>
+      <div class="sel-strip" id="selStrip">
+        <img class="ss-img" id="ssImg" src="" alt=""/>
+        <div class="ss-body">
+          <div class="ss-name" id="ssName"></div>
+          <div class="ss-meta" id="ssMeta"></div>
+        </div>
+        <button class="ss-clear" onclick="clearSeriesChoice()">✕ Change</button>
+      </div>
+    </div>
+
+    <div class="field-group" style="margin-top:18px" id="newSeriesTitleFg">
+      <div class="field-label">Series Title</div>
+      <input class="tf-input" id="seriesTitleInp" placeholder="e.g. His Secret and Her Shadow" oninput="markUnsaved();updateNavButtons()"/>
+    </div>
+    <div class="field-row">
+      <div>
+        <div class="field-label">Season</div>
+        <input class="tf-input" id="seasonInp" type="number" value="1" min="1" max="99"/>
+      </div>
+      <div>
+        <div class="field-label">Chapter #</div>
+        <input class="tf-input" id="chapterNumInp" type="number" value="1" min="1"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STAGE: DETAILS ═══ -->
+  <div class="stage" data-key="details">
+    <div class="stage-hd">
+      <div class="stage-eyebrow">Step</div>
+      <div class="stage-title">Story details</div>
+      <div class="stage-desc">This is how readers will find and judge your story.</div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Cover image</div>
+      <div class="cover-drop" id="coverDrop" onclick="document.getElementById('coverFile').click()">
+        <img id="coverPreviewImg" style="display:none" alt=""/>
+        <div class="cover-drop-scrim"></div>
+        <i class="fas fa-image"></i>
+        <div class="cover-drop-txt">Tap to upload a cover image</div>
+      </div>
+      <input type="file" id="coverFile" accept="image/*" style="display:none" onchange="handleCoverFile(event)"/>
+      <div class="cover-url-row">
+        <input class="tf-input" id="coverUrlInput" placeholder="…or paste an image URL"/>
+        <button class="cover-url-btn" onclick="applyCoverUrl()">Use</button>
+      </div>
+      <div class="stock-row" id="stockRow"></div>
+    </div>
+
+    <div class="field-group" id="standaloneTitleFg">
+      <div class="field-label">Title</div>
+      <input class="tf-input" id="titleInput" maxlength="120" placeholder="e.g. I came home early and caught…" oninput="onTitleInput()"/>
+      <div class="char-count" id="titleCount">0 / 120</div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Category <span class="field-hint">pick 1</span></div>
+      <div class="pill-grid" id="categoryGrid"></div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Genres <span class="field-hint" id="genreCounter">0 / 5 selected</span></div>
+      <div class="pill-grid" id="genreGrid"></div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Tags <span class="field-hint" id="tagCounter">0 / 5 added</span></div>
+      <div class="tags-wrap" id="tagsWrap">
+        <input class="tag-input-inline" id="tagInput" placeholder="Type a tag and press Enter…" onkeydown="handleTagKey(event)"/>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Short synopsis <span class="field-hint">shown on story cards</span></div>
+      <textarea class="tf-textarea" id="synopsisInput" maxlength="280" placeholder="One or two sentences that hook a reader scrolling past…" oninput="updateCharCount('synopsisInput','synopsisCount',280)"></textarea>
+      <div class="char-count" id="synopsisCount">0 / 280</div>
+    </div>
+  </div>
+
+  <!-- ═══ STAGE: FULL PLOT ═══ -->
+  <div class="stage" data-key="plot">
+    <div class="stage-hd">
+      <div class="stage-eyebrow">Step</div>
+      <div class="stage-title">The full plot</div>
+      <div class="stage-desc">Map out the whole story, beginning to end. This is for our editors — it isn't shown to readers.</div>
+    </div>
+    <div class="field-group" style="margin-bottom:0">
+      <textarea class="tf-textarea tall" id="plotInput" placeholder="Lay out the full arc of your story here — where it starts, the turns it takes, and how it ends."></textarea>
+      <div class="char-count" id="plotCount">0 words</div>
+    </div>
+  </div>
+
+  <!-- ═══ STAGE: CHAPTERS ═══ -->
+  <div class="stage" data-key="chapters">
+    <div class="stage-hd">
+      <div class="stage-eyebrow">Step</div>
+      <div class="stage-title" id="chStageTitle">Write it chapter by chapter</div>
+      <div class="stage-desc" id="chStageDesc">Write each chapter, then optionally turn on a poll, debate, or prediction for it.</div>
+    </div>
+
+    <div class="ch-toolbar">
+      <div class="ch-count-lbl" id="chCountLbl">0 chapters</div>
+      <button class="add-ch-btn" id="addChBtn" onclick="addChapter()"><i class="fas fa-plus"></i> Add chapter</button>
+    </div>
+
+    <div id="chaptersList"></div>
+    <div class="empty-ch" id="emptyChState">
+      <i class="fas fa-book"></i>
+      <p>No chapters yet. Tap "Add chapter" to start writing.</p>
+    </div>
+  </div>
+
+  <!-- ═══ STAGE: REVIEW & SUBMIT ═══ -->
+  <div class="stage" data-key="review">
+    <div class="stage-hd">
+      <div class="stage-eyebrow">Step</div>
+      <div class="stage-title">Review & submit</div>
+      <div class="stage-desc">Double-check everything below, then send it to our editors.</div>
+    </div>
+
+    <div class="warn-box"><i class="fas fa-circle-info"></i><span>Submissions are typically reviewed within 24–48 hours.</span></div>
+
+    <div class="review-card">
+      <div class="review-hero">
+        <div class="review-cover" id="reviewCover"></div>
+        <div class="review-hero-body">
+          <div class="review-hero-title" id="reviewTitle">Untitled Story</div>
+          <div class="review-badges" id="reviewBadges"></div>
+        </div>
+      </div>
+      <div class="review-row"><span class="review-row-lbl">Synopsis</span></div>
+      <div class="review-plot" id="reviewSynopsis" style="margin-bottom:10px"></div>
+      <div class="review-row"><span class="review-row-lbl">Full plot</span></div>
+      <div class="review-plot" id="reviewPlot"></div>
+    </div>
+
+    <div class="review-card">
+      <div class="review-row"><span class="review-row-lbl">Chapters</span><span class="review-row-val" id="reviewChCount">0</span></div>
+      <div id="reviewChList" style="margin-top:6px"></div>
+    </div>
+
+    <div class="pub-opts">
+      <div class="pub-opt sel" id="pubNowOpt" onclick="setPubMode('now')">
+        <div class="pub-opt-ico">🚀</div><div class="pub-opt-lbl">Publish now</div>
+      </div>
+      <div class="pub-opt" id="pubSchedOpt" onclick="setPubMode('schedule')">
+        <div class="pub-opt-ico">⏰</div><div class="pub-opt-lbl">Schedule</div>
+      </div>
+    </div>
+    <div class="sched-row" id="schedRow">
+      <input class="tf-input" type="datetime-local" id="schedDateInp"/>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-row"><div><div class="settings-row-label">Allow comments</div><div class="settings-row-sub">Readers can comment on your story</div></div><label class="tog2"><input type="checkbox" id="setComments" checked/><div class="tog2-tr"><div class="tog2-th"></div></div></label></div>
+      <div class="settings-row"><div><div class="settings-row-label">Allow tips</div><div class="settings-row-sub">Readers can send you money</div></div><label class="tog2"><input type="checkbox" id="setTips" checked/><div class="tog2-tr"><div class="tog2-th"></div></div></label></div>
+      <div class="settings-row"><div><div class="settings-row-label">Visible to everyone</div><div class="settings-row-sub">Off = followers only</div></div><label class="tog2"><input type="checkbox" id="setPublic" checked/><div class="tog2-tr"><div class="tog2-th"></div></div></label></div>
+    </div>
+
+    <div class="agree-row">
+      <input type="checkbox" id="agreeCheck" onchange="updateNavButtons()"/>
+      <label for="agreeCheck">I confirm this is my original work and I agree to Droboard's <a href="#">Content Guidelines</a> and <a href="#">Submission Terms</a>.</label>
+    </div>
+  </div>
+
+  <!-- ═══ SUCCESS STATE ═══ -->
+  <div class="success-wrap" id="successWrap">
+    <div class="success-ico"><i class="fas fa-check"></i></div>
+    <div class="success-title" id="successTitle">Submitted for review!</div>
+    <div class="success-sub" id="successSub">Your story has been sent to our editors.</div>
+    <div class="success-actions">
+      <button class="success-btn primary" onclick="location.href='profile.html'">Go to my profile</button>
+      <button class="success-btn ghost" onclick="startAnother()">Submit another story</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- WIZARD NAV -->
+<div class="wizard-nav" id="wizardNav">
+  <button class="wnav-btn back" id="wnavBack" onclick="prevStage()"><i class="fas fa-chevron-left"></i></button>
+  <button class="wnav-btn next" id="wnavNext" onclick="nextStage()">Continue <i class="fas fa-arrow-right" style="font-size:11px"></i></button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════════ */
+const CATEGORIES = ['💔 Betrayal','👑 Family','🎓 Campus','🔥 Revenge','🏙️ Urban Love','💍 Marriage','🌙 Elegy','😱 Thriller'];
+const GENRES = ['💔 Betrayal','👑 Family','✨ Twist','🏙️ Urban','💍 Marriage','🎓 Campus','🔥 Revenge','💔 Heartbreak','😂 Comedy','😱 Thriller','🤝 Friendship','🔍 Mystery','✨ Inspirational','🙏 Faith','🌙 Elegy'];
+const MAX_GENRES = 5, MAX_TAGS = 5;
+
+const DEMO_SERIES = [
+  {id:'s1',title:'His Secret and Her Shadow',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',category:'💔 Betrayal',season:1,lastChapter:7},
+  {id:'s2',title:'The Lagos Wives',cover:'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',category:'💍 Marriage',season:2,lastChapter:14},
+  {id:'s3',title:'Campus Confessions',cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',category:'🎓 Campus',season:1,lastChapter:4},
+  {id:'s4',title:'Midnight Revenge',cover:'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',category:'🔥 Revenge',season:1,lastChapter:12},
+];
+
+const STOCKS = [
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',
+  'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',
+  'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',
+  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',
+  'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=400&q=75',
+  'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=400&q=75',
+];
+
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+let state = {
+  type: null, uploadedText: '',
+  isContinuing: false, chosenSeriesId: null,
+  seriesTitle: '', season: 1, chapterNum: 1,
+  category: null, genres: [], tags: [],
+  coverData: '', title: '', synopsis: '', plot: '',
+  chapters: [], // {id, title, content, eng:{poll,pred,debate}}
+  pubMode: 'now',
+};
+let chIdCounter = 0;
+let dropdownOpen = false;
+
+function mkEngState(){ return {
+  poll:{on:false,expanded:false,q:'',opts:['','']},
+  pred:{on:false,expanded:false,q:'',opts:['','','']},
+  debate:{on:false,expanded:false,motion:''},
+};}
+
+/* Stage order depends on type: 'link' only applies to series */
+function stageOrder(){
+  const all = ['type','link','details','plot','chapters','review'];
+  if (state.type !== 'series') return all.filter(k => k !== 'link');
+  return all;
+}
+let currentIdx = 0; // index into stageOrder()
+
+const STAGE_TITLES = {
+  type:'Story Type', link:'Series Link', details:'Details', plot:'Full Plot', chapters:'Chapters', review:'Review'
+};
+
+/* ══════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════ */
+function toast(msg, dur=2200){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), dur);
+}
+function wordCount(str){ return (str||'').trim().match(/\S+/g)?.length || 0; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function markUnsaved(){ /* hook for future autosave indicator */ }
+
+/* ══════════════════════════════════════════════════════
+   STEP RAIL
+══════════════════════════════════════════════════════ */
+function renderStepRail(){
+  const order = stageOrder();
+  document.getElementById('stepRail').innerHTML = order.map((key,i)=>{
+    const n = i+1;
+    const cls = i < currentIdx ? 'done' : i === currentIdx ? 'active' : '';
+    const icon = i < currentIdx ? '<i class="fas fa-check" style="font-size:9px"></i>' : n;
+    return `<div class="step-dot-wrap ${cls}" onclick="jumpToStep(${i})">
+      <div class="step-line"></div>
+      <div class="step-dot">${icon}</div>
+      <div class="step-lbl">${STAGE_TITLES[key]}</div>
+    </div>`;
+  }).join('');
+}
+function jumpToStep(i){
+  if (i > currentIdx && !stageIsValid(stageOrder()[currentIdx])) { toast('⚠️ Please finish this step first'); return; }
+  if (i < currentIdx) goToStage(i);
+}
+
+/* ══════════════════════════════════════════════════════
+   STAGE NAVIGATION
+══════════════════════════════════════════════════════ */
+function goToStage(i){
+  const order = stageOrder();
+  currentIdx = Math.max(0, Math.min(i, order.length-1));
+  const key = order[currentIdx];
+  document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('active', s.dataset.key === key));
+  document.getElementById('tbSub').textContent = `Step ${currentIdx+1} of ${order.length} · ${STAGE_TITLES[key]}`;
+  renderStepRail();
+  updateNavButtons();
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (key === 'chapters') renderChapterStageCopy();
+  if (key === 'review') renderReview();
+}
+function nextStage(){
+  const order = stageOrder();
+  const key = order[currentIdx];
+  if (!stageIsValid(key)){ flagInvalid(key); return; }
+  if (key === 'review'){ submitStory(); return; }
+  goToStage(currentIdx+1);
+}
+function prevStage(){ if (currentIdx>0) goToStage(currentIdx-1); }
+
+function updateNavButtons(){
+  const order = stageOrder();
+  const key = order[currentIdx];
+  const backBtn = document.getElementById('wnavBack');
+  const nextBtn = document.getElementById('wnavNext');
+  backBtn.style.visibility = currentIdx===0 ? 'hidden' : 'visible';
+  if (key === 'review'){
+    nextBtn.className = 'wnav-btn submit';
+    nextBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Review';
+  } else {
+    nextBtn.className = 'wnav-btn next';
+    nextBtn.innerHTML = 'Continue <i class="fas fa-arrow-right" style="font-size:11px"></i>';
+  }
+  nextBtn.classList.toggle('disabled', !stageIsValid(key));
+}
+
+function stageIsValid(key){
+  if (key==='type') return !!state.type;
+  if (key==='link'){
+    if (state.isContinuing) return !!state.chosenSeriesId;
+    return document.getElementById('seriesTitleInp').value.trim().length>1;
+  }
+  if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4;
+  if (key==='plot') return wordCount(document.getElementById('plotInput').value)>=15;
+  if (key==='chapters') return state.chapters.length>0 && state.chapters.every(c=>{
+    const wa = document.getElementById('wa'+c.id);
+    const text = (wa ? wa.innerText : (c.content||'').replace(/<[^>]+>/g,' ')) || '';
+    return c.title.trim() && text.trim().length>20;
+  });
+  if (key==='review') return document.getElementById('agreeCheck')?.checked;
+  return true;
+} 
+function flagInvalid(key){
+  const msgs = {
+    type:'⚠️ Choose a story type to continue',
+    link:'⚠️ Pick a series to continue, or name your new series',
+    details:'⚠️ Add a title, category, at least one genre, and a synopsis',
+    plot:'⚠️ Add a full plot (15+ words)',
+    chapters:'⚠️ Every chapter needs a title and some content (20+ characters)',
+    review:'⚠️ Please confirm the agreement checkbox',
+  };
+  toast(msgs[key] || '⚠️ Please complete this step');
+}
+function getActiveTitle(){
+  if (state.type === 'series'){
+    if (state.isContinuing && state.chosenSeriesId){
+      const s = DEMO_SERIES.find(x=>x.id===state.chosenSeriesId);
+      return s ? s.title : '';
+    }
+    return document.getElementById('seriesTitleInp').value.trim();
+  }
+  return document.getElementById('titleInput').value.trim();
+}
+
+/* ══════════════════════════════════════════════════════
+   STAGE: TYPE
+══════════════════════════════════════════════════════ */
+function selectType(t){
+  state.type = t;
+  document.querySelectorAll('.type-card').forEach(c=>c.classList.toggle('sel', c.dataset.type===t));
+  document.getElementById('standaloneTitleFg').style.display = t==='series' ? 'none' : '';
+  updateNavButtons();
+}
+
+function triggerFileUpload(){ document.getElementById('fileInput').click(); }
+function handleFileSelect(input){
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    state.uploadedText = e.target.result;
+    document.getElementById('uploadZone').classList.add('has-file');
+    document.getElementById('uzFileName').textContent = file.name;
+    document.getElementById('uzFileSub').textContent = `${(file.size/1024).toFixed(1)} KB · Ready to import`;
+    // Auto-fill title guess from filename
+    const guess = file.name.replace(/\.[^.]+$/,'').replace(/[_-]/g,' ');
+    const titleGuess = guess.charAt(0).toUpperCase()+guess.slice(1);
+    if (!document.getElementById('titleInput').value) document.getElementById('titleInput').value = titleGuess;
+    if (!document.getElementById('seriesTitleInp').value) document.getElementById('seriesTitleInp').value = titleGuess;
+    toast('✅ File imported — text will fill Chapter 1');
+  };
+  reader.readAsText(file);
+}
+function removeUpload(){
+  state.uploadedText='';
+  document.getElementById('uploadZone').classList.remove('has-file');
+  document.getElementById('fileInput').value='';
+}
+
+/* ══════════════════════════════════════════════════════
+   STAGE: SERIES LINK
+══════════════════════════════════════════════════════ */
+function buildDropdownMenu(){
+  document.getElementById('sddMenu').innerHTML = DEMO_SERIES.map(s=>{
+    const nextCh = s.lastChapter+1;
+    return `<div class="sdd-item" data-id="${s.id}" onclick="chooseSeries('${s.id}')">
+      <img class="sdd-item-img" src="${s.cover}" loading="lazy"/>
+      <div>
+        <div class="sdd-item-title">${esc(s.title)}</div>
+        <div class="sdd-item-sub">${s.category} · Season ${s.season} · next: Ch.${nextCh}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function handleToggleClick(e){ if (e.target.closest('.tog2')) return; const chk=document.getElementById('contChk'); chk.checked=!chk.checked; applyToggleState(chk.checked); }
+function handleToggleChange(){ applyToggleState(document.getElementById('contChk').checked); }
+function applyToggleState(isOn){
+  state.isContinuing = isOn;
+  document.getElementById('contTogRow').classList.toggle('on', isOn);
+  const block = document.getElementById('continueBlock');
+  block.classList.toggle('open', isOn);
+  document.getElementById('newSeriesTitleFg').style.display = isOn ? 'none' : '';
+  if (!isOn){ clearSeriesChoice(); }
+  updateNavButtons();
+}
+function toggleDropdown(){ dropdownOpen = !dropdownOpen; document.getElementById('sddMenu').classList.toggle('show', dropdownOpen); document.getElementById('sddTrigger').classList.toggle('open', dropdownOpen); }
+function chooseSeries(id){
+  const s = DEMO_SERIES.find(x=>x.id===id); if (!s) return;
+  state.chosenSeriesId = id;
+  const nextCh = s.lastChapter+1;
+  document.getElementById('seasonInp').value = s.season;
+  document.getElementById('chapterNumInp').value = nextCh;
+  pickCategory(s.category);
+  setCover(s.cover);
+  document.getElementById('sddFace').innerHTML = `<div class="sdd-sel-inner"><img class="sdd-sel-img" src="${s.cover}"/><div><div class="sdd-sel-title">${esc(s.title)}</div><div class="sdd-sel-meta">Adding Chapter ${nextCh}</div></div></div>`;
+  document.getElementById('selStrip').classList.add('show');
+  document.getElementById('ssImg').src = s.cover;
+  document.getElementById('ssName').textContent = s.title;
+  document.getElementById('ssMeta').textContent = `Season ${s.season} · Adding Chapter ${nextCh}`;
+  toggleDropdown();
+  toast(`✅ Linked to "${s.title}" — writing Chapter ${nextCh}`);
+  updateNavButtons();
+}
+function clearSeriesChoice(){
+  state.chosenSeriesId = null;
+  document.getElementById('sddFace').innerHTML = `<span class="sdd-ph">Tap to choose a series…</span>`;
+  document.getElementById('selStrip').classList.remove('show');
+  updateNavButtons();
+}
+document.addEventListener('click', function(e){
+  const trigger = document.getElementById('sddTrigger'), menu = document.getElementById('sddMenu');
+  if (dropdownOpen && trigger && menu && !trigger.contains(e.target) && !menu.contains(e.target)){ dropdownOpen=false; menu.classList.remove('show'); trigger.classList.remove('open'); }
+}, true);
+
+/* ══════════════════════════════════════════════════════
+   STAGE: DETAILS
+══════════════════════════════════════════════════════ */
+function renderCategoryGrid(){
+  document.getElementById('categoryGrid').innerHTML = CATEGORIES.map(c=>
+    `<div class="sel-pill${state.category===c?' on':''}" onclick="pickCategory('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('');
+}
+function pickCategory(c){ state.category = c; renderCategoryGrid(); updateNavButtons(); }
+function renderGenreGrid(){
+  document.getElementById('genreGrid').innerHTML = GENRES.map(g=>{
+    const on = state.genres.includes(g);
+    const disabled = !on && state.genres.length>=MAX_GENRES;
+    return `<div class="sel-pill${on?' on':''}${disabled?' disabled':''}" onclick="toggleGenre('${g.replace(/'/g,"\\'")}')">${g}</div>`;
+  }).join('');
+  document.getElementById('genreCounter').textContent = `${state.genres.length} / ${MAX_GENRES} selected`;
+}
+function toggleGenre(g){
+  const i = state.genres.indexOf(g);
+  if (i>-1) state.genres.splice(i,1);
+  else { if (state.genres.length>=MAX_GENRES){ toast(`Max ${MAX_GENRES} genres`); return; } state.genres.push(g); }
+  renderGenreGrid(); updateNavButtons();
+}
+function renderTags(){
+  const wrap = document.getElementById('tagsWrap');
+  const chips = state.tags.map((t,i)=>`<div class="tag-chip">#${esc(t)}<i class="fas fa-times" onclick="removeTag(${i})"></i></div>`).join('');
+  wrap.innerHTML = chips + `<input class="tag-input-inline" id="tagInput" placeholder="${state.tags.length>=MAX_TAGS?'Max tags reached':'Type a tag and press Enter…'}" ${state.tags.length>=MAX_TAGS?'disabled':''} onkeydown="handleTagKey(event)"/>`;
+  document.getElementById('tagCounter').textContent = `${state.tags.length} / ${MAX_TAGS} added`;
+}
+function handleTagKey(e){
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const val = e.target.value.trim().replace(/^#/,'');
+  if (!val) return;
+  if (state.tags.length>=MAX_TAGS){ toast(`Max ${MAX_TAGS} tags`); return; }
+  if (state.tags.includes(val)){ toast('Tag already added'); e.target.value=''; return; }
+  state.tags.push(val); renderTags();
+  document.getElementById('tagInput')?.focus();
+}
+function removeTag(i){ state.tags.splice(i,1); renderTags(); }
+function onTitleInput(){
+  const n = document.getElementById('titleInput').value.length;
+  document.getElementById('titleCount').textContent = `${n} / 120`;
+  updateNavButtons();
+}
+function updateCharCount(inputId,countId,max){
+  const val = document.getElementById(inputId).value;
+  const el = document.getElementById(countId);
+  el.textContent = `${val.length} / ${max}`;
+  el.classList.toggle('warn', val.length > max*0.9);
+  updateNavButtons();
+}
+function handleCoverFile(e){
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => setCover(ev.target.result);
+  reader.readAsDataURL(file);
+}
+function applyCoverUrl(){
+  const url = document.getElementById('coverUrlInput').value.trim();
+  if (!url) { toast('Paste an image URL first'); return; }
+  setCover(url);
+}
+function setCover(src){
+  state.coverData = src;
+  const drop = document.getElementById('coverDrop');
+  const img = document.getElementById('coverPreviewImg');
+  img.src = src; img.style.display = 'block';
+  drop.classList.add('has-img');
+  drop.querySelector('.cover-drop-txt').textContent = 'Tap to change cover';
+}
+function buildStockRow(){
+  document.getElementById('stockRow').innerHTML = STOCKS.map((url,i)=>
+    `<div class="stock-thumb" id="st${i}" onclick="pickStock('${url}',${i})"><img src="${url}" loading="lazy"/></div>`).join('');
+}
+function pickStock(url,idx){
+  setCover(url);
+  document.querySelectorAll('.stock-thumb').forEach(el=>el.classList.remove('picked'));
+  document.getElementById(`st${idx}`)?.classList.add('picked');
+}
+
+/* ══════════════════════════════════════════════════════
+   STAGE: PLOT
+══════════════════════════════════════════════════════ */
+document.getElementById('plotInput').addEventListener('input', function(){
+  state.plot = this.value;
+  document.getElementById('plotCount').textContent = `${wordCount(this.value)} words`;
+  updateNavButtons();
+});
+
+/* ══════════════════════════════════════════════════════
+   STAGE: CHAPTERS
+══════════════════════════════════════════════════════ */
+function renderChapterStageCopy(){
+  const isShort = state.type === 'short';
+  document.getElementById('chStageTitle').textContent = isShort ? 'Write your story' : 'Write it chapter by chapter';
+  document.getElementById('chStageDesc').textContent = isShort
+    ? 'A short story is a single piece — write it below, then optionally add a poll/debate/prediction.'
+    : 'Write each chapter, then optionally turn on a poll, debate, or prediction for it.';
+  document.getElementById('addChBtn').style.display = isShort ? 'none' : 'flex';
+  if (isShort && state.chapters.length === 0) addChapter();
+  if (!isShort && state.chapters.length === 0) addChapter();
+  renderChapters();
+}
+function addChapter(){
+  if (state.type==='short' && state.chapters.length>=1) return;
+  chIdCounter++;
+  const ch = { id: chIdCounter, title:'', content:'', open:true, eng: mkEngState() };
+  state.chapters.push(ch);
+  // Import uploaded text into first chapter only, once
+  if (state.uploadedText && state.chapters.length===1){
+    ch.content = state.uploadedText.split(/\n\n+/).map(p=>`<p>${esc(p)}</p>`).join('');
+  }
+  renderChapters();
+  updateNavButtons();
+  setTimeout(()=>{ document.getElementById(`chCard-${ch.id}`)?.scrollIntoView({behavior:'smooth', block:'center'}); }, 60);
+}
+function removeChapter(id){
+  state.chapters = state.chapters.filter(c=>c.id!==id);
+  renderChapters(); updateNavButtons();
+}
+function toggleChapterOpen(id){
+  syncChapterContent(id);
+  const ch = state.chapters.find(c=>c.id===id); if (!ch) return;
+  ch.open = !ch.open; renderChapters();
+}
+function moveChapter(id, dir){
+  syncChapterContent(id);
+  const i = state.chapters.findIndex(c=>c.id===id); const j = i+dir;
+  if (j<0 || j>=state.chapters.length) return;
+  [state.chapters[i], state.chapters[j]] = [state.chapters[j], state.chapters[i]];
+  renderChapters();
+}
+function updateChTitle(id, val){
+  const ch = state.chapters.find(c=>c.id===id); if (!ch) return;
+  ch.title = val;
+  const dispTitle = document.getElementById('chTitle-disp-'+id);
+  if (dispTitle) dispTitle.textContent = val.trim() || 'Untitled chapter';
+  updateNavButtons();
+}
+/* Persist the contenteditable's current HTML into state so re-renders never wipe what was typed */
+function syncChapterContent(id){
+  const ch = state.chapters.find(c=>c.id===id); if (!ch) return;
+  const wa = document.getElementById('wa'+id);
+  if (wa) ch.content = wa.innerHTML;
+}
+function updateChWordCount(id){
+  syncChapterContent(id);
+  const wa = document.getElementById('wa'+id);
+  const wc = wordCount(wa?.innerText || '');
+  const el = document.getElementById('wc-disp-'+id);
+  if (el) el.textContent = `${wc} words`;
+  const sub = document.getElementById('chSub-disp-'+id);
+  const ch = state.chapters.find(c=>c.id===id);
+  if (sub && ch){
+    const tags = [];
+    if (ch.eng.poll.on) tags.push('poll');
+    if (ch.eng.pred.on) tags.push('prediction');
+    if (ch.eng.debate.on) tags.push('debate');
+    sub.textContent = `${wc} words${tags.length?' · '+tags.join(', '):''}`;
+  }
+  updateNavButtons();
+}
+function fmtCh(id, cmd){
+  const wa = document.getElementById('wa'+id); wa.focus();
+  if (cmd==='h1') document.execCommand('formatBlock', false, 'h1');
+  else if (cmd==='h2') document.execCommand('formatBlock', false, 'h2');
+  else if (cmd==='blockquote') document.execCommand('formatBlock', false, 'blockquote');
+  else document.execCommand(cmd);
+  updateChWordCount(id);
+}
+function insertSceneBreak(id){
+  const wa = document.getElementById('wa'+id); wa.focus();
+  document.execCommand('insertHTML', false, '<p style="text-align:center;color:#555;letter-spacing:.3em">✦ ✦ ✦</p><p><br></p>');
+  updateChWordCount(id);
+}
+
+/* Engagement */
+function toggleEngTool(chId, type){
+  syncChapterContent(chId);
+  const ch = state.chapters.find(c=>c.id===chId); if (!ch) return;
+  ch.eng[type].on = !ch.eng[type].on;
+  ch.eng[type].expanded = ch.eng[type].on; // auto-expand when turning on, auto-collapse when off
+  renderChapters();
+  updateChWordCount(chId);
+}
+/* Header-only click: expand/collapse the accordion body without touching the on/off switch */
+function toggleEngExpand(chId, type){
+  syncChapterContent(chId);
+  const ch = state.chapters.find(c=>c.id===chId); if (!ch) return;
+  if (!ch.eng[type].on) return;
+  ch.eng[type].expanded = !ch.eng[type].expanded;
+  renderChapters();
+}
+function updateEngField(chId, type, field, val){
+  const ch = state.chapters.find(c=>c.id===chId); if (!ch) return;
+  ch.eng[type][field] = val;
+}
+function updateOpt(chId, type, i, val){
+  const ch = state.chapters.find(c=>c.id===chId); if (!ch) return;
+  ch.eng[type].opts[i] = val;
+}
+function addOpt(chId, type){
+  syncChapterContent(chId);
+  const ch = state.chapters.find(c=>c.id===chId); if (!ch || ch.eng[type].opts.length>=4) return;
+  ch.eng[type].opts.push(''); renderChapters();
+}
+function removeOpt(chId, type, i){
+  syncChapterContent(chId);
+  const ch = state.chapters.find(c=>c.id===chId); if (!ch || ch.eng[type].opts.length<=2) return;
+  ch.eng[type].opts.splice(i,1); renderChapters();
+}
+
+function renderChapters(){
+  const list = document.getElementById('chaptersList');
+  const empty = document.getElementById('emptyChState');
+  const isShort = state.type === 'short';
+  document.getElementById('chCountLbl').textContent = isShort ? '1 story piece' : `${state.chapters.length} chapter${state.chapters.length===1?'':'s'}`;
+
+  if (!state.chapters.length){ list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  function engCard(ch, type, icoClass, name, desc, icon, bodyHtml){
+    const e = ch.eng[type];
+    const open = e.on && e.expanded;
+    return `<div class="eng-card ${e.on?'on':''}">
+      <div class="eng-card-hd" onclick="toggleEngExpand(${ch.id},'${type}')">
+        <div class="eng-tool-icon ${icoClass}">${icon}</div>
+        <div class="eng-tool-label"><div class="eng-tool-name ${icoClass}">${name}</div><div class="eng-tool-desc">${desc}</div></div>
+        <label class="mini-tog" onclick="event.stopPropagation()"><input type="checkbox" ${e.on?'checked':''} onchange="toggleEngTool(${ch.id},'${type}')"/><div class="mini-tog-tr"><div class="mini-tog-th"></div></div></label>
+        <i class="fas fa-chevron-down eng-arrow ${open?'open':''} ${e.on?'':'disabled'}"></i>
+      </div>
+      <div class="eng-card-body ${open?'open':''}">${bodyHtml}</div>
+    </div>`;
+  }
+
+  list.innerHTML = state.chapters.map((ch,idx)=>{
+    const eng = ch.eng;
+
+    const pollBody = `
+      <div class="eng-config-lbl">Poll question</div>
+      <input class="opt-input" style="width:100%;margin-bottom:8px" placeholder="e.g. Who was truly wrong here?" value="${esc(eng.poll.q)}" oninput="updateEngField(${ch.id},'poll','q',this.value)"/>
+      <div class="eng-config-lbl">Options</div>
+      ${eng.poll.opts.map((o,i)=>`<div class="opt-row"><input class="opt-input" placeholder="Option ${i+1}" value="${esc(o)}" oninput="updateOpt(${ch.id},'poll',${i},this.value)"/>${eng.poll.opts.length>2?`<div class="opt-del" onclick="removeOpt(${ch.id},'poll',${i})"><i class="fas fa-times"></i></div>`:''}</div>`).join('')}
+      ${eng.poll.opts.length<4?`<div class="add-opt-btn" onclick="addOpt(${ch.id},'poll')"><i class="fas fa-plus"></i> Add option</div>`:''}`;
+
+    const predBody = `
+      <div class="eng-config-lbl">Prediction question</div>
+      <input class="opt-input" style="width:100%;margin-bottom:8px" placeholder="e.g. What happens in the next chapter?" value="${esc(eng.pred.q)}" oninput="updateEngField(${ch.id},'pred','q',this.value)"/>
+      <div class="eng-config-lbl">Options</div>
+      ${eng.pred.opts.map((o,i)=>`<div class="opt-row"><input class="opt-input" placeholder="Prediction ${i+1}" value="${esc(o)}" oninput="updateOpt(${ch.id},'pred',${i},this.value)"/>${eng.pred.opts.length>2?`<div class="opt-del" onclick="removeOpt(${ch.id},'pred',${i})"><i class="fas fa-times"></i></div>`:''}</div>`).join('')}
+      ${eng.pred.opts.length<4?`<div class="add-opt-btn" onclick="addOpt(${ch.id},'pred')"><i class="fas fa-plus"></i> Add option</div>`:''}`;
+
+    const debBody = `
+      <div class="eng-config-lbl">The motion</div>
+      <textarea class="opt-input" style="width:100%;min-height:56px;resize:vertical" placeholder='e.g. "Ada should stay and fight for her marriage."' oninput="updateEngField(${ch.id},'debate','motion',this.value)">${esc(eng.debate.motion)}</textarea>
+      <div class="debate-sides-preview">
+        <div class="deb-side-prev for">✅ FOR</div>
+        <div class="deb-side-prev against">❌ AGAINST</div>
+      </div>`;
+
+    return `<div class="ch-card" id="chCard-${ch.id}">
+      <div class="ch-card-hd" onclick="toggleChapterOpen(${ch.id})">
+        <div class="ch-num-badge">${isShort?'—':idx+1}</div>
+        <div class="ch-card-title-wrap">
+          <div class="ch-card-title" id="chTitle-disp-${ch.id}">${esc(ch.title.trim()) || 'Untitled chapter'}</div>
+          <div class="ch-card-sub" id="chSub-disp-${ch.id}">0 words</div>
+        </div>
+        <div class="ch-card-actions" onclick="event.stopPropagation()">
+          ${!isShort && idx>0?`<div class="ch-mini-btn" onclick="moveChapter(${ch.id},-1)"><i class="fas fa-chevron-up"></i></div>`:''}
+          ${!isShort && idx<state.chapters.length-1?`<div class="ch-mini-btn" onclick="moveChapter(${ch.id},1)"><i class="fas fa-chevron-down"></i></div>`:''}
+          ${!isShort?`<div class="ch-mini-btn danger" onclick="removeChapter(${ch.id})"><i class="fas fa-trash"></i></div>`:''}
+        </div>
+        <i class="fas fa-chevron-down ch-arrow ${ch.open?'open':''}"></i>
+      </div>
+      <div class="ch-card-body ${ch.open?'open':''}">
+        <div class="ch-field">
+          <label class="ch-field-lbl">${isShort ? 'Story title' : 'Chapter title'}</label>
+          <input class="tf-input" value="${esc(ch.title)}" placeholder="${isShort?'e.g. The Runaway Bride':'e.g. The night she asked him to be honest'}" oninput="updateChTitle(${ch.id},this.value)"/>
+        </div>
+        <div class="ch-field">
+          <label class="ch-field-lbl">${isShort ? 'Full story text' : 'Chapter text'}</label>
+          <div class="mini-toolbar">
+            <div class="mt-btn" onclick="fmtCh(${ch.id},'bold')"><i class="fas fa-bold"></i></div>
+            <div class="mt-btn" onclick="fmtCh(${ch.id},'italic')"><i class="fas fa-italic"></i></div>
+            <div class="mt-div"></div>
+            <div class="mt-lbl" onclick="fmtCh(${ch.id},'h1')">H1</div>
+            <div class="mt-lbl" onclick="fmtCh(${ch.id},'h2')">H2</div>
+            <div class="mt-div"></div>
+            <div class="mt-btn" onclick="fmtCh(${ch.id},'blockquote')"><i class="fas fa-quote-left"></i></div>
+            <div class="mt-btn" onclick="insertSceneBreak(${ch.id})"><i class="fas fa-minus"></i></div>
+          </div>
+          <div class="ch-writing-area" id="wa${ch.id}" contenteditable="true" data-placeholder="Write here…" oninput="updateChWordCount(${ch.id})">${ch.content||''}</div>
+          <div class="ch-word-count" id="wc-disp-${ch.id}">0 words</div>
+        </div>
+
+        <div class="eng-block">
+          <div class="eng-block-lbl"><i class="fas fa-bolt" style="font-size:9px"></i> Engagement for this chapter (optional)</div>
+          ${engCard(ch,'poll','poll','Poll','Ask readers to vote','📊',pollBody)}
+          ${engCard(ch,'pred','pred','Prediction',"Let readers guess what's next",'🔮',predBody)}
+          ${engCard(ch,'debate','deb','Debate','Readers vote FOR or AGAINST a motion','⚔️',debBody)}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Recompute word counts / subtitles for all chapters after (re)render
+  state.chapters.forEach(ch=>{
+    const wa = document.getElementById('wa'+ch.id);
+    const wc = wordCount(wa?.innerText || '');
+    const wcEl = document.getElementById('wc-disp-'+ch.id);
+    if (wcEl) wcEl.textContent = `${wc} words`;
+    const sub = document.getElementById('chSub-disp-'+ch.id);
+    if (sub){
+      const tags = [];
+      if (ch.eng.poll.on) tags.push('poll');
+      if (ch.eng.pred.on) tags.push('prediction');
+      if (ch.eng.debate.on) tags.push('debate');
+      sub.textContent = `${wc} words${tags.length?' · '+tags.join(', '):''}`;
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   STAGE: REVIEW
+══════════════════════════════════════════════════════ */
+function setPubMode(mode){
+  state.pubMode = mode;
+  document.getElementById('pubNowOpt').classList.toggle('sel', mode==='now');
+  document.getElementById('pubSchedOpt').classList.toggle('sel', mode==='schedule');
+  document.getElementById('schedRow').classList.toggle('show', mode==='schedule');
+}
+function renderReview(){
+  state.chapters.forEach(ch=>syncChapterContent(ch.id));
+  document.getElementById('reviewCover').style.backgroundImage = state.coverData ? `url('${state.coverData}')` : 'none';
+  document.getElementById('reviewTitle').textContent = getActiveTitle() || 'Untitled Story';
+  document.getElementById('reviewBadges').innerHTML = [
+    state.type === 'short' ? '📄 Short Story' : '📖 Series',
+    state.category || '', ...state.genres
+  ].filter(Boolean).map(b=>`<span class="review-badge">${b}</span>`).join('');
+  document.getElementById('reviewSynopsis').textContent = document.getElementById('synopsisInput').value.trim() || '—';
+  document.getElementById('reviewPlot').textContent = document.getElementById('plotInput').value.trim() || '—';
+  document.getElementById('reviewChCount').textContent = state.chapters.length;
+  document.getElementById('reviewChList').innerHTML = state.chapters.map((c,i)=>{
+    const tmp = document.createElement('div'); tmp.innerHTML = c.content || '';
+    const wc = wordCount(tmp.innerText || '');
+    const engIcons = [c.eng.poll.on?'📊':'',c.eng.pred.on?'🔮':'',c.eng.debate.on?'⚔️':''].filter(Boolean).map(e=>`<span>${e}</span>`).join('');
+    return `<div class="review-ch-item">
+      <div class="review-ch-num">${i+1}</div>
+      <div class="review-ch-txt">${esc(c.title.trim()) || 'Untitled chapter'}</div>
+      <div class="review-ch-eng">${engIcons}</div>
+      <div class="review-ch-words">${wc} words</div>
+    </div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--tx-faint);padding:8px 0">No chapters added.</div>';
+  updateNavButtons();
+}
+
+/* ══════════════════════════════════════════════════════
+   DRAFT SAVE / SUBMIT
+══════════════════════════════════════════════════════ */
+function saveDraft(manual){
+  try{
+    // Sync chapter content from DOM into a serializable snapshot
+    state.chapters.forEach(ch=>syncChapterContent(ch.id));
+    const snapshot = Object.assign({}, state, {
+      chapters: state.chapters.map(c => ({
+        id:c.id, title:c.title, eng:c.eng, content: c.content || ''
+      }))
+    });
+    localStorage.setItem('droboard_create_story_draft', JSON.stringify(snapshot));
+    if (manual) toast('💾 Draft saved');
+  }catch(e){ if (manual) toast('⚠️ Could not save draft'); }
+}
+function submitStory(){
+  if (!stageIsValid('review')){ flagInvalid('review'); return; }
+  saveDraft(false);
+  localStorage.removeItem('droboard_create_story_draft');
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+  document.getElementById('successWrap').classList.add('show');
+  document.getElementById('wizardNav').style.display = 'none';
+  document.getElementById('stepRail').style.display = 'none';
+  const label = state.pubMode==='schedule' ? 'Scheduled!' : 'Submitted for review!';
+  document.getElementById('successTitle').textContent = label;
+  document.getElementById('successSub').textContent = `"${getActiveTitle() || 'Your story'}" has been ${state.pubMode==='schedule'?'scheduled and sent to our editors':'sent to our editors'}. We'll notify you once it's live.`;
+  document.getElementById('tbSub').textContent = 'Submitted ✓';
+}
+function startAnother(){
+  location.reload();
+}
+function goBackOrExit(){
+  if (currentIdx>0){ prevStage(); return; }
+  saveDraft(false);
+  toast('Draft saved · exiting…');
+  setTimeout(()=>{ history.back(); }, 700);
+}
+
+setInterval(()=>saveDraft(false), 15000);
+
+/* ══════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════ */
+buildDropdownMenu();
+renderCategoryGrid();
+renderGenreGrid();
+renderTags();
+buildStockRow();
+goToStage(0);
+</script>
+</body>
+</html>

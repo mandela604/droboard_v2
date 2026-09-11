@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Author Payments — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.page-head{margin-bottom:18px}
+.page-head h1{font-size:19px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.tabs{display:flex;gap:6px;margin-bottom:16px;background:var(--table-head);padding:5px;border-radius:12px;width:fit-content}
+.tab-btn{font-size:12.5px;font-weight:700;padding:8px 16px;border-radius:9px;border:none;background:none;color:var(--text-muted);cursor:pointer;font-family:inherit}
+.tab-btn.active{background:var(--card);color:var(--accent);box-shadow:var(--shadow)}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:11px;padding:10px 14px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:13px}
+.select-box{border:1px solid var(--input-border);background:var(--input-bg);border-radius:11px;padding:10px 14px;font-size:12.5px;font-family:inherit;color:var(--text);cursor:pointer}
+
+.au-list{display:flex;flex-direction:column;gap:10px}
+.au-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.au-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.au-body{flex:1;min-width:200px}
+.au-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:3px}
+.au-name{font-size:13.5px;font-weight:700}
+.status-pill{font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.active{background:var(--green-bg);color:var(--green)}
+.status-pill.on-hold{background:var(--red-bg);color:var(--red)}
+.method-chip{font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--blue-bg);color:var(--blue);white-space:nowrap}
+.au-meta{font-size:11px;color:var(--text-faint);display:flex;gap:14px;flex-wrap:wrap}
+.au-meta span{display:flex;align-items:center;gap:4px}
+.au-figures{display:flex;gap:22px;flex-shrink:0}
+.au-fig{text-align:right}
+.au-fig b{font-size:14px;font-weight:800;display:block}
+.au-fig span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase}
+.au-actions{display:flex;gap:7px;flex-shrink:0}
+.mini-btn{font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn:disabled{opacity:.45;cursor:not-allowed}
+.mini-btn:disabled:hover{border-color:var(--input-border);color:var(--text)}
+.hold-note{width:100%;font-size:11px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:7px 10px;margin-top:2px}
+
+/* history table */
+.hist-table{width:100%;border-collapse:collapse}
+.hist-table th{text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint);padding:0 12px 10px;border-bottom:1px solid var(--border)}
+.hist-table td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-author{display:flex;align-items:center;gap:9px}
+.hist-author img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.hist-amt{font-weight:800}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-faint)}
+.empty-state i{font-size:32px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:13px}
+
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:900px){.hist-table{display:block;overflow-x:auto;white-space:nowrap}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.au-figures{width:100%;justify-content:space-between}.au-actions{width:100%}.au-actions .mini-btn{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <h1>Author Payments</h1>
+    <p>Track earnings, process payouts, and review payment history.</p>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="overview">Author Overview</button>
+    <button class="tab-btn" data-tab="history">Payment History</button>
+  </div>
+
+  <div id="overviewTab">
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search authors…"/></div>
+      <select class="select-box" id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="on-hold">On Hold</option>
+      </select>
+      <select class="select-box" id="sortSelect">
+        <option value="pending-desc">Highest pending payout</option>
+        <option value="earned-desc">Highest total earned</option>
+        <option value="az">Name A–Z</option>
+      </select>
+    </div>
+    <div id="authorList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+  </div>
+
+  <div id="historyTab" style="display:none">
+    <div class="stat-card" style="margin-bottom:16px;box-shadow:none">
+      <div style="width:100%;overflow-x:auto">
+        <table class="hist-table" id="historyTable"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/finance-sidebar.js"></script>
+<script src="shared/finance-data.js"></script>
+<script>
+'use strict';
+const shell = FinanceSidebar.attach('#pageRoot',{
+  activeItem:'author-payments', title:'Author Payments', subtitle:'Track & process author earnings',
+  user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+
+let AUTHORS = [];
+let HISTORY = [];
+let searchTerm = '', statusTerm = '', sortMode = 'pending-desc';
+
+function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
+function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtDateTime(iso){ const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+
+async function init(){
+  [AUTHORS, HISTORY] = await Promise.all([FinanceData.getAuthorPayments(), FinanceData.getPaymentHistory()]);
+  renderStatCards();
+  renderAuthors();
+  renderHistory();
+}
+
+function renderStatCards(){
+  const totalPending = AUTHORS.reduce((s,a)=>s+a.pendingPayout,0);
+  const totalEarned = AUTHORS.reduce((s,a)=>s+a.totalEarned,0);
+  const onHold = AUTHORS.filter(a=>a.status==='on-hold').length;
+  const stats = [
+    { n:money(totalPending), l:'Pending Payouts', ico:'fa-hourglass-half', cls:'amber' },
+    { n:money(totalEarned), l:'Total Earned (All-Time)', ico:'fa-sack-dollar', cls:'accent' },
+    { n:AUTHORS.length, l:'Authors on Payroll', ico:'fa-user-tie', cls:'blue' },
+    { n:onHold, l:'Payments On Hold', ico:'fa-circle-pause', cls:'red' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function getFilteredAuthors(){
+  let list = AUTHORS.slice();
+  if(statusTerm) list = list.filter(a=>a.status===statusTerm);
+  if(searchTerm) list = list.filter(a=>a.author.toLowerCase().includes(searchTerm.toLowerCase()));
+  if(sortMode==='pending-desc') list.sort((a,b)=>b.pendingPayout-a.pendingPayout);
+  else if(sortMode==='earned-desc') list.sort((a,b)=>b.totalEarned-a.totalEarned);
+  else list.sort((a,b)=>a.author.localeCompare(b.author));
+  return list;
+}
+
+function renderAuthors(){
+  const list = getFilteredAuthors();
+  const box = document.getElementById('authorList');
+  if(!list.length){ box.innerHTML = `<div class="empty-state"><i class="fas fa-user-tie"></i><p>No authors match your filters.</p></div>`; return; }
+
+  box.innerHTML = `<div class="au-list">${list.map(a=>`
+    <div class="au-card" data-id="${a.id}">
+      <img class="au-avatar" src="${a.avatar}" alt="${a.author}"/>
+      <div class="au-body">
+        <div class="au-top">
+          <span class="au-name">${a.author}</span>
+          <span class="status-pill ${a.status}">${a.status==='on-hold'?'On Hold':'Active'}</span>
+          <span class="method-chip">${a.method}</span>
+        </div>
+        <div class="au-meta">
+          <span><i class="fas fa-clock-rotate-left"></i> Last payout ${a.lastPayout ? money(a.lastAmount)+' on '+fmtDate(a.lastPayout) : 'None yet'}</span>
+          ${a.nextScheduled ? `<span><i class="fas fa-calendar"></i> Next scheduled ${fmtDate(a.nextScheduled)}</span>` : ''}
+        </div>
+        ${a.status==='on-hold' ? `<div class="hold-note"><i class="fas fa-circle-info"></i> ${a.holdReason||'Payments on hold.'}</div>` : ''}
+      </div>
+      <div class="au-figures">
+        <div class="au-fig"><b>${money(a.pendingPayout)}</b><span>Pending</span></div>
+        <div class="au-fig"><b>${money(a.totalEarned)}</b><span>Total Earned</span></div>
+      </div>
+      <div class="au-actions">
+        <button class="mini-btn" data-action="schedule" data-id="${a.id}"><i class="fas fa-calendar-plus"></i> Schedule</button>
+        <button class="mini-btn primary" data-action="pay" data-id="${a.id}" ${a.pendingPayout<=0 || a.status==='on-hold' ? 'disabled':''}><i class="fas fa-paper-plane"></i> Pay Now</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderHistory(){
+  const tbl = document.getElementById('historyTable');
+  const rows = HISTORY.slice().sort((a,b)=> new Date(b.date)-new Date(a.date));
+  tbl.innerHTML = `
+    <thead><tr><th>Author</th><th>Amount</th><th>Method</th><th>Date</th><th>Reference</th><th>Status</th></tr></thead>
+    <tbody>${rows.map(h=>`
+      <tr>
+        <td><div class="hist-author"><img src="${h.avatar}" alt="${h.author}"/>${h.author}</div></td>
+        <td class="hist-amt">${money(h.amount)}</td>
+        <td>${h.method}</td>
+        <td>${fmtDateTime(h.date)}</td>
+        <td style="color:var(--text-faint)">${h.reference}</td>
+        <td><span class="status-pill ${h.status==='completed'?'active':'on-hold'}">${h.status}</span></td>
+      </tr>`).join('')}
+    </tbody>`;
+}
+
+/* ── Tabs ── */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('overviewTab').style.display = tab==='overview' ? 'block':'none';
+    document.getElementById('historyTab').style.display = tab==='history' ? 'block':'none';
+  });
+});
+
+document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm=e.target.value; renderAuthors(); });
+document.getElementById('statusFilter').addEventListener('change', e=>{ statusTerm=e.target.value; renderAuthors(); });
+document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e.target.value; renderAuthors(); });
+
+/* ── Actions ── */
+document.addEventListener('click', async e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const id = el.dataset.id;
+  const a = AUTHORS.find(x=>x.id===id);
+  if(!a) return;
+
+  if(el.dataset.action==='pay'){
+    if(a.pendingPayout<=0 || a.status==='on-hold') return;
+    const amt = a.pendingPayout;
+    await FinanceData.processPayment(id);
+    a.lastAmount = amt; a.lastPayout = new Date().toISOString().slice(0,10); a.pendingPayout = 0;
+    HISTORY.unshift({ id:'PH-'+Math.floor(Math.random()*9000+1000), author:a.author, avatar:a.avatar, amount:amt, method:a.method, date:new Date().toISOString(), status:'completed', reference:'TXN-'+Math.floor(Math.random()*90000+10000) });
+    toast(`✅ Paid ${money(amt)} to ${a.author}`);
+    renderStatCards(); renderAuthors(); renderHistory();
+  }
+  else if(el.dataset.action==='schedule'){
+    const amount = prompt(`Amount to schedule for ${a.author} (USD):`, a.pendingPayout || 0);
+    if(amount===null) return;
+    const date = prompt('Payout date (YYYY-MM-DD):', a.nextScheduled || new Date().toISOString().slice(0,10));
+    if(date===null) return;
+    const amt = parseFloat(amount) || 0;
+    await FinanceData.schedulePayout(id, amt, date);
+    a.pendingPayout = amt; a.nextScheduled = date;
+    toast(`📅 Scheduled ${money(amt)} for ${a.author} on ${fmtDate(date)}`);
+    renderStatCards(); renderAuthors();
+  }
+});
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Droboard · Reader</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;
+  --acc-dim:rgba(255,0,80,.12);--acc-border:rgba(255,0,80,.3);--glow:rgba(255,0,80,.22);
+  --bg:#000000;--l1:#0a0a0d;--l2:#0f1013;--l3:#14151a;--surface:#161616;
+  --tx:#f0f0f0;--tx2:#a1a1aa;--muted:#71717a;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);
+  --font-story:'Lora',serif;--font-ui:'DM Sans',sans-serif;
+  --fs:13px;--lh:1.85;
+  --safe-b:env(safe-area-inset-bottom,14px);
+  --topbar-h:50px;--bottombar-h:62px;
+  --bg3:#0a0a0d;
+  --gold:#d97706;
+}
+body.theme-sepia{--bg:#1a1510;--bg2:#201a12;--bg3:#26201a;--card:#201a12;--surface:#26201a;--bd:rgba(232,213,176,.07);--muted:#806050;--tx:#e8d5b0;--tx2:#a89070;}
+body.theme-dark{--bg:#000000;--tx:#f0f0f0;--tx2:#a8a8a8;}
+body.theme-grey{--bg:#0f1117;--bg2:#151820;--bg3:#1c2028;--card:#151820;--surface:#1c2028;--bd:rgba(216,220,232,.07);--tx:#d8dce8;--tx2:#888da0;}
+body.theme-white{--bg:#ffffff;--bg2:#f5f5f5;--bg3:#ebebeb;--card:#f0f0f0;--surface:#e8e8e8;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);--muted:#999;--tx:#111111;--tx2:#555555;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font-ui);overflow:hidden;transition:background .3s,color .3s}
+img{display:block;user-select:none}
+button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+.shell{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+
+/* TOP BAR */
+.topbar{flex-shrink:0;height:var(--topbar-h);display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;}
+body.theme-white .topbar{background:rgba(255,255,255,.92);}
+.topbar.hidden{transform:translateY(-100%);opacity:0;pointer-events:none}
+.tb-back{width:34px;height:34px;border-radius:50%;background:var(--surface);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);cursor:pointer;flex-shrink:0;}
+.tb-back:active{transform:scale(.9)}
+.tb-center{flex:1;min-width:0;text-align:center}
+.tb-story-title{font-family:var(--font-story);font-size:12px;font-weight:600;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;margin:0 auto;}
+.tb-ch-info{font-size:9.5px;color:var(--muted);margin-top:1px;font-weight:600}
+.tb-right{display:flex;gap:7px;align-items:center}
+.tb-btn{width:34px;height:34px;border-radius:50%;background:var(--surface);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);cursor:pointer;flex-shrink:0;transition:.15s;}
+.tb-btn:active{transform:scale(.9)}
+.tb-btn.active{background:var(--acc-dim);border-color:var(--acc-border);color:var(--acc)}
+.coin-pill{display:flex;align-items:center;gap:5px;background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.35);border-radius:20px;padding:0 11px;height:34px;font-size:11px;font-weight:800;color:var(--gold);cursor:pointer;flex-shrink:0;transition:.15s;}
+.coin-pill:active{transform:scale(.93)}
+
+/* PROGRESS */
+.read-progress{position:absolute;top:var(--topbar-h);left:0;right:0;height:2px;background:var(--bd);z-index:99;}
+.read-progress-fill{height:100%;background:var(--acc);width:0%;transition:width .3s}
+
+/* SCROLL BODY */
+.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottombar-h) + var(--safe-b) + 20px);}
+.scroll-body::-webkit-scrollbar{display:none}
+
+/* HERO */
+.ch-hero{position:relative;height:220px;overflow:hidden;flex-shrink:0;}
+.ch-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 20%;filter:blur(1px) brightness(.55);transform:scale(1.04);}
+.ch-hero-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.2) 0%,rgba(0,0,0,.55) 55%,var(--bg) 100%);}
+.ch-hero-content{position:relative;z-index:3;height:100%;display:flex;flex-direction:column;justify-content:flex-end;padding:16px 18px 22px;}
+.ch-cat-badge{display:inline-flex;align-items:center;gap:4px;background:var(--acc);color:#fff;font-size:8px;font-weight:800;padding:3px 9px;border-radius:999px;margin-bottom:8px;letter-spacing:.04em;align-self:flex-start;}
+.ch-title{font-family:var(--font-story);font-size:18px;font-weight:700;line-height:1.25;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.7);margin-bottom:10px;}
+.ch-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ch-meta-pill{font-size:9px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;gap:4px;}
+
+/* TEAM SIDING — multi-team support */
+.team-siding{padding:16px 22px 0;max-width:680px;margin:0 auto;}
+.team-siding-label{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.team-grid{display:grid;gap:7px;}
+.team-grid.cols-2{grid-template-columns:1fr 1fr;}
+.team-btn{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:11px;border:1.5px solid var(--bd);background:var(--surface);cursor:pointer;transition:.18s;user-select:none;}
+.team-btn:active{transform:scale(.98)}
+.team-icon{font-size:16px;flex-shrink:0;}
+.team-info{flex:1;min-width:0;}
+.team-name{font-size:10px;font-weight:800;color:var(--tx);}
+.team-count{font-size:9px;font-weight:600;color:var(--muted);margin-top:1px;}
+.team-check{font-size:12px;color:var(--muted);}
+.team-btn[data-team="a"]{border-color:rgba(255,0,80,.3);background:rgba(255,0,80,.05);}
+.team-btn[data-team="a"].selected{background:rgba(255,0,80,.16);border-color:#ff0050;box-shadow:0 2px 12px rgba(255,0,80,.25);}
+.team-btn[data-team="a"].selected .team-name{color:#ff0050;}
+.team-btn[data-team="a"].selected .team-check{color:#ff0050;}
+.team-btn[data-team="b"]{border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.05);}
+.team-btn[data-team="b"].selected{background:rgba(96,165,250,.18);border-color:#60a5fa;box-shadow:0 2px 12px rgba(96,165,250,.28);}
+.team-btn[data-team="b"].selected .team-name{color:#60a5fa;}
+.team-btn[data-team="b"].selected .team-check{color:#60a5fa;}
+.team-btn[data-team="c"]{border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.05);}
+.team-btn[data-team="c"].selected{background:rgba(52,211,153,.18);border-color:#34d399;box-shadow:0 2px 12px rgba(52,211,153,.25);}
+.team-btn[data-team="c"].selected .team-name{color:#34d399;}
+.team-btn[data-team="c"].selected .team-check{color:#34d399;}
+.team-btn[data-team="d"]{border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.05);}
+.team-btn[data-team="d"].selected{background:rgba(167,139,250,.18);border-color:#a78bfa;box-shadow:0 2px 12px rgba(167,139,250,.25);}
+.team-btn[data-team="d"].selected .team-name{color:#a78bfa;}
+.team-btn[data-team="d"].selected .team-check{color:#a78bfa;}
+.team-bars-wrap{margin-top:10px;height:4px;border-radius:4px;background:var(--bd);overflow:hidden;display:flex;}
+.team-bar-seg{height:100%;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.team-bar-seg[data-team="a"]{background:#ff0050;}
+.team-bar-seg[data-team="b"]{background:#60a5fa;}
+.team-bar-seg[data-team="c"]{background:#34d399;}
+.team-bar-seg[data-team="d"]{background:#a78bfa;}
+.team-bar-label-row{display:flex;justify-content:space-between;margin-top:6px;flex-wrap:wrap;gap:4px;}
+.team-bar-lbl{font-size:8px;font-weight:800;display:flex;align-items:center;gap:3px;}
+.team-bar-lbl .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+
+/* STORY TEXT */
+.story-wrap{padding:22px 22px 0;max-width:680px;margin:0 auto}
+.story-text{font-family:var(--font-story);font-size:var(--fs);line-height:var(--lh);color:var(--tx);letter-spacing:.01em;word-spacing:.05em;transition:font-size .2s,color .3s;}
+.story-text p{margin-bottom:1.5em}
+.story-text p:last-child{margin-bottom:0}
+.story-divider{display:flex;align-items:center;gap:12px;margin:36px 0;opacity:.35;}
+.story-divider::before,.story-divider::after{content:'';flex:1;height:1px;background:var(--tx2)}
+.story-divider span{font-size:12px;color:var(--tx2)}
+.story-text p:first-child::first-letter{font-family:var(--font-story);font-size:3.2em;font-weight:700;float:left;line-height:.82;margin-right:.08em;margin-top:.04em;color:var(--acc);}
+
+/* ══ LOCKED / PAYWALL FADE (in-place, no navigation away) ══ */
+.story-text.locked-fade{max-height:260px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(to bottom, black 25%, transparent 92%);mask-image:linear-gradient(to bottom, black 25%, transparent 92%);opacity:.55;pointer-events:none;user-select:none;}
+.unlock-card{margin:-40px auto 18px;position:relative;z-index:5;max-width:420px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:18px;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6);text-align:center;}
+.unlock-icon{width:46px;height:46px;border-radius:50%;background:var(--acc-dim);border:1.5px solid var(--acc-border);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--acc);margin:0 auto 12px}
+.unlock-title{font-family:var(--font-story);font-size:15px;font-weight:800;color:var(--tx);margin-bottom:5px}
+.unlock-sub{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+.unlock-opts{display:flex;flex-direction:column;gap:8px}
+.unlock-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:12px;border:1.5px solid var(--bd);background:var(--surface);cursor:pointer;transition:.15s;}
+.unlock-opt:active{transform:scale(.98)}
+.unlock-opt.reco{border-color:var(--acc-border);background:var(--acc-dim)}
+.unlock-opt-lbl{text-align:left}
+.unlock-opt-t{font-size:11.5px;font-weight:800;color:var(--tx)}
+.unlock-opt-s{font-size:9px;color:var(--muted);margin-top:1px}
+.unlock-opt-price{font-size:11.5px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.unlock-opt.reco .unlock-opt-price{color:var(--acc)}
+.unlock-getcoins{margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;flex-direction:column;gap:8px;align-items:center}
+.unlock-getcoins.show{display:flex}
+.unlock-getcoins-txt{font-size:10.5px;color:var(--acc2);font-weight:700}
+.unlock-getcoins-btn{background:var(--gold);color:#1a1000;border:none;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font-ui)}
+
+/* AD SLOT — sits right after the story, before Prev/Next chapter nav */
+.ad-slot-wrap{padding:16px 16px 4px;max-width:680px;margin:0 auto;}
+.ad-slot-label{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+.ad-slot-wrap .dac-native,.ad-slot-wrap .dac-promo{border-radius:14px;border-bottom:none;border:1px solid var(--bd);}
+.ad-slot-wrap .dac-banner{border-radius:14px;}
+
+/* CHAPTER NAV */
+.ch-nav{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 20px;gap:12px;max-width:680px;margin:0 auto;}
+.ch-nav-side{display:flex;align-items:center;gap:8px;cursor:pointer;transition:.18s;user-select:none;}
+.ch-nav-side:active{opacity:.6}
+.ch-nav-side.disabled{opacity:.22;pointer-events:none}
+.ch-nav-icon{width:38px;height:38px;border-radius:50%;background:var(--surface);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);flex-shrink:0;}
+.ch-nav-side.next-ch .ch-nav-icon{background:var(--acc-dim);border-color:var(--acc-border);color:var(--acc)}
+.ch-nav-side.next-ch.locked-next .ch-nav-icon{background:rgba(217,119,6,.15);border-color:rgba(217,119,6,.4);color:var(--gold)}
+.ch-nav-label{font-size:11px;font-weight:700;color:var(--tx2)}
+.ch-nav-side.next-ch .ch-nav-label{color:var(--acc)}
+.ch-nav-side.next-ch.locked-next .ch-nav-label{color:var(--gold)}
+.ch-nav-center{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;}
+
+/* COMMENTS — component (comment-section.js) renders into #commentsPlaceholder;
+   this wrapper just gives it the same content-column width/padding as the
+   rest of the page. */
+.comments-section{padding:0 16px 24px;max-width:680px;margin:0 auto;}
+
+/* CHAPTER END */
+.ch-end-section{padding:0 22px 28px;text-align:center;background:var(--bg);}
+.ch-end-title{font-family:var(--font-story);font-size:14px;font-weight:700;color:var(--tx2);margin-bottom:4px;}
+.ch-end-sub{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:20px;}
+.ch-end-actions{display:flex;align-items:center;justify-content:center;gap:32px;}
+.ch-end-act{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:.15s;user-select:none;}
+.ch-end-act:active{transform:scale(.9)}
+.ch-end-act-icon{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:20px;}
+.ch-end-act.notify .ch-end-act-icon{background:var(--acc-dim);border-color:var(--acc-border);color:var(--acc)}
+.ch-end-act-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase;}
+
+/* YOU MAY ALSO LIKE */
+.yml-section{padding:20px 0 0}
+.yml-title{font-family:var(--font-story);font-size:13px;font-weight:700;color:var(--tx);padding:0 22px 12px;display:flex;align-items:center;gap:7px;}
+.yml-scroll{display:flex;gap:10px;padding:0 22px;overflow-x:auto;scrollbar-width:none;}
+.yml-scroll::-webkit-scrollbar{display:none}
+.yml-card{flex-shrink:0;width:108px;cursor:pointer;transition:.18s;}
+.yml-card:active{transform:scale(.97)}
+.yml-cover{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:3/4;background:var(--bg3,#0a0a0d);box-shadow:0 3px 10px rgba(0,0,0,.4);}
+.yml-cover img{width:100%;height:100%;object-fit:cover;}
+.yml-cover-scrim{position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(0deg,rgba(0,0,0,.9),transparent);}
+.yml-cover-cat{position:absolute;top:5px;left:0;font-size:7px;font-weight:800;padding:2px 6px 2px 4px;border-radius:0 5px 5px 0;background:var(--acc);color:#fff;letter-spacing:.03em;}
+.yml-cover-views{position:absolute;bottom:5px;left:5px;font-size:8px;font-weight:700;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:2px;}
+.yml-text-title{font-size:10.5px;font-weight:700;line-height:1.3;margin-top:6px;color:var(--tx);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.yml-text-author{font-size:9px;color:var(--muted);margin-top:2px;font-weight:600;}
+
+/* BOTTOM BAR */
+.bottombar{flex-shrink:0;height:calc(var(--bottombar-h) + var(--safe-b));background:rgba(0,0,0,.92);backdrop-filter:blur(24px);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 12px var(--safe-b);gap:6px;z-index:100;}
+body.theme-white .bottombar{background:rgba(255,255,255,.95);}
+.bb-act{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex-shrink:0;padding:5px 6px;border-radius:10px;transition:.15s;user-select:none;}
+.bb-act:active{background:var(--surface)}
+.bb-icon{font-size:20px;color:var(--tx2);transition:.18s}
+.bb-label{font-size:8px;font-weight:600;color:var(--muted)}
+.bb-act.liked .bb-icon{color:var(--acc)}
+.bb-act.saved .bb-icon{color:#60a5fa}
+.bb-read-btn{flex:1;height:42px;border-radius:12px;background:var(--acc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 2px 14px var(--glow);transition:.15s;font-family:var(--font-ui);}
+.bb-read-btn:active{transform:scale(.97)}
+
+/* CHAPTERS PANEL */
+.ch-panel{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;background:var(--bg);transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);}
+.ch-panel.open{transform:translateX(0)}
+.ch-panel-hdr{flex-shrink:0;height:52px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--bd);background:rgba(0,0,0,.85);backdrop-filter:blur(16px);}
+.ch-panel-title{font-family:var(--font-story);font-size:15px;font-weight:700;color:var(--tx);flex:1}
+.ch-panel-close{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);cursor:pointer;}
+.ch-panel-body{flex:1;overflow-y:auto;scrollbar-width:none;padding:12px 14px}
+.ch-panel-body::-webkit-scrollbar{display:none}
+.season-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
+.season-tabs::-webkit-scrollbar{display:none}
+.stab{flex-shrink:0;padding:5px 14px;border-radius:999px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);color:var(--muted);background:var(--surface);transition:.18s;}
+.stab.active{background:var(--acc);border-color:var(--acc);color:#fff;box-shadow:0 2px 8px var(--glow)}
+.ch-list{display:flex;flex-direction:column;gap:6px}
+.ch-row{display:flex;align-items:center;gap:11px;background:var(--surface);border:1.5px solid var(--bd);border-radius:10px;padding:11px 13px;cursor:pointer;transition:.18s;}
+.ch-row.current{border-color:var(--acc-border);background:var(--acc-dim)}
+.ch-row.locked{border-color:rgba(217,119,6,.25)}
+.ch-row:active{transform:scale(.99)}
+.ch-num{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);color:var(--muted);}
+.ch-num.done{background:rgba(22,163,74,.1);color:#4ade80;border-color:rgba(22,163,74,.2)}
+.ch-num.current{background:var(--acc-dim);color:var(--acc);border-color:var(--acc-border)}
+.ch-num.locked{color:var(--gold);background:rgba(217,119,6,.1);border-color:rgba(217,119,6,.3)}
+.ch-row-body{flex:1;min-width:0}
+.ch-row-title{font-size:12px;font-weight:700;color:var(--tx);line-height:1.3;margin-bottom:2px}
+.ch-row-meta{font-size:9px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.ch-row-badge{font-size:7px;font-weight:800;padding:1.5px 5px;border-radius:999px}
+.crb-new{background:var(--acc-dim);color:var(--acc);border:1px solid var(--acc-border)}
+.crb-free{background:rgba(22,163,74,.1);color:#4ade80;border:1px solid rgba(22,163,74,.2)}
+.crb-locked{background:rgba(217,119,6,.12);color:var(--gold);border:1px solid rgba(217,119,6,.3)}
+.ch-row-right{flex-shrink:0;text-align:right}
+.ch-current-badge{font-size:8px;font-weight:800;color:var(--acc);background:var(--acc-dim);padding:2px 7px;border-radius:999px;border:1px solid var(--acc-border)}
+.ch-done-check{color:#4ade80;font-size:13px}
+
+/* SETTINGS PANEL */
+.settings-panel{position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--bg3,#0a0a0d);border-radius:22px 22px 0 0;border-top:1px solid var(--bd);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:0 0 calc(20px + var(--safe-b));}
+.settings-panel.open{transform:translateY(0)}
+.sp-handle{width:36px;height:4px;background:var(--bd);border-radius:4px;margin:12px auto 16px}
+.sp-title{font-size:12px;font-weight:800;color:var(--tx2);text-align:center;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px}
+.sp-section{padding:0 20px 16px}
+.sp-label{font-size:9.5px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.font-ctrl{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--bd);border-radius:12px;padding:8px 14px}
+.font-ctrl-btn{width:36px;height:36px;border-radius:50%;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--tx2);cursor:pointer;flex-shrink:0;font-weight:700;}
+.font-ctrl-btn:active{transform:scale(.9)}
+.font-size-display{flex:1;text-align:center;font-size:14px;font-weight:800;color:var(--tx)}
+.font-preview{font-family:var(--font-story);font-size:11px;color:var(--muted);margin-top:2px;text-align:center}
+.theme-opts{display:flex;gap:6px;flex-wrap:wrap}
+.theme-opt{flex:1;min-width:60px;height:52px;border-radius:10px;cursor:pointer;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:.18s;}
+.theme-opt.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
+.theme-dot{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.2)}
+.theme-name{font-size:8px;font-weight:700;color:var(--muted)}
+.lh-opts{display:flex;gap:6px}
+.lh-opt{flex:1;padding:8px 4px;border-radius:9px;cursor:pointer;border:1.5px solid var(--bd);background:var(--surface);text-align:center;transition:.18s;}
+.lh-opt.on{border-color:var(--acc);background:var(--acc-dim)}
+.lh-opt-label{font-size:8px;font-weight:700;color:var(--muted)}
+.lh-opt.on .lh-opt-label{color:var(--acc)}
+.ff-opts{display:flex;gap:6px}
+.ff-opt{flex:1;padding:10px 6px;border-radius:9px;cursor:pointer;border:1.5px solid var(--bd);background:var(--surface);text-align:center;transition:.18s;}
+.ff-opt.on{border-color:var(--acc);background:var(--acc-dim)}
+.ff-opt-label{font-size:11px;font-weight:700;color:var(--tx2)}
+.ff-opt-sub{font-size:8px;color:var(--muted);margin-top:2px}
+.ff-opt.on .ff-opt-label,.ff-opt.on .ff-opt-sub{color:var(--acc)}
+
+/* OVERLAY (shared by settings panel + chapters panel) */
+.overlay-bg{position:fixed;inset:0;z-index:190;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .28s;}
+.overlay-bg.show{opacity:1;pointer-events:auto}
+
+/* STORY-LEVEL REACTION POPUP (bottom-bar Like — page specific, kept custom
+   since it uses this story's own themed reaction set) */
+.rx-popup{position:fixed;z-index:300;bottom:calc(var(--bottombar-h) + var(--safe-b) + 8px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3,#0a0a0d);border:1px solid var(--bd);border-radius:24px;padding:10px 12px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:300px;width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.8);opacity:0;pointer-events:none;transition:.22s cubic-bezier(.34,1.56,.64,1);}
+.rx-popup.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.rx-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:12px;cursor:pointer;transition:.15s;user-select:none;}
+.rx-btn:active{transform:scale(.88)}
+.rx-btn.picked{background:var(--acc-dim)}
+.rx-emoji{font-size:22px;line-height:1}
+.rx-count{font-size:8px;font-weight:700;color:var(--muted)}
+.rx-btn.picked .rx-count{color:var(--acc2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(var(--bottombar-h) + var(--safe-b) + 12px);left:50%;transform:translateX(-50%) translateY(14px);background:var(--bg3,#0a0a0d);color:var(--tx);padding:8px 17px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.26s;pointer-events:none;white-space:nowrap;border:1px solid var(--bd);box-shadow:0 4px 20px rgba(0,0,0,.6);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .3s ease both}
+</style>
+</head>
+<body class="theme-dark">
+
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <div class="topbar" id="topbar">
+    <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="tb-center">
+      <div class="tb-story-title" id="tbStoryTitle">The Runaway Bride</div>
+      <div class="tb-ch-info" id="tbChInfo">Season 2 · Chapter 4</div>
+    </div>
+    <div class="tb-right">
+      <div class="coin-pill" id="coinPill" onclick="grantDemoCoins()" title="Demo: tap to add coins"><i class="fas fa-coins" style="font-size:11px"></i> <span id="coinBalanceLbl">45</span></div>
+      <div class="tb-btn" onclick="openSettings()"><i class="fas fa-text-height"></i></div>
+      <div class="tb-btn" onclick="openChPanel()"><i class="fas fa-list-ul"></i></div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="read-progress"><div class="read-progress-fill" id="readProgressFill"></div></div>
+
+  <!-- SCROLL BODY -->
+  <div class="scroll-body" id="scrollBody">
+
+    <!-- HERO -->
+    <div class="ch-hero fu">
+      <div class="ch-hero-bg" style="background-image:url('https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=900&q=85')"></div>
+      <div class="ch-hero-scrim"></div>
+      <div class="ch-hero-content">
+        <div class="ch-cat-badge">✨ TWIST</div>
+        <div class="ch-title" id="chTitleEl">I left the altar in my socked feet and found my actual life</div>
+        <div class="ch-meta-row">
+          <div class="ch-meta-pill" id="chMetaSC"><i class="fas fa-book-open" style="font-size:8px"></i> S2 · Ch 4</div>
+          <div class="ch-meta-pill"><i class="far fa-clock" style="font-size:8px"></i> ~4 min read</div>
+          <div class="ch-meta-pill">✍️ Ifeanyi_Story</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM SIDING — 4 teams -->
+    <div class="team-siding fu" id="teamSidingSection">
+      <div class="team-siding-label">Pick your side</div>
+      <div class="team-grid cols-2" id="teamGrid"></div>
+      <div class="team-bars-wrap" id="teamBarsWrap"></div>
+      <div class="team-bar-label-row" id="teamBarLabels"></div>
+    </div>
+
+    <!-- STORY -->
+    <div class="story-wrap fu">
+      <div class="story-text" id="storyText"></div>
+
+      <!-- SPONSORED AD — one ad, right after the story, before Prev/Next -->
+      <div class="ad-slot-wrap" id="adSlotWrap">
+        <div class="ad-slot-label">Sponsored</div>
+        <div id="adSlot"></div>
+      </div>
+
+      <!-- CHAPTER NAV -->
+      <div class="ch-nav">
+        <div class="ch-nav-side disabled" id="prevChBtn" onclick="goChapter(-1)">
+          <div class="ch-nav-icon"><i class="fas fa-chevron-left"></i></div>
+          <span class="ch-nav-label">Previous</span>
+        </div>
+        <span class="ch-nav-center" id="chNavCenter">Ch 4 of 5</span>
+        <div class="ch-nav-side next-ch" id="nextChBtn" onclick="goChapter(1)">
+          <span class="ch-nav-label" id="nextChLabel">Next</span>
+          <div class="ch-nav-icon"><i class="fas fa-chevron-right" id="nextChIcon"></i></div>
+        </div>
+      </div>
+
+      <!-- COMMENTS — rendered by DroboardComments.attach() below -->
+      <div class="comments-section" id="commentsSection">
+        <div id="commentsPlaceholder"></div>
+      </div>
+
+      <!-- CHAPTER END -->
+      <div class="ch-end-section" id="chEndSection">
+        <div class="ch-end-title" id="chEndTitle">Chapter 4 complete</div>
+        <div class="ch-end-sub" id="chEndSub">Chapter 5 drops Friday midnight.<br/>Don't miss what she discovers next.</div>
+        <div class="ch-end-actions">
+          <div class="ch-end-act notify" onclick="toast('🔔 You\'ll be notified!')">
+            <div class="ch-end-act-icon"><i class="far fa-bell"></i></div>
+            <div class="ch-end-act-label">Notify</div>
+          </div>
+          <div class="ch-end-act" onclick="openShare()">
+            <div class="ch-end-act-icon"><i class="fas fa-share-alt"></i></div>
+            <div class="ch-end-act-label">Share</div>
+          </div>
+          <div class="ch-end-act" onclick="openTip()">
+            <div class="ch-end-act-icon"><i class="fas fa-coins"></i></div>
+            <div class="ch-end-act-label">Tip</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YOU MAY ALSO LIKE -->
+      <div class="yml-section">
+        <div class="yml-title"><span>✨</span> You May Also Like</div>
+        <div class="yml-scroll" id="ymlScroll"></div>
+      </div>
+
+    </div><!-- /story-wrap -->
+  </div><!-- /scroll-body -->
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar" id="bottombar">
+    <div class="bb-act" id="bbLike" onclick="handleLikeTap()" onpointerdown="startLikeHold()" onpointerup="endLikeHold()" onpointercancel="endLikeHold()">
+      <div class="bb-icon"><i class="far fa-heart"></i></div>
+      <div class="bb-label">Like</div>
+    </div>
+    <div class="bb-read-btn">
+      <i class="fas fa-book-open" style="font-size:13px"></i> Reading
+    </div>
+    <div class="bb-act" id="bbSave" onclick="openSave()">
+      <div class="bb-icon"><i class="far fa-bookmark"></i></div>
+      <div class="bb-label">Save</div>
+    </div>
+    <div class="bb-act" onclick="openShare()">
+      <div class="bb-icon"><i class="fas fa-share-alt"></i></div>
+      <div class="bb-label">Share</div>
+    </div>
+    <div class="bb-act" onclick="openTip()">
+      <div class="bb-icon"><i class="fas fa-coins"></i></div>
+      <div class="bb-label">Tip</div>
+    </div>
+  </div>
+</div>
+
+<!-- STORY-LEVEL REACTION POPUP (bottom bar) -->
+<div class="rx-popup" id="rxPopup"></div>
+
+<!-- OVERLAY -->
+<div class="overlay-bg" id="overlayBg" onclick="closeAllSheets()"></div>
+
+<!-- CHAPTERS PANEL -->
+<div class="ch-panel" id="chPanel">
+  <div class="ch-panel-hdr">
+    <div class="ch-panel-title">Chapters</div>
+    <div class="ch-panel-close" onclick="closeChPanel()">✕</div>
+  </div>
+  <div class="ch-panel-body">
+    <div class="season-tabs" id="seasonTabs"></div>
+    <div class="ch-list" id="chListPanel"></div>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="sp-handle"></div>
+  <div class="sp-title">Reading Settings</div>
+  <div class="sp-section">
+    <div class="sp-label">Font Size</div>
+    <div class="font-ctrl">
+      <div class="font-ctrl-btn" onclick="changeFontSize(-1)">A−</div>
+      <div style="flex:1;text-align:center">
+        <div class="font-size-display" id="fontSizeDisplay">13px</div>
+        <div class="font-preview" id="fontPreview" style="font-family:var(--font-story)">The quick brown fox…</div>
+      </div>
+      <div class="font-ctrl-btn" onclick="changeFontSize(1)">A+</div>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Line Spacing</div>
+    <div class="lh-opts">
+      <div class="lh-opt" data-lh="1.55" onclick="setLH(this,'1.55')"><div class="lh-opt-icon">≡</div><div class="lh-opt-label">Compact</div></div>
+      <div class="lh-opt on" data-lh="1.85" onclick="setLH(this,'1.85')"><div class="lh-opt-icon" style="letter-spacing:1px">≡</div><div class="lh-opt-label">Normal</div></div>
+      <div class="lh-opt" data-lh="2.2" onclick="setLH(this,'2.2')"><div class="lh-opt-icon" style="letter-spacing:3px">≡</div><div class="lh-opt-label">Relaxed</div></div>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Font Style</div>
+    <div class="ff-opts">
+      <div class="ff-opt on" onclick="setFF(this,'\'Lora\',serif')"><div class="ff-opt-label" style="font-family:'Lora',serif;">Lora</div><div class="ff-opt-sub">Serif</div></div>
+      <div class="ff-opt" onclick="setFF(this,'\'DM Sans\',sans-serif')"><div class="ff-opt-label" style="font-family:'DM Sans',sans-serif;">DM Sans</div><div class="ff-opt-sub">Sans</div></div>
+      <div class="ff-opt" onclick="setFF(this,'Georgia,serif')"><div class="ff-opt-label" style="font-family:Georgia,serif;">Georgia</div><div class="ff-opt-sub">Classic</div></div>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Background</div>
+    <div class="theme-opts">
+      <div class="theme-opt on" onclick="setTheme(this,'theme-dark')"><div class="theme-dot" style="background:#000;border-color:rgba(255,255,255,.3)"></div><div class="theme-name">Dark</div></div>
+      <div class="theme-opt" onclick="setTheme(this,'theme-sepia')"><div class="theme-dot" style="background:#1a1510;border-color:rgba(232,213,176,.3)"></div><div class="theme-name">Sepia</div></div>
+      <div class="theme-opt" onclick="setTheme(this,'theme-grey')"><div class="theme-dot" style="background:#0f1117;border-color:rgba(216,220,232,.3)"></div><div class="theme-name">Slate</div></div>
+      <div class="theme-opt" onclick="setTheme(this,'theme-white')"><div class="theme-dot" style="background:#fff;border-color:rgba(0,0,0,.2)"></div><div class="theme-name">White</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<!-- ═══ Load components (order matters — see comment-section.js header) ═══ -->
+<script src="component/reaction-picker.js"></script>
+<script src="component/share-modal.js"></script>
+<script src="component/save-modal.js"></script>
+<script src="component/tip-picker.js"></script>
+<script src="component/ad-card.js"></script>
+<script src="component/comment-section.js"></script>
+
+<!-- ═══ Load data ═══ -->
+<script src="data/comments-data.js"></script>
+<script src="data/ad-data.js"></script>
+<script src="data/central-demo-data.js"></script>
+<script src="services/ad-service.js"></script>
+
+<script>
+/* ══ UTILS ══ */
+function toast(m){const t=document.getElementById('toastEl');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500);}
+function fmtN(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+const currentStoryId = FS.id || '';
+
+/* ══ READING PROGRESS ══ */
+const sb=document.getElementById('scrollBody');
+sb.addEventListener('scroll',()=>{
+  const max=sb.scrollHeight-sb.clientHeight;
+  const pct=max>0?Math.round(sb.scrollTop/max*100):0;
+  document.getElementById('readProgressFill').style.width=pct+'%';
+},{passive:true});
+
+/* ══ TOPBAR HIDE ══ */
+let lastY=0;
+const topbar=document.getElementById('topbar');
+sb.addEventListener('scroll',()=>{
+  const y=sb.scrollTop,d=y-lastY;lastY=y;
+  if(y<60){topbar.classList.remove('hidden');return;}
+  if(d>6)topbar.classList.add('hidden');
+  else if(d<-6)topbar.classList.remove('hidden');
+},{passive:true});
+document.getElementById('storyText').addEventListener('click',()=>topbar.classList.remove('hidden'));
+
+/* ══ SETTINGS ══ */
+let fsVal=13;const FS_MIN=11,FS_MAX=24;
+function changeFontSize(d){fsVal=Math.min(FS_MAX,Math.max(FS_MIN,fsVal+d));document.documentElement.style.setProperty('--fs',fsVal+'px');document.getElementById('fontSizeDisplay').textContent=fsVal+'px';document.getElementById('fontPreview').style.fontSize=Math.max(9,fsVal-4)+'px';}
+function setLH(el,val){document.querySelectorAll('.lh-opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');document.documentElement.style.setProperty('--lh',val);}
+function setFF(el,val){document.querySelectorAll('.ff-opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');document.documentElement.style.setProperty('--font-story',val);}
+function setTheme(el,theme){document.body.className=theme;document.querySelectorAll('.theme-opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');}
+function openSettings(){document.getElementById('settingsPanel').classList.add('open');document.getElementById('overlayBg').classList.add('show');}
+
+/* ══ TEAMS — 4 teams (page-level "pick your side" widget) ══ */
+const TEAMS=[
+  {id:'a',icon:'💔',name:'Team Ada',col:'#ff0050'},
+  {id:'b',icon:'🔥',name:'Team Emeka',col:'#60a5fa'},
+  {id:'c',icon:'🕊️',name:'Team Forgive',col:'#34d399'},
+  {id:'d',icon:'👀',name:'Team Watching',col:'#a78bfa'},
+];
+let teamCounts={a:2300,b:890,c:540,d:230};
+let teamPicked=null;
+
+function renderTeams(){
+  const grid=document.getElementById('teamGrid');
+  grid.innerHTML=TEAMS.map(t=>`
+    <div class="team-btn${teamPicked===t.id?' selected':''}" data-team="${t.id}" onclick="pickTeam('${t.id}')">
+      <div class="team-icon">${t.icon}</div>
+      <div class="team-info">
+        <div class="team-name">${t.name}</div>
+        <div class="team-count" id="tc-${t.id}">${fmtN(teamCounts[t.id])}</div>
+      </div>
+      <div class="team-check" id="tck-${t.id}"><i class="${teamPicked===t.id?'fas fa-check-circle':'far fa-circle'}"></i></div>
+    </div>`).join('');
+  const tot=Object.values(teamCounts).reduce((a,b)=>a+b,0)||1;
+  document.getElementById('teamBarsWrap').innerHTML=TEAMS.map(t=>`<div class="team-bar-seg" data-team="${t.id}" style="width:${Math.round(teamCounts[t.id]/tot*100)}%"></div>`).join('');
+  document.getElementById('teamBarLabels').innerHTML=TEAMS.map(t=>`<div class="team-bar-lbl"><span class="dot" style="background:${t.col}"></span><span style="color:${t.col};font-size:8px;">${Math.round(teamCounts[t.id]/tot*100)}%</span></div>`).join('');
+}
+function pickTeam(t){
+  if(teamPicked===t)return;
+  if(teamPicked)teamCounts[teamPicked]--;
+  teamPicked=t;teamCounts[t]++;
+  const team=TEAMS.find(x=>x.id===t);
+  toast(team.icon+' You\'re '+team.name+'!');
+  renderTeams();
+}
+renderTeams();
+
+/* ══ STORY-LEVEL REACTIONS (bottom bar Like — page-specific, kept custom) ══ */
+const STORY_REACTIONS=[
+  {id:'cry',e:'😭',l:'Crying',n:9200},{id:'broken',e:'💔',l:'Heartbroken',n:7800},
+  {id:'shock',e:'😱',l:'Shocked',n:4100},{id:'rage',e:'😡',l:'Rage',n:3300},
+  {id:'emo',e:'🥹',l:'Emotional',n:5600},{id:'sus',e:'👀',l:'Suspicious',n:2100},
+  {id:'savage',e:'🔥',l:'Savage',n:1800},{id:'twist',e:'🫢',l:'Twist',n:2900},
+];
+let pickedRx=null,rxVisible=false;
+function buildRxPopup(){
+  document.getElementById('rxPopup').innerHTML=STORY_REACTIONS.map(r=>`<div class="rx-btn${pickedRx===r.id?' picked':''}" onclick="pickRx('${r.id}')"><div class="rx-emoji">${r.e}</div><div class="rx-count">${fmtN(r.n)}</div></div>`).join('');
+}
+buildRxPopup();
+function pickRx(id){
+  if(pickedRx===id){STORY_REACTIONS.find(r=>r.id===id).n--;pickedRx=null;}
+  else{
+    if(pickedRx)STORY_REACTIONS.find(r=>r.id===pickedRx).n--;
+    const r=STORY_REACTIONS.find(r=>r.id===id);r.n++;pickedRx=id;
+    toast(r.e+' '+r.l+'!');
+    const likeEl=document.getElementById('bbLike');
+    likeEl.classList.add('liked');likeEl.querySelector('.bb-icon').innerHTML='<i class="fas fa-heart"></i>';likeEl.querySelector('.bb-label').textContent='Liked';
+  }
+  buildRxPopup();hideRxPopup();
+}
+let holdTimer=null;
+function startLikeHold(){holdTimer=setTimeout(()=>showRxPopup(),380);}
+function endLikeHold(){clearTimeout(holdTimer);}
+function handleLikeTap(){
+  const likeEl=document.getElementById('bbLike');
+  if(rxVisible){hideRxPopup();return;}
+  const isLiked=likeEl.classList.contains('liked');
+  if(isLiked&&pickedRx){STORY_REACTIONS.find(r=>r.id===pickedRx).n--;pickedRx=null;buildRxPopup();}
+  likeEl.classList.toggle('liked',!isLiked);
+  likeEl.querySelector('.bb-icon').innerHTML='<i class="'+(isLiked?'far':'fas')+' fa-heart"></i>';
+  likeEl.querySelector('.bb-label').textContent=isLiked?'Like':'Liked';
+  toast(isLiked?'Unliked':'❤️ Liked! Hold for reactions');
+}
+function showRxPopup(){rxVisible=true;document.getElementById('rxPopup').classList.add('show');}
+function hideRxPopup(){rxVisible=false;document.getElementById('rxPopup').classList.remove('show');}
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('#rxPopup')&&!e.target.closest('#bbLike'))hideRxPopup();},{passive:true});
+
+/* ══ COMMENTS — DroboardComments (comment-section.js), reaction-picker.js
+   and share-modal.js are auto-detected since they're loaded first ══ */
+function mapSeedComment(c){
+  return Object.assign({}, c, {
+    // comments-data.js uses 'ring-has'/'ring-viewed'/'ring-none' — the
+    // component expects the prefix stripped ('has'/'viewed'/'none').
+    statusRing: (c.statusRing || 'none').replace('ring-', ''),
+    replies: (c.replies || []).map(mapSeedComment),
+  });
+}
+const SEED_COMMENTS = (typeof COMMENTS_DATA !== 'undefined' ? COMMENTS_DATA : []).map(mapSeedComment);
+
+const commentsSection = DroboardComments.attach('#commentsPlaceholder', {
+  storyId: currentStoryId,
+  title: 'Comments',
+  comments: SEED_COMMENTS,
+  teams: TEAMS,
+  currentUser: { name: 'You', avatar: null, team: null },
+  requireTeam: false,
+  collapsible: true,
+  startOpen: false,
+  getCommentUrl: (c) => `https://droboard.app/story/5#comment-${c.id}`,
+  onPost:  (c) => console.log('posted', c),
+  onReply: (parentId, c) => console.log('replied to', parentId, c),
+  onEdit:  (c, oldText, newText) => console.log('edited', c.id, oldText, '->', newText),
+  onDotsAction: (action) => { if (action === 'delete') toast('🗑️ Comment deleted.'); },
+});
+
+/* ══ SPONSORED AD — one ad, random per page load, native/storyPromo/banner
+   only (no fullscreen swipe ad) ══ */
+(function initAdSlot(){
+  function track(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  async function managedPool() {
+    const out = [];
+    const p = await AdService.getAds({ page: 'fullReader' });
+    (p.native || []).forEach(ad => out.push({ type: 'native', ad }));
+    (p.book || []).forEach(ad => out.push({ type: 'storyPromo', ad }));
+    (p.banner || []).forEach(ad => out.push({ type: 'banner', ad }));
+    return out;
+  }
+  (window.AdService ? managedPool().catch(() => []) : Promise.resolve([])).then(function (pool) {
+
+  const slot = document.getElementById('adSlot');
+  if (!pool.length) { document.getElementById('adSlotWrap').style.display = 'none'; return; }
+
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+
+  function renderChosen(item){
+    if (item.type === 'native') return DroboardAdCard.renderNative(item.ad);
+    if (item.type === 'storyPromo') return DroboardAdCard.renderStoryPromo(item.ad);
+    return DroboardAdCard.renderBanner(item.ad);
+  }
+  slot.innerHTML = renderChosen(chosen);
+  track(chosen.ad && chosen.ad.id, 'impression');
+
+  DroboardAdCard.attach(slot, {
+    getAds: () => pool.map(p => p.ad),
+
+    onOpen(ad){ if (ad) track(ad.id, 'click'); if (ad.url) window.open(ad.url, '_blank'); else toast('Opening ' + (ad.brand || 'sponsor') + '…'); },
+
+    onLike(ad){
+      ad.liked = !ad.liked;
+      ad.likes += ad.liked ? 1 : -1;
+      slot.innerHTML = DroboardAdCard.renderNative(ad);
+    },
+
+    onComment(ad){ toast('💬 ' + fmtN(ad.comments) + ' comments'); },
+
+    onShare(ad){
+      window.openShareModal({
+        title: ad.heading || ad.title || ad.brand,
+        sub: 'Sponsored · ' + ad.brand,
+        img: ad.image || ad.cover || '',
+        url: ad.url || 'https://droboard.app',
+      });
+    },
+
+    onCta(ad){
+      if (ad) track(ad.id, 'click');
+      toast('Opening ' + (ad.brand || 'sponsor') + '…');
+      if (ad.url) window.open(ad.url, '_blank');
+    },
+  });
+  });
+})();
+
+/* ══ SHARE / SAVE / TIP — wired to the shared components ══ */
+DroboardTip.attach({
+  getWriter: () => ({ name: 'Ifeanyi_Story', avatar: 'https://i.pravatar.cc/100?img=53', handle: '@ifeanyi_story · 31.7k followers' }),
+  onSend: (id, amount, note, mode) => { console.log('tip sent', id, amount, note, mode); },
+});
+
+function openShare(){
+  window.openShareModal({
+    title: 'The Runaway Bride — I left in my socked feet',
+    sub: 'by @Ifeanyi_Story · 45k likes',
+    img: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=80',
+    url: 'https://droboard.app/story/5',
+  });
+}
+function openSave(){
+  window.openSaveModal({
+    title: 'The Runaway Bride — I left in my socked feet',
+    sub: 'by @Ifeanyi_Story',
+    img: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f80',
+    storyId: currentStoryId,
+  });
+}
+function openTip(){
+  DroboardTip.open(currentStoryId, {
+    name: 'Ifeanyi_Story',
+    avatar: 'https://i.pravatar.cc/100?img=53',
+    handle: '@ifeanyi_story · 31.7k followers',
+  });
+}
+window.onDroboardSaveChange = function (storyId, saved){
+  const bbSave = document.getElementById('bbSave');
+  if (!bbSave) return;
+  bbSave.classList.toggle('saved', saved);
+  bbSave.querySelector('.bb-icon').innerHTML = saved ? '<i class="fas fa-bookmark"></i>' : '<i class="far fa-bookmark"></i>';
+  bbSave.querySelector('.bb-label').textContent = saved ? 'Saved' : 'Save';
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   CHAPTER DATA + LOCK STATE
+   Each chapter carries a `state`: 'done' | 'current' | 'locked'.
+   ══════════════════════════════════════════════════════════════════ */
+/* Story content comes ONLY from the central demo file (FULL_STORY).
+   No hardcoded chapters, no fallback text. */
+function centralStory() {
+  const d = window.DemoData || {};
+  return d.FULL_STORY || null;
+}
+const FS = centralStory() || { id: '', title: '', chapters: [], unlockedThrough: 0 };
+const SEASONS_DATA = [{
+  label: 'Season 1',
+  chs: (FS.chapters || []).map((c, i) => ({
+    n: c.n, title: c.title,
+    meta: Math.max(1, Math.round(((c.words || 600)) / 200)) + ' min',
+    badge: c.n === 1 ? 'free' : (i === (FS.unlockedThrough - 1) ? 'new' : null),
+    state: i < (FS.unlockedThrough - 1) ? 'done' : (i === (FS.unlockedThrough - 1) ? 'current' : 'locked'),
+  })),
+}];
+const CHAPTER_CONTENT = {};
+(FS.chapters || []).forEach((c, i) => {
+  if (c.paras && c.paras.length) CHAPTER_CONTENT['s1c' + c.n] = c.paras;
+});
+function genericParas(title){
+  return [
+    `This chapter continues the story — "${esc(title)}." The details replay in fragments: a door left ajar, a name spoken too carefully, a silence that says more than the sentence that follows it.`,
+    `Every choice made here presses against the ones that came before it. Nothing is undone. Nothing is simple.`,
+    `By the final page, something has shifted — quietly, the way most important things do.`,
+  ];
+}
+function getChapterParas(seasonIdx, ch){
+  const key = 's'+(seasonIdx+1)+'c'+ch.n;
+  return CHAPTER_CONTENT[key] || genericParas(ch.title);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WALLET (demo) — mirrors the coin-unlock pattern used elsewhere in
+   Droboard, simplified: tap the coin pill to add coins for testing.
+   ══════════════════════════════════════════════════════════════════ */
+let walletBalance = 45;
+function updateCoinPill(){ document.getElementById('coinBalanceLbl').textContent = fmtN(walletBalance); }
+function grantDemoCoins(){
+  walletBalance += 50;
+  updateCoinPill();
+  toast('🪙 +50 coins added (demo)');
+  const getCoinsBox = document.getElementById('unlockGetCoins');
+  if (getCoinsBox) getCoinsBox.classList.remove('show');
+}
+updateCoinPill();
+
+/* ══════════════════════════════════════════════════════════════════
+   READING POSITION + LOCKED-NEXT FLOW
+   ─────────────────────────────────────────────────────────────────
+   Tapping "Next" into a locked chapter does NOT pop a modal or bounce
+   the reader elsewhere. It swaps the content area in place:
+     • hero updates to the locked chapter's title
+     • story text renders with the fade-mask preview (same pattern as
+       the full-reader's paywall, so the two lock experiences match)
+     • an unlock card appears where the fade cuts off, with the same
+       three price tiers (this chapter / bundle / rest of season)
+     • team-siding, comments, and "chapter complete" are hidden while
+       locked, since none of those make sense for an unread chapter
+   On successful unlock, the same chapter re-renders fully unlocked.
+   ══════════════════════════════════════════════════════════════════ */
+let curSeasonIdx = 0;
+let curChIdx = Math.max(0, (FS.unlockedThrough || 1) - 1);
+let panelActiveSeason = curSeasonIdx;
+
+function renderUnlockCard(seasonIdx, chIdx){
+  const ch = SEASONS_DATA[seasonIdx].chs[chIdx];
+  return `<div class="unlock-card" id="unlockCard">
+    <div class="unlock-icon"><i class="fas fa-lock"></i></div>
+    <div class="unlock-title">Unlock Chapter ${ch.n}</div>
+    <div class="unlock-sub">Continue with coins, or unlock the rest of the season.</div>
+    <div class="unlock-opts">
+      <div class="unlock-opt" onclick="attemptUnlockChapter(${seasonIdx},${chIdx},'one',15)">
+        <div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ${ch.n}</div></div>
+        <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>
+      </div>
+      <div class="unlock-opt reco" onclick="attemptUnlockChapter(${seasonIdx},${chIdx},'bundle',60)">
+        <div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>
+        <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>
+      </div>
+      <div class="unlock-opt" onclick="attemptUnlockChapter(${seasonIdx},${chIdx},'season',120)">
+        <div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>
+        <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>
+      </div>
+    </div>
+    <div class="unlock-getcoins" id="unlockGetCoins">
+      <div class="unlock-getcoins-txt">Not enough coins.</div>
+      <button class="unlock-getcoins-btn" onclick="grantDemoCoins()"><i class="fas fa-coins" style="font-size:10px"></i> Get 50 coins (demo)</button>
+    </div>
+  </div>`;
+}
+
+function attemptUnlockChapter(seasonIdx, chIdx, mode, cost){
+  if (walletBalance < cost){
+    document.getElementById('unlockGetCoins')?.classList.add('show');
+    toast('🪙 Not enough coins — top up below');
+    return;
+  }
+  walletBalance -= cost;
+  updateCoinPill();
+  const chs = SEASONS_DATA[seasonIdx].chs;
+  if (mode === 'one'){
+    chs[chIdx].state = 'current';
+  } else if (mode === 'bundle'){
+    for (let i = chIdx; i < Math.min(chs.length, chIdx + 5); i++) chs[i].state = 'done';
+    chs[chIdx].state = 'current';
+  } else if (mode === 'season'){
+    for (let i = chIdx; i < chs.length; i++) chs[i].state = 'done';
+    chs[chIdx].state = 'current';
+  }
+  toast('🔓 Unlocked!');
+  renderChapterView(seasonIdx, chIdx);
+  renderChList();
+}
+
+function renderChapterView(seasonIdx, chIdx){
+  curSeasonIdx = seasonIdx;
+  curChIdx = chIdx;
+  const season = SEASONS_DATA[seasonIdx];
+  const ch = season.chs[chIdx];
+  const locked = ch.state === 'locked';
+
+  // Hero + header
+  document.getElementById('chTitleEl').textContent = ch.title;
+  document.getElementById('chMetaSC').innerHTML = `<i class="fas fa-book-open" style="font-size:8px"></i> S${seasonIdx+1} · Ch ${ch.n}`;
+  document.getElementById('tbChInfo').textContent = `${season.label} · Chapter ${ch.n}`;
+  document.getElementById('chNavCenter').textContent = `Ch ${ch.n} of ${season.chs.length}`;
+
+  // Prev/Next controls
+  const prevBtn = document.getElementById('prevChBtn');
+  const nextBtn = document.getElementById('nextChBtn');
+  const nextLbl = document.getElementById('nextChLabel');
+  const nextIco = document.getElementById('nextChIcon');
+  prevBtn.classList.toggle('disabled', chIdx <= 0);
+
+  const hasNext = chIdx < season.chs.length - 1;
+  nextBtn.classList.remove('disabled', 'locked-next');
+  if (!hasNext){
+    nextBtn.classList.add('disabled');
+    nextLbl.textContent = "You're caught up";
+    nextIco.className = 'fas fa-check';
+  } else {
+    const nextCh = season.chs[chIdx+1];
+    if (nextCh.state === 'locked'){
+      nextBtn.classList.add('locked-next');
+      nextLbl.textContent = 'Unlock';
+      nextIco.className = 'fas fa-lock';
+    } else {
+      nextLbl.textContent = 'Next';
+      nextIco.className = 'fas fa-chevron-right';
+    }
+  }
+
+  // Story text + lock state
+  const paras = getChapterParas(seasonIdx, ch);
+  const storyTextEl = document.getElementById('storyText');
+  storyTextEl.innerHTML = paras.map(p => p.trim().startsWith('<em>') ? `<p>${p}</p>` : `<p>${p}</p>`).join('');
+  storyTextEl.classList.toggle('locked-fade', locked);
+
+  const existingCard = document.getElementById('unlockCard');
+  if (existingCard) existingCard.remove();
+  if (locked){
+    storyTextEl.insertAdjacentHTML('afterend', renderUnlockCard(seasonIdx, chIdx));
+  }
+
+  // Sections that only make sense once a chapter is actually unlocked
+  document.getElementById('teamSidingSection').style.display = locked ? 'none' : '';
+  document.getElementById('adSlotWrap').style.display = locked ? 'none' : '';
+  document.getElementById('commentsSection').style.display = locked ? 'none' : '';
+  document.getElementById('chEndSection').style.display = locked ? 'none' : '';
+  if (!locked){
+    document.getElementById('chEndTitle').textContent = `Chapter ${ch.n} complete`;
+    const nextExists = chIdx < season.chs.length - 1;
+    document.getElementById('chEndSub').innerHTML = nextExists
+      ? `Ready for the next chapter?<br/>${season.chs[chIdx+1].title}`
+      : `You're all caught up on ${season.label}.<br/>New chapters drop soon.`;
+  }
+
+  document.getElementById('scrollBody').scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
+  renderChList();
+}
+
+function goChapter(dir){
+  const season = SEASONS_DATA[curSeasonIdx];
+  const nextIdx = curChIdx + dir;
+  if (nextIdx < 0){ toast("You're on the first chapter!"); return; }
+  if (nextIdx >= season.chs.length){ toast("✅ You're all caught up!"); return; }
+  renderChapterView(curSeasonIdx, nextIdx);
+}
+
+/* ══ CHAPTERS PANEL ══ */
+function renderSeasonTabs(){
+  document.getElementById('seasonTabs').innerHTML = SEASONS_DATA.map((s,i)=>`<div class="stab${i===panelActiveSeason?' active':''}" onclick="setPanelSeason(${i})">${s.label}</div>`).join('');
+}
+function setPanelSeason(i){ panelActiveSeason=i; renderSeasonTabs(); renderChList(); }
+function renderChList(){
+  const chs = SEASONS_DATA[panelActiveSeason].chs;
+  document.getElementById('chListPanel').innerHTML = chs.map((c,idx)=>{
+    const isCurrent = panelActiveSeason===curSeasonIdx && idx===curChIdx;
+    const numEl = c.state==='done'
+      ? `<div class="ch-num done"><i class="fas fa-check" style="font-size:9px"></i></div>`
+      : c.state==='locked'
+      ? `<div class="ch-num locked"><i class="fas fa-lock" style="font-size:9px"></i></div>`
+      : `<div class="ch-num current">${c.n}</div>`;
+    let badge = '';
+    if (c.state==='locked') badge = `<span class="ch-row-badge crb-locked">LOCKED</span>`;
+    else if (c.badge==='new') badge = `<span class="ch-row-badge crb-new">NEW</span>`;
+    else if (c.badge==='free') badge = `<span class="ch-row-badge crb-free">FREE</span>`;
+    const right = isCurrent ? `<span class="ch-current-badge">Reading</span>` : c.state==='done' ? `<i class="fas fa-check ch-done-check"></i>` : c.state==='locked' ? `<i class="fas fa-lock" style="color:var(--gold);font-size:12px"></i>` : '';
+    return `<div class="ch-row${isCurrent?' current':''}${c.state==='locked'?' locked':''}" onclick="openChapterFromPanel(${panelActiveSeason},${idx})">
+      ${numEl}
+      <div class="ch-row-body"><div class="ch-row-title">Ch.${c.n} — ${esc(c.title)}</div><div class="ch-row-meta">${c.meta} ${badge}</div></div>
+      <div class="ch-row-right">${right}</div>
+    </div>`;
+  }).join('');
+}
+function openChapterFromPanel(seasonIdx, idx){
+  closeChPanel();
+  renderChapterView(seasonIdx, idx);
+}
+renderSeasonTabs();
+
+function openChPanel(){ panelActiveSeason = curSeasonIdx; renderSeasonTabs(); renderChList(); document.getElementById('chPanel').classList.add('open'); document.getElementById('overlayBg').classList.add('show'); }
+function closeChPanel(){ document.getElementById('chPanel').classList.remove('open'); document.getElementById('overlayBg').classList.remove('show'); }
+
+/* ══ CLOSE ALL (settings panel + chapters panel share the overlay) ══ */
+function closeAllSheets(){
+  document.getElementById('settingsPanel').classList.remove('open');
+  document.getElementById('chPanel').classList.remove('open');
+  document.getElementById('overlayBg').classList.remove('show');
+}
+
+/* ══ YOU MAY ALSO LIKE ══ */
+const YML=[
+  {img:'https://i.postimg.cc/ftRZbhKx/3.jpg',cat:'💔 Heartbreak',title:'He proposed with my best friend\'s ring',author:'Kemi_A',views:'96k',badge:'new'},
+  {img:'https://i.postimg.cc/JDzmhWqj/2.jpg',cat:'🔥 Revenge',title:'My stepmother stole my university fund',author:'Zara_M',views:'192k',badge:'hot'},
+  {img:'https://i.postimg.cc/YGCkSw-33/1.jpg',cat:'👑 Family',title:'Grandmother\'s will revealed everything',author:'Chiamaka_N',views:'204k',badge:''},
+  {img:'https://i.postimg.cc/0MyxNqfz/7.jpg',cat:'🌙 Elegy',title:'The letter he never sent',author:'Efe_O',views:'218k',badge:''},
+  {img:'https://i.postimg.cc/fkdXzjSj/wife.jpg',cat:'💔 Betrayal',title:'Caught my husband kissing her photograph',author:'Ada_Writes',views:'171k',badge:'hot'},
+];
+document.getElementById('ymlScroll').innerHTML=YML.map(s=>{
+  const bc=s.badge==='hot'?'background:var(--acc);color:#fff;':s.badge==='new'?'background:#3b0764;color:#d8b4fe;':'';
+  return`<div class="yml-card" onclick="toast('📖 Opening…')">
+    <div class="yml-cover"><img src="${s.img}" loading="lazy" alt=""/><div class="yml-cover-scrim"></div>${s.badge?`<div class="yml-cover-cat" style="${bc}">${s.badge.toUpperCase()}</div>`:''}<div class="yml-cover-views"><i class="fas fa-eye" style="font-size:7px"></i>${s.views}</div></div>
+    <div class="yml-text-title">${s.title}</div>
+    <div class="yml-text-author">@${s.author}</div>
+  </div>`;
+}).join('');
+
+/* ══ INIT: render the actual reading position (also drives lock UI) ══ */
+renderChapterView(curSeasonIdx, curChIdx);
+</script>
+</body>
+</html>

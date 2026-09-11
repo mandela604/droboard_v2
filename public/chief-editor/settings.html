@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Settings — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;transition:background .2s ease}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+:root{ --border-vis:#d8dce4; }
+
+/* Dark theme override — scoped to this page, toggled via the Appearance panel */
+html[data-theme="dark"]{
+  --bg:#101018; --card:#181822; --border:#262633; --border-vis:#333345;
+  --text:#f2f2f7; --text-muted:#a8a7bd; --text-faint:#726f8c;
+  --input-bg:#1f1f2c; --input-border:#2e2e3d; --hover:#20202c; --table-head:#1d1d29;
+  --red-bg:rgba(224,41,62,.16); --green-bg:rgba(28,157,91,.16); --blue-bg:rgba(37,99,235,.18);
+  --purple-bg:rgba(124,58,237,.18); --amber-bg:rgba(201,138,18,.18);
+}
+html[data-theme="dark"] body{background:var(--bg)}
+
+.settings-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:start}
+
+.panel{background:var(--card);border:1px solid var(--border-vis);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+.panel.danger{border-color:var(--red)}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:9px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:18px;line-height:1.5}
+
+.mini-btn{font-size:10.5px;font-weight:700;padding:8px 15px;border-radius:8px;border:1px solid var(--border-vis);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn.ghost{background:transparent;border:1px solid var(--border-vis)}
+.mini-btn:disabled{opacity:.45;cursor:default;pointer-events:none}
+
+/* profile header */
+.profile-head{display:flex;align-items:center;gap:16px;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--border-vis)}
+.profile-avatar-wrap{position:relative;flex-shrink:0}
+.profile-avatar{width:68px;height:68px;border-radius:50%;object-fit:cover;border:1px solid var(--border-vis)}
+.avatar-edit-btn{position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;border-radius:50%;background:var(--accent);
+  color:#fff;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer}
+.profile-head-name{font-size:16px;font-weight:800}
+.profile-head-role{font-size:11.5px;color:var(--text-faint);font-weight:600;margin-top:2px;display:flex;align-items:center;gap:6px}
+.role-chip{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--accent-bg);color:var(--accent);text-transform:uppercase;border:1px solid var(--accent)}
+
+.form-row{margin-bottom:16px}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px;display:block}
+.form-input,.form-select,.form-textarea{width:100%;font-family:inherit;font-size:12.5px;color:var(--text);
+  background:var(--input-bg);border:1px solid var(--border-vis);border-radius:9px;padding:10px 12px;outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+.form-input:disabled{opacity:.65;cursor:not-allowed}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.5}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:5px}
+.field-error{color:var(--red);font-size:10.5px;margin-top:5px;display:none}
+.form-input.invalid{border-color:var(--red)}
+.panel-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+
+/* toggle rows */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 2px;border-bottom:1px solid var(--border-vis)}
+.toggle-row:last-of-type{border-bottom:none}
+.toggle-text b{font-size:12.5px;font-weight:700;display:block}
+.toggle-text span{font-size:10.5px;color:var(--text-faint);margin-top:2px;display:block}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch-track{position:absolute;inset:0;background:var(--input-border);border:1px solid var(--border-vis);border-radius:20px;cursor:pointer;transition:.15s}
+.switch-track::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked + .switch-track{background:var(--accent);border-color:transparent}
+.switch input:checked + .switch-track::before{transform:translateX(16px)}
+
+/* sessions */
+.session-row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--border-vis)}
+.session-row:last-child{border-bottom:none}
+.session-ico{width:36px;height:36px;border-radius:10px;background:var(--input-bg);border:1px solid var(--border-vis);
+  display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;flex-shrink:0}
+.session-body{flex:1;min-width:0}
+.session-name{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.session-meta{font-size:10.5px;color:var(--text-faint);margin-top:1px}
+.current-chip{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:20px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);text-transform:uppercase}
+
+/* appearance radio pills */
+.theme-pills{display:flex;gap:10px;flex-wrap:wrap}
+.theme-pill{flex:1;min-width:100px;border:1px solid var(--border-vis);border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;transition:.15s}
+.theme-pill:hover{border-color:var(--accent)}
+.theme-pill.active{border-color:var(--accent);background:var(--accent-bg)}
+.theme-pill i{font-size:17px;color:var(--text-muted);margin-bottom:8px;display:block}
+.theme-pill.active i{color:var(--accent)}
+.theme-pill span{font-size:11.5px;font-weight:700}
+
+/* password strength */
+.pw-strength{height:5px;border-radius:4px;background:var(--table-head);overflow:hidden;margin-top:8px}
+.pw-strength-fill{height:100%;width:0%;border-radius:4px;transition:.2s;background:var(--red)}
+.pw-strength-label{font-size:10px;color:var(--text-faint);margin-top:4px}
+
+/* modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border-vis);border-radius:16px;width:100%;max-width:420px;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border-vis)}
+.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border-vis);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.modal-body{padding:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border-vis)}
+.confirm-icon{width:52px;height:52px;border-radius:50%;background:var(--red-bg);border:1px solid var(--red);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;margin:4px auto 16px}
+.confirm-text{text-align:center;font-size:13px;color:var(--text-muted);line-height:1.6}
+.confirm-text b{color:var(--text)}
+
+/* toast */
+#toastHost{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast-item{background:var(--sidebar-bg);color:#fff;font-size:12.5px;font-weight:600;padding:12px 16px;border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:9px;min-width:220px;animation:toast-in .2s ease}
+.toast-item i{color:var(--accent)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media (max-width:1100px){.settings-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.form-row.two-col{grid-template-columns:1fr}.theme-pills{flex-direction:column}#toastHost{left:16px;right:16px;bottom:16px}.toast-item{min-width:0}}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="settings-grid">
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- Profile -->
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-user" style="color:var(--accent)"></i> Profile</h2></div>
+        <div class="panel-sub">This information is visible to senior editors and appears on contracts you countersign.</div>
+
+        <div class="profile-head">
+          <div class="profile-avatar-wrap">
+            <img class="profile-avatar" id="profileAvatarImg" src="https://i.pravatar.cc/140?img=9" alt="Avatar"/>
+            <button class="avatar-edit-btn" id="avatarEditBtn" title="Change photo"><i class="fas fa-camera"></i></button>
+          </div>
+          <div>
+            <div class="profile-head-name" id="profileHeadName">Adaeze Bello</div>
+            <div class="profile-head-role"><span class="role-chip">Chief Editor</span></div>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div>
+            <label class="form-label">Full name</label>
+            <input class="form-input" id="pName" value="Adaeze Bello"/>
+            <div class="field-error" id="pNameErr">Name is required.</div>
+          </div>
+          <div>
+            <label class="form-label">Role</label>
+            <input class="form-input" value="Chief Editor" disabled/>
+          </div>
+        </div>
+        <div class="form-row two-col">
+          <div>
+            <label class="form-label">Email address</label>
+            <input class="form-input" id="pEmail" value="adaeze.bello@droboard.io"/>
+            <div class="field-error" id="pEmailErr">Enter a valid email address.</div>
+          </div>
+          <div>
+            <label class="form-label">Phone number</label>
+            <input class="form-input" id="pPhone" value="+234 802 555 0134"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Bio</label>
+          <textarea class="form-textarea" id="pBio" maxlength="240">Chief Editor overseeing platform-wide editorial quality, senior editor performance, and author agreements.</textarea>
+          <div class="form-hint"><span id="pBioCount">0</span>/240</div>
+        </div>
+
+        <div class="panel-foot">
+          <button class="mini-btn ghost" id="pResetBtn">Reset</button>
+          <button class="mini-btn primary" id="pSaveBtn"><i class="fas fa-check"></i> Save Profile</button>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-shield-halved" style="color:var(--blue)"></i> Security</h2></div>
+        <div class="panel-sub">Manage your password, two-factor authentication, and active sessions.</div>
+
+        <div class="form-row">
+          <label class="form-label">Current password</label>
+          <input class="form-input" id="curPw" type="password" placeholder="••••••••"/>
+          <div class="field-error" id="curPwErr">Enter your current password.</div>
+        </div>
+        <div class="form-row two-col">
+          <div>
+            <label class="form-label">New password</label>
+            <input class="form-input" id="newPw" type="password" placeholder="At least 8 characters"/>
+            <div class="pw-strength"><div class="pw-strength-fill" id="pwStrengthFill"></div></div>
+            <div class="pw-strength-label" id="pwStrengthLabel">&nbsp;</div>
+          </div>
+          <div>
+            <label class="form-label">Confirm new password</label>
+            <input class="form-input" id="confirmPw" type="password" placeholder="Repeat new password"/>
+            <div class="field-error" id="confirmPwErr">Passwords don't match.</div>
+          </div>
+        </div>
+        <div class="panel-foot" style="margin-bottom:18px">
+          <button class="mini-btn primary" id="pwSaveBtn"><i class="fas fa-key"></i> Update Password</button>
+        </div>
+
+        <div class="toggle-row" style="border-top:1px solid var(--border-vis);padding-top:16px">
+          <div class="toggle-text"><b>Two-factor authentication</b><span>Require a verification code in addition to your password</span></div>
+          <label class="switch"><input type="checkbox" id="twoFaToggle"/><span class="switch-track"></span></label>
+        </div>
+
+        <div style="margin-top:6px">
+          <div class="form-label" style="margin-top:14px;margin-bottom:8px">Active sessions</div>
+          <div id="sessionsList"></div>
+        </div>
+      </div>
+
+      <!-- Platform Defaults -->
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-sliders" style="color:var(--purple)"></i> Platform Defaults</h2></div>
+        <div class="panel-sub">Default values applied to new senior editor quotas and contract templates.</div>
+
+        <div class="form-row two-col">
+          <div>
+            <label class="form-label">Default royalty rate (%)</label>
+            <input class="form-input" id="defRoyalty" type="number" min="0" max="100" value="15"/>
+          </div>
+          <div>
+            <label class="form-label">Default monthly invite quota</label>
+            <input class="form-input" id="defQuota" type="number" min="0" value="50"/>
+          </div>
+        </div>
+        <div class="form-row two-col">
+          <div>
+            <label class="form-label">Payment schedule</label>
+            <select class="form-select" id="defPaySchedule">
+              <option>Weekly</option>
+              <option selected>Biweekly</option>
+              <option>Monthly</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Plagiarism auto-flag threshold (%)</label>
+            <input class="form-input" id="defPlagThreshold" type="number" min="0" max="100" value="40"/>
+            <div class="form-hint">Chapters scoring above this similarity are flagged automatically.</div>
+          </div>
+        </div>
+        <div class="panel-foot">
+          <button class="mini-btn primary" id="defSaveBtn"><i class="fas fa-check"></i> Save Defaults</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <!-- Notifications -->
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-bell" style="color:var(--amber)"></i> Notifications</h2></div>
+        <div class="panel-sub">Choose what you get notified about.</div>
+
+        <div id="notifList"></div>
+
+        <div class="panel-foot">
+          <button class="mini-btn primary" id="notifSaveBtn"><i class="fas fa-check"></i> Save Preferences</button>
+        </div>
+      </div>
+
+      <!-- Appearance -->
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-palette" style="color:var(--green)"></i> Appearance</h2></div>
+        <div class="panel-sub">Applies to this session.</div>
+
+        <div class="theme-pills" id="themePills">
+          <div class="theme-pill" data-theme="light"><i class="fas fa-sun"></i><span>Light</span></div>
+          <div class="theme-pill" data-theme="dark"><i class="fas fa-moon"></i><span>Dark</span></div>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="panel danger">
+        <div class="panel-head"><h2><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Danger Zone</h2></div>
+        <div class="panel-sub">These actions are significant — review carefully before proceeding.</div>
+
+        <div class="toggle-row">
+          <div class="toggle-text"><b>Log out of all devices</b><span>Ends every active session except this one</span></div>
+          <button class="mini-btn danger" id="logoutAllBtn"><i class="fas fa-right-from-bracket"></i> Log Out All</button>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-text"><b>Deactivate account</b><span>You'll lose Chief Editor access until reactivated by Anthropic Support</span></div>
+          <button class="mini-btn danger" id="deactivateBtn"><i class="fas fa-user-slash"></i> Deactivate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal (reused for all danger-zone / destructive confirmations) -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="confirmTitle"><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Confirm</h3>
+      <button class="modal-close" data-close="confirmModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon" id="confirmIcon"><i class="fas fa-triangle-exclamation"></i></div>
+      <div class="confirm-text" id="confirmText"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="confirmModal">Cancel</button>
+      <button class="mini-btn danger" id="confirmActionBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="shared/chief-editor-sidebar.js"></script>
+<script>
+'use strict';
+const shell = ChiefEditorSidebar.attach('#dashRoot',{
+  activeItem:'settings', title:'Settings', subtitle:'Manage your profile, security, and platform preferences',
+  user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'}, notifCount:6,
+  searchPlaceholder:'Search anything…',
+});
+
+/* ── Toast ── */
+function toast(msg, icon){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.innerHTML = `<i class="fas ${icon||'fa-circle-check'}"></i><span>${msg}</span>`;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, 2600);
+}
+window.toast = toast;
+
+/* ── Modal helpers ── */
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click', ()=>closeModal(btn.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(ov=>ov.addEventListener('click', e=>{ if(e.target===ov) closeModal(ov.id); }));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.show').forEach(ov=>closeModal(ov.id)); });
+
+/* ══════════════════ PROFILE ══════════════════ */
+const PROFILE_DEFAULTS = {
+  name:'Adaeze Bello', email:'adaeze.bello@droboard.io', phone:'+234 802 555 0134',
+  bio:'Chief Editor overseeing platform-wide editorial quality, senior editor performance, and author agreements.',
+};
+const AVATAR_POOL = [9,15,25,32,45,52,60,5,13,48];
+let avatarIdx = 0;
+
+function bioCount(){ document.getElementById('pBioCount').textContent = document.getElementById('pBio').value.length; }
+document.getElementById('pBio').addEventListener('input', bioCount);
+bioCount();
+
+document.getElementById('avatarEditBtn').addEventListener('click', ()=>{
+  avatarIdx = (avatarIdx+1) % AVATAR_POOL.length;
+  document.getElementById('profileAvatarImg').src = `https://i.pravatar.cc/140?img=${AVATAR_POOL[avatarIdx]}`;
+  toast('Photo updated', 'fa-camera');
+});
+
+document.getElementById('pResetBtn').addEventListener('click', ()=>{
+  document.getElementById('pName').value = PROFILE_DEFAULTS.name;
+  document.getElementById('pEmail').value = PROFILE_DEFAULTS.email;
+  document.getElementById('pPhone').value = PROFILE_DEFAULTS.phone;
+  document.getElementById('pBio').value = PROFILE_DEFAULTS.bio;
+  bioCount();
+  clearFieldError('pName'); clearFieldError('pEmail');
+  toast('Reverted to last saved profile', 'fa-rotate-left');
+});
+
+function clearFieldError(id){
+  document.getElementById(id).classList.remove('invalid');
+  const err = document.getElementById(id+'Err');
+  if(err) err.style.display = 'none';
+}
+function setFieldError(id){
+  document.getElementById(id).classList.add('invalid');
+  const err = document.getElementById(id+'Err');
+  if(err) err.style.display = 'block';
+}
+function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+document.getElementById('pSaveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('pName').value.trim();
+  const email = document.getElementById('pEmail').value.trim();
+  let valid = true;
+
+  if(!name){ setFieldError('pName'); valid=false; } else clearFieldError('pName');
+  if(!isValidEmail(email)){ setFieldError('pEmail'); valid=false; } else clearFieldError('pEmail');
+  if(!valid) return;
+
+  document.getElementById('profileHeadName').textContent = name;
+  toast('Profile saved', 'fa-circle-check');
+});
+
+/* ══════════════════ SECURITY ══════════════════ */
+function pwStrength(pw){
+  let score = 0;
+  if(pw.length>=8) score++;
+  if(pw.length>=12) score++;
+  if(/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  return score;
+}
+document.getElementById('newPw').addEventListener('input', e=>{
+  const score = pwStrength(e.target.value);
+  const pct = Math.min(100, (score/5)*100);
+  const fill = document.getElementById('pwStrengthFill');
+  const label = document.getElementById('pwStrengthLabel');
+  fill.style.width = pct+'%';
+  if(!e.target.value){ fill.style.width='0%'; label.innerHTML='&nbsp;'; return; }
+  if(score<=1){ fill.style.background='var(--red)'; label.textContent='Weak'; }
+  else if(score<=3){ fill.style.background='var(--amber)'; label.textContent='Okay'; }
+  else { fill.style.background='var(--green)'; label.textContent='Strong'; }
+});
+
+document.getElementById('pwSaveBtn').addEventListener('click', ()=>{
+  const cur = document.getElementById('curPw').value;
+  const nw = document.getElementById('newPw').value;
+  const conf = document.getElementById('confirmPw').value;
+  let valid = true;
+
+  if(!cur){ setFieldError('curPw'); valid=false; } else clearFieldError('curPw');
+
+  if(!nw || nw.length<8 || conf!==nw){
+    setFieldError('confirmPw');
+    document.getElementById('confirmPwErr').textContent = !nw || nw.length<8
+      ? 'New password must be at least 8 characters.' : "Passwords don't match.";
+    valid=false;
+  } else clearFieldError('confirmPw');
+
+  if(!valid) return;
+
+  document.getElementById('curPw').value = '';
+  document.getElementById('newPw').value = '';
+  document.getElementById('confirmPw').value = '';
+  document.getElementById('pwStrengthFill').style.width = '0%';
+  document.getElementById('pwStrengthLabel').innerHTML = '&nbsp;';
+  toast('Password updated', 'fa-key');
+});
+
+document.getElementById('twoFaToggle').addEventListener('change', e=>{
+  toast(e.target.checked ? 'Two-factor authentication enabled' : 'Two-factor authentication disabled', 'fa-shield-halved');
+});
+
+let SESSIONS = [
+  { id:'s1', device:'MacBook Pro — Chrome', location:'Port Harcourt, NG', time:'Active now', current:true, icon:'fa-laptop' },
+  { id:'s2', device:'iPhone 15 — Droboard App', location:'Port Harcourt, NG', time:'2h ago', current:false, icon:'fa-mobile-screen' },
+  { id:'s3', device:'Windows PC — Edge', location:'Lagos, NG', time:'3d ago', current:false, icon:'fa-desktop' },
+];
+function renderSessions(){
+  document.getElementById('sessionsList').innerHTML = SESSIONS.map(s=>`
+    <div class="session-row">
+      <div class="session-ico"><i class="fas ${s.icon}"></i></div>
+      <div class="session-body">
+        <div class="session-name">${s.device} ${s.current?'<span class="current-chip">This device</span>':''}</div>
+        <div class="session-meta">${s.location} · ${s.time}</div>
+      </div>
+      ${s.current ? '' : `<button class="mini-btn ghost" data-session="${s.id}"><i class="fas fa-right-from-bracket"></i></button>`}
+    </div>`).join('');
+  document.querySelectorAll('[data-session]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s = SESSIONS.find(x=>x.id===btn.dataset.session);
+      SESSIONS = SESSIONS.filter(x=>x.id!==btn.dataset.session);
+      renderSessions();
+      toast(`Logged out of ${s.device}`, 'fa-right-from-bracket');
+    });
+  });
+}
+renderSessions();
+
+/* ══════════════════ PLATFORM DEFAULTS ══════════════════ */
+document.getElementById('defSaveBtn').addEventListener('click', ()=>{
+  toast('Platform defaults saved', 'fa-sliders');
+});
+
+/* ══════════════════ NOTIFICATIONS ══════════════════ */
+const NOTIF_PREFS = [
+  { id:'contracts', label:'Contract signatures', desc:'When a contract is ready for your countersignature', on:true },
+  { id:'reports', label:'Flagged reports', desc:'New plagiarism flags or author/editor reports', on:true },
+  { id:'quotas', label:'Quota alerts', desc:'When a senior editor falls behind on their monthly quota', on:true },
+  { id:'payments', label:'Payment reminders', desc:'Upcoming and overdue payouts', on:true },
+  { id:'digest', label:'Weekly summary email', desc:'A roundup of platform activity every Monday', on:false },
+];
+function renderNotifs(){
+  document.getElementById('notifList').innerHTML = NOTIF_PREFS.map(n=>`
+    <div class="toggle-row">
+      <div class="toggle-text"><b>${n.label}</b><span>${n.desc}</span></div>
+      <label class="switch"><input type="checkbox" data-notif="${n.id}" ${n.on?'checked':''}/><span class="switch-track"></span></label>
+    </div>`).join('');
+  document.querySelectorAll('[data-notif]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const n = NOTIF_PREFS.find(x=>x.id===inp.dataset.notif);
+      n.on = inp.checked;
+    });
+  });
+}
+renderNotifs();
+
+document.getElementById('notifSaveBtn').addEventListener('click', ()=>{
+  toast('Notification preferences saved', 'fa-bell');
+});
+
+/* ══════════════════ APPEARANCE ══════════════════ */
+function setTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.querySelectorAll('.theme-pill').forEach(p=>p.classList.toggle('active', p.dataset.theme===theme));
+}
+document.querySelectorAll('.theme-pill').forEach(p=>{
+  p.addEventListener('click', ()=>{
+    setTheme(p.dataset.theme);
+    toast(`Switched to ${p.dataset.theme} mode`, p.dataset.theme==='dark'?'fa-moon':'fa-sun');
+  });
+});
+setTheme('light');
+
+/* ══════════════════ DANGER ZONE ══════════════════ */
+let pendingDanger = null;
+
+document.getElementById('logoutAllBtn').addEventListener('click', ()=>{
+  pendingDanger = 'logoutAll';
+  document.getElementById('confirmTitle').innerHTML = '<i class="fas fa-right-from-bracket" style="color:var(--red)"></i> Log Out All Devices';
+  document.getElementById('confirmText').innerHTML = 'This will end every active session except this one. You won\'t be logged out here.';
+  openModal('confirmModal');
+});
+
+document.getElementById('deactivateBtn').addEventListener('click', ()=>{
+  pendingDanger = 'deactivate';
+  document.getElementById('confirmTitle').innerHTML = '<i class="fas fa-user-slash" style="color:var(--red)"></i> Deactivate Account';
+  document.getElementById('confirmText').innerHTML = 'Are you sure you want to deactivate your <b>Chief Editor</b> account? You\'ll lose access until it\'s reactivated by Anthropic Support.';
+  openModal('confirmModal');
+});
+
+document.getElementById('confirmActionBtn').addEventListener('click', ()=>{
+  if(pendingDanger==='logoutAll'){
+    SESSIONS = SESSIONS.filter(s=>s.current);
+    renderSessions();
+    toast('Logged out of all other devices', 'fa-right-from-bracket');
+  } else if(pendingDanger==='deactivate'){
+    document.getElementById('deactivateBtn').disabled = true;
+    document.getElementById('deactivateBtn').innerHTML = '<i class="fas fa-check"></i> Deactivated';
+    toast('Account deactivated', 'fa-user-slash');
+  }
+  pendingDanger = null;
+  closeModal('confirmModal');
+});
+</script>
+</body>
+</html>

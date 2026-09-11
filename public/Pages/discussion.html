@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<title>Discussion · DroBoard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--bg:#d8d8d8;--l1:#ffffff;--l2:#f1f1f1;--l3:#ffffff;--l4:#e8e8e8;
+  --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.05);--bd-acc:rgba(255,0,80,.25);
+  --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
+  --purple:#a78bfa;--orange:#fb923c;--green:#34d399;--blue:#38bdf8;
+  --safe-b:env(safe-area-inset-bottom,12px);
+}
+[data-theme="dark"]{
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bd:rgba(255,255,255,.10);--bd2:rgba(255,255,255,.07);--bd-acc:rgba(255,0,80,.25);
+  --tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);
+  font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+body{display:flex;justify-content:center;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{display:none}
+
+.phone{
+  width:100%;max-width:420px;min-height:100vh;background:var(--l1);
+  box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;
+  padding-bottom:calc(var(--safe-b) + 16px);
+}
+
+.top-bar{
+  position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px;
+  padding:11px 12px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);
+}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.top-icon-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--tx-muted);flex-shrink:0;
+}
+.top-center{flex:1;min-width:0}
+.top-title{font-size:15px;font-weight:800;color:var(--tx-high)}
+.top-sub{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.op{
+  padding:16px 14px 14px;
+  border-bottom:8px solid var(--bg);
+}
+[data-theme="dark"] .op{
+  border-bottom-color:#000;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);
+}
+.op-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.op-av{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--l2);cursor:pointer}
+.op-meta{flex:1;min-width:0}
+.op-name{font-size:14px;font-weight:800;color:var(--tx-high);cursor:pointer}
+.op-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;background:rgba(167,139,250,.12);color:var(--purple);margin-left:6px}
+.op-badge.author{background:rgba(255,0,80,.08);color:var(--acc)}
+.op-time{font-size:11.5px;color:var(--tx-muted);font-weight:600;margin-top:2px}
+.op-title{font-size:18px;font-weight:800;color:var(--tx-high);line-height:1.28;letter-spacing:-.02em;margin-bottom:8px}
+.op-body{font-size:14px;color:var(--tx-body);line-height:1.6;margin-bottom:12px}
+.op-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.op-tag{font-size:10px;font-weight:800;padding:4px 9px;border-radius:12px}
+.op-tag.discussion{background:rgba(167,139,250,.12);color:#7c3aed}
+.op-tag.recommendation{background:rgba(255,0,80,.08);color:var(--acc)}
+.op-tag.theory{background:rgba(56,189,248,.12);color:#0284c7}
+.op-tag.question{background:rgba(52,211,153,.12);color:#0d9668}
+.op-tag.controversial{background:rgba(251,146,60,.14);color:#c2410c}
+.op-tag.hot{background:rgba(255,0,80,.1);color:var(--acc)}
+.op-media{width:100%;max-height:260px;border-radius:14px;overflow:hidden;margin-bottom:12px;background:var(--l2)}
+.op-media img{width:100%;max-height:260px;object-fit:cover;display:block}
+.op-story{
+  display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;
+  background:var(--l2);border:1px solid var(--bd);margin-bottom:12px;cursor:pointer;
+}
+.op-story-cover{width:40px;height:54px;border-radius:8px;object-fit:cover}
+.op-story-title{font-size:13px;font-weight:700;color:var(--tx-high)}
+.op-story-by{font-size:11px;color:var(--tx-muted)}
+.op-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--bd2)}
+[data-theme="dark"] .op-actions{border-top-color:rgba(255,255,255,.08)}
+
+/* One ad between OP and comments */
+.disc-ad{
+  background:var(--l1);
+  border-bottom:8px solid var(--bg);
+  padding:10px 14px 12px;
+}
+[data-theme="dark"] .disc-ad{
+  border-bottom-color:#000;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);
+}
+
+.comments-wrap{
+  padding:0 14px 20px;
+  background:var(--l1);
+}
+.toast{
+  position:fixed;bottom:calc(var(--safe-b) + 24px);left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:9px 16px;border-radius:24px;
+  font-size:12px;font-weight:600;z-index:900;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{padding:40px 20px;text-align:center;color:var(--tx-muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button type="button" class="top-icon-btn" id="backBtn" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <div class="top-center">
+      <div class="top-title">Discussion</div>
+      <div class="top-sub" id="hubSub">Genre Hub</div>
+    </div>
+    <button type="button" class="top-icon-btn" id="shareBtn" aria-label="Share"><i class="fas fa-share-nodes"></i></button>
+    <button type="button" class="top-icon-btn" onclick="toggleTheme()" aria-label="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </div>
+
+  <div id="opMount"></div>
+
+  <!-- ONE ad: after post, before comments -->
+  <div class="disc-ad" id="discAd"></div>
+
+  <div class="comments-wrap">
+    <div id="commentsPlaceholder"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="../data/genre-demo-seed.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/feed-data.js"></script>
+<script src="../component/reaction-picker.js"></script>
+<script src="../component/ad-card.js"></script>
+<script src="../component/share-modal.js"></script>
+<script src="../component/comment-section.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../marketing/shared/marketing-data.js"></script>
+<script src="../services/ad-service.js"></script>
+<script src="../services/discussion-service.js"></script>
+<script>DiscussionPage.init();</script>
+</body>
+</html>

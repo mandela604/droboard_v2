@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#07070b"/>
+<title>Droboard · Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   CSS VARIABLES — unchanged from the original story page. Light theme
+   is still a body class away (see body.theme-white below).
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;
+  --acc-dim:rgba(255,0,80,.1);--acc-light:rgba(255,0,80,.08);--acc-mid:rgba(255,0,80,.14);
+  --acc-border:rgba(255,0,80,.3);--glow:rgba(255,0,80,.22);
+  --bg:#07070b;--bg2:#0e0e1c;--bg3:#111118;--card:#111118;--surface:#0e0e1c;
+  --tx:#f5f5f7;--tx2:#aaa;--muted:#888;--muted2:#555;
+  --bd:rgba(255,255,255,.09);--bd2:rgba(255,255,255,.05);
+  --green:#16a34a;--green-s:rgba(22,163,74,.1);
+  --blue:#1a6ce8;--blue-s:rgba(26,108,232,.1);
+  --gold:#d97706;--gold-s:rgba(217,119,6,.1);
+  --purple:#7c3aed;--purple-s:rgba(124,58,237,.1);
+  --r:14px;--r-sm:9px;--r-pill:999px;
+  --font-d:'Playfair Display',serif;--font-b:'DM Sans',sans-serif;
+  --safe-b:env(safe-area-inset-bottom,16px);
+  --topbar:52px;--dock:68px;
+  --phone-w:420px;
+}
+body.theme-white{
+  --bg:#f5f5f5;--bg2:#ececec;--bg3:#e5e5e5;--card:#ffffff;--surface:#f0f0f0;
+  --tx:#1a1a1a;--tx2:#555555;--muted:#888888;--muted2:#aaaaaa;
+  --bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+img{display:block;user-select:none}
+button{font-family:var(--font-b);cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+/* ── PAGE / DESKTOP BACKDROP ──
+   On mobile the phone frame fills the real viewport, so this backdrop
+   is invisible. On wider screens it becomes the "desk" the phone sits
+   on — a quiet, muted echo of the app's own palette, not a generic
+   gray, so the two still read as one product. */
+html,body{height:100%}
+body{
+  font-family:var(--font-b);color:var(--tx);
+  display:flex;justify-content:center;align-items:flex-start;
+  min-height:100%;
+  background:var(--bg);
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
+
+/* ── PHONE FRAME ──
+   height:100vh (not min-height) + overflow:hidden turns this into a
+   fixed-size "device": everything scrollable happens inside
+   .scroll-body, and the dock/toast can be pinned to its bottom with
+   position:absolute instead of position:fixed — which is what lets
+   the whole page collapse cleanly into a centered frame on desktop
+   instead of the dock spanning the full browser width. */
+.phone{
+  position:relative;
+  width:100%;max-width:var(--phone-w);
+  height:100vh;height:100dvh;
+  background:var(--bg);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  transition:background .3s,box-shadow .3s;
+}
+@media (min-width:701px){
+  body{align-items:center;padding:32px 0;background:radial-gradient(120% 120% at 50% 0%,var(--bg2) 0%,var(--bg) 60%);}
+  .phone{
+    height:min(880px,92vh);
+    border-radius:36px;
+    box-shadow:0 40px 90px rgba(0,0,0,.55),0 0 0 1px var(--bd);
+  }
+}
+
+/* ── TOP BAR ── */
+.topbar{flex-shrink:0;z-index:200;display:flex;align-items:center;gap:10px;padding:0 14px;height:var(--topbar);background:rgba(7,7,11,.96);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd);}
+body.theme-white .topbar{background:rgba(255,255,255,.94)}
+.tb-back{width:34px;height:34px;border-radius:50%;background:var(--card);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);cursor:pointer;flex-shrink:0;transition:.15s;}
+.tb-back:active{transform:scale(.93)}
+.tb-title{flex:1;font-family:var(--font-d);font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .25s;}
+.tb-title.vis{opacity:1}
+.tb-actions{display:flex;gap:7px;align-items:center}
+.tb-btn{width:34px;height:34px;border-radius:50%;background:var(--card);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);cursor:pointer;transition:.15s;}
+.tb-btn:active{transform:scale(.93)}
+.tb-btn.saved{background:var(--blue-s);border-color:rgba(26,108,232,.2);color:var(--blue)}
+#tbLikeWrap .drp-trigger{width:34px;height:34px;border-radius:50%;background:var(--card);border:1.5px solid var(--bd);justify-content:center;padding:0;gap:0}
+#tbLikeWrap .drp-trigger.liked{background:var(--acc-light);border-color:rgba(255,0,80,.3)}
+#tbLikeWrap .drp-like-count,#tbLikeWrap .drp-top3{display:none}
+
+/* ── SCROLL BODY — the only element that actually scrolls now ── */
+.scroll-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:calc(var(--dock) + var(--safe-b) + 10px);}
+.scroll-body::-webkit-scrollbar{display:none}
+
+/* ── HERO ── */
+.hero{position:relative;height:280px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 25%;}
+.hero-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(10,8,18,.98) 0%,rgba(10,8,18,.55) 42%,rgba(10,8,18,.12) 100%);}
+body.theme-white .hero-scrim{background:linear-gradient(0deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.55) 42%,rgba(255,255,255,.1) 100%);}
+.hero-top{position:absolute;top:14px;left:14px;right:14px;display:flex;gap:5px;flex-wrap:wrap;z-index:4}
+.hbadge{font-size:8.5px;font-weight:800;padding:3px 9px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:3px;letter-spacing:.03em;}
+.hb-cat{background:var(--acc);color:#fff}
+.hb-type{background:rgba(255,255,255,.16);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.22)}
+.hb-series{background:rgba(26,108,232,.85);color:#fff}
+.hero-body{position:absolute;bottom:0;left:0;right:0;z-index:4;padding:14px 14px 18px}
+.hero-title{font-family:var(--font-d);font-size:20px;font-weight:900;line-height:1.22;color:var(--tx);text-shadow:0 2px 14px rgba(0,0,0,.15);margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.hero-writer{display:flex;align-items:center;gap:9px}
+.hw-av-ring{width:34px;height:34px;border-radius:50%;background:conic-gradient(var(--acc),#ff6b8a,var(--acc2),var(--acc));padding:2px;flex-shrink:0;cursor:pointer;}
+.hw-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#000}
+.hw-av-inner img{width:100%;height:100%;object-fit:cover}
+.hw-info{flex:1;min-width:0}
+.hw-name{font-size:12px;font-weight:700;color:var(--tx);cursor:pointer}
+.hw-handle{font-size:10px;color:var(--tx2)}
+.hw-follow{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:var(--tx);padding:5px 13px;border-radius:var(--r-pill);font-size:10px;font-weight:700;transition:.2s;white-space:nowrap;}
+body.theme-white .hw-follow{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.18)}
+.hw-follow.ing{background:var(--acc);border-color:var(--acc);color:#fff}
+.hw-follow:active{transform:scale(.96)}
+
+/* ── STATS STRIP ── */
+.stats-strip{display:flex;background:var(--card);border-bottom:1px solid var(--bd);}
+.stat-cell{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 6px;border-right:1px solid var(--bd);cursor:pointer;transition:.15s;gap:2px;}
+.stat-cell:last-child{border-right:none}
+.stat-cell:active{background:var(--bg)}
+.sn{font-size:14px;font-weight:800;line-height:1;color:var(--tx)}
+.sn.acc{color:var(--acc)}
+.sn.gold{color:var(--gold)}
+.sl{font-size:8.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+
+/* ── SECTION ── */
+.sec{padding:20px 14px 0}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-family:var(--font-d);font-size:16px;font-weight:700;color:var(--tx);display:flex;align-items:center;gap:7px;}
+.sec-icon{width:27px;height:27px;border-radius:8px;background:var(--acc-light);display:flex;align-items:center;justify-content:center;font-size:13px;}
+.sec-more{font-size:10px;font-weight:700;color:var(--acc);background:var(--acc-light);padding:4px 10px;border-radius:var(--r-pill);cursor:pointer;}
+.divider{height:1px;background:var(--bd2);margin:20px 14px 0}
+
+/* ── CONTINUE READING ── */
+.rp-card{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s;}
+.rp-card:active{transform:scale(.99)}
+.rp-icon{width:40px;height:40px;border-radius:var(--r-sm);background:var(--acc-light);border:1px solid rgba(255,0,80,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.rp-body{flex:1;min-width:0}
+.rp-lbl{font-size:8.5px;font-weight:800;color:var(--acc);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.rp-title{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-bar{height:3px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:3px}
+.rp-bar-fill{height:100%;background:var(--acc);border-radius:3px}
+.rp-meta{font-size:9px;color:var(--muted);display:flex;justify-content:space-between}
+.rp-btn{background:var(--bg2);color:var(--tx);padding:7px 13px;border-radius:var(--r-pill);font-size:10px;font-weight:800;flex-shrink:0;}
+
+/* ── SYNOPSIS ── */
+.synopsis-box{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);padding:14px 15px;}
+.synopsis-text{font-size:13.5px;line-height:1.7;color:var(--tx2);font-style:normal;}
+.synopsis-more{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--acc);margin-top:8px;cursor:pointer;}
+
+/* ── ENGAGEMENT ── */
+.eng-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
+.eng-row::-webkit-scrollbar{display:none}
+.eng-pill{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:var(--r);cursor:pointer;border:1.5px solid var(--bd);background:var(--card);transition:all .18s;}
+.eng-pill:active{transform:scale(.97)}
+.eng-pill.active-poll{border-color:rgba(26,108,232,.35);background:var(--blue-s)}
+.eng-pill.active-debate{border-color:rgba(255,0,80,.35);background:var(--acc-light)}
+.eng-pill.active-pred{border-color:rgba(124,58,237,.3);background:var(--purple-s)}
+.ep-emoji{font-size:18px}
+.ep-body{display:flex;flex-direction:column;gap:1px}
+.ep-label{font-size:10px;font-weight:800;color:var(--tx)}
+.ep-sub{font-size:9px;color:var(--muted);font-weight:600}
+.eng-card{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-top:10px;display:none;}
+.eng-card.open{display:block}
+.ec-header{padding:12px 14px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;gap:8px;}
+.ec-badge{font-size:8px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);flex-shrink:0;margin-top:2px;}
+.ec-badge.poll{background:var(--blue-s);color:var(--blue);border:1px solid rgba(26,108,232,.2)}
+.ec-badge.debate{background:var(--acc-light);color:var(--acc);border:1px solid rgba(255,0,80,.2)}
+.ec-badge.pred{background:var(--purple-s);color:var(--purple);border:1px solid rgba(124,58,237,.18)}
+.ec-q{font-size:13px;font-weight:700;color:var(--tx);line-height:1.38;flex:1}
+.ec-opts{padding:10px 14px;display:flex;flex-direction:column;gap:7px}
+.ec-opt{position:relative;border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;overflow:hidden;border:1.5px solid var(--bd);background:var(--surface);transition:border-color .2s;}
+.ec-opt.voted{border-color:var(--acc)}
+.ec-opt-bar{position:absolute;left:0;top:0;bottom:0;background:var(--acc-light);transition:width .5s ease;z-index:0}
+.ec-opt-inner{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ec-opt-text{font-size:12px;font-weight:600;color:var(--tx)}
+.ec-opt-pct{font-size:11px;font-weight:800;color:var(--acc)}
+.ec-footer{padding:8px 14px;border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.ec-total{font-size:10px;color:var(--muted);font-weight:600}
+.ec-share{font-size:10px;font-weight:700;color:var(--acc);cursor:pointer;display:flex;align-items:center;gap:3px}
+.debate-sides{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 14px}
+.d-side{border-radius:var(--r-sm);padding:12px 10px;cursor:pointer;border:1.5px solid var(--bd);background:var(--surface);text-align:center;transition:all .2s;}
+.d-side.for.chosen{border-color:rgba(22,163,74,.4);background:var(--green-s)}
+.d-side.against.chosen{border-color:rgba(255,0,80,.35);background:var(--acc-light)}
+.d-emoji{font-size:18px;margin-bottom:4px}
+.d-label{font-size:10px;font-weight:800;margin-bottom:5px}
+.d-side.for .d-label{color:var(--green)}
+.d-side.against .d-label{color:var(--acc)}
+.d-bar-bg{height:3px;background:var(--bd);border-radius:3px;overflow:hidden;margin-bottom:3px}
+.d-bar{height:100%;border-radius:3px}
+.d-side.for .d-bar{background:var(--green)}
+.d-side.against .d-bar{background:var(--acc)}
+.d-pct{font-size:12px;font-weight:900;color:var(--tx2)}
+.d-count{font-size:8.5px;color:var(--muted);margin-top:1px}
+.d-total{padding:0 14px 7px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);animation:livep 1.3s ease-in-out infinite;flex-shrink:0}
+@keyframes livep{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
+
+/* ── TIP LINE ── */
+.tip-line{display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r-pill);padding:9px 15px;cursor:pointer;font-size:11.5px;font-weight:700;color:var(--tx2);transition:.15s;}
+.tip-line:active{transform:scale(.98)}
+.tip-line i{color:var(--gold);font-size:13px}
+.tip-line b{color:var(--tx)}
+
+/* ── CHAPTER COUNT (replaces the full chapters list) ── */
+.ch-count-line{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);padding:13px 15px;cursor:pointer;transition:.15s;}
+.ch-count-line:active{transform:scale(.99)}
+.ch-count-icon{width:34px;height:34px;border-radius:9px;background:var(--blue-s);border:1px solid rgba(26,108,232,.2);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--blue);flex-shrink:0;}
+.ch-count-body{flex:1;min-width:0}
+.ch-count-n{font-size:13px;font-weight:800;color:var(--tx)}
+.ch-count-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.ch-count-arrow{color:var(--muted);font-size:12px;flex-shrink:0;}
+
+/* ── REACTIONS — STAT DISPLAY ONLY ── */
+.rx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.rx-card{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r-sm);padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:default;}
+.rx-card.picked{border-color:rgba(255,0,80,.35);background:var(--acc-light)}
+.rx-e{font-size:20px;line-height:1}
+.rx-l{font-size:8px;font-weight:700;color:var(--muted)}
+.rx-n{font-size:10px;font-weight:800;color:var(--tx)}
+.rx-card.picked .rx-n{color:var(--acc)}
+
+/* ── JOIN HUBS ── */
+.hub-card{display:flex;align-items:center;gap:11px;background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);padding:13px;cursor:pointer;transition:.15s;margin-bottom:9px;}
+.hub-card:active{transform:scale(.99)}
+.hub-icon{width:44px;height:44px;border-radius:12px;background:var(--acc-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.hub-icon.circle-icon{border-radius:50%;overflow:hidden;background:var(--bg2);border:2px solid var(--gold);padding:0}
+.hub-icon.circle-icon img{width:100%;height:100%;object-fit:cover}
+.hub-body{flex:1;min-width:0}
+.hub-name{font-size:12.5px;font-weight:800;color:var(--tx);display:flex;align-items:center;gap:5px}
+.hub-sub{font-size:10px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:4px}
+.hub-join-btn{flex-shrink:0;background:var(--bg2);color:var(--tx);border:1.5px solid var(--bd);padding:8px 14px;border-radius:var(--r-pill);font-size:10.5px;font-weight:800;transition:.18s;}
+.hub-join-btn.joined{background:var(--green-s);border-color:rgba(22,163,74,.3);color:var(--green)}
+.hub-join-btn.circle-btn{background:var(--acc);border-color:var(--acc);color:#fff;}
+.hub-join-btn.circle-btn.joined{background:var(--gold-s);border-color:rgba(217,119,6,.35);color:var(--gold)}
+.hub-join-btn:active{transform:scale(.94)}
+
+/* ── AUTHOR CARD ── */
+.writer-card{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;}
+.wc-banner{height:60px;background:linear-gradient(120deg,#1a0010,#2a0025,#0d0020);position:relative;overflow:hidden;}
+body.theme-white .wc-banner{background:linear-gradient(120deg,#ffe1ec,#ffd0e0,#ffe8ef);}
+.wc-body{padding:0 14px 14px}
+.wc-av-row{display:flex;align-items:flex-end;justify-content:space-between;margin-top:-22px;margin-bottom:10px}
+.wc-av-ring{width:48px;height:48px;border-radius:50%;background:conic-gradient(var(--acc),#ff6b8a,var(--acc2),var(--acc));padding:2.5px;box-shadow:0 0 12px var(--glow);cursor:pointer;}
+.wc-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#111118}
+.wc-av-inner img{width:100%;height:100%;object-fit:cover}
+.wc-follow{background:var(--bg2);color:var(--tx);padding:6px 15px;border-radius:var(--r-pill);font-size:10px;font-weight:800;cursor:pointer;transition:.2s;}
+.wc-follow.ing{background:var(--bg2);border:1.5px solid var(--bd);color:var(--muted);}
+.wc-follow:active{transform:scale(.95)}
+.wc-name{font-family:var(--font-d);font-size:15px;font-weight:900;color:var(--tx);margin-bottom:1px}
+.wc-handle{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:7px}
+.wc-vbadge{font-size:8px;font-weight:800;padding:1px 6px;border-radius:var(--r-pill);background:var(--blue-s);color:var(--blue);border:1px solid rgba(26,108,232,.2)}
+.wc-bio{font-size:12px;color:var(--tx2);line-height:1.55;margin-bottom:10px}
+.wc-stats{display:flex;border:1px solid var(--bd);border-radius:var(--r-sm);overflow:hidden}
+.ws{flex:1;text-align:center;padding:9px 4px;border-right:1px solid var(--bd)}
+.ws:last-child{border-right:none}
+.ws-n{font-size:13px;font-weight:800;color:var(--tx);line-height:1}
+.ws-l{font-size:8px;font-weight:600;color:var(--muted);margin-top:2px}
+.wc-view-btn{display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:700;color:var(--acc);margin-top:11px;cursor:pointer;}
+
+/* ── COMMENTS ── */
+.cm-view-all{width:100%;padding:10px;border-radius:var(--r-sm);background:var(--card);border:1.5px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;margin-top:10px;transition:.15s;}
+.cm-view-all:active{background:var(--bg)}
+
+/* ── DETAILS TABLE ── */
+.details-tbl{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;}
+.dt-row{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--bd2)}
+.dt-row:last-child{border-bottom:none}
+.dt-icon{width:28px;height:28px;border-radius:7px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.dt-lbl{font-size:9.5px;color:var(--muted);font-weight:600;width:72px;flex-shrink:0}
+.dt-val{font-size:12px;font-weight:700;color:var(--tx);flex:1}
+.dt-val.acc{color:var(--acc)}
+
+/* ── TAGS ── */
+.tags-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{padding:5px 11px;border-radius:var(--r-pill);font-size:10px;font-weight:700;background:var(--bg2);border:1.5px solid var(--bd);color:var(--tx2);cursor:pointer;transition:.15s;}
+.tag:active{background:var(--acc-light);border-color:rgba(255,0,80,.3);color:var(--acc)}
+
+/* ── SIMILAR ── */
+.sim-scroll{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.sim-scroll::-webkit-scrollbar{display:none}
+.sim-card{flex-shrink:0;width:128px;background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r-sm);overflow:hidden;cursor:pointer;transition:.18s;}
+.sim-card:active{transform:scale(.97)}
+.sim-thumb{width:100%;height:86px;background-size:cover;background-position:center;position:relative}
+.sim-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.5),transparent 55%)}
+.sim-body{padding:7px 8px 9px}
+.sim-cat{font-size:7.5px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.sim-title{font-size:10px;font-weight:700;line-height:1.3;color:var(--tx);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sim-author{font-size:9px;color:var(--muted);margin-top:3px}
+
+/* ── BOTTOM DOCK — absolute within .phone, not fixed to the viewport,
+   so it stays pinned to the frame's own bottom edge on both mobile
+   (where .phone == the viewport) and desktop (where it doesn't). ── */
+.dock{position:absolute;bottom:0;left:0;right:0;z-index:200;background:rgba(7,7,11,.96);backdrop-filter:blur(18px);border-top:1px solid var(--bd);padding:10px 14px calc(10px + var(--safe-b));display:flex;gap:9px;align-items:center;}
+body.theme-white .dock{background:rgba(255,255,255,.95)}
+.dock-read{flex:1;padding:13px;border-radius:var(--r-sm);background:var(--acc);color:#fff;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 2px 12px var(--glow);}
+.dock-read:active{transform:scale(.97)}
+.dock-icon{width:48px;height:48px;border-radius:var(--r-sm);background:var(--card);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;transition:.15s;flex-shrink:0;color:var(--tx2);}
+.dock-icon:active{transform:scale(.93)}
+.dock-icon.saved{background:var(--blue-s);border-color:rgba(26,108,232,.2);color:var(--blue)}
+#dockLikeWrap{width:48px;height:48px;border-radius:var(--r-sm);background:var(--card);border:1.5px solid var(--bd);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+#dockLikeWrap.liked-outer{background:var(--acc-light);border-color:rgba(255,0,80,.3)}
+#dockLikeWrap .drp-trigger{flex-direction:column;gap:2px;padding:2px}
+#dockLikeWrap .drp-trigger i{font-size:15px}
+#dockLikeWrap .drp-like-count{font-size:8px}
+#dockLikeWrap .drp-top3{display:none}
+
+/* ── TOAST — absolute within .phone, same reasoning as the dock ── */
+.toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--card);color:var(--tx);padding:8px 16px;border-radius:var(--r-pill);font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);border:1px solid var(--bd);box-shadow:0 4px 20px rgba(0,0,0,.35);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .3s ease both}
+.d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}
+.d4{animation-delay:.2s}.d5{animation-delay:.25s}.d6{animation-delay:.3s}
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="tb-title" id="tbTitle"></div>
+    <div class="tb-actions">
+      <div id="tbLikeWrap"></div>
+      <div class="tb-btn" id="themeBtn" title="Toggle theme"><i class="fas fa-moon" id="themeIcon"></i></div>
+      <div class="tb-btn" id="tbSave" onclick="BridgePage.openSave()"><i class="far fa-bookmark"></i></div>
+      <div class="tb-btn" onclick="BridgePage.openShare()"><i class="fas fa-share-alt"></i></div>
+    </div>
+  </div>
+
+  <!-- SCROLL BODY -->
+  <div class="scroll-body" id="scrollBody">
+
+    <!-- HERO -->
+    <div class="hero fu d1" id="heroSec"></div>
+
+    <!-- STATS STRIP -->
+    <div class="stats-strip fu d1" id="statsStrip"></div>
+
+    <!-- CONTINUE READING -->
+    <div class="sec fu d2">
+      <div class="rp-card" id="continueCard" onclick="BridgePage.goToReader()">
+        <div class="rp-icon">📖</div>
+        <div class="rp-body">
+          <div class="rp-lbl">Continue Reading</div>
+          <div class="rp-title" id="rpTitle">—</div>
+          <div class="rp-bar"><div class="rp-bar-fill" id="rpBarFill" style="width:0%"></div></div>
+          <div class="rp-meta"><span id="rpPct">0% complete</span><span id="rpLeft">—</span></div>
+        </div>
+        <div class="rp-btn">Resume →</div>
+      </div>
+    </div>
+
+    <!-- SYNOPSIS -->
+    <div class="sec fu d2">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon">📖</div>Synopsis</div></div>
+      <div class="synopsis-box">
+        <div class="synopsis-text" id="synText"></div>
+        <div class="synopsis-more" id="synBtn" onclick="BridgePage.toggleSyn()"><i class="fas fa-chevron-down" style="font-size:9px"></i> Read more</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ENGAGEMENT -->
+    <div class="sec fu d3">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(255,0,80,.08)">⚡</div>Reader Engagement</div></div>
+      <div class="eng-row">
+        <div class="eng-pill" id="pill-poll" onclick="BridgePage.toggleEng('poll')">
+          <div class="ep-emoji">📊</div><div class="ep-body"><div class="ep-label">Poll</div><div class="ep-sub" id="pollSub">— votes</div></div>
+        </div>
+        <div class="eng-pill" id="pill-debate" onclick="BridgePage.toggleEng('debate')">
+          <div class="ep-emoji">⚔️</div><div class="ep-body"><div class="ep-label">Debate</div><div class="ep-sub" id="debateSub">— live</div></div>
+        </div>
+        <div class="eng-pill" id="pill-pred" onclick="BridgePage.toggleEng('pred')">
+          <div class="ep-emoji">🔮</div><div class="ep-body"><div class="ep-label">Prediction</div><div class="ep-sub" id="predSub">— locked</div></div>
+        </div>
+      </div>
+      <div class="eng-card" id="card-poll">
+        <div class="ec-header"><span class="ec-badge poll">📊 Poll</span><div class="ec-q" id="pollQ"></div></div>
+        <div class="ec-opts" id="pollOpts"></div>
+        <div class="ec-footer"><span class="ec-total" id="pollTotal"></span><span class="ec-share" onclick="toast('📤 Share poll…')"><i class="fas fa-share-alt" style="font-size:9px"></i> Share</span></div>
+      </div>
+      <div class="eng-card" id="card-debate">
+        <div class="ec-header"><span class="ec-badge debate"><span class="live-dot"></span> Live Debate</span><div class="ec-q" id="debateQ"></div></div>
+        <div class="debate-sides">
+          <div class="d-side for" id="dFor" onclick="BridgePage.voteDebate('for')">
+            <div class="d-emoji">✅</div><div class="d-label">FOR</div>
+            <div class="d-bar-bg"><div class="d-bar" id="forBar"></div></div>
+            <div class="d-pct" id="forPct"></div><div class="d-count" id="forCnt"></div>
+          </div>
+          <div class="d-side against" id="dAg" onclick="BridgePage.voteDebate('against')">
+            <div class="d-emoji">❌</div><div class="d-label">AGAINST</div>
+            <div class="d-bar-bg"><div class="d-bar" id="agBar"></div></div>
+            <div class="d-pct" id="agPct"></div><div class="d-count" id="agCnt"></div>
+          </div>
+        </div>
+        <div class="d-total"><span class="live-dot"></span> <span id="debateLiveTotal"></span> readers debating live right now</div>
+        <div class="ec-footer"><span class="ec-total" id="debateVoicesTotal"></span><span class="ec-share" onclick="toast('⚔️ Full debate…')"><i class="fas fa-gavel" style="font-size:9px"></i> Full Debate</span></div>
+      </div>
+      <div class="eng-card" id="card-pred">
+        <div class="ec-header"><span class="ec-badge pred">🔮 Prediction</span><div class="ec-q" id="predQ"></div></div>
+        <div class="ec-opts" id="predOpts"></div>
+        <div class="ec-footer"><span class="ec-total" id="predTotal"></span><span class="ec-share" onclick="toast('📤 Share…')"><i class="fas fa-share-alt" style="font-size:9px"></i> Share</span></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- TIP LINE -->
+    <div class="sec fu d3">
+      <div class="tip-line" onclick="BridgePage.openTip()">
+        <i class="fas fa-coins"></i> <b id="tipCountLbl">— tips</b> · Tap to support this writer
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- CHAPTER COUNT — the full chapters list/season tabs/pagination
+         has been removed; this is a plain read-out of how many
+         chapters exist, tapping through to the reader like before. -->
+    <div class="sec fu d3">
+      <div class="ch-count-line" onclick="BridgePage.goToReader()">
+        <div class="ch-count-icon"><i class="fas fa-book"></i></div>
+        <div class="ch-count-body">
+          <div class="ch-count-n" id="chCountN">— Chapters</div>
+          <div class="ch-count-sub" id="chCountSub">—</div>
+        </div>
+        <i class="fas fa-chevron-right ch-count-arrow"></i>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- REACTIONS -->
+    <div class="sec fu d4">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(236,72,153,.08)">😭</div>Reactions</div></div>
+      <div class="rx-grid" id="rxGrid"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- JOIN HUBS -->
+    <div class="sec fu d4">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(217,119,6,.08)">🧿</div>Communities</div></div>
+      <div id="hubsWrap"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ABOUT THE WRITER -->
+    <div class="sec fu d4">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(245,158,11,.08)">✍️</div>About the Writer</div></div>
+      <div class="writer-card">
+        <div class="wc-banner"></div>
+        <div class="wc-body" id="writerBody"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- COMMENTS -->
+    <div class="sec fu d5" id="commentsSection">
+      <div id="commentsPlaceholder"></div>
+      <button class="cm-view-all" onclick="BridgePage.goToAllComments()">
+        <i class="fas fa-comment" style="font-size:11px;color:var(--acc)"></i> <span id="cmViewAllLbl">View full comment thread</span>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- DETAILS -->
+    <div class="sec fu d5">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon">ℹ️</div>Details</div></div>
+      <div class="details-tbl" id="detailsTbl"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- TAGS -->
+    <div class="sec fu d6">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(124,58,237,.08)">#</div>Tags</div></div>
+      <div class="tags-row" id="tagsRow"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- SIMILAR -->
+    <div class="sec fu d6">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(124,58,237,.08)">✨</div>More Like This</div></div>
+      <div class="sim-scroll" id="simScroll"></div>
+    </div>
+
+    <div style="height:12px"></div>
+  </div>
+
+  <!-- BOTTOM DOCK -->
+  <div class="dock">
+    <div id="dockLikeWrap"></div>
+    <button class="dock-read" onclick="BridgePage.goToReader()">
+      <i class="fas fa-book-open" style="font-size:14px"></i> Read Now
+    </button>
+    <div class="dock-icon" id="dockSave" onclick="BridgePage.openSave()"><i class="far fa-bookmark"></i></div>
+    <div class="dock-icon" onclick="BridgePage.openShare()"><i class="fas fa-share-alt"></i></div>
+  </div>
+
+  <div class="toast" id="toastEl"></div>
+
+</div><!-- /.phone -->
+
+<!-- ═══ Shared Droboard components ═══ -->
+<script src="../component/reaction-picker.js"></script>
+<script src="../component/share-modal.js"></script>
+<script src="../component/save-modal.js"></script>
+<script src="../component/tip-picker.js"></script>
+<script src="../component/comment-section.js"></script>
+<script src="../component/discover-card.js"></script>
+
+<!-- ═══ Seed data ═══ -->
+<script src="../data/central-demo-data.js"></script>
+<script src="../data/comments-data.js"></script>
+
+<!-- ═══ Page service ═══ -->
+<script src="../services/bridge-service.js"></script>
+
+<script>
+BridgePage.init();
+</script>
+</body>
+</html>

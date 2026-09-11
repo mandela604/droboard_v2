@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Droboard · Official Page</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
+  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
+  --tx-high:#e8e8e8;--tx-body:#a8b0ba;--tx-muted:#71717a;--tx-faint:#3f3f46;
+  --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;
+  --post-sep:#1a1b22;
+  --nav-h:60px;--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
+::-webkit-scrollbar{width:2px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.2);border-radius:2px}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+
+/* ══ TOP BAR ══ */
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(var(--safe-t) + 10px) 14px 10px;background:rgba(0,0,0,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+.top-left{display:flex;align-items:center;gap:10px;min-width:0}
+.back-btn{width:34px;height:34px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx-muted);cursor:pointer;flex-shrink:0}
+.top-title{display:flex;flex-direction:column;min-width:0}
+.top-title b{font-size:13px;font-weight:800;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+.top-title span{font-size:10px;color:var(--tx-muted)}
+.top-icon{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--tx-muted);cursor:pointer;flex-shrink:0;position:relative;transition:.15s}
+.top-icon:active{transform:scale(.92)}
+.mini-verified{width:13px;height:13px;border-radius:50%;background:var(--blue);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.mini-verified i{font-size:6px;color:#fff}
+
+/* ══ HERO ══ */
+.hero-banner{position:relative;height:130px;width:100%;overflow:hidden;background:
+  radial-gradient(circle at 15% 20%,rgba(255,0,80,.35),transparent 45%),
+  radial-gradient(circle at 85% 75%,rgba(56,189,248,.18),transparent 50%),
+  linear-gradient(135deg,#160308,#000 60%)}
+.hero-banner::after{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:14px 14px;opacity:.5}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(0deg,#000 0%,rgba(0,0,0,.2) 70%,rgba(0,0,0,0) 100%)}
+
+.page-info{padding:0 14px;margin-top:-34px;position:relative;z-index:5}
+.page-av-row{display:flex;align-items:flex-end;gap:12px;margin-bottom:11px}
+.page-av{width:76px;height:76px;border-radius:22px;flex-shrink:0;background:linear-gradient(135deg,var(--acc),#7a0030);border:3px solid #000;box-shadow:0 6px 22px var(--glow);display:flex;align-items:center;justify-content:center}
+.page-av span{font-family:'Playfair Display',serif;font-size:34px;font-weight:900;color:#fff}
+.page-name-block{flex:1;min-width:0;padding-bottom:4px}
+.page-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--tx-high);display:flex;align-items:center;gap:6px;line-height:1.1}
+.page-name .official-shield{color:var(--blue);font-size:15px}
+.page-handle{font-size:11.5px;color:var(--tx-muted);margin-top:2px;display:flex;align-items:center;gap:6px}
+.official-tag{font-size:8px;font-weight:800;padding:2px 7px;border-radius:8px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.22);color:var(--blue);letter-spacing:.04em}
+
+.page-actions{display:flex;gap:7px;padding:0 0 12px}
+.pg-follow{flex:1;padding:10px;border-radius:14px;font-size:12.5px;font-weight:800;cursor:pointer;border:none;transition:.18s;background:var(--acc);color:#fff;box-shadow:0 3px 16px var(--glow-sm);display:flex;align-items:center;justify-content:center;gap:6px}
+.pg-follow.ing{background:rgba(255,255,255,.06);border:1.5px solid var(--bd);color:#ccc;box-shadow:none}
+.pg-follow:active{transform:scale(.97)}
+.pg-icon-btn{width:40px;height:40px;border-radius:14px;background:rgba(255,255,255,.05);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--tx-muted);cursor:pointer;flex-shrink:0;transition:.18s;position:relative}
+.pg-icon-btn.on{color:var(--gold);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06)}
+.pg-icon-btn:active{transform:scale(.92)}
+
+.page-bio{font-size:12.5px;color:var(--tx-body);line-height:1.6;margin-bottom:12px;max-width:520px}
+
+/* ══ STATS ══ */
+.pg-stats{display:flex;border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:12px;background:var(--l1)}
+.pg-stat{flex:1;text-align:center;padding:10px 4px;border-right:1px solid var(--bd);cursor:default}
+.pg-stat:last-child{border-right:none}
+.pg-stat-num{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;color:var(--tx-high);line-height:1}
+.pg-stat-num.r{color:var(--acc)}
+.pg-stat-num.b{color:var(--blue)}
+.pg-stat-num.g{color:var(--green)}
+.pg-stat-label{font-size:7.5px;color:var(--tx-muted);margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+/* ══ TABS ══ */
+.pg-tabs{display:flex;border-bottom:1px solid var(--bd);position:sticky;top:57px;z-index:100;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);overflow-x:auto;scrollbar-width:none;margin:0 -14px}
+.pg-tabs::-webkit-scrollbar{display:none}
+.pg-tab{flex-shrink:0;padding:11px 14px;font-size:11.5px;font-weight:700;color:var(--tx-faint);cursor:pointer;border-bottom:2.5px solid transparent;transition:.2s;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.pg-tab.active{color:var(--tx-high);border-bottom-color:var(--acc)}
+.pg-tab-ct{background:rgba(255,0,80,.14);color:var(--acc3);font-size:8px;font-weight:800;padding:1px 5px;border-radius:6px}
+
+.pg-body{padding:14px 14px 0}
+
+/* ══ CUSTOM POST BADGES (announcement / shoutout ribbons inside dpc-body) ══ */
+.drb-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:8px;margin-bottom:8px}
+.drb-badge-ann{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--gold)}
+.drb-badge-shout{background:rgba(255,0,80,.09);border:1px solid var(--bd-acc);color:var(--acc3)}
+
+.drb-shout-card{display:flex;align-items:center;gap:10px;background:var(--l1);border:1px solid var(--bd);border-radius:13px;padding:10px 11px;margin-top:6px;cursor:pointer}
+.drb-shout-av{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--bd-acc);flex-shrink:0}
+.drb-shout-info{flex:1;min-width:0}
+.drb-shout-name{font-size:12.5px;font-weight:800;color:var(--tx-high)}
+.drb-shout-tag{font-size:10px;color:var(--tx-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drb-shout-follow{flex-shrink:0;background:rgba(255,255,255,.06);border:1.5px solid var(--bd);color:#ccc;padding:6px 13px;border-radius:16px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
+.drb-shout-follow.ing{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* ══ SPOTLIGHT / CURATED SECTIONS ══ */
+.pg-section{margin:6px 0 18px}
+.pg-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pg-section-title{font-size:11px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:6px}
+.pg-section-title i{color:var(--acc)}
+
+.coll-scroll{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.coll-scroll::-webkit-scrollbar{display:none}
+
+/* ══ SUPPORT STRIP ══ */
+.support-strip{display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,rgba(251,191,36,.07),rgba(255,0,80,.04));border:1px solid rgba(251,191,36,.18);border-radius:14px;padding:12px 13px;margin-bottom:18px;cursor:pointer}
+.support-ico{width:38px;height:38px;border-radius:11px;background:rgba(251,191,36,.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.support-body{flex:1}
+.support-title{font-size:12.5px;font-weight:800;color:var(--tx-high)}
+.support-sub{font-size:10px;color:var(--tx-muted);margin-top:1px}
+.support-btn{flex-shrink:0;background:var(--gold);color:#100800;border:none;padding:8px 14px;border-radius:14px;font-size:11px;font-weight:800;cursor:pointer}
+
+/* ══ ABOUT TAB ══ */
+.about-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd2)}
+.about-item:last-child{border-bottom:none}
+.about-icon{width:32px;height:32px;border-radius:9px;background:rgba(255,0,80,.06);border:1px solid var(--bd-acc);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:1px}
+.about-label{font-size:10px;font-weight:600;color:var(--tx-muted)}
+.about-val{font-size:12px;font-weight:600;color:var(--tx-high);margin-top:1px;line-height:1.5}
+.rules-list{margin:4px 0 0;padding-left:16px}
+.rules-list li{font-size:11.5px;color:var(--tx-body);line-height:1.7}
+
+/* ══ LOAD MORE ══ */
+.load-more-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:transparent;border:none;border-top:1px solid var(--post-sep);font-size:12px;font-weight:700;color:var(--tx-muted);cursor:pointer;transition:.15s}
+.load-more-btn:active{color:var(--acc2)}
+
+/* ══ COMMENT OVERLAY (hosts DroboardComments) ══ */
+.comment-overlay{position:fixed;inset:0;z-index:1700;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center}
+.comment-overlay.open{display:flex}
+.comment-sheet{width:100%;max-width:520px;background:var(--l1);border-radius:20px 20px 0 0;max-height:86vh;display:flex;flex-direction:column;animation:cmSlide .28s ease}
+@keyframes cmSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.comment-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.comment-hdr h3{font-size:13.5px;font-weight:800;color:var(--tx-high)}
+.comment-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.06);border:none;color:#aaa;font-size:12px;cursor:pointer}
+.comment-mount{flex:1;overflow-y:auto;padding:4px 16px 16px;scrollbar-width:none}
+.comment-mount::-webkit-scrollbar{display:none}
+
+/* ══ EMPTY STATE ══ */
+.empty-state{text-align:center;padding:44px 24px;color:var(--tx-muted)}
+.empty-state i{font-size:34px;margin-bottom:12px;display:block;color:var(--tx-faint)}
+.empty-state h4{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--tx-body);margin-bottom:6px}
+.empty-state p{font-size:12px;line-height:1.55;max-width:230px;margin:0 auto}
+
+/* ══ BOTTOM NAV ══ */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(0,0,0,.97);backdrop-filter:blur(20px);border-top:1px solid var(--bd);display:flex;justify-content:space-around;padding:8px 0 calc(var(--safe-b) + 8px);min-height:var(--nav-h)}
+.bn-item{text-align:center;font-size:9px;font-weight:600;color:var(--tx-faint);cursor:pointer;transition:.2s;padding:2px 8px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+.bn-item i{font-size:20px;display:block}
+.bn-item.active{color:var(--acc)}
+
+/* ══ TOAST ══ */
+.toast{position:fixed;bottom:calc(var(--safe-b) + var(--nav-h) + 14px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:8px 18px;border-radius:28px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+#feedArea{border-top:1px solid var(--post-sep);margin:0 -14px}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-left">
+    <div class="back-btn" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-arrow-left"></i></div>
+    <div class="top-title">
+      <b>Droboard <span class="mini-verified"><i class="fas fa-check"></i></span></b>
+      <span id="topFollowerCount">12.4k followers</span>
+    </div>
+  </div>
+  <div class="top-icon" onclick="toast('🔍 Search coming soon')"><i class="fas fa-magnifying-glass"></i></div>
+</div>
+
+<!-- HERO -->
+<div class="hero-banner"><div class="hero-grad"></div></div>
+
+<div class="page-info">
+  <div class="page-av-row">
+    <div class="page-av"><span>D</span></div>
+    <div class="page-name-block">
+      <div class="page-name">Droboard <i class="fas fa-shield-halved official-shield" title="Official Page"></i></div>
+      <div class="page-handle">@droboard <span class="official-tag">OFFICIAL PAGE</span></div>
+    </div>
+  </div>
+
+  <div class="page-actions">
+    <button class="pg-follow" id="followBtn" onclick="toggleFollow()"><i class="fas fa-plus"></i> Follow</button>
+    <div class="pg-icon-btn" id="notifBtn" onclick="toggleNotify()" title="Get notified"><i class="fas fa-bell"></i></div>
+    <div class="pg-icon-btn" onclick="sharePage()" title="Share page"><i class="fas fa-share-nodes"></i></div>
+  </div>
+
+  <div class="page-bio">The official Droboard account. Announcements, writer shoutouts, live debates and the best story picks from across the platform — straight from the team that builds it. 🖤</div>
+
+  <div class="pg-stats">
+    <div class="pg-stat"><div class="pg-stat-num r" id="statFollowers">12.4k</div><div class="pg-stat-label">Followers</div></div>
+    <div class="pg-stat"><div class="pg-stat-num b">312</div><div class="pg-stat-label">Posts</div></div>
+    <div class="pg-stat"><div class="pg-stat-num g" id="statWritersFeatured">—</div><div class="pg-stat-label">Writers featured</div></div>
+    <div class="pg-stat"><div class="pg-stat-num">2021</div><div class="pg-stat-label">Founded</div></div>
+  </div>
+
+  <div class="pg-tabs" id="pgTabs">
+    <div class="pg-tab active" data-tab="all" onclick="switchTab('all')">✨ All</div>
+    <div class="pg-tab" data-tab="announcement" onclick="switchTab('announcement')">📢 Announcements</div>
+    <div class="pg-tab" data-tab="debate" onclick="switchTab('debate')">⚖️ Debates</div>
+    <div class="pg-tab" data-tab="shoutout" onclick="switchTab('shoutout')">⭐ Shoutouts</div>
+    <div class="pg-tab" data-tab="repost" onclick="switchTab('repost')">📚 Story Picks</div>
+    <div class="pg-tab" data-tab="about" onclick="switchTab('about')">✦ About</div>
+  </div>
+</div>
+
+<div class="pg-body">
+
+  <!-- FEED PANEL -->
+  <div id="panel-feed">
+    <div id="feedArea"></div>
+    <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()"><i class="fas fa-chevron-down"></i> Load more posts</button>
+  </div>
+
+  <!-- ABOUT PANEL -->
+  <div id="panel-about" style="display:none;padding-top:2px">
+
+    <div class="support-strip" onclick="openSupport()">
+      <div class="support-ico">💛</div>
+      <div class="support-body">
+        <div class="support-title">Support Droboard</div>
+        <div class="support-sub">Help keep the platform ad-light and independent</div>
+      </div>
+      <button class="support-btn" onclick="event.stopPropagation();openSupport()">Support</button>
+    </div>
+
+    <div class="pg-section">
+      <div class="pg-section-hdr"><div class="pg-section-title"><i class="fas fa-star"></i>Writers Spotlight</div></div>
+      <div id="ptfMount"></div>
+    </div>
+
+    <div class="pg-section">
+      <div class="pg-section-hdr">
+        <div class="pg-section-title"><i class="fas fa-folder-open"></i>Droboard Picks</div>
+      </div>
+      <div class="coll-scroll" id="collectionsGrid"></div>
+    </div>
+
+    <div style="font-size:13px;color:var(--tx-body);line-height:1.65;padding:2px 0 12px">
+      Droboard is a home for stories, debates and the readers who live for a good plot twist. This page is run by the Droboard team — we post announcements, feature standout writers, host community debates and recommend stories worth your 2am reading session.
+    </div>
+
+    <div class="about-item">
+      <div class="about-icon"><i class="fas fa-calendar-alt" style="color:var(--acc)"></i></div>
+      <div><div class="about-label">Founded</div><div class="about-val">March 2021 · Lagos, Nigeria 🇳🇬</div></div>
+    </div>
+    <div class="about-item">
+      <div class="about-icon"><i class="fas fa-users" style="color:var(--acc)"></i></div>
+      <div><div class="about-label">Community</div><div class="about-val">12.4k followers · 89k active readers · 3.2k writers</div></div>
+    </div>
+    <div class="about-item">
+      <div class="about-icon"><i class="fas fa-envelope" style="color:var(--acc)"></i></div>
+      <div><div class="about-label">Contact</div><div class="about-val">hello@droboard.app · support.droboard.app</div></div>
+    </div>
+    <div class="about-item">
+      <div class="about-icon"><i class="fas fa-link" style="color:var(--acc)"></i></div>
+      <div><div class="about-label">Links</div>
+        <div class="about-val" style="display:flex;gap:10px;margin-top:5px">
+          <span style="color:var(--blue);cursor:pointer;font-size:12px" onclick="toast('🔗 Opening Instagram…')"><i class="fab fa-instagram"></i> @droboard.app</span>
+          <span style="color:var(--blue);cursor:pointer;font-size:12px" onclick="toast('🔗 Opening X…')"><i class="fab fa-x-twitter"></i> @droboard</span>
+        </div>
+      </div>
+    </div>
+    <div class="about-item">
+      <div class="about-icon"><i class="fas fa-gavel" style="color:var(--acc)"></i></div>
+      <div>
+        <div class="about-label">Community Guidelines</div>
+        <ul class="rules-list">
+          <li>Be kind — debate the story, not the person.</li>
+          <li>Tag spoilers so everyone gets to feel the twist.</li>
+          <li>No harassment of writers or fellow readers.</li>
+          <li>Shoutouts and story picks are curated by the team, not paid placements.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <a class="bn-item" href="index.html"><i class="fas fa-house"></i>Home</a>
+  <a class="bn-item" href="discover.html"><i class="fas fa-compass"></i>Discover</a>
+  <a class="bn-item" href="search.html"><i class="fas fa-magnifying-glass"></i>Search</a>
+  <a class="bn-item" href="feed.html"><i class="fas fa-rss"></i>Feed</a>
+  <a class="bn-item" href="profile.html"><i class="fas fa-circle-user"></i>Profile</a>
+</div>
+
+<!-- COMMENT OVERLAY -->
+<div class="comment-overlay" id="commentOverlay" onclick="if(event.target===this)closeComments()">
+  <div class="comment-sheet">
+    <div class="comment-hdr">
+      <h3><i class="fas fa-comment-dots" style="color:var(--acc);font-size:12px"></i> Comments</h3>
+      <button class="comment-close" onclick="closeComments()">✕</button>
+    </div>
+    <div class="comment-mount" id="commentMount"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- SHARED COMPONENTS -->
+<script src="component/save-modal.js"></script>
+<script src="component/share-modal.js"></script>
+<script src="component/status-viewer.js"></script>
+<script src="component/comment-section.js"></script>
+<script src="component/post-card.js"></script>
+<script src="component/people-to-follow.js"></script>
+<script src="component/collection-card.js"></script>
+<script src="component/tip-picker.js"></script>
+
+<!-- WRITER DATA (avatars/status only — no story dataset used) -->
+<script src="data/post-data.js"></script>
+<!-- SAMPLE COMMENT THREADS -->
+<script src="data/comments-data.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════ */
+function toast(msg, dur=2500){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function nl(s){return (s||'').replace(/\n/g,'<br>')}
+function fmtN(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n||0)}
+
+/* Droboard's own "avatar" — a lightweight inline SVG monogram, used anywhere
+   a component expects an image URL (share/save modal previews, tip picker). */
+const DROBOARD_LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+     <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+       <stop offset="0" stop-color="#ff0050"/><stop offset="1" stop-color="#7a0030"/>
+     </linearGradient></defs>
+     <rect width="100" height="100" rx="24" fill="url(#g)"/>
+     <text x="50" y="68" font-family="Georgia,serif" font-size="56" font-weight="900" fill="#fff" text-anchor="middle">D</text>
+   </svg>`);
+
+/* ═══════════════════════════════════════════════════════
+   FOLLOW / NOTIFY STATE (persisted locally)
+═══════════════════════════════════════════════════════ */
+const BASE_FOLLOWERS = 12400;
+let following = localStorage.getItem('drb_following') === '1';
+let notifyOn  = localStorage.getItem('drb_notify') === '1';
+
+function renderFollowUI(){
+  const btn = document.getElementById('followBtn');
+  btn.innerHTML = following ? '<i class="fas fa-check"></i> Following' : '<i class="fas fa-plus"></i> Follow';
+  btn.classList.toggle('ing', following);
+  const count = BASE_FOLLOWERS + (following ? 1 : 0);
+  document.getElementById('statFollowers').textContent = fmtN(count);
+  document.getElementById('topFollowerCount').textContent = fmtN(count) + ' followers';
+
+  const nb = document.getElementById('notifBtn');
+  nb.classList.toggle('on', notifyOn && following);
+}
+function toggleFollow(){
+  following = !following;
+  localStorage.setItem('drb_following', following ? '1' : '0');
+  if(!following){ notifyOn = false; localStorage.setItem('drb_notify','0'); }
+  renderFollowUI();
+  toast(following ? '✅ Following @droboard!' : 'Unfollowed @droboard');
+}
+function toggleNotify(){
+  if(!following){ toast('Follow @droboard first to get notified'); return; }
+  notifyOn = !notifyOn;
+  localStorage.setItem('drb_notify', notifyOn ? '1' : '0');
+  renderFollowUI();
+  toast(notifyOn ? '🔔 You’ll get notified about new posts' : 'Notifications turned off');
+}
+function sharePage(){
+  window.openShareModal({
+    title: 'Droboard — Official Page',
+    sub: '@droboard · Announcements, debates & story picks',
+    img: DROBOARD_LOGO,
+    url: 'https://droboard.app/droboard',
+  });
+}
+renderFollowUI();
+
+/* ═══════════════════════════════════════════════════════
+   TIP PICKER — "Support Droboard"
+═══════════════════════════════════════════════════════ */
+DroboardTip.attach({
+  getWriter: () => ({ name:'Droboard', avatar: DROBOARD_LOGO, handle:'@droboard · Official Page' }),
+  getSupporters: () => JSON.parse(localStorage.getItem('drb_supporters') || 'null') || [
+    {id:'u1',name:'Chioma_R',avatar:'https://i.pravatar.cc/100?img=47',time:'2h ago'},
+    {id:'u2',name:'Ifeanyi',avatar:'https://i.pravatar.cc/100?img=53',time:'5h ago'},
+    {id:'u3',name:'Zara_M',avatar:'https://i.pravatar.cc/100?img=16',time:'1d ago'},
+    {id:'u4',name:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=64',time:'2d ago'},
+  ],
+  onSend(id, amount, note, mode){
+    toast(`💛 Thank you for supporting Droboard!`);
+  },
+});
+function openSupport(){ DroboardTip.open('droboard-page'); }
+
+/* ═══════════════════════════════════════════════════════
+   POST DATA — mixed content authored by the Droboard team
+   (writer avatars for shoutouts pull from WRITER_STATUSES —
+   no story/chapter dataset is used anywhere on this page)
+═══════════════════════════════════════════════════════ */
+const SPOTLIGHT_POOL = (typeof WRITER_STATUSES !== 'undefined') ? WRITER_STATUSES.filter(w => !w.isYou) : [];
+function writerById(id){ return SPOTLIGHT_POOL.find(w => w.id === id) || null; }
+
+const PAGE_AUTHOR = { name:'Droboard', wid:null, avatar:null, avatarBg:'linear-gradient(135deg,#ff0050,#7a0030)', verified:true, rank:'Official Page' };
+
+function pagePost(p){ return Object.assign({}, PAGE_AUTHOR, p); }
+
+let FOLLOW_STATE = JSON.parse(localStorage.getItem('drb_shout_follows') || '{}');
+
+let POSTS = [
+  pagePost({
+    id:'d1', type:'announcement', pinned:true, time:'2d ago',
+    title:'Welcome to the official Droboard page 👋',
+    text:"This is home base for everything platform-wide — new features, community debates, standout writers, and the stories our team can't stop thinking about. Follow along and turn on notifications so you never miss a drop.",
+    likes:2840, liked:false, comments:312,
+  }),
+  pagePost({
+    id:'d2', type:'debate', time:'5h ago', rank:'🔥 Live Debate',
+    title:'Debate of the Week',
+    debateData:{ motion:'"Writers should be allowed to tag spoilers instead of hiding them completely."', forV:4120, agV:2380, userVote:null },
+    likes:980, liked:false, comments:640,
+  }),
+  pagePost({
+    id:'d3', type:'shoutout', time:'8h ago',
+    text:"Massive congratulations to one of our most-read writers this year 🎉 Her betrayal series has readers refreshing the app every midnight.",
+    shoutout:{ id:'w1', tagline:'Just crossed 1M reads on their Betrayal series 🎉' },
+    likes:1560, liked:false, comments:203,
+  }),
+  pagePost({
+    id:'d4', type:'post', time:'11h ago',
+    text:"This week on Droboard: betrayal stories are up 34%, debates are getting spicier, and someone in the comments called a plot twist \"emotional damage.\" We felt that. 😭",
+    likes:734, liked:false, comments:98,
+  }),
+  pagePost({
+    id:'d5', type:'repost', time:'1d ago',
+    note:'Droboard Picks: if you love a slow-burn heartbreak that sneaks up on you by chapter 3 — start here.',
+    storyRef:{ cat:'🌙 Elegy', title:'The letter folded in his jacket pocket — he died before he could send it', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', writer:'Efe_O' },
+    likes:512, liked:false, comments:67,
+  }),
+  pagePost({
+    id:'d6', type:'forum-poll', time:'1d ago',
+    title:'Quick poll: what keeps you reading past midnight?',
+    poll:{ q:'What keeps you reading past midnight?', opts:[
+      {t:'A plot twist I didn\'t see coming', v:812},
+      {t:'A slow-burn romance', v:540},
+      {t:'A debate I need to win in the comments', v:301},
+      {t:'A cliffhanger the writer left on purpose', v:698},
+    ], voted:-1, total:2351 },
+    likes:410, liked:false, comments:88,
+  }),
+  pagePost({
+    id:'d7', type:'ama', time:'2d ago', rank:'🎙 Droboard Live',
+    amaData:{ isLive:false, viewers:0, title:'Droboard Live: Ask the Team Anything', meta:'Community features, moderation, and what\'s coming next — Friday 8pm WAT' },
+    likes:288, liked:false, comments:54,
+  }),
+  pagePost({
+    id:'d8', type:'shoutout', time:'2d ago',
+    text:"Some writers just have a gift for endings. This one keeps making readers cry into their phones on public transport, and we're not sorry about it.",
+    shoutout:{ id:'w6', tagline:'Their elegy series has the highest reread rate on the platform 📖' },
+    likes:1120, liked:false, comments:141,
+  }),
+  pagePost({
+    id:'d9', type:'announcement', time:'3d ago',
+    title:'New: tag your comments with spoiler warnings',
+    text:"You asked, we built it. Comments can now be marked as spoilers and get blurred until tapped. Try it on any story or debate thread.",
+    likes:1980, liked:false, comments:276,
+  }),
+  pagePost({
+    id:'d10', type:'post', time:'4d ago',
+    text:"Reminder: the debate leaderboard resets every Sunday. Current #1 debater has a 68% win rate across 40 debates. Can anyone dethrone them this week?",
+    likes:645, liked:false, comments:132,
+  }),
+];
+
+let MORE_POSTS = [
+  pagePost({
+    id:'d11', type:'shoutout', time:'5d ago',
+    text:"New voice, big talent. Three chapters in and the comments are already begging for a season 2.",
+    shoutout:{ id:'w3', tagline:'Rising fast in Family drama — 3 chapters, 40k reads already' },
+    likes:390, liked:false, comments:52,
+  }),
+  pagePost({
+    id:'d12', type:'debate', time:'6d ago',
+    title:'Last week\'s debate — final results',
+    debateData:{ motion:'"Revenge arcs are more satisfying than reconciliation arcs."', forV:5800, agV:3400, userVote:'for' },
+    likes:820, liked:false, comments:410,
+  }),
+  pagePost({
+    id:'d13', type:'repost', time:'6d ago',
+    note:'Droboard Picks: campus stories rarely get this specific. If you went to a Nigerian university, you will feel personally attacked.',
+    storyRef:{ cat:'🎓 Campus', title:'The richest boy started sitting beside me every morning', cover:'https://i.postimg.cc/cgLZJNmC/8.jpg', writer:'CampusQueen' },
+    likes:298, liked:false, comments:41,
+  }),
+  pagePost({
+    id:'d14', type:'announcement', time:'1w ago',
+    title:'Platform milestone: 1 million debate votes cast',
+    text:"One million votes across every debate on Droboard. Thank you for actually showing up to argue about fictional people's choices with us. It means everything.",
+    likes:3100, liked:false, comments:520,
+  }),
+  pagePost({
+    id:'d15', type:'post', time:'1w ago',
+    text:"PSA: 'reading it for the plot' is a valid excuse for being on your phone at a family gathering. We don't make the rules. Okay, we do. But still.",
+    likes:2210, liked:false, comments:301,
+  }),
+  pagePost({
+    id:'d16', type:'shoutout', time:'2w ago',
+    text:"She's been writing on Droboard since day one and every single series still hits. Legacy behavior.",
+    shoutout:{ id:'w5', tagline:'One of our founding writers — 5 completed series and counting' },
+    likes:1780, liked:false, comments:233,
+  }),
+];
+
+function allPosts(){ return POSTS.concat(MORE_POSTS); }
+function findPost(id){ return allPosts().find(p => p.id === id); }
+
+/* Enrich a raw post with its shoutout writer's live avatar/name right
+   before render, so shoutouts always reflect current WRITER_STATUSES. */
+function mapPost(p){
+  if (p.type === 'shoutout' && p.shoutout && p.shoutout.id) {
+    const w = writerById(p.shoutout.id);
+    return Object.assign({}, p, {
+      shoutout: Object.assign({}, p.shoutout, {
+        name: w ? w.name : 'Droboard Writer',
+        avatar: w ? w.avatar : DROBOARD_LOGO,
+        following: !!FOLLOW_STATE[p.shoutout.id],
+      }),
+    });
+  }
+  return p;
+}
+
+/* ═══════════════════════════════════════════════════════
+   REACTIONS (in-memory, per post)
+═══════════════════════════════════════════════════════ */
+const REACTION_IDS = ['love','fire','cry','shock','angry','clap'];
+const rxState = {};
+function getReactionFor(post){
+  if(!rxState[post.id]){
+    const o = { userRx:null };
+    REACTION_IDS.forEach(r => o[r] = Math.floor(Math.random()*180)+5);
+    rxState[post.id] = o;
+  }
+  return rxState[post.id];
+}
+
+/* ═══════════════════════════════════════════════════════
+   CUSTOM POST TYPES — announcement & shoutout
+   (registered on DroboardPostCard so they render inline in
+   the normal feed alongside built-in debate/repost/ama/poll)
+═══════════════════════════════════════════════════════ */
+DroboardPostCard.registerType('announcement', (post) => `
+  <div class="dpc-body">
+    <div class="drb-badge drb-badge-ann"><i class="fas fa-bullhorn"></i> Announcement</div>
+    ${post.title ? `<div class="dpc-title">${esc(post.title)}</div>` : ''}
+    ${post.text ? `<div class="dpc-text trunc-5" id="dpc-txt-${post.id}">${nl(esc(post.text))}</div>
+      <span class="dpc-more" data-pid="${post.id}">See more <i class="fas fa-chevron-down" style="font-size:8px"></i></span>` : ''}
+    ${post.image ? `<img class="dpc-image" src="${post.image}" loading="lazy" data-image-open="1"/>` : ''}
+  </div>`);
+
+DroboardPostCard.registerType('shoutout', (post) => {
+  const s = post.shoutout || {};
+  return `<div class="dpc-body">
+    <div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Writer Shoutout</div>
+    ${post.text ? `<div class="dpc-text trunc-5" id="dpc-txt-${post.id}">${nl(esc(post.text))}</div>
+      <span class="dpc-more" data-pid="${post.id}">See more <i class="fas fa-chevron-down" style="font-size:8px"></i></span>` : ''}
+    <div class="drb-shout-card" data-shout-open="${post.id}">
+      <img class="drb-shout-av" src="${s.avatar || ''}" loading="lazy"/>
+      <div class="drb-shout-info">
+        <div class="drb-shout-name">@${esc(s.name || '')}</div>
+        <div class="drb-shout-tag">${esc(s.tagline || '')}</div>
+      </div>
+      <button class="drb-shout-follow${s.following ? ' ing' : ''}" data-shout-follow="${s.id}">${s.following ? '✓ Following' : '+ Follow'}</button>
+    </div>
+  </div>`;
+});
+
+/* ═══════════════════════════════════════════════════════
+   FEED RENDER + TABS
+═══════════════════════════════════════════════════════ */
+let currentTab = 'all';
+let moreLoaded = false;
+
+function currentList(){
+  const base = moreLoaded ? allPosts() : POSTS;
+  if (currentTab === 'all') return base;
+  return base.filter(p => p.type === currentTab);
+}
+
+function renderFeed(){
+  const area = document.getElementById('feedArea');
+  const list = currentList();
+  if (!list.length){
+    area.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><h4>Nothing here yet</h4><p>No posts in this category right now — check back soon.</p></div>`;
+    return;
+  }
+  DroboardPostCard.setPosts(list.map(mapPost));
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.pg-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('panel-feed').style.display = tab === 'about' ? 'none' : 'block';
+  document.getElementById('panel-about').style.display = tab === 'about' ? 'block' : 'none';
+  if (tab !== 'about') renderFeed();
+}
+
+function loadMore(){
+  if (moreLoaded){ toast('✅ All posts loaded!'); return; }
+  moreLoaded = true;
+  renderFeed();
+  document.getElementById('loadMoreBtn').innerHTML = '<i class="fas fa-check"></i> All posts loaded';
+  toast('✨ More posts loaded!');
+}
+
+/* ═══════════════════════════════════════════════════════
+   POST-CARD HOOKS
+═══════════════════════════════════════════════════════ */
+DroboardPostCard.attach(document.getElementById('feedArea'), {
+  getReaction: getReactionFor,
+
+  onLike(post){
+    const orig = findPost(post.id); if(!orig) return;
+    orig.liked = !orig.liked;
+    orig.likes += orig.liked ? 1 : -1;
+    DroboardPostCard.update(mapPost(orig));
+  },
+  onReact(post, rid){
+    const rx = getReactionFor(post);
+    if (rx.userRx === rid){ rx[rid]--; rx.userRx = null; }
+    else { if (rx.userRx) rx[rx.userRx]--; rx[rid]++; rx.userRx = rid; }
+    const orig = findPost(post.id);
+    if (orig) DroboardPostCard.update(mapPost(orig));
+  },
+  onComment(post){ openComments(post); },
+  onShare(post){
+    window.openShareModal({
+      title: post.title || post.quote || (post.text ? post.text.substring(0,60) : 'Droboard'),
+      sub: '@droboard · Official Page',
+      img: post.image || (post.storyRef && post.storyRef.cover) || DROBOARD_LOGO,
+      url: 'https://droboard.app/droboard/post/' + post.id,
+    });
+  },
+  onDotsAction(action, post){
+    if (action === 'report'){ toast('🚩 Reported.'); return; }
+    if (action === 'less'){ toast("👁️ You'll see less of this."); return; }
+    if (action === 'follow'){ toast('✅ You already follow @droboard!'); return; }
+    if (action === 'share'){
+      window.openShareModal({ title: post.title || 'Droboard', sub:'@droboard', img: DROBOARD_LOGO, url:'https://droboard.app/droboard/post/'+post.id });
+      return;
+    }
+    if (action === 'save'){
+      window.openSaveModal({ title: post.title || post.quote || 'Droboard post', sub:'@droboard', img: post.image || DROBOARD_LOGO, storyId: post.id });
+      return;
+    }
+  },
+  onPollVote(post, oi){
+    const orig = findPost(post.id); if(!orig || !orig.poll) return;
+    if (orig.poll.voted >= 0){ toast('✅ Already voted!'); return; }
+    orig.poll.opts[oi].v++; orig.poll.voted = oi; orig.poll.total++;
+    DroboardPostCard.update(mapPost(orig));
+    toast('✅ Vote cast!');
+  },
+  onDebateVote(post, side){
+    const orig = findPost(post.id); if(!orig || !orig.debateData) return;
+    if (orig.debateData.userVote){ toast('✅ Already voted!'); return; }
+    orig.debateData.userVote = side;
+    if (side === 'for') orig.debateData.forV++; else orig.debateData.agV++;
+    DroboardPostCard.update(mapPost(orig));
+    toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!');
+  },
+  onAvatarClick(){ window.scrollTo({top:0,behavior:'smooth'}); },
+  onReplySend(post, text){
+    const orig = findPost(post.id); if(!orig) return;
+    orig.comments++;
+    DroboardPostCard.update(mapPost(orig));
+    toast('💬 Reply posted!');
+  },
+});
+
+/* Custom click handling for the shoutout card + decorative targets
+   (chapter/story chip, AMA banner, image, poll) that post-card.js
+   exposes via data-* attributes without wiring up itself. */
+document.getElementById('feedArea').addEventListener('click', (e) => {
+  const followBtn = e.target.closest('[data-shout-follow]');
+  if (followBtn){
+    const wid = followBtn.dataset.shoutFollow;
+    FOLLOW_STATE[wid] = !FOLLOW_STATE[wid];
+    localStorage.setItem('drb_shout_follows', JSON.stringify(FOLLOW_STATE));
+    const w = writerById(wid);
+    toast(FOLLOW_STATE[wid] ? `✅ Following @${w ? w.name : 'writer'}!` : `Unfollowed @${w ? w.name : 'writer'}`);
+    renderFeed();
+    return;
+  }
+  if (e.target.closest('[data-shout-open]')){ toast('👤 Opening profile…'); return; }
+  if (e.target.closest('[data-story-chip]')){ toast('📖 Opening story…'); return; }
+  if (e.target.closest('[data-ama-open]')){ toast('🎙 Joining Droboard Live…'); return; }
+  if (e.target.closest('[data-image-open]')){ toast('🖼 Viewing…'); return; }
+});
+
+/* ═══════════════════════════════════════════════════════
+   COMMENTS OVERLAY — DroboardComments per post
+═══════════════════════════════════════════════════════ */
+let cs = null;
+const postCommentsCache = {};
+
+/* COMMENTS_DATA (comments-data.js) ships each comment's counts under
+   `reactions`; DroboardComments reads that field as `rx`. This also
+   attaches a writer's live status reel (from WRITER_STATUSES, via each
+   comment's `wid`) so tapping an avatar with a status opens the real
+   status viewer instead of doing nothing. */
+function prepareCommentSeed(list){
+  return (list || []).map(c => {
+    const ws = c.wid ? writerById(c.wid) : null;
+    return Object.assign({}, c, {
+      rx: c.reactions || null,
+      statuses: ws ? ws.statuses : null,
+      replies: prepareCommentSeed(c.replies),
+    });
+  });
+}
+
+/* Each post gets its own independent copy of the sample thread the
+   first time its comments are opened, so posting/editing/deleting in
+   one post's comments never bleeds into another's. */
+function seedCommentsFor(postId){
+  if (!postCommentsCache[postId]) {
+    const raw = typeof COMMENTS_DATA !== 'undefined' ? JSON.parse(JSON.stringify(COMMENTS_DATA)) : [];
+    postCommentsCache[postId] = prepareCommentSeed(raw);
+  }
+  return postCommentsCache[postId];
+}
+
+function openComments(post){
+  const overlay = document.getElementById('commentOverlay');
+  const mount = document.getElementById('commentMount');
+  mount.innerHTML = '';
+  if (cs && cs.destroy) cs.destroy();
+
+  cs = DroboardComments.attach(mount, {
+    storyId: post.id,
+    title: 'Comments',
+    comments: seedCommentsFor(post.id),
+    currentUser: { name:'You', avatar:null },
+    collapsible: false,
+    placeholder: 'Add a comment…',
+    getCommentUrl: (c) => 'https://droboard.app/droboard/post/' + post.id + '#comment-' + c.id,
+    onPost(){ const orig = findPost(post.id); if(orig){ orig.comments++; DroboardPostCard.update(mapPost(orig)); } },
+    onReply(){ const orig = findPost(post.id); if(orig){ orig.comments++; DroboardPostCard.update(mapPost(orig)); } },
+  });
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeComments(){
+  document.getElementById('commentOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ═══════════════════════════════════════════════════════
+   WRITERS SPOTLIGHT (DroboardPeopleToFollow)
+═══════════════════════════════════════════════════════ */
+function initSpotlight(){
+  const people = SPOTLIGHT_POOL.map(w => ({
+    id: w.id, name: w.name, av: w.avatar, ring: w.ring,
+    isLive: w.isLive || false, statuses: w.statuses,
+    verified: ['w1','w5','w6'].includes(w.id),
+    rank: w.isLive ? '🔴 Live now' : null,
+    following: !!FOLLOW_STATE[w.id],
+    profileUrl: 'profile.html',
+  }));
+  if (!people.length) return;
+  DroboardPeopleToFollow.render('#ptfMount', {
+    people, title:'', maxVisible: 8,
+    onFollow({ id, name, following: f }){
+      FOLLOW_STATE[id] = f;
+      localStorage.setItem('drb_shout_follows', JSON.stringify(FOLLOW_STATE));
+      toast(f ? `✅ Following @${name}` : `Unfollowed @${name}`);
+    },
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   DROBOARD PICKS — curated collections (DroboardCollectionCard)
+═══════════════════════════════════════════════════════ */
+const CURATED_COLLECTIONS = [
+  { id:'cc1', name:"Editors' Picks 2025", count:22, privacy:'public',
+    covers:['https://i.postimg.cc/RqtfSQJJ/wife3.jpg','https://i.postimg.cc/N9jY0w4m/5.jpg','https://i.postimg.cc/WF1j4Pnh/6.jpg','https://i.postimg.cc/cgLZJNmC/8.jpg'] },
+  { id:'cc2', name:'Debate-Worthy Endings', count:14, privacy:'public',
+    covers:['https://i.postimg.cc/ftRZbhKx/3.jpg','https://i.postimg.cc/DJwFzKgd/4.jpg'] },
+  { id:'cc3', name:'New Voices to Watch', count:9, privacy:'public',
+    covers:['https://i.postimg.cc/0MyxNqfz/7.jpg','https://i.postimg.cc/23WvkFLH/images-(2).jpg','https://i.postimg.cc/fkdXzjSj/wife.jpg'] },
+];
+function initCollections(){
+  DroboardCollectionCard.attach(document.getElementById('collectionsGrid'), {
+    onOpen(c){ toast('📂 Opening "' + c.name + '"…'); },
+    onShare(c){
+      window.openShareModal({ title:c.name, sub:(c.count||0)+' stories · Curated by @droboard', img:(c.covers&&c.covers[0])||DROBOARD_LOGO, url:'https://droboard.app/collection/'+c.id });
+    },
+  });
+  DroboardCollectionCard.setCollections(CURATED_COLLECTIONS);
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════ */
+function computeWritersFeatured(){
+  const ids = new Set();
+  allPosts().forEach(p => { if (p.type === 'shoutout' && p.shoutout && p.shoutout.id) ids.add(p.shoutout.id); });
+  return ids.size;
+}
+
+renderFeed();
+initSpotlight();
+initCollections();
+document.getElementById('statWritersFeatured').textContent = computeWritersFeatured();
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Authors & Content — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(212,160,23,.3);border-radius:6px}
+
+#authorsRoot{display:flex;flex-direction:column}
+.au-page{display:flex;flex-direction:column;gap:14px;padding:16px 20px 32px}
+
+/* department header — mirrors marketing-growth's dept-head/tag/updated pattern */
+.dept-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.dept-head .dept-ico{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.dept-head h2{font-size:13.5px;font-weight:800}
+.dept-head span.tag{font-size:9.5px;font-weight:700;color:var(--text-faint);background:var(--table-head);padding:3px 9px;border-radius:20px;margin-left:2px}
+.dept-head .updated{margin-left:auto;font-size:10px;color:var(--text-faint);font-weight:600;display:flex;align-items:center;gap:5px}
+.au-sub{font-size:11.5px;color:var(--text-faint);margin-top:-6px}
+
+/* KPI strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
+.kpi-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12.5px;flex-shrink:0}
+.kpi-num{font-size:16px;font-weight:800;line-height:1.1;white-space:nowrap}
+.kpi-lbl{font-size:9.5px;color:var(--text-muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* panel shell (roster + genre breakdown) */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 0;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-title{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:6px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+.btn{font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.13s}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.primary:hover{color:#fff;filter:brightness(1.06)}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border);margin-top:14px}
+.search-box{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:12.5px}
+.select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
+
+/* author list — expanded now that there's no sidebar competing for width */
+.list-cols{display:grid;grid-template-columns:minmax(0,2.2fr) 90px 100px 110px 110px 100px 90px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
+.list-cols span.num{text-align:right}
+
+.author-row{display:grid;grid-template-columns:minmax(0,2.2fr) 90px 100px 110px 110px 100px 90px 70px;gap:10px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--border);transition:.12s}
+.author-row:hover{background:var(--hover)}
+.author-row:last-child{border-bottom:none}
+.author-main{display:flex;align-items:center;gap:11px;min-width:0}
+.a-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.a-info{min-width:0}
+.a-name{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-name i.verified{color:var(--blue);font-size:11px}
+.a-meta{font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+.genre-pill{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+
+.status-chip{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;display:inline-flex;align-items:center;gap:4px}
+.status-chip.active{background:var(--green-bg);color:var(--green)}
+.status-chip.pending{background:var(--amber-bg);color:var(--amber)}
+.status-chip.suspended{background:var(--red-bg);color:var(--red)}
+.status-chip i{font-size:6px}
+
+.num-cell{font-size:12px;font-weight:700;text-align:right;color:var(--text)}
+.num-cell.faint{color:var(--text-muted);font-weight:600}
+.col-hide{}
+.row-actions{display:flex;justify-content:flex-end;gap:4px}
+.icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
+.icon-btn:hover{background:var(--table-head);color:var(--gold)}
+
+.list-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px}
+.list-footer-info{font-size:11.5px;color:var(--text-faint)}
+.pager{display:flex;align-items:center;gap:5px}
+.pager button{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.pager button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.pager button.active{background:var(--accent);border-color:transparent;color:#fff}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+.pager-gap{color:var(--text-faint);font-size:11px;padding:0 2px}
+.empty-state{padding:50px 20px;text-align:center;color:var(--text-faint)}
+.empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
+
+/* genre breakdown — full-width grid of mini cards instead of a cramped sidebar list */
+.genre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 18px 18px}
+.genre-card{background:var(--input-bg);border:1px solid var(--border);border-radius:11px;padding:12px 13px;display:flex;flex-direction:column;gap:8px}
+.genre-card-top{display:flex;align-items:center;justify-content:space-between}
+.genre-card-name{font-size:12px;font-weight:700}
+.genre-card-count{font-size:15px;font-weight:800}
+.genre-bar-track{height:7px;border-radius:5px;background:var(--table-head);overflow:hidden}
+.genre-bar-fill{height:100%;border-radius:5px}
+
+@media (max-width:1150px){
+  .genre-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:900px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .list-cols, .author-row{grid-template-columns:minmax(0,1fr) 90px 70px}
+  .list-cols span:nth-child(3),.list-cols span:nth-child(4),.list-cols span:nth-child(5),.list-cols span:nth-child(6),
+  .author-row .col-hide{display:none}
+}
+@media (max-width:640px){.kpi-strip{grid-template-columns:1fr 1fr}.genre-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="authorsRoot">
+  <div class="au-page">
+
+    <div class="dept-head">
+      <div class="dept-ico" style="background:var(--gold-bg);color:var(--gold)"><i class="fas fa-book"></i></div>
+      <h2>Authors &amp; Content</h2><span class="tag">Roster &amp; Publishing Health</span>
+      <div class="updated"><i class="fas fa-circle" style="font-size:6px;color:var(--green)"></i> Live · Updated 4m ago</div>
+    </div>
+    <div class="au-sub">Every author on the platform and how their work is performing.</div>
+
+    <div class="kpi-strip" id="statCards"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2><i class="fas fa-users" style="color:var(--gold)"></i> Author Roster</h2>
+        <button class="btn primary"><i class="fas fa-user-plus"></i> Invite Author</button>
+      </div>
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by author name or ID…"/></div>
+        <select class="select" id="statusFilter">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+        </select>
+        <select class="select" id="sortFilter">
+          <option value="reads">Sort: Most Reads</option>
+          <option value="revenue">Sort: Highest Revenue</option>
+          <option value="books">Sort: Most Books</option>
+          <option value="recent">Sort: Newest</option>
+          <option value="name">Sort: Name A–Z</option>
+        </select>
+      </div>
+      <div class="list-cols">
+        <span>Author</span>
+        <span class="num">Books</span>
+        <span class="num">Reads</span>
+        <span class="num">Revenue</span>
+        <span>Genre</span>
+        <span>Status</span>
+        <span>Joined</span>
+        <span></span>
+      </div>
+      <div id="authorList"></div>
+      <div class="list-footer">
+        <div class="list-footer-info" id="footerInfo"></div>
+        <div class="pager" id="pager"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head" style="padding-bottom:14px">
+        <h2><i class="fas fa-chart-simple" style="color:var(--purple)"></i> Content by Genre</h2>
+        <span class="count-chip" id="genreTotalChip">—</span>
+      </div>
+      <div class="genre-grid" id="genreBreakdown"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SuperAdminSidebar.attach('#authorsRoot', {
+  activeItem: 'authors-content',
+  title: 'Authors & Content',
+  subtitle: 'Roster and content health',
+  user: { name: 'Tobi Adenuga', role: 'Super Admin', avatar: 'https://i.pravatar.cc/100?img=68' },
+  notifCount: 9,
+  searchPlaceholder: 'Search everything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
+const GENRE_COLORS = { Romance:'red', Fantasy:'purple', Thriller:'blue', Werewolf:'purple', Drama:'amber', 'Teen Fiction':'green', Mystery:'gold' };
+const GENRES = Object.keys(GENRE_COLORS);
+
+/* ─────────────────────────────────────────
+   MOCK DATA
+───────────────────────────────────────── */
+const FIRST = ['Zara','Marcus','Nadia','Kelo','Ife','Diego','Lena','TJ','Aminah','Chidi','Priya','Wren','Rita','Sam','Femi','Ada','Kelechi','Tari','Ngozi','Ola'];
+const LAST = ['M.','Webb Jr.','Cross','Writes','Solarin','Marsh','Okafor','Rourke','Cole','Blackwood','Nandan','Okonkwo','Chen','Okafor','Reddy','Lin','Uba','Benson','Fields','Adeyemi'];
+const STATUSES = ['active','active','active','active','pending','suspended'];
+
+function generateAuthors(n){
+  const out = [];
+  for(let i=0;i<n;i++){
+    const name = `${FIRST[i%FIRST.length]} ${LAST[(i*3)%LAST.length]}`;
+    const status = STATUSES[i % STATUSES.length];
+    const books = 1 + (i % 22);
+    const reads = Math.floor(Math.pow((i%400)+1, 2.05) * 4.1) + Math.floor(Math.random()*500);
+    const revenue = Math.round(reads * 0.011 * (0.5+Math.random()));
+    const joinedDaysAgo = 20 + (i*17)%900;
+    out.push({
+      id:'au-'+(40000+i), name, status, books, reads, revenue,
+      verified: i % 5 === 0,
+      genre: GENRES[i % GENRES.length],
+      joinedDaysAgo,
+      avatar: `https://i.pravatar.cc/60?img=${(i%70)+1}`,
+    });
+  }
+  return out;
+}
+
+const ALL_AUTHORS = generateAuthors(1840);
+let filtered = ALL_AUTHORS.slice();
+let page = 1;
+const pageSize = 20;
+
+function fmtNum(n){
+  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
+  return n.toString();
+}
+function fmtDays(d){
+  if(d<30) return d+'d ago';
+  if(d<365) return Math.floor(d/30)+'mo ago';
+  return Math.floor(d/365)+'y ago';
+}
+
+function renderStatCards(){
+  const total = ALL_AUTHORS.length;
+  const active = ALL_AUTHORS.filter(a=>a.status==='active').length;
+  const totalBooks = ALL_AUTHORS.reduce((s,a)=>s+a.books,0);
+  const totalRevenue = ALL_AUTHORS.reduce((s,a)=>s+a.revenue,0);
+  const stats = [
+    { n: fmtNum(total)+'+', l:'Total Authors', ico:'fa-user-pen', cls:'gold' },
+    { n: fmtNum(active), l:'Active Authors', ico:'fa-circle-check', cls:'green' },
+    { n: fmtNum(totalBooks), l:'Published Books', ico:'fa-book-open', cls:'blue' },
+    { n: '$'+fmtNum(totalRevenue), l:'Author Revenue (est.)', ico:'fa-sack-dollar', cls:'purple' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="kpi-card">
+      <div class="kpi-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="kpi-num">${s.n}</div><div class="kpi-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+  const sort = document.getElementById('sortFilter').value;
+
+  filtered = ALL_AUTHORS.filter(a=>{
+    if(q && !(a.name.toLowerCase().includes(q) || a.id.includes(q))) return false;
+    if(status && a.status !== status) return false;
+    return true;
+  });
+
+  if(sort==='reads') filtered.sort((a,b)=>b.reads-a.reads);
+  else if(sort==='revenue') filtered.sort((a,b)=>b.revenue-a.revenue);
+  else if(sort==='books') filtered.sort((a,b)=>b.books-a.books);
+  else if(sort==='recent') filtered.sort((a,b)=>a.joinedDaysAgo-b.joinedDaysAgo);
+  else if(sort==='name') filtered.sort((a,b)=>a.name.localeCompare(b.name));
+
+  page = 1;
+  renderList();
+}
+
+function renderList(){
+  const start = (page-1)*pageSize;
+  const pageItems = filtered.slice(start, start+pageSize);
+  const listEl = document.getElementById('authorList');
+
+  if(pageItems.length === 0){
+    listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No authors match your filters.</div>`;
+  } else {
+    listEl.innerHTML = pageItems.map(a=>{
+      const gc = GENRE_COLORS[a.genre];
+      return `
+      <div class="author-row">
+        <div class="author-main">
+          <img class="a-avatar" src="${a.avatar}" alt=""/>
+          <div class="a-info">
+            <div class="a-name">${a.name} ${a.verified?'<i class="fas fa-badge-check verified" title="Verified"></i>':''}</div>
+            <div class="a-meta">${a.id}</div>
+          </div>
+        </div>
+        <div class="col-hide num-cell faint">${a.books}</div>
+        <div class="col-hide num-cell">${fmtNum(a.reads)}</div>
+        <div class="num-cell">$${fmtNum(a.revenue)}</div>
+        <div class="col-hide"><span class="genre-pill" style="background:${BG_MAP[gc]};color:${ICO_MAP[gc]}">${a.genre}</span></div>
+        <div><span class="status-chip ${a.status}"><i class="fas fa-circle"></i>${a.status}</span></div>
+        <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtDays(a.joinedDaysAgo)}</div>
+        <div class="row-actions">
+          <button class="icon-btn" title="View profile"><i class="fas fa-eye"></i></button>
+          <button class="icon-btn" title="More"><i class="fas fa-ellipsis-vertical"></i></button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  renderFooter();
+}
+
+function renderFooter(){
+  const total = filtered.length;
+  const start = total === 0 ? 0 : (page-1)*pageSize+1;
+  const end = Math.min(page*pageSize, total);
+  document.getElementById('footerInfo').textContent = `Showing ${start}–${end} of ${fmtNum(total)} authors`;
+
+  const totalPages = Math.max(1, Math.ceil(total/pageSize));
+  let html = `<button ${page===1?'disabled':''} data-p="prev"><i class="fas fa-chevron-left"></i></button>`;
+  const pagesToShow = new Set([1, totalPages, page, page-1, page+1]);
+  let last = 0;
+  for(let p=1;p<=totalPages;p++){
+    if(!pagesToShow.has(p)) continue;
+    if(p - last > 1) html += `<span class="pager-gap">…</span>`;
+    html += `<button data-p="${p}" class="${p===page?'active':''}">${p}</button>`;
+    last = p;
+  }
+  html += `<button ${page===totalPages?'disabled':''} data-p="next"><i class="fas fa-chevron-right"></i></button>`;
+  document.getElementById('pager').innerHTML = html;
+
+  document.querySelectorAll('#pager button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const p = btn.dataset.p;
+      const totalPages2 = Math.max(1, Math.ceil(filtered.length/pageSize));
+      if(p==='prev') page = Math.max(1, page-1);
+      else if(p==='next') page = Math.min(totalPages2, page+1);
+      else page = parseInt(p,10);
+      renderList();
+      document.querySelector('.panel').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+function renderGenreBreakdown(){
+  const counts = {};
+  GENRES.forEach(g=>counts[g]=0);
+  ALL_AUTHORS.forEach(a=>counts[a.genre]++);
+  const max = Math.max(...Object.values(counts));
+  const total = Object.values(counts).reduce((s,v)=>s+v,0);
+  document.getElementById('genreTotalChip').textContent = fmtNum(total) + ' authors';
+  document.getElementById('genreBreakdown').innerHTML = GENRES.map(g=>{
+    const pct = Math.round((counts[g]/max)*100);
+    const cls = GENRE_COLORS[g];
+    return `<div class="genre-card">
+      <div class="genre-card-top">
+        <span class="genre-card-name">${g}</span>
+        <span class="genre-card-count" style="color:${ICO_MAP[cls]}">${counts[g]}</span>
+      </div>
+      <div class="genre-bar-track"><div class="genre-bar-fill" style="width:${pct}%;background:${ICO_MAP[cls]}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortFilter').addEventListener('change', applyFilters);
+
+function init(){
+  renderStatCards();
+  document.getElementById('sortFilter').value = 'reads';
+  applyFilters();
+  renderGenreBreakdown();
+}
+init();
+</script>
+</body>
+</html>

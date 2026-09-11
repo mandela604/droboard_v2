@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Editorial Team — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(212,160,23,.3);border-radius:6px}
+
+.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.page-head h1{font-size:20px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-faint);margin-top:4px}
+.btn{font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.13s}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.primary:hover{color:#fff;filter:brightness(1.06)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.layout{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+@media (max-width:1150px){.layout{grid-template-columns:1fr}}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 0;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);padding:4px 18px 0}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border);margin-top:14px}
+.search-box{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:12.5px}
+.select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
+
+/* editor list */
+.list-cols{display:grid;grid-template-columns:minmax(0,2.4fr) 100px 100px 100px 110px 100px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
+.list-cols span.num{text-align:right}
+
+.editor-row{display:grid;grid-template-columns:minmax(0,2.4fr) 100px 100px 100px 110px 100px 70px;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);transition:.12s}
+.editor-row:hover{background:var(--hover)}
+.editor-row:last-child{border-bottom:none}
+.editor-main{display:flex;align-items:center;gap:11px;min-width:0}
+.e-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.e-info{min-width:0}
+.e-name{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.e-name i.lead{color:var(--gold);font-size:11px}
+.e-meta{font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+.status-chip{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;display:inline-flex;align-items:center;gap:4px}
+.status-chip.active{background:var(--green-bg);color:var(--green)}
+.status-chip.leave{background:var(--amber-bg);color:var(--amber)}
+.status-chip.suspended{background:var(--red-bg);color:var(--red)}
+.status-chip i{font-size:6px}
+
+.num-cell{font-size:12px;font-weight:700;text-align:right;color:var(--text)}
+.num-cell.faint{color:var(--text-muted);font-weight:600}
+.col-hide{}
+.row-actions{display:flex;justify-content:flex-end;gap:4px}
+.icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
+.icon-btn:hover{background:var(--table-head);color:var(--gold)}
+
+.list-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px}
+.list-footer-info{font-size:11.5px;color:var(--text-faint)}
+.pager{display:flex;align-items:center;gap:5px}
+.pager button{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.pager button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.pager button.active{background:var(--accent);border-color:transparent;color:#fff}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+.pager-gap{color:var(--text-faint);font-size:11px;padding:0 2px}
+.empty-state{padding:50px 20px;text-align:center;color:var(--text-faint)}
+.empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
+
+/* applications queue (sidebar) */
+.app-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin:0 18px 10px}
+.app-card:first-child{margin-top:14px}
+.app-top{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.app-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.app-title{font-size:12px;font-weight:700}
+.app-role{font-size:10.5px;color:var(--text-faint)}
+.app-meta{font-size:10px;color:var(--text-faint);margin-bottom:9px}
+.app-actions{display:flex;gap:6px}
+.mini-btn{font-size:10px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;flex:1;text-align:center}
+.mini-btn:hover{border-color:var(--gold);color:var(--gold)}
+.mini-btn.approve{background:var(--green-bg);color:var(--green);border-color:transparent}
+.mini-btn.approve:hover{background:var(--green);color:#fff}
+.mini-btn.reject:hover{background:var(--red);color:#fff;border-color:transparent}
+
+/* workload bars */
+.wl-row{display:flex;align-items:center;gap:10px;padding:8px 18px}
+.wl-row:first-of-type{margin-top:14px}
+.wl-lbl{font-size:11px;font-weight:700;width:100px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wl-track{flex:1;height:8px;border-radius:6px;background:var(--table-head);overflow:hidden}
+.wl-fill{height:100%;border-radius:6px}
+.wl-val{font-size:10.5px;font-weight:700;color:var(--text-faint);width:44px;text-align:right;flex-shrink:0}
+
+@media (max-width:900px){
+  .list-cols, .editor-row{grid-template-columns:minmax(0,1fr) 90px 70px}
+  .list-cols span:nth-child(3),.list-cols span:nth-child(4),.list-cols span:nth-child(5),
+  .editor-row .col-hide{display:none}
+}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div id="editorialRoot">
+  <div class="page-head">
+    <div>
+      <h1>Editorial Team</h1>
+      <p>Senior editors, their workload, and pending applications.</p>
+    </div>
+    <button class="btn primary"><i class="fas fa-user-plus"></i> Invite Editor</button>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-user-tie" style="color:var(--gold)"></i> Senior Editors</h2></div>
+        <div class="toolbar">
+          <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by editor name or ID…"/></div>
+          <select class="select" id="statusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="leave">On Leave</option>
+            <option value="suspended">Suspended</option>
+          </select>
+          <select class="select" id="sortFilter">
+            <option value="authors">Sort: Most Authors</option>
+            <option value="contracts">Sort: Most Contracts</option>
+            <option value="reports">Sort: Most Reports Handled</option>
+            <option value="recent">Sort: Newest</option>
+            <option value="name">Sort: Name A–Z</option>
+          </select>
+        </div>
+        <div class="list-cols">
+          <span>Editor</span>
+          <span class="num">Authors</span>
+          <span class="num">Contracts</span>
+          <span class="num">Reports</span>
+          <span>Status</span>
+          <span>Joined</span>
+          <span></span>
+        </div>
+        <div id="editorList"></div>
+        <div class="list-footer">
+          <div class="list-footer-info" id="footerInfo"></div>
+          <div class="pager" id="pager"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-inbox" style="color:var(--amber)"></i> Pending Applications</h2>
+          <span class="count-chip" id="appCount">—</span>
+        </div>
+        <div class="panel-sub">Candidates waiting on a Super Admin decision.</div>
+        <div id="applicationsList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-scale-balanced" style="color:var(--purple)"></i> Workload Balance</h2>
+        </div>
+        <div class="panel-sub" style="padding-bottom:0">Authors assigned, relative to team max.</div>
+        <div id="workloadBars" style="padding-bottom:16px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SuperAdminSidebar.attach('#editorialRoot', {
+  activeItem: 'editorial-team',
+  title: 'Editorial Team',
+  subtitle: 'Senior editors, workload, and applications',
+  user: { name: 'Tobi Adenuga', role: 'Super Admin', avatar: 'https://i.pravatar.cc/100?img=68' },
+  notifCount: 9,
+  searchPlaceholder: 'Search everything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
+
+/* ─────────────────────────────────────────
+   MOCK DATA
+───────────────────────────────────────── */
+const FIRST = ['Chioma','Femi','Ada','Wren','Rita','Sam','Ngozi','Ola','Diego','Priya','Kelo','Tari','Ife','Marcus','Zara','Aminah'];
+const LAST = ['Reddy','Okoro','Lin','Okonkwo','Chen','Okafor','Fields','Adeyemi','Marsh','Nandan','Writes','Benson','Solarin','Webb','Cole','Blackwood'];
+const STATUSES = ['active','active','active','active','leave','suspended'];
+
+function generateEditors(n){
+  const out = [];
+  for(let i=0;i<n;i++){
+    const name = `${FIRST[i%FIRST.length]} ${LAST[(i*3)%LAST.length]}`;
+    const status = STATUSES[i % STATUSES.length];
+    const authors = 8 + (i % 60);
+    const contracts = Math.round(authors * (0.5 + Math.random()*0.4));
+    const reports = Math.floor(Math.random()*40) + (i % 15);
+    const joinedDaysAgo = 30 + (i*23)%1100;
+    out.push({
+      id:'ed-'+(10000+i), name, status, authors, contracts, reports,
+      lead: i % 6 === 0,
+      joinedDaysAgo,
+      avatar: `https://i.pravatar.cc/60?img=${(i%70)+1}`,
+    });
+  }
+  return out;
+}
+
+const ALL_EDITORS = generateEditors(48);
+let filtered = ALL_EDITORS.slice();
+let page = 1;
+const pageSize = 12;
+
+const APPLICATIONS = [
+  { name:'Femi Okoro', role:'Senior Editor Applicant', avatar:'https://i.pravatar.cc/60?img=12', meta:'5 yrs experience · References verified · applied 2d ago' },
+  { name:'Wren Okonkwo', role:'Senior Editor Applicant', avatar:'https://i.pravatar.cc/60?img=41', meta:'3 yrs experience · References pending · applied 4d ago' },
+  { name:'Rita Chen', role:'Senior Editor Applicant', avatar:'https://i.pravatar.cc/60?img=44', meta:'7 yrs experience · References verified · applied 6d ago' },
+];
+
+function fmtDays(d){
+  if(d<30) return d+'d ago';
+  if(d<365) return Math.floor(d/30)+'mo ago';
+  return Math.floor(d/365)+'y ago';
+}
+
+function renderStatCards(){
+  const total = ALL_EDITORS.length;
+  const active = ALL_EDITORS.filter(e=>e.status==='active').length;
+  const avgAuthors = Math.round(ALL_EDITORS.reduce((s,e)=>s+e.authors,0)/total);
+  const stats = [
+    { n: total, l:'Total Editors', ico:'fa-user-tie', cls:'gold' },
+    { n: active, l:'Active Editors', ico:'fa-circle-check', cls:'green' },
+    { n: APPLICATIONS.length, l:'Pending Applications', ico:'fa-inbox', cls:'amber' },
+    { n: avgAuthors, l:'Avg Authors / Editor', ico:'fa-scale-balanced', cls:'purple' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+  const sort = document.getElementById('sortFilter').value;
+
+  filtered = ALL_EDITORS.filter(e=>{
+    if(q && !(e.name.toLowerCase().includes(q) || e.id.includes(q))) return false;
+    if(status && e.status !== status) return false;
+    return true;
+  });
+
+  if(sort==='authors') filtered.sort((a,b)=>b.authors-a.authors);
+  else if(sort==='contracts') filtered.sort((a,b)=>b.contracts-a.contracts);
+  else if(sort==='reports') filtered.sort((a,b)=>b.reports-a.reports);
+  else if(sort==='recent') filtered.sort((a,b)=>a.joinedDaysAgo-b.joinedDaysAgo);
+  else if(sort==='name') filtered.sort((a,b)=>a.name.localeCompare(b.name));
+
+  page = 1;
+  renderList();
+}
+
+function renderList(){
+  const start = (page-1)*pageSize;
+  const pageItems = filtered.slice(start, start+pageSize);
+  const listEl = document.getElementById('editorList');
+
+  if(pageItems.length === 0){
+    listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No editors match your filters.</div>`;
+  } else {
+    listEl.innerHTML = pageItems.map(e=>`
+      <div class="editor-row">
+        <div class="editor-main">
+          <img class="e-avatar" src="${e.avatar}" alt=""/>
+          <div class="e-info">
+            <div class="e-name">${e.name} ${e.lead?'<i class="fas fa-star lead" title="Team Lead"></i>':''}</div>
+            <div class="e-meta">${e.id}</div>
+          </div>
+        </div>
+        <div class="col-hide num-cell faint">${e.authors}</div>
+        <div class="col-hide num-cell">${e.contracts}</div>
+        <div class="num-cell">${e.reports}</div>
+        <div><span class="status-chip ${e.status}"><i class="fas fa-circle"></i>${e.status==='leave'?'On Leave':e.status}</span></div>
+        <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtDays(e.joinedDaysAgo)}</div>
+        <div class="row-actions">
+          <button class="icon-btn" title="View profile"><i class="fas fa-eye"></i></button>
+          <button class="icon-btn" title="More"><i class="fas fa-ellipsis-vertical"></i></button>
+        </div>
+      </div>`).join('');
+  }
+  renderFooter();
+}
+
+function renderFooter(){
+  const total = filtered.length;
+  const start = total === 0 ? 0 : (page-1)*pageSize+1;
+  const end = Math.min(page*pageSize, total);
+  document.getElementById('footerInfo').textContent = `Showing ${start}–${end} of ${total} editors`;
+
+  const totalPages = Math.max(1, Math.ceil(total/pageSize));
+  let html = `<button ${page===1?'disabled':''} data-p="prev"><i class="fas fa-chevron-left"></i></button>`;
+  const pagesToShow = new Set([1, totalPages, page, page-1, page+1]);
+  let last = 0;
+  for(let p=1;p<=totalPages;p++){
+    if(!pagesToShow.has(p)) continue;
+    if(p - last > 1) html += `<span class="pager-gap">…</span>`;
+    html += `<button data-p="${p}" class="${p===page?'active':''}">${p}</button>`;
+    last = p;
+  }
+  html += `<button ${page===totalPages?'disabled':''} data-p="next"><i class="fas fa-chevron-right"></i></button>`;
+  document.getElementById('pager').innerHTML = html;
+
+  document.querySelectorAll('#pager button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const p = btn.dataset.p;
+      const totalPages2 = Math.max(1, Math.ceil(filtered.length/pageSize));
+      if(p==='prev') page = Math.max(1, page-1);
+      else if(p==='next') page = Math.min(totalPages2, page+1);
+      else page = parseInt(p,10);
+      renderList();
+      document.querySelector('.panel').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+function renderApplications(){
+  document.getElementById('appCount').textContent = APPLICATIONS.length;
+  document.getElementById('applicationsList').innerHTML = APPLICATIONS.map((a,i)=>`
+    <div class="app-card">
+      <div class="app-top">
+        <img class="app-avatar" src="${a.avatar}" alt=""/>
+        <div><div class="app-title">${a.name}</div><div class="app-role">${a.role}</div></div>
+      </div>
+      <div class="app-meta">${a.meta}</div>
+      <div class="app-actions">
+        <button class="mini-btn reject" data-i="${i}" data-act="reject">Reject</button>
+        <button class="mini-btn approve" data-i="${i}" data-act="approve">Approve</button>
+      </div>
+    </div>`).join('');
+
+  document.querySelectorAll('.app-actions button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = parseInt(btn.dataset.i,10);
+      const item = APPLICATIONS[i];
+      APPLICATIONS.splice(i,1);
+      renderApplications();
+      renderStatCards();
+      if(typeof window.toast==='function') window.toast(btn.dataset.act==='approve' ? `✅ ${item.name} approved as Senior Editor` : `${item.name}'s application rejected`);
+    });
+  });
+}
+
+function renderWorkloadBars(){
+  const top = ALL_EDITORS.slice().sort((a,b)=>b.authors-a.authors).slice(0,8);
+  const max = Math.max(...top.map(e=>e.authors));
+  document.getElementById('workloadBars').innerHTML = top.map(e=>{
+    const pct = Math.round((e.authors/max)*100);
+    const color = pct > 85 ? ICO_MAP.red : pct > 60 ? ICO_MAP.amber : ICO_MAP.green;
+    return `<div class="wl-row">
+      <div class="wl-lbl">${e.name}</div>
+      <div class="wl-track"><div class="wl-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="wl-val">${e.authors}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortFilter').addEventListener('change', applyFilters);
+
+function init(){
+  renderStatCards();
+  document.getElementById('sortFilter').value = 'authors';
+  applyFilters();
+  renderApplications();
+  renderWorkloadBars();
+}
+init();
+</script>
+</body>
+</html>

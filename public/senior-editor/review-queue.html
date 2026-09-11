@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Review Queue — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:640px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+/* toolbar */
+.add-search{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.add-search .filter-search{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
+.add-search .filter-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.add-search .filter-search input::placeholder{color:var(--text-faint)}
+.add-search .filter-search i{color:var(--text-faint);font-size:12px}
+.add-search select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+
+/* filter pills */
+.filter-row{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.filter-pill{font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:5px}
+.filter-pill:hover{border-color:var(--accent)}
+.filter-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill-count{font-size:9px;background:rgba(255,255,255,.25);padding:1px 5px;border-radius:10px}
+.filter-pill:not(.on) .pill-count{background:var(--table-head);color:var(--text-faint)}
+
+/* submission row — one per row like the Featured / Authors pattern */
+.row-item{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:9px;cursor:pointer;transition:.15s;background:var(--card)}
+.row-item:hover{border-color:var(--accent);background:var(--hover)}
+.row-cover{width:44px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.row-main{flex:1;min-width:0}
+.row-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-meta{font-size:10.5px;color:var(--text-faint);margin-top:3px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.row-tags{display:flex;gap:4px;flex-shrink:0;align-items:center}
+.row-chevron{color:var(--text-faint);font-size:12px;flex-shrink:0}
+@media (max-width:560px){.row-meta .hide-sm{display:none}}
+
+.status-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+.status-pill.approved{background:var(--green-bg);color:var(--green)}
+.status-pill.rejected{background:var(--red-bg);color:var(--red)}
+.prio-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.prio-pill.high{background:var(--red-bg);color:var(--red)}
+.prio-pill.medium{background:var(--amber-bg);color:var(--amber)}
+.prio-pill.low{background:var(--table-head);color:var(--text-faint)}
+
+.empty-msg{text-align:center;padding:28px;color:var(--text-faint);font-size:12.5px}
+
+/* pagination */
+.pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.pagination-info{font-size:11.5px;color:var(--text-faint);font-weight:600}
+.pagination-controls{display:flex;align-items:center;gap:6px}
+.page-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── Slide-up detail sheet — centered, NOT edge-to-edge (matches Featured Stories pattern) ── */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:1000;display:none}
+.sheet-backdrop.open{display:block}
+.detail-sheet{position:fixed;left:0;right:0;bottom:0;z-index:1010;background:var(--card);border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -20px 60px rgba(0,0,0,.35);margin:0 auto;max-width:640px}
+.detail-sheet.open{transform:translateY(0)}
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:10px auto 4px}
+.sheet-banner{position:relative;height:190px;overflow:hidden}
+.sheet-banner img{width:100%;height:100%;object-fit:cover;display:block}
+.sheet-banner-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.1) 60%)}
+.sheet-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2}
+.sheet-banner-title{position:absolute;bottom:12px;left:20px;right:20px;color:#fff}
+.sheet-banner-title h2{font-size:18px;font-weight:800;line-height:1.3;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.sheet-banner-title p{font-size:12px;opacity:.85;margin-top:4px;font-weight:600}
+.sheet-body{padding:18px 22px 26px}
+.sheet-meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.sheet-meta-item{background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.sheet-meta-item b{display:block;font-size:14px;font-weight:800}
+.sheet-meta-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.sheet-section-lbl{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
+.sheet-section-lbl:first-child{margin-top:0}
+.sheet-synopsis{font-size:13px;line-height:1.7;color:var(--text)}
+.feedback-box{background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--text-muted);margin-top:14px;display:flex;gap:8px}
+.feedback-box i{color:var(--text-faint);margin-top:1px}
+
+.reject-panel{display:none;margin-top:14px}
+.reject-panel.show{display:block}
+.reject-panel textarea{width:100%;min-height:70px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;font-size:12.5px;font-family:inherit;color:var(--text);resize:vertical;outline:none;margin-bottom:8px}
+.reject-panel textarea:focus{border-color:var(--red)}
+
+.modal-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.modal-action-row button{flex:1;min-width:130px;padding:11px 14px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;transition:.14s}
+.modal-action-row button:hover{border-color:var(--accent);color:var(--accent)}
+.modal-action-row button.primary{background:var(--green);border-color:transparent;color:#fff}
+.modal-action-row button.primary:hover{opacity:.9;color:#fff}
+.modal-action-row button.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.modal-action-row button.danger:hover{background:var(--red);color:#fff}
+.modal-action-row button.ghost{background:transparent}
+
+/* ── Accept confirmation modal (password + contract type) — same pattern as Authors suspend modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1100;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:420px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s}
+.modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head h3{font-size:15px;font-weight:800}
+.modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
+.modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.field-group select,.field-group input{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text)}
+.field-group small{display:block;margin-top:5px;font-size:10.5px;color:var(--text-faint)}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.modal-error.show{display:block}
+.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
+.modal-box-actions .confirm-btn{background:var(--green);border-color:transparent;color:#fff}
+.modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+.password-hint{font-size:10.5px;color:var(--text-faint);display:flex;align-items:center;gap:5px}
+
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){
+  .grid-4{grid-template-columns:1fr 1fr}
+  .sheet-meta-grid{grid-template-columns:1fr 1fr}
+  .add-search{flex-direction:column;align-items:stretch}
+}
+</style>
+</head>
+<body>
+<div id="queueRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Senior Editor · Review Queue</div>
+    <div class="welcome-title">Review Queue 📥</div>
+    <div class="welcome-sub">Writers submit their full manuscript once it crosses 5,000 words. Preview the book below, then accept it for contract or decline with feedback.</div>
+  </div>
+
+  <div class="grid-4" id="statRow"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-inbox" style="color:var(--accent)"></i> Book Submissions</h2>
+      <span class="count-chip" id="subCount">—</span>
+    </div>
+
+    <div class="add-search">
+      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by title or author…"/></div>
+      <select id="genreSel"><option value="">All Genres</option></select>
+      <select id="sortSel">
+        <option value="recent">Most Recent</option>
+        <option value="priority">Priority</option>
+        <option value="words">Most Words</option>
+        <option value="alpha">A → Z</option>
+      </select>
+    </div>
+
+    <div class="filter-row" id="filterRow"></div>
+
+    <div id="subList"></div>
+    <div class="pagination" id="pgn"></div>
+  </div>
+</div>
+
+<!-- Book preview slide-up sheet -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="detail-sheet" id="detailSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-handle"></div>
+  <div class="sheet-banner">
+    <img id="sheetCover" src="" alt=""/>
+    <div class="sheet-banner-scrim"></div>
+    <button class="sheet-close" id="sheetClose"><i class="fas fa-xmark"></i></button>
+    <div class="sheet-banner-title">
+      <h2 id="sheetTitle">—</h2>
+      <p id="sheetAuthor">—</p>
+    </div>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<!-- Accept for Contract confirmation modal -->
+<div class="modal-overlay" id="contractModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3>Accept for contract</h3>
+        <p id="contractModalSub">Confirm the contract type and your password to accept this submission.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-contract-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label>Contract type</label>
+        <select id="contractType"><option value="">Loading contracts…</option></select>
+        <small id="contractHint"></small>
+      </div>
+      <div class="field-group">
+        <label>Confirm your password</label>
+        <input type="password" id="contractPassword" placeholder="Enter your editor password"/>
+        <div class="password-hint"><i class="fas fa-lock"></i> Required to confirm this action.</div>
+      </div>
+      <div class="modal-error" id="contractModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-contract-modal">Cancel</button>
+        <button class="confirm-btn" id="contractConfirmBtn" data-action="submit-contract"><i class="fas fa-file-signature"></i> Confirm Acceptance</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#queueRoot', {
+  activeItem: 'review-queue',
+  title: 'Review Queue',
+  subtitle: 'Review full book submissions',
+  user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
+  notifCount: 4,
+  onSearch: v => { document.getElementById('searchInput').value = v; currentPg = 1; applyFilters(); }
+});
+
+/* Cover art pulled from the Discover page's story assets */
+const COVER_MAP = {
+  "The CEO's Hidden Son":         'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
+  "Wolf King's Vow":              'https://i.postimg.cc/MXBR6bfY/wolf3.jpg',
+  'Betrayed by the Mafia Prince': 'https://i.postimg.cc/fkdXzjS8/wolf.jpg',
+  'Bound by the Ruthless Alpha':  'https://i.postimg.cc/xqmHfyNR/wolf2.jpg',
+  "The Duke's Secret":            'https://i.postimg.cc/fkdXzjSj/wife.jpg',
+};
+const COVER_FALLBACK = [
+  'https://i.postimg.cc/vDn9YLx5/wife2.jpg',
+  'https://i.postimg.cc/cgLZJNmC/8.jpg',
+  'https://i.postimg.cc/0MyxNqfz/7.jpg',
+  'https://i.postimg.cc/N9jY0w4m/5.jpg',
+  'https://i.postimg.cc/tY7KnJyr/images.jpg',
+];
+function coverFor(title, i) { return COVER_MAP[title] || COVER_FALLBACK[i % COVER_FALLBACK.length]; }
+
+const AVATARS = {
+  'Luna Skye':       'https://i.pravatar.cc/60?img=24',
+  'Elena Vasquez':   'https://i.pravatar.cc/60?img=31',
+  'Marcus Webb Jr.': 'https://i.pravatar.cc/60?img=33',
+  'Chioma Okafor':   'https://i.pravatar.cc/60?img=5',
+  'Lena Park':       'https://i.pravatar.cc/60?img=47',
+  'Isabelle Moreau': 'https://i.pravatar.cc/60?img=44',
+  'Wren Okonkwo':    'https://i.pravatar.cc/60?img=41',
+  'Amara Chen':      'https://i.pravatar.cc/60?img=16',
+};
+
+/* Plot synopses — keyed by the cleaned book title */
+const SYNOPSIS = {
+  "The CEO's Hidden Son": "When ruthless CEO Damian Cole finds an orphaned toddler on his penthouse doorstep, a DNA test confirms his worst fear — the son he never knew existed. Now he must choose between protecting his empire and claiming the family he's ashamed to admit he wants.",
+  "Wolf King's Vow": "Wolf King Lucian swore an oath in the old tongue to protect the last daughter of a rival pack. When she turns out to be his fated mate, the vow that once bound him becomes the very thing threatening to tear his kingdom apart.",
+  'Betrayed by the Mafia Prince': "Aria never planned to fall for the son of the family that destroyed hers. When the truth comes out on their wedding night, she's forced to decide whether revenge or love will define what happens next.",
+  'Bound by the Ruthless Alpha': "Alpha Kade banished his mate five years ago to save her life. She's back — pregnant, powerful, and done being ruled by a pact written in blood.",
+  "The Billionaire's Bargain": "Broke and desperate, Mia agrees to a fake marriage with billionaire recluse Adrian Cross. The contract has one rule: never fall in love. Neither of them reads the fine print in time.",
+  "The Duke's Secret": "Lady Elara suspects the Duke of Ashford is hiding something the moment she catches him burning letters at midnight. What she uncovers will unravel two families and rewrite her own history.",
+  'Revenge at the Ivy League': "Scholarship student Noa arrives at an elite university with one goal: expose the legacy family that ruined her father. Getting close to their golden son wasn't part of the plan.",
+  "Mafia Prince's Vengeance": "Vincent Ricci inherits his father's empire and a list of enemies to eliminate. First on the list is the woman he can't stop thinking about — and the one person who might get him killed.",
+};
+
+/* Manuscripts are submitted whole (min. 5,000 words), split into a handful of
+   opening chapters for review. The raw data file stores older chapter-style
+   word counts, so we correct/enrich each submission here to reflect that
+   whole-book minimum, and attach a chapter count (4 or 5). */
+const OVERRIDE = {
+  'REV-001': { words: 5450, chapters: 5 },
+  'REV-002': { words: 5600, chapters: 5 },
+  'REV-003': { words: 5100, chapters: 4 },
+  'REV-004': { words: 5300, chapters: 5 },
+  'REV-005': { words: 5150, chapters: 4 },
+  'REV-006': { words: 5400, chapters: 5 },
+  'REV-007': { words: 5050, chapters: 4 },
+  'REV-008': { words: 5250, chapters: 5 },
+};
+const MIN_WORDS = 5000;
+
+function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
+
+/* "Backend" contract types — tries a real endpoint first, falls back to demo
+   data since there's no live contracts API yet. */
+const DEMO_CONTRACTS = [
+  { id: 'standard', label: 'Standard Royalty Contract', detail: '60/40 author-platform split · non-exclusive' },
+  { id: 'premium',  label: 'Premium Exclusive Contract', detail: '70/30 author-platform split · exclusive, 12-month term' },
+  { id: 'flex',     label: 'Flex Starter Contract',       detail: '50/50 split · month-to-month, for new authors' },
+];
+let CONTRACTS = [];
+async function loadContracts(){
+  try{
+    const res = await fetch('/api/contracts');
+    if(!res.ok) throw new Error('no contracts endpoint');
+    CONTRACTS = await res.json();
+  }catch(err){
+    CONTRACTS = JSON.parse(JSON.stringify(DEMO_CONTRACTS));
+  }
+}
+
+const PER_PAGE = 4;
+let allSubs = [], filtered = [], activeStat = 'all', currentPg = 1;
+let acceptTargetId = null;
+
+async function init(){
+  await loadContracts();
+  const d = await SeniorEditorData.getReviewQueue();
+  allSubs = d.items.map((it, i) => {
+    const title = cleanTitle(it.title);
+    const ov = OVERRIDE[it.id] || {};
+    const words = Math.max(it.words, MIN_WORDS, ov.words || 0);
+    return {
+      ...it,
+      title,
+      words,
+      chapters: ov.chapters || (i % 2 === 0 ? 5 : 4),
+      cover: coverFor(title, i),
+      avatar: AVATARS[it.author] || null,
+      synopsis: SYNOPSIS[title] || 'Synopsis not yet provided by the author.',
+    };
+  });
+
+  buildStats();
+  buildFilterPills();
+  buildGenreSelect();
+  applyFilters();
+
+  document.getElementById('searchInput').addEventListener('input', () => { currentPg = 1; applyFilters(); });
+  document.getElementById('genreSel').addEventListener('change', () => { currentPg = 1; applyFilters(); });
+  document.getElementById('sortSel').addEventListener('change', applyFilters);
+  document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeContractModal(); closeSheet(); } });
+
+  document.getElementById('contractModalOv').addEventListener('click', e => { if (e.target.id === 'contractModalOv') closeContractModal(); });
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]'); if (!el) return;
+    if (el.dataset.action === 'close-contract-modal') closeContractModal();
+    if (el.dataset.action === 'submit-contract') submitAccept();
+  });
+  document.getElementById('contractType').addEventListener('change', updateContractHint);
+}
+
+function buildStats(){
+  const total = allSubs.length;
+  const pending = allSubs.filter(s => s.status === 'pending').length;
+  const approved = allSubs.filter(s => s.status === 'approved').length;
+  const rejected = allSubs.filter(s => s.status === 'rejected').length;
+  const stats = [
+    { n: total,    l: 'Total Submissions', ico: 'fa-inbox',        clr: 'var(--accent)', bg: 'rgba(255,0,80,.1)' },
+    { n: pending,  l: 'Awaiting Review',   ico: 'fa-hourglass-half', clr: 'var(--amber)', bg: 'var(--amber-bg)' },
+    { n: approved, l: 'Accepted',          ico: 'fa-file-signature', clr: 'var(--green)', bg: 'var(--green-bg)' },
+    { n: rejected, l: 'Declined',          ico: 'fa-xmark',         clr: 'var(--red)',    bg: 'var(--red-bg)' },
+  ];
+  document.getElementById('statRow').innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${s.bg};color:${s.clr}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function buildGenreSelect(){
+  const genres = [...new Set(allSubs.map(s => s.genre))].sort();
+  const el = document.getElementById('genreSel');
+  genres.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; el.appendChild(o); });
+}
+
+function buildFilterPills(){
+  const statuses = ['all', ...new Set(allSubs.map(s => s.status))];
+  const counts = { all: allSubs.length };
+  allSubs.forEach(s => { counts[s.status] = (counts[s.status] || 0) + 1; });
+  document.getElementById('filterRow').innerHTML = statuses.map(st => `
+    <button class="filter-pill${st===activeStat?' on':''}" data-status="${st}">
+      ${st === 'all' ? 'All' : st.charAt(0).toUpperCase() + st.slice(1)}
+      <span class="pill-count">${counts[st] || 0}</span>
+    </button>`).join('');
+  document.querySelectorAll('.filter-pill').forEach(p => p.addEventListener('click', () => {
+    activeStat = p.dataset.status; currentPg = 1;
+    document.querySelectorAll('.filter-pill').forEach(x => x.classList.toggle('on', x === p));
+    applyFilters();
+  }));
+}
+
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const genre = document.getElementById('genreSel').value;
+  const sort = document.getElementById('sortSel').value;
+  const prioRank = { high: 0, medium: 1, low: 2 };
+
+  filtered = allSubs.filter(s => {
+    const matchSt = activeStat === 'all' || s.status === activeStat;
+    const matchQ  = !q || s.title.toLowerCase().includes(q) || s.author.toLowerCase().includes(q);
+    const matchG  = !genre || s.genre === genre;
+    return matchSt && matchQ && matchG;
+  });
+
+  if (sort === 'priority') filtered.sort((a,b) => prioRank[a.priority] - prioRank[b.priority]);
+  if (sort === 'words')    filtered.sort((a,b) => b.words - a.words);
+  if (sort === 'alpha')    filtered.sort((a,b) => a.title.localeCompare(b.title));
+
+  document.getElementById('subCount').textContent = `${filtered.length} of ${allSubs.length}`;
+  const maxPg = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (currentPg > maxPg) currentPg = maxPg;
+  renderPage();
+}
+
+function renderPage(){
+  const start = (currentPg - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  if (!page.length){
+    document.getElementById('subList').innerHTML = `<div class="empty-msg">No submissions match your filters.</div>`;
+    document.getElementById('pgn').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('subList').innerHTML = page.map(s => `
+    <div class="row-item" data-id="${s.id}">
+      <img class="row-cover" src="${s.cover}" alt="${s.title} cover" loading="lazy"/>
+      <div class="row-main">
+        <div class="row-title">${s.title}</div>
+        <div class="row-meta">
+          <span>✍️ ${s.author}</span>
+          <span class="hide-sm">${s.genre}</span>
+          <span>📖 ${s.chapters} ch · ${s.words.toLocaleString()} words</span>
+        </div>
+      </div>
+      <div class="row-tags">
+        <span class="status-pill ${s.status}">${s.status}</span>
+        <span class="prio-pill ${s.priority}">${s.priority}</span>
+      </div>
+      <i class="fas fa-chevron-right row-chevron"></i>
+    </div>`).join('');
+
+  document.querySelectorAll('.row-item').forEach(el => el.addEventListener('click', () => openSheet(el.dataset.id)));
+  renderPagination();
+}
+
+function renderPagination(){
+  const total = filtered.length;
+  const maxPg = Math.ceil(total / PER_PAGE);
+  if (maxPg <= 1) { document.getElementById('pgn').innerHTML = ''; return; }
+  const start = (currentPg - 1) * PER_PAGE + 1;
+  const end = Math.min(currentPg * PER_PAGE, total);
+
+  let btns = '';
+  for (let i = 1; i <= maxPg; i++) btns += `<button class="page-btn${i===currentPg?' active':''}" data-pg="${i}">${i}</button>`;
+
+  document.getElementById('pgn').innerHTML = `
+    <span class="pagination-info">Showing ${start}–${end} of ${total}</span>
+    <div class="pagination-controls">
+      <button class="page-btn" id="pgPrev" ${currentPg===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
+      ${btns}
+      <button class="page-btn" id="pgNext" ${currentPg===maxPg?'disabled':''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+
+  document.getElementById('pgPrev').addEventListener('click', () => { currentPg--; renderPage(); });
+  document.getElementById('pgNext').addEventListener('click', () => { currentPg++; renderPage(); });
+  document.querySelectorAll('.page-btn[data-pg]').forEach(b => b.addEventListener('click', () => { currentPg = parseInt(b.dataset.pg); renderPage(); }));
+}
+
+/* ── Slide-up book preview sheet ── */
+function openSheet(id){
+  const s = allSubs.find(x => x.id === id); if (!s) return;
+
+  document.getElementById('sheetCover').src = s.cover;
+  document.getElementById('sheetCover').alt = s.title;
+  document.getElementById('sheetTitle').textContent = s.title;
+  document.getElementById('sheetAuthor').innerHTML = `✍️ ${s.author} · ${s.genre}`;
+
+  let html = `<div class="sheet-meta-grid">
+    <div class="sheet-meta-item"><b>${s.chapters}</b><span>Chapters</span></div>
+    <div class="sheet-meta-item"><b>${s.words.toLocaleString()}</b><span>Words</span></div>
+    <div class="sheet-meta-item"><b style="text-transform:capitalize">${s.priority}</b><span>Priority</span></div>
+    <div class="sheet-meta-item"><b><span class="status-pill ${s.status}" style="font-size:9px">${s.status}</span></b><span>Status</span></div>
+  </div>`;
+  html += `<div class="sheet-section-lbl">Plot Synopsis</div><div class="sheet-synopsis">${s.synopsis}</div>`;
+  html += `<div style="font-size:11px;color:var(--text-faint);margin-top:8px">Submitted ${s.submitted} · Manuscript meets the 5,000-word minimum for review.</div>`;
+
+  if (s.feedback) {
+    html += `<div class="feedback-box"><i class="fas fa-comment-dots"></i><span><strong>Editorial feedback:</strong> ${s.feedback}</span></div>`;
+  }
+
+  html += `<div class="reject-panel" id="rejectPanel">
+    <div class="sheet-section-lbl">Feedback for author</div>
+    <textarea id="rejectFeedback" placeholder="Explain why this submission isn't being accepted…"></textarea>
+  </div>`;
+
+  if (s.status === 'pending') {
+    html += `<div class="modal-action-row">
+      <button class="ghost" id="mActRead"><i class="fas fa-book-open"></i> Read Full Manuscript</button>
+      <button class="danger" id="mActReject"><i class="fas fa-xmark"></i> Reject</button>
+      <button class="primary" id="mActAccept"><i class="fas fa-file-signature"></i> Accept for Contract</button>
+    </div>`;
+  } else {
+    html += `<div class="modal-action-row">
+      <button class="ghost" id="mActRead"><i class="fas fa-book-open"></i> Read Full Manuscript</button>
+      <button id="mActClose2"><i class="fas fa-xmark"></i> Close</button>
+    </div>`;
+  }
+
+  document.getElementById('sheetBody').innerHTML = html;
+
+  document.getElementById('mActRead').onclick = () => toast(`📖 Opening full manuscript for "${s.title}"…`);
+  if (s.status === 'pending') {
+    document.getElementById('mActAccept').onclick = () => openContractModal(s.id);
+    document.getElementById('mActReject').onclick = () => {
+      const panel = document.getElementById('rejectPanel');
+      const showing = panel.classList.toggle('show');
+      const btn = document.getElementById('mActReject');
+      if (showing) {
+        btn.innerHTML = `<i class="fas fa-check"></i> Confirm Rejection`;
+        btn.onclick = async () => {
+          const fb = document.getElementById('rejectFeedback').value.trim();
+          if (!fb) { toast('⚠️ Add feedback for the author before rejecting'); return; }
+          await SeniorEditorData.updateReviewItem(s.id, 'rejected', fb);
+          s.status = 'rejected'; s.feedback = fb;
+          toast(`↩️ "${s.title}" declined`);
+          closeSheet(); buildStats(); buildFilterPills(); applyFilters();
+        };
+      }
+    };
+  } else {
+    document.getElementById('mActClose2').onclick = closeSheet;
+  }
+
+  document.getElementById('sheetBackdrop').classList.add('open');
+  document.getElementById('detailSheet').classList.add('open');
+  document.getElementById('detailSheet').scrollTop = 0;
+}
+function closeSheet(){
+  document.getElementById('sheetBackdrop').classList.remove('open');
+  document.getElementById('detailSheet').classList.remove('open');
+}
+
+/* ── Accept for Contract confirmation modal (password + contract type) ── */
+function updateContractHint(){
+  const c = CONTRACTS.find(x => x.id === document.getElementById('contractType').value);
+  document.getElementById('contractHint').textContent = c ? c.detail : '';
+}
+function openContractModal(id){
+  const s = allSubs.find(x => x.id === id); if (!s) return;
+  acceptTargetId = id;
+  document.getElementById('contractModalSub').textContent = `Confirm the contract type and your password to accept "${s.title}" by ${s.author}.`;
+  document.getElementById('contractType').innerHTML = CONTRACTS.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  updateContractHint();
+  document.getElementById('contractPassword').value = '';
+  document.getElementById('contractModalError').classList.remove('show');
+  document.getElementById('contractModalOv').classList.add('open');
+}
+function closeContractModal(){
+  document.getElementById('contractModalOv').classList.remove('open');
+  acceptTargetId = null;
+}
+async function submitAccept(){
+  const s = allSubs.find(x => x.id === acceptTargetId); if (!s) return;
+  const contractId = document.getElementById('contractType').value;
+  const password = document.getElementById('contractPassword').value;
+  const errBox = document.getElementById('contractModalError');
+
+  if (!contractId) { errBox.textContent = 'Please select a contract type.'; errBox.classList.add('show'); return; }
+  if (!password) { errBox.textContent = 'Please enter your password to confirm this action.'; errBox.classList.add('show'); return; }
+
+  const contract = CONTRACTS.find(c => c.id === contractId);
+  const btn = document.getElementById('contractConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming…';
+  try {
+    await SeniorEditorData.updateReviewItem(s.id, 'approved', `Accepted under ${contract.label}.`);
+    s.status = 'approved';
+    s.feedback = `Accepted under ${contract.label}.`;
+    toast(`✅ "${s.title}" accepted — ${contract.label}`);
+    closeContractModal(); closeSheet();
+    buildStats(); buildFilterPills(); applyFilters();
+  } catch (err) {
+    errBox.textContent = 'Something went wrong. Please try again.';
+    errBox.classList.add('show');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-signature"></i> Confirm Acceptance';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Super Admin Dashboard — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+/* ── KPI row ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.kpi-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.kpi-trend{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:20px;display:flex;align-items:center;gap:3px}
+.kpi-trend.up{color:var(--green);background:var(--green-bg)}
+.kpi-trend.down{color:var(--red);background:var(--red-bg)}
+.kpi-num{font-size:21px;font-weight:800;line-height:1.15}
+.kpi-lbl{font-size:11px;color:var(--text-muted);font-weight:600;margin-top:3px}
+
+/* ── layout ── */
+.main-layout{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-link{font-size:11px;font-weight:700;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:5px}
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn.green{background:var(--green-bg);border-color:transparent;color:var(--green)}
+.mini-btn.green:hover{background:var(--green);color:#fff}
+.mini-btn.ghost{background:transparent}
+
+/* ── revenue chart ── */
+.rev-summary{display:flex;align-items:baseline;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.rev-summary .big{font-size:24px;font-weight:800}
+.chart-wrap{display:flex;align-items:flex-end;gap:14px;height:150px;padding:0 4px}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
+.chart-bar{width:100%;max-width:38px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--accent),rgba(255,0,80,.55));position:relative;transition:.2s}
+.chart-bar.current{background:linear-gradient(180deg,var(--accent),rgba(255,0,80,.85))}
+.chart-bar:hover{filter:brightness(1.08)}
+.chart-val{font-size:9.5px;font-weight:800;color:var(--text-muted)}
+.chart-lbl{font-size:10px;color:var(--text-faint);font-weight:600}
+
+/* ── tables ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint);font-weight:700;text-align:left;padding:0 10px 10px;border-bottom:1px solid var(--border)}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.story-cell{display:flex;align-items:center;gap:10px}
+.story-cell img{width:32px;height:42px;border-radius:6px;object-fit:cover;flex-shrink:0}
+.story-cell b{font-size:12px;font-weight:700;display:block;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-cell span{font-size:10px;color:var(--text-faint);font-weight:600}
+.trend-pill{font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px}
+.trend-pill.up{color:var(--green);background:var(--green-bg)}
+.trend-pill.down{color:var(--red);background:var(--red-bg)}
+
+/* ── activity feed ── */
+.feed{display:flex;flex-direction:column;gap:2px}
+.feed-item{display:flex;gap:11px;padding:11px 2px;border-bottom:1px solid var(--border)}
+.feed-item:last-child{border-bottom:none}
+.feed-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.feed-body p{font-size:12px;line-height:1.5}
+.feed-body p b{font-weight:700}
+.feed-time{font-size:10px;color:var(--text-faint);font-weight:600;margin-top:2px}
+
+/* ── moderation queue ── */
+.mod-item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.mod-item:last-child{border-bottom:none}
+.mod-ico{width:30px;height:30px;border-radius:9px;background:var(--red-bg);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.mod-body{flex:1;min-width:0}
+.mod-body b{font-size:12px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod-body span{font-size:10.5px;color:var(--text-faint);font-weight:600}
+.mod-actions{display:flex;gap:6px;margin-top:8px}
+.mod-actions .mini-btn{font-size:9.5px;padding:5px 10px}
+.mod-count{font-size:10px;font-weight:800;background:var(--red-bg);color:var(--red);padding:3px 9px;border-radius:20px}
+
+/* ── admin team ── */
+.admin-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.admin-row:last-child{border-bottom:none}
+.admin-row img{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.admin-info{flex:1;min-width:0}
+.admin-info b{font-size:12px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.role-badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.active{background:var(--green)}
+.status-dot.suspended{background:var(--red)}
+.admin-menu-btn{width:26px;height:26px;border-radius:7px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;font-size:12px;flex-shrink:0}
+.admin-menu-btn:hover{background:var(--input-bg);color:var(--text)}
+
+/* ── quick links ── */
+.ql-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ql-item{display:flex;flex-direction:column;gap:9px;border:1px solid var(--border);border-radius:12px;padding:14px;text-decoration:none;color:var(--text);transition:.13s}
+.ql-item:hover{border-color:var(--accent);box-shadow:0 6px 18px -10px rgba(255,0,80,.35)}
+.ql-item i{font-size:16px}
+.ql-item b{font-size:11.5px;font-weight:700}
+.ql-item span{font-size:9.5px;color:var(--text-faint);font-weight:600}
+
+/* ── system health ── */
+.sh-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.sh-row:last-child{border-bottom:none}
+.sh-row span{font-size:12px;font-weight:600}
+.sh-val{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800}
+.sh-dot{width:7px;height:7px;border-radius:50%}
+.sh-dot.ok{background:var(--green)}
+.sh-dot.warn{background:var(--amber)}
+
+/* ── modal system (shared) ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
+.modal-box.small{max-width:400px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0}
+.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.modal-close{width:30px;height:30px;border-radius:8px;border:none;background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--red-bg);color:var(--red)}
+.modal-body{padding:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+.form-row{margin-bottom:15px}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-label{font-size:11.5px;font-weight:700;margin-bottom:6px;display:block}
+.form-input,.form-select{width:100%;font-family:inherit;font-size:12.5px;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;outline:none}
+.form-input:focus,.form-select:focus{border-color:var(--accent)}
+.perm-list{display:flex;flex-direction:column;gap:8px}
+.perm-item{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600}
+.perm-item input{width:15px;height:15px;accent-color:var(--accent)}
+.confirm-icon{width:52px;height:52px;border-radius:50%;background:var(--red-bg);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;margin:4px auto 16px}
+.confirm-text{text-align:center;font-size:13px;color:var(--text-muted);line-height:1.6}
+.confirm-text b{color:var(--text)}
+
+#toastHost{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast-item{background:var(--sidebar-bg);color:#fff;font-size:12.5px;font-weight:600;padding:12px 16px;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:9px;min-width:220px;animation:toast-in .2s ease}
+.toast-item i{color:var(--accent)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media (max-width:1180px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.main-layout{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .kpi-grid{grid-template-columns:1fr}
+  .panel{padding:15px}
+  .ql-grid{grid-template-columns:1fr}
+  .form-row.two-col{grid-template-columns:1fr}
+  .chart-wrap{gap:7px}
+  .story-cell b{max-width:130px}
+  #toastHost{left:16px;right:16px;bottom:16px}
+  .toast-item{min-width:0}
+}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="main-layout">
+    <!-- ── LEFT COLUMN ── -->
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-chart-line" style="color:var(--accent)"></i> Platform Revenue</h2>
+          <select class="mini-btn" id="revRange" style="cursor:pointer">
+            <option>Last 6 Months</option>
+          </select>
+        </div>
+        <div class="rev-summary">
+          <div class="big" id="revTotal">₦48.2M</div>
+          <span class="kpi-trend up"><i class="fas fa-arrow-up" style="font-size:8px"></i> 7.1% vs last month</span>
+        </div>
+        <div class="chart-wrap" id="chartWrap"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-trophy" style="color:var(--accent)"></i> Top Performing Stories</h2>
+          <a href="discover.html" class="panel-link">View all <i class="fas fa-arrow-right" style="font-size:9px"></i></a>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Story</th><th>Genre</th><th>Reads</th><th>Revenue</th><th>Trend</th></tr></thead>
+          <tbody id="topStoriesBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-bolt" style="color:var(--accent)"></i> Platform Activity</h2>
+        </div>
+        <div class="feed" id="activityFeed"></div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT COLUMN ── -->
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-flag" style="color:var(--red)"></i> Moderation Queue</h2>
+          <span class="mod-count" id="modCount">—</span>
+        </div>
+        <div id="modQueue"></div>
+        <a href="#" class="panel-link" style="margin-top:12px;display:flex">View all reports <i class="fas fa-arrow-right" style="font-size:9px"></i></a>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-user-shield" style="color:var(--accent)"></i> Admin Team</h2>
+          <button class="mini-btn primary" id="addAdminBtn"><i class="fas fa-plus"></i> Add</button>
+        </div>
+        <div id="adminList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-heart-pulse" style="color:var(--green)"></i> System Health</h2></div>
+        <div class="sh-row"><span>API Uptime</span><div class="sh-val"><span class="sh-dot ok"></span>99.98%</div></div>
+        <div class="sh-row"><span>Database</span><div class="sh-val"><span class="sh-dot ok"></span>Healthy</div></div>
+        <div class="sh-row"><span>Payment Gateway</span><div class="sh-val"><span class="sh-dot ok"></span>Operational</div></div>
+        <div class="sh-row"><span>Error Rate (24h)</span><div class="sh-val"><span class="sh-dot warn"></span>0.34%</div></div>
+        <div class="sh-row"><span>Last Incident</span><div class="sh-val" style="color:var(--text-faint);font-weight:600">14 days ago</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2><i class="fas fa-grip" style="color:var(--accent)"></i> Quick Links</h2></div>
+        <div class="ql-grid">
+          <a class="ql-item" href="contracts-payments.html"><i class="fas fa-file-contract" style="color:var(--blue)"></i><b>Contracts</b><span>Writer agreements</span></a>
+          <a class="ql-item" href="campaigns.html"><i class="fas fa-bullhorn" style="color:var(--accent)"></i><b>Campaigns</b><span>Promotions & ads</span></a>
+          <a class="ql-item" href="#"><i class="fas fa-shield-halved" style="color:var(--red)"></i><b>Moderation</b><span>Reports & flags</span></a>
+          <a class="ql-item" href="#"><i class="fas fa-chart-pie" style="color:var(--purple)"></i><b>Analytics</b><span>Platform insights</span></a>
+          <a class="ql-item" href="#"><i class="fas fa-sack-dollar" style="color:var(--green)"></i><b>Payouts</b><span>Writer earnings</span></a>
+          <a class="ql-item" href="#"><i class="fas fa-gear" style="color:var(--text-muted)"></i><b>Settings</b><span>Platform config</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit admin modal -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="adminModalTitle"><i class="fas fa-user-shield" style="color:var(--accent)"></i> Add Admin</h3>
+      <button class="modal-close" data-close="adminModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="aId"/>
+      <div class="form-row"><label class="form-label">Full name</label><input class="form-input" id="aName" placeholder="e.g. Tobenna Achebe"/></div>
+      <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="aEmail" placeholder="name@droboard.com"/></div>
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label">Role</label>
+          <select class="form-select" id="aRole">
+            <option>Super Admin</option>
+            <option>Chief Editor</option>
+            <option>Finance Admin</option>
+            <option>Content Moderator</option>
+            <option>Support Admin</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Status</label>
+          <select class="form-select" id="aStatus">
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Permissions</label>
+        <div class="perm-list">
+          <label class="perm-item"><input type="checkbox" id="pContracts"/> Manage Contracts</label>
+          <label class="perm-item"><input type="checkbox" id="pCampaigns"/> Manage Campaigns</label>
+          <label class="perm-item"><input type="checkbox" id="pModeration"/> Moderate Content</label>
+          <label class="perm-item"><input type="checkbox" id="pFinance"/> View Finances</label>
+          <label class="perm-item"><input type="checkbox" id="pAdmins"/> Manage Admins</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="adminModal">Cancel</button>
+      <button class="mini-btn primary" id="aSaveBtn"><i class="fas fa-check"></i> Save Admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm remove admin -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Remove Admin</h3>
+      <button class="modal-close" data-close="confirmModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body"><div class="confirm-icon"><i class="fas fa-user-slash"></i></div>
+      <div class="confirm-text">Remove <b id="confirmName"></b> from the admin team? They'll lose access immediately.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="confirmModal">Cancel</button>
+      <button class="mini-btn danger" id="confirmDeleteBtn"><i class="fas fa-trash"></i> Remove</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SuperAdminSidebar.attach('#dashRoot',{
+  activeItem:'dashboard', title:'Super Admin Dashboard', subtitle:'Platform-wide overview across users, revenue, content and the admin team',
+  user:{name:'Tobenna Achebe',role:'Super Admin',avatar:'https://i.pravatar.cc/100?img=51'}, notifCount:9,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const ROLE_CLS = { 'Super Admin':'accent', 'Chief Editor':'purple', 'Finance Admin':'green', 'Content Moderator':'red', 'Support Admin':'blue' };
+
+function fmtNum(n){ return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
+function fmtNaira(n){ return '₦'+fmtNum(n); }
+
+/* ── KPI cards ── */
+const KPIS = [
+  { n:'284.5K', l:'Total Users', ico:'fa-users', cls:'blue', trend:'+3.2%', up:true },
+  { n:'12,340', l:'Total Writers', ico:'fa-feather-pointed', cls:'purple', trend:'+1.8%', up:true },
+  { n:'₦48.2M', l:'Monthly Revenue', ico:'fa-sack-dollar', cls:'green', trend:'+7.1%', up:true },
+  { n:'9,845', l:'Active Stories', ico:'fa-book', cls:'accent', trend:'+2.4%', up:true },
+  { n:'37', l:'Pending Reports', ico:'fa-flag', cls:'red', trend:'+12', up:false },
+  { n:'812', l:'Active Contracts', ico:'fa-file-contract', cls:'blue', trend:'+9', up:true },
+  { n:'26', l:'Live Campaigns', ico:'fa-bullhorn', cls:'accent', trend:'+4', up:true },
+  { n:'99.98%', l:'Platform Uptime', ico:'fa-heart-pulse', cls:'green', trend:'0.00%', up:true },
+];
+document.getElementById('kpiGrid').innerHTML = KPIS.map(k=>`
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <div class="kpi-ico" style="background:${BG_MAP[k.cls]};color:${ICO_MAP[k.cls]}"><i class="fas ${k.ico}"></i></div>
+      <span class="kpi-trend ${k.up?'up':'down'}"><i class="fas fa-arrow-${k.up?'up':'up'}" style="font-size:8px"></i> ${k.trend}</span>
+    </div>
+    <div class="kpi-num">${k.n}</div>
+    <div class="kpi-lbl">${k.l}</div>
+  </div>`).join('');
+
+/* ── Revenue chart ── */
+const REVENUE = [
+  { m:'Feb', v:32000000 }, { m:'Mar', v:35400000 }, { m:'Apr', v:39100000 },
+  { m:'May', v:41300000 }, { m:'Jun', v:45000000 }, { m:'Jul', v:48200000 },
+];
+const maxRev = Math.max(...REVENUE.map(r=>r.v));
+document.getElementById('chartWrap').innerHTML = REVENUE.map((r,i)=>`
+  <div class="chart-col">
+    <span class="chart-val">${fmtNaira(r.v)}</span>
+    <div class="chart-bar ${i===REVENUE.length-1?'current':''}" style="height:${Math.max(10,r.v/maxRev*100)}%" title="${r.m}: ${fmtNaira(r.v)}"></div>
+    <span class="chart-lbl">${r.m}</span>
+  </div>`).join('');
+
+/* ── Top stories ── */
+const TOP_STORIES = [
+  { title:'The runaway bride — I left at the altar in my socked feet', writer:'Ifeanyi_Story', genre:'✨ Twist', cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', reads:312000, revenue:3120000, trend:14, up:true },
+  { title:'My stepmother stole my university fund', writer:'Zara_M', genre:'🔥 Revenge', cover:'https://i.postimg.cc/ftRZbhKx/3.jpg', reads:192000, revenue:1740000, trend:6, up:true },
+  { title:'The letter he never sent', writer:'Ada_Writes', genre:'🌙 Elegy', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', reads:218000, revenue:1870000, trend:9, up:true },
+  { title:'The Luna Trials: three packs, one crown', writer:'Yusuf_Howl', genre:'🔥 Werewolf', cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', reads:210000, revenue:1980000, trend:3, up:false },
+  { title:"My grandmother's will revealed I wasn't her blood", writer:'Chiamaka_N', genre:'👑 Family', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', reads:138000, revenue:1980000, trend:11, up:true },
+];
+document.getElementById('topStoriesBody').innerHTML = TOP_STORIES.map(s=>`
+  <tr>
+    <td><div class="story-cell"><img src="${s.cover}" alt=""/><div><b>${s.title}</b><span>${s.writer}</span></div></div></td>
+    <td>${s.genre}</td>
+    <td>${fmtNum(s.reads)}</td>
+    <td>${fmtNaira(s.revenue)}</td>
+    <td><span class="trend-pill ${s.up?'up':'down'}"><i class="fas fa-arrow-${s.up?'up':'down'}" style="font-size:8px"></i> ${s.trend}%</span></td>
+  </tr>`).join('');
+
+/* ── Activity feed ── */
+const ACTIVITY = [
+  { ico:'fa-file-signature', cls:'purple', text:'<b>CT-1012</b> was signed with <b>CampusQueen</b> — Exclusive, 2 years', time:'12m ago' },
+  { ico:'fa-flag', cls:'red', text:'A chapter in <b>"The Neighbour Who Reported the Fire"</b> was flagged for plagiarism', time:'38m ago' },
+  { ico:'fa-bullhorn', cls:'accent', text:'<b>Kemi_A</b> launched an End of Chapter campaign for <b>"He Proposed With My Best Friend\'s Ring"</b>', time:'1h ago' },
+  { ico:'fa-sack-dollar', cls:'green', text:'Payout of <b>₦1.2M</b> processed for <b>Ifeanyi_Story</b>', time:'2h ago' },
+  { ico:'fa-user-plus', cls:'blue', text:'<b>842</b> new readers signed up in the last hour', time:'2h ago' },
+  { ico:'fa-rotate', cls:'amber', text:"Contract <b>CT-1005</b> with <b>Zara_M</b> is due to renew in 17 days", time:'5h ago' },
+  { ico:'fa-book', cls:'accent', text:'<b>Dami_Cole</b> published a new chapter of <b>"She Rejected Me 3 Times"</b>', time:'7h ago' },
+];
+document.getElementById('activityFeed').innerHTML = ACTIVITY.map(a=>`
+  <div class="feed-item">
+    <div class="feed-ico" style="background:${BG_MAP[a.cls]};color:${ICO_MAP[a.cls]}"><i class="fas ${a.ico}"></i></div>
+    <div class="feed-body"><p>${a.text}</p><div class="feed-time">${a.time}</div></div>
+  </div>`).join('');
+
+/* ── Moderation queue ── */
+let REPORTS = [
+  { id:'r1', title:'Chapter 6 — "The Neighbour Who Reported the Fire"', reason:'Suspected plagiarism', reporter:'auto-scan', time:'38m ago' },
+  { id:'r2', title:'Comment on "The Luna Trials"', reason:'Harassment', reporter:'3 readers', time:'1h ago' },
+  { id:'r3', title:'"Campus Queen" story cover', reason:'Copyright claim', reporter:'external DMCA', time:'3h ago' },
+  { id:'r4', title:'Chapter 2 — "He Proposed With My Best Friend\'s Ring"', reason:'Explicit content, unflagged', reporter:'1 reader', time:'6h ago' },
+];
+function renderModQueue(){
+  document.getElementById('modCount').textContent = REPORTS.length + ' pending';
+  document.getElementById('modQueue').innerHTML = REPORTS.map(r=>`
+    <div class="mod-item" data-id="${r.id}">
+      <div class="mod-ico"><i class="fas fa-triangle-exclamation"></i></div>
+      <div class="mod-body">
+        <b>${r.title}</b>
+        <span>${r.reason} · reported by ${r.reporter} · ${r.time}</span>
+        <div class="mod-actions">
+          <button class="mini-btn green" data-act="dismiss" data-id="${r.id}"><i class="fas fa-check"></i> Dismiss</button>
+          <button class="mini-btn danger" data-act="remove" data-id="${r.id}"><i class="fas fa-trash"></i> Take Down</button>
+        </div>
+      </div>
+    </div>`).join('') || '<p style="font-size:12px;color:var(--text-faint);padding:10px 0">Queue is clear — nice work.</p>';
+}
+document.getElementById('modQueue').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-act]'); if(!btn) return;
+  const id = btn.dataset.id;
+  const r = REPORTS.find(x=>x.id===id);
+  REPORTS = REPORTS.filter(x=>x.id!==id);
+  renderModQueue();
+  toast(btn.dataset.act==='dismiss' ? `Dismissed report on "${r.title.slice(0,30)}…"` : `Removed content: "${r.title.slice(0,30)}…"`, btn.dataset.act==='dismiss'?'fa-circle-check':'fa-trash');
+});
+renderModQueue();
+
+/* ── Admin team (full CRUD) ── */
+let ADMINS = [
+  { id:'a1', name:'Tobenna Achebe', email:'tobenna.a@droboard.com', avatar:'https://i.pravatar.cc/100?img=51', role:'Super Admin', status:'active', perms:{contracts:true,campaigns:true,moderation:true,finance:true,admins:true} },
+  { id:'a2', name:'Adaeze Bello', email:'adaeze.bello@droboard.com', avatar:'https://i.pravatar.cc/100?img=9', role:'Chief Editor', status:'active', perms:{contracts:true,campaigns:true,moderation:false,finance:false,admins:false} },
+  { id:'a3', name:'Ngozi Umeh', email:'ngozi.umeh@droboard.com', avatar:'https://i.pravatar.cc/100?img=45', role:'Finance Admin', status:'active', perms:{contracts:false,campaigns:false,moderation:false,finance:true,admins:false} },
+  { id:'a4', name:'Bassey Okon', email:'bassey.okon@droboard.com', avatar:'https://i.pravatar.cc/100?img=60', role:'Content Moderator', status:'suspended', perms:{contracts:false,campaigns:false,moderation:true,finance:false,admins:false} },
+];
+let editingAdminId = null;
+let pendingDeleteId = null;
+
+function renderAdminList(){
+  document.getElementById('adminList').innerHTML = ADMINS.map(a=>`
+    <div class="admin-row">
+      <img src="${a.avatar}" alt=""/>
+      <div class="admin-info">
+        <b>${a.name}</b>
+        <span class="role-badge" style="background:${BG_MAP[ROLE_CLS[a.role]||'blue']};color:${ICO_MAP[ROLE_CLS[a.role]||'blue']}">${a.role}</span>
+      </div>
+      <span class="status-dot ${a.status}" title="${a.status}"></span>
+      <div style="position:relative">
+        <button class="admin-menu-btn" data-menu="${a.id}"><i class="fas fa-ellipsis-vertical"></i></button>
+      </div>
+    </div>`).join('');
+}
+renderAdminList();
+
+document.getElementById('adminList').addEventListener('click', e=>{
+  const menuBtn = e.target.closest('[data-menu]');
+  if(menuBtn){
+    const id = menuBtn.dataset.menu;
+    const existing = document.querySelector('.admin-inline-menu');
+    if(existing) existing.remove();
+    const menu = document.createElement('div');
+    menu.className = 'admin-inline-menu';
+    menu.style.cssText = 'position:absolute;right:0;top:28px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.15);z-index:5;overflow:hidden;min-width:120px';
+    menu.innerHTML = `
+      <button style="width:100%;text-align:left;padding:9px 12px;border:none;background:none;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--text)" data-menuact="edit" data-id="${id}"><i class="fas fa-pen" style="width:14px;color:var(--text-faint)"></i> Edit</button>
+      <button style="width:100%;text-align:left;padding:9px 12px;border:none;background:none;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--red)" data-menuact="remove" data-id="${id}"><i class="fas fa-trash" style="width:14px"></i> Remove</button>`;
+    menuBtn.parentElement.appendChild(menu);
+    return;
+  }
+  const menuAct = e.target.closest('[data-menuact]');
+  if(menuAct){
+    const id = menuAct.dataset.id;
+    if(menuAct.dataset.menuact==='edit') openEditAdmin(id); else openConfirmDelete(id);
+    document.querySelector('.admin-inline-menu')?.remove();
+  }
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('[data-menu]') && !e.target.closest('.admin-inline-menu')) document.querySelector('.admin-inline-menu')?.remove();
+});
+
+function resetAdminForm(){
+  document.getElementById('aId').value='';
+  document.getElementById('aName').value='';
+  document.getElementById('aEmail').value='';
+  document.getElementById('aRole').value='Chief Editor';
+  document.getElementById('aStatus').value='active';
+  ['pContracts','pCampaigns','pModeration','pFinance','pAdmins'].forEach(id=>document.getElementById(id).checked=false);
+}
+function openAddAdmin(){
+  editingAdminId=null; resetAdminForm();
+  document.getElementById('adminModalTitle').innerHTML='<i class="fas fa-user-shield" style="color:var(--accent)"></i> Add Admin';
+  openModal('adminModal');
+}
+function openEditAdmin(id){
+  const a = ADMINS.find(x=>x.id===id); if(!a) return;
+  editingAdminId=id;
+  document.getElementById('aId').value=a.id;
+  document.getElementById('aName').value=a.name;
+  document.getElementById('aEmail').value=a.email;
+  document.getElementById('aRole').value=a.role;
+  document.getElementById('aStatus').value=a.status;
+  document.getElementById('pContracts').checked=!!a.perms.contracts;
+  document.getElementById('pCampaigns').checked=!!a.perms.campaigns;
+  document.getElementById('pModeration').checked=!!a.perms.moderation;
+  document.getElementById('pFinance').checked=!!a.perms.finance;
+  document.getElementById('pAdmins').checked=!!a.perms.admins;
+  document.getElementById('adminModalTitle').innerHTML='<i class="fas fa-pen" style="color:var(--accent)"></i> Edit Admin';
+  openModal('adminModal');
+}
+document.getElementById('addAdminBtn').addEventListener('click', openAddAdmin);
+document.getElementById('aSaveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('aName').value.trim();
+  const email = document.getElementById('aEmail').value.trim();
+  if(!name || !email){ toast('Name and email are required', 'fa-triangle-exclamation'); return; }
+  const payload = {
+    name, email,
+    role: document.getElementById('aRole').value,
+    status: document.getElementById('aStatus').value,
+    perms:{ contracts:document.getElementById('pContracts').checked, campaigns:document.getElementById('pCampaigns').checked,
+      moderation:document.getElementById('pModeration').checked, finance:document.getElementById('pFinance').checked, admins:document.getElementById('pAdmins').checked }
+  };
+  if(editingAdminId){
+    Object.assign(ADMINS.find(x=>x.id===editingAdminId), payload);
+    toast(`Updated ${name}'s admin profile`, 'fa-circle-check');
+  } else {
+    ADMINS.push(Object.assign({ id:'a'+(ADMINS.length+1+Math.floor(Math.random()*90)), avatar:`https://i.pravatar.cc/100?img=${20+ADMINS.length}` }, payload));
+    toast(`${name} added to the admin team`, 'fa-circle-plus');
+  }
+  closeModal('adminModal');
+  renderAdminList();
+});
+function openConfirmDelete(id){
+  const a = ADMINS.find(x=>x.id===id); if(!a) return;
+  pendingDeleteId=id;
+  document.getElementById('confirmName').textContent=a.name;
+  openModal('confirmModal');
+}
+document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
+  const a = ADMINS.find(x=>x.id===pendingDeleteId);
+  ADMINS = ADMINS.filter(x=>x.id!==pendingDeleteId);
+  closeModal('confirmModal');
+  toast(`Removed ${a?a.name:'admin'} from the team`, 'fa-trash');
+  pendingDeleteId=null;
+  renderAdminList();
+});
+
+/* ── Shared modal + toast helpers ── */
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click', ()=>closeModal(btn.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(ov=>ov.addEventListener('click', e=>{ if(e.target===ov) closeModal(ov.id); }));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.show').forEach(ov=>closeModal(ov.id)); });
+function toast(msg, icon){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className='toast-item';
+  el.innerHTML=`<i class="fas ${icon||'fa-circle-check'}"></i><span>${msg}</span>`;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, 2600);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bonuses — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.page-head h1{font-size:19px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.new-btn{background:var(--accent);color:#fff;border:none;padding:11px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.new-btn:hover{filter:brightness(1.05)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:11px;padding:10px 14px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:13px}
+.select-box{border:1px solid var(--input-border);background:var(--input-bg);border-radius:11px;padding:10px 14px;font-size:12.5px;font-family:inherit;color:var(--text);cursor:pointer}
+
+.filter-pills{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.f-pill{font-size:12px;font-weight:700;padding:8px 15px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:6px}
+.f-pill:hover{border-color:var(--accent);color:var(--accent)}
+.f-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.f-pill .cnt{font-size:10px;font-weight:800;background:rgba(0,0,0,.12);padding:1px 7px;border-radius:20px}
+.f-pill.active .cnt{background:rgba(255,255,255,.25)}
+
+.bn-list{display:flex;flex-direction:column;gap:10px}
+.bn-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px 17px;box-shadow:var(--shadow);transition:.14s}
+.bn-card:hover{border-color:var(--accent)}
+.bn-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.bn-name{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.type-chip{font-size:9.5px;font-weight:700;padding:2px 10px;border-radius:20px;white-space:nowrap}
+.type-chip.performance{background:var(--green-bg);color:var(--green)}
+.type-chip.milestone{background:var(--blue-bg);color:var(--blue)}
+.type-chip.onboarding{background:var(--purple-bg);color:var(--purple)}
+.type-chip.contest{background:var(--amber-bg);color:var(--amber)}
+.type-chip.loyalty{background:var(--red-bg);color:var(--red)}
+.status-pill{font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.draft{background:var(--table-head);color:var(--text-muted)}
+.status-pill.scheduled{background:var(--blue-bg);color:var(--blue)}
+.status-pill.distributed{background:var(--green-bg);color:var(--green)}
+.bn-criteria{font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:12px}
+.bn-stats{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:12px}
+.bn-stat b{font-size:14px;font-weight:800;display:block}
+.bn-stat span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.bn-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
+.bn-meta{font-size:11px;color:var(--text-faint);display:flex;gap:14px;flex-wrap:wrap}
+.bn-meta span{display:flex;align-items:center;gap:5px}
+.bn-actions{display:flex;gap:7px;flex-wrap:wrap}
+.mini-btn{font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-faint)}
+.empty-state i{font-size:32px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:13px}
+
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px}
+.page-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+/* ── Modals (create/edit + confirm) ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:480px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s;max-height:88vh;overflow-y:auto}
+.modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head h3{font-size:15px;font-weight:800}
+.modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
+.modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.field-group textarea, .field-group input, .field-group select{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);resize:vertical}
+.field-group textarea{min-height:64px}
+.field-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.radio-row{display:flex;gap:8px;flex-wrap:wrap}
+.radio-opt{flex:1;min-width:110px;border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:8px}
+.radio-opt.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.radio-opt input{accent-color:var(--accent)}
+.payout-preview{background:var(--table-head);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center}
+.payout-preview b{color:var(--text);font-size:14px}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.modal-error.show{display:block}
+.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
+.modal-box-actions .confirm-btn{background:var(--accent);border-color:transparent;color:#fff}
+.modal-box-actions .confirm-btn.danger-variant{background:var(--red)}
+.modal-box-actions .confirm-btn.green-variant{background:var(--green)}
+.modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.field-row-2{grid-template-columns:1fr}.bn-actions{width:100%}.bn-actions .mini-btn{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <div><h1>Bonuses</h1><p>Create, schedule, and distribute author bonus payouts.</p></div>
+    <button class="new-btn" id="newBonusBtn"><i class="fas fa-plus"></i> New Bonus</button>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="toolbar">
+    <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search bonuses…"/></div>
+    <select class="select-box" id="typeFilter">
+      <option value="">All types</option>
+      <option value="Performance">Performance</option>
+      <option value="Milestone">Milestone</option>
+      <option value="Onboarding">Onboarding</option>
+      <option value="Contest">Contest</option>
+      <option value="Loyalty">Loyalty</option>
+    </select>
+    <select class="select-box" id="sortSelect">
+      <option value="recent">Most recent</option>
+      <option value="payout-desc">Highest total payout</option>
+      <option value="recipients-desc">Most recipients</option>
+    </select>
+  </div>
+
+  <div class="filter-pills" id="filterPills"></div>
+
+  <div id="bnList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading bonuses…</div></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Create / Edit modal -->
+<div class="modal-overlay" id="formModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3 id="formModalTitle">New Bonus</h3>
+        <p id="formModalSub">Define who qualifies, how much they get, and when it goes out.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-form-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label>Bonus Name</label>
+        <input type="text" id="bnName" placeholder="e.g. July Top Performer Bonus"/>
+      </div>
+      <div class="field-row-2">
+        <div class="field-group">
+          <label>Type</label>
+          <select id="bnType">
+            <option>Performance</option>
+            <option>Milestone</option>
+            <option>Onboarding</option>
+            <option>Contest</option>
+            <option>Loyalty</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Payout Date</label>
+          <input type="date" id="bnDate"/>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Qualifying Criteria</label>
+        <textarea id="bnCriteria" placeholder="e.g. Top 10 authors by reads this month"></textarea>
+      </div>
+      <div class="field-row-2">
+        <div class="field-group">
+          <label># Recipients</label>
+          <input type="number" id="bnRecipients" min="1" placeholder="e.g. 10"/>
+        </div>
+        <div class="field-group">
+          <label>Amount Each (USD)</label>
+          <input type="number" id="bnAmount" min="1" step="5" placeholder="e.g. 200"/>
+        </div>
+      </div>
+      <div class="payout-preview">
+        <span>Total payout</span>
+        <b id="bnTotalPreview">$0</b>
+      </div>
+      <div class="field-group">
+        <label>Status</label>
+        <div class="radio-row" id="bnStatusRow">
+          <label class="radio-opt active" data-status="draft"><input type="radio" name="bnStatus" value="draft" checked/> Save as draft</label>
+          <label class="radio-opt" data-status="scheduled"><input type="radio" name="bnStatus" value="scheduled"/> Schedule</label>
+          <label class="radio-opt" data-status="distributed"><input type="radio" name="bnStatus" value="distributed"/> Distribute now</label>
+        </div>
+      </div>
+      <div class="modal-error" id="formModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-form-modal">Cancel</button>
+        <button class="confirm-btn" id="formConfirmBtn" data-action="submit-form"><i class="fas fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Distribute confirm modal -->
+<div class="modal-overlay" id="distModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3>Distribute bonus</h3>
+        <p id="distModalSub">This pays out every recipient immediately and can't be undone.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-dist-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="payout-preview">
+        <span>Total to distribute</span>
+        <b id="distTotalAmt">$0</b>
+      </div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-dist-modal">Cancel</button>
+        <button class="confirm-btn green-variant" id="distConfirmBtn" data-action="submit-dist"><i class="fas fa-paper-plane"></i> Confirm Distribution</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="delModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3>Delete bonus</h3>
+        <p id="delModalSub">This can't be undone.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-del-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-del-modal">Cancel</button>
+        <button class="confirm-btn danger-variant" id="delConfirmBtn" data-action="submit-del"><i class="fas fa-trash"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/finance-sidebar.js"></script>
+<script src="shared/finance-data.js"></script>
+<script>
+'use strict';
+const shell = FinanceSidebar.attach('#pageRoot',{
+  activeItem:'bonuses', title:'Bonuses', subtitle:'Create & distribute author bonuses',
+  user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+  searchPlaceholder:'Search anything…',
+  onSearch:(v)=>{ document.getElementById('searchInput').value = v; page=1; render(); }
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const PER_PAGE = 6;
+
+let ALL = [];
+let activeStatus = 'all';
+let searchTerm = '', typeTerm = '', sortMode = 'recent';
+let page = 1;
+
+function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
+function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function totalPayout(b){ return (Number(b.recipients)||0) * (Number(b.amountEach)||0); }
+
+async function init(){
+  ALL = await FinanceData.getBonuses();
+  renderStatCards();
+  renderFilterPills();
+  render();
+}
+
+function renderStatCards(){
+  const distributed = ALL.filter(b=>b.status==='distributed');
+  const scheduled = ALL.filter(b=>b.status==='scheduled');
+  const totalDistributed = distributed.reduce((s,b)=>s+totalPayout(b),0);
+  const totalUpcoming = scheduled.reduce((s,b)=>s+totalPayout(b),0);
+  const stats = [
+    { n:ALL.length, l:'Total Bonuses', ico:'fa-gift', cls:'accent' },
+    { n:distributed.length, l:'Distributed', ico:'fa-circle-check', cls:'green' },
+    { n:scheduled.length, l:'Scheduled', ico:'fa-clock', cls:'blue' },
+    { n:money(totalDistributed), l:'Total Paid Out', ico:'fa-sack-dollar', cls:'amber' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function renderFilterPills(){
+  const counts = { all:ALL.length, draft:0, scheduled:0, distributed:0 };
+  ALL.forEach(b=>{ if(counts[b.status]!=null) counts[b.status]++; });
+  const pills = [
+    { key:'all', label:'All' },
+    { key:'draft', label:'Draft' },
+    { key:'scheduled', label:'Scheduled' },
+    { key:'distributed', label:'Distributed' },
+  ];
+  document.getElementById('filterPills').innerHTML = pills.map(p=>`
+    <button class="f-pill${activeStatus===p.key?' active':''}" data-status="${p.key}">${p.label} <span class="cnt">${counts[p.key]}</span></button>`).join('');
+  document.querySelectorAll('.f-pill').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeStatus = btn.dataset.status; page=1; renderFilterPills(); render(); });
+  });
+}
+
+function getFiltered(){
+  let list = ALL.slice();
+  if(activeStatus!=='all') list = list.filter(b=>b.status===activeStatus);
+  if(typeTerm) list = list.filter(b=>b.type===typeTerm);
+  if(searchTerm) list = list.filter(b=>b.name.toLowerCase().includes(searchTerm.toLowerCase()) || b.criteria.toLowerCase().includes(searchTerm.toLowerCase()));
+  if(sortMode==='payout-desc') list.sort((a,b)=>totalPayout(b)-totalPayout(a));
+  else if(sortMode==='recipients-desc') list.sort((a,b)=>b.recipients-a.recipients);
+  else list.sort((a,b)=> new Date(b.date) - new Date(a.date));
+  return list;
+}
+
+function render(){
+  const filtered = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PER_PAGE));
+  if(page>totalPages) page = totalPages;
+  const pageItems = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  const box = document.getElementById('bnList');
+  if(!pageItems.length){
+    box.innerHTML = `<div class="empty-state"><i class="fas fa-gift"></i><p>No bonuses match your filters.</p></div>`;
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = `<div class="bn-list">${pageItems.map(b=>`
+    <div class="bn-card" data-id="${b.id}">
+      <div class="bn-top">
+        <div class="bn-name">${b.name} <span class="type-chip ${b.type.toLowerCase()}">${b.type}</span> <span class="status-pill ${b.status}">${b.status}</span></div>
+      </div>
+      <div class="bn-criteria"><i class="fas fa-bullseye" style="color:var(--text-faint);margin-right:5px"></i>${b.criteria}</div>
+      <div class="bn-stats">
+        <div class="bn-stat"><b>${b.recipients}</b><span>Recipients</span></div>
+        <div class="bn-stat"><b>${money(b.amountEach)}</b><span>Each</span></div>
+        <div class="bn-stat"><b>${money(totalPayout(b))}</b><span>Total Payout</span></div>
+      </div>
+      <div class="bn-foot">
+        <div class="bn-meta">
+          <span><i class="fas fa-calendar"></i> ${b.status==='distributed'?'Paid':'Scheduled for'} ${fmtDate(b.date)}</span>
+          <span><i class="fas fa-user"></i> Created by ${b.createdBy}</span>
+        </div>
+        <div class="bn-actions">
+          ${b.status!=='distributed' ? `<button class="mini-btn primary" data-action="distribute" data-id="${b.id}"><i class="fas fa-paper-plane"></i> Distribute</button>`:''}
+          <button class="mini-btn" data-action="edit" data-id="${b.id}"><i class="fas fa-pen"></i> Edit</button>
+          <button class="mini-btn danger" data-action="delete" data-id="${b.id}"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+      </div>
+    </div>`).join('')}</div>`;
+
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages){
+  const box = document.getElementById('pagination');
+  if(totalPages<=1){ box.innerHTML=''; return; }
+  let html = `<button class="page-btn" ${page===1?'disabled':''} data-p="${page-1}"><i class="fas fa-chevron-left"></i></button>`;
+  for(let i=1;i<=totalPages;i++) html += `<button class="page-btn${i===page?' active':''}" data-p="${i}">${i}</button>`;
+  html += `<button class="page-btn" ${page===totalPages?'disabled':''} data-p="${page+1}"><i class="fas fa-chevron-right"></i></button>`;
+  box.innerHTML = html;
+  box.querySelectorAll('.page-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ page=parseInt(btn.dataset.p,10); render(); window.scrollTo({top:0,behavior:'smooth'}); });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm=e.target.value; page=1; render(); });
+document.getElementById('typeFilter').addEventListener('change', e=>{ typeTerm=e.target.value; page=1; render(); });
+document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e.target.value; render(); });
+
+/* ── Create / Edit modal ── */
+let editingId = null;
+let bnStatusMode = 'draft';
+
+function updateTotalPreview(){
+  const r = parseFloat(document.getElementById('bnRecipients').value) || 0;
+  const a = parseFloat(document.getElementById('bnAmount').value) || 0;
+  document.getElementById('bnTotalPreview').textContent = money(r*a);
+}
+
+function setBnStatusMode(mode){
+  bnStatusMode = mode;
+  document.querySelectorAll('#bnStatusRow .radio-opt').forEach(el=>{
+    const active = el.dataset.status===mode;
+    el.classList.toggle('active', active);
+    el.querySelector('input').checked = active;
+  });
+}
+
+function openCreateModal(){
+  editingId = null;
+  document.getElementById('formModalTitle').textContent = 'New Bonus';
+  document.getElementById('formModalSub').textContent = 'Define who qualifies, how much they get, and when it goes out.';
+  document.getElementById('bnName').value = '';
+  document.getElementById('bnType').value = 'Performance';
+  document.getElementById('bnDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('bnCriteria').value = '';
+  document.getElementById('bnRecipients').value = '';
+  document.getElementById('bnAmount').value = '';
+  document.getElementById('formModalError').classList.remove('show');
+  updateTotalPreview();
+  setBnStatusMode('draft');
+  document.getElementById('formConfirmBtn').innerHTML = '<i class="fas fa-floppy-disk"></i> Save';
+  document.getElementById('formModalOv').classList.add('open');
+}
+
+function openEditModal(id){
+  const b = ALL.find(x=>x.id===id); if(!b) return;
+  editingId = id;
+  document.getElementById('formModalTitle').textContent = 'Edit Bonus';
+  document.getElementById('formModalSub').textContent = 'Update the details below and save your changes.';
+  document.getElementById('bnName').value = b.name;
+  document.getElementById('bnType').value = b.type;
+  document.getElementById('bnDate').value = b.date;
+  document.getElementById('bnCriteria').value = b.criteria;
+  document.getElementById('bnRecipients').value = b.recipients;
+  document.getElementById('bnAmount').value = b.amountEach;
+  document.getElementById('formModalError').classList.remove('show');
+  updateTotalPreview();
+  setBnStatusMode(b.status);
+  document.getElementById('formConfirmBtn').innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes';
+  document.getElementById('formModalOv').classList.add('open');
+}
+
+function closeFormModal(){ document.getElementById('formModalOv').classList.remove('open'); editingId = null; }
+
+async function submitForm(){
+  const name = document.getElementById('bnName').value.trim();
+  const type = document.getElementById('bnType').value;
+  const date = document.getElementById('bnDate').value;
+  const criteria = document.getElementById('bnCriteria').value.trim();
+  const recipients = parseInt(document.getElementById('bnRecipients').value,10) || 0;
+  const amountEach = parseFloat(document.getElementById('bnAmount').value) || 0;
+  const errBox = document.getElementById('formModalError');
+
+  if(!name){ errBox.textContent='Please name this bonus.'; errBox.classList.add('show'); return; }
+  if(!criteria){ errBox.textContent='Please describe the qualifying criteria.'; errBox.classList.add('show'); return; }
+  if(recipients<=0){ errBox.textContent='Please enter at least 1 recipient.'; errBox.classList.add('show'); return; }
+  if(amountEach<=0){ errBox.textContent='Please enter an amount greater than $0.'; errBox.classList.add('show'); return; }
+  if(!date){ errBox.textContent='Please pick a payout date.'; errBox.classList.add('show'); return; }
+  errBox.classList.remove('show');
+
+  const payload = { name, type, date, criteria, recipients, amountEach, status: bnStatusMode, createdBy: 'Ngozi Falade' };
+  const btn = document.getElementById('formConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+  try{
+    if(editingId){
+      const b = ALL.find(x=>x.id===editingId);
+      const updated = await FinanceData.updateBonus(editingId, payload);
+      Object.assign(b, updated || payload);
+      toast(`✏️ "${b.name}" updated`);
+    }else{
+      const created = await FinanceData.createBonus(payload);
+      ALL.unshift(created);
+      toast(bnStatusMode==='distributed' ? `🎁 "${name}" distributed` : bnStatusMode==='scheduled' ? `🗓️ "${name}" scheduled` : `📝 "${name}" saved as draft`);
+    }
+    closeFormModal();
+    renderStatCards(); renderFilterPills(); render();
+  }catch(err){
+    errBox.textContent = 'Something went wrong. Please try again.';
+    errBox.classList.add('show');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = editingId ? '<i class="fas fa-floppy-disk"></i> Save Changes' : '<i class="fas fa-floppy-disk"></i> Save';
+  }
+}
+
+/* ── Distribute confirm modal ── */
+let distTargetId = null;
+function openDistModal(id){
+  const b = ALL.find(x=>x.id===id); if(!b) return;
+  distTargetId = id;
+  document.getElementById('distModalSub').textContent = `This pays out ${b.recipients} recipient${b.recipients===1?'':'s'} for "${b.name}" immediately and can't be undone.`;
+  document.getElementById('distTotalAmt').textContent = money(totalPayout(b));
+  document.getElementById('distModalOv').classList.add('open');
+}
+function closeDistModal(){ document.getElementById('distModalOv').classList.remove('open'); distTargetId = null; }
+async function submitDist(){
+  const b = ALL.find(x=>x.id===distTargetId); if(!b) return;
+  const btn = document.getElementById('distConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Distributing…';
+  try{
+    await FinanceData.distributeBonus(b.id);
+    b.status = 'distributed';
+    toast(`🎁 Distributed ${money(totalPayout(b))} across ${b.recipients} authors`);
+    closeDistModal();
+    renderStatCards(); renderFilterPills(); render();
+  }finally{
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Confirm Distribution';
+  }
+}
+
+/* ── Delete confirm modal ── */
+let delTargetId = null;
+function openDelModal(id){
+  const b = ALL.find(x=>x.id===id); if(!b) return;
+  delTargetId = id;
+  document.getElementById('delModalSub').textContent = `Delete "${b.name}"? This can't be undone.`;
+  document.getElementById('delModalOv').classList.add('open');
+}
+function closeDelModal(){ document.getElementById('delModalOv').classList.remove('open'); delTargetId = null; }
+async function submitDel(){
+  const b = ALL.find(x=>x.id===delTargetId); if(!b) return;
+  await FinanceData.deleteBonus(b.id);
+  ALL = ALL.filter(x=>x.id!==b.id);
+  toast(`🗑️ "${b.name}" deleted`);
+  closeDelModal();
+  renderStatCards(); renderFilterPills(); render();
+}
+
+/* ── Event wiring ── */
+document.getElementById('newBonusBtn').addEventListener('click', openCreateModal);
+document.getElementById('bnRecipients').addEventListener('input', updateTotalPreview);
+document.getElementById('bnAmount').addEventListener('input', updateTotalPreview);
+document.querySelectorAll('#bnStatusRow .radio-opt').forEach(el=>{
+  el.addEventListener('click', ()=> setBnStatusMode(el.dataset.status));
+});
+
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+
+  if(action==='edit') openEditModal(id);
+  else if(action==='delete') openDelModal(id);
+  else if(action==='distribute') openDistModal(id);
+  else if(action==='close-form-modal') closeFormModal();
+  else if(action==='submit-form') submitForm();
+  else if(action==='close-dist-modal') closeDistModal();
+  else if(action==='submit-dist') submitDist();
+  else if(action==='close-del-modal') closeDelModal();
+  else if(action==='submit-del') submitDel();
+});
+
+document.getElementById('formModalOv').addEventListener('click', e=>{ if(e.target.id==='formModalOv') closeFormModal(); });
+document.getElementById('distModalOv').addEventListener('click', e=>{ if(e.target.id==='distModalOv') closeDistModal(); });
+document.getElementById('delModalOv').addEventListener('click', e=>{ if(e.target.id==='delModalOv') closeDelModal(); });
+
+init();
+</script>
+</body>
+</html>

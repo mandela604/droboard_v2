@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payments — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}.btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}.stat-top{display:flex;align-items:center;justify-content:space-between}.stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.stat-ico.green{background:var(--green-bg);color:var(--green)}.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}.stat-ico.purple{background:#ece9fb;color:#5b4bcf}.stat-ico.red{background:var(--red-bg);color:var(--red)}
+html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18)}html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+.stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}.stat-delta.down{color:var(--red);background:var(--red-bg)}html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}.stat-num{font-size:24px;font-weight:800;line-height:1}.stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+.filters-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}.tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:220px}.tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}.tc-search input::placeholder{color:var(--text-faint)}.tc-search i{color:var(--text-faint);font-size:12px}.fselect{position:relative}.fselect select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}.fselect i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-faint);pointer-events:none}.btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}.date-range{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--text-faint);white-space:nowrap}
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:800px}thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}tbody tr:hover{background:var(--hover)}
+.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+.status-pill.pending{background:var(--amber-bg);color:var(--amber)}html[data-theme="dark"] .status-pill.pending{background:rgba(217,119,6,.18)}
+.status-pill.failed{background:var(--red-bg);color:var(--red)}html[data-theme="dark"] .status-pill.failed{background:rgba(224,56,77,.18)}
+.status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}.status-pill.pending .dot{background:var(--amber)}.status-pill.failed .dot{background:var(--red)}
+.act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}.act-btn:hover{color:var(--accent);border-color:var(--accent)}.actions-cell{display:flex;align-items:center;gap:6px}
+.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}.page-info{font-size:12px;color:var(--text-muted)}.page-info b{color:var(--text);font-weight:700}.page-btns{display:flex;align-items:center;gap:6px}.pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.panel-head h2{font-size:14.5px;font-weight:800}.panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}.two-col{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+.empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}.empty-row i{font-size:26px;display:block;margin-bottom:10px}
+.kv-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}.kv-row:last-child{border-bottom:none}.kv-row .k{color:var(--text-muted);font-weight:600}.kv-row .v{font-weight:700}
+@media (max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.two-col{grid-template-columns:1fr}}@media (max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}}@media (max-width:680px){.filters-row{flex-direction:column;align-items:stretch}.fselect select{width:100%}.table-wrap{overflow:visible}table,thead,tbody,tr,td{display:block;width:100%}thead{display:none}tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}.actions-cell{justify-content:flex-end;width:100%}}@media (max-width:420px){.stats-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="dashboardRoot">
+  <div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Exporting payment report…')"><i class="fas fa-download"></i> Export Report</button></div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+18% from last month</span></div><div class="stat-num">156</div><div class="stat-lbl">Successful Payments</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta">+12 awaiting</span></div><div class="stat-num">18</div><div class="stat-lbl">Pending Payments</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-circle-xmark"></i></div><span class="stat-delta">+5 from last month</span></div><div class="stat-num">7</div><div class="stat-lbl">Failed Payments</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-sack-dollar"></i></div><span class="stat-delta">+22% from last month</span></div><div class="stat-num">$84,200</div><div class="stat-lbl">Total Disbursed</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-credit-card"></i></div><span class="stat-delta">$3,600 avg</span></div><div class="stat-num">$540</div><div class="stat-lbl">Avg Payment</div></div>
+  </div>
+  <div class="two-col">
+    <div class="table-card">
+      <div class="filters-row" style="padding:14px 16px;margin:0;border-bottom:1px solid var(--border)">
+        <div class="tc-search" style="min-width:180px"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search payments..."/></div>
+        <div class="fselect"><select id="statusSelect"><option value="">All Status</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="failed">Failed</option></select><i class="fas fa-chevron-down"></i></div>
+        <div class="date-range" onclick="toast('Date picker')">Date Range <i class="fas fa-calendar"></i></div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Payment ID</th><th>Recipient</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table></div>
+      <div class="pagination-row"><div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>181</b> payments</div><div class="page-btns" id="pageBtns"></div></div>
+    </div>
+    <div>
+      <div class="panel"><div class="panel-head"><h2>Payment Summary</h2></div>
+        <div class="kv-row"><span class="k">This Month</span><span class="v">$12,840</span></div>
+        <div class="kv-row"><span class="k">Last Month</span><span class="v">$10,220</span></div>
+        <div class="kv-row"><span class="k">Avg Processing Time</span><span class="v">1.8 days</span></div>
+        <div class="kv-row"><span class="k">Pending Amount</span><span class="v">$8,450</span></div>
+      </div>
+      <div class="panel" style="margin-top:20px"><div class="panel-head"><h2>Quick Actions</h2></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn-add" style="width:100%;justify-content:center" onclick="toast('Opening payment settings…')"><i class="fas fa-gear"></i> Payment Settings</button>
+          <button class="btn-add" style="width:100%;justify-content:center;background:var(--input-bg);color:var(--text);box-shadow:none" onclick="toast('Opening reconciliation report…')"><i class="fas fa-file-invoice"></i> Reconciliation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="payments-enhanced.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+DroboardShell.attach('#dashboardRoot',{activeFile:'payments.html',title:'Payments',subtitle:'Manage platform payments and disbursements',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search payments...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
+const PAYMENTS=[
+  {id:'PYMT-0156',recipient:'Amara Okafor',amount:'$3,420.00',method:'Bank Transfer',status:'completed',date:'Jun 17, 2026'},
+  {id:'PYMT-0155',recipient:'Sofia Lindqvist',amount:'$2,180.00',method:'PayPal',status:'completed',date:'Jun 17, 2026'},
+  {id:'PYMT-0154',recipient:'Isabella Rossi',amount:'$4,500.00',method:'Mobile Money',status:'pending',date:'Jun 16, 2026'},
+  {id:'PYMT-0153',recipient:'Marcus Chen',amount:'$980.00',method:'Bank Transfer',status:'completed',date:'Jun 15, 2026'},
+  {id:'PYMT-0152',recipient:'Priya Nair',amount:'$1,560.00',method:'PayPal',status:'failed',date:'Jun 14, 2026'},
+  {id:'PYMT-0151',recipient:'Layla Haddad',amount:'$2,890.00',method:'Bank Transfer',status:'completed',date:'Jun 13, 2026'},
+  {id:'PYMT-0150',recipient:'Daniel Reyes',amount:'$450.00',method:'Mobile Money',status:'pending',date:'Jun 12, 2026'},
+  {id:'PYMT-0149',recipient:'Julien Moreau',amount:'$320.00',method:'PayPal',status:'completed',date:'Jun 11, 2026'},
+];
+function statusPillHtml(s){const m={completed:{cls:'',label:'Completed'},pending:{cls:'pending',label:'Pending'},failed:{cls:'failed',label:'Failed'}}[s]||m.completed;return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`}
+function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const s=document.getElementById('statusSelect').value;let l=PAYMENTS;if(s)l=l.filter(r=>r.status===s);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.recipient.toLowerCase().includes(q));return l}
+function renderTable(list){const b=document.getElementById('tableBody');if(!list.length){b.innerHTML=`<tr class="empty-row"><td colspan="7"><i class="fas fa-credit-card"></i>No payments match.</td></tr>`;return}
+b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Payment ID" style="font-weight:700">${r.id}</td><td data-label="Recipient" style="font-weight:600">${r.recipient}</td><td data-label="Amount" style="font-weight:800">${r.amount}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Date" style="font-weight:600">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" onclick="toast('Viewing payment…')"><i class="fas fa-eye"></i></button><button class="act-btn" onclick="toast('More actions…')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
+function renderPageInfo(c){const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>181</b> payments`}
+function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
+function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,'...',23];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>p==='...'?`<span style="color:var(--text-faint);font-size:12px;padding:0 2px">…</span>`:`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
+document.getElementById('tableSearch').addEventListener('input',refresh);document.getElementById('statusSelect').addEventListener('change',refresh);
+renderPagination();refresh();
+</script>
+</body>
+</html>

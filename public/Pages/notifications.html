@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Notifications · DroBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f7f7f8;--card:#ffffff;--pink:#ff2d55;--pink-soft:#ffe8ee;
+  --text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;
+  --success:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--purple:#9333ea;
+  --nav-h:66px;--safe-b:env(safe-area-inset-bottom,12px);
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif}
+body{padding-bottom:calc(var(--nav-h) + var(--safe-b))}
+img{display:block;object-fit:cover}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(14px);
+  padding:12px 16px 10px;border-bottom:1px solid var(--border);
+}
+.top-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.top-left{display:flex;align-items:flex-start;gap:10px;min-width:0}
+.back-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;color:var(--text);
+  font-size:15px;flex-shrink:0;margin-top:2px;
+}
+.title-wrap{min-width:0}
+.page-title{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.page-sub{font-size:12.5px;color:var(--muted);font-weight:500;margin-top:2px}
+.top-right{display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:4px}
+.mark-read{
+  font-size:12.5px;font-weight:600;color:var(--pink);
+  display:flex;align-items:center;gap:5px;padding:6px 8px;
+}
+.mark-read i{font-size:12px}
+.settings-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;
+}
+
+.filter-scroll{
+  display:flex;gap:8px;overflow-x:auto;padding:14px 16px 4px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.filter-scroll::-webkit-scrollbar{display:none}
+.filter-chip{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:12px 14px 10px;border-radius:14px;background:var(--card);
+  border:1px solid var(--border);min-width:68px;cursor:pointer;
+  box-shadow:0 1px 3px rgba(0,0,0,.03);transition:all .15s;
+}
+.filter-chip .fi{
+  width:36px;height:36px;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;position:relative;color:var(--muted);
+  background:var(--bg);
+}
+.filter-chip .fi .badge{
+  position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;
+  background:var(--pink);color:#fff;font-size:9px;font-weight:800;
+  border-radius:8px;display:none;align-items:center;justify-content:center;
+  border:1.5px solid #fff;
+}
+.filter-chip span{font-size:11px;font-weight:600;color:var(--muted)}
+.filter-chip.active{background:var(--pink-soft);border-color:#ffc4d3}
+.filter-chip.active .fi{background:#fff;color:var(--pink)}
+.filter-chip.active span{color:var(--pink);font-weight:700}
+
+.content{padding:8px 16px 20px}
+.day-label{font-size:13px;font-weight:700;color:var(--text);padding:14px 0 10px;letter-spacing:-.01em}
+
+.n-card{
+  display:flex;gap:12px;background:var(--card);border-radius:16px;
+  padding:14px;margin-bottom:10px;border:1px solid var(--border);
+  box-shadow:0 1px 4px rgba(0,0,0,.03);position:relative;cursor:pointer;
+  overflow:hidden;
+}
+.n-card:active{opacity:.92}
+.n-card.unread::before{
+  content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;
+  border-radius:0 2px 2px 0;background:var(--accent, var(--pink));
+}
+.n-card[data-accent="pink"]{--accent:var(--pink)}
+.n-card[data-accent="blue"]{--accent:var(--blue)}
+.n-card[data-accent="purple"]{--accent:var(--purple)}
+.n-card[data-accent="green"]{--accent:var(--success)}
+.n-card[data-accent="orange"]{--accent:var(--orange)}
+
+.n-avatar-wrap{position:relative;flex-shrink:0}
+.n-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;background:var(--bg)}
+.n-avatar img{width:100%;height:100%}
+.n-avatar.cover{border-radius:10px}
+.n-avatar.icon-av{display:flex;align-items:center;justify-content:center;font-size:18px}
+.n-badge{
+  position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;
+  border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;
+}
+.n-badge.heart{background:var(--pink)}
+.n-badge.comment{background:var(--blue)}
+.n-badge.book{background:var(--purple)}
+.n-badge.coin{background:var(--success)}
+.n-badge.trophy{background:var(--orange)}
+.n-badge.follow{background:var(--purple)}
+.n-badge.gift{background:var(--pink)}
+.n-badge.check{background:var(--success)}
+.n-badge.mention{background:var(--blue)}
+
+.n-body{flex:1;min-width:0}
+.n-title{font-size:13.5px;font-weight:700;line-height:1.35;margin-bottom:3px}
+.n-title b{font-weight:800}
+.n-desc{font-size:12.5px;color:var(--muted);line-height:1.45;margin-bottom:4px}
+.n-link{font-size:12.5px;font-weight:600;color:var(--pink);margin-bottom:4px}
+.n-link.orange{color:var(--orange)}
+.n-time{font-size:11.5px;color:var(--muted);font-weight:500}
+
+.n-right{
+  display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;
+  flex-shrink:0;gap:8px;padding-top:2px;position:relative;
+}
+.n-thumb{width:48px;height:48px;border-radius:10px;overflow:hidden;background:var(--bg)}
+.n-thumb img{width:100%;height:100%}
+.n-dot{width:8px;height:8px;border-radius:50%;background:var(--pink);flex-shrink:0}
+.n-more{color:var(--muted);font-size:14px;padding:4px 6px;border-radius:8px}
+.n-more:active{background:var(--bg)}
+.n-meta-time{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
+
+.card-menu{
+  position:absolute;top:28px;right:0;z-index:40;
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:180px;padding:6px;
+  display:none;
+}
+.card-menu.open{display:block}
+.card-menu-item{
+  display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;
+  font-size:13.5px;font-weight:600;color:var(--text);width:100%;text-align:left;
+}
+.card-menu-item i{width:16px;text-align:center;font-size:13px;color:var(--muted)}
+.card-menu-item:active{background:var(--bg)}
+.card-menu-item.danger{color:var(--pink)}
+.card-menu-item.danger i{color:var(--pink)}
+
+.sheet-overlay{
+  position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);
+  opacity:0;pointer-events:none;transition:opacity .22s ease;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.sheet-overlay.open{opacity:1;pointer-events:auto}
+.sheet{
+  width:100%;max-width:420px;max-height:88vh;background:var(--card);
+  border-radius:20px 20px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.16);
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sheet-overlay.open .sheet{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;border-radius:4px;background:var(--border);margin:10px auto 0;flex-shrink:0}
+.sheet-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.sheet-title{font-size:16.5px;font-weight:800}
+.sheet-close{
+  width:32px;height:32px;border-radius:50%;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;
+}
+.sheet-body{flex:1;overflow-y:auto;padding:8px 18px 24px;-webkit-overflow-scrolling:touch}
+
+.settings-section{margin-top:18px}
+.settings-section:first-child{margin-top:10px}
+.settings-label{
+  font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:8px;padding:0 2px;
+}
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 0;border-bottom:1px solid var(--border);
+}
+.settings-row:last-child{border-bottom:none}
+.settings-info{min-width:0}
+.settings-name{font-size:14px;font-weight:700;margin-bottom:2px}
+.settings-desc{font-size:12px;color:var(--muted);font-weight:500;line-height:1.4}
+
+.toggle{
+  width:46px;height:28px;border-radius:14px;background:#d1d1d6;position:relative;
+  flex-shrink:0;transition:background .2s;cursor:pointer;
+}
+.toggle.on{background:var(--pink)}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);
+  transition:transform .2s;
+}
+.toggle.on::after{transform:translateX(18px)}
+
+.empty{
+  text-align:center;padding:48px 16px;color:var(--muted);font-size:14px;font-weight:600;
+}
+
+@media (min-width:600px){
+  .topbar,.filter-scroll,.content{max-width:560px;margin-left:auto;margin-right:auto}
+  .sheet-overlay{align-items:center}
+  .sheet{border-radius:20px;max-height:80vh}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="top-row">
+    <div class="top-left">
+      <button class="back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <div class="title-wrap">
+        <div class="page-title">Notifications</div>
+        <div class="page-sub">Stay updated with what matters</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <button class="mark-read" id="markAllBtn"><i class="fas fa-check"></i> Mark all as read</button>
+      <button class="settings-btn" id="settingsBtn"><i class="fas fa-gear"></i></button>
+    </div>
+  </div>
+</div>
+
+<div class="filter-scroll" id="filterRow">
+  <div class="filter-chip active" data-f="all">
+    <div class="fi" style="background:var(--pink-soft);color:var(--pink)"><i class="fas fa-bell"></i><span class="badge" id="b-all">0</span></div>
+    <span>All</span>
+  </div>
+  <div class="filter-chip" data-f="activity">
+    <div class="fi"><i class="far fa-heart"></i><span class="badge" id="b-activity">0</span></div>
+    <span>Activity</span>
+  </div>
+  <div class="filter-chip" data-f="stories">
+    <div class="fi"><i class="fas fa-book-open"></i><span class="badge" id="b-stories">0</span></div>
+    <span>Stories</span>
+  </div>
+  <div class="filter-chip" data-f="community">
+    <div class="fi"><i class="fas fa-users"></i><span class="badge" id="b-community">0</span></div>
+    <span>Community</span>
+  </div>
+  <div class="filter-chip" data-f="revenue">
+    <div class="fi"><i class="fas fa-dollar-sign"></i><span class="badge" id="b-revenue">0</span></div>
+    <span>Revenue</span>
+  </div>
+  <div class="filter-chip" data-f="system">
+    <div class="fi"><i class="fas fa-shield-halved"></i><span class="badge" id="b-system">0</span></div>
+    <span>System</span>
+  </div>
+</div>
+
+<div class="content" id="feed"></div>
+
+<div class="sheet-overlay" id="settingsSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">Notification Settings</div>
+      <button class="sheet-close" id="settingsClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="sheet-body">
+      <div class="settings-section">
+        <div class="settings-label">Push notifications</div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">All notifications</div>
+            <div class="settings-desc">Master switch for push alerts</div>
+          </div>
+          <div class="toggle on" data-key="all"></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">Activity</div>
+            <div class="settings-desc">Likes, comments, mentions</div>
+          </div>
+          <div class="toggle on" data-key="activity"></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">Stories</div>
+            <div class="settings-desc">New chapters, rankings, reviews</div>
+          </div>
+          <div class="toggle on" data-key="stories"></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">Community</div>
+            <div class="settings-desc">Follows, replies, group activity</div>
+          </div>
+          <div class="toggle on" data-key="community"></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">Revenue</div>
+            <div class="settings-desc">Coins, tips, payouts</div>
+          </div>
+          <div class="toggle on" data-key="revenue"></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">System</div>
+            <div class="settings-desc">Contracts, security, rewards</div>
+          </div>
+          <div class="toggle on" data-key="system"></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Preferences</div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">Quiet hours</div>
+            <div class="settings-desc">Mute alerts from 11 PM – 7 AM</div>
+          </div>
+          <div class="toggle" data-key="quiet"></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-info">
+            <div class="settings-name">Email digest</div>
+            <div class="settings-desc">Daily summary of unread activity</div>
+          </div>
+          <div class="toggle on" data-key="email"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="component/bottom-nav.js"></script>
+<script src="../services/notification-page-service.js"></script>
+<script>NotifPageService.init();</script>
+</body>
+</html>

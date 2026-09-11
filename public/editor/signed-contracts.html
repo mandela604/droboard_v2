@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Contract Details — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Breadcrumb ── */
+  .crumb{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-faint);font-weight:600;margin-bottom:14px}
+  .crumb a{color:var(--text-faint)}
+  .crumb .sep{font-size:10px}
+  .crumb .cur{color:var(--text)}
+
+  /* ── Header card: cover + meta + actions ── */
+  .contract-hero{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;display:flex;gap:18px;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap}
+  .cover-thumb{width:74px;height:104px;border-radius:9px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
+  .hero-main{flex:1;min-width:240px}
+  .hero-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .hero-title-row h1{font-size:19px;font-weight:800}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .hero-meta{display:grid;grid-template-columns:repeat(6,auto);gap:22px}
+  .hero-meta-item b{display:block;font-size:11px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+  .hero-meta-item span{font-size:13px;font-weight:700}
+  .hero-author{display:flex;align-items:center;gap:7px}
+  .hero-author img{width:22px;height:22px;border-radius:50%;object-fit:cover}
+  .hero-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .btn-out{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-out:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-icon-only{width:38px;height:38px;border-radius:10px;background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
+  .btn-icon-only:hover{color:var(--accent);border-color:var(--accent)}
+
+  /* ── Tabs ── */
+  .doc-tabs{display:flex;gap:26px;border-bottom:2px solid var(--border);margin-bottom:20px;overflow-x:auto}
+  .doc-tab{padding:0 2px 12px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;white-space:nowrap}
+  .doc-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  /* ── Two-column layout ── */
+  .layout-grid{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+
+  /* ── Document viewer card ── */
+  .doc-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+  .doc-card-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px}
+  .doc-card-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:10px}
+  .verified-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:4px 10px;border-radius:20px}
+  html[data-theme="dark"] .verified-tag{background:rgba(22,163,74,.16)}
+  .viewer-toolbar{display:flex;align-items:center;gap:8px}
+  .vt-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
+  .vt-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .vt-page-ind{font-size:12px;font-weight:700;color:var(--text-muted);padding:0 4px;white-space:nowrap}
+  .vt-zoom{font-size:12px;font-weight:700;color:var(--text-muted);padding:0 4px}
+
+  .doc-preview{background:var(--table-head);padding:26px;max-height:560px;overflow-y:auto;display:flex;justify-content:center}
+  .doc-page{background:var(--card);width:100%;max-width:560px;padding:38px 42px;border-radius:4px;box-shadow:0 2px 14px rgba(20,10,50,.10);font-size:12.5px;line-height:1.75;color:var(--text)}
+  html[data-theme="dark"] .doc-page{box-shadow:0 2px 14px rgba(0,0,0,.35)}
+  .doc-page .brand{text-align:center;font-size:15px;font-weight:800;letter-spacing:.06em;color:var(--accent);margin-bottom:22px}
+  .doc-page h3.doc-title{text-align:center;font-size:15px;font-weight:800;letter-spacing:.03em;margin-bottom:22px}
+  .doc-page p{margin-bottom:14px;color:var(--text-muted)}
+  .doc-page p b{color:var(--text)}
+  .doc-page .clause-num{font-weight:800;color:var(--text);display:block;margin-bottom:4px}
+
+  .legal-banner{display:flex;align-items:center;gap:10px;background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:700;padding:14px 20px}
+  html[data-theme="dark"] .legal-banner{background:rgba(22,163,74,.14)}
+
+  /* ── Signatures ── */
+  .sig-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .sig-card h2{font-size:14.5px;font-weight:800;margin-bottom:16px}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .sig-box{border:1px solid var(--border);border-radius:12px;padding:16px}
+  .sig-box-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .sig-box-head span{font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em}
+  .sig-role{font-size:13px;font-weight:700;margin-bottom:14px}
+  .sig-script{font-family:'Segoe Script','Brush Script MT',cursive;font-size:22px;color:var(--text);margin-bottom:10px}
+  .sig-name{font-size:12.5px;font-weight:700}
+  .sig-date{font-size:11.5px;color:var(--text-muted);margin-top:1px}
+  .mini-verified{font-size:10.5px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 9px;border-radius:20px}
+  html[data-theme="dark"] .mini-verified{background:rgba(22,163,74,.16)}
+
+  /* ── Right sidebar panels ── */
+  .side-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+  .side-panel h2{font-size:14px;font-weight:800;margin-bottom:16px}
+  .kv-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+  .kv-row:last-child{border-bottom:none}
+  .kv-row .k{color:var(--text-muted);font-weight:600}
+  .kv-row .v{font-weight:700;text-align:right}
+  .kv-row .v.accent{color:var(--green)}
+  .kv-author{display:flex;align-items:center;gap:7px}
+  .kv-author img{width:20px;height:20px;border-radius:50%;object-fit:cover}
+
+  .btn-view-history{width:100%;margin-top:14px;background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);border-radius:10px;padding:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-view-history:hover{border-color:var(--accent);color:var(--accent)}
+
+  .panel-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .panel-head-row h2{margin-bottom:0}
+  .panel-head-row a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+
+  .file-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .file-row:last-child{border-bottom:none}
+  .file-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .file-ico.pdf{background:var(--red-bg);color:var(--red)}
+  .file-ico.img{background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .file-ico.pdf{background:rgba(224,56,77,.16)}
+  html[data-theme="dark"] .file-ico.img{background:rgba(22,163,74,.16)}
+  .file-info{flex:1;min-width:0}
+  .file-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-meta{font-size:11px;color:var(--text-faint);margin-top:1px}
+  .file-date{font-size:11px;color:var(--text-faint);white-space:nowrap;margin-right:6px}
+  .file-dl{width:28px;height:28px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;cursor:pointer}
+  .file-dl:hover{color:var(--accent);border-color:var(--accent)}
+
+  .action-btn{display:flex;align-items:center;gap:10px;width:100%;background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px}
+  .action-btn:last-child{margin-bottom:0}
+  .action-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .action-btn.danger{color:var(--red)}
+  .action-btn.danger:hover{border-color:var(--red);color:var(--red)}
+  .action-btn i{font-size:13px;width:16px;text-align:center}
+
+  @media (max-width:1180px){
+    .layout-grid{grid-template-columns:1fr}
+  }
+  @media (max-width:760px){
+    .hero-meta{grid-template-columns:repeat(2,1fr);gap:14px 22px}
+    .contract-hero{flex-direction:column}
+    .hero-actions{width:100%;justify-content:flex-start}
+    .sig-grid{grid-template-columns:1fr}
+  }
+  @media (max-width:420px){
+    .hero-meta{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="crumb">
+    <a onclick="toast('Opening Contracts…')">Contracts</a>
+    <i class="fas fa-chevron-right sep"></i>
+    <a onclick="toast('Opening Signed Contracts…')">Signed Contracts</a>
+    <i class="fas fa-chevron-right sep"></i>
+    <span class="cur">CNTR-2026-00125</span>
+  </div>
+
+  <!-- Hero: cover, title, meta, actions -->
+  <div class="contract-hero">
+    <img class="cover-thumb" src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=200&q=80" alt="Book cover"/>
+    <div class="hero-main">
+      <div class="hero-title-row">
+        <h1>Exclusive Publishing Agreement</h1>
+        <span class="status-pill"><span class="dot"></span>Active</span>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><b>Contract ID</b><span>CNTR-2026-00125</span></div>
+        <div class="hero-meta-item"><b>Book Title</b><span>Bound by the Ruthless Alpha</span></div>
+        <div class="hero-meta-item"><b>Author</b>
+          <span class="hero-author"><img src="https://i.pravatar.cc/100?img=44" alt="Luna Skye"/>Luna Skye</span>
+        </div>
+        <div class="hero-meta-item"><b>Signed Date</b><span>Jun 14, 2026</span></div>
+        <div class="hero-meta-item"><b>Effective Date</b><span>Jun 14, 2026</span></div>
+        <div class="hero-meta-item"><b>Expiry Date</b><span>Jun 14, 2028</span></div>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <button class="btn-out" onclick="toast('Downloading contract PDF…')"><i class="fas fa-download"></i> Download</button>
+      <button class="btn-out" onclick="toast('Sending to printer…')"><i class="fas fa-print"></i> Print</button>
+      <button class="btn-icon-only" onclick="toast('More options')"><i class="fas fa-ellipsis"></i></button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="doc-tabs">
+    <div class="doc-tab active" data-tab="overview">Overview</div>
+    <div class="doc-tab" data-tab="terms">Terms &amp; Clauses</div>
+    <div class="doc-tab" data-tab="royalty">Royalty &amp; Payment</div>
+    <div class="doc-tab" data-tab="files">Files (3)</div>
+    <div class="doc-tab" data-tab="history">History</div>
+    <div class="doc-tab" data-tab="renewal">Renewal</div>
+  </div>
+
+  <div class="layout-grid">
+    <!-- LEFT: document viewer + signatures -->
+    <div>
+      <div class="doc-card">
+        <div class="doc-card-head">
+          <h2>Contract Document <span class="verified-tag"><i class="fas fa-shield-check"></i> Verified</span></h2>
+          <div class="viewer-toolbar">
+            <button class="vt-btn" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i></button>
+            <span class="vt-page-ind"><span id="pgNow">1</span> / 12</span>
+            <button class="vt-btn" onclick="changePage(1)"><i class="fas fa-chevron-right"></i></button>
+            <button class="vt-btn" onclick="zoom(-1)"><i class="fas fa-minus"></i></button>
+            <span class="vt-zoom" id="zoomInd">100%</span>
+            <button class="vt-btn" onclick="zoom(1)"><i class="fas fa-plus"></i></button>
+            <button class="vt-btn" onclick="toast('Downloading document…')"><i class="fas fa-download"></i></button>
+            <button class="vt-btn" onclick="toast('Opening full screen…')"><i class="fas fa-expand"></i></button>
+          </div>
+        </div>
+        <div class="doc-preview">
+          <div class="doc-page" id="docPage" style="transform:scale(1);transform-origin:top center;">
+            <div class="brand">NOVELUX</div>
+            <h3 class="doc-title">EXCLUSIVE PUBLISHING AGREEMENT</h3>
+            <p>This Exclusive Publishing Agreement ("Agreement") is made and entered into on this 14th day of June, 2026 by and between:</p>
+            <p><b>NoveluX Ltd.</b><br>A company registered under the laws of [Country], with its principal place of business at [Address] ("Publisher")</p>
+            <p>and</p>
+            <p><b>Luna Skye</b><br>Author of the literary work tentatively titled: "Bound by the Ruthless Alpha" ("Work") ("Author")</p>
+            <p><span class="clause-num">1. GRANT OF RIGHTS</span>The Author hereby grants to the Publisher the exclusive right to publish, reproduce, distribute, and make available the Work in digital and print formats throughout the world, in all languages, for the full term of copyright.</p>
+            <p><span class="clause-num">2. AUTHOR REPRESENTATIONS</span>The Author represents that the Work is original, does not infringe any third party rights, and that the Author has full right and authority to enter into this Agreement.</p>
+            <p><span class="clause-num">3. ROYALTIES AND PAYMENT</span>The Publisher shall pay royalties to the Author as set forth in the Royalty &amp; Payment section of this Agreement.</p>
+          </div>
+        </div>
+        <div class="legal-banner"><i class="fas fa-circle-check"></i> This contract is legally valid and electronically signed.</div>
+      </div>
+
+      <div class="sig-card">
+        <h2>Signatures</h2>
+        <div class="sig-grid">
+          <div class="sig-box">
+            <div class="sig-box-head"><span>Publisher</span><span class="mini-verified">Verified</span></div>
+            <div class="sig-role">NoveluX Ltd.</div>
+            <div class="sig-script">Reina Morgan</div>
+            <div class="sig-name">Reina Morgan</div>
+            <div class="sig-date">General Editor · Jun 14, 2026</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-box-head"><span>Author</span><span class="mini-verified">Verified</span></div>
+            <div class="sig-role">Luna Skye</div>
+            <div class="sig-script">Luna Skye</div>
+            <div class="sig-name">Luna Skye</div>
+            <div class="sig-date">Author · Jun 14, 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: summary, royalty, files, actions -->
+    <div>
+      <div class="side-panel">
+        <h2>Contract Summary</h2>
+        <div class="kv-row"><span class="k">Contract Type</span><span class="v">Exclusive Publishing</span></div>
+        <div class="kv-row"><span class="k">Status</span><span class="v accent">● Active</span></div>
+        <div class="kv-row"><span class="k">Contract ID</span><span class="v">CNTR-2026-00125</span></div>
+        <div class="kv-row"><span class="k">Book Title</span><span class="v">Bound by the Ruthless Alpha</span></div>
+        <div class="kv-row"><span class="k">Author</span><span class="v">Luna Skye</span></div>
+        <div class="kv-row"><span class="k">Signed Date</span><span class="v">Jun 14, 2026</span></div>
+        <div class="kv-row"><span class="k">Effective Date</span><span class="v">Jun 14, 2026</span></div>
+        <div class="kv-row"><span class="k">Expiry Date</span><span class="v">Jun 14, 2028</span></div>
+        <div class="kv-row"><span class="k">Duration</span><span class="v">2 Years</span></div>
+        <div class="kv-row"><span class="k">Assigned Editor</span>
+          <span class="v kv-author"><img src="https://i.pravatar.cc/100?img=47" alt="Reina Morgan"/>Reina Morgan</span>
+        </div>
+      </div>
+
+      <div class="side-panel">
+        <h2>Royalty &amp; Payment</h2>
+        <div class="kv-row"><span class="k">Royalty Rate</span><span class="v">70%</span></div>
+        <div class="kv-row"><span class="k">Payment Model</span><span class="v">Revenue Share</span></div>
+        <div class="kv-row"><span class="k">Minimum Payout</span><span class="v">$50.00</span></div>
+        <div class="kv-row"><span class="k">Payment Frequency</span><span class="v">Monthly</span></div>
+        <div class="kv-row"><span class="k">Next Payment Date</span><span class="v">Jul 15, 2026</span></div>
+        <button class="btn-view-history" onclick="toast('Opening payment history…')">View Payment History</button>
+      </div>
+
+      <div class="side-panel">
+        <div class="panel-head-row"><h2>Contract Files (3)</h2><a onclick="toast('Opening all files…')">View All</a></div>
+        <div class="file-row">
+          <div class="file-ico pdf"><i class="fas fa-file-pdf"></i></div>
+          <div class="file-info"><div class="file-name">Signed Contract (PDF)</div><div class="file-meta">PDF · 1.2 MB</div></div>
+          <span class="file-date">Jun 14, 2026</span>
+          <button class="file-dl" onclick="toast('Downloading Signed Contract…')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="file-row">
+          <div class="file-ico img"><i class="fas fa-file-image"></i></div>
+          <div class="file-info"><div class="file-name">Author ID Proof (JPG)</div><div class="file-meta">JPG · 2.4 MB</div></div>
+          <span class="file-date">Jun 14, 2026</span>
+          <button class="file-dl" onclick="toast('Downloading Author ID Proof…')"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="file-row">
+          <div class="file-ico pdf"><i class="fas fa-file-pdf"></i></div>
+          <div class="file-info"><div class="file-name">Work Sample (PDF)</div><div class="file-meta">PDF · 3.7 MB</div></div>
+          <span class="file-date">Jun 14, 2026</span>
+          <button class="file-dl" onclick="toast('Downloading Work Sample…')"><i class="fas fa-download"></i></button>
+        </div>
+      </div>
+
+      <div class="side-panel">
+        <h2>Contract Actions</h2>
+        <button class="action-btn" onclick="toast('Sending contract to Luna Skye…')"><i class="fas fa-paper-plane"></i> Send to Author</button>
+        <button class="action-btn" onclick="toast('Opening renewal options…')"><i class="fas fa-rotate"></i> Renew Contract</button>
+        <button class="action-btn danger" onclick="toast('Are you sure? This will terminate the contract.')"><i class="fas fa-trash"></i> Terminate Contract</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'signed-contracts.html',
+  title: 'Contract Details',
+  subtitle: 'View and manage this publishing agreement',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  hideSearch: true,
+});
+
+/* ═══════════════════════════════════════════════════════════
+   TAB SWITCHING (visual only — Overview is the fully-built tab
+   as shown in the reference design; other tabs just re-toggle
+   state so the page still feels alive)
+   ═══════════════════════════════════════════════════════════ */
+const TAB_LABELS = {
+  overview: 'Overview',
+  terms: 'Terms & Clauses',
+  royalty: 'Royalty & Payment',
+  files: 'Files',
+  history: 'History',
+  renewal: 'Renewal',
+};
+document.querySelectorAll('.doc-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const key = tab.dataset.tab;
+    if (key !== 'overview') toast(`Opening ${TAB_LABELS[key]}…`);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DOCUMENT VIEWER — page nav + zoom (visual only, single page
+   of sample content is shown regardless of page number)
+   ═══════════════════════════════════════════════════════════ */
+let currentPage = 1;
+let currentZoom = 100;
+const TOTAL_PAGES = 12;
+
+function changePage(delta){
+  const next = currentPage + delta;
+  if (next < 1 || next > TOTAL_PAGES) return;
+  currentPage = next;
+  document.getElementById('pgNow').textContent = currentPage;
+}
+
+function zoom(delta){
+  const next = currentZoom + (delta * 10);
+  if (next < 50 || next > 150) return;
+  currentZoom = next;
+  document.getElementById('zoomInd').textContent = currentZoom + '%';
+  document.getElementById('docPage').style.transform = `scale(${currentZoom / 100})`;
+}
+</script>
+</body>
+</html>

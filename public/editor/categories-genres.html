@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Categories & Genres — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row: tabs left, add button right ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
+  .top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px}
+  .top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.purple{background:#fde3ee;color:var(--accent)}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.pink{background:rgba(255,0,80,.16)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Table card ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}
+  .tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;flex-wrap:wrap}
+  .tc-head h2{font-size:15px;font-weight:800}
+  .tc-head-right{display:flex;align-items:center;gap:10px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;width:230px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:760px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+  .cat-cell{display:flex;align-items:center;gap:12px}
+  .cat-icn{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .cat-name{font-weight:700;font-size:13px}
+  .cat-desc{color:var(--text-muted);font-size:12px;line-height:1.4;max-width:260px}
+  .genre-count{font-weight:600;color:var(--accent);font-size:12.5px}
+  .plain-cell{font-weight:600;font-size:12.5px}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.inactive{background:var(--table-head);color:var(--text-faint)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.inactive .dot{background:var(--text-faint)}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  /* ── Popular genres panel ── */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:15px;font-weight:800}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+  .genre-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+  .genre-card{border:1px solid var(--border);border-radius:13px;padding:16px 12px;text-align:center;transition:.15s;cursor:pointer}
+  .genre-card:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(255,0,80,.10)}
+  .genre-ico{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;margin:0 auto 10px}
+  .genre-name{font-size:12.5px;font-weight:700;margin-bottom:4px}
+  .genre-books{font-size:11px;color:var(--text-muted);margin-bottom:8px}
+  .genre-footer{font-size:9px;color:var(--text-faint);margin-top:8px}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} .genre-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} .genre-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:680px){
+    .tc-head{flex-direction:column;align-items:stretch}
+    .tc-head-right{flex-direction:column;align-items:stretch}
+    .tc-search{width:100%}
+    .btn-filters{justify-content:center}
+    .page-hdr-row{flex-direction:column;align-items:stretch}
+    .btn-add{justify-content:center}
+
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Category Name"]{align-items:flex-start}
+    td[data-label="Category Name"]::before{display:none}
+    td[data-label="Description"]{align-items:flex-start}
+    .cat-desc{max-width:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} .genre-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <div class="top-tabs">
+      <div class="top-tab active" data-view="categories">Categories</div>
+      <div class="top-tab" data-view="genres">Genres</div>
+    </div>
+    <button class="btn-add" id="addBtn"><i class="fas fa-plus"></i> <span id="addBtnLabel">Add New Category</span></button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico purple"><i class="fas fa-grip"></i></div><span class="stat-delta">+2 from last month</span></div>
+      <div class="stat-num">18</div>
+      <div class="stat-lbl">Total Categories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-book"></i></div><span class="stat-delta">+6 from last month</span></div>
+      <div class="stat-num">86</div>
+      <div class="stat-lbl">Total Genres</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-shuffle"></i></div><span class="stat-delta">+3.2% from last month</span></div>
+      <div class="stat-num">96.5%</div>
+      <div class="stat-lbl">Active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-tag"></i></div><span class="stat-delta">+18% from last month</span></div>
+      <div class="stat-num">12,456</div>
+      <div class="stat-lbl">Books Assigned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico pink"><i class="fas fa-eye"></i></div><span class="stat-delta">+21% from last month</span></div>
+      <div class="stat-num">24.8M</div>
+      <div class="stat-lbl">Total Views</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="tc-head">
+      <h2 id="tableTitle">All Categories</h2>
+      <div class="tc-head-right">
+        <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search categories..."/></div>
+        <button class="btn-filters"><i class="fas fa-sliders"></i> Filters</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination-row">
+      <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>18</b> categories</div>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+  <!-- Popular genres -->
+  <div class="panel" id="popularPanel">
+    <div class="panel-head"><h2>Popular Genres</h2><a onclick="toast('Opening full genre list…')">View All Genres</a></div>
+    <div class="genre-grid" id="genreGrid"></div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'categories-genres.html',
+  title: 'Categories & Genres',
+  subtitle: 'Organize and manage all categories and genres',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search by category or genre name...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (value) => {
+    document.getElementById('tableSearch').value = value;
+    refresh();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const CATEGORIES = [
+  { name:'Romance', icon:'fa-heart', bg:'#ffe1eb', color:'#ff0050', desc:'Stories about love, relationships, and emotional connections.', genres:17, books:'5,284', status:'active' },
+  { name:'Billionaire', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', desc:'Billionaire and rich man romance stories filled with drama and passion.', genres:8, books:'2,156', status:'active' },
+  { name:'Werewolf', icon:'fa-paw', bg:'#eef0f2', color:'#5b6470', desc:'Werewolf, alpha, mate and pack stories.', genres:10, books:'1,896', status:'active' },
+  { name:'Vampire', icon:'fa-droplet', bg:'#fde3e3', color:'#e0384d', desc:'Vampire, bloodline, and immortal romance stories.', genres:7, books:'1,234', status:'active' },
+  { name:'Fantasy', icon:'fa-wand-magic-sparkles', bg:'#ece3fd', color:'#7c5cfc', desc:'Magic, kingdoms, mythical creatures and epic adventures.', genres:11, books:'2,045', status:'active' },
+  { name:'Mafia', icon:'fa-gun', bg:'#e7e7ea', color:'#26262b', desc:'Mafia, crime families, power and dangerous love.', genres:6, books:'1,102', status:'active' },
+  { name:'Urban', icon:'fa-building', bg:'#e3ecfd', color:'#2f7de1', desc:'Modern life, city drama, and contemporary stories.', genres:7, books:'1,567', status:'active' },
+  { name:'Marriage', icon:'fa-ring', bg:'#fef3d8', color:'#d97706', desc:'Marriage of convenience, arranged marriage and unions.', genres:6, books:'876', status:'active' },
+  { name:'Revenge', icon:'fa-fire', bg:'#fde3e3', color:'#e0384d', desc:'Betrayal, comeuppance and long-awaited reckonings.', genres:5, books:'742', status:'active' },
+  { name:'Second Chance', icon:'fa-rotate-left', bg:'#ffe1eb', color:'#ff0050', desc:'Reunited lovers and rekindled relationships.', genres:4, books:'689', status:'inactive' },
+];
+
+const GENRES = [
+  { name:'CEO Romance', cat:'Billionaire', icon:'fa-briefcase', bg:'#e3ecfd', color:'#2f7de1', books:'1,245', status:'active' },
+  { name:'Alpha Romance', cat:'Werewolf', icon:'fa-paw', bg:'#eef0f2', color:'#5b6470', books:'987', status:'active' },
+  { name:'Secret Baby', cat:'Romance', icon:'fa-shield', bg:'#fef3d8', color:'#d97706', books:'876', status:'active' },
+  { name:'Enemies to Lovers', cat:'Romance', icon:'fa-heart-crack', bg:'#fde3e3', color:'#e0384d', books:'754', status:'active' },
+  { name:'Second Chance', cat:'Romance', icon:'fa-rotate-left', bg:'#ffe1eb', color:'#ff0050', books:'689', status:'active' },
+  { name:'Royal Romance', cat:'Fantasy', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', books:'612', status:'active' },
+  { name:'Mafia Romance', cat:'Mafia', icon:'fa-gun', bg:'#e7e7ea', color:'#26262b', books:'588', status:'active' },
+  { name:'Vampire Romance', cat:'Vampire', icon:'fa-droplet', bg:'#fde3e3', color:'#e0384d', books:'503', status:'active' },
+  { name:'Arranged Marriage', cat:'Marriage', icon:'fa-ring', bg:'#fef3d8', color:'#d97706', books:'411', status:'active' },
+  { name:'Forbidden Love', cat:'Romance', icon:'fa-ban', bg:'#ffe1eb', color:'#ff0050', books:'298', status:'inactive' },
+];
+
+const POPULAR_GENRES = [
+  { name:'CEO Romance', icon:'fa-briefcase', bg:'#e3ecfd', color:'#2f7de1', books:'1,245 books' },
+  { name:'Alpha Romance', icon:'fa-paw', bg:'#eef0f2', color:'#5b6470', books:'987 books' },
+  { name:'Secret Baby', icon:'fa-shield', bg:'#fef3d8', color:'#d97706', books:'876 books' },
+  { name:'Enemies to Lovers', icon:'fa-heart-crack', bg:'#fde3e3', color:'#e0384d', books:'754 books' },
+  { name:'Second Chance', icon:'fa-rotate-left', bg:'#ffe1eb', color:'#ff0050', books:'689 books' },
+  { name:'Royal Romance', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', books:'612 books' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════ */
+let currentView = 'categories';
+
+function statusPillHtml(status){
+  const active = status === 'active';
+  return `<span class="status-pill${active?'':' inactive'}"><span class="dot"></span>${active?'Active':'Inactive'}</span>`;
+}
+
+function renderCategoriesTable(list){
+  document.getElementById('tableHead').innerHTML = `<tr>
+    <th>Category Name</th><th>Description</th><th>Genres</th><th>Books</th><th>Status</th><th>Actions</th>
+  </tr>`;
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="6"><i class="fas fa-inbox"></i>No categories match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(c => `
+    <tr>
+      <td data-label="Category Name">
+        <div class="cat-cell">
+          <div class="cat-icn" style="background:${c.bg};color:${c.color}"><i class="fas ${c.icon}"></i></div>
+          <div class="cat-name">${c.name}</div>
+        </div>
+      </td>
+      <td data-label="Description"><div class="cat-desc">${c.desc}</div></td>
+      <td data-label="Genres" class="genre-count">${c.genres} genres</td>
+      <td data-label="Books" class="plain-cell">${c.books}</td>
+      <td data-label="Status">${statusPillHtml(c.status)}</td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="Edit" onclick="toast('Editing \\'${c.name}\\'…')"><i class="fas fa-pen"></i></button>
+          <button class="act-btn" title="More" onclick="toast('More actions for \\'${c.name}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderGenresTable(list){
+  document.getElementById('tableHead').innerHTML = `<tr>
+    <th>Genre Name</th><th>Category</th><th>Books</th><th>Status</th><th>Actions</th>
+  </tr>`;
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No genres match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(g => `
+    <tr>
+      <td data-label="Genre Name">
+        <div class="cat-cell">
+          <div class="cat-icn" style="background:${g.bg};color:${g.color}"><i class="fas ${g.icon}"></i></div>
+          <div class="cat-name">${g.name}</div>
+        </div>
+      </td>
+      <td data-label="Category" class="plain-cell">${g.cat}</td>
+      <td data-label="Books" class="plain-cell">${g.books}</td>
+      <td data-label="Status">${statusPillHtml(g.status)}</td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="Edit" onclick="toast('Editing \\'${g.name}\\'…')"><i class="fas fa-pen"></i></button>
+          <button class="act-btn" title="More" onclick="toast('More actions for \\'${g.name}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function currentFiltered(){
+  const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+  const source = currentView === 'categories' ? CATEGORIES : GENRES;
+  if (!q) return source;
+  return source.filter(x => x.name.toLowerCase().includes(q) || (x.desc && x.desc.toLowerCase().includes(q)) || (x.cat && x.cat.toLowerCase().includes(q)));
+}
+
+function refresh(){
+  const list = currentFiltered();
+  if (currentView === 'categories') renderCategoriesTable(list);
+  else renderGenresTable(list);
+  renderPageInfo(list.length);
+}
+
+function renderPageInfo(count){
+  const label = currentView === 'categories' ? 'categories' : 'genres';
+  const total = currentView === 'categories' ? 18 : 86;
+  const shown = Math.min(8, count);
+  document.getElementById('pageInfo').innerHTML = `Showing <b>1</b> to <b>${shown}</b> of <b>${total}</b> ${label}`;
+}
+
+/* ── Top tab switching (Categories / Genres) ── */
+document.querySelectorAll('.top-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    document.getElementById('tableTitle').textContent = currentView === 'categories' ? 'All Categories' : 'All Genres';
+    document.getElementById('addBtnLabel').textContent = currentView === 'categories' ? 'Add New Category' : 'Add New Genre';
+    document.getElementById('tableSearch').placeholder = currentView === 'categories' ? 'Search categories...' : 'Search genres...';
+    document.getElementById('tableSearch').value = '';
+    renderPagination();
+    refresh();
+  });
+});
+
+/* ── Popular genres grid ── */
+function renderPopularGenres(){
+  document.getElementById('genreGrid').innerHTML = POPULAR_GENRES.map(g => `
+    <div class="genre-card" onclick="toast('Opening \\'${g.name}\\'…')">
+      <div class="genre-ico" style="background:${g.bg};color:${g.color}"><i class="fas ${g.icon}"></i></div>
+      <div class="genre-name">${g.name}</div>
+      <div class="genre-books">${g.books}</div>
+      ${statusPillHtml('active')}
+    </div>`).join('');
+}
+
+/* ── Pagination (visual, matches book-management.html pattern) ── */
+function renderPagination(){
+  const wrap = document.getElementById('pageBtns');
+  const pages = currentView === 'categories' ? [1,2,3] : [1,2,3,4,5,'...',11];
+  wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
+    pages.map(p => p === '...' ? `<span class="pg-dots" style="color:var(--text-faint);font-size:12px;padding:0 2px">…</span>` : `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
+    `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
+  wrap.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+/* ── Add button + search wiring ── */
+document.getElementById('addBtn').addEventListener('click', () => {
+  toast(currentView === 'categories' ? 'Opening new category form…' : 'Opening new genre form…');
+});
+document.getElementById('tableSearch').addEventListener('input', refresh);
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+renderPagination();
+renderPopularGenres();
+refresh();
+</script>
+</body>
+</html>

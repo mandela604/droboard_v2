@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>All Posts — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(212,160,23,.3);border-radius:6px}
+
+.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.page-head h1{font-size:20px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-faint);margin-top:4px}
+.btn{font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.13s}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.primary:hover{color:#fff;filter:brightness(1.06)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border)}
+.search-box{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:12.5px}
+.select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
+.seg{display:flex;border:1px solid var(--input-border);border-radius:10px;overflow:hidden}
+.seg button{padding:9px 12px;border:none;background:var(--input-bg);color:var(--text-faint);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+.seg button.active{background:var(--accent);color:#fff}
+
+/* list header row */
+.list-cols{display:grid;grid-template-columns:minmax(0,3.2fr) 100px 90px 90px 90px 100px 110px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
+.list-cols span.num{text-align:right}
+
+/* list rows */
+.post-row{display:grid;grid-template-columns:minmax(0,3.2fr) 100px 90px 90px 90px 100px 110px 70px;gap:10px;align-items:center;padding:9px 18px;border-bottom:1px solid var(--border);transition:.12s}
+.post-row:hover{background:var(--hover)}
+.post-row:last-child{border-bottom:none}
+
+.post-main{display:flex;align-items:center;gap:11px;min-width:0}
+.post-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
+.post-thumb.text-only{display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:13px}
+.post-info{min-width:0}
+.post-text{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.post-meta{font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.post-meta a{color:var(--text-muted);font-weight:600}
+.post-meta a:hover{color:var(--gold)}
+
+.type-chip{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-block}
+
+.status-chip{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;display:inline-flex;align-items:center;gap:4px}
+.status-chip.published{background:var(--green-bg);color:var(--green)}
+.status-chip.flagged{background:var(--red-bg);color:var(--red)}
+.status-chip.removed{background:var(--table-head);color:var(--text-faint)}
+.status-chip i{font-size:6px}
+
+.num-cell{font-size:12px;font-weight:700;text-align:right;color:var(--text)}
+.num-cell.faint{color:var(--text-muted);font-weight:600}
+
+.row-actions{display:flex;justify-content:flex-end;gap:4px}
+.icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
+.icon-btn:hover{background:var(--table-head);color:var(--gold)}
+
+.dense .post-row{padding-top:6px;padding-bottom:6px}
+.dense .post-thumb{width:28px;height:28px}
+.dense .post-text{font-size:12px}
+
+/* pagination */
+.list-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px}
+.list-footer-info{font-size:11.5px;color:var(--text-faint)}
+.pager{display:flex;align-items:center;gap:5px}
+.pager button{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.pager button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.pager button.active{background:var(--accent);border-color:transparent;color:#fff}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+.pager-gap{color:var(--text-faint);font-size:11px;padding:0 2px}
+
+.empty-state{padding:50px 20px;text-align:center;color:var(--text-faint)}
+.empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
+
+@media (max-width:900px){
+  .list-cols, .post-row{grid-template-columns:minmax(0,1fr) 90px 70px}
+  .list-cols span:nth-child(4),.list-cols span:nth-child(5),.list-cols span:nth-child(6),
+  .post-row .col-hide{display:none}
+}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div id="postsRoot">
+  <div class="page-head">
+    <div>
+      <h1>All Posts</h1>
+      <p>Every status update and community post — <span id="totalCountLbl">…</span> posts.</p>
+    </div>
+    <button class="btn primary"><i class="fas fa-flag"></i> Review Flagged</button>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search post text or author…"/></div>
+      <select class="select" id="typeFilter">
+        <option value="">All Types</option>
+        <option value="Status">Status</option>
+        <option value="Poll">Poll</option>
+        <option value="Announcement">Announcement</option>
+        <option value="Fan Art">Fan Art</option>
+      </select>
+      <select class="select" id="statusFilter">
+        <option value="">All Statuses</option>
+        <option value="published">Published</option>
+        <option value="flagged">Flagged</option>
+        <option value="removed">Removed</option>
+      </select>
+      <select class="select" id="sortFilter">
+        <option value="recent">Sort: Most Recent</option>
+        <option value="likes">Sort: Most Liked</option>
+        <option value="comments">Sort: Most Comments</option>
+        <option value="shares">Sort: Most Shared</option>
+      </select>
+      <div class="seg" id="densitySeg">
+        <button data-density="normal" class="active"><i class="fas fa-bars"></i></button>
+        <button data-density="dense"><i class="fas fa-list"></i></button>
+      </div>
+    </div>
+
+    <div class="list-cols">
+      <span>Post</span>
+      <span>Type</span>
+      <span class="num">Likes</span>
+      <span class="num">Comments</span>
+      <span class="num">Shares</span>
+      <span>Status</span>
+      <span>Posted</span>
+      <span></span>
+    </div>
+
+    <div id="postList"></div>
+
+    <div class="list-footer">
+      <div class="list-footer-info" id="footerInfo"></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SuperAdminSidebar.attach('#postsRoot', {
+  activeItem: 'all-posts',
+  title: 'All Posts',
+  subtitle: 'Every status update and community post on the platform',
+  user: { name: 'Tobi Adenuga', role: 'Super Admin', avatar: 'https://i.pravatar.cc/100?img=68' },
+  notifCount: 9,
+  searchPlaceholder: 'Search everything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
+const TYPE_COLORS = { Status:'blue', Poll:'purple', Announcement:'gold', 'Fan Art':'green' };
+const TYPES = Object.keys(TYPE_COLORS);
+const STATUSES = ['published','published','published','published','published','flagged','removed'];
+
+/* ─────────────────────────────────────────
+   MOCK DATASET GENERATOR — simulates a platform-scale feed
+───────────────────────────────────────── */
+const AUTHORS = ['Zara_M','Marcus Webb Jr.','Nadia Cross','Kelo Writes','R.K. Vance','Ife Solarin','Diego Marsh','Lena Okafor','TJ Rourke','Aminah Cole','Chidi Blackwood','Priya Nandan'];
+const SNIPPETS = [
+  'Chapter 42 drops tomorrow at midnight 👀 who\'s ready?',
+  'Poll: should the Duke forgive her or not??',
+  'New cover reveal for "Bound to the Alpha King" 🐺',
+  'Thank you all for 1 million reads on this story!!',
+  'Sneak peek of next week\'s plot twist...',
+  'Fan art from @readerXO — this is INCREDIBLE',
+  'PSA: uploads paused for maintenance, back in 1hr',
+  'Which couple do you ship the hardest? Comment below',
+  'Behind the scenes of how I plot my outlines',
+  'We hit 500 chapters across the series today 🎉',
+  'Reminder: no spoilers in the comments please 🙏',
+  'Q&A time — drop your questions for the author',
+];
+
+function generatePosts(n){
+  const out = [];
+  for(let i=0;i<n;i++){
+    const type = TYPES[i % TYPES.length];
+    const status = STATUSES[i % STATUSES.length];
+    const likes = Math.floor(Math.pow((i%600)+1, 2.0) * 2.3) + Math.floor(Math.random()*300);
+    const comments = Math.round(likes * (0.03 + Math.random()*0.05));
+    const shares = Math.round(likes * (0.01 + Math.random()*0.03));
+    const hoursAgo = i % 720;
+    const hasImage = i % 3 !== 0;
+    out.push({
+      id: 'pt-'+(200000+i),
+      text: SNIPPETS[i % SNIPPETS.length],
+      author: AUTHORS[i % AUTHORS.length],
+      type, status, likes, comments, shares, hoursAgo,
+      thumb: hasImage ? `https://picsum.photos/seed/post${i}/80/80` : null,
+      avatar: `https://i.pravatar.cc/40?img=${(i%70)+1}`,
+    });
+  }
+  return out;
+}
+
+const ALL_POSTS = generatePosts(3200); // simulated slice of a much larger feed
+let filtered = ALL_POSTS.slice();
+let page = 1;
+let pageSize = 25;
+let density = 'normal';
+
+function fmtNum(n){
+  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
+  return n.toString();
+}
+function fmtHours(h){
+  if(h===0) return 'Just now';
+  if(h<24) return h+'h ago';
+  if(h<24*30) return Math.floor(h/24)+'d ago';
+  return Math.floor(h/(24*30))+'mo ago';
+}
+
+function renderStatCards(){
+  const total = ALL_POSTS.length;
+  const published = ALL_POSTS.filter(p=>p.status==='published').length;
+  const flagged = ALL_POSTS.filter(p=>p.status==='flagged').length;
+  const totalEngagement = ALL_POSTS.reduce((s,p)=>s+p.likes+p.comments+p.shares,0);
+  document.getElementById('totalCountLbl').textContent = fmtNum(total) + '+';
+  const stats = [
+    { n: fmtNum(total)+'+', l:'Total Posts', ico:'fa-rss', cls:'gold' },
+    { n: fmtNum(published), l:'Published', ico:'fa-circle-check', cls:'green' },
+    { n: flagged, l:'Flagged for Review', ico:'fa-flag', cls:'red' },
+    { n: fmtNum(totalEngagement), l:'Total Engagement', ico:'fa-heart', cls:'blue' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const type = document.getElementById('typeFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  const sort = document.getElementById('sortFilter').value;
+
+  filtered = ALL_POSTS.filter(p=>{
+    if(q && !(p.text.toLowerCase().includes(q) || p.author.toLowerCase().includes(q) || p.id.includes(q))) return false;
+    if(type && p.type !== type) return false;
+    if(status && p.status !== status) return false;
+    return true;
+  });
+
+  if(sort==='recent') filtered.sort((a,b)=>a.hoursAgo-b.hoursAgo);
+  else if(sort==='likes') filtered.sort((a,b)=>b.likes-a.likes);
+  else if(sort==='comments') filtered.sort((a,b)=>b.comments-a.comments);
+  else if(sort==='shares') filtered.sort((a,b)=>b.shares-a.shares);
+
+  page = 1;
+  renderList();
+}
+
+function renderList(){
+  const start = (page-1)*pageSize;
+  const pageItems = filtered.slice(start, start+pageSize);
+  const listEl = document.getElementById('postList');
+  listEl.className = density==='dense' ? 'dense' : '';
+
+  if(pageItems.length === 0){
+    listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No posts match your filters.</div>`;
+  } else {
+    listEl.innerHTML = pageItems.map(p=>`
+      <div class="post-row">
+        <div class="post-main">
+          ${p.thumb ? `<img class="post-thumb" src="${p.thumb}" alt=""/>` : `<div class="post-thumb text-only"><i class="fas fa-message"></i></div>`}
+          <div class="post-info">
+            <div class="post-text">${p.text}</div>
+            <div class="post-meta">by <a href="#">${p.author}</a> · ${p.id}</div>
+          </div>
+        </div>
+        <div class="col-hide"><span class="type-chip" style="background:${BG_MAP[TYPE_COLORS[p.type]]};color:${ICO_MAP[TYPE_COLORS[p.type]]}">${p.type}</span></div>
+        <div class="col-hide num-cell">${fmtNum(p.likes)}</div>
+        <div class="col-hide num-cell faint">${fmtNum(p.comments)}</div>
+        <div class="num-cell">${fmtNum(p.shares)}</div>
+        <div><span class="status-chip ${p.status}"><i class="fas fa-circle"></i>${p.status}</span></div>
+        <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtHours(p.hoursAgo)}</div>
+        <div class="row-actions">
+          <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
+          <button class="icon-btn" title="More"><i class="fas fa-ellipsis-vertical"></i></button>
+        </div>
+      </div>`).join('');
+  }
+
+  renderFooter();
+}
+
+function renderFooter(){
+  const total = filtered.length;
+  const start = total === 0 ? 0 : (page-1)*pageSize+1;
+  const end = Math.min(page*pageSize, total);
+  document.getElementById('footerInfo').textContent = `Showing ${start}–${end} of ${fmtNum(total)} posts`;
+
+  const totalPages = Math.max(1, Math.ceil(total/pageSize));
+  let html = `<button ${page===1?'disabled':''} data-p="prev"><i class="fas fa-chevron-left"></i></button>`;
+  const pagesToShow = new Set([1, totalPages, page, page-1, page+1]);
+  let last = 0;
+  for(let p=1;p<=totalPages;p++){
+    if(!pagesToShow.has(p)) continue;
+    if(p - last > 1) html += `<span class="pager-gap">…</span>`;
+    html += `<button data-p="${p}" class="${p===page?'active':''}">${p}</button>`;
+    last = p;
+  }
+  html += `<button ${page===totalPages?'disabled':''} data-p="next"><i class="fas fa-chevron-right"></i></button>`;
+  document.getElementById('pager').innerHTML = html;
+
+  document.querySelectorAll('#pager button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const p = btn.dataset.p;
+      const totalPages2 = Math.max(1, Math.ceil(filtered.length/pageSize));
+      if(p==='prev') page = Math.max(1, page-1);
+      else if(p==='next') page = Math.min(totalPages2, page+1);
+      else page = parseInt(p,10);
+      renderList();
+      document.querySelector('.panel').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('typeFilter').addEventListener('change', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortFilter').addEventListener('change', applyFilters);
+document.querySelectorAll('#densitySeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#densitySeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    density = btn.dataset.density;
+    renderList();
+  });
+});
+
+function init(){
+  renderStatCards();
+  document.getElementById('sortFilter').value = 'recent';
+  applyFilters();
+}
+init();
+</script>
+</body>
+</html>

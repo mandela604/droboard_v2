@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Platform Content — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --bg:#f4f4fb; --card:#ffffff; --text:#1a1730; --text-muted:#71708a; --text-faint:#9694ac;
+  --border:#eceaf5; --input-bg:#ffffff; --input-border:#e4e2f1; --hover:#f7f6fd; --table-head:#faf9ff;
+  --accent:#ff0050; --accent-soft:rgba(255,0,80,.1);
+  --green:#16a34a; --green-bg:#e2f8ea; --blue:#2f7de1; --blue-bg:#e3ecfd;
+  --amber:#d97706; --amber-bg:#fef3d8; --red:#e0384d; --red-bg:#fde3e3;
+  --purple:#5b4bcf; --purple-bg:#ece9fb;
+  --radius:14px; --shadow:0 1px 2px rgba(20,10,50,.04), 0 8px 24px -12px rgba(20,10,50,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:600px}
+.wb-new-btn{background:#fff;color:var(--accent);border:none;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.wb-new-btn:hover{opacity:.92}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:12px}
+.toolbar select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+
+.filter-row{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.filter-pill{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:4px}
+.filter-pill:hover{border-color:var(--accent)}
+.filter-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill-count{font-size:9px;padding:1px 5px;border-radius:10px;background:var(--table-head);color:var(--text-faint)}
+.filter-pill.on .pill-count{background:rgba(255,255,255,.25);color:#fff}
+
+.book-row{display:flex;gap:14px;align-items:center;border:2px solid var(--border);border-radius:14px;padding:13px 15px;margin-bottom:10px;transition:.15s;background:var(--card)}
+.book-row:hover{border-color:var(--accent);box-shadow:0 3px 16px rgba(255,0,80,.08)}
+.book-cover{width:52px;height:70px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--table-head);border:1px solid var(--border)}
+.book-info{flex:1;min-width:0}
+.book-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.book-title{font-size:13.5px;font-weight:800}
+.genre-tag{font-size:9px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--table-head);color:var(--text-muted);white-space:nowrap}
+.status-pill{font-size:9px;font-weight:800;padding:2px 9px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.ongoing{background:var(--blue-bg);color:var(--blue)}
+.status-pill.completed{background:var(--green-bg);color:var(--green)}
+.status-pill.draft{background:var(--table-head);color:var(--text-faint)}
+.status-pill.paused{background:var(--amber-bg);color:var(--amber)}
+.book-author-row{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.book-author-row img{width:16px;height:16px;border-radius:50%;object-fit:cover}
+.book-stats{display:flex;gap:14px;flex-wrap:wrap}
+.book-stat{font-size:10.5px;color:var(--text-faint);font-weight:600;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.book-stat i{color:var(--text-faint);font-size:9.5px}
+.book-actions{display:flex;gap:6px;flex-shrink:0}
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.empty-msg i{font-size:28px;margin-bottom:8px;display:block;opacity:.35}
+
+.pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.pagination-info{font-size:11.5px;color:var(--text-faint);font-weight:600}
+.pagination-controls{display:flex;align-items:center;gap:6px}
+.page-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.35;cursor:not-allowed}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:560px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s;margin:auto}
+.modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
+.modal-box.small{max-width:420px}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head h3{font-size:15px;font-weight:800}
+.modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
+.modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow-y:auto}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.field-group textarea,.field-group input,.field-group select{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);resize:vertical}
+.field-group textarea{min-height:64px}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.modal-error.show{display:block}
+.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
+.modal-box-actions .confirm-btn{background:var(--accent);border-color:transparent;color:#fff}
+.modal-box-actions .confirm-btn.danger-variant{background:var(--red)}
+.modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);background:#1a1730;color:#fff;padding:10px 18px;border-radius:24px;font-size:12.5px;font-weight:600;z-index:2000;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){
+  .grid-4{grid-template-columns:1fr}
+  .field-row{grid-template-columns:1fr}
+  .book-row{flex-wrap:wrap}
+  .book-actions{width:100%;justify-content:flex-end}
+  .pagination{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<!-- This is the ONLY thing that gets wrapped by the sidebar shell. -->
+<div id="pcRoot">
+  <div class="welcome-banner">
+    <div>
+      <div class="welcome-eyebrow">Platform Content</div>
+      <div class="welcome-title">All Platform Books 📚</div>
+      <div class="welcome-sub">Every book and story published on Droboard, across every author — create, edit, or remove entries, and use this list as the source when picking a story to feature in a Campaign.</div>
+    </div>
+    <button class="wb-new-btn" id="newBookBtn"><i class="fas fa-plus"></i> Add Book</button>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-book" style="color:var(--accent)"></i> All Books</h2>
+      <span class="count-chip" id="bookCount">—</span>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search title or author…"/></div>
+      <select id="genreSel"><option value="">All Genres</option></select>
+      <select id="sortSel">
+        <option value="recent">Recently Added</option>
+        <option value="rating">Highest Rated</option>
+        <option value="reads">Most Reads</option>
+        <option value="chapters">Most Chapters</option>
+        <option value="alpha">A → Z</option>
+      </select>
+    </div>
+
+    <div class="filter-row" id="filterRow"></div>
+    <div id="bookList"></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- Create / Edit modal -->
+<div class="modal-overlay" id="formModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3 id="formModalTitle">Add Book</h3>
+        <p id="formModalSub">Add a new book or story to the platform catalog.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-form-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label>Title</label>
+        <input id="fTitle" placeholder="e.g. Bound by the Ruthless Alpha"/>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Author</label>
+          <input id="fAuthor" placeholder="e.g. Chioma Okafor"/>
+        </div>
+        <div class="field-group">
+          <label>Genre</label>
+          <select id="fGenre">
+            <option>Romance & Betrayal</option>
+            <option>Billionaire & CEO</option>
+            <option>Werewolf & Fantasy</option>
+            <option>Mafia & Urban</option>
+            <option>Historical & Regency</option>
+            <option>Campus & Revenge</option>
+            <option>Twist & Drama</option>
+            <option>Elegy & Heartbreak</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Cover Image URL</label>
+        <input id="fCover" placeholder="https://…"/>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Status</label>
+          <select id="fStatus">
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+            <option value="draft">Draft</option>
+            <option value="paused">Paused</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Rating (0–5)</label>
+          <input type="number" id="fRating" min="0" max="5" step="0.1" placeholder="e.g. 4.5"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Chapters</label>
+          <input type="number" id="fChapters" min="0" placeholder="e.g. 24"/>
+        </div>
+        <div class="field-group">
+          <label>Total Words</label>
+          <input type="number" id="fWords" min="0" placeholder="e.g. 96000"/>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Total Reads</label>
+        <input type="number" id="fReads" min="0" placeholder="e.g. 171000"/>
+      </div>
+      <div class="modal-error" id="formModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-form-modal">Cancel</button>
+        <button class="confirm-btn" id="formConfirmBtn" data-action="submit-form"><i class="fas fa-check"></i> Save Book</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="deleteModalOv">
+  <div class="modal-box small">
+    <div class="modal-box-head">
+      <div>
+        <h3>Delete book</h3>
+        <p id="deleteModalSub">This action cannot be undone.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-delete-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="modal-error" id="deleteModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-delete-modal">Cancel</button>
+        <button class="confirm-btn danger-variant" id="deleteConfirmBtn" data-action="submit-delete"><i class="fas fa-trash"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Shared shell + data components (same ones you sent me) -->
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+
+<script>
+'use strict';
+
+/* ── ATTACH SHELL FIRST — everything else queries elements this creates ── */
+const NAV_ITEMS = ChiefEditorSidebar.DEFAULT_NAV.concat([
+  { key:'platform-content', label:'Platform Content', href:'platform-content.html', icon:'fa-book-open' }
+]);
+const shell = ChiefEditorSidebar.attach('#pcRoot', {
+  navItems: NAV_ITEMS,
+  activeItem: 'platform-content',
+  title: 'Platform Content',
+  subtitle: 'Every book on Droboard, across every author',
+  user: { name:'Adaeze Bello', role:'Chief Editor', avatar:'https://i.pravatar.cc/100?img=47' },
+  notifCount: 0,
+  searchPlaceholder: 'Search anything…',
+  onSearch: (v) => { document.getElementById('searchInput').value = v; currentPage = 1; applyFilters(); },
+});
+
+/* Pull the real notif count from the shared data source once it resolves */
+ChiefEditorData.getDashboard().then(d => { if (shell) shell.setNotifCount(d.openReports || 0); });
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtNum(n){n=n||0;return n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n);}
+function fmtDate(d){const dt=new Date(d);return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+
+const PAGE_SIZE=6;
+let currentPage=1;
+let activeGenre='all';
+let editingId=null;
+let deleteTargetId=null;
+
+/* idCounter + genId MUST be declared before BOOKS uses them — this was the crash before */
+let idCounter=1;
+function genId(){return 'BK-'+String(idCounter++).padStart(4,'0');}
+
+let BOOKS=[
+  {id:genId(),title:'Bound by the Ruthless Alpha',author:'Chioma Okafor',cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg',genre:'Romance & Betrayal',status:'ongoing',chapters:31,words:124000,rating:4.5,reads:171000,dateAdded:'2025-01-12'},
+  {id:genId(),title:"The CEO's Hidden Son",author:'Luna Skye',cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg',genre:'Billionaire & CEO',status:'ongoing',chapters:24,words:96000,rating:4.3,reads:96000,dateAdded:'2025-03-03'},
+  {id:genId(),title:"Wolf King's Vow",author:'Elena Vasquez',cover:'https://i.postimg.cc/MXBR6bfY/wolf3.jpg',genre:'Werewolf & Fantasy',status:'ongoing',chapters:12,words:48000,rating:4.1,reads:48000,dateAdded:'2024-08-19'},
+  {id:genId(),title:'Betrayed by the Mafia Prince',author:'Marcus Webb Jr.',cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg',genre:'Mafia & Urban',status:'paused',chapters:7,words:28000,rating:3.9,reads:28000,dateAdded:'2025-11-02'},
+  {id:genId(),title:"The Duke's Secret",author:'Isabelle Moreau',cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg',genre:'Historical & Regency',status:'completed',chapters:31,words:155000,rating:4.7,reads:312000,dateAdded:'2024-05-27'},
+  {id:genId(),title:'Revenge at the Ivy League',author:'Wren Okonkwo',cover:'https://i.postimg.cc/cgLZJNmC/8.jpg',genre:'Campus & Revenge',status:'ongoing',chapters:9,words:31000,rating:4.0,reads:134000,dateAdded:'2025-02-14'},
+  {id:genId(),title:'The Runaway Bride in Socked Feet',author:'Ifeanyi_Story',cover:'https://i.postimg.cc/tY7KnJyr/images.jpg',genre:'Twist & Drama',status:'ongoing',chapters:22,words:88000,rating:4.6,reads:312000,dateAdded:'2025-07-09'},
+  {id:genId(),title:'The Letter He Never Sent',author:'Efe_O',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg',genre:'Elegy & Heartbreak',status:'completed',chapters:15,words:52000,rating:4.4,reads:218000,dateAdded:'2025-09-30'},
+  {id:genId(),title:'Caught Him Kissing Her Photograph',author:'Ada_Writes',cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg',genre:'Romance & Betrayal',status:'ongoing',chapters:19,words:64000,rating:4.2,reads:171000,dateAdded:'2025-04-21'},
+  {id:genId(),title:'My Stepmother Stole My Fund',author:'Zara_M',cover:'https://i.postimg.cc/ftRZbhKx/3.jpg',genre:'Mafia & Urban',status:'ongoing',chapters:11,words:37000,rating:3.8,reads:192000,dateAdded:'2025-12-05'},
+  {id:genId(),title:'She Rejected Me Three Times',author:'Dami_Cole',cover:'https://i.postimg.cc/YGCkSw-33/1.jpg',genre:'Romance & Betrayal',status:'ongoing',chapters:8,words:21000,rating:4.0,reads:22000,dateAdded:'2025-06-08'},
+  {id:genId(),title:"My Grandmother's Will",author:'Chiamaka_N',cover:'https://i.postimg.cc/DJwFzKgd/4.jpg',genre:'Campus & Revenge',status:'completed',chapters:27,words:101000,rating:4.3,reads:204000,dateAdded:'2025-10-17'},
+  {id:genId(),title:'Werewolf Week: Blood Oath',author:'Nneka_Moon',cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg',genre:'Werewolf & Fantasy',status:'draft',chapters:0,words:0,rating:0,reads:0,dateAdded:'2026-07-01'},
+];
+
+/* ── STATS ── */
+function renderStats(){
+  const total=BOOKS.length;
+  const ongoing=BOOKS.filter(b=>b.status==='ongoing').length;
+  const completed=BOOKS.filter(b=>b.status==='completed').length;
+  const totalReads=BOOKS.reduce((s,b)=>s+(b.reads||0),0);
+  const stats=[
+    {n:total,l:'Total Books',ico:'fa-book',bg:'rgba(255,0,80,.1)',col:'var(--accent)'},
+    {n:ongoing,l:'Ongoing',ico:'fa-pen',bg:'var(--blue-bg)',col:'var(--blue)'},
+    {n:completed,l:'Completed',ico:'fa-circle-check',bg:'var(--green-bg)',col:'var(--green)'},
+    {n:fmtNum(totalReads),l:'Total Reads',ico:'fa-eye',bg:'var(--purple-bg)',col:'var(--purple)'},
+  ];
+  document.getElementById('statCards').innerHTML=stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${s.bg};color:${s.col}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function buildGenreSelect(){
+  const genres=[...new Set(BOOKS.map(b=>b.genre))].sort();
+  const sel=document.getElementById('genreSel');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Genres</option>'+genres.map(g=>`<option value="${g}">${g}</option>`).join('');
+  sel.value=cur;
+}
+function buildFilterPills(){
+  const statuses=['all','ongoing','completed','draft','paused'];
+  const counts={all:BOOKS.length};
+  BOOKS.forEach(b=>{counts[b.status]=(counts[b.status]||0)+1;});
+  document.getElementById('filterRow').innerHTML=statuses.map(st=>{
+    const label=st==='all'?'All':st.charAt(0).toUpperCase()+st.slice(1);
+    return `<button class="filter-pill${st===activeGenre?' on':''}" data-status="${st}">${label}<span class="pill-count">${counts[st]||0}</span></button>`;
+  }).join('');
+  document.querySelectorAll('.filter-pill').forEach(p=>{
+    p.addEventListener('click',()=>{
+      activeGenre=p.dataset.status;
+      currentPage=1;
+      document.querySelectorAll('.filter-pill').forEach(x=>x.classList.toggle('on',x===p));
+      applyFilters();
+    });
+  });
+}
+
+let filtered=[];
+function applyFilters(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const genre=document.getElementById('genreSel').value;
+  const sort=document.getElementById('sortSel').value;
+
+  filtered=BOOKS.filter(b=>{
+    const matchesSt=activeGenre==='all'||b.status===activeGenre;
+    const matchesQ=!q||b.title.toLowerCase().includes(q)||b.author.toLowerCase().includes(q);
+    const matchesG=!genre||b.genre===genre;
+    return matchesSt&&matchesQ&&matchesG;
+  });
+
+  if(sort==='rating') filtered.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  else if(sort==='reads') filtered.sort((a,b)=>(b.reads||0)-(a.reads||0));
+  else if(sort==='chapters') filtered.sort((a,b)=>(b.chapters||0)-(a.chapters||0));
+  else if(sort==='alpha') filtered.sort((a,b)=>a.title.localeCompare(b.title));
+  else filtered.sort((a,b)=>new Date(b.dateAdded)-new Date(a.dateAdded));
+
+  const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  if(currentPage>totalPages) currentPage=totalPages;
+
+  document.getElementById('bookCount').textContent=`${filtered.length} of ${BOOKS.length}`;
+  renderList();
+}
+
+function renderList(){
+  const box=document.getElementById('bookList');
+  const start=(currentPage-1)*PAGE_SIZE;
+  const page=filtered.slice(start,start+PAGE_SIZE);
+
+  if(!filtered.length){
+    box.innerHTML=`<div class="empty-msg"><i class="fas fa-book"></i>No books match your search or filters.</div>`;
+    document.getElementById('pagination').innerHTML='';
+    return;
+  }
+
+  box.innerHTML=page.map(b=>`
+    <div class="book-row" data-id="${b.id}">
+      <img class="book-cover" src="${b.cover||'https://via.placeholder.com/80x110?text=No+Cover'}" alt="${esc(b.title)}" loading="lazy"/>
+      <div class="book-info">
+        <div class="book-title-row">
+          <span class="book-title">${esc(b.title)}</span>
+          <span class="genre-tag">${esc(b.genre)}</span>
+          <span class="status-pill ${b.status}">${b.status}</span>
+        </div>
+        <div class="book-author-row"><i class="fas fa-feather" style="font-size:9px;color:var(--text-faint)"></i> ${esc(b.author)} · Added ${fmtDate(b.dateAdded)}</div>
+        <div class="book-stats">
+          <span class="book-stat"><i class="fas fa-list-ol"></i>${b.chapters||0} ch</span>
+          <span class="book-stat"><i class="fas fa-pen"></i>${(b.words||0).toLocaleString()} words</span>
+          <span class="book-stat"><i class="fas fa-star" style="color:#ffd166"></i>${b.rating||0}</span>
+          <span class="book-stat"><i class="fas fa-eye"></i>${fmtNum(b.reads||0)} reads</span>
+        </div>
+      </div>
+      <div class="book-actions">
+        <button class="mini-btn" data-action="edit" data-id="${b.id}"><i class="fas fa-pen"></i> Edit</button>
+        <button class="mini-btn danger" data-action="delete" data-id="${b.id}"><i class="fas fa-trash"></i> Delete</button>
+      </div>
+    </div>`).join('');
+
+  document.querySelectorAll('[data-action="edit"]').forEach(btn=>btn.addEventListener('click',()=>openFormModal(btn.dataset.id)));
+  document.querySelectorAll('[data-action="delete"]').forEach(btn=>btn.addEventListener('click',()=>openDeleteModal(btn.dataset.id)));
+
+  renderPagination();
+}
+
+function renderPagination(){
+  const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  const bar=document.getElementById('pagination');
+  if(filtered.length<=PAGE_SIZE){bar.innerHTML='';return;}
+  const start=(currentPage-1)*PAGE_SIZE;
+  const from=filtered.length?start+1:0;
+  const to=Math.min(start+PAGE_SIZE,filtered.length);
+
+  let pageBtns='';
+  for(let p=1;p<=totalPages;p++){
+    if(totalPages>7&&p!==1&&p!==totalPages&&Math.abs(p-currentPage)>1){
+      if(p===2||p===totalPages-1) pageBtns+=`<span style="padding:0 4px;color:var(--text-faint)">…</span>`;
+      continue;
+    }
+    pageBtns+=`<button class="page-btn${p===currentPage?' active':''}" data-action="goto-page" data-page="${p}">${p}</button>`;
+  }
+
+  bar.innerHTML=`
+    <div class="pagination-info">Showing ${from}–${to} of ${filtered.length}</div>
+    <div class="pagination-controls">
+      <button class="page-btn" data-action="prev-page" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
+      ${pageBtns}
+      <button class="page-btn" data-action="next-page" ${currentPage===totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+
+  document.querySelectorAll('[data-action="goto-page"]').forEach(b=>b.addEventListener('click',()=>{currentPage=parseInt(b.dataset.page,10);renderList();window.scrollTo({top:0,behavior:'smooth'});}));
+  const prevBtn=bar.querySelector('[data-action="prev-page"]');
+  const nextBtn=bar.querySelector('[data-action="next-page"]');
+  if(prevBtn) prevBtn.addEventListener('click',()=>{if(currentPage>1){currentPage--;renderList();}});
+  if(nextBtn) nextBtn.addEventListener('click',()=>{currentPage++;renderList();});
+}
+
+function openFormModal(id){
+  editingId=id||null;
+  const b=id?BOOKS.find(x=>x.id===id):null;
+  document.getElementById('formModalTitle').textContent=b?'Edit Book':'Add Book';
+  document.getElementById('formModalSub').textContent=b?`Editing "${b.title}".`:'Add a new book or story to the platform catalog.';
+  document.getElementById('fTitle').value=b?b.title:'';
+  document.getElementById('fAuthor').value=b?b.author:'';
+  document.getElementById('fGenre').value=b?b.genre:'Romance & Betrayal';
+  document.getElementById('fCover').value=b?b.cover:'';
+  document.getElementById('fStatus').value=b?b.status:'ongoing';
+  document.getElementById('fRating').value=b?b.rating:'';
+  document.getElementById('fChapters').value=b?b.chapters:'';
+  document.getElementById('fWords').value=b?b.words:'';
+  document.getElementById('fReads').value=b?b.reads:'';
+  document.getElementById('formModalError').classList.remove('show');
+  document.getElementById('formConfirmBtn').innerHTML='<i class="fas fa-check"></i> Save Book';
+  document.getElementById('formModalOv').classList.add('open');
+}
+function closeFormModal(){
+  document.getElementById('formModalOv').classList.remove('open');
+  editingId=null;
+}
+function submitForm(){
+  const title=document.getElementById('fTitle').value.trim();
+  const author=document.getElementById('fAuthor').value.trim();
+  const errBox=document.getElementById('formModalError');
+  if(!title){errBox.textContent='Please enter a book title.';errBox.classList.add('show');return;}
+  if(!author){errBox.textContent='Please enter an author name.';errBox.classList.add('show');return;}
+  errBox.classList.remove('show');
+
+  const payload={
+    title,author,
+    genre:document.getElementById('fGenre').value,
+    cover:document.getElementById('fCover').value.trim(),
+    status:document.getElementById('fStatus').value,
+    rating:parseFloat(document.getElementById('fRating').value)||0,
+    chapters:parseInt(document.getElementById('fChapters').value,10)||0,
+    words:parseInt(document.getElementById('fWords').value,10)||0,
+    reads:parseInt(document.getElementById('fReads').value,10)||0,
+  };
+
+  if(editingId){
+    const existing=BOOKS.find(b=>b.id===editingId);
+    Object.assign(existing,payload);
+    toast(`✅ "${title}" updated`);
+  }else{
+    BOOKS.unshift(Object.assign({id:genId(),dateAdded:new Date().toISOString().slice(0,10)},payload));
+    toast(`📚 "${title}" added to platform`);
+  }
+  closeFormModal();
+  buildGenreSelect();
+  buildFilterPills();
+  renderStats();
+  currentPage=1;
+  applyFilters();
+}
+
+function openDeleteModal(id){
+  const b=BOOKS.find(x=>x.id===id);if(!b)return;
+  deleteTargetId=id;
+  document.getElementById('deleteModalSub').textContent=`Delete "${b.title}" by ${b.author}? This can't be undone.`;
+  document.getElementById('deleteModalError').classList.remove('show');
+  document.getElementById('deleteModalOv').classList.add('open');
+}
+function closeDeleteModal(){
+  document.getElementById('deleteModalOv').classList.remove('open');
+  deleteTargetId=null;
+}
+function submitDelete(){
+  const b=BOOKS.find(x=>x.id===deleteTargetId);if(!b)return;
+  BOOKS=BOOKS.filter(x=>x.id!==b.id);
+  toast(`🗑️ "${b.title}" deleted`);
+  closeDeleteModal();
+  buildGenreSelect();
+  buildFilterPills();
+  renderStats();
+  applyFilters();
+}
+
+document.getElementById('newBookBtn').addEventListener('click',()=>openFormModal(null));
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-action]');
+  if(!el)return;
+  const action=el.dataset.action;
+  if(action==='close-form-modal') closeFormModal();
+  else if(action==='submit-form') submitForm();
+  else if(action==='close-delete-modal') closeDeleteModal();
+  else if(action==='submit-delete') submitDelete();
+});
+document.getElementById('formModalOv').addEventListener('click',e=>{if(e.target.id==='formModalOv')closeFormModal();});
+document.getElementById('deleteModalOv').addEventListener('click',e=>{if(e.target.id==='deleteModalOv')closeDeleteModal();});
+
+document.getElementById('searchInput').addEventListener('input',()=>{currentPage=1;applyFilters();});
+document.getElementById('genreSel').addEventListener('change',()=>{currentPage=1;applyFilters();});
+document.getElementById('sortSel').addEventListener('change',applyFilters);
+
+/* ── INIT (runs after shell has already built the real DOM) ── */
+buildGenreSelect();
+buildFilterPills();
+renderStats();
+applyFilters();
+</script>
+</body>
+</html>

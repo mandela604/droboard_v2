@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Contract Center — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── purple variant used only on this page's "Total Contracts" stat ── */
+  .stat-ico.purple{background:#ece9fb;color:#5b4bcf}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+
+  /* ── Header row ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  .stat-ico.grey{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  html[data-theme="dark"] .stat-ico.grey{background:rgba(255,255,255,.06)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  .stat-delta.down{color:var(--red);background:var(--red-bg)}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Sub-tabs (status) ── */
+  .sub-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border);margin-bottom:16px;overflow-x:auto}
+  .sub-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .sub-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .sub-tab .tab-count{font-size:10.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}
+  .sub-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+
+  /* ── Filters row ── */
+  .filters-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:220px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .fselect{position:relative}
+  .fselect select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}
+  .fselect i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-faint);pointer-events:none}
+  .date-range{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--text-faint);white-space:nowrap}
+  .date-range i.fa-calendar{margin-left:4px;color:var(--text-faint)}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+  .btn-filters:hover, .fselect select:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ── Table card ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:1020px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+  .cid-cell{display:flex;align-items:center;gap:10px;font-weight:700}
+  .cid-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+  .cid-ico.purple{background:#ece9fb;color:#5b4bcf}
+  .cid-ico.green{background:var(--green-bg);color:var(--green)}
+  .cid-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .cid-ico.red{background:var(--red-bg);color:var(--red)}
+  .cid-ico.grey{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .cid-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .cid-ico.green{background:rgba(22,163,74,.16)}
+  html[data-theme="dark"] .cid-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .cid-ico.red{background:rgba(224,56,77,.16)}
+  html[data-theme="dark"] .cid-ico.grey{background:rgba(255,255,255,.06)}
+  .book-cell{display:flex;align-items:center;gap:11px}
+  .book-cover{width:36px;height:48px;border-radius:5px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
+  .book-title{font-weight:700;font-size:13px}
+  .book-author{color:var(--text-muted);font-size:11.5px;margin-top:1px}
+  .type-cell{font-weight:600;font-size:12.5px}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .status-pill.pending{background:rgba(217,119,6,.18)}
+  .status-pill.expiring{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .status-pill.expiring{background:rgba(224,56,77,.16)}
+  .status-pill.expired{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .status-pill.expired{background:rgba(255,255,255,.06)}
+  .status-pill.terminated{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .status-pill.terminated{background:rgba(224,56,77,.16)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.pending .dot{background:var(--amber)}
+  .status-pill.expiring .dot{background:var(--red)}
+  .status-pill.expired .dot{background:var(--text-faint)}
+  .status-pill.terminated .dot{background:var(--red)}
+  .date-cell{font-weight:600;font-size:12.5px}
+  .date-cell .sub{display:block;font-size:11px;color:var(--text-faint);font-weight:600;margin-top:1px}
+  .date-cell .sub.warn{color:var(--red)}
+  .editor-cell{display:flex;align-items:center;gap:8px}
+  .editor-cell img{width:24px;height:24px;border-radius:50%;object-fit:cover}
+  .editor-cell span{font-size:12.5px;font-weight:600}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  /* ── Bottom 3-column panels ── */
+  .bottom-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:20px}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:14.5px;font-weight:800}
+  .panel-head a, .panel-head-link{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+  .panel-period{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--text-muted);background:var(--input-bg);border:1px solid var(--input-border);border-radius:8px;padding:5px 10px;cursor:pointer}
+
+  /* Expiring soon list */
+  .exp-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}
+  .exp-row:last-child{border-bottom:none}
+  .exp-cover{width:34px;height:46px;border-radius:5px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
+  .exp-info{flex:1;min-width:0}
+  .exp-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .exp-author{font-size:11px;color:var(--text-faint);margin-top:1px}
+  .exp-date{text-align:right;flex-shrink:0}
+  .exp-date b{display:block;font-size:12px;font-weight:700}
+  .exp-date span{font-size:10.5px;color:var(--red);font-weight:700}
+
+  /* Donut */
+  .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
+  .donut{width:168px;height:168px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center}
+  .donut::before{content:"";position:absolute;inset:22px;border-radius:50%;background:var(--card)}
+  .donut-center{position:relative;text-align:center;z-index:1}
+  .donut-center b{display:block;font-size:26px;font-weight:800}
+  .donut-center span{font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .legend{width:100%}
+  .legend-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;font-size:12.5px}
+  .legend-lbl{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text-muted)}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .legend-val{font-weight:700}
+  .donut-footer{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--green);width:100%;padding-top:10px;border-top:1px solid var(--border)}
+
+  /* Contract types bars */
+  .type-row{padding:11px 0}
+  .type-row-top{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .type-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+  .type-name{font-size:12.5px;font-weight:700;flex:1}
+  .type-val{font-size:12px;font-weight:700;color:var(--text-muted)}
+  .bar-track{height:6px;border-radius:20px;background:var(--table-head);overflow:hidden}
+  .bar-fill{height:100%;border-radius:20px}
+  .view-report-link{display:block;text-align:right;font-size:12px;font-weight:700;color:var(--accent);margin-top:14px;cursor:pointer}
+
+  @media (max-width:1200px){
+    .stats-grid{grid-template-columns:repeat(3,1fr)}
+    .bottom-grid{grid-template-columns:1fr}
+  }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:680px){
+    .page-hdr-row{flex-direction:column;align-items:stretch}
+    .btn-add{justify-content:center}
+    .filters-row{flex-direction:column;align-items:stretch}
+    .fselect select{width:100%}
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Book & Author"]{align-items:flex-start}
+    td[data-label="Book & Author"]::before{display:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <div></div>
+    <button class="btn-add" id="newContractBtn"><i class="fas fa-plus"></i> New Contract</button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico purple"><i class="fas fa-file-contract"></i></div><span class="stat-delta">+18% from last month</span></div>
+      <div class="stat-num">245</div>
+      <div class="stat-lbl">Total Contracts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-shield-halved"></i></div><span class="stat-delta">+16% from last month</span></div>
+      <div class="stat-num">198</div>
+      <div class="stat-lbl">Active Contracts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta">+6% from last month</span></div>
+      <div class="stat-num">17</div>
+      <div class="stat-lbl">Pending Contracts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico red"><i class="fas fa-bell"></i></div><span class="stat-delta">+2% from last month</span></div>
+      <div class="stat-num">12</div>
+      <div class="stat-lbl">Expiring Soon</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico grey"><i class="fas fa-box-archive"></i></div><span class="stat-delta down">-8% from last month</span></div>
+      <div class="stat-num">18</div>
+      <div class="stat-lbl">Expired Contracts</div>
+    </div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div class="sub-tabs">
+    <div class="sub-tab active" data-view="all">All Contracts</div>
+    <div class="sub-tab" data-view="active">Active <span class="tab-count">198</span></div>
+    <div class="sub-tab" data-view="pending">Pending <span class="tab-count">17</span></div>
+    <div class="sub-tab" data-view="expiring">Expiring Soon <span class="tab-count">12</span></div>
+    <div class="sub-tab" data-view="expired">Expired <span class="tab-count">18</span></div>
+    <div class="sub-tab" data-view="terminated">Terminated <span class="tab-count">0</span></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-row">
+    <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by contract ID, book, author..."/></div>
+    <div class="fselect"><select id="typeSelect">
+      <option value="">All Types</option>
+      <option>Exclusive Publishing</option>
+      <option>Revenue Share</option>
+      <option>License Agreement</option>
+    </select><i class="fas fa-chevron-down"></i></div>
+    <div class="fselect"><select id="statusSelect">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="pending">Pending</option>
+      <option value="expiring">Expiring Soon</option>
+      <option value="expired">Expired</option>
+      <option value="terminated">Terminated</option>
+    </select><i class="fas fa-chevron-down"></i></div>
+    <div class="fselect"><select id="editorSelect">
+      <option value="">All Editors</option>
+      <option>Reina Morgan</option>
+      <option>Daniel Carter</option>
+      <option>Sophia Bennett</option>
+      <option>Ethan Walker</option>
+    </select><i class="fas fa-chevron-down"></i></div>
+    <div class="date-range" onclick="toast('Opening date range picker…')">Start Date <i class="fas fa-arrow-right" style="font-size:9px"></i> End Date <i class="fas fa-calendar"></i></div>
+    <button class="btn-filters" onclick="toast('Opening advanced filters…')"><i class="fas fa-sliders"></i> Filters</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>Contract ID</th><th>Book &amp; Author</th><th>Type</th><th>Status</th><th>Effective Date</th><th>Expiry Date</th><th>Editor</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination-row">
+      <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>245</b> contracts</div>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+  <!-- Bottom panels -->
+  <div class="bottom-grid">
+    <div class="panel">
+      <div class="panel-head"><h2>Expiring Soon</h2><a onclick="toast('Opening all expiring contracts…')">View All</a></div>
+      <div id="expiringList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Contract Statistics</h2><div class="panel-period" onclick="toast('Switching period…')">This Month <i class="fas fa-chevron-down" style="font-size:9px"></i></div></div>
+      <div class="donut-wrap">
+        <div class="donut" id="statsDonut">
+          <div class="donut-center"><b>245</b><span>Total</span></div>
+        </div>
+        <div class="legend" id="statsLegend"></div>
+        <div class="donut-footer"><i class="fas fa-arrow-up"></i> +18% increase in total contracts this month</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Contract Types</h2><div class="panel-period" onclick="toast('Switching period…')">This Month <i class="fas fa-chevron-down" style="font-size:9px"></i></div></div>
+      <div id="typesList"></div>
+      <a class="view-report-link" onclick="toast('Opening detailed report…')">View detailed report →</a>
+    </div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="contracts-enhanced.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above. "Contract Center" is added
+   to the Contract Management group so it highlights as active.
+   ═══════════════════════════════════════════════════════════ */
+const NAV = JSON.parse(JSON.stringify(DroboardShell.DEFAULT_NAV));
+const contractGroup = NAV.find(g => g.section === 'Contract Management');
+if (contractGroup) {
+  contractGroup.items.push({ label: 'Contract Center', icon: 'fa-diagram-project', href: 'contract-center.html' });
+}
+
+DroboardShell.attach('#dashboardRoot', {
+  navItems: NAV,
+  activeFile: 'contracts.html',
+  title: 'Contract Center',
+  subtitle: 'Manage, monitor and track all platform contracts',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search by contract ID, book, author or type...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (value) => {
+    document.getElementById('tableSearch').value = value;
+    refresh();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const TYPE_META = {
+  'Exclusive Publishing': { icon: 'fa-book', cls: 'purple' },
+  'Revenue Share': { icon: 'fa-hand-holding-dollar', cls: 'green' },
+  'License Agreement': { icon: 'fa-file-shield', cls: 'grey' },
+};
+
+const CONTRACTS = [
+  { id:'CNTR-2026-00125', cover:'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=100&q=80', title:'Bound by the Ruthless Alpha', author:'Luna Skye', type:'Exclusive Publishing', status:'active', effective:'Jun 14, 2026', expiry:'Jun 14, 2028', expirySub:'(2 years)', editor:'Reina Morgan', editorAvatar:'https://i.pravatar.cc/100?img=47' },
+  { id:'CNTR-2026-00124', cover:'https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&q=80', title:'The Ruthless CEO', author:'Ava Winters', type:'Exclusive Publishing', status:'active', effective:'Jun 10, 2026', expiry:'Jun 10, 2028', expirySub:'(2 years)', editor:'Daniel Carter', editorAvatar:'https://i.pravatar.cc/100?img=12' },
+  { id:'CNTR-2026-00123', cover:'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=100&q=80', title:'Reborn to Revenge', author:'Mia Carter', type:'Revenue Share', status:'pending', effective:'Jun 8, 2026', expiry:'—', expirySub:'', editor:'Sophia Bennett', editorAvatar:'https://i.pravatar.cc/100?img=29' },
+  { id:'CNTR-2026-00122', cover:'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=100&q=80', title:'His Hidden Luna', author:'Lyra Night', type:'Exclusive Publishing', status:'active', effective:'Jun 5, 2026', expiry:'Jun 5, 2028', expirySub:'(2 years)', editor:'Ethan Walker', editorAvatar:'https://i.pravatar.cc/100?img=53' },
+  { id:'CNTR-2026-00121', cover:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=100&q=80', title:'Claimed by the Mafia King', author:'Bella King', type:'Exclusive Publishing', status:'expiring', effective:'May 20, 2024', expiry:'May 20, 2026', expirySub:'(in 18 days)', editor:'Reina Morgan', editorAvatar:'https://i.pravatar.cc/100?img=47' },
+  { id:'CNTR-2026-00120', cover:'https://images.unsplash.com/photo-1526398006332-190020ec2fb9?w=100&q=80', title:'The Vampire\u2019s Obsession', author:'Ethan Vale', type:'License Agreement', status:'expired', effective:'Apr 15, 2024', expiry:'Apr 15, 2026', expirySub:'', editor:'Daniel Carter', editorAvatar:'https://i.pravatar.cc/100?img=12' },
+  { id:'CNTR-2026-00119', cover:'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=100&q=80', title:'Broken Vows', author:'Sophie Lane', type:'Exclusive Publishing', status:'terminated', effective:'Mar 10, 2024', expiry:'Mar 10, 2026', expirySub:'', editor:'Sophia Bennett', editorAvatar:'https://i.pravatar.cc/100?img=29' },
+  { id:'CNTR-2026-00118', cover:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80', title:'The Prince\u2019s Secret Wife', author:'Isabella Rose', type:'Revenue Share', status:'active', effective:'May 1, 2026', expiry:'May 1, 2028', expirySub:'(2 years)', editor:'Reina Morgan', editorAvatar:'https://i.pravatar.cc/100?img=47' },
+];
+
+const EXPIRING_SOON = [
+  { cover:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=100&q=80', title:'Claimed by the Mafia King', author:'Bella King', date:'May 20, 2026', inDays:'in 18 days' },
+  { cover:'https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=100&q=80', title:'The Ruthless CEO', author:'Ava Winters', date:'Jun 10, 2026', inDays:'in 39 days' },
+  { cover:'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=100&q=80', title:'His Hidden Luna', author:'Lyra Night', date:'Jun 30, 2026', inDays:'in 59 days' },
+  { cover:'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=100&q=80', title:'Bound by the Ruthless Alpha', author:'Luna Skye', date:'Jul 14, 2026', inDays:'in 73 days' },
+];
+
+const STATS_BREAKDOWN = [
+  { label:'Active', value:198, pct:80.8, color:'var(--green)' },
+  { label:'Pending', value:17, pct:6.9, color:'var(--amber)' },
+  { label:'Expiring Soon', value:12, pct:4.9, color:'var(--red)' },
+  { label:'Expired', value:18, pct:7.4, color:'var(--text-faint)' },
+  { label:'Terminated', value:0, pct:0, color:'#8a86a8' },
+];
+
+const CONTRACT_TYPES = [
+  { label:'Exclusive Publishing', value:156, pct:63.7, icon:'fa-book', cls:'purple', color:'#5b4bcf' },
+  { label:'Revenue Share', value:48, pct:19.6, icon:'fa-hand-holding-dollar', cls:'green', color:'var(--green)' },
+  { label:'License Agreement', value:25, pct:10.2, icon:'fa-file-shield', cls:'grey', color:'var(--text-faint)' },
+  { label:'Translation Rights', value:10, pct:4.1, icon:'fa-globe', cls:'red', color:'var(--red)' },
+  { label:'Other Agreements', value:6, pct:2.4, icon:'fa-ellipsis', cls:'amber', color:'var(--amber)' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER HELPERS
+   ═══════════════════════════════════════════════════════════ */
+function statusPillHtml(status){
+  const map = {
+    active: { cls:'', label:'Active' },
+    pending: { cls:'pending', label:'Pending' },
+    expiring: { cls:'expiring', label:'Expiring Soon' },
+    expired: { cls:'expired', label:'Expired' },
+    terminated: { cls:'terminated', label:'Terminated' },
+  };
+  const m = map[status] || map.active;
+  return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`;
+}
+
+function cidIconHtml(row){
+  const meta = TYPE_META[row.type] || { icon:'fa-file', cls:'grey' };
+  let cls = meta.cls;
+  if (row.status === 'expiring') cls = 'red';
+  if (row.status === 'terminated') cls = 'red';
+  return `<div class="cid-ico ${cls}"><i class="fas ${meta.icon}"></i></div>`;
+}
+
+let currentView = 'all';
+
+function viewSource(){
+  if (currentView === 'all') return CONTRACTS;
+  return CONTRACTS.filter(r => r.status === currentView);
+}
+
+function currentFiltered(){
+  const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+  const type = document.getElementById('typeSelect').value;
+  const status = document.getElementById('statusSelect').value;
+  const editor = document.getElementById('editorSelect').value;
+  let list = viewSource();
+  if (status) list = list.filter(r => r.status === status);
+  if (type) list = list.filter(r => r.type === type);
+  if (editor) list = list.filter(r => r.editor === editor);
+  if (q) list = list.filter(r => r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || r.author.toLowerCase().includes(q) || r.type.toLowerCase().includes(q));
+  return list;
+}
+
+function renderTable(list){
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="8"><i class="fas fa-folder-open"></i>No contracts match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(r => `
+    <tr>
+      <td data-label="Contract ID"><div class="cid-cell">${cidIconHtml(r)}${r.id}</div></td>
+      <td data-label="Book & Author">
+        <div class="book-cell">
+          <img class="book-cover" src="${r.cover}" alt="${r.title}"/>
+          <div><div class="book-title">${r.title}</div><div class="book-author">by ${r.author}</div></div>
+        </div>
+      </td>
+      <td data-label="Type" class="type-cell">${r.type}</td>
+      <td data-label="Status">${statusPillHtml(r.status)}</td>
+      <td data-label="Effective Date" class="date-cell">${r.effective}</td>
+      <td data-label="Expiry Date" class="date-cell">${r.expiry}${r.expirySub ? `<span class="sub${r.status==='expiring'?' warn':''}">${r.expirySub}</span>` : ''}</td>
+      <td data-label="Editor"><div class="editor-cell"><img src="${r.editorAvatar}" alt="${r.editor}"/><span>${r.editor}</span></div></td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="View" onclick="toast('Opening \\'${r.id}\\'…')"><i class="fas fa-eye"></i></button>
+          <button class="act-btn" title="More" onclick="toast('More actions for \\'${r.id}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderPageInfo(count){
+  const totals = { all:245, active:198, pending:17, expiring:12, expired:18, terminated:0 };
+  const total = totals[currentView] ?? count;
+  const shown = Math.min(8, count);
+  document.getElementById('pageInfo').innerHTML = `Showing <b>${count ? 1 : 0}</b> to <b>${shown}</b> of <b>${total.toLocaleString()}</b> contracts`;
+}
+
+function refresh(){
+  const list = currentFiltered();
+  renderTable(list);
+  renderPageInfo(list.length);
+}
+
+/* ── Sub-tab switching ── */
+document.querySelectorAll('.sub-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    document.getElementById('statusSelect').value = '';
+    renderPagination();
+    refresh();
+  });
+});
+
+/* ── Pagination (visual, matches other admin pages) ── */
+function renderPagination(){
+  const wrap = document.getElementById('pageBtns');
+  const pageSets = { all:[1,2,3,4,5,'...',31], active:[1,2,3,'...',25], pending:[1,2,3], expiring:[1,2], expired:[1,2,3], terminated:[1] };
+  const pages = pageSets[currentView] || [1];
+  wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
+    pages.map(p => p === '...' ? `<span style="color:var(--text-faint);font-size:12px;padding:0 2px">…</span>` : `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
+    `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
+  wrap.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+/* ── Filters wiring ── */
+document.getElementById('tableSearch').addEventListener('input', refresh);
+document.getElementById('typeSelect').addEventListener('change', refresh);
+document.getElementById('editorSelect').addEventListener('change', refresh);
+document.getElementById('statusSelect').addEventListener('change', (e) => {
+  const status = e.target.value;
+  currentView = status || 'all';
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.dataset.view === currentView));
+  renderPagination();
+  refresh();
+});
+
+/* ── New Contract ── */
+document.getElementById('newContractBtn').addEventListener('click', () => toast('Opening new contract form…'));
+
+/* ── Expiring soon list ── */
+function renderExpiringSoon(){
+  document.getElementById('expiringList').innerHTML = EXPIRING_SOON.map(e => `
+    <div class="exp-row">
+      <img class="exp-cover" src="${e.cover}" alt="${e.title}"/>
+      <div class="exp-info"><div class="exp-title">${e.title}</div><div class="exp-author">by ${e.author}</div></div>
+      <div class="exp-date"><b>${e.date}</b><span>${e.inDays}</span></div>
+    </div>`).join('');
+}
+
+/* ── Contract statistics donut + legend ── */
+function renderDonut(){
+  let acc = 0;
+  const stops = STATS_BREAKDOWN.map(s => {
+    const start = acc;
+    acc += s.pct;
+    return `${s.color} ${start}% ${acc}%`;
+  }).join(', ');
+  document.getElementById('statsDonut').style.background = `conic-gradient(${stops})`;
+
+  document.getElementById('statsLegend').innerHTML = STATS_BREAKDOWN.map(s => `
+    <div class="legend-row">
+      <div class="legend-lbl"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</div>
+      <div class="legend-val">${s.value} (${s.pct}%)</div>
+    </div>`).join('');
+}
+
+/* ── Contract types bars ── */
+function renderTypes(){
+  document.getElementById('typesList').innerHTML = CONTRACT_TYPES.map(t => `
+    <div class="type-row">
+      <div class="type-row-top">
+        <div class="type-ico ${t.cls}"><i class="fas ${t.icon}"></i></div>
+        <div class="type-name">${t.label}</div>
+        <div class="type-val">${t.value} (${t.pct}%)</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${t.pct}%;background:${t.color}"></div></div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+renderPagination();
+renderExpiringSoon();
+renderDonut();
+renderTypes();
+refresh();
+</script>
+</body>
+</html>

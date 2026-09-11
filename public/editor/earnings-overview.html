@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Earnings Overview — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}.btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}.stat-card .num{font-size:28px;font-weight:800;line-height:1}.stat-card .lbl{font-size:12px;color:var(--text-muted);font-weight:600;margin-top:4px}.stat-card .delta{font-size:11px;font-weight:700;margin-top:6px}
+.stat-card .delta.up{color:var(--green)}.stat-card .delta.down{color:var(--red)}
+.charts-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;margin-bottom:22px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.panel-head h2{font-size:14px;font-weight:800}.panel-head a{font-size:11.5px;font-weight:700;color:var(--accent);cursor:pointer}
+.bar-chart{display:flex;align-items:flex-end;gap:10px;height:160px;padding:0 8px}.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}.bar-fill{width:100%;border-radius:6px 6px 0 0;min-height:6px;transition:.3s}.bar-lbl{font-size:9px;font-weight:700;color:var(--text-faint);margin-top:6px}
+.legend{display:flex;gap:20px;margin-bottom:14px;flex-wrap:wrap}.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--text-muted)}.legend-dot{width:8px;height:8px;border-radius:50%}
+.pp-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}.pp-row:last-child{border-bottom:none}.pp-av{width:32px;height:32px;border-radius:50%;object-fit:cover}.pp-info{flex:1}.pp-name{font-size:12px;font-weight:700}.pp-book{font-size:10.5px;color:var(--text-muted);margin-top:1px}.pp-earn{text-align:right}.pp-earn b{font-size:13px;font-weight:800}.pp-earn span{display:block;font-size:9.5px;color:var(--text-faint)}
+@media (max-width:900px){.charts-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media (max-width:480px){.stats-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="dashboardRoot">
+  <div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Exporting earnings report…')"><i class="fas fa-download"></i> Export Report</button></div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="num" style="color:var(--green)">$284.5K</div><div class="lbl">Total Platform Earnings</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +18% from last month</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--accent)">$148.2K</div><div class="lbl">Author Payouts</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +22% from last month</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--blue)">$92.4K</div><div class="lbl">Platform Commission</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +15% from last month</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--amber)">$43.9K</div><div class="lbl">Ad Revenue</div><div class="delta down"><i class="fas fa-arrow-down" style="font-size:8px"></i> -3% from last month</div></div>
+  </div>
+  <div class="charts-grid">
+    <div class="panel"><div class="panel-head"><h2>Monthly Earnings Trend</h2><a onclick="toast('Opening detailed analytics…')">View Details</a></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>Author Payouts</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span>Platform Commission</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--blue)"></span>Ad Revenue</div>
+      </div>
+      <div class="bar-chart" id="earningsChart"></div>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Top Earning Authors</h2><a onclick="toast('Opening full leaderboard…')">View All</a></div>
+      <div id="topEarners"></div>
+    </div>
+  </div>
+</div>
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+DroboardShell.attach('#dashboardRoot',{activeFile:'earnings-overview.html',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun'];const AUTHOR_DATA=[45600,38900,32400,35600,41200,48300];const PLATFORM_DATA=[28400,25600,23800,26400,29100,30800];const AD_DATA=[12600,11800,10900,11400,12100,11500];
+function renderChart(){const max=Math.max(...AUTHOR_DATA,...PLATFORM_DATA,...AD_DATA);const c=document.getElementById('earningsChart');c.innerHTML=MONTHS.map((m,i)=>{const ah=(AUTHOR_DATA[i]/max)*140;const ph=(PLATFORM_DATA[i]/max)*140;const adh=(AD_DATA[i]/max)*140;return `<div class="bar"><div style="display:flex;flex-direction:column;gap:2px;width:100%;align-items:center"><div class="bar-fill" style="height:${ah}px;background:var(--green)"></div><div class="bar-fill" style="height:${ph}px;background:var(--accent)"></div><div class="bar-fill" style="height:${adh}px;background:var(--blue)"></div></div><div class="bar-lbl">${m}</div></div>`}).join('')}
+const TOP_EARNERS=[
+  {name:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',book:'The Ruthless CEO',earn:'$24,110',pct:'+22%'},
+  {name:'Isabella Rossi',avatar:'https://i.pravatar.cc/100?img=38',book:'His Hidden Luna',earn:'$21,050',pct:'+18%'},
+  {name:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',book:'Bound by the Alpha',earn:'$18,420',pct:'+15%'},
+  {name:'Layla Haddad',avatar:'https://i.pravatar.cc/100?img=48',book:'Broken Vows',earn:'$15,780',pct:'+12%'},
+];
+function renderTopEarners(){document.getElementById('topEarners').innerHTML=TOP_EARNERS.map(e=>`<div class="pp-row"><img class="pp-av" src="${e.avatar}"/><div class="pp-info"><div class="pp-name">${e.name}</div><div class="pp-book">${e.book}</div></div><div class="pp-earn"><b>${e.earn}</b><span>${e.pct}</span></div></div>`).join('')}
+renderChart();renderTopEarners();
+</script>
+</body>
+</html>

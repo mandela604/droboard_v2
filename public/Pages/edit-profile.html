@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#d8d8d8"/>
+<title>Droboard · Edit Profile</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;
+  --glow:rgba(255,0,80,.18);
+  --bg:#d8d8d8;--l1:#ffffff;--l2:#f0f0f0;--l3:#e8e8e8;
+  --bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.06);--bd-acc:rgba(255,0,80,.25);
+  --tx:#161616;--tx2:#3a3a3a;--tx3:#666;--tx4:#8a8a8a;
+  --blue:#38bdf8;--green:#34d399;--safe-b:env(safe-area-inset-bottom,12px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);min-height:100%}
+body{
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+  color:var(--tx2);display:flex;justify-content:center;min-height:100vh;
+}
+button,input,textarea,select{font-family:inherit}
+::-webkit-scrollbar{display:none}
+
+.phone{
+  width:100%;max-width:420px;min-height:100vh;background:var(--l1);
+  position:relative;box-shadow:0 0 50px rgba(0,0,0,.12);
+  display:flex;flex-direction:column;overflow-x:hidden;
+  padding-bottom:calc(var(--safe-b) + 88px);
+}
+
+/* top bar */
+.top-bar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;
+  padding:12px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--bd);
+}
+.back-btn,.icon-btn{
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--bd);
+  background:var(--l2);color:var(--tx3);display:flex;align-items:center;justify-content:center;
+  font-size:14px;cursor:pointer;flex-shrink:0;
+}
+.back-btn:active,.icon-btn:active{transform:scale(.92)}
+.top-title{flex:1;font-size:16px;font-weight:700;color:var(--tx)}
+.top-title span{display:block;font-size:11px;font-weight:600;color:var(--tx4);margin-top:1px}
+
+/* hero preview */
+.hero-preview{
+  position:relative;height:140px;background:#111;overflow:hidden;
+}
+.hero-preview .cover{
+  position:absolute;inset:0;background-size:cover;background-position:center 30%;
+}
+.hero-preview .grad{
+  position:absolute;inset:0;
+  background:linear-gradient(0deg,rgba(0,0,0,.7) 0%,rgba(0,0,0,.2) 60%,transparent 100%);
+}
+.cover-edit{
+  position:absolute;top:10px;right:10px;z-index:2;
+  background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25);
+  border-radius:20px;padding:5px 12px;font-size:10px;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;
+}
+
+.av-wrap{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 16px;margin-top:-36px;position:relative;z-index:3;
+}
+.av-ring{
+  width:76px;height:76px;border-radius:50%;padding:3px;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  box-shadow:0 0 20px var(--glow);
+}
+.av-ring.reader{background:linear-gradient(135deg,var(--blue),var(--acc))}
+.av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#000;border:2px solid var(--l1)}
+.av-inner img{width:100%;height:100%;object-fit:cover;display:block}
+.av-change{
+  margin-top:8px;font-size:11px;font-weight:700;color:var(--acc);cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;
+}
+
+/* form */
+.content{padding:16px 16px 8px;display:flex;flex-direction:column;gap:14px}
+.section-label{
+  font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--tx4);margin-bottom:2px;
+}
+.card{
+  background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;font-weight:700;color:var(--tx3)}
+.field .hint{font-size:10px;color:var(--tx4);margin-top:2px}
+.field input,.field textarea,.field select{
+  width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;
+  padding:10px 12px;font-size:13px;color:var(--tx);outline:none;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--bd-acc)}
+.field textarea{min-height:88px;resize:vertical;line-height:1.45}
+.char-count{font-size:10px;color:var(--tx4);text-align:right}
+
+.role-pill{
+  display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;
+  padding:4px 10px;border-radius:20px;
+}
+.role-pill.writer{background:rgba(255,0,80,.1);color:var(--acc);border:1px solid var(--bd-acc)}
+.role-pill.reader{background:rgba(56,189,248,.1);color:var(--blue);border:1px solid rgba(56,189,248,.25)}
+
+/* genres */
+.genre-grid{display:flex;flex-wrap:wrap;gap:7px}
+.genre-tog{
+  font-size:11px;font-weight:700;padding:7px 12px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--bd);background:var(--l2);color:var(--tx3);transition:.15s;
+}
+.genre-tog.on{background:rgba(255,0,80,.1);border-color:var(--bd-acc);color:var(--acc)}
+
+/* about extras */
+.extra-row{
+  display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;
+}
+.extra-row:last-child{margin-bottom:0}
+.extra-icon{
+  width:34px;height:34px;border-radius:9px;background:rgba(255,0,80,.06);
+  border:1px solid var(--bd-acc);display:flex;align-items:center;justify-content:center;
+  color:var(--acc);font-size:12px;flex-shrink:0;margin-top:22px;
+}
+.extra-fields{flex:1;display:flex;flex-direction:column;gap:6px}
+.extra-fields input{width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:9px 11px;font-size:12.5px;color:var(--tx);outline:none}
+
+/* sticky save bar */
+.save-bar{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:420px;
+  padding:12px 16px calc(12px + var(--safe-b));
+  background:rgba(255,255,255,.96);backdrop-filter:blur(14px);
+  border-top:1px solid var(--bd);display:flex;gap:8px;z-index:100;
+}
+.btn{
+  flex:1;padding:12px 14px;border-radius:12px;font-size:13px;font-weight:700;
+  border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn:active{transform:scale(.98)}
+.btn-ghost{background:var(--l2);color:var(--tx2);border:1px solid var(--bd)}
+.btn-primary{background:var(--acc);color:#fff;box-shadow:0 4px 14px var(--glow)}
+.btn-primary:disabled{opacity:.55;cursor:default}
+
+/* toast */
+.toast{
+  position:fixed;left:50%;bottom:100px;transform:translateX(-50%);
+  background:#161616;color:#fff;padding:10px 16px;border-radius:12px;font-size:12.5px;
+  font-weight:600;z-index:300;max-width:min(360px,90vw);box-shadow:0 8px 24px rgba(0,0,0,.25);
+  animation:toastIn .25s ease;
+}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.loading{
+  padding:80px 20px;text-align:center;color:var(--tx3);font-size:13px;
+}
+.loading i{font-size:22px;color:var(--acc);display:block;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="top-bar">
+    <button class="back-btn" type="button" onclick="goBack()" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
+    <div class="top-title">Edit Profile<span id="subTitle">Loading…</span></div>
+    <button class="icon-btn" type="button" onclick="location.href='profile.html'" title="View profile"><i class="fa-regular fa-user"></i></button>
+  </div>
+
+  <div id="loading" class="loading"><i class="fa-solid fa-circle-notch fa-spin"></i>Loading your profile…</div>
+
+  <div id="editor" style="display:none">
+    <div class="hero-preview">
+      <div class="cover" id="coverPreview"></div>
+      <div class="grad"></div>
+      <button class="cover-edit" type="button" onclick="promptCover()"><i class="fa-solid fa-camera"></i> Cover</button>
+    </div>
+
+    <div class="av-wrap">
+      <div>
+        <div class="av-ring" id="avRing">
+          <div class="av-inner"><img id="avatarPreview" src="" alt="Avatar"/></div>
+        </div>
+        <div class="av-change" onclick="promptAvatar()"><i class="fa-solid fa-camera"></i> Change photo</div>
+      </div>
+      <div id="roleBadge"></div>
+    </div>
+
+    <div class="content">
+      <div class="section-label">Public profile</div>
+      <div class="card">
+        <div class="field">
+          <label>Display name</label>
+          <input id="fName" type="text" maxlength="40" placeholder="Your name" oninput="updateChar('fName','nameCount',40)"/>
+          <div class="char-count"><span id="nameCount">0</span>/40</div>
+        </div>
+        <div class="field">
+          <label>Bio</label>
+          <textarea id="fBio" maxlength="180" placeholder="Tell readers who you are…" oninput="updateChar('fBio','bioCount',180)"></textarea>
+          <div class="char-count"><span id="bioCount">0</span>/180</div>
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <input id="fLocation" type="text" maxlength="60" placeholder="City, Country"/>
+        </div>
+        <div class="field">
+          <label>Avatar URL</label>
+          <input id="fAvatar" type="url" placeholder="https://…" oninput="syncAvatar()"/>
+          <div class="hint">Paste an image link — used in demo &amp; live until upload exists.</div>
+        </div>
+        <div class="field">
+          <label>Cover URL</label>
+          <input id="fCover" type="url" placeholder="https://…" oninput="syncCover()"/>
+        </div>
+      </div>
+
+      <div class="section-label">Favorite genres</div>
+      <div class="card">
+        <div class="genre-grid" id="genreGrid"></div>
+        <div class="hint" style="margin-top:10px">Pick up to 6. Shown on your profile and About tab.</div>
+      </div>
+
+      <div class="section-label">About extras</div>
+      <div class="card" id="extrasCard">
+        <!-- filled by JS: up to 3 label/value pairs -->
+      </div>
+    </div>
+  </div>
+
+  <div class="save-bar" id="saveBar" style="display:none">
+    <button class="btn btn-ghost" type="button" onclick="goBack()">Cancel</button>
+    <button class="btn btn-primary" type="button" id="saveBtn" onclick="saveAll()"><i class="fa-solid fa-check"></i> Save changes</button>
+  </div>
+</div>
+
+<script src="services/profile-data.js"></script>
+<script>
+const GENRES_ALL = (window.ProfileData && ProfileData.GENRES_ALL) || [];
+let ME = null;
+let PROFILE = null;
+let selectedGenres = new Set();
+let extras = [];
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+function goBack(){
+  if (history.length > 1) history.back();
+  else location.href = 'profile.html';
+}
+function updateChar(id, countId, max){
+  const el = document.getElementById(id);
+  document.getElementById(countId).textContent = (el.value || '').length;
+}
+function syncAvatar(){
+  const url = document.getElementById('fAvatar').value.trim();
+  if (url) document.getElementById('avatarPreview').src = url;
+}
+function syncCover(){
+  const url = document.getElementById('fCover').value.trim();
+  document.getElementById('coverPreview').style.backgroundImage = url ? `url('${url}')` : 'none';
+}
+function promptAvatar(){
+  const cur = document.getElementById('fAvatar').value;
+  const next = prompt('Avatar image URL', cur || '');
+  if (next === null) return;
+  document.getElementById('fAvatar').value = next.trim();
+  syncAvatar();
+}
+function promptCover(){
+  const cur = document.getElementById('fCover').value;
+  const next = prompt('Cover image URL', cur || '');
+  if (next === null) return;
+  document.getElementById('fCover').value = next.trim();
+  syncCover();
+}
+
+function renderGenres(){
+  const grid = document.getElementById('genreGrid');
+  grid.innerHTML = GENRES_ALL.map(g => {
+    const on = selectedGenres.has(g.id) ? ' on' : '';
+    return `<div class="genre-tog${on}" data-gid="${g.id}">${g.label}</div>`;
+  }).join('');
+  grid.querySelectorAll('.genre-tog').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.gid;
+      if (selectedGenres.has(id)) selectedGenres.delete(id);
+      else {
+        if (selectedGenres.size >= 6){ toast('Max 6 genres'); return; }
+        selectedGenres.add(id);
+      }
+      el.classList.toggle('on', selectedGenres.has(id));
+    });
+  });
+}
+
+function renderExtras(){
+  const card = document.getElementById('extrasCard');
+  while (extras.length < 3) extras.push({ icon: 'fa-star', label: '', value: '' });
+  card.innerHTML = extras.slice(0,3).map((e,i) => `
+    <div class="extra-row">
+      <div class="extra-icon"><i class="fa-solid ${e.icon || 'fa-star'}"></i></div>
+      <div class="extra-fields">
+        <input data-ex="label" data-i="${i}" type="text" placeholder="Label (e.g. Website)" value="${escAttr(e.label || '')}"/>
+        <input data-ex="value" data-i="${i}" type="text" placeholder="Value" value="${escAttr(e.value || '')}"/>
+      </div>
+    </div>
+  `).join('') + `<div class="hint" style="margin-top:8px">Optional — website, writing schedule, tropes, reading goals…</div>`;
+}
+
+function escAttr(s){
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function fillForm(p){
+  document.getElementById('fName').value = p.name || '';
+  document.getElementById('fBio').value = p.bio || '';
+  document.getElementById('fLocation').value = p.location || '';
+  document.getElementById('fAvatar').value = p.avatar || '';
+  document.getElementById('fCover').value = p.cover || '';
+  updateChar('fName','nameCount',40);
+  updateChar('fBio','bioCount',180);
+  syncAvatar();
+  syncCover();
+
+  const ring = document.getElementById('avRing');
+  ring.classList.toggle('reader', !p.isWriter);
+
+  document.getElementById('roleBadge').innerHTML = p.isWriter
+    ? `<span class="role-pill writer"><i class="fa-solid fa-pen-nib"></i> Writer</span>`
+    : `<span class="role-pill reader"><i class="fa-solid fa-book-open"></i> Reader</span>`;
+
+  document.getElementById('subTitle').textContent = `@${p.handle}`;
+
+  selectedGenres = new Set(p.genres || p.about?.favoriteGenres || []);
+  renderGenres();
+
+  extras = (p.about && Array.isArray(p.about.extra))
+    ? p.about.extra.map(x => ({ icon: x.icon || 'fa-star', label: x.label || '', value: x.value || '' }))
+    : [];
+  renderExtras();
+}
+
+function collectExtras(){
+  const labels = [...document.querySelectorAll('[data-ex="label"]')];
+  const values = [...document.querySelectorAll('[data-ex="value"]')];
+  const out = [];
+  labels.forEach((lab, i) => {
+    const label = lab.value.trim();
+    const value = (values[i] && values[i].value.trim()) || '';
+    if (label || value) {
+      out.push({
+        icon: (extras[i] && extras[i].icon) || 'fa-star',
+        label: label || 'Note',
+        value,
+      });
+    }
+  });
+  return out;
+}
+
+async function saveAll(){
+  if (!PROFILE || !window.ProfileData){ toast('Profile service not loaded'); return; }
+  const name = document.getElementById('fName').value.trim();
+  if (!name){ toast('Display name is required'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving…';
+
+  try {
+    const patch = {
+      name,
+      bio: document.getElementById('fBio').value.trim(),
+      location: document.getElementById('fLocation').value.trim(),
+      avatar: document.getElementById('fAvatar').value.trim(),
+      cover: document.getElementById('fCover').value.trim(),
+    };
+
+    const extraList = collectExtras();
+    patch.about = {
+      favoriteGenres: [...selectedGenres],
+      extra: extraList,
+    };
+
+    let updated = await ProfileData.updateProfile(PROFILE.handle, patch);
+    updated = await ProfileData.updateGenres(PROFILE.handle, [...selectedGenres]);
+    PROFILE = updated || PROFILE;
+    toast('Profile saved');
+    setTimeout(() => { location.href = 'profile.html'; }, 500);
+  } catch (err) {
+    toast(err.message || 'Save failed');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Save changes';
+  }
+}
+
+async function boot(){
+  if (!window.ProfileData){
+    document.getElementById('loading').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>ProfileData not found. Include services/profile-data.js';
+    return;
+  }
+  try {
+    ME = await ProfileData.getCurrentUserHandle();
+    PROFILE = await ProfileData.getProfile(ME);
+    if (!PROFILE){
+      document.getElementById('loading').innerHTML = '<i class="fa-solid fa-user-slash"></i>Could not load your profile.';
+      return;
+    }
+    fillForm(PROFILE);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('editor').style.display = 'block';
+    document.getElementById('saveBar').style.display = 'flex';
+  } catch (err) {
+    document.getElementById('loading').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>${err.message || 'Failed to load'}`;
+  }
+}
+boot();
+</script>
+</body>
+</html>

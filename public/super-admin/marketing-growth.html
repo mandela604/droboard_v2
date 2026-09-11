@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Marketing & Growth — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+body{font-family:'Inter',system-ui,sans-serif}
+img{max-width:100%}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+/* Page scrolls normally now — nothing forces it into exactly one viewport.
+   Individual lists still get their own compact scroll area (via max-height)
+   so the layout still reads as tidy "panels", but nothing gets clipped and
+   made unreachable the way it did with html,body{overflow:hidden}. */
+#dashRoot{display:flex;flex-direction:column}
+.mg-page{display:flex;flex-direction:column;gap:14px;padding:16px 20px 32px}
+
+.mg-dept{display:flex;flex-direction:column;gap:10px}
+.dept-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.dept-head .dept-ico{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.dept-head h2{font-size:13.5px;font-weight:800}
+.dept-head span.tag{font-size:9.5px;font-weight:700;color:var(--text-faint);background:var(--table-head);padding:3px 9px;border-radius:20px;margin-left:2px}
+.dept-head .updated{margin-left:auto;font-size:10px;color:var(--text-faint);font-weight:600;display:flex;align-items:center;gap:5px}
+
+/* KPI strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
+.kpi-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12.5px;flex-shrink:0}
+.kpi-num{font-size:16px;font-weight:800;line-height:1.1;white-space:nowrap}
+.kpi-lbl{font-size:9.5px;color:var(--text-muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* row of panels */
+.mg-row{display:grid;gap:10px}
+.mg-row.two{grid-template-columns:1.2fr 1fr}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.panel-title{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:6px;margin-bottom:9px;flex-shrink:0}
+
+/* placement bars — compact scroll area instead of relying on page clipping */
+.pl-list{display:flex;flex-direction:column;gap:7px;max-height:220px;overflow-y:auto;padding-right:2px}
+.pl-row{display:grid;grid-template-columns:120px 1fr 56px;gap:8px;align-items:center}
+.pl-name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-track{height:7px;border-radius:5px;background:var(--table-head);overflow:hidden}
+.pl-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),rgba(255,0,80,.6))}
+.pl-val{font-size:10.5px;font-weight:700;color:var(--text-muted);text-align:right;white-space:nowrap}
+
+/* email + engagement mini stats */
+.mini-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mini-stat{background:var(--input-bg);border:1px solid var(--border);border-radius:9px;padding:9px 11px;display:flex;flex-direction:column;justify-content:center}
+.mini-stat span{font-size:9px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.02em;margin-bottom:3px}
+.mini-stat b{font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* featured lineup list */
+.feat-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;padding-right:2px}
+.feat-item{display:flex;align-items:center;gap:9px;background:var(--table-head);border:1px solid var(--border);border-radius:9px;padding:6px 9px}
+.feat-item img{width:26px;height:34px;border-radius:5px;object-fit:cover;flex-shrink:0}
+.feat-info{flex:1;min-width:0}
+.feat-info b{font-size:11px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feat-info span{font-size:9.5px;color:var(--text-faint);font-weight:600}
+.feat-uplift{font-size:10px;font-weight:800;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+
+/* upcoming rotation */
+.queue-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;padding-right:2px}
+.queue-item{display:flex;align-items:center;gap:9px;padding:6px 2px;border-bottom:1px solid var(--border)}
+.queue-item:last-child{border-bottom:none}
+.queue-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.queue-info{flex:1;min-width:0}
+.queue-info b{font-size:11px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.queue-date{font-size:9.5px;color:var(--text-faint);font-weight:700;white-space:nowrap}
+
+@media (max-width:900px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .mg-row.two{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .kpi-strip{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="mg-page">
+
+    <!-- ── MARKETING ── -->
+    <div class="mg-dept">
+      <div class="dept-head">
+        <div class="dept-ico" style="background:rgba(255,0,80,.1);color:var(--accent)"><i class="fas fa-bullhorn"></i></div>
+        <h2>Marketing</h2><span class="tag">Paid & Promoted</span>
+        <div class="updated"><i class="fas fa-circle" style="font-size:6px;color:var(--green)"></i> Live · Updated 4m ago</div>
+      </div>
+
+      <div class="kpi-strip" id="mktKpis"></div>
+
+      <div class="mg-row two">
+        <div class="panel">
+          <div class="panel-title"><i class="fas fa-signal" style="font-size:9px"></i> Reach by Placement (daily avg)</div>
+          <div class="pl-list" id="placementList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><i class="fas fa-envelope-open-text" style="font-size:9px"></i> Email &amp; Engagement</div>
+          <div class="mini-stat-grid" id="emailEngagement"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FEATURED ── -->
+    <div class="mg-dept">
+      <div class="dept-head">
+        <div class="dept-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-star"></i></div>
+        <h2>Featured</h2><span class="tag">Editorial Curation</span>
+      </div>
+
+      <div class="kpi-strip" id="featKpis"></div>
+
+      <div class="mg-row two">
+        <div class="panel">
+          <div class="panel-title"><i class="fas fa-list-ol" style="font-size:9px"></i> Current Featured Lineup</div>
+          <div class="feat-list" id="featList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><i class="fas fa-clock-rotate-left" style="font-size:9px"></i> Upcoming Rotation</div>
+          <div class="queue-list" id="queueList"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SuperAdminSidebar.attach('#dashRoot',{
+  activeItem:'marketing-growth', title:'Marketing & Growth', subtitle:'A read-only snapshot of the Marketing and Featured departments',
+  user:{name:'Tobenna Achebe',role:'Super Admin',avatar:'https://i.pravatar.cc/100?img=51'}, notifCount:9,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+
+function fmtNum(n){ n=n||0; return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
+function fmtNaira(n){ return '₦'+fmtNum(n||0); }
+
+/* ── MARKETING: KPIs ── */
+const MKT_KPIS = [
+  { n:'26', l:'Active Campaigns', ico:'fa-bullhorn', cls:'accent' },
+  { n:'1.84M', l:'Total Reach (7d)', ico:'fa-signal', cls:'blue' },
+  { n:'₦3.2M', l:'Total Spend (7d)', ico:'fa-sack-dollar', cls:'green' },
+  { n:'4.8%', l:'Avg Click-Through', ico:'fa-arrow-pointer', cls:'purple' },
+];
+document.getElementById('mktKpis').innerHTML = MKT_KPIS.map(k=>`
+  <div class="kpi-card">
+    <div class="kpi-ico" style="background:${BG_MAP[k.cls]};color:${ICO_MAP[k.cls]}"><i class="fas ${k.ico}"></i></div>
+    <div><div class="kpi-num">${k.n}</div><div class="kpi-lbl">${k.l}</div></div>
+  </div>`).join('');
+
+/* ── MARKETING: reach by placement (mirrors the surfaces available in the campaign wizard) ── */
+const PLACEMENTS = [
+  { label:'End of Chapter', reach:61000 },
+  { label:'Homepage Feed', reach:42000 },
+  { label:'You May Also Like', reach:38000 },
+  { label:'Discover Page', reach:28500 },
+  { label:'Social Feed', reach:19800 },
+  { label:'Search Results', reach:15200 },
+];
+const maxReach = Math.max(...PLACEMENTS.map(p=>p.reach));
+document.getElementById('placementList').innerHTML = PLACEMENTS.map(p=>`
+  <div class="pl-row">
+    <div class="pl-name">${p.label}</div>
+    <div class="pl-track"><div class="pl-fill" style="width:${Math.max(6,p.reach/maxReach*100)}%"></div></div>
+    <div class="pl-val">${fmtNum(p.reach)}/d</div>
+  </div>`).join('');
+
+/* ── MARKETING: email + engagement, read-only ── */
+const EMAIL_ENGAGEMENT = [
+  { l:'Opted-in Subscribers', v:'84.2K', cls:'blue' },
+  { l:'Weekly Open Rate', v:'34%', cls:'green' },
+  { l:'Weekly Click Rate', v:'8.1%', cls:'purple' },
+  { l:'Likes · Comments · Shares', v:'182K · 24K · 9.1K', cls:'accent' },
+];
+document.getElementById('emailEngagement').innerHTML = EMAIL_ENGAGEMENT.map(m=>`
+  <div class="mini-stat"><span>${m.l}</span><b>${m.v}</b></div>`).join('');
+
+/* ── FEATURED: KPIs ── */
+const FEAT_KPIS = [
+  { n:'18', l:'Live Featured Stories', ico:'fa-star', cls:'blue' },
+  { n:'2 / 20', l:'Open Slots', ico:'fa-grip', cls:'amber' },
+  { n:'+142%', l:'Avg Reads Uplift', ico:'fa-arrow-trend-up', cls:'green' },
+  { n:'7 days', l:'Rotation Cycle', ico:'fa-clock-rotate-left', cls:'purple' },
+];
+document.getElementById('featKpis').innerHTML = FEAT_KPIS.map(k=>`
+  <div class="kpi-card">
+    <div class="kpi-ico" style="background:${BG_MAP[k.cls]};color:${ICO_MAP[k.cls]}"><i class="fas ${k.ico}"></i></div>
+    <div><div class="kpi-num">${k.n}</div><div class="kpi-lbl">${k.l}</div></div>
+  </div>`).join('');
+
+/* ── FEATURED: current lineup (read-only) ── */
+const FEATURED = [
+  { title:'The runaway bride — I left at the altar in my socked feet', writer:'Ifeanyi_Story', cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', days:4, uplift:186 },
+  { title:'The letter he never sent', writer:'Ada_Writes', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', days:2, uplift:151 },
+  { title:'My stepmother stole my university fund', writer:'Zara_M', cover:'https://i.postimg.cc/ftRZbhKx/3.jpg', days:6, uplift:129 },
+  { title:'The Luna Trials: three packs, one crown', writer:'Yusuf_Howl', cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', days:1, uplift:98 },
+];
+document.getElementById('featList').innerHTML = FEATURED.map(f=>`
+  <div class="feat-item">
+    <img src="${f.cover}" alt=""/>
+    <div class="feat-info"><b>${f.title}</b><span>${f.writer} · Day ${f.days} of rotation</span></div>
+    <span class="feat-uplift"><i class="fas fa-arrow-up" style="font-size:8px"></i> ${f.uplift}%</span>
+  </div>`).join('');
+
+/* ── FEATURED: upcoming rotation queue (read-only) ── */
+const QUEUE = [
+  { title:'My stepmother stole my university fund — Season 2', date:'Aug 2' },
+  { title:"He proposed with my best friend's ring", date:'Aug 4' },
+  { title:"She rejected me 3 times", date:'Aug 6' },
+];
+document.getElementById('queueList').innerHTML = QUEUE.map(q=>`
+  <div class="queue-item">
+    <span class="queue-dot"></span>
+    <div class="queue-info"><b>${q.title}</b></div>
+    <span class="queue-date">${q.date}</span>
+  </div>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55);position:relative;overflow:hidden}
+.welcome-banner::after{content:'';position:absolute;top:-40%;right:-6%;width:260px;height:260px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);pointer-events:none}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:620px}
+.welcome-stats{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap}
+.welcome-stat b{font-size:19px;font-weight:800;display:block}
+.welcome-stat span{font-size:10.5px;opacity:.75;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.dash-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px}
+.panel-link{font-size:11.5px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:5px}
+.panel-link:hover{text-decoration:underline}
+
+/* quick actions */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qa-card{border:1px solid var(--border);border-radius:12px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.15s;background:var(--card)}
+.qa-card:hover{border-color:var(--accent);background:var(--hover)}
+.qa-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.qa-txt b{font-size:12px;font-weight:700;display:block;line-height:1.3}
+.qa-txt span{font-size:10px;color:var(--text-faint);font-weight:600}
+.qa-count{margin-left:auto;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--red-bg);color:var(--red);flex-shrink:0}
+
+/* recent submissions list */
+.sub-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.sub-row:last-child{border-bottom:none}
+.sub-ico{width:34px;height:34px;border-radius:9px;background:var(--table-head);color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.sub-cover{width:38px;height:52px;border-radius:7px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 10px rgba(20,10,50,.18);background:var(--table-head)}
+.sub-body{flex:1;min-width:0}
+.sub-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.status-pill{font-size:9px;font-weight:800;padding:2px 9px;border-radius:20px;text-transform:uppercase;white-space:nowrap;flex-shrink:0}
+.status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+.status-pill.approved{background:var(--green-bg);color:var(--green)}
+.status-pill.rejected{background:var(--red-bg);color:var(--red)}
+
+/* activity feed */
+.act-row{display:flex;gap:11px;padding:10px 2px}
+.act-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.act-body{flex:1;min-width:0}
+.act-text{font-size:12px;line-height:1.5;color:var(--text)}
+.act-text b{font-weight:700}
+.act-time{font-size:10px;color:var(--text-faint);font-weight:600;margin-top:2px}
+
+.skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.qa-grid{grid-template-columns:1fr}.welcome-stats{gap:16px}}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Senior Editor · Overview</div>
+    <div class="welcome-title" id="greetTitle">Welcome back 👋</div>
+    <div class="welcome-sub">Here's what's moving across your desk today — pending reviews, author activity, and everything queued for a decision.</div>
+    <div class="welcome-stats" id="welcomeStats"></div>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="dash-grid">
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-inbox" style="color:var(--accent)"></i> Recent Submissions</h2>
+          <a class="panel-link" href="review-queue.html">View all <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div id="subList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-bolt" style="color:var(--accent)"></i> Quick Actions</h2>
+        </div>
+        <div class="qa-grid" id="qaGrid"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-chart-simple" style="color:var(--blue)"></i> This Week</h2>
+        </div>
+        <div id="weekStats"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-clock-rotate-left" style="color:var(--text-faint)"></i> Recent Activity</h2>
+        </div>
+        <div id="activityList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#dashRoot',{
+  activeItem:'dashboard', title:'Dashboard', subtitle:'Your editorial overview',
+  user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
+  searchPlaceholder:'Search anything…',
+});
+
+const QA_LINKS = {
+  'Review Pending Submissions': 'review-queue.html',
+  "Check Plagiarism Reports": 'reports-compliance.html',
+  'Respond to Author Messages': 'communication.html',
+  "Select Editor's Pick": 'featured-stories.html',
+};
+
+/* Cover art — same mapping used across the other Senior Editor pages */
+const COVER_MAP = {
+  "The CEO's Hidden Son":         'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
+  "Wolf King's Vow":              'https://i.postimg.cc/MXBR6bfY/wolf3.jpg',
+  'Betrayed by the Mafia Prince': 'https://i.postimg.cc/fkdXzjS8/wolf.jpg',
+  'Bound by the Ruthless Alpha':  'https://i.postimg.cc/xqmHfyNR/wolf2.jpg',
+  "The Duke's Secret":            'https://i.postimg.cc/fkdXzjSj/wife.jpg',
+};
+const COVER_FALLBACK = [
+  'https://i.postimg.cc/vDn9YLx5/wife2.jpg',
+  'https://i.postimg.cc/cgLZJNmC/8.jpg',
+  'https://i.postimg.cc/0MyxNqfz/7.jpg',
+  'https://i.postimg.cc/N9jY0w4m/5.jpg',
+  'https://i.postimg.cc/tY7KnJyr/images.jpg',
+];
+function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
+function coverFor(title, i){ return COVER_MAP[cleanTitle(title)] || COVER_FALLBACK[i % COVER_FALLBACK.length]; }
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+
+function greetByHour(){
+  const h = new Date().getHours();
+  if(h<12) return 'Good morning, Chioma 👋';
+  if(h<18) return 'Good afternoon, Chioma 👋';
+  return 'Good evening, Chioma 👋';
+}
+
+async function init(){
+  document.getElementById('greetTitle').textContent = greetByHour();
+  const d = await SeniorEditorData.getDashboard();
+
+  // Welcome banner stats
+  document.getElementById('welcomeStats').innerHTML = `
+    <div class="welcome-stat"><b>${d.pendingReviews}</b><span>Pending Reviews</span></div>
+    <div class="welcome-stat"><b>${d.assignedAuthors}</b><span>Assigned Authors</span></div>
+    <div class="welcome-stat"><b>${d.approvalRate}%</b><span>Approval Rate</span></div>
+    <div class="welcome-stat"><b>${d.avgTurnaround}</b><span>Avg Turnaround</span></div>`;
+
+  // Stat cards
+  const stats = [
+    { n:d.assignedAuthors, l:'Assigned Authors', ico:'fa-user-tie', cls:'accent' },
+    { n:d.pendingReviews, l:'Pending Reviews', ico:'fa-inbox', cls:'amber' },
+    { n:d.recentSubmissions, l:'Recent Submissions', ico:'fa-file-lines', cls:'blue' },
+    { n:d.approvalRate+'%', l:'Approval Rate', ico:'fa-circle-check', cls:'green' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+
+  // Quick actions
+  document.getElementById('qaGrid').innerHTML = d.quickActions.map(qa=>`
+    <div class="qa-card" data-href="${QA_LINKS[qa.label]||'#'}">
+      <div class="qa-ico" style="background:${BG_MAP[qa.cls]};color:${ICO_MAP[qa.cls]}"><i class="fas ${qa.icon}"></i></div>
+      <div class="qa-txt"><b>${qa.label}</b><span>${qa.count?qa.count+' waiting':'Ready when you are'}</span></div>
+      ${qa.count?`<span class="qa-count">${qa.count}</span>`:''}
+    </div>`).join('');
+  document.querySelectorAll('.qa-card').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      const href = c.dataset.href;
+      if(href && href!=='#') location.href = href; else toast('Opening…');
+    });
+  });
+
+  // Recent submissions
+  document.getElementById('subList').innerHTML = d.recentSubs.map((s,i)=>`
+    <div class="sub-row">
+      <img class="sub-cover" src="${coverFor(s.title,i)}" alt="${cleanTitle(s.title)} cover" loading="lazy"/>
+      <div class="sub-body">
+        <div class="sub-title">${cleanTitle(s.title)}</div>
+        <div class="sub-meta"><span>✍️ ${s.author}</span><span>${s.genre}</span><span>${s.submitted}</span></div>
+      </div>
+      <span class="status-pill ${s.status}">${s.status}</span>
+    </div>`).join('');
+
+  // This week
+  document.getElementById('weekStats').innerHTML = `
+    <div class="sub-row"><div class="sub-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-paper-plane"></i></div>
+      <div class="sub-body"><div class="sub-title">Submissions this week</div></div>
+      <b style="font-size:14px">${d.submissionsThisWeek}</b></div>
+    <div class="sub-row"><div class="sub-ico" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-circle-check"></i></div>
+      <div class="sub-body"><div class="sub-title">Approval rate</div></div>
+      <b style="font-size:14px">${d.approvalRate}%</b></div>
+    <div class="sub-row"><div class="sub-ico" style="background:var(--purple-bg);color:var(--purple)"><i class="fas fa-clock"></i></div>
+      <div class="sub-body"><div class="sub-title">Avg turnaround</div></div>
+      <b style="font-size:14px">${d.avgTurnaround}</b></div>`;
+
+  // Activity feed
+  document.getElementById('activityList').innerHTML = d.activity.map(a=>`
+    <div class="act-row">
+      <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
+      <div class="act-body">
+        <div class="act-text">${a.text}</div>
+        <div class="act-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+init();
+</script>
+</body>
+</html>

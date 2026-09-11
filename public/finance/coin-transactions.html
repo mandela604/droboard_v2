@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Coin Transactions — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.page-head h1{font-size:19px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.new-btn{background:var(--accent);color:#fff;border:none;padding:11px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.new-btn:hover{filter:brightness(1.05)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.tabs{display:flex;gap:6px;margin-bottom:16px;background:var(--table-head);padding:5px;border-radius:12px;width:fit-content;flex-wrap:wrap}
+.tab-btn{font-size:12.5px;font-weight:700;padding:8px 16px;border-radius:9px;border:none;background:none;color:var(--text-muted);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+.tab-btn.active{background:var(--card);color:var(--accent);box-shadow:var(--shadow)}
+.tab-count{font-size:9.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:1px 7px;border-radius:20px}
+.tab-btn.active .tab-count{background:var(--accent-soft,rgba(255,0,80,.12));color:var(--accent)}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:11px;padding:10px 14px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box i{color:var(--text-faint);font-size:13px}
+.select-box{border:1px solid var(--input-border);background:var(--input-bg);border-radius:11px;padding:10px 14px;font-size:12.5px;font-family:inherit;color:var(--text);cursor:pointer}
+
+.filter-pills{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.f-pill{font-size:12px;font-weight:700;padding:8px 15px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:6px}
+.f-pill:hover{border-color:var(--accent);color:var(--accent)}
+.f-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.f-pill .cnt{font-size:10px;font-weight:800;background:rgba(0,0,0,.12);padding:1px 7px;border-radius:20px}
+.f-pill.active .cnt{background:rgba(255,255,255,.25)}
+
+/* ── Transactions list ── */
+.tx-list{display:flex;flex-direction:column;gap:9px}
+.tx-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:13px 15px;box-shadow:var(--shadow);display:flex;align-items:center;gap:13px;flex-wrap:wrap;cursor:pointer;transition:.14s}
+.tx-card:hover{border-color:var(--accent)}
+.tx-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tx-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-left:-4px;border:2px solid var(--card)}
+.tx-body{flex:1;min-width:180px;display:flex;align-items:center;gap:10px}
+.tx-user{font-size:13px;font-weight:700}
+.tx-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.type-chip{font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;text-transform:capitalize}
+.type-chip.purchase{background:var(--green-bg);color:var(--green)}
+.type-chip.spend{background:var(--blue-bg);color:var(--blue)}
+.type-chip.gift{background:var(--purple-bg);color:var(--purple)}
+.status-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.completed{background:var(--green-bg);color:var(--green)}
+.status-pill.refunded{background:var(--red-bg);color:var(--red)}
+.status-pill.active{background:var(--green-bg);color:var(--green)}
+.status-pill.inactive{background:var(--table-head);color:var(--text-faint)}
+.tx-figures{text-align:right;flex-shrink:0}
+.tx-coins{font-size:14px;font-weight:800}
+.tx-coins.pos{color:var(--green)}
+.tx-coins.neg{color:var(--text)}
+.tx-usd{font-size:10.5px;color:var(--text-faint);margin-top:1px}
+
+/* ── Coin Pricing (packages & gifts) ── */
+.pricing-section{margin-bottom:22px}
+.pricing-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.pricing-section-head h3{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.mini-btn{font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+
+.pkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.pkg-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:var(--shadow);transition:.14s}
+.pkg-card:hover{border-color:var(--accent)}
+.pkg-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.pkg-name{font-size:13.5px;font-weight:800}
+.pkg-coins{font-size:20px;font-weight:800;color:var(--amber);display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.pkg-price{font-size:12.5px;color:var(--text-muted);font-weight:600}
+.pkg-bonus{font-size:10px;font-weight:700;color:var(--green);margin-top:4px}
+.pkg-gift-cost{font-size:20px;font-weight:800;color:var(--purple);display:flex;align-items:center;gap:6px}
+.pkg-meta{font-size:10px;color:var(--text-faint);margin-top:8px}
+.pkg-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.pkg-actions .mini-btn{flex:1;justify-content:center;padding:7px 10px;font-size:10.5px}
+.gift-icon-badge{width:40px;height:40px;border-radius:11px;background:var(--purple-bg);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+
+/* ── History ── */
+.hist-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--card)}
+.hist-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.hist-body{flex:1;min-width:0}
+.hist-text{font-size:12.5px;color:var(--text)}
+.hist-text b{font-weight:700}
+.hist-detail{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.hist-time{font-size:10.5px;color:var(--text-faint);white-space:nowrap;flex-shrink:0}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-faint)}
+.empty-state i{font-size:32px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:13px}
+
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px}
+.page-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Centered detail modal (transactions) ── */
+.ct-overlay{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:2000;opacity:0;pointer-events:none;transition:.2s;display:flex;align-items:center;justify-content:center;padding:40px 16px}
+.ct-overlay.open{opacity:1;pointer-events:auto}
+.ct-modal{background:var(--card);width:100%;max-width:420px;border-radius:18px;max-height:calc(90vh - 40px);overflow-y:auto;transform:translateY(14px) scale(.98);opacity:0;transition:.2s;margin:auto}
+.ct-overlay.open .ct-modal{transform:translateY(0) scale(1);opacity:1}
+.ct-head{padding:20px 22px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ct-head h3{font-size:15px;font-weight:800}
+.ct-close{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.ct-body{padding:16px 22px 22px}
+.ct-amt-card{background:var(--table-head);border-radius:12px;padding:18px;text-align:center;margin-bottom:16px}
+.ct-amt-num{font-size:24px;font-weight:800}
+.ct-amt-usd{font-size:12px;color:var(--text-faint);margin-top:2px}
+.ct-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ct-meta-item{background:var(--table-head);border-radius:10px;padding:11px 12px}
+.ct-meta-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.ct-meta-val{font-size:12.5px;font-weight:700;margin-top:3px}
+.ct-note{margin-top:12px;font-size:12px;color:var(--text-muted);background:var(--table-head);border-radius:10px;padding:11px 13px;line-height:1.5}
+
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+/* ── Form / confirm modals (packages & gifts) ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:460px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s;max-height:88vh;overflow-y:auto}
+.modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head h3{font-size:15px;font-weight:800}
+.modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
+.modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.field-group input, .field-group select{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text)}
+.field-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.radio-row{display:flex;gap:8px;flex-wrap:wrap}
+.radio-opt{flex:1;min-width:110px;border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:8px}
+.radio-opt.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft,rgba(255,0,80,.06))}
+.radio-opt.disabled{opacity:.5;pointer-events:none}
+.radio-opt input{accent-color:var(--accent)}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.modal-error.show{display:block}
+.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
+.modal-box-actions .confirm-btn{background:var(--accent);border-color:transparent;color:#fff}
+.modal-box-actions .confirm-btn.danger-variant{background:var(--red)}
+.modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.tx-figures{width:100%;text-align:left}.ct-meta-grid{grid-template-columns:1fr}.field-row-2{grid-template-columns:1fr}.page-head{align-items:stretch}.new-btn{width:100%;justify-content:center}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <div><h1>Coin Transactions</h1><p>Monitor coin purchases, usage, and balances across the platform.</p></div>
+    <button class="new-btn" id="newItemBtn"><i class="fas fa-plus"></i> New Coin Price / Gift</button>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="tabs" id="tabBar">
+    <button class="tab-btn active" data-tab="transactions">Transactions</button>
+    <button class="tab-btn" data-tab="pricing">Coin Pricing & Gifts <span class="tab-count" id="pricingCount">0</span></button>
+    <button class="tab-btn" data-tab="history">Create / Gift History <span class="tab-count" id="historyCount">0</span></button>
+  </div>
+
+  <!-- ── Transactions tab ── -->
+  <div id="tab-transactions">
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by user…"/></div>
+      <select class="select-box" id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="completed">Completed</option>
+        <option value="refunded">Refunded</option>
+      </select>
+      <select class="select-box" id="sortSelect">
+        <option value="recent">Most recent</option>
+        <option value="coins-desc">Highest coin amount</option>
+        <option value="usd-desc">Highest USD value</option>
+      </select>
+    </div>
+    <div class="filter-pills" id="filterPills"></div>
+    <div id="txList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading transactions…</div></div>
+    <div class="pagination" id="txPagination"></div>
+  </div>
+
+  <!-- ── Coin Pricing & Gifts tab ── -->
+  <div id="tab-pricing" style="display:none">
+    <div class="pricing-section">
+      <div class="pricing-section-head">
+        <h3><i class="fas fa-coins" style="color:var(--amber)"></i> Coin Packages</h3>
+        <button class="mini-btn primary" id="addPackageBtn"><i class="fas fa-plus"></i> Add Package</button>
+      </div>
+      <div class="pkg-grid" id="pkgList"></div>
+      <div class="pagination" id="pkgPagination"></div>
+    </div>
+
+    <div class="pricing-section">
+      <div class="pricing-section-head">
+        <h3><i class="fas fa-gift" style="color:var(--purple)"></i> Gift Items</h3>
+        <button class="mini-btn primary" id="addGiftBtn"><i class="fas fa-plus"></i> Add Gift</button>
+      </div>
+      <div class="pkg-grid" id="giftList"></div>
+      <div class="pagination" id="giftPagination"></div>
+    </div>
+  </div>
+
+  <!-- ── History tab ── -->
+  <div id="tab-history" style="display:none">
+    <div class="filter-pills" id="histFilterPills"></div>
+    <div id="histList"></div>
+    <div class="pagination" id="histPagination"></div>
+  </div>
+</div>
+
+<!-- Centered transaction detail modal -->
+<div class="ct-overlay" id="ctOverlay">
+  <div class="ct-modal" id="ctModal"></div>
+</div>
+
+<!-- Package / Gift form modal -->
+<div class="modal-overlay" id="formModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3 id="formModalTitle">New Coin Item</h3>
+        <p id="formModalSub">Set up a coin package or a giftable item.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-form-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label>Type</label>
+        <div class="radio-row" id="kindRow">
+          <label class="radio-opt active" data-kind="package"><input type="radio" name="kindOpt" value="package" checked/> <i class="fas fa-coins"></i> Coin Package</label>
+          <label class="radio-opt" data-kind="gift"><input type="radio" name="kindOpt" value="gift"/> <i class="fas fa-gift"></i> Gift Item</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label id="nameLabel">Package Name</label>
+        <input type="text" id="itemName" placeholder="e.g. Reader Bundle"/>
+      </div>
+
+      <!-- Package fields -->
+      <div id="packageFields">
+        <div class="field-row-2">
+          <div class="field-group"><label>Coins</label><input type="number" id="pkgCoins" min="1" placeholder="e.g. 5000"/></div>
+          <div class="field-group"><label>Price (USD)</label><input type="number" id="pkgPrice" min="0.01" step="0.01" placeholder="e.g. 49.99"/></div>
+        </div>
+        <div class="field-group"><label>Bonus % (optional)</label><input type="number" id="pkgBonus" min="0" max="100" placeholder="e.g. 5"/></div>
+      </div>
+
+      <!-- Gift fields -->
+      <div id="giftFields" style="display:none">
+        <div class="field-row-2">
+          <div class="field-group"><label>Emoji / Icon</label><input type="text" id="giftIcon" maxlength="4" placeholder="e.g. 🌹"/></div>
+          <div class="field-group"><label>Cost (coins)</label><input type="number" id="giftCost" min="1" placeholder="e.g. 100"/></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Status</label>
+        <select id="itemStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+      </div>
+
+      <div class="modal-error" id="formModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-form-modal">Cancel</button>
+        <button class="confirm-btn" id="formConfirmBtn" data-action="submit-form"><i class="fas fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="delModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div><h3>Delete item</h3><p id="delModalSub">This can't be undone.</p></div>
+      <button class="modal-close-x" data-action="close-del-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-del-modal">Cancel</button>
+        <button class="confirm-btn danger-variant" id="delConfirmBtn" data-action="submit-del"><i class="fas fa-trash"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/finance-sidebar.js"></script>
+<script src="shared/finance-data.js"></script>
+<script>
+'use strict';
+const shell = FinanceSidebar.attach('#pageRoot',{
+  activeItem:'coin-transactions', title:'Coin Transactions', subtitle:'Monitor coin purchases, usage & balances',
+  user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const TYPE_ICO = { purchase:'fa-circle-plus', spend:'fa-book-open-reader', gift:'fa-gift' };
+const PER_PAGE = 8, PKG_PER_PAGE = 4, HIST_PER_PAGE = 6;
+
+/* ── Local API wrapper for the new coin-pricing endpoints (not yet on the
+   backend) — same try-real-endpoint-then-fall-back-to-demo pattern used
+   throughout finance-data.js. ── */
+const API_BASE = window.DROBOARD_API_BASE || '/api/finance';
+async function apiFetch(path, options){
+  const res = await fetch(API_BASE + path, { headers:{'Content-Type':'application/json'}, ...options });
+  if(!res.ok) throw new Error('Request failed: ' + res.status);
+  return res.status===204 ? null : res.json();
+}
+let usingDemoConfig = false;
+
+const DEMO_PACKAGES = [
+  { id:'PKG-01', name:'Starter Pack',  coins:1000,  priceUsd:9.99,  bonusPercent:0,  status:'active',   createdAt:'2026-01-15' },
+  { id:'PKG-02', name:'Reader Bundle', coins:5000,  priceUsd:49.99, bonusPercent:5,  status:'active',   createdAt:'2026-02-01' },
+  { id:'PKG-03', name:'Power Pack',    coins:12000, priceUsd:99.99, bonusPercent:10, status:'active',   createdAt:'2026-03-10' },
+  { id:'PKG-04', name:'Trial Pack',    coins:500,   priceUsd:5.99,  bonusPercent:0,  status:'inactive', createdAt:'2025-11-01' },
+];
+const DEMO_GIFTS = [
+  { id:'GFT-01', name:'Rose',    icon:'🌹', costCoins:50,   status:'active',   createdAt:'2026-01-20' },
+  { id:'GFT-02', name:'Heart',   icon:'❤️', costCoins:100,  status:'active',   createdAt:'2026-01-20' },
+  { id:'GFT-03', name:'Crown',   icon:'👑', costCoins:500,  status:'active',   createdAt:'2026-02-15' },
+  { id:'GFT-04', name:'Diamond', icon:'💎', costCoins:1000, status:'active',   createdAt:'2026-03-05' },
+  { id:'GFT-05', name:'Trophy',  icon:'🏆', costCoins:2000, status:'inactive', createdAt:'2025-12-01' },
+];
+const DEMO_HISTORY = [
+  { id:'CFG-001', action:'created',    itemType:'package', itemName:'Starter Pack',  actor:'Ngozi Falade', date:'2026-01-15T10:00:00', details:'1,000 coins for $9.99' },
+  { id:'CFG-002', action:'created',    itemType:'gift',    itemName:'Rose',          actor:'Ngozi Falade', date:'2026-01-20T09:30:00', details:'50 coins per gift' },
+  { id:'CFG-003', action:'created',    itemType:'gift',    itemName:'Heart',         actor:'Ngozi Falade', date:'2026-01-20T09:32:00', details:'100 coins per gift' },
+  { id:'CFG-004', action:'created',    itemType:'package', itemName:'Reader Bundle', actor:'Ngozi Falade', date:'2026-02-01T11:15:00', details:'5,000 coins for $49.99 (+5% bonus)' },
+  { id:'CFG-005', action:'created',    itemType:'gift',    itemName:'Crown',         actor:'Tari Benson',  date:'2026-02-15T14:00:00', details:'500 coins per gift' },
+  { id:'CFG-006', action:'created',    itemType:'package', itemName:'Power Pack',    actor:'Ngozi Falade', date:'2026-03-10T08:45:00', details:'12,000 coins for $99.99 (+10% bonus)' },
+  { id:'CFG-007', action:'created',    itemType:'gift',    itemName:'Diamond',       actor:'Ngozi Falade', date:'2026-03-05T16:20:00', details:'1,000 coins per gift' },
+  { id:'CFG-008', action:'deactivated',itemType:'gift',    itemName:'Trophy',        actor:'Ngozi Falade', date:'2026-04-02T09:00:00', details:'Retired seasonal gift item' },
+];
+
+let ALL = [];             // transactions
+let PACKAGES = [], GIFTS = [], HISTORY = [];
+let activeTab = 'transactions';
+let activeType = 'all';
+let searchTerm = '', statusTerm = '', sortMode = 'recent';
+let page = 1, pkgPage = 1, giftPage = 1, histPage = 1;
+let activeHistFilter = 'all';
+
+function money(n){ const v = Number(n||0); return (v<0?'-':'') + '$' + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function coinsFmt(n){ const v=Number(n||0); return (v>0?'+':'') + v.toLocaleString('en-US'); }
+function fmtDateTime(iso){ const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function isToday(iso){ const d=new Date(iso), t=new Date(); return d.toDateString()===t.toDateString(); }
+
+async function init(){
+  ALL = await FinanceData.getCoinTransactions();
+  await loadConfig();
+  renderStatCards();
+  renderFilterPills();
+  render();
+  renderPricing();
+  renderHistFilterPills();
+  renderHistory();
+}
+
+async function loadConfig(){
+  try{
+    const [p,g,h] = await Promise.all([apiFetch('/coin-packages'), apiFetch('/coin-gifts'), apiFetch('/coin-config-history')]);
+    PACKAGES = p; GIFTS = g; HISTORY = h; usingDemoConfig = false;
+  }catch(e){
+    PACKAGES = JSON.parse(JSON.stringify(DEMO_PACKAGES));
+    GIFTS = JSON.parse(JSON.stringify(DEMO_GIFTS));
+    HISTORY = JSON.parse(JSON.stringify(DEMO_HISTORY));
+    usingDemoConfig = true;
+  }
+}
+function logHistory(action, itemType, itemName, details){
+  const entry = { id:'CFG-'+String(HISTORY.length+1).padStart(3,'0'), action, itemType, itemName, actor:'Ngozi Falade', date:new Date().toISOString(), details };
+  HISTORY.unshift(entry);
+  if(!usingDemoConfig) apiFetch('/coin-config-history', { method:'POST', body: JSON.stringify(entry) }).catch(()=>{});
+}
+
+/* ── Stat cards ── */
+function renderStatCards(){
+  const purchasedToday = ALL.filter(t=>t.type==='purchase' && t.status==='completed' && isToday(t.date)).reduce((s,t)=>s+t.usd,0);
+  const spentToday = ALL.filter(t=>t.type==='spend' && isToday(t.date)).reduce((s,t)=>s+Math.abs(t.coins),0);
+  const refunded = ALL.filter(t=>t.status==='refunded').length;
+  const stats = [
+    { n:money(purchasedToday), l:'Purchased Today', ico:'fa-circle-plus', cls:'green' },
+    { n:'4.2M', l:'Coins in Circulation', ico:'fa-coins', cls:'amber' },
+    { n:spentToday.toLocaleString('en-US'), l:'Coins Spent Today', ico:'fa-book-open-reader', cls:'blue' },
+    { n:refunded, l:'Refunded Transactions', ico:'fa-arrow-rotate-left', cls:'red' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+/* ── Tabs ── */
+document.querySelectorAll('#tabBar .tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll('#tabBar .tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('tab-transactions').style.display = activeTab==='transactions' ? 'block':'none';
+    document.getElementById('tab-pricing').style.display = activeTab==='pricing' ? 'block':'none';
+    document.getElementById('tab-history').style.display = activeTab==='history' ? 'block':'none';
+  });
+});
+
+/* ── Transactions filter pills ── */
+function renderFilterPills(){
+  const counts = { all:ALL.length, purchase:0, spend:0, gift:0 };
+  ALL.forEach(t=>{ if(counts[t.type]!=null) counts[t.type]++; });
+  const pills = [ {key:'all',label:'All'}, {key:'purchase',label:'Purchases'}, {key:'spend',label:'Spends'}, {key:'gift',label:'Gifts'} ];
+  document.getElementById('filterPills').innerHTML = pills.map(p=>`
+    <button class="f-pill${activeType===p.key?' active':''}" data-type="${p.key}">${p.label} <span class="cnt">${counts[p.key]}</span></button>`).join('');
+  document.querySelectorAll('#filterPills .f-pill').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeType = btn.dataset.type; page=1; renderFilterPills(); render(); });
+  });
+}
+
+function getFiltered(){
+  let list = ALL.slice();
+  if(activeType!=='all') list = list.filter(t=>t.type===activeType);
+  if(statusTerm) list = list.filter(t=>t.status===statusTerm);
+  if(searchTerm) list = list.filter(t=>t.user.toLowerCase().includes(searchTerm.toLowerCase()));
+  if(sortMode==='coins-desc') list.sort((a,b)=>Math.abs(b.coins)-Math.abs(a.coins));
+  else if(sortMode==='usd-desc') list.sort((a,b)=>Math.abs(b.usd)-Math.abs(a.usd));
+  else list.sort((a,b)=> new Date(b.date)-new Date(a.date));
+  return list;
+}
+
+function render(){
+  const filtered = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PER_PAGE));
+  if(page>totalPages) page = totalPages;
+  const pageItems = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  const box = document.getElementById('txList');
+  if(!pageItems.length){
+    box.innerHTML = `<div class="empty-state"><i class="fas fa-coins"></i><p>No transactions match your filters.</p></div>`;
+    document.getElementById('txPagination').innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = `<div class="tx-list">${pageItems.map(t=>`
+    <div class="tx-card" data-id="${t.id}">
+      <div class="tx-ico" style="background:${BG_MAP[t.type==='purchase'?'green':t.type==='spend'?'blue':'purple']};color:${ICO_MAP[t.type==='purchase'?'green':t.type==='spend'?'blue':'purple']}"><i class="fas ${TYPE_ICO[t.type]}"></i></div>
+      <img class="tx-avatar" src="${t.avatar}" alt="${t.user}"/>
+      <div class="tx-body">
+        <div>
+          <div class="tx-user">${t.user}</div>
+          <div class="tx-meta">${fmtDateTime(t.date)}${t.note ? ' · '+t.note : ''}</div>
+        </div>
+        <span class="type-chip ${t.type}">${t.type}</span>
+        <span class="status-pill ${t.status}">${t.status}</span>
+      </div>
+      <div class="tx-figures">
+        <div class="tx-coins ${t.coins>0?'pos':''}">${coinsFmt(t.coins)} coins</div>
+        <div class="tx-usd">${money(t.usd)}</div>
+      </div>
+    </div>`).join('')}</div>`;
+
+  document.querySelectorAll('.tx-card').forEach(card=>{
+    card.addEventListener('click', ()=>openTxDetail(card.dataset.id));
+  });
+
+  renderTxPagination(totalPages);
+}
+
+function renderTxPagination(totalPages){
+  const box = document.getElementById('txPagination');
+  if(totalPages<=1){ box.innerHTML=''; return; }
+  let html = `<button class="page-btn" ${page===1?'disabled':''} data-p="${page-1}"><i class="fas fa-chevron-left"></i></button>`;
+  for(let i=1;i<=totalPages;i++) html += `<button class="page-btn${i===page?' active':''}" data-p="${i}">${i}</button>`;
+  html += `<button class="page-btn" ${page===totalPages?'disabled':''} data-p="${page+1}"><i class="fas fa-chevron-right"></i></button>`;
+  box.innerHTML = html;
+  box.querySelectorAll('.page-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ page=parseInt(btn.dataset.p,10); render(); window.scrollTo({top:0,behavior:'smooth'}); });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm=e.target.value; page=1; render(); });
+document.getElementById('statusFilter').addEventListener('change', e=>{ statusTerm=e.target.value; page=1; render(); });
+document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e.target.value; render(); });
+
+/* ── Transaction detail modal ── */
+const ctOverlay = document.getElementById('ctOverlay');
+const ctModal = document.getElementById('ctModal');
+function openTxDetail(id){
+  const t = ALL.find(x=>x.id===id);
+  if(!t) return;
+  ctModal.innerHTML = `
+    <div class="ct-head"><h3>Transaction Detail</h3><button class="ct-close" id="ctClose"><i class="fas fa-xmark"></i></button></div>
+    <div class="ct-body">
+      <div class="ct-amt-card">
+        <div class="ct-amt-num" style="color:${t.coins>0?'var(--green)':'var(--text)'}">${coinsFmt(t.coins)} coins</div>
+        <div class="ct-amt-usd">${money(t.usd)}</div>
+      </div>
+      <div class="ct-meta-grid">
+        <div class="ct-meta-item"><div class="ct-meta-lbl">User</div><div class="ct-meta-val">${t.user}</div></div>
+        <div class="ct-meta-item"><div class="ct-meta-lbl">Type</div><div class="ct-meta-val" style="text-transform:capitalize">${t.type}</div></div>
+        <div class="ct-meta-item"><div class="ct-meta-lbl">Status</div><div class="ct-meta-val" style="text-transform:capitalize">${t.status}</div></div>
+        <div class="ct-meta-item"><div class="ct-meta-lbl">Reference</div><div class="ct-meta-val" style="font-size:11px">${t.id}</div></div>
+        <div class="ct-meta-item" style="grid-column:1/-1"><div class="ct-meta-lbl">Date</div><div class="ct-meta-val">${fmtDateTime(t.date)}</div></div>
+      </div>
+      ${t.note ? `<div class="ct-note"><i class="fas fa-circle-info"></i> ${t.note}</div>` : ''}
+    </div>`;
+  ctOverlay.classList.add('open');
+  document.getElementById('ctClose').addEventListener('click', ()=>ctOverlay.classList.remove('open'));
+}
+ctOverlay.addEventListener('click', e=>{ if(e.target===ctOverlay) ctOverlay.classList.remove('open'); });
+
+/* ══════════════════════════════════════════
+   COIN PRICING & GIFTS — full CRUD
+══════════════════════════════════════════ */
+function renderPricing(){
+  document.getElementById('pricingCount').textContent = PACKAGES.length + GIFTS.length;
+
+  const pkgTotalPages = Math.max(1, Math.ceil(PACKAGES.length / PKG_PER_PAGE));
+  if(pkgPage>pkgTotalPages) pkgPage = pkgTotalPages;
+  const pkgPageItems = PACKAGES.slice((pkgPage-1)*PKG_PER_PAGE, pkgPage*PKG_PER_PAGE);
+
+  document.getElementById('pkgList').innerHTML = pkgPageItems.length ? pkgPageItems.map(p=>`
+    <div class="pkg-card" data-id="${p.id}">
+      <div class="pkg-top"><span class="pkg-name">${p.name}</span><span class="status-pill ${p.status}">${p.status}</span></div>
+      <div class="pkg-coins"><i class="fas fa-coins" style="font-size:15px"></i>${p.coins.toLocaleString()}</div>
+      <div class="pkg-price">${money(p.priceUsd)}${p.bonusPercent>0?` · <span class="pkg-bonus" style="display:inline">+${p.bonusPercent}% bonus</span>`:''}</div>
+      <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(p.createdAt)}</div>
+      <div class="pkg-actions">
+        <button class="mini-btn" data-action="pkg-toggle" data-id="${p.id}"><i class="fas fa-power-off"></i> ${p.status==='active'?'Deactivate':'Activate'}</button>
+        <button class="mini-btn" data-action="pkg-edit" data-id="${p.id}"><i class="fas fa-pen"></i> Edit</button>
+        <button class="mini-btn danger" data-action="pkg-delete" data-id="${p.id}"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-coins"></i><p>No coin packages yet.</p></div>`;
+  renderMiniPagination('pkgPagination', pkgTotalPages, pkgPage, (p)=>{ pkgPage=p; renderPricing(); });
+
+  const giftTotalPages = Math.max(1, Math.ceil(GIFTS.length / PKG_PER_PAGE));
+  if(giftPage>giftTotalPages) giftPage = giftTotalPages;
+  const giftPageItems = GIFTS.slice((giftPage-1)*PKG_PER_PAGE, giftPage*PKG_PER_PAGE);
+
+  document.getElementById('giftList').innerHTML = giftPageItems.length ? giftPageItems.map(g=>`
+    <div class="pkg-card" data-id="${g.id}">
+      <div class="pkg-top">
+        <div style="display:flex;align-items:center;gap:10px"><span class="gift-icon-badge">${g.icon}</span><span class="pkg-name">${g.name}</span></div>
+        <span class="status-pill ${g.status}">${g.status}</span>
+      </div>
+      <div class="pkg-gift-cost" style="margin-top:8px"><i class="fas fa-coins" style="font-size:15px;color:var(--amber)"></i>${g.costCoins.toLocaleString()}</div>
+      <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(g.createdAt)}</div>
+      <div class="pkg-actions">
+        <button class="mini-btn" data-action="gift-toggle" data-id="${g.id}"><i class="fas fa-power-off"></i> ${g.status==='active'?'Deactivate':'Activate'}</button>
+        <button class="mini-btn" data-action="gift-edit" data-id="${g.id}"><i class="fas fa-pen"></i> Edit</button>
+        <button class="mini-btn danger" data-action="gift-delete" data-id="${g.id}"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-gift"></i><p>No gift items yet.</p></div>`;
+  renderMiniPagination('giftPagination', giftTotalPages, giftPage, (p)=>{ giftPage=p; renderPricing(); });
+}
+
+function renderMiniPagination(elId, totalPages, current, onGo){
+  const box = document.getElementById(elId);
+  if(totalPages<=1){ box.innerHTML=''; return; }
+  let html = `<button class="page-btn" ${current===1?'disabled':''} data-p="${current-1}"><i class="fas fa-chevron-left"></i></button>`;
+  for(let i=1;i<=totalPages;i++) html += `<button class="page-btn${i===current?' active':''}" data-p="${i}">${i}</button>`;
+  html += `<button class="page-btn" ${current===totalPages?'disabled':''} data-p="${current+1}"><i class="fas fa-chevron-right"></i></button>`;
+  box.innerHTML = html;
+  box.querySelectorAll('.page-btn').forEach(btn=> btn.addEventListener('click', ()=> onGo(parseInt(btn.dataset.p,10))));
+}
+
+/* ── Form modal (create/edit package or gift) ── */
+let formKind = 'package';
+let editingItemId = null;
+
+function setFormKind(kind, locked){
+  formKind = kind;
+  document.querySelectorAll('#kindRow .radio-opt').forEach(el=>{
+    const active = el.dataset.kind===kind;
+    el.classList.toggle('active', active);
+    el.classList.toggle('disabled', !!locked);
+    el.querySelector('input').checked = active;
+  });
+  document.getElementById('nameLabel').textContent = kind==='package' ? 'Package Name' : 'Gift Name';
+  document.getElementById('itemName').placeholder = kind==='package' ? 'e.g. Reader Bundle' : 'e.g. Rose';
+  document.getElementById('packageFields').style.display = kind==='package' ? 'flex' : 'none';
+  document.getElementById('packageFields').style.flexDirection = 'column';
+  document.getElementById('packageFields').style.gap = '12px';
+  document.getElementById('giftFields').style.display = kind==='gift' ? 'block' : 'none';
+}
+
+function openCreateModal(kind){
+  editingItemId = null;
+  document.getElementById('formModalTitle').textContent = kind==='gift' ? 'New Gift Item' : 'New Coin Package';
+  document.getElementById('formModalSub').textContent = 'Set up a coin package or a giftable item.';
+  document.getElementById('itemName').value = '';
+  document.getElementById('pkgCoins').value = '';
+  document.getElementById('pkgPrice').value = '';
+  document.getElementById('pkgBonus').value = '';
+  document.getElementById('giftIcon').value = '';
+  document.getElementById('giftCost').value = '';
+  document.getElementById('itemStatus').value = 'active';
+  document.getElementById('formModalError').classList.remove('show');
+  setFormKind(kind || 'package', false);
+  document.getElementById('formConfirmBtn').innerHTML = '<i class="fas fa-floppy-disk"></i> Save';
+  document.getElementById('formModalOv').classList.add('open');
+}
+
+function openEditModal(kind, id){
+  const item = (kind==='package' ? PACKAGES : GIFTS).find(x=>x.id===id); if(!item) return;
+  editingItemId = id;
+  document.getElementById('formModalTitle').textContent = kind==='gift' ? 'Edit Gift Item' : 'Edit Coin Package';
+  document.getElementById('formModalSub').textContent = 'Update the details below and save your changes.';
+  document.getElementById('itemName').value = item.name;
+  if(kind==='package'){
+    document.getElementById('pkgCoins').value = item.coins;
+    document.getElementById('pkgPrice').value = item.priceUsd;
+    document.getElementById('pkgBonus').value = item.bonusPercent || '';
+  }else{
+    document.getElementById('giftIcon').value = item.icon;
+    document.getElementById('giftCost').value = item.costCoins;
+  }
+  document.getElementById('itemStatus').value = item.status;
+  document.getElementById('formModalError').classList.remove('show');
+  setFormKind(kind, true);
+  document.getElementById('formConfirmBtn').innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes';
+  document.getElementById('formModalOv').classList.add('open');
+}
+
+function closeFormModal(){ document.getElementById('formModalOv').classList.remove('open'); editingItemId = null; }
+
+document.querySelectorAll('#kindRow .radio-opt').forEach(el=>{
+  el.addEventListener('click', ()=>{ if(!editingItemId) setFormKind(el.dataset.kind, false); });
+});
+
+async function submitForm(){
+  const name = document.getElementById('itemName').value.trim();
+  const status = document.getElementById('itemStatus').value;
+  const errBox = document.getElementById('formModalError');
+  if(!name){ errBox.textContent='Please enter a name.'; errBox.classList.add('show'); return; }
+
+  let payload;
+  if(formKind==='package'){
+    const coins = parseInt(document.getElementById('pkgCoins').value,10) || 0;
+    const priceUsd = parseFloat(document.getElementById('pkgPrice').value) || 0;
+    const bonusPercent = parseInt(document.getElementById('pkgBonus').value,10) || 0;
+    if(coins<=0){ errBox.textContent='Please enter a coin amount.'; errBox.classList.add('show'); return; }
+    if(priceUsd<=0){ errBox.textContent='Please enter a price.'; errBox.classList.add('show'); return; }
+    payload = { name, coins, priceUsd, bonusPercent, status };
+  }else{
+    const icon = document.getElementById('giftIcon').value.trim() || '🎁';
+    const costCoins = parseInt(document.getElementById('giftCost').value,10) || 0;
+    if(costCoins<=0){ errBox.textContent='Please enter a coin cost.'; errBox.classList.add('show'); return; }
+    payload = { name, icon, costCoins, status };
+  }
+  errBox.classList.remove('show');
+
+  const btn = document.getElementById('formConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+  try{
+    const list = formKind==='package' ? PACKAGES : GIFTS;
+    const endpoint = formKind==='package' ? '/coin-packages' : '/coin-gifts';
+    if(editingItemId){
+      const item = list.find(x=>x.id===editingItemId);
+      try{ if(!usingDemoConfig) await apiFetch(endpoint+'/'+editingItemId, { method:'PUT', body: JSON.stringify(payload) }); }catch(_){}
+      Object.assign(item, payload);
+      logHistory('updated', formKind, name, formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : `${payload.costCoins.toLocaleString()} coins per gift`);
+      toast(`✏️ "${name}" updated`);
+    }else{
+      let created = null;
+      try{ if(!usingDemoConfig) created = await apiFetch(endpoint, { method:'POST', body: JSON.stringify(payload) }); }catch(_){}
+      if(!created){
+        const prefix = formKind==='package' ? 'PKG-' : 'GFT-';
+        created = Object.assign({ id: prefix+String(list.length+1).padStart(2,'0'), createdAt: new Date().toISOString().slice(0,10) }, payload);
+      }
+      list.unshift(created);
+      logHistory('created', formKind, name, formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : `${payload.costCoins.toLocaleString()} coins per gift`);
+      toast(`✅ "${name}" created`);
+    }
+    closeFormModal();
+    renderPricing(); renderHistFilterPills(); renderHistory();
+  }catch(err){
+    errBox.textContent = 'Something went wrong. Please try again.'; errBox.classList.add('show');
+  }finally{
+    btn.disabled = false; btn.innerHTML = editingItemId ? '<i class="fas fa-floppy-disk"></i> Save Changes' : '<i class="fas fa-floppy-disk"></i> Save';
+  }
+}
+
+/* ── Toggle status ── */
+async function toggleStatus(kind, id){
+  const list = kind==='package' ? PACKAGES : GIFTS;
+  const item = list.find(x=>x.id===id); if(!item) return;
+  const newStatus = item.status==='active' ? 'inactive' : 'active';
+  const endpoint = kind==='package' ? '/coin-packages' : '/coin-gifts';
+  try{ if(!usingDemoConfig) await apiFetch(endpoint+'/'+id, { method:'PUT', body: JSON.stringify({ status:newStatus }) }); }catch(_){}
+  item.status = newStatus;
+  logHistory(newStatus==='active'?'activated':'deactivated', kind, item.name, newStatus==='active' ? 'Re-enabled for purchase/use' : 'Temporarily disabled');
+  toast(`${newStatus==='active'?'✅':'⏸️'} "${item.name}" ${newStatus}`);
+  renderPricing(); renderHistFilterPills(); renderHistory();
+}
+
+/* ── Delete confirm modal ── */
+let delTarget = null;
+function openDelModal(kind, id){
+  const list = kind==='package' ? PACKAGES : GIFTS;
+  const item = list.find(x=>x.id===id); if(!item) return;
+  delTarget = { kind, id, name:item.name };
+  document.getElementById('delModalSub').textContent = `Delete "${item.name}"? This can't be undone.`;
+  document.getElementById('delModalOv').classList.add('open');
+}
+function closeDelModal(){ document.getElementById('delModalOv').classList.remove('open'); delTarget = null; }
+async function submitDel(){
+  if(!delTarget) return;
+  const { kind, id, name } = delTarget;
+  const endpoint = kind==='package' ? '/coin-packages' : '/coin-gifts';
+  try{ if(!usingDemoConfig) await apiFetch(endpoint+'/'+id, { method:'DELETE' }); }catch(_){}
+  if(kind==='package') PACKAGES = PACKAGES.filter(x=>x.id!==id);
+  else GIFTS = GIFTS.filter(x=>x.id!==id);
+  logHistory('deleted', kind, name, 'Removed from catalog');
+  toast(`🗑️ "${name}" deleted`);
+  closeDelModal();
+  renderPricing(); renderHistFilterPills(); renderHistory();
+}
+
+/* ── History tab ── */
+function renderHistFilterPills(){
+  document.getElementById('historyCount').textContent = HISTORY.length;
+  const counts = { all:HISTORY.length, package:0, gift:0 };
+  HISTORY.forEach(h=>{ if(counts[h.itemType]!=null) counts[h.itemType]++; });
+  const pills = [ {key:'all',label:'All'}, {key:'package',label:'Packages'}, {key:'gift',label:'Gifts'} ];
+  document.getElementById('histFilterPills').innerHTML = pills.map(p=>`
+    <button class="f-pill${activeHistFilter===p.key?' active':''}" data-h="${p.key}">${p.label} <span class="cnt">${counts[p.key]}</span></button>`).join('');
+  document.querySelectorAll('#histFilterPills .f-pill').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeHistFilter = btn.dataset.h; histPage=1; renderHistFilterPills(); renderHistory(); });
+  });
+}
+
+const HIST_ICO = { created:{ico:'fa-circle-plus',cls:'green'}, updated:{ico:'fa-pen',cls:'blue'}, deleted:{ico:'fa-trash',cls:'red'}, activated:{ico:'fa-power-off',cls:'green'}, deactivated:{ico:'fa-power-off',cls:'amber'} };
+
+function renderHistory(){
+  let list = activeHistFilter==='all' ? HISTORY.slice() : HISTORY.filter(h=>h.itemType===activeHistFilter);
+  list.sort((a,b)=> new Date(b.date)-new Date(a.date));
+
+  const totalPages = Math.max(1, Math.ceil(list.length/HIST_PER_PAGE));
+  if(histPage>totalPages) histPage = totalPages;
+  const pageItems = list.slice((histPage-1)*HIST_PER_PAGE, histPage*HIST_PER_PAGE);
+
+  const box = document.getElementById('histList');
+  if(!pageItems.length){
+    box.innerHTML = `<div class="empty-state"><i class="fas fa-clock-rotate-left"></i><p>No history yet.</p></div>`;
+    document.getElementById('histPagination').innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = pageItems.map(h=>{
+    const ico = HIST_ICO[h.action] || {ico:'fa-circle-info',cls:'blue'};
+    return `<div class="hist-row">
+      <div class="hist-ico" style="background:${BG_MAP[ico.cls]};color:${ICO_MAP[ico.cls]}"><i class="fas ${ico.ico}"></i></div>
+      <div class="hist-body">
+        <div class="hist-text"><b>${h.actor}</b> ${h.action} ${h.itemType} <b>"${h.itemName}"</b></div>
+        <div class="hist-detail">${h.details}</div>
+      </div>
+      <div class="hist-time">${fmtDateTime(h.date)}</div>
+    </div>`;
+  }).join('');
+
+  renderMiniPagination('histPagination', totalPages, histPage, (p)=>{ histPage=p; renderHistory(); });
+}
+
+/* ── New item button (opens type-select create modal, defaults to package) ── */
+document.getElementById('newItemBtn').addEventListener('click', ()=>{
+  activeTab = 'pricing';
+  document.querySelectorAll('#tabBar .tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='pricing'));
+  document.getElementById('tab-transactions').style.display = 'none';
+  document.getElementById('tab-pricing').style.display = 'block';
+  document.getElementById('tab-history').style.display = 'none';
+  openCreateModal('package');
+});
+document.getElementById('addPackageBtn').addEventListener('click', ()=>openCreateModal('package'));
+document.getElementById('addGiftBtn').addEventListener('click', ()=>openCreateModal('gift'));
+
+/* ── Event delegation for pkg/gift actions + modals ── */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action, id = el.dataset.id;
+
+  if(action==='pkg-edit') openEditModal('package', id);
+  else if(action==='gift-edit') openEditModal('gift', id);
+  else if(action==='pkg-delete') openDelModal('package', id);
+  else if(action==='gift-delete') openDelModal('gift', id);
+  else if(action==='pkg-toggle') toggleStatus('package', id);
+  else if(action==='gift-toggle') toggleStatus('gift', id);
+  else if(action==='close-form-modal') closeFormModal();
+  else if(action==='submit-form') submitForm();
+  else if(action==='close-del-modal') closeDelModal();
+  else if(action==='submit-del') submitDel();
+});
+document.getElementById('formModalOv').addEventListener('click', e=>{ if(e.target.id==='formModalOv') closeFormModal(); });
+document.getElementById('delModalOv').addEventListener('click', e=>{ if(e.target.id==='delModalOv') closeDelModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeFormModal(); closeDelModal(); ctOverlay.classList.remove('open'); } });
+
+init();
+</script>
+</body>
+</html>

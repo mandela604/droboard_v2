@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Chief Editor Dashboard — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Welcome banner ── */
+  .welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+  .welcome-left{flex:1;min-width:260px}
+  .welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+  .welcome-title{font-size:21px;font-weight:800;line-height:1.3}
+  .welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:640px}
+  .welcome-stats{display:flex;gap:26px;margin-top:18px;flex-wrap:wrap}
+  .welcome-stat{text-align:left}
+  .welcome-stat-num{font-size:22px;font-weight:800;line-height:1}
+  .welcome-stat-lbl{font-size:11px;opacity:.75;margin-top:3px}
+  .welcome-right{flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+  .welcome-btn{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.32);border-radius:12px;padding:11px 20px;font-size:12.5px;font-weight:700;color:#fff;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:8px;white-space:nowrap;font-family:inherit}
+  .welcome-btn:hover{background:rgba(255,255,255,.3)}
+  .welcome-btn.solid{background:#fff;color:var(--accent-2,#000)}
+  .welcome-btn.solid:hover{background:#f2f2f2}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;cursor:pointer;transition:.15s}
+  .stat-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.purple{background:var(--purple-bg);color:var(--purple)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--text-faint)}
+
+  /* ── Generic panel ── */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+  .panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+
+  /* ── Layout grids ── */
+  .grid-2col{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start;margin-bottom:20px}
+  .grid-2col-even{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;margin-bottom:20px}
+  .stack{display:flex;flex-direction:column;gap:20px}
+
+  /* ── Escalations & approvals ── */
+  .queue-tabs{display:flex;gap:6px;background:var(--table-head);border:1px solid var(--border);border-radius:11px;padding:4px;margin-bottom:16px}
+  .queue-tab{flex:1;text-align:center;padding:8px 6px;font-size:12px;font-weight:700;color:var(--text-muted);border-radius:8px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .queue-tab .cnt{font-size:10px;font-weight:800;background:rgba(0,0,0,.06);padding:1px 6px;border-radius:10px}
+  html[data-theme="dark"] .queue-tab .cnt{background:rgba(255,255,255,.08)}
+  .queue-tab.active{background:var(--accent);color:#fff}
+  .queue-tab.active .cnt{background:rgba(255,255,255,.25);color:#fff}
+
+  .queue-list{display:flex;flex-direction:column;gap:10px;max-height:560px;overflow-y:auto;padding-right:2px}
+  .queue-item{border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:.15s}
+  .queue-item:hover{border-color:var(--accent)}
+  .qi-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .qi-title-wrap{flex:1;min-width:0}
+  .qi-title{font-size:13px;font-weight:700;line-height:1.4}
+  .qi-meta{font-size:11px;color:var(--text-faint);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+  .qi-meta span{white-space:nowrap}
+  .prio-pill{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex-shrink:0}
+  .prio-pill.high{background:var(--red-bg);color:var(--red)}
+  .prio-pill.medium{background:var(--amber-bg);color:var(--amber)}
+  .prio-pill.low{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .prio-pill.high{background:rgba(224,56,77,.16)}
+  html[data-theme="dark"] .prio-pill.medium{background:rgba(217,119,6,.18)}
+  .qi-detail{font-size:12px;color:var(--text-muted);line-height:1.55;margin:8px 0}
+  .qi-value{font-size:11.5px;font-weight:700;color:var(--green);margin-bottom:8px}
+  .qi-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .qi-btn{flex:1;min-width:90px;padding:8px 10px;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text)}
+  .qi-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .qi-btn.approve{background:var(--green);border-color:var(--green);color:#fff}
+  .qi-btn.approve:hover{background:#128a3e;color:#fff}
+  .qi-btn.reject{background:var(--red-bg);border-color:transparent;color:var(--red)}
+  .qi-btn.reject:hover{background:var(--red);color:#fff}
+  .queue-empty{text-align:center;padding:44px 16px;color:var(--text-muted)}
+  .queue-empty i{font-size:26px;color:var(--text-faint);display:block;margin-bottom:10px}
+
+  /* ── Performance chart ── */
+  .period-tabs{display:flex;gap:4px}
+  .period-tab{padding:5px 11px;font-size:11px;font-weight:700;color:var(--text-muted);border-radius:8px;cursor:pointer;border:1px solid var(--input-border);background:var(--input-bg)}
+  .period-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chart-wrap{display:flex;align-items:flex-end;gap:8px;height:150px;padding:0 4px 0}
+  .chart-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px}
+  .chart-bar{width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--accent),#7a0030);min-height:6px;transition:height .3s ease;position:relative}
+  .chart-bar-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);margin-top:6px}
+  .chart-legend{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);font-weight:600}
+  .chart-legend b{color:var(--text);font-weight:800}
+
+  /* ── Quick actions ── */
+  .qa-list{display:flex;flex-direction:column;gap:6px}
+  .qa-item{display:flex;align-items:center;gap:11px;padding:10px;border-radius:10px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text)}
+  .qa-item:hover{background:var(--hover)}
+  .qa-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .qa-ico.purple{background:var(--purple-bg);color:var(--purple)}
+  .qa-ico.pink{background:var(--accent-soft);color:var(--accent)}
+  .qa-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .qa-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .qa-ico.green{background:var(--green-bg);color:var(--green)}
+  .qa-ico.red{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .qa-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .qa-ico.pink{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .qa-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .qa-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .qa-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .qa-ico.red{background:rgba(224,56,77,.18)}
+  .qa-item span.qa-lbl{flex:1}
+  .qa-item i.fa-chevron-right{color:var(--text-faint);font-size:11px}
+
+  /* ── Senior editor team ── */
+  .editor-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer}
+  .editor-row:last-child{border-bottom:none}
+  .editor-row:hover .editor-name{color:var(--accent)}
+  .editor-av{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0}
+  .editor-info{flex:1;min-width:0}
+  .editor-name{font-size:12.5px;font-weight:700;transition:.15s;display:flex;align-items:center;gap:6px}
+  .editor-team{font-size:11px;color:var(--text-faint);margin-top:1px}
+  .editor-status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+  .editor-status-dot.needs-attention{background:var(--amber)}
+  .editor-perf{text-align:right;flex-shrink:0;min-width:96px}
+  .editor-perf-num{font-size:13px;font-weight:800}
+  .editor-perf-track{height:5px;border-radius:20px;background:var(--table-head);overflow:hidden;margin-top:5px;width:90px;margin-left:auto}
+  .editor-perf-fill{height:100%;border-radius:20px;background:var(--green)}
+  .editor-perf-fill.warn{background:var(--amber)}
+
+  /* ── Activity feed ── */
+  .activity-row{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+  .activity-row:last-child{border-bottom:none}
+  .activity-ico{width:32px;height:32px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .activity-ico.accent{background:var(--accent-soft);color:var(--accent)}
+  .activity-ico.red{background:var(--red-bg);color:var(--red)}
+  .activity-ico.purple{background:var(--purple-bg);color:var(--purple)}
+  .activity-ico.green{background:var(--green-bg);color:var(--green)}
+  .activity-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .activity-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .activity-ico.accent{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .activity-ico.red{background:rgba(224,56,77,.16)}
+  html[data-theme="dark"] .activity-ico.purple{background:rgba(124,92,252,.18)}
+  html[data-theme="dark"] .activity-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .activity-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .activity-ico.amber{background:rgba(217,119,6,.18)}
+  .activity-text{font-size:12px;color:var(--text);line-height:1.5}
+  .activity-time{font-size:10.5px;color:var(--text-faint);margin-top:3px}
+
+  .skeleton{background:linear-gradient(90deg,var(--table-head) 25%,var(--hover) 50%,var(--table-head) 75%);background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:8px}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:1080px){ .grid-2col, .grid-2col-even{grid-template-columns:1fr} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:480px){ .stats-grid{grid-template-columns:1fr} .welcome-stats{gap:16px} }
+</style>
+</head>
+<body>
+
+<div id="dashboardRoot">
+
+  <!-- WELCOME BANNER -->
+  <div class="welcome-banner">
+    <div class="welcome-left">
+      <div class="welcome-eyebrow">Chief Editor · Platform-wide oversight</div>
+      <div class="welcome-title">Welcome back, Reina 👑</div>
+      <div class="welcome-sub">You have <strong id="wbDisputes">—</strong> escalated disputes and <strong id="wbContracts">—</strong> contracts awaiting your approval across the editorial team.</div>
+      <div class="welcome-stats">
+        <div class="welcome-stat"><div class="welcome-stat-num" id="wbEditors">—</div><div class="welcome-stat-lbl">Senior Editors</div></div>
+        <div class="welcome-stat"><div class="welcome-stat-num" id="wbSubmissions">—</div><div class="welcome-stat-lbl">Submissions this month</div></div>
+        <div class="welcome-stat"><div class="welcome-stat-num" id="wbApproval">—</div><div class="welcome-stat-lbl">Avg. approval rate</div></div>
+      </div>
+    </div>
+    <div class="welcome-right">
+      <button class="welcome-btn solid" id="wbDisputesBtn"><i class="fas fa-scale-balanced"></i> Review Disputes</button>
+      <button class="welcome-btn" id="wbTeamBtn"><i class="fas fa-users-gear"></i> Editorial Team</button>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- ROW: Escalations & Approvals | Performance + Quick Actions -->
+  <div class="grid-2col">
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-inbox" style="color:var(--accent);font-size:13px"></i> Escalations & Approvals</h2></div>
+      <div class="queue-tabs" id="queueTabs"></div>
+      <div class="queue-list" id="queueList"></div>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Editorial Performance</h2>
+          <div class="period-tabs" id="periodTabs"></div>
+        </div>
+        <div class="chart-wrap" id="chartWrap"></div>
+        <div class="chart-legend"><span>Avg. approval rate</span><b id="chartApprovalAvg">—</b></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Quick Actions</h2></div>
+        <div class="qa-list" id="quickActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: Senior Editor Team | Recent Activity -->
+  <div class="grid-2col-even">
+    <div class="panel">
+      <div class="panel-head"><h2>Senior Editor Team</h2><a id="teamViewAll">View All</a></div>
+      <div id="editorList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Recent Activity</h2></div>
+      <div id="activityList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH SIDEBAR SHELL
+   ═══════════════════════════════════════════════════════════ */
+const shell = ChiefEditorSidebar.attach('#dashboardRoot', {
+  activeItem: 'dashboard',
+  title: 'Chief Editor Dashboard',
+  subtitle: 'Platform-wide editorial oversight',
+  user: { name: 'Reina Morgan', role: 'Chief Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 6,
+  searchPlaceholder: 'Search editors, disputes, contracts…',
+  onSearch: (v) => { if (v) toast('Searching: ' + v); },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   STAT CARDS
+   ═══════════════════════════════════════════════════════════ */
+const STAT_DEFS = [
+  { key: 'seniorEditors',       label: 'Senior Editors',          ico: 'fa-users-gear',        cls: 'purple', deltaKey: 'seniorEditorsDelta' },
+  { key: 'pendingPolicies',     label: 'Pending Policy Approvals',ico: 'fa-scroll',             cls: 'amber',  deltaKey: 'pendingPoliciesDelta' },
+  { key: 'escalatedDisputes',   label: 'Escalated Disputes',      ico: 'fa-scale-balanced',     cls: 'red',    deltaKey: 'escalatedDisputesDelta' },
+  { key: 'contractsAwaiting',   label: 'Contracts Awaiting Approval', ico: 'fa-handshake',      cls: 'green',  deltaKey: 'contractsAwaitingDelta' },
+  { key: 'submissionsThisMonth',label: 'Platform Submissions (mo)', ico: 'fa-book-open',        cls: 'blue',   deltaKey: 'submissionsDelta' },
+];
+
+function fmtN(n){ return typeof n === 'number' ? n.toLocaleString() : n; }
+
+function renderStatsSkeleton(){
+  document.getElementById('statsGrid').innerHTML = STAT_DEFS.map(() => `
+    <div class="stat-card" style="cursor:default">
+      <div class="skeleton" style="width:42px;height:42px;border-radius:12px"></div>
+      <div class="skeleton" style="width:60%;height:20px"></div>
+      <div class="skeleton" style="width:80%;height:12px"></div>
+    </div>`).join('');
+}
+
+function renderStats(stats){
+  document.getElementById('statsGrid').innerHTML = STAT_DEFS.map(d => `
+    <div class="stat-card" data-nav="${d.key}">
+      <div class="stat-top"><div class="stat-ico ${d.cls}"><i class="fas ${d.ico}"></i></div></div>
+      <div class="stat-num">${fmtN(stats[d.key])}</div>
+      <div class="stat-lbl">${d.label}</div>
+      <span class="stat-delta">${stats[d.deltaKey] || ''}</span>
+    </div>`).join('');
+
+  document.getElementById('wbDisputes').textContent = stats.escalatedDisputes;
+  document.getElementById('wbContracts').textContent = stats.contractsAwaiting;
+  document.getElementById('wbEditors').textContent = stats.seniorEditors;
+  document.getElementById('wbSubmissions').textContent = fmtN(stats.submissionsThisMonth);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ESCALATIONS & APPROVALS QUEUE
+   ═══════════════════════════════════════════════════════════ */
+const QUEUE_TYPES = [
+  { key: 'dispute',  label: 'Disputes',  icon: 'fa-scale-balanced' },
+  { key: 'policy',   label: 'Policies',  icon: 'fa-scroll' },
+  { key: 'contract', label: 'Contracts', icon: 'fa-handshake' },
+];
+let activeQueueType = 'dispute';
+let queueCache = {};
+
+function renderQueueTabs(){
+  document.getElementById('queueTabs').innerHTML = QUEUE_TYPES.map(t => `
+    <div class="queue-tab${t.key===activeQueueType?' active':''}" data-type="${t.key}">
+      <i class="fas ${t.icon}"></i> ${t.label} <span class="cnt">${(queueCache[t.key]||[]).length}</span>
+    </div>`).join('');
+  document.querySelectorAll('.queue-tab').forEach(tab => {
+    tab.addEventListener('click', () => { activeQueueType = tab.dataset.type; renderQueueList(); renderQueueTabs(); });
+  });
+}
+
+function queueActionsHtml(type, item){
+  if (type === 'contract'){
+    return `<div class="qi-actions">
+      <button class="qi-btn approve" data-act="approve">Approve & Sign</button>
+      <button class="qi-btn reject" data-act="reject">Reject</button>
+    </div>`;
+  }
+  if (type === 'policy'){
+    return `<div class="qi-actions">
+      <button class="qi-btn approve" data-act="approve">Approve Policy</button>
+      <button class="qi-btn reject" data-act="reject">Send Back</button>
+    </div>`;
+  }
+  return `<div class="qi-actions">
+    <button class="qi-btn approve" data-act="approve">Resolve</button>
+    <button class="qi-btn reject" data-act="reject">Escalate to Legal</button>
+  </div>`;
+}
+
+function renderQueueList(){
+  const list = queueCache[activeQueueType] || [];
+  const wrap = document.getElementById('queueList');
+  if (!list.length){
+    wrap.innerHTML = `<div class="queue-empty"><i class="fas fa-circle-check"></i>Nothing waiting here — you're all caught up.</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(item => `
+    <div class="queue-item" data-id="${item.id}">
+      <div class="qi-top">
+        <div class="qi-title-wrap">
+          <div class="qi-title">${item.title}</div>
+          <div class="qi-meta"><span><i class="fas fa-user" style="margin-right:3px"></i>${item.from}</span><span>·</span><span>Escalated by ${item.escalatedBy}</span><span>·</span><span>${item.time}</span></div>
+        </div>
+        <span class="prio-pill ${item.priority}">${item.priority}</span>
+      </div>
+      <div class="qi-detail">${item.detail}</div>
+      ${item.value ? `<div class="qi-value"><i class="fas fa-sack-dollar" style="margin-right:4px"></i>${item.value}</div>` : ''}
+      ${queueActionsHtml(activeQueueType, item)}
+    </div>`).join('');
+
+  wrap.querySelectorAll('.queue-item').forEach(el => {
+    const id = el.dataset.id;
+    el.querySelectorAll('.qi-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const act = btn.dataset.act;
+        btn.disabled = true;
+        btn.textContent = 'Processing…';
+        await ChiefEditorData.resolveQueueItem(activeQueueType, id, act);
+        queueCache[activeQueueType] = (queueCache[activeQueueType] || []).filter(x => x.id !== id);
+        toast(act === 'approve' ? '✅ Approved' : act === 'reject' ? '↩️ Sent back' : 'Updated');
+        renderQueueList();
+        renderQueueTabs();
+        refreshStats();
+      });
+    });
+  });
+}
+
+async function loadQueues(){
+  const queues = await ChiefEditorData.getDashboardQueues();
+  QUEUE_TYPES.forEach(t => { queueCache[t.key] = queues[t.key] || []; });
+  renderQueueTabs();
+  renderQueueList();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERFORMANCE CHART
+   ═══════════════════════════════════════════════════════════ */
+const PERIODS = [
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'quarter', label: 'Quarter' },
+  { key: 'year', label: 'Year' },
+];
+let activePeriod = 'month';
+
+function renderPeriodTabs(){
+  document.getElementById('periodTabs').innerHTML = PERIODS.map(p => `
+    <div class="period-tab${p.key===activePeriod?' active':''}" data-period="${p.key}">${p.label}</div>`).join('');
+  document.querySelectorAll('.period-tab').forEach(tab => {
+    tab.addEventListener('click', async () => {
+      activePeriod = tab.dataset.period;
+      renderPeriodTabs();
+      const data = await ChiefEditorData.getPerformanceTrend(activePeriod);
+      renderChart(data);
+    });
+  });
+}
+
+function renderChart(data){
+  const max = Math.max(...data.submissions);
+  document.getElementById('chartWrap').innerHTML = data.labels.map((lbl, i) => {
+    const h = Math.max(6, Math.round((data.submissions[i] / max) * 130));
+    return `<div class="chart-bar-col">
+      <div class="chart-bar" style="height:${h}px" title="${data.submissions[i].toLocaleString()} submissions · ${data.approvalRate[i]}% approved"></div>
+      <div class="chart-bar-lbl">${lbl}</div>
+    </div>`;
+  }).join('');
+  const avgApproval = Math.round(data.approvalRate.reduce((a,b)=>a+b,0) / data.approvalRate.length);
+  document.getElementById('chartApprovalAvg').textContent = avgApproval + '%';
+  document.getElementById('wbApproval').textContent = avgApproval + '%';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   QUICK ACTIONS
+   ═══════════════════════════════════════════════════════════ */
+const QUICK_ACTIONS = [
+  { label: 'Review Disputes',        icon: 'fa-scale-balanced', cls: 'red',    href: 'disputes-appeals.html' },
+  { label: 'Approve Contracts',      icon: 'fa-handshake',      cls: 'green',  href: 'author-contracts.html' },
+  { label: 'Publish Policy Update',  icon: 'fa-scroll',         cls: 'purple', href: 'editorial-policies.html' },
+  { label: 'Manage Editorial Team',  icon: 'fa-users-gear',     cls: 'pink',   href: 'editorial-team.html' },
+  { label: 'Plan Content Strategy',  icon: 'fa-compass',        cls: 'blue',   href: 'editorial-strategy.html' },
+  { label: 'Review Partnerships',    icon: 'fa-globe',          cls: 'amber',  href: 'partnerships.html' },
+];
+
+function renderQuickActions(){
+  document.getElementById('quickActions').innerHTML = QUICK_ACTIONS.map(a => `
+    <div class="qa-item" data-href="${a.href}">
+      <div class="qa-ico ${a.cls}"><i class="fas ${a.icon}"></i></div>
+      <span class="qa-lbl">${a.label}</span>
+      <i class="fas fa-chevron-right"></i>
+    </div>`).join('');
+  document.querySelectorAll('#quickActions .qa-item').forEach(el => {
+    el.addEventListener('click', () => { location.href = el.dataset.href; });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SENIOR EDITOR TEAM
+   ═══════════════════════════════════════════════════════════ */
+async function loadEditors(){
+  const editors = await ChiefEditorData.getEditorialTeam();
+  document.getElementById('editorList').innerHTML = editors.slice(0, 5).map(e => `
+    <div class="editor-row" data-name="${e.name}">
+      <img class="editor-av" src="${e.avatar}" alt="${e.name}"/>
+      <div class="editor-info">
+        <div class="editor-name"><span class="editor-status-dot${e.status==='needs-attention'?' needs-attention':''}"></span>${e.name}</div>
+        <div class="editor-team">${e.team} · ${e.reviewsThisMonth} reviews this month</div>
+      </div>
+      <div class="editor-perf">
+        <div class="editor-perf-num">${e.approvalRate}%</div>
+        <div class="editor-perf-track"><div class="editor-perf-fill${e.approvalRate<85?' warn':''}" style="width:${e.approvalRate}%"></div></div>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.editor-row').forEach(el => {
+    el.addEventListener('click', () => toast(`Opening ${el.dataset.name}'s profile…`));
+  });
+}
+document.getElementById('teamViewAll').addEventListener('click', () => { location.href = 'editorial-team.html'; });
+
+/* ═══════════════════════════════════════════════════════════
+   RECENT ACTIVITY
+   ═══════════════════════════════════════════════════════════ */
+async function loadActivity(){
+  const activity = await ChiefEditorData.getRecentActivity();
+  document.getElementById('activityList').innerHTML = activity.map(a => `
+    <div class="activity-row">
+      <div class="activity-ico ${a.color}"><i class="fas ${a.icon}"></i></div>
+      <div>
+        <div class="activity-text">${a.text}</div>
+        <div class="activity-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+document.getElementById('wbDisputesBtn').addEventListener('click', () => { location.href = 'disputes-appeals.html'; });
+document.getElementById('wbTeamBtn').addEventListener('click', () => { location.href = 'editorial-team.html'; });
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+async function refreshStats(){
+  const stats = await ChiefEditorData.getDashboardStats();
+  renderStats(stats);
+}
+
+async function init(){
+  renderStatsSkeleton();
+  renderPeriodTabs();
+  renderQuickActions();
+
+  const [stats, perf] = await Promise.all([
+    ChiefEditorData.getDashboardStats(),
+    ChiefEditorData.getPerformanceTrend(activePeriod),
+  ]);
+  renderStats(stats);
+  renderChart(perf);
+
+  loadQueues();
+  loadEditors();
+  loadActivity();
+}
+init();
+</script>
+</body>
+</html>

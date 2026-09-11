@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Editorial Policies — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.policy-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.policy-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.pc-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pc-summary{font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:4px}
+.pc-meta{font-size:10.5px;color:var(--text-faint);margin-top:6px;display:flex;gap:12px}
+.status-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.status-pill.published{background:var(--green-bg);color:var(--green)}
+.status-pill.under-review{background:var(--amber-bg);color:var(--amber)}
+.status-pill.draft{background:var(--table-head);color:var(--text-faint)}
+.history-item{padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.history-item:last-child{border-bottom:none}
+.history-item .hi-date{font-size:10.5px;color:var(--text-faint)}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.tb-search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:11px;padding:9px 14px}
+.tb-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.tb-search input::placeholder{color:var(--text-faint)}
+.tb-search i{color:var(--text-faint);font-size:13px}
+.tb-add-btn{background:var(--accent);color:#fff;border:none;border-radius:11px;padding:10px 18px;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit;white-space:nowrap}
+.tb-add-btn:hover{opacity:.9}
+
+/* ── Pagination ── */
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px}
+.page-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.4;cursor:default}
+.page-info{font-size:11px;color:var(--text-faint);margin:0 8px;font-weight:600}
+
+/* ── Slide-up Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-slide{position:fixed;bottom:0;left:0;right:0;max-height:85vh;background:var(--card);z-index:1001;border-radius:20px 20px 0 0;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;box-shadow:0 -16px 60px rgba(0,0,0,.25)}
+.modal-slide.open{transform:translateY(0)}
+.modal-handle{width:40px;height:4px;border-radius:4px;background:var(--text-faint);margin:10px auto 0;opacity:.4}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 22px 12px;border-bottom:1px solid var(--border);gap:12px}
+.modal-head h3{font-size:16px;font-weight:800;flex:1}
+.modal-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;flex-shrink:0}
+.modal-close:hover{background:var(--hover)}
+.modal-body{padding:18px 22px 26px}
+.modal-section{margin-bottom:20px}
+.modal-section-lbl{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px}
+.modal-text{font-size:13px;line-height:1.7;color:var(--text)}
+.modal-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.modal-meta-item{background:var(--table-head);border-radius:10px;padding:12px 14px}
+.modal-meta-item .mm-label{font-size:10.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.modal-meta-item .mm-value{font-size:14px;font-weight:800;margin-top:2px}
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+.modal-actions button{flex:1;padding:11px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text)}
+.modal-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.modal-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.modal-actions button.primary:hover{opacity:.9}
+.modal-actions button.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.modal-actions button.danger:hover{background:var(--red);color:#fff}
+
+.grid-2col{display:grid;grid-template-columns:1.7fr 1fr;gap:20px;align-items:start}
+@media (max-width:1080px){.grid-2col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="policiesRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Chief Editor · Editorial Policies</div>
+    <div class="welcome-title">Editorial Policies 📜</div>
+    <div class="welcome-sub">Content guidelines, plagiarism policy, explicit content rules, quality standards, and policy history.</div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="tb-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search policies by title or ID…"/></div>
+    <button class="tb-add-btn" id="addPolicyBtn"><i class="fas fa-plus"></i> Add New Policy</button>
+  </div>
+
+  <div class="grid-2col">
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-scroll" style="color:var(--accent)"></i> All Policies <span id="policyCount" style="font-size:12px;color:var(--text-faint);font-weight:600"></span></h2></div>
+      <div id="policiesList"></div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-clock-rotate-left" style="color:var(--purple)"></i> Policy History</h2></div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE-UP MODAL -->
+<div class="modal-overlay" id="modalOverlay"></div>
+<div class="modal-slide" id="modalSlide">
+  <div class="modal-handle"></div>
+  <div class="modal-head">
+    <h3 id="modalTitle">Policy Title</h3>
+    <button class="modal-close" id="modalClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="modal-body" id="modalBody"></div>
+</div>
+
+<!-- ADD NEW POLICY MODAL -->
+<div class="modal-overlay" id="addModalOverlay"></div>
+<div class="modal-slide" id="addModalSlide">
+  <div class="modal-handle"></div>
+  <div class="modal-head">
+    <h3>Add New Policy</h3>
+    <button class="modal-close" id="addModalClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="modal-body">
+    <div class="modal-section">
+      <div class="modal-section-lbl">Title</div>
+      <input id="newTitle" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);outline:none" placeholder="e.g. Updated Content Policy"/>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-lbl">Summary / Body</div>
+      <textarea id="newBody" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);outline:none;resize:vertical;min-height:100px" placeholder="Describe the policy in detail…"></textarea>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-lbl">Author</div>
+      <input id="newAuthor" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);outline:none" placeholder="e.g. Legal Team" value="Reina Morgan"/>
+    </div>
+    <div class="modal-actions">
+      <button id="addCancel">Cancel</button>
+      <button class="primary" id="addSave">Create Policy</button>
+    </div>
+  </div>
+</div>
+
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+<script>
+'use strict';
+const shell = ChiefEditorSidebar.attach('#policiesRoot',{
+  activeItem:'editorial-policies',title:'Editorial Policies',subtitle:'Content guidelines & standards',
+  user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6
+});
+
+/* ── DATA ── */
+let allPolicies = [];
+let filteredPolicies = [];
+const PER_PAGE = 4;
+let currentPage = 1;
+
+/* ── MODAL LOGIC ── */
+const ov = document.getElementById('modalOverlay');
+const slide = document.getElementById('modalSlide');
+const addOv = document.getElementById('addModalOverlay');
+const addSlide = document.getElementById('addModalSlide');
+
+function openModal(policy) {
+  document.getElementById('modalTitle').textContent = policy.title;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-meta-grid">
+      <div class="modal-meta-item"><div class="mm-label">Status</div><div class="mm-value"><span class="status-pill ${policy.status}">${policy.status}</span></div></div>
+      <div class="modal-meta-item"><div class="mm-label">ID</div><div class="mm-value">${policy.id}</div></div>
+      <div class="modal-meta-item"><div class="mm-label">Author</div><div class="mm-value">${policy.author}</div></div>
+      <div class="modal-meta-item"><div class="mm-label">Updated</div><div class="mm-value">${policy.updated}</div></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-lbl">Summary</div>
+      <div class="modal-text">${policy.summary}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-lbl">Full Content</div>
+      <div class="modal-text">${policy.fullBody || policy.summary}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="primary" id="modalEditBtn"><i class="fas fa-pen"></i> Edit Policy</button>
+      <button class="danger" id="modalArchiveBtn"><i class="fas fa-archive"></i> Archive</button>
+    </div>`;
+  ov.classList.add('open');
+  slide.classList.add('open');
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  ov.addEventListener('click', (e) => { if (e.target === ov) closeModal(); });
+  document.getElementById('modalEditBtn').addEventListener('click', () => { toast('✏️ Opening policy editor...'); closeModal(); });
+  document.getElementById('modalArchiveBtn').addEventListener('click', () => {
+    if (!confirm(`Archive ${policy.title}?`)) return;
+    allPolicies = allPolicies.filter(p => p.id !== policy.id);
+    toast(`📦 ${policy.title} archived`);
+    closeModal();
+    applyFilters();
+  });
+}
+
+function closeModal() {
+  ov.classList.remove('open'); slide.classList.remove('open');
+}
+
+/* ── ADD NEW POLICY MODAL ── */
+function openAddModal() {
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newBody').value = '';
+  document.getElementById('newAuthor').value = 'Reina Morgan';
+  addOv.classList.add('open'); addSlide.classList.add('open');
+}
+function closeAddModal() { addOv.classList.remove('open'); addSlide.classList.remove('open'); }
+
+document.getElementById('addPolicyBtn').addEventListener('click', openAddModal);
+document.getElementById('addModalClose').addEventListener('click', closeAddModal);
+document.getElementById('addCancel').addEventListener('click', closeAddModal);
+addOv.addEventListener('click', (e) => { if (e.target === addOv) closeAddModal(); });
+
+document.getElementById('addSave').addEventListener('click', () => {
+  const title = document.getElementById('newTitle').value.trim();
+  const body = document.getElementById('newBody').value.trim();
+  const author = document.getElementById('newAuthor').value.trim();
+  if (!title || !body) { toast('Please add a title and body'); return; }
+  const newPolicy = {
+    id: 'POL-' + String(allPolicies.length + 1).padStart(3, '0'),
+    title, status: 'draft', updated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    author, summary: body.substring(0, 120) + (body.length > 120 ? '…' : ''), fullBody: body
+  };
+  allPolicies.unshift(newPolicy);
+  toast(`✅ "${title}" created as draft`);
+  closeAddModal();
+  applyFilters();
+});
+
+/* ── RENDER ── */
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  filteredPolicies = allPolicies.filter(p =>
+    p.title.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
+  );
+  currentPage = 1;
+  renderPolicies();
+}
+
+function renderPolicies() {
+  const totalPages = Math.max(1, Math.ceil(filteredPolicies.length / PER_PAGE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PER_PAGE;
+  const pageItems = filteredPolicies.slice(start, start + PER_PAGE);
+
+  document.getElementById('policyCount').textContent = `(${filteredPolicies.length} total)`;
+  document.getElementById('policiesList').innerHTML = pageItems.length
+    ? pageItems.map(p => `
+      <div class="policy-card" data-id="${p.id}">
+        <div class="pc-title">${p.title} <span class="status-pill ${p.status}">${p.status}</span></div>
+        <div class="pc-summary">${p.fullBody || p.summary}</div>
+        <div class="pc-meta"><span>📅 ${p.updated}</span><span>✍️ ${p.author}</span><span>🆔 ${p.id}</span></div>
+      </div>`).join('')
+    : `<div style="text-align:center;padding:40px 16px;color:var(--text-muted)"><i class="fas fa-search" style="font-size:24px;display:block;margin-bottom:10px;color:var(--text-faint)"></i>No policies match your search.</div>`;
+
+  document.querySelectorAll('#policiesList .policy-card').forEach(el => {
+    el.addEventListener('click', () => {
+      const p = allPolicies.find(x => x.id === el.dataset.id);
+      if (p) openModal(p);
+    });
+  });
+
+  // Pagination
+  const pag = document.getElementById('pagination');
+  if (totalPages <= 1) { pag.innerHTML = ''; return; }
+  let html = `<button class="page-btn" ${currentPage<=1?'disabled':''} data-page="${currentPage-1}"><i class="fas fa-chevron-left"></i></button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="page-btn ${i===currentPage?'active':''}" data-page="${i}">${i}</button>`;
+  }
+  html += `<button class="page-btn" ${currentPage>=totalPages?'disabled':''} data-page="${currentPage+1}"><i class="fas fa-chevron-right"></i></button>`;
+  pag.innerHTML = html;
+  pag.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPage = parseInt(btn.dataset.page);
+      renderPolicies();
+    });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+/* ── INIT ── */
+async function init() {
+  const d = await ChiefEditorData.getEditorialPolicies();
+  // Add fullBody to each policy for modal display
+  allPolicies = d.policies.map(p => ({
+    ...p,
+    fullBody: p.summary + '\n\nThis policy is part of the Droboard platform content moderation system. It outlines the standards and procedures that all authors and editors must follow when publishing content on the platform. Violations may result in content takedown, warnings, or account suspension depending on severity and recurrence.'
+  }));
+  document.getElementById('historyList').innerHTML = d.policyHistory.map(h => `
+    <div class="history-item"><div class="hi-date">${h.date}</div><div>${h.action}</div><div style="color:var(--text-faint);font-size:11px">by ${h.by}</div></div>`).join('');
+  applyFilters();
+}
+init();
+</script>
+</body>
+</html>

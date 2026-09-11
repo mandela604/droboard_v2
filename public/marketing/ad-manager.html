@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ad Manager — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:600px}
+.wb-new-btn{background:#fff;color:var(--accent);border:none;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.wb-new-btn:hover{opacity:.92}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px;line-height:1.5}
+.accordion-head{cursor:pointer;user-select:none}
+.accordion-chev{font-size:12px;color:var(--text-faint);transition:transform .2s}
+.panel.collapsed .accordion-chev{transform:rotate(-90deg)}
+.panel.collapsed .pl-body{display:none}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+.pl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.pl-card{background:var(--table-head);border-radius:12px;padding:14px}
+.pl-name{font-size:12px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.pl-lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px}
+.pl-inp{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:9px}
+.pl-check{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text-muted)}
+.pl-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:180px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-box input::placeholder{color:var(--text-faint)}
+.search-box i{color:var(--text-faint);font-size:12px}
+.toolbar select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+.filter-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.filter-pill{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:4px;font-family:inherit}
+.filter-pill:hover{border-color:var(--accent)}
+.filter-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill-count{font-size:9px;padding:1px 5px;border-radius:10px;background:var(--table-head);color:var(--text-faint)}
+.filter-pill.on .pill-count{background:rgba(255,255,255,.25);color:#fff}
+
+.ad-row{display:flex;gap:13px;border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:9px}
+.ad-thumb{width:52px;height:68px;border-radius:9px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
+.ad-thumb.empty{display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:16px}
+.ad-main{flex:1;min-width:0}
+.ad-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.ad-name{font-size:13.5px;font-weight:800;flex:1;min-width:140px}
+.type-chip{font-size:9px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--purple-bg);color:var(--purple);text-transform:uppercase}
+.status-pill{font-size:9px;font-weight:800;padding:2px 9px;border-radius:20px;text-transform:uppercase}
+.status-pill.live{background:var(--green-bg);color:var(--green)}
+.status-pill.paused{background:var(--amber-bg);color:var(--amber)}
+.status-pill.scheduled{background:var(--blue-bg);color:var(--blue)}
+.status-pill.ended{background:var(--red-bg);color:var(--red)}
+.pgn{display:flex;align-items:center;justify-content:space-between;margin-top:6px;flex-wrap:wrap;gap:8px;padding-top:14px;border-top:1px solid var(--border)}
+.pgn-info{font-size:11px;color:var(--text-faint);font-weight:600}
+.pgn-btns{display:flex;gap:4px}
+.pgn-btn{min-width:28px;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.pgn-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pgn-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pgn-btn:disabled{opacity:.3;cursor:default}
+.ad-sub{font-size:11px;color:var(--text-faint);margin-bottom:7px}
+.ad-meta{font-size:10.5px;color:var(--text-faint);display:flex;gap:14px;flex-wrap:wrap;margin-bottom:9px}
+.ad-meta i{font-size:9.5px}
+.metric-click{color:var(--green);font-weight:800}
+.ad-actions{display:flex;gap:6px;flex-wrap:wrap}
+.ad-btn{font-size:10px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-family:inherit}
+.ad-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ad-btn.danger:hover{border-color:var(--red);color:var(--red)}
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.empty-msg i{font-size:28px;margin-bottom:8px;display:block;opacity:.35}
+
+.btn-primary{background:var(--accent);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn-ghost{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-muted);padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:var(--card);border-radius:20px 20px 0 0;padding:22px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.modal-overlay.open .modal-box{transform:translateY(0)}
+.modal-box h3{font-size:16px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--text-faint);margin-bottom:16px}
+.f-lbl{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:11px}
+.f-inp{display:block;width:100%;margin-top:5px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;resize:vertical}
+.f-row{display:flex;gap:10px;margin-top:8px;align-items:center}
+.f-file{font-size:11px;color:var(--text-muted);flex:1}
+.f-preview{width:52px;height:68px;border-radius:8px;object-fit:cover;background:var(--table-head)}
+#mStoryResults{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:220px;overflow-y:auto}
+.story-hit{display:flex;gap:10px;align-items:center;border:1px solid var(--input-border);background:var(--input-bg);border-radius:10px;padding:8px;cursor:pointer;text-align:left;width:100%;font-family:inherit;color:var(--text)}
+.story-hit:hover{border-color:var(--accent)}
+.story-hit img{width:34px;height:46px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
+.story-hit-t{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-hit-a{font-size:10.5px;color:var(--text-faint);margin-top:1px}
+.f-select{width:100%;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;font-size:13px;font-weight:700;color:var(--text);font-family:inherit}
+.pg-row{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 14px}
+.pg-check{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text)}
+.active-row{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+.adm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:#1a1730;color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+.adm-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:720px){.grid-4{grid-template-columns:repeat(2,1fr)}.pl-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="admRoot">
+  <div class="welcome-banner">
+    <div>
+      <div class="welcome-eyebrow">Monetization</div>
+      <div class="welcome-title">Ad Manager</div>
+      <div class="welcome-sub">Creatives, frequency and placements for Discover, Feed and Genre Hub. Changes serve on client pages immediately.</div>
+    </div>
+    <button class="wb-new-btn" id="newAdBtn"><i class="fas fa-plus"></i> New Ad</button>
+  </div>
+
+  <div class="grid-4">
+    <div class="stat-card"><div class="stat-ico" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-circle-play"></i></div><div><div class="stat-num" id="stLive">—</div><div class="stat-lbl">Live ads (of total)</div></div></div>
+    <div class="stat-card"><div class="stat-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-eye"></i></div><div><div class="stat-num" id="stImp">—</div><div class="stat-lbl">Impressions tracked</div></div></div>
+    <div class="stat-card"><div class="stat-ico" style="background:var(--purple-bg);color:var(--purple)"><i class="fas fa-mouse-pointer"></i></div><div><div class="stat-num" id="stClk">—</div><div class="stat-lbl">Clicks tracked</div></div></div>
+    <div class="stat-card"><div class="stat-ico" style="background:var(--amber-bg);color:var(--amber)"><i class="fas fa-chart-line"></i></div><div><div class="stat-num" id="stCtr">—</div><div class="stat-lbl">Average CTR</div></div></div>
+  </div>
+
+  <div class="panel collapsed" id="plPanel">
+    <div class="panel-head accordion-head" id="plHead" role="button" tabindex="0"><h2><i class="fas fa-sliders" style="color:var(--accent);font-size:13px"></i> Frequency &amp; placements</h2><i class="fas fa-chevron-down accordion-chev" id="plChev"></i></div>
+    <div class="pl-body" id="plBody">
+    <div class="panel-sub">How often an ad slot appears in each feed. Discover also cycles formats in order (e.g. book, book, book, book, platform).</div>
+    <div class="pl-grid">
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-house" style="color:var(--accent)"></i> Discover</div>
+        <label class="pl-lbl">Every N stories</label><input class="pl-inp" id="plDisInt" type="number" min="1" value="6"/>
+        <label class="pl-lbl">Format cycle (comma separated)</label><input class="pl-inp" id="plDisCycle" value="book, book, book, book, platform"/>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-rss" style="color:var(--blue)"></i> Feed</div>
+        <label class="pl-lbl">Every N posts</label><input class="pl-inp" id="plFeedInt" type="number" min="1" value="4"/>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-layer-group" style="color:var(--purple)"></i> Genre Hub</div>
+        <label class="pl-lbl">Every N discussions</label><input class="pl-inp" id="plHubInt" type="number" min="1" value="3"/>
+        <label class="pl-check"><input type="checkbox" id="plHubTop" checked/> Top promo slider</label>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-house" style="color:var(--green)"></i> Homepage</div>
+        <label class="pl-lbl">Every N hero cards</label><input class="pl-inp" id="plHomeInt" type="number" min="1" value="5"/>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-book-open" style="color:var(--blue)"></i> Full Reader</div>
+        <label class="pl-lbl">Ad every N chapters</label><input class="pl-inp" id="plFullInt" type="number" min="1" value="3"/>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-scroll" style="color:var(--amber)"></i> Scroll Reader</div>
+        <label class="pl-lbl">Ad every N chapters</label><input class="pl-inp" id="plScrollInt" type="number" min="1" value="4"/>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-images" style="color:var(--purple)"></i> Library slider</div>
+        <label class="pl-check"><input type="checkbox" id="plLibSlider" checked/> Show promo slider</label>
+      </div>
+    </div>
+    <div class="pl-actions">
+      <button class="btn-primary" id="plSaveBtn">Save frequency</button>
+      <button class="btn-ghost" id="resetAdsBtn">Reset all to defaults</button>
+    </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2><i class="fas fa-rectangle-ad" style="color:var(--accent);font-size:13px"></i> Ad inventory</h2><span class="count-chip" id="adCount">0 ads</span></div>
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search ads…"/></div>
+      <select id="sortSel" title="Sort ads">
+        <option value="default">Sort: Default</option>
+        <option value="imp-desc">Most impressions</option>
+        <option value="imp-asc">Least impressions</option>
+        <option value="clk-desc">Most clicks</option>
+        <option value="ctr-desc">Highest CTR</option>
+        <option value="ctr-asc">Lowest CTR</option>
+      </select>
+    </div>
+    <div class="filter-row" id="fmtPills"></div>
+    <div class="filter-row" id="statusPills"></div>
+    <div class="filter-row" id="campFilterRow" style="display:none">
+      <span class="count-chip" id="campFilterText"></span>
+      <button class="filter-pill" id="campFilterClear">✕ Clear</button>
+    </div>
+    <div id="adList"></div>
+    <div class="pgn" id="adPager" style="display:none">
+      <div class="pgn-info" id="pgnInfo"></div>
+      <div class="pgn-btns" id="pgnBtns"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="admModalOv">
+  <div class="modal-box">
+    <h3 id="mTitle">New ad</h3>
+    <div class="modal-sub">Upload a creative or paste an image URL, pick where it shows.</div>
+    <label class="f-lbl">Format
+      <select class="f-select" id="mFormat">
+        <option value="platform">Platform (house promo)</option>
+        <option value="book">Book promo (gold)</option>
+        <option value="native">Native (sponsored post)</option>
+        <option value="follow">Follow promo</option>
+        <option value="banner">Banner</option>
+        <option value="promo">Promo slide (library / hub sliders)</option>
+      </select>
+    </label>
+    <div id="mStoryWrap" style="display:none">
+      <div class="f-lbl" style="margin-bottom:6px">Promote a platform story (fills the form)</div>
+      <div class="search-box" style="margin-bottom:8px"><i class="fas fa-magnifying-glass"></i><input id="mStorySearch" placeholder="Search title or author…"/></div>
+      <div id="mStoryResults"></div>
+    </div>
+    <div id="mFields"></div>
+    <div class="f-lbl" style="margin-bottom:6px">Campaign (optional)</div>
+    <select class="f-select" id="mCampaign" style="margin-bottom:14px"><option value="">No campaign</option></select>
+    <div class="f-lbl" style="margin-bottom:6px">Shows on</div>
+    <div class="pg-row" id="mPages"></div>
+    <div class="f-lbl" style="margin-bottom:6px">Schedule (blank = always on)</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <label class="f-lbl" style="flex:1;margin-bottom:0">Start date<input type="date" class="f-inp" id="mStart"/></label>
+      <label class="f-lbl" style="flex:1;margin-bottom:0">End date<input type="date" class="f-inp" id="mEnd"/></label>
+    </div>
+    <label class="active-row"><input type="checkbox" id="mActive" checked/> Live immediately</label>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="mCancelBtn">Cancel</button>
+      <button class="btn-primary" id="mSaveBtn">Save ad</button>
+    </div>
+  </div>
+</div>
+
+<div class="adm-toast" id="admToast"></div>
+
+<script src="shared/marketing-sidebar.js"></script>
+<script src="shared/marketing-data.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="shared/ad-manager.js"></script>
+<script>AdManagerPage.init();</script>
+</body>
+</html>

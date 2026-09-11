@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Author Messages — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row: tabs left, mark-all button right (same pattern as
+     other pages' page-hdr-row) ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
+  .top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px}
+  .top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .top-tab .tab-count{font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;background:var(--hover);color:var(--text-muted)}
+  .top-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:#000}
+
+  /* ── Stat cards (same tokens/pattern as authors.html / categories-genres.html) ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .stat-ico.pink{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(220,38,38,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Inbox split panel ── */
+  .inbox-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:grid;grid-template-columns:320px 1fr;height:620px}
+
+  /* Left: conversation list */
+  .inbox-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
+  .inbox-list-head{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+  .inbox-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px}
+  .inbox-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .inbox-search input::placeholder{color:var(--text-faint)}
+  .inbox-search i{color:var(--text-faint);font-size:12px}
+  .inbox-scroll{flex:1;overflow-y:auto}
+  .conv-item{display:flex;gap:11px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border);position:relative;transition:.12s}
+  .conv-item:hover{background:var(--hover)}
+  .conv-item.active{background:var(--accent-soft)}
+  .conv-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+  .conv-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0}
+  .conv-body{flex:1;min-width:0}
+  .conv-top-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+  .conv-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+  .conv-name i.fa-flag{color:var(--red);font-size:9px}
+  .conv-time{font-size:10px;color:var(--text-faint);flex-shrink:0}
+  .conv-preview{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-item.unread .conv-preview{color:var(--text);font-weight:600}
+  .conv-item.unread .conv-name{font-weight:800}
+  .unread-badge{background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0}
+
+  /* Right: thread */
+  .inbox-thread{display:flex;flex-direction:column;min-width:0}
+  .thread-head{display:flex;align-items:center;gap:11px;padding:14px 20px;border-bottom:1px solid var(--border)}
+  .thread-head img{width:38px;height:38px;border-radius:50%;object-fit:cover}
+  .thread-head-name{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+  .thread-head-sub{font-size:11px;color:var(--text-muted)}
+  .thread-head-right{margin-left:auto;display:flex;gap:8px}
+  .th-act-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+  .th-act-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .thread-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+  .msg-row{display:flex;gap:9px;max-width:70%}
+  .msg-row.out{align-self:flex-end;flex-direction:row-reverse}
+  .msg-row img{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
+  .msg-bubble{background:var(--card);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:12.5px;line-height:1.5;color:var(--text)}
+  .msg-row.out .msg-bubble{background:var(--accent);color:#fff;border-color:var(--accent);border-radius:14px 14px 4px 14px}
+  .msg-time{font-size:9.5px;color:var(--text-faint);margin-top:4px;display:block}
+  .msg-row.out .msg-time{text-align:right}
+  .thread-compose{display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--border)}
+  .thread-compose input{flex:1;background:var(--input-bg);border:1px solid var(--input-border);border-radius:22px;padding:11px 16px;outline:none;color:var(--text);font-size:12.5px;font-family:inherit}
+  .thread-compose input::placeholder{color:var(--text-faint)}
+  .send-btn{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
+  .send-btn:hover{background:#000}
+
+  .inbox-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-muted)}
+  .inbox-empty i{font-size:30px;color:var(--text-faint)}
+
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:820px){
+    .inbox-card{grid-template-columns:1fr;height:auto}
+    .inbox-list{border-right:none;border-bottom:1px solid var(--border)}
+    .inbox-list, .inbox-thread{min-height:460px}
+    .inbox-card.thread-open .inbox-list{display:none}
+    .inbox-card:not(.thread-open) .inbox-thread{display:none}
+    .thread-back{display:flex !important}
+  }
+  .thread-back{display:none;width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+  @media (max-width:680px){
+    .page-hdr-row{flex-direction:column;align-items:stretch}
+    .btn-add{justify-content:center}
+    .top-tabs{overflow-x:auto}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <div class="top-tabs">
+      <div class="top-tab active" data-view="all">All Messages <span class="tab-count" id="countAll">342</span></div>
+      <div class="top-tab" data-view="unread">Unread <span class="tab-count" id="countUnread">27</span></div>
+      <div class="top-tab" data-view="flagged">Flagged <span class="tab-count" id="countFlagged">6</span></div>
+    </div>
+    <button class="btn-add" id="markAllBtn"><i class="fas fa-check-double"></i> Mark All as Read</button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico pink"><i class="fas fa-comments"></i></div><span class="stat-delta">+18 this week</span></div>
+      <div class="stat-num">342</div>
+      <div class="stat-lbl">Total Conversations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-envelope"></i></div><span class="stat-delta">+5 today</span></div>
+      <div class="stat-num">27</div>
+      <div class="stat-lbl">Unread Messages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-clock"></i></div><span class="stat-delta">-12% faster</span></div>
+      <div class="stat-num">4.2h</div>
+      <div class="stat-lbl">Avg Response Time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta">+2 this week</span></div>
+      <div class="stat-num">6</div>
+      <div class="stat-lbl">Flagged Conversations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-user-clock"></i></div><span class="stat-delta">+9 this week</span></div>
+      <div class="stat-num">189</div>
+      <div class="stat-lbl">Active Authors</div>
+    </div>
+  </div>
+
+  <!-- Inbox -->
+  <div class="inbox-card" id="inboxCard">
+    <div class="inbox-list">
+      <div class="inbox-list-head">
+        <div class="inbox-search"><i class="fas fa-magnifying-glass"></i><input id="convSearch" placeholder="Search conversations..."/></div>
+      </div>
+      <div class="inbox-scroll" id="convList"></div>
+    </div>
+    <div class="inbox-thread" id="threadPane"></div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'author-messages.html',
+  title: 'Author Messages',
+  subtitle: 'Manage conversations with authors on your platform',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search conversations or authors...',
+  mobileSearchTarget: '#convSearch',
+  onSearch: (value) => {
+    document.getElementById('convSearch').value = value;
+    renderConvList();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const CONVERSATIONS = [
+  { id:1, name:'Sofia Lindqvist', avatar:'https://i.pravatar.cc/100?img=32', role:'Verified Author', unread:2, flagged:false, time:'10m ago',
+    messages:[
+      { from:'author', text:"Hi, I wanted to check in about my contract — it's set to expire next month.", time:'2 days ago' },
+      { from:'admin', text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.', time:'2 days ago' },
+      { from:'author', text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.', time:'1 day ago' },
+      { from:'author', text:'Can we discuss extending my contract renewal deadline? I need a bit more time to review the new terms.', time:'10m ago' },
+    ] },
+  { id:2, name:'Marcus Chen', avatar:'https://i.pravatar.cc/100?img=12', role:'Verified Author', unread:0, flagged:false, time:'1h ago',
+    messages:[
+      { from:'author', text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.', time:'3h ago' },
+      { from:'admin', text:'Reviewed it, looks great. Approved and scheduled for publishing.', time:'2h ago' },
+      { from:'author', text:'Thanks for approving my chapter revision!', time:'1h ago' },
+    ] },
+  { id:3, name:'Amara Okafor', avatar:'https://i.pravatar.cc/100?img=45', role:'Verified Author', unread:1, flagged:true, time:'3h ago',
+    messages:[
+      { from:'author', text:'My earnings dashboard is showing the wrong total again for the second month in a row.', time:'1 day ago' },
+      { from:'admin', text:'Sorry about that, Amara. Escalating to the finance team right now.', time:'22h ago' },
+      { from:'author', text:'This is the third time my earnings report is wrong. I need this resolved this week.', time:'3h ago' },
+    ] },
+  { id:4, name:'Daniel Reyes', avatar:'https://i.pravatar.cc/100?img=51', role:'Pending Author', unread:0, flagged:false, time:'1d ago',
+    messages:[
+      { from:'author', text:'Hi, just following up on my verification status — submitted docs 2 weeks ago.', time:'1d ago' },
+      { from:'admin', text:'Hi Daniel, your documents are under final review. Should be resolved by Friday.', time:'20h ago' },
+    ] },
+  { id:5, name:'Priya Nair', avatar:'https://i.pravatar.cc/100?img=27', role:'Verified Author', unread:3, flagged:false, time:'2d ago',
+    messages:[
+      { from:'author', text:'Read through the new royalty structure doc — a couple of questions on tiered rates.', time:'2d ago' },
+      { from:'author', text:'Specifically, does the 70% tier apply retroactively to existing contracts?', time:'2d ago' },
+      { from:'author', text:'Also, when does the new structure take effect exactly?', time:'2d ago' },
+    ] },
+  { id:6, name:'Julien Moreau', avatar:'https://i.pravatar.cc/100?img=15', role:'Pending Author', unread:0, flagged:false, time:'3d ago',
+    messages:[
+      { from:'author', text:'Uploaded my new manuscript, please review when you get a chance.', time:'3d ago' },
+      { from:'admin', text:"Got it, added to the review queue — we'll get back within 3-5 business days.", time:'3d ago' },
+    ] },
+  { id:7, name:'Isabella Rossi', avatar:'https://i.pravatar.cc/100?img=38', role:'Verified Author', unread:0, flagged:false, time:'4d ago',
+    messages:[
+      { from:'admin', text:"Congrats Isabella — your book was selected for this month's featured banner!", time:'4d ago' },
+      { from:'author', text:'Thank you so much for featuring my book! Really appreciate the support.', time:'4d ago' },
+    ] },
+  { id:8, name:'Tobias Bergman', avatar:'https://i.pravatar.cc/100?img=8', role:'Suspended Author', unread:1, flagged:true, time:'5d ago',
+    messages:[
+      { from:'admin', text:'Your account has been suspended due to repeated content policy violations.', time:'6d ago' },
+      { from:'author', text:'I want to appeal my suspension. I believe this was a misunderstanding.', time:'5d ago' },
+    ] },
+];
+
+let currentView = 'all';
+let activeConvId = CONVERSATIONS[0].id;
+
+function filteredConversations(){
+  const q = (document.getElementById('convSearch').value || '').trim().toLowerCase();
+  let list = CONVERSATIONS;
+  if (currentView === 'unread') list = list.filter(c => c.unread > 0);
+  else if (currentView === 'flagged') list = list.filter(c => c.flagged);
+  if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
+  return list;
+}
+
+function renderConvList(){
+  const list = filteredConversations();
+  const wrap = document.getElementById('convList');
+  if (!list.length){
+    wrap.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--text-muted)"><i class="fas fa-inbox" style="font-size:24px;color:var(--text-faint);display:block;margin-bottom:8px"></i>No conversations here.</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(c => {
+    const lastMsg = c.messages[c.messages.length - 1];
+    const preview = (lastMsg.from === 'admin' ? 'You: ' : '') + lastMsg.text;
+    return `
+    <div class="conv-item${c.unread > 0 ? ' unread' : ''}${c.id === activeConvId ? ' active' : ''}" data-id="${c.id}">
+      <img class="conv-avatar" src="${c.avatar}" alt="${c.name}"/>
+      <div class="conv-body">
+        <div class="conv-top-row">
+          <div class="conv-name">${c.name}${c.flagged ? '<i class="fas fa-flag"></i>' : ''}</div>
+          <div class="conv-time">${c.time}</div>
+        </div>
+        <div class="conv-preview">${preview}</div>
+      </div>
+      ${c.unread > 0 ? `<span class="unread-badge">${c.unread}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('.conv-item').forEach(el => {
+    el.addEventListener('click', () => {
+      activeConvId = +el.dataset.id;
+      const conv = CONVERSATIONS.find(c => c.id === activeConvId);
+      if (conv) conv.unread = 0;
+      renderConvList();
+      renderThread();
+      document.getElementById('inboxCard').classList.add('thread-open');
+    });
+  });
+}
+
+function renderThread(){
+  const pane = document.getElementById('threadPane');
+  const conv = CONVERSATIONS.find(c => c.id === activeConvId);
+  if (!conv){
+    pane.innerHTML = `<div class="inbox-empty"><i class="fas fa-comments"></i>Select a conversation to view messages</div>`;
+    return;
+  }
+  pane.innerHTML = `
+    <div class="thread-head">
+      <button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button>
+      <img src="${conv.avatar}" alt="${conv.name}"/>
+      <div>
+        <div class="thread-head-name">${conv.name}${conv.flagged ? '<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>' : ''}</div>
+        <div class="thread-head-sub">${conv.role}</div>
+      </div>
+      <div class="thread-head-right">
+        <button class="th-act-btn" title="View profile" onclick="toast('Opening ${conv.name}\\'s profile…')"><i class="fas fa-user"></i></button>
+        <button class="th-act-btn" title="Flag conversation" onclick="toggleFlag(${conv.id})"><i class="fas fa-flag"></i></button>
+        <button class="th-act-btn" title="Archive" onclick="toast('Conversation archived')"><i class="fas fa-box-archive"></i></button>
+      </div>
+    </div>
+    <div class="thread-body" id="threadBody">
+      ${conv.messages.map(m => `
+        <div class="msg-row ${m.from === 'admin' ? 'out' : 'in'}">
+          <img src="${m.from === 'admin' ? 'https://i.pravatar.cc/100?img=47' : conv.avatar}" alt=""/>
+          <div>
+            <div class="msg-bubble">${m.text}</div>
+            <span class="msg-time">${m.time}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="thread-compose">
+      <input id="composeInput" placeholder="Type a reply to ${conv.name}..."/>
+      <button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  `;
+  const body = document.getElementById('threadBody');
+  body.scrollTop = body.scrollHeight;
+
+  document.getElementById('threadBackBtn').addEventListener('click', () => {
+    document.getElementById('inboxCard').classList.remove('thread-open');
+  });
+  const input = document.getElementById('composeInput');
+  const send = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    conv.messages.push({ from:'admin', text, time:'Just now' });
+    input.value = '';
+    renderThread();
+    renderConvList();
+    toast('Message sent');
+  };
+  document.getElementById('sendBtn').addEventListener('click', send);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+}
+
+function toggleFlag(id){
+  const conv = CONVERSATIONS.find(c => c.id === id);
+  if (!conv) return;
+  conv.flagged = !conv.flagged;
+  toast(conv.flagged ? 'Conversation flagged' : 'Flag removed');
+  renderConvList();
+  renderThread();
+}
+
+/* ── Top tab switching (All / Unread / Flagged) ── */
+document.querySelectorAll('.top-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    renderConvList();
+  });
+});
+
+/* ── Mark all as read ── */
+document.getElementById('markAllBtn').addEventListener('click', () => {
+  CONVERSATIONS.forEach(c => c.unread = 0);
+  document.getElementById('countUnread').textContent = '0';
+  renderConvList();
+  toast('All messages marked as read');
+});
+
+document.getElementById('convSearch').addEventListener('input', renderConvList);
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+renderConvList();
+renderThread();
+</script>
+</body>
+</html>

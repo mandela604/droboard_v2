@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Story Management — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:24px 26px;margin-bottom:20px;color:#fff;box-shadow:0 10px 32px -10px rgba(255,0,80,.5)}
+.welcome-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin-bottom:5px}
+.welcome-title{font-size:19px;font-weight:800}
+.welcome-sub{font-size:12.5px;opacity:.82;margin-top:5px;line-height:1.5}
+
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
+.stat-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1}
+.stat-lbl{font-size:10px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14px;font-weight:800;display:flex;align-items:center;gap:7px}
+
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 12px;flex:1;min-width:160px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+.search-box input::placeholder{color:var(--text-faint)}
+.search-box i{color:var(--text-faint);font-size:11px}
+.toolbar select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:8px 11px;font-size:12px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.filter-pill{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:4px}
+.filter-pill:hover{border-color:var(--accent)}
+.filter-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill-count{font-size:9px;padding:1px 5px;border-radius:10px;background:var(--table-head);color:var(--text-faint)}
+.filter-pill.on .pill-count{background:rgba(255,255,255,.25);color:#fff}
+
+/* Story card */
+.story-card{border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:9px;cursor:pointer;transition:.14s;display:flex;gap:14px;align-items:flex-start}
+.story-card:hover{border-color:var(--accent);box-shadow:0 3px 16px rgba(255,0,80,.07)}
+.sc-cover-wrap{flex-shrink:0;position:relative}
+.sc-cover{width:58px;height:80px;border-radius:9px;object-fit:cover;display:block;box-shadow:0 3px 12px rgba(20,10,50,.2);background:var(--table-head)}
+.sc-badge{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800}
+.sc-badge.ongoing{background:var(--blue);color:#fff}
+.sc-badge.completed{background:var(--green);color:#fff}
+.sc-badge.hiatus{background:var(--amber);color:#fff}
+.sc-info{flex:1;min-width:0}
+.sc-title{font-size:13px;font-weight:800;line-height:1.3;margin-bottom:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sc-author-row{font-size:11px;color:var(--text-muted);margin-bottom:7px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.sc-author-row img{width:16px;height:16px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.genre-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--table-head);color:var(--text-muted);white-space:nowrap}
+.sc-stats{display:flex;gap:12px;flex-wrap:wrap}
+.sc-stat{font-size:10px;color:var(--text-muted);font-weight:600;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.sc-stat i{color:var(--text-faint);font-size:9px}
+.sc-progress{margin-top:7px}
+.sc-prog-label{display:flex;justify-content:space-between;font-size:9px;color:var(--text-faint);margin-bottom:3px;font-weight:600}
+.sc-prog-bar{height:3px;background:var(--table-head);border-radius:3px;overflow:hidden}
+.sc-prog-fill{height:100%;border-radius:3px;background:var(--accent)}
+.sc-actions{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap}
+.sc-btn{font-size:10px;font-weight:700;padding:4px 9px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:3px;transition:.13s;white-space:nowrap}
+.sc-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sc-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+.status-pill{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.ongoing{background:var(--blue-bg);color:var(--blue)}
+.status-pill.completed{background:var(--green-bg);color:var(--green)}
+.status-pill.hiatus{background:var(--amber-bg);color:var(--amber)}
+.status-pill.draft{background:var(--table-head);color:var(--text-muted)}
+
+/* Pagination */
+.pgn{display:flex;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:8px}
+.pgn-info{font-size:11px;color:var(--text-faint);font-weight:600}
+.pgn-btns{display:flex;gap:4px}
+.pgn-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:.13s}
+.pgn-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pgn-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pgn-btn:disabled{opacity:.3;cursor:default}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-slide{position:fixed;bottom:0;left:0;right:0;max-height:86vh;background:var(--card);z-index:1001;border-radius:20px 20px 0 0;transform:translateY(100%);transition:transform .33s cubic-bezier(.4,0,.2,1);overflow-y:auto;box-shadow:0 -12px 50px rgba(0,0,0,.26)}
+.modal-slide.open{transform:translateY(0)}
+.modal-handle{width:36px;height:4px;border-radius:3px;background:var(--text-faint);margin:10px auto 0;opacity:.35}
+.modal-close{position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
+
+.modal-hero{display:flex;gap:16px;padding:16px 20px 14px;border-bottom:1px solid var(--border);align-items:flex-start}
+.modal-cover{width:72px;height:100px;border-radius:11px;object-fit:cover;display:block;box-shadow:0 5px 18px rgba(20,10,50,.25);flex-shrink:0}
+.modal-hero-info{flex:1;min-width:0}
+.modal-hero-info h3{font-size:16px;font-weight:800;line-height:1.3;margin-bottom:3px}
+.modal-author-line{font-size:11.5px;color:var(--text-muted);margin-bottom:7px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.modal-author-line img{width:18px;height:18px;border-radius:50%}
+.modal-rating{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700}
+.stars{color:#ffd166}
+.reads-lbl{font-size:11px;color:var(--text-faint);font-weight:400}
+
+.modal-body{padding:16px 20px 28px}
+.section-lbl{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-faint);margin-bottom:9px;margin-top:16px;display:flex;align-items:center;gap:5px}
+.section-lbl:first-child{margin-top:0}
+
+.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.meta-item{background:var(--table-head);border-radius:9px;padding:10px 12px}
+.meta-lbl{font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em}
+.meta-val{font-size:14px;font-weight:800;margin-top:2px;line-height:1.2}
+
+.synopsis-box{background:var(--table-head);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--text-muted);line-height:1.55}
+
+.ch-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--border);border-radius:9px;margin-bottom:5px;font-size:11.5px}
+.ch-num{width:24px;height:24px;border-radius:6px;background:var(--table-head);font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;color:var(--text-muted);flex-shrink:0}
+.ch-title{flex:1;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-meta{font-size:9.5px;color:var(--text-faint);text-align:right;flex-shrink:0}
+.ch-status{font-size:8px;font-weight:800;padding:2px 6px;border-radius:8px}
+.ch-status.published{background:var(--green-bg);color:var(--green)}
+.ch-status.draft{background:var(--table-head);color:var(--text-faint)}
+
+.modal-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px}
+.modal-actions button{flex:1;min-width:100px;padding:9px 12px;border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;gap:5px;transition:.13s}
+.modal-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.modal-actions button.primary{background:var(--accent);border-color:transparent;color:#fff}
+.modal-actions button.primary:hover{opacity:.88}
+.modal-actions button.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.modal-actions button.danger:hover{background:var(--red);color:#fff}
+
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.empty-msg i{font-size:28px;margin-bottom:8px;display:block;opacity:.35}
+
+/* Responsive */
+@media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){
+  .stat-row{grid-template-columns:1fr 1fr}
+  .stat-num{font-size:16px}
+  .toolbar{gap:6px}
+  .toolbar select{font-size:11px;padding:7px 9px}
+  .story-card{flex-direction:row;gap:12px}
+  .sc-cover{width:52px;height:72px}
+  .sc-actions{display:none}
+  .meta-grid{grid-template-columns:1fr 1fr}
+  .modal-actions button{min-width:80px;font-size:10.5px;padding:8px 10px}
+  .modal-hero{gap:12px}
+  .modal-cover{width:60px;height:84px}
+}
+@media(max-width:380px){
+  .stat-row{grid-template-columns:1fr 1fr}
+  .sc-title{font-size:12px}
+  .welcome-title{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div id="smRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Senior Editor · Story Management</div>
+    <div class="welcome-title">Story Management 📚</div>
+    <div class="welcome-sub">Assigned stories, chapter status, publishing schedules, metadata and publication history.</div>
+  </div>
+
+  <div class="stat-row" id="statRow"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-book" style="color:var(--accent)"></i> Assigned Stories</h2>
+      <span id="storyCount" style="font-size:11.5px;color:var(--text-faint);font-weight:600"></span>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <i class="fas fa-magnifying-glass"></i>
+        <input id="searchInput" placeholder="Search title, author, genre…"/>
+      </div>
+      <select id="sortSel">
+        <option value="recent">Recently Updated</option>
+        <option value="rating">Highest Rated</option>
+        <option value="chapters">Most Chapters</option>
+        <option value="words">Most Words</option>
+        <option value="alpha">A → Z</option>
+      </select>
+      <select id="genreSel"><option value="">All Genres</option></select>
+    </div>
+
+    <div class="filter-row" id="filterRow"></div>
+    <div id="storyList"></div>
+    <div class="pgn" id="pgn"></div>
+  </div>
+</div>
+
+<!-- modal -->
+<div class="modal-overlay" id="modalOv"></div>
+<div class="modal-slide" id="modalSlide">
+  <div class="modal-handle"></div>
+  <button class="modal-close" id="modalClose"><i class="fas fa-xmark"></i></button>
+  <div class="modal-hero">
+    <img class="modal-cover" id="modalCover" src="" alt=""/>
+    <div class="modal-hero-info">
+      <h3 id="modalName"></h3>
+      <div class="modal-author-line" id="modalAuthor"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="modalTags"></div>
+      <div class="modal-rating">
+        <span class="stars" id="modalStars"></span>
+        <span id="modalRating"></span>
+        <span class="reads-lbl" id="modalReads"></span>
+      </div>
+    </div>
+  </div>
+  <div class="modal-body">
+    <div class="section-lbl"><i class="fas fa-info-circle"></i> Story Details</div>
+    <div class="meta-grid" id="metaGrid"></div>
+    <div class="section-lbl" style="margin-top:14px"><i class="fas fa-align-left"></i> Synopsis</div>
+    <div class="synopsis-box" id="synopsisBox"></div>
+    <div class="section-lbl" style="margin-top:14px"><i class="fas fa-list-ol"></i> Recent Chapters</div>
+    <div id="chapterList"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
+<script>
+'use strict';
+
+const shell = SeniorEditorSidebar.attach('#smRoot', {
+  activeItem: 'story-management',
+  title: 'Story Management',
+  subtitle: 'Assigned stories & chapter status',
+  user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
+  notifCount: 4,
+  onSearch: function(v) { document.getElementById('searchInput').value = v; currentPg = 1; applyFilters(); }
+});
+
+/* ── Covers ── */
+var COVER_MAP = {
+  'Bound by the Ruthless Alpha':  'https://i.postimg.cc/xqmHfyNR/wolf2.jpg',
+  "The CEO's Hidden Son":         'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
+  "Wolf King's Vow":              'https://i.postimg.cc/MXBR6bfY/wolf3.jpg',
+  'Betrayed by the Mafia Prince': 'https://i.postimg.cc/fkdXzjS8/wolf.jpg',
+  "The Duke's Secret":            'https://i.postimg.cc/fkdXzjSj/wife.jpg'
+};
+var FALLBACK = [
+  'https://i.postimg.cc/vDn9YLx5/wife2.jpg',
+  'https://i.postimg.cc/cgLZJNmC/8.jpg',
+  'https://i.postimg.cc/0MyxNqfz/7.jpg',
+  'https://i.postimg.cc/N9jY0w4m/5.jpg',
+  'https://i.postimg.cc/tY7KnJyr/images.jpg'
+];
+function coverFor(title, i) { return COVER_MAP[title] || FALLBACK[i % FALLBACK.length]; }
+
+/* ── Author avatars ── */
+var AVATARS = {
+  'Chioma Okafor':   'https://i.pravatar.cc/40?img=5',
+  'Luna Skye':       'https://i.pravatar.cc/40?img=24',
+  'Elena Vasquez':   'https://i.pravatar.cc/40?img=31',
+  'Marcus Webb Jr.': 'https://i.pravatar.cc/40?img=33',
+  'Isabelle Moreau': 'https://i.pravatar.cc/40?img=44'
+};
+
+/* ── Extra data keyed by story id ─ NOTE: no "chapters" key here to avoid collision ── */
+var EXTRA = {
+  'ST-001': { reads: 52100, wordGoal: 150000, synopsis: 'Alpha Kade never expected his ex-mate to return — pregnant with his child and bound by a ruthless pact made in blood.', recentChs: [
+    { n: 31, title: "The Alpha's Command", words: 3800, status: 'published', date: '2d ago' },
+    { n: 30, title: 'No Escape',           words: 4100, status: 'published', date: '5d ago' },
+    { n: 32, title: 'Untitled Draft',      words: 1200, status: 'draft',     date: 'In progress' }
+  ]},
+  'ST-002': { reads: 28400, wordGoal: 120000, synopsis: 'When CEO Damian Cole discovers the orphan child on his doorstep shares his blood, his carefully built world starts to crack.', recentChs: [
+    { n: 24, title: 'The Hidden Truth',      words: 3450, status: 'published', date: '2h ago' },
+    { n: 23, title: 'Boardroom Lies',        words: 4200, status: 'published', date: '3d ago' },
+    { n: 22, title: "The Assistant's Secret",words: 3900, status: 'published', date: '5d ago' }
+  ]},
+  'ST-003': { reads: 12300, wordGoal: 100000, synopsis: 'Wolf King Lucian made a vow in the old tongue — a vow that cannot be broken, even by death.', recentChs: [
+    { n: 12, title: "Moon's Edge",    words: 5200, status: 'published', date: '4h ago' },
+    { n: 11, title: 'The Pack Council',words: 4700, status: 'published', date: '8d ago' },
+    { n: 10, title: 'Blood Oath',     words: 4900, status: 'published', date: '15d ago' }
+  ]},
+  'ST-004': { reads: 9800, wordGoal: 80000, synopsis: 'Betrayal runs in the Ricci bloodline — but Aria never expected it to come from the man she loved.', recentChs: [
+    { n: 7, title: "The Don's Offer", words: 2800, status: 'published', date: '6h ago' },
+    { n: 6, title: 'Silk & Smoke',    words: 3100, status: 'published', date: '14d ago' },
+    { n: 5, title: 'Guns & Roses',    words: 2950, status: 'published', date: '28d ago' }
+  ]},
+  'ST-005': { reads: 67800, wordGoal: 155000, synopsis: 'The Duke of Ashford keeps one secret that could undo everything — and Lady Elara is dangerously close to finding it.', recentChs: [
+    { n: 31, title: 'Epilogue: A New Season', words: 3600, status: 'published', date: '1w ago' },
+    { n: 30, title: 'The Revelation Ball',    words: 4400, status: 'published', date: '2w ago' },
+    { n: 29, title: 'Letters Never Sent',     words: 4100, status: 'published', date: '3w ago' }
+  ]}
+};
+
+var PER_PAGE   = 4;
+var allStories = [];
+var filtered   = [];
+var activeStat = 'all';
+var currentPg  = 1;
+
+/* ── Init ── */
+async function init() {
+  var d = await SeniorEditorData.getStories();
+
+  /* Build allStories — keep original "chapters" (count) as chapterCount to avoid collision */
+  allStories = d.stories.map(function(s, i) {
+    var ex = EXTRA[s.id] || {};
+    return {
+      id:           s.id,
+      title:        s.title,
+      author:       s.author,
+      genre:        s.genre,
+      chapterCount: s.chapters,   /* renamed from "chapters" */
+      status:       s.status,
+      lastUpdated:  s.lastUpdated,
+      words:        s.words,
+      rating:       s.rating,
+      cover:        coverFor(s.title, i),
+      avatar:       AVATARS[s.author] || null,
+      reads:        ex.reads    || Math.floor(Math.random() * 20000 + 3000),
+      wordGoal:     ex.wordGoal || Math.round(s.words * 1.25),
+      synopsis:     ex.synopsis || 'No synopsis available.',
+      recentChs:    ex.recentChs || []
+    };
+  });
+
+  buildGenreSelect();
+  buildStats();
+  buildFilterPills();
+  applyFilters();
+
+  document.getElementById('searchInput').addEventListener('input', function() { currentPg = 1; applyFilters(); });
+  document.getElementById('sortSel').addEventListener('change', applyFilters);
+  document.getElementById('genreSel').addEventListener('change', function() { currentPg = 1; applyFilters(); });
+  document.getElementById('modalOv').addEventListener('click', closeModal);
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+}
+
+/* ── Stats ── */
+function buildStats() {
+  var total    = allStories.length;
+  var ongoing  = allStories.filter(function(s){ return s.status === 'ongoing'; }).length;
+  var done     = allStories.filter(function(s){ return s.status === 'completed'; }).length;
+  var totalWords = allStories.reduce(function(n, s){ return n + s.words; }, 0);
+  var stats = [
+    { n: total,                      l: 'Assigned Stories',  ico: 'fa-book',         clr: 'var(--accent)', bg: 'rgba(255,0,80,.1)' },
+    { n: ongoing,                    l: 'Ongoing',           ico: 'fa-pen',          clr: 'var(--blue)',   bg: 'var(--blue-bg)' },
+    { n: done,                       l: 'Completed',         ico: 'fa-circle-check', clr: 'var(--green)',  bg: 'var(--green-bg)' },
+    { n: totalWords.toLocaleString(),l: 'Total Words',       ico: 'fa-align-left',   clr: 'var(--purple)', bg: 'var(--purple-bg)' }
+  ];
+  document.getElementById('statRow').innerHTML = stats.map(function(s) {
+    return '<div class="stat-card"><div class="stat-ico" style="background:' + s.bg + ';color:' + s.clr + '"><i class="fas ' + s.ico + '"></i></div><div><div class="stat-num">' + s.n + '</div><div class="stat-lbl">' + s.l + '</div></div></div>';
+  }).join('');
+}
+
+/* ── Genre select ── */
+function buildGenreSelect() {
+  var genres = [];
+  allStories.forEach(function(s) { if (genres.indexOf(s.genre) === -1) genres.push(s.genre); });
+  genres.sort();
+  var el = document.getElementById('genreSel');
+  genres.forEach(function(g) { el.innerHTML += '<option value="' + g + '">' + g + '</option>'; });
+}
+
+/* ── Filter pills ── */
+function buildFilterPills() {
+  var statuses = ['all'];
+  allStories.forEach(function(s) { if (statuses.indexOf(s.status) === -1) statuses.push(s.status); });
+  var counts = { all: allStories.length };
+  allStories.forEach(function(s) { counts[s.status] = (counts[s.status] || 0) + 1; });
+
+  document.getElementById('filterRow').innerHTML = statuses.map(function(st) {
+    var label = st === 'all' ? 'All' : st.charAt(0).toUpperCase() + st.slice(1);
+    return '<button class="filter-pill' + (st === activeStat ? ' on' : '') + '" data-status="' + st + '">' + label + '<span class="pill-count">' + (counts[st] || 0) + '</span></button>';
+  }).join('');
+
+  document.querySelectorAll('.filter-pill').forEach(function(p) {
+    p.addEventListener('click', function() {
+      activeStat = p.dataset.status;
+      currentPg = 1;
+      document.querySelectorAll('.filter-pill').forEach(function(x) { x.classList.toggle('on', x === p); });
+      applyFilters();
+    });
+  });
+}
+
+/* ── Apply filters + sort ── */
+function applyFilters() {
+  var q     = document.getElementById('searchInput').value.trim().toLowerCase();
+  var genre = document.getElementById('genreSel').value;
+  var sort  = document.getElementById('sortSel').value;
+
+  filtered = allStories.filter(function(s) {
+    var matchSt = activeStat === 'all' || s.status === activeStat;
+    var matchQ  = !q || s.title.toLowerCase().indexOf(q) > -1 || s.author.toLowerCase().indexOf(q) > -1 || s.genre.toLowerCase().indexOf(q) > -1;
+    var matchG  = !genre || s.genre === genre;
+    return matchSt && matchQ && matchG;
+  });
+
+  if (sort === 'rating')   filtered.sort(function(a,b){ return b.rating - a.rating; });
+  if (sort === 'chapters') filtered.sort(function(a,b){ return b.chapterCount - a.chapterCount; });
+  if (sort === 'words')    filtered.sort(function(a,b){ return b.words - a.words; });
+  if (sort === 'alpha')    filtered.sort(function(a,b){ return a.title.localeCompare(b.title); });
+
+  var maxPg = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (currentPg > maxPg) currentPg = maxPg;
+
+  document.getElementById('storyCount').textContent = '(' + filtered.length + ' of ' + allStories.length + ')';
+  renderPage();
+}
+
+/* ── Render page ── */
+function renderPage() {
+  var start = (currentPg - 1) * PER_PAGE;
+  var page  = filtered.slice(start, start + PER_PAGE);
+
+  if (!page.length) {
+    document.getElementById('storyList').innerHTML = '<div class="empty-msg"><i class="fas fa-book-open"></i>No stories match your filters.</div>';
+    document.getElementById('pgn').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('storyList').innerHTML = page.map(function(s) {
+    var pct = Math.min(100, Math.round(s.words / s.wordGoal * 100));
+    var av  = s.avatar ? '<img src="' + s.avatar + '" alt="' + s.author + '"/>' : '';
+    return '<div class="story-card" data-id="' + s.id + '">' +
+      '<div class="sc-cover-wrap">' +
+        '<img class="sc-cover" src="' + s.cover + '" alt="' + s.title + '" loading="lazy"/>' +
+        '<span class="sc-badge ' + s.status + '" title="' + s.status + '">' + (s.status === 'completed' ? '✓' : '●') + '</span>' +
+      '</div>' +
+      '<div class="sc-info">' +
+        '<div class="sc-title">' + s.title + '<span class="status-pill ' + s.status + '">' + s.status + '</span></div>' +
+        '<div class="sc-author-row">' + av + s.author + '<span class="genre-tag">' + s.genre + '</span></div>' +
+        '<div class="sc-stats">' +
+          '<span class="sc-stat"><i class="fas fa-list-ol"></i>' + s.chapterCount + ' ch</span>' +
+          '<span class="sc-stat"><i class="fas fa-pen"></i>' + s.words.toLocaleString() + ' words</span>' +
+          '<span class="sc-stat"><i class="fas fa-star" style="color:#ffd166"></i>' + s.rating + '</span>' +
+          '<span class="sc-stat"><i class="fas fa-eye"></i>' + s.reads.toLocaleString() + '</span>' +
+          '<span class="sc-stat"><i class="fas fa-clock"></i>' + s.lastUpdated + '</span>' +
+        '</div>' +
+        '<div class="sc-progress">' +
+          '<div class="sc-prog-label"><span>Word progress</span><span>' + pct + '% of ' + s.wordGoal.toLocaleString() + '</span></div>' +
+          '<div class="sc-prog-bar"><div class="sc-prog-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>' +
+        '<div class="sc-actions">' +
+          '<button class="sc-btn" data-act="edit" data-id="' + s.id + '"><i class="fas fa-pen"></i> Edit</button>' +
+          '<button class="sc-btn" data-act="analytics" data-id="' + s.id + '"><i class="fas fa-chart-line"></i> Analytics</button>' +
+          '<button class="sc-btn" data-act="feature" data-id="' + s.id + '"><i class="fas fa-star"></i> Feature</button>' +
+          '<button class="sc-btn danger" data-act="unpublish" data-id="' + s.id + '"><i class="fas fa-eye-slash"></i> Unpublish</button>' +
+        '</div>' +
+      '</div>' +
+      '<i class="fas fa-chevron-right" style="color:var(--text-faint);font-size:11px;flex-shrink:0;margin-top:2px"></i>' +
+    '</div>';
+  }).join('');
+
+  document.querySelectorAll('.story-card').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      if (e.target.closest('[data-act]')) return;
+      openModal(el.dataset.id);
+    });
+  });
+
+  document.querySelectorAll('[data-act]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var s = allStories.find(function(x){ return x.id === btn.dataset.id; });
+      var act = btn.dataset.act;
+      if (act === 'edit')      toast('✏️ Opening editor for "' + s.title + '"…');
+      if (act === 'analytics') location.href = 'story-analytics.html';
+      if (act === 'feature')   toast('⭐ "' + s.title + '" added to Featured Stories');
+      if (act === 'unpublish') toast('🚫 "' + s.title + '" unpublished');
+    });
+  });
+
+  renderPagination();
+}
+
+/* ── Pagination ── */
+function renderPagination() {
+  var total = filtered.length;
+  var maxPg = Math.ceil(total / PER_PAGE);
+  if (maxPg <= 1) { document.getElementById('pgn').innerHTML = ''; return; }
+
+  var start = (currentPg - 1) * PER_PAGE + 1;
+  var end   = Math.min(currentPg * PER_PAGE, total);
+  var btns  = '';
+
+  for (var i = 1; i <= maxPg; i++) {
+    if (maxPg > 6 && i > 2 && i < maxPg - 1 && Math.abs(i - currentPg) > 1) {
+      if (i === 3 || i === maxPg - 2) btns += '<span style="color:var(--text-faint);padding:0 3px;font-size:12px">…</span>';
+      continue;
+    }
+    btns += '<button class="pgn-btn' + (i === currentPg ? ' on' : '') + '" data-pg="' + i + '">' + i + '</button>';
+  }
+
+  document.getElementById('pgn').innerHTML =
+    '<span class="pgn-info">Showing ' + start + '–' + end + ' of ' + total + '</span>' +
+    '<div class="pgn-btns">' +
+      '<button class="pgn-btn" id="pgPrev"' + (currentPg === 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left" style="font-size:9px"></i></button>' +
+      btns +
+      '<button class="pgn-btn" id="pgNext"' + (currentPg === maxPg ? ' disabled' : '') + '><i class="fas fa-chevron-right" style="font-size:9px"></i></button>' +
+    '</div>';
+
+  document.getElementById('pgPrev').addEventListener('click', function(){ currentPg--; renderPage(); });
+  document.getElementById('pgNext').addEventListener('click', function(){ currentPg++; renderPage(); });
+  document.querySelectorAll('.pgn-btn[data-pg]').forEach(function(b) {
+    b.addEventListener('click', function(){ currentPg = parseInt(b.dataset.pg); renderPage(); });
+  });
+}
+
+/* ── Modal ── */
+function openModal(id) {
+  var s = allStories.find(function(x){ return x.id === id; });
+  if (!s) return;
+
+  document.getElementById('modalCover').src = s.cover;
+  document.getElementById('modalCover').alt = s.title;
+  document.getElementById('modalName').textContent = s.title;
+
+  var av = s.avatar ? '<img src="' + s.avatar + '" alt="' + s.author + '"/>' : '';
+  document.getElementById('modalAuthor').innerHTML = av + '<strong>' + s.author + '</strong><span class="genre-tag">' + s.genre + '</span>';
+  document.getElementById('modalTags').innerHTML = '<span class="status-pill ' + s.status + '">' + s.status + '</span>';
+
+  var full = Math.floor(s.rating);
+  document.getElementById('modalStars').textContent = '★'.repeat(full) + '☆'.repeat(5 - full);
+  document.getElementById('modalRating').textContent = s.rating;
+  document.getElementById('modalReads').textContent = '· ' + s.reads.toLocaleString() + ' reads';
+
+  var pct = Math.min(100, Math.round(s.words / s.wordGoal * 100));
+  var metaItems = [
+    { l: 'Chapters',    v: s.chapterCount },
+    { l: 'Total Words', v: s.words.toLocaleString() },
+    { l: 'Rating',      v: '⭐ ' + s.rating },
+    { l: 'Last Updated',v: s.lastUpdated },
+    { l: 'Word Goal',   v: pct + '%' },
+    { l: 'Genre',       v: s.genre }
+  ];
+  document.getElementById('metaGrid').innerHTML = metaItems.map(function(m) {
+    return '<div class="meta-item"><div class="meta-lbl">' + m.l + '</div><div class="meta-val">' + m.v + '</div></div>';
+  }).join('');
+
+  document.getElementById('synopsisBox').textContent = s.synopsis;
+
+  var chs = s.recentChs.slice(0, 5);
+  document.getElementById('chapterList').innerHTML = chs.length
+    ? chs.map(function(c) {
+        return '<div class="ch-item">' +
+          '<div class="ch-num">Ch' + c.n + '</div>' +
+          '<div class="ch-title">' + c.title + '</div>' +
+          '<span class="ch-status ' + c.status + '">' + c.status + '</span>' +
+          '<div class="ch-meta">' + c.words.toLocaleString() + ' w · ' + c.date + '</div>' +
+        '</div>';
+      }).join('')
+    : '<div style="font-size:12px;color:var(--text-faint);padding:8px 0">No chapter data available.</div>';
+
+  document.getElementById('modalActions').innerHTML =
+    '<button class="primary" id="mActEdit"><i class="fas fa-pen"></i> Edit Story</button>' +
+    '<button id="mActAnalytics"><i class="fas fa-chart-line"></i> Analytics</button>' +
+    '<button id="mActFeature"><i class="fas fa-star"></i> Feature</button>' +
+    '<button class="danger" id="mActUnpublish"><i class="fas fa-eye-slash"></i> Unpublish</button>';
+
+  document.getElementById('mActEdit').onclick      = function(){ toast('✏️ Opening editor for "' + s.title + '"…'); closeModal(); };
+  document.getElementById('mActAnalytics').onclick = function(){ location.href = 'story-analytics.html'; };
+  document.getElementById('mActFeature').onclick   = function(){ toast('⭐ "' + s.title + '" added to Featured Stories'); closeModal(); };
+  document.getElementById('mActUnpublish').onclick = function(){ toast('🚫 "' + s.title + '" unpublished'); closeModal(); };
+
+  document.getElementById('modalOv').classList.add('open');
+  document.getElementById('modalSlide').classList.add('open');
+  document.getElementById('modalSlide').scrollTop = 0;
+}
+
+function closeModal() {
+  document.getElementById('modalOv').classList.remove('open');
+  document.getElementById('modalSlide').classList.remove('open');
+}
+
+init();
+</script>
+</body>
+</html>

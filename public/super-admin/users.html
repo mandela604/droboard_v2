@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Users — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+html,body{overflow-x:hidden;max-width:100%;height:100%;min-height:100vh}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+img{max-width:100%}
+#dashRoot{min-height:100vh}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;min-width:0}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px;min-width:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:16px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px;white-space:nowrap}
+
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn.warn{background:var(--amber-bg);border-color:transparent;color:var(--amber)}
+.mini-btn.warn:hover{background:var(--amber);color:#fff}
+.mini-btn.green{background:var(--green-bg);border-color:transparent;color:var(--green)}
+.mini-btn.green:hover{background:var(--green);color:#fff}
+.mini-btn.ghost{background:transparent}
+
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.tb-search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;min-width:0}
+.tb-search input{border:none;background:none;outline:none;font-size:12.5px;font-family:inherit;color:var(--text);width:100%;min-width:0}
+.tb-search i{color:var(--text-faint);font-size:12px;flex-shrink:0}
+.tb-select{font-size:12px;font-weight:600;font-family:inherit;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;cursor:pointer;outline:none;max-width:100%}
+
+/* ── Accordion "table" (div-grid based so it never needs horizontal scroll) ── */
+.tbl-head{display:grid;grid-template-columns:26px 2.2fr 110px 100px 90px 80px 100px 36px;gap:8px;padding:0 14px 10px;align-items:center}
+.tbl-head span{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint)}
+.tbl-body{display:flex;flex-direction:column;gap:10px}
+
+.usr-row{display:grid;grid-template-columns:26px 2.2fr 110px 100px 90px 80px 100px 36px;gap:8px;align-items:center;
+  background:var(--table-head,#eef0f3);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;cursor:pointer;transition:.15s}
+.usr-row:hover{border-color:var(--accent)}
+.usr-row.is-open{border-color:var(--accent);border-radius:12px 12px 0 0}
+.usr-row.is-suspended{opacity:.82}
+.usr-row.is-banned{opacity:.65}
+
+.expand-ico{font-size:11px;color:var(--text-faint);transition:.15s}
+.usr-row.is-open .expand-ico{transform:rotate(90deg);color:var(--accent)}
+
+.user-cell{display:flex;align-items:center;gap:10px;min-width:0}
+.usr-av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--card)}
+.user-cell-text{min-width:0}
+.usr-name{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr-handle{font-size:10.5px;color:var(--text-faint);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr-verified{color:var(--blue);font-size:11px}
+.u-mobile-meta{display:none;gap:6px;margin-top:4px;flex-wrap:wrap}
+
+.role-badge{font-size:10px;font-weight:700;padding:4px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.usr-status{font-size:8.5px;font-weight:800;padding:3px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap;display:inline-block}
+.usr-status.active{background:var(--green-bg);color:var(--green)}
+.usr-status.suspended{background:var(--amber-bg);color:var(--amber)}
+.usr-status.banned{background:var(--red-bg);color:var(--red)}
+.col-num{font-size:12.5px;font-weight:700}
+.col-joined{font-size:11px;color:var(--text-muted);font-weight:600}
+
+.row-actions{position:relative;justify-self:end}
+.kebab-btn{width:26px;height:26px;border-radius:7px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;font-size:12px}
+.kebab-btn:hover{background:var(--card);color:var(--text)}
+.inline-menu{position:absolute;right:0;top:30px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:8;overflow:hidden;min-width:150px}
+.inline-menu button{width:100%;text-align:left;padding:9px 12px;border:none;background:none;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:8px;font-family:inherit}
+.inline-menu button:hover{background:var(--input-bg)}
+.inline-menu button.danger{color:var(--red)}
+.inline-menu button i{width:14px;color:var(--text-faint);flex-shrink:0}
+.inline-menu button.danger i{color:var(--red)}
+
+/* ── accordion detail panel — restyled ── */
+.usr-detail{display:none;background:linear-gradient(180deg,var(--table-head) 0%,var(--card) 90px);border:1.5px solid var(--accent);border-top:none;border-radius:0 0 14px 14px;padding:0;margin-top:-10px;overflow:hidden}
+.usr-detail.show{display:block}
+.detail-inner{padding:16px 18px 18px}
+
+.detail-standing{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 13px;border-radius:10px;font-size:11.5px;font-weight:700}
+.detail-standing i{font-size:12px}
+.detail-standing.green{background:var(--green-bg);color:var(--green)}
+.detail-standing.amber{background:var(--amber-bg);color:var(--amber)}
+.detail-standing.red{background:var(--red-bg);color:var(--red)}
+
+.detail-section{margin-bottom:16px}
+.detail-section:last-of-type{margin-bottom:0}
+.ds-label{font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ds-label i{color:var(--accent);font-size:10px}
+
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.detail-grid.three{grid-template-columns:repeat(3,1fr)}
+.detail-item{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 11px;min-width:0}
+.detail-item span{font-size:9px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:3px}
+.detail-item b{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.detail-item.accent{border-color:rgba(255,0,80,.25);background:var(--accent-soft,rgba(255,0,80,.06))}
+.detail-item.accent b{color:var(--accent)}
+.detail-item.fire b{color:var(--amber)}
+
+.genre-chip-row{display:flex;gap:7px;flex-wrap:wrap}
+.genre-chip{font-size:10.5px;font-weight:600;background:var(--card);border:1px solid var(--border);color:var(--text-muted);padding:5px 10px 5px 11px;border-radius:20px;display:flex;align-items:center;gap:6px}
+.genre-chip b{color:var(--accent);font-weight:800}
+.genre-chip .rank{font-size:9px;font-weight:800;color:var(--text-faint)}
+
+.tip-banner{display:flex;align-items:center;justify-content:space-between;background:var(--amber-bg);border:1px solid rgba(217,119,6,.22);border-radius:10px;padding:10px 13px}
+.tip-banner .tb-left{display:flex;align-items:center;gap:9px}
+.tip-banner .tb-ico{width:30px;height:30px;border-radius:8px;background:rgba(217,119,6,.15);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tip-banner .tb-label{font-size:9.5px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.03em}
+.tip-banner .tb-val{font-size:14.5px;font-weight:800;color:var(--text);margin-top:1px}
+
+.detail-notes{font-size:11.5px;color:var(--text-muted);line-height:1.6;margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 11px}
+.detail-foot{display:flex;gap:8px;flex-wrap:wrap}
+
+/* col visibility per breakpoint */
+@media (max-width:900px){
+  .tbl-head,.usr-row{grid-template-columns:26px 2.2fr 110px 100px 90px 80px 36px}
+  .col-joined{display:none}
+  .detail-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:640px){
+  .tbl-head{display:none}
+  .tbl-head span{display:none}
+  .tbl-head,.usr-row{grid-template-columns:22px 1fr 60px 60px 32px}
+  .col-role,.col-status{display:none}
+  .u-mobile-meta{display:flex}
+  .usr-av{width:30px;height:30px}
+  .usr-row{padding:10px}
+  .detail-grid,.detail-grid.three{grid-template-columns:1fr 1fr}
+}
+
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
+.pg-info{font-size:11px;color:var(--text-faint);font-weight:600}
+.pg-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;row-gap:6px}
+.pg-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pg-btn.active{background:var(--accent);border-color:transparent;color:#fff}
+.pg-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.pg-ellipsis{font-size:11px;color:var(--text-faint);padding:0 2px}
+
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+/* ── modal system ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;overflow-x:hidden;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
+.modal-box.small{max-width:400px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:2}
+.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.modal-close{width:30px;height:30px;border-radius:8px;border:none;background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.modal-close:hover{background:var(--red-bg);color:var(--red)}
+.modal-body{padding:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+
+.form-row{margin-bottom:16px}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px;display:block}
+.form-input,.form-select,.form-textarea{width:100%;font-family:inherit;font-size:12.5px;color:var(--text);
+  background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.5}
+.field-error{color:var(--red);font-size:10.5px;margin-top:5px;display:none}
+.form-input.invalid,.form-select.invalid{border-color:var(--red)}
+
+.dt-writer-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.dt-writer-row img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0}
+.dt-writer-row b{font-size:14px;font-weight:800;display:block}
+.dt-writer-row span{font-size:11px;color:var(--text-faint);font-weight:600}
+.dt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.dt-item{background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:11px 13px;min-width:0}
+.dt-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:4px}
+.dt-item b{font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.dt-section{margin-bottom:16px}
+.dt-section h4{font-size:11.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.dt-section p{font-size:12.5px;line-height:1.65;color:var(--text)}
+
+.confirm-icon{width:52px;height:52px;border-radius:50%;background:var(--red-bg);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;margin:4px auto 16px}
+.confirm-text{text-align:center;font-size:13px;color:var(--text-muted);line-height:1.6}
+.confirm-text b{color:var(--text)}
+
+#toastHost{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px;max-width:calc(100% - 32px)}
+.toast-item{background:var(--sidebar-bg,#1a1730);color:#fff;font-size:12.5px;font-weight:600;padding:12px 16px;border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:9px;min-width:0;animation:toast-in .2s ease}
+.toast-item i{color:var(--accent);flex-shrink:0}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){
+  .grid-4{grid-template-columns:1fr}
+  .panel{padding:14px}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .tb-select{width:100%}
+  .pagination{justify-content:center}
+  #toastHost{left:16px;right:16px;bottom:16px;max-width:calc(100% - 32px)}
+  .dt-grid{grid-template-columns:1fr}
+  .modal-box{max-height:94vh;border-radius:14px}
+  .modal-head{padding:16px}
+  .modal-body{padding:16px}
+  .modal-foot{padding:12px 16px 16px;flex-wrap:wrap}
+  .modal-foot .mini-btn{flex:1 1 auto;justify-content:center}
+  .dt-writer-row img{width:40px;height:40px}
+}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-users" style="color:var(--accent)"></i> Users</h2>
+      <span class="count-chip" id="resultCount">—</span>
+    </div>
+    <div class="panel-sub">Every reader and writer on Droboard. Tap a row to expand it, or use the menu for full profile, edit, and account actions.</div>
+
+    <div class="toolbar">
+      <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name, username, or email…"/></div>
+      <select class="tb-select" id="roleFilter">
+        <option value="all">All roles</option>
+        <option value="Reader">Readers</option>
+        <option value="Writer">Writers</option>
+      </select>
+      <select class="tb-select" id="statusFilter">
+        <option value="all">All statuses</option>
+        <option value="active">Active</option>
+        <option value="suspended">Suspended</option>
+        <option value="banned">Banned</option>
+      </select>
+      <select class="tb-select" id="sortSelect">
+        <option value="newest">Sort: Newest</option>
+        <option value="active">Sort: Recently active</option>
+        <option value="name">Sort: Name (A–Z)</option>
+        <option value="followers-desc">Sort: Most followers</option>
+        <option value="reports-desc">Sort: Most reported</option>
+      </select>
+      <button class="mini-btn primary" id="addBtn"><i class="fas fa-plus"></i> Add User</button>
+    </div>
+
+    <div class="tbl-head">
+      <span></span><span>User</span><span>Role</span><span>Status</span><span>Followers</span><span>Stories</span><span>Joined</span><span></span>
+    </div>
+    <div class="tbl-body" id="usrList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading users…</div></div>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- Add / Edit modal -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="formModalTitle"><i class="fas fa-user-plus" style="color:var(--accent)"></i> Add User</h3>
+      <button class="modal-close" data-close="formModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fId"/>
+      <div class="form-row"><label class="form-label">Full name</label><input class="form-input" id="fName" placeholder="e.g. Amara Chukwu"/><div class="field-error" id="fNameErr">Full name is required.</div></div>
+      <div class="form-row two-col">
+        <div><label class="form-label">Username</label><input class="form-input" id="fUsername" placeholder="e.g. amara_writes"/><div class="field-error" id="fUsernameErr">Username is required.</div></div>
+        <div><label class="form-label">Email</label><input class="form-input" id="fEmail" type="email" placeholder="name@email.com"/><div class="field-error" id="fEmailErr">Enter a valid email.</div></div>
+      </div>
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label">Role</label>
+          <select class="form-select" id="fRole">
+            <option value="Reader">Reader</option>
+            <option value="Writer">Writer</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Status</label>
+          <select class="form-select" id="fStatus">
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="banned">Banned</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row"><label class="form-label">Notes</label><textarea class="form-textarea" id="fNotes" placeholder="Internal notes about this account…" maxlength="300"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="formModal">Cancel</button>
+      <button class="mini-btn primary" id="fSaveBtn"><i class="fas fa-check"></i> Save User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Full profile modal -->
+<div class="modal-overlay" id="detailsModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="dModalTitle"><i class="fas fa-user" style="color:var(--accent)"></i> Full Profile</h3>
+      <button class="modal-close" data-close="detailsModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="detailsBody"></div>
+    <div class="modal-foot" id="detailsFoot"></div>
+  </div>
+</div>
+
+<!-- Confirm remove modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Remove User</h3>
+      <button class="modal-close" data-close="confirmModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon"><i class="fas fa-user-slash"></i></div>
+      <div class="confirm-text">Permanently remove <b id="confirmName"></b>'s account? This can't be undone.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="confirmModal">Cancel</button>
+      <button class="mini-btn danger" id="confirmDeleteBtn"><i class="fas fa-trash"></i> Remove</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SuperAdminSidebar.attach('#dashRoot',{
+  activeItem:'users', title:'Users', subtitle:'Manage every reader and writer account on Droboard',
+  user:{name:'Tobenna Achebe',role:'Super Admin',avatar:'https://i.pravatar.cc/100?img=51'}, notifCount:9,
+  searchPlaceholder:'Search anything…',
+});
+
+/* ── Pin this page to the exact same palette as Coin Transactions ──
+   Setting these as inline styles on :root beats anything the sidebar's
+   own injected stylesheet declares, regardless of injection order, so
+   the page reliably matches even though we can't see super-admin-sidebar.js. */
+(function pinCoinPagePalette(){
+  const vars = {
+    '--bg':'#f4f4fb', '--card':'#ffffff', '--text':'#1a1730', '--text-muted':'#71708a', '--text-faint':'#9694ac',
+    '--border':'#eceaf5', '--input-bg':'#ffffff', '--input-border':'#e4e2f1', '--hover':'#f7f6fd', '--table-head':'#faf9ff',
+    '--accent':'#ff0050', '--accent-soft':'rgba(255,0,80,.1)',
+    '--green':'#16a34a', '--green-bg':'#e2f8ea', '--blue':'#2f7de1', '--blue-bg':'#e3ecfd',
+    '--amber':'#d97706', '--amber-bg':'#fef3d8', '--red':'#e0384d', '--red-bg':'#fde3e3',
+    '--purple':'#5b4bcf', '--purple-bg':'#ece9fb',
+    '--radius':'14px', '--shadow':'0 1px 2px rgba(20,10,50,.04), 0 8px 24px -12px rgba(20,10,50,.08)',
+  };
+  const root = document.documentElement;
+  Object.keys(vars).forEach(k => root.style.setProperty(k, vars[k]));
+  document.body.style.background = 'var(--bg)';
+})();
+
+const NOW = new Date('2026-07-29T00:00:00');
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const ROLE_CLS = { Reader:'blue', Writer:'purple' };
+const ROLE_ICO = { Reader:'fa-book-open-reader', Writer:'fa-feather-pointed' };
+
+let USERS = [
+  { id:'u1', name:'Ada_Writes', username:'ada_writes', email:'ada.writes@mail.com', avatar:'https://i.pravatar.cc/100?img=32', role:'Writer', status:'active', verified:true, joined:'2024-05-12', lastActive:'2026-07-29', followers:15400, stories:2, reads:389000, payout:4010000, coinsSpent:0, following:0, comments:12, reports:0, notes:'Top-performing writer, two active titles.',
+    readingHours:64, avgSessionMin:22, streakDays:9, topGenres:[{name:'Romance & Betrayal',count:31},{name:'Elegy & Heartbreak',count:14},{name:'Family & Drama',count:9}], likesGiven:412, sharesCount:38, savesCount:76, tipsAmount:186000 },
+  { id:'u2', name:'Ifeanyi_Story', username:'ifeanyi_story', email:'ifeanyi.story@mail.com', avatar:'https://i.pravatar.cc/100?img=53', role:'Writer', status:'active', verified:true, joined:'2024-02-03', lastActive:'2026-07-28', followers:21200, stories:1, reads:312000, payout:3120000, coinsSpent:0, following:0, comments:4, reports:0, notes:'',
+    readingHours:40, avgSessionMin:18, streakDays:3, topGenres:[{name:'Twist & Drama',count:22},{name:'Romance & Betrayal',count:11},{name:'Campus & Revenge',count:6}], likesGiven:198, sharesCount:20, savesCount:44, tipsAmount:224000 },
+  { id:'u3', name:'Chinelo_23', username:'chinelo_23', email:'chinelo23@mail.com', avatar:'https://i.pravatar.cc/100?img=44', role:'Reader', status:'active', verified:false, joined:'2025-09-18', lastActive:'2026-07-29', followers:340, stories:0, reads:0, payout:0, coinsSpent:48000, following:38, comments:210, reports:0, notes:'',
+    readingHours:210, avgSessionMin:41, streakDays:27, topGenres:[{name:'Romance & Betrayal',count:64},{name:'Werewolf & Fantasy',count:38},{name:'Campus & Revenge',count:22}], likesGiven:890, sharesCount:112, savesCount:206, tipsAmount:34000 },
+  { id:'u4', name:'KingDave', username:'king_dave', email:'kingdave@mail.com', avatar:'https://i.pravatar.cc/100?img=13', role:'Reader', status:'suspended', verified:false, joined:'2025-01-22', lastActive:'2026-07-10', followers:120, stories:0, reads:0, payout:0, coinsSpent:12500, following:9, comments:340, reports:6, notes:'Suspended for repeated harassment in comments.',
+    readingHours:58, avgSessionMin:12, streakDays:0, topGenres:[{name:'Mafia & Urban',count:19},{name:'Revenge',count:9},{name:'Betrayal',count:6}], likesGiven:120, sharesCount:8, savesCount:15, tipsAmount:2000 },
+  { id:'u5', name:'Zara_M', username:'zara_m', email:'zara.m@mail.com', avatar:'https://i.pravatar.cc/100?img=16', role:'Writer', status:'active', verified:true, joined:'2023-11-30', lastActive:'2026-07-27', followers:9800, stories:1, reads:192000, payout:1740000, coinsSpent:0, following:0, comments:2, reports:0, notes:'',
+    readingHours:52, avgSessionMin:20, streakDays:6, topGenres:[{name:'Mafia & Urban',count:18},{name:'Revenge',count:10},{name:'Betrayal',count:8}], likesGiven:230, sharesCount:19, savesCount:33, tipsAmount:98000 },
+  { id:'u6', name:'Blessing_O', username:'blessing_o', email:'blessing.o@mail.com', avatar:'https://i.pravatar.cc/100?img=25', role:'Reader', status:'active', verified:true, joined:'2025-03-14', lastActive:'2026-07-29', followers:890, stories:0, reads:0, payout:0, coinsSpent:96000, following:64, comments:512, reports:0, notes:'One of our most engaged readers.',
+    readingHours:340, avgSessionMin:52, streakDays:61, topGenres:[{name:'Elegy & Heartbreak',count:71},{name:'Romance & Betrayal',count:58},{name:'Historical & Regency',count:29}], likesGiven:1540, sharesCount:210, savesCount:388, tipsAmount:112000 },
+  { id:'u7', name:'CampusQueen', username:'campus_queen', email:'campusqueen@mail.com', avatar:'https://i.pravatar.cc/100?img=12', role:'Writer', status:'active', verified:true, joined:'2024-08-09', lastActive:'2026-05-01', followers:18700, stories:1, reads:134000, payout:1560000, coinsSpent:0, following:0, comments:1, reports:1, notes:'Contract lapsed; renewal outreach pending.',
+    readingHours:12, avgSessionMin:9, streakDays:0, topGenres:[{name:'Campus & Revenge',count:9},{name:'Romance & Betrayal',count:4},{name:'Twist & Drama',count:2}], likesGiven:44, sharesCount:5, savesCount:8, tipsAmount:31000 },
+  { id:'u8', name:'Emeka_T', username:'emeka_t', email:'emeka.t@mail.com', avatar:'https://i.pravatar.cc/100?img=19', role:'Reader', status:'banned', verified:false, joined:'2025-06-02', lastActive:'2026-06-15', followers:45, stories:0, reads:0, payout:0, coinsSpent:3200, following:2, comments:88, reports:14, notes:'Banned for posting plagiarized content in comments.',
+    readingHours:8, avgSessionMin:6, streakDays:0, topGenres:[{name:'Mafia & Urban',count:5},{name:'Betrayal',count:3},{name:'Revenge',count:2}], likesGiven:12, sharesCount:1, savesCount:2, tipsAmount:0 },
+  { id:'u9', name:'Kemi_A', username:'kemi_a', email:'kemi.a@mail.com', avatar:'https://i.pravatar.cc/100?img=28', role:'Writer', status:'active', verified:true, joined:'2025-01-05', lastActive:'2026-07-29', followers:6200, stories:1, reads:96000, payout:830000, coinsSpent:0, following:0, comments:6, reports:0, notes:'',
+    readingHours:33, avgSessionMin:16, streakDays:4, topGenres:[{name:'Heartbreak',count:14},{name:'Romance & Betrayal',count:9},{name:'Elegy',count:5}], likesGiven:140, sharesCount:12, savesCount:22, tipsAmount:52000 },
+  { id:'u10', name:'Dami_Cole', username:'dami_cole', email:'dami.cole@mail.com', avatar:'https://i.pravatar.cc/100?img=64', role:'Writer', status:'active', verified:false, joined:'2026-03-20', lastActive:'2026-07-26', followers:210, stories:1, reads:22400, payout:190000, coinsSpent:0, following:0, comments:0, reports:0, notes:'New writer, first title still ongoing.',
+    readingHours:7, avgSessionMin:14, streakDays:2, topGenres:[{name:'Urban Love',count:5},{name:'Romance & Betrayal',count:3},{name:'Campus',count:1}], likesGiven:22, sharesCount:2, savesCount:4, tipsAmount:6000 },
+  { id:'u11', name:'Yusuf_Howl', username:'yusuf_howl', email:'yusuf.howl@mail.com', avatar:'https://i.pravatar.cc/100?img=14', role:'Writer', status:'active', verified:true, joined:'2023-07-19', lastActive:'2026-07-29', followers:14300, stories:1, reads:210000, payout:1980000, coinsSpent:0, following:0, comments:9, reports:0, notes:'',
+    readingHours:45, avgSessionMin:19, streakDays:11, topGenres:[{name:'Werewolf & Fantasy',count:26},{name:'Romance & Betrayal',count:10},{name:'Twist & Drama',count:6}], likesGiven:186, sharesCount:15, savesCount:29, tipsAmount:74000 },
+  { id:'u12', name:'Doris_Vance', username:'doris_vance', email:'doris.vance@mail.com', avatar:'https://i.pravatar.cc/100?img=27', role:'Writer', status:'active', verified:true, joined:'2024-01-11', lastActive:'2026-06-30', followers:5100, stories:1, reads:88000, payout:790000, coinsSpent:0, following:0, comments:3, reports:0, notes:'',
+    readingHours:21, avgSessionMin:13, streakDays:2, topGenres:[{name:'Mystery',count:11},{name:'Twist & Drama',count:6},{name:'Betrayal',count:3}], likesGiven:66, sharesCount:6, savesCount:10, tipsAmount:19000 },
+  { id:'u13', name:'PraiseUnending', username:'praise_unending', email:'praiseu@mail.com', avatar:'https://i.pravatar.cc/100?img=41', role:'Reader', status:'active', verified:false, joined:'2026-04-02', lastActive:'2026-07-28', followers:560, stories:0, reads:0, payout:0, coinsSpent:15400, following:21, comments:76, reports:0, notes:'',
+    readingHours:95, avgSessionMin:29, streakDays:15, topGenres:[{name:'Romance & Betrayal',count:31},{name:'Campus & Revenge',count:20},{name:'Werewolf & Fantasy',count:12}], likesGiven:410, sharesCount:52, savesCount:88, tipsAmount:21000 },
+  { id:'u14', name:'TheGreyFox', username:'the_grey_fox', email:'greyfox@mail.com', avatar:'https://i.pravatar.cc/100?img=6', role:'Reader', status:'suspended', verified:false, joined:'2025-11-27', lastActive:'2026-07-05', followers:95, stories:0, reads:0, payout:0, coinsSpent:5100, following:5, comments:150, reports:5, notes:'Suspended pending review of spam reports.',
+    readingHours:14, avgSessionMin:8, streakDays:0, topGenres:[{name:'Mystery',count:6},{name:'Betrayal',count:3},{name:'Revenge',count:2}], likesGiven:30, sharesCount:3, savesCount:6, tipsAmount:1000 },
+];
+
+const PAGE_SIZE = 8;
+let filtered = [];
+let currentPage = 1;
+let editingId = null;
+let pendingDeleteId = null;
+let openRowId = null;
+
+function fmtNum(n){ n=n||0; return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
+function fmtNaira(n){ return '₦'+fmtNum(n||0); }
+function fmtDate(d){ const dt=new Date(d+'T00:00:00'); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return months[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear(); }
+function daysAgo(d){ const dt=new Date(d+'T00:00:00'); return Math.round((NOW-dt)/86400000); }
+function lastActiveLabel(d){ const n=daysAgo(d); if(n<=0) return 'Today'; if(n===1) return 'Yesterday'; if(n<7) return n+'d ago'; if(n<30) return Math.round(n/7)+'w ago'; return Math.round(n/30)+'mo ago'; }
+
+/* ── shared helpers for the accordion + full profile modal ── */
+function standingFor(u){
+  if(u.status==='banned') return { label:'Banned Account', cls:'red', ico:'fa-ban' };
+  if(u.reports===0) return { label:'Good Standing', cls:'green', ico:'fa-shield-heart' };
+  if(u.reports<=3) return { label:'Under Watch', cls:'amber', ico:'fa-triangle-exclamation' };
+  return { label:'At Risk', cls:'red', ico:'fa-triangle-exclamation' };
+}
+function renderGenreChips(u){
+  return (u.topGenres||[]).map((g,i)=>`<span class="genre-chip"><span class="rank">#${i+1}</span>${g.name} <b>+${g.count}</b></span>`).join('');
+}
+function renderTipBanner(u){
+  const isWriter = u.role==='Writer';
+  return `<div class="tip-banner">
+    <div class="tb-left">
+      <div class="tb-ico"><i class="fas fa-coins"></i></div>
+      <div><div class="tb-label">${isWriter?'Tips Received':'Tips Sent'}</div><div class="tb-val">${fmtNaira(u.tipsAmount)}</div></div>
+    </div>
+  </div>`;
+}
+
+function toast(msg, icon){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className='toast-item';
+  el.innerHTML=`<i class="fas ${icon||'fa-circle-check'}"></i><span>${msg}</span>`;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, 2600);
+}
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click', ()=>closeModal(btn.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(ov=>ov.addEventListener('click', e=>{ if(e.target===ov) closeModal(ov.id); }));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.show').forEach(ov=>closeModal(ov.id)); });
+
+function init(){ renderStatCards(); applyFilters(); }
+
+function renderStatCards(){
+  const total = USERS.length;
+  const writers = USERS.filter(u=>u.role==='Writer').length;
+  const activeToday = USERS.filter(u=>daysAgo(u.lastActive)<=0).length;
+  const flagged = USERS.filter(u=>u.status!=='active').length;
+  const stats = [
+    { n:total, l:'Total Users', ico:'fa-users', cls:'accent' },
+    { n:writers, l:'Writers', ico:'fa-feather-pointed', cls:'purple' },
+    { n:activeToday, l:'Active Today', ico:'fa-bolt', cls:'green' },
+    { n:flagged, l:'Suspended / Banned', ico:'fa-user-slash', cls:'red' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const roleVal = document.getElementById('roleFilter').value;
+  const statusVal = document.getElementById('statusFilter').value;
+  const sortVal = document.getElementById('sortSelect').value;
+
+  filtered = USERS.filter(u=>{
+    const matchesQ = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchesRole = roleVal==='all' || u.role===roleVal;
+    const matchesStatus = statusVal==='all' || u.status===statusVal;
+    return matchesQ && matchesRole && matchesStatus;
+  });
+
+  filtered.sort((a,b)=>{
+    if(sortVal==='name') return a.name.localeCompare(b.name);
+    if(sortVal==='active') return new Date(b.lastActive)-new Date(a.lastActive);
+    if(sortVal==='followers-desc') return b.followers-a.followers;
+    if(sortVal==='reports-desc') return b.reports-a.reports;
+    return new Date(b.joined)-new Date(a.joined);
+  });
+
+  currentPage = 1;
+  renderList();
+}
+
+function renderList(){
+  document.getElementById('resultCount').textContent = filtered.length;
+  const box = document.getElementById('usrList');
+
+  if(!filtered.length){
+    box.innerHTML = `<div class="empty-msg"><i class="fas fa-user-slash" style="font-size:20px;margin-bottom:8px;display:block"></i>No users match your filters.</div>`;
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  if(currentPage>totalPages) currentPage = totalPages;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const pageItems = filtered.slice(start, start+PAGE_SIZE);
+
+  box.innerHTML = pageItems.map(u=>{
+    const rcls = ROLE_CLS[u.role]||'blue';
+    const suspended = u.status==='suspended', banned = u.status==='banned';
+    const isOpen = openRowId===u.id;
+    return `
+    <div>
+      <div class="usr-row ${suspended?'is-suspended':''} ${banned?'is-banned':''} ${isOpen?'is-open':''}" data-id="${u.id}">
+        <i class="fas fa-chevron-right expand-ico"></i>
+        <div class="user-cell">
+          <img class="usr-av" src="${u.avatar}" alt=""/>
+          <div class="user-cell-text">
+            <div class="usr-name">${u.name}${u.verified?' <i class="fas fa-circle-check usr-verified" title="Verified"></i>':''}</div>
+            <div class="usr-handle">@${u.username}</div>
+            <div class="u-mobile-meta">
+              <div class="role-badge" style="background:${BG_MAP[rcls]};color:${ICO_MAP[rcls]}"><i class="fas ${ROLE_ICO[u.role]}"></i> ${u.role}</div>
+              <span class="usr-status ${u.status}">${u.status}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-role"><div class="role-badge" style="background:${BG_MAP[rcls]};color:${ICO_MAP[rcls]}"><i class="fas ${ROLE_ICO[u.role]}"></i> ${u.role}</div></div>
+        <div class="col-status"><span class="usr-status ${u.status}">${u.status}</span></div>
+        <div class="col-num">${fmtNum(u.followers)}</div>
+        <div class="col-num">${u.stories}</div>
+        <div class="col-joined">${fmtDate(u.joined)}</div>
+        <div class="row-actions">
+          <button class="kebab-btn" data-kebab="${u.id}"><i class="fas fa-ellipsis-vertical"></i></button>
+        </div>
+      </div>
+      <div class="usr-detail ${isOpen?'show':''}" id="detail-${u.id}"></div>
+    </div>`;
+  }).join('');
+
+  if(openRowId && pageItems.some(u=>u.id===openRowId)) renderDetailPanel(openRowId);
+  renderPagination(totalPages);
+}
+
+function renderDetailPanel(id){
+  const u = USERS.find(x=>x.id===id); if(!u) return;
+  const panel = document.getElementById('detail-'+id); if(!panel) return;
+  const standing = standingFor(u);
+
+  panel.innerHTML = `
+    <div class="detail-inner">
+      <div class="detail-standing ${standing.cls}"><i class="fas ${standing.ico}"></i> ${standing.label}${u.reports>0?` · ${u.reports} report${u.reports===1?'':'s'}`:''}</div>
+
+      <div class="detail-section">
+        <div class="ds-label"><i class="fas fa-circle-info"></i> Overview</div>
+        <div class="detail-grid">
+          <div class="detail-item"><span>Email</span><b>${u.email}</b></div>
+          <div class="detail-item"><span>Last Active</span><b>${lastActiveLabel(u.lastActive)}</b></div>
+          ${u.role==='Writer' ? `
+            <div class="detail-item"><span>Total Reads</span><b>${fmtNum(u.reads)}</b></div>
+            <div class="detail-item"><span>Earnings</span><b>${fmtNaira(u.payout)}</b></div>
+          ` : `
+            <div class="detail-item"><span>Coins Spent</span><b>${fmtNum(u.coinsSpent)}</b></div>
+            <div class="detail-item"><span>Following</span><b>${u.following}</b></div>
+          `}
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="ds-label"><i class="fas fa-clock"></i> Reading Activity</div>
+        <div class="detail-grid three">
+          <div class="detail-item accent"><span>Time Spent Reading</span><b>${u.readingHours}h</b></div>
+          <div class="detail-item"><span>Avg. Session</span><b>${u.avgSessionMin}m</b></div>
+          <div class="detail-item fire"><span>Reading Streak</span><b>${u.streakDays>0?'🔥 '+u.streakDays+'d':'0d'}</b></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="ds-label"><i class="fas fa-layer-group"></i> Top Genres</div>
+        <div class="genre-chip-row">${renderGenreChips(u)}</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="ds-label"><i class="fas fa-heart-circle-check"></i> Engagement</div>
+        <div class="detail-grid three">
+          <div class="detail-item"><span>Likes Given</span><b>${fmtNum(u.likesGiven)}</b></div>
+          <div class="detail-item"><span>Shares</span><b>${fmtNum(u.sharesCount)}</b></div>
+          <div class="detail-item"><span>Saves</span><b>${fmtNum(u.savesCount)}</b></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="ds-label"><i class="fas fa-comment-dots"></i> Comments Posted</div>
+        <div class="detail-grid three">
+          <div class="detail-item"><span>Total Comments</span><b>${fmtNum(u.comments)}</b></div>
+          <div class="detail-item"><span>Reports Filed Against</span><b style="color:${u.reports>0?'var(--red)':'var(--text)'}">${u.reports}</b></div>
+          <div class="detail-item"><span>Verified</span><b>${u.verified?'✓ Yes':'Not yet'}</b></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="ds-label"><i class="fas fa-coins"></i> Tips</div>
+        ${renderTipBanner(u)}
+      </div>
+
+      ${u.notes ? `<div class="detail-notes"><i class="fas fa-note-sticky" style="color:var(--accent);margin-right:5px"></i>${u.notes}</div>` : ''}
+
+      <div class="detail-foot">
+        <button class="mini-btn primary" data-act="profile" data-id="${u.id}"><i class="fas fa-id-card"></i> Full Profile</button>
+        <button class="mini-btn" data-act="edit" data-id="${u.id}"><i class="fas fa-pen"></i> Edit</button>
+        ${u.status!=='banned' ? (u.status==='active'
+          ? `<button class="mini-btn warn" data-act="suspend" data-id="${u.id}"><i class="fas fa-pause"></i> Suspend</button>`
+          : `<button class="mini-btn green" data-act="activate" data-id="${u.id}"><i class="fas fa-play"></i> Activate</button>`) : ''}
+        <button class="mini-btn danger" data-act="remove" data-id="${u.id}"><i class="fas fa-trash"></i> Remove</button>
+      </div>
+    </div>`;
+}
+
+function renderPagination(totalPages){
+  const box = document.getElementById('pagination');
+  if(totalPages<=1){
+    box.innerHTML = `<div class="pg-info">Showing all ${filtered.length} user${filtered.length===1?'':'s'}</div>`;
+    return;
+  }
+  const start = (currentPage-1)*PAGE_SIZE+1;
+  const end = Math.min(filtered.length, currentPage*PAGE_SIZE);
+
+  let pageBtns = '';
+  const pushBtn = p => { pageBtns += `<button class="pg-btn${p===currentPage?' active':''}" data-page="${p}">${p}</button>`; };
+  const pushEllipsis = () => { pageBtns += `<span class="pg-ellipsis">…</span>`; };
+
+  if(totalPages<=7){ for(let p=1;p<=totalPages;p++) pushBtn(p); }
+  else {
+    pushBtn(1);
+    if(currentPage>3) pushEllipsis();
+    const from = Math.max(2, currentPage-1), to = Math.min(totalPages-1, currentPage+1);
+    for(let p=from;p<=to;p++) pushBtn(p);
+    if(currentPage<totalPages-2) pushEllipsis();
+    pushBtn(totalPages);
+  }
+
+  box.innerHTML = `
+    <div class="pg-info">Showing ${start}–${end} of ${filtered.length} users</div>
+    <div class="pg-controls">
+      <button class="pg-btn" id="pgPrev" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
+      ${pageBtns}
+      <button class="pg-btn" id="pgNext" ${currentPage===totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+
+  const prevBtn = document.getElementById('pgPrev'), nextBtn = document.getElementById('pgNext');
+  prevBtn && prevBtn.addEventListener('click', ()=>{ currentPage--; renderList(); });
+  nextBtn && nextBtn.addEventListener('click', ()=>{ currentPage++; renderList(); });
+  box.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click', ()=>{ currentPage=parseInt(b.dataset.page,10); renderList(); }));
+}
+
+/* ── Add / Edit ── */
+function resetForm(){
+  document.getElementById('fId').value='';
+  document.getElementById('fName').value='';
+  document.getElementById('fUsername').value='';
+  document.getElementById('fEmail').value='';
+  document.getElementById('fRole').value='Reader';
+  document.getElementById('fStatus').value='active';
+  document.getElementById('fNotes').value='';
+  ['fName','fUsername','fEmail'].forEach(id=>document.getElementById(id).classList.remove('invalid'));
+  ['fNameErr','fUsernameErr','fEmailErr'].forEach(id=>document.getElementById(id).style.display='none');
+}
+function openAddModal(){
+  editingId=null; resetForm();
+  document.getElementById('formModalTitle').innerHTML='<i class="fas fa-user-plus" style="color:var(--accent)"></i> Add User';
+  openModal('formModal');
+}
+function openEditModal(id){
+  const u = USERS.find(x=>x.id===id); if(!u) return;
+  editingId=id; resetForm();
+  document.getElementById('fId').value=u.id;
+  document.getElementById('fName').value=u.name;
+  document.getElementById('fUsername').value=u.username;
+  document.getElementById('fEmail').value=u.email;
+  document.getElementById('fRole').value=u.role;
+  document.getElementById('fStatus').value=u.status;
+  document.getElementById('fNotes').value=u.notes||'';
+  document.getElementById('formModalTitle').innerHTML='<i class="fas fa-pen" style="color:var(--accent)"></i> Edit User';
+  openModal('formModal');
+}
+document.getElementById('addBtn').addEventListener('click', openAddModal);
+
+document.getElementById('fSaveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('fName').value.trim();
+  const username = document.getElementById('fUsername').value.trim().replace(/^@/,'');
+  const email = document.getElementById('fEmail').value.trim();
+  let valid = true;
+
+  const nameInput = document.getElementById('fName'), nameErr = document.getElementById('fNameErr');
+  if(!name){ nameInput.classList.add('invalid'); nameErr.style.display='block'; valid=false; } else { nameInput.classList.remove('invalid'); nameErr.style.display='none'; }
+
+  const userInput = document.getElementById('fUsername'), userErr = document.getElementById('fUsernameErr');
+  if(!username){ userInput.classList.add('invalid'); userErr.style.display='block'; valid=false; } else { userInput.classList.remove('invalid'); userErr.style.display='none'; }
+
+  const emailInput = document.getElementById('fEmail'), emailErr = document.getElementById('fEmailErr');
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if(!emailOk){ emailInput.classList.add('invalid'); emailErr.style.display='block'; valid=false; } else { emailInput.classList.remove('invalid'); emailErr.style.display='none'; }
+
+  if(!valid) return;
+
+  const payload = {
+    name, username, email,
+    role: document.getElementById('fRole').value,
+    status: document.getElementById('fStatus').value,
+    notes: document.getElementById('fNotes').value.trim(),
+  };
+
+  if(editingId){
+    Object.assign(USERS.find(x=>x.id===editingId), payload);
+    toast(`Saved changes to ${name}'s account`, 'fa-circle-check');
+  } else {
+    USERS.unshift(Object.assign({
+      id:'u'+(USERS.length+1+Math.floor(Math.random()*90)),
+      avatar:`https://i.pravatar.cc/100?img=${Math.floor(Math.random()*70)}`,
+      verified:false, joined:NOW.toISOString().slice(0,10), lastActive:NOW.toISOString().slice(0,10),
+      followers:0, stories:0, reads:0, payout:0, coinsSpent:0, following:0, comments:0, reports:0,
+      readingHours:0, avgSessionMin:0, streakDays:0, topGenres:[], likesGiven:0, sharesCount:0, savesCount:0, tipsAmount:0,
+    }, payload));
+    toast(`${name} added to Droboard`, 'fa-circle-plus');
+  }
+
+  closeModal('formModal');
+  renderStatCards();
+  applyFilters();
+});
+
+/* ── Full profile modal ── */
+function openProfileModal(id){
+  const u = USERS.find(x=>x.id===id); if(!u) return;
+  const rcls = ROLE_CLS[u.role]||'blue';
+  const standing = standingFor(u);
+  document.getElementById('dModalTitle').innerHTML = `<i class="fas ${ROLE_ICO[u.role]}" style="color:var(--accent)"></i> @${u.username}`;
+
+  document.getElementById('detailsBody').innerHTML = `
+    <div class="dt-writer-row">
+      <img src="${u.avatar}" alt=""/>
+      <div><b>${u.name}${u.verified?' <i class="fas fa-circle-check" style="color:var(--blue);font-size:12px"></i>':''}</b><span>${u.email}</span></div>
+      <div style="flex:1"></div>
+      <div class="role-badge" style="background:${BG_MAP[rcls]};color:${ICO_MAP[rcls]}"><i class="fas ${ROLE_ICO[u.role]}"></i> ${u.role}</div>
+      <span class="usr-status ${u.status}">${u.status}</span>
+    </div>
+    <div class="detail-standing ${standing.cls}" style="margin-bottom:16px"><i class="fas ${standing.ico}"></i> ${standing.label}${u.reports>0?` · ${u.reports} report${u.reports===1?'':'s'}`:''}</div>
+    <div class="dt-grid">
+      <div class="dt-item"><span>Joined</span><b>${fmtDate(u.joined)}</b></div>
+      <div class="dt-item"><span>Last Active</span><b>${lastActiveLabel(u.lastActive)}</b></div>
+      <div class="dt-item"><span>Followers</span><b>${fmtNum(u.followers)}</b></div>
+      ${u.role==='Writer' ? `
+        <div class="dt-item"><span>Stories</span><b>${u.stories}</b></div>
+        <div class="dt-item"><span>Total Reads</span><b>${fmtNum(u.reads)}</b></div>
+        <div class="dt-item"><span>Earnings</span><b>${fmtNaira(u.payout)}</b></div>
+      ` : `
+        <div class="dt-item"><span>Coins Spent</span><b>${fmtNum(u.coinsSpent)}</b></div>
+        <div class="dt-item"><span>Following</span><b>${u.following}</b></div>
+        <div class="dt-item"><span>Comments</span><b>${fmtNum(u.comments)}</b></div>
+      `}
+    </div>
+    <div class="dt-section"><h4><i class="fas fa-clock" style="font-size:10px;color:var(--accent)"></i> Reading Activity</h4>
+      <div class="detail-grid three">
+        <div class="detail-item accent"><span>Time Spent Reading</span><b>${u.readingHours}h</b></div>
+        <div class="detail-item"><span>Avg. Session</span><b>${u.avgSessionMin}m</b></div>
+        <div class="detail-item fire"><span>Reading Streak</span><b>${u.streakDays>0?'🔥 '+u.streakDays+'d':'0d'}</b></div>
+      </div>
+    </div>
+    <div class="dt-section"><h4><i class="fas fa-layer-group" style="font-size:10px;color:var(--accent)"></i> Top Genres</h4>
+      <div class="genre-chip-row">${renderGenreChips(u)}</div>
+    </div>
+    <div class="dt-section"><h4><i class="fas fa-heart-circle-check" style="font-size:10px;color:var(--accent)"></i> Engagement</h4>
+      <div class="detail-grid three">
+        <div class="detail-item"><span>Likes Given</span><b>${fmtNum(u.likesGiven)}</b></div>
+        <div class="detail-item"><span>Shares</span><b>${fmtNum(u.sharesCount)}</b></div>
+        <div class="detail-item"><span>Saves</span><b>${fmtNum(u.savesCount)}</b></div>
+      </div>
+    </div>
+    <div class="dt-section"><h4><i class="fas fa-coins" style="font-size:10px;color:var(--accent)"></i> Tips</h4>${renderTipBanner(u)}</div>
+    ${u.notes ? `<div class="dt-section"><h4><i class="fas fa-note-sticky" style="font-size:10px;color:var(--accent)"></i> Notes</h4><p>${u.notes}</p></div>` : ''}
+  `;
+
+  const banned = u.status==='banned';
+  document.getElementById('detailsFoot').innerHTML = `
+    <button class="mini-btn ghost" data-close="detailsModal">Close</button>
+    <button class="mini-btn" id="dEditBtn"><i class="fas fa-pen"></i> Edit</button>
+    ${!banned ? (u.status==='active'
+      ? `<button class="mini-btn warn" id="dToggleBtn"><i class="fas fa-pause"></i> Suspend</button>`
+      : `<button class="mini-btn green" id="dToggleBtn"><i class="fas fa-play"></i> Activate</button>`) : ''}
+    <button class="mini-btn danger" id="dRemoveBtn"><i class="fas fa-trash"></i> Remove</button>`;
+
+  document.getElementById('dEditBtn').addEventListener('click', ()=>{ closeModal('detailsModal'); openEditModal(u.id); });
+  const toggleBtn = document.getElementById('dToggleBtn');
+  if(toggleBtn) toggleBtn.addEventListener('click', ()=>{ toggleStatus(u.id); closeModal('detailsModal'); });
+  document.getElementById('dRemoveBtn').addEventListener('click', ()=>{ closeModal('detailsModal'); openConfirmDelete(u.id); });
+
+  openModal('detailsModal');
+}
+
+/* ── Suspend / activate ── */
+function toggleStatus(id){
+  const u = USERS.find(x=>x.id===id); if(!u || u.status==='banned') return;
+  if(u.status==='active'){ u.status='suspended'; toast(`Suspended ${u.name}'s account`, 'fa-circle-pause'); }
+  else { u.status='active'; toast(`Activated ${u.name}'s account`, 'fa-circle-play'); }
+  renderStatCards();
+  renderList();
+}
+
+/* ── Remove ── */
+function openConfirmDelete(id){
+  const u = USERS.find(x=>x.id===id); if(!u) return;
+  pendingDeleteId=id;
+  document.getElementById('confirmName').textContent = u.name;
+  openModal('confirmModal');
+}
+document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
+  if(!pendingDeleteId) return;
+  const u = USERS.find(x=>x.id===pendingDeleteId);
+  USERS = USERS.filter(x=>x.id!==pendingDeleteId);
+  if(openRowId===pendingDeleteId) openRowId=null;
+  closeModal('confirmModal');
+  toast(`Removed ${u?u.name:'user'}'s account`, 'fa-trash');
+  pendingDeleteId=null;
+  renderStatCards();
+  applyFilters();
+});
+
+/* ── Row click (accordion) + kebab menu + detail-panel actions ── */
+document.getElementById('usrList').addEventListener('click', e=>{
+  const kebab = e.target.closest('[data-kebab]');
+  if(kebab){
+    e.stopPropagation();
+    const id = kebab.dataset.kebab;
+    const existing = document.querySelector('.inline-menu');
+    if(existing){ existing.remove(); if(existing.dataset.owner===id) return; }
+    const menu = document.createElement('div');
+    menu.className='inline-menu';
+    menu.dataset.owner=id;
+    const u = USERS.find(x=>x.id===id);
+    menu.innerHTML = `
+      <button data-menu="profile" data-id="${id}"><i class="fas fa-id-card"></i> Full Profile</button>
+      <button data-menu="edit" data-id="${id}"><i class="fas fa-pen"></i> Edit</button>
+      ${u.status!=='banned' ? (u.status==='active'
+        ? `<button data-menu="suspend" data-id="${id}"><i class="fas fa-pause"></i> Suspend</button>`
+        : `<button data-menu="activate" data-id="${id}"><i class="fas fa-play"></i> Activate</button>`) : ''}
+      <button class="danger" data-menu="remove" data-id="${id}"><i class="fas fa-trash"></i> Remove</button>`;
+    kebab.parentElement.appendChild(menu);
+    return;
+  }
+  const menuBtn = e.target.closest('[data-menu]');
+  if(menuBtn){
+    e.stopPropagation();
+    const id = menuBtn.dataset.id, act = menuBtn.dataset.menu;
+    document.querySelector('.inline-menu')?.remove();
+    if(act==='profile') openProfileModal(id);
+    else if(act==='edit') openEditModal(id);
+    else if(act==='suspend' || act==='activate') toggleStatus(id);
+    else if(act==='remove') openConfirmDelete(id);
+    return;
+  }
+  const actBtn = e.target.closest('[data-act]');
+  if(actBtn){
+    const id = actBtn.dataset.id, act = actBtn.dataset.act;
+    if(act==='profile') openProfileModal(id);
+    else if(act==='edit') openEditModal(id);
+    else if(act==='suspend' || act==='activate') toggleStatus(id);
+    else if(act==='remove') openConfirmDelete(id);
+    return;
+  }
+  const row = e.target.closest('.usr-row');
+  if(row){
+    const id = row.dataset.id;
+    openRowId = openRowId===id ? null : id;
+    renderList();
+  }
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('[data-kebab]') && !e.target.closest('.inline-menu')) document.querySelector('.inline-menu')?.remove();
+});
+
+let searchDebounce;
+document.getElementById('searchInput').addEventListener('input', ()=>{ clearTimeout(searchDebounce); searchDebounce=setTimeout(applyFilters,180); });
+document.getElementById('roleFilter').addEventListener('change', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortSelect').addEventListener('change', applyFilters);
+
+init();
+</script>
+</body>
+</html>

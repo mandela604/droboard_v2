@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Droboard · Create Post</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
+  --bg:#000;--l1:#080a0d;--l2:#0e1014;--l3:#14161c;--l4:#1c1e26;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.22);
+  --tx:#fff;--tx-muted:#71717a;--tx-faint:#3f3f46;
+  --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;
+  --nav-h:60px;--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+  --glow:rgba(255,0,80,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+body{padding-bottom:calc(var(--safe-b) + 20px)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:2px}
+::-webkit-scrollbar-thumb{background:rgba(255,0,80,.18);border-radius:2px}
+
+/* ══ TOP BAR ══ */
+.top-bar{
+  position:sticky;top:0;z-index:200;
+  display:flex;align-items:center;gap:11px;
+  padding:calc(var(--safe-t) + 11px) 14px 11px;
+  background:rgba(0,0,0,.97);backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--bd);
+}
+.back-btn{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--l2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:var(--tx-muted);cursor:pointer;flex-shrink:0;transition:.15s;
+}
+.back-btn:active{transform:scale(.9);color:var(--tx)}
+.top-title{
+  font-family:'Playfair Display',serif;font-size:17px;font-weight:900;
+  color:var(--tx);letter-spacing:-.5px;flex:1;
+}
+.publish-btn{
+  background:var(--acc);color:#fff;border:none;
+  padding:8px 18px;border-radius:22px;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:800;
+  cursor:pointer;transition:.18s;box-shadow:0 0 16px var(--glow);
+  flex-shrink:0;display:flex;align-items:center;gap:5px;
+}
+.publish-btn:active{transform:scale(.95);box-shadow:none}
+.publish-btn:disabled{background:var(--l3);color:var(--tx-faint);box-shadow:none;cursor:default}
+
+/* ══ AUTHOR ROW ══ */
+.author-row{
+  display:flex;align-items:center;gap:10px;
+  padding:13px 14px 10px;
+  border-bottom:1px solid var(--bd2);
+}
+.author-av{
+  width:40px;height:40px;border-radius:50%;
+  object-fit:cover;border:2px solid rgba(255,0,80,.35);flex-shrink:0;
+}
+.author-info{flex:1}
+.author-name{font-size:13px;font-weight:700;color:var(--tx)}
+/* audience selector */
+.audience-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:4px;padding:4px 10px;border-radius:20px;
+  background:var(--l3);border:1px solid var(--bd);
+  font-size:10px;font-weight:700;color:var(--tx-muted);
+  cursor:pointer;transition:.15s;position:relative;
+}
+.audience-pill:active{border-color:var(--bd-acc);color:var(--acc2)}
+.audience-pill i.fa-chevron-down{font-size:7px;color:var(--tx-faint)}
+/* audience dropdown */
+.audience-drop{
+  position:absolute;top:calc(100% + 6px);left:0;z-index:300;
+  background:var(--l3);border:1px solid var(--bd);border-radius:12px;
+  min-width:170px;padding:5px;
+  box-shadow:0 8px 32px rgba(0,0,0,.9);
+  display:none;animation:popIn .18s cubic-bezier(.34,1.56,.64,1);
+}
+.audience-drop.open{display:block}
+@keyframes popIn{from{opacity:0;transform:scale(.9) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.aud-opt{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 11px;border-radius:9px;
+  font-size:11px;font-weight:600;color:var(--tx-muted);cursor:pointer;transition:.12s;
+}
+.aud-opt:hover{background:rgba(255,255,255,.04);color:var(--tx)}
+.aud-opt.active{color:var(--acc2);background:rgba(255,0,80,.06)}
+.aud-opt i{width:15px;text-align:center;font-size:12px;color:inherit}
+
+/* ══ POST TYPE SELECTOR ══ */
+.type-scroll-wrap{
+  padding:12px 0 10px;
+  border-bottom:1px solid var(--bd2);
+  overflow:hidden;
+}
+.type-scroll{
+  display:flex;gap:8px;padding:0 14px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.type-scroll::-webkit-scrollbar{display:none}
+.type-chip{
+  flex-shrink:0;display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:22px;
+  border:1.5px solid var(--bd);background:var(--l2);
+  font-size:11px;font-weight:700;color:var(--tx-muted);
+  cursor:pointer;transition:.2s;white-space:nowrap;
+}
+.type-chip .tc-emoji{font-size:13px;line-height:1}
+.type-chip.active{
+  border-color:var(--acc);background:rgba(255,0,80,.1);
+  color:var(--tx);
+  box-shadow:0 0 0 1px rgba(255,0,80,.2),0 4px 14px rgba(255,0,80,.1);
+}
+.type-chip:active{transform:scale(.95)}
+
+/* ══ COMPOSE AREA ══ */
+.compose-area{padding:14px 14px 0}
+
+/* section heading inside compose */
+.compose-section-heading{
+  font-size:9px;font-weight:800;color:var(--tx-faint);
+  text-transform:uppercase;letter-spacing:.12em;
+  margin-bottom:7px;display:flex;align-items:center;gap:5px;
+}
+.compose-section-heading::after{
+  content:'';flex:1;height:1px;background:var(--bd2);
+}
+
+/* textarea */
+.compose-textarea{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--tx);font-family:'DM Sans',sans-serif;
+  font-size:16px;line-height:1.65;resize:none;
+  min-height:120px;
+}
+.compose-textarea::placeholder{color:var(--tx-faint)}
+.compose-textarea.title-ta{
+  font-family:'Playfair Display',serif;
+  font-size:18px;font-weight:700;line-height:1.35;
+  min-height:54px;
+  border-bottom:1px solid var(--bd2);padding-bottom:8px;margin-bottom:8px;
+}
+
+/* ══ PANEL WRAPPERS ══ */
+.panel{display:none;animation:panelIn .22s ease}
+.panel.active{display:block}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ══ STORY SEARCH (for review/repost) ══ */
+.story-search-bar{
+  display:flex;align-items:center;gap:8px;
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:22px;
+  padding:9px 13px;margin-bottom:10px;transition:.2s;
+}
+.story-search-bar:focus-within{border-color:var(--bd-acc)}
+.story-search-bar i{color:var(--tx-faint);font-size:12px;flex-shrink:0}
+.story-search-bar input{
+  flex:1;background:none;border:none;outline:none;
+  color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;
+}
+.story-search-bar input::placeholder{color:var(--tx-faint)}
+
+/* story result list */
+.story-results{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.story-result-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:12px;
+  padding:9px 11px;cursor:pointer;transition:.18s;
+}
+.story-result-item:active,.story-result-item.selected{
+  border-color:var(--acc);background:rgba(255,0,80,.06);
+}
+.sri-thumb{
+  width:38px;height:44px;border-radius:7px;
+  background-size:cover;background-position:center;flex-shrink:0;
+}
+.sri-body{flex:1;min-width:0}
+.sri-cat{font-size:8px;font-weight:800;color:var(--acc);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.sri-title{font-family:'Playfair Display',serif;font-size:11px;font-weight:700;color:var(--tx);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sri-writer{font-size:9px;color:var(--tx-faint);margin-top:2px}
+.sri-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;flex-shrink:0;transition:.18s}
+.story-result-item.selected .sri-check{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* selected story preview strip */
+.selected-story-strip{
+  display:flex;align-items:center;gap:9px;
+  background:linear-gradient(135deg,rgba(255,0,80,.07),rgba(0,0,0,0));
+  border:1.5px solid var(--bd-acc);border-radius:12px;
+  padding:9px 12px;margin-bottom:12px;cursor:pointer;
+}
+.sss-thumb{width:36px;height:42px;border-radius:7px;background-size:cover;background-position:center;flex-shrink:0}
+.sss-body{flex:1;min-width:0}
+.sss-cat{font-size:8px;font-weight:800;color:var(--acc);margin-bottom:2px}
+.sss-title{font-family:'Playfair Display',serif;font-size:10px;font-weight:700;color:var(--tx);line-height:1.3;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.sss-remove{font-size:10px;color:var(--tx-faint);cursor:pointer;padding:4px;border-radius:50%;background:var(--l3);border:1px solid var(--bd);width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* library section label */
+.lib-label{font-size:9px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.1em;margin:10px 0 7px;display:flex;align-items:center;gap:5px}
+.lib-label::after{content:'';flex:1;height:1px;background:var(--bd2)}
+
+/* ══ STAR RATING ══ */
+.star-row{display:flex;gap:4px;margin:8px 0 12px}
+.star{font-size:26px;cursor:pointer;transition:transform .15s;color:var(--tx-faint);user-select:none}
+.star:active{transform:scale(1.25)}
+.star.lit{color:var(--gold)}
+
+/* ══ CHAPTER FIELDS ══ */
+.chapter-ref-box{
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:12px;
+  padding:11px 12px;margin-bottom:10px;
+}
+.chapter-ref-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.chapter-ref-row:last-child{margin-bottom:0}
+.crr-label{font-size:10px;font-weight:700;color:var(--tx-faint);width:70px;flex-shrink:0}
+.crr-input{
+  flex:1;background:var(--l3);border:1px solid var(--bd);border-radius:8px;
+  padding:7px 10px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;
+}
+.crr-input::placeholder{color:var(--tx-faint)}
+.crr-input:focus{border-color:var(--bd-acc)}
+
+/* ══ POLL BUILDER ══ */
+.poll-option-row{
+  display:flex;align-items:center;gap:7px;
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:10px;
+  padding:9px 11px;margin-bottom:6px;transition:.15s;
+}
+.poll-option-row:focus-within{border-color:var(--bd-acc)}
+.poll-option-input{
+  flex:1;background:none;border:none;outline:none;
+  color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;
+}
+.poll-option-input::placeholder{color:var(--tx-faint)}
+.poll-remove-btn{
+  width:20px;height:20px;border-radius:50%;background:var(--l3);
+  border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--tx-faint);cursor:pointer;flex-shrink:0;transition:.12s;
+}
+.poll-remove-btn:active{color:var(--acc)}
+.add-poll-opt-btn{
+  display:flex;align-items:center;gap:6px;
+  width:100%;padding:9px 13px;border-radius:10px;
+  background:transparent;border:1.5px dashed var(--bd);
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;
+  color:var(--tx-faint);cursor:pointer;transition:.15s;
+}
+.add-poll-opt-btn:hover{border-color:var(--bd-acc);color:var(--acc2)}
+.poll-duration-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.poll-dur{
+  padding:5px 12px;border-radius:20px;border:1.5px solid var(--bd);
+  background:var(--l2);font-size:10px;font-weight:700;color:var(--tx-faint);
+  cursor:pointer;transition:.15s;
+}
+.poll-dur.active{border-color:var(--acc);background:rgba(255,0,80,.1);color:var(--acc2)}
+
+/* ══ DEBATE FIELDS ══ */
+.debate-motion-row{
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:12px;
+  padding:11px 12px;margin-bottom:10px;
+}
+.debate-motion-row textarea{
+  width:100%;background:none;border:none;outline:none;
+  color:var(--tx);font-family:'Playfair Display',serif;
+  font-size:14px;font-weight:700;line-height:1.5;resize:none;min-height:62px;
+}
+.debate-motion-row textarea::placeholder{color:var(--tx-faint);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400}
+.debate-sides-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+.debate-side-box{
+  padding:10px;border-radius:11px;border:1.5px solid;
+}
+.debate-side-box.for-box{background:rgba(52,211,153,.04);border-color:rgba(52,211,153,.2)}
+.debate-side-box.ag-box{background:rgba(248,113,113,.04);border-color:rgba(248,113,113,.2)}
+.dsb-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.for-box .dsb-label{color:var(--green)}.ag-box .dsb-label{color:#f87171}
+.dsb-input{
+  width:100%;background:var(--l3);border:1px solid var(--bd);border-radius:7px;
+  padding:6px 8px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:11px;outline:none;
+}
+.dsb-input::placeholder{color:var(--tx-faint)}
+.dsb-input:focus{border-color:var(--bd-acc)}
+
+/* ══ MEDIA ATTACHMENTS TOOLBAR ══ */
+.media-toolbar{
+  display:flex;align-items:center;gap:6px;
+  padding:12px 14px;
+  border-top:1px solid var(--bd2);
+  overflow-x:auto;scrollbar-width:none;
+  position:sticky;bottom:0;
+  background:rgba(0,0,0,.97);backdrop-filter:blur(20px);
+  border-top:1px solid var(--bd);
+}
+.media-toolbar::-webkit-scrollbar{display:none}
+.mt-btn{
+  display:flex;align-items:center;gap:5px;flex-shrink:0;
+  padding:7px 11px;border-radius:20px;
+  background:var(--l2);border:1px solid var(--bd);
+  font-size:11px;font-weight:700;color:var(--tx-muted);
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.mt-btn i{font-size:12px}
+.mt-btn:active{background:var(--l3);color:var(--tx)}
+.mt-sep{width:1px;height:20px;background:var(--bd2);flex-shrink:0}
+
+/* char counter */
+.char-counter{font-size:10px;color:var(--tx-faint);margin-left:auto;flex-shrink:0}
+.char-counter.warn{color:var(--orange)}
+.char-counter.over{color:var(--acc)}
+
+/* ══ IMAGE PREVIEW ══ */
+.img-preview-wrap{
+  position:relative;margin-bottom:10px;border-radius:12px;overflow:hidden;
+}
+.img-preview-wrap img{width:100%;max-height:220px;object-fit:cover;display:block}
+.img-remove-btn{
+  position:absolute;top:8px;right:8px;
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:#fff;cursor:pointer;
+}
+
+/* ══ TAGS INPUT ══ */
+.tags-input-wrap{
+  display:flex;flex-wrap:wrap;gap:5px;
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:10px;
+  padding:8px 10px;margin-bottom:10px;
+  transition:.15s;
+}
+.tags-input-wrap:focus-within{border-color:var(--bd-acc)}
+.tag-pill{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.2);
+  border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;color:var(--acc2);
+}
+.tag-pill .tag-x{cursor:pointer;font-size:9px;color:var(--acc3)}
+.tags-input-wrap input{
+  flex:1;background:none;border:none;outline:none;
+  color:var(--tx);font-family:'DM Sans',sans-serif;font-size:12px;min-width:80px;
+}
+.tags-input-wrap input::placeholder{color:var(--tx-faint)}
+
+/* ══ CONFESSION ANON TOGGLE ══ */
+.anon-toggle-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:12px;
+  padding:11px 13px;margin-bottom:10px;cursor:pointer;transition:.15s;
+}
+.anon-toggle-row.on{border-color:var(--bd-acc);background:rgba(255,0,80,.05)}
+.anon-icon{width:34px;height:34px;border-radius:10px;background:var(--l3);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.anon-label{flex:1}
+.anon-title{font-size:12px;font-weight:700;color:var(--tx)}
+.anon-sub{font-size:10px;color:var(--tx-muted);margin-top:1px}
+/* custom toggle switch */
+.toggle{width:38px;height:22px;border-radius:22px;background:var(--l3);border:1px solid var(--bd);position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.toggle.on{background:var(--acc);border-color:var(--acc)}
+.toggle-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.toggle.on .toggle-knob{left:19px}
+
+/* ══ CATEGORY SELECT (forum) ══ */
+.cat-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cat-chip{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:20px;
+  background:var(--l2);border:1.5px solid var(--bd);
+  font-size:11px;font-weight:700;color:var(--tx-muted);
+  cursor:pointer;transition:.15s;
+}
+.cat-chip.active{border-color:var(--acc);background:rgba(255,0,80,.09);color:var(--tx)}
+.cat-chip:active{transform:scale(.95)}
+
+/* ══ MOTIVATION / QUOTE BG PICKER ══ */
+.bg-picker-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;scrollbar-width:none;padding-bottom:2px}
+.bg-picker-row::-webkit-scrollbar{display:none}
+.bgp-item{
+  width:44px;height:44px;border-radius:10px;flex-shrink:0;
+  cursor:pointer;border:2.5px solid transparent;transition:.15s;
+  background-size:cover;background-position:center;
+}
+.bgp-item.active{border-color:var(--acc);box-shadow:0 0 0 2px rgba(255,0,80,.35)}
+.bgp-item:active{transform:scale(.9)}
+
+/* quote preview */
+.quote-preview{
+  border-left:3px solid var(--acc);padding:10px 12px;
+  margin-bottom:10px;border-radius:0 10px 10px 0;
+  background:var(--l2);
+}
+.quote-preview textarea{
+  width:100%;background:none;border:none;outline:none;
+  font-family:'Playfair Display',serif;font-size:15px;font-weight:700;
+  color:var(--tx);line-height:1.55;resize:none;min-height:70px;
+  font-style:italic;
+}
+.quote-preview textarea::placeholder{color:var(--tx-faint);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;font-style:normal}
+.quote-source{
+  width:100%;background:none;border:none;outline:none;
+  font-family:'DM Sans',sans-serif;font-size:11px;color:var(--tx-faint);
+  border-top:1px solid var(--bd2);padding-top:6px;margin-top:4px;resize:none;min-height:24px;
+}
+.quote-source::placeholder{color:var(--tx-faint)}
+
+/* ══ SCHEDULING ══ */
+.sched-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--l2);border:1.5px solid var(--bd);border-radius:12px;
+  padding:11px 13px;margin-top:4px;cursor:pointer;transition:.15s;
+}
+.sched-row.on{border-color:rgba(56,189,248,.3);background:rgba(56,189,248,.05)}
+.sched-row .sr-icon{width:30px;height:30px;border-radius:8px;background:var(--l3);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.sched-row .sr-label{font-size:12px;font-weight:700;color:var(--tx);flex:1}
+.sched-row .sr-val{font-size:10px;color:var(--blue);font-weight:700}
+.sched-time-input{
+  background:var(--l3);border:1px solid var(--bd-acc);border-radius:8px;
+  padding:6px 10px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;
+  margin-top:8px;width:100%;display:none;
+}
+.sched-time-input.show{display:block}
+
+/* ══ REVIEW RATING LABELS ══ */
+.rating-desc{font-size:11px;font-weight:700;color:var(--gold);min-height:16px;margin-top:2px;margin-bottom:10px}
+
+/* ══ TOAST ══ */
+.toast{
+  position:fixed;bottom:calc(var(--safe-b) + 14px);left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--l3);border:1px solid var(--bd);
+  color:var(--tx);padding:8px 18px;border-radius:28px;
+  font-size:12px;font-weight:600;z-index:900;
+  opacity:0;transition:.28s;pointer-events:none;
+  white-space:nowrap;max-width:92vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ══ INLINE DIVIDER ══ */
+.divider{height:1px;background:var(--bd2);margin:12px 0}
+
+/* ══ CAREER POST FIELDS ══ */
+.career-outcome-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;
+}
+.career-outcome-chip{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:8px 10px;border-radius:10px;
+  background:var(--l2);border:1.5px solid var(--bd);
+  font-size:11px;font-weight:700;color:var(--tx-muted);
+  cursor:pointer;transition:.15s;text-align:center;
+}
+.career-outcome-chip.active{border-color:var(--acc);background:rgba(255,0,80,.08);color:var(--tx)}
+.career-outcome-chip:active{transform:scale(.95)}
+
+/* ══ AMA FIELDS ══ */
+.ama-time-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.ama-time-opt{
+  padding:7px 13px;border-radius:20px;border:1.5px solid var(--bd);
+  background:var(--l2);font-size:11px;font-weight:700;color:var(--tx-faint);
+  cursor:pointer;transition:.15s;
+}
+.ama-time-opt.active{border-color:var(--acc);background:rgba(255,0,80,.09);color:var(--tx)}
+
+/* inline help text */
+.help-text{font-size:10px;color:var(--tx-faint);line-height:1.5;margin-bottom:8px}
+
+/* word count */
+.wc-row{display:flex;align-items:center;justify-content:flex-end;margin-top:4px;margin-bottom:10px}
+.wc{font-size:10px;color:var(--tx-faint)}
+</style>
+</head>
+<body>
+
+<!-- ════ TOP BAR ════ -->
+<div class="top-bar">
+  <div class="back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></div>
+  <div class="top-title" id="topTitle">Create Post</div>
+  <button class="publish-btn" id="publishBtn" onclick="publishPost()" disabled>
+    <i class="fas fa-paper-plane" style="font-size:11px"></i> Post
+  </button>
+</div>
+
+<!-- ════ AUTHOR ROW ════ -->
+<div class="author-row">
+  <img class="author-av" src="https://i.pravatar.cc/100?img=32" alt="Ada_Writes"/>
+  <div class="author-info">
+    <div class="author-name">Ada_Writes <span style="font-size:10px;font-weight:400;color:var(--tx-faint)">· verified</span></div>
+    <div class="audience-pill" id="audiencePill" onclick="toggleAudienceDrop(event)">
+      <i class="fas fa-globe-africa" style="color:var(--acc);font-size:10px"></i>
+      <span id="audienceLabel">Everyone</span>
+      <i class="fas fa-chevron-down"></i>
+      <div class="audience-drop" id="audienceDrop">
+        <div class="aud-opt active" data-val="everyone" onclick="setAudience(this)"><i class="fas fa-globe-africa"></i>Everyone</div>
+        <div class="aud-opt" data-val="followers" onclick="setAudience(this)"><i class="fas fa-user-group"></i>Followers only</div>
+        <div class="aud-opt" data-val="mutual" onclick="setAudience(this)"><i class="fas fa-heart"></i>Mutuals</div>
+        <div class="aud-opt" data-val="private" onclick="setAudience(this)"><i class="fas fa-lock"></i>Only me</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ POST TYPE SELECTOR ════ -->
+<div class="type-scroll-wrap">
+  <div class="type-scroll" id="typeScroll">
+    <div class="type-chip active" data-type="text" onclick="switchType(this,'text')">
+      <span class="tc-emoji">✏️</span> Post
+    </div>
+    <div class="type-chip" data-type="quote" onclick="switchType(this,'quote')">
+      <span class="tc-emoji">💬</span> Quote
+    </div>
+    <div class="type-chip" data-type="chapter" onclick="switchType(this,'chapter')">
+      <span class="tc-emoji">📖</span> Chapter Drop
+    </div>
+    <div class="type-chip" data-type="review" onclick="switchType(this,'review')">
+      <span class="tc-emoji">⭐</span> Review
+    </div>
+    <div class="type-chip" data-type="debate" onclick="switchType(this,'debate')">
+      <span class="tc-emoji">⚔️</span> Debate
+    </div>
+    <div class="type-chip" data-type="poll" onclick="switchType(this,'poll')">
+      <span class="tc-emoji">📊</span> Poll
+    </div>
+    <div class="type-chip" data-type="confession" onclick="switchType(this,'confession')">
+      <span class="tc-emoji">🔒</span> Confession
+    </div>
+    <div class="type-chip" data-type="ama" onclick="switchType(this,'ama')">
+      <span class="tc-emoji">🎙️</span> AMA
+    </div>
+    <div class="type-chip" data-type="motivation" onclick="switchType(this,'motivation')">
+      <span class="tc-emoji">🔥</span> Motivation
+    </div>
+    <div class="type-chip" data-type="career" onclick="switchType(this,'career')">
+      <span class="tc-emoji">💼</span> Career
+    </div>
+    <div class="type-chip" data-type="repost" onclick="switchType(this,'repost')">
+      <span class="tc-emoji">🔄</span> Repost
+    </div>
+  </div>
+</div>
+
+<!-- ════ COMPOSE AREA ════ -->
+<div class="compose-area">
+
+  <!-- ── PANEL: TEXT POST ── -->
+  <div class="panel active" id="panel-text">
+    <div class="compose-section-heading">What's on your mind</div>
+    <textarea class="compose-textarea" id="text-body" placeholder="Share a thought, update, hot take, story reaction…" oninput="onInput(this,'text-wc',280)" rows="6"></textarea>
+    <div class="wc-row"><span class="wc" id="text-wc">0 / 280</span></div>
+    <div class="compose-section-heading">Tags (optional)</div>
+    <div class="tags-input-wrap" id="text-tags-wrap">
+      <input id="text-tags-input" placeholder="#writing  #stories  #droboard" onkeydown="handleTagInput(event,'text-tags-wrap')"/>
+    </div>
+    <div class="sched-row" id="sched-row-text" onclick="toggleSched('text')">
+      <div class="sr-icon"><i class="fas fa-calendar-alt" style="color:var(--blue);font-size:12px"></i></div>
+      <div class="sr-label">Schedule post</div>
+      <div class="sr-val" id="sched-val-text">Now</div>
+      <div class="toggle" id="sched-tog-text"><div class="toggle-knob"></div></div>
+    </div>
+    <input type="datetime-local" class="sched-time-input" id="sched-time-text" onchange="updateSchedVal('text',this.value)"/>
+  </div>
+
+  <!-- ── PANEL: QUOTE ── -->
+  <div class="panel" id="panel-quote">
+    <div class="compose-section-heading">Quote text</div>
+    <div class="quote-preview">
+      <textarea id="quote-body" placeholder='"Write a quote that captures something true…"' rows="4" oninput="onInput(this,'quote-wc',200)"></textarea>
+      <input class="quote-source" id="quote-source" placeholder="— Source / Chapter / Story (optional)"/>
+    </div>
+    <div class="wc-row"><span class="wc" id="quote-wc">0 / 200</span></div>
+    <div class="compose-section-heading">Background</div>
+    <div class="bg-picker-row" id="quoteBgPicker"></div>
+    <div class="compose-section-heading">Caption (optional)</div>
+    <textarea class="compose-textarea" style="min-height:48px;font-size:14px" id="quote-caption" placeholder="A caption, context, or teaser…" oninput="onInput(this,'quote-cap-wc',120)" rows="2"></textarea>
+    <div class="wc-row"><span class="wc" id="quote-cap-wc">0 / 120</span></div>
+  </div>
+
+  <!-- ── PANEL: CHAPTER DROP ── -->
+  <div class="panel" id="panel-chapter">
+    <div class="compose-section-heading">Chapter details</div>
+    <div class="chapter-ref-box">
+      <div class="chapter-ref-row">
+        <span class="crr-label">Story title</span>
+        <input class="crr-input" id="ch-story-title" placeholder="Story name…"/>
+      </div>
+      <div class="chapter-ref-row">
+        <span class="crr-label">Chapter</span>
+        <input class="crr-input" id="ch-label" placeholder="e.g. S2 · Chapter 5"/>
+      </div>
+      <div class="chapter-ref-row">
+        <span class="crr-label">Category</span>
+        <input class="crr-input" id="ch-cat" placeholder="e.g. 💔 Betrayal"/>
+      </div>
+    </div>
+    <div class="compose-section-heading">Teaser text</div>
+    <textarea class="compose-textarea" id="ch-teaser" placeholder="Give readers a teaser — no spoilers, just enough to make them click…" rows="4" oninput="onInput(this,'ch-wc',200)"></textarea>
+    <div class="wc-row"><span class="wc" id="ch-wc">0 / 200</span></div>
+    <div class="compose-section-heading">Cover image URL (optional)</div>
+    <div class="story-search-bar" style="margin-bottom:10px">
+      <i class="fas fa-link"></i>
+      <input id="ch-cover-url" placeholder="Paste cover image URL…" onchange="previewChCover(this.value)"/>
+    </div>
+    <div id="ch-cover-preview"></div>
+  </div>
+
+  <!-- ── PANEL: REVIEW ── -->
+  <div class="panel" id="panel-review">
+    <div class="compose-section-heading">Find the story to review</div>
+    <div class="story-search-bar">
+      <i class="fas fa-magnifying-glass"></i>
+      <input id="review-search" placeholder="Search by title or writer…" oninput="filterStories(this.value)"/>
+    </div>
+    <div id="review-results"></div>
+    <div id="review-selected-strip" style="display:none"></div>
+    <div class="lib-label"><i class="fas fa-bookmark" style="color:var(--acc);font-size:9px"></i> From Your Library</div>
+    <div class="story-results" id="lib-stories"></div>
+    <div class="compose-section-heading">Your rating</div>
+    <div class="star-row" id="star-row">
+      <span class="star" data-v="1" onclick="setStar(1)">★</span>
+      <span class="star" data-v="2" onclick="setStar(2)">★</span>
+      <span class="star" data-v="3" onclick="setStar(3)">★</span>
+      <span class="star" data-v="4" onclick="setStar(4)">★</span>
+      <span class="star" data-v="5" onclick="setStar(5)">★</span>
+    </div>
+    <div class="rating-desc" id="rating-desc"></div>
+    <div class="compose-section-heading">Your review</div>
+    <textarea class="compose-textarea" id="review-body" placeholder="Share your honest take — what made it hit, what surprised you, who should read it…" rows="5" oninput="onInput(this,'review-wc',500)"></textarea>
+    <div class="wc-row"><span class="wc" id="review-wc">0 / 500</span></div>
+  </div>
+
+  <!-- ── PANEL: DEBATE ── -->
+  <div class="panel" id="panel-debate">
+    <div class="compose-section-heading">Motion / Statement</div>
+    <div class="debate-motion-row">
+      <textarea id="debate-motion" placeholder='"State the claim readers will vote on — e.g. Ada should leave her marriage."' rows="3"></textarea>
+    </div>
+    <div class="compose-section-heading">FOR vs AGAINST starter points</div>
+    <div class="debate-sides-grid">
+      <div class="debate-side-box for-box">
+        <div class="dsb-label">✓ FOR</div>
+        <input class="dsb-input" id="debate-for" placeholder="Strongest FOR argument…"/>
+      </div>
+      <div class="debate-side-box ag-box">
+        <div class="dsb-label">✗ AGAINST</div>
+        <input class="dsb-input" id="debate-ag" placeholder="Strongest AGAINST…"/>
+      </div>
+    </div>
+    <div class="compose-section-heading">Context / Background (optional)</div>
+    <textarea class="compose-textarea" id="debate-context" placeholder="Add any background the reader needs to vote fairly…" rows="3" oninput="onInput(this,'debate-wc',200)"></textarea>
+    <div class="wc-row"><span class="wc" id="debate-wc">0 / 200</span></div>
+  </div>
+
+  <!-- ── PANEL: POLL ── -->
+  <div class="panel" id="panel-poll">
+    <div class="compose-section-heading">Question</div>
+    <textarea class="compose-textarea" style="min-height:52px;font-size:15px;font-weight:700" id="poll-question" placeholder="Ask something the community will want to answer…" rows="2" oninput="onInput(this,'poll-q-wc',140)"></textarea>
+    <div class="wc-row"><span class="wc" id="poll-q-wc">0 / 140</span></div>
+    <div class="compose-section-heading">Options</div>
+    <div id="poll-options-wrap">
+      <div class="poll-option-row"><input class="poll-option-input" placeholder="Option 1…"/><div class="poll-remove-btn" onclick="removePollOpt(this)"><i class="fas fa-times"></i></div></div>
+      <div class="poll-option-row"><input class="poll-option-input" placeholder="Option 2…"/><div class="poll-remove-btn" onclick="removePollOpt(this)"><i class="fas fa-times"></i></div></div>
+    </div>
+    <button class="add-poll-opt-btn" onclick="addPollOpt()"><i class="fas fa-plus" style="font-size:10px"></i> Add option</button>
+    <div class="compose-section-heading" style="margin-top:12px">Duration</div>
+    <div class="poll-duration-row" id="poll-dur-row">
+      <div class="poll-dur active" onclick="setPollDur(this)">1 day</div>
+      <div class="poll-dur" onclick="setPollDur(this)">3 days</div>
+      <div class="poll-dur" onclick="setPollDur(this)">7 days</div>
+      <div class="poll-dur" onclick="setPollDur(this)">Custom</div>
+    </div>
+  </div>
+
+  <!-- ── PANEL: CONFESSION ── -->
+  <div class="panel" id="panel-confession">
+    <div class="anon-toggle-row" id="anon-toggle-row" onclick="toggleAnon()">
+      <div class="anon-icon">🎭</div>
+      <div class="anon-label">
+        <div class="anon-title">Post Anonymously</div>
+        <div class="anon-sub">Your name won't appear on this post</div>
+      </div>
+      <div class="toggle on" id="anon-toggle"><div class="toggle-knob"></div></div>
+    </div>
+    <div class="compose-section-heading">Confession</div>
+    <textarea class="compose-textarea" id="confession-body" placeholder="Start with what you can't say out loud anywhere else…" rows="7" oninput="onInput(this,'conf-wc',500)"></textarea>
+    <div class="wc-row"><span class="wc" id="conf-wc">0 / 500</span></div>
+    <div class="compose-section-heading">Category</div>
+    <div class="cat-grid" id="conf-cats">
+      <div class="cat-chip" onclick="toggleCat(this)">💔 Relationship</div>
+      <div class="cat-chip" onclick="toggleCat(this)">👨‍👩‍👧 Family</div>
+      <div class="cat-chip" onclick="toggleCat(this)">💼 Work</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🎓 Campus</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🤫 Secret</div>
+      <div class="cat-chip" onclick="toggleCat(this)">😂 Funny</div>
+    </div>
+  </div>
+
+  <!-- ── PANEL: AMA ── -->
+  <div class="panel" id="panel-ama">
+    <div class="compose-section-heading">AMA Title</div>
+    <textarea class="compose-textarea title-ta" id="ama-title" placeholder="e.g. Ask Me Anything about writing dark chapters 🎙️" rows="2" oninput="onInput(this,'ama-title-wc',100)"></textarea>
+    <div class="wc-row"><span class="wc" id="ama-title-wc">0 / 100</span></div>
+    <div class="compose-section-heading">Topics you'll cover</div>
+    <div class="tags-input-wrap" id="ama-topics-wrap">
+      <input id="ama-topics-input" placeholder="Writing process  ·  Series secrets  ·  Life in Lagos" onkeydown="handleTagInput(event,'ama-topics-wrap')"/>
+    </div>
+    <div class="compose-section-heading">When?</div>
+    <div class="ama-time-row" id="ama-time-row">
+      <div class="ama-time-opt active" onclick="setAmaTime(this)">Live Now</div>
+      <div class="ama-time-opt" onclick="setAmaTime(this)">In 1 hour</div>
+      <div class="ama-time-opt" onclick="setAmaTime(this)">Tonight 8PM</div>
+      <div class="ama-time-opt" onclick="setAmaTime(this)">Tomorrow</div>
+      <div class="ama-time-opt" onclick="setAmaTime(this)">Custom</div>
+    </div>
+    <input type="datetime-local" class="sched-time-input" id="ama-custom-time"/>
+    <div class="compose-section-heading">Welcome message (optional)</div>
+    <textarea class="compose-textarea" id="ama-welcome" placeholder="What should readers know before they ask? Any rules or context…" rows="3" oninput="onInput(this,'ama-wc',200)"></textarea>
+    <div class="wc-row"><span class="wc" id="ama-wc">0 / 200</span></div>
+  </div>
+
+  <!-- ── PANEL: MOTIVATION ── -->
+  <div class="panel" id="panel-motivation">
+    <div class="compose-section-heading">Your message</div>
+    <textarea class="compose-textarea" id="motiv-body" placeholder="Write something that moves people. Real, raw, uplifting…" rows="6" oninput="onInput(this,'motiv-wc',300)"></textarea>
+    <div class="wc-row"><span class="wc" id="motiv-wc">0 / 300</span></div>
+    <div class="compose-section-heading">Attach a related story (optional)</div>
+    <div class="story-search-bar">
+      <i class="fas fa-magnifying-glass"></i>
+      <input id="motiv-search" placeholder="Link a story that inspired this…" oninput="filterStoriesMotiv(this.value)"/>
+    </div>
+    <div id="motiv-results"></div>
+    <div id="motiv-selected-strip" style="display:none"></div>
+    <div class="compose-section-heading">Category</div>
+    <div class="cat-grid">
+      <div class="cat-chip" onclick="toggleCat(this)">✍️ Writers</div>
+      <div class="cat-chip" onclick="toggleCat(this)">💪 Growth</div>
+      <div class="cat-chip" onclick="toggleCat(this)">❤️ Healing</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🌙 Late Night</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🏆 Success</div>
+    </div>
+  </div>
+
+  <!-- ── PANEL: CAREER ── -->
+  <div class="panel" id="panel-career">
+    <div class="compose-section-heading">Post Heading</div>
+    <textarea class="compose-textarea title-ta" id="career-title" placeholder="e.g. My boss promoted the intern I trained over me. Here's what I did." rows="2" oninput="onInput(this,'career-title-wc',120)"></textarea>
+    <div class="wc-row"><span class="wc" id="career-title-wc">0 / 120</span></div>
+    <div class="compose-section-heading">Your story</div>
+    <textarea class="compose-textarea" id="career-body" placeholder="Share the full story — the situation, what you did, what happened next…" rows="7" oninput="onInput(this,'career-wc',800)"></textarea>
+    <div class="wc-row"><span class="wc" id="career-wc">0 / 800</span></div>
+    <div class="compose-section-heading">Outcome</div>
+    <div class="career-outcome-row" id="career-outcomes">
+      <div class="career-outcome-chip" onclick="toggleCareerOutcome(this)">😤 Frustrated</div>
+      <div class="career-outcome-chip" onclick="toggleCareerOutcome(this)">🎉 Won</div>
+      <div class="career-outcome-chip" onclick="toggleCareerOutcome(this)">😅 Survived</div>
+      <div class="career-outcome-chip" onclick="toggleCareerOutcome(this)">📈 Levelled Up</div>
+      <div class="career-outcome-chip" onclick="toggleCareerOutcome(this)">🚪 Walked Out</div>
+      <div class="career-outcome-chip" onclick="toggleCareerOutcome(this)">🤷 Still Ongoing</div>
+    </div>
+    <div class="compose-section-heading">Sector (optional)</div>
+    <div class="cat-grid">
+      <div class="cat-chip" onclick="toggleCat(this)">💻 Tech</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🏦 Finance</div>
+      <div class="cat-chip" onclick="toggleCat(this)">⚕️ Healthcare</div>
+      <div class="cat-chip" onclick="toggleCat(this)">📺 Media</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🛒 Commerce</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🎓 Education</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🏗️ Construction</div>
+      <div class="cat-chip" onclick="toggleCat(this)">🌍 Other</div>
+    </div>
+  </div>
+
+  <!-- ── PANEL: REPOST ── -->
+  <div class="panel" id="panel-repost">
+    <div class="compose-section-heading">Find a story or post to share</div>
+    <div class="story-search-bar">
+      <i class="fas fa-magnifying-glass"></i>
+      <input id="repost-search" placeholder="Search stories, writers…" oninput="filterStoriesRepost(this.value)"/>
+    </div>
+    <div id="repost-results"></div>
+    <div id="repost-selected-strip" style="display:none"></div>
+    <div class="lib-label"><i class="fas fa-bookmark" style="color:var(--acc);font-size:9px"></i> From Your Library</div>
+    <div class="story-results" id="lib-stories-repost"></div>
+    <div class="compose-section-heading">Your reaction / note</div>
+    <textarea class="compose-textarea" id="repost-note" placeholder="Why are you sharing this? What should your followers know before they click…" rows="4" oninput="onInput(this,'repost-wc',200)"></textarea>
+    <div class="wc-row"><span class="wc" id="repost-wc">0 / 200</span></div>
+  </div>
+
+  <div style="height:16px"></div>
+</div>
+
+<!-- ════ MEDIA TOOLBAR ════ -->
+<div class="media-toolbar" id="mediaToolbar">
+  <div class="mt-btn" onclick="triggerImg()"><i class="fas fa-image" style="color:#38bdf8"></i> Image</div>
+  <div class="mt-sep"></div>
+  <div class="mt-btn" onclick="toast('📎 Attach story link')"><i class="fas fa-book" style="color:var(--acc2)"></i> Story</div>
+  <div class="mt-btn" onclick="toast('🏷️ Tag a writer')"><i class="fas fa-at" style="color:var(--purple)"></i> Tag</div>
+  <div class="mt-btn" onclick="toast('😄 Emoji picker')"><i class="fas fa-face-smile" style="color:var(--gold)"></i> Emoji</div>
+  <div class="mt-sep"></div>
+  <div class="char-counter" id="globalCharCount"></div>
+</div>
+
+<!-- hidden file input -->
+<input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImgUpload(this)"/>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════ DATA ════ */
+const STORY_LIBRARY = [
+  {id:1,cat:'💔 Betrayal',title:"I came home early and caught my husband kissing my late sister's photograph",writer:'Ada_Writes',cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},
+  {id:2,cat:'✨ Twist',title:"The runaway bride — I left at the altar in my socked feet",writer:'Ifeanyi_Story',cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg'},
+  {id:3,cat:'🌙 Elegy',title:"The letter folded in his jacket pocket — he died before he could send it",writer:'Efe_O',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},
+  {id:4,cat:'👑 Family',title:"My grandmother's will revealed I wasn't her blood — but she left everything to me",writer:'Chiamaka_N',cover:'https://i.postimg.cc/cgLZJNmC/8.jpg'},
+  {id:5,cat:'💔 Heartbreak',title:"He proposed with my best friend's ring — and she giggled before he even knelt",writer:'Ada_Writes',cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg'},
+  {id:6,cat:'💍 Marriage',title:"My husband deleted our anniversary photos from every device before I came home",writer:'Kemi_A',cover:'https://i.postimg.cc/0MyxNqfz/7.jpg'},
+  {id:7,cat:'🎓 Campus',title:"The Richest Boy keeps asking to sit next to me in Stats",writer:'CampusQueen',cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg'},
+  {id:8,cat:'🔥 Revenge',title:"She found his second phone at their anniversary dinner",writer:'Zara_M',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},
+];
+
+const QUOTE_BACKGROUNDS = [
+  'linear-gradient(135deg,#0a0a0a,#1a1a1a)',
+  'linear-gradient(135deg,#0d0017,#1a003d)',
+  'linear-gradient(135deg,#001a0d,#003d1a)',
+  'linear-gradient(135deg,#1a0005,#3d000d)',
+  'linear-gradient(135deg,#001a1a,#003d3d)',
+  'linear-gradient(135deg,#1a1200,#3d2b00)',
+  'url(https://i.postimg.cc/RqtfSQJJ/wife3.jpg)',
+  'url(https://i.postimg.cc/vDn9YLx5/wife2.jpg)',
+];
+
+const RATING_LABELS = ['','😕 Poor','🙂 Okay','😊 Good','🤩 Great!','💔 Masterpiece!'];
+
+/* ════ STATE ════ */
+let currentType = 'text';
+let selectedAudience = 'everyone';
+let selectedStarRating = 0;
+let selectedStory = { review: null, motiv: null, repost: null };
+let anonOn = true;
+let schedOn = { text: false };
+let imgDataUrl = null;
+
+/* ════ TOAST ════ */
+function toast(m, dur=2400){
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), dur);
+}
+
+/* ════ TYPE SWITCHING ════ */
+const TYPE_TITLES = {
+  text:'Create Post', quote:'Share a Quote',
+  chapter:'Drop a Chapter', review:'Write a Review',
+  debate:'Start a Debate', poll:'Create a Poll',
+  confession:'Post a Confession', ama:'Host an AMA',
+  motivation:'Post Motivation', career:'Career Post',
+  repost:'Repost a Story',
+};
+
+function switchType(el, type){
+  document.querySelectorAll('.type-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  el.scrollIntoView({inline:'center',behavior:'smooth'});
+  currentType = type;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+type).classList.add('active');
+  document.getElementById('topTitle').textContent = TYPE_TITLES[type] || 'Create Post';
+  checkPublishable();
+  // hide media toolbar for some types
+  const noToolbar = ['debate','poll','ama'];
+  document.getElementById('mediaToolbar').style.display = noToolbar.includes(type) ? 'none' : 'flex';
+}
+
+/* ════ AUDIENCE ════ */
+const AUDIENCE_ICONS = {everyone:'fa-globe-africa', followers:'fa-user-group', mutual:'fa-heart', private:'fa-lock'};
+const AUDIENCE_LABELS = {everyone:'Everyone', followers:'Followers only', mutual:'Mutuals', private:'Only me'};
+
+function toggleAudienceDrop(e){
+  e.stopPropagation();
+  document.getElementById('audienceDrop').classList.toggle('open');
+}
+function setAudience(el){
+  document.querySelectorAll('.aud-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  selectedAudience = el.dataset.val;
+  document.getElementById('audienceLabel').textContent = AUDIENCE_LABELS[selectedAudience];
+  const pill = document.getElementById('audiencePill');
+  const icon = pill.querySelector('i.fa-globe-africa,i.fa-user-group,i.fa-heart,i.fa-lock');
+  if(icon) icon.className = `fas ${AUDIENCE_ICONS[selectedAudience]}`;
+  document.getElementById('audienceDrop').classList.remove('open');
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#audiencePill')) document.getElementById('audienceDrop').classList.remove('open');
+});
+
+/* ════ INPUT / CHAR COUNT ════ */
+function onInput(el, counterId, max){
+  const len = el.value.length;
+  const c = document.getElementById(counterId);
+  if(c){ c.textContent = `${len} / ${max}`; c.className = 'wc' + (len > max*0.9 ? (len > max ? ' over' : ' warn') : ''); }
+  document.getElementById('globalCharCount').textContent = len > 0 ? `${len}` : '';
+  checkPublishable();
+}
+
+/* ════ PUBLISH BUTTON ENABLE ════ */
+function checkPublishable(){
+  const checks = {
+    text: ()=> (document.getElementById('text-body').value.trim().length > 0),
+    quote: ()=> (document.getElementById('quote-body').value.trim().length > 0),
+    chapter: ()=> (document.getElementById('ch-story-title').value.trim().length > 0),
+    review: ()=> (selectedStory.review !== null && selectedStarRating > 0 && document.getElementById('review-body').value.trim().length > 0),
+    debate: ()=> (document.getElementById('debate-motion').value.trim().length > 0),
+    poll: ()=> {
+      const opts = [...document.querySelectorAll('.poll-option-input')].filter(i=>i.value.trim().length>0);
+      return document.getElementById('poll-question').value.trim().length > 0 && opts.length >= 2;
+    },
+    confession: ()=> (document.getElementById('confession-body').value.trim().length > 0),
+    ama: ()=> (document.getElementById('ama-title').value.trim().length > 0),
+    motivation: ()=> (document.getElementById('motiv-body').value.trim().length > 0),
+    career: ()=> (document.getElementById('career-body').value.trim().length > 0),
+    repost: ()=> (selectedStory.repost !== null),
+  };
+  const ok = checks[currentType] ? checks[currentType]() : false;
+  document.getElementById('publishBtn').disabled = !ok;
+}
+
+/* ════ PUBLISH ════ */
+function publishPost(){
+  toast('✅ Post published! Going live…');
+  setTimeout(()=>{ history.back(); }, 1400);
+}
+
+/* ════ TAGS ════ */
+function handleTagInput(e, wrapId){
+  if(e.key === 'Enter' || e.key === ','){
+    e.preventDefault();
+    const inp = e.target;
+    const val = inp.value.replace(/[,#]/g,'').trim();
+    if(!val) return;
+    const wrap = document.getElementById(wrapId);
+    const pill = document.createElement('div');
+    pill.className = 'tag-pill';
+    pill.innerHTML = `#${val}<span class="tag-x" onclick="this.parentElement.remove()">✕</span>`;
+    wrap.insertBefore(pill, inp);
+    inp.value = '';
+  }
+}
+
+/* ════ STORY SEARCH & SELECT ════ */
+function storyResultHTML(s, context, selectedId){
+  const isSelected = selectedId === s.id;
+  return `<div class="story-result-item${isSelected?' selected':''}" onclick="selectStory(${s.id},'${context}')">
+    <div class="sri-thumb" style="background-image:url('${s.cover}')"></div>
+    <div class="sri-body">
+      <div class="sri-cat">${s.cat}</div>
+      <div class="sri-title">${s.title}</div>
+      <div class="sri-writer">by @${s.writer}</div>
+    </div>
+    <div class="sri-check"><i class="fas fa-check" style="font-size:8px"></i></div>
+  </div>`;
+}
+
+function filterStories(q){
+  const results = q.length > 1
+    ? STORY_LIBRARY.filter(s=> s.title.toLowerCase().includes(q.toLowerCase()) || s.writer.toLowerCase().includes(q.toLowerCase()))
+    : [];
+  const selId = selectedStory.review?.id;
+  document.getElementById('review-results').innerHTML = results.length
+    ? `<div class="story-results">${results.map(s=>storyResultHTML(s,'review',selId)).join('')}</div>` : '';
+}
+
+function filterStoriesMotiv(q){
+  const results = q.length > 1
+    ? STORY_LIBRARY.filter(s=> s.title.toLowerCase().includes(q.toLowerCase()) || s.writer.toLowerCase().includes(q.toLowerCase()))
+    : [];
+  const selId = selectedStory.motiv?.id;
+  document.getElementById('motiv-results').innerHTML = results.length
+    ? `<div class="story-results">${results.map(s=>storyResultHTML(s,'motiv',selId)).join('')}</div>` : '';
+}
+
+function filterStoriesRepost(q){
+  const results = q.length > 1
+    ? STORY_LIBRARY.filter(s=> s.title.toLowerCase().includes(q.toLowerCase()) || s.writer.toLowerCase().includes(q.toLowerCase()))
+    : [];
+  const selId = selectedStory.repost?.id;
+  document.getElementById('repost-results').innerHTML = results.length
+    ? `<div class="story-results">${results.map(s=>storyResultHTML(s,'repost',selId)).join('')}</div>` : '';
+}
+
+function selectStory(id, ctx){
+  const s = STORY_LIBRARY.find(x=>x.id===id);
+  if(!s) return;
+  selectedStory[ctx] = s;
+  // update results highlight
+  if(ctx==='review') filterStories(document.getElementById('review-search').value);
+  if(ctx==='motiv') filterStoriesMotiv(document.getElementById('motiv-search').value);
+  if(ctx==='repost') filterStoriesRepost(document.getElementById('repost-search').value);
+  // show selected strip
+  const stripId = ctx==='review'?'review-selected-strip' : ctx==='motiv'?'motiv-selected-strip':'repost-selected-strip';
+  const strip = document.getElementById(stripId);
+  strip.style.display='flex';
+  strip.innerHTML = `<div class="selected-story-strip">
+    <div class="sss-thumb" style="background-image:url('${s.cover}')"></div>
+    <div class="sss-body">
+      <div class="sss-cat">${s.cat}</div>
+      <div class="sss-title">${s.title}</div>
+    </div>
+    <div class="sss-remove" onclick="clearStory('${ctx}')"><i class="fas fa-times"></i></div>
+  </div>`;
+  // update lib highlights
+  renderLibStories(ctx);
+  checkPublishable();
+  toast(`✅ Story linked`);
+}
+
+function clearStory(ctx){
+  selectedStory[ctx] = null;
+  const stripId = ctx==='review'?'review-selected-strip':ctx==='motiv'?'motiv-selected-strip':'repost-selected-strip';
+  const strip = document.getElementById(stripId);
+  strip.style.display='none'; strip.innerHTML='';
+  renderLibStories(ctx);
+  checkPublishable();
+}
+
+function renderLibStories(ctx){
+  const libId = ctx==='repost' ? 'lib-stories-repost' : 'lib-stories';
+  const el = document.getElementById(libId);
+  if(!el) return;
+  const selId = selectedStory[ctx]?.id;
+  el.innerHTML = STORY_LIBRARY.map(s=>storyResultHTML(s,ctx,selId)).join('');
+}
+
+/* ════ RATING ════ */
+function setStar(v){
+  selectedStarRating = v;
+  document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('lit',i<v));
+  document.getElementById('rating-desc').textContent = RATING_LABELS[v] || '';
+  checkPublishable();
+}
+
+/* ════ POLL ════ */
+function addPollOpt(){
+  const wrap = document.getElementById('poll-options-wrap');
+  if(wrap.children.length >= 6){ toast('📊 Max 6 options'); return; }
+  const n = wrap.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'poll-option-row';
+  row.innerHTML = `<input class="poll-option-input" placeholder="Option ${n}…" oninput="checkPublishable()"/><div class="poll-remove-btn" onclick="removePollOpt(this)"><i class="fas fa-times"></i></div>`;
+  wrap.appendChild(row);
+}
+function removePollOpt(btn){
+  const wrap = document.getElementById('poll-options-wrap');
+  if(wrap.children.length <= 2){ toast('📊 Min 2 options'); return; }
+  btn.parentElement.remove();
+  checkPublishable();
+}
+function setPollDur(el){
+  document.querySelectorAll('.poll-dur').forEach(d=>d.classList.remove('active'));
+  el.classList.add('active');
+  if(el.textContent==='Custom') toast('📅 Custom duration coming soon');
+}
+
+/* ════ DEBATE ════ */
+document.getElementById('debate-motion').addEventListener('input', checkPublishable);
+
+/* ════ ANON TOGGLE ════ */
+function toggleAnon(){
+  anonOn = !anonOn;
+  const tog = document.getElementById('anon-toggle');
+  const row = document.getElementById('anon-toggle-row');
+  tog.classList.toggle('on', anonOn);
+  row.classList.toggle('on', anonOn);
+}
+
+/* ════ CAT CHIPS ════ */
+function toggleCat(el){ el.classList.toggle('active'); }
+function toggleCareerOutcome(el){
+  document.querySelectorAll('#career-outcomes .career-outcome-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ════ AMA TIME ════ */
+function setAmaTime(el){
+  document.querySelectorAll('.ama-time-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  const custom = document.getElementById('ama-custom-time');
+  custom.style.display = el.textContent==='Custom' ? 'block' : 'none';
+  checkPublishable();
+}
+
+/* ════ SCHEDULE ════ */
+function toggleSched(key){
+  schedOn[key] = !schedOn[key];
+  const tog = document.getElementById('sched-tog-'+key);
+  const row = document.getElementById('sched-row-'+key);
+  const inp = document.getElementById('sched-time-'+key);
+  tog.classList.toggle('on', schedOn[key]);
+  row.classList.toggle('on', schedOn[key]);
+  if(inp){ inp.classList.toggle('show', schedOn[key]); }
+  if(!schedOn[key]) document.getElementById('sched-val-'+key).textContent = 'Now';
+}
+function updateSchedVal(key, val){
+  if(!val) return;
+  const d = new Date(val);
+  const label = d.toLocaleString('en-NG',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('sched-val-'+key).textContent = label;
+  document.getElementById('sched-row-'+key).classList.add('on');
+}
+
+/* ════ CHAPTER COVER PREVIEW ════ */
+function previewChCover(url){
+  const wrap = document.getElementById('ch-cover-preview');
+  if(!url){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `<div class="img-preview-wrap"><img src="${url}" onerror="this.parentElement.remove()"/><div class="img-remove-btn" onclick="document.getElementById('ch-cover-url').value='';document.getElementById('ch-cover-preview').innerHTML=''"><i class="fas fa-times"></i></div></div>`;
+}
+
+/* ════ IMAGE ATTACH ════ */
+function triggerImg(){ document.getElementById('imgFileInput').click(); }
+function handleImgUpload(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    imgDataUrl = e.target.result;
+    // inject preview into current panel
+    const panelId = 'panel-' + currentType;
+    const panel = document.getElementById(panelId);
+    let existing = panel.querySelector('.img-preview-wrap');
+    if(existing) existing.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'img-preview-wrap';
+    wrap.innerHTML = `<img src="${imgDataUrl}"/><div class="img-remove-btn" onclick="removeImg(this)"><i class="fas fa-times"></i></div>`;
+    panel.insertBefore(wrap, panel.firstChild);
+    toast('🖼️ Image added');
+    checkPublishable();
+  };
+  reader.readAsDataURL(file);
+}
+function removeImg(btn){ imgDataUrl=null; btn.parentElement.remove(); checkPublishable(); }
+
+/* ════ QUOTE BACKGROUNDS ════ */
+function initQuoteBgs(){
+  const row = document.getElementById('quoteBgPicker');
+  QUOTE_BACKGROUNDS.forEach((bg, i)=>{
+    const el = document.createElement('div');
+    el.className = 'bgp-item' + (i===0?' active':'');
+    el.style.cssText = `background:${bg};border:2px solid ${i===0?'var(--acc)':'transparent'}`;
+    el.onclick = ()=>{
+      document.querySelectorAll('.bgp-item').forEach(b=>{ b.classList.remove('active'); b.style.borderColor='transparent'; });
+      el.classList.add('active'); el.style.borderColor='var(--acc)';
+    };
+    row.appendChild(el);
+  });
+}
+
+/* ════ INIT ════ */
+renderLibStories('review');
+renderLibStories('repost');
+renderLibStories('motiv');
+initQuoteBgs();
+
+// Attach oninput to review-body for publish check
+document.getElementById('review-body').addEventListener('input', checkPublishable);
+document.getElementById('career-body').addEventListener('input', checkPublishable);
+document.getElementById('motiv-body').addEventListener('input', checkPublishable);
+document.getElementById('confession-body').addEventListener('input', checkPublishable);
+document.getElementById('ama-title').addEventListener('input', checkPublishable);
+document.getElementById('ch-story-title').addEventListener('input', checkPublishable);
+document.getElementById('poll-question').addEventListener('input', checkPublishable);
+</script>
+</body>
+</html>

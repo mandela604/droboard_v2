@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Authors — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:620px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+.add-search{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.add-search .filter-search{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:180px}
+.add-search .filter-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.add-search .filter-search i{color:var(--text-faint);font-size:12px}
+.add-search select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+
+.lib-row{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;transition:.15s}
+.lib-row:hover{border-color:var(--accent)}
+.lib-row-main{display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer}
+.lib-cover{width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.lib-info{flex:1;min-width:0}
+.lib-title{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.lib-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.chevron{color:var(--text-faint);font-size:11px;flex-shrink:0;transition:.2s}
+.chevron.open{transform:rotate(180deg);color:var(--accent)}
+
+.status-pill{font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.status-pill.active{background:var(--green-bg);color:var(--green)}
+.status-pill.suspended{background:var(--red-bg);color:var(--red)}
+.warn-badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:800;color:var(--amber);background:var(--amber-bg);padding:2px 8px;border-radius:20px}
+
+.lib-config{display:none;flex-direction:column;gap:14px;padding:16px;background:var(--hover);border-top:1px solid var(--border)}
+.lib-config.open{display:flex}
+.mm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mm-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.mm-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.mm-val{font-size:13.5px;font-weight:800;margin-top:2px}
+.mm-email{font-size:12px;color:var(--text-muted)}
+.mm-email strong{color:var(--text);font-weight:700}
+
+.lib-config-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.action-btns{display:flex;gap:8px;flex-wrap:wrap}
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap}
+.mini-btn:hover{border-color:var(--accent)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn:disabled{opacity:.5;cursor:not-allowed}
+.profile-link{font-size:11px;font-weight:700;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.profile-link:hover{text-decoration:underline}
+
+.empty-msg{text-align:center;padding:28px;color:var(--text-faint);font-size:12.5px}
+
+/* ── Pagination ── */
+.pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.pagination-info{font-size:11.5px;color:var(--text-faint);font-weight:600}
+.pagination-controls{display:flex;align-items:center;gap:6px}
+.page-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:420px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s}
+.modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head h3{font-size:15px;font-weight:800}
+.modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
+.modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.field-group textarea, .field-group input{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);resize:vertical}
+.field-group textarea{min-height:70px}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.modal-error.show{display:block}
+.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
+.modal-box-actions .confirm-btn{background:var(--red);border-color:transparent;color:#fff}
+.modal-box-actions .confirm-btn.warn-variant{background:var(--amber)}
+.modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+.password-hint{font-size:10.5px;color:var(--text-faint);display:flex;align-items:center;gap:5px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.mm-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.lib-config-actions{flex-direction:column;align-items:stretch}.action-btns{width:100%}.mini-btn{flex:1}.pagination{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div id="authorsRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Senior Editor · Authors</div>
+    <div class="welcome-title">Authors 👨‍💼</div>
+    <div class="welcome-sub">Manage your assigned authors — search, filter by genre or status, review performance, and message, warn or suspend directly from here.</div>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-users" style="color:var(--accent)"></i> Assigned Authors</h2>
+      <span class="count-chip" id="authorCount">—</span>
+    </div>
+    <div class="panel-sub">Click an author to view full details and take action — or jump straight to their profile.</div>
+    <div class="add-search">
+      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="authorSearch" placeholder="Search by name or email…"/></div>
+      <select id="genreFilter"><option value="">All Genres</option></select>
+      <select id="statusFilter">
+        <option value="">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+    <div id="authorList"></div>
+    <div class="pagination" id="paginationBar"></div>
+  </div>
+</div>
+
+<!-- Warning modal -->
+<div class="modal-overlay" id="warnModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3>Issue a warning</h3>
+        <p id="warnModalSub">This will be recorded on the author's account.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-warn-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label>Reason for warning</label>
+        <textarea id="warnReason" placeholder="e.g. Repeated late chapter uploads, policy violation…"></textarea>
+      </div>
+      <div class="modal-error" id="warnModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-warn-modal">Cancel</button>
+        <button class="confirm-btn warn-variant" id="warnConfirmBtn" data-action="submit-warn"><i class="fas fa-triangle-exclamation"></i> Issue Warning</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Suspend / reinstate modal (reason + password confirmation) -->
+<div class="modal-overlay" id="statusModalOv">
+  <div class="modal-box">
+    <div class="modal-box-head">
+      <div>
+        <h3 id="statusModalTitle">Suspend author</h3>
+        <p id="statusModalSub">This changes what the author can access. Please confirm with a reason and your password.</p>
+      </div>
+      <button class="modal-close-x" data-action="close-status-modal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-box-body">
+      <div class="field-group">
+        <label id="statusReasonLabel">Reason for suspension</label>
+        <textarea id="statusReason" placeholder="e.g. Violation of content guidelines on story XYZ…"></textarea>
+      </div>
+      <div class="field-group">
+        <label>Confirm your password</label>
+        <input type="password" id="statusPassword" placeholder="Enter your editor password"/>
+        <div class="password-hint"><i class="fas fa-lock"></i> Required to confirm this action.</div>
+      </div>
+      <div class="modal-error" id="statusModalError"></div>
+      <div class="modal-box-actions">
+        <button class="cancel-btn" data-action="close-status-modal">Cancel</button>
+        <button class="confirm-btn" id="statusConfirmBtn" data-action="submit-status"><i class="fas fa-ban"></i> Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#authorsRoot',{
+  activeItem:'authors', title:'Authors', subtitle:'Manage assigned authors',
+  user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
+  searchPlaceholder:'Search authors…',
+  onSearch:(v)=>{ document.getElementById('authorSearch').value = v; currentPage = 1; renderAuthors(); }
+});
+
+/* ─────────────────────────────────────────
+   CONFIG
+───────────────────────────────────────── */
+const API_BASE = '/api/v1';          // real backend, when available
+const PAGE_SIZE = 5;
+let usingDemoData = false;
+
+/* ─────────────────────────────────────────
+   DEMO FALLBACK DATA
+   Used automatically whenever the real API
+   is unreachable or returns an error, so the
+   page always stays usable.
+───────────────────────────────────────── */
+const DEMO_AUTHORS = [
+  { id:'AU-001', name:'Chioma Okafor', avatar:'https://i.pravatar.cc/100?img=32', genre:'Romance & Betrayal', stories:14, rating:4.5, earnings:'$8,240', status:'active', warnings:0, joined:'Jan 12, 2025', email:'chioma.okafor@mail.com' },
+  { id:'AU-002', name:'Luna Skye', avatar:'https://i.pravatar.cc/100?img=45', genre:'Billionaire & CEO', stories:9, rating:4.3, earnings:'$6,110', status:'active', warnings:1, joined:'Mar 3, 2025', email:'luna.skye@mail.com' },
+  { id:'AU-003', name:'Elena Vasquez', avatar:'https://i.pravatar.cc/100?img=47', genre:'Werewolf & Fantasy', stories:21, rating:4.1, earnings:'$11,980', status:'active', warnings:0, joined:'Aug 19, 2024', email:'elena.vasquez@mail.com' },
+  { id:'AU-004', name:'Marcus Webb Jr.', avatar:'https://i.pravatar.cc/100?img=12', genre:'Mafia & Urban', stories:6, rating:3.9, earnings:'$2,430', status:'suspended', warnings:3, joined:'Nov 2, 2025', email:'marcus.webbjr@mail.com' },
+  { id:'AU-005', name:'Isabelle Moreau', avatar:'https://i.pravatar.cc/100?img=25', genre:'Historical & Regency', stories:18, rating:4.7, earnings:'$14,020', status:'active', warnings:0, joined:'May 27, 2024', email:'isabelle.moreau@mail.com' },
+  { id:'AU-006', name:'Wren Okonkwo', avatar:'https://i.pravatar.cc/100?img=15', genre:'Campus & Revenge', stories:11, rating:4.0, earnings:'$5,760', status:'active', warnings:1, joined:'Feb 14, 2025', email:'wren.okonkwo@mail.com' },
+  { id:'AU-007', name:'Ifeanyi_Story', avatar:'https://i.pravatar.cc/100?img=8', genre:'Twist & Drama', stories:8, rating:4.6, earnings:'$4,890', status:'active', warnings:0, joined:'Jul 9, 2025', email:'ifeanyi.story@mail.com' },
+  { id:'AU-008', name:'Efe_O', avatar:'https://i.pravatar.cc/100?img=19', genre:'Elegy & Heartbreak', stories:5, rating:4.4, earnings:'$3,150', status:'active', warnings:0, joined:'Sep 30, 2025', email:'efe.o@mail.com' },
+  { id:'AU-009', name:'Ada_Writes', avatar:'https://i.pravatar.cc/100?img=28', genre:'Romance & Betrayal', stories:13, rating:4.2, earnings:'$7,020', status:'active', warnings:2, joined:'Apr 21, 2025', email:'ada.writes@mail.com' },
+  { id:'AU-010', name:'Zara_M', avatar:'https://i.pravatar.cc/100?img=36', genre:'Mafia & Urban', stories:4, rating:3.8, earnings:'$1,860', status:'suspended', warnings:2, joined:'Dec 5, 2025', email:'zara.m@mail.com' },
+  { id:'AU-011', name:'Dami_Cole', avatar:'https://i.pravatar.cc/100?img=51', genre:'Romance & Betrayal', stories:7, rating:4.0, earnings:'$3,410', status:'active', warnings:0, joined:'Jun 8, 2025', email:'dami.cole@mail.com' },
+  { id:'AU-012', name:'Chiamaka_N', avatar:'https://i.pravatar.cc/100?img=41', genre:'Campus & Revenge', stories:10, rating:4.3, earnings:'$5,220', status:'active', warnings:0, joined:'Oct 17, 2025', email:'chiamaka.n@mail.com' },
+];
+
+let AUTHORS = [];
+let currentPage = 1;
+let expandedId = null;
+
+/* ─────────────────────────────────────────
+   API HELPERS — real endpoint first,
+   silent fallback to demo data on any failure.
+───────────────────────────────────────── */
+async function apiFetch(path, options){
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    ...options,
+  });
+  if(!res.ok){
+    let msg = `Request failed (${res.status})`;
+    try{ const body = await res.json(); if(body && body.message) msg = body.message; }catch(_){/* ignore */}
+    throw new Error(msg);
+  }
+  return res.status===204 ? null : res.json();
+}
+
+async function loadAuthors(){
+  try{
+    const data = await apiFetch('/authors');
+    AUTHORS = Array.isArray(data) ? data : data.authors;
+    usingDemoData = false;
+  }catch(err){
+    console.warn('Authors API unavailable, falling back to demo data:', err.message);
+    AUTHORS = JSON.parse(JSON.stringify(DEMO_AUTHORS));
+    usingDemoData = true;
+  }
+  populateGenreFilter();
+  renderStats();
+  renderAuthors();
+}
+
+function populateGenreFilter(){
+  const genres = [...new Set(AUTHORS.map(a=>a.genre))];
+  document.getElementById('genreFilter').innerHTML = '<option value="">All Genres</option>' + genres.map(g=>`<option value="${g}">${g}</option>`).join('');
+}
+
+/* ─────────────────────────────────────────
+   STATS
+───────────────────────────────────────── */
+function renderStats(){
+  const active = AUTHORS.filter(a=>a.status==='active').length;
+  const suspended = AUTHORS.filter(a=>a.status==='suspended').length;
+  const totalWarnings = AUTHORS.reduce((s,a)=>s+a.warnings,0);
+  const stats = [
+    { n:AUTHORS.length, l:'Assigned Authors', ico:'fa-users', cls:'accent' },
+    { n:active, l:'Active', ico:'fa-circle-check', cls:'green' },
+    { n:suspended, l:'Suspended', ico:'fa-ban', cls:'red' },
+    { n:totalWarnings, l:'Warnings Issued', ico:'fa-triangle-exclamation', cls:'amber' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:var(--${s.cls}-bg,rgba(0,0,0,.05));color:var(--${s.cls})"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+/* ─────────────────────────────────────────
+   FILTERING + PAGINATION
+───────────────────────────────────────── */
+function getFiltered(){
+  const q = document.getElementById('authorSearch').value.trim().toLowerCase();
+  const g = document.getElementById('genreFilter').value;
+  const st = document.getElementById('statusFilter').value;
+  return AUTHORS.filter(a=>{
+    const matchesQ = !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q);
+    const matchesG = !g || a.genre===g;
+    const matchesSt = !st || a.status===st;
+    return matchesQ && matchesG && matchesSt;
+  });
+}
+
+function renderAuthors(){
+  const results = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  if(currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const pageItems = results.slice(start, start+PAGE_SIZE);
+
+  document.getElementById('authorCount').textContent = `${results.length} of ${AUTHORS.length}`;
+  const box = document.getElementById('authorList');
+
+  if(!results.length){
+    box.innerHTML = `<div class="empty-msg">No authors match your search.</div>`;
+    document.getElementById('paginationBar').innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = pageItems.map(a=>{
+    const open = expandedId===a.id;
+    return `
+    <div class="lib-row" data-id="${a.id}">
+      <div class="lib-row-main" data-action="toggle-row" data-id="${a.id}">
+        <img class="lib-cover" src="${a.avatar}" alt="${a.name}"/>
+        <div class="lib-info">
+          <div class="lib-title">${a.name} <span class="status-pill ${a.status}">${a.status}</span> ${a.warnings>0?`<span class="warn-badge"><i class="fas fa-triangle-exclamation"></i>${a.warnings}</span>`:''}</div>
+          <div class="lib-meta">${a.genre} · ${a.stories} stories · <i class="fas fa-star" style="color:#ffd166"></i> ${a.rating} · 💰 ${a.earnings}</div>
+        </div>
+        <i class="fas fa-chevron-down chevron${open?' open':''}"></i>
+      </div>
+      <div class="lib-config${open?' open':''}">
+        <div class="mm-grid">
+          <div class="mm-item"><div class="mm-lbl">Status</div><div class="mm-val"><span class="status-pill ${a.status}" style="font-size:10px;padding:3px 10px">${a.status}</span></div></div>
+          <div class="mm-item"><div class="mm-lbl">Rating</div><div class="mm-val">⭐ ${a.rating}</div></div>
+          <div class="mm-item"><div class="mm-lbl">Stories</div><div class="mm-val">${a.stories}</div></div>
+          <div class="mm-item"><div class="mm-lbl">Earnings</div><div class="mm-val">${a.earnings}</div></div>
+          <div class="mm-item"><div class="mm-lbl">Genre</div><div class="mm-val" style="font-size:12px">${a.genre}</div></div>
+          <div class="mm-item"><div class="mm-lbl">Joined</div><div class="mm-val" style="font-size:12px">${a.joined}</div></div>
+        </div>
+        <div class="mm-email"><strong>Email:</strong> ${a.email}</div>
+        <div class="lib-config-actions">
+          <div class="action-btns">
+            <button class="mini-btn danger" data-action="open-warn-modal" data-id="${a.id}"><i class="fas fa-triangle-exclamation"></i> Issue Warning</button>
+            <button class="mini-btn" data-action="message" data-id="${a.id}"><i class="fas fa-comment"></i> Send Message</button>
+            <button class="mini-btn danger" data-action="open-status-modal" data-id="${a.id}">${a.status==='suspended'?'<i class="fas fa-rotate-left"></i> Reinstate':'<i class="fas fa-ban"></i> Suspend'}</button>
+          </div>
+          <a class="profile-link" href="profile.html?id=${a.id}">View full profile <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderPagination(totalPages, results.length, start, pageItems.length);
+}
+
+function renderPagination(totalPages, totalResults, start, shownCount){
+  const bar = document.getElementById('paginationBar');
+  if(totalResults <= PAGE_SIZE){ bar.innerHTML = ''; return; }
+  const from = totalResults ? start+1 : 0;
+  const to = start+shownCount;
+
+  let pageBtns = '';
+  for(let p=1; p<=totalPages; p++){
+    if(totalPages>7 && p!==1 && p!==totalPages && Math.abs(p-currentPage)>1){
+      if(p===2 || p===totalPages-1) pageBtns += `<span style="padding:0 4px;color:var(--text-faint)">…</span>`;
+      continue;
+    }
+    pageBtns += `<button class="page-btn${p===currentPage?' active':''}" data-action="goto-page" data-page="${p}">${p}</button>`;
+  }
+
+  bar.innerHTML = `
+    <div class="pagination-info">Showing ${from}–${to} of ${totalResults}</div>
+    <div class="pagination-controls">
+      <button class="page-btn" data-action="prev-page" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
+      ${pageBtns}
+      <button class="page-btn" data-action="next-page" ${currentPage===totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+}
+
+/* ─────────────────────────────────────────
+   WARNING MODAL
+───────────────────────────────────────── */
+let warnTargetId = null;
+
+function openWarnModal(id){
+  const a = AUTHORS.find(x=>x.id===id); if(!a) return;
+  warnTargetId = id;
+  document.getElementById('warnModalSub').textContent = `This will be recorded on ${a.name}'s account.`;
+  document.getElementById('warnReason').value = '';
+  document.getElementById('warnModalError').classList.remove('show');
+  document.getElementById('warnModalOv').classList.add('open');
+}
+function closeWarnModal(){
+  document.getElementById('warnModalOv').classList.remove('open');
+  warnTargetId = null;
+}
+async function submitWarn(){
+  const a = AUTHORS.find(x=>x.id===warnTargetId); if(!a) return;
+  const reason = document.getElementById('warnReason').value.trim();
+  const errBox = document.getElementById('warnModalError');
+  if(!reason){ errBox.textContent = 'Please provide a reason for this warning.'; errBox.classList.add('show'); return; }
+
+  const btn = document.getElementById('warnConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Issuing…';
+  try{
+    if(!usingDemoData){
+      await apiFetch(`/authors/${a.id}/warn`, { method:'POST', body: JSON.stringify({ reason }) });
+    }
+    a.warnings++;
+    toast(`⚠️ Warning issued to ${a.name}`);
+    closeWarnModal();
+    renderStats(); renderAuthors();
+  }catch(err){
+    errBox.textContent = err.message || 'Something went wrong. Please try again.';
+    errBox.classList.add('show');
+  }finally{
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Issue Warning';
+  }
+}
+
+/* ─────────────────────────────────────────
+   SUSPEND / REINSTATE MODAL (reason + password)
+───────────────────────────────────────── */
+let statusTargetId = null;
+
+function openStatusModal(id){
+  const a = AUTHORS.find(x=>x.id===id); if(!a) return;
+  statusTargetId = id;
+  const suspending = a.status !== 'suspended';
+  document.getElementById('statusModalTitle').textContent = suspending ? `Suspend ${a.name}` : `Reinstate ${a.name}`;
+  document.getElementById('statusModalSub').textContent = suspending
+    ? "This immediately blocks the author's ability to publish or upload. Please confirm with a reason and your password."
+    : "This restores the author's full access. Please confirm with a reason and your password.";
+  document.getElementById('statusReasonLabel').textContent = suspending ? 'Reason for suspension' : 'Reason for reinstating';
+  document.getElementById('statusReason').value = '';
+  document.getElementById('statusPassword').value = '';
+  document.getElementById('statusModalError').classList.remove('show');
+  const confirmBtn = document.getElementById('statusConfirmBtn');
+  confirmBtn.innerHTML = suspending ? '<i class="fas fa-ban"></i> Confirm Suspension' : '<i class="fas fa-rotate-left"></i> Confirm Reinstatement';
+  document.getElementById('statusModalOv').classList.add('open');
+}
+function closeStatusModal(){
+  document.getElementById('statusModalOv').classList.remove('open');
+  statusTargetId = null;
+}
+async function submitStatusChange(){
+  const a = AUTHORS.find(x=>x.id===statusTargetId); if(!a) return;
+  const suspending = a.status !== 'suspended';
+  const reason = document.getElementById('statusReason').value.trim();
+  const password = document.getElementById('statusPassword').value;
+  const errBox = document.getElementById('statusModalError');
+
+  if(!reason){ errBox.textContent = 'Please provide a reason before continuing.'; errBox.classList.add('show'); return; }
+  if(!password){ errBox.textContent = 'Please enter your password to confirm this action.'; errBox.classList.add('show'); return; }
+
+  const btn = document.getElementById('statusConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming…';
+  try{
+    const newStatus = suspending ? 'suspended' : 'active';
+    if(!usingDemoData){
+      // Real backend verifies the editor's password server-side before applying the change.
+      await apiFetch(`/authors/${a.id}/${suspending?'suspend':'reinstate'}`, {
+        method:'POST',
+        body: JSON.stringify({ reason, password }),
+      });
+    }else{
+      // Demo mode: no backend to verify against, so we just require the field to be filled.
+      await new Promise(r=>setTimeout(r, 500));
+    }
+    a.status = newStatus;
+    toast(suspending ? `🚫 ${a.name} suspended` : `✅ ${a.name} reinstated`);
+    closeStatusModal();
+    renderStats(); renderAuthors();
+  }catch(err){
+    errBox.textContent = err.message || 'Incorrect password or request failed. Please try again.';
+    errBox.classList.add('show');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = suspending ? '<i class="fas fa-ban"></i> Confirm Suspension' : '<i class="fas fa-rotate-left"></i> Confirm Reinstatement';
+  }
+}
+
+/* ─────────────────────────────────────────
+   EVENT DELEGATION
+───────────────────────────────────────── */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+
+  if(action==='toggle-row'){ expandedId = expandedId===id ? null : id; renderAuthors(); }
+  else if(action==='message'){ const a=AUTHORS.find(x=>x.id===id); if(a) toast(`📨 Opening message to ${a.name}…`); }
+  else if(action==='open-warn-modal'){ openWarnModal(id); }
+  else if(action==='close-warn-modal'){ closeWarnModal(); }
+  else if(action==='submit-warn'){ submitWarn(); }
+  else if(action==='open-status-modal'){ openStatusModal(id); }
+  else if(action==='close-status-modal'){ closeStatusModal(); }
+  else if(action==='submit-status'){ submitStatusChange(); }
+  else if(action==='goto-page'){ currentPage = parseInt(el.dataset.page,10); renderAuthors(); window.scrollTo({top:0,behavior:'smooth'}); }
+  else if(action==='prev-page'){ if(currentPage>1){ currentPage--; renderAuthors(); } }
+  else if(action==='next-page'){ currentPage++; renderAuthors(); }
+});
+
+// Close modals on backdrop click
+document.getElementById('warnModalOv').addEventListener('click', e=>{ if(e.target.id==='warnModalOv') closeWarnModal(); });
+document.getElementById('statusModalOv').addEventListener('click', e=>{ if(e.target.id==='statusModalOv') closeStatusModal(); });
+
+document.getElementById('authorSearch').addEventListener('input', ()=>{ currentPage=1; renderAuthors(); });
+document.getElementById('genreFilter').addEventListener('change', ()=>{ currentPage=1; renderAuthors(); });
+document.getElementById('statusFilter').addEventListener('change', ()=>{ currentPage=1; renderAuthors(); });
+
+/* ─────────────────────────────────────────
+   INIT
+───────────────────────────────────────── */
+loadAuthors();
+</script>
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Contract Templates — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     black/pink --accent) come from shared/dashboard-shell.js — this
+     page just uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row: just the add button, right-aligned ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px}
+  .stat-ico{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  html[data-theme="dark"] .stat-ico.pink{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  .stat-num{font-size:22px;font-weight:800;line-height:1.1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);margin-top:4px}
+  .stat-delta.muted{color:var(--text-faint);font-weight:600}
+
+  /* ── Two-column content: templates table + detail panel ── */
+  .content-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;flex-wrap:wrap}
+  .tc-head h2{font-size:15px;font-weight:800}
+  .tc-head-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;width:220px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+  .status-select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}
+
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr{cursor:pointer;transition:.1s}
+  tbody tr:hover{background:var(--hover)}
+  tbody tr.selected{background:var(--accent-soft)}
+  .tmpl-cell{display:flex;align-items:center;gap:12px}
+  .tmpl-icn{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .tmpl-name{font-weight:700;font-size:13px}
+  .tmpl-desc{color:var(--text-muted);font-size:11.5px;margin-top:1px;max-width:230px}
+  .plain-cell{font-weight:600;font-size:12.5px}
+  .meta-cell{font-size:12px;color:var(--text-muted)}
+  .meta-cell b{color:var(--text);font-weight:700;display:block;font-size:12.5px}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.draft{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .status-pill.draft{background:rgba(217,119,6,.18)}
+  .status-pill.archived{background:var(--table-head);color:var(--text-faint)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.draft .dot{background:var(--amber)}
+  .status-pill.archived .dot{background:var(--text-faint)}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  /* ── Detail panel ── */
+  .detail-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;position:sticky;top:86px}
+  .dp-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+  .dp-icn{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .dp-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .dp-title{font-size:14.5px;font-weight:800}
+  .dp-meta{font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.5}
+
+  .dp-tabs{display:flex;gap:16px;border-bottom:1px solid var(--border);margin-bottom:14px}
+  .dp-tab{padding:0 1px 9px;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+  .dp-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  .dp-preview{background:var(--table-head);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:11.5px;line-height:1.7;color:var(--text);max-height:280px;overflow-y:auto;margin-bottom:14px}
+  .dp-preview h3{font-size:12.5px;font-weight:800;text-align:center;margin-bottom:10px;letter-spacing:.03em}
+  .dp-preview p{margin-bottom:10px;color:var(--text-muted)}
+  .dp-preview b{color:var(--text)}
+  .dp-preview .clause{font-weight:800;color:var(--text);margin-top:12px;margin-bottom:4px;font-size:11.5px}
+
+  .dp-details-list{margin-bottom:14px}
+  .dp-detail-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--border);font-size:12px}
+  .dp-detail-row:first-child{border-top:none}
+  .dp-detail-row span{color:var(--text-muted)}
+  .dp-detail-row b{font-weight:700}
+
+  .dp-clause-list{margin-bottom:14px}
+  .dp-clause-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:12px}
+  .dp-clause-item:first-child{border-top:none}
+  .dp-clause-item i{color:var(--accent);font-size:11px;width:16px;text-align:center;flex-shrink:0}
+
+  .dp-history-item{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:12px}
+  .dp-history-item:first-child{border-top:none}
+  .dp-history-item i{color:var(--text-faint);font-size:11px;margin-top:2px;flex-shrink:0}
+  .dp-history-item b{display:block;font-weight:700;font-size:12px}
+  .dp-history-item span{color:var(--text-muted);font-size:11px}
+
+  .dp-actions{display:flex;gap:8px}
+  .dp-btn{flex:1;padding:10px;border-radius:9px;font-size:12px;font-weight:700;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap}
+  .dp-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .dp-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+  /* ── Template usage panel ── */
+  .usage-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-top:20px}
+  .usage-panel h2{font-size:14px;font-weight:800;margin-bottom:14px}
+  .usage-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--border);font-size:12.5px}
+  .usage-row:first-child{border-top:none}
+  .usage-row span{color:var(--text-muted);font-weight:600}
+  .usage-row b{font-weight:800;color:var(--accent);font-size:13px}
+  .btn-usage{width:100%;margin-top:14px;padding:11px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-usage:hover{background:var(--accent);color:#fff}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  @media (max-width:1180px){
+    .content-grid{grid-template-columns:1fr}
+    .detail-panel{position:static}
+  }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:680px){
+    .tc-head{flex-direction:column;align-items:stretch}
+    .tc-head-right{flex-direction:column;align-items:stretch}
+    .tc-search{width:100%}
+    .btn-filters, .status-select{justify-content:center}
+
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Template Name"]{align-items:flex-start}
+    td[data-label="Template Name"]::before{display:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <button class="btn-add" id="addBtn"><i class="fas fa-plus"></i> New Template</button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-ico pink"><i class="fas fa-file-lines"></i></div>
+      <div><div class="stat-num">12</div><div class="stat-lbl">Total Templates</div><div class="stat-delta">+2 from last month</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico green"><i class="fas fa-circle-check"></i></div>
+      <div><div class="stat-num">9</div><div class="stat-lbl">Active Templates</div><div class="stat-delta">+1 from last month</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico amber"><i class="fas fa-clock"></i></div>
+      <div><div class="stat-num">2</div><div class="stat-lbl">Draft Templates</div><div class="stat-delta muted">No change</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico red"><i class="fas fa-box-archive"></i></div>
+      <div><div class="stat-num">1</div><div class="stat-lbl">Archived Templates</div><div class="stat-delta">+1 from last month</div></div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <!-- Templates table -->
+    <div class="table-card">
+      <div class="tc-head">
+        <h2>All Templates</h2>
+        <div class="tc-head-right">
+          <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search templates..."/></div>
+          <button class="btn-filters"><i class="fas fa-sliders"></i> Filters</button>
+          <select class="status-select" id="statusFilter">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="mainTable">
+          <thead>
+            <tr>
+              <th>Template Name</th><th>Type</th><th>Status</th><th>Last Updated</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination-row">
+        <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>10</b> of <b>12</b> templates</div>
+        <div class="page-btns" id="pageBtns"></div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div>
+      <div class="detail-panel" id="detailPanel"></div>
+      <div class="usage-panel">
+        <h2>Template Usage</h2>
+        <div class="usage-row"><span>Total Contracts Created</span><b>156</b></div>
+        <div class="usage-row"><span>Active Contracts</span><b>128</b></div>
+        <div class="usage-row"><span>Expired Contracts</span><b>12</b></div>
+        <div class="usage-row"><span>Pending Contracts</span><b>16</b></div>
+        <button class="btn-usage" onclick="toast('Opening usage history…')">View Usage History</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'contract-templates.html',
+  title: 'Contract Templates',
+  subtitle: 'Create, manage and customize your contract templates',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search templates...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (value) => {
+    document.getElementById('tableSearch').value = value;
+    refresh();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const TEMPLATES = [
+  { id:1, name:'Non-Exclusive Publishing Agreement', desc:'Standard agreement for non-exclusive publishing rights.', type:'Publishing', icon:'fa-file-lines', bg:'#ece3fd', color:'#7c5cfc', status:'active', updated:'Jun 15, 2026', by:'Reina Morgan', clauses:12 },
+  { id:2, name:'Exclusive Publishing Agreement', desc:'Exclusive rights agreement for publishing and distribution.', type:'Publishing', icon:'fa-file-circle-check', bg:'#e2f8ea', color:'#16a34a', status:'active', updated:'Jun 10, 2026', by:'Reina Morgan', clauses:14 },
+  { id:3, name:'Revenue Share Agreement', desc:'Agreement for revenue sharing with authors.', type:'Financial', icon:'fa-sack-dollar', bg:'#e2f8ea', color:'#16a34a', status:'active', updated:'Jun 8, 2026', by:'Reina Morgan', clauses:9 },
+  { id:4, name:'Author Assignment Agreement', desc:'Transfer of certain rights by the author to the platform.', type:'Legal', icon:'fa-user-pen', bg:'#e3ecfd', color:'#2f7de1', status:'active', updated:'Jun 5, 2026', by:'Reina Morgan', clauses:8 },
+  { id:5, name:'Confidentiality Agreement (NDA)', desc:'Non-disclosure agreement for confidential information.', type:'Legal', icon:'fa-lock', bg:'#fde3e3', color:'#e0384d', status:'draft', updated:'Jun 2, 2026', by:'Reina Morgan', clauses:6 },
+  { id:6, name:'Translation Rights Agreement', desc:'Agreement for translation and foreign language rights.', type:'Rights', icon:'fa-globe', bg:'#e2f8ea', color:'#16a34a', status:'active', updated:'May 28, 2026', by:'Reina Morgan', clauses:10 },
+  { id:7, name:'Short Story Publishing Agreement', desc:'Agreement template for short story publications.', type:'Publishing', icon:'fa-book', bg:'#e2f8ea', color:'#16a34a', status:'active', updated:'May 25, 2026', by:'Reina Morgan', clauses:7 },
+  { id:8, name:'Audiobook Rights Agreement', desc:'Agreement for audiobook production and distribution.', type:'Rights', icon:'fa-headphones', bg:'#fef3d8', color:'#d97706', status:'draft', updated:'May 20, 2026', by:'Reina Morgan', clauses:11 },
+  { id:9, name:'Old Standard Agreement', desc:'Previous version of standard publishing agreement.', type:'Publishing', icon:'fa-file', bg:'#eef0f2', color:'#5b6470', status:'archived', updated:'May 15, 2026', by:'Reina Morgan', clauses:9 },
+  { id:10, name:'Film & Adaptation Rights Agreement', desc:'Agreement for film, TV, and other adaptations.', type:'Rights', icon:'fa-film', bg:'#fde3e3', color:'#e0384d', status:'active', updated:'May 10, 2026', by:'Reina Morgan', clauses:13 },
+  { id:11, name:'Merchandising Rights Agreement', desc:'Agreement covering merchandising and licensing rights.', type:'Rights', icon:'fa-tags', bg:'#ece3fd', color:'#7c5cfc', status:'active', updated:'May 6, 2026', by:'Reina Morgan', clauses:8 },
+  { id:12, name:'Co-Authorship Agreement', desc:'Agreement between two or more co-authors of a work.', type:'Legal', icon:'fa-user-group', bg:'#e3ecfd', color:'#2f7de1', status:'active', updated:'May 2, 2026', by:'Reina Morgan', clauses:10 },
+];
+
+const HISTORY = [
+  { icon:'fa-pen', label:'Edited by Reina Morgan', date:'Jun 15, 2026' },
+  { icon:'fa-check', label:'Marked as Active', date:'Jun 15, 2026' },
+  { icon:'fa-copy', label:'Duplicated from v1.2', date:'Feb 3, 2026' },
+  { icon:'fa-plus', label:'Template created', date:'Jan 18, 2026' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════ */
+let selectedId = TEMPLATES[0].id;
+let activeDpTab = 'preview';
+
+function statusPillHtml(status){
+  if (status === 'active') return `<span class="status-pill"><span class="dot"></span>Active</span>`;
+  if (status === 'draft') return `<span class="status-pill draft"><span class="dot"></span>Draft</span>`;
+  return `<span class="status-pill archived"><span class="dot"></span>Archived</span>`;
+}
+
+function currentFiltered(){
+  const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+  const statusFilter = document.getElementById('statusFilter').value;
+  return TEMPLATES.filter(t => {
+    const matchesQ = !q || t.name.toLowerCase().includes(q) || t.type.toLowerCase().includes(q);
+    const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
+    return matchesQ && matchesStatus;
+  });
+}
+
+function renderTable(list){
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="5"><i class="fas fa-folder-open"></i>No templates match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map(t => `
+    <tr class="${t.id === selectedId ? 'selected' : ''}" data-id="${t.id}">
+      <td data-label="Template Name">
+        <div class="tmpl-cell">
+          <div class="tmpl-icn" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
+          <div>
+            <div class="tmpl-name">${t.name}</div>
+            <div class="tmpl-desc">${t.desc}</div>
+          </div>
+        </div>
+      </td>
+      <td data-label="Type" class="plain-cell">${t.type}</td>
+      <td data-label="Status">${statusPillHtml(t.status)}</td>
+      <td data-label="Last Updated" class="meta-cell"><b>${t.updated}</b>by ${t.by}</td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="Preview" onclick="event.stopPropagation();selectTemplate(${t.id})"><i class="fas fa-eye"></i></button>
+          <button class="act-btn" title="Edit" onclick="event.stopPropagation();toast('Editing \\'${t.name}\\'…')"><i class="fas fa-pen"></i></button>
+          <button class="act-btn" title="More" onclick="event.stopPropagation();toast('More actions for \\'${t.name}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  body.querySelectorAll('tr[data-id]').forEach(row => {
+    row.addEventListener('click', () => selectTemplate(Number(row.dataset.id)));
+  });
+}
+
+function renderPageInfo(count){
+  document.getElementById('pageInfo').innerHTML = `Showing <b>${count ? 1 : 0}</b> to <b>${count}</b> of <b>12</b> templates`;
+}
+
+function dpPreviewHtml(t){
+  return `
+    <h3>${t.name.toUpperCase()}</h3>
+    <p>This ${t.name} ("Agreement") is made and entered into on this ___ day of ___________, 20__, by and between:</p>
+    <p><b>NovelX Platform Ltd.</b>, a company registered under the laws of ___________, with its principal place of business at ___________ ("Publisher")</p>
+    <p>and</p>
+    <p>___________________________ ("Author")</p>
+    <div class="clause">1. GRANT OF RIGHTS</div>
+    <p>The Author grants to the Publisher a ${t.type === 'Rights' ? 'limited, revocable' : 'non-exclusive, worldwide'}, royalty-bearing license to publish, reproduce, distribute, and make available the Work in digital and/or print formats.</p>
+    <div class="clause">2. AUTHOR REPRESENTATIONS</div>
+    <p>The Author represents and warrants that the Work is original and does not infringe any third-party rights.</p>
+    <div class="clause">3. ROYALTIES AND PAYMENT</div>
+    <p>The Publisher shall pay royalties to the Author as set forth in the Revenue Share Agreement associated with this template.</p>
+    <div class="clause">4. TERM AND TERMINATION</div>
+    <p>This Agreement shall commence on the Effective Date and remain in effect until terminated by either party in accordance with this Agreement.</p>
+  `;
+}
+
+function dpDetailsHtml(t){
+  return `
+    <div class="dp-details-list">
+      <div class="dp-detail-row"><span>Template ID</span><b>TPL-${String(t.id).padStart(4,'0')}</b></div>
+      <div class="dp-detail-row"><span>Type</span><b>${t.type}</b></div>
+      <div class="dp-detail-row"><span>Status</span><b>${t.status.charAt(0).toUpperCase()+t.status.slice(1)}</b></div>
+      <div class="dp-detail-row"><span>Clauses</span><b>${t.clauses}</b></div>
+      <div class="dp-detail-row"><span>Last Updated</span><b>${t.updated}</b></div>
+      <div class="dp-detail-row"><span>Updated By</span><b>${t.by}</b></div>
+    </div>`;
+}
+
+function dpClausesHtml(t){
+  const labels = ['Grant of Rights','Author Representations','Royalties and Payment','Term and Termination','Confidentiality','Indemnification','Governing Law','Assignment','Force Majeure','Notices','Entire Agreement','Amendments','Severability','Dispute Resolution'];
+  return `<div class="dp-clause-list">${Array.from({length:t.clauses}).map((_,i) => `
+    <div class="dp-clause-item"><i class="fas fa-check"></i>${i+1}. ${labels[i] || 'Additional Clause'}</div>`).join('')}</div>`;
+}
+
+function dpHistoryHtml(){
+  return `<div>${HISTORY.map(h => `
+    <div class="dp-history-item"><i class="fas ${h.icon}"></i><div><b>${h.label}</b><span>${h.date}</span></div></div>`).join('')}</div>`;
+}
+
+function renderDetailPanel(){
+  const t = TEMPLATES.find(x => x.id === selectedId) || TEMPLATES[0];
+  const panel = document.getElementById('detailPanel');
+  panel.innerHTML = `
+    <div class="dp-head">
+      <div class="dp-icn" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
+      <div>
+        <div class="dp-title-row"><div class="dp-title">${t.name}</div>${statusPillHtml(t.status)}</div>
+        <div class="dp-meta">Type: ${t.type} Agreement<br/>Last updated: ${t.updated} by ${t.by}</div>
+      </div>
+    </div>
+    <div class="dp-tabs">
+      <div class="dp-tab${activeDpTab==='preview'?' active':''}" data-tab="preview">Preview</div>
+      <div class="dp-tab${activeDpTab==='details'?' active':''}" data-tab="details">Details</div>
+      <div class="dp-tab${activeDpTab==='clauses'?' active':''}" data-tab="clauses">Clauses (${t.clauses})</div>
+      <div class="dp-tab${activeDpTab==='history'?' active':''}" data-tab="history">History</div>
+    </div>
+    <div class="dp-preview">
+      ${activeDpTab === 'preview' ? dpPreviewHtml(t) :
+        activeDpTab === 'details' ? dpDetailsHtml(t) :
+        activeDpTab === 'clauses' ? dpClausesHtml(t) : dpHistoryHtml()}
+    </div>
+    <div class="dp-actions">
+      <button class="dp-btn" onclick="toast('Editing \\'${t.name}\\'…')"><i class="fas fa-pen"></i> Edit Template</button>
+      <button class="dp-btn" onclick="toast('Duplicating \\'${t.name}\\'…')"><i class="fas fa-copy"></i> Duplicate</button>
+      <button class="dp-btn danger" onclick="toast('Archiving \\'${t.name}\\'…')"><i class="fas fa-box-archive"></i> Archive</button>
+    </div>
+  `;
+  panel.querySelectorAll('.dp-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      activeDpTab = tab.dataset.tab;
+      renderDetailPanel();
+    });
+  });
+}
+
+function selectTemplate(id){
+  selectedId = id;
+  activeDpTab = 'preview';
+  refresh();
+}
+
+function refresh(){
+  const list = currentFiltered();
+  renderTable(list);
+  renderPageInfo(list.length);
+  renderDetailPanel();
+}
+
+/* ── Pagination (visual) ── */
+function renderPagination(){
+  const wrap = document.getElementById('pageBtns');
+  const pages = [1,2];
+  wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
+    pages.map(p => `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
+    `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
+  wrap.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+/* ── Wiring ── */
+document.getElementById('addBtn').addEventListener('click', () => toast('Opening new template form…'));
+document.getElementById('tableSearch').addEventListener('input', refresh);
+document.getElementById('statusFilter').addEventListener('change', refresh);
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+renderPagination();
+refresh();
+</script>
+</body>
+</html>

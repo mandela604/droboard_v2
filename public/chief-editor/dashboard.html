@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55);position:relative;overflow:hidden}
+.welcome-banner::after{content:'';position:absolute;top:-40%;right:-6%;width:260px;height:260px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);pointer-events:none}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:640px}
+.welcome-stats{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap}
+.welcome-stat b{font-size:19px;font-weight:800;display:block}
+.welcome-stat span{font-size:10.5px;opacity:.75;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.dash-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px}
+.panel-link{font-size:11.5px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:5px}
+.panel-link:hover{text-decoration:underline}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+/* mini-btn (shared action button style) */
+.mini-btn{font-size:10.5px;font-weight:700;padding:6px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn.ghost{background:transparent}
+
+/* pending contract cards */
+.ct-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:9px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ct-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.ct-body{flex:1;min-width:180px}
+.ct-title{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ct-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.ct-actions{display:flex;gap:7px;flex-shrink:0}
+.signed-chip{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--green-bg);color:var(--green);text-transform:uppercase;white-space:nowrap}
+.type-chip{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);white-space:nowrap}
+
+/* quick actions */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qa-card{border:1px solid var(--border);border-radius:12px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.15s;background:var(--card)}
+.qa-card:hover{border-color:var(--accent);background:var(--hover)}
+.qa-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.qa-txt b{font-size:12px;font-weight:700;display:block;line-height:1.3}
+.qa-txt span{font-size:10px;color:var(--text-faint);font-weight:600}
+.qa-count{margin-left:auto;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--red-bg);color:var(--red);flex-shrink:0}
+
+/* payments list */
+.pay-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border)}
+.pay-row:last-child{border-bottom:none}
+.pay-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.pay-body{flex:1;min-width:0}
+.pay-name{font-size:12.5px;font-weight:700}
+.pay-role{font-size:10px;color:var(--text-faint);margin-top:1px}
+.pay-amt{font-size:13px;font-weight:800;flex-shrink:0}
+.pay-due{font-size:9.5px;color:var(--text-faint);text-align:right;flex-shrink:0}
+.pay-status{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.pay-status.due{background:var(--amber-bg);color:var(--amber)}
+.pay-status.scheduled{background:var(--blue-bg);color:var(--blue)}
+
+/* flagged reports */
+.rpt-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:9px}
+.rpt-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.rpt-target{font-size:12.5px;font-weight:700}
+.sev-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.sev-pill.high{background:var(--red-bg);color:var(--red)}
+.sev-pill.medium{background:var(--amber-bg);color:var(--amber)}
+.sev-pill.low{background:var(--table-head);color:var(--text-faint)}
+.target-pill{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--purple-bg);color:var(--purple)}
+.rpt-reason{font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:6px}
+.rpt-meta{font-size:10px;color:var(--text-faint);margin-bottom:9px}
+.rpt-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* quota tracker */
+.quota-row{padding:10px 2px;border-bottom:1px solid var(--border)}
+.quota-row:last-child{border-bottom:none}
+.quota-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.quota-avatar{width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.quota-name{font-size:12px;font-weight:700;flex:1;min-width:0}
+.quota-num{font-size:11px;font-weight:700;color:var(--text-muted);flex-shrink:0}
+.quota-bar-track{height:6px;background:var(--table-head);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.quota-bar-fill{height:100%;border-radius:4px}
+.quota-bar-fill.on-track{background:var(--blue)}
+.quota-bar-fill.behind{background:var(--red)}
+.quota-bar-fill.ahead{background:var(--green)}
+.quota-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.quota-status{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.quota-status.on-track{background:var(--blue-bg);color:var(--blue)}
+.quota-status.behind{background:var(--red-bg);color:var(--red)}
+.quota-status.ahead{background:var(--green-bg);color:var(--green)}
+
+/* activity feed */
+.act-row{display:flex;gap:11px;padding:10px 2px}
+.act-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.act-body{flex:1;min-width:0}
+.act-text{font-size:12px;line-height:1.5;color:var(--text)}
+.act-text b{font-weight:700}
+.act-time{font-size:10px;color:var(--text-faint);font-weight:600;margin-top:2px}
+
+.empty-msg{text-align:center;padding:20px;color:var(--text-faint);font-size:12px}
+.skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.qa-grid{grid-template-columns:1fr}.welcome-stats{gap:16px}.ct-actions{width:100%}.ct-actions .mini-btn{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Chief Editor · Platform Overview</div>
+    <div class="welcome-title" id="greetTitle">Welcome back 👋</div>
+    <div class="welcome-sub">Contracts waiting on your signature, flagged authors needing a final call, senior editor quotas, and payments due — all in one place.</div>
+    <div class="welcome-stats" id="welcomeStats"></div>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="dash-grid">
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-file-signature" style="color:var(--blue)"></i> Pending Contract Signatures</h2>
+          <span class="count-chip" id="ctCount">—</span>
+        </div>
+        <div class="panel-sub">Author has already signed — forwarded by their senior editor for your final countersignature.</div>
+        <div id="contractsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-flag" style="color:var(--red)"></i> Flagged for Your Review</h2>
+          <a class="panel-link" href="reports-actions.html">View all <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="panel-sub">Plagiarism flags from senior editors, and reports authors sent directly to you. Only you can suspend, ban, or remove.</div>
+        <div id="reportsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-bolt" style="color:var(--accent)"></i> Quick Actions</h2>
+        </div>
+        <div class="qa-grid" id="qaGrid"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-bullseye" style="color:var(--purple)"></i> Senior Editor Quotas</h2>
+          <a class="panel-link" href="senior-editors.html">Manage <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="panel-sub">Monthly author-invite target per editor.</div>
+        <div id="quotaList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-money-check-dollar" style="color:var(--green)"></i> Payments Due</h2>
+          <a class="panel-link" href="contracts-payments.html">Run payments <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div id="paymentsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-clock-rotate-left" style="color:var(--text-faint)"></i> Recent Activity</h2>
+        </div>
+        <div id="activityList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+<script>
+'use strict';
+const shell = ChiefEditorSidebar.attach('#dashRoot',{
+  activeItem:'dashboard', title:'Dashboard', subtitle:'Platform-wide editorial overview',
+  user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'}, notifCount:6,
+  searchPlaceholder:'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+
+let DATA = null;
+
+function greetByHour(){
+  const h = new Date().getHours();
+  if(h<12) return 'Good morning, Adaeze 👋';
+  if(h<18) return 'Good afternoon, Adaeze 👋';
+  return 'Good evening, Adaeze 👋';
+}
+
+async function init(){
+  document.getElementById('greetTitle').textContent = greetByHour();
+  DATA = await ChiefEditorData.getDashboard();
+  renderAll();
+}
+
+function renderAll(){
+  renderWelcomeStats();
+  renderStatCards();
+  renderContracts();
+  renderReports();
+  renderQuickActions();
+  renderQuotas();
+  renderPayments();
+  renderActivity();
+}
+
+function renderWelcomeStats(){
+  document.getElementById('welcomeStats').innerHTML = `
+    <div class="welcome-stat"><b>${DATA.pendingContracts.length}</b><span>Awaiting Signature</span></div>
+    <div class="welcome-stat"><b>${DATA.flaggedReports.length}</b><span>Flagged for Review</span></div>
+    <div class="welcome-stat"><b>${DATA.editorsBehindQuota}</b><span>Editors Behind Quota</span></div>
+    <div class="welcome-stat"><b>${DATA.paymentsDueTotal}</b><span>Payments Due</span></div>`;
+}
+
+function renderStatCards(){
+  const stats = [
+    { n:DATA.totalSeniorEditors, l:'Senior Editors', ico:'fa-people-group', cls:'accent' },
+    { n:DATA.totalAuthors, l:'Total Authors', ico:'fa-user-tie', cls:'blue' },
+    { n:DATA.pendingContracts.length, l:'Pending Signatures', ico:'fa-file-signature', cls:'purple' },
+    { n:DATA.flaggedReports.length, l:'Flagged Reports', ico:'fa-flag', cls:'red' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+/* ── Pending Contract Signatures ── */
+function renderContracts(){
+  document.getElementById('ctCount').textContent = DATA.pendingContracts.length;
+  const box = document.getElementById('contractsList');
+  if(!DATA.pendingContracts.length){ box.innerHTML = `<div class="empty-msg">Nothing waiting on your signature.</div>`; return; }
+  box.innerHTML = DATA.pendingContracts.map(c=>`
+    <div class="ct-card" data-id="${c.id}">
+      <img class="ct-avatar" src="${c.avatar}" alt="${c.author}"/>
+      <div class="ct-body">
+        <div class="ct-title">${c.author} <span class="type-chip">${c.type}</span> <span class="signed-chip"><i class="fas fa-check"></i> Author signed</span></div>
+        <div class="ct-meta">Forwarded by ${c.forwardedBy} · ${c.submitted}</div>
+      </div>
+      <div class="ct-actions">
+        <button class="mini-btn danger" data-action="decline-contract" data-id="${c.id}"><i class="fas fa-xmark"></i> Decline</button>
+        <button class="mini-btn primary" data-action="sign-contract" data-id="${c.id}"><i class="fas fa-signature"></i> Sign</button>
+      </div>
+    </div>`).join('');
+}
+
+function signContract(id){
+  const c = DATA.pendingContracts.find(x=>x.id===id); if(!c) return;
+  DATA.pendingContracts = DATA.pendingContracts.filter(x=>x.id!==id);
+  toast(`✅ Countersigned "${c.type}" for ${c.author}`);
+  renderContracts(); renderStatCards(); renderWelcomeStats();
+}
+function declineContract(id){
+  const c = DATA.pendingContracts.find(x=>x.id===id); if(!c) return;
+  DATA.pendingContracts = DATA.pendingContracts.filter(x=>x.id!==id);
+  toast(`↩️ Declined "${c.type}" for ${c.author}`);
+  renderContracts(); renderStatCards(); renderWelcomeStats();
+}
+
+/* ── Flagged Reports (only Chief Editor can act) ── */
+function renderReports(){
+  const box = document.getElementById('reportsList');
+  const top = DATA.flaggedReports.slice(0,3);
+  if(!top.length){ box.innerHTML = `<div class="empty-msg">Nothing flagged right now.</div>`; return; }
+  box.innerHTML = top.map(r=>`
+    <div class="rpt-card" data-id="${r.id}">
+      <div class="rpt-top">
+        <span class="rpt-target">${r.target}</span>
+        <span class="target-pill">${r.targetType==='author'?'Author':'Senior Editor'}</span>
+        <span class="sev-pill ${r.severity}">${r.severity}</span>
+      </div>
+      <div class="rpt-reason">${r.reason}</div>
+      <div class="rpt-meta">Reported by ${r.reportedBy} · ${r.filed}</div>
+      <div class="rpt-actions">
+        ${r.targetType==='author' ? `
+          <button class="mini-btn ghost" data-action="dismiss-report" data-id="${r.id}">Dismiss</button>
+          <button class="mini-btn" data-action="suspend-report" data-id="${r.id}"><i class="fas fa-pause"></i> Suspend</button>
+          <button class="mini-btn danger" data-action="ban-report" data-id="${r.id}"><i class="fas fa-ban"></i> Ban</button>
+          <button class="mini-btn danger" data-action="remove-report" data-id="${r.id}"><i class="fas fa-trash"></i> Remove</button>
+        ` : `
+          <button class="mini-btn ghost" data-action="dismiss-report" data-id="${r.id}">Dismiss</button>
+          <button class="mini-btn" data-action="open-editors" data-id="${r.id}"><i class="fas fa-people-group"></i> Review Editor</button>
+        `}
+      </div>
+    </div>`).join('');
+}
+
+function resolveReport(id, msg){
+  DATA.flaggedReports = DATA.flaggedReports.filter(x=>x.id!==id);
+  toast(msg);
+  renderReports(); renderStatCards(); renderWelcomeStats();
+}
+
+/* ── Quick Actions ── */
+function renderQuickActions(){
+  document.getElementById('qaGrid').innerHTML = DATA.quickActions.map(qa=>`
+    <div class="qa-card" data-href="${qa.href||'#'}">
+      <div class="qa-ico" style="background:${BG_MAP[qa.cls]};color:${ICO_MAP[qa.cls]}"><i class="fas ${qa.icon}"></i></div>
+      <div class="qa-txt"><b>${qa.label}</b><span>${qa.count?qa.count+' waiting':'Ready when you are'}</span></div>
+      ${qa.count?`<span class="qa-count">${qa.count}</span>`:''}
+    </div>`).join('');
+  document.querySelectorAll('.qa-card').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      const href = c.dataset.href;
+      if(href && href!=='#') location.href = href; else toast('Opening…');
+    });
+  });
+}
+
+/* ── Senior Editor Quotas ── */
+function renderQuotas(){
+  document.getElementById('quotaList').innerHTML = DATA.editorQuotas.map(q=>{
+    const pct = Math.min(100, Math.round(q.invited/q.target*100));
+    return `
+    <div class="quota-row">
+      <div class="quota-top">
+        <img class="quota-avatar" src="${q.avatar}" alt="${q.name}"/>
+        <div class="quota-name">${q.name}</div>
+        <div class="quota-num">${q.invited}/${q.target}</div>
+      </div>
+      <div class="quota-bar-track"><div class="quota-bar-fill ${q.status}" style="width:${pct}%"></div></div>
+      <div class="quota-foot">
+        <span class="quota-status ${q.status}">${q.status==='behind'?'Behind':q.status==='ahead'?'Ahead':'On track'}</span>
+        ${q.status==='behind' ? `<button class="mini-btn danger" data-action="quota-action" data-name="${q.name}"><i class="fas fa-triangle-exclamation"></i> Take Action</button>` : `<span style="font-size:9.5px;color:var(--text-faint)">Due ${q.deadline}</span>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Payments Due ── */
+function renderPayments(){
+  document.getElementById('paymentsList').innerHTML = DATA.paymentsQueue.map(p=>`
+    <div class="pay-row">
+      <img class="pay-avatar" src="${p.avatar}" alt="${p.name}"/>
+      <div class="pay-body">
+        <div class="pay-name">${p.name}</div>
+        <div class="pay-role">${p.role}</div>
+      </div>
+      <div>
+        <div class="pay-amt">${p.amount}</div>
+        <div class="pay-due">${p.due}</div>
+      </div>
+      <span class="pay-status ${p.status}">${p.status}</span>
+    </div>`).join('');
+}
+
+/* ── Activity feed ── */
+function renderActivity(){
+  document.getElementById('activityList').innerHTML = DATA.recentActivity.map(a=>`
+    <div class="act-row">
+      <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
+      <div class="act-body">
+        <div class="act-text">${a.text}</div>
+        <div class="act-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ── Event delegation ── */
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+
+  if(action==='sign-contract') signContract(id);
+  else if(action==='decline-contract') declineContract(id);
+  else if(action==='dismiss-report') resolveReport(id, '✅ Report dismissed');
+  else if(action==='suspend-report'){
+    const r = DATA.flaggedReports.find(x=>x.id===id);
+    resolveReport(id, `⏸️ Suspended ${r ? r.target : 'author'}`);
+  }
+  else if(action==='ban-report'){
+    const r = DATA.flaggedReports.find(x=>x.id===id);
+    resolveReport(id, `🚫 Banned ${r ? r.target : 'author'}`);
+  }
+  else if(action==='remove-report'){
+    const r = DATA.flaggedReports.find(x=>x.id===id);
+    resolveReport(id, `🗑️ Removed ${r ? r.target : 'author'} from the platform`);
+  }
+  else if(action==='open-editors'){ location.href = 'senior-editors.html'; }
+  else if(action==='quota-action'){ toast(`⚠️ Opening options for ${el.dataset.name}…`); }
+});
+
+init();
+</script>
+</body>
+</html>

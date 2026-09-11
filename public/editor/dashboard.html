@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Editor Dashboard — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens come from
+     shared/dashboard-shell.js — this page just uses the same var()s so
+     it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:3px}
+
+  /* Extra tokens not provided by the shell but used on this page */
+  :root{
+    --accent-dim:rgba(255,0,80,.12);
+    --accent-hover:#ff4d7a;
+    --card-hover:#13141a;
+    --border-soft:rgba(255,255,255,.04);
+    --text-dim:#a0a8b2;
+    --shadow-md:0 8px 30px rgba(0,0,0,.5);
+    --yellow:#fbbf24;--yellow-bg:rgba(251,191,36,.12);
+    --purple:#a78bfa;--purple-bg:rgba(167,139,250,.12);
+  }
+  html[data-theme="dark"]{
+    --accent-dim:rgba(255,0,80,.16);
+    --card-hover:#1e1a38;
+    --border-soft:rgba(255,255,255,.04);
+    --text-dim:#a29fbf;
+    --shadow-md:0 8px 30px rgba(0,0,0,.5);
+  }
+  html[data-theme="light"]{
+    --accent-dim:rgba(255,0,80,.10);
+    --card-hover:#f7f6fd;
+    --border-soft:#f0eff7;
+    --text-dim:#71708a;
+    --shadow-md:0 4px 20px rgba(20,10,50,.08);
+  }
+
+  /* ── PAGE CONTENT ── */
+  .page{padding:24px 28px 60px;max-width:1500px}
+
+  /* ══════════════════════════════════════════════════════════════════
+     WELCOME BANNER
+     ══════════════════════════════════════════════════════════════════ */
+  .welcome-banner{background:linear-gradient(135deg,var(--accent),#cc0040);border-radius:18px;padding:24px 28px;margin-bottom:22px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .welcome-left{flex:1;min-width:240px}
+  .welcome-title{font-size:20px;font-weight:800;line-height:1.3}
+  .welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.5}
+  .welcome-stats{display:flex;gap:24px;margin-top:16px;flex-wrap:wrap}
+  .welcome-stat{text-align:center}
+  .welcome-stat-num{font-size:22px;font-weight:800;line-height:1}
+  .welcome-stat-lbl{font-size:11px;opacity:.75;margin-top:3px}
+  .welcome-right{flex-shrink:0}
+  .welcome-btn{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);border-radius:12px;padding:12px 22px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .welcome-btn:hover{background:rgba(255,255,255,.3)}
+
+  /* ══════════════════════════════════════════════════════════════════
+     STAT CARDS
+     ══════════════════════════════════════════════════════════════════ */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 18px 16px;transition:.2s;box-shadow:var(--shadow)}
+  .stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+  .stat-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:14px}
+  .stat-icon.accent{background:var(--accent-dim);color:var(--accent)}
+  .stat-icon.green{background:var(--green-bg);color:var(--green)}
+  .stat-icon.yellow{background:var(--yellow-bg);color:var(--yellow)}
+  .stat-icon.blue{background:var(--blue-bg);color:var(--blue)}
+  .stat-icon.purple{background:var(--purple-bg);color:var(--purple)}
+  .stat-label{font-size:11.5px;color:var(--text-faint);font-weight:600;margin-bottom:6px}
+  .stat-value{font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.01em}
+  .stat-delta{font-size:10.5px;font-weight:700;display:flex;align-items:center;gap:4px}
+  .stat-delta.up{color:var(--green)}
+  .stat-delta.down{color:var(--red)}
+  .stat-delta span{color:var(--text-faint);font-weight:500}
+
+  /* ══════════════════════════════════════════════════════════════════
+     QUICK ACTIONS GRID
+     ══════════════════════════════════════════════════════════════════ */
+  .quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .qa-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:.2s;box-shadow:var(--shadow)}
+  .qa-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--accent)}
+  .qa-card:active{transform:translateY(0)}
+  .qa-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;margin:0 auto 10px}
+  .qa-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px}
+  .qa-sub{font-size:10.5px;color:var(--text-faint);line-height:1.4}
+
+  /* ══════════════════════════════════════════════════════════════════
+     TWO COLUMN LAYOUT
+     ══════════════════════════════════════════════════════════════════ */
+  .two-col-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;margin-bottom:20px;align-items:start}
+
+  /* ── PANEL (shared card wrapper) ── */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+  .panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 4px}
+  .panel-title{font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px}
+  .panel-link{font-size:11.5px;font-weight:700;color:var(--accent);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:4px}
+  .panel-link:hover{color:var(--accent-hover)}
+
+  /* ── ACTIVITY LIST ── */
+  .activity-list{padding:6px 8px 4px}
+  .activity-row{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;border-radius:12px;transition:.15s;cursor:pointer}
+  .activity-row:hover{background:var(--card-hover)}
+  .activity-icon{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .activity-icon.accent{background:var(--accent-dim);color:var(--accent)}
+  .activity-icon.green{background:var(--green-bg);color:var(--green)}
+  .activity-icon.yellow{background:var(--yellow-bg);color:var(--yellow)}
+  .activity-icon.blue{background:var(--blue-bg);color:var(--blue)}
+  .activity-icon.purple{background:var(--purple-bg);color:var(--purple)}
+  .activity-content{flex:1;min-width:0}
+  .activity-text{font-size:12px;color:var(--text);line-height:1.45;margin-bottom:2px}
+  .activity-text strong{font-weight:700}
+  .activity-text .highlight{color:var(--accent);font-weight:600}
+  .activity-time{font-size:10.5px;color:var(--text-faint)}
+  .activity-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:6px}
+
+  /* ── PANEL FOOTER ── */
+  .panel-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 18px;border-top:1px solid var(--border-soft);margin-top:6px;flex-wrap:wrap;gap:10px}
+  .footer-note{font-size:11px;color:var(--text-faint)}
+  .footer-btn{font-size:11.5px;font-weight:700;color:var(--accent);cursor:pointer;background:var(--accent-dim);padding:8px 14px;border-radius:9px;transition:.15s;white-space:nowrap}
+  .footer-btn:hover{background:var(--accent);color:#fff}
+
+  /* ══════════════════════════════════════════════════════════════════
+     RESPONSIVE
+     ══════════════════════════════════════════════════════════════════ */
+  @media (max-width: 1100px){
+    .stats-grid{grid-template-columns:repeat(2,1fr)}
+    .quick-actions{grid-template-columns:repeat(2,1fr)}
+    .two-col-grid{grid-template-columns:1fr}
+  }
+  @media (max-width: 900px){
+    .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+    .quick-actions{grid-template-columns:1fr 1fr;gap:10px}
+    .welcome-banner{padding:18px 16px}
+    .welcome-title{font-size:17px}
+    .welcome-right{width:100%}
+    .welcome-btn{justify-content:center}
+  }
+  @media (max-width: 480px){
+    .stats-grid{grid-template-columns:1fr}
+    .quick-actions{grid-template-columns:1fr}
+    .stat-card{padding:14px}
+    .stat-value{font-size:18px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page">
+
+    <!-- WELCOME BANNER -->
+    <div class="welcome-banner">
+      <div class="welcome-left">
+        <div class="welcome-title">Editor Dashboard</div>
+        <div class="welcome-sub">Manage your publishing platform — authors, contracts, content, and finances all in one place.</div>
+        <div class="welcome-stats">
+          <div class="welcome-stat"><div class="welcome-stat-num">1,284</div><div class="welcome-stat-lbl">Total Books</div></div>
+          <div class="welcome-stat"><div class="welcome-stat-num">312</div><div class="welcome-stat-lbl">Active Authors</div></div>
+          <div class="welcome-stat"><div class="welcome-stat-num">24</div><div class="welcome-stat-lbl">Active Contracts</div></div>
+        </div>
+      </div>
+      <div class="welcome-right">
+        <button class="welcome-btn" onclick="location.href='authors.html'">
+          <i class="fas fa-users"></i> Manage Authors
+        </button>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon accent"><i class="fas fa-book"></i></div>
+        <div class="stat-label">Total Books</div>
+        <div class="stat-value" style="color:var(--accent)">1,284</div>
+        <div class="stat-delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> 892 published <span>3.4M views</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-users"></i></div>
+        <div class="stat-label">Active Authors</div>
+        <div class="stat-value" style="color:var(--green)">312</div>
+        <div class="stat-delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> 18 new <span>this month</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow"><i class="fas fa-file-contract"></i></div>
+        <div class="stat-label">Active Contracts</div>
+        <div class="stat-value" style="color:var(--yellow)">24</div>
+        <div class="stat-delta"><span style="color:var(--text-faint)">3 awaiting signature</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-label">Monthly Revenue</div>
+        <div class="stat-value" style="color:var(--blue)">$90.6K</div>
+        <div class="stat-delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +12% <span>vs last month</span></div>
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800;color:var(--text)">Quick Actions</div>
+    </div>
+    <div class="quick-actions">
+      <div class="qa-card" onclick="location.href='authors.html'">
+        <div class="qa-icon" style="background:var(--accent-dim);color:var(--accent)"><i class="fas fa-user-pen"></i></div>
+        <div class="qa-title">Manage Authors</div>
+        <div class="qa-sub">View & manage author profiles</div>
+      </div>
+      <div class="qa-card" onclick="location.href='contracts.html'">
+        <div class="qa-icon" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-file-signature"></i></div>
+        <div class="qa-title">Contracts</div>
+        <div class="qa-sub">Manage all platform contracts</div>
+      </div>
+      <div class="qa-card" onclick="location.href='book-management.html'">
+        <div class="qa-icon" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-book"></i></div>
+        <div class="qa-title">Book Management</div>
+        <div class="qa-sub">Manage all platform books</div>
+      </div>
+      <div class="qa-card" onclick="location.href='announcements.html'">
+        <div class="qa-icon" style="background:var(--yellow-bg);color:var(--yellow)"><i class="fas fa-bullhorn"></i></div>
+        <div class="qa-title">Announcements</div>
+        <div class="qa-sub">Post platform updates</div>
+      </div>
+    </div>
+
+    <!-- TWO COLUMN: Recent Activity + Platform Overview -->
+    <div class="two-col-grid">
+      <!-- Recent Activity -->
+      <div class="panel">
+        <div class="panel-hdr">
+          <div class="panel-title"><i class="fas fa-bolt" style="color:var(--accent);font-size:12px"></i> Recent Activity</div>
+          <div class="panel-link" onclick="location.href='activity-logs.html'">View all <i class="fas fa-arrow-right" style="font-size:9px"></i></div>
+        </div>
+        <div class="activity-list" id="activityList"></div>
+        <div class="panel-footer">
+          <div class="footer-note">Showing latest 6 activities</div>
+          <div class="footer-btn" onclick="location.href='activity-logs.html'">See all activity</div>
+        </div>
+      </div>
+
+      <!-- Platform Overview -->
+      <div class="panel">
+        <div class="panel-hdr">
+          <div class="panel-title"><i class="fas fa-chart-pie" style="color:var(--green);font-size:12px"></i> Platform Overview</div>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:flex;flex-direction:column;gap:14px" id="platformOverview"></div>
+        </div>
+        <div class="panel-footer">
+          <div class="footer-note">Live platform stats</div>
+          <div class="footer-btn" onclick="location.href='earnings-overview.html'">Earnings <i class="fas fa-arrow-right" style="font-size:9px"></i></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'dashboard.html',
+  title: 'Editor Dashboard',
+  subtitle: 'Manage your publishing platform — authors, contracts, content, and finances.',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 8,
+  searchPlaceholder: 'Search stories, authors, contracts…',
+  onBellClick: () => { location.href = 'notification-center.html'; },
+  onSearch: (value) => {
+    if (value) toast('Searching: ' + value);
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   LOAD DATA
+   ═══════════════════════════════════════════════════════════ */
+async function loadDashboard() {
+  try {
+    const activities = window.DroboardAPI ? await DroboardAPI.getRecentActivity() : null;
+    renderActivities(activities);
+  } catch (e) {
+    renderActivities();
+  }
+  renderPlatformOverview();
+}
+
+function renderActivities(activities) {
+  const list = document.getElementById('activityList');
+  const defaults = [
+    { icon: 'accent', emoji: '\ud83d\udcdd', text: '<strong>Ifeanyi_Story</strong> signed a contract for <span class="highlight">Runaway Bride</span>', time: '2h ago', unread: true },
+    { icon: 'green', emoji: '\u2705', text: '<strong>Chiamaka_N</strong> story approved \u2014 <span class="highlight">Grandmother\'s Will</span>', time: '4h ago', unread: true },
+    { icon: 'yellow', emoji: '\ud83d\udcb0', text: 'Revenue share of <strong>\u20a64,200</strong> credited from Ada_Writes reads', time: '5h ago', unread: true },
+    { icon: 'blue', emoji: '\ud83d\udcda', text: '<strong>Dami_Cole</strong> submitted new story: <span class="highlight">"She Rejected Me 3 Times"</span>', time: '7h ago', unread: false },
+    { icon: 'accent', emoji: '\ud83d\udce7', text: '<strong>Kemi_A</strong> opened contract email for <span class="highlight">"He Deleted Our Photos"</span>', time: '1d ago', unread: false },
+    { icon: 'green', emoji: '\ud83d\udee1\ufe0f', text: 'Admin <strong>co-signed</strong> premium contract for <span class="highlight">Chiamaka_N</span>', time: '1d ago', unread: false },
+  ];
+  var data = activities && activities.length ? activities : defaults;
+  list.innerHTML = data.map(function(a) {
+    return '<div class="activity-row" onclick="toast(\'Opening activity…\')">' +
+      '<div class="activity-icon ' + a.icon + '">' + a.emoji + '</div>' +
+      '<div class="activity-content">' +
+        '<div class="activity-text">' + a.text + '</div>' +
+        '<div class="activity-time">' + a.time + '</div>' +
+      '</div>' +
+      (a.unread ? '<div class="activity-dot"></div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function renderPlatformOverview() {
+  var el = document.getElementById('platformOverview');
+  var items = [
+    { label: 'Published Books', value: '892', pct: 69, color: 'var(--green)' },
+    { label: 'Draft Books', value: '47', pct: 4, color: 'var(--amber)' },
+    { label: 'Flagged Content', value: '18', pct: 1, color: 'var(--red)' },
+    { label: 'Pending Verifications', value: '18', pct: 6, color: 'var(--blue)' },
+    { label: 'Active Contracts', value: '24', pct: 19, color: 'var(--accent)' },
+  ];
+  el.innerHTML = items.map(function(it) {
+    return '<div style="display:flex;align-items:center;gap:12px">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:5px">' +
+          '<span style="font-size:11.5px;font-weight:700;color:var(--text)">' + it.label + '</span>' +
+          '<span style="font-size:11.5px;font-weight:800;color:' + it.color + '">' + it.value + '</span>' +
+        '</div>' +
+        '<div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden">' +
+          '<div style="height:100%;width:' + it.pct + '%;background:' + it.color + ';border-radius:4px;transition:width .6s"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
+</arg_value>
+</write_to_file>

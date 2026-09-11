@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Contracts &amp; Payments — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:16px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{color:#fff;filter:brightness(1.05)}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.mini-btn.danger:hover{background:var(--red);color:#fff}
+.mini-btn.warn{background:var(--amber-bg);border-color:transparent;color:var(--amber)}
+.mini-btn.warn:hover{background:var(--amber);color:#fff}
+.mini-btn.green{background:var(--green-bg);border-color:transparent;color:var(--green)}
+.mini-btn.green:hover{background:var(--green);color:#fff}
+.mini-btn.ghost{background:transparent}
+.mini-btn:disabled{opacity:.4;cursor:default;pointer-events:none}
+
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.tb-search{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px}
+.tb-search input{border:none;background:none;outline:none;font-size:12.5px;font-family:inherit;color:var(--text);width:100%}
+.tb-search i{color:var(--text-faint);font-size:12px}
+.tb-select{font-size:12px;font-weight:600;font-family:inherit;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;cursor:pointer;outline:none}
+
+.ctr-list{display:flex;flex-direction:column;gap:12px}
+.ctr-card{border:1px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:.15s;background:var(--input-bg)}
+.ctr-card:hover{border-color:var(--accent);box-shadow:0 8px 22px -12px rgba(255,0,80,.35)}
+.ctr-card.is-paused{opacity:.82}
+.ctr-card.is-archived{opacity:.65}
+
+.ctr-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ctr-id{font-size:9.5px;color:var(--text-faint);font-weight:700;background:var(--table-head);padding:2px 8px;border-radius:8px}
+.ctr-name{font-size:14px;font-weight:800;line-height:1.3;flex:1;min-width:140px}
+.ctr-type-badge{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ctr-status{font-size:9px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.ctr-status.active{background:var(--green-bg);color:var(--green)}
+.ctr-status.paused{background:var(--amber-bg);color:var(--amber)}
+.ctr-status.archived{background:var(--table-head);color:var(--text-faint)}
+.ctr-status.draft{background:var(--blue-bg);color:var(--blue)}
+
+.ctr-desc{font-size:12px;color:var(--text-muted);line-height:1.55;margin-bottom:12px}
+
+.ctr-terms{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.ctr-chip{font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text-muted)}
+.ctr-chip strong{color:var(--text);font-weight:800}
+.ctr-chip.bonus{background:var(--green-bg);border-color:transparent;color:var(--green)}
+.ctr-chip.bonus strong{color:var(--green)}
+.ctr-chip.royalty{background:var(--blue-bg);border-color:transparent;color:var(--blue)}
+.ctr-chip.royalty strong{color:var(--blue)}
+
+.ctr-meta-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+.ctr-meta-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.02em;display:block;margin-bottom:2px}
+.ctr-meta-item b{font-size:12.5px;font-weight:700;color:var(--text)}
+
+.ctr-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
+.pg-info{font-size:11px;color:var(--text-faint);font-weight:600}
+.pg-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;row-gap:6px}
+.pg-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pg-btn.active{background:var(--accent);border-color:transparent;color:#fff}
+.pg-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.pg-ellipsis{font-size:11px;color:var(--text-faint);padding:0 2px}
+
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
+.modal-box.small{max-width:420px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:2}
+.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.modal-close{width:30px;height:30px;border-radius:8px;border:none;background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--red-bg);color:var(--red)}
+.modal-body{padding:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+
+.form-row{margin-bottom:16px}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px;display:block}
+.form-input,.form-select,.form-textarea{width:100%;font-family:inherit;font-size:12.5px;color:var(--text);
+  background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.5}
+.form-hint{font-size:10px;color:var(--text-faint);margin-top:5px}
+.form-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--input-bg);
+  border:1px solid var(--input-border);border-radius:9px;padding:11px 13px}
+.form-toggle-row span{font-size:12px;font-weight:700}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch-track{position:absolute;inset:0;background:var(--input-border);border-radius:20px;cursor:pointer;transition:.15s}
+.switch-track::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked + .switch-track{background:var(--accent)}
+.switch input:checked + .switch-track::before{transform:translateX(16px)}
+.field-error{color:var(--red);font-size:10.5px;margin-top:5px;display:none}
+.form-input.invalid{border-color:var(--red)}
+
+.dt-status-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.dt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px}
+.dt-item{background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.dt-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:4px}
+.dt-item b{font-size:13.5px;font-weight:800}
+.dt-section{margin-bottom:18px}
+.dt-section h4{font-size:11.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.dt-section p{font-size:12.5px;line-height:1.65;color:var(--text)}
+.dt-clause{font-size:12px;line-height:1.6;color:var(--text-muted);padding:10px 12px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px}
+
+.confirm-icon{width:52px;height:52px;border-radius:50%;background:var(--red-bg);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;margin:4px auto 16px}
+.confirm-text{text-align:center;font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:6px}
+.confirm-text b{color:var(--text)}
+
+#toastHost{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast-item{background:var(--sidebar-bg);color:#fff;font-size:12.5px;font-weight:600;padding:12px 16px;border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:9px;min-width:220px;
+  animation:toast-in .2s ease;}
+.toast-item i{color:var(--accent)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:900px){
+  .dt-grid{grid-template-columns:1fr 1fr}
+  .form-row.two-col,.form-row.three-col{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  body{overflow-x:hidden}
+  .grid-4{grid-template-columns:1fr}
+  .stat-card{padding:13px 14px}
+  .panel{padding:15px}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .tb-select{width:100%}
+  .pagination{justify-content:center}
+  #toastHost{left:16px;right:16px;bottom:16px}
+  .toast-item{min-width:0}
+  .dt-grid{grid-template-columns:1fr}
+  .ctr-card{padding:14px}
+  .ctr-meta-row{gap:12px;row-gap:8px}
+  .ctr-actions{gap:6px}
+  .ctr-actions .mini-btn{flex:1 1 calc(50% - 6px);justify-content:center}
+  .modal-box{max-height:94vh;border-radius:14px}
+  .modal-head{padding:16px}
+  .modal-body{padding:16px}
+  .modal-foot{padding:12px 16px 16px;flex-wrap:wrap}
+  .modal-foot .mini-btn{flex:1 1 auto;justify-content:center}
+}
+
+
+
+
+/* Accordion contract cards */
+.ctr-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  cursor: default;
+  transition: .15s;
+  background: var(--input-bg);
+  overflow: hidden;
+}
+.ctr-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 8px 22px -12px rgba(255,0,80,.35);
+}
+.ctr-card.is-paused { opacity: .82; }
+.ctr-card.is-archived { opacity: .65; }
+
+.ctr-summary {
+  padding: 16px 18px;
+  cursor: pointer;
+  user-select: none;
+}
+.ctr-summary:hover { background: rgba(255,0,80,.02); }
+
+.ctr-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.ctr-id {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  font-weight: 700;
+  background: var(--table-head);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.ctr-name {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 140px;
+}
+.ctr-type-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.ctr-status {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ctr-status.active { background: var(--green-bg); color: var(--green); }
+.ctr-status.paused { background: var(--amber-bg); color: var(--amber); }
+.ctr-status.archived { background: var(--table-head); color: var(--text-faint); }
+.ctr-status.draft { background: var(--blue-bg); color: var(--blue); }
+
+.ctr-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+.ctr-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 0;
+}
+.ctr-chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.ctr-chip strong { color: var(--text); font-weight: 800; }
+.ctr-chip.bonus { background: var(--green-bg); border-color: transparent; color: var(--green); }
+.ctr-chip.bonus strong { color: var(--green); }
+.ctr-chip.royalty { background: var(--blue-bg); border-color: transparent; color: var(--blue); }
+.ctr-chip.royalty strong { color: var(--blue); }
+
+/* Accordion body (hidden by default) */
+.ctr-body {
+  display: none;
+  padding: 0 18px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+.ctr-card.is-open .ctr-body { display: block; }
+
+.ctr-meta-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 14px 0 12px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.ctr-meta-item span {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  display: block;
+  margin-bottom: 2px;
+}
+.ctr-meta-item b { font-size: 12.5px; font-weight: 700; color: var(--text); }
+
+.ctr-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* Chevron indicator */
+.ctr-chevron {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 12px;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.ctr-card.is-open .ctr-chevron { transform: rotate(180deg); }
+
+.ctr-card.is-paused .ctr-name,
+.ctr-card.is-archived .ctr-name {
+  opacity: 1;
+}
+
+
+
+
+
+</style>
+</head>
+<body>
+<div id="dashRoot">
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-file-contract" style="color:var(--accent)"></i> Contract Offers</h2>
+      <span class="count-chip" id="resultCount">—</span>
+    </div>
+    <div class="panel-sub">Standard agreements senior editors send to writers — royalty terms, signup bonuses, completion targets, and profit-share rules. Not tied to a specific author until signed.</div>
+
+    <div class="toolbar">
+      <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name, type, or terms…"/></div>
+      <select class="tb-select" id="typeFilter"><option value="all">All types</option></select>
+      <select class="tb-select" id="statusFilter">
+        <option value="all">All statuses</option>
+        <option value="active">Active</option>
+        <option value="paused">Paused</option>
+        <option value="draft">Draft</option>
+        <option value="archived">Archived</option>
+      </select>
+      <select class="tb-select" id="sortSelect">
+        <option value="edited">Sort: Recently edited</option>
+        <option value="name">Sort: Name (A–Z)</option>
+        <option value="royalty-desc">Sort: Highest royalty</option>
+        <option value="usage">Sort: Most used</option>
+      </select>
+      <button class="mini-btn primary" id="addBtn"><i class="fas fa-plus"></i> New Contract</button>
+    </div>
+
+    <div class="ctr-list" id="ctrList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading contracts…</div></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- Add / Edit modal — contract only, no writers -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="formModalTitle"><i class="fas fa-file-signature" style="color:var(--accent)"></i> New Contract</h3>
+      <button class="modal-close" data-close="formModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fId"/>
+
+      <div class="form-row">
+        <label class="form-label">Contract name</label>
+        <input class="form-input" id="fName" placeholder="e.g. Starter Non-Exclusive Agreement"/>
+        <div class="field-error" id="fNameErr">Name is required.</div>
+      </div>
+
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label">Contract type</label>
+          <select class="form-select" id="fType">
+            <option>Non-Exclusive</option>
+            <option>Exclusive</option>
+            <option>Royalty Share</option>
+            <option>Work-for-Hire</option>
+            <option>Option</option>
+            <option>Serial Rights</option>
+            <option>Renewal</option>
+            <option>Amendment</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Term length</label>
+          <select class="form-select" id="fTerm">
+            <option>6 Months</option>
+            <option selected>1 Year</option>
+            <option>2 Years</option>
+            <option>Indefinite</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row three-col">
+        <div>
+          <label class="form-label">Royalty rate (%)</label>
+          <input class="form-input" id="fRoyalty" type="number" min="0" max="100" step="1" placeholder="15"/>
+          <div class="form-hint">0 for flat-fee / work-for-hire</div>
+        </div>
+        <div>
+          <label class="form-label">Signup bonus min ($)</label>
+          <input class="form-input" id="fBonusMin" type="number" min="0" step="5" placeholder="20"/>
+        </div>
+        <div>
+          <label class="form-label">Signup bonus max ($)</label>
+          <input class="form-input" id="fBonusMax" type="number" min="0" step="5" placeholder="50"/>
+          <div class="form-hint">Typical non-exclusive: $20–$50</div>
+        </div>
+      </div>
+
+      <div class="form-row three-col">
+        <div>
+          <label class="form-label">Completion target (reads)</label>
+          <input class="form-input" id="fCompTarget" type="number" min="0" step="1000" placeholder="150000"/>
+          <div class="form-hint">e.g. 150,000 completed reads</div>
+        </div>
+        <div>
+          <label class="form-label">Window (months)</label>
+          <input class="form-input" id="fCompMonths" type="number" min="1" placeholder="6"/>
+          <div class="form-hint">Must hit target within this window</div>
+        </div>
+        <div>
+          <label class="form-label">Profit-share threshold ($)</label>
+          <input class="form-input" id="fProfitThresh" type="number" min="0" step="5" placeholder="20"/>
+          <div class="form-hint">Bonus payable once story hits this</div>
+        </div>
+      </div>
+
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label">Profit-share bonus ($)</label>
+          <input class="form-input" id="fProfitBonus" type="number" min="0" step="5" placeholder="50"/>
+        </div>
+        <div>
+          <label class="form-label">Auto-renew</label>
+          <div class="form-toggle-row">
+            <span id="fAutoLabel">Off</span>
+            <label class="switch">
+              <input type="checkbox" id="fAuto"/>
+              <span class="switch-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="fStatus">
+          <option value="active">Active</option>
+          <option value="draft">Draft</option>
+          <option value="paused">Paused</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="fDesc" placeholder="What this contract is for and when senior editors should offer it…"></textarea>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Key clauses</label>
+        <textarea class="form-textarea" id="fClauses" placeholder="e.g. Non-exclusive serial rights · Signup $20–$50 on first published chapter · Completion bonus at 150k reads within 6 months · Profit-share bonus at $20 threshold…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="formModal">Cancel</button>
+      <button class="mini-btn primary" id="fSaveBtn"><i class="fas fa-check"></i> Save Contract</button>
+    </div>
+  </div>
+</div>
+
+<!-- Details modal -->
+<div class="modal-overlay" id="detailsModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="dModalTitle"><i class="fas fa-file-lines" style="color:var(--accent)"></i> Contract Details</h3>
+      <button class="modal-close" data-close="detailsModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="detailsBody"></div>
+    <div class="modal-foot" id="detailsFoot"></div>
+  </div>
+</div>
+
+<!-- Confirm remove -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Remove Contract</h3>
+      <button class="modal-close" data-close="confirmModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon"><i class="fas fa-trash"></i></div>
+      <div class="confirm-text">Remove <b id="confirmName"></b>? This can't be undone. Existing signed copies are unaffected.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="confirmModal">Cancel</button>
+      <button class="mini-btn danger" id="confirmDeleteBtn"><i class="fas fa-trash"></i> Remove</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+<script>
+'use strict';
+const shell = ChiefEditorSidebar.attach('#dashRoot', {
+  activeItem: 'contracts-payments',
+  title: 'Contracts & Payments',
+  subtitle: 'Contract offers senior editors send to writers — bonuses, royalties & terms',
+  notifCount: 6,
+  searchPlaceholder: 'Search anything…',
+});
+
+const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
+const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
+const TYPE_ICO = {
+  'Non-Exclusive':'fa-file-pen', 'Exclusive':'fa-file-shield', 'Renewal':'fa-rotate',
+  'Amendment':'fa-file-circle-plus', 'Work-for-Hire':'fa-file-invoice',
+  'Royalty Share':'fa-chart-pie', 'Option':'fa-handshake', 'Serial Rights':'fa-book-open'
+};
+
+const TYPE_CLS = {
+  'Non-Exclusive': 'green',
+  'Exclusive': 'purple',
+  'Renewal': 'green',
+  'Amendment': 'amber',
+  'Work-for-Hire': 'red',
+  'Royalty Share': 'green',
+  'Option': 'blue',
+  'Serial Rights': 'purple'
+};
+
+let CONTRACTS = [];
+const PAGE_SIZE = 6;
+let filtered = [];
+let currentPage = 1;
+let editingId = null;
+let pendingDeleteId = null;
+
+function fmtNum(n){
+  n = n || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+function fmtUSD(n){ return '$' + (Number(n) || 0); }
+function fmtBonusRange(min, max){
+  min = Number(min) || 0; max = Number(max) || 0;
+  if (!min && !max) return null;
+  if (min === max) return fmtUSD(min);
+  return fmtUSD(min) + '–' + fmtUSD(max);
+}
+
+function toast(msg, icon){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.innerHTML = `<i class="fas ${icon || 'fa-circle-check'}"></i><span>${msg}</span>`;
+  host.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = '.25s'; setTimeout(() => el.remove(), 250); }, 2600);
+}
+window.toast = toast;
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) closeModal(ov.id); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.show').forEach(ov => closeModal(ov.id));
+});
+
+async function init(){
+  CONTRACTS = await ChiefEditorData.getContractTemplates();
+  populateTypeFilter();
+  renderStatCards();
+  applyFilters();
+}
+
+function populateTypeFilter(){
+  const types = [...new Set(CONTRACTS.map(c => c.type))].sort();
+  const sel = document.getElementById('typeFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">All types</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (types.includes(current)) sel.value = current;
+}
+
+function renderStatCards(){
+  const active = CONTRACTS.filter(c => c.status === 'active').length;
+  const totalUsage = CONTRACTS.reduce((s, c) => s + (c.usageCount || 0), 0);
+  const withBonus = CONTRACTS.filter(c => (c.signupBonusMin || c.signupBonusMax)).length;
+  const stats = [
+    { n: CONTRACTS.length, l: 'Total Contracts', ico: 'fa-file-contract', cls: 'accent' },
+    { n: active, l: 'Active Offers', ico: 'fa-circle-check', cls: 'green' },
+    { n: withBonus, l: 'With Signup Bonus', ico: 'fa-gift', cls: 'blue' },
+    { n: totalUsage, l: 'Times Sent', ico: 'fa-paper-plane', cls: 'purple' },
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function applyFilters(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const typeVal = document.getElementById('typeFilter').value;
+  const statusVal = document.getElementById('statusFilter').value;
+  const sortVal = document.getElementById('sortSelect').value;
+
+  filtered = CONTRACTS.filter(c => {
+    const blob = [c.name, c.type, c.description, c.clauses].join(' ').toLowerCase();
+    const matchesQ = !q || blob.includes(q);
+    const matchesType = typeVal === 'all' || c.type === typeVal;
+    const matchesStatus = statusVal === 'all' || c.status === statusVal;
+    return matchesQ && matchesType && matchesStatus;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortVal === 'name') return a.name.localeCompare(b.name);
+    if (sortVal === 'royalty-desc') return (b.royaltyRate || 0) - (a.royaltyRate || 0);
+    if (sortVal === 'usage') return (b.usageCount || 0) - (a.usageCount || 0);
+    return (b.lastEdited || '').localeCompare(a.lastEdited || '') || a.name.localeCompare(b.name);
+  });
+
+  currentPage = 1;
+  renderList();
+}
+
+function renderList(){
+  document.getElementById('resultCount').textContent = filtered.length;
+  const box = document.getElementById('ctrList');
+
+  if (!filtered.length) {
+    box.innerHTML = `<div class="empty-msg"><i class="fas fa-folder-open" style="font-size:20px;margin-bottom:8px;display:block"></i>No contracts match your filters.</div>`;
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  box.innerHTML = pageItems.map(c => {
+    const cls = TYPE_CLS[c.type] || 'blue';
+    const bonus = fmtBonusRange(c.signupBonusMin, c.signupBonusMax);
+    const paused = c.status === 'paused';
+    const archived = c.status === 'archived';
+
+    return `
+    <div class="ctr-card ${paused ? 'is-paused' : ''} ${archived ? 'is-archived' : ''}" data-id="${c.id}">
+      <div class="ctr-summary" data-toggle="${c.id}">
+        <div class="ctr-top">
+          <span class="ctr-id">${c.id}</span>
+         <div class="ctr-name" style="color:${ICO_MAP[cls]}">${c.name}</div>
+          <div class="ctr-type-badge" style="background:${BG_MAP[cls]};color:${ICO_MAP[cls]}">
+            <i class="fas ${TYPE_ICO[c.type] || 'fa-file'}"></i> ${c.type}
+          </div>
+          <span class="ctr-status ${c.status}">${c.status}</span>
+          <i class="fas fa-chevron-down ctr-chevron"></i>
+        </div>
+
+        <div class="ctr-desc">${c.description || 'No description.'}</div>
+
+        <div class="ctr-terms">
+          ${c.royaltyRate != null ? `<span class="ctr-chip royalty"><strong>${c.royaltyRate}%</strong> royalty</span>` : ''}
+          <span class="ctr-chip"><strong>${c.termLength}</strong> term</span>
+          ${bonus ? `<span class="ctr-chip bonus"><strong>${bonus}</strong> signup bonus</span>` : ''}
+          ${c.completionTarget ? `<span class="ctr-chip bonus"><strong>${fmtNum(c.completionTarget)}</strong> reads / ${c.completionWindowMonths || '?'} mo</span>` : ''}
+          ${c.profitShareThreshold != null ? `<span class="ctr-chip bonus">Bonus at <strong>$${c.profitShareThreshold}</strong> profit</span>` : ''}
+          ${c.autoRenew ? `<span class="ctr-chip">Auto-renew</span>` : ''}
+        </div>
+      </div>
+
+      <div class="ctr-body">
+        <div class="ctr-meta-row">
+          <div class="ctr-meta-item"><span>Royalty</span><b>${c.royaltyRate != null ? c.royaltyRate + '%' : '—'}</b></div>
+          <div class="ctr-meta-item"><span>Signup Bonus</span><b>${bonus || '—'}</b></div>
+          <div class="ctr-meta-item"><span>Term</span><b>${c.termLength}</b></div>
+          <div class="ctr-meta-item"><span>Times Sent</span><b>${c.usageCount || 0}</b></div>
+          <div class="ctr-meta-item"><span>Last Edited</span><b>${c.lastEdited || '—'}</b></div>
+        </div>
+
+        <div class="ctr-actions">
+          <button class="mini-btn ghost" data-action="view" data-id="${c.id}"><i class="fas fa-eye"></i> Details</button>
+          <button class="mini-btn" data-action="edit" data-id="${c.id}"><i class="fas fa-pen"></i> Edit</button>
+          ${c.status === 'active'
+            ? `<button class="mini-btn warn" data-action="pause" data-id="${c.id}"><i class="fas fa-pause"></i> Pause</button>`
+            : (c.status === 'paused' || c.status === 'draft')
+              ? `<button class="mini-btn green" data-action="activate" data-id="${c.id}"><i class="fas fa-play"></i> Activate</button>`
+              : ''}
+          <button class="mini-btn danger" data-action="remove" data-id="${c.id}"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderPagination(totalPages);
+}
+
+
+function renderPagination(totalPages){
+  const box = document.getElementById('pagination');
+  if (totalPages <= 1) {
+    box.innerHTML = `<div class="pg-info">Showing all ${filtered.length} contract${filtered.length === 1 ? '' : 's'}</div>`;
+    return;
+  }
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(filtered.length, currentPage * PAGE_SIZE);
+  let pageBtns = '';
+  const pushBtn = (p) => { pageBtns += `<button class="pg-btn${p === currentPage ? ' active' : ''}" data-page="${p}">${p}</button>`; };
+  const pushEllipsis = () => { pageBtns += `<span class="pg-ellipsis">…</span>`; };
+
+  if (totalPages <= 7) {
+    for (let p = 1; p <= totalPages; p++) pushBtn(p);
+  } else {
+    pushBtn(1);
+    if (currentPage > 3) pushEllipsis();
+    const from = Math.max(2, currentPage - 1);
+    const to = Math.min(totalPages - 1, currentPage + 1);
+    for (let p = from; p <= to; p++) pushBtn(p);
+    if (currentPage < totalPages - 2) pushEllipsis();
+    pushBtn(totalPages);
+  }
+
+  box.innerHTML = `
+    <div class="pg-info">Showing ${start}–${end} of ${filtered.length} contracts</div>
+    <div class="pg-controls">
+      <button class="pg-btn" id="pgPrev" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
+      ${pageBtns}
+      <button class="pg-btn" id="pgNext" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+
+  document.getElementById('pgPrev')?.addEventListener('click', () => { currentPage--; renderList(); });
+  document.getElementById('pgNext')?.addEventListener('click', () => { currentPage++; renderList(); });
+  box.querySelectorAll('[data-page]').forEach(b => {
+    b.addEventListener('click', () => { currentPage = parseInt(b.dataset.page, 10); renderList(); });
+  });
+}
+
+document.getElementById('fAuto').addEventListener('change', e => {
+  document.getElementById('fAutoLabel').textContent = e.target.checked ? 'On' : 'Off';
+});
+
+function resetForm(){
+  document.getElementById('fId').value = '';
+  document.getElementById('fName').value = '';
+  document.getElementById('fType').value = 'Non-Exclusive';
+  document.getElementById('fTerm').value = '1 Year';
+  document.getElementById('fRoyalty').value = '15';
+  document.getElementById('fBonusMin').value = '20';
+  document.getElementById('fBonusMax').value = '50';
+  document.getElementById('fCompTarget').value = '150000';
+  document.getElementById('fCompMonths').value = '6';
+  document.getElementById('fProfitThresh').value = '20';
+  document.getElementById('fProfitBonus').value = '50';
+  document.getElementById('fAuto').checked = false;
+  document.getElementById('fAutoLabel').textContent = 'Off';
+  document.getElementById('fStatus').value = 'active';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fClauses').value = '';
+  document.getElementById('fNameErr').style.display = 'none';
+  document.getElementById('fName').classList.remove('invalid');
+}
+
+function openAddModal(){
+  editingId = null;
+  resetForm();
+  document.getElementById('formModalTitle').innerHTML = '<i class="fas fa-file-signature" style="color:var(--accent)"></i> New Contract';
+  openModal('formModal');
+}
+
+function openEditModal(id){
+  const c = CONTRACTS.find(x => x.id === id); if (!c) return;
+  editingId = id;
+  resetForm();
+  document.getElementById('fId').value = c.id;
+  document.getElementById('fName').value = c.name || '';
+  document.getElementById('fType').value = c.type;
+  document.getElementById('fTerm').value = c.termLength;
+  document.getElementById('fRoyalty').value = c.royaltyRate ?? '';
+  document.getElementById('fBonusMin').value = c.signupBonusMin ?? 0;
+  document.getElementById('fBonusMax').value = c.signupBonusMax ?? 0;
+  document.getElementById('fCompTarget').value = c.completionTarget ?? '';
+  document.getElementById('fCompMonths').value = c.completionWindowMonths ?? '';
+  document.getElementById('fProfitThresh').value = c.profitShareThreshold ?? '';
+  document.getElementById('fProfitBonus').value = c.profitShareBonus ?? 0;
+  document.getElementById('fAuto').checked = !!c.autoRenew;
+  document.getElementById('fAutoLabel').textContent = c.autoRenew ? 'On' : 'Off';
+  document.getElementById('fStatus').value = c.status || 'active';
+  document.getElementById('fDesc').value = c.description || '';
+  document.getElementById('fClauses').value = c.clauses || '';
+  document.getElementById('formModalTitle').innerHTML = '<i class="fas fa-pen" style="color:var(--accent)"></i> Edit Contract';
+  openModal('formModal');
+}
+
+document.getElementById('addBtn').addEventListener('click', openAddModal);
+
+document.getElementById('fSaveBtn').addEventListener('click', () => {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) {
+    document.getElementById('fNameErr').style.display = 'block';
+    document.getElementById('fName').classList.add('invalid');
+    return;
+  }
+  document.getElementById('fNameErr').style.display = 'none';
+  document.getElementById('fName').classList.remove('invalid');
+
+  const payload = {
+    name,
+    type: document.getElementById('fType').value,
+    termLength: document.getElementById('fTerm').value,
+    royaltyRate: document.getElementById('fRoyalty').value === '' ? null : parseFloat(document.getElementById('fRoyalty').value),
+    signupBonusMin: parseFloat(document.getElementById('fBonusMin').value) || 0,
+    signupBonusMax: parseFloat(document.getElementById('fBonusMax').value) || 0,
+    completionTarget: document.getElementById('fCompTarget').value === '' ? null : parseFloat(document.getElementById('fCompTarget').value),
+    completionWindowMonths: document.getElementById('fCompMonths').value === '' ? null : parseFloat(document.getElementById('fCompMonths').value),
+    profitShareThreshold: document.getElementById('fProfitThresh').value === '' ? null : parseFloat(document.getElementById('fProfitThresh').value),
+    profitShareBonus: parseFloat(document.getElementById('fProfitBonus').value) || 0,
+    autoRenew: document.getElementById('fAuto').checked,
+    status: document.getElementById('fStatus').value,
+    description: document.getElementById('fDesc').value.trim(),
+    clauses: document.getElementById('fClauses').value.trim(),
+    currency: 'USD',
+  };
+
+  if (editingId) {
+    const c = CONTRACTS.find(x => x.id === editingId);
+    Object.assign(c, payload, { lastEdited: 'Jul 30, 2026' });
+    toast(`Saved “${name}”`, 'fa-circle-check');
+  } else {
+    CONTRACTS.unshift(Object.assign({
+      id: 'TPL-' + String(100 + CONTRACTS.length + Math.floor(Math.random() * 50)).padStart(3, '0'),
+      usageCount: 0,
+      created: 'Jul 30, 2026',
+      lastEdited: 'Jul 30, 2026',
+    }, payload));
+    toast(`Created “${name}”`, 'fa-circle-plus');
+  }
+
+  closeModal('formModal');
+  populateTypeFilter();
+  renderStatCards();
+  applyFilters();
+});
+
+function openDetailsModal(id){
+  const c = CONTRACTS.find(x => x.id === id); if (!c) return;
+  const cls = TYPE_CLS[c.type] || 'blue';
+  const bonus = fmtBonusRange(c.signupBonusMin, c.signupBonusMax);
+
+  document.getElementById('dModalTitle').innerHTML = `<i class="fas ${TYPE_ICO[c.type] || 'fa-file'}" style="color:var(--accent)"></i> ${c.id}`;
+
+  document.getElementById('detailsBody').innerHTML = `
+    <div class="dt-status-row">
+      <span class="ctr-status ${c.status}">${c.status}</span>
+      <span class="ctr-type-badge" style="background:${BG_MAP[cls]};color:${ICO_MAP[cls]}">
+        <i class="fas ${TYPE_ICO[c.type] || 'fa-file'}"></i> ${c.type}
+      </span>
+      <span style="font-size:11px;color:var(--text-faint);font-weight:600">Edited ${c.lastEdited || '—'}</span>
+    </div>
+
+    <div style="font-size:16px;font-weight:800;margin-bottom:8px">${c.name}</div>
+    <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;margin-bottom:18px">${c.description || ''}</p>
+
+    <div class="dt-grid">
+      <div class="dt-item"><span>Royalty rate</span><b>${c.royaltyRate != null ? c.royaltyRate + '%' : '—'}</b></div>
+      <div class="dt-item"><span>Signup bonus</span><b>${bonus || '—'}</b></div>
+      <div class="dt-item"><span>Term</span><b>${c.termLength}</b></div>
+      <div class="dt-item"><span>Auto-renew</span><b>${c.autoRenew ? 'Yes' : 'No'}</b></div>
+      <div class="dt-item"><span>Times sent</span><b>${c.usageCount || 0}</b></div>
+      <div class="dt-item"><span>Created</span><b>${c.created || '—'}</b></div>
+    </div>
+
+    ${(c.completionTarget || c.profitShareThreshold != null) ? `
+    <div class="dt-section">
+      <h4><i class="fas fa-gift" style="font-size:10px;color:var(--accent)"></i> Bonus structure</h4>
+      <div class="dt-grid">
+        ${c.completionTarget ? `<div class="dt-item"><span>Completion target</span><b>${fmtNum(c.completionTarget)} reads</b></div>` : ''}
+        ${c.completionWindowMonths ? `<div class="dt-item"><span>Window</span><b>${c.completionWindowMonths} months</b></div>` : ''}
+        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>Profit threshold</span><b>$${c.profitShareThreshold}</b></div>` : ''}
+        ${c.profitShareBonus ? `<div class="dt-item"><span>Profit bonus</span><b>$${c.profitShareBonus}</b></div>` : ''}
+      </div>
+    </div>` : ''}
+
+    ${c.clauses ? `
+    <div class="dt-section">
+      <h4><i class="fas fa-list-check" style="font-size:10px;color:var(--accent)"></i> Key clauses</h4>
+      <div class="dt-clause">${c.clauses}</div>
+    </div>` : ''}
+  `;
+
+  const canToggle = c.status === 'active' || c.status === 'paused' || c.status === 'draft';
+  document.getElementById('detailsFoot').innerHTML = `
+    <button class="mini-btn ghost" data-close="detailsModal">Close</button>
+    <button class="mini-btn" id="dEditBtn"><i class="fas fa-pen"></i> Edit</button>
+    ${canToggle
+      ? (c.status === 'active'
+        ? `<button class="mini-btn warn" id="dToggleBtn"><i class="fas fa-pause"></i> Pause</button>`
+        : `<button class="mini-btn green" id="dToggleBtn"><i class="fas fa-play"></i> Activate</button>`)
+      : ''}
+    <button class="mini-btn danger" id="dRemoveBtn"><i class="fas fa-trash"></i> Remove</button>`;
+
+  document.getElementById('dEditBtn').addEventListener('click', () => { closeModal('detailsModal'); openEditModal(c.id); });
+  const toggleBtn = document.getElementById('dToggleBtn');
+  if (toggleBtn) toggleBtn.addEventListener('click', () => { toggleStatus(c.id); closeModal('detailsModal'); });
+  document.getElementById('dRemoveBtn').addEventListener('click', () => { closeModal('detailsModal'); openConfirmDelete(c.id); });
+
+  openModal('detailsModal');
+}
+
+function toggleStatus(id){
+  const c = CONTRACTS.find(x => x.id === id); if (!c) return;
+  if (c.status === 'active') {
+    c.status = 'paused';
+    toast(`Paused “${c.name}”`, 'fa-circle-pause');
+  } else {
+    c.status = 'active';
+    toast(`Activated “${c.name}”`, 'fa-circle-play');
+  }
+  renderStatCards();
+  applyFiltersKeepPage();
+}
+
+function applyFiltersKeepPage(){
+  const keep = currentPage;
+  applyFilters();
+  currentPage = keep;
+  renderList();
+}
+
+function openConfirmDelete(id){
+  const c = CONTRACTS.find(x => x.id === id); if (!c) return;
+  pendingDeleteId = id;
+  document.getElementById('confirmName').textContent = c.name;
+  openModal('confirmModal');
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+  if (!pendingDeleteId) return;
+  const c = CONTRACTS.find(x => x.id === pendingDeleteId);
+  CONTRACTS = CONTRACTS.filter(x => x.id !== pendingDeleteId);
+  closeModal('confirmModal');
+  toast(`Removed “${c ? c.name : 'contract'}”`, 'fa-trash');
+  pendingDeleteId = null;
+  populateTypeFilter();
+  renderStatCards();
+  applyFilters();
+});
+
+document.getElementById('ctrList').addEventListener('click', e => {
+  // Action buttons inside the expanded body
+  const actionEl = e.target.closest('[data-action]');
+  if (actionEl) {
+    e.stopPropagation();
+    const id = actionEl.dataset.id;
+    const action = actionEl.dataset.action;
+    if (action === 'view') openDetailsModal(id);
+    else if (action === 'edit') openEditModal(id);
+    else if (action === 'pause' || action === 'activate') toggleStatus(id);
+    else if (action === 'remove') openConfirmDelete(id);
+    return;
+  }
+
+  // Toggle accordion
+  const summary = e.target.closest('[data-toggle]');
+  if (summary) {
+    const card = summary.closest('.ctr-card');
+    if (card) {
+      // Optional: close other open cards (accordion behavior)
+      document.querySelectorAll('.ctr-card.is-open').forEach(other => {
+        if (other !== card) other.classList.remove('is-open');
+      });
+      card.classList.toggle('is-open');
+    }
+  }
+});
+
+let searchDebounce;
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(applyFilters, 180);
+});
+document.getElementById('typeFilter').addEventListener('change', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortSelect').addEventListener('change', applyFilters);
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<title>Genre Hub · DroBoard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
+  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
+  --bg:#d8d8d8;--l1:#ffffff;--l2:#f1f1f1;--l3:#ffffff;--l4:#e8e8e8;
+  --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.05);--bd-acc:rgba(255,0,80,.25);
+  --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
+  --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;
+  --nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px);
+}
+[data-theme="dark"]{
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
+  --tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);
+  font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.phone{
+  width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;
+  box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden;
+  padding-bottom:calc(var(--safe-b) + var(--nav-h) + 16px);
+}
+@media (min-width:421px){.phone{box-shadow:0 0 50px rgba(0,0,0,.14)}}
+
+.top-bar{
+  position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;
+  padding:11px 12px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);
+}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.top-icon-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--tx-muted);flex-shrink:0;position:relative;
+}
+.top-icon-btn:active{transform:scale(.92)}
+.top-center{flex:1;text-align:center;min-width:0;padding:0 8px}
+.top-title{font-size:15px;font-weight:800;color:var(--tx-high);letter-spacing:-.02em}
+.top-sub{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-top:1px}
+.notif-dot{
+  position:absolute;top:4px;right:4px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;
+  background:var(--acc);color:#fff;font-size:7px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--l1);
+}
+
+.hero{position:relative;width:100%;height:188px;overflow:hidden;background:#1a1030;flex-shrink:0}
+.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.2) 0%,rgba(0,0,0,.82) 100%)}
+.hero-body{position:relative;z-index:1;height:100%;padding:16px 14px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff}
+.hero-icon{
+  width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--purple));
+  display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;
+  box-shadow:0 4px 14px rgba(255,0,80,.35);
+}
+.hero-name{font-size:24px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.hero-tag{font-size:12.5px;opacity:.88;font-weight:500;margin:4px 0 12px}
+.hero-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hero-stats{display:flex;gap:12px;flex-wrap:wrap}
+.hero-stat{font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:4px}
+.hero-stat span{opacity:.7;font-weight:500}
+.join-btn{
+  flex-shrink:0;padding:8px 14px;border-radius:20px;font-size:12px;font-weight:800;
+  display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.14);color:#fff;
+}
+.join-btn.on{background:#fff;color:var(--tx-high);border-color:#fff}
+.join-btn.on i{color:var(--green)}
+
+.blurb{
+  margin:0;padding:12px 14px;background:rgba(255,0,80,.06);border-bottom:1px solid var(--bd-acc);
+  display:flex;gap:9px;align-items:flex-start;
+}
+.blurb i{color:var(--acc);font-size:13px;margin-top:2px;flex-shrink:0}
+.blurb p{font-size:12px;line-height:1.5;color:var(--tx-body);font-weight:500}
+
+.tabs{
+  display:flex;gap:0;padding:0 8px;border-bottom:1px solid var(--bd);background:var(--l1);
+  position:sticky;top:57px;z-index:150;overflow-x:auto;
+}
+.tab{
+  flex-shrink:0;padding:12px 12px;font-size:12.5px;font-weight:700;color:var(--tx-faint);
+  border-bottom:2.5px solid transparent;white-space:nowrap;
+}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+
+.composer{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);background:var(--l1);cursor:pointer;
+}
+.composer-av{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--l2)}
+.composer-ph{flex:1;background:var(--l2);border-radius:20px;padding:10px 14px;font-size:13px;color:var(--tx-faint);font-weight:500}
+.composer-go{
+  width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;
+  box-shadow:0 0 12px var(--glow-sm);
+}
+
+.sort-row{
+  display:flex;gap:7px;padding:10px 14px;overflow-x:auto;border-bottom:1px solid var(--bd);background:var(--l1);
+  position:sticky;top:101px;z-index:140;
+}
+.sort-chip{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:20px;
+  font-size:11.5px;font-weight:700;background:var(--l2);border:1px solid var(--bd);color:var(--tx-muted);
+}
+.sort-chip.active{background:rgba(255,0,80,.08);border-color:var(--bd-acc);color:var(--acc)}
+
+#hubPromoMount{border-bottom:8px solid var(--bg);background:var(--l1);margin:0;padding:0}
+#hubPromoMount .dps-row{padding:0;margin:0;background:var(--l1)}
+#hubPromoMount .dps-slider{border-radius:0}
+
+.feed{background:var(--bg);min-height:120px}
+.promo-slot{background:var(--l1);border-bottom:8px solid var(--bg);padding:10px 14px 12px;margin:0}
+[data-theme="dark"] .promo-slot,
+[data-theme="dark"] #hubPromoMount{
+  border-bottom:8px solid #000;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);
+}
+[data-theme="dark"] .feed{background:#000}
+[data-theme="dark"]{
+  --bg:#000000;
+}
+
+.fab{
+  position:fixed;right:max(16px, calc(50% - 210px + 16px));
+  bottom:calc(var(--nav-h) + var(--safe-b) + 14px);
+  width:52px;height:52px;border-radius:50%;background:var(--acc);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:18px;z-index:90;
+  box-shadow:0 6px 20px rgba(255,0,80,.35);
+}
+.fab:active{transform:scale(.94)}
+.to-top{
+  position:fixed;right:max(16px, calc(50% - 210px + 16px));
+  bottom:calc(var(--nav-h) + var(--safe-b) + 76px);
+  width:42px;height:42px;border-radius:50%;background:var(--l1);color:var(--tx-muted);
+  border:1px solid var(--bd);display:none;align-items:center;justify-content:center;
+  font-size:15px;z-index:90;box-shadow:0 4px 14px rgba(0,0,0,.1);
+}
+.to-top.show{display:flex}
+.to-top:active{transform:scale(.94)}
+
+.toast{
+  position:fixed;bottom:calc(var(--safe-b) + var(--nav-h) + 14px);left:50%;
+  transform:translateX(-50%) translateY(14px);background:var(--l3);border:1px solid var(--bd);
+  color:var(--tx-body);padding:9px 16px;border-radius:24px;font-size:12px;font-weight:600;
+  z-index:900;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;
+  box-shadow:0 6px 18px rgba(0,0,0,.1);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="top-bar">
+    <button type="button" class="top-icon-btn" onclick="history.back()" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <div class="top-center">
+      <div class="top-title" id="pageTitle">Genre</div>
+      <div class="top-sub">Genre Hub · Discussions</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="top-icon-btn" onclick="location.href='notifications.html'" aria-label="Alerts">
+        <i class="fas fa-bell"></i><span class="notif-dot">3</span>
+      </button>
+      <button type="button" class="top-icon-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <img class="hero-img" id="heroImg" src="" alt=""/>
+    <div class="hero-scrim"></div>
+    <div class="hero-body">
+      <div class="hero-icon"><i class="fas fa-hat-wizard" id="heroIcon"></i></div>
+      <div class="hero-name" id="heroName">—</div>
+      <div class="hero-tag" id="heroTag"></div>
+      <div class="hero-bottom">
+        <div class="hero-stats">
+          <div class="hero-stat"><i class="fas fa-users"></i> <span id="statMembers">—</span> <span>members</span></div>
+          <div class="hero-stat"><i class="fas fa-comments"></i> <span id="statDisc">—</span> <span>threads</span></div>
+          <div class="hero-stat"><i class="fas fa-book"></i> <span id="statStories">—</span> <span>stories</span></div>
+        </div>
+        <button type="button" class="join-btn on" id="joinBtn"><i class="fas fa-check"></i> Joined</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="blurb">
+    <i class="fas fa-sparkles"></i>
+    <p id="blurbText">Discussions for this genre.</p>
+  </div>
+
+  <div class="tabs" id="hubTabs">
+    <button type="button" class="tab active" data-tab="discussions">Discussions</button>
+    <button type="button" class="tab" data-tab="hot">Hot topics</button>
+    <button type="button" class="tab" data-tab="stories">Stories</button>
+    <button type="button" class="tab" data-tab="members">Members</button>
+    <button type="button" class="tab" data-tab="about">About</button>
+  </div>
+
+  <div class="composer" id="composerStrip" role="button">
+    <img class="composer-av" src="https://i.pravatar.cc/100?img=32" alt=""/>
+    <div class="composer-ph" id="composerPh">Start a discussion…</div>
+    <div class="composer-go"><i class="fas fa-pen"></i></div>
+  </div>
+
+  <div class="sort-row" id="sortRow">
+    <button type="button" class="sort-chip active" data-sort="hot"><i class="fas fa-fire"></i> Hot</button>
+    <button type="button" class="sort-chip" data-sort="controversial"><i class="fas fa-bolt"></i> Controversial</button>
+    <button type="button" class="sort-chip" data-sort="new"><i class="fas fa-clock"></i> New</button>
+    <button type="button" class="sort-chip" data-sort="top"><i class="fas fa-arrow-trend-up"></i> Top</button>
+    <button type="button" class="sort-chip" data-sort="unanswered"><i class="fas fa-circle-question"></i> Unanswered</button>
+  </div>
+
+  <div id="hubPromoMount"></div>
+
+  <!-- GenreCard renders discussions; page injects ad slots around them -->
+  <div class="feed" id="feed"></div>
+</div>
+
+<button type="button" class="to-top" id="toTop" aria-label="Back to filters"><i class="fas fa-arrow-up"></i></button>
+<button type="button" class="fab" id="fabNew" aria-label="New discussion"><i class="fas fa-pen"></i></button>
+<div class="toast" id="toast"></div>
+
+<script src="../data/genre-demo-seed.js"></script>
+<script src="../component/genre-card.js"></script>
+<script src="../component/reaction-picker.js"></script>
+<script src="../component/ad-card.js"></script>
+<script src="../component/promo-slider.js"></script>
+<script src="../component/dots-menu.js"></script>
+<script src="../component/share-modal.js"></script>
+<script src="../component/bottom-nav.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../marketing/shared/marketing-data.js"></script>
+<script src="../services/ad-service.js"></script>
+<script src="../services/search-service.js"></script>
+<script src="../component/post-composer.js"></script>
+<script src="../services/genre-hub-service.js"></script>
+
+<script>GenreHubPage.init();</script>
+</body>
+</html>

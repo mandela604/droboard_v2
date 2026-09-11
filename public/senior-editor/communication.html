@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Communication — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}
+.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:640px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.grid-2col{display:grid;grid-template-columns:1.7fr 1fr;gap:20px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-top:-8px;margin-bottom:14px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+.add-search{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.add-search .filter-search{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:180px}
+.add-search .filter-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.add-search .filter-search i{color:var(--text-faint);font-size:12px}
+
+.filter-row{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.filter-pill{font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:5px}
+.filter-pill:hover{border-color:var(--accent)}
+.filter-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill-count{font-size:9px;background:rgba(255,255,255,.25);padding:1px 5px;border-radius:10px}
+.filter-pill:not(.on) .pill-count{background:var(--table-head);color:var(--text-faint)}
+
+/* email row */
+.row-item{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:9px;cursor:pointer;transition:.15s;background:var(--card)}
+.row-item:hover{border-color:var(--accent);background:var(--hover)}
+.row-item.is-unread{border-left:3px solid var(--accent)}
+.row-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.row-main{flex:1;min-width:0}
+.row-top{display:flex;align-items:center;gap:7px;margin-bottom:2px}
+.row-from{font-size:12.5px;font-weight:800}
+.row-email{font-size:10px;color:var(--text-faint);font-weight:500}
+.row-subject{font-size:12.5px;font-weight:700;color:var(--text)}
+.row-preview{font-size:11.5px;color:var(--text-muted);margin-top:2px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-meta{font-size:10px;color:var(--text-faint);margin-top:5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.unread-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.row-chevron{color:var(--text-faint);font-size:12px;flex-shrink:0}
+@media (max-width:1080px){.grid-2col{grid-template-columns:1fr}}
+
+.status-pill{font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.status-pill.unread{background:var(--accent-soft);color:var(--accent)}
+.status-pill.awaiting-reply{background:var(--amber-bg);color:var(--amber)}
+.status-pill.replied{background:var(--green-bg);color:var(--green)}
+.tag-chip{font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.tag-chip.dispute{background:var(--red-bg);color:var(--red)}
+.tag-chip.question{background:var(--blue-bg);color:var(--blue)}
+.tag-chip.feedback{background:var(--purple-bg);color:var(--purple)}
+.tag-chip.idea{background:var(--amber-bg);color:var(--amber)}
+.tag-chip.update{background:var(--table-head);color:var(--text-muted)}
+
+.empty-msg{text-align:center;padding:28px;color:var(--text-faint);font-size:12.5px}
+
+/* team chat panel */
+.chat-msg{margin-bottom:12px;padding:10px 12px;border-radius:12px;background:var(--table-head);font-size:12.5px;line-height:1.5}
+.chat-msg .cm-from{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px}
+.chat-msg .cm-time{font-size:10px;color:var(--text-faint);margin-top:4px}
+.chat-input-row{display:flex;gap:8px;margin-top:4px}
+.chat-input-row input{flex:1;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-family:inherit;color:var(--text);outline:none}
+.chat-input-row input:focus{border-color:var(--accent)}
+.chat-input-row button{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* pagination */
+.pgn{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.pgn-info{font-size:11.5px;color:var(--text-faint);font-weight:600}
+.pgn-btns{display:flex;gap:5px}
+.pgn-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:.13s}
+.pgn-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pgn-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pgn-btn:disabled{opacity:.35;cursor:default}
+
+/* ── Slide-up email thread sheet — centered, not full width ── */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:1000;display:none}
+.sheet-backdrop.open{display:block}
+.detail-sheet{position:fixed;left:0;right:0;bottom:0;z-index:1010;background:var(--card);border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -20px 60px rgba(0,0,0,.35);margin:0 auto;max-width:640px}
+.detail-sheet.open{transform:translateY(0)}
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:10px auto 4px}
+.sheet-head{display:flex;align-items:flex-start;gap:14px;padding:16px 22px 16px;border-bottom:1px solid var(--border)}
+.sheet-avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.sheet-head-info{flex:1;min-width:0}
+.sheet-head-info h3{font-size:15.5px;font-weight:800;line-height:1.3}
+.sheet-head-info p{font-size:11.5px;color:var(--text-faint);margin-top:3px}
+.sheet-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;flex-shrink:0}
+.sheet-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.sheet-body{padding:18px 22px 26px}
+
+.thread-msg{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.thread-msg.from-editor{background:var(--accent-soft);border-color:var(--accent-border)}
+.thread-msg-top{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;font-weight:800;margin-bottom:6px}
+.thread-msg-from{color:var(--text)}
+.thread-msg.from-editor .thread-msg-from{color:var(--accent)}
+.thread-msg-time{font-weight:600;color:var(--text-faint)}
+.thread-msg-body{font-size:12.5px;line-height:1.65;color:var(--text)}
+
+.reply-box{margin-top:18px}
+.reply-box label{font-size:10px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:8px}
+.reply-box textarea{width:100%;min-height:100px;border:1px solid var(--input-border);background:var(--input-bg);border-radius:10px;padding:11px 13px;font-size:12.5px;font-family:inherit;color:var(--text);resize:vertical;outline:none}
+.reply-box textarea:focus{border-color:var(--accent)}
+.reply-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.reply-actions button{flex:1;min-width:150px;padding:11px 14px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;transition:.14s}
+.reply-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.reply-actions button.primary{background:var(--accent);border-color:transparent;color:#fff}
+.reply-actions button.primary:hover{opacity:.9;color:#fff}
+.reply-note{font-size:10.5px;color:var(--text-faint);margin-top:8px;display:flex;gap:6px;align-items:flex-start}
+.reply-note i{margin-top:1px}
+
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.grid-4{grid-template-columns:1fr 1fr}.add-search{flex-direction:column;align-items:stretch}}
+</style>
+</head>
+<body>
+<div id="commRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Senior Editor · Communication</div>
+    <div class="welcome-title">Communication 💬</div>
+    <div class="welcome-sub">Authors reach the editorial team by email only. Every thread sent to your editor address lands here — open one to read the full history and reply without leaving Droboard.</div>
+  </div>
+
+  <div class="grid-4" id="statRow"></div>
+
+  <div class="grid-2col">
+    <div class="panel">
+      <div class="panel-head">
+        <h2><i class="fas fa-envelope" style="color:var(--accent)"></i> Author Emails</h2>
+        <span class="count-chip" id="msgCount">—</span>
+      </div>
+      <div class="panel-sub">Synced from editors@droboard.com. Tap a thread to read and reply.</div>
+
+      <div class="add-search">
+        <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="mailSearch" placeholder="Search by author, email, or subject…"/></div>
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+
+      <div id="messagesList"></div>
+      <div class="pgn" id="pgn"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-users" style="color:var(--purple)"></i> Internal Team Chat</h2></div>
+      <div class="panel-sub">For the editorial team only — not visible to authors.</div>
+      <div id="teamChat"></div>
+      <div class="chat-input-row">
+        <input id="teamChatInput" placeholder="Message the team…"/>
+        <button id="teamChatSend"><i class="fas fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Email thread slide-up sheet -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="detail-sheet" id="detailSheet" role="dialog" aria-modal="true" aria-labelledby="sheetSubject">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <img class="sheet-avatar" id="sheetAvatar" src="" alt=""/>
+    <div class="sheet-head-info">
+      <h3 id="sheetSubject">—</h3>
+      <p id="sheetFromLine">—</p>
+      <div class="sheet-tags" id="sheetTags"></div>
+    </div>
+    <button class="sheet-close" id="sheetClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="sheet-body">
+    <div id="threadList"></div>
+    <div class="reply-box">
+      <label>Reply</label>
+      <textarea id="replyText" placeholder="Write your reply…"></textarea>
+      <div class="reply-actions">
+        <button id="mailtoBtn"><i class="fas fa-up-right-from-square"></i> Open in Mail App</button>
+        <button class="primary" id="sendReplyBtn"><i class="fas fa-paper-plane"></i> Send Reply</button>
+      </div>
+      <div class="reply-note"><i class="fas fa-circle-info"></i> Sends from editors@droboard.com via the email API once connected — falls back to your default mail app for now.</div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#commRoot', {
+  activeItem: 'communication',
+  title: 'Communication',
+  subtitle: 'Author emails & team chat',
+  user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
+  notifCount: 4,
+  onSearch: v => { document.getElementById('mailSearch').value = v; currentPg = 1; applyFilters(); }
+});
+
+/* Email + avatar mapped per author — matches the Authors page so the same
+   person looks the same everywhere in the dashboard. */
+const AUTHOR_INFO = {
+  'Luna Skye':       { email: 'luna.skye@mail.com',      avatar: 'https://i.pravatar.cc/100?img=45' },
+  'Elena Vasquez':   { email: 'elena.vasquez@mail.com',  avatar: 'https://i.pravatar.cc/100?img=47' },
+  'Marcus Webb Jr.': { email: 'marcus.webbjr@mail.com',  avatar: 'https://i.pravatar.cc/100?img=12' },
+  'Wren Okonkwo':    { email: 'wren.okonkwo@mail.com',   avatar: 'https://i.pravatar.cc/100?img=15' },
+  'Isabelle Moreau': { email: 'isabelle.moreau@mail.com',avatar: 'https://i.pravatar.cc/100?img=25' },
+};
+const EDITOR_EMAIL = 'chioma.reddy@droboard.com';
+const EDITOR_INBOX = 'editors@droboard.com';
+
+/* Full thread bodies + tags, keyed by the message id from the data file.
+   The base list only gives a short preview — this fills in the rest so the
+   sheet reads like a real email thread. */
+const THREAD_EXTRA = {
+  'MSG-001': { tag: 'question', status: 'unread', messages: [
+    { from: 'author', time: '2h ago', body: "Hi Chioma, I wanted to ask about the word count requirement for Chapter 24 of The CEO's Hidden Son. My draft is sitting at 3,450 words — is that enough to submit, or should I pad it out closer to 5k before sending it in? Don't want to get flagged for being short." },
+  ]},
+  'MSG-002': { tag: 'feedback', status: 'unread', messages: [
+    { from: 'author', time: '5h ago', body: "Thanks for the notes on chapter 11. I've made the revisions and tightened up the pacing in the pack council scene like you suggested. Let me know if it reads better now — happy to do another pass if needed." },
+  ]},
+  'MSG-003': { tag: 'dispute', status: 'unread', messages: [
+    { from: 'author', time: '1d ago', body: "I don't agree with the rejection of chapter 6. The content flagged as explicit is no more graphic than what's already published in similar mafia-genre stories on the platform. Can we revisit this or get a second opinion? I'd like to understand exactly which lines triggered the flag." },
+  ]},
+  'MSG-004': { tag: 'idea', status: 'awaiting-reply', messages: [
+    { from: 'author', time: '2d ago', body: "I have an idea for a new series set in a dystopian college where scholarships are awarded through a brutal survival-style competition. Loosely Hunger-Games-meets-campus-drama. Would love your thoughts before I start drafting — is this something Droboard would want in the Campus & Revenge category, or does it need its own tag?" },
+    { from: 'editor', time: '1d ago', body: "This sounds like a strong hook — I'd lean toward filing it under Campus & Revenge with a 'dark academia' tag rather than a new category. Send over a synopsis and first-chapter outline whenever you're ready and I'll take a proper look." },
+  ]},
+  'MSG-005': { tag: 'update', status: 'replied', messages: [
+    { from: 'author', time: '3d ago', body: "Just wanted to let you know I'm planning to wrap up The Duke's Secret within the next 4-5 chapters. Been such a fun series to write — thank you for all the editorial support along the way." },
+    { from: 'editor', time: '2d ago', body: "So glad to hear it's coming together well — it's been one of our strongest performers this quarter. Let's plan a proper send-off: I'll flag the final chapter for a Homepage Banner feature when it goes live. Congrats on finishing the series!" },
+  ]},
+};
+
+const PER_PAGE = 4;
+let allMsgs = [], filtered = [], activeStat = 'all', currentPg = 1;
+
+async function init(){
+  const d = await SeniorEditorData.getMessages();
+
+  allMsgs = d.messages.map(m => {
+    const info = AUTHOR_INFO[m.from] || { email: m.from.toLowerCase().replace(/\s+/g,'.') + '@mail.com', avatar: 'https://i.pravatar.cc/100?img=1' };
+    const extra = THREAD_EXTRA[m.id] || { tag: 'update', status: m.unread ? 'unread' : 'awaiting-reply', messages: [{ from: 'author', time: m.date, body: m.preview }] };
+    return {
+      ...m,
+      email: info.email,
+      avatar: info.avatar,
+      tag: extra.tag,
+      status: extra.status,
+      thread: extra.messages,
+    };
+  });
+
+  buildStats();
+  buildFilterPills();
+  applyFilters();
+
+  document.getElementById('teamChat').innerHTML = d.teamChat.map(c => `
+    <div class="chat-msg"><div class="cm-from">${c.from}</div>${c.text}<div class="cm-time">${c.time}</div></div>`).join('');
+
+  document.getElementById('mailSearch').addEventListener('input', () => { currentPg = 1; applyFilters(); });
+  document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  document.getElementById('teamChatSend').addEventListener('click', sendTeamChat);
+  document.getElementById('teamChatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendTeamChat(); });
+}
+
+function sendTeamChat(){
+  const input = document.getElementById('teamChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const el = document.createElement('div');
+  el.className = 'chat-msg';
+  el.innerHTML = `<div class="cm-from">Chioma Reddy (you)</div>${text}<div class="cm-time">Just now</div>`;
+  document.getElementById('teamChat').appendChild(el);
+  input.value = '';
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function buildStats(){
+  const total = allMsgs.length;
+  const unread = allMsgs.filter(m => m.status === 'unread').length;
+  const awaiting = allMsgs.filter(m => m.status === 'awaiting-reply').length;
+  const replied = allMsgs.filter(m => m.status === 'replied').length;
+  const stats = [
+    { n: total,    l: 'Author Emails',   ico: 'fa-envelope',         clr: 'var(--accent)', bg: 'rgba(255,0,80,.1)' },
+    { n: unread,   l: 'Unread',          ico: 'fa-envelope-open-text', clr: 'var(--accent)', bg: 'var(--accent-soft)' },
+    { n: awaiting, l: 'Awaiting Reply',  ico: 'fa-hourglass-half',   clr: 'var(--amber)',  bg: 'var(--amber-bg)' },
+    { n: replied,  l: 'Replied',         ico: 'fa-circle-check',     clr: 'var(--green)',  bg: 'var(--green-bg)' },
+  ];
+  document.getElementById('statRow').innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="stat-ico" style="background:${s.bg};color:${s.clr}"><i class="fas ${s.ico}"></i></div>
+      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
+    </div>`).join('');
+}
+
+function buildFilterPills(){
+  const statuses = ['all', ...new Set(allMsgs.map(m => m.status))];
+  const labels = { all: 'All', unread: 'Unread', 'awaiting-reply': 'Awaiting Reply', replied: 'Replied' };
+  const counts = { all: allMsgs.length };
+  allMsgs.forEach(m => { counts[m.status] = (counts[m.status] || 0) + 1; });
+  document.getElementById('filterRow').innerHTML = statuses.map(st => `
+    <button class="filter-pill${st===activeStat?' on':''}" data-status="${st}">
+      ${labels[st] || st}<span class="pill-count">${counts[st] || 0}</span>
+    </button>`).join('');
+  document.querySelectorAll('.filter-pill').forEach(p => p.addEventListener('click', () => {
+    activeStat = p.dataset.status; currentPg = 1;
+    document.querySelectorAll('.filter-pill').forEach(x => x.classList.toggle('on', x === p));
+    applyFilters();
+  }));
+}
+
+function applyFilters(){
+  const q = document.getElementById('mailSearch').value.trim().toLowerCase();
+  filtered = allMsgs.filter(m => {
+    const matchSt = activeStat === 'all' || m.status === activeStat;
+    const matchQ = !q || m.from.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.subject.toLowerCase().includes(q);
+    return matchSt && matchQ;
+  });
+  document.getElementById('msgCount').textContent = `${filtered.length} of ${allMsgs.length}`;
+  const maxPg = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  if (currentPg > maxPg) currentPg = maxPg;
+  renderPage();
+}
+
+function renderPage(){
+  const start = (currentPg - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  if (!page.length) {
+    document.getElementById('messagesList').innerHTML = `<div class="empty-msg">No emails match your search.</div>`;
+    document.getElementById('pgn').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('messagesList').innerHTML = page.map(m => `
+    <div class="row-item${m.status==='unread'?' is-unread':''}" data-id="${m.id}">
+      <img class="row-avatar" src="${m.avatar}" alt="${m.from}"/>
+      <div class="row-main">
+        <div class="row-top">
+          ${m.status==='unread' ? '<span class="unread-dot"></span>' : ''}
+          <span class="row-from">${m.from}</span>
+          <span class="row-email">${m.email}</span>
+        </div>
+        <div class="row-subject">${m.subject}</div>
+        <div class="row-preview">${m.preview}</div>
+        <div class="row-meta">
+          <span><i class="fas fa-clock"></i> ${m.date}</span>
+          <span class="status-pill ${m.status}">${m.status.replace('-', ' ')}</span>
+          <span class="tag-chip ${m.tag}">${m.tag}</span>
+        </div>
+      </div>
+      <i class="fas fa-chevron-right row-chevron"></i>
+    </div>`).join('');
+
+  document.querySelectorAll('.row-item').forEach(el => el.addEventListener('click', () => openSheet(el.dataset.id)));
+  renderPagination();
+}
+
+function renderPagination(){
+  const total = filtered.length;
+  const maxPg = Math.ceil(total / PER_PAGE);
+  if (maxPg <= 1) { document.getElementById('pgn').innerHTML = ''; return; }
+  const start = (currentPg - 1) * PER_PAGE + 1;
+  const end = Math.min(currentPg * PER_PAGE, total);
+  let btns = '';
+  for (let i = 1; i <= maxPg; i++) btns += `<button class="pgn-btn${i===currentPg?' on':''}" data-pg="${i}">${i}</button>`;
+  document.getElementById('pgn').innerHTML = `
+    <span class="pgn-info">Showing ${start}–${end} of ${total}</span>
+    <div class="pgn-btns">
+      <button class="pgn-btn" id="pgPrev" ${currentPg===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
+      ${btns}
+      <button class="pgn-btn" id="pgNext" ${currentPg===maxPg?'disabled':''}><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+  document.getElementById('pgPrev').addEventListener('click', () => { currentPg--; renderPage(); });
+  document.getElementById('pgNext').addEventListener('click', () => { currentPg++; renderPage(); });
+  document.querySelectorAll('.pgn-btn[data-pg]').forEach(b => b.addEventListener('click', () => { currentPg = parseInt(b.dataset.pg); renderPage(); }));
+}
+
+/* ── Email thread sheet ── */
+let sheetMsgId = null;
+
+function openSheet(id){
+  const m = allMsgs.find(x => x.id === id); if (!m) return;
+  sheetMsgId = id;
+  if (m.status === 'unread') { m.status = 'awaiting-reply'; buildStats(); buildFilterPills(); applyFilters(); }
+
+  document.getElementById('sheetAvatar').src = m.avatar;
+  document.getElementById('sheetSubject').textContent = m.subject;
+  document.getElementById('sheetFromLine').textContent = `${m.from} · ${m.email}`;
+  document.getElementById('sheetTags').innerHTML = `
+    <span class="status-pill ${m.status}">${m.status.replace('-', ' ')}</span>
+    <span class="tag-chip ${m.tag}">${m.tag}</span>`;
+
+  document.getElementById('threadList').innerHTML = m.thread.map(t => `
+    <div class="thread-msg ${t.from === 'editor' ? 'from-editor' : ''}">
+      <div class="thread-msg-top">
+        <span class="thread-msg-from">${t.from === 'editor' ? 'You (Editor)' : m.from}</span>
+        <span class="thread-msg-time">${t.time}</span>
+      </div>
+      <div class="thread-msg-body">${t.body}</div>
+    </div>`).join('');
+
+  document.getElementById('replyText').value = '';
+  document.getElementById('mailtoBtn').onclick = () => {
+    const subject = encodeURIComponent(`Re: ${m.subject}`);
+    const body = encodeURIComponent(document.getElementById('replyText').value || '');
+    window.location.href = `mailto:${m.email}?subject=${subject}&body=${body}`;
+  };
+  document.getElementById('sendReplyBtn').onclick = () => sendReply(m);
+
+  document.getElementById('sheetBackdrop').classList.add('open');
+  document.getElementById('detailSheet').classList.add('open');
+  document.getElementById('detailSheet').scrollTop = 0;
+}
+
+function sendReply(m){
+  const text = document.getElementById('replyText').value.trim();
+  if (!text) { toast('⚠️ Write a reply before sending'); return; }
+  // In production this posts to your email API (e.g. Postmark/SendGrid send endpoint)
+  // using EDITOR_INBOX as the From address. No such endpoint exists yet, so we
+  // just reflect the reply in the thread locally.
+  m.thread.push({ from: 'editor', time: 'Just now', body: text });
+  m.status = 'replied';
+  toast(`📨 Reply sent to ${m.email}`);
+  closeSheet();
+  buildStats(); buildFilterPills(); applyFilters();
+}
+
+function closeSheet(){
+  document.getElementById('sheetBackdrop').classList.remove('open');
+  document.getElementById('detailSheet').classList.remove('open');
+  sheetMsgId = null;
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Platform Settings — Droboard Dashboard</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}.page-hdr .title{font-size:15px;font-weight:800;color:var(--text)}.btn-save{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+.settings-grid{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start}
+.side-nav{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;gap:2px}.sn-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:.15s}.sn-item:hover{background:var(--hover);color:var(--text)}.sn-item.active{background:var(--accent-soft);color:var(--accent);font-weight:700}.sn-item i{width:16px;text-align:center;font-size:13px}
+.content-area{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;min-height:500px}.ca-head{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}.ca-head h2{font-size:15px;font-weight:800;margin-bottom:4px}.ca-head p{font-size:12px;color:var(--text-muted)}
+.form-group{margin-bottom:18px}.form-group label{display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px}.form-group .desc{font-size:11px;color:var(--text-muted);margin-bottom:8px}.form-group input,.form-group textarea,.form-group select{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--text);font-family:inherit;outline:none}.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}.form-group textarea{resize:vertical;min-height:80px}.form-group select{appearance:none;cursor:pointer}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}.toggle-row:last-child{border-bottom:none}.toggle-info{flex:1}.toggle-info b{font-size:13px;font-weight:700}.toggle-info span{display:block;font-size:11.5px;color:var(--text-muted);margin-top:2px}.toggle-switch{width:44px;height:24px;border-radius:12px;background:var(--input-border);position:relative;cursor:pointer;flex-shrink:0;transition:.2s}.toggle-switch.active{background:var(--accent)}.toggle-switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}.toggle-switch.active .knob{transform:translateX(20px)}
+@media (max-width:800px){.settings-grid{grid-template-columns:1fr}.side-nav{display:grid;grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body><div id="dashboardRoot">
+<div class="page-hdr"><div class="title">Configure your platform settings, branding, and preferences</div><button class="btn-save" id="saveAllBtn"><i class="fas fa-check"></i> Save Changes</button></div>
+<div class="settings-grid">
+<div class="side-nav">
+<div class="sn-item active" data-section="general"><i class="fas fa-globe"></i> General</div>
+<div class="sn-item" data-section="branding"><i class="fas fa-palette"></i> Branding</div>
+<div class="sn-item" data-section="email"><i class="fas fa-envelope"></i> Email</div>
+<div class="sn-item" data-section="security"><i class="fas fa-lock"></i> Security</div>
+<div class="sn-item" data-section="payments"><i class="fas fa-credit-card"></i> Payments</div>
+<div class="sn-item" data-section="notifications"><i class="fas fa-bell"></i> Notifications</div>
+<div class="sn-item" data-section="content"><i class="fas fa-shield-halved"></i> Content</div>
+<div class="sn-item" data-section="integrations"><i class="fas fa-code"></i> API & Integrations</div>
+</div>
+<div class="content-area" id="settingsContent"></div>
+</div></div>
+<script src="shared/api.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+DroboardShell.attach('#dashboardRoot',{activeFile:'platform-settings.html',title:'Platform Settings',subtitle:'Configure platform settings and preferences',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
+
+// ── Section templates ───────────────────────────────────
+const SECTIONS = {
+  general: {
+    title: 'General Settings',
+    desc: 'Manage your platform\'s basic information and preferences',
+    html: () => `
+      <div class="form-group"><label>Platform Name</label><div class="desc">The name of your publishing platform</div><input id="f-platformName" type="text" value="Droboard"/></div>
+      <div class="form-group"><label>Platform Description</label><div class="desc">Brief description for SEO and sharing</div><textarea id="f-platformDesc">Droboard is a premier digital publishing platform connecting authors with readers worldwide.</textarea></div>
+      <div class="form-group"><label>Default Language</label><div class="desc">Primary language for the platform interface</div><select id="f-language"><option>English (US)</option><option>English (UK)</option><option>French</option><option>Spanish</option></select></div>
+      <div class="form-group"><label>Timezone</label><div class="desc">Default timezone for all dates and times</div><select id="f-timezone"><option>Africa/Lagos (UTC+1)</option><option>America/New_York (UTC-5)</option><option>Europe/London (UTC+0)</option></select></div>
+      <div class="ca-head" style="margin-top:24px"><h2>Feature Toggles</h2><p>Enable or disable platform features</p></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Author Verification</b><span>Require authors to verify their identity before publishing</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Reader Reviews</b><span>Allow readers to rate and review published books</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Content Moderation</b><span>Enable automated content flagging</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Revenue Sharing</b><span>Enable revenue share agreements with authors</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  branding: {
+    title: 'Branding',
+    desc: 'Customize your platform\'s visual identity',
+    html: () => `
+      <div class="form-group"><label>Logo URL</label><div class="desc">URL to your platform logo image</div><input type="text" value="https://i.pravatar.cc/100?img=47" placeholder="https://..."/></div>
+      <div class="form-group"><label>Primary Color</label><div class="desc">Main brand color (accent)</div><div style="display:flex;align-items:center;gap:12px"><input type="color" value="#ff0050" style="width:50px;height:40px;padding:2px;border-radius:8px;cursor:pointer"/><span style="font-size:13px;font-weight:700;color:var(--text-muted)">#ff0050</span></div></div>
+      <div class="form-group"><label>Secondary Color</label><div class="desc">Secondary brand color</div><div style="display:flex;align-items:center;gap:12px"><input type="color" value="#000000" style="width:50px;height:40px;padding:2px;border-radius:8px;cursor:pointer"/><span style="font-size:13px;font-weight:700;color:var(--text-muted)">#000000</span></div></div>
+      <div class="form-group"><label>Favicon URL</label><div class="desc">Small icon shown in browser tabs</div><input type="text" value="https://droboard.app/favicon.ico" placeholder="https://..."/></div>
+      <div class="form-group"><label>Footer Text</label><div class="desc">Copyright text shown in the footer</div><input type="text" value="© 2026 Droboard. All rights reserved."/></div>
+    `
+  },
+  email: {
+    title: 'Email Settings',
+    desc: 'Configure email delivery and notification templates',
+    html: () => `
+      <div class="form-group"><label>Sender Name</label><div class="desc">Name displayed in the "From" field</div><input type="text" value="Droboard Team"/></div>
+      <div class="form-group"><label>Sender Email</label><div class="desc">Email address used for outbound messages</div><input type="email" value="noreply@droboard.app"/></div>
+      <div class="form-group"><label>SMTP Host</label><div class="desc">Your email server hostname</div><input type="text" value="smtp.droboard.app"/></div>
+      <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group"><label>SMTP Port</label><input type="text" value="587"/></div>
+        <div class="form-group"><label>SMTP Protocol</label><select><option>TLS</option><option>SSL</option></select></div>
+      </div>
+      <div class="toggle-row"><div class="toggle-info"><b>Welcome Email</b><span>Send welcome email to new authors</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Contract Notifications</b><span>Email authors when contracts are sent</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  security: {
+    title: 'Security Settings',
+    desc: 'Manage platform security and access control',
+    html: () => `
+      <div class="toggle-row"><div class="toggle-info"><b>Two-Factor Authentication</b><span>Require 2FA for all admin accounts</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>IP Whitelisting</b><span>Restrict admin access to specific IPs</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Session Timeout</b><span>Auto-logout after inactivity</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="form-group" style="margin-top:18px"><label>Session Duration (minutes)</label><input type="number" value="60"/></div>
+      <div class="form-group"><label>Password Policy</label><select><option>Strong (min 12 chars, special chars)</option><option>Moderate (min 8 chars)</option><option>Basic (min 6 chars)</option></select></div>
+      <div class="form-group"><label>Allowed IPs (one per line)</label><textarea>192.168.1.0/24&#10;10.0.0.0/8</textarea></div>
+    `
+  },
+  payments: {
+    title: 'Payment Settings',
+    desc: 'Configure payment gateways and payout preferences',
+    html: () => `
+      <div class="form-group"><label>Default Currency</label><select><option>USD ($)</option><option>EUR (€)</option><option>NGN (₦)</option><option>GBP (£)</option></select></div>
+      <div class="form-group"><label>Minimum Payout</label><div class="desc">Minimum amount before an author can withdraw</div><input type="text" value="$50.00"/></div>
+      <div class="form-group"><label>Payout Schedule</label><select><option>Monthly (1st of every month)</option><option>Bi-weekly</option><option>Weekly</option><option>Manual (admin initiated)</option></select></div>
+      <div class="form-group"><label>Platform Commission (%)</label><input type="number" value="30" min="0" max="100"/></div>
+      <div class="form-group"><label>Payment Gateway</label><select><option>Stripe</option><option>PayPal</option><option>Flutterwave</option><option>Paystack</option></select></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Auto-payouts</b><span>Automatically process payouts on schedule</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  notifications: {
+    title: 'Notification Settings',
+    desc: 'Configure which notifications are sent and how',
+    html: () => `
+      <h3 style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--text)">Push Notifications</h3>
+      <div class="toggle-row"><div class="toggle-info"><b>New Author Registration</b><span>Alert when a new author registers</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Contract Signed</b><span>Alert when an author signs a contract</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Content Flagged</b><span>Alert when content is reported</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Withdrawal Requests</b><span>Alert when authors request payouts</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <h3 style="font-size:13px;font-weight:800;margin:16px 0 10px;color:var(--text)">Email Notifications</h3>
+      <div class="toggle-row"><div class="toggle-info"><b>Daily Digest</b><span>Receive a daily summary of platform activity</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Weekly Report</b><span>Receive a weekly performance report</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  content: {
+    title: 'Content Settings',
+    desc: 'Manage content policies and moderation rules',
+    html: () => `
+      <div class="form-group"><label>Mature Content Label</label><div class="desc">How to label mature/explicit content</div><select><option>Auto-detect and label</option><option>Require author self-labeling</option><option>Disable mature content</option></select></div>
+      <div class="form-group"><label>Max Story Length (words)</label><input type="number" value="100000"/></div>
+      <div class="form-group"><label>Allowed File Types</label><input type="text" value=".jpg, .png, .pdf, .doc, .docx"/></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Auto-moderation</b><span>Automatically flag potentially violating content</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>AI Content Detection</b><span>Flag content that appears AI-generated</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Plagiarism Check</b><span>Auto-check submissions for plagiarism</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  integrations: {
+    title: 'API & Integrations',
+    desc: 'Manage API keys and third-party integrations',
+    html: () => `
+      <div class="form-group"><label>API Status</label><div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span><span style="font-weight:700;color:var(--green)">Operational</span></div></div>
+      <div class="form-group"><label>API Base URL</label><input type="text" value="https://api.droboard.app/v1" readonly style="font-family:monospace;background:var(--table-head)"/></div>
+      <div class="form-group"><label>API Key</label><div style="display:flex;gap:10px"><input type="password" value="dro_sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" readonly style="font-family:monospace;flex:1;background:var(--table-head)" id="apiKeyInput"/><button class="btn-save" style="padding:9px 14px;font-size:11px" onclick="const i=document.getElementById('apiKeyInput');i.type=i.type==='password'?'text':'password'">Show</button></div></div>
+      <div class="form-group"><label>Webhook URL</label><div class="desc">Receive real-time events via POST requests</div><input type="text" value="https://droboard.app/webhooks"/></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Public API Access</b><span>Allow third-party integrations via public API</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Webhook Enabled</b><span>Send real-time events to configured webhook URL</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  }
+};
+
+// ── Render active section ───────────────────────────────
+let activeSection = 'general';
+
+function renderSection(sectionId) {
+  const section = SECTIONS[sectionId];
+  if (!section) return;
+  const content = document.getElementById('settingsContent');
+  content.innerHTML = `
+    <div class="ca-head"><h2>${section.title}</h2><p>${section.desc}</p></div>
+    ${section.html()}
+  `;
+  activeSection = sectionId;
+}
+
+// ── Nav click handlers ──────────────────────────────────
+document.querySelectorAll('.sn-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.sn-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    renderSection(item.dataset.section);
+  });
+});
+
+// ── Save button ────────────────────────────────────────
+document.getElementById('saveAllBtn').addEventListener('click', async () => {
+  toast('Saving all settings…');
+  // Simulate API call
+  if (window.DroboardAPI && DroboardAPI.updateBook) {
+    await new Promise(r => setTimeout(r, 600));
+  }
+  toast('✅ All settings saved successfully!');
+});
+
+// ── Init ───────────────────────────────────────────────
+renderSection('general');
+</script></body></html>

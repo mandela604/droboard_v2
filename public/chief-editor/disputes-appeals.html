@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Disputes & Appeals — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:0}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.grid-2col{display:grid;grid-template-columns:1.7fr 1fr;gap:20px;align-items:start}
+.grid-3col{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+.case-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;transition:.15s}
+.case-card:hover{border-color:var(--accent)}
+.cc-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.cc-detail{font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:4px}
+.cc-meta{font-size:10.5px;color:var(--text-faint);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.prio-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.prio-pill.high{background:var(--red-bg);color:var(--red)}
+.prio-pill.medium{background:var(--amber-bg);color:var(--amber)}
+.status-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.status-pill.open{background:var(--amber-bg);color:var(--amber)}
+.status-pill.investigating{background:var(--blue-bg);color:var(--blue)}
+.status-pill.resolved{background:var(--green-bg);color:var(--green)}
+.status-pill.appealed{background:var(--purple-bg);color:var(--purple)}
+.status-pill.confirmed{background:var(--red-bg);color:var(--red)}
+@media (max-width:1080px){.grid-2col,.grid-3col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="disputesRoot">
+  <div class="welcome-banner">
+    <div class="welcome-eyebrow">Chief Editor · Disputes & Appeals</div>
+    <div class="welcome-title">Disputes & Appeals ⚖️</div>
+    <div class="welcome-sub">Author appeals, copyright disputes, plagiarism cases, escalated reports, and resolution history.</div>
+  </div>
+  <div class="grid-2col">
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-gavel" style="color:var(--accent)"></i> Author Appeals</h2></div>
+      <div id="appealsList"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-copyright" style="color:var(--purple)"></i> Copyright Disputes</h2></div>
+      <div id="copyrightList"></div>
+    </div>
+  </div>
+  <div class="grid-3col">
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-copy" style="color:var(--red)"></i> Plagiarism Cases</h2></div>
+      <div id="plagiarismList"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-flag" style="color:var(--amber)"></i> Escalated Reports</h2></div>
+      <div id="reportsList"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-clock-rotate-left" style="color:var(--green)"></i> Resolution History</h2></div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-data.js"></script>
+<script>
+'use strict';
+const shell = ChiefEditorSidebar.attach('#disputesRoot',{activeItem:'disputes-appeals',title:'Disputes & Appeals',subtitle:'Resolve conflicts & appeals',user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6});
+async function init(){
+  const d = await ChiefEditorData.getDisputesAppeals();
+  document.getElementById('appealsList').innerHTML = d.authorAppeals.map(a => `
+    <div class="case-card"><div class="cc-title">${a.author} — ${a.type} <span class="prio-pill ${a.priority}">${a.priority}</span><span class="status-pill ${a.status}">${a.status}</span></div><div class="cc-detail">${a.detail}</div><div class="cc-meta"><span>📅 ${a.filed}</span><span>🆔 ${a.id}</span></div></div>`).join('');
+  document.getElementById('copyrightList').innerHTML = d.copyrightDisputes.map(c => `
+    <div class="case-card"><div class="cc-title">${c.title} <span class="status-pill ${c.status}">${c.status}</span></div><div class="cc-meta"><span>👤 ${c.claimant} vs ${c.respondent}</span><span>📅 ${c.filed}</span>${c.resolution?`<span>✅ ${c.resolution}</span>`:''}</div></div>`).join('');
+  document.getElementById('plagiarismList').innerHTML = d.plagiarismCases.map(p => `
+    <div class="case-card"><div class="cc-title">"${p.story}" <span class="status-pill ${p.status}">${p.status}</span></div><div class="cc-meta"><span>👤 ${p.accused}</span><span>📅 ${p.filed}</span><span>🔍 ${p.confidence}% confidence</span></div></div>`).join('');
+  document.getElementById('reportsList').innerHTML = d.escalatedReports.map(r => `
+    <div class="case-card"><div class="cc-title">${r.type} <span class="prio-pill ${r.priority}">${r.priority}</span><span class="status-pill ${r.status}">${r.status}</span></div><div class="cc-meta"><span>📅 ${r.filed}</span><span>👤 ${r.reporter} → ${r.against}</span></div></div>`).join('');
+  document.getElementById('historyList').innerHTML = d.resolutionHistory.map(h => `
+    <div class="case-card" style="margin-bottom:6px;padding:10px"><div style="font-size:12px">${h.action}</div><div class="cc-meta"><span>📅 ${h.date}</span><span>✍️ ${h.by}</span></div></div>`).join('');
+}
+init();
+</script>
+</body>
+</html>

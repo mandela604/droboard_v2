@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Withdrawal Requests — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}.btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}.btn-add:hover{background:var(--accent-2)}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}.stat-top{display:flex;align-items:center;justify-content:space-between}.stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.stat-ico.purple{background:#ece9fb;color:#5b4bcf}.stat-ico.green{background:var(--green-bg);color:var(--green)}.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}.stat-ico.red{background:var(--red-bg);color:var(--red)}.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18)}html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+.stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}.stat-delta.down{color:var(--red);background:var(--red-bg)}html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}.stat-num{font-size:24px;font-weight:800;line-height:1}.stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+.sub-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border);margin-bottom:16px;overflow-x:auto}.sub-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;white-space:nowrap}.sub-tab.active{color:var(--accent);border-bottom-color:var(--accent)}.sub-tab .tab-count{font-size:10.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}.sub-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+.filters-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}.tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:220px}.tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}.tc-search input::placeholder{color:var(--text-faint)}.tc-search i{color:var(--text-faint);font-size:12px}.fselect{position:relative}.fselect select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}.fselect i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-faint);pointer-events:none}.btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}tbody tr:hover{background:var(--hover)}
+.auth-cell{display:flex;align-items:center;gap:10px}.auth-cell img{width:28px;height:28px;border-radius:50%;object-fit:cover}.auth-cell span{font-weight:700}.amount-cell{font-weight:800;font-size:13px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+.status-pill.pending{background:var(--amber-bg);color:var(--amber)}html[data-theme="dark"] .status-pill.pending{background:rgba(217,119,6,.18)}
+.status-pill.processing{background:var(--blue-bg);color:var(--blue)}html[data-theme="dark"] .status-pill.processing{background:rgba(37,99,235,.18)}
+.status-pill.completed{background:var(--green-bg);color:var(--green)}html[data-theme="dark"] .status-pill.completed{background:rgba(22,163,74,.18)}
+.status-pill.rejected{background:var(--red-bg);color:var(--red)}html[data-theme="dark"] .status-pill.rejected{background:rgba(224,56,77,.18)}
+.status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}.status-pill.pending .dot{background:var(--amber)}.status-pill.processing .dot{background:var(--blue)}.status-pill.rejected .dot{background:var(--red)}
+.actions-cell{display:flex;align-items:center;gap:6px}.act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}.act-btn:hover{color:var(--accent);border-color:var(--accent)}
+.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}.page-info{font-size:12px;color:var(--text-muted)}.page-info b{color:var(--text);font-weight:700}.page-btns{display:flex;align-items:center;gap:6px}.pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}.empty-row i{font-size:26px;display:block;margin-bottom:10px}
+@media (max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}}@media (max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}}@media (max-width:680px){.page-hdr-row{flex-direction:column;align-items:stretch}.filters-row{flex-direction:column;align-items:stretch}.fselect select{width:100%}.table-wrap{overflow:visible}table,thead,tbody,tr,td{display:block;width:100%}thead{display:none}tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}td[data-label="Author"]{align-items:flex-start}td[data-label="Author"]::before{display:none}.actions-cell{justify-content:flex-end;width:100%}}@media (max-width:420px){.stats-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="dashboardRoot">
+  <div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Opening withdrawal settings…')"><i class="fas fa-gear"></i> Settings</button></div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-money-bill-wave"></i></div><span class="stat-delta">+22% from last month</span></div><div class="stat-num">47</div><div class="stat-lbl">Total Requests</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta">+8 awaiting</span></div><div class="stat-num">12</div><div class="stat-lbl">Pending</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-rotate"></i></div><span class="stat-delta">+5 processing</span></div><div class="stat-num">8</div><div class="stat-lbl">Processing</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+18% from last month</span></div><div class="stat-num">24</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-circle-xmark"></i></div><span class="stat-delta">+3 from last month</span></div><div class="stat-num">3</div><div class="stat-lbl">Rejected</div></div>
+  </div>
+  <div class="sub-tabs">
+    <div class="sub-tab active" data-view="all">All Requests</div>
+    <div class="sub-tab" data-view="pending">Pending <span class="tab-count">12</span></div>
+    <div class="sub-tab" data-view="processing">Processing <span class="tab-count">8</span></div>
+    <div class="sub-tab" data-view="completed">Completed <span class="tab-count">24</span></div>
+  </div>
+  <div class="filters-row">
+    <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by author, amount, or ID..."/></div>
+    <div class="fselect"><select id="statusSelect"><option value="">All Status</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="completed">Completed</option><option value="rejected">Rejected</option></select><i class="fas fa-chevron-down"></i></div>
+    <button class="btn-filters" onclick="toast('Opening filters…')"><i class="fas fa-sliders"></i> Filters</button>
+  </div>
+  <div class="table-card">
+    <div class="table-wrap"><table><thead><tr><th>Author</th><th>Amount</th><th>Method</th><th>Status</th><th>Requested</th><th>Processed</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table></div>
+    <div class="pagination-row"><div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>47</b> requests</div><div class="page-btns" id="pageBtns"></div></div>
+  </div>
+</div>
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="withdrawal-requests-enhanced.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+DroboardShell.attach('#dashboardRoot',{activeFile:'withdrawal-requests.html',title:'Withdrawal Requests',subtitle:'Manage and process author withdrawal requests',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search by author, amount, or ID...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
+const WITHDRAWALS=[
+  {id:'WD-0047',author:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',amount:'$2,450.00',method:'Bank Transfer',status:'pending',requested:'Jun 17, 2026',processed:'—'},
+  {id:'WD-0046',author:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',amount:'$1,820.00',method:'PayPal',status:'processing',requested:'Jun 16, 2026',processed:'Jun 17, 2026'},
+  {id:'WD-0045',author:'Isabella Rossi',avatar:'https://i.pravatar.cc/100?img=38',amount:'$3,100.00',method:'Mobile Money',status:'completed',requested:'Jun 14, 2026',processed:'Jun 16, 2026'},
+  {id:'WD-0044',author:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',amount:'$980.00',method:'Bank Transfer',status:'pending',requested:'Jun 13, 2026',processed:'—'},
+  {id:'WD-0043',author:'Priya Nair',avatar:'https://i.pravatar.cc/100?img=27',amount:'$1,560.00',method:'PayPal',status:'completed',requested:'Jun 12, 2026',processed:'Jun 14, 2026'},
+  {id:'WD-0042',author:'Layla Haddad',avatar:'https://i.pravatar.cc/100?img=48',amount:'$2,890.00',method:'Bank Transfer',status:'processing',requested:'Jun 11, 2026',processed:'Jun 13, 2026'},
+  {id:'WD-0041',author:'Daniel Reyes',avatar:'https://i.pravatar.cc/100?img=51',amount:'$450.00',method:'Mobile Money',status:'pending',requested:'Jun 10, 2026',processed:'—'},
+  {id:'WD-0040',author:'Julien Moreau',avatar:'https://i.pravatar.cc/100?img=15',amount:'$320.00',method:'PayPal',status:'rejected',requested:'Jun 9, 2026',processed:'Jun 11, 2026'},
+];
+let currentView='all';
+function statusPillHtml(s){const m={pending:{cls:'pending',label:'Pending'},processing:{cls:'processing',label:'Processing'},completed:{cls:'completed',label:'Completed'},rejected:{cls:'rejected',label:'Rejected'}}[s]||m.pending;return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`}
+function viewSource(){if(currentView==='all')return WITHDRAWALS;return WITHDRAWALS.filter(r=>r.status===currentView)}
+function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const s=document.getElementById('statusSelect').value;let l=viewSource();if(s)l=l.filter(r=>r.status===s);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.author.toLowerCase().includes(q)||r.amount.toLowerCase().includes(q));return l}
+function renderTable(list){const b=document.getElementById('tableBody');if(!list.length){b.innerHTML=`<tr class="empty-row"><td colspan="7"><i class="fas fa-money-bill-wave"></i>No requests match this search.</td></tr>`;return}
+b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Author"><div class="auth-cell"><img src="${r.avatar}" alt=""/><span>${r.author}</span></div></td><td data-label="Amount" class="amount-cell">${r.amount}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Requested" style="font-weight:600">${r.requested}</td><td data-label="Processed" style="color:var(--text-muted)">${r.processed}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" title="View" onclick="toast('Opening withdrawal details…')"><i class="fas fa-eye"></i></button><button class="act-btn" title="Approve" onclick="toast('Approving withdrawal…')"><i class="fas fa-check"></i></button><button class="act-btn" title="More" onclick="toast('More actions…')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
+function renderPageInfo(c){const t={all:47,pending:12,processing:8,completed:24,rejected:3};const total=t[currentView]??c;const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>${total.toLocaleString()}</b> requests`}
+function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
+document.querySelectorAll('.sub-tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');currentView=tab.dataset.view;document.getElementById('statusSelect').value='';renderPagination();refresh()})})
+function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,6];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
+document.getElementById('tableSearch').addEventListener('input',refresh);document.getElementById('statusSelect').addEventListener('change',(e)=>{const s=e.target.value;currentView=s||'all';document.querySelectorAll('.sub-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===currentView));renderPagination();refresh()});
+renderPagination();refresh();
+</script>
+</body>
+</html>

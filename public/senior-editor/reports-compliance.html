@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Reports & Compliance — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.welcome-title{font-size:21px;font-weight:800}.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:0}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.grid-2col{display:grid;grid-template-columns:1.7fr 1fr;gap:20px;align-items:start}
+.case-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;transition:.15s}
+.case-card:hover{border-color:var(--accent)}.cc-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px}.cc-detail{font-size:11.5px;color:var(--text-muted);margin-top:4px}.cc-meta{font-size:10.5px;color:var(--text-faint);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.status-pill{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.status-pill.investigating{background:var(--blue-bg);color:var(--blue)}.status-pill.confirmed{background:var(--red-bg);color:var(--red)}.status-pill.resolved{background:var(--green-bg);color:var(--green)}.status-pill.open{background:var(--amber-bg);color:var(--amber)}
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px}
+.page-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.page-btn:disabled{opacity:.4;cursor:default}
+@media (max-width:1080px){.grid-2col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="rcRoot">
+  <div class="welcome-banner"><div class="welcome-eyebrow">Senior Editor · Reports & Compliance</div><div class="welcome-title">Reports & Compliance ⚠️</div><div class="welcome-sub">Plagiarism reports, content violations, reader complaints, and resolution actions.</div></div>
+  <div class="grid-2col">
+    <div class="panel"><div class="panel-head"><h2><i class="fas fa-copy" style="color:var(--red)"></i> Plagiarism Reports</h2><span id="plagCount" style="font-size:12px;color:var(--text-faint)"></span></div><div id="plagiarismList"></div><div class="pagination" id="plagPag"></div></div>
+    <div><div class="panel"><div class="panel-head"><h2><i class="fas fa-flag" style="color:var(--amber)"></i> Violations</h2></div><div id="violationsList"></div></div>
+    <div class="panel"><div class="panel-head"><h2><i class="fas fa-message" style="color:var(--blue)"></i> Reader Complaints</h2><span id="compCount" style="font-size:12px;color:var(--text-faint)"></span></div><div id="complaintsList"></div><div class="pagination" id="compPag"></div></div></div>
+  </div>
+</div>
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
+<script>
+'use strict';
+const shell = SeniorEditorSidebar.attach('#rcRoot',{activeItem:'reports-compliance',title:'Reports & Compliance',subtitle:'Content review & enforcement',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4});
+let plag=[],compl=[],plagP=1,compP=1;const PP=3;
+async function init(){const d=await SeniorEditorData.getReports();plag=d.plagiarism;compl=d.complaints;renderPlag();renderComp();
+  document.getElementById('violationsList').innerHTML=d.violations.map(v=>`<div class="case-card"><div class="cc-title">${v.story} — ${v.type} <span class="status-pill ${v.status}">${v.status}</span></div><div class="cc-meta"><span>📅 ${v.filed}</span><span>✅ ${v.action}</span></div></div>`).join('');}
+function renderPlag(){
+  const t=Math.max(1,Math.ceil(plag.length/PP));if(plagP>t)plagP=t;
+  const s=(plagP-1)*PP;document.getElementById('plagCount').textContent=`(${plag.length})`;
+  document.getElementById('plagiarismList').innerHTML=plag.slice(s,s+PP).map(p=>`<div class="case-card"><div class="cc-title">"${p.story}" <span class="status-pill ${p.status}">${p.status}</span></div><div class="cc-detail">${p.notes}</div><div class="cc-meta"><span>🔍 ${p.confidence}% match</span><span>📅 ${p.filed}</span></div></div>`).join('');
+  if(t<=1){document.getElementById('plagPag').innerHTML='';return;}
+  let h='';for(let i=1;i<=t;i++)h+=`<button class="page-btn ${i===plagP?'active':''}" data-p="${i}">${i}</button>`;
+  document.getElementById('plagPag').innerHTML=h;
+  document.querySelectorAll('#plagPag .page-btn').forEach(b=>b.addEventListener('click',()=>{plagP=parseInt(b.dataset.p);renderPlag();}));
+}
+function renderComp(){
+  const t=Math.max(1,Math.ceil(compl.length/PP));if(compP>t)compP=t;
+  const s=(compP-1)*PP;document.getElementById('compCount').textContent=`(${compl.length})`;
+  document.getElementById('complaintsList').innerHTML=compl.slice(s,s+PP).map(c=>`<div class="case-card"><div class="cc-title">${c.type} <span class="status-pill ${c.status}">${c.status}</span></div><div class="cc-detail">${c.detail}</div><div class="cc-meta"><span>👤 ${c.reader} → ${c.against}</span><span>📅 ${c.filed}</span></div></div>`).join('');
+  if(t<=1){document.getElementById('compPag').innerHTML='';return;}
+  let h='';for(let i=1;i<=t;i++)h+=`<button class="page-btn ${i===compP?'active':''}" data-p="${i}">${i}</button>`;
+  document.getElementById('compPag').innerHTML=h;
+  document.querySelectorAll('#compPag .page-btn').forEach(b=>b.addEventListener('click',()=>{compP=parseInt(b.dataset.p);renderComp();}));
+}
+init();
+</script>
+</body>
+</html>

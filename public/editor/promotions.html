@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Promotions — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically.
+
+     Layout rule: nothing on this page should force the PAGE to scroll
+     horizontally. The only element allowed to scroll sideways is the
+     table (.table-wrap{overflow-x:auto}) — everything else (stat grid,
+     filters row, right rail) wraps/shrinks instead of overflowing. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;min-width:0}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .stat-ico.purple{background:#ece9fb;color:#5b4bcf}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.red{background:var(--red-bg);color:var(--red)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.red{background:rgba(224,56,77,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px;white-space:nowrap}
+  .stat-delta.down{color:var(--red);background:var(--red-bg)}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-delta.down{background:rgba(224,56,77,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Two-column layout: table area + info rail ── */
+  .main-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+
+  /* ── Sub-tabs (status) ── */
+  .sub-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border);margin-bottom:16px;overflow-x:auto}
+  .sub-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .sub-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .sub-tab .tab-count{font-size:10.5px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}
+  .sub-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+
+  /* ── Filters row ── */
+  .filters-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit;min-width:0}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .fselect{position:relative}
+  .fselect select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}
+  .fselect i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-faint);pointer-events:none}
+  .date-range{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--text-faint);white-space:nowrap}
+  .date-range i.fa-calendar{margin-left:4px;color:var(--text-faint)}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+  .btn-filters:hover, .fselect select:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ── Table card ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px;min-width:0}
+  .table-wrap{overflow-x:auto;max-width:100%}
+  table{width:100%;border-collapse:collapse;min-width:980px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+
+  .promo-cell{display:flex;align-items:center;gap:12px;min-width:250px}
+  .promo-tile{width:48px;height:48px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}
+  .promo-title{font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px}
+  .promo-code{font-family:'Courier New',monospace;font-size:10.5px;font-weight:700;background:var(--table-head);color:var(--text-muted);padding:2px 7px;border-radius:6px;letter-spacing:.03em}
+  .promo-desc{color:var(--text-muted);font-size:11.5px;margin-top:2px}
+
+  .type-pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap}
+  .type-pill.discount{background:#ece9fb;color:#5b4bcf}
+  .type-pill.bundle{background:var(--blue-bg);color:var(--blue)}
+  .type-pill.flash{background:var(--red-bg);color:var(--red)}
+  .type-pill.referral{background:var(--green-bg);color:var(--green)}
+  .type-pill.trial{background:#ffe1eb;color:#ff0050}
+  html[data-theme="dark"] .type-pill.discount{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .type-pill.bundle{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .type-pill.flash{background:rgba(224,56,77,.16)}
+  html[data-theme="dark"] .type-pill.referral{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .type-pill.trial{background:rgba(255,0,80,.16)}
+
+  .discount-cell{font-weight:800;font-size:13px}
+
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.scheduled{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .status-pill.scheduled{background:rgba(217,119,6,.18)}
+  .status-pill.expired{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .status-pill.expired{background:rgba(255,255,255,.06)}
+  .status-pill.draft{background:var(--table-head);color:var(--text-faint)}
+  html[data-theme="dark"] .status-pill.draft{background:rgba(255,255,255,.06)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.scheduled .dot{background:var(--amber)}
+  .status-pill.expired .dot{background:var(--text-faint)}
+  .status-pill.draft .dot{background:var(--text-faint)}
+
+  .usage-cell{min-width:120px}
+  .usage-num{font-weight:700;font-size:12.5px;margin-bottom:5px}
+  .usage-track{height:6px;border-radius:20px;background:var(--table-head);overflow:hidden}
+  .usage-fill{height:100%;border-radius:20px;background:var(--accent)}
+
+  .date-cell{font-weight:600;font-size:12.5px}
+  .date-cell .sub{display:block;font-size:11px;color:var(--text-faint);font-weight:600;margin-top:1px}
+
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  /* ── Right rail panels ── */
+  .rail{display:flex;flex-direction:column;gap:20px;min-width:0}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;min-width:0}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:14.5px;font-weight:800}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+
+  /* Donut */
+  .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .donut{width:150px;height:150px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .donut::before{content:"";position:absolute;inset:20px;border-radius:50%;background:var(--card)}
+  .donut-center{position:relative;text-align:center;z-index:1}
+  .donut-center b{display:block;font-size:24px;font-weight:800}
+  .donut-center span{font-size:10.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .legend{width:100%}
+  .legend-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:12px;gap:8px}
+  .legend-lbl{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text-muted);min-width:0}
+  .legend-lbl span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .legend-val{font-weight:700;flex-shrink:0}
+
+  /* Top performing promotions */
+  .top-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .top-row:last-child{border-bottom:none}
+  .top-rank{width:24px;height:24px;border-radius:7px;background:var(--table-head);color:var(--text-muted);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .top-info{flex:1;min-width:0}
+  .top-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top-sub{font-size:11px;color:var(--text-faint);margin-top:1px}
+  .top-val{text-align:right;flex-shrink:0}
+  .top-val b{display:block;font-size:12.5px;font-weight:800;color:var(--green)}
+
+  /* Quick actions */
+  .qa-list{display:flex;flex-direction:column;gap:6px}
+  .qa-item{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:10px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text)}
+  .qa-item:hover{background:var(--hover)}
+  .qa-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+  .qa-ico.purple{background:#ece9fb;color:#5b4bcf}
+  .qa-ico.pink{background:#ffe1eb;color:#ff0050}
+  .qa-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .qa-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  html[data-theme="dark"] .qa-ico.purple{background:rgba(124,92,252,.18);color:#a89bff}
+  html[data-theme="dark"] .qa-ico.pink{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .qa-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .qa-ico.amber{background:rgba(217,119,6,.18)}
+  .qa-item span.qa-lbl{flex:1;min-width:0}
+  .qa-item i.fa-chevron-right{color:var(--text-faint);font-size:11px;flex-shrink:0}
+
+  /* Revenue impact */
+  .reach-row{display:flex;align-items:center;gap:14px}
+  .reach-ico{width:46px;height:46px;border-radius:12px;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  html[data-theme="dark"] .reach-ico{background:rgba(22,163,74,.18)}
+  .reach-num{font-size:22px;font-weight:800;line-height:1}
+  .reach-lbl{font-size:12px;color:var(--text-muted);font-weight:600;margin-top:3px}
+  .reach-delta{font-size:11px;font-weight:700;color:var(--green);margin-top:6px}
+
+  @media (max-width:1300px){ .main-grid{grid-template-columns:minmax(0,1fr)} .rail{flex-direction:row;flex-wrap:wrap} .rail .panel{flex:1;min-width:260px} }
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))} .rail{flex-direction:column} }
+  @media (max-width:680px){
+    .filters-row{flex-direction:column;align-items:stretch}
+    .fselect select{width:100%}
+    .table-wrap{overflow-x:auto}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Promotion"]{align-items:flex-start}
+    td[data-label="Promotion"]::before{display:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:minmax(0,1fr)} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <button class="btn-add" id="newPromoBtn"><i class="fas fa-plus"></i> Create New Promotion</button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico purple"><i class="fas fa-tag"></i></div></div>
+      <div class="stat-num">28</div>
+      <div class="stat-lbl">Total Promotions</div>
+      <span class="stat-delta">+12% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div></div>
+      <div class="stat-num">16</div>
+      <div class="stat-lbl">Active Promotions</div>
+      <span class="stat-delta">+9% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div></div>
+      <div class="stat-num">5</div>
+      <div class="stat-lbl">Scheduled</div>
+      <span class="stat-delta">+25% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico red"><i class="fas fa-box-archive"></i></div></div>
+      <div class="stat-num">7</div>
+      <div class="stat-lbl">Expired</div>
+      <span class="stat-delta down">-4% from last month</span>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-receipt"></i></div></div>
+      <div class="stat-num">8,082</div>
+      <div class="stat-lbl">Total Redemptions</div>
+      <span class="stat-delta">+31% from last month</span>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- ── Left: table area ── -->
+    <div>
+      <!-- Sub-tabs -->
+      <div class="sub-tabs">
+        <div class="sub-tab active" data-view="all">All Promotions</div>
+        <div class="sub-tab" data-view="active">Active <span class="tab-count">16</span></div>
+        <div class="sub-tab" data-view="scheduled">Scheduled <span class="tab-count">5</span></div>
+        <div class="sub-tab" data-view="expired">Expired <span class="tab-count">7</span></div>
+        <div class="sub-tab" data-view="draft">Drafts <span class="tab-count">0</span></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-row">
+        <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by promotion name or code..."/></div>
+        <div class="fselect"><select id="typeSelect">
+          <option value="">All Types</option>
+          <option value="discount">Discount Code</option>
+          <option value="bundle">Bundle Deal</option>
+          <option value="flash">Flash Sale</option>
+          <option value="referral">Referral Bonus</option>
+          <option value="trial">Free Trial</option>
+        </select><i class="fas fa-chevron-down"></i></div>
+        <div class="fselect"><select id="statusSelect">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="expired">Expired</option>
+          <option value="draft">Draft</option>
+        </select><i class="fas fa-chevron-down"></i></div>
+        <div class="date-range" onclick="toast('Opening date range picker…')">Start Date <i class="fas fa-arrow-right" style="font-size:9px"></i> End Date <i class="fas fa-calendar"></i></div>
+        <button class="btn-filters" onclick="toast('Opening advanced filters…')"><i class="fas fa-sliders"></i> Filters</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-card">
+        <div class="table-wrap">
+          <table id="mainTable">
+            <thead>
+              <tr>
+                <th>Promotion</th><th>Type</th><th>Discount</th><th>Status</th><th>Usage</th><th>Start / End Date</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination-row">
+          <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>28</b> promotions</div>
+          <div class="page-btns" id="pageBtns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: info rail ── -->
+    <div class="rail">
+      <div class="panel">
+        <div class="panel-head"><h2>Promotion Mix</h2></div>
+        <div class="donut-wrap">
+          <div class="donut" id="overviewDonut">
+            <div class="donut-center"><b>28</b><span>Total</span></div>
+          </div>
+          <div class="legend" id="overviewLegend"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Top Performing</h2><a onclick="toast('Opening all promotions…')">View All</a></div>
+        <div id="topList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Quick Actions</h2></div>
+        <div class="qa-list" id="quickActions"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Revenue Impact</h2></div>
+        <div class="reach-row">
+          <div class="reach-ico"><i class="fas fa-sack-dollar"></i></div>
+          <div>
+            <div class="reach-num">$62.4K</div>
+            <div class="reach-lbl">Revenue Influenced</div>
+          </div>
+        </div>
+        <div class="reach-delta"><i class="fas fa-arrow-up"></i> +19% from last month</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="shared/api.js"></script>
+<script src="shared/story-modal.js"></script>
+<script src="shared/dashboard-shell.js"></script>
+<script src="remaining-pages-enhanced.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
+   already inside #dashboardRoot above. Uses the default nav —
+   "Promotions" already lives under Promotions & Marketing.
+   ═══════════════════════════════════════════════════════════ */
+DroboardShell.attach('#dashboardRoot', {
+  activeFile: 'promotions.html',
+  title: 'Promotions',
+  subtitle: 'Create, manage and track all platform promotions',
+  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+  notifCount: 0,
+  searchPlaceholder: 'Search by promotion name or code...',
+  mobileSearchTarget: '#tableSearch',
+  onSearch: (value) => {
+    document.getElementById('tableSearch').value = value;
+    refresh();
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════ */
+const TYPE_META = {
+  discount: { label: 'Discount Code',  icon: 'fa-percent',           tile: 'linear-gradient(135deg,#2d2154,#5b4bcf)' },
+  bundle:   { label: 'Bundle Deal',    icon: 'fa-boxes-stacked',     tile: 'linear-gradient(135deg,#1f3a63,#2f7de1)' },
+  flash:    { label: 'Flash Sale',     icon: 'fa-bolt',              tile: 'linear-gradient(135deg,#7a1f2b,#e0384d)' },
+  referral: { label: 'Referral Bonus', icon: 'fa-user-plus',         tile: 'linear-gradient(135deg,#0f5132,#16a34a)' },
+  trial:    { label: 'Free Trial',     icon: 'fa-hourglass-start',   tile: 'linear-gradient(135deg,#c2185b,#ff0050)' },
+};
+
+const PROMOTIONS = [
+  { id:'PROMO-2026-028', title:'Summer Reading Sale',   code:'SUMMER25',  desc:'Site-wide seasonal discount on all book bundles.', type:'discount', discount:'25% OFF',            status:'active',    used:1240, cap:5000,  start:'Jun 1, 2026',  end:'Jun 30, 2026' },
+  { id:'PROMO-2026-027', title:'New Author Bundle',     code:'AUTHOR2X',  desc:'Buy any 2 books from a new author, get 1 free.',   type:'bundle',   discount:'Buy 2 Get 1',        status:'active',    used:380,  cap:1000,  start:'Jun 10, 2026', end:'Jul 10, 2026' },
+  { id:'PROMO-2026-026', title:'Flash Friday',          code:'FLASH40',   desc:'One-day flash sale across the whole catalog.',     type:'flash',    discount:'40% OFF',            status:'scheduled', used:0,    cap:2000,  start:'Jul 11, 2026', end:'Jul 12, 2026' },
+  { id:'PROMO-2026-025', title:'Refer a Friend',        code:'REFER500',  desc:'Give ₦500, get ₦500 when a referral signs up.',    type:'referral', discount:'\u20a6500 Credit',   status:'active',    used:892,  cap:null,  start:'Jan 1, 2026',  end:'Dec 31, 2026' },
+  { id:'PROMO-2026-024', title:'7-Day Free Trial',      code:'TRY7FREE',  desc:'Full platform access free for the first week.',    type:'trial',    discount:'Free Access',        status:'active',    used:3120, cap:null,  start:'May 1, 2026',  end:'Ongoing' },
+  { id:'PROMO-2026-023', title:'Spring Clearance',      code:'SPRING30',  desc:'End-of-season clearance on selected titles.',      type:'discount', discount:'30% OFF',            status:'expired',   used:2450, cap:2500,  start:'Mar 1, 2026',  end:'Mar 31, 2026' },
+  { id:'PROMO-2026-022', title:'Loyalty Rewards',       code:'LOYAL15',   desc:'Discount for readers with 10+ purchases.',         type:'bundle',   discount:'15% OFF',            status:'draft',     used:0,    cap:null,  start:'—',            end:'—' },
+  { id:'PROMO-2026-021', title:'Independence Day Sale', code:'INDEP50',   desc:'National holiday storewide discount event.',       type:'flash',    discount:'50% OFF',            status:'scheduled', used:0,    cap:3000,  start:'Oct 1, 2026',  end:'Oct 1, 2026' },
+];
+
+const MIX_BREAKDOWN = [
+  { label:'Discount Code',  value:9, pct:32.1, color:'#5b4bcf' },
+  { label:'Bundle Deal',    value:7, pct:25.0, color:'var(--blue)' },
+  { label:'Flash Sale',     value:5, pct:17.9, color:'var(--red)' },
+  { label:'Free Trial',     value:4, pct:14.3, color:'#ff0050' },
+  { label:'Referral Bonus', value:3, pct:10.7, color:'var(--green)' },
+];
+
+const TOP_PROMOS = [
+  { title:'7-Day Free Trial',    sub:'Free Trial \u00b7 Ongoing', val:'3,120 uses' },
+  { title:'Spring Clearance',    sub:'Discount Code \u00b7 Ended', val:'2,450 uses' },
+  { title:'Summer Reading Sale', sub:'Discount Code \u00b7 Active', val:'1,240 uses' },
+];
+
+const QUICK_ACTIONS = [
+  { label:'Create Promotion',       icon:'fa-plus',       cls:'purple' },
+  { label:'Manage Discount Codes',  icon:'fa-percent',    cls:'pink' },
+  { label:'Promotion Templates',    icon:'fa-file-lines', cls:'blue' },
+  { label:'Notification Settings',  icon:'fa-bell',       cls:'amber' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER HELPERS
+   ═══════════════════════════════════════════════════════════ */
+function statusPillHtml(status){
+  const map = {
+    active:    { cls:'', label:'Active' },
+    scheduled: { cls:'scheduled', label:'Scheduled' },
+    expired:   { cls:'expired', label:'Expired' },
+    draft:     { cls:'draft', label:'Draft' },
+  };
+  const m = map[status] || map.active;
+  return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`;
+}
+
+function typePillHtml(type){
+  const m = TYPE_META[type] || TYPE_META.discount;
+  return `<span class="type-pill ${type}">${m.label}</span>`;
+}
+
+function tileHtml(row){
+  const m = TYPE_META[row.type] || TYPE_META.discount;
+  return `<div class="promo-tile" style="background:${m.tile}"><i class="fas ${m.icon}"></i></div>`;
+}
+
+function usageHtml(row){
+  if (row.cap == null){
+    return `<div class="usage-cell"><div class="usage-num">${row.used.toLocaleString()} uses</div><div class="usage-track"><div class="usage-fill" style="width:100%;background:var(--text-faint)"></div></div></div>`;
+  }
+  const pct = Math.min(100, Math.round((row.used / row.cap) * 100));
+  return `<div class="usage-cell"><div class="usage-num">${row.used.toLocaleString()} / ${row.cap.toLocaleString()}</div><div class="usage-track"><div class="usage-fill" style="width:${pct}%"></div></div></div>`;
+}
+
+let currentView = 'all';
+
+function viewSource(){
+  if (currentView === 'all') return PROMOTIONS;
+  return PROMOTIONS.filter(r => r.status === currentView);
+}
+
+function currentFiltered(){
+  const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+  const type = document.getElementById('typeSelect').value;
+  const status = document.getElementById('statusSelect').value;
+  let list = viewSource();
+  if (status) list = list.filter(r => r.status === status);
+  if (type) list = list.filter(r => r.type === type);
+  if (q) list = list.filter(r => r.title.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || r.id.toLowerCase().includes(q));
+  return list;
+}
+
+function renderTable(list){
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="7"><i class="fas fa-tag"></i>No promotions match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(r => `
+    <tr>
+      <td data-label="Promotion">
+        <div class="promo-cell">
+          ${tileHtml(r)}
+          <div><div class="promo-title">${r.title} <span class="promo-code">${r.code}</span></div><div class="promo-desc">${r.desc}</div></div>
+        </div>
+      </td>
+      <td data-label="Type">${typePillHtml(r.type)}</td>
+      <td data-label="Discount" class="discount-cell">${r.discount}</td>
+      <td data-label="Status">${statusPillHtml(r.status)}</td>
+      <td data-label="Usage">${usageHtml(r)}</td>
+      <td data-label="Start / End Date" class="date-cell">${r.start}<span class="sub">${r.end}</span></td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="View" onclick="toast('Opening \\'${r.title}\\'…')"><i class="fas fa-eye"></i></button>
+          <button class="act-btn" title="Edit" onclick="toast('Editing \\'${r.title}\\'…')"><i class="fas fa-pen"></i></button>
+          <button class="act-btn" title="More" onclick="toast('More actions for \\'${r.title}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderPageInfo(count){
+  const totals = { all:28, active:16, scheduled:5, expired:7, draft:0 };
+  const total = totals[currentView] ?? count;
+  const shown = Math.min(8, count);
+  document.getElementById('pageInfo').innerHTML = `Showing <b>${count ? 1 : 0}</b> to <b>${shown}</b> of <b>${total.toLocaleString()}</b> promotions`;
+}
+
+function refresh(){
+  const list = currentFiltered();
+  renderTable(list);
+  renderPageInfo(list.length);
+}
+
+/* ── Sub-tab switching ── */
+document.querySelectorAll('.sub-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    document.getElementById('statusSelect').value = '';
+    renderPagination();
+    refresh();
+  });
+});
+
+/* ── Pagination (visual, matches other admin pages) ── */
+function renderPagination(){
+  const wrap = document.getElementById('pageBtns');
+  const pageSets = { all:[1,2,3,4], active:[1,2,3], scheduled:[1], expired:[1], draft:[1] };
+  const pages = pageSets[currentView] || [1];
+  wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
+    pages.map(p => `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
+    `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
+  wrap.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+/* ── Filters wiring ── */
+document.getElementById('tableSearch').addEventListener('input', refresh);
+document.getElementById('typeSelect').addEventListener('change', refresh);
+document.getElementById('statusSelect').addEventListener('change', (e) => {
+  const status = e.target.value;
+  currentView = status || 'all';
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.dataset.view === currentView));
+  renderPagination();
+  refresh();
+});
+
+/* ── Create button ── */
+document.getElementById('newPromoBtn').addEventListener('click', () => toast('Opening new promotion form…'));
+
+/* ── Promotion mix donut + legend ── */
+function renderDonut(){
+  let acc = 0;
+  const stops = MIX_BREAKDOWN.map(s => {
+    const start = acc;
+    acc += s.pct;
+    return `${s.color} ${start}% ${acc}%`;
+  }).join(', ');
+  document.getElementById('overviewDonut').style.background = `conic-gradient(${stops})`;
+
+  document.getElementById('overviewLegend').innerHTML = MIX_BREAKDOWN.map(s => `
+    <div class="legend-row">
+      <div class="legend-lbl"><span class="legend-dot" style="background:${s.color}"></span><span>${s.label}</span></div>
+      <div class="legend-val">${s.value} (${s.pct}%)</div>
+    </div>`).join('');
+}
+
+/* ── Top performing promotions ── */
+function renderTop(){
+  document.getElementById('topList').innerHTML = TOP_PROMOS.map((t, i) => `
+    <div class="top-row">
+      <div class="top-rank">${i + 1}</div>
+      <div class="top-info"><div class="top-title">${t.title}</div><div class="top-sub">${t.sub}</div></div>
+      <div class="top-val"><b>${t.val}</b></div>
+    </div>`).join('');
+}
+
+/* ── Quick actions ── */
+function renderQuickActions(){
+  document.getElementById('quickActions').innerHTML = QUICK_ACTIONS.map(a => `
+    <div class="qa-item" onclick="toast('${a.label}…')">
+      <div class="qa-ico ${a.cls}"><i class="fas ${a.icon}"></i></div>
+      <span class="qa-lbl">${a.label}</span>
+      <i class="fas fa-chevron-right"></i>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+renderPagination();
+renderDonut();
+renderTop();
+renderQuickActions();
+refresh();
+</script>
+</body>
+</html>

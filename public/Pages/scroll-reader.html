@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Droboard · Reading</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc-dim:rgba(255,0,80,.12);--acc-border:rgba(255,0,80,.3);--glow:rgba(255,0,80,.22);
+  --bg:#000000;--bg2:#0f1013;--bg3:#0a0a0d;--surface:#161616;
+  --tx:#f0f0f0;--tx2:#a1a1aa;--muted:#71717a;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);
+  --font-story:'Lora',serif;--font-ui:'DM Sans',sans-serif;--font-d:'Playfair Display',serif;
+  --fs:14px;--lh:1.9;
+  --safe-t:env(safe-area-inset-top,10px);--safe-b:env(safe-area-inset-bottom,14px);
+  --gold:#d97706;--gold-s:rgba(217,119,6,.12);--green:#22c55e;
+}
+body.theme-sepia{--bg:#1a1510;--bg2:#201a12;--bg3:#26201a;--surface:#26201a;--bd:rgba(232,213,176,.08);--muted:#806050;--tx:#e8d5b0;--tx2:#a89070;}
+body.theme-grey{--bg:#0f1117;--bg2:#151820;--bg3:#1c2028;--surface:#1c2028;--bd:rgba(216,220,232,.07);--tx:#d8dce8;--tx2:#888da0;}
+body.theme-white{--bg:#ffffff;--bg2:#f5f5f5;--bg3:#ececec;--surface:#efefef;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);--muted:#999;--tx:#111;--tx2:#555;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font-ui);transition:background .3s,color .3s}
+img{display:block;user-select:none}
+button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
+
+/* ══ FLOATING CONTROLS ══ */
+.floating-controls{position:fixed;top:0;left:0;right:0;z-index:150;display:flex;align-items:center;justify-content:space-between;padding:calc(var(--safe-t) + 8px) 14px 10px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);opacity:0;pointer-events:none;transform:translateY(-8px);transition:opacity .25s,transform .25s;}
+.floating-controls.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+.fc-left,.fc-right{display:flex;gap:8px;align-items:center}
+.fc-btn{width:36px;height:36px;border-radius:50%;background:rgba(20,20,24,.85);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px;color:#eee;cursor:pointer;flex-shrink:0;transition:.15s;}
+.fc-btn:active{transform:scale(.9)}
+.fc-progress-pill{background:rgba(20,20,24,.85);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);border-radius:999px;padding:7px 13px;font-size:10px;font-weight:700;color:#ccc;white-space:nowrap;}
+.fc-coin-pill{display:flex;align-items:center;gap:6px;background:rgba(217,119,6,.2);border:1px solid rgba(217,119,6,.4);backdrop-filter:blur(10px);border-radius:999px;padding:7px 12px;font-size:11px;font-weight:800;color:#fbbf24;cursor:pointer;white-space:nowrap;transition:.15s;}
+.fc-coin-pill:active{transform:scale(.93)}
+.fc-coin-pill i{font-size:12px}
+
+/* thin progress bar */
+.read-progress{position:fixed;top:0;left:0;right:0;height:2.5px;background:transparent;z-index:151;}
+.read-progress-fill{height:100%;background:var(--acc);width:0%;transition:width .15s linear}
+
+/* ══ SCROLL BODY ══ */
+.scroll-body{height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.scroll-body::-webkit-scrollbar{display:none}
+.reader-col{max-width:640px;margin:0 auto;padding:0 22px}
+
+.loading-state{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);font-size:12px;font-family:var(--font-ui);}
+.loading-spin{width:32px;height:32px;border-radius:50%;border:3px solid var(--bd);border-top-color:var(--acc);animation:dspin .8s linear infinite}
+@keyframes dspin{to{transform:rotate(360deg)}}
+
+.story-top{padding:calc(var(--safe-t) + 70px) 22px 6px;max-width:640px;margin:0 auto;text-align:center}
+.story-top-cat{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--acc);text-transform:uppercase;margin-bottom:8px}
+.story-top-title{font-family:var(--font-d);font-size:22px;font-weight:900;line-height:1.25;color:var(--tx);margin-bottom:8px}
+.story-top-author{font-size:11px;color:var(--muted);font-weight:600}
+
+.chapter-block{padding-top:34px}
+.chapter-heading{font-family:var(--font-story);font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;margin-bottom:22px;}
+.story-text{font-family:var(--font-story);font-size:var(--fs);line-height:var(--lh);color:var(--tx);letter-spacing:.01em;}
+.story-text p{margin-bottom:1.5em}
+.story-text p:last-child{margin-bottom:0}
+
+/* ══ LOCKED / PAYWALL FADE ══ */
+.locked-wrap{position:relative;}
+.locked-fade{max-height:280px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(to bottom, black 30%, transparent 92%);mask-image:linear-gradient(to bottom, black 30%, transparent 92%);opacity:.5;pointer-events:none;user-select:none;}
+.unlock-card{margin:-46px auto 20px;position:relative;z-index:5;max-width:400px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:18px;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6);text-align:center;}
+.unlock-icon{width:46px;height:46px;border-radius:50%;background:var(--acc-dim);border:1.5px solid var(--acc-border);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--acc);margin:0 auto 12px}
+.unlock-title{font-family:var(--font-d);font-size:15px;font-weight:800;color:var(--tx);margin-bottom:5px}
+.unlock-sub{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+.unlock-opts{display:flex;flex-direction:column;gap:8px}
+.unlock-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:12px;border:1.5px solid var(--bd);background:var(--surface);cursor:pointer;transition:.15s;}
+.unlock-opt:active{transform:scale(.98)}
+.unlock-opt.reco{border-color:var(--acc-border);background:var(--acc-dim)}
+.unlock-opt-lbl{text-align:left}
+.unlock-opt-t{font-size:11.5px;font-weight:800;color:var(--tx)}
+.unlock-opt-s{font-size:9px;color:var(--muted);margin-top:1px}
+.unlock-opt-price{font-size:11.5px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.unlock-opt.reco .unlock-opt-price{color:var(--acc)}
+
+/* ══ ENGAGE BAR ══ */
+.engage-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:26px 0 4px;}
+.eb-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--bd);cursor:pointer;transition:.15s;min-width:74px;}
+.eb-btn:active{transform:scale(.95)}
+.eb-btn.saved{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.25)}
+.eb-btn.saved i{color:#60a5fa}
+.eb-icon{font-size:16px;color:var(--tx2)}
+.eb-lbl{font-size:9px;font-weight:700;color:var(--muted)}
+
+/* ══ COMMENT LINE ══ */
+.comment-line-wrap{padding:14px 0 4px}
+
+/* ══ AD SLOT ══ */
+.ad-slot{padding:30px 0 4px}
+.ad-slot-lbl{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px;text-align:center}
+
+/* ══ CHAPTERS PANEL ══ */
+.ch-panel{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;background:var(--bg);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.ch-panel.open{transform:translateX(0)}
+.ch-panel-hdr{flex-shrink:0;height:52px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--bd);background:rgba(0,0,0,.85);backdrop-filter:blur(16px);}
+.ch-panel-title{font-family:var(--font-d);font-size:15px;font-weight:700;color:var(--tx);flex:1}
+.ch-panel-close{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);cursor:pointer;}
+.ch-panel-body{flex:1;overflow-y:auto;scrollbar-width:none;padding:12px 14px}
+.ch-panel-body::-webkit-scrollbar{display:none}
+.ch-row{display:flex;align-items:center;gap:11px;background:var(--surface);border:1.5px solid var(--bd);border-radius:10px;padding:11px 13px;cursor:pointer;transition:.18s;margin-bottom:6px;}
+.ch-row.current{border-color:var(--acc-border);background:var(--acc-dim)}
+.ch-row.locked{opacity:.7}
+.ch-row:active{transform:scale(.99)}
+.ch-num{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);color:var(--muted);}
+.ch-num.locked{color:var(--muted)}
+.ch-row-body{flex:1;min-width:0}
+.ch-row-title{font-size:12px;font-weight:700;color:var(--tx);line-height:1.3;margin-bottom:2px}
+.ch-row-meta{font-size:9px;color:var(--muted)}
+
+/* ══ SETTINGS PANEL ══ */
+.settings-panel{position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--bg3,#0a0a0d);border-radius:22px 22px 0 0;border-top:1px solid var(--bd);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:0 0 calc(20px + var(--safe-b));}
+.settings-panel.open{transform:translateY(0)}
+.sp-handle{width:36px;height:4px;background:var(--bd);border-radius:4px;margin:12px auto 16px}
+.sp-title{font-size:12px;font-weight:800;color:var(--tx2);text-align:center;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px}
+.sp-section{padding:0 20px 16px}
+.sp-label{font-size:9.5px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.font-ctrl{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--bd);border-radius:12px;padding:8px 14px}
+.font-ctrl-btn{width:36px;height:36px;border-radius:50%;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--tx2);cursor:pointer;flex-shrink:0;font-weight:700;}
+.font-ctrl-btn:active{transform:scale(.9)}
+.font-size-display{flex:1;text-align:center;font-size:14px;font-weight:800;color:var(--tx)}
+.theme-opts{display:flex;gap:6px;flex-wrap:wrap}
+.theme-opt{flex:1;min-width:60px;height:52px;border-radius:10px;cursor:pointer;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:.18s;}
+.theme-opt.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
+.theme-dot{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.2)}
+.theme-name{font-size:8px;font-weight:700;color:var(--muted)}
+.lh-opts{display:flex;gap:6px}
+.lh-opt{flex:1;padding:8px 4px;border-radius:9px;cursor:pointer;border:1.5px solid var(--bd);background:var(--surface);text-align:center;transition:.18s;}
+.lh-opt.on{border-color:var(--acc);background:var(--acc-dim)}
+.lh-opt-label{font-size:8px;font-weight:700;color:var(--muted)}
+.lh-opt.on .lh-opt-label{color:var(--acc)}
+.ff-opts{display:flex;gap:6px}
+.ff-opt{flex:1;padding:10px 6px;border-radius:9px;cursor:pointer;border:1.5px solid var(--bd);background:var(--surface);text-align:center;transition:.18s;}
+.ff-opt.on{border-color:var(--acc);background:var(--acc-dim)}
+.ff-opt-label{font-size:11px;font-weight:700;color:var(--tx2)}
+.ff-opt.on .ff-opt-label{color:var(--acc)}
+
+.overlay-bg{position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .28s;}
+.overlay-bg.show{opacity:1;pointer-events:auto}
+
+/* ══ EXIT-INTENT AD ══ */
+.exit-ov{position:fixed;inset:0;z-index:400;background:#000;display:none;flex-direction:column;}
+.exit-ov.show{display:flex}
+.exit-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.5)}
+.exit-grad{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.95) 10%,rgba(0,0,0,.2) 60%)}
+.exit-body{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:0 22px calc(var(--safe-b) + 26px);}
+.exit-flag{position:absolute;top:calc(var(--safe-t) + 16px);left:0;right:0;display:flex;justify-content:center;z-index:3}
+.exit-flag-inner{background:var(--acc);padding:5px 16px;border-radius:24px;font-size:10px;font-weight:800;color:#fff;letter-spacing:.04em}
+.exit-headline{font-family:var(--font-d);font-size:23px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:8px;}
+.exit-sub{font-size:12.5px;color:#ccc;line-height:1.5;margin-bottom:18px;max-width:320px}
+.exit-actions{display:flex;align-items:center;gap:10px}
+.exit-cta{background:var(--acc);color:#fff;font-weight:800;font-size:13px;padding:12px 20px;border-radius:14px;cursor:pointer;flex:1;text-align:center;}
+.exit-close{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;transition:.2s;position:relative;}
+.exit-close:disabled{opacity:.55;cursor:default}
+.exit-close-ring{position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--acc);clip-path:inset(0 0 0 0);transform:rotate(-90deg);transition:clip-path 1s linear;}
+
+/* ══ INSUFFICIENT BALANCE MODAL ══ */
+.bal-ov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s;}
+.bal-ov.show{opacity:1;pointer-events:auto}
+.bal-card{width:100%;max-width:320px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:20px;padding:28px 22px;text-align:center;transform:scale(.92);transition:transform .25s;}
+.bal-ov.show .bal-card{transform:scale(1)}
+.bal-icon{width:52px;height:52px;border-radius:50%;background:var(--gold-s);border:1.5px solid rgba(217,119,6,.35);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gold);margin:0 auto 14px}
+.bal-title{font-family:var(--font-d);font-size:17px;font-weight:800;color:var(--tx);margin-bottom:6px}
+.bal-sub{font-size:12px;color:var(--tx2);line-height:1.5;margin-bottom:20px}
+.bal-sub b{color:var(--tx)}
+.bal-actions{display:flex;flex-direction:column;gap:8px}
+.bal-btn{padding:12px;border-radius:13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
+.bal-btn.primary{background:var(--acc);color:#fff;box-shadow:0 4px 16px var(--glow)}
+.bal-btn.ghost{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--bd)}
+
+/* ══ BUY COINS / FUND WALLET SHEET ══ */
+.buyc-ov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.buyc-ov.show{opacity:1;pointer-events:auto}
+.buyc-sheet{position:relative;width:100%;max-width:480px;background:var(--bg3,#0a0a0d);border:1px solid var(--bd);border-radius:22px 22px 0 0;padding:0 0 calc(20px + var(--safe-b));max-height:82vh;overflow-y:auto;scrollbar-width:none;transform:translateY(16px);transition:transform .25s;}
+.buyc-loading{position:absolute;inset:0;background:rgba(10,10,13,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:22px 22px 0 0;z-index:6;}
+.buyc-loading.show{display:flex}
+.buyc-ov.show .buyc-sheet{transform:translateY(0)}
+.buyc-sheet::-webkit-scrollbar{display:none}
+.buyc-hdr{display:flex;align-items:center;gap:10px;padding:14px 18px 14px}
+.buyc-title{font-family:var(--font-d);font-size:15px;font-weight:800;color:var(--tx);flex:1}
+.buyc-balance{font-size:11px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.buyc-tabs{display:flex;gap:8px;padding:0 18px 14px}
+.buyc-tab{flex:1;text-align:center;padding:9px;border-radius:11px;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface);border:1.5px solid var(--bd);cursor:pointer;transition:.18s;}
+.buyc-tab.on{background:var(--acc-dim);border-color:var(--acc-border);color:var(--acc)}
+.buyc-body{padding:0 18px 4px}
+.pkg-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-radius:14px;border:1.5px solid var(--bd);background:var(--surface);margin-bottom:9px;cursor:pointer;transition:.15s;}
+.pkg-card:active{transform:scale(.98)}
+.pkg-card.reco{border-color:var(--acc-border);background:var(--acc-dim)}
+.pkg-coins{font-size:14px;font-weight:900;color:var(--tx);display:flex;align-items:center;gap:6px}
+.pkg-coins i{color:var(--gold);font-size:13px}
+.pkg-bonus{font-size:9.5px;font-weight:700;color:var(--green);margin-top:2px}
+.pkg-label{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.pkg-right{text-align:right}
+.pkg-price{font-size:13px;font-weight:800;color:var(--tx)}
+.fund-lbl{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.fund-input{width:100%;background:var(--surface);border:1.5px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx);font-family:inherit;font-size:15px;font-weight:700;outline:none;margin-bottom:8px}
+.fund-rate{font-size:10.5px;color:var(--muted);margin-bottom:16px}
+.buyc-cta{width:100%;padding:13px;border-radius:14px;background:var(--acc);color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 16px var(--glow)}
+
+.toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="theme-dark">
+
+<!-- Top progress hairline -->
+<div class="read-progress"><div class="read-progress-fill" id="readProgressFill"></div></div>
+
+<!-- Floating controls -->
+<div class="floating-controls" id="floatingControls">
+  <div class="fc-left">
+    <div class="fc-btn" id="fcBack" title="Exit"><i class="fas fa-chevron-left"></i></div>
+  </div>
+  <div class="fc-progress-pill" id="fcProgressPill">Ch 1</div>
+  <div class="fc-right">
+    <div class="fc-coin-pill" id="fcCoinPill"><i class="fas fa-coins"></i> <span id="fcCoinBalance">0</span></div>
+    <div class="fc-btn" id="fcChapters" title="Chapters"><i class="fas fa-list-ul"></i></div>
+    <div class="fc-btn" id="fcSettings" title="Aa"><i class="fas fa-text-height"></i></div>
+  </div>
+</div>
+
+<!-- SCROLL BODY -->
+<div class="scroll-body" id="scrollBody">
+  <div class="loading-state" id="loadingState">
+    <div class="loading-spin"></div>
+    <div>Loading story…</div>
+  </div>
+  <div class="story-top" id="storyTop" style="display:none"></div>
+  <div class="reader-col" id="readerCol"></div>
+  <div style="height:40vh"></div>
+</div>
+
+<!-- CHAPTERS PANEL -->
+<div class="ch-panel" id="chPanel">
+  <div class="ch-panel-hdr">
+    <div class="ch-panel-title">Chapters</div>
+    <div class="ch-panel-close" onclick="closeChPanel()">✕</div>
+  </div>
+  <div class="ch-panel-body" id="chPanelBody"></div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="sp-handle"></div>
+  <div class="sp-title">Reading Settings</div>
+  <div class="sp-section">
+    <div class="sp-label">Font Size</div>
+    <div class="font-ctrl">
+      <div class="font-ctrl-btn" onclick="changeFontSize(-1)">A−</div>
+      <div class="font-size-display" id="fontSizeDisplay">14px</div>
+      <div class="font-ctrl-btn" onclick="changeFontSize(1)">A+</div>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Line Spacing</div>
+    <div class="lh-opts">
+      <div class="lh-opt" data-lh="1.6" onclick="setLH(this,'1.6')"><div class="lh-opt-label">Compact</div></div>
+      <div class="lh-opt on" data-lh="1.9" onclick="setLH(this,'1.9')"><div class="lh-opt-label">Normal</div></div>
+      <div class="lh-opt" data-lh="2.25" onclick="setLH(this,'2.25')"><div class="lh-opt-label">Relaxed</div></div>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Font Style</div>
+    <div class="ff-opts">
+      <div class="ff-opt on" onclick="setFF(this,'\'Lora\',serif')"><div class="ff-opt-label" style="font-family:'Lora',serif;">Lora</div></div>
+      <div class="ff-opt" onclick="setFF(this,'\'DM Sans\',sans-serif')"><div class="ff-opt-label" style="font-family:'DM Sans',sans-serif;">DM Sans</div></div>
+      <div class="ff-opt" onclick="setFF(this,'Georgia,serif')"><div class="ff-opt-label" style="font-family:Georgia,serif;">Georgia</div></div>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Background</div>
+    <div class="theme-opts">
+      <div class="theme-opt on" onclick="setTheme(this,'theme-dark')"><div class="theme-dot" style="background:#000;border-color:rgba(255,255,255,.3)"></div><div class="theme-name">Dark</div></div>
+      <div class="theme-opt" onclick="setTheme(this,'theme-sepia')"><div class="theme-dot" style="background:#1a1510;border-color:rgba(232,213,176,.3)"></div><div class="theme-name">Sepia</div></div>
+      <div class="theme-opt" onclick="setTheme(this,'theme-grey')"><div class="theme-dot" style="background:#0f1117;border-color:rgba(216,220,232,.3)"></div><div class="theme-name">Slate</div></div>
+      <div class="theme-opt" onclick="setTheme(this,'theme-white')"><div class="theme-dot" style="background:#fff;border-color:rgba(0,0,0,.2)"></div><div class="theme-name">White</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay-bg" id="overlayBg" onclick="closeAllSheets()"></div>
+
+<!-- EXIT-INTENT AD -->
+<div class="exit-ov" id="exitOv">
+  <div class="exit-bg" id="exitBg"></div>
+  <div class="exit-grad"></div>
+  <div class="exit-flag"><div class="exit-flag-inner">SPONSORED</div></div>
+  <div class="exit-body">
+    <div class="exit-headline" id="exitHeadline">Wait — before you go…</div>
+    <div class="exit-sub" id="exitSub">Discover more stories like this one, picked for you.</div>
+    <div class="exit-actions">
+      <div class="exit-cta" id="exitCta" onclick="exitCtaClick()">Explore</div>
+      <button class="exit-close" id="exitCloseBtn" disabled onclick="confirmExit()">
+        <span id="exitCountLabel">5</span>
+        <div class="exit-close-ring" id="exitRing"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- INSUFFICIENT BALANCE MODAL -->
+<div class="bal-ov" id="balOv">
+  <div class="bal-card">
+    <div class="bal-icon"><i class="fas fa-wallet"></i></div>
+    <div class="bal-title">Not Enough Coins</div>
+    <div class="bal-sub">You need <b id="balNeed">0</b> coins for this, but your wallet only has <b id="balHave">0</b>.</div>
+    <div class="bal-actions">
+      <button class="bal-btn primary" id="balBuyBtn"><i class="fas fa-coins"></i> Buy Coins</button>
+      <button class="bal-btn ghost" id="balCancelBtn">Maybe Later</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUY COINS / FUND WALLET SHEET -->
+<div class="buyc-ov" id="buycOv">
+  <div class="buyc-sheet">
+    <div class="buyc-loading" id="buycLoading">
+      <div class="loading-spin"></div>
+      <div id="buycLoadingText" style="color:var(--tx2);font-size:12px;font-weight:600">Processing purchase…</div>
+    </div>
+    <div class="sp-handle"></div>
+    <div class="buyc-hdr">
+      <div class="buyc-title">Get More Coins</div>
+      <div class="buyc-balance"><i class="fas fa-coins"></i> <span id="buycBalance">0</span></div>
+      <div class="ch-panel-close" id="buycClose">✕</div>
+    </div>
+    <div class="buyc-tabs">
+      <div class="buyc-tab on" data-tab="packages" onclick="setBuyTab(this,'packages')">Coin Packages</div>
+      <div class="buyc-tab" id="buycFundTab" data-tab="fund" onclick="setBuyTab(this,'fund')">Fund Wallet</div>
+    </div>
+    <div class="buyc-body" id="buycPackages"></div>
+    <div class="buyc-body" id="buycFund" style="display:none">
+      <div class="fund-lbl">Enter amount (₦)</div>
+      <input class="fund-input" id="fundInput" type="number" min="100" placeholder="e.g. 1000"/>
+      <div class="fund-rate">₦20 = 1 coin · minimum ₦100</div>
+      <button class="buyc-cta" id="fundConfirmBtn" onclick="fundWallet()">Fund &amp; Convert</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<!-- ═══ Shared Droboard components ═══ -->
+<script src="component/reaction-picker.js"></script>
+<script src="component/share-modal.js"></script>
+<script src="component/save-modal.js"></script>
+<script src="component/tip-picker.js"></script>
+<script src="component/ad-card.js"></script>
+<script src="component/comment-section.js"></script>
+
+<!-- ═══ Data ═══ -->
+<script src="data/comments-data.js"></script>
+<script src="data/central-demo-data.js"></script>
+<script src="services/ad-service.js"></script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   UTILS + STORY ID
+   ══════════════════════════════════════════════════════════════════ */
+function toast(m){const t=document.getElementById('toastEl');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2300);}
+function fmtN(n){n=+n||0;return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const params = new URLSearchParams(location.search);
+const STORY_ID = params.get('story') || 'story-8';
+
+/* ══════════════════════════════════════════════════════════════════
+   TEAMS — passed into DroboardComments so comments can carry a team tag
+   (ids match the seed data in data/comments-data.js)
+   ══════════════════════════════════════════════════════════════════ */
+const TEAMS = [
+  { id:'a', icon:'💔', name:'Team Ada',     col:'#ff0050' },
+  { id:'b', icon:'🔥', name:'Team Emeka',   col:'#60a5fa' },
+  { id:'c', icon:'🕊️', name:'Team Forgive', col:'#34d399' },
+  { id:'d', icon:'👀', name:'Team Watching',col:'#a78bfa' },
+];
+
+/* small safety-net fallback, only used if data/story.js fails to load */
+const FALLBACK_DEMO = {
+  id: STORY_ID, title: 'Untitled Story', category: '📖 Story',
+  author: { name:'Droboard Writer', avatar:'https://i.pravatar.cc/100?img=1', handle:'@writer' },
+  unlockedThrough: 1, coinsBalance: 0,
+  chapters: [{ n:1, title:'Chapter One', words:100, paras:['This story could not be loaded. Please check that data/story.js is reachable.'] }],
+  comments: [], shares:0, tips:0, similar: [],
+  exitAd: { bg:'', headline:'Wait — before you go…', sub:'', cta:'Explore' },
+};
+
+let DATA = null;
+async function loadFullStory(){
+  let story = null;
+  try{
+    const mod = await import('./data/story.js');
+    story = mod.STORY_DATA;
+  }catch(err){ console.warn('[Droboard] Could not load data/story.js, using fallback', err); }
+  DATA = story || FALLBACK_DEMO;
+  init();
+}
+
+/* ══ COMMENTS — from data/comments-data.js (global COMMENTS_DATA) ══ */
+function mapSeedComment(c){
+  return Object.assign({}, c, {
+    statusRing: (c.statusRing || 'none').replace('ring-', ''),
+    replies: (c.replies || []).map(mapSeedComment),
+  });
+}
+function getSeedComments(){
+  const raw = (typeof COMMENTS_DATA !== 'undefined' && COMMENTS_DATA.length) ? COMMENTS_DATA : (DATA.comments || []);
+  return raw.map(mapSeedComment);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WALLET / COINS
+   ─────────────────────────────────────────────────────────────────
+   Purchase state machine: idle → purchasing → success | cancelled | failed | pending
+
+   1) BROWSER PREVIEW (default, no plugin present)
+      Simulates a real purchase round-trip (loading overlay + delay)
+      so the flow looks and feels the same as it will once wired to
+      a real store — it just always resolves to success.
+
+   2) WRAPPED APP (Capacitor + a real IAP bridge)
+      Define `window.DroboardIAP` BEFORE this script runs. Expected shape:
+
+        window.DroboardIAP = {
+          // productId is COIN_PACKAGES[i].storeProductId (register the
+          // SAME ids as Consumable IAPs in App Store Connect / Play
+          // Console). Must resolve only after your backend has verified
+          // the store receipt — never trust a client "success" alone.
+          //
+          // Resolves to: { status: 'success'|'cancelled'|'failed'|'pending', coins?, message? }
+          async purchase(productId) { ... },
+
+          // optional — wire this to a "Restore Purchases" button later.
+          async restore() { ... },
+        };
+
+      When DroboardIAP is present, this page automatically:
+        • hides the "Fund Wallet" tab (bank-transfer top-ups can't sell
+          consumable coins from inside an iOS/Android app — Apple and
+          Google require their own purchase system for that)
+        • routes every package tap through DroboardIAP.purchase(),
+          shows a loading overlay while it resolves, blocks double-taps,
+          and only credits coins on a real 'success' status.
+   ══════════════════════════════════════════════════════════════════ */
+const IS_APP_BUILD = !!window.DroboardIAP;
+
+let walletBalance = 0;
+let purchaseState = 'idle'; // 'idle' | 'purchasing' | 'pending'
+const COIN_PACKAGES = [
+  { coins:100,  bonus:0,   price:500,  label:'Starter',    storeProductId:'coins_100' },
+  { coins:300,  bonus:20,  price:1200, label:'Popular',     storeProductId:'coins_300', reco:true },
+  { coins:700,  bonus:80,  price:2500, label:'Best Value',  storeProductId:'coins_700' },
+  { coins:1500, bonus:250, price:5000, label:'Mega',        storeProductId:'coins_1500' },
+];
+let _pendingInsufficientRetry = null;
+let _pendingBuyRetry = null;
+
+function updateCoinDisplays(){
+  document.getElementById('fcCoinBalance').textContent = fmtN(walletBalance);
+  const buycBal = document.getElementById('buycBalance');
+  if (buycBal) buycBal.textContent = fmtN(walletBalance);
+}
+
+function attemptUnlock(fromCh, howMany, cost){
+  if (walletBalance < cost){
+    showInsufficientBalance(cost, walletBalance, () => attemptUnlock(fromCh, howMany, cost));
+    return;
+  }
+  walletBalance -= cost;
+  updateCoinDisplays();
+  unlockChapters(fromCh, howMany);
+}
+
+function showInsufficientBalance(need, have, retryFn){
+  _pendingInsufficientRetry = retryFn || null;
+  document.getElementById('balNeed').textContent = need;
+  document.getElementById('balHave').textContent = have;
+  document.getElementById('balOv').classList.add('show');
+}
+function closeInsufficientBalance(){
+  document.getElementById('balOv').classList.remove('show');
+}
+document.getElementById('balBuyBtn').addEventListener('click', ()=>{
+  closeInsufficientBalance();
+  openBuyCoins(_pendingInsufficientRetry);
+  _pendingInsufficientRetry = null;
+});
+document.getElementById('balCancelBtn').addEventListener('click', ()=>{
+  closeInsufficientBalance();
+  _pendingInsufficientRetry = null;
+});
+
+function renderCoinPackages(){
+  const busy = purchaseState !== 'idle';
+  document.getElementById('buycPackages').innerHTML = COIN_PACKAGES.map((p,i)=>`
+    <div class="pkg-card${p.reco?' reco':''}" style="${busy?'opacity:.45;pointer-events:none;':''}" onclick="buyPackage(${i})">
+      <div>
+        <div class="pkg-label">${esc(p.label)}</div>
+        <div class="pkg-coins"><i class="fas fa-coins"></i> ${fmtN(p.coins)}</div>
+        ${p.bonus?`<div class="pkg-bonus">+${p.bonus} bonus coins</div>`:''}
+      </div>
+      <div class="pkg-right"><div class="pkg-price">₦${fmtN(p.price)}</div></div>
+    </div>`).join('');
+}
+
+function openBuyCoins(retryFn){
+  _pendingBuyRetry = retryFn || null;
+  renderCoinPackages();
+  updateCoinDisplays();
+
+  // App-store build: consumable coins must be sold through Apple/Google's
+  // own purchase system, so bank-transfer top-ups have no legal path
+  // inside the wrapped app — hide the tab and stay on packages.
+  const fundTab = document.getElementById('buycFundTab');
+  if (fundTab) fundTab.style.display = IS_APP_BUILD ? 'none' : '';
+  setBuyTab(document.querySelector('.buyc-tab[data-tab="packages"]'), 'packages');
+
+  document.getElementById('buycOv').classList.add('show');
+
+  // Reopening while a purchase is still pending should reflect that state.
+  if (purchaseState !== 'idle') setPurchaseUI(purchaseState);
+}
+function closeBuyCoins(){
+  if (purchaseState === 'purchasing') return; // native sheet has focus — ignore taps behind it
+  document.getElementById('buycOv').classList.remove('show');
+}
+function setBuyTab(el, tab){
+  document.querySelectorAll('.buyc-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('buycPackages').style.display = tab==='packages' ? '' : 'none';
+  document.getElementById('buycFund').style.display = tab==='fund' ? '' : 'none';
+}
+
+/* Central place that drives the loading overlay text, close-button
+   lockout, and package-card disabled state from one state value. */
+function setPurchaseUI(state){
+  purchaseState = state; // 'idle' | 'purchasing' | 'pending'
+  const loading = document.getElementById('buycLoading');
+  const loadingText = document.getElementById('buycLoadingText');
+  const closeBtn = document.getElementById('buycClose');
+
+  loading.classList.toggle('show', state === 'purchasing' || state === 'pending');
+  if (state === 'purchasing') loadingText.textContent = 'Processing purchase…';
+  if (state === 'pending') loadingText.textContent = "Purchase pending — you'll be credited once it clears.";
+
+  closeBtn.style.pointerEvents = state === 'purchasing' ? 'none' : '';
+  closeBtn.style.opacity = state === 'purchasing' ? '.4' : '';
+  renderCoinPackages();
+}
+
+function _grantCoinsAndRetry(amount){
+  walletBalance += amount;
+  updateCoinDisplays();
+  toast(`🪙 ${fmtN(amount)} coins added to your wallet!`);
+  setPurchaseUI('idle');
+  closeBuyCoins();
+  if (_pendingBuyRetry){ const fn=_pendingBuyRetry; _pendingBuyRetry=null; setTimeout(fn, 200); }
+}
+
+async function buyPackage(i){
+  if (purchaseState !== 'idle') return; // block double-taps mid-purchase
+  const p = COIN_PACKAGES[i];
+  if (!p) return;
+
+  if (!IS_APP_BUILD){
+    // Demo mode — simulate a real purchase round-trip (loading overlay +
+    // delay) so it looks/feels like production, before DroboardIAP exists.
+    setPurchaseUI('purchasing');
+    setTimeout(() => { _grantCoinsAndRetry(p.coins + (p.bonus||0)); }, 1100);
+    return;
+  }
+
+  // Real app build — hand off to the native store sheet via DroboardIAP.
+  // Expected result shape: { status: 'success'|'cancelled'|'failed'|'pending', coins?, message? }
+  setPurchaseUI('purchasing');
+  try{
+    const result = await window.DroboardIAP.purchase(p.storeProductId);
+    const status = result && result.status;
+
+    if (status === 'success'){
+      _grantCoinsAndRetry((result.coins != null ? result.coins : p.coins) + (p.bonus||0));
+
+    } else if (status === 'cancelled'){
+      // User backed out of the native sheet — no error tone, just reset.
+      setPurchaseUI('idle');
+
+    } else if (status === 'pending'){
+      // e.g. Android payment methods needing manual clearance. Don't
+      // credit anything yet — your backend should credit coins later
+      // via webhook, and you'd refresh balance on next app open.
+      setPurchaseUI('pending');
+      toast("⏳ Purchase pending — you'll be credited once it clears.");
+
+    } else {
+      setPurchaseUI('idle');
+      toast('❌ ' + (result && result.message ? result.message : 'Purchase failed. Please try again.'));
+    }
+  }catch(err){
+    console.error('[Droboard IAP] purchase failed', err);
+    setPurchaseUI('idle');
+    toast('❌ Purchase failed. Please try again.');
+  }
+}
+
+function fundWallet(){
+  if (IS_APP_BUILD) return; // tab is hidden in app builds; guard just in case
+  if (purchaseState !== 'idle') return;
+  const naira = +document.getElementById('fundInput').value;
+  if (!naira || naira < 100){ toast('Enter at least ₦100'); return; }
+  const coins = Math.floor(naira/20);
+  document.getElementById('fundInput').value = '';
+  setPurchaseUI('purchasing');
+  setTimeout(() => { _grantCoinsAndRetry(coins); }, 900);
+}
+document.getElementById('buycClose').addEventListener('click', closeBuyCoins);
+document.getElementById('fcCoinPill').addEventListener('click', ()=>openBuyCoins(null));
+
+
+/* ══════════════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════════════ */
+const ST = { unlockedThrough: 0, saved:false, currentCh:1 };
+
+async function init(){
+  ST.unlockedThrough = DATA.unlockedThrough;
+  await loadReaderAds();
+  // Wallet always starts empty — no chapter can be unlocked for free.
+  // Every unlock attempt must go through Buy Coins / Fund Wallet first.
+  walletBalance = 0;
+
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('storyTop').style.display = '';
+  document.getElementById('storyTop').innerHTML = `
+    <div class="story-top-cat">${esc(DATA.category)}</div>
+    <div class="story-top-title">${esc(DATA.title)}</div>
+    <div class="story-top-author">by ${esc(DATA.author.name)}</div>`;
+
+  updateCoinDisplays();
+  buildReaderColumn();
+  READER_SERVED.forEach(id => trackAd(id, 'impression'));
+  buildChaptersPanel();
+  wireComponents();
+  wireFloatingControls();
+  wireScrollProgress();
+  wireExitIntent();
+}
+
+function buildReaderColumn(){
+  const col = document.getElementById('readerCol');
+  let html = '';
+  DATA.chapters.forEach((ch, idx) => {
+    const locked = ch.n > ST.unlockedThrough;
+    html += renderChapterBlock(ch, locked);
+    if (locked) return;
+    if (ch.n % 2 === 0 && idx < DATA.chapters.length - 1) {
+      html += renderAdSlot(ch.n);
+    }
+  });
+  col.innerHTML = html;
+}
+
+function renderChapterBlock(ch, locked){
+  const paras = ch.paras.map(p => `<p>${esc(p)}</p>`).join('');
+  if (!locked) {
+    return `
+      <section class="chapter-block" data-ch="${ch.n}" id="chapterSec-${ch.n}">
+        <div class="chapter-heading">Chapter ${ch.n} — ${esc(ch.title)}</div>
+        <div class="story-text">${paras}</div>
+        ${renderEngageBar(ch)}
+        ${renderCommentLine(ch)}
+      </section>`;
+  }
+  return `
+    <section class="chapter-block locked-wrap" data-ch="${ch.n}" id="chapterSec-${ch.n}">
+      <div class="chapter-heading">Chapter ${ch.n} — ${esc(ch.title)}</div>
+      <div class="story-text locked-fade">${paras}</div>
+      <div class="unlock-card" id="unlockCard-${ch.n}">
+        <div class="unlock-icon"><i class="fas fa-lock"></i></div>
+        <div class="unlock-title">Unlock Chapter ${ch.n}</div>
+        <div class="unlock-sub">You've read through Chapter ${ST.unlockedThrough} free. Keep going with coins or unlock the rest of the season.</div>
+        <div class="unlock-opts">
+          <div class="unlock-opt" onclick="attemptUnlock(${ch.n}, 1, 15)">
+            <div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ${ch.n}</div></div>
+            <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>
+          </div>
+          <div class="unlock-opt reco" onclick="attemptUnlock(${ch.n}, 5, 60)">
+            <div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>
+            <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>
+          </div>
+          <div class="unlock-opt" onclick="attemptUnlock(${ch.n}, 'all', 120)">
+            <div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>
+            <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderEngageBar(ch){
+  return `
+    <div class="engage-bar">
+      <div class="eb-btn" id="ebSave-${ch.n}" onclick="doSave()"><i class="far fa-bookmark eb-icon"></i><span class="eb-lbl">Save</span></div>
+      <div class="eb-btn" onclick="doShare(${ch.n})"><i class="fas fa-share-alt eb-icon"></i><span class="eb-lbl">${fmtN(DATA.shares)}</span></div>
+      <div class="eb-btn" onclick="doTip()"><i class="fas fa-coins eb-icon"></i><span class="eb-lbl">${fmtN(DATA.tips)} tips</span></div>
+    </div>`;
+}
+
+function renderCommentLine(ch){
+  return `<div class="comment-line-wrap"><div class="comments-inline-mount" id="commentsMount-${ch.n}"></div></div>`;
+}
+
+/* ══ MANAGED AD SLOTS — central inventory only, no local fallback.
+   Empty pool = no slots. Served ids are tracked for the ad manager. ══ */
+let READER_BANNERS = [];
+let READER_SERVED = [];
+function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+async function loadReaderAds() {
+  READER_BANNERS = []; READER_SERVED = [];
+  if (!window.AdService) return;
+  try {
+    const pools = await AdService.getAds({ page: 'scrollReader' });
+    READER_BANNERS = pools.banner || [];
+  } catch (e) { READER_BANNERS = []; }
+}
+
+function renderAdSlot(afterCh){
+  if (!READER_BANNERS.length || !window.DroboardAdCard) return '';
+  const ad = READER_BANNERS[Math.floor(afterCh / 2 - 1) % READER_BANNERS.length];
+  if (!ad) return '';
+  READER_SERVED.push(ad.id);
+  return `
+    <div class="ad-slot" data-adid="${ad.id}">
+      <div class="ad-slot-lbl">Sponsored</div>
+      ${window.DroboardAdCard.renderBanner(ad)}
+    </div>`;
+}
+
+/* ══ COMPONENTS: comments, save/share/tip, ads ══ */
+function wireComponents(){
+  const seedComments = getSeedComments();
+  DATA.chapters.forEach(ch => {
+    if (ch.n > ST.unlockedThrough) return;
+    const mount = document.getElementById('commentsMount-'+ch.n);
+    if (!mount || !window.DroboardComments) return;
+    mount.innerHTML = '';
+    DroboardComments.attach(mount, {
+      storyId: STORY_ID + '-ch' + ch.n,
+      title: `${fmtN(seedComments.length*37)} comments`,
+      comments: seedComments.map(c => Object.assign({}, c)),
+      teams: TEAMS,
+      currentUser: { name:'You', avatar:null, team:null },
+      requireTeam: false,
+      collapsible: true,
+      startOpen: false,
+    });
+  });
+
+  if (window.DroboardAdCard) {
+    DroboardAdCard.attach(document.getElementById('readerCol'), {
+      getAds: () => [],
+      onOpen: () => {},
+      onCta: () => { toast('📖 Opening story…'); },
+    });
+  }
+  document.querySelectorAll('.ad-slot[data-adid]').forEach((el) => {
+    el.addEventListener('click', () => trackAd(el.dataset.adid, 'click'));
+  });
+
+  window.onDroboardSaveChange = function(storyId, saved){
+    ST.saved = saved;
+    document.querySelectorAll('[id^="ebSave-"]').forEach(el=>{
+      el.classList.toggle('saved', saved);
+      el.querySelector('i').className = saved ? 'fas fa-bookmark eb-icon' : 'far fa-bookmark eb-icon';
+    });
+  };
+  DroboardTip.attach({
+    getWriter: () => ({ name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }),
+    onSend: () => { DATA.tips++; document.querySelectorAll('.eb-btn .eb-lbl').forEach(l=>{ if(l.textContent.includes('tips')) l.textContent = fmtN(DATA.tips)+' tips'; }); },
+  });
+}
+function doSave(){ window.openSaveModal({ title: DATA.title, sub:'by '+DATA.author.name, img:'', storyId: STORY_ID }); }
+function doShare(chN){ window.openShareModal({ title: DATA.title, sub:`by ${DATA.author.name} · Chapter ${chN}`, img:'', url:`https://droboard.app/story/${STORY_ID}#ch${chN}` }); }
+function doTip(){ DroboardTip.open(STORY_ID, { name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }); }
+
+/* ══ UNLOCKING (coins already deducted by attemptUnlock before this runs) ══ */
+function unlockChapters(fromCh, howMany){
+  const label = howMany==='all' ? 'the full season' : (howMany===1 ? `Chapter ${fromCh}` : `${howMany} chapters`);
+  toast(`🔓 Unlocked ${label}!`);
+  const newThrough = howMany === 'all' ? DATA.chapters[DATA.chapters.length-1].n
+                    : Math.min(DATA.chapters[DATA.chapters.length-1].n, fromCh + howMany - 1);
+  ST.unlockedThrough = newThrough;
+
+  const oldSec = document.getElementById('chapterSec-'+fromCh);
+  if (oldSec) oldSec.remove();
+
+  let html = '';
+  DATA.chapters.forEach((ch, idx) => {
+    if (ch.n < fromCh) return;
+    const locked = ch.n > ST.unlockedThrough;
+    html += renderChapterBlock(ch, locked);
+    if (locked) return;
+    if (ch.n % 2 === 0 && idx < DATA.chapters.length - 1) html += renderAdSlot(ch.n);
+  });
+  document.getElementById('readerCol').insertAdjacentHTML('beforeend', html);
+  wireComponents();
+  buildChaptersPanel();
+}
+
+/* ══ CHAPTERS PANEL ══ */
+function buildChaptersPanel(){
+  document.getElementById('chPanelBody').innerHTML = DATA.chapters.map(ch=>{
+    const locked = ch.n > ST.unlockedThrough;
+    const numEl = locked ? `<div class="ch-num locked"><i class="fas fa-lock" style="font-size:9px"></i></div>` : `<div class="ch-num">${ch.n}</div>`;
+    return `<div class="ch-row${locked?' locked':''}" onclick="jumpToChapter(${ch.n},${locked})">
+      ${numEl}
+      <div class="ch-row-body"><div class="ch-row-title">Ch.${ch.n} — ${esc(ch.title)}</div><div class="ch-row-meta">${locked?'Locked · ':''}~${Math.round(ch.words/220)} min · ${ch.words} words</div></div>
+    </div>`;
+  }).join('');
+}
+function jumpToChapter(n, locked){
+  closeChPanel();
+  if (locked && n > ST.unlockedThrough) {
+    const firstLocked = DATA.chapters.find(c => c.n > ST.unlockedThrough);
+    document.getElementById('chapterSec-'+firstLocked.n)?.scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  document.getElementById('chapterSec-'+n)?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function openChPanel(){ document.getElementById('chPanel').classList.add('open'); document.getElementById('overlayBg').classList.add('show'); }
+function closeChPanel(){ document.getElementById('chPanel').classList.remove('open'); document.getElementById('overlayBg').classList.remove('show'); }
+
+/* ══ SETTINGS PANEL ══ */
+let fsVal=14; const FS_MIN=11, FS_MAX=24;
+function changeFontSize(d){ fsVal=Math.min(FS_MAX,Math.max(FS_MIN,fsVal+d)); document.documentElement.style.setProperty('--fs',fsVal+'px'); document.getElementById('fontSizeDisplay').textContent=fsVal+'px'; }
+function setLH(el,val){ document.querySelectorAll('.lh-opt').forEach(x=>x.classList.remove('on')); el.classList.add('on'); document.documentElement.style.setProperty('--lh',val); }
+function setFF(el,val){ document.querySelectorAll('.ff-opt').forEach(x=>x.classList.remove('on')); el.classList.add('on'); document.documentElement.style.setProperty('--font-story',val); }
+function setTheme(el,theme){ document.body.className=theme; document.querySelectorAll('.theme-opt').forEach(x=>x.classList.remove('on')); el.classList.add('on'); }
+function openSettings(){ document.getElementById('settingsPanel').classList.add('open'); document.getElementById('overlayBg').classList.add('show'); }
+function closeAllSheets(){
+  document.getElementById('settingsPanel').classList.remove('open');
+  document.getElementById('chPanel').classList.remove('open');
+  document.getElementById('overlayBg').classList.remove('show');
+}
+
+/* ══ FLOATING CONTROLS ══ */
+function wireFloatingControls(){
+  const sb = document.getElementById('scrollBody');
+  const fc = document.getElementById('floatingControls');
+  let hideTimer = null;
+
+  function showControls(){
+    fc.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(()=>fc.classList.remove('show'), 3000);
+  }
+  function hideControlsNow(){ fc.classList.remove('show'); clearTimeout(hideTimer); }
+
+  sb.addEventListener('click', (e)=>{
+    if (e.target.closest('.eb-btn, .dac-banner, .unlock-opt, .dcs-wrap, a, button')) return;
+    fc.classList.contains('show') ? hideControlsNow() : showControls();
+  });
+  sb.addEventListener('scroll', hideControlsNow, {passive:true});
+
+  document.getElementById('fcChapters').addEventListener('click', openChPanel);
+  document.getElementById('fcSettings').addEventListener('click', openSettings);
+  document.getElementById('fcBack').addEventListener('click', attemptExit);
+}
+
+/* ══ SCROLL PROGRESS + current-chapter pill ══ */
+function wireScrollProgress(){
+  const sb = document.getElementById('scrollBody');
+  sb.addEventListener('scroll', ()=>{
+    const max = sb.scrollHeight - sb.clientHeight;
+    const pct = max>0 ? Math.min(100, Math.round(sb.scrollTop/max*100)) : 0;
+    document.getElementById('readProgressFill').style.width = pct+'%';
+  }, {passive:true});
+
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(en=>{
+      if (en.isIntersecting) {
+        const n = +en.target.dataset.ch;
+        ST.currentCh = n;
+        document.getElementById('fcProgressPill').textContent = 'Ch '+n;
+      }
+    });
+  }, { root: sb, threshold: 0.5 });
+  document.querySelectorAll('.chapter-block').forEach(sec=>observer.observe(sec));
+}
+
+/* ══ EXIT-INTENT (5s countdown ad, guards real back-button too) ══ */
+let exitConfirmed = false;
+let exitTimer = null, exitSeconds = 5;
+
+function wireExitIntent(){
+  history.pushState({ droboardGuard:true }, '', location.href);
+  window.addEventListener('popstate', ()=>{
+    if (exitConfirmed) return;
+    history.pushState({ droboardGuard:true }, '', location.href);
+    attemptExit();
+  });
+}
+function attemptExit(){
+  if (exitConfirmed) { doRealExit(); return; }
+  showExitAd();
+}
+function showExitAd(){
+  const ad = DATA.exitAd || {};
+  document.getElementById('exitBg').style.backgroundImage = `url('${ad.bg||''}')`;
+  document.getElementById('exitHeadline').textContent = ad.headline || 'Wait — before you go…';
+  document.getElementById('exitSub').textContent = ad.sub || '';
+  document.getElementById('exitCta').textContent = ad.cta || 'Explore';
+  document.getElementById('exitOv').classList.add('show');
+
+  exitSeconds = 5;
+  const btn = document.getElementById('exitCloseBtn');
+  const lbl = document.getElementById('exitCountLabel');
+  const ring = document.getElementById('exitRing');
+  btn.disabled = true;
+  lbl.textContent = exitSeconds;
+  ring.style.clipPath = 'inset(0 0 0 0)';
+
+  clearInterval(exitTimer);
+  exitTimer = setInterval(()=>{
+    exitSeconds--;
+    const pct = (exitSeconds/5)*100;
+    ring.style.clipPath = `inset(0 ${pct}% 0 0)`;
+    if (exitSeconds <= 0) {
+      clearInterval(exitTimer);
+      btn.disabled = false;
+      lbl.innerHTML = '<i class="fas fa-times"></i>';
+    } else {
+      lbl.textContent = exitSeconds;
+    }
+  }, 1000);
+}
+function confirmExit(){
+  document.getElementById('exitOv').classList.remove('show');
+  exitConfirmed = true;
+  doRealExit();
+}
+function exitCtaClick(){
+  document.getElementById('exitOv').classList.remove('show');
+  window.location.href = 'story.html?story=' + encodeURIComponent(STORY_ID);
+}
+function doRealExit(){
+  window.location.href = 'story.html?story=' + encodeURIComponent(STORY_ID);
+}
+
+/* ══ INIT ══ */
+loadFullStory();
+</script>
+</body>
+</html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Bound By Obsession · Characters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF;
+  --primary:#FF0050; --primary-hover:#E50049; --primary-soft:#FFE9F0;
+  --text:#18181B; --text-2:#71717A;
+  --border:#E8E8EC;
+  --success:#22C55E; --success-soft:#E9FBF0;
+  --warning:#F59E0B; --warning-soft:#FEF3E0;
+  --danger:#EF4444; --danger-soft:#FDEAEA;
+  --blue:#3B82F6; --blue-soft:#EAF1FE;
+  --purple:#8B5CF6; --purple-soft:#F1EBFE;
+  --shadow:0 10px 30px rgba(0,0,0,.06);
+  --r-lg:20px; --r-md:16px; --r-sm:12px; --r-pill:999px;
+  --nav-h:66px; --safe-b:env(safe-area-inset-bottom,10px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100%}
+body{padding-bottom:calc(var(--nav-h) + var(--safe-b) + 14px);-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{display:block;object-fit:cover}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:sticky;top:0;z-index:90;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
+}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:14px;flex-shrink:0}
+.icon-btn:active{transform:scale(.92)}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+
+/* ── BOOK HEADER ── */
+.book-head{padding:16px 16px 0;display:flex;gap:14px;background:var(--surface)}
+.bh-cover{width:82px;height:110px;border-radius:14px;overflow:hidden;flex-shrink:0;box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.bh-cover img{width:100%;height:100%}
+.bh-info{flex:1;min-width:0;padding-top:2px}
+.bh-title{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.25;margin-bottom:4px}
+.bh-genre{font-size:12.5px;color:var(--text-2);font-weight:500;margin-bottom:8px}
+.status-badge{display:inline-flex;font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:var(--r-pill);letter-spacing:.03em;text-transform:uppercase;margin-bottom:10px}
+.status-badge.published{background:var(--success-soft);color:#158a48}
+.bh-stats{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:8px}
+.bh-stat{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--text-2)}
+.bh-stat i{font-size:10.5px;color:var(--primary)}
+.bh-updated{font-size:11px;color:var(--text-2);font-weight:500;padding-bottom:16px}
+
+.wrap{padding:16px}
+
+/* ── CHARACTERS HEADER ── */
+.characters-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.characters-title{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.new-character-btn{
+  background:var(--primary-soft);color:var(--primary);font-size:12.5px;font-weight:800;
+  padding:9px 15px;border-radius:var(--r-pill);display:flex;align-items:center;gap:6px;
+}
+.new-character-btn:active{transform:scale(.96)}
+
+/* ── SEARCH ── */
+.search-row{display:flex;gap:9px;margin-bottom:12px}
+.search-bar{
+  flex:1;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:11px 14px;color:var(--text-2);font-size:13px;
+}
+.search-bar i{font-size:13px}
+.filter-btn{
+  width:42px;height:42px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;flex-shrink:0;
+}
+
+/* ── ROLE FILTER CHIPS ── */
+.role-filter{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:16px;scrollbar-width:none}
+.role-filter::-webkit-scrollbar{display:none}
+.role-chip{
+  flex-shrink:0;font-size:12px;font-weight:700;padding:8px 14px;border-radius:var(--r-pill);
+  background:var(--surface);border:1px solid var(--border);color:var(--text-2);cursor:pointer;white-space:nowrap;
+}
+.role-chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.role-chip .ct{font-size:10px;font-weight:600;opacity:.75;margin-left:2px}
+
+/* ── CHARACTER CARDS ── */
+.section{margin-bottom:24px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-size:16px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.section-title i{font-size:13px;color:var(--primary)}
+.section-note{font-size:11px;color:var(--text-2);font-weight:600}
+
+.character-list{display:flex;flex-direction:column;gap:10px}
+.character-card{
+  display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s ease;
+}
+.character-card:active{transform:scale(.98)}
+.cc-avatar{width:56px;height:56px;border-radius:14px;overflow:hidden;flex-shrink:0;background:var(--bg)}
+.cc-avatar img{width:100%;height:100%}
+.cc-body{flex:1;min-width:0}
+.cc-top-row{display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap}
+.cc-name{font-size:14.5px;font-weight:800;letter-spacing:-.005em}
+.cc-role{font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
+.cc-role.lead{background:var(--primary-soft);color:var(--primary)}
+.cc-role.antagonist{background:var(--danger-soft);color:var(--danger)}
+.cc-role.support{background:var(--purple-soft);color:var(--purple)}
+.cc-role.minor{background:#F1F1F4;color:#5c5c66}
+.cc-meta{font-size:11px;color:var(--text-2);font-weight:600;margin-bottom:6px}
+.cc-arc{font-size:11.5px;color:var(--text-2);line-height:1.5;margin-bottom:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.cc-tag{font-size:9.5px;font-weight:700;color:var(--text-2);background:var(--bg);border:1px solid var(--border);padding:3px 8px;border-radius:var(--r-pill)}
+.cc-stats{display:flex;align-items:center;gap:13px}
+.cc-stat{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--text-2)}
+.cc-stat i{font-size:9.5px;color:var(--primary)}
+.cc-chev{color:var(--text-2);font-size:13px;flex-shrink:0}
+
+.empty-state{
+  text-align:center;padding:34px 16px;color:var(--text-2);font-size:12.5px;font-weight:600;
+  background:var(--surface);border:1px dashed var(--border);border-radius:var(--r-md);display:none;
+}
+.empty-state.show{display:block}
+.empty-state i{display:block;font-size:22px;margin-bottom:8px;color:var(--border)}
+
+/* ── RELATIONSHIPS ── */
+.rel-list{display:flex;flex-direction:column;gap:9px}
+.rel-card{
+  display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:12px 14px;box-shadow:var(--shadow);
+}
+.rel-avatars{display:flex;align-items:center;flex-shrink:0}
+.rel-av{width:34px;height:34px;border-radius:50%;overflow:hidden;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border)}
+.rel-av:last-child{margin-left:-11px}
+.rel-body{flex:1;min-width:0}
+.rel-names{font-size:12.5px;font-weight:700;margin-bottom:2px}
+.rel-type{font-size:9px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px}
+.rel-desc{font-size:11px;color:var(--text-2);line-height:1.45}
+
+/* ── HAMBURGER DRAWER ── */
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--surface);
+  box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-head .dh-logo{width:34px;height:34px;border-radius:9px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:var(--bg);color:var(--text-2);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--text-2);flex-shrink:0}
+.drawer-item:active{background:var(--bg)}
+.drawer-item.active{background:var(--primary-soft);color:var(--primary)}
+.drawer-item.active i{color:var(--primary)}
+.drawer-item-badge{margin-left:auto;font-size:8.5px;font-weight:800;color:var(--primary);background:var(--primary-soft);padding:2px 6px;border-radius:20px;text-transform:uppercase}
+
+@media (min-width:600px){
+  .topbar{max-width:560px;margin:0 auto;padding-left:16px;padding-right:16px}
+  .book-head{max-width:560px;margin:0 auto;padding:16px 20px 0}
+  .wrap{max-width:560px;margin:0 auto;padding:16px 20px 20px}
+}
+
+
+/* ── NEW CHARACTER MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);
+  opacity:0;pointer-events:none;transition:opacity .22s ease;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-sheet{
+  width:100%;max-width:420px;max-height:92vh;
+  background:var(--surface);border-radius:20px 20px 0 0;
+  box-shadow:0 -8px 40px rgba(0,0,0,.18);
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.modal-overlay.open .modal-sheet{transform:translateY(0)}
+.modal-handle{
+  width:36px;height:4px;border-radius:4px;background:var(--border);
+  margin:10px auto 0;flex-shrink:0;
+}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.modal-title{font-size:16.5px;font-weight:800;letter-spacing:-.01em}
+.modal-close{
+  width:32px;height:32px;border-radius:50%;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;
+}
+.modal-body{flex:1;overflow-y:auto;padding:16px 18px 8px;-webkit-overflow-scrolling:touch}
+.modal-foot{
+  padding:12px 18px calc(12px + env(safe-area-inset-bottom,8px));
+  border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;
+  background:var(--surface);
+}
+.modal-btn{
+  flex:1;padding:13px;border-radius:14px;font-size:14px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.modal-btn.primary{background:var(--primary);color:#fff}
+.modal-btn.primary:active{background:var(--primary-hover)}
+.modal-btn.ghost{background:var(--bg);color:var(--text-2);border:1px solid var(--border)}
+
+.form-group{margin-bottom:16px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--text-2);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.03em}
+.form-input,.form-textarea,.form-select{
+  width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;
+  padding:12px 14px;font-size:14px;font-family:inherit;color:var(--text);outline:none;
+  transition:border-color .15s;
+}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--primary)}
+.form-textarea{min-height:88px;resize:vertical;line-height:1.5}
+.form-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+
+.avatar-picker{display:flex;align-items:center;gap:14px}
+.avatar-preview{
+  width:64px;height:64px;border-radius:16px;overflow:hidden;background:var(--bg);
+  border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;
+  color:var(--text-2);font-size:22px;flex-shrink:0;position:relative;
+}
+.avatar-preview img{width:100%;height:100%;position:absolute;inset:0}
+.avatar-preview.has-img i{display:none}
+.avatar-actions{flex:1;display:flex;flex-direction:column;gap:8px}
+.avatar-btn-sm{
+  font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
+  background:var(--primary-soft);color:var(--primary);text-align:center;
+}
+.avatar-hint{font-size:11px;color:var(--text-2);font-weight:500}
+
+.role-picks{display:flex;flex-wrap:wrap;gap:8px}
+.role-pick{
+  font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:var(--r-pill);
+  background:var(--bg);border:1.5px solid var(--border);color:var(--text-2);cursor:pointer;
+}
+.role-pick.active{background:var(--primary-soft);border-color:var(--primary);color:var(--primary)}
+
+.tag-input-row{display:flex;gap:8px}
+.tag-input-row .form-input{flex:1}
+.tag-add-btn{
+  width:44px;height:44px;border-radius:12px;background:var(--primary-soft);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
+}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag-item{
+  display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+  background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:var(--r-pill);color:var(--text-2);
+}
+.tag-item button{color:var(--text-2);font-size:10px;padding:0;line-height:1}
+
+@media (min-width:600px){
+  .modal-overlay{align-items:center}
+  .modal-sheet{border-radius:20px;max-height:85vh}
+}
+
+
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="icon-btn" onclick="location.href='book-workspace.html'"><i class="fas fa-chevron-left"></i></button>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" id="menuBtn"><i class="fas fa-bars"></i></button>
+    <button class="icon-btn"><i class="fas fa-ellipsis"></i></button>
+  </div>
+</div>
+
+<!-- BOOK HEADER -->
+<div class="book-head">
+  <div class="bh-cover"><img src="https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop" alt="Bound By Obsession"/></div>
+  <div class="bh-info">
+    <div class="bh-title">Bound By Obsession</div>
+    <div class="bh-genre">Romance · Drama</div>
+    <span class="status-badge published">Published</span>
+    <div class="bh-stats">
+      <div class="bh-stat"><i class="fas fa-user-group"></i> 6 Characters</div>
+      <div class="bh-stat"><i class="fas fa-crown"></i> 2 Leads</div>
+      <div class="bh-stat"><i class="fas fa-link"></i> 4 Relationships</div>
+    </div>
+    <div class="bh-updated">Updated 3 hours ago</div>
+  </div>
+</div>
+
+<!-- Workspace tabs injected by component -->
+
+<div class="wrap">
+
+  <div class="characters-head">
+    <h2 class="characters-title">Characters (6)</h2>
+    <button class="new-character-btn"><i class="fas fa-plus"></i> New Character</button>
+  </div>
+
+  <div class="search-row">
+    <div class="search-bar"><i class="fas fa-magnifying-glass"></i> Search characters...</div>
+    <button class="filter-btn"><i class="fas fa-sliders"></i></button>
+  </div>
+
+  <div class="role-filter" id="roleFilter"></div>
+
+  <section class="section" style="margin-bottom:26px">
+    <div class="character-list" id="characterList"></div>
+    <div class="empty-state" id="emptyState">
+      <i class="fas fa-user-large-slash"></i>
+      No characters match this filter.
+    </div>
+  </section>
+
+  <section class="section" style="margin-bottom:6px">
+    <div class="section-head">
+      <h2 class="section-title"><i class="fas fa-diagram-project"></i>Relationships</h2>
+      <span class="section-note">4 mapped</span>
+    </div>
+    <div class="rel-list" id="relList"></div>
+  </section>
+
+</div>
+
+
+<!-- NEW CHARACTER MODAL -->
+<div class="modal-overlay" id="charModal">
+  <div class="modal-sheet" role="dialog" aria-labelledby="charModalTitle">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title" id="charModalTitle">New Character</div>
+      <button class="modal-close" id="charModalClose" aria-label="Close"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="form-label">Avatar</label>
+        <div class="avatar-picker">
+          <div class="avatar-preview" id="avatarPreview"><i class="fas fa-user"></i></div>
+          <div class="avatar-actions">
+            <button type="button" class="avatar-btn-sm" id="avatarUrlBtn">Paste image URL</button>
+            <div class="avatar-hint">Or leave blank for a generated avatar</div>
+          </div>
+        </div>
+        <input type="hidden" id="charAvatar" value=""/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input class="form-input" id="charName" type="text" placeholder="e.g. Adrian Cole" autocomplete="off"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Role *</label>
+        <div class="role-picks" id="rolePicks">
+          <button type="button" class="role-pick active" data-role="lead">Lead</button>
+          <button type="button" class="role-pick" data-role="antagonist">Antagonist</button>
+          <button type="button" class="role-pick" data-role="support">Support</button>
+          <button type="button" class="role-pick" data-role="minor">Minor</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Age / Short meta</label>
+        <input class="form-input" id="charMeta" type="text" placeholder="e.g. 29 · Anti-hero"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tags</label>
+        <div class="tag-input-row">
+          <input class="form-input" id="charTagInput" type="text" placeholder="Add a tag…" autocomplete="off"/>
+          <button type="button" class="tag-add-btn" id="charTagAdd"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="tag-list" id="charTagList"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Character arc</label>
+        <textarea class="form-textarea" id="charArc" placeholder="How does this character change over the story?"></textarea>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="modal-btn ghost" id="charModalCancel">Cancel</button>
+      <button type="button" class="modal-btn primary" id="charModalSave"><i class="fas fa-check"></i> Save Character</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Hamburger drawer -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="dh-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script src="component/bottom-nav.js"></script>
+<script src="component/workspace-tabs.js"></script>
+
+<script>
+/* ═══════════════════════════════
+   DATA
+═══════════════════════════════ */
+const ROLES = [
+  { id:'all', label:'All', count:6 },
+  { id:'lead', label:'Lead', count:2 },
+  { id:'antagonist', label:'Antagonist', count:1 },
+  { id:'support', label:'Support', count:2 },
+  { id:'minor', label:'Minor', count:1 },
+];
+
+const CHARACTERS = [
+  { name:'Adrian Cole', role:'lead', roleLabel:'Lead', img:'https://i.pravatar.cc/100?img=12',
+    meta:'29 · Anti-hero', tags:['Ruthless','Guarded','Business Heir'],
+    arc:'Starts as cold and vengeance-driven; arc ends with him choosing trust and vulnerability over control.',
+    chapters:'48 of 56', mentions:'312' },
+  { name:'Elena Marsh', role:'lead', roleLabel:'Lead', img:'https://i.pravatar.cc/100?img=32',
+    meta:'27 · Protagonist', tags:['Guarded','Loyal','Determined'],
+    arc:'Enters guarded and self-protective after a past betrayal; learns to let someone in without losing herself.',
+    chapters:'52 of 56', mentions:'298' },
+  { name:'Victor Cole', role:'antagonist', roleLabel:'Antagonist', img:'https://i.pravatar.cc/100?img=53',
+    meta:'58 · Antagonist', tags:['Manipulative','Powerful','Secretive'],
+    arc:'Revealed as the true architect of the original scandal; drives the Act III unmasking.',
+    chapters:'19 of 56', mentions:'87' },
+  { name:'Josephine Marsh', role:'support', roleLabel:'Support', img:'https://i.pravatar.cc/100?img=45',
+    meta:'24 · Support', tags:['Witty','Honest','Protective'],
+    arc:"Elena's sister; provides the outside perspective that pushes both leads toward honesty.",
+    chapters:'22 of 56', mentions:'64' },
+  { name:'Marcus Reyes', role:'support', roleLabel:'Support', img:'https://i.pravatar.cc/100?img=33',
+    meta:'41 · Support', tags:['Loyal','Calculated'],
+    arc:"The Cole family's longtime lawyer, quietly aware of more than he lets on — his silence becomes a plot point in Act III.",
+    chapters:'14 of 56', mentions:'39' },
+  { name:'Grace Cole', role:'minor', roleLabel:'Minor', img:'https://i.pravatar.cc/100?img=49',
+    meta:'Flashback only', tags:['Flashback','Beloved'],
+    arc:"Adrian's late mother, seen only in memory — her death is the wound both Cole men are still circling.",
+    chapters:'6 of 56', mentions:'21' },
+];
+
+const RELATIONSHIPS = [
+  { a:'https://i.pravatar.cc/100?img=12', b:'https://i.pravatar.cc/100?img=32',
+    names:'Adrian Cole & Elena Marsh', type:'Forced Fiancés → True Love',
+    desc:'What began as leverage in a family feud slowly becomes the realest thing in either of their lives.' },
+  { a:'https://i.pravatar.cc/100?img=12', b:'https://i.pravatar.cc/100?img=53',
+    names:'Adrian Cole & Victor Cole', type:'Father & Son — Estranged',
+    desc:"Adrian's drive for control traces directly back to Victor's decades of manipulation." },
+  { a:'https://i.pravatar.cc/100?img=32', b:'https://i.pravatar.cc/100?img=45',
+    names:'Elena Marsh & Josephine Marsh', type:'Sisters — Protective',
+    desc:'Josephine is the only person Elena lets see her unguarded.' },
+  { a:'https://i.pravatar.cc/100?img=53', b:'https://i.pravatar.cc/100?img=33',
+    names:'Victor Cole & Marcus Reyes', type:'Long-Time Conspirators',
+    desc:'Marcus has covered for Victor for twenty years — until his conscience starts to slip in Act III.' },
+];
+
+const MENU_SECTIONS = [
+  { title:'Author Center', items:[
+    { label:'Dashboard', icon:'fa-gauge', href:'author-center.html', badge:'Default' },
+    { label:'Overview', icon:'fa-chart-simple', href:'#' },
+    { label:'Analytics', icon:'fa-chart-line', href:'#' },
+    { label:'My Books', icon:'fa-book', href:'#' },
+    { label:'Quick Actions', icon:'fa-bolt', href:'#' },
+    { label:'Revenue Snapshot', icon:'fa-sack-dollar', href:'revenue.html' },
+    { label:'Notifications', icon:'fa-bell', href:'#' },
+  ]},
+  { title:'Book Workspace', items:[
+    { label:'Overview', icon:'fa-file-lines', href:'book-overview.html' },
+    { label:'Chapters', icon:'fa-list-ul', href:'book-workspace.html' },
+    { label:'Plotting', icon:'fa-diagram-project', href:'plotting.html' },
+    { label:'Characters', icon:'fa-user-group', href:'characters.html', active:true },
+    { label:'Story Bible', icon:'fa-book-bookmark', href:'#' },
+    { label:'Schedule', icon:'fa-calendar-days', href:'#' },
+    { label:'Analytics', icon:'fa-chart-line', href:'book-analytics.html' },
+    { label:'Revenue', icon:'fa-sack-dollar', href:'book-revenue.html' },
+    { label:'Contract', icon:'fa-file-signature', href:'contract.html' },
+  ]},
+  { title:'Account', items:[
+    { label:'Revenue', icon:'fa-sack-dollar', href:'revenue.html' },
+    { label:'Contracts', icon:'fa-file-signature', href:'#' },
+    { label:'Messages', icon:'fa-comment-dots', href:'#' },
+    { label:'Notifications', icon:'fa-bell', href:'#' },
+    { label:'Achievements', icon:'fa-trophy', href:'#' },
+    { label:'Settings', icon:'fa-gear', href:'#' },
+  ]},
+];
+
+/* ═══════════════════════════════
+   RENDER
+═══════════════════════════════ */
+let activeRole = 'all';
+
+function renderRoleFilter(){
+  document.getElementById('roleFilter').innerHTML = ROLES.map(r => `
+    <button class="role-chip ${r.id===activeRole?'active':''}" data-role="${r.id}">${r.label} <span class="ct">${r.count}</span></button>
+  `).join('');
+  document.querySelectorAll('.role-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activeRole = chip.dataset.role;
+      renderRoleFilter();
+      renderCharacters();
+    });
+  });
+}
+
+function renderCharacters(){
+  const filtered = activeRole === 'all' ? CHARACTERS : CHARACTERS.filter(c => c.role === activeRole);
+  document.getElementById('characterList').innerHTML = filtered.map((c,i) => `
+    <div class="character-card fade" style="animation-delay:${i*0.03}s" onclick="location.href='character-profile.html'">
+      <div class="cc-avatar"><img src="${c.img}" alt="${c.name}"/></div>
+      <div class="cc-body">
+        <div class="cc-top-row">
+          <span class="cc-name">${c.name}</span>
+          <span class="cc-role ${c.role}">${c.roleLabel}</span>
+        </div>
+        <div class="cc-meta">${c.meta}</div>
+        <div class="cc-arc">${c.arc}</div>
+        <div class="cc-tags">${c.tags.map(t => `<span class="cc-tag">${t}</span>`).join('')}</div>
+        <div class="cc-stats">
+          <span class="cc-stat"><i class="fas fa-book-open"></i> ${c.chapters}</span>
+          <span class="cc-stat"><i class="fas fa-quote-right"></i> ${c.mentions} mentions</span>
+        </div>
+      </div>
+      <i class="fas fa-chevron-right cc-chev"></i>
+    </div>`).join('');
+  document.getElementById('emptyState').classList.toggle('show', filtered.length === 0);
+}
+
+function renderRelationships(){
+  document.getElementById('relList').innerHTML = RELATIONSHIPS.map(r => `
+    <div class="rel-card fade">
+      <div class="rel-avatars">
+        <img class="rel-av" src="${r.a}" alt=""/>
+        <img class="rel-av" src="${r.b}" alt=""/>
+      </div>
+      <div class="rel-body">
+        <div class="rel-names">${r.names}</div>
+        <div class="rel-type">${r.type}</div>
+        <div class="rel-desc">${r.desc}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML = MENU_SECTIONS.map(sec => `
+    <div class="drawer-section">
+      <div class="drawer-section-title">${sec.title}</div>
+      ${sec.items.map(it => `
+        <a class="drawer-item${it.active ? ' active' : ''}" href="${it.href}">
+          <i class="fas ${it.icon}"></i>${it.label}
+          ${it.badge ? `<span class="drawer-item-badge">${it.badge}</span>` : ''}
+        </a>`).join('')}
+    </div>`).join('');
+}
+
+renderRoleFilter();
+renderCharacters();
+renderRelationships();
+renderDrawer();
+
+/* Drawer */
+const menuBtn = document.getElementById('menuBtn');
+const drawer = document.getElementById('drawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
+const drawerClose = document.getElementById('drawerClose');
+function openDrawer(){ drawer.classList.add('open'); drawerOverlay.classList.add('open'); }
+function closeDrawer(){ drawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
+menuBtn.addEventListener('click', openDrawer);
+drawerClose.addEventListener('click', closeDrawer);
+drawerOverlay.addEventListener('click', closeDrawer);
+
+
+/* ═══════════════════════════════
+   NEW CHARACTER MODAL
+═══════════════════════════════ */
+const charModal = document.getElementById('charModal');
+let selectedRole = 'lead';
+let charTags = [];
+
+function openCharModal(){
+  charModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('charName').focus(), 280);
+}
+function closeCharModal(){
+  charModal.classList.remove('open');
+  document.body.style.overflow = '';
+  resetCharForm();
+}
+function resetCharForm(){
+  document.getElementById('charName').value = '';
+  document.getElementById('charMeta').value = '';
+  document.getElementById('charArc').value = '';
+  document.getElementById('charAvatar').value = '';
+  document.getElementById('charTagInput').value = '';
+  charTags = [];
+  selectedRole = 'lead';
+  document.getElementById('avatarPreview').classList.remove('has-img');
+  document.getElementById('avatarPreview').innerHTML = '<i class="fas fa-user"></i>';
+  document.querySelectorAll('#rolePicks .role-pick').forEach(p => {
+    p.classList.toggle('active', p.dataset.role === 'lead');
+  });
+  renderCharTags();
+}
+function renderCharTags(){
+  document.getElementById('charTagList').innerHTML = charTags.map((t,i) => `
+    <span class="tag-item">${t}<button type="button" data-i="${i}" aria-label="Remove"><i class="fas fa-xmark"></i></button></span>
+  `).join('');
+  document.querySelectorAll('#charTagList button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      charTags.splice(+btn.dataset.i, 1);
+      renderCharTags();
+    });
+  });
+}
+function addCharTag(){
+  const inp = document.getElementById('charTagInput');
+  const v = inp.value.trim();
+  if (!v || charTags.includes(v) || charTags.length >= 8) return;
+  charTags.push(v);
+  inp.value = '';
+  renderCharTags();
+}
+
+/* Open / close */
+document.querySelector('.new-character-btn').addEventListener('click', openCharModal);
+document.getElementById('charModalClose').addEventListener('click', closeCharModal);
+document.getElementById('charModalCancel').addEventListener('click', closeCharModal);
+charModal.addEventListener('click', e => { if (e.target === charModal) closeCharModal(); });
+
+/* Role picks */
+document.querySelectorAll('#rolePicks .role-pick').forEach(p => {
+  p.addEventListener('click', () => {
+    selectedRole = p.dataset.role;
+    document.querySelectorAll('#rolePicks .role-pick').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+  });
+});
+
+/* Tags */
+document.getElementById('charTagAdd').addEventListener('click', addCharTag);
+document.getElementById('charTagInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addCharTag(); }
+});
+
+/* Avatar URL */
+document.getElementById('avatarUrlBtn').addEventListener('click', () => {
+  const url = prompt('Paste image URL:');
+  if (!url) return;
+  document.getElementById('charAvatar').value = url;
+  const prev = document.getElementById('avatarPreview');
+  prev.classList.add('has-img');
+  prev.innerHTML = `<img src="${url}" alt=""/>`;
+});
+
+/* Save */
+document.getElementById('charModalSave').addEventListener('click', () => {
+  const name = document.getElementById('charName').value.trim();
+  if (!name) {
+    document.getElementById('charName').focus();
+    document.getElementById('charName').style.borderColor = 'var(--danger)';
+    setTimeout(() => { document.getElementById('charName').style.borderColor = ''; }, 1500);
+    return;
+  }
+
+  const roleLabels = { lead:'Lead', antagonist:'Antagonist', support:'Support', minor:'Minor' };
+  const avatar = document.getElementById('charAvatar').value
+    || `https://i.pravatar.cc/100?u=${encodeURIComponent(name)}`;
+
+  CHARACTERS.unshift({
+    name,
+    role: selectedRole,
+    roleLabel: roleLabels[selectedRole],
+    img: avatar,
+    meta: document.getElementById('charMeta').value.trim() || 'New character',
+    tags: charTags.length ? [...charTags] : ['New'],
+    arc: document.getElementById('charArc').value.trim() || 'Arc not set yet.',
+    chapters: '0 of 56',
+    mentions: '0',
+  });
+
+  // Update role counts
+  const counts = { all: CHARACTERS.length, lead:0, antagonist:0, support:0, minor:0 };
+  CHARACTERS.forEach(c => { if (counts[c.role] !== undefined) counts[c.role]++; });
+  ROLES.forEach(r => { r.count = counts[r.id] ?? 0; });
+
+  document.querySelector('.characters-title').textContent = `Characters (${CHARACTERS.length})`;
+  activeRole = 'all';
+  renderRoleFilter();
+  renderCharacters();
+  closeCharModal();
+});
+
+
+
+/* Components */
+if (window.DroboardWorkspaceTabs) DroboardWorkspaceTabs.configure({ active: 'characters' });
+if (window.DroboardNav) DroboardNav.configure({ active: 'profile' });
+</script>
+</body>
+</html>
