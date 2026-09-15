@@ -1237,6 +1237,25 @@
     ],
   };
 
+  /* ── READER PAGE DATA (teams, reactions for full-reader / scroll-reader) ── */
+  const READER_TEAMS = [
+    { id: 'a', icon: '💔', name: 'Team Ada',    col: '#ff0050', count: 2300 },
+    { id: 'b', icon: '🔥', name: 'Team Emeka',  col: '#60a5fa', count: 890 },
+    { id: 'c', icon: '🕊️', name: 'Team Forgive', col: '#34d399', count: 540 },
+    { id: 'd', icon: '👀', name: 'Team Watching', col: '#a78bfa', count: 230 },
+  ];
+
+  const READER_REACTIONS = [
+    { id: 'cry',      emoji: '😭', label: 'Crying',     count: 9200 },
+    { id: 'broken',   emoji: '💔', label: 'Heartbroken', count: 7800 },
+    { id: 'shock',    emoji: '😱', label: 'Shocked',    count: 4100 },
+    { id: 'rage',     emoji: '😡', label: 'Rage',       count: 3300 },
+    { id: 'emo',      emoji: '🥹', label: 'Emotional',  count: 5600 },
+    { id: 'sus',      emoji: '👀', label: 'Suspicious', count: 2100 },
+    { id: 'savage',   emoji: '🔥', label: 'Savage',     count: 1800 },
+    { id: 'twist',    emoji: '🫢', label: 'Plot Twist', count: 2900 },
+  ];
+
   /* ── LIBRARY PAGE DATA (promo slides live in AD_POOLS.promo) ── */
   const LIBRARY = [
     { id: 'lib1', title: "His Sweet Revenge", author: 'Luna Grey', preview: 'Everything changes when she discovers the truth he tried so hard to hide.', ch: 'Ch. 21 of 40', pct: 68, img: c(0), status: 'progress' },
@@ -1654,6 +1673,67 @@ const SERIES_CATALOG = {
   },
 };
 
+  /* ═══════════════════════════════════════════════════════════════
+     AUTHOR FINANCE DATA
+     Earnings, transactions, payment methods, withdrawals, disputes
+     ═══════════════════════════════════════════════════════════════ */
+
+  const AUTHOR_EARNINGS = {
+    balance: 4280,
+    pending: 1250,
+    lifetime: 24800,
+    thisMonth: 1840,
+    lastMonth: 1620,
+    currency: 'USD',
+    byBook: [
+      { id: 'b1', title: 'Season of Betrayal', earnings: 12400, reads: '820k', likes: '94k', chapters: 62, cover: COVERS[1] },
+      { id: 'b2', title: 'Crowned in Sin', earnings: 8200, reads: '310k', likes: '41k', chapters: 48, cover: COVERS[2] },
+      { id: 'b3', title: 'Until You Regret', earnings: 4200, reads: '150k', likes: '22k', chapters: 35, cover: COVERS[4] },
+    ],
+    monthlyHistory: [
+      { month: 'Feb', amount: 1120 }, { month: 'Mar', amount: 1380 }, { month: 'Apr', amount: 1250 },
+      { month: 'May', amount: 1540 }, { month: 'Jun', amount: 1620 }, { month: 'Jul', amount: 1840 },
+    ],
+  };
+
+  const AUTHOR_TRANSACTIONS = [
+    { id: 'TXN-5001', type: 'royalty',   desc: 'Chapter reads — Season of Betrayal',         amount: 340,   book: 'Season of Betrayal', date: '2026-07-29T14:20:00', status: 'completed' },
+    { id: 'TXN-5002', type: 'tip',       desc: 'Reader tip from Sarah_Odum',                  amount: 200,   book: null,                 date: '2026-07-28T18:05:00', status: 'completed' },
+    { id: 'TXN-5003', type: 'royalty',   desc: 'Chapter reads — Crowned in Sin',              amount: 185,   book: 'Crowned in Sin',     date: '2026-07-28T10:00:00', status: 'completed' },
+    { id: 'TXN-5004', type: 'withdrawal',desc: 'Bank transfer to GTBank •••• 4821',           amount: -2140, book: null,                 date: '2026-07-27T20:15:00', status: 'completed' },
+    { id: 'TXN-5005', type: 'bonus',     desc: 'July Top Performer Bonus',                    amount: 200,   book: null,                 date: '2026-07-26T09:00:00', status: 'completed' },
+    { id: 'TXN-5006', type: 'royalty',   desc: 'Chapter reads — Until You Regret',            amount: 120,   book: 'Until You Regret',   date: '2026-07-25T16:30:00', status: 'completed' },
+    { id: 'TXN-5007', type: 'tip',       desc: 'Reader tip from Luna_Grey',                   amount: 50,    book: null,                 date: '2026-07-24T12:10:00', status: 'completed' },
+    { id: 'TXN-5008', type: 'royalty',   desc: 'Chapter reads — Season of Betrayal',          amount: 290,   book: 'Season of Betrayal', date: '2026-07-23T08:45:00', status: 'completed' },
+    { id: 'TXN-5009', type: 'withdrawal',desc: 'Bank transfer to GTBank •••• 4821',           amount: -1980, book: null,                 date: '2026-07-15T10:00:00', status: 'completed' },
+    { id: 'TXN-5010', type: 'royalty',   desc: 'Chapter reads — Crowned in Sin',              amount: 210,   book: 'Crowned in Sin',     date: '2026-07-14T11:20:00', status: 'completed' },
+    { id: 'TXN-5011', type: 'tip',       desc: 'Reader tip from CampusQueen',                 amount: 100,   book: null,                 date: '2026-07-12T09:00:00', status: 'completed' },
+    { id: 'TXN-5012', type: 'adjustment',desc: 'Platform correction — overcharged ad fee',    amount: 45,    book: null,                 date: '2026-07-10T14:00:00', status: 'completed' },
+    { id: 'TXN-5013', type: 'royalty',   desc: 'Chapter reads — Season of Betrayal',          amount: 310,   book: 'Season of Betrayal', date: '2026-07-08T16:00:00', status: 'completed' },
+    { id: 'TXN-5014', type: 'withdrawal',desc: 'PayPal transfer to luna.vale@paypal.com',    amount: -870,  book: null,                 date: '2026-06-30T09:00:00', status: 'completed' },
+    { id: 'TXN-5015', type: 'royalty',   desc: 'Chapter reads — Until You Regret',            amount: 95,    book: 'Until You Regret',   date: '2026-06-28T12:00:00', status: 'completed' },
+  ];
+
+  const AUTHOR_PAYMENT_METHODS = [
+    { id: 'PM-01', type: 'bank', bankName: 'GTBank', accountName: 'Luna Vale', accountNumber: '02481794821', routingCode: '0580000124', isDefault: true,  verified: true,  icon: 'fa-building-columns' },
+    { id: 'PM-02', type: 'paypal', email: 'luna.vale@paypal.com', accountName: 'Luna Vale', isDefault: false, verified: true, icon: 'fa-paypal' },
+    { id: 'PM-03', type: 'mobile', provider: 'MTN Mobile Money', phoneNumber: '+234 812 345 6789', accountName: 'Luna Vale', isDefault: false, verified: false, icon: 'fa-mobile-screen' },
+  ];
+
+  const AUTHOR_WITHDRAWALS = [
+    { id: 'WD-6001', amount: 2140, method: 'Bank Transfer', account: 'GTBank •••• 4821', requested: '2026-07-27T20:00:00', status: 'completed', processed: '2026-07-28T10:00:00' },
+    { id: 'WD-6002', amount: 1980, method: 'Bank Transfer', account: 'GTBank •••• 4821', requested: '2026-07-15T10:00:00', status: 'completed', processed: '2026-07-16T08:30:00' },
+    { id: 'WD-6003', amount: 870,  method: 'PayPal',        account: 'luna.vale@paypal.com', requested: '2026-06-30T09:00:00', status: 'completed', processed: '2026-07-01T14:00:00' },
+    { id: 'WD-6004', amount: 1250, method: 'Bank Transfer', account: 'GTBank •••• 4821', requested: '2026-07-29T12:00:00', status: 'pending',   processed: null },
+  ];
+
+  const AUTHOR_DISPUTES = [
+    { id: 'DSP-001', transactionId: 'TXN-5004', type: 'withdrawal', amount: 2140, reason: 'Withdrawal processed but funds not received in bank account after 5 business days.', status: 'open', filed: '2026-07-29T10:00:00', resolutionNote: '', adminReply: '' },
+    { id: 'DSP-002', transactionId: 'TXN-5005', type: 'bonus',      amount: 200,  reason: 'Bonus amount does not match the announced Top Performer Bonus of $300.', status: 'investigating', filed: '2026-07-27T14:30:00', resolutionNote: '', adminReply: 'Reviewing bonus calculation with finance team.' },
+  ];
+
+  const WITHDRAWAL_MIN = 100;
+
   /* ── EXPOSE GLOBAL ── */
   global.DemoData = {
     COVERS,
@@ -1679,12 +1759,20 @@ const SERIES_CATALOG = {
     EVENT,
     ANNOUNCEMENT,
     FULL_STORY,
+    READER_TEAMS,
+    READER_REACTIONS,
     LIBRARY,
     SAVED,
     HISTORY,
     AD_POOLS,
     AD_PLACEMENTS,
     NOTIFS,
+    AUTHOR_EARNINGS,
+    AUTHOR_TRANSACTIONS,
+    AUTHOR_PAYMENT_METHODS,
+    AUTHOR_WITHDRAWALS,
+    AUTHOR_DISPUTES,
+    WITHDRAWAL_MIN,
   };
 
 })(window);

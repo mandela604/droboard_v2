@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Earnings · DroBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--success:#22c55e;--success-soft:#e9fbf0;--warning:#f59e0b;--warning-soft:#fef3e2;--blue:#3b82f6;--blue-soft:#e7f0fe;--purple:#9333ea;--purple-soft:#f3e8ff;--danger:#ef4444;--danger-soft:#fdeaea;--nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px)}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif}
+body{padding-bottom:calc(var(--nav-h) + var(--safe-b))}
+img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;border:none;background:none}a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,247,248,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.tb-title-wrap{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tb-title{font-size:15.5px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;position:relative;flex-shrink:0}
+.icon-btn .dot{position:absolute;top:8px;right:8px;width:7px;height:7px;background:var(--pink);border-radius:50%;border:1.5px solid #fff}
+.avatar-btn{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid var(--border)}
+.avatar-btn img{width:100%;height:100%}
+.menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
+
+/* ── HAMBURGER DRAWER ── */
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-head .tb-logo{width:34px;height:34px;font-size:14px}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:#f1f1f4;color:#555;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--muted);flex-shrink:0}
+.drawer-item:active{background:#f5f5f7}
+.drawer-item.active{background:rgba(255,45,85,.08);color:var(--pink)}
+.drawer-item.active i{color:var(--pink)}
+
+.content{padding:14px 16px 20px}
+
+/* ── Balance Card ── */
+.balance-card{background:linear-gradient(135deg,var(--pink),#7a0030);border-radius:18px;padding:22px 20px;color:#fff;margin-bottom:20px;box-shadow:0 10px 30px rgba(255,0,80,.3)}
+.balance-label{font-size:11px;font-weight:700;opacity:.75;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.balance-amount{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.balance-sub{display:flex;gap:20px;margin-top:14px}
+.balance-sub-item{flex:1}
+.balance-sub-label{font-size:10.5px;font-weight:600;opacity:.65;margin-bottom:2px}
+.balance-sub-val{font-size:16px;font-weight:700}
+.balance-sub-item.pending .balance-sub-val{color:#ffd700}
+.balance-actions{display:flex;gap:10px;margin-top:16px}
+.btn{padding:11px 18px;border-radius:12px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;justify-content:center;transition:.15s}
+.btn-white{background:#fff;color:var(--pink)}
+.btn-white:active{opacity:.85}
+.btn-outline{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.btn-outline:active{opacity:.85}
+
+/* ── Month Comparison ── */
+.month-row{display:flex;gap:10px;margin-bottom:20px}
+.month-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.month-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.month-val{font-size:18px;font-weight:800}
+.month-delta{font-size:10.5px;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:3px}
+.month-delta.up{color:var(--success)}
+.month-delta.down{color:var(--danger)}
+
+/* ── Section ── */
+.section{margin-bottom:22px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:0 0 10px}
+.sec-title{font-size:16px;font-weight:700}
+.view-all{font-size:12px;font-weight:600;color:var(--pink);cursor:pointer}
+
+/* ── Book Earnings ── */
+.book-earn-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.book-earn-cover{width:48px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#e8e8ed}
+.book-earn-cover img{width:100%;height:100%}
+.book-earn-info{flex:1;min-width:0}
+.book-earn-title{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book-earn-stats{font-size:11px;color:var(--muted);margin-top:2px}
+.book-earn-amount{font-size:16px;font-weight:800;color:var(--success);flex-shrink:0}
+
+/* ── Quick Actions ── */
+.actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.action-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer}
+.action-card:active{opacity:.85}
+.action-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 8px}
+.action-label{font-size:11.5px;font-weight:700}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.book-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px}
+.pg-btn{min-width:32px;height:32px;padding:0 6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s}
+.pg-btn.active{background:var(--pink);border-color:var(--pink);color:#fff}
+.pg-btn:disabled{opacity:.35;pointer-events:none}
+
+@media (min-width:600px){.content{max-width:560px;margin:0 auto;padding:20px 20px 28px}.topbar{max-width:560px;margin:0 auto}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="menu-btn" id="menuBtn"><i class="fas fa-bars"></i></div>
+  <div class="tb-title-wrap">
+    <div class="tb-logo"><i class="fas fa-sack-dollar"></i></div>
+    <div class="tb-title">Earnings</div>
+  </div>
+  <div class="icon-btn"><i class="far fa-bell"></i><span class="dot"></span></div>
+  <div class="avatar-btn"><img src="https://i.pravatar.cc/100?img=47" alt="Luna Vale"/></div>
+</div>
+
+<div class="content">
+  <div class="balance-card" id="balanceCard"></div>
+
+  <div class="month-row" id="monthRow"></div>
+
+  <section class="section">
+    <div class="sec-head"><h2 class="sec-title">Earnings by Book</h2></div>
+    <div id="bookEarnings"></div>
+    <div class="book-pagination" id="bookPagination"></div>
+  </section>
+
+  <section class="section">
+    <div class="sec-head"><h2 class="sec-title">Quick Actions</h2></div>
+    <div class="actions-grid">
+      <div class="action-card" onclick="location.href='withdrawal-request.html'">
+        <div class="action-icon" style="background:var(--blue-soft);color:var(--blue)"><i class="fas fa-building-columns"></i></div>
+        <div class="action-label">Withdraw</div>
+      </div>
+      <div class="action-card" onclick="location.href='payment-details.html'">
+        <div class="action-icon" style="background:var(--purple-soft);color:var(--purple)"><i class="fas fa-credit-card"></i></div>
+        <div class="action-label">Payment Methods</div>
+      </div>
+      <div class="action-card" onclick="location.href='transaction-history.html'">
+        <div class="action-icon" style="background:var(--warning-soft);color:var(--warning)"><i class="fas fa-receipt"></i></div>
+        <div class="action-label">History</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="tb-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/author-earnings-service.js"></script>
+<script>
+// HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
+// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+const BOOK_WORKSPACE_ITEMS=[
+  {label:'Chapters',icon:'fa-list-ul',href:'#'},
+  {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
+  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
+];
+function getMENU_SECTIONS(){
+  const params=new URLSearchParams(location.search);
+  const bookId=params.get('book');
+  const sections=[
+    {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
+    {title:'Account',items:[
+      {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html',active:true},
+      {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html'},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'},
+      {label:'Contracts',icon:'fa-file-signature',href:'#'},
+      {label:'Messages',icon:'fa-comment-dots',href:'#'},
+      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Settings',icon:'fa-gear',href:'#'}
+    ]}
+  ];
+  if(bookId) sections.splice(1,0,{title:'Book Workspace',items:BOOK_WORKSPACE_ITEMS.map(it=>Object.assign({},it,{href:it.href.includes('?')?it.href.split('?')[0]+'?book='+bookId:it.href+'?book='+bookId}))});
+  return sections;
+}
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML=getMENU_SECTIONS().map(sec=>'<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(it=>'<a class="drawer-item'+(it.active?' active':'')+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>').join('')+'</div>').join('');
+}
+renderDrawer();
+const menuBtn=document.getElementById('menuBtn'),drawer=document.getElementById('drawer'),drawerOverlay=document.getElementById('drawerOverlay'),drawerClose=document.getElementById('drawerClose');
+function openDrawer(){drawer.classList.add('open');drawerOverlay.classList.add('open')}
+function closeDrawer(){drawer.classList.remove('open');drawerOverlay.classList.remove('open')}
+menuBtn.addEventListener('click',openDrawer);
+drawerClose.addEventListener('click',closeDrawer);
+drawerOverlay.addEventListener('click',closeDrawer);
+function toast(m){const t=document.getElementById('toastEl')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'toastEl',className:'toast'}));t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500)}
+
+let allBooks = [], bookPage = 1;
+const BOOKS_PER_PAGE = 4;
+
+function renderBookPage(){
+  const start = (bookPage - 1) * BOOKS_PER_PAGE;
+  const page = allBooks.slice(start, start + BOOKS_PER_PAGE);
+  document.getElementById('bookEarnings').innerHTML = page.map(b =>
+    '<div class="book-earn-card">'+
+      '<div class="book-earn-cover"><img src="'+b.cover+'" alt="'+b.title+'" loading="lazy"/></div>'+
+      '<div class="book-earn-info"><div class="book-earn-title">'+b.title+'</div><div class="book-earn-stats">'+b.reads+' reads · '+b.chapters+' chapters</div></div>'+
+      '<div class="book-earn-amount">'+AuthorFinance.fmtCurrency(b.earnings)+'</div>'+
+    '</div>'
+  ).join('');
+  const totalPages = Math.ceil(allBooks.length / BOOKS_PER_PAGE);
+  if (totalPages <= 1) { document.getElementById('bookPagination').innerHTML = ''; return; }
+  let h = '';
+  h += '<button class="pg-btn"'+(bookPage<=1?' disabled':'')+' onclick="goBookPage('+(bookPage-1)+')"><i class="fas fa-chevron-left"></i></button>';
+  for (let i = 1; i <= totalPages; i++) h += '<button class="pg-btn'+(i===bookPage?' active':'')+'" onclick="goBookPage('+i+')">'+i+'</button>';
+  h += '<button class="pg-btn"'+(bookPage>=totalPages?' disabled':'')+' onclick="goBookPage('+(bookPage+1)+')"><i class="fas fa-chevron-right"></i></button>';
+  document.getElementById('bookPagination').innerHTML = h;
+}
+function goBookPage(p){ bookPage = p; renderBookPage(); }
+
+async function render(){
+  const earnings = await AuthorFinance.getEarnings();
+  allBooks = earnings.byBook;
+
+  /* ── Balance Card ── */
+  document.getElementById('balanceCard').innerHTML =
+    '<div class="balance-label">Available Balance</div>'+
+    '<div class="balance-amount">'+AuthorFinance.fmtCurrency(earnings.balance)+'</div>'+
+    '<div class="balance-sub">'+
+      '<div class="balance-sub-item pending"><div class="balance-sub-label">Pending</div><div class="balance-sub-val">'+AuthorFinance.fmtCurrency(earnings.pending)+'</div></div>'+
+      '<div class="balance-sub-item"><div class="balance-sub-label">Lifetime Earnings</div><div class="balance-sub-val">'+AuthorFinance.fmtCurrency(earnings.lifetime)+'</div></div>'+
+    '</div>'+
+    '<div class="balance-actions">'+
+      '<a class="btn btn-white" href="withdrawal-request.html"><i class="fas fa-building-columns"></i> Withdraw</a>'+
+      '<a class="btn btn-outline" href="transaction-history.html"><i class="fas fa-receipt"></i> History</a>'+
+    '</div>';
+
+  /* ── Month Comparison ── */
+  const delta = earnings.lastMonth > 0 ? ((earnings.thisMonth - earnings.lastMonth) / earnings.lastMonth * 100).toFixed(1) : 0;
+  const isUp = delta >= 0;
+  document.getElementById('monthRow').innerHTML =
+    '<div class="month-card"><div class="month-label">This Month</div><div class="month-val">'+AuthorFinance.fmtCurrency(earnings.thisMonth)+'</div>'+
+      '<div class="month-delta '+(isUp?'up':'down')+'"><i class="fas fa-arrow-'+(isUp?'up':'down')+'"></i> '+Math.abs(delta)+'% vs last</div></div>'+
+    '<div class="month-card"><div class="month-label">Last Month</div><div class="month-val">'+AuthorFinance.fmtCurrency(earnings.lastMonth)+'</div>'+
+      '<div class="month-delta" style="color:var(--muted)">Completed</div></div>';
+
+  renderBookPage();
+}
+
+render();
+</script>
+</body>
+</html>

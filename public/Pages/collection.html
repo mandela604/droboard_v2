@@ -30,7 +30,42 @@ a{color:inherit;text-decoration:none}
 .topbar{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
 .icon-btn{width:38px;height:38px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .icon-btn:active{transform:scale(.93)}
-.top-right{display:flex;gap:9px}
+.top-right{display:flex;gap:9px;position:relative}
+.dropdown-menu{position:absolute;top:44px;right:0;min-width:180px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:100;display:none;overflow:hidden}
+.dropdown-menu.show{display:block}
+.dropdown-item{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;font-size:12.5px;font-weight:600;color:var(--ink);background:none;border:none;cursor:pointer;text-align:left;font-family:inherit}
+.dropdown-item:active{background:var(--divider)}
+.dropdown-item.danger{color:#dc2626}
+.dropdown-item i{font-size:13px;width:16px;text-align:center;color:var(--gray-400)}
+.dropdown-item.danger i{color:#dc2626}
+
+.report-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.55);backdrop-filter:blur(12px);display:none;align-items:flex-end;justify-content:center}
+.report-overlay.open{display:flex}
+.report-sheet{width:100%;max-width:420px;background:var(--white);border-radius:20px 20px 0 0;animation:slideUp .28s ease;padding-bottom:env(safe-area-inset-bottom,20px)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.report-handle{width:36px;height:4px;background:rgba(0,0,0,.12);border-radius:4px;margin:12px auto 0}
+.report-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.report-hdr h3{font-size:15px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px}
+.report-hdr h3 i{color:var(--pink);font-size:14px}
+.report-close{width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.05);border:none;color:var(--gray-600);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.report-body{padding:0 16px 16px}
+.report-label{font-size:11px;font-weight:700;color:var(--gray-600);margin-bottom:8px}
+.report-reasons{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.report-reason{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink);background:var(--white);transition:.15s}
+.report-reason:active{transform:scale(.98)}
+.report-reason.selected{border-color:var(--pink);background:var(--pink-soft);color:var(--pink-deep)}
+.report-reason i{font-size:14px;width:18px;text-align:center;color:var(--gray-400)}
+.report-reason.selected i{color:var(--pink)}
+.report-textarea{width:100%;min-height:80px;background:rgba(0,0,0,.03);border:1px solid var(--line);border-radius:12px;padding:11px 13px;color:var(--ink);font-size:13px;font-family:inherit;outline:none;resize:vertical;margin-bottom:16px}
+.report-textarea:focus{border-color:var(--pink)}
+.report-textarea::placeholder{color:var(--gray-400)}
+.report-submit{width:100%;background:var(--pink);color:#fff;border:none;padding:13px;border-radius:14px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.report-submit:active{transform:scale(.98)}
+.report-submit:disabled{background:var(--gray-400);cursor:default}
+.report-success{text-align:center;padding:30px 16px}
+.report-success i{font-size:40px;color:var(--green);margin-bottom:12px}
+.report-success h4{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.report-success p{font-size:13px;color:var(--gray-600);line-height:1.5}
 
 .content{flex:1;padding-bottom:26px}
 
@@ -70,13 +105,10 @@ a{color:inherit;text-decoration:none}
 .tools-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
 .sort-btn{display:flex;align-items:center;gap:8px;background:var(--divider);border:1px solid var(--line);padding:8px 14px;border-radius:20px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
 .sort-btn i{font-size:10px;color:var(--gray-400)}
-.view-toggle{display:flex;gap:6px}
-.view-btn{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--divider);color:var(--gray-400);border:1px solid transparent}
-.view-btn.active{background:var(--pink-soft);color:var(--pink);border-color:var(--pink-line)}
 
-.story-list{padding:2px 16px 8px;display:flex;flex-direction:column;gap:12px}
-.story-grid{display:none;grid-template-columns:repeat(3,1fr);gap:12px 10px;padding:2px 16px 8px}
-.story-grid.active{display:grid}
+.story-list{padding:2px 16px 8px;display:flex;flex-direction:column;gap:10px}
+
+.book-card{display:flex;gap:12px;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.04)}.book-card:active{transform:scale(.98)}.book-cover{width:64px;height:88px;border-radius:9px;background-size:cover;background-position:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.12)}.book-info{flex:1;min-width:0;display:flex;flex-direction:column}.book-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.book-title{font-size:13.5px;font-weight:700;line-height:1.3;color:var(--ink)}.book-genre{font-size:10.5px;color:var(--pink);font-weight:700;text-transform:uppercase;margin-top:2px;margin-bottom:7px}.book-stats{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:auto}.book-stat{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--gray-600)}.book-stat i{font-size:9px}.book-foot{display:flex;align-items:center;margin-top:8px}.status-badge{font-size:8.5px;font-weight:800;padding:3px 8px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase}.status-badge.completed{background:var(--green-soft);color:var(--green)}.status-badge.ongoing{background:var(--pink-soft);color:var(--pink)}.status-badge.paused{background:var(--divider);color:var(--gray-600)}
 
 .curated-banner{margin:8px 16px 4px;background:var(--pink-soft);border-radius:16px;padding:14px 15px;display:flex;align-items:flex-start;gap:12px}
 .curated-icon{width:38px;height:38px;border-radius:50%;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--pink);font-size:15px;box-shadow:0 2px 6px rgba(255,45,106,.15)}
@@ -112,8 +144,11 @@ a{color:inherit;text-decoration:none}
   <div class="topbar">
     <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
     <div class="top-right">
-      <div class="icon-btn" id="bookmarkBtn"><i class="far fa-bookmark"></i></div>
-      <div class="icon-btn"><i class="fas fa-ellipsis"></i></div>
+      <div class="icon-btn" id="shareBtn"><i class="fas fa-arrow-up-from-bracket"></i></div>
+      <div class="icon-btn" id="menuDots"><i class="fas fa-ellipsis"></i></div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button class="dropdown-item" id="reportBtn"><i class="fas fa-flag"></i> Report Collection</button>
+      </div>
     </div>
   </div>
 
@@ -140,14 +175,9 @@ a{color:inherit;text-decoration:none}
     <div class="tab-content" id="panel-stories">
       <div class="tools-row">
         <div class="sort-btn" id="sortBtn">Latest First <i class="fas fa-chevron-down"></i></div>
-        <div class="view-toggle" id="viewToggle">
-          <button class="view-btn active" data-view="list"><i class="fas fa-list"></i></button>
-          <button class="view-btn" data-view="grid"><i class="fas fa-table-cells"></i></button>
-        </div>
       </div>
 
       <div class="story-list" id="storyList"></div>
-      <div class="story-grid" id="storyGrid"></div>
 
       <div class="curated-banner" id="curatedBanner"></div>
     </div>
@@ -158,14 +188,56 @@ a{color:inherit;text-decoration:none}
 
 </div>
 
+<div class="report-overlay" id="reportOverlay">
+  <div class="report-sheet">
+    <div class="report-handle"></div>
+    <div class="report-hdr">
+      <h3><i class="fas fa-flag"></i> Report Collection</h3>
+      <button class="report-close" id="reportCloseBtn">✕</button>
+    </div>
+    <div class="report-body" id="reportBody">
+      <div class="report-label">Why are you reporting this collection?</div>
+      <div class="report-reasons" id="reportReasons">
+        <div class="report-reason" data-reason="spam"><i class="fas fa-ban"></i> Spam or misleading content</div>
+        <div class="report-reason" data-reason="inappropriate"><i class="fas fa-eye-slash"></i> Inappropriate or offensive content</div>
+        <div class="report-reason" data-reason="copyright"><i class="fas fa-copyright"></i> Copyright infringement</div>
+        <div class="report-reason" data-reason="harassment"><i class="fas fa-user-slash"></i> Harassment or bullying</div>
+        <div class="report-reason" data-reason="other"><i class="fas fa-ellipsis"></i> Other</div>
+      </div>
+      <div class="report-label">Additional details (optional)</div>
+      <textarea class="report-textarea" id="reportDetails" placeholder="Provide more context about your report..."></textarea>
+      <button class="report-submit" id="reportSubmitBtn" disabled>Submit Report</button>
+    </div>
+  </div>
+</div>
+
 <!-- SCRIPTS: data → service → component → init -->
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/collection-service.js"></script>
 <script src="../component/bottom-nav.js"></script>
-<script src="../component/collection-card.js"></script>
+<script src="../component/share-modal.js"></script>
 <script>
-let currentView = 'list';
 let currentCollection = null;
+
+function renderBookCard(story) {
+  const href = `bridge.html?id=${encodeURIComponent(story.id || story.title || '')}`;
+  const statusCls = (story.status || 'ongoing').toLowerCase();
+  return `<a class="book-card" href="${href}" style="text-decoration:none;color:inherit">
+    <div class="book-cover" style="background-image:url('${story.cover}')"></div>
+    <div class="book-info">
+      <div class="book-title-row"><div class="book-title">${story.title || ''}</div></div>
+      <div class="book-genre">${story.cat || story.author || ''}</div>
+      <div class="book-stats">
+        <span class="book-stat"><i class="fas fa-eye"></i> ${story.reads || '0'}</span>
+        <span class="book-stat"><i class="fas fa-heart"></i> ${story.likes || '0'}</span>
+        <span class="book-stat"><i class="fas fa-book"></i> ${story.chapters || '0'} ch</span>
+      </div>
+      <div class="book-foot">
+        <span class="status-badge ${statusCls}">${story.badge || 'Ongoing'}</span>
+      </div>
+    </div>
+  </a>`;
+}
 
 async function loadCollection() {
   const params = new URLSearchParams(location.search);
@@ -178,12 +250,12 @@ async function loadCollection() {
   renderCurated(currentCollection);
 
   const stories = await CollectionData.getCollectionStories(colId);
-  CollectionCard.renderStoryList('storyList', stories);
-  CollectionCard.renderGridList('storyGrid', stories);
+  const listEl = document.getElementById('storyList');
+  listEl.innerHTML = stories.map(renderBookCard).join('');
 
   initTabs();
-  initViewToggle();
   initButtons();
+  initReportModal();
 }
 
 function renderHero(col) {
@@ -254,21 +326,6 @@ function initTabs() {
   });
 }
 
-function initViewToggle() {
-  document.querySelectorAll('#viewToggle .view-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#viewToggle .view-btn').forEach(x => x.classList.remove('active'));
-      btn.classList.add('active');
-      currentView = btn.dataset.view;
-      const listEl = document.getElementById('storyList');
-      const gridEl = document.getElementById('storyGrid');
-      const isGrid = currentView === 'grid';
-      listEl.style.display = isGrid ? 'none' : 'flex';
-      gridEl.classList.toggle('active', isGrid);
-    });
-  });
-}
-
 function initButtons() {
   const followBtn = document.getElementById('followBtn');
   let following = false;
@@ -279,13 +336,99 @@ function initButtons() {
       : '<i class="fas fa-plus"></i> Follow Collection';
   });
 
-  const bookmarkBtn = document.getElementById('bookmarkBtn');
-  let saved = false;
-  bookmarkBtn.addEventListener('click', () => {
-    saved = !saved;
-    bookmarkBtn.innerHTML = saved ? '<i class="fas fa-bookmark"></i>' : '<i class="far fa-bookmark"></i>';
-    bookmarkBtn.style.color = saved ? 'var(--pink)' : 'var(--ink)';
+  document.getElementById('shareBtn').addEventListener('click', () => {
+    if (typeof openShareModal === 'function') {
+      openShareModal({
+        title: currentCollection.title,
+        sub: currentCollection.sub,
+        img: currentCollection.cover,
+        url: location.href
+      });
+    }
   });
+
+  const menuDots = document.getElementById('menuDots');
+  const dropdown = document.getElementById('dropdownMenu');
+  menuDots.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('show');
+  });
+  document.addEventListener('click', () => dropdown.classList.remove('show'));
+
+  document.getElementById('reportBtn').addEventListener('click', () => {
+    dropdown.classList.remove('show');
+    openReportModal();
+  });
+}
+
+/* ── Report Modal ── */
+let selectedReason = '';
+
+function openReportModal() {
+  selectedReason = '';
+  document.querySelectorAll('.report-reason').forEach(r => r.classList.remove('selected'));
+  document.getElementById('reportDetails').value = '';
+  document.getElementById('reportSubmitBtn').disabled = true;
+  document.getElementById('reportOverlay').classList.add('open');
+}
+
+function closeReportModal() {
+  document.getElementById('reportOverlay').classList.remove('open');
+}
+
+function initReportModal() {
+  document.getElementById('reportCloseBtn').addEventListener('click', closeReportModal);
+  document.getElementById('reportOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeReportModal();
+  });
+
+  document.querySelectorAll('.report-reason').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.report-reason').forEach(r => r.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedReason = btn.dataset.reason;
+      document.getElementById('reportSubmitBtn').disabled = false;
+    });
+  });
+
+  document.getElementById('reportSubmitBtn').addEventListener('click', () => {
+    const details = document.getElementById('reportDetails').value.trim();
+    const report = {
+      type: 'collection',
+      collectionId: currentCollection.id,
+      collectionTitle: currentCollection.title,
+      collectionAuthor: currentCollection.author,
+      reason: selectedReason,
+      details: details,
+      reportedBy: 'Current User',
+      date: new Date().toISOString(),
+      status: 'pending'
+    };
+    const reports = JSON.parse(localStorage.getItem('COLLECTION_REPORTS') || '[]');
+    reports.push(report);
+    localStorage.setItem('COLLECTION_REPORTS', JSON.stringify(reports));
+
+    document.getElementById('reportBody').innerHTML = `
+      <div class="report-success">
+        <i class="fas fa-check-circle"></i>
+        <h4>Report Submitted</h4>
+        <p>Thank you for your report. Our team will review it and take appropriate action.</p>
+      </div>`;
+    setTimeout(closeReportModal, 2200);
+  });
+}
+
+function showToast(msg) {
+  let t = document.getElementById('collToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'collToast';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;opacity:0;transition:.3s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2000);
 }
 
 loadCollection();

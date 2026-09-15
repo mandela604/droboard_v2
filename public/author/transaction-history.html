@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Transaction History · DroBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--success:#22c55e;--success-soft:#e9fbf0;--blue:#3b82f6;--blue-soft:#e7f0fe;--purple:#9333ea;--purple-soft:#f3e8ff;--danger:#ef4444;--danger-soft:#fdeaea;--warning:#f59e0b;--warning-soft:#fef3e2}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif}
+img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;border:none;background:none}a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,247,248,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.tb-title-wrap{flex:1;display:flex;align-items:center;gap:8px}
+.tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tb-title{font-size:15.5px;font-weight:800}
+.avatar-btn img{width:100%;height:100%}
+.menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
+
+/* ── HAMBURGER DRAWER ── */
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-head .tb-logo{width:34px;height:34px;font-size:14px}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:#f1f1f4;color:#555;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--muted);flex-shrink:0}
+.drawer-item:active{background:#f5f5f7}
+.drawer-item.active{background:rgba(255,45,85,.08);color:var(--pink)}
+.drawer-item.active i{color:var(--pink)}
+
+.content{padding:16px}
+
+/* ── KPIs ── */
+.kpi-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.kpi-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.kpi-val{font-size:18px;font-weight:800}
+.kpi-val.green{color:var(--success)}
+.kpi-val.blue{color:var(--blue)}
+.kpi-val.purple{color:var(--purple)}
+.kpi-val.red{color:var(--danger)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;padding:8px 4px;border-radius:9px;font-size:12px;font-weight:700;text-align:center;color:var(--muted);white-space:nowrap;cursor:pointer;transition:.15s}
+.tab.active{background:var(--pink);color:#fff}
+
+/* ── Search ── */
+.search-bar{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:16px}
+.search-bar input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.search-bar input::placeholder{color:var(--muted)}
+.search-bar i{color:var(--muted);font-size:13px}
+
+/* ── Transaction Item ── */
+.txn-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer;transition:.1s}
+.txn-card:active{opacity:.85}
+.txn-top{display:flex;align-items:center;gap:12px}
+.txn-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.txn-icon.royalty{background:var(--success-soft);color:var(--success)}
+.txn-icon.tip{background:var(--purple-soft);color:var(--purple)}
+.txn-icon.bonus{background:var(--warning-soft);color:var(--warning)}
+.txn-icon.withdrawal{background:var(--blue-soft);color:var(--blue)}
+.txn-icon.adjustment{background:var(--danger-soft);color:var(--danger)}
+.txn-info{flex:1;min-width:0}
+.txn-desc{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txn-meta{display:flex;gap:8px;margin-top:3px}
+.txn-meta span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px}
+.txn-right{text-align:right;flex-shrink:0}
+.txn-amount{font-size:15px;font-weight:800}
+.txn-amount.pos{color:var(--success)}
+.txn-amount.neg{color:var(--danger)}
+.txn-status{font-size:10px;font-weight:700;margin-top:2px;padding:2px 6px;border-radius:10px;display:inline-block}
+.txn-status.completed{background:var(--success-soft);color:var(--success)}
+.txn-status.pending{background:var(--warning-soft);color:var(--warning)}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty i{font-size:36px;margin-bottom:12px;color:var(--border)}
+.empty p{font-size:13px;line-height:1.5}
+
+/* ── Detail Modal ── */
+.modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.25s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:400px;background:var(--card);border-radius:20px;padding:24px 20px;transform:scale(.9);transition:.25s}
+.modal-overlay.show .modal{transform:scale(1)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hdr h3{font-size:16px;font-weight:800}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.detail-row .lbl{color:var(--muted);font-weight:600}
+.detail-row .val{font-weight:700;text-align:right;max-width:60%}
+.dispute-btn{width:100%;padding:12px;border-radius:12px;background:var(--danger-soft);color:var(--danger);font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.dispute-btn:active{opacity:.7}
+
+/* ── Dispute Form ── */
+.dispute-overlay{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.25s}
+.dispute-overlay.show{opacity:1;pointer-events:auto}
+.dispute-panel{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 30px;transform:translateY(100%);transition:.3s;max-height:80vh;overflow-y:auto}
+.dispute-overlay.show .dispute-panel{transform:translateY(0)}
+.dispute-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.dispute-hdr h3{font-size:16px;font-weight:800}
+.dispute-txn{background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px}
+.dispute-txn .lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.dispute-txn .val{font-size:13px;font-weight:700;margin-top:2px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.form-textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;resize:vertical;min-height:100px;transition:.15s}
+.form-textarea:focus{border-color:var(--pink)}
+.form-submit{width:100%;padding:13px;border-radius:12px;background:var(--danger);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:14px}
+.form-submit:active{opacity:.85}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (min-width:600px){.content{max-width:520px;margin:0 auto;padding:20px}.topbar{max-width:520px;margin:0 auto}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="menu-btn" id="menuBtn"><i class="fas fa-bars"></i></div>
+  <div class="tb-title-wrap">
+    <div class="tb-logo"><i class="fas fa-receipt"></i></div>
+    <div class="tb-title">Transactions</div>
+  </div>
+  <div class="avatar-btn"><img src="https://i.pravatar.cc/100?img=47" alt="Luna Vale"/></div>
+</div>
+
+<div class="content">
+  <div class="kpi-row" id="kpis"></div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-filter="all">All</div>
+    <div class="tab" data-filter="royalty">Royalties</div>
+    <div class="tab" data-filter="tip">Tips</div>
+    <div class="tab" data-filter="bonus">Bonuses</div>
+    <div class="tab" data-filter="withdrawal">Withdrawals</div>
+  </div>
+
+  <div class="search-bar">
+    <i class="fas fa-magnifying-glass"></i>
+    <input id="searchInput" placeholder="Search transactions..."/>
+  </div>
+
+  <div id="txnList"></div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3>Transaction Details</h3><div class="modal-close" onclick="closeDetail()"><i class="fas fa-xmark"></i></div></div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- Dispute Form -->
+<div class="dispute-overlay" id="disputeForm">
+  <div class="dispute-panel">
+    <div class="dispute-hdr"><h3>File a Dispute</h3><div class="form-close" onclick="closeDispute()" style="width:30px;height:30px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);cursor:pointer"><i class="fas fa-xmark"></i></div></div>
+    <div class="dispute-txn" id="disputeTxnInfo"></div>
+    <label class="form-label">Reason for Dispute</label>
+    <textarea class="form-textarea" id="disputeReason" placeholder="Describe the issue with this transaction..."></textarea>
+    <button class="form-submit" onclick="submitDispute()"><i class="fas fa-flag"></i> Submit Dispute</button>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="tb-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/author-earnings-service.js"></script>
+<script>
+// HIDDEN — Book Workspace items (Chapters, Plotting, Characters, Story Bible) only appear
+// contextually when a specific book is selected from the dashboard. These are book-scoped.
+// Additionally hidden for future use: Schedule, Analytics, Revenue, Contract.
+// HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
+// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+const BOOK_WORKSPACE_ITEMS=[
+  {label:'Chapters',icon:'fa-list-ul',href:'#'},
+  {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
+  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
+];
+function getMENU_SECTIONS(){
+  const params=new URLSearchParams(location.search);
+  const bookId=params.get('book');
+  const sections=[
+    {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
+    {title:'Account',items:[
+      {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
+      {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html',active:true},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'},
+      {label:'Contracts',icon:'fa-file-signature',href:'#'},
+      {label:'Messages',icon:'fa-comment-dots',href:'#'},
+      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Settings',icon:'fa-gear',href:'#'}
+    ]}
+  ];
+  if(bookId) sections.splice(1,0,{title:'Book Workspace',items:BOOK_WORKSPACE_ITEMS.map(it=>Object.assign({},it,{href:it.href.includes('?')?it.href.split('?')[0]+'?book='+bookId:it.href+'?book='+bookId}))});
+  return sections;
+}
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML=getMENU_SECTIONS().map(sec=>'<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(it=>'<a class="drawer-item'+(it.active?' active':'')+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>').join('')+'</div>').join('');
+}
+renderDrawer();
+const menuBtn=document.getElementById('menuBtn'),drawer=document.getElementById('drawer'),drawerOverlay=document.getElementById('drawerOverlay'),drawerClose=document.getElementById('drawerClose');
+function openDrawer(){drawer.classList.add('open');drawerOverlay.classList.add('open')}
+function closeDrawer(){drawer.classList.remove('open');drawerOverlay.classList.remove('open')}
+menuBtn.addEventListener('click',openDrawer);
+drawerClose.addEventListener('click',closeDrawer);
+drawerOverlay.addEventListener('click',closeDrawer);
+
+let allTxns = [], filtered = [], activeFilter = 'all', currentTxn = null;
+
+function toast(m){const t=document.getElementById('toastEl')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'toastEl',className:'toast'}));t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500)}
+
+async function render(){
+  allTxns = await AuthorFinance.getTransactions();
+  const kpis = await AuthorFinance.getTransactionKPIs(allTxns);
+  document.getElementById('kpis').innerHTML =
+    '<div class="kpi"><div class="kpi-label">Total Income</div><div class="kpi-val green">'+AuthorFinance.fmtCurrency(kpis.totalIncome)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Total Withdrawn</div><div class="kpi-val blue">'+AuthorFinance.fmtCurrency(kpis.totalWithdrawn)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Tips Received</div><div class="kpi-val purple">'+AuthorFinance.fmtCurrency(kpis.totalTips)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Bonuses</div><div class="kpi-val" style="color:var(--warning)">'+AuthorFinance.fmtCurrency(kpis.totalBonuses)+'</div></div>';
+  applyFilter();
+}
+
+function applyFilter(){
+  const q = (document.getElementById('searchInput').value||'').toLowerCase();
+  filtered = allTxns.filter(t => {
+    if (activeFilter !== 'all' && t.type !== activeFilter) return false;
+    if (q && !t.desc.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q) && !(t.book||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderList();
+}
+
+function renderList(){
+  const el = document.getElementById('txnList');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty"><i class="fas fa-receipt"></i><p>No transactions found.</p></div>';
+    return;
+  }
+  el.innerHTML = filtered.map(t => {
+    const isPos = t.amount >= 0;
+    const icon = t.type === 'royalty' ? 'fa-book-open' : t.type === 'tip' ? 'fa-gift' : t.type === 'bonus' ? 'fa-trophy' : t.type === 'withdrawal' ? 'fa-building-columns' : 'fa-sliders';
+    return '<div class="txn-card" onclick="showDetail(\''+t.id+'\')">'+
+      '<div class="txn-top">'+
+        '<div class="txn-icon '+t.type+'"><i class="fas '+icon+'"></i></div>'+
+        '<div class="txn-info"><div class="txn-desc">'+t.desc+'</div>'+
+          '<div class="txn-meta"><span><i class="fas fa-clock"></i> '+AuthorFinance.timeAgo(t.date)+'</span>'+
+          (t.book ? '<span><i class="fas fa-book"></i> '+t.book+'</span>' : '')+'</div></div>'+
+        '<div class="txn-right"><div class="txn-amount '+(isPos?'pos':'neg')+'">'+(isPos?'+':'')+AuthorFinance.fmtCurrency(t.amount)+'</div>'+
+          '<div class="txn-status '+t.status+'">'+t.status+'</div></div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function showDetail(id){
+  currentTxn = allTxns.find(t => t.id === id);
+  if (!currentTxn) return;
+  const isPos = currentTxn.amount >= 0;
+  document.getElementById('detailContent').innerHTML =
+    '<div class="detail-row"><span class="lbl">Transaction ID</span><span class="val">'+currentTxn.id+'</span></div>'+
+    '<div class="detail-row"><span class="lbl">Type</span><span class="val" style="text-transform:capitalize">'+currentTxn.type+'</span></div>'+
+    '<div class="detail-row"><span class="lbl">Description</span><span class="val">'+currentTxn.desc+'</span></div>'+
+    '<div class="detail-row"><span class="lbl">Amount</span><span class="val" style="color:'+(isPos?'var(--success)':'var(--danger)')+';font-size:16px">'+(isPos?'+':'')+AuthorFinance.fmtCurrency(currentTxn.amount)+'</span></div>'+
+    (currentTxn.book ? '<div class="detail-row"><span class="lbl">Book</span><span class="val">'+currentTxn.book+'</span></div>' : '')+
+    '<div class="detail-row"><span class="lbl">Date</span><span class="val">'+AuthorFinance.fmtDateTime(currentTxn.date)+'</span></div>'+
+    '<div class="detail-row"><span class="lbl">Status</span><span class="val" style="text-transform:capitalize">'+currentTxn.status+'</span></div>'+
+    (currentTxn.type !== 'withdrawal' ? '<button class="dispute-btn" onclick="openDispute()"><i class="fas fa-flag"></i> Dispute This Transaction</button>' : '');
+  document.getElementById('detailModal').classList.add('show');
+}
+function closeDetail(){ document.getElementById('detailModal').classList.remove('show'); }
+
+function openDispute(){
+  if (!currentTxn) return;
+  document.getElementById('disputeTxnInfo').innerHTML =
+    '<div class="lbl">Transaction</div><div class="val">'+currentTxn.id+' — '+currentTxn.desc+'</div>'+
+    '<div class="lbl" style="margin-top:8px">Amount</div><div class="val">'+AuthorFinance.fmtCurrency(Math.abs(currentTxn.amount))+'</div>';
+  document.getElementById('disputeReason').value = '';
+  closeDetail();
+  document.getElementById('disputeForm').classList.add('show');
+}
+function closeDispute(){ document.getElementById('disputeForm').classList.remove('show'); }
+
+async function submitDispute(){
+  const reason = document.getElementById('disputeReason').value.trim();
+  if (!reason) { toast('Please describe the issue'); return; }
+  if (!currentTxn) return;
+  await AuthorFinance.fileDispute(currentTxn.id, reason);
+  closeDispute();
+  toast('Dispute filed — we\'ll review it within 48 hours');
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeFilter = tab.dataset.filter;
+    applyFilter();
+  });
+});
+document.getElementById('searchInput').addEventListener('input', applyFilter);
+
+document.getElementById('detailModal').addEventListener('click', e => { if (e.target === document.getElementById('detailModal')) closeDetail(); });
+document.getElementById('disputeForm').addEventListener('click', e => { if (e.target === document.getElementById('disputeForm')) closeDispute(); });
+
+render();
+</script>
+</body>
+</html>

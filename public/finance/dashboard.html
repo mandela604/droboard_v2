@@ -36,7 +36,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .panel-link:hover{text-decoration:underline}
 .count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
 
-/* mini-btn (shared action button style) */
 .mini-btn{font-size:10.5px;font-weight:700;padding:6px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
 .mini-btn:hover{border-color:var(--accent);color:var(--accent)}
 .mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
@@ -44,7 +43,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
 .mini-btn.danger:hover{background:var(--red);color:#fff}
 
-/* pending payout cards */
 .po-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:9px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .po-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .po-body{flex:1;min-width:180px}
@@ -54,7 +52,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .po-actions{display:flex;gap:7px;flex-shrink:0}
 .method-chip{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);white-space:nowrap}
 
-/* quick actions */
 .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .qa-card{border:1px solid var(--border);border-radius:12px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.15s;background:var(--card)}
 .qa-card:hover{border-color:var(--accent);background:var(--hover)}
@@ -63,7 +60,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .qa-txt span{font-size:10px;color:var(--text-faint);font-weight:600}
 .qa-count{margin-left:auto;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--red-bg);color:var(--red);flex-shrink:0}
 
-/* mini stats rows (coin / disputes snapshots) */
 .mini-stat-row{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--border)}
 .mini-stat-row:last-child{border-bottom:none}
 .mini-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12.5px;flex-shrink:0}
@@ -71,7 +67,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .mini-lbl{font-size:12px;font-weight:600;color:var(--text)}
 .mini-val{font-size:14px;font-weight:800;flex-shrink:0}
 
-/* activity feed */
 .act-row{display:flex;gap:11px;padding:10px 2px}
 .act-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
 .act-body{flex:1;min-width:0}
@@ -146,162 +141,12 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="shared/finance-sidebar.js"></script>
 <script src="shared/finance-data.js"></script>
 <script>
-'use strict';
-const shell = FinanceSidebar.attach('#dashRoot',{
+FinanceSidebar.attach('#dashRoot',{
   activeItem:'dashboard', title:'Dashboard', subtitle:'Financial overview',
   user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
   searchPlaceholder:'Search anything…',
 });
-
-const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
-const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
-
-let DATA = null;
-
-function greetByHour(){
-  const h = new Date().getHours();
-  if(h<12) return 'Good morning, Ngozi 👋';
-  if(h<18) return 'Good afternoon, Ngozi 👋';
-  return 'Good evening, Ngozi 👋';
-}
-
-async function init(){
-  document.getElementById('greetTitle').textContent = greetByHour();
-  DATA = await FinanceData.getDashboard();
-  renderAll();
-}
-
-function renderAll(){
-  renderWelcomeStats();
-  renderStatCards();
-  renderPayouts();
-  renderQuickActions();
-  renderCoinSnapshot();
-  renderDisputesSnapshot();
-  renderActivity();
-}
-
-function renderWelcomeStats(){
-  document.getElementById('welcomeStats').innerHTML = `
-    <div class="welcome-stat"><b>${DATA.pendingPayoutsTotal}</b><span>Pending Payouts</span></div>
-    <div class="welcome-stat"><b>${DATA.totalVolumeMonth}</b><span>Total Volume (Month)</span></div>
-    <div class="welcome-stat"><b>${DATA.coinBalance}</b><span>Coin Balance</span></div>
-    <div class="welcome-stat"><b>${DATA.openDisputes}</b><span>Open Disputes</span></div>`;
-}
-
-function renderStatCards(){
-  const stats = [
-    { n:DATA.pendingPayoutsCount, l:'Pending Payouts', ico:'fa-building-columns', cls:'blue' },
-    { n:DATA.totalVolumeMonth, l:'Total Volume (Month)', ico:'fa-chart-line', cls:'accent' },
-    { n:DATA.coinBalance, l:'Coin Balance', ico:'fa-coins', cls:'amber' },
-    { n:DATA.openDisputes, l:'Open Disputes', ico:'fa-scale-balanced', cls:'red' },
-  ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
-}
-
-/* ── Pending Payouts ── */
-function renderPayouts(){
-  document.getElementById('poCount').textContent = DATA.pendingPayouts.length;
-  const box = document.getElementById('payoutsList');
-  if(!DATA.pendingPayouts.length){ box.innerHTML = `<div class="empty-msg">No payouts waiting on approval.</div>`; return; }
-  box.innerHTML = DATA.pendingPayouts.map(p=>`
-    <div class="po-card" data-id="${p.id}">
-      <img class="po-avatar" src="${p.avatar}" alt="${p.author}"/>
-      <div class="po-body">
-        <div class="po-title">${p.author} <span class="po-amt">${p.amount}</span> <span class="method-chip">${p.method}</span></div>
-        <div class="po-meta">Requested ${p.requested}</div>
-      </div>
-      <div class="po-actions">
-        <button class="mini-btn danger" data-action="decline-payout" data-id="${p.id}"><i class="fas fa-xmark"></i> Decline</button>
-        <button class="mini-btn primary" data-action="approve-payout" data-id="${p.id}"><i class="fas fa-check"></i> Approve</button>
-      </div>
-    </div>`).join('');
-}
-
-function approvePayout(id){
-  const p = DATA.pendingPayouts.find(x=>x.id===id); if(!p) return;
-  DATA.pendingPayouts = DATA.pendingPayouts.filter(x=>x.id!==id);
-  toast(`✅ Approved ${p.amount} payout for ${p.author}`);
-  renderPayouts(); renderStatCards(); renderWelcomeStats();
-}
-function declinePayout(id){
-  const p = DATA.pendingPayouts.find(x=>x.id===id); if(!p) return;
-  DATA.pendingPayouts = DATA.pendingPayouts.filter(x=>x.id!==id);
-  toast(`↩️ Declined payout for ${p.author}`);
-  renderPayouts(); renderStatCards(); renderWelcomeStats();
-}
-
-/* ── Quick Actions ── */
-function renderQuickActions(){
-  document.getElementById('qaGrid').innerHTML = DATA.quickActions.map(qa=>`
-    <div class="qa-card" data-href="${qa.href||'#'}">
-      <div class="qa-ico" style="background:${BG_MAP[qa.cls]};color:${ICO_MAP[qa.cls]}"><i class="fas ${qa.icon}"></i></div>
-      <div class="qa-txt"><b>${qa.label}</b><span>${qa.count?qa.count+' waiting':'Ready when you are'}</span></div>
-      ${qa.count?`<span class="qa-count">${qa.count}</span>`:''}
-    </div>`).join('');
-  document.querySelectorAll('.qa-card').forEach(c=>{
-    c.addEventListener('click', ()=>{
-      const href = c.dataset.href;
-      if(href && href!=='#') location.href = href; else toast('Opening…');
-    });
-  });
-}
-
-/* ── Coin Transactions snapshot ── */
-function renderCoinSnapshot(){
-  const c = DATA.coinSnapshot;
-  document.getElementById('coinSnapshot').innerHTML = `
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--amber-bg);color:var(--amber)"><i class="fas fa-coins"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Purchased today</div></div><div class="mini-val">${c.purchasedToday}</div></div>
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-circle-nodes"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Coins in circulation</div></div><div class="mini-val">${c.coinsInCirculation}</div></div>
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--purple-bg);color:var(--purple)"><i class="fas fa-arrow-right-arrow-left"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Redeemed today</div></div><div class="mini-val">${c.redeemedToday}</div></div>
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-cart-shopping"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Avg. purchase size</div></div><div class="mini-val">${c.avgPurchase}</div></div>`;
-}
-
-/* ── Disputes snapshot ── */
-function renderDisputesSnapshot(){
-  const d = DATA.disputesSnapshot;
-  document.getElementById('disputesSnapshot').innerHTML = `
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--red-bg);color:var(--red)"><i class="fas fa-triangle-exclamation"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Open cases</div></div><div class="mini-val">${d.open}</div></div>
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--amber-bg);color:var(--amber)"><i class="fas fa-fire"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Marked urgent</div></div><div class="mini-val">${d.urgent}</div></div>
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-hourglass-half"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Avg resolution time</div></div><div class="mini-val">${d.avgResolutionDays}d</div></div>
-    <div class="mini-stat-row"><div class="mini-ico" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-circle-check"></i></div>
-      <div class="mini-body"><div class="mini-lbl">Resolved this week</div></div><div class="mini-val">${d.resolvedThisWeek}</div></div>`;
-}
-
-/* ── Activity feed ── */
-function renderActivity(){
-  document.getElementById('activityList').innerHTML = DATA.recentActivity.map(a=>`
-    <div class="act-row">
-      <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
-      <div class="act-body">
-        <div class="act-text">${a.text}</div>
-        <div class="act-time">${a.time}</div>
-      </div>
-    </div>`).join('');
-}
-
-/* ── Event delegation ── */
-document.addEventListener('click', e=>{
-  const el = e.target.closest('[data-action]');
-  if(!el) return;
-  const action = el.dataset.action;
-  const id = el.dataset.id;
-  if(action==='approve-payout') approvePayout(id);
-  else if(action==='decline-payout') declinePayout(id);
-});
-
-init();
 </script>
+<script src="services/dashboard-service.js"></script>
 </body>
 </html>

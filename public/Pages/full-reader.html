@@ -26,11 +26,13 @@ body.theme-dark{--bg:#000000;--tx:#f0f0f0;--tx2:#a8a8a8;}
 body.theme-grey{--bg:#0f1117;--bg2:#151820;--bg3:#1c2028;--card:#151820;--surface:#1c2028;--bd:rgba(216,220,232,.07);--tx:#d8dce8;--tx2:#888da0;}
 body.theme-white{--bg:#ffffff;--bg2:#f5f5f5;--bg3:#ebebeb;--card:#f0f0f0;--surface:#e8e8e8;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);--muted:#999;--tx:#111111;--tx2:#555555;}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font-ui);overflow:hidden;transition:background .3s,color .3s}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font-ui);transition:background .3s,color .3s}
+@media(min-width:421px){body{background:#111}}
 img{display:block;user-select:none}
 button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 a{color:inherit;text-decoration:none}
-.shell{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.phone{width:100%;max-width:420px;min-height:100vh;margin:0 auto;background:var(--bg);position:relative;box-shadow:0 0 50px rgba(0,0,0,.14);display:flex;flex-direction:column;overflow-x:hidden}
+@media(min-width:421px){.phone{border-radius:0}}
 
 /* TOP BAR */
 .topbar{flex-shrink:0;height:var(--topbar-h);display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;}
@@ -167,6 +169,8 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .ch-end-act:active{transform:scale(.9)}
 .ch-end-act-icon{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:20px;}
 .ch-end-act.notify .ch-end-act-icon{background:var(--acc-dim);border-color:var(--acc-border);color:var(--acc)}
+.ch-end-act.notify-active .ch-end-act-icon{background:var(--acc);border-color:var(--acc);color:#fff}
+.ch-end-act.notify-active .ch-end-act-label{color:var(--acc)}
 .ch-end-act-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase;}
 
 /* YOU MAY ALSO LIKE */
@@ -261,27 +265,27 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 .overlay-bg{position:fixed;inset:0;z-index:190;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .28s;}
 .overlay-bg.show{opacity:1;pointer-events:auto}
 
-/* STORY-LEVEL REACTION POPUP (bottom-bar Like — page specific, kept custom
-   since it uses this story's own themed reaction set) */
-.rx-popup{position:fixed;z-index:300;bottom:calc(var(--bottombar-h) + var(--safe-b) + 8px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3,#0a0a0d);border:1px solid var(--bd);border-radius:24px;padding:10px 12px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:300px;width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.8);opacity:0;pointer-events:none;transition:.22s cubic-bezier(.34,1.56,.64,1);}
-.rx-popup.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
-.rx-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:12px;cursor:pointer;transition:.15s;user-select:none;}
-.rx-btn:active{transform:scale(.88)}
-.rx-btn.picked{background:var(--acc-dim)}
-.rx-emoji{font-size:22px;line-height:1}
-.rx-count{font-size:8px;font-weight:700;color:var(--muted)}
-.rx-btn.picked .rx-count{color:var(--acc2)}
+
 
 /* TOAST */
 .toast{position:fixed;bottom:calc(var(--bottombar-h) + var(--safe-b) + 12px);left:50%;transform:translateX(-50%) translateY(14px);background:var(--bg3,#0a0a0d);color:var(--tx);padding:8px 17px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.26s;pointer-events:none;white-space:nowrap;border:1px solid var(--bd);box-shadow:0 4px 20px rgba(0,0,0,.6);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .fu{animation:fadeUp .3s ease both}
+
+/* Reaction picker dark-mode overrides */
+.drp-trigger{color:var(--tx2)!important}
+.drp-trigger.liked{color:var(--acc)!important}
+.drp-like-count{color:var(--tx2)!important}
+.drp-popup{background:var(--bg3,#0a0a0d)!important;border-color:var(--bd)!important}
+.drp-count{color:var(--tx2)!important}
+.drp-btn.reacted .drp-count{color:var(--acc)!important}
+.drp-top3-emoji,.drp-top-emoji{background:var(--surface)!important;border-color:var(--bd)!important}
 </style>
 </head>
 <body class="theme-dark">
 
-<div class="shell">
+<div class="phone">
 
   <!-- TOP BAR -->
   <div class="topbar" id="topbar">
@@ -291,7 +295,7 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
       <div class="tb-ch-info" id="tbChInfo">Season 2 · Chapter 4</div>
     </div>
     <div class="tb-right">
-      <div class="coin-pill" id="coinPill" onclick="grantDemoCoins()" title="Demo: tap to add coins"><i class="fas fa-coins" style="font-size:11px"></i> <span id="coinBalanceLbl">45</span></div>
+      <div class="coin-pill" id="coinPill" onclick="location.href='store.html'" title="Buy coins"><i class="fas fa-coins" style="font-size:11px"></i> <span id="coinBalanceLbl">45</span></div>
       <div class="tb-btn" onclick="openSettings()"><i class="fas fa-text-height"></i></div>
       <div class="tb-btn" onclick="openChPanel()"><i class="fas fa-list-ul"></i></div>
     </div>
@@ -359,9 +363,9 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
         <div class="ch-end-title" id="chEndTitle">Chapter 4 complete</div>
         <div class="ch-end-sub" id="chEndSub">Chapter 5 drops Friday midnight.<br/>Don't miss what she discovers next.</div>
         <div class="ch-end-actions">
-          <div class="ch-end-act notify" onclick="toast('🔔 You\'ll be notified!')">
-            <div class="ch-end-act-icon"><i class="far fa-bell"></i></div>
-            <div class="ch-end-act-label">Notify</div>
+          <div class="ch-end-act notify" id="notifyBtn" onclick="FullReader.toggleNotify()">
+            <div class="ch-end-act-icon"><i class="far fa-bell" id="notifyIcon"></i></div>
+            <div class="ch-end-act-label" id="notifyLabel">Notify</div>
           </div>
           <div class="ch-end-act" onclick="openShare()">
             <div class="ch-end-act-icon"><i class="fas fa-share-alt"></i></div>
@@ -385,12 +389,12 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 
   <!-- BOTTOM BAR -->
   <div class="bottombar" id="bottombar">
-    <div class="bb-act" id="bbLike" onclick="handleLikeTap()" onpointerdown="startLikeHold()" onpointerup="endLikeHold()" onpointercancel="endLikeHold()">
+    <div class="bb-act" id="bbLike">
       <div class="bb-icon"><i class="far fa-heart"></i></div>
       <div class="bb-label">Like</div>
     </div>
-    <div class="bb-read-btn">
-      <i class="fas fa-book-open" style="font-size:13px"></i> Reading
+    <div class="bb-read-btn" onclick="location.href='scroll-reader.html?story='+currentStoryId" style="cursor:pointer">
+      <i class="fas fa-scroll" style="font-size:13px"></i> Scroll Mode
     </div>
     <div class="bb-act" id="bbSave" onclick="openSave()">
       <div class="bb-icon"><i class="far fa-bookmark"></i></div>
@@ -406,9 +410,6 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
     </div>
   </div>
 </div>
-
-<!-- STORY-LEVEL REACTION POPUP (bottom bar) -->
-<div class="rx-popup" id="rxPopup"></div>
 
 <!-- OVERLAY -->
 <div class="overlay-bg" id="overlayBg" onclick="closeAllSheets()"></div>
@@ -469,508 +470,19 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 
 <div class="toast" id="toastEl"></div>
 
-<!-- ═══ Load components (order matters — see comment-section.js header) ═══ -->
-<script src="component/reaction-picker.js"></script>
-<script src="component/share-modal.js"></script>
-<script src="component/save-modal.js"></script>
-<script src="component/tip-picker.js"></script>
-<script src="component/ad-card.js"></script>
-<script src="component/comment-section.js"></script>
+<!-- ═══ Components ═══ -->
+<script src="../component/reaction-picker.js"></script>
+<script src="../component/share-modal.js"></script>
+<script src="../component/save-modal.js"></script>
+<script src="../component/tip-picker.js"></script>
+<script src="../component/ad-card.js"></script>
+<script src="../component/comment-section.js"></script>
 
-<!-- ═══ Load data ═══ -->
-<script src="data/comments-data.js"></script>
-<script src="data/ad-data.js"></script>
-<script src="data/central-demo-data.js"></script>
-<script src="services/ad-service.js"></script>
-
-<script>
-/* ══ UTILS ══ */
-function toast(m){const t=document.getElementById('toastEl');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500);}
-function fmtN(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-const currentStoryId = FS.id || '';
-
-/* ══ READING PROGRESS ══ */
-const sb=document.getElementById('scrollBody');
-sb.addEventListener('scroll',()=>{
-  const max=sb.scrollHeight-sb.clientHeight;
-  const pct=max>0?Math.round(sb.scrollTop/max*100):0;
-  document.getElementById('readProgressFill').style.width=pct+'%';
-},{passive:true});
-
-/* ══ TOPBAR HIDE ══ */
-let lastY=0;
-const topbar=document.getElementById('topbar');
-sb.addEventListener('scroll',()=>{
-  const y=sb.scrollTop,d=y-lastY;lastY=y;
-  if(y<60){topbar.classList.remove('hidden');return;}
-  if(d>6)topbar.classList.add('hidden');
-  else if(d<-6)topbar.classList.remove('hidden');
-},{passive:true});
-document.getElementById('storyText').addEventListener('click',()=>topbar.classList.remove('hidden'));
-
-/* ══ SETTINGS ══ */
-let fsVal=13;const FS_MIN=11,FS_MAX=24;
-function changeFontSize(d){fsVal=Math.min(FS_MAX,Math.max(FS_MIN,fsVal+d));document.documentElement.style.setProperty('--fs',fsVal+'px');document.getElementById('fontSizeDisplay').textContent=fsVal+'px';document.getElementById('fontPreview').style.fontSize=Math.max(9,fsVal-4)+'px';}
-function setLH(el,val){document.querySelectorAll('.lh-opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');document.documentElement.style.setProperty('--lh',val);}
-function setFF(el,val){document.querySelectorAll('.ff-opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');document.documentElement.style.setProperty('--font-story',val);}
-function setTheme(el,theme){document.body.className=theme;document.querySelectorAll('.theme-opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');}
-function openSettings(){document.getElementById('settingsPanel').classList.add('open');document.getElementById('overlayBg').classList.add('show');}
-
-/* ══ TEAMS — 4 teams (page-level "pick your side" widget) ══ */
-const TEAMS=[
-  {id:'a',icon:'💔',name:'Team Ada',col:'#ff0050'},
-  {id:'b',icon:'🔥',name:'Team Emeka',col:'#60a5fa'},
-  {id:'c',icon:'🕊️',name:'Team Forgive',col:'#34d399'},
-  {id:'d',icon:'👀',name:'Team Watching',col:'#a78bfa'},
-];
-let teamCounts={a:2300,b:890,c:540,d:230};
-let teamPicked=null;
-
-function renderTeams(){
-  const grid=document.getElementById('teamGrid');
-  grid.innerHTML=TEAMS.map(t=>`
-    <div class="team-btn${teamPicked===t.id?' selected':''}" data-team="${t.id}" onclick="pickTeam('${t.id}')">
-      <div class="team-icon">${t.icon}</div>
-      <div class="team-info">
-        <div class="team-name">${t.name}</div>
-        <div class="team-count" id="tc-${t.id}">${fmtN(teamCounts[t.id])}</div>
-      </div>
-      <div class="team-check" id="tck-${t.id}"><i class="${teamPicked===t.id?'fas fa-check-circle':'far fa-circle'}"></i></div>
-    </div>`).join('');
-  const tot=Object.values(teamCounts).reduce((a,b)=>a+b,0)||1;
-  document.getElementById('teamBarsWrap').innerHTML=TEAMS.map(t=>`<div class="team-bar-seg" data-team="${t.id}" style="width:${Math.round(teamCounts[t.id]/tot*100)}%"></div>`).join('');
-  document.getElementById('teamBarLabels').innerHTML=TEAMS.map(t=>`<div class="team-bar-lbl"><span class="dot" style="background:${t.col}"></span><span style="color:${t.col};font-size:8px;">${Math.round(teamCounts[t.id]/tot*100)}%</span></div>`).join('');
-}
-function pickTeam(t){
-  if(teamPicked===t)return;
-  if(teamPicked)teamCounts[teamPicked]--;
-  teamPicked=t;teamCounts[t]++;
-  const team=TEAMS.find(x=>x.id===t);
-  toast(team.icon+' You\'re '+team.name+'!');
-  renderTeams();
-}
-renderTeams();
-
-/* ══ STORY-LEVEL REACTIONS (bottom bar Like — page-specific, kept custom) ══ */
-const STORY_REACTIONS=[
-  {id:'cry',e:'😭',l:'Crying',n:9200},{id:'broken',e:'💔',l:'Heartbroken',n:7800},
-  {id:'shock',e:'😱',l:'Shocked',n:4100},{id:'rage',e:'😡',l:'Rage',n:3300},
-  {id:'emo',e:'🥹',l:'Emotional',n:5600},{id:'sus',e:'👀',l:'Suspicious',n:2100},
-  {id:'savage',e:'🔥',l:'Savage',n:1800},{id:'twist',e:'🫢',l:'Twist',n:2900},
-];
-let pickedRx=null,rxVisible=false;
-function buildRxPopup(){
-  document.getElementById('rxPopup').innerHTML=STORY_REACTIONS.map(r=>`<div class="rx-btn${pickedRx===r.id?' picked':''}" onclick="pickRx('${r.id}')"><div class="rx-emoji">${r.e}</div><div class="rx-count">${fmtN(r.n)}</div></div>`).join('');
-}
-buildRxPopup();
-function pickRx(id){
-  if(pickedRx===id){STORY_REACTIONS.find(r=>r.id===id).n--;pickedRx=null;}
-  else{
-    if(pickedRx)STORY_REACTIONS.find(r=>r.id===pickedRx).n--;
-    const r=STORY_REACTIONS.find(r=>r.id===id);r.n++;pickedRx=id;
-    toast(r.e+' '+r.l+'!');
-    const likeEl=document.getElementById('bbLike');
-    likeEl.classList.add('liked');likeEl.querySelector('.bb-icon').innerHTML='<i class="fas fa-heart"></i>';likeEl.querySelector('.bb-label').textContent='Liked';
-  }
-  buildRxPopup();hideRxPopup();
-}
-let holdTimer=null;
-function startLikeHold(){holdTimer=setTimeout(()=>showRxPopup(),380);}
-function endLikeHold(){clearTimeout(holdTimer);}
-function handleLikeTap(){
-  const likeEl=document.getElementById('bbLike');
-  if(rxVisible){hideRxPopup();return;}
-  const isLiked=likeEl.classList.contains('liked');
-  if(isLiked&&pickedRx){STORY_REACTIONS.find(r=>r.id===pickedRx).n--;pickedRx=null;buildRxPopup();}
-  likeEl.classList.toggle('liked',!isLiked);
-  likeEl.querySelector('.bb-icon').innerHTML='<i class="'+(isLiked?'far':'fas')+' fa-heart"></i>';
-  likeEl.querySelector('.bb-label').textContent=isLiked?'Like':'Liked';
-  toast(isLiked?'Unliked':'❤️ Liked! Hold for reactions');
-}
-function showRxPopup(){rxVisible=true;document.getElementById('rxPopup').classList.add('show');}
-function hideRxPopup(){rxVisible=false;document.getElementById('rxPopup').classList.remove('show');}
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('#rxPopup')&&!e.target.closest('#bbLike'))hideRxPopup();},{passive:true});
-
-/* ══ COMMENTS — DroboardComments (comment-section.js), reaction-picker.js
-   and share-modal.js are auto-detected since they're loaded first ══ */
-function mapSeedComment(c){
-  return Object.assign({}, c, {
-    // comments-data.js uses 'ring-has'/'ring-viewed'/'ring-none' — the
-    // component expects the prefix stripped ('has'/'viewed'/'none').
-    statusRing: (c.statusRing || 'none').replace('ring-', ''),
-    replies: (c.replies || []).map(mapSeedComment),
-  });
-}
-const SEED_COMMENTS = (typeof COMMENTS_DATA !== 'undefined' ? COMMENTS_DATA : []).map(mapSeedComment);
-
-const commentsSection = DroboardComments.attach('#commentsPlaceholder', {
-  storyId: currentStoryId,
-  title: 'Comments',
-  comments: SEED_COMMENTS,
-  teams: TEAMS,
-  currentUser: { name: 'You', avatar: null, team: null },
-  requireTeam: false,
-  collapsible: true,
-  startOpen: false,
-  getCommentUrl: (c) => `https://droboard.app/story/5#comment-${c.id}`,
-  onPost:  (c) => console.log('posted', c),
-  onReply: (parentId, c) => console.log('replied to', parentId, c),
-  onEdit:  (c, oldText, newText) => console.log('edited', c.id, oldText, '->', newText),
-  onDotsAction: (action) => { if (action === 'delete') toast('🗑️ Comment deleted.'); },
-});
-
-/* ══ SPONSORED AD — one ad, random per page load, native/storyPromo/banner
-   only (no fullscreen swipe ad) ══ */
-(function initAdSlot(){
-  function track(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
-  async function managedPool() {
-    const out = [];
-    const p = await AdService.getAds({ page: 'fullReader' });
-    (p.native || []).forEach(ad => out.push({ type: 'native', ad }));
-    (p.book || []).forEach(ad => out.push({ type: 'storyPromo', ad }));
-    (p.banner || []).forEach(ad => out.push({ type: 'banner', ad }));
-    return out;
-  }
-  (window.AdService ? managedPool().catch(() => []) : Promise.resolve([])).then(function (pool) {
-
-  const slot = document.getElementById('adSlot');
-  if (!pool.length) { document.getElementById('adSlotWrap').style.display = 'none'; return; }
-
-  const chosen = pool[Math.floor(Math.random() * pool.length)];
-
-  function renderChosen(item){
-    if (item.type === 'native') return DroboardAdCard.renderNative(item.ad);
-    if (item.type === 'storyPromo') return DroboardAdCard.renderStoryPromo(item.ad);
-    return DroboardAdCard.renderBanner(item.ad);
-  }
-  slot.innerHTML = renderChosen(chosen);
-  track(chosen.ad && chosen.ad.id, 'impression');
-
-  DroboardAdCard.attach(slot, {
-    getAds: () => pool.map(p => p.ad),
-
-    onOpen(ad){ if (ad) track(ad.id, 'click'); if (ad.url) window.open(ad.url, '_blank'); else toast('Opening ' + (ad.brand || 'sponsor') + '…'); },
-
-    onLike(ad){
-      ad.liked = !ad.liked;
-      ad.likes += ad.liked ? 1 : -1;
-      slot.innerHTML = DroboardAdCard.renderNative(ad);
-    },
-
-    onComment(ad){ toast('💬 ' + fmtN(ad.comments) + ' comments'); },
-
-    onShare(ad){
-      window.openShareModal({
-        title: ad.heading || ad.title || ad.brand,
-        sub: 'Sponsored · ' + ad.brand,
-        img: ad.image || ad.cover || '',
-        url: ad.url || 'https://droboard.app',
-      });
-    },
-
-    onCta(ad){
-      if (ad) track(ad.id, 'click');
-      toast('Opening ' + (ad.brand || 'sponsor') + '…');
-      if (ad.url) window.open(ad.url, '_blank');
-    },
-  });
-  });
-})();
-
-/* ══ SHARE / SAVE / TIP — wired to the shared components ══ */
-DroboardTip.attach({
-  getWriter: () => ({ name: 'Ifeanyi_Story', avatar: 'https://i.pravatar.cc/100?img=53', handle: '@ifeanyi_story · 31.7k followers' }),
-  onSend: (id, amount, note, mode) => { console.log('tip sent', id, amount, note, mode); },
-});
-
-function openShare(){
-  window.openShareModal({
-    title: 'The Runaway Bride — I left in my socked feet',
-    sub: 'by @Ifeanyi_Story · 45k likes',
-    img: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=80',
-    url: 'https://droboard.app/story/5',
-  });
-}
-function openSave(){
-  window.openSaveModal({
-    title: 'The Runaway Bride — I left in my socked feet',
-    sub: 'by @Ifeanyi_Story',
-    img: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f80',
-    storyId: currentStoryId,
-  });
-}
-function openTip(){
-  DroboardTip.open(currentStoryId, {
-    name: 'Ifeanyi_Story',
-    avatar: 'https://i.pravatar.cc/100?img=53',
-    handle: '@ifeanyi_story · 31.7k followers',
-  });
-}
-window.onDroboardSaveChange = function (storyId, saved){
-  const bbSave = document.getElementById('bbSave');
-  if (!bbSave) return;
-  bbSave.classList.toggle('saved', saved);
-  bbSave.querySelector('.bb-icon').innerHTML = saved ? '<i class="fas fa-bookmark"></i>' : '<i class="far fa-bookmark"></i>';
-  bbSave.querySelector('.bb-label').textContent = saved ? 'Saved' : 'Save';
-};
-
-/* ══════════════════════════════════════════════════════════════════
-   CHAPTER DATA + LOCK STATE
-   Each chapter carries a `state`: 'done' | 'current' | 'locked'.
-   ══════════════════════════════════════════════════════════════════ */
-/* Story content comes ONLY from the central demo file (FULL_STORY).
-   No hardcoded chapters, no fallback text. */
-function centralStory() {
-  const d = window.DemoData || {};
-  return d.FULL_STORY || null;
-}
-const FS = centralStory() || { id: '', title: '', chapters: [], unlockedThrough: 0 };
-const SEASONS_DATA = [{
-  label: 'Season 1',
-  chs: (FS.chapters || []).map((c, i) => ({
-    n: c.n, title: c.title,
-    meta: Math.max(1, Math.round(((c.words || 600)) / 200)) + ' min',
-    badge: c.n === 1 ? 'free' : (i === (FS.unlockedThrough - 1) ? 'new' : null),
-    state: i < (FS.unlockedThrough - 1) ? 'done' : (i === (FS.unlockedThrough - 1) ? 'current' : 'locked'),
-  })),
-}];
-const CHAPTER_CONTENT = {};
-(FS.chapters || []).forEach((c, i) => {
-  if (c.paras && c.paras.length) CHAPTER_CONTENT['s1c' + c.n] = c.paras;
-});
-function genericParas(title){
-  return [
-    `This chapter continues the story — "${esc(title)}." The details replay in fragments: a door left ajar, a name spoken too carefully, a silence that says more than the sentence that follows it.`,
-    `Every choice made here presses against the ones that came before it. Nothing is undone. Nothing is simple.`,
-    `By the final page, something has shifted — quietly, the way most important things do.`,
-  ];
-}
-function getChapterParas(seasonIdx, ch){
-  const key = 's'+(seasonIdx+1)+'c'+ch.n;
-  return CHAPTER_CONTENT[key] || genericParas(ch.title);
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   WALLET (demo) — mirrors the coin-unlock pattern used elsewhere in
-   Droboard, simplified: tap the coin pill to add coins for testing.
-   ══════════════════════════════════════════════════════════════════ */
-let walletBalance = 45;
-function updateCoinPill(){ document.getElementById('coinBalanceLbl').textContent = fmtN(walletBalance); }
-function grantDemoCoins(){
-  walletBalance += 50;
-  updateCoinPill();
-  toast('🪙 +50 coins added (demo)');
-  const getCoinsBox = document.getElementById('unlockGetCoins');
-  if (getCoinsBox) getCoinsBox.classList.remove('show');
-}
-updateCoinPill();
-
-/* ══════════════════════════════════════════════════════════════════
-   READING POSITION + LOCKED-NEXT FLOW
-   ─────────────────────────────────────────────────────────────────
-   Tapping "Next" into a locked chapter does NOT pop a modal or bounce
-   the reader elsewhere. It swaps the content area in place:
-     • hero updates to the locked chapter's title
-     • story text renders with the fade-mask preview (same pattern as
-       the full-reader's paywall, so the two lock experiences match)
-     • an unlock card appears where the fade cuts off, with the same
-       three price tiers (this chapter / bundle / rest of season)
-     • team-siding, comments, and "chapter complete" are hidden while
-       locked, since none of those make sense for an unread chapter
-   On successful unlock, the same chapter re-renders fully unlocked.
-   ══════════════════════════════════════════════════════════════════ */
-let curSeasonIdx = 0;
-let curChIdx = Math.max(0, (FS.unlockedThrough || 1) - 1);
-let panelActiveSeason = curSeasonIdx;
-
-function renderUnlockCard(seasonIdx, chIdx){
-  const ch = SEASONS_DATA[seasonIdx].chs[chIdx];
-  return `<div class="unlock-card" id="unlockCard">
-    <div class="unlock-icon"><i class="fas fa-lock"></i></div>
-    <div class="unlock-title">Unlock Chapter ${ch.n}</div>
-    <div class="unlock-sub">Continue with coins, or unlock the rest of the season.</div>
-    <div class="unlock-opts">
-      <div class="unlock-opt" onclick="attemptUnlockChapter(${seasonIdx},${chIdx},'one',15)">
-        <div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ${ch.n}</div></div>
-        <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>
-      </div>
-      <div class="unlock-opt reco" onclick="attemptUnlockChapter(${seasonIdx},${chIdx},'bundle',60)">
-        <div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>
-        <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>
-      </div>
-      <div class="unlock-opt" onclick="attemptUnlockChapter(${seasonIdx},${chIdx},'season',120)">
-        <div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>
-        <div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>
-      </div>
-    </div>
-    <div class="unlock-getcoins" id="unlockGetCoins">
-      <div class="unlock-getcoins-txt">Not enough coins.</div>
-      <button class="unlock-getcoins-btn" onclick="grantDemoCoins()"><i class="fas fa-coins" style="font-size:10px"></i> Get 50 coins (demo)</button>
-    </div>
-  </div>`;
-}
-
-function attemptUnlockChapter(seasonIdx, chIdx, mode, cost){
-  if (walletBalance < cost){
-    document.getElementById('unlockGetCoins')?.classList.add('show');
-    toast('🪙 Not enough coins — top up below');
-    return;
-  }
-  walletBalance -= cost;
-  updateCoinPill();
-  const chs = SEASONS_DATA[seasonIdx].chs;
-  if (mode === 'one'){
-    chs[chIdx].state = 'current';
-  } else if (mode === 'bundle'){
-    for (let i = chIdx; i < Math.min(chs.length, chIdx + 5); i++) chs[i].state = 'done';
-    chs[chIdx].state = 'current';
-  } else if (mode === 'season'){
-    for (let i = chIdx; i < chs.length; i++) chs[i].state = 'done';
-    chs[chIdx].state = 'current';
-  }
-  toast('🔓 Unlocked!');
-  renderChapterView(seasonIdx, chIdx);
-  renderChList();
-}
-
-function renderChapterView(seasonIdx, chIdx){
-  curSeasonIdx = seasonIdx;
-  curChIdx = chIdx;
-  const season = SEASONS_DATA[seasonIdx];
-  const ch = season.chs[chIdx];
-  const locked = ch.state === 'locked';
-
-  // Hero + header
-  document.getElementById('chTitleEl').textContent = ch.title;
-  document.getElementById('chMetaSC').innerHTML = `<i class="fas fa-book-open" style="font-size:8px"></i> S${seasonIdx+1} · Ch ${ch.n}`;
-  document.getElementById('tbChInfo').textContent = `${season.label} · Chapter ${ch.n}`;
-  document.getElementById('chNavCenter').textContent = `Ch ${ch.n} of ${season.chs.length}`;
-
-  // Prev/Next controls
-  const prevBtn = document.getElementById('prevChBtn');
-  const nextBtn = document.getElementById('nextChBtn');
-  const nextLbl = document.getElementById('nextChLabel');
-  const nextIco = document.getElementById('nextChIcon');
-  prevBtn.classList.toggle('disabled', chIdx <= 0);
-
-  const hasNext = chIdx < season.chs.length - 1;
-  nextBtn.classList.remove('disabled', 'locked-next');
-  if (!hasNext){
-    nextBtn.classList.add('disabled');
-    nextLbl.textContent = "You're caught up";
-    nextIco.className = 'fas fa-check';
-  } else {
-    const nextCh = season.chs[chIdx+1];
-    if (nextCh.state === 'locked'){
-      nextBtn.classList.add('locked-next');
-      nextLbl.textContent = 'Unlock';
-      nextIco.className = 'fas fa-lock';
-    } else {
-      nextLbl.textContent = 'Next';
-      nextIco.className = 'fas fa-chevron-right';
-    }
-  }
-
-  // Story text + lock state
-  const paras = getChapterParas(seasonIdx, ch);
-  const storyTextEl = document.getElementById('storyText');
-  storyTextEl.innerHTML = paras.map(p => p.trim().startsWith('<em>') ? `<p>${p}</p>` : `<p>${p}</p>`).join('');
-  storyTextEl.classList.toggle('locked-fade', locked);
-
-  const existingCard = document.getElementById('unlockCard');
-  if (existingCard) existingCard.remove();
-  if (locked){
-    storyTextEl.insertAdjacentHTML('afterend', renderUnlockCard(seasonIdx, chIdx));
-  }
-
-  // Sections that only make sense once a chapter is actually unlocked
-  document.getElementById('teamSidingSection').style.display = locked ? 'none' : '';
-  document.getElementById('adSlotWrap').style.display = locked ? 'none' : '';
-  document.getElementById('commentsSection').style.display = locked ? 'none' : '';
-  document.getElementById('chEndSection').style.display = locked ? 'none' : '';
-  if (!locked){
-    document.getElementById('chEndTitle').textContent = `Chapter ${ch.n} complete`;
-    const nextExists = chIdx < season.chs.length - 1;
-    document.getElementById('chEndSub').innerHTML = nextExists
-      ? `Ready for the next chapter?<br/>${season.chs[chIdx+1].title}`
-      : `You're all caught up on ${season.label}.<br/>New chapters drop soon.`;
-  }
-
-  document.getElementById('scrollBody').scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
-  renderChList();
-}
-
-function goChapter(dir){
-  const season = SEASONS_DATA[curSeasonIdx];
-  const nextIdx = curChIdx + dir;
-  if (nextIdx < 0){ toast("You're on the first chapter!"); return; }
-  if (nextIdx >= season.chs.length){ toast("✅ You're all caught up!"); return; }
-  renderChapterView(curSeasonIdx, nextIdx);
-}
-
-/* ══ CHAPTERS PANEL ══ */
-function renderSeasonTabs(){
-  document.getElementById('seasonTabs').innerHTML = SEASONS_DATA.map((s,i)=>`<div class="stab${i===panelActiveSeason?' active':''}" onclick="setPanelSeason(${i})">${s.label}</div>`).join('');
-}
-function setPanelSeason(i){ panelActiveSeason=i; renderSeasonTabs(); renderChList(); }
-function renderChList(){
-  const chs = SEASONS_DATA[panelActiveSeason].chs;
-  document.getElementById('chListPanel').innerHTML = chs.map((c,idx)=>{
-    const isCurrent = panelActiveSeason===curSeasonIdx && idx===curChIdx;
-    const numEl = c.state==='done'
-      ? `<div class="ch-num done"><i class="fas fa-check" style="font-size:9px"></i></div>`
-      : c.state==='locked'
-      ? `<div class="ch-num locked"><i class="fas fa-lock" style="font-size:9px"></i></div>`
-      : `<div class="ch-num current">${c.n}</div>`;
-    let badge = '';
-    if (c.state==='locked') badge = `<span class="ch-row-badge crb-locked">LOCKED</span>`;
-    else if (c.badge==='new') badge = `<span class="ch-row-badge crb-new">NEW</span>`;
-    else if (c.badge==='free') badge = `<span class="ch-row-badge crb-free">FREE</span>`;
-    const right = isCurrent ? `<span class="ch-current-badge">Reading</span>` : c.state==='done' ? `<i class="fas fa-check ch-done-check"></i>` : c.state==='locked' ? `<i class="fas fa-lock" style="color:var(--gold);font-size:12px"></i>` : '';
-    return `<div class="ch-row${isCurrent?' current':''}${c.state==='locked'?' locked':''}" onclick="openChapterFromPanel(${panelActiveSeason},${idx})">
-      ${numEl}
-      <div class="ch-row-body"><div class="ch-row-title">Ch.${c.n} — ${esc(c.title)}</div><div class="ch-row-meta">${c.meta} ${badge}</div></div>
-      <div class="ch-row-right">${right}</div>
-    </div>`;
-  }).join('');
-}
-function openChapterFromPanel(seasonIdx, idx){
-  closeChPanel();
-  renderChapterView(seasonIdx, idx);
-}
-renderSeasonTabs();
-
-function openChPanel(){ panelActiveSeason = curSeasonIdx; renderSeasonTabs(); renderChList(); document.getElementById('chPanel').classList.add('open'); document.getElementById('overlayBg').classList.add('show'); }
-function closeChPanel(){ document.getElementById('chPanel').classList.remove('open'); document.getElementById('overlayBg').classList.remove('show'); }
-
-/* ══ CLOSE ALL (settings panel + chapters panel share the overlay) ══ */
-function closeAllSheets(){
-  document.getElementById('settingsPanel').classList.remove('open');
-  document.getElementById('chPanel').classList.remove('open');
-  document.getElementById('overlayBg').classList.remove('show');
-}
-
-/* ══ YOU MAY ALSO LIKE ══ */
-const YML=[
-  {img:'https://i.postimg.cc/ftRZbhKx/3.jpg',cat:'💔 Heartbreak',title:'He proposed with my best friend\'s ring',author:'Kemi_A',views:'96k',badge:'new'},
-  {img:'https://i.postimg.cc/JDzmhWqj/2.jpg',cat:'🔥 Revenge',title:'My stepmother stole my university fund',author:'Zara_M',views:'192k',badge:'hot'},
-  {img:'https://i.postimg.cc/YGCkSw-33/1.jpg',cat:'👑 Family',title:'Grandmother\'s will revealed everything',author:'Chiamaka_N',views:'204k',badge:''},
-  {img:'https://i.postimg.cc/0MyxNqfz/7.jpg',cat:'🌙 Elegy',title:'The letter he never sent',author:'Efe_O',views:'218k',badge:''},
-  {img:'https://i.postimg.cc/fkdXzjSj/wife.jpg',cat:'💔 Betrayal',title:'Caught my husband kissing her photograph',author:'Ada_Writes',views:'171k',badge:'hot'},
-];
-document.getElementById('ymlScroll').innerHTML=YML.map(s=>{
-  const bc=s.badge==='hot'?'background:var(--acc);color:#fff;':s.badge==='new'?'background:#3b0764;color:#d8b4fe;':'';
-  return`<div class="yml-card" onclick="toast('📖 Opening…')">
-    <div class="yml-cover"><img src="${s.img}" loading="lazy" alt=""/><div class="yml-cover-scrim"></div>${s.badge?`<div class="yml-cover-cat" style="${bc}">${s.badge.toUpperCase()}</div>`:''}<div class="yml-cover-views"><i class="fas fa-eye" style="font-size:7px"></i>${s.views}</div></div>
-    <div class="yml-text-title">${s.title}</div>
-    <div class="yml-text-author">@${s.author}</div>
-  </div>`;
-}).join('');
-
-/* ══ INIT: render the actual reading position (also drives lock UI) ══ */
-renderChapterView(curSeasonIdx, curChIdx);
-</script>
+<!-- ═══ Data ═══ -->
+<script src="../data/comments-data.js"></script>
+<script src="../data/ad-data.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/ad-service.js"></script>
+<script src="../services/full-reader-service.js"></script>
 </body>
 </html>

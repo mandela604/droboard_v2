@@ -223,7 +223,7 @@ a{color:inherit;text-decoration:none}
 const STATS = [
   { label:'Total Reads', num:'18.7M', growth:'12.5%', icon:'fa-chart-simple', bg:'rgba(255,45,85,.08)', color:'var(--pink)' },
   { label:'Followers', num:'128K', growth:'8.3%', icon:'fa-users', bg:'var(--purple-soft)', color:'var(--purple)' },
-  { label:'Earnings', num:'$8,642', growth:'15.2%', icon:'fa-sack-dollar', bg:'var(--warning-soft)', color:'var(--warning)' },
+  { label:'Earnings', num:'$8,642', growth:'15.2%', icon:'fa-sack-dollar', bg:'var(--warning-soft)', color:'var(--warning)', href:'earnings.html' },
   { label:'Completion Rate', num:'62%', growth:'6.1%', icon:'fa-chart-line', bg:'var(--blue-soft)', color:'var(--blue)' },
 ];
 
@@ -241,42 +241,39 @@ const BOOKS = [
 const STATUS_LABEL = { published:'Published', ongoing:'Ongoing', draft:'Draft', scheduled:'Scheduled', paused:'Paused', rejected:'Rejected' };
 
 // Hamburger drawer tree — mirrors the Author Center / Book Workspace / Account structure
-const MENU_SECTIONS = [
-  { title:'Author Center', items:[
-    { label:'Dashboard', icon:'fa-gauge', href:'author-center.html', active:true, badge:'Default' },
-    { label:'Overview', icon:'fa-chart-simple', href:'#' },
-    { label:'Analytics', icon:'fa-chart-line', href:'#' },
-    { label:'My Books', icon:'fa-book', href:'#' },
-    { label:'Quick Actions', icon:'fa-bolt', href:'#' },
-    { label:'Revenue Snapshot', icon:'fa-sack-dollar', href:'#' },
-    { label:'Notifications', icon:'fa-bell', href:'#' },
-  ]},
-  { title:'Book Workspace', items:[
-    { label:'Chapters', icon:'fa-list-ul', href:'#' },
-    { label:'Plotting', icon:'fa-diagram-project', href:'#' },
-    { label:'Characters', icon:'fa-user-group', href:'#' },
-    { label:'Story Bible', icon:'fa-book-bookmark', href:'#' },
-    { label:'Schedule', icon:'fa-calendar-days', href:'#' },
-    { label:'Analytics', icon:'fa-chart-line', href:'#' },
-    { label:'Revenue', icon:'fa-sack-dollar', href:'#' },
-    { label:'Contract', icon:'fa-file-signature', href:'#' },
-  ]},
-  { title:'Account', items:[
-    { label:'Revenue', icon:'fa-sack-dollar', href:'#' },
-    { label:'Contracts', icon:'fa-file-signature', href:'#' },
-    { label:'Messages', icon:'fa-comment-dots', href:'#' },
-    { label:'Notifications', icon:'fa-bell', href:'#' },
-    { label:'Achievements', icon:'fa-trophy', href:'#' },
-    { label:'Settings', icon:'fa-gear', href:'#' },
-  ]},
+// HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
+// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+const BOOK_WORKSPACE_ITEMS=[
+  {label:'Chapters',icon:'fa-list-ul',href:'#'},
+  {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
+  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
 ];
+function getMENU_SECTIONS(){
+  const params=new URLSearchParams(location.search);
+  const bookId=params.get('book');
+  const sections=[
+    {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html',active:true}]},
+    {title:'Account',items:[
+      {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
+      {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html'},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'},
+      {label:'Contracts',icon:'fa-file-signature',href:'#'},
+      {label:'Messages',icon:'fa-comment-dots',href:'#'},
+      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Settings',icon:'fa-gear',href:'#'}
+    ]}
+  ];
+  if(bookId) sections.splice(1,0,{title:'Book Workspace',items:BOOK_WORKSPACE_ITEMS.map(it=>Object.assign({},it,{href:it.href.includes('?')?it.href.split('?')[0]+'?book='+bookId:it.href+'?book='+bookId}))});
+  return sections;
+}
 
 /* ═══════════════════════════════
    RENDER
 ═══════════════════════════════ */
 function renderStats(){
   document.getElementById('statGrid').innerHTML = STATS.map(s => `
-    <div class="stat-card">
+    <div class="stat-card"${s.href ? ' onclick="location.href=\''+s.href+'\'" style="cursor:pointer"' : ''}>
       <div class="stat-icon" style="background:${s.bg};color:${s.color}"><i class="fas ${s.icon}"></i></div>
       <div class="stat-label">${s.label}</div>
       <div class="stat-num">${s.num}</div>
@@ -307,13 +304,12 @@ function renderBooks(){
 }
 
 function renderDrawer(){
-  document.getElementById('drawerBody').innerHTML = MENU_SECTIONS.map(sec => `
+  document.getElementById('drawerBody').innerHTML = getMENU_SECTIONS().map(sec => `
     <div class="drawer-section">
       <div class="drawer-section-title">${sec.title}</div>
       ${sec.items.map(it => `
         <a class="drawer-item${it.active ? ' active' : ''}" href="${it.href}">
           <i class="fas ${it.icon}"></i>${it.label}
-          ${it.badge ? `<span class="drawer-item-badge">${it.badge}</span>` : ''}
         </a>`).join('')}
     </div>`).join('');
 }

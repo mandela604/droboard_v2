@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Financial Reports — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.page-head h1{font-size:19px;font-weight:800}
+.page-head p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.export-btn{background:var(--accent);color:#fff;border:none;padding:11px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.export-btn:hover{filter:brightness(1.05)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+
+.report-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+
+.chart-bars{display:flex;align-items:flex-end;gap:10px;height:200px;padding-top:10px}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%}
+.chart-val{font-size:10px;font-weight:700;color:var(--text-faint);margin-bottom:6px;white-space:nowrap}
+.chart-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.chart-bar{width:70%;max-width:48px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,var(--accent),#7a0030);transition:height .6s ease;min-height:4px;position:relative}
+.chart-bar:hover{filter:brightness(1.15)}
+.chart-label{font-size:11px;font-weight:700;color:var(--text-muted);margin-top:8px}
+
+.exp-row{margin-bottom:14px}
+.exp-row:last-child{margin-bottom:0}
+.exp-info{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.exp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.exp-label{font-size:12px;font-weight:600;color:var(--text);flex:1}
+.exp-amount{font-size:12px;font-weight:800;color:var(--text)}
+.exp-bar-wrap{height:8px;background:var(--table-head);border-radius:6px;overflow:hidden}
+.exp-bar{height:100%;border-radius:6px;transition:width .6s ease}
+.exp-pct{font-size:10px;font-weight:700;color:var(--text-faint);text-align:right;margin-top:4px}
+.exp-total-row{display:flex;justify-content:space-between;align-items:center;padding-top:14px;margin-top:14px;border-top:1px solid var(--border)}
+.exp-total-lbl{font-size:12px;font-weight:700;color:var(--text-muted)}
+.exp-total-val{font-size:15px;font-weight:800}
+
+.cat-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.cat-row:last-child{border-bottom:none}
+.cat-rank{width:28px;text-align:center;font-size:14px;flex-shrink:0}
+.cat-body{flex:1;min-width:0}
+.cat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cat-name{font-size:12.5px;font-weight:700;color:var(--text)}
+.cat-rev{font-size:12.5px;font-weight:800;color:var(--text)}
+.cat-bar-wrap{height:8px;background:var(--table-head);border-radius:6px;overflow:hidden}
+.cat-bar{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--purple));transition:width .6s ease}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-faint)}
+.empty-state i{font-size:32px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:13px}
+.skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
+
+@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.report-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr}.page-head{align-items:stretch}.export-btn{width:100%;justify-content:center}.chart-bars{height:160px}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <div><h1>Financial Reports</h1><p>Revenue, expenses, and category performance at a glance.</p></div>
+    <button class="export-btn" id="exportBtn"><i class="fas fa-download"></i> Export CSV</button>
+  </div>
+
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="report-grid">
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-chart-bar" style="color:var(--accent)"></i> Monthly Revenue</h2>
+        </div>
+        <div id="revenueChart"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-ranking-star" style="color:var(--amber)"></i> Top Categories</h2>
+        </div>
+        <div id="topCategories"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-chart-pie" style="color:var(--purple)"></i> Expense Breakdown</h2>
+        </div>
+        <div id="expenseBreakdown"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+        <div class="exp-total-row">
+          <span class="exp-total-lbl">Total Expenses</span>
+          <span class="exp-total-val" id="expenseTotal">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../data/finance-demo-data.js"></script>
+<script src="shared/finance-sidebar.js"></script>
+<script src="shared/finance-data.js"></script>
+<script>
+FinanceSidebar.attach('#pageRoot',{
+  activeItem:'financial-reports', title:'Financial Reports', subtitle:'Revenue, expenses & performance',
+  user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+  searchPlaceholder:'Search anything…',
+});
+</script>
+<script src="services/financial-reports-service.js"></script>
+</body>
+</html>

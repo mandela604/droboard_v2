@@ -25,32 +25,26 @@
   function delay(ms) { return new Promise(r => setTimeout(r, ms || 200 + Math.random() * 200)); }
 
   const DEMO = {
-    /* ── Dashboard ── */
     dashboard: {
       pendingPayoutsCount: 9,
       pendingPayoutsTotal: '$14,860',
       totalVolumeMonth: '$182,400',
       coinBalance: '4.2M',
       openDisputes: 4,
-
       quickActions: [
-        { label: 'Review Withdrawals',        icon: 'fa-building-columns', cls: 'blue',   count: 9, href: 'withdrawals.html' },
-        { label: 'Process Author Payments',   icon: 'fa-money-check-dollar', cls: 'accent', href: 'author-payments.html' },
-        { label: 'Resolve Payment Disputes',  icon: 'fa-scale-balanced',   cls: 'red',    count: 4, href: 'payment-disputes.html' },
-        { label: 'Generate Financial Report', icon: 'fa-chart-pie',        cls: 'purple', href: 'financial-reports.html' },
+        { label:'Review Withdrawals',       icon:'fa-building-columns',  cls:'blue',   count:9,  href:'withdrawals.html' },
+        { label:'Process Author Payments',  icon:'fa-money-check-dollar',cls:'accent', href:'author-payments.html' },
+        { label:'Resolve Payment Disputes', icon:'fa-scale-balanced',    cls:'red',    count:4,  href:'payment-disputes.html' },
+        { label:'Generate Financial Report',icon:'fa-chart-pie',         cls:'purple', href:'financial-reports.html' },
       ],
-
-      /* Withdrawal / payout requests awaiting Finance action */
       pendingPayouts: [
         { id:'WD-501', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', amount:'$2,140', method:'Bank Transfer', requested:'3h ago' },
         { id:'WD-502', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', amount:'$980',   method:'PayPal',        requested:'6h ago' },
         { id:'WD-503', author:'Luna Skye',       avatar:'https://i.pravatar.cc/60?img=24', amount:'$1,510', method:'Bank Transfer', requested:'8h ago' },
         { id:'WD-504', author:'Wren Okonkwo',    avatar:'https://i.pravatar.cc/60?img=41', amount:'$640',   method:'PayPal',        requested:'1d ago' },
       ],
-
-      coinSnapshot: { purchasedToday:'$3,240', coinsInCirculation:'4.2M', redeemedToday:'182K', avgPurchase:'$18.50' },
-      disputesSnapshot: { open:4, urgent:1, avgResolutionDays:1.8, resolvedThisWeek:6 },
-
+      coinSnapshot:{ purchasedToday:'$3,240', coinsInCirculation:'4.2M', redeemedToday:'182K', avgPurchase:'$18.50' },
+      disputesSnapshot:{ open:4, urgent:1, avgResolutionDays:1.8, resolvedThisWeek:6 },
       recentActivity: [
         { icon:'fa-money-check-dollar', color:'green', text:'Payout of $2,140 approved for <b>Isabelle Moreau</b>', time:'25m ago' },
         { icon:'fa-coins',   color:'amber',  text:'Coin package purchase spike — $3,240 processed today', time:'1h ago' },
@@ -61,7 +55,6 @@
       ],
     },
 
-    /* ── Withdrawals (full queue) ── */
     withdrawals: [
       { id:'WD-501', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', amount:2140, method:'Bank Transfer', account:'GTBank •••• 4821', requested:'2026-07-29T09:10:00', status:'pending', note:'' },
       { id:'WD-502', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', amount:980,  method:'PayPal',        account:'elena.v@paypal.com', requested:'2026-07-29T06:40:00', status:'pending', note:'' },
@@ -75,7 +68,6 @@
       { id:'WD-510', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5', amount:3200, method:'Wire Transfer', account:'GTBank •••• 1189', requested:'2026-07-24T08:00:00', status:'approved', note:'', processed:'2026-07-24T12:30:00' },
     ],
 
-    /* ── Author Payments ── */
     authorPayments: [
       { id:'AU-01', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', totalEarned:24800, pendingPayout:2140, method:'Bank Transfer', status:'active', lastPayout:'2026-07-15', lastAmount:1980, nextScheduled:'2026-07-31' },
       { id:'AU-02', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', totalEarned:11200, pendingPayout:980,  method:'PayPal',        status:'active', lastPayout:'2026-07-15', lastAmount:870,  nextScheduled:'2026-07-31' },
@@ -97,37 +89,35 @@
       { id:'PH-9006', author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/60?img=12',  amount:410,  method:'PayPal',        date:'2026-06-30T09:00:00', status:'failed', reference:'TXN-86220', failReason:'Recipient account mismatch' },
     ],
 
-    /* ── Coin Transactions ── */
     coinTransactions: [
-      { id:'CT-2001', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'purchase', coins:5000, usd:49.99, date:'2026-07-29T08:30:00', status:'completed' },
-      { id:'CT-2002', user:'Tobi_Reads',    avatar:'https://i.pravatar.cc/60?img=22', type:'purchase', coins:1000, usd:9.99,  date:'2026-07-29T07:15:00', status:'completed' },
-      { id:'CT-2003', user:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', type:'spend', coins:-300, usd:-2.99, date:'2026-07-29T06:50:00', status:'completed', note:'Unlocked 3 chapters' },
+      { id:'CT-2001', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'purchase', coins:5000,  usd:49.99, date:'2026-07-29T08:30:00', status:'completed' },
+      { id:'CT-2002', user:'Tobi_Reads',    avatar:'https://i.pravatar.cc/60?img=22', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-29T07:15:00', status:'completed' },
       { id:'CT-2004', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:12000, usd:99.99, date:'2026-07-28T21:10:00', status:'completed' },
-      { id:'CT-2005', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'gift', coins:-500, usd:-4.99, date:'2026-07-28T18:00:00', status:'completed', note:'Gifted to Luna Skye' },
-      { id:'CT-2006', user:'DeeReadsAlot',  avatar:'https://i.pravatar.cc/60?img=19', type:'purchase', coins:1000, usd:9.99,  date:'2026-07-28T15:40:00', status:'refunded', note:'Duplicate charge' },
-      { id:'CT-2007', user:'Tobi_Reads',    avatar:'https://i.pravatar.cc/60?img=22', type:'spend', coins:-200, usd:-1.99, date:'2026-07-28T12:05:00', status:'completed', note:'Tipped Wren Okonkwo' },
-      { id:'CT-2008', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:5000, usd:49.99, date:'2026-07-27T20:00:00', status:'completed' },
+      { id:'CT-2005', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'gift',     coins:-500,  usd:-4.99, date:'2026-07-28T18:00:00', status:'completed', note:'Gifted to Luna Skye' },
+      { id:'CT-2006', user:'DeeReadsAlot',  avatar:'https://i.pravatar.cc/60?img=19', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-28T15:40:00', status:'refunded', note:'Duplicate charge' },
+      { id:'CT-2008', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:5000,  usd:49.99, date:'2026-07-27T20:00:00', status:'completed' },
     ],
 
-    /* ── Bonuses ── */
     bonuses: [
-      { id:'BN-01', name:'July Top Performer Bonus', type:'Performance', criteria:'Top 10 authors by reads this month', recipients:10, amountEach:200, status:'distributed', date:'2026-07-31', createdBy:'Ngozi Falade' },
-      { id:'BN-02', name:'100K Reads Milestone', type:'Milestone', criteria:'Any story crossing 100,000 reads', recipients:4, amountEach:150, status:'distributed', date:'2026-07-20', createdBy:'Ngozi Falade' },
-      { id:'BN-03', name:'New Author Welcome Bonus', type:'Onboarding', criteria:'Authors who published their first story this month', recipients:18, amountEach:25, status:'scheduled', date:'2026-08-01', createdBy:'Tari Benson' },
-      { id:'BN-04', name:'Summer Romance Contest Prize', type:'Contest', criteria:'Top 3 entries in Summer Romance Writing Contest', recipients:3, amountEach:1500, status:'draft', date:'2026-08-10', createdBy:'Tari Benson' },
-      { id:'BN-05', name:'Inner Circle Loyalty Bonus', type:'Loyalty', criteria:'Authors with 6+ months of Inner Circle subscribers', recipients:7, amountEach:100, status:'scheduled', date:'2026-08-05', createdBy:'Ngozi Falade' },
+      { id:'BN-01', name:'July Top Performer Bonus',  type:'Performance', criteria:'Top 10 authors by reads this month', recipients:10, amountEach:200,  status:'distributed', date:'2026-07-31', createdBy:'Ngozi Falade' },
+      { id:'BN-02', name:'100K Reads Milestone',       type:'Milestone',   criteria:'Any story crossing 100,000 reads',    recipients:4,  amountEach:150,  status:'distributed', date:'2026-07-20', createdBy:'Ngozi Falade' },
+      { id:'BN-03', name:'New Author Welcome Bonus',   type:'Onboarding',  criteria:'Authors who published their first story this month', recipients:18, amountEach:25, status:'scheduled', date:'2026-08-01', createdBy:'Tari Benson' },
+      { id:'BN-04', name:'Summer Romance Contest Prize',type:'Contest',    criteria:'Top 3 entries in Summer Romance Writing Contest',  recipients:3,  amountEach:1500, status:'draft',     date:'2026-08-10', createdBy:'Tari Benson' },
+      { id:'BN-05', name:'Inner Circle Loyalty Bonus', type:'Loyalty',     criteria:'Authors with 6+ months of Inner Circle subscribers', recipients:7,  amountEach:100,  status:'scheduled', date:'2026-08-05', createdBy:'Ngozi Falade' },
     ],
 
-    /* ── Payment Disputes ── */
     paymentDisputes: [
-      { id:'PD-301', author:'Marcus Webb Jr.', avatar:'https://i.pravatar.cc/60?img=12', amount:410,  reason:'Payout declined but coins were already deducted from reader balance.', status:'open', filed:'2026-07-28T10:00:00', resolutionNote:'' },
-      { id:'PD-302', author:'Ada_Writes',      avatar:'https://i.pravatar.cc/60?img=52', amount:1200, reason:'Royalty calculation seems lower than expected reads for June.', status:'investigating', filed:'2026-07-26T14:30:00', resolutionNote:'' },
-      { id:'PD-303', author:'Efe_O',           avatar:'https://i.pravatar.cc/60?img=17', amount:75,   reason:'Withdrawal declined for being under minimum, but threshold was not clearly stated.', status:'open', filed:'2026-07-25T09:15:00', resolutionNote:'' },
-      { id:'PD-304', author:'Wren Okonkwo',    avatar:'https://i.pravatar.cc/60?img=41', amount:300,  reason:'Missing tip earnings from July 10–12.', status:'resolved', filed:'2026-07-14T11:00:00', resolutionNote:'Verified and credited missing tips of $300 on Jul 16.' },
-      { id:'PD-305', author:'Zara_M',          avatar:'https://i.pravatar.cc/60?img=36', amount:50,   reason:'Disputes a coin refund deducted from author earnings.', status:'rejected', filed:'2026-07-10T08:20:00', resolutionNote:'Refund was reader-initiated within policy window; deduction stands.' },
+      { id:'PD-301', author:'Marcus Webb Jr.', avatar:'https://i.pravatar.cc/60?img=12', amount:410,  reason:'Payout declined but coins were already deducted from reader balance.', status:'open',         filed:'2026-07-28T10:00:00', resolutionNote:'', replies:[
+        { from:'Ngozi Falade', message:'Hi Marcus, we are reviewing your account transaction logs. Will update you within 24 hours.', time:'2026-07-28T14:30:00' }
+      ] },
+      { id:'PD-302', author:'Ada_Writes',     avatar:'https://i.pravatar.cc/60?img=52', amount:1200, reason:'Royalty calculation seems lower than expected reads for June.',       status:'investigating', filed:'2026-07-26T14:30:00', resolutionNote:'', replies:[] },
+      { id:'PD-303', author:'Efe_O',          avatar:'https://i.pravatar.cc/60?img=17', amount:75,   reason:'Withdrawal declined for being under minimum, but threshold was not clearly stated.', status:'open', filed:'2026-07-25T09:15:00', resolutionNote:'', replies:[] },
+      { id:'PD-304', author:'Wren Okonkwo',   avatar:'https://i.pravatar.cc/60?img=41', amount:300,  reason:'Missing tip earnings from July 10–12.',                            status:'resolved', filed:'2026-07-14T11:00:00', resolutionNote:'Verified and credited missing tips of $300 on Jul 16.', replies:[
+        { from:'Ngozi Falade', message:'Hi Wren, we found the discrepancy in the tip aggregation pipeline. $300 has been credited to your account.', time:'2026-07-16T09:00:00' }
+      ] },
+      { id:'PD-305', author:'Zara_M',         avatar:'https://i.pravatar.cc/60?img=36', amount:50,   reason:'Disputes a coin refund deducted from author earnings.',              status:'rejected', filed:'2026-07-10T08:20:00', resolutionNote:'Refund was reader-initiated within policy window; deduction stands.', replies:[] },
     ],
 
-    /* ── Financial Reports ── */
     financialReports: {
       summary: { totalRevenue:182400, totalPayouts:96200, platformIncome:86200, coinSalesRevenue:142300, growthVsLastMonth:8.4 },
       monthlyRevenue: [
@@ -135,27 +125,28 @@
         { month:'May', revenue:158200 }, { month:'Jun', revenue:168900 }, { month:'Jul', revenue:182400 },
       ],
       expenseBreakdown: [
-        { label:'Author Payouts', amount:96200, color:'accent' },
-        { label:'Payment Processing Fees', amount:5460, color:'blue' },
-        { label:'Bonuses & Incentives', amount:4200, color:'purple' },
-        { label:'Marketing Spend', amount:12800, color:'amber' },
-        { label:'Infrastructure', amount:7100, color:'green' },
+        { label:'Author Payouts',          amount:96200, color:'accent' },
+        { label:'Payment Processing Fees', amount:5460,  color:'blue' },
+        { label:'Bonuses & Incentives',    amount:4200,  color:'purple' },
+        { label:'Marketing Spend',         amount:12800, color:'amber' },
+        { label:'Infrastructure',          amount:7100,  color:'green' },
       ],
       topCategories: [
-        { genre:'Romance & Betrayal', revenue:41200 }, { genre:'Werewolf & Fantasy', revenue:33800 },
-        { genre:'Billionaire & CEO', revenue:28900 }, { genre:'Mafia & Urban', revenue:22100 },
-        { genre:'Historical & Regency', revenue:15600 },
+        { genre:'Romance & Betrayal',  revenue:41200 },
+        { genre:'Werewolf & Fantasy',  revenue:33800 },
+        { genre:'Billionaire & CEO',   revenue:28900 },
+        { genre:'Mafia & Urban',       revenue:22100 },
+        { genre:'Historical & Regency',revenue:15600 },
       ],
     },
 
-    /* ── Tax & Accounting ── */
     taxDocuments: [
-      { id:'TX-01', author:'Sophia Bennett', avatar:'https://i.pravatar.cc/100?img=48', docType:'1099-NEC', period:'2025 Tax Year', amount:38400, status:'issued', issuedDate:'2026-01-31' },
-      { id:'TX-02', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', docType:'1099-NEC', period:'2025 Tax Year', amount:21200, status:'issued', issuedDate:'2026-01-31' },
-      { id:'TX-03', author:'Ifeanyi_Story',   avatar:'https://i.pravatar.cc/60?img=8',  docType:'1099-NEC', period:'2025 Tax Year', amount:27600, status:'pending', issuedDate:null },
-      { id:'TX-04', author:'Daniel Carter',   avatar:'https://i.pravatar.cc/100?img=13',docType:'Withholding Statement', period:'Q2 2026', amount:1980, status:'issued', issuedDate:'2026-07-05' },
-      { id:'TX-05', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5', docType:'Withholding Statement', period:'Q2 2026', amount:2340, status:'issued', issuedDate:'2026-07-05' },
-      { id:'TX-06', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', docType:'Receipt', period:'Jul 2026', amount:870,  status:'issued', issuedDate:'2026-07-15' },
+      { id:'TX-01', author:'Sophia Bennett',  avatar:'https://i.pravatar.cc/100?img=48', docType:'1099-NEC',              period:'2025 Tax Year', amount:38400, status:'issued', issuedDate:'2026-01-31' },
+      { id:'TX-02', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44',  docType:'1099-NEC',              period:'2025 Tax Year', amount:21200, status:'issued', issuedDate:'2026-01-31' },
+      { id:'TX-03', author:'Ifeanyi_Story',   avatar:'https://i.pravatar.cc/60?img=8',   docType:'1099-NEC',              period:'2025 Tax Year', amount:27600, status:'pending',issuedDate:null },
+      { id:'TX-04', author:'Daniel Carter',   avatar:'https://i.pravatar.cc/100?img=13', docType:'Withholding Statement', period:'Q2 2026',        amount:1980,  status:'issued', issuedDate:'2026-07-05' },
+      { id:'TX-05', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5',  docType:'Withholding Statement', period:'Q2 2026',        amount:2340,  status:'issued', issuedDate:'2026-07-05' },
+      { id:'TX-06', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31',  docType:'Receipt',               period:'Jul 2026',       amount:870,   status:'issued', issuedDate:'2026-07-15' },
     ],
   };
 
@@ -201,7 +192,6 @@
       }
     },
 
-    /* ── Author Payments ── */
     async getAuthorPayments() {
       try { return await callBackend('/author-payments'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.authorPayments)); }
@@ -231,13 +221,11 @@
       }
     },
 
-    /* ── Coin Transactions ── */
     async getCoinTransactions() {
       try { return await callBackend('/coin-transactions'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.coinTransactions)); }
     },
 
-    /* ── Bonuses ── */
     async getBonuses() {
       try { return await callBackend('/bonuses'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.bonuses)); }
@@ -264,7 +252,6 @@
       catch (e) { await delay(150); const b = findIn(DEMO.bonuses, id); b.status = 'distributed'; return JSON.parse(JSON.stringify(b)); }
     },
 
-    /* ── Payment Disputes ── */
     async getPaymentDisputes() {
       try { return await callBackend('/payment-disputes'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.paymentDisputes)); }
@@ -277,14 +264,20 @@
       try { return await callBackend('/payment-disputes/' + id + '/reject', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ note }) }); }
       catch (e) { await delay(150); const d = findIn(DEMO.paymentDisputes, id); d.status='rejected'; d.resolutionNote = note || 'Rejected by Finance.'; return JSON.parse(JSON.stringify(d)); }
     },
+    async replyToDispute(id, message) {
+      try { return await callBackend('/payment-disputes/' + id + '/reply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message }) }); }
+      catch (e) {
+        await delay(150);
+        const d = findIn(DEMO.paymentDisputes, id);
+        return JSON.parse(JSON.stringify(d));
+      }
+    },
 
-    /* ── Financial Reports ── */
     async getFinancialReports() {
       try { return await callBackend('/financial-reports'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.financialReports)); }
     },
 
-    /* ── Tax & Accounting ── */
     async getTaxDocuments() {
       try { return await callBackend('/tax-documents'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.taxDocuments)); }

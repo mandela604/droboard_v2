@@ -293,19 +293,22 @@ document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e
 /* ── Detail modal ── */
 const dtOverlay = document.getElementById('dtOverlay');
 const dtModal = document.getElementById('dtModal');
-let dtNoteMode = null; // 'resolve' | 'reject' | null — which action's note box is currently showing
+let dtNoteMode = null;
+let dtReplyMode = false;
 
 function openDetail(id){
   const d = ALL.find(x=>x.id===id);
   if(!d) return;
   dtNoteMode = null;
+  dtReplyMode = false;
   renderDetailModal(d);
   dtOverlay.classList.add('open');
 }
-function closeDetail(){ dtOverlay.classList.remove('open'); dtNoteMode = null; }
+function closeDetail(){ dtOverlay.classList.remove('open'); dtNoteMode = null; dtReplyMode = false; }
 
 function renderDetailModal(d){
   const canAct = d.status==='open' || d.status==='investigating';
+  const replies = d.replies || [];
 
   let noteSectionHtml = '';
   if(d.status==='resolved' && d.resolutionNote){
@@ -320,6 +323,26 @@ function renderDetailModal(d){
       <div class="dt-action-box">
         <label>${dtNoteMode==='resolve' ? 'Resolution note (shown to the author)' : 'Reason for rejection (shown to the author)'}</label>
         <textarea id="dtNoteInput" placeholder="${dtNoteMode==='resolve' ? 'Explain how this was resolved…' : 'Explain why this dispute is being rejected…'}"></textarea>
+      </div>`;
+  }
+
+  let replySectionHtml = '';
+  if(replies.length){
+    replySectionHtml = '<div style="margin-top:12px"><div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px">Replies to Author</div>' +
+      replies.map(function(r){
+        return '<div style="background:var(--blue-bg);border-radius:10px;padding:11px 13px;margin-bottom:8px">'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:var(--blue)">'+r.from+'</span><span style="font-size:10px;color:var(--text-faint)">'+timeAgo(r.time)+'</span></div>'+
+          '<div style="font-size:12.5px;color:var(--text);line-height:1.5">'+r.message+'</div>'+
+        '</div>';
+      }).join('') + '</div>';
+  }
+
+  let replyInputHtml = '';
+  if(dtReplyMode){
+    replyInputHtml = `
+      <div class="dt-action-box">
+        <label>Reply to ${d.author} (will be visible to them)</label>
+        <textarea id="dtReplyInput" placeholder="Type your reply to the author…"></textarea>
       </div>`;
   }
 
@@ -342,31 +365,46 @@ function renderDetailModal(d){
       </div>
       <div class="dt-reason-box">${d.reason}</div>
       ${noteSectionHtml}
+      ${replySectionHtml}
       ${actionNoteHtml}
+      ${replyInputHtml}
     </div>
     ${canAct ? `
     <div class="dt-foot">
       ${d.status==='open' ? `<button class="mini-btn blue-variant" id="dtInvestigateBtn"><i class="fas fa-magnifying-glass"></i> Investigate</button>` : ''}
+      <button class="mini-btn" id="dtReplyBtn" style="background:var(--blue-bg);border-color:transparent;color:var(--blue)"><i class="fas fa-reply"></i> ${dtReplyMode ? 'Send Reply' : 'Reply'}</button>
       <button class="mini-btn danger" id="dtRejectBtn"><i class="fas fa-xmark"></i> ${dtNoteMode==='reject' ? 'Confirm Reject' : 'Reject'}</button>
       <button class="mini-btn green-variant" id="dtResolveBtn"><i class="fas fa-check"></i> ${dtNoteMode==='resolve' ? 'Confirm Resolve' : 'Resolve'}</button>
-    </div>` : ''}
+    </div>` : `
+    <div class="dt-foot">
+      <button class="mini-btn" id="dtReplyBtn" style="background:var(--blue-bg);border-color:transparent;color:var(--blue)"><i class="fas fa-reply"></i> ${dtReplyMode ? 'Send Reply' : 'Reply'}</button>
+    </div>`}
   `;
 
   document.getElementById('dtClose').addEventListener('click', closeDetail);
+
+  document.getElementById('dtReplyBtn').addEventListener('click', ()=>{
+    if(!dtReplyMode){ dtReplyMode=true; dtNoteMode=null; renderDetailModal(d); document.getElementById('dtReplyInput')?.focus(); }
+    else{
+      const msg = document.getElementById('dtReplyInput').value.trim();
+      if(!msg){ toast('Please type a reply.'); return; }
+      doReply(d.id, msg);
+    }
+  });
 
   if(canAct){
     const investigateBtn = document.getElementById('dtInvestigateBtn');
     if(investigateBtn) investigateBtn.addEventListener('click', ()=>doInvestigate(d.id));
 
     document.getElementById('dtResolveBtn').addEventListener('click', ()=>{
-      if(dtNoteMode!=='resolve'){ dtNoteMode='resolve'; renderDetailModal(d); document.getElementById('dtNoteInput')?.focus(); }
+      if(dtNoteMode!=='resolve'){ dtNoteMode='resolve'; dtReplyMode=false; renderDetailModal(d); document.getElementById('dtNoteInput')?.focus(); }
       else{
         const note = document.getElementById('dtNoteInput').value.trim();
         doResolve(d.id, note);
       }
     });
     document.getElementById('dtRejectBtn').addEventListener('click', ()=>{
-      if(dtNoteMode!=='reject'){ dtNoteMode='reject'; renderDetailModal(d); document.getElementById('dtNoteInput')?.focus(); }
+      if(dtNoteMode!=='reject'){ dtNoteMode='reject'; dtReplyMode=false; renderDetailModal(d); document.getElementById('dtNoteInput')?.focus(); }
       else{
         const note = document.getElementById('dtNoteInput').value.trim();
         doReject(d.id, note);
@@ -398,6 +436,15 @@ async function doReject(id, note){
   d.status = 'rejected'; d.resolutionNote = note || 'Rejected by Finance.';
   toast(`↩️ Rejected dispute for ${d.author}`);
   closeDetail(); renderStatCards(); renderFilterPills(); render();
+}
+async function doReply(id, message){
+  const d = ALL.find(x=>x.id===id); if(!d) return;
+  if(!d.replies) d.replies = [];
+  d.replies.push({ from:'Ngozi Falade', message:message, time:new Date().toISOString() });
+  dtReplyMode = false;
+  renderDetailModal(d);
+  toast('Reply sent to ' + d.author);
+  FinanceData.replyToDispute(id, message).catch(()=>{});
 }
 
 /* ── Quick-action buttons on cards (bypass opening detail) ── */

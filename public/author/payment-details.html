@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Payment Details · DroBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--success:#22c55e;--success-soft:#e9fbf0;--blue:#3b82f6;--blue-soft:#e7f0fe;--purple:#9333ea;--purple-soft:#f3e8ff;--danger:#ef4444;--danger-soft:#fdeaea;--warning:#f59e0b;--warning-soft:#fef3e2}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif}
+img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;border:none;background:none}a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,247,248,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.tb-title-wrap{flex:1;display:flex;align-items:center;gap:8px}
+.tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tb-title{font-size:15.5px;font-weight:800}
+.avatar-btn img{width:100%;height:100%}
+.menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
+
+/* ── HAMBURGER DRAWER ── */
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-head .tb-logo{width:34px;height:34px;font-size:14px}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:#f1f1f4;color:#555;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--muted);flex-shrink:0}
+.drawer-item:active{background:#f5f5f7}
+.drawer-item.active{background:rgba(255,45,85,.08);color:var(--pink)}
+.drawer-item.active i{color:var(--pink)}
+
+.content{padding:16px}
+
+.section-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+
+/* ── Method Card ── */
+.method-card{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);position:relative}
+.method-card.default{border-color:var(--pink)}
+.method-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.method-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.method-icon.bank{background:var(--blue-soft);color:var(--blue)}
+.method-icon.paypal{background:var(--purple-soft);color:var(--purple)}
+.method-icon.mobile{background:var(--warning-soft);color:var(--warning)}
+.method-type{font-size:14px;font-weight:700}
+.method-name{font-size:12px;color:var(--muted);margin-top:1px}
+.method-detail{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.4}
+.method-detail span{font-weight:700;color:var(--text)}
+.method-tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px}
+.tag.default{background:var(--pink);color:#fff}
+.tag.verified{background:var(--success-soft);color:var(--success)}
+.tag.unverified{background:var(--warning-soft);color:var(--warning)}
+.method-actions{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.method-btn{flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;border:1px solid var(--border);background:var(--bg);color:var(--text);transition:.15s}
+.method-btn:active{opacity:.7}
+.method-btn.danger{color:var(--danger);border-color:var(--danger)}
+.method-btn.primary{background:var(--pink);color:#fff;border-color:var(--pink)}
+
+/* ── Add Method Card ── */
+.add-card{border:1.5px dashed var(--border);border-radius:16px;padding:24px 16px;text-align:center;cursor:pointer;margin-bottom:12px;transition:.15s}
+.add-card:active{opacity:.7}
+.add-card i{font-size:28px;color:var(--pink);margin-bottom:8px}
+.add-card .add-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.add-card .add-sub{font-size:12px;color:var(--muted)}
+
+/* ── Form ── */
+.form-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.25s}
+.form-overlay.show{opacity:1;pointer-events:auto}
+.form-panel{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 30px;transform:translateY(100%);transition:.3s;max-height:85vh;overflow-y:auto}
+.form-overlay.show .form-panel{transform:translateY(0)}
+.form-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.form-hdr h3{font-size:16px;font-weight:800}
+.form-close{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.form-input,.form-select{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;font-family:inherit;outline:none;transition:.15s}
+.form-input:focus,.form-select:focus{border-color:var(--pink)}
+.form-select{appearance:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-submit{width:100%;padding:14px;border-radius:14px;background:var(--pink);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:6px}
+.form-submit:active{opacity:.85}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty i{font-size:36px;margin-bottom:12px;color:var(--border)}
+.empty p{font-size:13px;line-height:1.5}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (min-width:600px){.content{max-width:480px;margin:0 auto;padding:20px}.topbar{max-width:480px;margin:0 auto}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="menu-btn" id="menuBtn"><i class="fas fa-bars"></i></div>
+  <div class="tb-title-wrap">
+    <div class="tb-logo"><i class="fas fa-credit-card"></i></div>
+    <div class="tb-title">Payment Details</div>
+  </div>
+  <div class="avatar-btn"><img src="https://i.pravatar.cc/100?img=47" alt="Luna Vale"/></div>
+</div>
+
+<div class="content">
+  <div class="section-title">Your Payment Methods</div>
+  <div id="methodsList"></div>
+
+  <div class="add-card" id="addCard">
+    <i class="fas fa-plus-circle"></i>
+    <div class="add-title">Add Payment Method</div>
+    <div class="add-sub">Bank account, PayPal, or mobile money</div>
+  </div>
+</div>
+
+<!-- Add Method Form -->
+<div class="form-overlay" id="addForm">
+  <div class="form-panel">
+    <div class="form-hdr">
+      <h3>Add Payment Method</h3>
+      <div class="form-close" onclick="closeForm()"><i class="fas fa-xmark"></i></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Payment Type</label>
+      <select class="form-select" id="fType" onchange="toggleTypeFields()">
+        <option value="bank">Bank Transfer</option>
+        <option value="paypal">PayPal</option>
+        <option value="mobile">Mobile Money</option>
+      </select>
+    </div>
+    <div id="bankFields">
+      <div class="form-group">
+        <label class="form-label">Bank Name</label>
+        <input class="form-input" id="fBankName" placeholder="e.g. GTBank"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number</label>
+        <input class="form-input" id="fAccountNum" placeholder="e.g. 02481794821"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Routing Code</label>
+        <input class="form-input" id="fRouting" placeholder="e.g. 0580000124"/>
+      </div>
+    </div>
+    <div id="paypalFields" style="display:none">
+      <div class="form-group">
+        <label class="form-label">PayPal Email</label>
+        <input class="form-input" id="fPaypalEmail" placeholder="you@paypal.com"/>
+      </div>
+    </div>
+    <div id="mobileFields" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Provider</label>
+        <input class="form-input" id="fProvider" placeholder="e.g. MTN Mobile Money"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input class="form-input" id="fPhone" placeholder="e.g. +234 812 345 6789"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Account Name</label>
+      <input class="form-input" id="fAccountName" placeholder="Name on the account"/>
+    </div>
+    <button class="form-submit" onclick="addMethod()"><i class="fas fa-plus"></i> Add Method</button>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="tb-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/author-earnings-service.js"></script>
+<script>
+// HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
+// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+const BOOK_WORKSPACE_ITEMS=[
+  {label:'Chapters',icon:'fa-list-ul',href:'#'},
+  {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
+  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
+];
+function getMENU_SECTIONS(){
+  const params=new URLSearchParams(location.search);
+  const bookId=params.get('book');
+  const sections=[
+    {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
+    {title:'Account',items:[
+      {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
+      {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html'},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html',active:true},
+      {label:'Contracts',icon:'fa-file-signature',href:'#'},
+      {label:'Messages',icon:'fa-comment-dots',href:'#'},
+      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Settings',icon:'fa-gear',href:'#'}
+    ]}
+  ];
+  if(bookId) sections.splice(1,0,{title:'Book Workspace',items:BOOK_WORKSPACE_ITEMS.map(it=>Object.assign({},it,{href:it.href.includes('?')?it.href.split('?')[0]+'?book='+bookId:it.href+'?book='+bookId}))});
+  return sections;
+}
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML=getMENU_SECTIONS().map(sec=>'<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(it=>'<a class="drawer-item'+(it.active?' active':'')+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>').join('')+'</div>').join('');
+}
+renderDrawer();
+const menuBtn=document.getElementById('menuBtn'),drawer=document.getElementById('drawer'),drawerOverlay=document.getElementById('drawerOverlay'),drawerClose=document.getElementById('drawerClose');
+function openDrawer(){drawer.classList.add('open');drawerOverlay.classList.add('open')}
+function closeDrawer(){drawer.classList.remove('open');drawerOverlay.classList.remove('open')}
+menuBtn.addEventListener('click',openDrawer);
+drawerClose.addEventListener('click',closeDrawer);
+drawerOverlay.addEventListener('click',closeDrawer);
+
+let methods = [];
+
+function toast(m){const t=document.getElementById('toastEl')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'toastEl',className:'toast'}));t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500)}
+
+async function render(){
+  methods = await AuthorFinance.getPaymentMethods();
+  const el = document.getElementById('methodsList');
+  if (!methods.length) {
+    el.innerHTML = '<div class="empty"><i class="fas fa-credit-card"></i><p>No payment methods yet.<br/>Add one to start receiving withdrawals.</p></div>';
+    return;
+  }
+  el.innerHTML = methods.map(m => {
+    const detail = m.type === 'bank' ? 'Account: <span>'+m.accountNumber+'</span><br/>Routing: <span>'+(m.routingCode||'—')+'</span>' :
+                   m.type === 'paypal' ? 'Email: <span>'+m.email+'</span>' :
+                   'Phone: <span>'+m.phoneNumber+'</span><br/>Provider: <span>'+m.provider+'</span>';
+    const tags = [];
+    if (m.isDefault) tags.push('<span class="tag default">Default</span>');
+    if (m.verified) tags.push('<span class="tag verified"><i class="fas fa-check"></i> Verified</span>');
+    else tags.push('<span class="tag unverified"><i class="fas fa-clock"></i> Unverified</span>');
+    return '<div class="method-card'+(m.isDefault?' default':'')+'">'+
+      '<div class="method-top">'+
+        '<div class="method-icon '+m.type+'"><i class="fas '+m.icon+'"></i></div>'+
+        '<div><div class="method-type">'+(m.type==='bank'?'Bank Transfer':m.type==='paypal'?'PayPal':'Mobile Money')+'</div><div class="method-name">'+(m.accountName||'')+'</div></div>'+
+      '</div>'+
+      '<div class="method-detail">'+detail+'</div>'+
+      '<div class="method-tags">'+tags.join('')+'</div>'+
+      '<div class="method-actions">'+
+        (!m.isDefault ? '<button class="method-btn primary" onclick="setDefault(\''+m.id+'\')">Set as Default</button>' : '')+
+        '<button class="method-btn danger" onclick="deleteMethod(\''+m.id+'\')"><i class="fas fa-trash"></i> Remove</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function toggleTypeFields(){
+  const t = document.getElementById('fType').value;
+  document.getElementById('bankFields').style.display = t === 'bank' ? '' : 'none';
+  document.getElementById('paypalFields').style.display = t === 'paypal' ? '' : 'none';
+  document.getElementById('mobileFields').style.display = t === 'mobile' ? '' : 'none';
+}
+
+document.getElementById('addCard').addEventListener('click', () => {
+  document.getElementById('addForm').classList.add('show');
+});
+function closeForm(){ document.getElementById('addForm').classList.remove('show'); }
+
+async function addMethod(){
+  const type = document.getElementById('fType').value;
+  const accountName = document.getElementById('fAccountName').value.trim();
+  if (!accountName) { toast('Enter account name'); return; }
+  const data = { type, accountName, icon: type === 'bank' ? 'fa-building-columns' : type === 'paypal' ? 'fa-paypal' : 'fa-mobile-screen' };
+  if (type === 'bank') {
+    data.bankName = document.getElementById('fBankName').value.trim();
+    data.accountNumber = document.getElementById('fAccountNum').value.trim();
+    data.routingCode = document.getElementById('fRouting').value.trim();
+    if (!data.bankName || !data.accountNumber) { toast('Fill in all bank details'); return; }
+  } else if (type === 'paypal') {
+    data.email = document.getElementById('fPaypalEmail').value.trim();
+    if (!data.email) { toast('Enter PayPal email'); return; }
+  } else {
+    data.provider = document.getElementById('fProvider').value.trim();
+    data.phoneNumber = document.getElementById('fPhone').value.trim();
+    if (!data.provider || !data.phoneNumber) { toast('Fill in all mobile details'); return; }
+  }
+  try {
+    await AuthorFinance.addPaymentMethod(data);
+    closeForm();
+    toast('Payment method added');
+    render();
+  } catch (e) { toast(e.message); }
+}
+
+async function setDefault(id){
+  await AuthorFinance.setDefaultMethod(id);
+  toast('Default method updated');
+  render();
+}
+
+async function deleteMethod(id){
+  if (!confirm('Remove this payment method?')) return;
+  await AuthorFinance.deletePaymentMethod(id);
+  toast('Method removed');
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

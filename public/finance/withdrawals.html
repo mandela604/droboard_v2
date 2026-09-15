@@ -11,12 +11,6 @@
 body{font-family:'Inter',system-ui,sans-serif}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
 
-.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
-.page-head h1{font-size:19px;font-weight:800}
-.page-head p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
-.new-btn{background:var(--accent);color:#fff;border:none;padding:11px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0}
-.new-btn:hover{filter:brightness(1.05)}
-
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
 .stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
@@ -69,7 +63,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .page-btn:disabled{opacity:.4;cursor:not-allowed}
 
-/* ── Detail modal ── */
 .dt-overlay{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:2000;opacity:0;pointer-events:none;transition:.2s;display:flex;align-items:flex-end;justify-content:center}
 .dt-overlay.open{opacity:1;pointer-events:auto}
 .dt-modal{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(30px);transition:.25s;padding-bottom:6px}
@@ -90,10 +83,34 @@ body{font-family:'Inter',system-ui,sans-serif}
 .dt-meta-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
 .dt-meta-val{font-size:13px;font-weight:700;margin-top:3px}
 .dt-note{background:var(--red-bg);color:var(--red);border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5;margin-bottom:16px}
-.dt-decline-box{margin-top:10px}
-.dt-decline-box textarea{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text);min-height:64px;resize:vertical}
 .dt-foot{padding:14px 22px 20px;display:flex;gap:8px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--card)}
 .dt-foot .mini-btn{flex:1;justify-content:center;padding:11px}
+
+/* ── Action modals ── */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;background:rgba(0,0,0,.55);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-sheet{width:90%;max-width:440px;background:var(--card);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:modalPop .2s ease}
+@keyframes modalPop{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 10px}
+.modal-hdr h3{font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:7px}
+.modal-hdr h3 i{color:var(--accent);font-size:14px}
+.modal-close{width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.05);border:none;color:var(--text-muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:0 18px 18px}
+.modal-author{display:flex;align-items:center;gap:10px;padding:12px;background:var(--input-bg);border-radius:12px;margin-bottom:16px}
+.modal-author img{width:36px;height:36px;border-radius:50%;object-fit:cover}
+.modal-author-name{font-size:13px;font-weight:700;color:var(--text)}
+.modal-author-meta{font-size:11px;color:var(--text-faint)}
+.modal-label{font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px}
+.modal-input{width:100%;padding:11px 13px;border:1px solid var(--input-border);border-radius:10px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;outline:none;margin-bottom:14px}
+.modal-input:focus{border-color:var(--accent)}
+.modal-hint{font-size:10.5px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px}
+.modal-actions{display:flex;gap:10px}
+.modal-btn{flex:1;padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:.15s}
+.modal-btn.cancel{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text)}
+.modal-btn.submit{background:var(--accent);color:#fff}
+.modal-btn.submit:active{filter:brightness(.95)}
+.modal-btn:disabled{opacity:.45;cursor:not-allowed}
+.modal-btn.danger{background:var(--red);color:#fff}
 
 .skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px}
 
@@ -103,10 +120,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="pageRoot">
-  <div class="page-head">
-    <div><h1>Withdrawals</h1><p>Approve or decline author payout requests.</p></div>
-  </div>
-
   <div class="grid-4" id="statCards"></div>
 
   <div class="toolbar">
@@ -135,236 +148,57 @@ body{font-family:'Inter',system-ui,sans-serif}
   <div class="dt-modal" id="dtModal"></div>
 </div>
 
+<!-- Approve modal -->
+<div class="modal-overlay" id="approveOverlay">
+  <div class="modal-sheet">
+    <div class="modal-hdr">
+      <h3><i class="fas fa-circle-check" style="color:var(--green)"></i> Approve Payout</h3>
+      <button class="modal-close" id="approveClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-author" id="approveAuthorInfo"></div>
+      <div style="text-align:center;padding:16px 0">
+        <div style="font-size:28px;font-weight:800;color:var(--green)" id="approveAmount"></div>
+        <div style="font-size:11px;color:var(--text-faint);margin-top:4px;text-transform:uppercase;font-weight:700">Payout Amount</div>
+      </div>
+      <div class="modal-hint" style="text-align:center">This will approve the withdrawal and mark it as processed.</div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="approveCancelBtn">Cancel</button>
+        <button class="modal-btn submit" id="approveConfirmBtn" style="background:var(--green)">Confirm Approval</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Decline modal -->
+<div class="modal-overlay" id="declineOverlay">
+  <div class="modal-sheet">
+    <div class="modal-hdr">
+      <h3><i class="fas fa-circle-xmark" style="color:var(--red)"></i> Decline Payout</h3>
+      <button class="modal-close" id="declineClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-author" id="declineAuthorInfo"></div>
+      <div class="modal-label">Reason for decline</div>
+      <textarea class="modal-input" id="declineReason" style="min-height:80px;resize:vertical" placeholder="Let the author know why this was declined…"></textarea>
+      <div class="modal-hint">This reason will be shown to the author.</div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="declineCancelBtn">Cancel</button>
+        <button class="modal-btn danger" id="declineConfirmBtn">Decline Payout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="shared/finance-sidebar.js"></script>
 <script src="shared/finance-data.js"></script>
 <script>
-'use strict';
-const shell = FinanceSidebar.attach('#pageRoot',{
-  activeItem:'withdrawals', title:'Withdrawals', subtitle:'Approve or decline author payout requests',
+FinanceSidebar.attach('#pageRoot',{
+  activeItem:'withdrawals', title:'Withdrawals', subtitle:'',
   user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
   searchPlaceholder:'Search anything…',
 });
-
-const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
-const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
-const PER_PAGE = 6;
-
-let ALL = [];
-let activeStatus = 'all';
-let searchTerm = '';
-let methodTerm = '';
-let sortMode = 'recent';
-let page = 1;
-
-function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
-function fmtDate(iso){
-  if(!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-}
-function timeAgo(iso){
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff/3600000);
-  if(h < 1) return 'Just now';
-  if(h < 24) return h+'h ago';
-  return Math.floor(h/24)+'d ago';
-}
-
-async function init(){
-  ALL = await FinanceData.getWithdrawals();
-  renderStatCards();
-  renderFilterPills();
-  render();
-}
-
-function renderStatCards(){
-  const pending = ALL.filter(w=>w.status==='pending');
-  const approved = ALL.filter(w=>w.status==='approved');
-  const declined = ALL.filter(w=>w.status==='declined');
-  const pendingTotal = pending.reduce((s,w)=>s+w.amount,0);
-  const stats = [
-    { n:pending.length, l:'Pending Requests', ico:'fa-hourglass-half', cls:'amber' },
-    { n:money(pendingTotal), l:'Pending Amount', ico:'fa-sack-dollar', cls:'blue' },
-    { n:approved.length, l:'Approved', ico:'fa-circle-check', cls:'green' },
-    { n:declined.length, l:'Declined', ico:'fa-circle-xmark', cls:'red' },
-  ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
-}
-
-function renderFilterPills(){
-  const counts = { all:ALL.length, pending:0, approved:0, declined:0 };
-  ALL.forEach(w=>counts[w.status]++);
-  const pills = [
-    { key:'all', label:'All' },
-    { key:'pending', label:'Pending' },
-    { key:'approved', label:'Approved' },
-    { key:'declined', label:'Declined' },
-  ];
-  document.getElementById('filterPills').innerHTML = pills.map(p=>`
-    <button class="f-pill${activeStatus===p.key?' active':''}" data-status="${p.key}">${p.label} <span class="cnt">${counts[p.key]}</span></button>`).join('');
-  document.querySelectorAll('.f-pill').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ activeStatus = btn.dataset.status; page=1; renderFilterPills(); render(); });
-  });
-}
-
-function getFiltered(){
-  let list = ALL.slice();
-  if(activeStatus !== 'all') list = list.filter(w=>w.status===activeStatus);
-  if(methodTerm) list = list.filter(w=>w.method===methodTerm);
-  if(searchTerm) list = list.filter(w=>w.author.toLowerCase().includes(searchTerm.toLowerCase()));
-  if(sortMode==='amount-desc') list.sort((a,b)=>b.amount-a.amount);
-  else if(sortMode==='amount-asc') list.sort((a,b)=>a.amount-b.amount);
-  else list.sort((a,b)=> new Date(b.requested) - new Date(a.requested));
-  return list;
-}
-
-function render(){
-  const filtered = getFiltered();
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  if(page > totalPages) page = totalPages;
-  const pageItems = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
-
-  const box = document.getElementById('wdList');
-  if(!pageItems.length){
-    box.innerHTML = `<div class="empty-state"><i class="fas fa-building-columns"></i><p>No withdrawal requests match your filters.</p></div>`;
-    document.getElementById('pagination').innerHTML = '';
-    return;
-  }
-
-  box.innerHTML = `<div class="wd-list">${pageItems.map(w=>`
-    <div class="wd-card" data-id="${w.id}">
-      <img class="wd-avatar" src="${w.avatar}" alt="${w.author}"/>
-      <div class="wd-body">
-        <div class="wd-top">
-          <span class="wd-name">${w.author}</span>
-          <span class="wd-amt">${money(w.amount)}</span>
-          <span class="method-chip">${w.method}</span>
-          <span class="status-pill ${w.status}">${w.status}</span>
-        </div>
-        <div class="wd-meta">
-          <span><i class="fas fa-clock"></i> Requested ${timeAgo(w.requested)}</span>
-          <span><i class="fas fa-building-columns"></i> ${w.account}</span>
-        </div>
-      </div>
-      ${w.status==='pending' ? `
-      <div class="wd-actions">
-        <button class="mini-btn danger" data-action="decline" data-id="${w.id}"><i class="fas fa-xmark"></i> Decline</button>
-        <button class="mini-btn primary" data-action="approve" data-id="${w.id}"><i class="fas fa-check"></i> Approve</button>
-      </div>` : ''}
-    </div>`).join('')}</div>`;
-
-  document.querySelectorAll('.wd-card').forEach(card=>{
-    card.addEventListener('click', (e)=>{ if(e.target.closest('[data-action]')) return; openDetail(card.dataset.id); });
-  });
-
-  renderPagination(totalPages);
-}
-
-function renderPagination(totalPages){
-  const box = document.getElementById('pagination');
-  if(totalPages <= 1){ box.innerHTML=''; return; }
-  let html = `<button class="page-btn" ${page===1?'disabled':''} data-p="${page-1}"><i class="fas fa-chevron-left"></i></button>`;
-  for(let i=1;i<=totalPages;i++) html += `<button class="page-btn${i===page?' active':''}" data-p="${i}">${i}</button>`;
-  html += `<button class="page-btn" ${page===totalPages?'disabled':''} data-p="${page+1}"><i class="fas fa-chevron-right"></i></button>`;
-  box.innerHTML = html;
-  box.querySelectorAll('.page-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ page = parseInt(btn.dataset.p,10); render(); window.scrollTo({top:0,behavior:'smooth'}); });
-  });
-}
-
-document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm=e.target.value; page=1; render(); });
-document.getElementById('methodFilter').addEventListener('change', e=>{ methodTerm=e.target.value; page=1; render(); });
-document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e.target.value; render(); });
-
-/* ── Detail modal ── */
-const dtOverlay = document.getElementById('dtOverlay');
-const dtModal = document.getElementById('dtModal');
-
-function openDetail(id){
-  const w = ALL.find(x=>x.id===id);
-  if(!w) return;
-  dtModal.innerHTML = `
-    <div class="dt-head">
-      <div class="dt-head-top">
-        <div class="dt-author">
-          <img class="dt-avatar" src="${w.avatar}" alt="${w.author}"/>
-          <div><div class="dt-author-name">${w.author}</div><div class="dt-author-sub">${w.id} · <span class="status-pill ${w.status}" style="margin-left:2px">${w.status}</span></div></div>
-        </div>
-        <button class="dt-close" id="dtClose"><i class="fas fa-xmark"></i></button>
-      </div>
-    </div>
-    <div class="dt-body">
-      <div class="dt-amt-card"><div class="dt-amt-num">${money(w.amount)}</div><div class="dt-amt-lbl">Requested Withdrawal</div></div>
-      <div class="dt-meta-grid">
-        <div class="dt-meta-item"><div class="dt-meta-lbl">Method</div><div class="dt-meta-val">${w.method}</div></div>
-        <div class="dt-meta-item"><div class="dt-meta-lbl">Account</div><div class="dt-meta-val" style="font-size:11.5px">${w.account}</div></div>
-        <div class="dt-meta-item"><div class="dt-meta-lbl">Requested</div><div class="dt-meta-val" style="font-size:11.5px">${fmtDate(w.requested)}</div></div>
-        <div class="dt-meta-item"><div class="dt-meta-lbl">${w.status==='pending'?'Status':'Processed'}</div><div class="dt-meta-val" style="font-size:11.5px">${w.status==='pending' ? 'Awaiting review' : fmtDate(w.processed)}</div></div>
-      </div>
-      ${w.status==='declined' && w.note ? `<div class="dt-note"><i class="fas fa-circle-info"></i> ${w.note}</div>` : ''}
-      ${w.status==='pending' ? `
-        <div class="dt-decline-box" id="dtDeclineBox" style="display:none">
-          <label style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:6px">Reason for decline</label>
-          <textarea id="dtDeclineReason" placeholder="Let the author know why this was declined…"></textarea>
-        </div>` : ''}
-    </div>
-    ${w.status==='pending' ? `
-    <div class="dt-foot">
-      <button class="mini-btn danger" id="dtDeclineBtn"><i class="fas fa-xmark"></i> Decline</button>
-      <button class="mini-btn primary" id="dtApproveBtn"><i class="fas fa-check"></i> Approve</button>
-    </div>` : ''}
-  `;
-  dtOverlay.classList.add('open');
-  document.getElementById('dtClose').addEventListener('click', closeDetail);
-
-  if(w.status==='pending'){
-    document.getElementById('dtApproveBtn').addEventListener('click', ()=>doApprove(w.id));
-    document.getElementById('dtDeclineBtn').addEventListener('click', ()=>{
-      const box = document.getElementById('dtDeclineBox');
-      const showing = box.style.display === 'block';
-      if(!showing){ box.style.display='block'; document.getElementById('dtDeclineReason').focus(); }
-      else { doDecline(w.id, document.getElementById('dtDeclineReason').value.trim()); }
-    });
-  }
-}
-function closeDetail(){ dtOverlay.classList.remove('open'); }
-dtOverlay.addEventListener('click', e=>{ if(e.target===dtOverlay) closeDetail(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeDetail(); });
-
-async function doApprove(id){
-  const w = ALL.find(x=>x.id===id);
-  await FinanceData.approveWithdrawal(id);
-  w.status='approved'; w.processed = new Date().toISOString();
-  toast(`✅ Approved ${money(w.amount)} payout for ${w.author}`);
-  closeDetail(); renderStatCards(); renderFilterPills(); render();
-}
-async function doDecline(id, reason){
-  const w = ALL.find(x=>x.id===id);
-  await FinanceData.declineWithdrawal(id, reason || 'Declined by Finance.');
-  w.status='declined'; w.note = reason || 'Declined by Finance.'; w.processed = new Date().toISOString();
-  toast(`↩️ Declined payout for ${w.author}`);
-  closeDetail(); renderStatCards(); renderFilterPills(); render();
-}
-
-/* ── Quick-action buttons on cards (bypass opening detail) ── */
-document.addEventListener('click', e=>{
-  const el = e.target.closest('[data-action]');
-  if(!el || !el.closest('.wd-card')) return;
-  e.stopPropagation();
-  const id = el.dataset.id;
-  if(el.dataset.action==='approve') doApprove(id);
-  else if(el.dataset.action==='decline'){
-    const reason = prompt('Reason for declining this withdrawal (shown to the author):', '');
-    if(reason===null) return; // cancelled
-    doDecline(id, reason.trim());
-  }
-});
-
-init();
 </script>
+<script src="services/withdrawals-service.js"></script>
 </body>
 </html>

@@ -155,8 +155,8 @@
     .dcs-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;padding:12px 14px;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:12px;transition:.18s;}
     .dcs-toggle:active{transform:scale(.99)}
     .dcs-toggle-icon{width:32px;height:32px;border-radius:50%;background:var(--dcs-bg);border:1px solid var(--dcs-bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--dcs-muted);flex-shrink:0}
-    .dcs-toggle-label{flex:1;font-size:12px;font-weight:700;color:var(--dcs-muted)}
-    .dcs-toggle-count{font-size:10px;font-weight:700;color:var(--dcs-muted2);background:var(--dcs-bg);padding:2px 8px;border-radius:999px}
+    .dcs-toggle-label{flex:1;font-size:13px;font-weight:700;color:var(--dcs-muted)}
+    .dcs-toggle-count{font-size:11px;font-weight:700;color:var(--dcs-muted2);background:var(--dcs-bg);padding:2px 8px;border-radius:999px}
     .dcs-toggle-arrow{font-size:11px;color:var(--dcs-muted2);transition:transform .25s}
     .dcs-toggle-arrow.open{transform:rotate(180deg)}
     .dcs-body{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0}
@@ -166,17 +166,17 @@
     /* Team picker — top of the list */
     .dcs-team-picker{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:12px 0 4px;}
     .dcs-team-picker::-webkit-scrollbar{display:none}
-    .dcs-team-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:10.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--dcs-bd);background:var(--dcs-surface);color:var(--dcs-muted);transition:.18s;white-space:nowrap;}
+    .dcs-team-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--dcs-bd);background:var(--dcs-surface);color:var(--dcs-muted);transition:.18s;white-space:nowrap;}
     .dcs-team-chip:active{transform:scale(.95)}
     .dcs-team-chip.on{color:#fff;box-shadow:0 2px 10px var(--dcs-shadow-sm)}
-    .dcs-team-hint{font-size:9.5px;color:var(--dcs-muted2);padding:0 0 6px;}
+    .dcs-team-hint{font-size:10.5px;color:var(--dcs-muted2);padding:0 0 6px;}
 
     /* Input row — bottom composer */
     .dcs-input-row{display:flex;gap:9px;align-items:flex-start;padding:12px 0 4px;border-top:1px solid var(--dcs-bd2);margin-top:6px}
     .dcs-input-av{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:rgba(255,0,80,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;overflow:hidden}
     .dcs-input-av img{width:100%;height:100%;object-fit:cover}
     .dcs-input-wrap{flex:1;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px}
-    .dcs-input{flex:1;background:transparent;border:none;outline:none;color:var(--dcs-tx);font-family:inherit;font-size:12px}
+    .dcs-input{flex:1;background:transparent;border:none;outline:none;color:var(--dcs-tx);font-family:inherit;font-size:13px}
     .dcs-input::placeholder{color:var(--dcs-muted2)}
     .dcs-send-btn{background:var(--dcs-acc);color:#fff;border:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;flex-shrink:0;transition:.15s}
     .dcs-send-btn:active{transform:scale(.9)}
@@ -199,30 +199,30 @@
 
     .dcs-cbody{flex:1;min-width:0}
     .dcs-chead{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap}
-    .dcs-name{font-size:11px;font-weight:800;color:var(--dcs-tx);cursor:pointer}
+    .dcs-name{font-size:12px;font-weight:800;color:var(--dcs-tx);cursor:pointer}
     .dcs-verified{width:13px;height:13px;border-radius:50%;background:#38bdf8;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
     .dcs-verified i{font-size:6px;color:#fff}
     .dcs-verified.writer{background:#ff0050}
-    .dcs-team-tag{font-size:7.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.03em;white-space:nowrap;border:1px solid transparent}
-    .dcs-time{font-size:9px;color:var(--dcs-muted2)}
-    .dcs-edited-tag{font-size:9px;color:var(--dcs-muted2);font-style:italic}
-    .dcs-text{font-size:11.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
+    .dcs-team-tag{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.03em;white-space:nowrap;border:1px solid transparent}
+    .dcs-time{font-size:10px;color:var(--dcs-muted2)}
+    .dcs-edited-tag{font-size:10px;color:var(--dcs-muted2);font-style:italic}
+    .dcs-text{font-size:12.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
     .dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700}
 
     /* Inline edit form */
     .dcs-edit-row{display:flex;gap:7px;align-items:center;padding:2px 0 6px}
-    .dcs-edit-inp{flex:1;background:var(--dcs-card);border:1.5px solid rgba(255,0,80,.35);border-radius:18px;padding:7px 12px;color:var(--dcs-tx);font-family:inherit;font-size:11.5px;outline:none}
+    .dcs-edit-inp{flex:1;background:var(--dcs-card);border:1.5px solid rgba(255,0,80,.35);border-radius:18px;padding:7px 12px;color:var(--dcs-tx);font-family:inherit;font-size:12.5px;outline:none}
     .dcs-edit-btn{width:26px;height:26px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0;transition:.15s}
     .dcs-edit-btn:active{transform:scale(.9)}
     .dcs-edit-save{background:var(--dcs-acc);color:#fff}
     .dcs-edit-cancel{background:var(--dcs-surface2);color:var(--dcs-muted)}
 
     /* Fallback reaction bubble (only rendered when reaction-picker.js is absent) */
-    .dcs-rx-bubble{display:inline-flex;align-items:center;gap:2px;background:var(--dcs-card);border:1px solid var(--dcs-bd);border-radius:999px;padding:1px 6px;margin-top:4px;cursor:pointer;font-size:11px;color:var(--dcs-muted)}
+    .dcs-rx-bubble{display:inline-flex;align-items:center;gap:2px;background:var(--dcs-card);border:1px solid var(--dcs-bd);border-radius:999px;padding:1px 6px;margin-top:4px;cursor:pointer;font-size:12px;color:var(--dcs-muted)}
     .dcs-rx-bubble.has-rx{border-color:rgba(255,0,80,.3);background:rgba(255,0,80,.1)}
 
     .dcs-actions{display:flex;align-items:center;gap:0;margin-top:5px;flex-wrap:wrap}
-    .dcs-action-btn{font-size:10px;color:var(--dcs-muted2);cursor:pointer;display:flex;align-items:center;gap:3px;font-weight:600;padding:3px 7px;border-radius:7px;transition:.15s;user-select:none}
+    .dcs-action-btn{font-size:11px;color:var(--dcs-muted2);cursor:pointer;display:flex;align-items:center;gap:3px;font-weight:600;padding:3px 7px;border-radius:7px;transition:.15s;user-select:none}
     .dcs-action-btn:active{background:rgba(255,0,80,.1)}
     .dcs-action-btn.liked{color:var(--dcs-acc)}
     .dcs-action-btn i{font-size:11px}
@@ -238,11 +238,11 @@
     .dcs-rx-ct{font-size:7.5px;font-weight:700;color:var(--dcs-muted2);min-width:14px;text-align:center}
     .dcs-rx-btn.picked .dcs-rx-ct{color:#ff7a9a}
 
-    .dcs-dots-btn{margin-left:auto;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--dcs-muted2);cursor:pointer;flex-shrink:0;transition:.15s}
+    .dcs-dots-btn{margin-left:auto;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--dcs-muted2);cursor:pointer;flex-shrink:0;transition:.15s}
     .dcs-dots-btn:active{background:var(--dcs-card);color:var(--dcs-tx)}
     .dcs-dots-menu{position:fixed;z-index:1900;background:var(--dcs-bg);border:1px solid var(--dcs-bd);border-radius:12px;padding:5px;min-width:170px;box-shadow:0 8px 32px var(--dcs-shadow-lg);display:none}
     .dcs-dots-menu.open{display:block}
-    .dcs-dots-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;font-size:12px;font-weight:600;color:var(--dcs-muted);cursor:pointer;transition:.12s}
+    .dcs-dots-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;font-size:13px;font-weight:600;color:var(--dcs-muted);cursor:pointer;transition:.12s}
     .dcs-dots-item:active{background:var(--dcs-hover);color:var(--dcs-tx)}
     .dcs-dots-item.danger{color:#f87171}
     .dcs-dots-item i{font-size:12px;width:14px;text-align:center}

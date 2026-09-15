@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Request Withdrawal · DroBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--success:#22c55e;--success-soft:#e9fbf0;--warning:#f59e0b;--warning-soft:#fef3e2;--blue:#3b82f6;--blue-soft:#e7f0fe;--purple:#9333ea;--purple-soft:#f3e8ff;--danger:#ef4444;--danger-soft:#fdeaea}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif}
+img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;border:none;background:none}a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,247,248,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.tb-title-wrap{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tb-title{font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+.avatar-btn img{width:100%;height:100%}
+.menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
+
+/* ── HAMBURGER DRAWER ── */
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-head .tb-logo{width:34px;height:34px;font-size:14px}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:#f1f1f4;color:#555;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--muted);flex-shrink:0}
+.drawer-item:active{background:#f5f5f7}
+.drawer-item.active{background:rgba(255,45,85,.08);color:var(--pink)}
+.drawer-item.active i{color:var(--pink)}
+
+.content{padding:16px}
+
+/* ── Balance Banner ── */
+.balance-mini{background:linear-gradient(135deg,var(--pink),#7a0030);border-radius:16px;padding:18px 16px;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.bal-label{font-size:11px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.05em}
+.bal-amount{font-size:26px;font-weight:800;margin-top:2px}
+.bal-min{font-size:10.5px;opacity:.6;margin-top:4px}
+
+/* ── Form ── */
+.form-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.form-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.form-title i{color:var(--pink);font-size:15px}
+.form-group{margin-bottom:14px}
+.form-group:last-child{margin-bottom:0}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.form-input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;font-family:inherit;outline:none;transition:.15s}
+.form-input:focus{border-color:var(--pink)}
+.form-input::placeholder{color:var(--muted);font-weight:500}
+.amount-wrap{position:relative}
+.amount-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;font-weight:800;color:var(--muted)}
+.amount-input{padding-left:28px;font-size:22px;font-weight:800}
+.withdraw-all{display:inline-block;font-size:12px;font-weight:700;color:var(--pink);cursor:pointer;margin-top:6px}
+.withdraw-all:active{opacity:.7}
+
+/* ── Method Selector ── */
+.method-option{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.method-option.selected{border-color:var(--pink);background:rgba(255,45,85,.04)}
+.method-option:active{opacity:.85}
+.method-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.method-icon.bank{background:var(--blue-soft);color:var(--blue)}
+.method-icon.paypal{background:var(--purple-soft);color:var(--purple)}
+.method-icon.mobile{background:var(--warning-soft);color:var(--warning)}
+.method-info{flex:1;min-width:0}
+.method-name{font-size:13px;font-weight:700}
+.method-detail{font-size:11.5px;color:var(--muted);margin-top:1px}
+.method-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:transparent;transition:.15s}
+.method-option.selected .method-check{border-color:var(--pink);background:var(--pink);color:#fff}
+
+.add-method-link{display:flex;align-items:center;gap:8px;padding:12px;color:var(--pink);font-size:13px;font-weight:700;cursor:pointer}
+.add-method-link:active{opacity:.7}
+
+/* ── Empty State ── */
+.empty-state{text-align:center;padding:30px 20px;color:var(--muted)}
+.empty-state i{font-size:32px;margin-bottom:10px;color:var(--border)}
+.empty-state p{font-size:13px;line-height:1.5}
+
+/* ── Submit ── */
+.submit-btn{width:100%;padding:14px;border-radius:14px;background:var(--pink);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;box-shadow:0 6px 20px rgba(255,0,80,.3)}
+.submit-btn:active{opacity:.85}
+.submit-btn:disabled{opacity:.5;pointer-events:none}
+
+/* ── Summary ── */
+.summary-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}
+.summary-row .label{color:var(--muted);font-weight:600}
+.summary-row .value{font-weight:700}
+.summary-divider{border-top:1px solid var(--border);margin:4px 0}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Success Modal ── */
+.modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.25s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:30px 24px;text-align:center;transform:scale(.9);transition:.25s}
+.modal-overlay.show .modal{transform:scale(1)}
+.modal-icon{width:64px;height:64px;border-radius:50%;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px}
+.modal h3{font-size:18px;font-weight:800;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px}
+.modal-btn{width:100%;padding:12px;border-radius:12px;background:var(--pink);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit}
+
+@media (min-width:600px){.content{max-width:480px;margin:0 auto;padding:20px}.topbar{max-width:480px;margin:0 auto}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="menu-btn" id="menuBtn"><i class="fas fa-bars"></i></div>
+  <div class="tb-title-wrap">
+    <div class="tb-logo"><i class="fas fa-building-columns"></i></div>
+    <div class="tb-title">Request Withdrawal</div>
+  </div>
+  <div class="avatar-btn"><img src="https://i.pravatar.cc/100?img=47" alt="Luna Vale"/></div>
+</div>
+
+<div class="content">
+  <div class="balance-mini" id="balanceMini"></div>
+
+  <div class="form-section">
+    <div class="form-title"><i class="fas fa-dollar-sign"></i> Withdrawal Amount</div>
+    <div class="form-group">
+      <div class="amount-wrap">
+        <span class="amount-prefix">$</span>
+        <input class="form-input amount-input" id="amountInput" type="number" min="0" step="1" placeholder="0"/>
+      </div>
+      <div class="withdraw-all" id="withdrawAll">Withdraw All</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-title"><i class="fas fa-wallet"></i> Payment Method</div>
+    <div id="methodList"></div>
+  </div>
+
+  <div class="form-section" id="summarySection" style="display:none">
+    <div class="form-title"><i class="fas fa-receipt"></i> Summary</div>
+    <div id="summaryContent"></div>
+  </div>
+
+  <button class="submit-btn" id="submitBtn" disabled><i class="fas fa-paper-plane"></i> Request Withdrawal</button>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal">
+    <div class="modal-icon"><i class="fas fa-check"></i></div>
+    <h3>Withdrawal Requested!</h3>
+    <p id="successMsg">Your withdrawal request has been submitted. You'll receive your funds within 3-5 business days.</p>
+    <button class="modal-btn" onclick="location.href='earnings.html'">Back to Earnings</button>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="tb-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/author-earnings-service.js"></script>
+<script>
+// HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
+// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+const BOOK_WORKSPACE_ITEMS=[
+  {label:'Chapters',icon:'fa-list-ul',href:'#'},
+  {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
+  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
+];
+function getMENU_SECTIONS(){
+  const params=new URLSearchParams(location.search);
+  const bookId=params.get('book');
+  const sections=[
+    {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
+    {title:'Account',items:[
+      {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
+      {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html'},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'},
+      {label:'Contracts',icon:'fa-file-signature',href:'#'},
+      {label:'Messages',icon:'fa-comment-dots',href:'#'},
+      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Settings',icon:'fa-gear',href:'#'}
+    ]}
+  ];
+  if(bookId) sections.splice(1,0,{title:'Book Workspace',items:BOOK_WORKSPACE_ITEMS.map(it=>Object.assign({},it,{href:it.href.includes('?')?it.href.split('?')[0]+'?book='+bookId:it.href+'?book='+bookId}))});
+  return sections;
+}
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML=getMENU_SECTIONS().map(sec=>'<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(it=>'<a class="drawer-item'+(it.active?' active':'')+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>').join('')+'</div>').join('');
+}
+renderDrawer();
+const menuBtn=document.getElementById('menuBtn'),drawer=document.getElementById('drawer'),drawerOverlay=document.getElementById('drawerOverlay'),drawerClose=document.getElementById('drawerClose');
+function openDrawer(){drawer.classList.add('open');drawerOverlay.classList.add('open')}
+function closeDrawer(){drawer.classList.remove('open');drawerOverlay.classList.remove('open')}
+menuBtn.addEventListener('click',openDrawer);
+drawerClose.addEventListener('click',closeDrawer);
+drawerOverlay.addEventListener('click',closeDrawer);
+
+let balance = 0, minWithdrawal = 100, methods = [], selectedMethod = null;
+
+function toast(m){const t=document.getElementById('toastEl')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'toastEl',className:'toast'}));t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500)}
+
+async function render(){
+  const earnings = await AuthorFinance.getEarnings();
+  methods = await AuthorFinance.getPaymentMethods();
+  balance = earnings.balance;
+  minWithdrawal = window.DemoData?.WITHDRAWAL_MIN || 100;
+
+  document.getElementById('balanceMini').innerHTML =
+    '<div><div class="bal-label">Available Balance</div><div class="bal-amount">'+AuthorFinance.fmtCurrency(balance)+'</div><div class="bal-min">Minimum withdrawal: $'+minWithdrawal+'</div></div>'+
+    '<a href="payment-details.html" style="color:#fff;font-size:12px;font-weight:700;opacity:.8"><i class="fas fa-credit-card"></i> Manage</a>';
+
+  renderMethods();
+  validate();
+}
+
+function renderMethods(){
+  const el = document.getElementById('methodList');
+  if (!methods.length) {
+    el.innerHTML = '<div class="empty-state"><i class="fas fa-credit-card"></i><p>No payment methods yet.<br/><a href="payment-details.html" style="color:var(--pink);font-weight:700">Add one now</a></p></div>';
+    return;
+  }
+  el.innerHTML = methods.map(m => {
+    const sel = selectedMethod === m.id ? ' selected' : '';
+    const detail = m.type === 'bank' ? m.bankName + ' •••• ' + m.accountNumber.slice(-4) :
+                   m.type === 'paypal' ? m.email :
+                   m.phoneNumber;
+    return '<div class="method-option'+sel+'" onclick="selectMethod(\''+m.id+'\')">'+
+      '<div class="method-icon '+m.type+'"><i class="fas '+m.icon+'"></i></div>'+
+      '<div class="method-info"><div class="method-name">'+(m.type==='bank'?m.bankName:m.type==='paypal'?'PayPal':m.provider)+'</div><div class="method-detail">'+detail+(m.isDefault?' · Default':'')+'</div></div>'+
+      '<div class="method-check"><i class="fas fa-check"></i></div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectMethod(id){
+  selectedMethod = selectedMethod === id ? null : id;
+  renderMethods();
+  validate();
+}
+
+function validate(){
+  const amt = parseFloat(document.getElementById('amountInput').value) || 0;
+  const btn = document.getElementById('submitBtn');
+  const valid = amt >= minWithdrawal && amt <= balance && selectedMethod;
+  btn.disabled = !valid;
+
+  const sec = document.getElementById('summarySection');
+  if (amt > 0 && selectedMethod) {
+    const method = methods.find(m => m.id === selectedMethod);
+    const methodLabel = method.type === 'bank' ? method.bankName + ' •••• ' + method.accountNumber.slice(-4) :
+                        method.type === 'paypal' ? method.email : method.phoneNumber;
+    sec.style.display = '';
+    document.getElementById('summaryContent').innerHTML =
+      '<div class="summary-row"><span class="label">Amount</span><span class="value">'+AuthorFinance.fmtCurrency(amt)+'</span></div>'+
+      '<div class="summary-row"><span class="label">Method</span><span class="value">'+methodLabel+'</span></div>'+
+      '<div class="summary-divider"></div>'+
+      '<div class="summary-row"><span class="label">Remaining Balance</span><span class="value">'+AuthorFinance.fmtCurrency(balance - amt)+'</span></div>'+
+      '<div class="summary-row"><span class="label">Processing Time</span><span class="value">3-5 business days</span></div>';
+  } else {
+    sec.style.display = 'none';
+  }
+}
+
+document.getElementById('amountInput').addEventListener('input', validate);
+document.getElementById('withdrawAll').addEventListener('click', () => {
+  document.getElementById('amountInput').value = balance;
+  validate();
+});
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const amt = parseFloat(document.getElementById('amountInput').value) || 0;
+  if (!selectedMethod) { toast('Select a payment method'); return; }
+  if (amt < minWithdrawal) { toast('Minimum withdrawal is $'+minWithdrawal); return; }
+  if (amt > balance) { toast('Insufficient balance'); return; }
+  try {
+    const result = await AuthorFinance.requestWithdrawal(amt, selectedMethod);
+    document.getElementById('successMsg').textContent = 'Your $'+amt+' withdrawal request has been submitted. Funds will arrive within 3-5 business days.';
+    document.getElementById('successModal').classList.add('show');
+  } catch (e) { toast(e.message); }
+});
+
+render();
+</script>
+</body>
+</html>

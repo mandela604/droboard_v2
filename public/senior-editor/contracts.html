@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Contracts — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.page-hdr h1{font-size:19px;font-weight:800}
+.page-hdr p{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.btn-primary{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn-primary:hover{filter:brightness(1.05)}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:20px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:11px;color:var(--text-muted);font-weight:600;margin-top:1px}
+
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 20px;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;white-space:nowrap;display:flex;align-items:center;gap:7px;transition:.15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .cnt{font-size:10px;font-weight:800;background:var(--table-head);color:var(--text-faint);padding:2px 7px;border-radius:20px}
+.tab.active .cnt{background:var(--accent-soft);color:var(--accent)}
+
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+.search-box input::placeholder{color:var(--text-faint)}
+.search-box i{color:var(--text-faint);font-size:12px}
+.filter-select{appearance:none;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 30px 9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit}
+
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 18px;white-space:nowrap}
+tbody td{padding:13px 18px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+tbody tr:hover{background:var(--hover)}
+.contract-cell{display:flex;align-items:center;gap:10px}
+.contract-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.contract-id{font-weight:700;font-size:12.5px}
+.contract-type{font-size:11px;color:var(--text-muted);margin-top:1px}
+.author-cell{display:flex;align-items:center;gap:8px}
+.author-cell img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.author-name{font-weight:600;font-size:12.5px}
+.book-title{font-weight:600;font-size:12.5px;line-height:1.3}
+.date-cell{font-size:12px;color:var(--text-muted)}
+
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.status-pill .dot{width:6px;height:6px;border-radius:50%}
+.status-pill.awaiting{background:var(--amber-bg);color:var(--amber)}.status-pill.awaiting .dot{background:var(--amber)}
+.status-pill.signed{background:var(--green-bg);color:var(--green)}.status-pill.signed .dot{background:var(--green)}
+.status-pill.active{background:var(--blue-bg);color:var(--blue)}.status-pill.active .dot{background:var(--blue)}
+.status-pill.rejected{background:var(--red-bg);color:var(--red)}.status-pill.rejected .dot{background:var(--red)}
+.status-pill.expired{background:var(--table-head);color:var(--text-faint)}.status-pill.expired .dot{background:var(--text-faint)}
+
+.actions-cell{display:flex;align-items:center;gap:5px}
+.act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:.12s;font-family:inherit}
+.act-btn:hover{color:var(--accent);border-color:var(--accent)}
+.act-btn.approve:hover{color:var(--green);border-color:var(--green)}
+.act-btn.reject:hover{color:var(--red);border-color:var(--red)}
+
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.page-info{font-size:12px;color:var(--text-muted)}.page-info b{color:var(--text);font-weight:700}
+.page-btns{display:flex;gap:5px}
+.pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pg-btn:disabled{opacity:.4;cursor:default}
+
+/* ── Templates Tab ── */
+.tpl-grid{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+.tpl-detail{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;position:sticky;top:86px}
+.tpl-dp-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.tpl-dp-icn{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.tpl-dp-title{font-size:14px;font-weight:800}
+.tpl-dp-meta{font-size:11px;color:var(--text-muted);margin-top:3px}
+.tpl-dp-tabs{display:flex;gap:14px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.tpl-dp-tab{padding:0 1px 8px;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tpl-dp-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tpl-dp-preview{background:var(--table-head);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:11.5px;line-height:1.7;color:var(--text);max-height:260px;overflow-y:auto;margin-bottom:14px}
+.tpl-dp-preview h3{font-size:12px;font-weight:800;text-align:center;margin-bottom:8px}
+.tpl-dp-preview p{margin-bottom:8px;color:var(--text-muted)}
+.tpl-dp-preview b{color:var(--text)}
+.tpl-dp-detail-row{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);font-size:12px}
+.tpl-dp-detail-row:first-child{border-top:none}
+.tpl-dp-detail-row span{color:var(--text-muted)}
+.tpl-dp-detail-row b{font-weight:700}
+.tpl-dp-clause{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border);font-size:12px}
+.tpl-dp-clause:first-child{border-top:none}
+.tpl-dp-clause i{color:var(--accent);font-size:11px;width:16px;text-align:center}
+.tpl-dp-actions{display:flex;gap:8px;margin-top:14px}
+.tpl-dp-btn{flex:1;padding:9px;border-radius:9px;font-size:11.5px;font-weight:700;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit}
+.tpl-dp-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Signed Tab ── */
+.signed-grid{display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start}
+.signed-detail{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;position:sticky;top:86px}
+.signed-hero{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px}
+.signed-cover{width:70px;height:100px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
+.signed-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.signed-meta{background:var(--table-head);border-radius:9px;padding:10px 12px}
+.signed-meta-lbl{font-size:9.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em}
+.signed-meta-val{font-size:12.5px;font-weight:700;margin-top:2px}
+.signed-clause{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border);font-size:12px}
+.signed-clause:first-child{border-top:none}
+.signed-clause i{color:var(--green);font-size:11px;width:16px;text-align:center}
+
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(10,6,25,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:520px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.4);transform:scale(.92);transition:transform .25s;overflow:hidden;max-height:85vh;overflow-y:auto}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+.modal-hdr h3{font-size:15px;font-weight:800}
+.modal-close{width:30px;height:30px;border-radius:8px;background:var(--input-bg);border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-muted);cursor:pointer}
+.modal-close:hover{color:var(--accent);border-color:var(--accent)}
+.modal-body{padding:20px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:70px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-actions{display:flex;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.modal-actions button{flex:1;padding:10px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:.12s}
+.btn-send{background:var(--accent);color:#fff}.btn-send:hover{filter:brightness(1.05)}
+.btn-cancel{background:var(--input-bg);color:var(--text);border:1px solid var(--input-border)}
+
+.view-detail{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.view-detail:last-child{border-bottom:none}
+.view-label{font-size:10.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+.view-value{font-size:13px;font-weight:600;margin-top:2px}
+
+.reply-box{background:var(--blue-bg);border-radius:10px;padding:11px 13px;margin-bottom:10px}
+.reply-box .r-from{font-size:11px;font-weight:700;color:var(--blue)}
+.reply-box .r-msg{font-size:12.5px;color:var(--text);line-height:1.5;margin-top:3px}
+.reply-box .r-time{font-size:10px;color:var(--text-faint);margin-top:3px}
+
+/* ── Chat Interface ── */
+.chat-section{margin-top:16px;border-top:1px solid var(--border);padding-top:14px}
+.chat-section-title{font-size:10.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.chat-section-title .settled-badge{background:var(--green-bg);color:var(--green);font-size:10px;padding:2px 8px;border-radius:20px}
+.chat-area{background:var(--table-head);border:1px solid var(--border);border-radius:12px;padding:14px;max-height:280px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
+.chat-empty{text-align:center;color:var(--text-faint);font-size:12px;padding:20px 0}
+.chat-empty i{font-size:22px;margin-bottom:6px;opacity:.4;display:block}
+.chat-msg{display:flex;gap:8px;max-width:85%}
+.chat-msg.sent{align-self:flex-end;flex-direction:row-reverse}
+.chat-msg.received{align-self:flex-start}
+.chat-av{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:2px}
+.chat-bubble{border-radius:14px;padding:9px 13px;font-size:12.5px;line-height:1.55;position:relative}
+.chat-msg.sent .chat-bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.received .chat-bubble{background:var(--card);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px}
+.chat-msg .chat-name{font-size:10px;font-weight:700;margin-bottom:2px}
+.chat-msg.sent .chat-name{color:rgba(255,255,255,.7)}
+.chat-msg.received .chat-name{color:var(--accent)}
+.chat-msg .chat-time{font-size:9.5px;margin-top:3px;text-align:right}
+.chat-msg.sent .chat-time{color:rgba(255,255,255,.55)}
+.chat-msg.received .chat-time{color:var(--text-faint)}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end}
+.chat-input-wrap{flex:1;position:relative}
+.chat-input-wrap textarea{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none;resize:none;min-height:40px;max-height:100px}
+.chat-input-wrap textarea:focus{border-color:var(--accent)}
+.chat-input-wrap textarea:disabled{opacity:.5;cursor:not-allowed}
+.chat-send-btn{width:40px;height:40px;border-radius:10px;border:none;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0;transition:.12s}
+.chat-send-btn.send{background:var(--accent);color:#fff}.chat-send-btn.send:hover{filter:brightness(1.05)}
+.chat-send-btn.settle{background:var(--green);color:#fff}.chat-send-btn.settle:hover{filter:brightness(1.05)}
+.chat-send-btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-faint)}
+.empty-state i{font-size:28px;margin-bottom:10px;opacity:.5}
+.empty-state p{font-size:13px}
+
+@media (max-width:1180px){.stats-grid{grid-template-columns:repeat(2,1fr)}.tpl-grid,.signed-grid{grid-template-columns:1fr}.tpl-detail,.signed-detail{position:static}}
+@media (max-width:680px){.stats-grid{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}.page-hdr{flex-direction:column;align-items:stretch}.btn-primary{justify-content:center}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-hdr">
+    <div><h1>Contracts</h1><p>Manage contracts, templates, and signed agreements.</p></div>
+    <button class="btn-primary" id="btnSend"><i class="fas fa-paper-plane"></i> Send Contract</button>
+  </div>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="tabs" id="mainTabs">
+    <div class="tab active" data-tab="contracts">All Contracts <span class="cnt" id="cntContracts">0</span></div>
+    <div class="tab" data-tab="templates">Templates <span class="cnt" id="cntTemplates">0</span></div>
+    <div class="tab" data-tab="signed">Signed <span class="cnt" id="cntSigned">0</span></div>
+  </div>
+
+  <!-- Contracts Tab -->
+  <div id="tabContracts">
+    <div class="filters">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by ID, author, or book…"/></div>
+      <select class="filter-select" id="statusFilter">
+        <option value="">All Status</option><option value="awaiting">Awaiting</option><option value="signed">Signed</option><option value="active">Active</option><option value="rejected">Rejected</option><option value="expired">Expired</option>
+      </select>
+      <select class="filter-select" id="typeFilter">
+        <option value="">All Types</option><option>Exclusive Publishing</option><option>Revenue Share</option><option>License Agreement</option>
+      </select>
+    </div>
+    <div class="table-card">
+      <div class="table-wrap"><table><thead><tr><th>Contract</th><th>Author</th><th>Book</th><th>Status</th><th>Date Sent</th><th>Signed</th><th>Actions</th></tr></thead><tbody id="contractBody"></tbody></table></div>
+      <div class="pagination"><div class="page-info" id="pageInfo"></div><div class="page-btns" id="pageBtns"></div></div>
+    </div>
+  </div>
+
+  <!-- Templates Tab -->
+  <div id="tabTemplates" style="display:none">
+    <div class="tpl-grid">
+      <div class="table-card">
+        <div class="table-wrap"><table><thead><tr><th>Template</th><th>Type</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="templateBody"></tbody></table></div>
+      </div>
+      <div class="tpl-detail" id="tplDetail"></div>
+    </div>
+  </div>
+
+  <!-- Signed Tab -->
+  <div id="tabSigned" style="display:none">
+    <div class="signed-grid">
+      <div class="table-card">
+        <div class="table-wrap"><table><thead><tr><th>Contract</th><th>Author</th><th>Book</th><th>Duration</th><th>Signed</th><th>Actions</th></tr></thead><tbody id="signedBody"></tbody></table></div>
+      </div>
+      <div class="signed-detail" id="signedDetail"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Send Contract Modal -->
+<div class="modal-overlay" id="sendModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3>Send New Contract</h3><div class="modal-close" id="closeSendModal"><i class="fas fa-xmark"></i></div></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Author</label><select id="sendAuthor"><option value="">Select author…</option><option>Sofia Lindqvist</option><option>Daniel Reyes</option><option>Amara Okafor</option><option>Julien Moreau</option><option>Nadia Petrov</option><option>Kenji Watanabe</option><option>Priya Nair</option><option>Layla Haddad</option><option>Isabella Rossi</option></select></div>
+      <div class="form-group"><label>Book Title</label><input id="sendBook" placeholder="e.g. The Runaway Bride"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>Contract Type</label><select id="sendType"><option>Exclusive Publishing</option><option>Revenue Share</option><option>License Agreement</option></select></div>
+        <div class="form-group"><label>Duration</label><select id="sendDuration"><option>1 Year</option><option>2 Years</option><option>3 Years</option><option>5 Years</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Revenue Split (%)</label><input id="sendRevenue" type="number" placeholder="e.g. 70" min="0" max="100"/></div>
+        <div class="form-group"><label>Advance (₦)</label><input id="sendAdvance" type="number" placeholder="e.g. 50000"/></div>
+      </div>
+      <div class="form-group"><label>Template</label><select id="sendTemplate"><option value="">Select template…</option></select></div>
+      <div class="form-group"><label>Notes</label><textarea id="sendNotes" placeholder="Any additional terms or notes…"></textarea></div>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" id="cancelSend">Cancel</button><button class="btn-send" id="confirmSend"><i class="fas fa-paper-plane"></i> Send Contract</button></div>
+  </div>
+</div>
+
+<!-- View Contract Modal -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3>Contract Details</h3><div class="modal-close" id="closeViewModal"><i class="fas fa-xmark"></i></div></div>
+    <div class="modal-body" id="viewModalBody"></div>
+    <div class="modal-actions" id="viewModalActions"></div>
+  </div>
+</div>
+
+<script src="data/contracts-demo-data.js"></script>
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="services/contracts-service.js"></script>
+<script>
+SeniorEditorSidebar.attach('#pageRoot',{
+  activeItem:'contracts',title:'Contracts',subtitle:'Manage contracts, templates & signed agreements',
+  user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,
+  searchPlaceholder:'Search contracts…',mobileSearchTarget:'#searchInput',
+  onSearch:function(v){document.getElementById('searchInput').value=v;contractPage=1;renderContracts();}
+});
+
+var ICO={red:'var(--red)',amber:'var(--amber)',blue:'var(--blue)',purple:'var(--purple)',green:'var(--green)',accent:'var(--accent)'};
+var BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple:'var(--purple-bg)',green:'var(--green-bg)',accent:'rgba(255,0,80,.1)'};
+
+var allContracts=[], allTemplates=[], allSigned=[];
+var activeTab='contracts', contractPage=1, tplSelectedId=null, signedSelectedId=null;
+var PER_PAGE=8;
+
+function statusPill(s){
+  var m={awaiting:'awaiting',signed:'signed',active:'active',rejected:'rejected',expired:'expired'};
+  var l={awaiting:'Awaiting Signature',signed:'Signed',active:'Active',rejected:'Rejected',expired:'Expired'};
+  return'<span class="status-pill '+(m[s]||'')+'"><span class="dot"></span>'+(l[s]||s)+'</span>';
+}
+
+function money(n){return'$'+Number(n||0).toLocaleString('en-US');}
+
+async function init(){
+  allContracts=await ContractsService.getContracts();
+  allTemplates=await ContractsService.getTemplates();
+  allSigned=await ContractsService.getSignedContracts();
+  tplSelectedId=allTemplates[0]?allTemplates[0].id:null;
+  signedSelectedId=allSigned[0]?allSigned[0].id:null;
+  renderStats();renderTabs();renderContracts();renderTemplateSelect();
+}
+
+/* ── Stats ── */
+function renderStats(){
+  var awaiting=allContracts.filter(function(c){return c.status==='awaiting'}).length;
+  var signedActive=allContracts.filter(function(c){return c.status==='signed'||c.status==='active'}).length;
+  var rejected=allContracts.filter(function(c){return c.status==='rejected'}).length;
+  var total=allContracts.length;
+  document.getElementById('statsGrid').innerHTML=
+    '<div class="stat-card"><div class="stat-ico" style="background:var(--amber-bg);color:var(--amber)"><i class="fas fa-clock"></i></div><div><div class="stat-num">'+awaiting+'</div><div class="stat-lbl">Awaiting Signature</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-shield-halved"></i></div><div><div class="stat-num">'+signedActive+'</div><div class="stat-lbl">Active / Signed</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico" style="background:var(--red-bg);color:var(--red)"><i class="fas fa-xmark-circle"></i></div><div><div class="stat-num">'+rejected+'</div><div class="stat-lbl">Rejected</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-file-contract"></i></div><div><div class="stat-num">'+total+'</div><div class="stat-lbl">Total Contracts</div></div></div>';
+}
+
+/* ── Tabs ── */
+function renderTabs(){
+  document.getElementById('cntContracts').textContent=allContracts.length;
+  document.getElementById('cntTemplates').textContent=allTemplates.length;
+  document.getElementById('cntSigned').textContent=allSigned.length;
+}
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
+    t.classList.add('active');
+    activeTab=t.dataset.tab;
+    document.getElementById('tabContracts').style.display=activeTab==='contracts'?'':'none';
+    document.getElementById('tabTemplates').style.display=activeTab==='templates'?'':'none';
+    document.getElementById('tabSigned').style.display=activeTab==='signed'?'':'none';
+    if(activeTab==='contracts')renderContracts();
+    else if(activeTab==='templates')renderTemplates();
+    else renderSignedList();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   CONTRACTS TAB
+   ═══════════════════════════════════════════════════════════ */
+function getFilteredContracts(){
+  var q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
+  var status=document.getElementById('statusFilter').value;
+  var type=document.getElementById('typeFilter').value;
+  var list=allContracts.slice();
+  if(status)list=list.filter(function(c){return c.status===status});
+  if(type)list=list.filter(function(c){return c.type===type});
+  if(q)list=list.filter(function(c){return c.id.toLowerCase().includes(q)||c.author.toLowerCase().includes(q)||c.book.toLowerCase().includes(q)});
+  return list;
+}
+
+function renderContracts(){
+  var list=getFilteredContracts();
+  var tp=Math.max(1,Math.ceil(list.length/PER_PAGE));
+  if(contractPage>tp)contractPage=tp;
+  var start=(contractPage-1)*PER_PAGE;
+  var page=list.slice(start,start+PER_PAGE);
+  var body=document.getElementById('contractBody');
+  if(!page.length){body.innerHTML='<tr><td colspan="7" class="empty-state"><i class="fas fa-file-contract"></i><p>No contracts match this filter.</p></td></tr>';document.getElementById('pageInfo').innerHTML='';document.getElementById('pageBtns').innerHTML='';return;}
+  body.innerHTML=page.map(function(c){
+    var idx=allContracts.indexOf(c);
+    var ibg=c.status==='awaiting'?'var(--amber-bg)':c.status==='signed'||c.status==='active'?'var(--green-bg)':c.status==='rejected'?'var(--red-bg)':'var(--table-head)';
+    var ic=c.status==='awaiting'?'var(--amber)':c.status==='signed'||c.status==='active'?'var(--green)':c.status==='rejected'?'var(--red)':'var(--text-faint)';
+    var acts='';
+    if(c.status==='awaiting'){
+      acts='<button class="act-btn approve" title="Approve" data-action="approve" data-idx="'+idx+'"><i class="fas fa-check"></i></button>'+
+           '<button class="act-btn reject" title="Reject" data-action="reject" data-idx="'+idx+'"><i class="fas fa-xmark"></i></button>';
+    }
+    acts+='<button class="act-btn" title="View" data-action="view" data-idx="'+idx+'"><i class="fas fa-eye"></i></button>';
+    return'<tr>'+
+      '<td><div class="contract-cell"><div class="contract-icon" style="background:'+ibg+';color:'+ic+'"><i class="fas fa-file-contract"></i></div><div><div class="contract-id">'+c.id+'</div><div class="contract-type">'+c.type+'</div></div></div></td>'+
+      '<td><div class="author-cell"><img src="'+c.authorAv+'" alt=""/><span class="author-name">'+c.author+'</span></div></td>'+
+      '<td><div class="book-title">'+c.book+'</div></td>'+
+      '<td>'+statusPill(c.status)+'</td>'+
+      '<td class="date-cell">'+c.dateSent+'</td>'+
+      '<td class="date-cell">'+c.signedDate+'</td>'+
+      '<td><div class="actions-cell">'+acts+'</div></td>'+
+    '</tr>';
+  }).join('');
+  document.getElementById('pageInfo').innerHTML='Showing <b>'+(start+1)+'</b> to <b>'+Math.min(start+PER_PAGE,list.length)+'</b> of <b>'+list.length+'</b>';
+  renderPageBtns(tp);
+}
+
+function renderPageBtns(tp){
+  var w=document.getElementById('pageBtns');
+  if(tp<=1){w.innerHTML='';return;}
+  var h='<button class="pg-btn"'+(contractPage<=1?' disabled':'')+' data-p="'+(contractPage-1)+'"><i class="fas fa-chevron-left"></i></button>';
+  for(var i=1;i<=tp;i++)h+='<button class="pg-btn'+(i===contractPage?' active':'')+'" data-p="'+i+'">'+i+'</button>';
+  h+='<button class="pg-btn"'+(contractPage>=tp?' disabled':'')+' data-p="'+(contractPage+1)+'"><i class="fas fa-chevron-right"></i></button>';
+  w.innerHTML=h;
+  w.querySelectorAll('.pg-btn').forEach(function(b){b.addEventListener('click',function(){contractPage=parseInt(b.dataset.p,10);renderContracts();});});
+}
+
+document.getElementById('searchInput').addEventListener('input',function(){contractPage=1;renderContracts()});
+document.getElementById('statusFilter').addEventListener('change',function(){contractPage=1;renderContracts()});
+document.getElementById('typeFilter').addEventListener('change',function(){contractPage=1;renderContracts()});
+
+document.getElementById('contractBody').addEventListener('click',function(e){
+  var btn=e.target.closest('[data-action]');
+  if(!btn)return;
+  var action=btn.dataset.action;
+  var idx=parseInt(btn.dataset.idx,10);
+  if(action==='view')openViewModal(allContracts[idx]);
+  else if(action==='approve')doApproveContract(idx);
+  else if(action==='reject')doRejectContract(idx);
+});
+
+function doApproveContract(idx){
+  var c=allContracts[idx];c.status='signed';c.signedDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  toast('Contract approved — author notified');renderStats();renderContracts();
+}
+function doRejectContract(idx){
+  var note=prompt('Reason for rejection (shown to author):','');
+  if(note===null)return;
+  allContracts[idx].status='rejected';allContracts[idx].notes=note||allContracts[idx].notes;
+  toast('Contract rejected');renderStats();renderContracts();
+}
+
+/* ── View Modal ── */
+function chatTime(iso){
+  if(!iso)return '';
+  if(iso.includes('T')){var d=new Date(iso);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
+  return iso;
+}
+function renderChatMsgs(c){
+  var replies=c.replies||[];
+  if(!replies.length)return'<div class="chat-empty"><i class="fas fa-comments"></i>No messages yet. Start the conversation below.</div>';
+  return replies.map(function(r){
+    var isEditor=r.from==='Reina Morgan';
+    return'<div class="chat-msg '+(isEditor?'sent':'received')+'">'+
+      '<img class="chat-av" src="'+(isEditor?'https://i.pravatar.cc/100?img=47':c.authorAv)+'" alt=""/>'+
+      '<div class="chat-bubble"><div class="chat-name">'+r.from+'</div><div class="chat-msg-text">'+r.message+'</div><div class="chat-time">'+chatTime(r.time)+'</div></div>'+
+    '</div>';
+  }).join('');
+}
+function openViewModal(c){
+  var replies=c.replies||[];
+  var isSettled=!!c.settled;
+  var hasSentReply=replies.some(function(r){return r.from==='Reina Morgan'});
+  var chatSection=
+    '<div class="chat-section">'+
+      '<div class="chat-section-title"><i class="fas fa-comments"></i> Conversation with '+c.author+(isSettled?'<span class="settled-badge"><i class="fas fa-check-circle"></i> Settled</span>':'')+'</div>'+
+      '<div class="chat-area" id="chatArea">'+renderChatMsgs(c)+'</div>'+
+      (isSettled?
+        '<div class="chat-input-row"><div class="chat-input-wrap"><textarea id="chatInput" placeholder="Author can no longer reply. You can still send a message…" disabled></textarea></div>'+
+        '<button class="chat-send-btn settle" id="chatSendBtn" disabled title="Settled"><i class="fas fa-check-circle"></i></button></div>':
+        '<div class="chat-input-row"><div class="chat-input-wrap"><textarea id="chatInput" placeholder="Type a message to '+c.author+'…" rows="1"></textarea></div>'+
+        '<button class="chat-send-btn send" id="chatSendBtn" title="'+(hasSentReply?'Settle this conversation':'Send message')+'"><i class="fas '+(hasSentReply?'fa-check-circle':'fa-paper-plane')+'"></i></button></div>'
+      )+
+    '</div>';
+  document.getElementById('viewModalBody').innerHTML=
+    '<div class="view-detail"><div><div class="view-label">Contract ID</div><div class="view-value">'+c.id+'</div></div><div><div class="view-label">Status</div>'+statusPill(c.status)+'</div></div>'+
+    '<div class="view-detail"><div><div class="view-label">Author</div><div class="view-value">'+c.author+'</div></div><div><div class="view-label">Book</div><div class="view-value">'+c.book+'</div></div></div>'+
+    '<div class="view-detail"><div><div class="view-label">Type</div><div class="view-value">'+c.type+'</div></div><div><div class="view-label">Duration</div><div class="view-value">'+c.duration+'</div></div></div>'+
+    '<div class="view-detail"><div><div class="view-label">Revenue Split</div><div class="view-value">'+c.revenue+'%</div></div><div><div class="view-label">Advance</div><div class="view-value">'+money(c.advance)+'</div></div></div>'+
+    '<div class="view-detail"><div><div class="view-label">Date Sent</div><div class="view-value">'+c.dateSent+'</div></div><div><div class="view-label">Signed Date</div><div class="view-value">'+c.signedDate+'</div></div></div>'+
+    (c.notes?'<div class="view-detail"><div><div class="view-label">Notes</div><div class="view-value">'+c.notes+'</div></div></div>':'')+
+    chatSection;
+  var acts='';
+  if(c.status==='awaiting'){
+    acts='<button class="btn-cancel" id="viewClose">Close</button>'+
+         '<button class="btn-send" style="background:var(--red)" id="viewReject"><i class="fas fa-xmark"></i> Reject</button>'+
+         '<button class="btn-send" id="viewApprove"><i class="fas fa-check"></i> Approve</button>';
+  }else{
+    acts='<button class="btn-cancel" id="viewClose">Close</button>';
+  }
+  document.getElementById('viewModalActions').innerHTML=acts;
+  document.getElementById('viewModal').classList.add('open');
+  /* scroll chat to bottom */
+  var chatArea=document.getElementById('chatArea');
+  if(chatArea)chatArea.scrollTop=chatArea.scrollHeight;
+  /* auto-resize textarea */
+  var chatInput=document.getElementById('chatInput');
+  if(chatInput){
+    chatInput.addEventListener('input',function(){
+      this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';
+    });
+    chatInput.addEventListener('keydown',function(e){
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('chatSendBtn').click();}
+    });
+  }
+  document.getElementById('viewClose').addEventListener('click',function(){document.getElementById('viewModal').classList.remove('open')});
+  var apprBtn=document.getElementById('viewApprove');
+  if(apprBtn)apprBtn.addEventListener('click',function(){doApproveContract(allContracts.indexOf(c));document.getElementById('viewModal').classList.remove('open')});
+  var rejBtn=document.getElementById('viewReject');
+  if(rejBtn)rejBtn.addEventListener('click',function(){doRejectContract(allContracts.indexOf(c));document.getElementById('viewModal').classList.remove('open')});
+  /* Chat send / settle button */
+  var sendBtn=document.getElementById('chatSendBtn');
+  if(sendBtn && !isSettled){
+    sendBtn.addEventListener('click',function(){
+      var hasSent=replies.some(function(r){return r.from==='Reina Morgan'});
+      if(hasSent && !c.settled){
+        /* ── SETTLE ── */
+        c.settled=true;
+        if(!c.replies)c.replies=[];
+        c.replies.push({from:'System',message:'This conversation has been settled by Reina Morgan.',time:new Date().toISOString()});
+        toast('Conversation settled — '+c.author+' can no longer reply');
+        openViewModal(c);
+        return;
+      }
+      /* ── SEND MESSAGE ── */
+      var inp=document.getElementById('chatInput');
+      var msg=inp.value.trim();
+      if(!msg){toast('Please type a message.');return;}
+      if(!c.replies)c.replies=[];
+      c.replies.push({from:'Reina Morgan',message:msg,time:new Date().toISOString()});
+      inp.value='';inp.style.height='auto';
+      /* re-render chat instantly */
+      document.getElementById('chatArea').innerHTML=renderChatMsgs(c);
+      document.getElementById('chatArea').scrollTop=document.getElementById('chatArea').scrollHeight;
+      /* update button icon to settle */
+      var nowHasSent=c.replies.some(function(r){return r.from==='Reina Morgan'});
+      if(nowHasSent){
+        sendBtn.className='chat-send-btn settle';
+        sendBtn.innerHTML='<i class="fas fa-check-circle"></i>';
+        sendBtn.title='Settle this conversation';
+      }
+      toast('Message sent to '+c.author);
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TEMPLATES TAB
+   ═══════════════════════════════════════════════════════════ */
+function renderTemplates(){
+  var body=document.getElementById('templateBody');
+  body.innerHTML=allTemplates.map(function(t){
+    var sel=t.id===tplSelectedId?'selected':'';
+    var sp=t.status==='active'?'<span class="status-pill"><span class="dot"></span>Active</span>':t.status==='draft'?'<span class="status-pill awaiting"><span class="dot"></span>Draft</span>':'<span class="status-pill expired"><span class="dot"></span>Archived</span>';
+    return'<tr class="'+sel+'" data-tid="'+t.id+'">'+
+      '<td><div class="contract-cell"><div class="contract-icon" style="background:'+t.bg+';color:'+t.color+'"><i class="fas '+t.icon+'"></i></div><div><div class="contract-id">'+t.name+'</div><div class="contract-type">'+t.desc+'</div></div></div></td>'+
+      '<td class="date-cell">'+t.type+'</td>'+
+      '<td>'+sp+'</td>'+
+      '<td class="date-cell">'+t.updated+'</td>'+
+      '<td><div class="actions-cell"><button class="act-btn" title="Preview"><i class="fas fa-eye"></i></button><button class="act-btn" title="Edit"><i class="fas fa-pen"></i></button></div></td>'+
+    '</tr>';
+  }).join('');
+  body.querySelectorAll('tr[data-tid]').forEach(function(row){
+    row.addEventListener('click',function(){tplSelectedId=parseInt(row.dataset.tid,10);renderTemplates();renderTplDetail();});
+  });
+  renderTplDetail();
+}
+
+var tplDetailTab='preview';
+function renderTplDetail(){
+  var t=allTemplates.find(function(x){return x.id===tplSelectedId})||allTemplates[0];
+  if(!t){document.getElementById('tplDetail').innerHTML='<div class="empty-state"><p>No templates found.</p></div>';return;}
+  var content='';
+  if(tplDetailTab==='preview'){
+    content='<h3>'+t.preview.title.toUpperCase()+'</h3><p>'+t.preview.body+'</p>';
+  }else if(tplDetailTab==='details'){
+    content='<div class="tpl-dp-detail-row"><span>Template ID</span><b>TPL-'+String(t.id).padStart(4,'0')+'</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>Type</span><b>'+t.type+'</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>Status</span><b>'+t.status.charAt(0).toUpperCase()+t.status.slice(1)+'</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>Clauses</span><b>'+t.clauses+'</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>Updated</span><b>'+t.updated+'</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>By</span><b>'+t.by+'</b></div>';
+  }else if(tplDetailTab==='clauses'){
+    var labels=['Grant of Rights','Author Representations','Royalties & Payment','Term & Termination','Confidentiality','Indemnification','Governing Law','Assignment','Force Majeure','Notices','Entire Agreement','Amendments','Severability','Dispute Resolution'];
+    content='<div>'+Array.from({length:t.clauses}).map(function(_,i){return'<div class="tpl-dp-clause"><i class="fas fa-check"></i>'+(i+1)+'. '+labels[i]+'</div>';}).join('')+'</div>';
+  }else{
+    content='<div class="tpl-dp-detail-row"><span>Created</span><b>Jan 18, 2026</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>Last Edited</span><b>'+t.updated+'</b></div>'+
+      '<div class="tpl-dp-detail-row"><span>Used in Contracts</span><b>'+Math.floor(Math.random()*30+5)+'</b></div>';
+  }
+  document.getElementById('tplDetail').innerHTML=
+    '<div class="tpl-dp-head"><div class="tpl-dp-icn" style="background:'+t.bg+';color:'+t.color+'"><i class="fas '+t.icon+'"></i></div><div><div class="tpl-dp-title">'+t.name+'</div><div class="tpl-dp-meta">'+t.type+' · '+t.clauses+' clauses</div></div></div>'+
+    '<div class="tpl-dp-tabs"><div class="tpl-dp-tab'+(tplDetailTab==='preview'?' active':'')+'" data-t="preview">Preview</div><div class="tpl-dp-tab'+(tplDetailTab==='details'?' active':'')+'" data-t="details">Details</div><div class="tpl-dp-tab'+(tplDetailTab==='clauses'?' active':'')+'" data-t="clauses">Clauses</div><div class="tpl-dp-tab'+(tplDetailTab==='history'?' active':'')+'" data-t="history">History</div></div>'+
+    '<div class="tpl-dp-preview">'+content+'</div>'+
+    '<div class="tpl-dp-actions"><button class="tpl-dp-btn" onclick="toast(\'Editing template…\')"><i class="fas fa-pen"></i> Edit</button><button class="tpl-dp-btn" onclick="toast(\'Duplicating template…\')"><i class="fas fa-copy"></i> Duplicate</button></div>';
+  document.querySelectorAll('.tpl-dp-tab').forEach(function(tab){
+    tab.addEventListener('click',function(){tplDetailTab=tab.dataset.t;renderTplDetail();});
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SIGNED TAB
+   ═══════════════════════════════════════════════════════════ */
+function renderSignedList(){
+  var body=document.getElementById('signedBody');
+  body.innerHTML=allSigned.map(function(c){
+    var sel=c.id===signedSelectedId?'selected':'';
+    return'<tr class="'+sel+'" data-sid="'+c.id+'">'+
+      '<td><div class="contract-cell"><div class="contract-icon" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-file-signature"></i></div><div><div class="contract-id">'+c.id+'</div><div class="contract-type">'+c.type+'</div></div></div></td>'+
+      '<td><div class="author-cell"><img src="'+c.authorAv+'" alt=""/><span class="author-name">'+c.author+'</span></div></td>'+
+      '<td><div class="book-title">'+c.title+'</div></td>'+
+      '<td class="date-cell">'+c.duration+'</td>'+
+      '<td class="date-cell">'+c.signedAt+'</td>'+
+      '<td><div class="actions-cell"><button class="act-btn" title="View"><i class="fas fa-eye"></i></button><button class="act-btn" title="Download"><i class="fas fa-download"></i></button></div></td>'+
+    '</tr>';
+  }).join('');
+  body.querySelectorAll('tr[data-sid]').forEach(function(row){
+    row.addEventListener('click',function(){signedSelectedId=row.dataset.sid;renderSignedList();renderSignedDetail();});
+  });
+  renderSignedDetail();
+}
+
+function renderSignedDetail(){
+  var c=allSigned.find(function(x){return x.id===signedSelectedId})||allSigned[0];
+  if(!c){document.getElementById('signedDetail').innerHTML='<div class="empty-state"><p>No signed contracts.</p></div>';return;}
+  document.getElementById('signedDetail').innerHTML=
+    '<div class="signed-hero"><img class="signed-cover" src="'+c.cover+'" alt=""/><div><h2 style="font-size:16px;font-weight:800">'+c.title+'</h2><div style="margin-top:4px">'+statusPill('active')+'</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">'+c.author+' · '+c.type+'</div></div></div>'+
+    '<div class="signed-detail-grid">'+
+      '<div class="signed-meta"><div class="signed-meta-lbl">Contract ID</div><div class="signed-meta-val">'+c.id+'</div></div>'+
+      '<div class="signed-meta"><div class="signed-meta-lbl">Status</div><div class="signed-meta-val">Active</div></div>'+
+      '<div class="signed-meta"><div class="signed-meta-lbl">Effective Date</div><div class="signed-meta-val">'+c.effective+'</div></div>'+
+      '<div class="signed-meta"><div class="signed-meta-lbl">Expiry Date</div><div class="signed-meta-val">'+c.expiry+'</div></div>'+
+      '<div class="signed-meta"><div class="signed-meta-lbl">Revenue Split</div><div class="signed-meta-val">'+c.revenue+'%</div></div>'+
+      '<div class="signed-meta"><div class="signed-meta-lbl">Advance</div><div class="signed-meta-val">'+money(c.advance)+'</div></div>'+
+    '</div>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">Contract Clauses</div>'+
+    c.clauses.map(function(cl,i){return'<div class="signed-clause"><i class="fas fa-check-circle"></i>'+(i+1)+'. '+cl+'</div>';}).join('')+
+    '<div style="margin-top:14px"><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Signed By</div>'+
+    '<div style="display:flex;align-items:center;gap:10px"><img src="'+c.editorAvatar+'" style="width:28px;height:28px;border-radius:50%"/><div><div style="font-size:12.5px;font-weight:700">'+c.editor+'</div><div style="font-size:11px;color:var(--text-muted)">'+c.signedAt+'</div></div></div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEND CONTRACT MODAL
+   ═══════════════════════════════════════════════════════════ */
+function renderTemplateSelect(){
+  var sel=document.getElementById('sendTemplate');
+  sel.innerHTML='<option value="">Select template…</option>'+allTemplates.filter(function(t){return t.status==='active'}).map(function(t){return'<option value="'+t.id+'">'+t.name+'</option>';}).join('');
+}
+
+document.getElementById('btnSend').addEventListener('click',function(){document.getElementById('sendModal').classList.add('open')});
+document.getElementById('closeSendModal').addEventListener('click',function(){document.getElementById('sendModal').classList.remove('open')});
+document.getElementById('cancelSend').addEventListener('click',function(){document.getElementById('sendModal').classList.remove('open')});
+document.getElementById('sendModal').addEventListener('click',function(e){if(e.target.id==='sendModal')document.getElementById('sendModal').classList.remove('open')});
+
+document.getElementById('confirmSend').addEventListener('click',function(){
+  var author=document.getElementById('sendAuthor').value;
+  var book=document.getElementById('sendBook').value;
+  if(!author||!book){toast('Please fill in author and book title');return;}
+  allContracts.unshift({
+    id:'CNTR-2026-'+String(allContracts.length+1).padStart(3,'0'),
+    author:author,
+    authorAv:'https://i.pravatar.cc/100?img='+Math.floor(Math.random()*50+1),
+    book:book,
+    type:document.getElementById('sendType').value,
+    status:'awaiting',
+    dateSent:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    signedDate:'—',
+    duration:document.getElementById('sendDuration').value,
+    revenue:+document.getElementById('sendRevenue').value||70,
+    advance:+document.getElementById('sendAdvance').value||0,
+    notes:document.getElementById('sendNotes').value,
+    replies:[]
+  });
+  document.getElementById('sendModal').classList.remove('open');
+  document.getElementById('sendAuthor').value='';document.getElementById('sendBook').value='';
+  document.getElementById('sendNotes').value='';document.getElementById('sendRevenue').value='';document.getElementById('sendAdvance').value='';
+  toast('Contract sent to '+author);
+  renderStats();renderTabs();renderContracts();
+});
+
+/* ── View Modal overlay ── */
+document.getElementById('viewModal').addEventListener('click',function(e){if(e.target.id==='viewModal')document.getElementById('viewModal').classList.remove('open')});
+
+/* ── Toast ── */
+function toast(m){var t=document.getElementById('toastEl');if(!t){t=document.createElement('div');t.id='toastEl';t.style.cssText='position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:9000;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)';document.body.appendChild(t);}
+t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2500);}
+
+init();
+</script>
+</body>
+</html>
