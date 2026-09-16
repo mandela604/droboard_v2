@@ -64,6 +64,8 @@
     { key: 'reports-moderation',   label: 'Reports & Moderation',   icon: 'fa-shield-halved',        href: 'reports-moderation.html',  section: 'Platform' },
     { key: 'platform-analytics',   label: 'Platform Analytics',     icon: 'fa-chart-line',           href: 'platform-analytics.html',  section: 'Platform' },
     { key: 'settings',             label: 'Settings',               icon: 'fa-gear',                 href: 'settings.html',            section: 'Platform' },
+    { key: 'platform-settings',    label: 'Platform Settings',      icon: 'fa-gear',                 href: 'platform-settings.html',   section: 'Platform' },
+    { key: 'system-pages',         label: 'System Pages',           icon: 'fa-layer-group',          href: 'system-pages.html',        section: 'Platform' },
   ];
 
   const CSS = `

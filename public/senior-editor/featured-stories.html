@@ -11,11 +11,6 @@
 body{font-family:'Inter',system-ui,sans-serif}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
 
-.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
-.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
-.welcome-title{font-size:21px;font-weight:800}
-.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:620px}
-
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
 .stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
@@ -114,7 +109,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 .tag-picker{display:none;flex-wrap:wrap;gap:6px;background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:8px;margin-top:8px}
 .tag-picker.open{display:flex}
 .tag-opt{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text-muted)}
-.tag-opt.active{opacity:.4;pointer-events:none}
+.tag-opt.active{opacity:.5;background:var(--accent-soft);border-color:var(--accent)}
 
 .sheet-field{margin-top:12px}
 .sheet-field label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
@@ -140,16 +135,16 @@ body{font-family:'Inter',system-ui,sans-serif}
 .hist-place{font-size:11.5px;font-weight:700}
 .hist-period{font-size:10px;color:var(--text-faint);margin-top:1px}
 .placement-badge{font-size:9.5px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+
+/* ── Filter row (tabs + section dropdown) ── */
+.fm-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.fm-filters .main-tabbar{flex:1}
+.fm-dropdown{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap}
+.fm-dropdown:focus{outline:2px solid var(--accent);outline-offset:1px}
 </style>
 </head>
 <body>
 <div id="fsRoot">
-  <div class="welcome-banner">
-    <div class="welcome-eyebrow">Senior Editor · Featured Stories &amp; Editor's Picks</div>
-    <div class="welcome-title">Featured Stories ⭐</div>
-    <div class="welcome-sub">Everything shown on Discover — the hero banner, rankings, editor's picks, genre rows and more — is managed from this one table. Tap a story to see its full details, its past placements, and manage it in one place.</div>
-  </div>
-
   <div class="grid-4" id="statCards"></div>
 
   <div class="panel">
@@ -159,7 +154,12 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
     <div class="panel-sub" id="tableSub">Currently featured stories across Discover. Tap a row to open it and manage everything in one place.</div>
 
-    <div class="main-tabbar" id="mainTabbar"></div>
+    <div class="fm-filters" id="filterRow">
+      <div class="main-tabbar" id="mainTabbar"></div>
+      <select class="fm-dropdown" id="sectionFilter" data-action="filter-section">
+        <option value="all">All Discover Sections</option>
+      </select>
+    </div>
 
     <!-- Featured-tab tag filter -->
     <div class="tabbar" id="tagTabBar" style="display:none"></div>
@@ -198,6 +198,8 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <div id="toastEl" style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)"></div>
 
+<script src="../data/editor-demo-data.js"></script>
+<script src="featured-stories-service.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script>
 'use strict';
@@ -219,34 +221,14 @@ function toast(m){
 }
 
 /* ─────────────────────────────────────────
-   TAGS — freshness/quality badges (independent of WHERE a story sits)
+   DATA — loaded from service (central demo data)
 ───────────────────────────────────────── */
-const TAGS = {
-  'featured':     { label:'⭐ Featured',        bg:'var(--accent-soft)', fg:'var(--accent)' },
-  'hot':          { label:'🔥 Hot',            bg:'var(--red-bg)',    fg:'var(--red)'    },
-  'trending':     { label:'📈 Trending',       bg:'var(--blue-bg)',   fg:'var(--blue)'   },
-  'editors-pick': { label:"🎖️ Editor's Pick",  bg:'var(--purple-bg)', fg:'var(--purple)' },
-  'new':          { label:'✨ New',             bg:'var(--green-bg)',  fg:'var(--green)'  },
-  'staff-fav':    { label:'👑 Staff Favorite', bg:'var(--amber-bg)',  fg:'var(--amber)'  },
-};
-
-/* ─────────────────────────────────────────
-   SECTIONS — mirrors the actual Discover page layout.
-   These are WHERE a story can be placed. Note "New Releases"
-   (a row on Discover) is a different concept from the "new"
-   TAG (a freshness badge) — a story can carry the "new" tag
-   without living in the New Releases row, and vice versa.
-───────────────────────────────────────── */
-const SECTIONS = [
-  { id:'hero-banner',        label:'Hero Banner (Homepage Slider)', icon:'🎬', needsSub:false },
-  { id:'popular-stories',    label:'Popular Stories',               icon:'📚', needsSub:false },
-  { id:'story-rankings',     label:'Story Rankings',                icon:'🏆', needsSub:true, subLabel:'Ranking Tab', subOptions:['Hot','Top','New'] },
-  { id:'editors-picks',      label:"Editor's Picks",                icon:'⭐', needsSub:false },
-  { id:'browse-by-feeling',  label:'Browse by Feeling',             icon:'😭', needsSub:true, subLabel:'Feeling', subOptions:['Heartbreak','Rage','Shocked','Emotional','Savage'] },
-  { id:'genre-row',          label:'Genre Row',                     icon:'🏷️', needsSub:true, subLabel:'Genre', subOptions:['Romance','Betrayal','Family','Campus','Revenge','Elegy','Twist','Comedy','Dark','Spiritual','Werewolf'] },
-  { id:'new-releases',       label:'New Releases',                  icon:'✨', needsSub:false },
-  { id:'popular-by-country', label:'Popular By Country',            icon:'🌍', needsSub:true, subLabel:'Country', subOptions:['Nigeria','Ghana','Kenya','S.Africa','Uganda'] },
-];
+const API = window.__featuredStoriesAPI;
+const TAGS = API.tags();
+const SECTIONS = API.sections();
+let LIBRARY = API.library();
+let FEATURED = API.placements();
+let HISTORY = API.history();
 function sectionOf(id){ return SECTIONS.find(s=>s.id===id); }
 function placementLabel(p){
   if(!p) return '—';
@@ -256,55 +238,12 @@ function placementLabel(p){
 function placementIcon(p){ const sec=sectionOf(p&&p.section); return sec?sec.icon:'📍'; }
 function sectionOptionsHtml(selectedId){ return SECTIONS.map(s=>`<option value="${s.id}"${s.id===selectedId?' selected':''}>${s.icon} ${s.label}</option>`).join(''); }
 function subOptionsHtml(sectionId, selectedSub){ const sec=sectionOf(sectionId); if(!sec||!sec.needsSub) return ''; return sec.subOptions.map(o=>`<option value="${o}"${o===selectedSub?' selected':''}>${o}</option>`).join(''); }
-
-/* ─────────────────────────────────────────
-   LIBRARY
-───────────────────────────────────────── */
-const LIBRARY = [
-  { id:'ST-001', title:'Bound by the Ruthless Alpha', author:'Chioma Okafor', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg', rating:4.5, chapters:31, words:124000, status:'ongoing',
-    synopsis:"Chained to an alpha who broke her trust once already, Amara must decide whether loyalty to her pack is worth risking her heart a second time — even as an old rival circles closer." },
-  { id:'ST-002', title:"The CEO's Hidden Son", author:'Luna Skye', genre:'Billionaire & CEO', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', rating:4.3, chapters:24, words:96000, status:'ongoing',
-    synopsis:"When a boardroom takeover forces billionaire Adrian Cole to confront the son he never knew existed, one accidental meeting threatens to unravel a decade of carefully guarded secrets." },
-  { id:'ST-003', title:"Wolf King's Vow", author:'Elena Vasquez', genre:'Werewolf & Fantasy', cover:'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', rating:4.1, chapters:12, words:48000, status:'ongoing',
-    synopsis:"Bound by an ancient vow neither of them chose, a reluctant wolf king and the human he's sworn to protect must survive a war between packs — and the pull growing between them." },
-  { id:'ST-004', title:'Betrayed by the Mafia Prince', author:'Marcus Webb Jr.', genre:'Mafia & Urban', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', rating:3.9, chapters:7, words:28000, status:'ongoing',
-    synopsis:"Raised to inherit an empire built on blood, Dante Moretti trusted no one — until the one person he let in turned out to be working for the family that wants him dead." },
-  { id:'ST-005', title:"The Duke's Secret", author:'Isabelle Moreau', genre:'Historical & Regency', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', rating:4.7, chapters:31, words:155000, status:'completed',
-    synopsis:"A duke's carefully buried past resurfaces the night his estranged wife returns to London society, forcing him to choose between the title he was born to and the truth he's spent years hiding." },
-  { id:'ST-006', title:'Revenge at the Ivy League', author:'Wren Okonkwo', genre:'Campus & Revenge', cover:'https://i.postimg.cc/cgLZJNmC/8.jpg', rating:4.0, chapters:9, words:31000, status:'ongoing',
-    synopsis:"Expelled on false charges and quietly reinstated years later, Naomi returns to the Ivy League with one goal: expose the golden boy who destroyed her name — before he destroys someone else's." },
-  { id:'ST-007', title:'The Runaway Bride in Socked Feet', author:'Ifeanyi_Story', genre:'Twist & Drama', cover:'https://i.postimg.cc/tY7KnJyr/images.jpg', rating:4.6, chapters:22, words:88000, status:'ongoing',
-    synopsis:"She walked out of her own wedding in her socked feet with nothing but her phone and a plan — but the life she builds to replace it comes with secrets of its own." },
-  { id:'ST-008', title:'The Letter He Never Sent', author:'Efe_O', genre:'Elegy & Heartbreak', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', rating:4.4, chapters:15, words:52000, status:'ongoing',
-    synopsis:"Ten years after he disappeared without a word, a folded letter turns up in his old jacket pocket — and everything she thought she knew about why he left starts to fall apart." },
-  { id:'ST-009', title:'Caught Him Kissing Her Photograph', author:'Ada_Writes', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', rating:4.2, chapters:19, words:64000, status:'ongoing',
-    synopsis:"She came home early to celebrate their anniversary and found her husband kissing a photograph of a woman she'd never seen — the first thread in a marriage built on more than one lie." },
-  { id:'ST-010', title:'My Stepmother Stole My Fund', author:'Zara_M', genre:'Mafia & Urban', cover:'https://i.postimg.cc/ftRZbhKx/3.jpg', rating:3.8, chapters:11, words:37000, status:'ongoing',
-    synopsis:"When her university fund vanishes days before tuition is due, Zara traces the missing money straight to the stepmother who's spent a decade pretending to love her." },
-  { id:'ST-011', title:'She Rejected Me Three Times', author:'Dami_Cole', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/YGCkSw-33/1.jpg', rating:4.0, chapters:8, words:21000, status:'ongoing',
-    synopsis:"Third time trying to ask out the girl from the coffee shop, and third time she said no — but this time she left her number on the receipt by mistake, or so he wants to believe." },
-  { id:'ST-012', title:"My Grandmother's Will", author:'Chiamaka_N', genre:'Campus & Revenge', cover:'https://i.postimg.cc/DJwFzKgd/4.jpg', rating:4.3, chapters:27, words:101000, status:'completed',
-    synopsis:"The will names her sole heir to a fortune she didn't know existed — on one condition: that she uncover the family secret her grandmother took to her grave." },
-];
 function byId(id){ return LIBRARY.find(s=>s.id===id); }
 function findLibraryMatch(title,author){ return LIBRARY.find(s=>s.title===title && s.author===author); }
 
-let FEATURED = [
-  { id:'ST-002', placement:{section:'hero-banner',sub:null}, tags:['featured','hot','editors-pick'], start:new Date('2026-07-20'), end:new Date('2026-08-03'), note:'Gripping storyline with unexpected twists — perfect for CEO romance fans.' },
-  { id:'ST-001', placement:{section:'genre-row',sub:'Romance'}, tags:['featured','trending'], start:new Date('2026-07-15'), end:new Date('2026-07-29'), note:'' },
-  { id:'ST-003', placement:{section:'genre-row',sub:'Werewolf'}, tags:['featured','new'], start:new Date('2026-07-22'), end:new Date('2026-08-05'), note:'' },
-  { id:'ST-007', placement:{section:'new-releases',sub:null}, tags:['featured','new','staff-fav'], start:new Date('2026-07-25'), end:new Date('2026-08-08'), note:'' },
-  { id:'ST-012', placement:{section:'story-rankings',sub:'Top'}, tags:['featured','staff-fav'], start:new Date('2026-07-18'), end:new Date('2026-08-01'), note:'' },
-  { id:'ST-009', placement:{section:'browse-by-feeling',sub:'Heartbreak'}, tags:['featured'], start:new Date('2026-07-27'), end:new Date('2026-08-10'), note:'' },
-];
-let HISTORY = [
-  { title:"The Duke's Secret", author:'Isabelle Moreau', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', genre:'Historical & Regency', rating:4.7, placement:{section:'editors-picks',sub:null}, tags:['editors-pick'], period:'Jun 1 – Jun 15, 2026' },
-  { title:'Betrayed by the Mafia Prince', author:'Marcus Webb Jr.', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', genre:'Mafia & Urban', rating:3.9, placement:{section:'hero-banner',sub:null}, tags:['hot'], period:'May 15 – May 29, 2026' },
-  { title:"The CEO's Hidden Son", author:'Luna Skye', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', genre:'Billionaire & CEO', rating:4.3, placement:{section:'story-rankings',sub:'Hot'}, tags:['hot','trending'], period:'Jun 20 – Jul 4, 2026' },
-];
-
 let mainTab = 'featured';   // 'featured' | 'add' | 'history'  — never defaults to history
 let activeTag = 'all';      // secondary filter for featured tab
+let sectionFilter = 'all';  // section dropdown filter
 let pages = { featured:1, add:1, history:1 };
 
 /* Sheet state — the ONE place all editing happens */
@@ -367,8 +306,9 @@ function renderStats(){
    MAIN TABS (Featured / Add / History — ONE table)
 ───────────────────────────────────────── */
 function renderMainTabs(){
+  const featuredCount = sectionFilter && sectionFilter!=='all' ? FEATURED.filter(f=>f.placement.section===sectionFilter).length : FEATURED.length;
   const tabs = [
-    { key:'featured', label:'Featured', icon:'fa-star', count:FEATURED.length },
+    { key:'featured', label:'Featured', icon:'fa-star', count:featuredCount },
     { key:'add',      label:'Add a Story', icon:'fa-magnifying-glass', count:LIBRARY.length },
     { key:'history',  label:'History', icon:'fa-clock-rotate-left', count:HISTORY.length },
   ];
@@ -400,8 +340,9 @@ function getTabsPresent(){
 function renderTagTabs(){
   const tabs = [{key:'all',label:'⭐ All Featured'}, ...getTabsPresent().map(t=>({key:t,label:TAGS[t].label}))];
   if(!tabs.find(t=>t.key===activeTag)) activeTag='all';
+  const base = sectionFilter && sectionFilter!=='all' ? FEATURED.filter(f=>f.placement.section===sectionFilter) : FEATURED;
   document.getElementById('tagTabBar').innerHTML = tabs.map(t=>{
-    const count = t.key==='all' ? FEATURED.length : FEATURED.filter(f=>f.tags.includes(t.key)).length;
+    const count = t.key==='all' ? base.length : base.filter(f=>f.tags.includes(t.key)).length;
     return `<button class="tab-pill${activeTag===t.key?' on':''}" data-action="set-tag-tab" data-tag="${t.key}">${t.label} <span style="opacity:.7">${count}</span></button>`;
   }).join('');
 }
@@ -457,7 +398,11 @@ function historyRow(h,i){
 /* ─────────────────────────────────────────
    UNIFIED TABLE RENDER (with its own pagination per tab)
 ───────────────────────────────────────── */
-function getFeaturedList(){ return activeTag==='all' ? FEATURED : FEATURED.filter(f=>f.tags.includes(activeTag)); }
+function getFeaturedList(){
+  let list = activeTag==='all' ? FEATURED : FEATURED.filter(f=>f.tags.includes(activeTag));
+  if(sectionFilter && sectionFilter!=='all') list = list.filter(f=>f.placement.section===sectionFilter);
+  return list;
+}
 function getLibraryList(){
   const q = (document.getElementById('librarySearch').value||'').trim().toLowerCase();
   const g = document.getElementById('libraryGenreFilter').value;
@@ -481,7 +426,10 @@ function renderTable(){
   if(mainTab==='featured'){
     list = getFeaturedList(); rowFn = featuredRow;
     emptyText = 'No stories match this filter yet.';
-    countLabel = `${FEATURED.length} ${FEATURED.length===1?'story':'stories'} live`;
+    const filtered = sectionFilter && sectionFilter!=='all' ? FEATURED.filter(f=>f.placement.section===sectionFilter).length : FEATURED.length;
+    countLabel = sectionFilter && sectionFilter!=='all'
+      ? `${filtered} of ${FEATURED.length} in ${sectionOf(sectionFilter).label}`
+      : `${FEATURED.length} ${FEATURED.length===1?'story':'stories'} live`;
   } else if(mainTab==='add'){
     list = getLibraryList(); rowFn = libraryRow;
     emptyText = 'No stories match your search.';
@@ -682,7 +630,11 @@ document.addEventListener('click', e=>{
   const action = el.dataset.action;
   const id = el.dataset.id;
 
-  if(action==='set-main-tab'){ mainTab = el.dataset.tab; renderTable(); }
+  if(action==='set-main-tab'){
+    mainTab = el.dataset.tab;
+    if(mainTab !== 'featured'){ sectionFilter = 'all'; document.getElementById('sectionFilter').value = 'all'; }
+    renderTable();
+  }
   else if(action==='open-detail'){
     if(el.dataset.histidx!==undefined) openSheetForHistory(parseInt(el.dataset.histidx,10));
     else openSheetForId(id);
@@ -706,6 +658,7 @@ document.addEventListener('click', e=>{
   else if(action==='sheet-remove-tag'){
     const f = FEATURED.find(x=>x.id===sheetStoryId);
     if(f) f.tags = f.tags.filter(t=>t!==el.dataset.tag);
+    sheetTagPickerOpen = true;
     renderStats(); renderTable(); renderSheetBody();
   }
   else if(action==='sheet-toggle-duration'){ sheetDurationEditOpen = !sheetDurationEditOpen; renderSheetBody(); }
@@ -786,6 +739,18 @@ document.getElementById('sheetBackdrop').addEventListener('click', e=>{ if(e.tar
 document.getElementById('librarySearch').addEventListener('input', ()=>{ pages.add=1; renderTable(); });
 document.getElementById('libraryGenreFilter').addEventListener('change', ()=>{ pages.add=1; renderTable(); });
 document.getElementById('historySearch').addEventListener('input', ()=>{ pages.history=1; renderTable(); });
+document.getElementById('sectionFilter').addEventListener('change', function(){
+  const val = this.value;
+  if(val !== 'all'){
+    mainTab = 'featured';
+    activeTag = 'all';
+    pages.featured = 1;
+    sectionFilter = val;
+  } else {
+    sectionFilter = 'all';
+  }
+  renderAll();
+});
 window.addEventListener('resize', renderTable);
 
 /* ─────────────────────────────────────────
@@ -794,6 +759,7 @@ window.addEventListener('resize', renderTable);
 function renderAll(){ renderStats(); renderTable(); }
 const genres = [...new Set(LIBRARY.map(s=>s.genre))];
 document.getElementById('libraryGenreFilter').innerHTML = '<option value="">All Genres</option>' + genres.map(g=>`<option value="${g}">${g}</option>`).join('');
+document.getElementById('sectionFilter').innerHTML = '<option value="all">All Discover Sections</option>' + SECTIONS.map(s=>`<option value="${s.id}">${s.icon} ${s.label}</option>`).join('');
 renderAll();
 </script>
 </body>

@@ -53,9 +53,6 @@
       { label: 'Announcements', icon: 'fa-volume-high', href: 'announcements.html' },
     ] },
     { section: 'Platform & Settings', items: [
-      { label: 'Platform Settings', icon: 'fa-gear', href: 'platform-settings.html' },
-      { label: 'System Pages', icon: 'fa-file', href: 'system-pages.html' },
-      { label: 'Notification Center', icon: 'fa-bell', href: 'notification-center.html' },
       { label: 'Activity Logs', icon: 'fa-list-check', href: 'activity-logs.html' },
     ] },
   ];

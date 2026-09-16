@@ -113,13 +113,47 @@
       { id:'RPT-204', targetType:'author', target:'Zara_M', avatar:'https://i.pravatar.cc/60?img=36', reason:'Reader complaint about an abusive, threatening reply left on a critical review of chapter 9.', reportedBy:'Reader', reporterType:'Reader', severity:'low', filed:'2d ago', status:'open' },
       { id:'RPT-205', targetType:'editor', target:'Daniel Carter', avatar:'https://i.pravatar.cc/100?img=13', reason:'Author disputes a chapter rejection as unfair and inconsistent with prior editorial feedback on the same manuscript.', reportedBy:'Marcus Webb Jr.', reporterType:'Author (direct report)', severity:'medium', filed:'2d ago', status:'open' },
       { id:'RPT-206', targetType:'author', target:'Ada_Writes', avatar:'https://i.pravatar.cc/60?img=45', reason:'System flagged a suspected duplicate account created shortly after a prior ban, sharing device and payment fingerprints.', reportedBy:'System', reporterType:'System', severity:'high', filed:'3d ago', status:'open' },
-      { id:'RPT-207', targetType:'author', target:'Wren Okonkwo', avatar:'https://i.pravatar.cc/60?img=41', reason:'Reader reported explicit content posted outside the platform’s mature-content tagging guidelines in chapter 22.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'4d ago', status:'dismissed', resolvedBy:'Adaeze Bello', resolvedAt:'3d ago', resolutionNote:'Reviewed the chapter — content was already correctly tagged mature. No violation found.' },
+      { id:'RPT-207', targetType:'author', target:'Wren Okonkwo', avatar:'https://i.pravatar.cc/60?img=41', reason:'Reader reported explicit content posted outside the platform's mature-content tagging guidelines in chapter 22.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'4d ago', status:'dismissed', resolvedBy:'Adaeze Bello', resolvedAt:'3d ago', resolutionNote:'Reviewed the chapter — content was already correctly tagged mature. No violation found.' },
       { id:'RPT-208', targetType:'author', target:'Ifeanyi_Story', avatar:'https://i.pravatar.cc/60?img=8', reason:'Senior editor flagged repeated missed deadlines and unresponsiveness across two manuscript cycles.', reportedBy:'Chioma Reddy', reporterType:'Senior Editor', severity:'low', filed:'5d ago', status:'suspended', resolvedBy:'Adaeze Bello', resolvedAt:'4d ago', resolutionNote:'Account suspended for 14 days pending a response from the author.' },
       { id:'RPT-209', targetType:'author', target:'Luna Skye', avatar:'https://i.pravatar.cc/60?img=24', reason:'False report later found to be a mistaken duplicate submission of the same manuscript, not a plagiarism case.', reportedBy:'System', reporterType:'System', severity:'low', filed:'6d ago', status:'dismissed', resolvedBy:'Adaeze Bello', resolvedAt:'5d ago', resolutionNote:'Confirmed as a duplicate upload by the same author. Extra copy removed, no penalty applied.' },
       { id:'RPT-210', targetType:'editor', target:'Marcus Ihejirika', avatar:'https://i.pravatar.cc/100?img=59', reason:'Two authors independently reported delayed royalty statement explanations and unclear quota communication.', reportedBy:'Multiple authors', reporterType:'Author (direct report)', severity:'medium', filed:'1w ago', status:'open' },
       { id:'RPT-211', targetType:'author', target:'Elena Vasquez', avatar:'https://i.pravatar.cc/60?img=31', reason:'Confirmed plagiarism — full chapter lifted from a publicly available short story with only character names changed.', reportedBy:'Sophia Bennett', reporterType:'Senior Editor', severity:'high', filed:'1w ago', status:'banned', resolvedBy:'Adaeze Bello', resolvedAt:'6d ago', resolutionNote:'Account permanently banned after confirming verbatim plagiarism across the full chapter.' },
       { id:'RPT-212', targetType:'author', target:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', reason:'Reader reported impersonation — a fan account was posting chapter previews before official release.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'1w ago', status:'removed', resolvedBy:'Adaeze Bello', resolvedAt:'6d ago', resolutionNote:'Confirmed the fan account was unauthorized and unrelated to the author. Content taken down by the platform team.' },
     ],
+
+    /* ── AUTHOR POOL (for assignment to senior editors) ── */
+    authorPool: [
+      { id:'AW-01', handle:'Ada_Writes',      name:'Ada Writes',       avatar:'https://i.pravatar.cc/100?img=32', genres:['romance','betrayal','mafia'],   books:3, reads:'1.28M', verified:true },
+      { id:'AW-02', handle:'Sarah_Odum',       name:'Sarah Odum',       avatar:'https://i.pravatar.cc/100?img=48', genres:['billionaire','romance'],        books:2, reads:'2.1M',  verified:true },
+      { id:'AW-03', handle:'Luna_Grey',        name:'Luna Grey',        avatar:'https://i.pravatar.cc/100?img=15', genres:['fantasy','werewolf'],           books:2, reads:'890K',  verified:true },
+      { id:'AW-04', handle:'Ifeanyi_Story',    name:'Ifeanyi Story',    avatar:'https://i.pravatar.cc/100?img=53', genres:['twist','drama','romance'],      books:1, reads:'620K',  verified:true },
+      { id:'AW-05', handle:'Chiamaka_N',       name:'Chiamaka Nwosu',   avatar:'https://i.pravatar.cc/100?img=47', genres:['family','drama','betrayal'],    books:1, reads:'420K',  verified:false },
+      { id:'AW-06', handle:'Zara_M',           name:'Zara Mohammed',    avatar:'https://i.pravatar.cc/100?img=16', genres:['revenge','betrayal','romance'], books:1, reads:'340K',  verified:true },
+      { id:'AW-07', handle:'Efe_O',            name:'Efe Okoro',        avatar:'https://i.pravatar.cc/100?img=22', genres:['elegy','romance','drama'],      books:1, reads:'510K',  verified:true },
+      { id:'AW-08', handle:'Kemi_A',           name:'Kemi Adeyemi',     avatar:'https://i.pravatar.cc/100?img=28', genres:['campus','romance','drama'],     books:1, reads:'180K',  verified:false },
+      { id:'AW-09', handle:'Bode_Ilo',         name:'Bode Ilo',         avatar:'https://i.pravatar.cc/100?img=12', genres:['campus','comedy'],              books:1, reads:'260K',  verified:false },
+      { id:'AW-10', handle:'Marcus_Webb',      name:'Marcus Webb Jr.',   avatar:'https://i.pravatar.cc/100?img=12', genres:['drama','fantasy'],              books:1, reads:'150K',  verified:false },
+      { id:'AW-11', handle:'Wren_O',           name:'Wren Okonkwo',     avatar:'https://i.pravatar.cc/100?img=41', genres:['romance','drama'],              books:1, reads:'210K',  verified:true },
+      { id:'AW-12', handle:'Elena_V',          name:'Elena Vasquez',    avatar:'https://i.pravatar.cc/100?img=31', genres:['romance','betrayal'],           books:1, reads:'180K',  verified:true },
+    ],
+
+    /* ── SENIOR EDITOR → AUTHOR ASSIGNMENTS (editorId → [authorId, …]) ── */
+    seniorEditorAssignments: {
+      'SE-01': ['AW-01','AW-04','AW-06'],
+      'SE-02': ['AW-10','AW-11'],
+      'SE-03': ['AW-02','AW-03','AW-07'],
+      'SE-04': ['AW-05','AW-12'],
+      'SE-05': ['AW-08'],
+      'SE-06': ['AW-09'],
+      'SE-07': [],
+      'SE-08': [],
+      'SE-09': [],
+      'SE-10': [],
+      'SE-11': [],
+      'SE-12': [],
+      'SE-13': [],
+      'SE-14': [],
+    },
   };
 
   window.ChiefEditorData = {
@@ -138,6 +172,18 @@
     async getReports() {
       try { return await callBackend('/reports'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.reports)); }
+    },
+    async getAuthorPool() {
+      try { return await callBackend('/author-pool'); }
+      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.authorPool)); }
+    },
+    async getAssignments() {
+      try { return await callBackend('/senior-editor-assignments'); }
+      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.seniorEditorAssignments)); }
+    },
+    async saveAssignments(assignments) {
+      try { return await callBackend('/senior-editor-assignments', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(assignments) }); }
+      catch (e) { await delay(); Object.assign(DEMO.seniorEditorAssignments, assignments); return { ok:true }; }
     },
   };
 })();

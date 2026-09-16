@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Editor's Picks — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+@media(max-width:640px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+
+.fm-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.fm-filters .tabs{flex:1}
+.top-tabs{display:flex;gap:0;border-bottom:2px solid var(--border)}
+.top-tab{padding:0 2px 10px;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;transition:.15s}
+.top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.fm-dropdown{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap}
+.fm-dropdown:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 16px;white-space:nowrap}
+tbody td{padding:14px 16px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+tbody tr:hover{background:var(--hover)}
+
+.story-cell{display:flex;align-items:center;gap:12px;min-width:220px}
+.story-cover{width:44px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
+.story-info{min-width:0}
+.story-title{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.story-author{font-size:11px;color:var(--text-muted);margin-top:1px}
+.story-genre{font-size:10px;color:var(--text-faint);margin-top:1px}
+
+.category-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.category-chip.best{background:var(--green-bg);color:var(--green)}
+.category-chip.must{background:var(--blue-bg);color:var(--blue)}
+.category-chip.editor{background:var(--purple-bg);color:var(--purple)}
+.category-chip.rising{background:var(--amber-bg);color:var(--amber)}
+
+.rating-cell{font-weight:700;font-size:13px}
+.rating-cell .stars{color:var(--amber);font-size:11px;margin-left:4px}
+
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px}
+.status-pill.active{background:var(--green-bg);color:var(--green)}
+.status-pill.active .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.status-pill.archived{background:var(--table-head);color:var(--text-faint)}
+.status-pill.archived .dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint)}
+
+.actions-cell{display:flex;gap:6px}
+.act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.act-btn:hover{color:var(--accent);border-color:var(--accent)}
+.act-btn.danger:hover{color:var(--red);border-color:var(--red)}
+
+.reason-cell{font-size:12px;color:var(--text-muted);max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+.page-info{font-size:12px;color:var(--text-muted)}
+.page-info b{color:var(--text);font-weight:700}
+.page-btns{display:flex;gap:4px}
+.page-btns button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;font-weight:700;cursor:pointer}
+.page-btns button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.page-btns button:disabled{opacity:.4;cursor:default}
+
+.empty-msg{text-align:center;padding:40px 20px;color:var(--text-faint);font-size:13px}
+
+.log-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.log-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.log-item:last-child{border-bottom:none}
+.log-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.log-icon.pick{background:var(--green-bg);color:var(--green)}
+.log-icon.remove{background:var(--red-bg);color:var(--red)}
+.log-text{font-size:12.5px;color:var(--text);line-height:1.5}
+.log-text b{font-weight:700}
+.log-date{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+
+@media(max-width:640px){
+  .fm-filters{flex-direction:column;align-items:stretch}
+  .reason-cell{display:none}
+}
+</style>
+</head>
+<body>
+<div id="epRoot">
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-award" style="color:var(--purple)"></i> Editor's Picks</h2>
+    </div>
+
+    <div class="fm-filters">
+      <div class="tabs" id="tabBar"></div>
+      <select class="fm-dropdown" id="categoryFilter">
+        <option value="all">All Categories</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination-row">
+      <div class="page-info" id="pageInfo"></div>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+  <div class="log-panel" id="logPanel">
+    <div class="panel-head"><h2><i class="fas fa-clock-rotate-left" style="color:var(--text-muted)"></i> Activity Log</h2></div>
+    <div id="logList"></div>
+  </div>
+</div>
+
+<div id="toastEl" style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)"></div>
+
+<script src="../data/editor-demo-data.js"></script>
+<script src="editors-picks-service.js"></script>
+<script src="shared/senior-editor-sidebar.js"></script>
+<script>
+'use strict';
+
+const API = window.__editorsPicksAPI;
+
+const shell = SeniorEditorSidebar.attach('#epRoot', {
+  activeItem: 'editors-picks',
+  title: "Editor's Picks",
+  subtitle: 'Handpicked stories for readers',
+  user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
+  notifCount: 3,
+  onSearch: function(v){}
+});
+
+function toast(m){
+  const t=document.getElementById('toastEl');
+  t.textContent=m;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(16px)';},2400);
+}
+
+let activeTab = 'active';
+let activeCategory = 'all';
+let page = 1;
+const PAGE_SIZE = 6;
+
+function getFilteredList(){
+  let list = activeTab==='active' ? API.activePicks() : API.picks();
+  if(activeCategory && activeCategory!=='all') list = list.filter(function(p){ return p.category === activeCategory; });
+  return list;
+}
+
+function categoryClass(cat){
+  if(cat==='Best Completed') return 'best';
+  if(cat==='Must Read') return 'must';
+  if(cat==="Editor's Choice") return 'editor';
+  if(cat==='Rising Star') return 'rising';
+  return '';
+}
+
+function renderStats(){
+  const s = API.stats();
+  const cards = [
+    { n: s.active, l:'Active Picks', ico:'fa-award', cls:'purple' },
+    { n: s.archived, l:'Archived', ico:'fa-box-archive', cls:'amber' },
+    { n: s.categories, l:'Categories', ico:'fa-folder', cls:'blue' },
+    { n: s.avgRating, l:'Avg Rating', ico:'fa-star', cls:'green' },
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(function(c){
+    return '<div class="stat-card"><div class="stat-ico" style="background:var(--'+c.cls+'-bg);color:var(--'+c.cls+')"><i class="fas '+c.ico+'"></i></div><div><div class="stat-num">'+c.n+'</div><div class="stat-lbl">'+c.l+'</div></div></div>';
+  }).join('');
+}
+
+function renderTabs(){
+  const active = API.activePicks().length;
+  const all = API.picks().length;
+  const tabs = [
+    { key:'active', label:'Active Picks', count:active },
+    { key:'all', label:'All Picks', count:all },
+  ];
+  document.getElementById('tabBar').innerHTML = '<div class="top-tabs">' + tabs.map(function(t){
+    return '<div class="top-tab'+(activeTab===t.key?' active':'')+'" data-tab="'+t.key+'">'+t.label+' <span style="opacity:.6">('+t.count+')</span></div>';
+  }).join('') + '</div>';
+
+  const cats = API.categories();
+  document.getElementById('categoryFilter').innerHTML = '<option value="all">All Categories</option>' + Object.keys(cats).map(function(c){
+    return '<option value="'+c+'"'+(activeCategory===c?' selected':'')+'>'+c+' ('+cats[c]+')</option>';
+  }).join('');
+}
+
+function renderTable(){
+  const list = getFilteredList();
+  document.getElementById('tableHead').innerHTML = '<tr><th>Story</th><th>Category</th><th>Rating</th><th>Reason</th><th>Status</th><th>Actions</th></tr>';
+
+  const total = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  if(page > total) page = total;
+  if(page < 1) page = 1;
+  const start = (page - 1) * PAGE_SIZE;
+  const pageItems = list.slice(start, start + PAGE_SIZE);
+
+  if(!list.length){
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="6"><div class="empty-msg">No picks match this filter.</div></td></tr>';
+    document.getElementById('pageInfo').textContent = '';
+    document.getElementById('pageBtns').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('tableBody').innerHTML = pageItems.map(function(p){
+    const catCls = categoryClass(p.category);
+    return '<tr>'+
+      '<td><div class="story-cell"><img class="story-cover" src="'+p.cover+'" alt=""/><div class="story-info"><div class="story-title">'+p.title+'</div><div class="story-author">✍️ '+p.author+'</div><div class="story-genre">'+p.genre+'</div></div></div></td>'+
+      '<td><span class="category-chip '+catCls+'">'+p.category+'</span></td>'+
+      '<td class="rating-cell">'+p.rating+'<span class="stars"><i class="fas fa-star"></i></span></td>'+
+      '<td class="reason-cell" title="'+p.reason+'">'+p.reason+'</td>'+
+      '<td><span class="status-pill '+(p.active?'active':'archived')+'"><span class="dot"></span>'+(p.active?'Active':'Archived')+'</span></td>'+
+      '<td><div class="actions-cell">'+
+        '<button class="act-btn" data-action="view" data-id="'+p.id+'" title="View details"><i class="fas fa-eye"></i></button>'+
+        '<button class="act-btn danger" data-action="toggle" data-id="'+p.id+'" title="'+(p.active?'Archive':'Restore')+'"><i class="fas fa-'+(p.active?'box-archive':'rotate-left')+'"></i></button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+
+  document.getElementById('pageInfo').innerHTML = 'Showing <b>'+(start+1)+'</b> to <b>'+Math.min(start+PAGE_SIZE, list.length)+'</b> of <b>'+list.length+'</b> picks';
+
+  let btns = '';
+  btns += '<button data-page="prev" '+(page<=1?'disabled':'')+'><i class="fas fa-chevron-left"></i></button>';
+  for(var i=1;i<=total;i++) btns += '<button class="'+(i===page?'active':'')+'" data-page="'+i+'">'+i+'</button>';
+  btns += '<button data-page="next" '+(page>=total?'disabled':'')+'><i class="fas fa-chevron-right"></i></button>';
+  document.getElementById('pageBtns').innerHTML = btns;
+}
+
+function renderLog(){
+  const entries = API.log().slice(0, 8);
+  document.getElementById('logList').innerHTML = entries.map(function(e){
+    const cls = e.action==='picked' ? 'pick' : 'remove';
+    const ico = e.action==='picked' ? 'fa-award' : 'fa-box-archive';
+    return '<div class="log-item"><div class="log-icon '+cls+'"><i class="fas '+ico+'"></i></div><div><div class="log-text"><b>'+e.action+'</b> — '+e.story+' <span style="color:var(--text-faint)">by '+e.by+'</span></div><div class="log-date">'+e.date+' · '+e.note+'</div></div></div>';
+  }).join('');
+}
+
+function renderAll(){ renderStats(); renderTabs(); renderTable(); renderLog(); }
+
+document.getElementById('tabBar').addEventListener('click', function(e){
+  var tab = e.target.closest('[data-tab]');
+  if(!tab) return;
+  activeTab = tab.dataset.tab;
+  page = 1;
+  renderAll();
+});
+document.getElementById('categoryFilter').addEventListener('change', function(){
+  activeCategory = this.value;
+  page = 1;
+  renderAll();
+});
+document.getElementById('pageBtns').addEventListener('click', function(e){
+  var btn = e.target.closest('[data-page]');
+  if(!btn || btn.disabled) return;
+  var action = btn.dataset.page;
+  if(action==='prev') page--;
+  else if(action==='next') page++;
+  else page = parseInt(action, 10);
+  renderTable();
+});
+document.getElementById('tableBody').addEventListener('click', function(e){
+  var btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  var action = btn.dataset.action;
+  var id = btn.dataset.id;
+  if(action==='toggle'){
+    var p = API.togglePick(id);
+    if(p) toast(p.active ? '⭐ Restored to picks' : '📦 Archived from picks');
+    renderAll();
+  } else if(action==='view'){
+    var pick = API.byId(id);
+    if(pick) toast('📖 '+pick.title+' — '+pick.reason);
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>

@@ -395,6 +395,78 @@
     { id:'BK001243', title:'Stepmother Stole My Fund', author:'Zara_M', avatar:'https://i.pravatar.cc/100?img=16', cat:'Revenge', genre:'Family Drama', status:'Published', views:'192K', added:'Jun 3, 2026', img:'https://i.postimg.cc/ftRZbhKx/3.jpg', desc:'Reclaiming her inheritance, one calculated step at a time.' },
   ];
 
+  /* ── FEATURED STORIES ── */
+  var FEATURED_TAGS = {
+    'featured':     { label:'⭐ Featured',        bg:'var(--accent-soft)', fg:'var(--accent)' },
+    'hot':          { label:'🔥 Hot',            bg:'var(--red-bg)',    fg:'var(--red)'    },
+    'trending':     { label:'📈 Trending',       bg:'var(--blue-bg)',   fg:'var(--blue)'   },
+    'editors-pick': { label:"🎖️ Editor's Pick",  bg:'var(--purple-bg)', fg:'var(--purple)' },
+    'new':          { label:'✨ New',             bg:'var(--green-bg)',  fg:'var(--green)'  },
+    'staff-fav':    { label:'👑 Staff Favorite', bg:'var(--amber-bg)',  fg:'var(--amber)'  },
+  };
+
+  var FEATURED_SECTIONS = [
+    { id:'hero-banner',        label:'Hero Banner (Homepage Slider)', icon:'🎬', needsSub:false },
+    { id:'popular-stories',    label:'Popular Stories',               icon:'📚', needsSub:false },
+    { id:'story-rankings',     label:'Story Rankings',                icon:'🏆', needsSub:true, subLabel:'Ranking Tab', subOptions:['Hot','Top','New'] },
+    { id:'editors-picks',      label:"Editor's Picks",                icon:'⭐', needsSub:false },
+    { id:'browse-by-feeling',  label:'Browse by Feeling',             icon:'😭', needsSub:true, subLabel:'Feeling', subOptions:['Heartbreak','Rage','Shocked','Emotional','Savage'] },
+    { id:'genre-row',          label:'Genre Row',                     icon:'🏷️', needsSub:true, subLabel:'Genre', subOptions:['Romance','Betrayal','Family','Campus','Revenge','Elegy','Twist','Comedy','Dark','Spiritual','Werewolf'] },
+    { id:'new-releases',       label:'New Releases',                  icon:'✨', needsSub:false },
+    { id:'popular-by-country', label:'Popular By Country',            icon:'🌍', needsSub:true, subLabel:'Country', subOptions:['Nigeria','Ghana','Kenya','S.Africa','Uganda'] },
+  ];
+
+  var FEATURED_LIBRARY = [
+    { id:'ST-001', title:'Bound by the Ruthless Alpha', author:'Chioma Okafor', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg', rating:4.5, chapters:31, words:124000, status:'ongoing', synopsis:"Chained to an alpha who broke her trust once already, Amara must decide whether loyalty to her pack is worth risking her heart a second time." },
+    { id:'ST-002', title:"The CEO's Hidden Son", author:'Luna Skye', genre:'Billionaire & CEO', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', rating:4.3, chapters:24, words:96000, status:'ongoing', synopsis:"When a boardroom takeover forces billionaire Adrian Cole to confront the son he never knew existed, one accidental meeting threatens to unravel a decade of secrets." },
+    { id:'ST-003', title:"Wolf King's Vow", author:'Elena Vasquez', genre:'Werewolf & Fantasy', cover:'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', rating:4.1, chapters:12, words:48000, status:'ongoing', synopsis:"Bound by an ancient vow neither of them chose, a reluctant wolf king and the human he's sworn to protect must survive a war between packs." },
+    { id:'ST-004', title:'Betrayed by the Mafia Prince', author:'Marcus Webb Jr.', genre:'Mafia & Urban', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', rating:3.9, chapters:7, words:28000, status:'ongoing', synopsis:"Raised to inherit an empire built on blood, Dante Moretti trusted no one — until the one person he let in turned out to be working for the family that wants him dead." },
+    { id:'ST-005', title:"The Duke's Secret", author:'Isabelle Moreau', genre:'Historical & Regency', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', rating:4.7, chapters:31, words:155000, status:'completed', synopsis:"A duke's carefully buried past resurfaces the night his estranged wife returns to London society, forcing him to choose between title and truth." },
+    { id:'ST-006', title:'Revenge at the Ivy League', author:'Wren Okonkwo', genre:'Campus & Revenge', cover:'https://i.postimg.cc/cgLZJNmC/8.jpg', rating:4.0, chapters:9, words:31000, status:'ongoing', synopsis:"Expelled on false charges and quietly reinstated years later, Naomi returns to the Ivy League with one goal: expose the golden boy who destroyed her name." },
+    { id:'ST-007', title:'The Runaway Bride in Socked Feet', author:'Ifeanyi_Story', genre:'Twist & Drama', cover:'https://i.postimg.cc/tY7KnJyr/images.jpg', rating:4.6, chapters:22, words:88000, status:'ongoing', synopsis:"She walked out of her own wedding in her socked feet with nothing but her phone and a plan — but the life she builds comes with secrets of its own." },
+    { id:'ST-008', title:'The Letter He Never Sent', author:'Efe_O', genre:'Elegy & Heartbreak', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', rating:4.4, chapters:15, words:52000, status:'ongoing', synopsis:"Ten years after he disappeared without a word, a folded letter turns up in his old jacket pocket — and everything she thought she knew starts to fall apart." },
+    { id:'ST-009', title:'Caught Him Kissing Her Photograph', author:'Ada_Writes', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', rating:4.2, chapters:19, words:64000, status:'ongoing', synopsis:"She came home early to celebrate their anniversary and found her husband kissing a photograph of a woman she'd never seen." },
+    { id:'ST-010', title:'My Stepmother Stole My Fund', author:'Zara_M', genre:'Mafia & Urban', cover:'https://i.postimg.cc/ftRZbhKx/3.jpg', rating:3.8, chapters:11, words:37000, status:'ongoing', synopsis:"When her university fund vanishes days before tuition is due, Zara traces the missing money straight to the stepmother who's spent a decade pretending to love her." },
+    { id:'ST-011', title:'She Rejected Me Three Times', author:'Dami_Cole', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/YGCkSw-33/1.jpg', rating:4.0, chapters:8, words:21000, status:'ongoing', synopsis:"Third time trying to ask out the girl from the coffee shop, and third time she said no — but this time she left her number on the receipt." },
+    { id:'ST-012', title:"My Grandmother's Will", author:'Chiamaka_N', genre:'Campus & Revenge', cover:'https://i.postimg.cc/DJwFzKgd/4.jpg', rating:4.3, chapters:27, words:101000, status:'completed', synopsis:"The will names her sole heir to a fortune she didn't know existed — on one condition: that she uncover the family secret her grandmother took to her grave." },
+  ];
+
+  var FEATURED_PLACEMENTS = [
+    { id:'ST-002', placement:{section:'hero-banner',sub:null}, tags:['featured','hot','editors-pick'], start:'2026-07-20', end:'2026-08-03', note:'Gripping storyline with unexpected twists — perfect for CEO romance fans.' },
+    { id:'ST-001', placement:{section:'genre-row',sub:'Romance'}, tags:['featured','trending'], start:'2026-07-15', end:'2026-07-29', note:'' },
+    { id:'ST-003', placement:{section:'genre-row',sub:'Werewolf'}, tags:['featured','new'], start:'2026-07-22', end:'2026-08-05', note:'' },
+    { id:'ST-007', placement:{section:'new-releases',sub:null}, tags:['featured','new','staff-fav'], start:'2026-07-25', end:'2026-08-08', note:'' },
+    { id:'ST-012', placement:{section:'story-rankings',sub:'Top'}, tags:['featured','staff-fav'], start:'2026-07-18', end:'2026-08-01', note:'' },
+    { id:'ST-009', placement:{section:'browse-by-feeling',sub:'Heartbreak'}, tags:['featured'], start:'2026-07-27', end:'2026-08-10', note:'' },
+  ];
+
+  var FEATURED_HISTORY = [
+    { title:"The Duke's Secret", author:'Isabelle Moreau', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', genre:'Historical & Regency', rating:4.7, placement:{section:'editors-picks',sub:null}, tags:['editors-pick'], period:'Jun 1 – Jun 15, 2026' },
+    { title:'Betrayed by the Mafia Prince', author:'Marcus Webb Jr.', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', genre:'Mafia & Urban', rating:3.9, placement:{section:'hero-banner',sub:null}, tags:['hot'], period:'May 15 – May 29, 2026' },
+    { title:"The CEO's Hidden Son", author:'Luna Skye', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', genre:'Billionaire & CEO', rating:4.3, placement:{section:'story-rankings',sub:'Hot'}, tags:['hot','trending'], period:'Jun 20 – Jul 4, 2026' },
+  ];
+
+  /* ── EDITOR'S PICKS ── */
+  var EDITORS_PICKS = [
+    { id:'ST-005', title:"The Duke's Secret", author:'Isabelle Moreau', genre:'Historical & Regency', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', rating:4.7, chapters:31, words:155000, status:'completed', synopsis:"A duke's carefully buried past resurfaces the night his estranged wife returns to London society, forcing him to choose between the title he was born to and the truth he's spent years hiding.", reason:'Masterful pacing and emotional depth — a standout historical romance.', pickedBy:'Chioma Reddy', pickedDate:'2026-07-10', category:'Best Completed', active:true },
+    { id:'ST-002', title:"The CEO's Hidden Son", author:'Luna Skye', genre:'Billionaire & CEO', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', rating:4.3, chapters:24, words:96000, status:'ongoing', synopsis:"When a boardroom takeover forces billionaire Adrian Cole to confront the son he never knew existed, one accidental meeting threatens to unravel a decade of carefully guarded secrets.", reason:'Addictive twist on the billionaire trope — readers can\'t stop bingeing.', pickedBy:'Chioma Reddy', pickedDate:'2026-07-05', category:'Must Read', active:true },
+    { id:'ST-007', title:'The Runaway Bride in Socked Feet', author:'Ifeanyi_Story', genre:'Twist & Drama', cover:'https://i.postimg.cc/tY7KnJyr/images.jpg', rating:4.6, chapters:22, words:88000, status:'ongoing', synopsis:"She walked out of her own wedding in her socked feet with nothing but her phone and a plan — but the life she builds to replace it comes with secrets of its own.", reason:'Fresh premise, razor-sharp dialogue, and a heroine readers root for.', pickedBy:'Chioma Reddy', pickedDate:'2026-07-12', category:'Editor\'s Choice', active:true },
+    { id:'ST-001', title:'Bound by the Ruthless Alpha', author:'Chioma Okafor', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg', rating:4.5, chapters:31, words:124000, status:'ongoing', synopsis:"Chained to an alpha who broke her trust once already, Amara must decide whether loyalty to her pack is worth risking her heart a second time — even as an old rival circles closer.", reason:'Powerful worldbuilding and a heroine with real agency.', pickedBy:'Chioma Reddy', pickedDate:'2026-06-28', category:'Must Read', active:true },
+    { id:'ST-008', title:'The Letter He Never Sent', author:'Efe_O', genre:'Elegy & Heartbreak', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', rating:4.4, chapters:15, words:52000, status:'ongoing', synopsis:"Ten years after he disappeared without a word, a folded letter turns up in his old jacket pocket — and everything she thought she knew about why he left starts to fall apart.", reason:'Raw emotional storytelling — the kind that stays with you.', pickedBy:'Chioma Reddy', pickedDate:'2026-07-01', category:'Best Completed', active:false },
+    { id:'ST-003', title:"Wolf King's Vow", author:'Elena Vasquez', genre:'Werewolf & Fantasy', cover:'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', rating:4.1, chapters:12, words:48000, status:'ongoing', synopsis:"Bound by an ancient vow neither of them chose, a reluctant wolf king and the human he's sworn to protect must survive a war between packs — and the pull growing between them.", reason:'A fresh take on wolf lore with genuine romantic tension.', pickedBy:'Chioma Reddy', pickedDate:'2026-06-20', category:'Rising Star', active:true },
+    { id:'ST-009', title:'Caught Him Kissing Her Photograph', author:'Ada_Writes', genre:'Romance & Betrayal', cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', rating:4.2, chapters:19, words:64000, status:'ongoing', synopsis:"She came home early to celebrate their anniversary and found her husband kissing a photograph of a woman she'd never seen — the first thread in a marriage built on more than one lie.", reason:'Domestic suspense meets raw emotional truth — unputdownable.', pickedBy:'Chioma Reddy', pickedDate:'2026-07-08', category:'Editor\'s Choice', active:true },
+  ];
+
+  var EDITORS_PICKS_LOG = [
+    { action:'picked', story:'The Duke\'s Secret', by:'Chioma Reddy', date:'2026-07-10', note:'Added to Best Completed' },
+    { action:'picked', story:"The CEO's Hidden Son", by:'Chioma Reddy', date:'2026-07-05', note:'Added to Must Read' },
+    { action:'picked', story:'The Runaway Bride in Socked Feet', by:'Chioma Reddy', date:'2026-07-12', note:'Added to Editor\'s Choice' },
+    { action:'picked', story:'Bound by the Ruthless Alpha', by:'Chioma Reddy', date:'2026-06-28', note:'Added to Must Read' },
+    { action:'removed', story:'The Letter He Never Sent', by:'Chioma Reddy', date:'2026-07-14', note:'Moved to archive — ended run' },
+    { action:'picked', story:"Wolf King's Vow", by:'Chioma Reddy', date:'2026-06-20', note:'Added to Rising Star' },
+    { action:'picked', story:'Caught Him Kissing Her Photograph', by:'Chioma Reddy', date:'2026-07-08', note:'Added to Editor\'s Choice' },
+  ];
+
   /* ═══════════════════════════════════════════════════════════════
      Expose as window.EditorDemo
      ═══════════════════════════════════════════════════════════════ */
@@ -437,6 +509,13 @@
     TOP_PROMOS: TOP_PROMOS,
     PROMO_QUICK_ACTIONS: PROMO_QUICK_ACTIONS,
     BOOKS: BOOKS,
+    FEATURED_TAGS: FEATURED_TAGS,
+    FEATURED_SECTIONS: FEATURED_SECTIONS,
+    FEATURED_LIBRARY: FEATURED_LIBRARY,
+    FEATURED_PLACEMENTS: FEATURED_PLACEMENTS,
+    FEATURED_HISTORY: FEATURED_HISTORY,
+    EDITORS_PICKS: EDITORS_PICKS,
+    EDITORS_PICKS_LOG: EDITORS_PICKS_LOG,
   };
 
 })();

@@ -33,30 +33,28 @@
   const THEME_KEY = 'droboardTheme';
 
   const MENU_ITEMS = [
-    { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html' },
-    { key: 'review-queue',        label: 'Review Queue',        icon: 'fa-inbox',             href: 'review-queue.html' },
-    { key: 'story-management',    label: 'Story Management',     icon: 'fa-book',              href: 'story-management.html' },
-    { key: 'book-management',     label: 'Book Management',      icon: 'fa-book-open',         href: 'book-management.html' },
-    { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html' },
-    { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html' },
-    { key: 'categories-genres',   label: 'Categories & Genres',  icon: 'fa-tags',              href: 'categories-genres.html' },
-    { key: 'featured-stories',    label: 'Featured Stories',     icon: 'fa-star',              href: 'featured-stories.html' },
-    { key: 'featured-banners',    label: 'Featured Banners',     icon: 'fa-images',            href: 'featured-banners.html' },
-    { key: 'editors-picks',       label: "Editor's Picks",       icon: 'fa-award',             href: 'editors-picks.html' },
-    { key: 'announcements',       label: 'Announcements',        icon: 'fa-bullhorn',          href: 'announcements.html' },
-    { key: 'promotions',          label: 'Promotions',           icon: 'fa-rectangle-ad',      href: 'promotions.html' },
-    { key: 'contracts',           label: 'Contracts',            icon: 'fa-file-contract',     href: 'contracts.html' },
-    { key: 'payments',            label: 'Payments',             icon: 'fa-money-bill',        href: 'payments.html' },
-    { key: 'earnings-overview',   label: 'Earnings Overview',    icon: 'fa-chart-simple',      href: 'earnings-overview.html' },
-    { key: 'withdrawal-requests', label: 'Withdrawal Requests',  icon: 'fa-money-bill-transfer', href: 'withdrawal-requests.html' },
-    { key: 'transaction-history', label: 'Transaction History',  icon: 'fa-clock-rotate-left', href: 'transaction-history.html' },
-    { key: 'notification-center', label: 'Notification Center',  icon: 'fa-bell',               href: 'notification-center.html' },
-    { key: 'platform-settings',   label: 'Platform Settings',    icon: 'fa-gear',               href: 'platform-settings.html' },
-    { key: 'system-pages',        label: 'System Pages',         icon: 'fa-layer-group',       href: 'system-pages.html' },
-    { key: 'story-analytics',     label: 'Story Analytics',      icon: 'fa-chart-line',        href: 'story-analytics.html' },
-    { key: 'communication',       label: 'Communication',        icon: 'fa-comments',          href: 'communication.html' },
-    { key: 'author-messages',     label: 'Author Messages',      icon: 'fa-envelope',          href: 'author-messages.html' },
-    { key: 'activity-logs',       label: 'Activity Logs',        icon: 'fa-list',              href: 'activity-logs.html' },
+    { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html',              section: 'Overview' },
+
+    { key: 'review-queue',        label: 'Review Queue',        icon: 'fa-inbox',             href: 'review-queue.html',           section: 'Content' },
+    { key: 'story-management',    label: 'Story Management',     icon: 'fa-book',              href: 'story-management.html',       section: 'Content' },
+    { key: 'book-management',     label: 'Book Management',      icon: 'fa-book-open',         href: 'book-management.html',        section: 'Content' },
+    { key: 'categories-genres',   label: 'Categories & Genres',  icon: 'fa-tags',              href: 'categories-genres.html',      section: 'Content' },
+
+    { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html',                section: 'People' },
+    { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html',    section: 'People' },
+    { key: 'communication',       label: 'Communication',        icon: 'fa-comments',          href: 'communication.html',          section: 'People' },
+    { key: 'author-messages',     label: 'Author Messages',      icon: 'fa-envelope',          href: 'author-messages.html',        section: 'People' },
+
+    { key: 'featured-stories',    label: 'Featured Stories',     icon: 'fa-star',              href: 'featured-stories.html',       section: 'Discovery' },
+    { key: 'featured-banners',    label: 'Featured Banners',     icon: 'fa-images',            href: 'featured-banners.html',       section: 'Discovery' },
+    { key: 'editors-picks',       label: "Editor's Picks",       icon: 'fa-award',             href: 'editors-picks.html',          section: 'Discovery' },
+    { key: 'announcements',       label: 'Announcements',        icon: 'fa-bullhorn',          href: 'announcements.html',          section: 'Discovery' },
+    { key: 'promotions',          label: 'Promotions',           icon: 'fa-rectangle-ad',      href: 'promotions.html',             section: 'Discovery' },
+
+    { key: 'contracts',           label: 'Contracts',            icon: 'fa-file-contract',     href: 'contracts.html',              section: 'Finance' },
+    { key: 'payments',            label: 'Payments',             icon: 'fa-money-bill',        href: 'payments.html',               section: 'Finance' },
+
+    { key: 'activity-logs',       label: 'Activity Logs',        icon: 'fa-list',              href: 'activity-logs.html',          section: 'System' },
   ];
 
   const CSS = `
@@ -191,10 +189,16 @@
     const existingContent = container.innerHTML;
 
     function navHtml() {
-      return `<div class="ses-sb-section-lbl">Senior Editor</div>
-        ${MENU_ITEMS.map(item => {
+      let lastSection = '';
+      return `${MENU_ITEMS.map(item => {
           const isActive = item.key === activeItem;
-          return `<a class="ses-sb-item${isActive ? ' active' : ''}"
+          const section = item.section || '';
+          let sectionHtml = '';
+          if (section !== lastSection) {
+            sectionHtml = `<div class="ses-sb-section-lbl">${_esc(section)}</div>`;
+            lastSection = section;
+          }
+          return `${sectionHtml}<a class="ses-sb-item${isActive ? ' active' : ''}"
                       href="${_esc(item.href)}"
                       data-item-key="${_esc(item.key)}">
               <i class="fas ${item.icon} ses-item-ico"></i>${_esc(item.label)}
@@ -259,6 +263,13 @@
     contentEl.innerHTML = existingContent;
     const sidebarEl = document.getElementById(instId + '-sidebar');
     const overlayEl = document.getElementById(instId + '-overlay');
+
+    // Scroll active menu item into view
+    const navEl = sidebarEl.querySelector('.ses-sb-nav');
+    const activeEl = navEl ? navEl.querySelector('.ses-sb-item.active') : null;
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
 
     function openSidebar() { sidebarEl.classList.add('open'); overlayEl.classList.add('show'); }
     function closeSidebar() { sidebarEl.classList.remove('open'); overlayEl.classList.remove('show'); }

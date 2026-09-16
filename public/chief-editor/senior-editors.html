@@ -48,11 +48,23 @@ body{font-family:'Inter',system-ui,sans-serif}
 .ed-name-wrap{flex:1;min-width:0}
 .ed-name{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .ed-email{font-size:10.5px;color:var(--text-faint);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ed-top-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .ed-status{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap;flex-shrink:0}
 .ed-status.on-track{background:var(--blue-bg);color:var(--blue)}
 .ed-status.behind{background:var(--red-bg);color:var(--red)}
 .ed-status.ahead{background:var(--green-bg);color:var(--green)}
 .report-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
+
+/* three-dot menu */
+.ed-dots-wrap{position:relative}
+.ed-dots-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.ed-dots-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ed-dots-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:170px;z-index:50;display:none;overflow:hidden}
+.ed-dots-menu.open{display:block}
+.ed-dots-item{width:100%;padding:9px 14px;border:none;background:none;font-size:12px;font-weight:600;font-family:inherit;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;transition:.12s}
+.ed-dots-item:hover{background:rgba(255,0,80,.06);color:var(--accent)}
+.ed-dots-item i{font-size:12px;width:16px;text-align:center}
+.ed-dots-badge{margin-left:auto;font-size:10px;font-weight:800;background:var(--accent);color:#fff;padding:1px 7px;border-radius:20px}
 
 .ed-meta-row{display:flex;gap:16px;flex-wrap:wrap}
 .ed-meta-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.02em;display:block;margin-bottom:2px}
@@ -122,188 +134,16 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <script src="shared/chief-editor-sidebar.js"></script>
 <script src="shared/chief-editor-data.js"></script>
+<script src="shared/assign-authors-sheet.js"></script>
+<script src="shared/senior-editors-service.js"></script>
 <script>
 'use strict';
-const shell = ChiefEditorSidebar.attach('#dashRoot',{
+ChiefEditorSidebar.attach('#dashRoot',{
   activeItem:'senior-editors', title:'Senior Editors', subtitle:'Manage editors, monitor quotas, and review performance',
   user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'}, notifCount:6,
   searchPlaceholder:'Search anything…',
 });
-
-const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
-const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
-
-const PAGE_SIZE = 6;
-let ALL = [];
-let filtered = [];
-let currentPage = 1;
-
-async function init(){
-  ALL = await ChiefEditorData.getSeniorEditors();
-  renderStatCards();
-  applyFilters();
-}
-
-function renderStatCards(){
-  const behind = ALL.filter(e=>e.status==='behind').length;
-  const totalAuthors = ALL.reduce((sum,e)=>sum+e.authorsManaged,0);
-  const stats = [
-    { n:ALL.length, l:'Senior Editors', ico:'fa-people-group', cls:'accent' },
-    { n:ALL.length-behind, l:'On Track or Ahead', ico:'fa-circle-check', cls:'blue' },
-    { n:behind, l:'Behind Quota', ico:'fa-triangle-exclamation', cls:'red' },
-    { n:totalAuthors, l:'Authors Managed', ico:'fa-user-tie', cls:'purple' },
-  ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
-}
-
-function applyFilters(){
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const statusVal = document.getElementById('statusFilter').value;
-  const sortVal = document.getElementById('sortSelect').value;
-
-  filtered = ALL.filter(e=>{
-    const matchesQ = !q || e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q);
-    const matchesStatus = statusVal==='all' || e.status===statusVal;
-    return matchesQ && matchesStatus;
-  });
-
-  filtered.sort((a,b)=>{
-    if(sortVal==='name') return a.name.localeCompare(b.name);
-    if(sortVal==='authors-desc') return b.authorsManaged-a.authorsManaged;
-    if(sortVal==='quota-asc') return (a.invited/a.target)-(b.invited/b.target);
-    if(sortVal==='pay-desc') return parseFloat(b.monthlyPay.replace(/[^0-9.]/g,''))-parseFloat(a.monthlyPay.replace(/[^0-9.]/g,''));
-    return 0;
-  });
-
-  currentPage = 1;
-  renderGrid();
-}
-
-function renderGrid(){
-  document.getElementById('resultCount').textContent = filtered.length;
-
-  const box = document.getElementById('edGrid');
-  if(!filtered.length){
-    box.innerHTML = `<div class="empty-msg"><i class="fas fa-user-slash" style="font-size:20px;margin-bottom:8px;display:block"></i>No senior editors match your filters.</div>`;
-    document.getElementById('pagination').innerHTML = '';
-    return;
-  }
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
-  if(currentPage>totalPages) currentPage = totalPages;
-  const start = (currentPage-1)*PAGE_SIZE;
-  const pageItems = filtered.slice(start, start+PAGE_SIZE);
-
-  box.innerHTML = pageItems.map(e=>{
-    const pct = Math.min(100, Math.round(e.invited/e.target*100));
-    const statusLabel = e.status==='behind' ? 'Behind' : e.status==='ahead' ? 'Ahead' : 'On track';
-    return `
-    <div class="ed-card" data-id="${e.id}">
-      <div class="ed-top">
-        <img class="ed-avatar" src="${e.avatar}" alt="${e.name}"/>
-        <div class="ed-name-wrap">
-          <div class="ed-name">${e.name} ${e.openReports>0?`<span class="report-dot" title="${e.openReports} open report(s)"></span>`:''}</div>
-          <div class="ed-email">${e.email}</div>
-        </div>
-        <span class="ed-status ${e.status}">${statusLabel}</span>
-      </div>
-
-      <div class="ed-meta-row">
-        <div class="ed-meta-item"><span>Authors</span><b>${e.authorsManaged}</b></div>
-        <div class="ed-meta-item"><span>Joined</span><b>${e.joined}</b></div>
-        <div class="ed-meta-item"><span>Monthly Pay</span><b>${e.monthlyPay}</b></div>
-        <div class="ed-meta-item"><span>YTD Paid</span><b>${e.ytdPaid}</b></div>
-      </div>
-
-      <div>
-        <div class="ed-quota-label"><span>Invite quota — ${e.invited}/${e.target}</span><span>Due ${e.deadline}</span></div>
-        <div class="ed-quota-track"><div class="ed-quota-fill ${e.status}" style="width:${pct}%"></div></div>
-      </div>
-
-      <div class="ed-actions">
-        <button class="mini-btn ghost" data-action="view" data-id="${e.id}"><i class="fas fa-eye"></i> View Profile</button>
-        <button class="mini-btn" data-action="message" data-id="${e.id}"><i class="fas fa-comment-dots"></i> Message</button>
-        ${e.status==='behind'
-          ? `<button class="mini-btn danger" data-action="quota" data-id="${e.id}"><i class="fas fa-triangle-exclamation"></i> Take Action</button>`
-          : `<button class="mini-btn" data-action="quota" data-id="${e.id}"><i class="fas fa-bullseye"></i> Manage Quota</button>`}
-      </div>
-    </div>`;
-  }).join('');
-
-  renderPagination(totalPages);
-}
-
-function renderPagination(totalPages){
-  const box = document.getElementById('pagination');
-  if(totalPages<=1){
-    box.innerHTML = `<div class="pg-info">Showing all ${filtered.length} editor${filtered.length===1?'':'s'}</div>`;
-    return;
-  }
-
-  const start = (currentPage-1)*PAGE_SIZE+1;
-  const end = Math.min(filtered.length, currentPage*PAGE_SIZE);
-
-  let pageBtns = '';
-  const pushBtn = (p) => { pageBtns += `<button class="pg-btn${p===currentPage?' active':''}" data-page="${p}">${p}</button>`; };
-  const pushEllipsis = () => { pageBtns += `<span class="pg-ellipsis">…</span>`; };
-
-  if(totalPages<=7){
-    for(let p=1;p<=totalPages;p++) pushBtn(p);
-  } else {
-    pushBtn(1);
-    if(currentPage>3) pushEllipsis();
-    const from = Math.max(2, currentPage-1);
-    const to = Math.min(totalPages-1, currentPage+1);
-    for(let p=from;p<=to;p++) pushBtn(p);
-    if(currentPage<totalPages-2) pushEllipsis();
-    pushBtn(totalPages);
-  }
-
-  box.innerHTML = `
-    <div class="pg-info">Showing ${start}–${end} of ${filtered.length} editors</div>
-    <div class="pg-controls">
-      <button class="pg-btn" id="pgPrev" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>
-      ${pageBtns}
-      <button class="pg-btn" id="pgNext" ${currentPage===totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>
-    </div>`;
-
-  const prevBtn = document.getElementById('pgPrev');
-  const nextBtn = document.getElementById('pgNext');
-  prevBtn && prevBtn.addEventListener('click', ()=>{ currentPage--; renderGrid(); });
-  nextBtn && nextBtn.addEventListener('click', ()=>{ currentPage++; renderGrid(); });
-  box.querySelectorAll('[data-page]').forEach(b=>{
-    b.addEventListener('click', ()=>{ currentPage = parseInt(b.dataset.page,10); renderGrid(); });
-  });
-}
-
-let searchDebounce;
-document.getElementById('searchInput').addEventListener('input', ()=>{
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(applyFilters, 180);
-});
-document.getElementById('statusFilter').addEventListener('change', applyFilters);
-document.getElementById('sortSelect').addEventListener('change', applyFilters);
-document.getElementById('inviteBtn').addEventListener('click', ()=>{
-  if(typeof window.toast==='function') window.toast('Opening invite form…');
-});
-
-document.addEventListener('click', e=>{
-  const el = e.target.closest('[data-action]');
-  if(!el) return;
-  const editor = ALL.find(x=>x.id===el.dataset.id);
-  if(!editor) return;
-  const action = el.dataset.action;
-  const toast = typeof window.toast==='function' ? window.toast : (m)=>console.log(m);
-  if(action==='view') toast(`Opening ${editor.name}'s profile…`);
-  else if(action==='message') toast(`Opening message thread with ${editor.name}…`);
-  else if(action==='quota') toast(`Opening quota options for ${editor.name}…`);
-});
-
-init();
+SeniorEditorsService.init();
 </script>
 </body>
 </html>

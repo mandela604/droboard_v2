@@ -368,7 +368,7 @@ function openFormModal(action, idx){
   document.getElementById('formModalTitle').textContent=(isEdit?'Edit':'Add')+(isCat?' Category':' Genre');
   document.getElementById('formConfirmLabel').textContent=isEdit?'Save Changes':'Add';
   document.getElementById('formDescGroup').style.display=isCat?'':'none';
-  document.getElementById('formCatGroup').style.display=isCat?'none':'';
+  document.getElementById('formCatGroup').style.display=isCat?'none':'block';
   if(isCat){
     if(isEdit){
       var c=CATEGORIES[idx];
@@ -382,16 +382,23 @@ function openFormModal(action, idx){
     }
   }else{
     var catSel=document.getElementById('formCat');
-    catSel.innerHTML='<option value="">Select category…</option>'+
-      CATEGORIES.map(function(c){return'<option value="'+c.name+'">'+c.name+'</option>';}).join('');
+    catSel.innerHTML='<option value="">Select category…</option>';
+    for(var i=0;i<CATEGORIES.length;i++){
+      var opt=document.createElement('option');
+      opt.value=CATEGORIES[i].name;
+      opt.textContent=CATEGORIES[i].name;
+      catSel.appendChild(opt);
+    }
     if(isEdit){
       var g=GENRES[idx];
       document.getElementById('formName').value=g.name;
-      catSel.value=g.cat||'';
+      for(var j=0;j<catSel.options.length;j++){
+        if(catSel.options[j].value===g.cat){catSel.selectedIndex=j;break;}
+      }
       document.getElementById('formStatus').value=g.status;
     }else{
       document.getElementById('formName').value='';
-      catSel.value='';
+      catSel.selectedIndex=0;
       document.getElementById('formStatus').value='active';
     }
   }
@@ -403,7 +410,7 @@ document.getElementById('formModalClose').addEventListener('click',function(){do
 document.getElementById('formCancel').addEventListener('click',function(){document.getElementById('formModal').classList.remove('open')});
 document.getElementById('formModal').addEventListener('click',function(e){if(e.target.id==='formModal')document.getElementById('formModal').classList.remove('open')});
 
-document.getElementById('formConfirm').addEventListener('click',async function(){
+document.getElementById('formConfirm').addEventListener('click',function(){
   var name=document.getElementById('formName').value.trim();
   if(!name){toast('Please enter a name.');return;}
   var isCat=formMode.type==='categories';
@@ -412,20 +419,20 @@ document.getElementById('formConfirm').addEventListener('click',async function()
   if(isCat){
     var desc=document.getElementById('formDesc').value.trim();
     if(isEdit){
-      await CategoriesGenresService.updateCategory(formMode.idx,{name:name,desc:desc,status:status},CATEGORIES);
+      CategoriesGenresService.updateCategory(formMode.idx,{name:name,desc:desc,status:status},CATEGORIES);
       toast('Category updated: '+name);
     }else{
-      await CategoriesGenresService.addCategory({name:name,desc:desc,status:status},CATEGORIES);
+      CategoriesGenresService.addCategory({name:name,desc:desc,status:status},CATEGORIES);
       toast('Category added: '+name);
     }
   }else{
     var cat=document.getElementById('formCat').value;
     if(!cat){toast('Please select a category.');return;}
     if(isEdit){
-      await CategoriesGenresService.updateGenre(formMode.idx,{name:name,cat:cat,status:status},GENRES);
+      CategoriesGenresService.updateGenre(formMode.idx,{name:name,cat:cat,status:status},GENRES);
       toast('Genre updated: '+name);
     }else{
-      await CategoriesGenresService.addGenre({name:name,cat:cat,status:status},GENRES);
+      CategoriesGenresService.addGenre({name:name,cat:cat,status:status},GENRES);
       toast('Genre added: '+name);
     }
   }
@@ -435,16 +442,16 @@ document.getElementById('formConfirm').addEventListener('click',async function()
 });
 
 /* ── TOGGLE STATUS ── */
-async function doToggleStatus(idx){
+function doToggleStatus(idx){
   if(currentView==='categories'){
     var c=CATEGORIES[idx];
     c.status=c.status==='active'?'inactive':'active';
-    await CategoriesGenresService.updateCategory(idx,{status:c.status},CATEGORIES);
+    CategoriesGenresService.updateCategory(idx,{status:c.status},CATEGORIES);
     toast(c.name+' set to '+c.status);
   }else{
     var g=GENRES[idx];
     g.status=g.status==='active'?'inactive':'active';
-    await CategoriesGenresService.updateGenre(idx,{status:g.status},GENRES);
+    CategoriesGenresService.updateGenre(idx,{status:g.status},GENRES);
     toast(g.name+' set to '+g.status);
   }
   refresh();
@@ -462,15 +469,15 @@ document.getElementById('deleteModalClose').addEventListener('click',function(){
 document.getElementById('deleteCancel').addEventListener('click',function(){document.getElementById('deleteModal').classList.remove('open')});
 document.getElementById('deleteModal').addEventListener('click',function(e){if(e.target.id==='deleteModal')document.getElementById('deleteModal').classList.remove('open')});
 
-document.getElementById('deleteConfirm').addEventListener('click',async function(){
+document.getElementById('deleteConfirm').addEventListener('click',function(){
   if(deleteIdx===null)return;
   if(currentView==='categories'){
     var name=CATEGORIES[deleteIdx].name;
-    await CategoriesGenresService.deleteCategory(deleteIdx,CATEGORIES);
+    CategoriesGenresService.deleteCategory(deleteIdx,CATEGORIES);
     toast('Deleted category: '+name);
   }else{
     var name=GENRES[deleteIdx].name;
-    await CategoriesGenresService.deleteGenre(deleteIdx,GENRES);
+    CategoriesGenresService.deleteGenre(deleteIdx,GENRES);
     toast('Deleted genre: '+name);
   }
   deleteIdx=null;
@@ -490,10 +497,10 @@ function toast(m){var t=document.getElementById('toastEl');if(!t){t=document.cre
 t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(function(){t.style.opacity='0';},2500);}
 
 /* ═══ INIT ═══ */
-async function init(){
-  CATEGORIES=await CategoriesGenresService.getCategories();
-  GENRES=await CategoriesGenresService.getGenres();
-  POPULAR_GENRES=await CategoriesGenresService.getPopularGenres();
+function init(){
+  CATEGORIES=CategoriesGenresService.getCategories();
+  GENRES=CategoriesGenresService.getGenres();
+  POPULAR_GENRES=CategoriesGenresService.getPopularGenres();
   renderPagination();
   renderPopularGenres();
   refresh();
