@@ -72,6 +72,17 @@ body{font-family:'Inter',system-ui,sans-serif}
 .icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
 .icon-btn:hover{background:var(--table-head);color:var(--gold)}
 
+.row-menu{position:relative}
+.row-menu-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
+.row-menu-btn:hover{background:var(--table-head);color:var(--gold)}
+.dropdown{position:absolute;right:0;top:30px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:8;overflow:hidden;min-width:160px;display:none}
+.dropdown.open{display:block}
+.dropdown-item{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:11.5px;font-weight:600;color:var(--text);text-decoration:none;cursor:pointer;font-family:inherit;white-space:nowrap}
+.dropdown-item:hover{background:var(--input-bg)}
+.dropdown-item i{width:14px;color:var(--text-faint);flex-shrink:0}
+.dropdown-item.danger{color:var(--red)}
+.dropdown-item.danger i{color:var(--red)}
+
 .dense .book-row{padding-top:6px;padding-bottom:6px}
 .dense .book-thumb{width:26px;height:36px}
 .dense .book-title{font-size:12px}
@@ -99,14 +110,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="booksRoot">
-  <div class="page-head">
-    <div>
-      <h1>All Books</h1>
-      <p>Every title on the platform — <span id="totalCountLbl">…</span> books.</p>
-    </div>
-    <button class="btn primary"><i class="fas fa-plus"></i> Add Book</button>
-  </div>
-
   <div class="grid-4" id="statCards"></div>
 
   <div class="panel">
@@ -164,6 +167,14 @@ const shell = SuperAdminSidebar.attach('#booksRoot', {
   searchPlaceholder: 'Search everything…',
 });
 
+function toast(m){
+  var t=document.getElementById('toastEl');
+  if(!t){t=document.createElement('div');t.id='toastEl';t.style.cssText='position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)';document.body.appendChild(t);}
+  t.textContent=m;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(t._t);
+  t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(16px)';},2400);
+}
+
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
 const GENRE_COLORS = { Romance:'red', Fantasy:'purple', Thriller:'blue', 'Sci-Fi':'blue', Horror:'red', 'Drama':'amber', 'Werewolf':'purple', 'Teen Fiction':'green', 'Mystery':'gold' };
@@ -202,7 +213,7 @@ function generateBooks(n){
 const ALL_BOOKS = generateBooks(2400); // simulated slice of a much larger (100k+) catalog
 let filtered = ALL_BOOKS.slice();
 let page = 1;
-let pageSize = 25;
+let pageSize = 12;
 let density = 'normal';
 
 function fmtNum(n){
@@ -223,18 +234,15 @@ function renderStatCards(){
   const published = ALL_BOOKS.filter(b=>b.status==='published').length;
   const flagged = ALL_BOOKS.filter(b=>b.status==='flagged').length;
   const totalRevenue = ALL_BOOKS.reduce((s,b)=>s+b.revenue,0);
-  document.getElementById('totalCountLbl').textContent = fmtNum(total) + '+';
   const stats = [
     { n: fmtNum(total)+'+', l:'Total Books', ico:'fa-book-open', cls:'gold' },
     { n: fmtNum(published), l:'Published', ico:'fa-circle-check', cls:'green' },
     { n: flagged, l:'Flagged for Review', ico:'fa-flag', cls:'red' },
     { n: '$'+fmtNum(totalRevenue), l:'Total Revenue (est.)', ico:'fa-sack-dollar', cls:'blue' },
   ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
+  document.getElementById('statCards').innerHTML = stats.map(function(s){
+    return '<div class="stat-card"><div class="stat-ico" style="background:'+BG_MAP[s.cls]+';color:'+ICO_MAP[s.cls]+'"><i class="fas '+s.ico+'"></i></div><div><div class="stat-num">'+s.n+'</div><div class="stat-lbl">'+s.l+'</div></div></div>';
+  }).join('');
 }
 
 function populateGenreFilter(){
@@ -273,26 +281,25 @@ function renderList(){
   if(pageItems.length === 0){
     listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No books match your filters.</div>`;
   } else {
-    listEl.innerHTML = pageItems.map(b=>`
-      <div class="book-row">
-        <div class="book-main">
-          <img class="book-thumb" src="${b.cover}" alt=""/>
-          <div class="book-info">
-            <div class="book-title">${b.title}</div>
-            <div class="book-meta">by <a href="#">${b.author}</a> · ${b.chapters} ch · ${b.id}</div>
-          </div>
-        </div>
-        <div class="col-hide"><span class="genre-chip" style="background:${BG_MAP[GENRE_COLORS[b.genre]]};color:${ICO_MAP[GENRE_COLORS[b.genre]]}">${b.genre}</span></div>
-        <div><span class="status-chip ${b.status}"><i class="fas fa-circle"></i>${b.status}</span></div>
-        <div class="col-hide num-cell">${fmtNum(b.reads)}</div>
-        <div class="col-hide num-cell faint">★ ${b.rating}</div>
-        <div class="num-cell">$${fmtNum(b.revenue)}</div>
-        <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtDays(b.updatedDays)}</div>
-        <div class="row-actions">
-          <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
-          <button class="icon-btn" title="More"><i class="fas fa-ellipsis-vertical"></i></button>
-        </div>
-      </div>`).join('');
+    listEl.innerHTML = pageItems.map(function(b){
+      return '<div class="book-row">'
+        + '<div class="book-main"><img class="book-thumb" src="'+b.cover+'" alt=""/><div class="book-info"><div class="book-title">'+b.title+'</div><div class="book-meta">by <a href="#">'+b.author+'</a> · '+b.chapters+' ch · '+b.id+'</div></div></div>'
+        + '<div class="col-hide"><span class="genre-chip" style="background:'+BG_MAP[GENRE_COLORS[b.genre]]+';color:'+ICO_MAP[GENRE_COLORS[b.genre]]+'">'+b.genre+'</span></div>'
+        + '<div><span class="status-chip '+b.status+'"><i class="fas fa-circle"></i>'+b.status+'</span></div>'
+        + '<div class="col-hide num-cell">'+fmtNum(b.reads)+'</div>'
+        + '<div class="col-hide num-cell faint">\u2605 '+b.rating+'</div>'
+        + '<div class="num-cell">$'+fmtNum(b.revenue)+'</div>'
+        + '<div class="col-hide" style="font-size:11px;color:var(--text-faint)">'+fmtDays(b.updatedDays)+'</div>'
+        + '<div class="row-actions">'
+        + '<a class="icon-btn" href="../author/book-workspace.html?book='+b.id+'" title="View book"><i class="fas fa-eye"></i></a>'
+        + '<div class="row-menu"><button class="row-menu-btn" data-action="toggle-menu" data-id="'+b.id+'" title="More"><i class="fas fa-ellipsis-vertical"></i></button>'
+        + '<div class="dropdown" id="menu-'+b.id+'">'
+        + '<a class="dropdown-item" href="../author/book-workspace.html?book='+b.id+'"><i class="fas fa-eye"></i> View Book</a>'
+        + '<a class="dropdown-item" href="../author/book-workspace.html?book='+b.id+'&mode=edit"><i class="fas fa-pen"></i> Edit Book</a>'
+        + '<div class="dropdown-item danger" data-action="flag" data-id="'+b.id+'"><i class="fas fa-flag"></i> Flag for Review</div>'
+        + '</div></div></div>'
+        + '</div>';
+    }).join('');
   }
 
   renderFooter();
@@ -334,13 +341,36 @@ document.getElementById('searchInput').addEventListener('input', applyFilters);
 document.getElementById('genreFilter').addEventListener('change', applyFilters);
 document.getElementById('statusFilter').addEventListener('change', applyFilters);
 document.getElementById('sortFilter').addEventListener('change', applyFilters);
-document.querySelectorAll('#densitySeg button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#densitySeg button').forEach(b=>b.classList.remove('active'));
+document.querySelectorAll('#densitySeg button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('#densitySeg button').forEach(function(b){b.classList.remove('active');});
     btn.classList.add('active');
     density = btn.dataset.density;
     renderList();
   });
+});
+
+document.addEventListener('click', function(e){
+  var btn = e.target.closest('[data-action="toggle-menu"]');
+  if(btn){
+    e.stopPropagation();
+    var id = btn.dataset.id;
+    document.querySelectorAll('.dropdown.open').forEach(function(d){ if(d.id!=='menu-'+id) d.classList.remove('open'); });
+    document.getElementById('menu-'+id).classList.toggle('open');
+    return;
+  }
+  var flagBtn = e.target.closest('[data-action="flag"]');
+  if(flagBtn){
+    var bookId = flagBtn.dataset.id;
+    var book = ALL_BOOKS.find(function(b){return b.id===bookId;});
+    if(book){
+      book.status = book.status==='flagged' ? 'published' : 'flagged';
+      toast(book.title+(book.status==='flagged'?' flagged':' unflagged'));
+      renderStatCards(); applyFilters();
+    }
+    return;
+  }
+  document.querySelectorAll('.dropdown.open').forEach(function(d){ d.classList.remove('open'); });
 });
 
 function init(){

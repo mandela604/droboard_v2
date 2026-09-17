@@ -141,11 +141,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="queueRoot">
-  <div class="welcome-banner">
-    <div class="welcome-eyebrow">Senior Editor · Review Queue</div>
-    <div class="welcome-title">Review Queue 📥</div>
-    <div class="welcome-sub">Writers submit their full manuscript once it crosses 5,000 words. Preview the book below, then accept it for contract or decline with feedback.</div>
-  </div>
 
   <div class="grid-4" id="statRow"></div>
 
@@ -204,6 +199,11 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label>Contract type</label>
         <select id="contractType"><option value="">Loading contracts…</option></select>
         <small id="contractHint"></small>
+      </div>
+      <div class="field-group">
+        <label>Chapter coin price</label>
+        <input type="number" id="chapterCoinPrice" value="15" min="0" placeholder="Coins per chapter"/>
+        <small>Set the default coin price for chapters in this book (0 = free). Editors can override per chapter later.</small>
       </div>
       <div class="field-group">
         <label>Confirm your password</label>
@@ -565,6 +565,7 @@ function closeContractModal(){
 async function submitAccept(){
   const s = allSubs.find(x => x.id === acceptTargetId); if (!s) return;
   const contractId = document.getElementById('contractType').value;
+  const chapterPrice = parseInt(document.getElementById('chapterCoinPrice').value) || 15;
   const password = document.getElementById('contractPassword').value;
   const errBox = document.getElementById('contractModalError');
 
@@ -575,10 +576,10 @@ async function submitAccept(){
   const btn = document.getElementById('contractConfirmBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming…';
   try {
-    await SeniorEditorData.updateReviewItem(s.id, 'approved', `Accepted under ${contract.label}.`);
+    await SeniorEditorData.updateReviewItem(s.id, 'approved', `Accepted under ${contract.label}. Chapter price: ${chapterPrice} coins.`);
     s.status = 'approved';
-    s.feedback = `Accepted under ${contract.label}.`;
-    toast(`✅ "${s.title}" accepted — ${contract.label}`);
+    s.feedback = `Accepted under ${contract.label}. Chapter price: ${chapterPrice} coins.`;
+    toast(`✅ "${s.title}" accepted — ${contract.label} · ${chapterPrice} coins/chapter`);
     closeContractModal(); closeSheet();
     buildStats(); buildFilterPills(); applyFilters();
   } catch (err) {

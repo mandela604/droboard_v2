@@ -43,7 +43,7 @@ tr:hover td{background:var(--hover)}
   </div>
   <div class="panel">
     <div class="panel-head"><h2><i class="fas fa-file-contract" style="color:var(--accent)"></i> Contract Templates</h2></div>
-    <table id="templatesTable"><thead><tr><th>Template</th><th>Type</th><th>Royalty</th><th>Term</th><th>Used</th><th>Status</th></tr></thead><tbody></tbody></table>
+    <table id="templatesTable"><thead><tr><th>Template</th><th>Type</th><th>Royalty</th><th>Ch. Price</th><th>Term</th><th>Used</th><th>Status</th></tr></thead><tbody></tbody></table>
   </div>
   <div class="grid-2col">
     <div class="panel">
@@ -64,7 +64,7 @@ const shell = ChiefEditorSidebar.attach('#contractsRoot',{activeItem:'author-con
 async function init(){
   const d = await ChiefEditorData.getAuthorContracts();
   document.getElementById('templatesTable').querySelector('tbody').innerHTML = d.templates.map(t => `
-    <tr><td><strong>${t.name}</strong></td><td><span class="status-pill ${t.type}">${t.type}</span></td><td>${t.royalty}</td><td>${t.term}</td><td>${t.used}</td><td><span class="status-pill ${t.status}">${t.status}</span></td></tr>`).join('');
+    <tr><td><strong>${t.name}</strong></td><td><span class="status-pill ${t.type}">${t.type}</span></td><td>${t.royalty}%</td><td>${t.defaultChapterPrice} coins</td><td>${t.term}</td><td>${t.used}</td><td><span class="status-pill ${t.status}">${t.status}</span></td></tr>`).join('');
   document.getElementById('activeContracts').innerHTML = d.activeContracts.map(c => `
     <div class="contract-card"><div class="cc-name">${c.author} <span class="status-pill ${c.status}">${c.status}</span></div><div class="cc-meta"><span>📄 ${c.template}</span><span>💰 ${c.value}</span><span>📅 ${c.start} — ${c.end}</span></div></div>`).join('');
   document.getElementById('pendingOffers').innerHTML = d.pendingOffers.map(o => `

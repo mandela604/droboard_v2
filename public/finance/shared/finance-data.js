@@ -92,10 +92,18 @@
     coinTransactions: [
       { id:'CT-2001', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'purchase', coins:5000,  usd:49.99, date:'2026-07-29T08:30:00', status:'completed' },
       { id:'CT-2002', user:'Tobi_Reads',    avatar:'https://i.pravatar.cc/60?img=22', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-29T07:15:00', status:'completed' },
-      { id:'CT-2004', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:12000, usd:99.99, date:'2026-07-28T21:10:00', status:'completed' },
-      { id:'CT-2005', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'gift',     coins:-500,  usd:-4.99, date:'2026-07-28T18:00:00', status:'completed', note:'Gifted to Luna Skye' },
-      { id:'CT-2006', user:'DeeReadsAlot',  avatar:'https://i.pravatar.cc/60?img=19', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-28T15:40:00', status:'refunded', note:'Duplicate charge' },
-      { id:'CT-2008', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:5000,  usd:49.99, date:'2026-07-27T20:00:00', status:'completed' },
+      { id:'CT-2003', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:12000, usd:99.99, date:'2026-07-28T21:10:00', status:'completed' },
+      { id:'CT-2004', user:'DeeReadsAlot',  avatar:'https://i.pravatar.cc/60?img=19', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-28T15:40:00', status:'refunded', note:'Duplicate charge' },
+      { id:'CT-2005', user:'NovelFan_92',   avatar:'https://i.pravatar.cc/60?img=27', type:'purchase', coins:5000,  usd:49.99, date:'2026-07-27T20:00:00', status:'completed' },
+      { id:'CT-2006', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'gift',     coins:-500,  usd:-4.99, date:'2026-07-28T18:00:00', status:'completed', note:'Gifted to Luna Skye' },
+      { id:'CT-2007', user:'ChiomaReddy',   avatar:'https://i.pravatar.cc/60?img=5',  type:'purchase', coins:3000,  usd:29.99, date:'2026-07-27T14:20:00', status:'completed' },
+      { id:'CT-2008', user:'Ifeanyi_Story', avatar:'https://i.pravatar.cc/60?img=8',  type:'purchase', coins:8000,  usd:79.99, date:'2026-07-26T19:00:00', status:'completed' },
+      { id:'CT-2009', user:'SophiaBennett', avatar:'https://i.pravatar.cc/60?img=48', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-26T11:30:00', status:'completed' },
+      { id:'CT-2010', user:'Tobi_Reads',    avatar:'https://i.pravatar.cc/60?img=22', type:'gift',     coins:-200,  usd:-1.99, date:'2026-07-25T16:45:00', status:'completed', note:'Gifted to Wren Okonkwo' },
+      { id:'CT-2011', user:'DanielCarter',  avatar:'https://i.pravatar.cc/60?img=13', type:'purchase', coins:5000,  usd:49.99, date:'2026-07-25T09:10:00', status:'completed' },
+      { id:'CT-2012', user:'ElenaVasquez',  avatar:'https://i.pravatar.cc/60?img=31', type:'purchase', coins:2000,  usd:19.99, date:'2026-07-24T20:00:00', status:'refunded', note:'Accidental purchase' },
+      { id:'CT-2013', user:'Reader_Amara',  avatar:'https://i.pravatar.cc/60?img=15', type:'purchase', coins:1000,  usd:9.99,  date:'2026-07-24T14:30:00', status:'completed' },
+      { id:'CT-2014', user:'LunaSkye',      avatar:'https://i.pravatar.cc/60?img=24', type:'gift',     coins:-100,  usd:-0.99, date:'2026-07-23T12:00:00', status:'completed', note:'Gifted to Reader_Amara' },
     ],
 
     bonuses: [
@@ -116,6 +124,15 @@
         { from:'Ngozi Falade', message:'Hi Wren, we found the discrepancy in the tip aggregation pipeline. $300 has been credited to your account.', time:'2026-07-16T09:00:00' }
       ] },
       { id:'PD-305', author:'Zara_M',         avatar:'https://i.pravatar.cc/60?img=36', amount:50,   reason:'Disputes a coin refund deducted from author earnings.',              status:'rejected', filed:'2026-07-10T08:20:00', resolutionNote:'Refund was reader-initiated within policy window; deduction stands.', replies:[] },
+      { id:'PD-306', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', amount:850,  reason:'Bonus payout for June was not received despite meeting all criteria.', status:'open', filed:'2026-07-29T08:00:00', resolutionNote:'', replies:[] },
+      { id:'PD-307', author:'Luna Skye',       avatar:'https://i.pravatar.cc/60?img=24', amount:220,  reason:'Coin tip from a reader shows as pending but reader was charged.',    status:'investigating', filed:'2026-07-27T16:45:00', resolutionNote:'', replies:[] },
+      { id:'PD-308', author:'Daniel Carter',   avatar:'https://i.pravatar.cc/100?img=13', amount:1500, reason:'Royalty rate applied was 60% instead of agreed 70% for new releases.', status:'open', filed:'2026-07-29T11:20:00', resolutionNote:'', replies:[] },
+      { id:'PD-309', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5',  amount:340,  reason:'Subscription revenue share not reflected in last payout.',          status:'resolved', filed:'2026-07-20T10:00:00', resolutionNote:'Subscription revenue of $340 has been added to your next payout.', replies:[
+        { from:'Ngozi Falade', message:'Hi Chioma, we confirmed the subscription revenue was missing from the aggregation. $340 added.', time:'2026-07-22T09:00:00' }
+      ] },
+      { id:'PD-310', author:'Ifeanyi_Story',   avatar:'https://i.pravatar.cc/60?img=8',  amount:600,  reason:'Promotional campaign earnings not showing in dashboard.',           status:'investigating', filed:'2026-07-25T13:10:00', resolutionNote:'', replies:[] },
+      { id:'PD-311', author:'Sophia Bennett',  avatar:'https://i.pravatar.cc/100?img=48', amount:95,   reason:'Withdrawal processed but funds not received in bank account.',      status:'rejected', filed:'2026-07-18T09:30:00', resolutionNote:'Bank confirmed receipt on Jul 19. Please check with your bank.', replies:[] },
+      { id:'PD-312', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', amount:180,  reason:'Coins redeemed for gift but gift was not delivered to recipient.',  status:'open', filed:'2026-07-29T14:00:00', resolutionNote:'', replies:[] },
     ],
 
     financialReports: {

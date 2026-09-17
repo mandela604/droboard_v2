@@ -57,16 +57,19 @@ body{font-family:'Inter',system-ui,sans-serif}
 .empty-state i{font-size:32px;margin-bottom:12px;opacity:.5}
 .empty-state p{font-size:13px}
 
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--card);padding:10px 22px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:999;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
 .pagination{display:flex;align-items:center;justify-content:center;gap:6px}
 .page-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .page-btn:hover{border-color:var(--accent);color:var(--accent)}
 .page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .page-btn:disabled{opacity:.4;cursor:not-allowed}
 
-.dt-overlay{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:2000;opacity:0;pointer-events:none;transition:.2s;display:flex;align-items:flex-end;justify-content:center}
+.dt-overlay{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:2000;opacity:0;pointer-events:none;transition:.2s;display:flex;align-items:center;justify-content:center}
 .dt-overlay.open{opacity:1;pointer-events:auto}
-.dt-modal{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(30px);transition:.25s;padding-bottom:6px}
-.dt-overlay.open .dt-modal{transform:translateY(0)}
+.dt-modal{background:var(--card);width:90%;max-width:440px;border-radius:18px;max-height:90vh;overflow-y:auto;transform:scale(.95);opacity:0;transition:.25s;padding-bottom:6px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.dt-overlay.open .dt-modal{transform:scale(1);opacity:1}
 .dt-head{padding:20px 22px 0;position:sticky;top:0;background:var(--card);z-index:2}
 .dt-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .dt-close{width:30px;height:30px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
@@ -198,7 +201,16 @@ FinanceSidebar.attach('#pageRoot',{
   user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
   searchPlaceholder:'Search anything…',
 });
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
+}
 </script>
 <script src="services/withdrawals-service.js"></script>
+<div class="toast" id="toast"></div>
 </body>
 </html>

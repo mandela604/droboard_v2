@@ -216,10 +216,6 @@
             <div class="ses-sb-logo-txt"><b>DROBOARD</b><b>SENIOR EDITOR</b></div>
             <button class="ses-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>
-          <div class="ses-role-badge">
-            <i class="fas fa-pen-nib"></i>
-            <span>Senior Editor · Content Review</span>
-          </div>
           <nav class="ses-sb-nav" id="${instId}-nav">${navHtml()}</nav>
           <div class="ses-sb-footer">
             <i class="fas fa-headset"></i>

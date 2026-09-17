@@ -2,7 +2,7 @@
  * super-admin-sidebar.js — Droboard Super Admin Reusable App Shell
  * ─────────────────────────────────────────────────────────────────────
  * Same pattern as chief-editor-sidebar.js / senior-editor-sidebar.js /
- * marketing-sidebar.js — drop this script in, then call attach() on the
+ * super-admin-sidebar.js — drop this script in, then call attach() on the
  * element already holding your page's content.
  *
  * The Super Admin sees EVERYTHING on the platform — people & access,
@@ -31,9 +31,6 @@
  *     Authors & Content       → authors-content.html
  *     All Books                → all-books.html
  *     All Posts                → all-posts.html
- *   Growth & Finance
- *     Marketing & Growth      → marketing-growth.html
- *     Financials & Payouts    → financials.html
  *   Platform
  *     Reports & Moderation    → reports-moderation.html
  *     Platform Analytics      → platform-analytics.html
@@ -58,12 +55,7 @@
     { key: 'all-books',             label: 'All Books',               icon: 'fa-book-open',            href: 'all-books.html',            section: 'Content' },
     { key: 'all-posts',             label: 'All Posts',               icon: 'fa-rss',                  href: 'all-posts.html',            section: 'Content' },
 
-    { key: 'marketing-growth',     label: 'Marketing & Growth',     icon: 'fa-bullseye',             href: 'marketing-growth.html',    section: 'Growth & Finance' },
-    { key: 'financials',           label: 'Financials & Payouts',   icon: 'fa-sack-dollar',          href: 'financials.html',          section: 'Growth & Finance' },
-
-    { key: 'reports-moderation',   label: 'Reports & Moderation',   icon: 'fa-shield-halved',        href: 'reports-moderation.html',  section: 'Platform' },
     { key: 'platform-analytics',   label: 'Platform Analytics',     icon: 'fa-chart-line',           href: 'platform-analytics.html',  section: 'Platform' },
-    { key: 'settings',             label: 'Settings',               icon: 'fa-gear',                 href: 'settings.html',            section: 'Platform' },
     { key: 'platform-settings',    label: 'Platform Settings',      icon: 'fa-gear',                 href: 'platform-settings.html',   section: 'Platform' },
     { key: 'system-pages',         label: 'System Pages',           icon: 'fa-layer-group',          href: 'system-pages.html',        section: 'Platform' },
   ];
@@ -237,10 +229,7 @@
           </div>
           <nav class="sa-sb-nav" id="${instId}-nav">${navHtml()}</nav>
           <div class="sa-sb-footer">
-            <i class="fas fa-headset"></i>
-            <b>Engineering Support</b>
-            <p>Escalate a platform issue directly to engineering.</p>
-            <button id="${instId}-support">Contact Engineering</button>
+            <button id="${instId}-support"><i class="fas fa-headset"></i> Contact Engineering</button>
           </div>
         </aside>
         <div class="sa-main">

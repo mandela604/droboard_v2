@@ -77,6 +77,9 @@ body{font-family:'Inter',system-ui,sans-serif}
 .empty-msg{text-align:center;padding:20px;color:var(--text-faint);font-size:12px}
 .skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
 
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--card);padding:10px 22px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:999;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
 @media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
 @media (max-width:640px){.grid-4{grid-template-columns:1fr}.qa-grid{grid-template-columns:1fr}.welcome-stats{gap:16px}.po-actions{width:100%}.po-actions .mini-btn{flex:1;justify-content:center}}
 </style>
@@ -146,7 +149,16 @@ FinanceSidebar.attach('#dashRoot',{
   user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
   searchPlaceholder:'Search anything…',
 });
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
+}
 </script>
 <script src="services/dashboard-service.js"></script>
+<div class="toast" id="toast"></div>
 </body>
 </html>

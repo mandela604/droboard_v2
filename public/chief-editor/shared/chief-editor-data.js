@@ -3,20 +3,7 @@
   if (window.__chiefEditorData) return;
   window.__chiefEditorData = true;
 
-  const API_BASE = window.DROBOARD_API_BASE || '/api/chief-editor';
-  const TIMEOUT_MS = 2500;
-
-  async function callBackend(path, opts) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal }, opts || {}));
-      clearTimeout(timer);
-      if (!res.ok) throw new Error('Bad response: ' + res.status);
-      return await res.json();
-    } catch (e) { clearTimeout(timer); throw e; }
-  }
-  function delay(ms) { return new Promise(r => setTimeout(r, ms || 200 + Math.random() * 200)); }
+  function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
   const DEMO = {
     dashboard: {
@@ -94,16 +81,16 @@
     ],
 
     contractTemplates: [
-      { id:'TPL-001', name:'Standard Non-Exclusive Agreement', type:'Non-Exclusive', status:'active', royaltyRate:15, termLength:'1 Year', autoRenew:true,  usageCount:38, created:'Jan 14, 2025', lastEdited:'Jun 02, 2026', description:'Baseline agreement for authors who retain rights to publish the same work on other platforms. Standard royalty split with quarterly payout.', clauses:'Non-exclusive distribution rights, quarterly royalty statements, 30-day termination notice, no platform-exclusivity bonus.' },
-      { id:'TPL-002', name:'Premium Exclusive Agreement',      type:'Exclusive',     status:'active', royaltyRate:25, termLength:'2 Years', autoRenew:true,  usageCount:22, created:'Feb 03, 2025', lastEdited:'Jul 10, 2026', description:'For authors publishing exclusively on Droboard. Higher royalty split and eligibility for platform promotion slots.', clauses:'Full platform exclusivity, elevated royalty tier, featured-slot eligibility, 90-day early termination penalty.' },
-      { id:'TPL-003', name:'Contract Renewal — Standard',      type:'Renewal',       status:'active', royaltyRate:15, termLength:'1 Year', autoRenew:false, usageCount:47, created:'Nov 21, 2024', lastEdited:'May 18, 2026', description:'Used to extend an existing non-exclusive or exclusive agreement under the same royalty terms for another cycle.', clauses:'Carries forward prior royalty rate, resets term length, requires fresh countersignature.' },
-      { id:'TPL-004', name:'Royalty Amendment — Rate Increase', type:'Amendment',    status:'active', royaltyRate:20, termLength:'Indefinite', autoRenew:false, usageCount:9,  created:'Mar 09, 2025', lastEdited:'Jun 28, 2026', description:'Adjusts the royalty percentage on an existing agreement without changing the underlying term or exclusivity.', clauses:'Supersedes prior royalty clause only, all other original contract terms remain in force.' },
-      { id:'TPL-005', name:'Work-for-Hire Agreement',          type:'Work-for-Hire', status:'paused', royaltyRate:0,  termLength:'Indefinite', autoRenew:false, usageCount:4,  created:'Apr 17, 2025', lastEdited:'Apr 17, 2025', description:'Flat one-time payment in exchange for full rights transfer. No ongoing royalties. Currently paused pending legal review.', clauses:'Full IP transfer to platform, one-time flat fee, no royalty entitlement, author retains attribution credit.' },
-      { id:'TPL-006', name:'Ghostwriting Agreement',           type:'Work-for-Hire', status:'active', royaltyRate:0,  termLength:'6 Months', autoRenew:false, usageCount:6,  created:'Jun 12, 2025', lastEdited:'Jun 12, 2025', description:'For commissioned ghostwriters producing work under a pen name or brand owned by another author or the platform.', clauses:'No public authorship credit, confidentiality clause, milestone-based flat payments.' },
-      { id:'TPL-007', name:'Translation Rights Addendum',      type:'Amendment',    status:'active', royaltyRate:10, termLength:'2 Years', autoRenew:true,  usageCount:13, created:'Aug 05, 2025', lastEdited:'Feb 14, 2026', description:'Grants the platform rights to commission and distribute translated editions of an existing work.', clauses:'Translation rights only, separate royalty pool, original agreement terms unaffected.' },
-      { id:'TPL-008', name:'Audio Rights Addendum',            type:'Amendment',    status:'paused', royaltyRate:12, termLength:'2 Years', autoRenew:true,  usageCount:5,  created:'Sep 22, 2025', lastEdited:'Jan 30, 2026', description:'Grants audiobook production and distribution rights. Paused while narration vendor contracts are renegotiated.', clauses:'Audio-format rights only, revenue split on audiobook sales, narrator selection subject to author approval.' },
-      { id:'TPL-009', name:'New Author Starter Agreement',     type:'Non-Exclusive', status:'active', royaltyRate:12, termLength:'6 Months', autoRenew:false, usageCount:61, created:'Oct 30, 2024', lastEdited:'Jul 21, 2026', description:'Entry-level agreement offered to first-time authors on the platform, with a shorter initial commitment.', clauses:'Short initial term, standard non-exclusive rights, automatic upgrade offer to Standard tier at renewal.' },
-      { id:'TPL-010', name:'Legacy Exclusive Agreement (2023)', type:'Exclusive',     status:'archived', royaltyRate:22, termLength:'2 Years', autoRenew:true, usageCount:31, created:'Jan 05, 2023', lastEdited:'Dec 01, 2024', description:'Older exclusive template retained for reference on legacy contracts still in force. No longer offered for new signings.', clauses:'Legacy royalty tier, superseded by Premium Exclusive Agreement, retained for existing signatory reference only.' },
+      { id:'TPL-001', name:'Standard Non-Exclusive Agreement', type:'Non-Exclusive', status:'active', royaltyRate:15, termLength:'1 Year', autoRenew:true,  usageCount:38, created:'Jan 14, 2025', lastEdited:'Jun 02, 2026', defaultChapterPrice:15, description:'Baseline agreement for authors who retain rights to publish the same work on other platforms. Standard royalty split with quarterly payout.', clauses:'Non-exclusive distribution rights, quarterly royalty statements, 30-day termination notice, no platform-exclusivity bonus.' },
+      { id:'TPL-002', name:'Premium Exclusive Agreement',      type:'Exclusive',     status:'active', royaltyRate:25, termLength:'2 Years', autoRenew:true,  usageCount:22, created:'Feb 03, 2025', lastEdited:'Jul 10, 2026', defaultChapterPrice:15, description:'For authors publishing exclusively on Droboard. Higher royalty split and eligibility for platform promotion slots.', clauses:'Full platform exclusivity, elevated royalty tier, featured-slot eligibility, 90-day early termination penalty.' },
+      { id:'TPL-003', name:'Contract Renewal — Standard',      type:'Renewal',       status:'active', royaltyRate:15, termLength:'1 Year', autoRenew:false, usageCount:47, created:'Nov 21, 2024', lastEdited:'May 18, 2026', defaultChapterPrice:15, description:'Used to extend an existing non-exclusive or exclusive agreement under the same royalty terms for another cycle.', clauses:'Carries forward prior royalty rate, resets term length, requires fresh countersignature.' },
+      { id:'TPL-004', name:'Royalty Amendment — Rate Increase', type:'Amendment',    status:'active', royaltyRate:20, termLength:'Indefinite', autoRenew:false, usageCount:9,  created:'Mar 09, 2025', lastEdited:'Jun 28, 2026', defaultChapterPrice:15, description:'Adjusts the royalty percentage on an existing agreement without changing the underlying term or exclusivity.', clauses:'Supersedes prior royalty clause only, all other original contract terms remain in force.' },
+      { id:'TPL-005', name:'Work-for-Hire Agreement',          type:'Work-for-Hire', status:'paused', royaltyRate:0,  termLength:'Indefinite', autoRenew:false, usageCount:4,  created:'Apr 17, 2025', lastEdited:'Apr 17, 2025', defaultChapterPrice:0, description:'Flat one-time payment in exchange for full rights transfer. No ongoing royalties. Currently paused pending legal review.', clauses:'Full IP transfer to platform, one-time flat fee, no royalty entitlement, author retains attribution credit.' },
+      { id:'TPL-006', name:'Ghostwriting Agreement',           type:'Work-for-Hire', status:'active', royaltyRate:0,  termLength:'6 Months', autoRenew:false, usageCount:6,  created:'Jun 12, 2025', lastEdited:'Jun 12, 2025', defaultChapterPrice:0, description:'For commissioned ghostwriters producing work under a pen name or brand owned by another author or the platform.', clauses:'No public authorship credit, confidentiality clause, milestone-based flat payments.' },
+      { id:'TPL-007', name:'Translation Rights Addendum',      type:'Amendment',    status:'active', royaltyRate:10, termLength:'2 Years', autoRenew:true,  usageCount:13, created:'Aug 05, 2025', lastEdited:'Feb 14, 2026', defaultChapterPrice:15, description:'Grants the platform rights to commission and distribute translated editions of an existing work.', clauses:'Translation rights only, separate royalty pool, original agreement terms unaffected.' },
+      { id:'TPL-008', name:'Audio Rights Addendum',            type:'Amendment',    status:'paused', royaltyRate:12, termLength:'2 Years', autoRenew:true,  usageCount:5,  created:'Sep 22, 2025', lastEdited:'Jan 30, 2026', defaultChapterPrice:15, description:'Grants audiobook production and distribution rights. Paused while narration vendor contracts are renegotiated.', clauses:'Audio-format rights only, revenue split on audiobook sales, narrator selection subject to author approval.' },
+      { id:'TPL-009', name:'New Author Starter Agreement',     type:'Non-Exclusive', status:'active', royaltyRate:12, termLength:'6 Months', autoRenew:false, usageCount:61, created:'Oct 30, 2024', lastEdited:'Jul 21, 2026', defaultChapterPrice:10, description:'Entry-level agreement offered to first-time authors on the platform, with a shorter initial commitment.', clauses:'Short initial term, standard non-exclusive rights, automatic upgrade offer to Standard tier at renewal.' },
+      { id:'TPL-010', name:'Legacy Exclusive Agreement (2023)', type:'Exclusive',     status:'archived', royaltyRate:22, termLength:'2 Years', autoRenew:true, usageCount:31, created:'Jan 05, 2023', lastEdited:'Dec 01, 2024', defaultChapterPrice:15, description:'Older exclusive template retained for reference on legacy contracts still in force. No longer offered for new signings.', clauses:'Legacy royalty tier, superseded by Premium Exclusive Agreement, retained for existing signatory reference only.' },
     ],
 
     reports: [
@@ -113,7 +100,7 @@
       { id:'RPT-204', targetType:'author', target:'Zara_M', avatar:'https://i.pravatar.cc/60?img=36', reason:'Reader complaint about an abusive, threatening reply left on a critical review of chapter 9.', reportedBy:'Reader', reporterType:'Reader', severity:'low', filed:'2d ago', status:'open' },
       { id:'RPT-205', targetType:'editor', target:'Daniel Carter', avatar:'https://i.pravatar.cc/100?img=13', reason:'Author disputes a chapter rejection as unfair and inconsistent with prior editorial feedback on the same manuscript.', reportedBy:'Marcus Webb Jr.', reporterType:'Author (direct report)', severity:'medium', filed:'2d ago', status:'open' },
       { id:'RPT-206', targetType:'author', target:'Ada_Writes', avatar:'https://i.pravatar.cc/60?img=45', reason:'System flagged a suspected duplicate account created shortly after a prior ban, sharing device and payment fingerprints.', reportedBy:'System', reporterType:'System', severity:'high', filed:'3d ago', status:'open' },
-      { id:'RPT-207', targetType:'author', target:'Wren Okonkwo', avatar:'https://i.pravatar.cc/60?img=41', reason:'Reader reported explicit content posted outside the platform's mature-content tagging guidelines in chapter 22.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'4d ago', status:'dismissed', resolvedBy:'Adaeze Bello', resolvedAt:'3d ago', resolutionNote:'Reviewed the chapter — content was already correctly tagged mature. No violation found.' },
+      { id:'RPT-207', targetType:'author', target:'Wren Okonkwo', avatar:'https://i.pravatar.cc/60?img=41', reason:'Reader reported explicit content posted outside the platform\'s mature-content tagging guidelines in chapter 22.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'4d ago', status:'dismissed', resolvedBy:'Adaeze Bello', resolvedAt:'3d ago', resolutionNote:'Reviewed the chapter — content was already correctly tagged mature. No violation found.' },
       { id:'RPT-208', targetType:'author', target:'Ifeanyi_Story', avatar:'https://i.pravatar.cc/60?img=8', reason:'Senior editor flagged repeated missed deadlines and unresponsiveness across two manuscript cycles.', reportedBy:'Chioma Reddy', reporterType:'Senior Editor', severity:'low', filed:'5d ago', status:'suspended', resolvedBy:'Adaeze Bello', resolvedAt:'4d ago', resolutionNote:'Account suspended for 14 days pending a response from the author.' },
       { id:'RPT-209', targetType:'author', target:'Luna Skye', avatar:'https://i.pravatar.cc/60?img=24', reason:'False report later found to be a mistaken duplicate submission of the same manuscript, not a plagiarism case.', reportedBy:'System', reporterType:'System', severity:'low', filed:'6d ago', status:'dismissed', resolvedBy:'Adaeze Bello', resolvedAt:'5d ago', resolutionNote:'Confirmed as a duplicate upload by the same author. Extra copy removed, no penalty applied.' },
       { id:'RPT-210', targetType:'editor', target:'Marcus Ihejirika', avatar:'https://i.pravatar.cc/100?img=59', reason:'Two authors independently reported delayed royalty statement explanations and unclear quota communication.', reportedBy:'Multiple authors', reporterType:'Author (direct report)', severity:'medium', filed:'1w ago', status:'open' },
@@ -121,7 +108,6 @@
       { id:'RPT-212', targetType:'author', target:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', reason:'Reader reported impersonation — a fan account was posting chapter previews before official release.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'1w ago', status:'removed', resolvedBy:'Adaeze Bello', resolvedAt:'6d ago', resolutionNote:'Confirmed the fan account was unauthorized and unrelated to the author. Content taken down by the platform team.' },
     ],
 
-    /* ── AUTHOR POOL (for assignment to senior editors) ── */
     authorPool: [
       { id:'AW-01', handle:'Ada_Writes',      name:'Ada Writes',       avatar:'https://i.pravatar.cc/100?img=32', genres:['romance','betrayal','mafia'],   books:3, reads:'1.28M', verified:true },
       { id:'AW-02', handle:'Sarah_Odum',       name:'Sarah Odum',       avatar:'https://i.pravatar.cc/100?img=48', genres:['billionaire','romance'],        books:2, reads:'2.1M',  verified:true },
@@ -137,7 +123,6 @@
       { id:'AW-12', handle:'Elena_V',          name:'Elena Vasquez',    avatar:'https://i.pravatar.cc/100?img=31', genres:['romance','betrayal'],           books:1, reads:'180K',  verified:true },
     ],
 
-    /* ── SENIOR EDITOR → AUTHOR ASSIGNMENTS (editorId → [authorId, …]) ── */
     seniorEditorAssignments: {
       'SE-01': ['AW-01','AW-04','AW-06'],
       'SE-02': ['AW-10','AW-11'],
@@ -157,33 +142,199 @@
   };
 
   window.ChiefEditorData = {
-    async getDashboard() {
-      try { return await callBackend('/dashboard'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.dashboard)); }
+    async getDashboard() { return clone(DEMO.dashboard); },
+    async getDashboardStats() {
+      const d = DEMO.dashboard;
+      return {
+        seniorEditors: d.totalSeniorEditors,
+        seniorEditorsDelta: '+2 this quarter',
+        pendingPolicies: 3,
+        pendingPoliciesDelta: '+1 this week',
+        escalatedDisputes: d.flaggedReports.filter(r => r.status === 'open').length,
+        escalatedDisputesDelta: '+2 today',
+        contractsAwaiting: d.pendingSignatures,
+        contractsAwaitingDelta: '4 pending',
+        submissionsThisMonth: 847,
+        submissionsDelta: '+12% vs last month',
+      };
     },
-    async getSeniorEditors() {
-      try { return await callBackend('/senior-editors'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.seniorEditors)); }
+    async getPerformanceTrend(period) {
+      const trends = {
+        week:   { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], submissions: [42,58,51,67,73,38,24], approvalRate: [88,85,90,82,87,91,89] },
+        month:  { labels: ['W1','W2','W3','W4'], submissions: [186,214,198,249], approvalRate: [86,84,89,87] },
+        quarter:{ labels: ['Jan','Feb','Mar'], submissions: [720,810,847], approvalRate: [85,87,88] },
+        year:   { labels: ['2023','2024','2025','2026'], submissions: [4200,6800,8400,3200], approvalRate: [82,85,87,88] },
+      };
+      return trends[period] || trends.month;
     },
-    async getContractTemplates() {
-      try { return await callBackend('/contract-templates'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.contractTemplates)); }
+    async getDashboardQueues() {
+      return {
+        dispute: DEMO.dashboard.flaggedReports.filter(r => r.status === 'open').map(r => ({
+          id: r.id, title: r.target, from: r.reportedBy, escalatedBy: r.reportedBy,
+          time: r.filed, priority: r.severity, detail: r.reason,
+        })),
+        policy: [
+          { id: 'POL-01', title: 'Updated Plagiarism Detection Policy', from: 'Adaeze Bello', escalatedBy: 'Platform Policy Team', time: '2d ago', priority: 'high', detail: 'Requires chief editor sign-off before enforcement. Adds AI-generated content detection clause.' },
+          { id: 'POL-02', title: 'Mature Content Tagging Guidelines v2', from: 'Adaeze Bello', escalatedBy: 'Content Standards', time: '3d ago', priority: 'medium', detail: 'Proposed update to tagging rules after reader complaints about inconsistent labels.' },
+        ],
+        contract: DEMO.dashboard.pendingContracts.map(c => ({
+          id: c.id, title: c.type + ' — ' + c.author, from: c.forwardedBy, escalatedBy: c.forwardedBy,
+          time: c.submitted, priority: 'medium', detail: 'Author has signed. Awaiting chief editor countersignature.', value: null,
+        })),
+      };
     },
-    async getReports() {
-      try { return await callBackend('/reports'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.reports)); }
+    async getEditorialTeam() {
+      return DEMO.seniorEditors.map(ed => ({
+        id: ed.id,
+        name: ed.name,
+        avatar: ed.avatar,
+        email: ed.email,
+        team: ed.authorsManaged + ' authors managed',
+        reviewsThisMonth: Math.floor(Math.random() * 30) + 15,
+        approvalRate: ed.status === 'ahead' ? 92 : ed.status === 'on-track' ? 88 : 74,
+        status: ed.openReports > 0 ? 'needs-attention' : 'online',
+      }));
     },
-    async getAuthorPool() {
-      try { return await callBackend('/author-pool'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.authorPool)); }
+    async getRecentActivity() { return clone(DEMO.dashboard.recentActivity); },
+    async resolveQueueItem() { return { ok: true }; },
+    async getSeniorEditors() { return clone(DEMO.seniorEditors); },
+    async getContractTemplates() { return clone(DEMO.contractTemplates); },
+    async getReports() { return clone(DEMO.reports); },
+    async getAuthorPool() { return clone(DEMO.authorPool); },
+    async getAssignments() { return clone(DEMO.seniorEditorAssignments); },
+    async saveAssignments(a) { Object.assign(DEMO.seniorEditorAssignments, a); return { ok: true }; },
+
+    async getEditorialStrategy() {
+      return {
+        strategyNotes: 'Focus on expanding romance and thriller genres while maintaining quality in fantasy. Partner with 3 new translation services for Asian markets. Launch seasonal writing contests to drive engagement.',
+        genrePriorities: [
+          { genre: 'Romance', priority: 'high', currentSubmissions: 245, targetSubmissions: 300, growth: '+18% QoQ', notes: 'Highest demand genre. Expand sub-genres.' },
+          { genre: 'Thriller', priority: 'high', currentSubmissions: 189, targetSubmissions: 250, growth: '+24% QoQ', notes: 'Fastest growing. Recruit thriller specialists.' },
+          { genre: 'Fantasy', priority: 'medium', currentSubmissions: 132, targetSubmissions: 150, growth: '+8% QoQ', notes: 'Steady demand. Focus on worldbuilding quality.' },
+          { genre: 'Sci-Fi', priority: 'medium', currentSubmissions: 98, targetSubmissions: 120, growth: '+12% QoQ', notes: 'Growing niche. Partner with tech publications.' },
+          { genre: 'Non-Fiction', priority: 'low', currentSubmissions: 67, targetSubmissions: 80, growth: '+5% QoQ', notes: 'Stable but low volume. Maintain current output.' },
+        ],
+        quarterlyGoals: [
+          { quarter: 'Q3 2026', goals: ['Increase romance submissions by 20%', 'Launch 2 seasonal writing contests', 'Onboard 5 new senior editors', 'Reduce dispute resolution time to 48 hours'] },
+          { quarter: 'Q4 2026', goals: ['Expand to 3 new translation markets', 'Launch author mentorship program', 'Achieve 90% author satisfaction score', 'Process all pending contracts within 72 hours'] },
+        ],
+        seasonalCampaigns: [
+          { name: 'Summer Romance Blitz', status: 'active', deadline: 'Aug 31, 2026', budget: '$12,000', submissions: 89, target: 150 },
+          { name: 'Thriller October', status: 'planning', deadline: 'Oct 31, 2026', budget: '$8,500', submissions: 0, target: 100 },
+          { name: 'Winter Fantasy Festival', status: 'planning', deadline: 'Dec 31, 2026', budget: '$15,000', submissions: 0, target: 200 },
+        ],
+        acquisitionTargets: [
+          { author: 'Nadia Volkov', status: 'contacted', genre: 'Romance / Drama', followers: '245K', notes: 'Bestselling author on competing platform. Open to exclusive deals.' },
+          { author: 'James Okoro', status: 'targeted', genre: 'Thriller / Mystery', followers: '180K', notes: 'Strong following in West African market. High engagement rate.' },
+          { author: 'Mika Tanaka', status: 'negotiating', genre: 'Fantasy / Sci-Fi', followers: '310K', notes: 'Award-winning author. Seeking higher royalty rates.' },
+        ],
+      };
     },
-    async getAssignments() {
-      try { return await callBackend('/senior-editor-assignments'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.seniorEditorAssignments)); }
+
+    async getEditorialPolicies() {
+      return {
+        policies: [
+          { id: 'POL-001', title: 'Plagiarism Detection & Enforcement Policy', status: 'published', updated: 'Jul 12, 2026', author: 'Adaeze Bello', summary: 'Comprehensive policy for detecting, investigating, and enforcing against plagiarism across all submissions. Includes automated scanning thresholds and manual review procedures.' },
+          { id: 'POL-002', title: 'Content Quality Standards', status: 'published', updated: 'Jun 28, 2026', author: 'Adaeze Bello', summary: 'Minimum quality standards for all published content including grammar, pacing, character development, and reader engagement metrics.' },
+          { id: 'POL-003', title: 'Author Code of Conduct', status: 'published', updated: 'Jun 15, 2026', author: 'Adaeze Bello', summary: 'Expected behavior standards for all authors including response times, professional communication, and community guidelines.' },
+          { id: 'POL-004', title: 'Mature Content Tagging Guidelines v2', status: 'under-review', updated: 'Jul 15, 2026', author: 'Content Standards Team', summary: 'Updated guidelines for tagging mature content including explicit scenes, violence, and trigger warnings. Addresses reader complaints about inconsistent labeling.' },
+          { id: 'POL-005', title: 'AI-Generated Content Disclosure Policy', status: 'draft', updated: 'Jul 18, 2026', author: 'Adaeze Bello', summary: 'New policy requiring authors to disclose AI-assisted writing. Defines acceptable use boundaries and disclosure requirements.' },
+          { id: 'POL-006', title: 'Senior Editor Performance Review', status: 'published', updated: 'May 30, 2026', author: 'Adaeze Bello', summary: 'Framework for evaluating senior editor performance including quotas, author satisfaction, and dispute resolution metrics.' },
+        ],
+        policyHistory: [
+          { date: 'Jul 18, 2026', action: 'AI-Generated Content Disclosure Policy submitted for review', by: 'Adaeze Bello' },
+          { date: 'Jul 15, 2026', action: 'Mature Content Tagging Guidelines v2 submitted for review', by: 'Content Standards Team' },
+          { date: 'Jul 12, 2026', action: 'Plagiarism Detection & Enforcement Policy updated', by: 'Adaeze Bello' },
+          { date: 'Jun 28, 2026', action: 'Content Quality Standards revised', by: 'Adaeze Bello' },
+          { date: 'Jun 15, 2026', action: 'Author Code of Conduct published', by: 'Adaeze Bello' },
+          { date: 'May 30, 2026', action: 'Senior Editor Performance Review framework published', by: 'Adaeze Bello' },
+        ],
+      };
     },
-    async saveAssignments(assignments) {
-      try { return await callBackend('/senior-editor-assignments', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(assignments) }); }
-      catch (e) { await delay(); Object.assign(DEMO.seniorEditorAssignments, assignments); return { ok:true }; }
+
+    async getAuthorContracts() {
+      return {
+        templates: [
+          { name: 'Standard Non-Exclusive', type: 'non-exclusive', royalty: 15, defaultChapterPrice: 15, term: '1 Year', used: 38, status: 'active' },
+          { name: 'Premium Exclusive', type: 'exclusive', royalty: 25, defaultChapterPrice: 15, term: '2 Years', used: 22, status: 'active' },
+          { name: 'Contract Renewal', type: 'renewal', royalty: 15, defaultChapterPrice: 15, term: '1 Year', used: 47, status: 'active' },
+          { name: 'Royalty Amendment', type: 'amendment', royalty: 20, defaultChapterPrice: 15, term: 'Indefinite', used: 9, status: 'active' },
+          { name: 'New Author Starter', type: 'non-exclusive', royalty: 12, defaultChapterPrice: 10, term: '6 Months', used: 61, status: 'active' },
+          { name: 'Work-for-Hire', type: 'work-for-hire', royalty: 0, defaultChapterPrice: 0, term: 'Indefinite', used: 4, status: 'draft' },
+        ],
+        activeContracts: [
+          { author: 'Luna Skye', status: 'active', template: 'Standard Non-Exclusive', value: '$18,400', start: 'Jan 15, 2026', end: 'Jan 15, 2027' },
+          { author: 'Wren Okonkwo', status: 'active', template: 'Premium Exclusive', value: '$32,500', start: 'Mar 01, 2026', end: 'Mar 01, 2028' },
+          { author: 'Ada_Writes', status: 'active', template: 'Standard Non-Exclusive', value: '$12,800', start: 'Feb 10, 2026', end: 'Feb 10, 2027' },
+          { author: 'Marcus Webb Jr.', status: 'expiring', template: 'Standard Non-Exclusive', value: '$8,200', start: 'Aug 20, 2025', end: 'Aug 20, 2026' },
+          { author: 'Ifeanyi_Story', status: 'active', template: 'Premium Exclusive', value: '$24,600', start: 'Apr 05, 2026', end: 'Apr 05, 2028' },
+        ],
+        pendingOffers: [
+          { author: 'Zara_M', status: 'awaiting-signature', template: 'New Author Starter', value: '$6,000', sent: 'Jul 14, 2026' },
+          { author: 'Elena Vasquez', status: 'pending', template: 'Standard Non-Exclusive', value: '$9,500', sent: 'Jul 10, 2026' },
+          { author: 'Isabelle Moreau', status: 'under-review', template: 'Premium Exclusive', value: '$28,000', sent: 'Jul 08, 2026' },
+        ],
+      };
+    },
+
+    async getDisputesAppeals() {
+      return {
+        authorAppeals: [
+          { author: 'Marcus Webb Jr.', type: 'Plagiarism Charge Appeal', priority: 'high', status: 'open', detail: 'Author disputes plagiarism findings for Chapter 14 of "Whispers of the Old City", claiming independent inspiration.', filed: '3h ago', id: 'APL-001' },
+          { author: 'Zara_M', type: 'Content Takedown Appeal', priority: 'medium', status: 'investigating', detail: 'Author appeals the removal of Chapter 9, arguing the content was taken out of context.', filed: '2d ago', id: 'APL-002' },
+          { author: 'Ada_Writes', type: 'Duplicate Account Appeal', priority: 'high', status: 'open', detail: 'Author claims the flagged account is not a duplicate but a new account created after account recovery issues.', filed: '3d ago', id: 'APL-003' },
+        ],
+        copyrightDisputes: [
+          { title: 'CEO\'s Secret Baby — Source Material Dispute', status: 'investigating', claimant: 'Original Author (External)', respondent: 'Unassigned Work', filed: '1d ago', resolution: null },
+          { title: 'Chapter 22 Mature Content Rights', status: 'resolved', claimant: 'Wren Okonkwo', respondent: 'Platform Content Team', filed: '4d ago', resolution: 'Content correctly tagged. No rights violation found.' },
+        ],
+        plagiarismCases: [
+          { story: '"Whispers of the Old City" Ch.14', status: 'open', accused: 'Marcus Webb Jr.', filed: '3h ago', confidence: 78 },
+          { story: '"CEO\'s Secret Baby" Opening', status: 'open', accused: 'Unassigned Work', filed: '1d ago', confidence: 92 },
+          { story: '"Desert Nights" Ch.8', status: 'resolved', accused: 'Elena Vasquez', filed: '1w ago', confidence: 95 },
+        ],
+        escalatedReports: [
+          { type: 'DMCA Takedown', priority: 'high', status: 'open', filed: '1d ago', reporter: 'External Publisher', against: 'Unassigned Work' },
+          { type: 'Author Misconduct', priority: 'medium', status: 'open', filed: '2d ago', reporter: 'Marcus Webb Jr.', against: 'Daniel Carter' },
+          { type: 'Unfair Rejection', priority: 'medium', status: 'investigating', filed: '2d ago', reporter: 'Marcus Webb Jr.', against: 'Daniel Carter' },
+        ],
+        resolutionHistory: [
+          { action: 'Mature content tag verified — no violation', date: '3d ago', by: 'Adaeze Bello' },
+          { action: 'Plagiarism confirmed — Elena Vasquez account banned', date: '6d ago', by: 'Adaeze Bello' },
+          { action: 'Fan account content taken down', date: '6d ago', by: 'Platform Team' },
+          { action: 'Ifeanyi_Story suspended for 14 days', date: '4d ago', by: 'Adaeze Bello' },
+        ],
+      };
+    },
+
+    async getPartnerships() {
+      return {
+        publishingPartners: [
+          { name: 'Penguin Random House SEA', status: 'active', type: 'Traditional Publisher', region: 'Southeast Asia', titlesLicensed: 45, revenue: '$124,000' },
+          { name: 'Kadokawa International', status: 'negotiating', type: 'Media Conglomerate', region: 'Japan / East Asia', titlesLicensed: 32, revenue: '$98,500' },
+          { name: 'Hachette Livre Africa', status: 'active', type: 'Traditional Publisher', region: 'West Africa', titlesLicensed: 28, revenue: '$67,200' },
+        ],
+        translationPartners: [
+          { name: 'LinguaSoft Translations', status: 'active', languages: 'Spanish, Portuguese, French', territories: 'Europe, Latin America', revenue: '$45,800' },
+          { name: 'AsiaLingua Services', status: 'active', languages: 'Mandarin, Japanese, Korean', territories: 'East Asia', revenue: '$62,300' },
+          { name: 'ArabicScript Translations', status: 'contacted', languages: 'Arabic, Turkish', territories: 'Middle East, North Africa', revenue: '$0' },
+        ],
+        writingContests: [
+          { name: 'Droboard Summer Romance Contest', status: 'active', prize: '$5,000 + Publishing Deal', deadline: 'Aug 31, 2026', entries: 342 },
+          { name: 'Thriller writers Championship', status: 'planning', prize: '$3,000 + Featured Placement', deadline: 'Oct 31, 2026', entries: 0 },
+          { name: 'Fantasy World Builder Award', status: 'planning', prize: '$4,000 + Audiobook Production', deadline: 'Dec 15, 2026', entries: 0 },
+        ],
+        ipMediaOpportunities: [
+          { title: 'Film Adaptation — "Whispers of the Old City"', status: 'negotiating', type: 'Film', partner: 'Nollywood Global Studios', value: '$85,000' },
+          { title: 'Audiobook Series — Romance Collection', status: 'active', type: 'Audiobook', partner: 'Audible Originals', value: '$42,000' },
+          { title: 'Web Drama — "CEO\'s Secret Baby"', status: 'targeted', type: 'Web Series', partner: 'Various Studios', value: '$120,000' },
+        ],
+        partnershipRequests: [
+          { from: 'Storytel Nordics', status: 'under-review', type: 'Audiobook Licensing', date: 'Jul 15, 2026', notes: 'Requesting exclusive audiobook rights for Scandinavian markets. 30 titles offered.' },
+          { from: 'Wattpad Studios', status: 'exploring', type: 'Co-Production', date: 'Jul 10, 2026', notes: 'Proposal for joint production of top-performing stories into short-form video content.' },
+          { from: 'Google Play Books', status: 'active', type: 'Distribution', date: 'Jun 28, 2026', notes: 'Expanded distribution agreement for European markets. Currently processing.' },
+        ],
+      };
     },
   };
 })();

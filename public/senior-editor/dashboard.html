@@ -73,13 +73,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="dashRoot">
-  <div class="welcome-banner">
-    <div class="welcome-eyebrow">Senior Editor · Overview</div>
-    <div class="welcome-title" id="greetTitle">Welcome back 👋</div>
-    <div class="welcome-sub">Here's what's moving across your desk today — pending reviews, author activity, and everything queued for a decision.</div>
-    <div class="welcome-stats" id="welcomeStats"></div>
-  </div>
-
   <div class="grid-4" id="statCards"></div>
 
   <div class="dash-grid">
@@ -163,15 +156,7 @@ function greetByHour(){
 }
 
 async function init(){
-  document.getElementById('greetTitle').textContent = greetByHour();
   const d = await SeniorEditorData.getDashboard();
-
-  // Welcome banner stats
-  document.getElementById('welcomeStats').innerHTML = `
-    <div class="welcome-stat"><b>${d.pendingReviews}</b><span>Pending Reviews</span></div>
-    <div class="welcome-stat"><b>${d.assignedAuthors}</b><span>Assigned Authors</span></div>
-    <div class="welcome-stat"><b>${d.approvalRate}%</b><span>Approval Rate</span></div>
-    <div class="welcome-stat"><b>${d.avgTurnaround}</b><span>Avg Turnaround</span></div>`;
 
   // Stat cards
   const stats = [

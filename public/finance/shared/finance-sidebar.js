@@ -36,10 +36,8 @@
     { key: 'author-payments',     label: 'Author Payments',     icon: 'fa-money-check-dollar', href: 'author-payments.html' },
     { key: 'withdrawals',         label: 'Withdrawals',         icon: 'fa-building-columns',  href: 'withdrawals.html' },
     { key: 'coin-transactions',   label: 'Coin Transactions',   icon: 'fa-coins',             href: 'coin-transactions.html' },
-    { key: 'bonuses',             label: 'Bonuses',             icon: 'fa-gift',              href: 'bonuses.html' },
     { key: 'payment-disputes',    label: 'Payment Disputes',    icon: 'fa-scale-balanced',    href: 'payment-disputes.html' },
     { key: 'financial-reports',   label: 'Financial Reports',   icon: 'fa-chart-pie',         href: 'financial-reports.html' },
-    { key: 'tax-accounting',      label: 'Tax & Accounting',    icon: 'fa-file-invoice-dollar', href: 'tax-accounting.html' },
   ];
 
   const CSS = `
@@ -203,7 +201,6 @@
           <div class="fin-sb-footer">
             <i class="fas fa-headset"></i>
             <b>Quick Help</b>
-            <p>Escalate a payout or tax issue to engineering support.</p>
             <button id="${instId}-support">Contact Support</button>
           </div>
         </aside>

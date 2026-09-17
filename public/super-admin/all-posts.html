@@ -16,8 +16,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .page-head p{font-size:12.5px;color:var(--text-faint);margin-top:4px}
 .btn{font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.13s}
 .btn:hover{border-color:var(--gold);color:var(--gold)}
-.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
-.btn.primary:hover{color:#fff;filter:brightness(1.06)}
 
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
@@ -27,40 +25,40 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
 
-/* toolbar */
 .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border)}
 .search-box{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
 .search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
 .search-box i{color:var(--text-faint);font-size:12.5px}
 .select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
-.seg{display:flex;border:1px solid var(--input-border);border-radius:10px;overflow:hidden}
-.seg button{padding:9px 12px;border:none;background:var(--input-bg);color:var(--text-faint);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
-.seg button.active{background:var(--accent);color:#fff}
 
-/* list header row */
-.list-cols{display:grid;grid-template-columns:minmax(0,3.2fr) 100px 90px 90px 90px 100px 110px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
+.list-cols{display:grid;grid-template-columns:minmax(0,3.5fr) 110px 80px 80px 100px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
 .list-cols span.num{text-align:right}
 
-/* list rows */
-.post-row{display:grid;grid-template-columns:minmax(0,3.2fr) 100px 90px 90px 90px 100px 110px 70px;gap:10px;align-items:center;padding:9px 18px;border-bottom:1px solid var(--border);transition:.12s}
+.post-row{display:grid;grid-template-columns:minmax(0,3.5fr) 110px 80px 80px 100px 70px;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);transition:.12s;cursor:pointer}
 .post-row:hover{background:var(--hover)}
 .post-row:last-child{border-bottom:none}
+.post-row.is-open{background:var(--hover);border-bottom-color:transparent}
 
 .post-main{display:flex;align-items:center;gap:11px;min-width:0}
-.post-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
-.post-thumb.text-only{display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:13px}
+.post-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .post-info{min-width:0}
-.post-text{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.post-title-link{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.4;color:var(--text);text-decoration:none;cursor:pointer}
+.post-title-link:hover{color:var(--accent)}
 .post-meta{font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .post-meta a{color:var(--text-muted);font-weight:600}
 .post-meta a:hover{color:var(--gold)}
 
-.type-chip{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-block}
+.expand-ico{font-size:10px;color:var(--text-faint);margin-right:6px;flex-shrink:0;transition:transform .2s}
+.post-row.is-open .expand-ico{transform:rotate(90deg)}
+
+.type-chip{font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.type-chip i{font-size:8px}
 
 .status-chip{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;display:inline-flex;align-items:center;gap:4px}
 .status-chip.published{background:var(--green-bg);color:var(--green)}
 .status-chip.flagged{background:var(--red-bg);color:var(--red)}
 .status-chip.removed{background:var(--table-head);color:var(--text-faint)}
+.status-chip.under-review{background:var(--amber-bg);color:var(--amber)}
 .status-chip i{font-size:6px}
 
 .num-cell{font-size:12px;font-weight:700;text-align:right;color:var(--text)}
@@ -70,11 +68,42 @@ body{font-family:'Inter',system-ui,sans-serif}
 .icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
 .icon-btn:hover{background:var(--table-head);color:var(--gold)}
 
-.dense .post-row{padding-top:6px;padding-bottom:6px}
-.dense .post-thumb{width:28px;height:28px}
-.dense .post-text{font-size:12px}
+/* Accordion detail */
+.post-detail{display:none;background:linear-gradient(180deg,var(--table-head) 0%,var(--card) 90px);border:1.5px solid var(--accent);border-top:none;border-radius:0 0 14px 14px;padding:0;margin-top:-10px;overflow:hidden}
+.post-detail.show{display:block}
+.detail-inner{padding:16px 18px 18px}
+.detail-section{margin-bottom:16px}
+.detail-section:last-of-type{margin-bottom:0}
+.ds-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ds-label i{font-size:11px}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.detail-grid.three{grid-template-columns:repeat(3,1fr)}
+.detail-item{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 11px;min-width:0}
+.detail-item span{font-size:9px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:3px}
+.detail-item b{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.detail-item.accent{border-color:rgba(255,0,80,.25);background:rgba(255,0,80,.06)}
+.detail-item.accent b{color:var(--accent)}
+.detail-item.green b{color:var(--green)}
+.detail-item.purple b{color:var(--purple)}
+.detail-item.gold b{color:var(--gold)}
+.detail-item.blue b{color:var(--blue)}
 
-/* pagination */
+.detail-preview{background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px}
+.detail-preview-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:8px}
+.detail-preview-text{font-size:13px;font-weight:600;line-height:1.6;color:var(--text)}
+.detail-preview-quote{font-size:14px;font-weight:700;font-style:italic;line-height:1.6;color:var(--text);border-left:3px solid var(--gold);padding-left:12px;margin:4px 0}
+.detail-preview-caption{font-size:11px;color:var(--text-faint);margin-top:6px}
+.detail-preview-ref{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.detail-preview-ref img{width:40px;height:56px;border-radius:6px;object-fit:cover}
+.detail-preview-ref-info{font-size:11px;font-weight:600;color:var(--text)}
+.detail-preview-ref-info span{display:block;font-size:10px;color:var(--text-faint);margin-top:2px}
+
+.detail-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.mini-btn{font-size:11.5px;font-weight:700;padding:8px 14px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{filter:brightness(1.1)}
+
 .list-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px}
 .list-footer-info{font-size:11.5px;color:var(--text-faint)}
 .pager{display:flex;align-items:center;gap:5px}
@@ -88,9 +117,10 @@ body{font-family:'Inter',system-ui,sans-serif}
 .empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
 
 @media (max-width:900px){
-  .list-cols, .post-row{grid-template-columns:minmax(0,1fr) 90px 70px}
-  .list-cols span:nth-child(4),.list-cols span:nth-child(5),.list-cols span:nth-child(6),
+  .list-cols,.post-row{grid-template-columns:minmax(0,1fr) 90px 70px}
+  .list-cols span:nth-child(3),.list-cols span:nth-child(4),
   .post-row .col-hide{display:none}
+  .detail-grid,.detail-grid.three{grid-template-columns:1fr 1fr}
 }
 @media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
 </style>
@@ -100,50 +130,50 @@ body{font-family:'Inter',system-ui,sans-serif}
   <div class="page-head">
     <div>
       <h1>All Posts</h1>
-      <p>Every status update and community post — <span id="totalCountLbl">…</span> posts.</p>
+      <p>Every post across the platform — <span id="totalCountLbl">...</span> posts.</p>
     </div>
-    <button class="btn primary"><i class="fas fa-flag"></i> Review Flagged</button>
+    <button class="btn" id="reviewFlaggedBtn"><i class="fas fa-flag"></i> Review Flagged</button>
   </div>
 
   <div class="grid-4" id="statCards"></div>
 
   <div class="panel">
     <div class="toolbar">
-      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search post text or author…"/></div>
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search post text or author..."/></div>
       <select class="select" id="typeFilter">
         <option value="">All Types</option>
-        <option value="Status">Status</option>
-        <option value="Poll">Poll</option>
-        <option value="Announcement">Announcement</option>
-        <option value="Fan Art">Fan Art</option>
+        <option value="post">Post</option>
+        <option value="chapter-drop">Chapter Drop</option>
+        <option value="ama">AMA</option>
+        <option value="quote">Quote</option>
+        <option value="repost">Repost</option>
+        <option value="poll">Poll</option>
+        <option value="debate">Debate</option>
+        <option value="review">Review</option>
+        <option value="recommendation">Recommendation</option>
       </select>
       <select class="select" id="statusFilter">
         <option value="">All Statuses</option>
         <option value="published">Published</option>
         <option value="flagged">Flagged</option>
+        <option value="under-review">Under Review</option>
         <option value="removed">Removed</option>
       </select>
       <select class="select" id="sortFilter">
         <option value="recent">Sort: Most Recent</option>
+        <option value="views">Sort: Most Viewed</option>
         <option value="likes">Sort: Most Liked</option>
         <option value="comments">Sort: Most Comments</option>
-        <option value="shares">Sort: Most Shared</option>
       </select>
-      <div class="seg" id="densitySeg">
-        <button data-density="normal" class="active"><i class="fas fa-bars"></i></button>
-        <button data-density="dense"><i class="fas fa-list"></i></button>
-      </div>
     </div>
 
     <div class="list-cols">
       <span>Post</span>
       <span>Type</span>
-      <span class="num">Likes</span>
+      <span class="num">Views</span>
       <span class="num">Comments</span>
-      <span class="num">Shares</span>
       <span>Status</span>
       <span>Posted</span>
-      <span></span>
     </div>
 
     <div id="postList"></div>
@@ -158,206 +188,340 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="shared/super-admin-sidebar.js"></script>
 <script>
 'use strict';
-const shell = SuperAdminSidebar.attach('#postsRoot', {
-  activeItem: 'all-posts',
-  title: 'All Posts',
-  subtitle: 'Every status update and community post on the platform',
-  user: { name: 'Tobi Adenuga', role: 'Super Admin', avatar: 'https://i.pravatar.cc/100?img=68' },
-  notifCount: 9,
-  searchPlaceholder: 'Search everything…',
+var shell = SuperAdminSidebar.attach('#postsRoot',{
+  activeItem:'all-posts',
+  title:'All Posts',
+  subtitle:'Every post across the platform',
+  user:{name:'Tobi Adenuga',role:'Super Admin',avatar:'https://i.pravatar.cc/100?img=68'},
+  notifCount:9,
+  searchPlaceholder:'Search everything...',
 });
 
-const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
-const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
-const TYPE_COLORS = { Status:'blue', Poll:'purple', Announcement:'gold', 'Fan Art':'green' };
-const TYPES = Object.keys(TYPE_COLORS);
-const STATUSES = ['published','published','published','published','published','flagged','removed'];
+var ICO={red:'var(--red)',amber:'var(--amber)',blue:'var(--blue)',purple:'var(--purple)',green:'var(--green)',gold:'var(--gold)',accent:'var(--accent)'};
+var BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple:'var(--purple-bg)',green:'var(--green-bg)',gold:'var(--gold-bg)',accent:'rgba(255,0,80,.1)'};
 
-/* ─────────────────────────────────────────
-   MOCK DATASET GENERATOR — simulates a platform-scale feed
-───────────────────────────────────────── */
-const AUTHORS = ['Zara_M','Marcus Webb Jr.','Nadia Cross','Kelo Writes','R.K. Vance','Ife Solarin','Diego Marsh','Lena Okafor','TJ Rourke','Aminah Cole','Chidi Blackwood','Priya Nandan'];
-const SNIPPETS = [
-  'Chapter 42 drops tomorrow at midnight 👀 who\'s ready?',
-  'Poll: should the Duke forgive her or not??',
-  'New cover reveal for "Bound to the Alpha King" 🐺',
-  'Thank you all for 1 million reads on this story!!',
-  'Sneak peek of next week\'s plot twist...',
-  'Fan art from @readerXO — this is INCREDIBLE',
-  'PSA: uploads paused for maintenance, back in 1hr',
-  'Which couple do you ship the hardest? Comment below',
-  'Behind the scenes of how I plot my outlines',
-  'We hit 500 chapters across the series today 🎉',
-  'Reminder: no spoilers in the comments please 🙏',
-  'Q&A time — drop your questions for the author',
-];
+var TYPE_CONFIG={
+  'post':          {color:'blue',   icon:'fa-comment',   label:'Post'},
+  'chapter-drop':  {color:'purple', icon:'fa-book-open',  label:'Chapter Drop'},
+  'ama':           {color:'accent', icon:'fa-microphone', label:'AMA'},
+  'quote':         {color:'gold',   icon:'fa-quote-left', label:'Quote'},
+  'repost':        {color:'blue',   icon:'fa-retweet',    label:'Repost'},
+  'poll':          {color:'green',  icon:'fa-chart-bar',  label:'Poll'},
+  'debate':        {color:'amber',  icon:'fa-scale-balanced', label:'Debate'},
+  'review':        {color:'gold',   icon:'fa-star',       label:'Review'},
+  'recommendation':{color:'green',  icon:'fa-thumbs-up',  label:'Recommendation'}
+};
 
-function generatePosts(n){
-  const out = [];
-  for(let i=0;i<n;i++){
-    const type = TYPES[i % TYPES.length];
-    const status = STATUSES[i % STATUSES.length];
-    const likes = Math.floor(Math.pow((i%600)+1, 2.0) * 2.3) + Math.floor(Math.random()*300);
-    const comments = Math.round(likes * (0.03 + Math.random()*0.05));
-    const shares = Math.round(likes * (0.01 + Math.random()*0.03));
-    const hoursAgo = i % 720;
-    const hasImage = i % 3 !== 0;
-    out.push({
-      id: 'pt-'+(200000+i),
-      text: SNIPPETS[i % SNIPPETS.length],
-      author: AUTHORS[i % AUTHORS.length],
-      type, status, likes, comments, shares, hoursAgo,
-      thumb: hasImage ? `https://picsum.photos/seed/post${i}/80/80` : null,
-      avatar: `https://i.pravatar.cc/40?img=${(i%70)+1}`,
-    });
-  }
-  return out;
+var POSTS=(function(){
+  var authors=[
+    {id:'u1',name:'Ada_Writes',username:'ada_writes',avatar:'https://i.pravatar.cc/100?img=32',verified:true},
+    {id:'u2',name:'Ifeanyi_Story',username:'ifeanyi_story',avatar:'https://i.pravatar.cc/100?img=53',verified:true},
+    {id:'u5',name:'Zara_M',username:'zara_m',avatar:'https://i.pravatar.cc/100?img=2',verified:true},
+    {id:'u7',name:'CampusQueen',username:'campus_queen',avatar:'https://i.pravatar.cc/100?img=7',verified:true},
+    {id:'u9',name:'Kemi_A',username:'kemi_a',avatar:'https://i.pravatar.cc/100?img=25',verified:true},
+    {id:'u11',name:'Yusuf_Howl',username:'yusuf_howl',avatar:'https://i.pravatar.cc/100?img=59',verified:true},
+    {id:'u6',name:'Blessing_O',username:'blessing_o',avatar:'https://i.pravatar.cc/100?img=23',verified:false},
+    {id:'u3',name:'Chinelo_23',username:'chinelo_23',avatar:'https://i.pravatar.cc/100?img=9',verified:false},
+    {id:'u15',name:'Amara_Reads',username:'amara_reads',avatar:'https://i.pravatar.cc/100?img=45',verified:false},
+    {id:'u16',name:'Kelvin_B',username:'kelvin_b',avatar:'https://i.pravatar.cc/100?img=60',verified:false},
+    {id:'u17',name:'Nneka_V',username:'nneka_v',avatar:'https://i.pravatar.cc/100?img=47',verified:false},
+    {id:'u19',name:'Fatima_Z',username:'fatima_z',avatar:'https://i.pravatar.cc/100?img=26',verified:false},
+  ];
+
+  function a(i){return authors[i%authors.length];}
+
+  return [
+    {id:'pt-1001',type:'chapter-drop',author:a(0),text:'Chapter 63 is live. She finally opens the letter.',chapterRef:{title:'Season of Betrayal',ch:'Chapter 63',cat:'Romance \u00b7 Drama',cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},likes:1840,comments:226,views:14200,status:'published',hoursAgo:2},
+    {id:'pt-1002',type:'ama',author:a(0),amaData:{title:'AMA: Writing the Betrayal ending',meta:'Ask about plot twists, characters, and Friday drops.',viewers:3200},likes:920,comments:410,views:8400,status:'published',hoursAgo:5},
+    {id:'pt-1003',type:'post',author:a(3),text:'Editing Chapter 12 and I keep crying at my own draft. Is that normal \ud83d\ude2d',likes:501,comments:88,views:4300,status:'published',hoursAgo:10},
+    {id:'pt-1004',type:'quote',author:a(0),quote:'"She didn\'t ask for an explanation. She just picked up her bag, pressed her lips together so her voice wouldn\'t shake, and walked out like she had planned it for years."',caption:'\u2014 Chapter 3, Season 2 of The Runaway Bride',likes:3200,comments:412,views:28500,status:'published',hoursAgo:24},
+    {id:'pt-1005',type:'chapter-drop',author:a(1),text:'The altar scene. In socked feet. You asked, I delivered.',chapterRef:{title:'The Runaway Bride',ch:'Chapter 9',cat:'Twist',cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},likes:967,comments:152,views:11200,status:'published',hoursAgo:17},
+    {id:'pt-1006',type:'review',author:a(4),storyRef:{title:'Fangs & Fortune',author:'Luna_Grey',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},score:4,reviewText:'Dark, atmospheric, and the world-building is dense in the best way. Took a couple chapters to click but stuck the landing.',likes:145,comments:9,views:1800,status:'published',hoursAgo:15},
+    {id:'pt-1007',type:'repost',author:a(6),note:'This arc wrecked me.',storyRef:{title:'Season of Betrayal',cat:'Romance',author:'Ada_Writes',cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},likes:12,comments:2,views:340,status:'published',hoursAgo:24},
+    {id:'pt-1008',type:'poll',author:a(3),poll:{question:'Should slow-burn romances update faster?',opts:[{label:'Yes, I need my fix',v:302},{label:'No, let it breathe',v:214}],total:516},likes:71,comments:26,views:2100,status:'published',hoursAgo:18},
+    {id:'pt-1009',type:'debate',author:a(5),debateData:{question:'Should love triangles be banned from romance fiction?',forText:'Yes, they\'re overused',againstText:'No, done well they work',forV:612,agV:745},likes:140,comments:210,views:5600,status:'published',hoursAgo:20},
+    {id:'pt-1010',type:'recommendation',author:a(8),note:'If you loved "Married to the Enemy," you need to read this next.',storyRef:{title:'Contract Without Love',author:'Dami_Cole',cat:'Billionaire',cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},likes:356,comments:19,views:3200,status:'published',hoursAgo:19},
+    {id:'pt-1011',type:'post',author:a(0),text:'Voice chat is live now \u2014 come hang out while I outline next week\u2019s chapter. Link in stories.',likes:455,comments:73,views:5100,status:'published',hoursAgo:21},
+    {id:'pt-1012',type:'quote',author:a(2),quote:'"He built an empire on silence. She was the only person who made him speak."',caption:'\u2014 His Cold Empire, Chapter 14',likes:890,comments:61,views:9800,status:'published',hoursAgo:20},
+    {id:'pt-1013',type:'chapter-drop',author:a(2),text:'',chapterRef:{title:'Devil in a Suit',ch:'Chapter 55',cat:'Billionaire',cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},likes:780,comments:90,views:8900,status:'published',hoursAgo:9},
+    {id:'pt-1014',type:'post',author:a(9),text:'Trying a new update schedule \u2014 3 chapters a week starting Monday. Let me know what you think.',likes:190,comments:54,views:2800,status:'published',hoursAgo:14},
+    {id:'pt-1015',type:'review',author:a(6),storyRef:{title:'The Alpha\u2019s Obsession',author:'Ifeanyi_Story',cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg'},score:5,reviewText:'A werewolf romance that actually respects its own lore. The pack politics alone are worth the read.',likes:214,comments:37,views:3400,status:'published',hoursAgo:22},
+    {id:'pt-1016',type:'repost',author:a(10),note:'Alex Pierce is cooking with this one \u2014 read the teaser.',storyRef:{title:'New Series Teaser',author:'Alex Pierce',cat:'Family',cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg'},likes:63,comments:11,views:890,status:'published',hoursAgo:2},
+    {id:'pt-1017',type:'chapter-drop',author:a(10),text:'The will names someone no one in the family has ever heard of. Chapter 6 is up.',chapterRef:{title:'Grandmother\u2019s Hidden Will',ch:'Chapter 6',cat:'Family',cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg'},likes:704,comments:96,views:7600,status:'published',hoursAgo:24},
+    {id:'pt-1018',type:'debate',author:a(7),debateData:{question:'Do enemies-to-lovers arcs need a redemption scene?',forText:'Yes, it earns the ending',againstText:'No, chemistry is enough',forV:388,agV:271},likes:95,comments:118,views:4100,status:'published',hoursAgo:23},
+    {id:'pt-1019',type:'recommendation',author:a(11),note:'Some letters are never meant to be sent \u2014 read this one with tissues nearby.',storyRef:{title:'The Letter Never Sent',author:'Efe_O',cat:'Elegy',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},likes:178,comments:22,views:2600,status:'published',hoursAgo:19},
+    {id:'pt-1020',type:'poll',author:a(0),poll:{question:'Team Alex or Team Jaxon in "His Sweet Revenge"?',opts:[{label:'Team Alex',v:118},{label:'Team Jaxon',v:85}],total:203},likes:44,comments:19,views:1500,status:'published',hoursAgo:8},
+    {id:'pt-1021',type:'post',author:a(5),text:'Thank you all for 2 million reads on this story!! I can\'t believe how far we\'ve come together. New arc starts Monday.',likes:2100,comments:567,views:22400,status:'published',hoursAgo:48},
+    {id:'pt-1022',type:'quote',author:a(1),quote:'"Love is not the opposite of power. It is the only thing that survives it."',caption:'\u2014 from Season of Betrayal, Ch. 41',likes:540,comments:48,views:6200,status:'published',hoursAgo:72},
+    {id:'pt-1023',type:'review',author:a(8),storyRef:{title:'The Billionaire Never Forgets',author:'Sarah_Odum',cover:'https://i.postimg.cc/ftRZbhKx/3.jpg'},score:4,reviewText:'The pacing dragged a little in the middle chapters, but the twist in chapter 18 completely redeemed it. Ugly-cried on the bus.',likes:56,comments:14,views:980,status:'published',hoursAgo:6},
+    {id:'pt-1024',type:'chapter-drop',author:a(4),text:'Chapter 42 drops tomorrow at midnight. Who\u2019s ready?',chapterRef:{title:'Burn For Me, Elsa',ch:'Chapter 42',cat:'Romance',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},likes:420,comments:67,views:5400,status:'published',hoursAgo:36},
+    {id:'pt-1025',type:'post',author:a(0),text:'Behind the scenes of how I plot my outlines \u2014 thread incoming. \ud83d\udcdd',likes:890,comments:134,views:9200,status:'published',hoursAgo:72},
+    {id:'pt-1026',type:'recommendation',author:a(6),note:'Hidden gem: slow-burn political Fantasy done right. Dragons, court intrigue, patient character work.',storyRef:{title:'The Priory of the Orange Tree',author:'Samantha Shannon',cat:'Fantasy',cover:'https://i.postimg.cc/ftRZbhKx/3.jpg'},likes:267,comments:41,views:3800,status:'published',hoursAgo:48},
+    {id:'pt-1027',type:'debate',author:a(11),debateData:{question:'Should villains get redemption arcs?',forText:'Yes, everyone deserves a second chance',againstText:'No, some actions are unforgivable',forV:264,agV:164},likes:0,comments:0,views:1200,status:'flagged',hoursAgo:40},
+    {id:'pt-1028',type:'post',author:a(7),text:'PSA: uploads paused for maintenance, back in 1hr. Sorry for the inconvenience!',likes:34,comments:12,views:890,status:'published',hoursAgo:96},
+    {id:'pt-1029',type:'poll',author:a(9),poll:{question:'Which trope needs a break?',opts:[{label:'Love triangles',v:445},{label:'Secret baby',v:312},{label:'Fake dating',v:198}],total:955},likes:88,comments:45,views:4500,status:'published',hoursAgo:56},
+    {id:'pt-1030',type:'repost',author:a(10),note:'If you like messy marriage plots, start here.',storyRef:{title:'The Billionaire Never Forgets',author:'Sarah_Odum',cat:'Billionaire',cover:'https://i.postimg.cc/ftRZbhKx/3.jpg'},likes:188,comments:22,views:2100,status:'published',hoursAgo:12},
+    {id:'pt-1031',type:'quote',author:a(4),quote:'"He wasn\u2019t her plan. He was the thing that happened while she was busy making one."',caption:'\u2014 from Chapter 8, The Billionaire Never Forgets',likes:421,comments:33,views:5600,status:'published',hoursAgo:120},
+    {id:'pt-1032',type:'chapter-drop',author:a(11),text:'Final chapter is here. Thank you for reading.',chapterRef:{title:'Crowned in Sin',ch:'Chapter 48',cat:'Mafia',cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},likes:1240,comments:287,views:18200,status:'published',hoursAgo:168},
+    {id:'pt-1033',type:'review',author:a(3),storyRef:{title:'Season of Betrayal',author:'Ada_Writes',cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},score:5,reviewText:'This story changed my life. The character development is unmatched. I\u2019ve reread it three times.',likes:340,comments:56,views:4200,status:'published',hoursAgo:24},
+    {id:'pt-1034',type:'post',author:a(8),text:'Who else rereads their favorite chapters at 2am? Just me? \ud83d\ude24',likes:178,comments:42,views:2400,status:'published',hoursAgo:144},
+    {id:'pt-1035',type:'recommendation',author:a(7),note:'This story ruined my whole week (in the best way). Must read for romance fans.',storyRef:{title:'The Letter Never Sent',author:'Efe_O',cat:'Elegy',cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},likes:203,comments:38,views:3100,status:'published',hoursAgo:72},
+    {id:'pt-1036',type:'poll',author:a(5),poll:{question:'Best cliffhanger of 2026 so far?',opts:[{label:'Season of Betrayal Ch. 63',v:567},{label:'The Runaway Bride Ch. 9',v:423},{label:'Devil in a Suit Ch. 55',v:312}],total:1302},likes:112,comments:67,views:6800,status:'published',hoursAgo:48},
+    {id:'pt-1037',type:'post',author:a(2),text:'Reminder: no spoilers in the comments please \ud83d\ude4f',likes:89,comments:8,views:1200,status:'published',hoursAgo:168},
+    {id:'pt-1038',type:'ama',author:a(1),amaData:{title:'AMA: Twist Endings Explained',meta:'How I plan my plot twists. Bring your theories.',viewers:2800},likes:670,comments:320,views:7200,status:'published',hoursAgo:24},
+    {id:'pt-1039',type:'post',author:a(0),text:'We hit 500 chapters across the series today \ud83c\udf89 Thank you all for being here from the start.',likes:1450,comments:234,views:16800,status:'published',hoursAgo:48},
+    {id:'pt-1040',type:'chapter-drop',author:a(6),text:'Chapter 42 of "Luna\'s Wolf" drops tonight. The pack wars begin.',chapterRef:{title:'Luna\'s Wolf',ch:'Chapter 42',cat:'Werewolf',cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg'},likes:580,comments:89,views:6400,status:'published',hoursAgo:6},
+    {id:'pt-1041',type:'quote',author:a(9),quote:'"Some books find you at the exact right chaos."',caption:'\u2014 after finishing Chapter 40',likes:28,comments:4,views:420,status:'flagged',hoursAgo:96},
+    {id:'pt-1042',type:'post',author:a(11),text:'Q&A time \u2014 drop your questions for the author below!',likes:56,comments:78,views:1800,status:'under-review',hoursAgo:200},
+    {id:'pt-1043',type:'repost',author:a(3),note:'Chapter 42 drops tomorrow at midnight who\u2019s ready',storyRef:{title:'Season of Betrayal',author:'Ada_Writes',cat:'Romance',cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},likes:12,comments:2,views:180,status:'removed',hoursAgo:36},
+    {id:'pt-1044',type:'review',author:a(10),storyRef:{title:'Crowned in Sin',author:'Ada_Writes',cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},score:3,reviewText:'The pacing was uneven but the ending saved it. Not my favorite from this author but still decent.',likes:45,comments:11,views:780,status:'published',hoursAgo:48},
+    {id:'pt-1045',type:'debate',author:a(6),debateData:{question:'Is slow-burn always better than fast burn?',forText:'Yes, the tension is everything',againstText:'No, sometimes I need instant chemistry',forV:432,agV:389},likes:120,comments:156,views:5200,status:'published',hoursAgo:72},
+  ];
+})();
+
+var filtered=POSTS.slice();
+var page=1;
+var pageSize=25;
+var openRowId=null;
+
+function fmtNum(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n);}
+function fmtHours(h){if(h===0)return'Just now';if(h<24)return h+'h ago';if(h<24*30)return Math.floor(h/24)+'d ago';return Math.floor(h/(24*30))+'mo ago';}
+function authorName(p){return p.author?p.author.name:'Unknown';}
+function authorId(p){return p.author?p.author.id:'';}
+
+function getPreviewText(p){
+  if(p.text)return p.text;
+  if(p.quote)return'\u201c'+p.quote.substring(0,100)+(p.quote.length>100?'...':'')+'\u201d';
+  if(p.note)return p.note;
+  if(p.amaData)return p.amaData.title;
+  if(p.chapterRef)return p.chapterRef.title+' \u2014 '+p.chapterRef.ch;
+  if(p.poll)return p.poll.question;
+  if(p.debateData)return p.debateData.question;
+  if(p.reviewText)return p.reviewText.substring(0,100)+'...';
+  if(p.storyRef)return p.storyRef.title;
+  return '';
 }
 
-const ALL_POSTS = generatePosts(3200); // simulated slice of a much larger feed
-let filtered = ALL_POSTS.slice();
-let page = 1;
-let pageSize = 25;
-let density = 'normal';
-
-function fmtNum(n){
-  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
-  if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
-  return n.toString();
-}
-function fmtHours(h){
-  if(h===0) return 'Just now';
-  if(h<24) return h+'h ago';
-  if(h<24*30) return Math.floor(h/24)+'d ago';
-  return Math.floor(h/(24*30))+'mo ago';
+function getPostUrl(p){
+  return '../Pages/feed.html?post='+p.id;
 }
 
 function renderStatCards(){
-  const total = ALL_POSTS.length;
-  const published = ALL_POSTS.filter(p=>p.status==='published').length;
-  const flagged = ALL_POSTS.filter(p=>p.status==='flagged').length;
-  const totalEngagement = ALL_POSTS.reduce((s,p)=>s+p.likes+p.comments+p.shares,0);
-  document.getElementById('totalCountLbl').textContent = fmtNum(total) + '+';
-  const stats = [
-    { n: fmtNum(total)+'+', l:'Total Posts', ico:'fa-rss', cls:'gold' },
-    { n: fmtNum(published), l:'Published', ico:'fa-circle-check', cls:'green' },
-    { n: flagged, l:'Flagged for Review', ico:'fa-flag', cls:'red' },
-    { n: fmtNum(totalEngagement), l:'Total Engagement', ico:'fa-heart', cls:'blue' },
+  var total=POSTS.length;
+  var published=POSTS.filter(function(p){return p.status==='published';}).length;
+  var flagged=POSTS.filter(function(p){return p.status==='flagged';}).length;
+  var underReview=POSTS.filter(function(p){return p.status==='under-review';}).length;
+  document.getElementById('totalCountLbl').textContent=fmtNum(total);
+  var stats=[
+    {n:fmtNum(total),l:'Total Posts',ico:'fa-rss',cls:'gold'},
+    {n:fmtNum(published),l:'Published',ico:'fa-circle-check',cls:'green'},
+    {n:flagged,l:'Flagged',ico:'fa-flag',cls:'red'},
+    {n:underReview,l:'Under Review',ico:'fa-clock',cls:'amber'}
   ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
+  document.getElementById('statCards').innerHTML=stats.map(function(s){
+    return '<div class="stat-card"><div class="stat-ico" style="background:'+BG[s.cls]+';color:'+ICO[s.cls]+'"><i class="fas '+s.ico+'"></i></div><div><div class="stat-num">'+s.n+'</div><div class="stat-lbl">'+s.l+'</div></div></div>';
+  }).join('');
 }
 
 function applyFilters(){
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const type = document.getElementById('typeFilter').value;
-  const status = document.getElementById('statusFilter').value;
-  const sort = document.getElementById('sortFilter').value;
+  var q=document.getElementById('searchInput').value.trim().toLowerCase();
+  var type=document.getElementById('typeFilter').value;
+  var status=document.getElementById('statusFilter').value;
+  var sort=document.getElementById('sortFilter').value;
 
-  filtered = ALL_POSTS.filter(p=>{
-    if(q && !(p.text.toLowerCase().includes(q) || p.author.toLowerCase().includes(q) || p.id.includes(q))) return false;
-    if(type && p.type !== type) return false;
-    if(status && p.status !== status) return false;
+  filtered=POSTS.filter(function(p){
+    var txt=(p.text||p.quote||p.note||'').toLowerCase();
+    var name=authorName(p).toLowerCase();
+    if(q&&txt.indexOf(q)===-1&&name.indexOf(q)===-1&&p.id.indexOf(q)===-1)return false;
+    if(type&&p.type!==type)return false;
+    if(status&&p.status!==status)return false;
     return true;
   });
 
-  if(sort==='recent') filtered.sort((a,b)=>a.hoursAgo-b.hoursAgo);
-  else if(sort==='likes') filtered.sort((a,b)=>b.likes-a.likes);
-  else if(sort==='comments') filtered.sort((a,b)=>b.comments-a.comments);
-  else if(sort==='shares') filtered.sort((a,b)=>b.shares-a.shares);
+  if(sort==='recent')filtered.sort(function(a,b){return a.hoursAgo-b.hoursAgo;});
+  else if(sort==='views')filtered.sort(function(a,b){return b.views-a.views;});
+  else if(sort==='likes')filtered.sort(function(a,b){return b.likes-a.likes;});
+  else if(sort==='comments')filtered.sort(function(a,b){return b.comments-a.comments;});
 
-  page = 1;
+  page=1;
+  openRowId=null;
   renderList();
 }
 
 function renderList(){
-  const start = (page-1)*pageSize;
-  const pageItems = filtered.slice(start, start+pageSize);
-  const listEl = document.getElementById('postList');
-  listEl.className = density==='dense' ? 'dense' : '';
+  var start=(page-1)*pageSize;
+  var pageItems=filtered.slice(start,start+pageSize);
+  var listEl=document.getElementById('postList');
 
-  if(pageItems.length === 0){
-    listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No posts match your filters.</div>`;
-  } else {
-    listEl.innerHTML = pageItems.map(p=>`
-      <div class="post-row">
-        <div class="post-main">
-          ${p.thumb ? `<img class="post-thumb" src="${p.thumb}" alt=""/>` : `<div class="post-thumb text-only"><i class="fas fa-message"></i></div>`}
-          <div class="post-info">
-            <div class="post-text">${p.text}</div>
-            <div class="post-meta">by <a href="#">${p.author}</a> · ${p.id}</div>
-          </div>
-        </div>
-        <div class="col-hide"><span class="type-chip" style="background:${BG_MAP[TYPE_COLORS[p.type]]};color:${ICO_MAP[TYPE_COLORS[p.type]]}">${p.type}</span></div>
-        <div class="col-hide num-cell">${fmtNum(p.likes)}</div>
-        <div class="col-hide num-cell faint">${fmtNum(p.comments)}</div>
-        <div class="num-cell">${fmtNum(p.shares)}</div>
-        <div><span class="status-chip ${p.status}"><i class="fas fa-circle"></i>${p.status}</span></div>
-        <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtHours(p.hoursAgo)}</div>
-        <div class="row-actions">
-          <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
-          <button class="icon-btn" title="More"><i class="fas fa-ellipsis-vertical"></i></button>
-        </div>
-      </div>`).join('');
+  if(pageItems.length===0){
+    listEl.innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i>No posts match your filters.</div>';
+  }else{
+    listEl.innerHTML=pageItems.map(function(p){
+      var tc=TYPE_CONFIG[p.type]||TYPE_CONFIG['post'];
+      var color=ICO[tc.color]||'var(--text-faint)';
+      var bg=BG[tc.color]||'var(--table-head)';
+      var isOpen=openRowId===p.id;
+      var preview=getPreviewText(p);
+      var statusClass=p.status==='under-review'?'under-review':p.status;
+      return '<div>'+
+        '<div class="post-row'+(isOpen?' is-open':'')+'" data-id="'+p.id+'">'+
+          '<i class="fas fa-chevron-right expand-ico"></i>'+
+          '<div class="post-main">'+
+            '<img class="post-avatar" src="'+p.author.avatar+'" alt=""/>'+
+            '<div class="post-info">'+
+              '<a class="post-title-link" href="'+getPostUrl(p)+'" onclick="event.stopPropagation()">'+preview+'</a>'+
+              '<div class="post-meta">by <a href="../Pages/profile.html?id='+authorId(p)+'">'+authorName(p)+'</a> \u00b7 '+p.id+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<div class="col-hide"><span class="type-chip" style="background:'+bg+';color:'+color+'"><i class="fas '+tc.icon+'"></i> '+tc.label+'</span></div>'+
+          '<div class="col-hide num-cell">'+fmtNum(p.views)+'</div>'+
+          '<div class="num-cell faint">'+fmtNum(p.comments)+'</div>'+
+          '<div><span class="status-chip '+statusClass+'"><i class="fas fa-circle"></i> '+p.status.replace('-',' ')+'</span></div>'+
+          '<div class="col-hide" style="font-size:11px;color:var(--text-faint)">'+fmtHours(p.hoursAgo)+'</div>'+
+        '</div>'+
+        '<div class="post-detail'+(isOpen?' show':'')+'" id="detail-'+p.id+'"></div>'+
+      '</div>';
+    }).join('');
   }
-
+  if(openRowId&&pageItems.some(function(p){return p.id===openRowId;}))renderDetailPanel(openRowId);
   renderFooter();
 }
 
-function renderFooter(){
-  const total = filtered.length;
-  const start = total === 0 ? 0 : (page-1)*pageSize+1;
-  const end = Math.min(page*pageSize, total);
-  document.getElementById('footerInfo').textContent = `Showing ${start}–${end} of ${fmtNum(total)} posts`;
+function renderDetailPanel(id){
+  var p=POSTS.find(function(x){return x.id===id;});
+  if(!p)return;
+  var panel=document.getElementById('detail-'+id);
+  if(!panel)return;
 
-  const totalPages = Math.max(1, Math.ceil(total/pageSize));
-  let html = `<button ${page===1?'disabled':''} data-p="prev"><i class="fas fa-chevron-left"></i></button>`;
-  const pagesToShow = new Set([1, totalPages, page, page-1, page+1]);
-  let last = 0;
-  for(let p=1;p<=totalPages;p++){
-    if(!pagesToShow.has(p)) continue;
-    if(p - last > 1) html += `<span class="pager-gap">…</span>`;
-    html += `<button data-p="${p}" class="${p===page?'active':''}">${p}</button>`;
-    last = p;
+  var tc=TYPE_CONFIG[p.type]||TYPE_CONFIG['post'];
+  var color=ICO[tc.color]||'var(--text-faint)';
+
+  var html='<div class="detail-inner">';
+  html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-chart-simple"></i> Post Stats</div><div class="detail-grid">';
+  html+='<div class="detail-item accent"><span>Likes</span><b>'+fmtNum(p.likes)+'</b></div>';
+  html+='<div class="detail-item"><span>Comments</span><b>'+fmtNum(p.comments)+'</b></div>';
+  html+='<div class="detail-item green"><span>Views</span><b>'+fmtNum(p.views)+'</b></div>';
+  html+='<div class="detail-item"><span>Type</span><b>'+tc.label+'</b></div>';
+  html+='</div></div>';
+
+  if(p.type==='poll'&&p.poll){
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-chart-bar"></i> Poll Results</div><div class="detail-preview">';
+    html+='<div class="detail-preview-text">'+p.poll.question+'</div>';
+    p.poll.opts.forEach(function(o){
+      var pct=Math.round((o.v/p.poll.total)*100);
+      html+='<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:3px"><span>'+o.label+'</span><span>'+o.v+' votes ('+pct+'%)</span></div>';
+      html+='<div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div></div></div>';
+    });
+    html+='<div style="font-size:10px;color:var(--text-faint);margin-top:8px">'+fmtNum(p.poll.total)+' total votes</div>';
+    html+='</div></div>';
   }
-  html += `<button ${page===totalPages?'disabled':''} data-p="next"><i class="fas fa-chevron-right"></i></button>`;
-  document.getElementById('pager').innerHTML = html;
 
-  document.querySelectorAll('#pager button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const p = btn.dataset.p;
-      const totalPages2 = Math.max(1, Math.ceil(filtered.length/pageSize));
-      if(p==='prev') page = Math.max(1, page-1);
-      else if(p==='next') page = Math.min(totalPages2, page+1);
-      else page = parseInt(p,10);
+  if(p.type==='debate'&&p.debateData){
+    var total=p.debateData.forV+p.debateData.agV;
+    var forPct=total?Math.round((p.debateData.forV/total)*100):50;
+    var agPct=100-forPct;
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-scale-balanced"></i> Debate Results</div><div class="detail-preview">';
+    html+='<div class="detail-preview-text">'+p.debateData.question+'</div>';
+    html+='<div style="display:flex;gap:12px;margin-top:10px">';
+    html+='<div style="flex:1;text-align:center;padding:10px;background:var(--green-bg);border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--green)">'+forPct+'%</div><div style="font-size:10px;color:var(--text-faint);font-weight:700;margin-top:2px">'+p.debateData.forText+'</div><div style="font-size:10px;color:var(--text-faint)">'+fmtNum(p.debateData.forV)+' votes</div></div>';
+    html+='<div style="flex:1;text-align:center;padding:10px;background:var(--red-bg);border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--red)">'+agPct+'%</div><div style="font-size:10px;color:var(--text-faint);font-weight:700;margin-top:2px">'+p.debateData.againstText+'</div><div style="font-size:10px;color:var(--text-faint)">'+fmtNum(p.debateData.agV)+' votes</div></div>';
+    html+='</div></div></div>';
+  }
+
+  if(p.type==='review'){
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-star"></i> Review</div><div class="detail-preview">';
+    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">';
+    for(var s=1;s<=5;s++)html+='<i class="fas fa-star" style="font-size:14px;color:'+(s<=p.score?'var(--gold)':'var(--border)')+'"></i>';
+    html+='<span style="font-size:12px;font-weight:700;margin-left:4px">'+p.score+'/5</span></div>';
+    html+='<div class="detail-preview-text">'+p.reviewText+'</div>';
+    html+='</div></div>';
+  }
+
+  if(p.type==='ama'&&p.amaData){
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-microphone"></i> AMA Session</div><div class="detail-preview">';
+    html+='<div class="detail-preview-text">'+p.amaData.title+'</div>';
+    html+='<div style="font-size:11px;color:var(--text-faint);margin-top:4px">'+p.amaData.meta+'</div>';
+    html+='<div style="font-size:12px;font-weight:700;margin-top:6px;color:var(--accent)"><i class="fas fa-eye"></i> '+fmtNum(p.amaData.viewers)+' viewers</div>';
+    html+='</div></div>';
+  }
+
+  if(p.chapterRef){
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-book-open"></i> Chapter Reference</div>';
+    html+='<div class="detail-preview-ref"><img src="'+p.chapterRef.cover+'" alt=""/><div class="detail-preview-ref-info">'+p.chapterRef.title+'<span>'+p.chapterRef.ch+' \u00b7 '+p.chapterRef.cat+'</span></div></div></div>';
+  }
+
+  if(p.storyRef){
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-book"></i> Story Reference</div>';
+    html+='<div class="detail-preview-ref"><img src="'+p.storyRef.cover+'" alt=""/><div class="detail-preview-ref-info">'+p.storyRef.title+'<span>by '+p.storyRef.author+(p.storyRef.cat?' \u00b7 '+p.storyRef.cat:'')+'</span></div></div></div>';
+  }
+
+  if(p.quote){
+    html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-quote-left"></i> Quote</div><div class="detail-preview">';
+    html+='<div class="detail-preview-quote">'+p.quote+'</div>';
+    if(p.caption)html+='<div class="detail-preview-caption">'+p.caption+'</div>';
+    html+='</div></div>';
+  }
+
+  html+='<div class="detail-foot">';
+  html+='<a class="mini-btn primary" href="'+getPostUrl(p)+'" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> View Post</a>';
+  html+='<a class="mini-btn" href="../Pages/profile.html?id='+authorId(p)+'"><i class="fas fa-user"></i> View Author</a>';
+  html+='</div></div>';
+
+  panel.innerHTML=html;
+}
+
+function renderFooter(){
+  var total=filtered.length;
+  var start=total===0?0:(page-1)*pageSize+1;
+  var end=Math.min(page*pageSize,total);
+  document.getElementById('footerInfo').textContent='Showing '+start+'\u2013'+end+' of '+fmtNum(total)+' posts';
+
+  var totalPages=Math.max(1,Math.ceil(total/pageSize));
+  var html='<button '+(page===1?'disabled':'')+' data-p="prev"><i class="fas fa-chevron-left"></i></button>';
+  var pagesToShow=new Set([1,totalPages,page,page-1,page+1]);
+  var last=0;
+  for(var p=1;p<=totalPages;p++){
+    if(!pagesToShow.has(p))continue;
+    if(p-last>1)html+='<span class="pager-gap">\u2026</span>';
+    html+='<button data-p="'+p+'" class="'+(p===page?'active':'')+'">'+p+'</button>';
+    last=p;
+  }
+  html+='<button '+(page===totalPages?'disabled':'')+' data-p="next"><i class="fas fa-chevron-right"></i></button>';
+  document.getElementById('pager').innerHTML=html;
+
+  document.querySelectorAll('#pager button').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pp=btn.dataset.p;
+      var totalPages2=Math.max(1,Math.ceil(filtered.length/pageSize));
+      if(pp==='prev')page=Math.max(1,page-1);
+      else if(pp==='next')page=Math.min(totalPages2,page+1);
+      else page=parseInt(pp,10);
       renderList();
-      document.querySelector('.panel').scrollIntoView({behavior:'smooth', block:'start'});
+      document.querySelector('.panel').scrollIntoView({behavior:'smooth',block:'start'});
     });
   });
 }
 
-document.getElementById('searchInput').addEventListener('input', applyFilters);
-document.getElementById('typeFilter').addEventListener('change', applyFilters);
-document.getElementById('statusFilter').addEventListener('change', applyFilters);
-document.getElementById('sortFilter').addEventListener('change', applyFilters);
-document.querySelectorAll('#densitySeg button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#densitySeg button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    density = btn.dataset.density;
+document.addEventListener('click',function(e){
+  var postRow=e.target.closest('.post-row');
+  if(postRow&&!e.target.closest('a')){
+    var id=postRow.dataset.id;
+    openRowId=openRowId===id?null:id;
     renderList();
-  });
+  }
 });
 
-function init(){
-  renderStatCards();
-  document.getElementById('sortFilter').value = 'recent';
+document.getElementById('searchInput').addEventListener('input',applyFilters);
+document.getElementById('typeFilter').addEventListener('change',applyFilters);
+document.getElementById('statusFilter').addEventListener('change',applyFilters);
+document.getElementById('sortFilter').addEventListener('change',applyFilters);
+document.getElementById('reviewFlaggedBtn').addEventListener('click',function(){
+  document.getElementById('statusFilter').value='flagged';
   applyFilters();
-}
-init();
+});
+
+renderStatCards();
+applyFilters();
 </script>
 </body>
 </html>

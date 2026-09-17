@@ -1,0 +1,415 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Platform Settings — Droboard Dashboard</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}.page-hdr .title{font-size:15px;font-weight:800;color:var(--text)}.btn-save{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+.settings-grid{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start}
+.side-nav{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;gap:2px}.sn-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:.15s}.sn-item:hover{background:var(--hover);color:var(--text)}.sn-item.active{background:var(--accent-soft);color:var(--accent);font-weight:700}.sn-item i{width:16px;text-align:center;font-size:13px}
+.content-area{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;min-height:500px}.ca-head{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}.ca-head h2{font-size:15px;font-weight:800;margin-bottom:4px}.ca-head p{font-size:12px;color:var(--text-muted)}
+.form-group{margin-bottom:18px}.form-group label{display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px}.form-group .desc{font-size:11px;color:var(--text-muted);margin-bottom:8px}.form-group input,.form-group textarea,.form-group select{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--text);font-family:inherit;outline:none}.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}.form-group textarea{resize:vertical;min-height:80px}.form-group select{appearance:none;cursor:pointer}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}.toggle-row:last-child{border-bottom:none}.toggle-info{flex:1}.toggle-info b{font-size:13px;font-weight:700}.toggle-info span{display:block;font-size:11.5px;color:var(--text-muted);margin-top:2px}.toggle-switch{width:44px;height:24px;border-radius:12px;background:var(--input-border);position:relative;cursor:pointer;flex-shrink:0;transition:.2s}.toggle-switch.active{background:var(--accent)}.toggle-switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}.toggle-switch.active .knob{transform:translateX(20px)}
+@media (max-width:800px){.settings-grid{grid-template-columns:1fr}.side-nav{display:grid;grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body><div id="dashboardRoot">
+<div class="page-hdr"><div class="title">Configure your platform settings, branding, and preferences</div><button class="btn-save" id="saveAllBtn"><i class="fas fa-check"></i> Save Changes</button></div>
+<div class="settings-grid">
+<div class="side-nav">
+<div class="sn-item active" data-section="general"><i class="fas fa-globe"></i> General</div>
+<div class="sn-item" data-section="coin-economy"><i class="fas fa-coins"></i> Coin Economy</div>
+<div class="sn-item" data-section="email"><i class="fas fa-envelope"></i> Email</div>
+<div class="sn-item" data-section="email-templates"><i class="fas fa-file-lines"></i> Email Templates</div>
+<div class="sn-item" data-section="security"><i class="fas fa-lock"></i> Security</div>
+<div class="sn-item" data-section="payments"><i class="fas fa-credit-card"></i> Payments</div>
+<div class="sn-item" data-section="notifications"><i class="fas fa-bell"></i> Notifications</div>
+<div class="sn-item" data-section="content"><i class="fas fa-shield-halved"></i> Content</div>
+<div class="sn-item" data-section="integrations"><i class="fas fa-code"></i> API & Integrations</div>
+</div>
+<div class="content-area" id="settingsContent"></div>
+</div></div>
+<script src="shared/super-admin-sidebar.js"></script>
+<script src="data/email-templates-data.js"></script>
+<script src="email-templates-service.js"></script>
+<script src="../component/email-template-editor.js"></script>
+<script>
+SuperAdminSidebar.attach('#dashboardRoot',{activeItem:'platform-settings',title:'Platform Settings',subtitle:'Configure platform settings and preferences',user:{name:'Tobi Adenuga',role:'Super Admin',avatar:'https://i.pravatar.cc/100?img=68'},notifCount:9,hideSearch:true});
+
+// ── Section templates ───────────────────────────────────
+const SECTIONS = {
+  general: {
+    title: 'General Settings',
+    desc: 'Manage your platform\'s basic information and preferences',
+    html: () => `
+      <div class="form-group"><label>Platform Name</label><div class="desc">The name of your publishing platform</div><input id="f-platformName" type="text" value="Droboard"/></div>
+      <div class="form-group"><label>Platform Description</label><div class="desc">Brief description for SEO and sharing</div><textarea id="f-platformDesc">Droboard is a premier digital publishing platform connecting authors with readers worldwide.</textarea></div>
+      <div class="form-group"><label>Default Language</label><div class="desc">Primary language for the platform interface</div><select id="f-language"><option>English (US)</option><option>English (UK)</option><option>French</option><option>Spanish</option></select></div>
+      <div class="form-group"><label>Timezone</label><div class="desc">Default timezone for all dates and times</div><select id="f-timezone"><option>Africa/Lagos (UTC+1)</option><option>America/New_York (UTC-5)</option><option>Europe/London (UTC+0)</option></select></div>
+      <div class="ca-head" style="margin-top:24px"><h2>Feature Toggles</h2><p>Enable or disable platform features</p></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Reader Reviews</b><span>Allow readers to rate and review published books</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Content Moderation</b><span>Enable automated content flagging</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  'coin-economy': {
+    title: 'Coin Economy',
+    desc: 'Configure coin rates, pricing, and revenue sharing',
+    html: () => `
+      <div class="ca-head" style="margin-top:0;padding-bottom:14px;border-bottom:1px solid var(--border)"><h2>Coin Rate</h2><p>Set how coins convert to real currency</p></div>
+      <div class="form-group" style="margin-top:18px"><label>Coin-to-Naira Rate (₦)</label><div class="desc">How much 1 coin costs in Naira</div><input type="number" id="f-coinRate" value="15" min="1"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> 1 coin = ₦<span id="coinRatePreview">15</span> &nbsp;|&nbsp; 100 coins = ₦<span id="coinRate100">1,500</span></div></div>
+      <div class="form-group"><label>Coin-to-USD Rate ($)</label><div class="desc">How much 1 coin costs in USD (for international users)</div><input type="number" id="f-coinRateUsd" value="0.02" min="0.01" step="0.01"/></div>
+
+      <div class="ca-head" style="margin-top:28px"><h2>Chapter Pricing</h2><p>Default pricing rules for chapter unlocks</p></div>
+      <div class="form-group" style="margin-top:18px"><label>Default Chapter Price (coins)</label><div class="desc">Default coin cost editors can use when setting chapter prices</div><input type="number" id="f-defaultChapterPrice" value="15" min="0"/></div>
+      <div class="form-group"><label>Minimum Chapter Price (coins)</label><div class="desc">Lowest allowed chapter price (0 = free)</div><input type="number" id="f-minChapterPrice" value="0" min="0"/></div>
+      <div class="form-group"><label>Maximum Chapter Price (coins)</label><div class="desc">Highest allowed chapter price per chapter</div><input type="number" id="f-maxChapterPrice" value="100" min="1"/></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Free First Chapter</b><span>Always make the first chapter of every book free</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+
+      <div class="ca-head" style="margin-top:28px"><h2>Revenue Sharing</h2><p>How earnings are split between platform and authors</p></div>
+      <div class="form-group" style="margin-top:18px"><label>Platform Commission (%)</label><div class="desc">Percentage of author earnings the platform keeps</div><input type="number" id="f-platformCommission" value="30" min="0" max="100"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--green);margin-right:6px"></i> Author receives <span id="authorSharePreview">70</span>% of earnings</div></div>
+      <div class="form-group"><label>Tip Author Share (%)</label><div class="desc">Percentage of tips that go directly to the author</div><input type="number" id="f-tipShare" value="85" min="0" max="100"/></div>
+    `
+  },
+  email: {
+    title: 'Email Settings',
+    desc: 'Configure email delivery, sender info, and custom fields',
+    html: () => `
+      <div class="ca-head" style="margin-top:0;padding-bottom:14px;border-bottom:1px solid var(--border)"><h2>SMTP Configuration</h2><p>Email server settings</p></div>
+      <div class="form-group" style="margin-top:18px"><label>SMTP Host</label><div class="desc">Your email server hostname</div><input type="text" value="smtp.droboard.app"/></div>
+      <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group"><label>SMTP Port</label><input type="text" value="587"/></div>
+        <div class="form-group"><label>SMTP Protocol</label><select><option>TLS</option><option>SSL</option></select></div>
+      </div>
+
+      <div class="ca-head" style="margin-top:28px;display:flex;align-items:center;justify-content:space-between"><div><h2>Sender Fields</h2><p>Default "From" details and custom fields</p></div><button id="addSenderFieldBtn" style="padding:6px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-plus"></i> Add Field</button></div>
+      <div id="senderFieldsList" style="margin-top:14px;display:flex;flex-direction:column;gap:10px"></div>
+
+      <div class="ca-head" style="margin-top:28px"><h2>Email Notifications</h2><p>Toggle which emails are sent automatically</p></div>
+      <div class="toggle-row" style="margin-top:14px"><div class="toggle-info"><b>Welcome Email</b><span>Send welcome email to new authors</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Contract Notifications</b><span>Email authors when contracts are sent</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Chapter Updates</b><span>Notify authors when chapters are approved/rejected</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Payment Notifications</b><span>Send payout and withdrawal emails</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  'email-templates': {
+    title: 'Email Templates',
+    desc: 'Manage all platform email templates',
+    html: () => `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:12px;color:var(--text-muted)" id="tplCountInfo"></div>
+        <button id="addNewTemplateBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px"><i class="fas fa-plus"></i> New Template</button>
+      </div>
+      <div id="emailTemplatesList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <button id="resetTemplatesBtn" style="padding:7px 14px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-rotate-left"></i> Reset to Defaults</button>
+        <div id="tplPager" style="display:flex;align-items:center;gap:4px"></div>
+      </div>
+    `
+  },
+  security: {
+    title: 'Security Settings',
+    desc: 'Manage platform security and access control',
+    html: () => `
+      <div class="toggle-row"><div class="toggle-info"><b>Two-Factor Authentication</b><span>Require 2FA for all admin accounts</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>IP Whitelisting</b><span>Restrict admin access to specific IPs</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Session Timeout</b><span>Auto-logout after inactivity</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="form-group" style="margin-top:18px"><label>Session Duration (minutes)</label><input type="number" value="60"/></div>
+      <div class="form-group"><label>Password Policy</label><select><option>Strong (min 12 chars, special chars)</option><option>Moderate (min 8 chars)</option><option>Basic (min 6 chars)</option></select></div>
+      <div class="form-group"><label>Allowed IPs (one per line)</label><textarea>192.168.1.0/24&#10;10.0.0.0/8</textarea></div>
+    `
+  },
+  payments: {
+    title: 'Payment Settings',
+    desc: 'Configure payment gateways and payout preferences',
+    html: () => `
+      <div class="form-group"><label>Default Currency</label><select><option>USD ($)</option><option>EUR (€)</option><option>NGN (₦)</option><option>GBP (£)</option></select></div>
+      <div class="form-group"><label>Minimum Payout</label><div class="desc">Minimum amount before an author can withdraw</div><input type="text" value="$50.00"/></div>
+      <div class="form-group"><label>Payout Schedule</label><select><option>Monthly (1st of every month)</option><option>Bi-weekly</option><option>Weekly</option><option>Manual (admin initiated)</option></select></div>
+      <div class="form-group"><label>Platform Commission (%)</label><input type="number" value="30" min="0" max="100"/></div>
+      <div class="form-group"><label>Payment Gateway</label><select><option>Stripe</option><option>PayPal</option><option>Flutterwave</option><option>Paystack</option></select></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Auto-payouts</b><span>Automatically process payouts on schedule</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  notifications: {
+    title: 'Notification Settings',
+    desc: 'Configure which notifications are sent and how',
+    html: () => `
+      <h3 style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--text)">Push Notifications</h3>
+      <div class="toggle-row"><div class="toggle-info"><b>New Author Registration</b><span>Alert when a new author registers</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Contract Signed</b><span>Alert when an author signs a contract</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Content Flagged</b><span>Alert when content is reported</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Withdrawal Requests</b><span>Alert when authors request payouts</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <h3 style="font-size:13px;font-weight:800;margin:16px 0 10px;color:var(--text)">Email Notifications</h3>
+      <div class="toggle-row"><div class="toggle-info"><b>Daily Digest</b><span>Receive a daily summary of platform activity</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Weekly Report</b><span>Receive a weekly performance report</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  content: {
+    title: 'Content Settings',
+    desc: 'Manage content policies and moderation rules',
+    html: () => `
+      <div class="toggle-row"><div class="toggle-info"><b>Auto-moderation</b><span>Automatically flag potentially violating content</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>AI Content Detection</b><span>Flag content that appears AI-generated</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Plagiarism Check</b><span>Auto-check submissions for plagiarism</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  },
+  integrations: {
+    title: 'API & Integrations',
+    desc: 'Manage API keys and third-party integrations',
+    html: () => `
+      <div class="form-group"><label>API Status</label><div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span><span style="font-weight:700;color:var(--green)">Operational</span></div></div>
+      <div class="form-group"><label>API Base URL</label><input type="text" value="https://api.droboard.app/v1" readonly style="font-family:monospace;background:var(--table-head)"/></div>
+      <div class="form-group"><label>API Key</label><div style="display:flex;gap:10px"><input type="password" value="dro_sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" readonly style="font-family:monospace;flex:1;background:var(--table-head)" id="apiKeyInput"/><button class="btn-save" style="padding:9px 14px;font-size:11px" onclick="const i=document.getElementById('apiKeyInput');i.type=i.type==='password'?'text':'password'">Show</button></div></div>
+      <div class="form-group"><label>Webhook URL</label><div class="desc">Receive real-time events via POST requests</div><input type="text" value="https://droboard.app/webhooks"/></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Public API Access</b><span>Allow third-party integrations via public API</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+      <div class="toggle-row"><div class="toggle-info"><b>Webhook Enabled</b><span>Send real-time events to configured webhook URL</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
+    `
+  }
+};
+
+// ── Render active section ───────────────────────────────
+let activeSection = 'general';
+
+function renderSection(sectionId) {
+  const section = SECTIONS[sectionId];
+  if (!section) return;
+  const content = document.getElementById('settingsContent');
+  content.innerHTML = `
+    <div class="ca-head"><h2>${section.title}</h2><p>${section.desc}</p></div>
+    ${section.html()}
+  `;
+  activeSection = sectionId;
+}
+
+// ── Nav click handlers ──────────────────────────────────
+document.querySelectorAll('.sn-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.sn-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    renderSection(item.dataset.section);
+  });
+});
+
+// ── Save button ────────────────────────────────────────
+document.getElementById('saveAllBtn').addEventListener('click', async () => {
+  toast('Saving all settings…');
+  // Simulate API call
+  if (window.DroboardAPI && DroboardAPI.updateBook) {
+    await new Promise(r => setTimeout(r, 600));
+  }
+  toast('✅ All settings saved successfully!');
+});
+
+// ── Init ───────────────────────────────────────────────
+localStorage.removeItem('droboard_email_templates');
+renderSection('general');
+
+// ── Coin Economy live previews ─────────────────────────
+document.getElementById('settingsContent').addEventListener('input', function(e) {
+  if (e.target.id === 'f-coinRate') {
+    const rate = parseInt(e.target.value) || 0;
+    document.getElementById('coinRatePreview').textContent = rate;
+    document.getElementById('coinRate100').textContent = (rate * 100).toLocaleString();
+  }
+  if (e.target.id === 'f-platformCommission') {
+    const comm = parseInt(e.target.value) || 0;
+    document.getElementById('authorSharePreview').textContent = 100 - comm;
+  }
+});
+
+// ── Email Settings sender fields ───────────────────────
+const SENDER_FIELDS_KEY = 'droboard_sender_fields';
+const DEFAULT_SENDER_FIELDS = [
+  { id: 'sf1', label: 'Sender Name', value: 'Droboard Team', isLink: false, linkUrl: '' },
+  { id: 'sf2', label: 'Sender Email', value: 'noreply@droboard.app', isLink: false, linkUrl: '' },
+];
+
+function loadSenderFields() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SENDER_FIELDS_KEY));
+    if (saved && saved.length) return saved;
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_SENDER_FIELDS));
+}
+
+function saveSenderFields(fields) {
+  localStorage.setItem(SENDER_FIELDS_KEY, JSON.stringify(fields));
+}
+
+function renderSenderFields() {
+  const fields = loadSenderFields();
+  const container = document.getElementById('senderFieldsList');
+  if (!container) return;
+
+  container.innerHTML = fields.map((f, i) => `
+    <div style="display:grid;grid-template-columns:140px 1fr 44px 44px 32px;gap:8px;align-items:center;padding:10px 12px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px">
+      <input value="${esc(f.label)}" data-idx="${i}" data-field="label" style="background:var(--card);border:1px solid var(--input-border);border-radius:6px;padding:7px 10px;font-size:12px;font-weight:700;color:var(--text);font-family:inherit;outline:none" placeholder="Label"/>
+      <input value="${esc(f.value)}" data-idx="${i}" data-field="value" style="background:var(--card);border:1px solid var(--input-border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none" placeholder="Value"/>
+      <div title="Toggle as clickable link" style="display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="toggleSenderFieldLink(${i})">
+        <div class="toggle-switch${f.isLink ? ' active' : ''}" style="width:36px;height:20px" id="sfLinkToggle${i}"><div class="knob" style="width:16px;height:16px"></div></div>
+      </div>
+      <div title="${f.isLink ? 'Preview link' : 'Link disabled'}" style="display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-external-link-alt" style="font-size:11px;color:${f.isLink ? 'var(--accent)' : 'var(--text-faint)'};cursor:${f.isLink ? 'pointer' : 'default'}" ${f.isLink && f.linkUrl ? `onclick="window.open('${esc(f.linkUrl)}','_blank')"` : ''}></i>
+      </div>
+      <button onclick="removeSenderField(${i})" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0"><i class="fas fa-trash"></i></button>
+    </div>
+    ${f.isLink ? `<div style="margin-top:-6px;padding:0 12px"><input value="${esc(f.linkUrl)}" data-idx="${i}" data-field="linkUrl" style="width:100%;background:var(--table-head);border:1px solid var(--input-border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text);font-family:inherit;outline:none" placeholder="Link URL (e.g. https://droboard.app)"/></div>` : ''}
+  `).join('');
+
+  container.querySelectorAll('input[data-field]').forEach(input => {
+    input.addEventListener('change', function() {
+      const idx = parseInt(this.dataset.idx);
+      const field = this.dataset.field;
+      const fields = loadSenderFields();
+      fields[idx][field] = this.value;
+      saveSenderFields(fields);
+    });
+  });
+}
+
+function toggleSenderFieldLink(idx) {
+  const fields = loadSenderFields();
+  fields[idx].isLink = !fields[idx].isLink;
+  if (!fields[idx].isLink) fields[idx].linkUrl = '';
+  saveSenderFields(fields);
+  renderSenderFields();
+}
+
+function removeSenderField(idx) {
+  const fields = loadSenderFields();
+  fields.splice(idx, 1);
+  saveSenderFields(fields);
+  renderSenderFields();
+}
+
+function addSenderField() {
+  const fields = loadSenderFields();
+  fields.push({ id: 'sf_' + Date.now(), label: '', value: '', isLink: false, linkUrl: '' });
+  saveSenderFields(fields);
+  renderSenderFields();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+document.getElementById('addSenderFieldBtn')?.addEventListener('click', addSenderField);
+renderSenderFields();
+
+// ── Email Templates list rendering ────────────────────
+let tplPage = 1;
+const TPL_PER_PAGE = 8;
+
+function extractHeaderColor(t) {
+  return t.headerColor || '#ff0050';
+}
+
+async function renderEmailTemplatesList() {
+  const container = document.getElementById('emailTemplatesList');
+  const countInfo = document.getElementById('tplCountInfo');
+  const pager = document.getElementById('tplPager');
+  if (!container) return;
+
+  const allTemplates = await DroboardEmailTemplates.getAll();
+  const totalPages = Math.max(1, Math.ceil(allTemplates.length / TPL_PER_PAGE));
+  if (tplPage > totalPages) tplPage = totalPages;
+  const start = (tplPage - 1) * TPL_PER_PAGE;
+  const pageItems = allTemplates.slice(start, start + TPL_PER_PAGE);
+
+  if (countInfo) countInfo.textContent = `Showing ${start + 1}–${Math.min(start + TPL_PER_PAGE, allTemplates.length)} of ${allTemplates.length} templates`;
+
+  container.innerHTML = pageItems.map(function(t) {
+    return ''
+      + '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.15s" onmouseenter="this.style.borderColor=\'var(--accent)\'" onmouseleave="this.style.borderColor=\'var(--border)\'" onclick="editEmailTemplate(\'' + t.id + '\')">'
+      +   '<div style="width:40px;height:40px;border-radius:10px;background:' + extractHeaderColor(t) + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0"><i class="fas fa-envelope" style="color:#fff"></i></div>'
+      +   '<div style="flex:1;min-width:0">'
+      +     '<div style="font-size:13px;font-weight:700">' + esc(t.name) + '</div>'
+      +     '<div style="font-size:10.5px;color:var(--text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(t.subject) + ' | ' + esc(t.fromName || '') + '</div>'
+      +   '</div>'
+      +   '<div style="width:10px;height:10px;border-radius:50%;background:' + extractHeaderColor(t) + ';flex-shrink:0"></div>'
+      +   '<div style="text-align:right;flex-shrink:0">'
+      +     '<div style="font-size:10px;color:var(--text-faint)">' + (t.lastEdited || '') + '</div>'
+      +     '<div style="font-size:9px;color:' + (t.status === 'active' ? 'var(--green)' : 'var(--text-faint)') + ';font-weight:700;margin-top:2px;text-transform:uppercase">' + (t.status || 'active') + '</div>'
+      +   '</div>'
+      +   '<button onclick="event.stopPropagation();openTemplateSettings(\'' + t.id + '\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0" title="Settings"><i class="fas fa-cog"></i></button>'
+      +   '<button onclick="event.stopPropagation();deleteEmailTemplate(\'' + t.id + '\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0" title="Delete"><i class="fas fa-trash"></i></button>'
+      + '</div>';
+  }).join('');
+
+  if (!pageItems.length) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-faint);font-size:13px">No templates yet. Click "+ New Template" to create one.</div>';
+  }
+
+  if (pager && totalPages > 1) {
+    let html = '';
+    html += `<button ${tplPage === 1 ? 'disabled' : ''} onclick="tplPage--;renderEmailTemplatesList()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit" ${tplPage === 1 ? 'style="opacity:.35;cursor:not-allowed"' : ''}><i class="fas fa-chevron-left"></i></button>`;
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button onclick="tplPage=${i};renderEmailTemplatesList()" style="width:28px;height:28px;border-radius:6px;border:1px solid ${i === tplPage ? 'var(--accent)' : 'var(--input-border)'};background:${i === tplPage ? 'var(--accent)' : 'var(--input-bg)'};color:${i === tplPage ? '#fff' : 'var(--text)'};font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">${i}</button>`;
+    }
+    html += `<button ${tplPage === totalPages ? 'disabled' : ''} onclick="tplPage++;renderEmailTemplatesList()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit"><i class="fas fa-chevron-right"></i></button>`;
+    pager.innerHTML = html;
+  } else if (pager) {
+    pager.innerHTML = '';
+  }
+}
+
+async function editEmailTemplate(id) {
+  const t = await DroboardEmailTemplates.getById(id);
+  if (!t) return;
+  DroboardEmailEditor.open({
+    templateId: id,
+    templateName: t.name,
+    data: t,
+    onSave: DroboardEmailTemplates.save.bind(DroboardEmailTemplates),
+    onClose: renderEmailTemplatesList
+  });
+}
+
+async function openTemplateSettings(id) {
+  const t = await DroboardEmailTemplates.getById(id);
+  if (!t) return;
+  DroboardEmailEditor.open({
+    templateId: id,
+    templateName: t.name,
+    data: t,
+    onSave: DroboardEmailTemplates.save.bind(DroboardEmailTemplates),
+    onClose: renderEmailTemplatesList,
+    startTab: 'settings'
+  });
+}
+
+async function deleteEmailTemplate(id) {
+  if (!confirm('Delete this template?')) return;
+  await DroboardEmailTemplates.remove(id);
+  renderEmailTemplatesList();
+  toast('Template deleted');
+}
+
+function bindTemplateButtons() {
+  var addBtn = document.getElementById('addNewTemplateBtn');
+  var resetBtn = document.getElementById('resetTemplatesBtn');
+  if (addBtn) {
+    addBtn.onclick = function() {
+      DroboardEmailEditor.createNew();
+    };
+  }
+  if (resetBtn) {
+    resetBtn.onclick = async function() {
+      if (!confirm('Reset all templates to defaults?')) return;
+      localStorage.removeItem('droboard_email_templates');
+      await DroboardEmailTemplates.reset();
+      tplPage = 1;
+      renderEmailTemplatesList();
+      toast('Templates reset to defaults');
+    };
+  }
+}
+
+var origRender = renderSection;
+window.renderSection = function(id) {
+  origRender(id);
+  if (id === 'email-templates') {
+    tplPage = 1;
+    setTimeout(function() {
+      renderEmailTemplatesList();
+      bindTemplateButtons();
+    }, 50);
+  }
+  if (id === 'email') {
+    setTimeout(function() { renderSenderFields(); }, 50);
+  }
+};
+</script></body></html>

@@ -160,27 +160,6 @@ function renderStatCards(s){
   }).join('');
 }
 
-/* ── Render: Revenue chart ── */
-function renderRevenueChart(months){
-  var maxRevenue = Math.max.apply(null, months.map(function(m){return m.revenue;}));
-  var chartBox = document.getElementById('revenueChart');
-  if(!chartBox) return;
-  if(!months.length){ chartBox.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No data for selected range</p></div>'; return; }
-  var html = '<div class="chart-bars">';
-  months.forEach(function(m){
-    var height = maxRevenue > 0 ? Math.round((m.revenue / maxRevenue) * 100) : 0;
-    html += '<div class="chart-col">'+
-      '<div class="chart-val">'+moneyShort(m.revenue)+'</div>'+
-      '<div class="chart-bar-wrap">'+
-        '<div class="chart-bar" style="height:'+height+'%" data-rev="'+m.revenue+'"></div>'+
-      '</div>'+
-      '<div class="chart-label">'+m.month+'</div>'+
-    '</div>';
-  });
-  html += '</div>';
-  chartBox.innerHTML = html;
-}
-
 /* ── Render: Expense breakdown ── */
 function renderExpenseBreakdown(items){
   var total = 0;
@@ -233,41 +212,67 @@ function renderTopCategories(items){
   }).join('');
 }
 
-/* ── Render: Date range label ── */
-function renderDateLabel(from, to){
-  var el = document.getElementById('dateRangeLabel');
-  if(!el) return;
-  if(!from && !to){ el.textContent = 'Showing all data'; return; }
-  var parts = [];
-  if(from) parts.push(from);
-  else parts.push('Start');
-  if(to) parts.push(to);
-  else parts.push('Now');
-  el.textContent = parts[0] + ' — ' + parts[1];
-}
-
 /* ── Full render ── */
 function renderAll(from, to){
   var filtered = buildFilteredData(RAW, from, to);
   renderStatCards(filtered.summary);
-  renderRevenueChart(filtered.monthlyRevenue);
   renderExpenseBreakdown(filtered.expenseBreakdown);
   renderTopCategories(filtered.topCategories);
-  renderDateLabel(from, to);
 }
 
 /* ── Date filter UI wiring ── */
 function wireDateFilter(){
-  var fromInput = document.getElementById('dateFrom');
-  var toInput   = document.getElementById('dateTo');
-  var applyBtn  = document.getElementById('applyFilter');
-  var resetBtn  = document.getElementById('resetFilter');
+  var fromInput  = document.getElementById('dateFrom');
+  var toInput    = document.getElementById('dateTo');
+  var applyBtn   = document.getElementById('applyFilter');
+  var resetBtn   = document.getElementById('resetFilter');
+  var display    = document.getElementById('dateRangeDisplay');
+  var dropdown   = document.getElementById('dateRangeDropdown');
+  var rangeText  = document.getElementById('dateRangeText');
+  var labelText  = document.getElementById('dateRangeLabel');
+
+  function fmtDate(s){
+    if(!s) return null;
+    var d = new Date(s+'T00:00:00');
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
+  function updateDisplay(from,to){
+    if(!from && !to){
+      rangeText.innerHTML = '<span class="dr-placeholder">Select date range</span>';
+      labelText.textContent = 'Showing all data';
+    } else {
+      var f = fmtDate(from)||'Start';
+      var t = fmtDate(to)||'Now';
+      rangeText.textContent = f + ' — ' + t;
+      labelText.textContent = f + ' — ' + t;
+    }
+  }
+
+  if(display){
+    display.addEventListener('click', function(e){
+      e.stopPropagation();
+      dropdown.classList.toggle('show');
+      display.classList.toggle('open');
+    });
+  }
+
+  document.addEventListener('click', function(e){
+    if(dropdown && !dropdown.contains(e.target)){
+      dropdown.classList.remove('show');
+      if(display) display.classList.remove('open');
+    }
+  });
+
+  if(dropdown) dropdown.addEventListener('click', function(e){ e.stopPropagation(); });
 
   if(applyBtn){
     applyBtn.addEventListener('click', function(){
       CURRENT_RANGE.from = fromInput && fromInput.value ? fromInput.value : null;
       CURRENT_RANGE.to   = toInput && toInput.value ? toInput.value : null;
+      updateDisplay(CURRENT_RANGE.from, CURRENT_RANGE.to);
       renderAll(CURRENT_RANGE.from, CURRENT_RANGE.to);
+      dropdown.classList.remove('show');
+      if(display) display.classList.remove('open');
     });
   }
   if(resetBtn){
@@ -275,7 +280,10 @@ function wireDateFilter(){
       if(fromInput) fromInput.value = '';
       if(toInput) toInput.value = '';
       CURRENT_RANGE = { from:null, to:null };
+      updateDisplay(null, null);
       renderAll(null, null);
+      dropdown.classList.remove('show');
+      if(display) display.classList.remove('open');
     });
   }
 }
@@ -291,11 +299,8 @@ function exportCSV(){
     ['Coin Sales Revenue', filtered.summary.coinSalesRevenue],
     ['Growth vs Last Month', filtered.summary.growthVsLastMonth+'%'],
     [],
-    ['Month','Revenue']
+    ['Expense','Amount']
   ];
-  filtered.monthlyRevenue.forEach(function(m){ rows.push([m.month, m.revenue]); });
-  rows.push([]);
-  rows.push(['Expense','Amount']);
   filtered.expenseBreakdown.forEach(function(e){ rows.push([e.label, e.amount]); });
   rows.push([]);
   rows.push(['Category','Revenue']);
