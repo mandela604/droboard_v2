@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Accept Invite — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#f5f6f9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+
+.auth-card{background:#fff;border:1px solid #eef0f5;border-radius:16px;box-shadow:0 2px 10px rgba(15,23,42,.05);width:100%;max-width:440px;padding:36px 32px}
+.auth-logo{text-align:center;margin-bottom:24px}
+.auth-logo .logo-ico{width:52px;height:52px;border-radius:14px;background:rgba(255,0,80,.09);color:#ff0050;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+.auth-logo h1{font-size:20px;font-weight:800;color:#14151b}
+.auth-logo p{font-size:13px;color:#5b6472;margin-top:4px}
+
+.auth-info{display:flex;align-items:center;gap:12px;padding:14px;background:#f7f8fa;border:1px solid #e5e8ee;border-radius:12px;margin-bottom:22px}
+.auth-info img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+.auth-info .ai-name{font-size:14px;font-weight:700;color:#14151b}
+.auth-info .ai-email{font-size:11.5px;color:#98a0ad;margin-top:2px}
+.auth-info .ai-role{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,0,80,.09);color:#ff0050;margin-top:4px;display:inline-block}
+
+.auth-welcome{text-align:center;font-size:13px;color:#5b6472;line-height:1.6;margin-bottom:22px}
+.auth-welcome b{color:#14151b}
+
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:700;color:#14151b;margin-bottom:6px;display:block}
+.form-input{width:100%;font-family:inherit;font-size:13px;color:#14151b;background:#f7f8fa;border:1px solid #e5e8ee;border-radius:10px;padding:11px 13px;outline:none;transition:.15s}
+.form-input:focus{border-color:#ff0050}
+.form-error{color:#e0293e;font-size:11px;margin-top:5px;display:none}
+
+.pw-strength{height:5px;border-radius:4px;background:#f3f4f7;overflow:hidden;margin-top:8px}
+.pw-strength-fill{height:100%;width:0%;border-radius:4px;transition:.2s;background:#e0293e}
+.pw-strength-label{font-size:10px;color:#98a0ad;margin-top:4px}
+
+.auth-btn{width:100%;padding:12px;border:none;border-radius:10px;background:#ff0050;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;margin-top:4px}
+.auth-btn:hover{filter:brightness(1.05)}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.auth-btn i{margin-right:6px}
+
+.auth-footer{text-align:center;margin-top:20px;font-size:12px;color:#98a0ad}
+.auth-footer a{color:#ff0050;text-decoration:none;font-weight:600}
+
+.auth-error{display:none;text-align:center;padding:16px;background:#fdeaec;border:1px solid rgba(220,38,38,.2);border-radius:10px;margin-bottom:20px}
+.auth-error i{color:#e0293e;font-size:24px;margin-bottom:8px;display:block}
+.auth-error h3{font-size:14px;font-weight:700;color:#e0293e;margin-bottom:4px}
+.auth-error p{font-size:12px;color:#5b6472}
+
+.auth-success{display:none;text-align:center;padding:24px}
+.auth-success i{color:#1c9d5b;font-size:40px;margin-bottom:12px;display:block}
+.auth-success h3{font-size:16px;font-weight:700;color:#14151b;margin-bottom:6px}
+.auth-success p{font-size:13px;color:#5b6472;margin-bottom:16px}
+.auth-success .redirect-note{font-size:11px;color:#98a0ad}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.auth-card>*{animation:fadeIn .3s ease}
+</style>
+</head>
+<body>
+
+<div class="auth-card">
+  <div class="auth-logo">
+    <div class="logo-ico"><i class="fas fa-feather-pointed"></i></div>
+    <h1>Join Droboard</h1>
+    <p>Senior Editor Invitation</p>
+  </div>
+
+  <div class="auth-info" id="authInfo" style="display:none">
+    <img id="authAvatar" src="" alt=""/>
+    <div>
+      <div class="ai-name" id="authName"></div>
+      <div class="ai-email" id="authEmail"></div>
+      <div class="ai-role">Senior Editor</div>
+    </div>
+  </div>
+
+  <div class="auth-welcome" id="authWelcome">
+    <b id="authInviterName"></b> has invited you to join Droboard as a <b>Senior Editor</b>.<br/>
+    Set your password to activate your account.
+  </div>
+
+  <div class="auth-error" id="authError">
+    <i class="fas fa-triangle-exclamation"></i>
+    <h3>Invalid or Expired Invite</h3>
+    <p>This invite link is no longer valid. Please contact the person who invited you for a new link.</p>
+  </div>
+
+  <form id="setupForm">
+    <div class="form-group">
+      <label class="form-label">Full name</label>
+      <input class="form-input" id="setupName" type="text" placeholder="Your full name"/>
+      <div class="form-error" id="setupNameErr">Name is required.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email address</label>
+      <input class="form-input" id="setupEmail" type="email" disabled style="opacity:.6"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Create password</label>
+      <input class="form-input" id="setupPw" type="password" placeholder="At least 8 characters"/>
+      <div class="pw-strength"><div class="pw-strength-fill" id="pwFill"></div></div>
+      <div class="pw-strength-label" id="pwLabel">&nbsp;</div>
+      <div class="form-error" id="setupPwErr">Password must be at least 8 characters.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm password</label>
+      <input class="form-input" id="setupPwConfirm" type="password" placeholder="Repeat your password"/>
+      <div class="form-error" id="setupPwConfirmErr">Passwords don't match.</div>
+    </div>
+    <button class="auth-btn" id="setupBtn" type="submit"><i class="fas fa-check"></i> Activate Account</button>
+  </form>
+
+  <div class="auth-success" id="authSuccess">
+    <i class="fas fa-circle-check"></i>
+    <h3>Account Activated!</h3>
+    <p>Welcome to Droboard. Your Senior Editor account is ready.</p>
+    <button class="auth-btn" id="goDashBtn"><i class="fas fa-arrow-right"></i> Go to Dashboard</button>
+    <div class="redirect-note">Redirecting in <span id="countdown">5</span>s…</div>
+  </div>
+
+  <div class="auth-footer">
+    Powered by <a href="#">Droboard</a>
+  </div>
+</div>
+
+<script src="../chief-editor/shared/chief-editor-data.js"></script>
+<script>
+'use strict';
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  var token=params.get('token');
+
+  if(!token){showError();return}
+
+  ChiefEditorData.getByInviteToken(token).then(function(editor){
+    if(!editor){showError();return}
+    document.getElementById('authInfo').style.display='flex';
+    document.getElementById('authAvatar').src=editor.avatar;
+    document.getElementById('authName').textContent=editor.name;
+    document.getElementById('authEmail').textContent=editor.email;
+    document.getElementById('setupName').value=editor.name;
+    document.getElementById('setupEmail').value=editor.email;
+
+    document.getElementById('setupForm').addEventListener('submit',function(e){
+      e.preventDefault();
+      var name=document.getElementById('setupName').value.trim();
+      var pw=document.getElementById('setupPw').value;
+      var pw2=document.getElementById('setupPwConfirm').value;
+      var valid=true;
+
+      if(!name){document.getElementById('setupNameErr').style.display='block';valid=false}else{document.getElementById('setupNameErr').style.display='none'}
+      if(pw.length<8){document.getElementById('setupPwErr').style.display='block';valid=false}else{document.getElementById('setupPwErr').style.display='none'}
+      if(pw!==pw2){document.getElementById('setupPwConfirmErr').style.display='block';valid=false}else{document.getElementById('setupPwConfirmErr').style.display='none'}
+      if(!valid)return;
+
+      ChiefEditorData.acceptInvite(token,pw).then(function(result){
+        if(!result){showError();return}
+        localStorage.setItem('droboard-user',JSON.stringify({
+          id:result.id,name:name,email:result.email,avatar:result.avatar,
+          role:'Senior Editor',dashboard:'senior-editor'
+        }));
+        document.getElementById('setupForm').style.display='none';
+        document.getElementById('authInfo').style.display='none';
+        document.getElementById('authWelcome').style.display='none';
+        document.getElementById('authSuccess').style.display='block';
+        var cd=5;
+        var iv=setInterval(function(){
+          cd--;
+          document.getElementById('countdown').textContent=cd;
+          if(cd<=0){clearInterval(iv);window.location.href='dashboard.html'}
+        },1000);
+        document.getElementById('goDashBtn').addEventListener('click',function(){window.location.href='dashboard.html'});
+      });
+    });
+  });
+
+  function showError(){
+    document.getElementById('setupForm').style.display='none';
+    document.getElementById('authInfo').style.display='none';
+    document.getElementById('authWelcome').style.display='none';
+    document.getElementById('authError').style.display='block';
+  }
+
+  document.getElementById('setupPw').addEventListener('input',function(){
+    var pw=this.value;
+    var score=0;
+    if(pw.length>=8)score++;
+    if(pw.length>=12)score++;
+    if(/[A-Z]/.test(pw)&&/[a-z]/.test(pw))score++;
+    if(/[0-9]/.test(pw))score++;
+    if(/[^A-Za-z0-9]/.test(pw))score++;
+    var pct=Math.min(100,(score/5)*100);
+    var fill=document.getElementById('pwFill');
+    var label=document.getElementById('pwLabel');
+    fill.style.width=pct+'%';
+    if(!pw){fill.style.width='0%';label.innerHTML='&nbsp;';return}
+    if(score<=1){fill.style.background='#e0293e';label.textContent='Weak'}
+    else if(score<=3){fill.style.background='#c98a12';label.textContent='Okay'}
+    else{fill.style.background='#1c9d5b';label.textContent='Strong'}
+  });
+})();
+</script>
+</body>
+</html>

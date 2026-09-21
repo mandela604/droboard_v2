@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>My Campaign · DroBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);display:flex;justify-content:center;padding:20px}
+.phone{width:375px;min-height:700px;background:var(--bg);border-radius:32px;border:8px solid #1a1730;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative;display:flex;flex-direction:column}
+.phone-notch{height:28px;background:#1a1730;display:flex;align-items:center;justify-content:center}
+.phone-notch::after{content:'';width:80px;height:6px;border-radius:3px;background:#333}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,247,248,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tb-title{font-size:15.5px;font-weight:800;flex:1}
+.icon-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:#555;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:14px 16px 80px}
+
+:root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--success:#22c55e;--blue:#3b82f6;--purple:#9333ea}
+img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;border:none;background:none}a{color:inherit;text-decoration:none}
+
+.campaign-banner{position:relative;border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.campaign-banner img{width:100%;height:180px;object-fit:cover}
+.campaign-banner-overlay{position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.campaign-banner-title{font-size:16px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:2px}
+.campaign-banner-desc{font-size:10.5px;color:rgba(255,255,255,.8);line-height:1.4}
+.campaign-banner-badge{position:absolute;top:10px;right:10px;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;text-transform:uppercase;background:var(--success);color:#fff}
+
+.stats-row{display:flex;gap:8px;margin-bottom:16px}
+.stat-item{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.stat-num{font-size:18px;font-weight:800;color:var(--text);line-height:1.1}
+.stat-label{font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+
+.link-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.link-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.link-row{display:flex;align-items:center;gap:8px}
+.link-url{flex:1;font-size:11px;font-family:monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-btn{padding:7px 12px;border-radius:8px;font-size:10px;font-weight:700;background:var(--pink);color:#fff;flex-shrink:0}
+
+.qr-row{display:flex;gap:12px;align-items:center;margin-top:10px}
+.qr-box{width:80px;height:80px;background:#fff;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qr-info{flex:1}
+.qr-info p{font-size:10.5px;color:var(--muted);line-height:1.4;margin-bottom:6px}
+.qr-btns{display:flex;gap:6px}
+
+.section{margin-bottom:18px}
+.sec-title{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sec-title i{font-size:12px;color:var(--pink)}
+
+.share-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.share-card-platform{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.share-card-platform i{font-size:16px}
+.share-card-platform .name{font-size:12px;font-weight:700;flex:1}
+.share-card-platform .copy-btn{padding:4px 10px;border-radius:6px;font-size:9.5px;font-weight:700;color:#fff;flex-shrink:0}
+.share-card-body{padding:12px}
+.share-card-img{width:100%;height:120px;border-radius:8px;object-fit:cover;margin-bottom:8px}
+.share-card-text{font-size:11.5px;line-height:1.6;color:var(--text)}
+.share-card-actions{display:flex;gap:6px;padding:0 12px 12px}
+.share-card-actions .btn{flex:1;padding:8px;font-size:10.5px;border-radius:8px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px}
+.btn-whatsapp{background:#25d366;color:#fff}
+.btn-facebook{background:#1877f2;color:#fff}
+.btn-tiktok{background:#000;color:#fff}
+.btn-instagram{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff}
+.btn-copy{background:var(--pink);color:#fff}
+.btn-outline{background:var(--card);border:1px solid var(--border);color:var(--text)}
+
+.promoter-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.promoter-item:last-child{border:none}
+.promoter-avatar{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--pink);flex-shrink:0}
+.promoter-info{flex:1}
+.promoter-name{font-size:12px;font-weight:700}
+.promoter-stats{font-size:10px;color:var(--muted)}
+.promoter-conversions{font-size:13px;font-weight:800;color:var(--success);flex-shrink:0}
+
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.analytics-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.analytics-num{font-size:16px;font-weight:800}
+.analytics-label{font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase}
+.source-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.source-bar .icon{width:20px;text-align:center;font-size:12px;flex-shrink:0}
+.source-bar .bar{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.source-bar .fill{height:100%;border-radius:3px}
+.source-bar .count{font-size:10px;font-weight:700;color:var(--text);width:40px;text-align:right;flex-shrink:0}
+
+.rewards-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.reward-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:11.5px}
+.reward-item:last-child{border:none}
+.reward-threshold{font-weight:700}
+.reward-label{font-weight:600}
+.reward-label.done{color:var(--success)}
+.reward-label.locked{color:var(--muted)}
+.rewards-progress{height:6px;background:var(--bg);border-radius:3px;margin-top:10px;overflow:hidden}
+.rewards-bar{height:100%;background:var(--pink);border-radius:3px}
+
+.countdown-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.countdown-day{width:30px;height:30px;border-radius:8px;background:var(--pink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.countdown-text{flex:1;font-size:10.5px;line-height:1.4}
+.countdown-copy{padding:4px;border-radius:6px;background:var(--bg);color:var(--muted);font-size:9px}
+
+/* Create / Edit form */
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.form-label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.form-input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:12.5px;color:var(--text);font-family:inherit;outline:none}
+.form-input:focus{border-color:var(--pink)}
+textarea.form-input{resize:vertical;min-height:60px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-btn{width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:inherit}
+.form-btn-primary{background:var(--pink);color:#fff}
+.form-btn-outline{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.story-search-wrap{position:relative}
+.story-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;display:none}
+.story-option{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;transition:.1s}
+.story-option:hover{background:var(--bg)}
+.story-option img{width:32px;height:44px;border-radius:4px;object-fit:cover}
+.story-option .title{font-size:11.5px;font-weight:700}
+.story-option .genre{font-size:9.5px;color:var(--muted)}
+.story-preview{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:12px}
+.story-preview img{width:44px;height:60px;border-radius:6px;object-fit:cover}
+.story-preview .info{flex:1}
+.story-preview .info h4{font-size:12px;font-weight:700}
+.story-preview .info p{font-size:10px;color:var(--muted)}
+.story-preview .remove{background:none;border:none;color:var(--pink);font-size:12px;flex-shrink:0}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-state i{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:13px;font-weight:600;margin-bottom:4px}
+.empty-state small{font-size:11px}
+
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:600;z-index:2000;pointer-events:none;animation:toastIn .3s ease,toastOut .3s ease 1.2s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+
+.tab-bar{display:flex;gap:0;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.tab-item{flex:1;padding:10px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s}
+.tab-item:hover{color:var(--text)}
+.tab-item.active{background:var(--pink);color:#fff}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="topbar">
+    <div class="tb-logo"><i class="fas fa-bullseye"></i></div>
+    <div class="tb-title">My Campaign</div>
+    <button class="icon-btn" onclick="shareCampaign()"><i class="fas fa-share-nodes"></i></button>
+  </div>
+  <div class="content" id="pageContent"></div>
+</div>
+
+<script src="../marketing/shared/launch-kit-data.js?v=4"></script>
+<script src="../marketing/shared/launch-kit-service.js?v=4"></script>
+<script>
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(msg){var el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(function(){el.remove()},1500)}
+function copyText(text){navigator.clipboard.writeText(text).then(function(){toast('Copied!')}).catch(function(){var t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.left='-9999px';document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();toast('Copied!')})}
+function shareCampaign(){var k=window._currentCampaign;if(!k)return;if(navigator.share){navigator.share({title:k.campaignName,text:k.description,url:k.campaignLink}).catch(function(){})}else{copyText(k.campaignLink);toast('Campaign link copied!')}}
+function shareTo(platform,text,url){if(platform==='whatsapp'){window.open('https://wa.me/?text='+encodeURIComponent(text+' '+url),'_blank')}else if(platform==='facebook'){window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(url)+'&quote='+encodeURIComponent(text),'_blank')}else{copyText(text);toast('Copied! Open '+platform+' and paste.')}}
+
+function generateQR(text){var size=80;var modules=[];var hash=0;for(var i=0;i<text.length;i++){hash=((hash<<5)-hash)+text.charCodeAt(i);hash|=0}var seed=Math.abs(hash);function rand(){seed=(seed*16807)%2147483647;return(seed-1)/2147483646}var gridSize=21;var cellSize=size/gridSize;for(var y=0;y<gridSize;y++){modules[y]=[];for(var x=0;x<gridSize;x++){var isFinder=(x<7&&y<7)||(x>=gridSize-7&&y<7)||(x<7&&y>=gridSize-7);var isBorder=x===0||y===0||x===6||y===6||x===gridSize-1||y===gridSize-1;var isInner=(x>=2&&x<=4&&y>=2&&y<=4)||(x>=gridSize-5&&x<=gridSize-3&&y>=2&&y<=4)||(x>=2&&x<=4&&y>=gridSize-5&&y<=gridSize-3);if(isFinder){modules[y][x]=isBorder?1:isInner?1:(rand()>0.5?1:0)}else{modules[y][x]=rand()>0.6?1:0}}}var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+size+' '+size+'">';svg+='<rect width="'+size+'" height="'+size+'" fill="#fff" rx="4"/>';for(var y2=0;y2<gridSize;y2++){for(var x2=0;x2<gridSize;x2++){if(modules[y2][x2]){svg+='<rect x="'+(x2*cellSize)+'" y="'+(y2*cellSize)+'" width="'+cellSize+'" height="'+cellSize+'" fill="#1a1730" rx="0.5"/>';}}}svg+='</svg>';return svg}
+
+var WRITER_ID='w_001';
+var WRITER_NAME='Tobi Adenuga';
+var selectedStory=null;
+var currentView='dashboard';
+
+function searchStory(q){
+  if(!q){document.getElementById('storyDropdown').style.display='none';return}
+  var lower=q.toLowerCase();
+  var matches=StoryLibrary.filter(function(s){return s.title.toLowerCase().includes(lower)||s.genre.toLowerCase().includes(lower)||s.author.toLowerCase().includes(lower)}).slice(0,5);
+  if(!matches.length){document.getElementById('storyDropdown').style.display='none';return}
+  document.getElementById('storyDropdown').innerHTML=matches.map(function(s){
+    return '<div class="story-option" onclick="pickStory(\''+s.id+'\')"><img src="'+esc(s.cover)+'" alt=""/><div><div class="title">'+esc(s.title)+'</div><div class="genre">'+esc(s.genre)+' | '+esc(s.author)+'</div></div></div>';
+  }).join('');
+  document.getElementById('storyDropdown').style.display='block';
+}
+
+function pickStory(id){
+  var s=StoryLibrary.find(function(x){return x.id===id});if(!s)return;
+  selectedStory=s;
+  document.getElementById('storySearch').value='';
+  document.getElementById('storyDropdown').style.display='none';
+  var prev=document.getElementById('storyPreview');
+  prev.style.display='flex';
+  prev.querySelector('img').src=s.cover;
+  prev.querySelector('h4').textContent=s.title;
+  prev.querySelector('p').textContent=s.genre+' | '+s.author;
+}
+
+function clearStory(){selectedStory=null;document.getElementById('storyPreview').style.display='none'}
+
+function showCreateForm(){
+  currentView='create';
+  var el=document.getElementById('pageContent');
+  var html='';
+  html+='<div class="form-card">';
+  html+='<div style="font-size:14px;font-weight:700;margin-bottom:14px">Create Campaign</div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Search Your Story</label><div class="story-search-wrap"><input id="storySearch" class="form-input" placeholder="Type story title..." oninput="searchStory(this.value)"/><div class="story-dropdown" id="storyDropdown"></div></div></div>';
+  html+='<div id="storyPreview" class="story-preview" style="display:none"><img src="" alt=""/><div class="info"><h4></h4><p></p></div><button class="remove" onclick="clearStory()"><i class="fas fa-xmark"></i></button></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Campaign Name</label><input id="edName" class="form-input" placeholder="e.g. The Last Sunrise"/></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Description</label><textarea id="edDesc" class="form-input" placeholder="What is this campaign about?"></textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Destination URL</label><input id="edDest" class="form-input" placeholder="https://..."/></div>';
+  html+='<div class="form-row" style="margin-bottom:12px"><div><label class="form-label">CTA Button</label><input id="edCta" class="form-input" value="Read Now"/></div><div><label class="form-label">Launch Date</label><input id="edDate" class="form-input" type="date"/></div></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">WhatsApp Message</label><textarea id="edWa" class="form-input" placeholder="Status text..."></textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Facebook Post</label><textarea id="edFb" class="form-input" placeholder="Post text..."></textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">TikTok Script</label><textarea id="edTk" class="form-input" placeholder="Video script..."></textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Instagram Caption</label><textarea id="edIg" class="form-input" placeholder="Caption..."></textarea></div>';
+  html+='<div style="margin-bottom:14px"><label class="form-label">Excerpt / Hook</label><textarea id="edExcerpt" class="form-input" placeholder="A compelling excerpt..."></textarea></div>';
+  html+='<div style="display:flex;gap:8px"><button class="form-btn form-btn-outline" onclick="showDashboard()">Cancel</button><button class="form-btn form-btn-primary" onclick="saveNewCampaign()">Create Campaign</button></div>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function saveNewCampaign(){
+  var name=document.getElementById('edName').value.trim();
+  if(!name){toast('Campaign name required');return}
+  var code=WRITER_NAME.split(' ')[0].toUpperCase()+new Date().getFullYear();
+  var slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  var data={
+    writerId:WRITER_ID,writerName:WRITER_NAME,
+    campaignName:name,
+    campaignType:'book',
+    campaignImage:selectedStory?selectedStory.cover:'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop',
+    campaignImageWide:selectedStory?selectedStory.cover.replace('w=300','w=600').replace('h=400','h=300'):'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&h=300&fit=crop',
+    description:document.getElementById('edDesc').value,
+    destination:document.getElementById('edDest').value||(selectedStory?selectedStory.link:''),
+    cta:document.getElementById('edCta').value||'Read Now',
+    referralCode:code,
+    campaignLink:'https://droboard.app/c/'+slug+'?ref='+code,
+    status:document.getElementById('edDate').value?'scheduled':'draft',
+    launchDate:document.getElementById('edDate').value,
+    analytics:{visitors:0,clicks:0,conversions:0,conversionRate:0},
+    sources:{whatsapp:0,facebook:0,tiktok:0,instagram:0,direct:0},
+    promoters:[],
+    assets:{
+      whatsapp:document.getElementById('edWa').value,
+      facebook:document.getElementById('edFb').value,
+      tiktok:document.getElementById('edTk').value,
+      instagram:document.getElementById('edIg').value,
+      excerpt:document.getElementById('edExcerpt').value,
+      caption:''
+    },
+    rewards:[{threshold:10,label:'Homepage feature',earned:false},{threshold:50,label:'Premium badge',earned:false}],
+    countdown:[]
+  };
+  LaunchKitService.create(data).then(function(){toast('Campaign created!');showDashboard()});
+}
+
+function showEditForm(k){
+  currentView='edit';
+  selectedStory=null;
+  var el=document.getElementById('pageContent');
+  var html='';
+  html+='<div class="form-card">';
+  html+='<div style="font-size:14px;font-weight:700;margin-bottom:14px">Edit Campaign</div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Search Your Story</label><div class="story-search-wrap"><input id="storySearch" class="form-input" placeholder="Type story title..." oninput="searchStory(this.value)"/><div class="story-dropdown" id="storyDropdown"></div></div></div>';
+  html+='<div id="storyPreview" class="story-preview" style="display:none"><img src="" alt=""/><div class="info"><h4></h4><p></p></div><button class="remove" onclick="clearStory()"><i class="fas fa-xmark"></i></button></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Campaign Name</label><input id="edName" class="form-input" value="'+esc(k.campaignName)+'"/></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Description</label><textarea id="edDesc" class="form-input">'+esc(k.description)+'</textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Destination URL</label><input id="edDest" class="form-input" value="'+esc(k.destination)+'"/></div>';
+  html+='<div class="form-row" style="margin-bottom:12px"><div><label class="form-label">CTA Button</label><input id="edCta" class="form-input" value="'+esc(k.cta)+'"/></div><div><label class="form-label">Launch Date</label><input id="edDate" class="form-input" type="date" value="'+esc(k.launchDate)+'"/></div></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">WhatsApp Message</label><textarea id="edWa" class="form-input">'+esc(k.assets.whatsapp)+'</textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Facebook Post</label><textarea id="edFb" class="form-input">'+esc(k.assets.facebook)+'</textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">TikTok Script</label><textarea id="edTk" class="form-input">'+esc(k.assets.tiktok)+'</textarea></div>';
+  html+='<div style="margin-bottom:12px"><label class="form-label">Instagram Caption</label><textarea id="edIg" class="form-input">'+esc(k.assets.instagram)+'</textarea></div>';
+  html+='<div style="margin-bottom:14px"><label class="form-label">Excerpt / Hook</label><textarea id="edExcerpt" class="form-input">'+esc(k.assets.excerpt)+'</textarea></div>';
+  html+='<div style="display:flex;gap:8px"><button class="form-btn form-btn-outline" onclick="showDashboard()">Cancel</button><button class="form-btn form-btn-primary" onclick="saveEditCampaign(\''+k.id+'\')">Save Changes</button></div>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function saveEditCampaign(id){
+  var name=document.getElementById('edName').value.trim();
+  if(!name){toast('Campaign name required');return}
+  var data={
+    campaignName:name,
+    description:document.getElementById('edDesc').value,
+    destination:document.getElementById('edDest').value,
+    cta:document.getElementById('edCta').value||'Read Now',
+    launchDate:document.getElementById('edDate').value,
+    assets:{
+      whatsapp:document.getElementById('edWa').value,
+      facebook:document.getElementById('edFb').value,
+      tiktok:document.getElementById('edTk').value,
+      instagram:document.getElementById('edIg').value,
+      excerpt:document.getElementById('edExcerpt').value,
+      caption:''
+    }
+  };
+  if(selectedStory){
+    data.campaignImage=selectedStory.cover;
+    data.campaignImageWide=selectedStory.cover.replace('w=300','w=600').replace('h=400','h=300');
+    data.destination=selectedStory.link;
+  }
+  LaunchKitService.update(id,data).then(function(){toast('Campaign updated!');showDashboard()});
+}
+
+function showDashboard(){
+  currentView='dashboard';
+  LaunchKitService.getByWriterId(WRITER_ID).then(function(kit){
+    var el=document.getElementById('pageContent');
+    if(!kit){
+      el.innerHTML='<div class="empty-state"><i class="fas fa-bullseye"></i><p>No Campaign Yet</p><small>Create your first campaign to start sharing and tracking.</small><div style="margin-top:16px"><button class="form-btn form-btn-primary" style="width:auto;padding:10px 24px;display:inline-flex;align-items:center;gap:6px" onclick="showCreateForm()"><i class="fas fa-plus"></i> Create Campaign</button></div></div>';
+      return;
+    }
+    window._currentCampaign=kit;
+    var k=kit;
+    var a=k.analytics;
+    var pct=Math.min(100,Math.round((a.conversions/500)*100));
+    var html='';
+
+    html+='<div class="tab-bar"><div class="tab-item active" onclick="showDashboard()">Dashboard</div><div class="tab-item" onclick="showEditForm(window._currentCampaign)">Edit</div></div>';
+
+    html+='<div class="campaign-banner">';
+    html+='<img src="'+esc(k.campaignImageWide||k.campaignImage)+'" alt="'+esc(k.campaignName)+'"/>';
+    html+='<div class="campaign-banner-overlay">';
+    html+='<div class="campaign-banner-title">'+esc(k.campaignName)+'</div>';
+    html+='<div class="campaign-banner-desc">'+esc(k.description)+'</div>';
+    html+='</div>';
+    html+='<div class="campaign-banner-badge">'+k.status+'</div>';
+    html+='</div>';
+
+    html+='<div class="stats-row">';
+    html+='<div class="stat-item"><div class="stat-num">'+a.visitors.toLocaleString()+'</div><div class="stat-label">Visitors</div></div>';
+    html+='<div class="stat-item"><div class="stat-num">'+a.clicks.toLocaleString()+'</div><div class="stat-label">Clicks</div></div>';
+    html+='<div class="stat-item"><div class="stat-num">'+a.conversions.toLocaleString()+'</div><div class="stat-label">Conversions</div></div>';
+    html+='</div>';
+
+    html+='<div class="link-card">';
+    html+='<div class="link-label">Your Referral Link</div>';
+    html+='<div class="link-row"><div class="link-url">'+esc(k.campaignLink)+'</div><button class="link-btn" onclick="copyText(\''+esc(k.campaignLink)+'\')">Copy</button></div>';
+    html+='<div class="qr-row">';
+    html+='<div class="qr-box">'+generateQR(k.campaignLink)+'</div>';
+    html+='<div class="qr-info"><p>Scan to visit your campaign</p><div class="qr-btns"><button class="btn btn-outline" style="padding:6px 10px;font-size:9.5px;border-radius:6px" onclick="alert(\'QR saved!\')"><i class="fas fa-download"></i> Save</button><button class="btn btn-outline" style="padding:6px 10px;font-size:9.5px;border-radius:6px" onclick="shareCampaign()"><i class="fas fa-share"></i> Share</button></div></div>';
+    html+='</div></div>';
+
+    html+='<div class="section"><div class="sec-title"><i class="fas fa-share-nodes"></i>Share Materials</div>';
+    var platforms=[
+      {key:'whatsapp',icon:'fa-whatsapp',color:'#25d366',label:'WhatsApp'},
+      {key:'facebook',icon:'fa-facebook',color:'#1877f2',label:'Facebook'},
+      {key:'tiktok',icon:'fa-tiktok',color:'#000',label:'TikTok'},
+      {key:'instagram',icon:'fa-instagram',color:'#e1306c',label:'Instagram'}
+    ];
+    platforms.forEach(function(p){
+      var text=k.assets[p.key]||'';if(!text)return;
+      html+='<div class="share-card">';
+      html+='<div class="share-card-platform"><i class="fab '+p.icon+'" style="color:'+p.color+'"></i><div class="name">'+p.label+'</div><button class="copy-btn" style="background:'+p.color+'" onclick="copyText(\''+esc(text)+'\')"><i class="fas fa-copy"></i> Copy</button></div>';
+      html+='<div class="share-card-body">';
+      html+='<img class="share-card-img" src="'+esc(k.campaignImageWide||k.campaignImage)+'" alt=""/>';
+      html+='<div class="share-card-text">'+esc(text)+'</div>';
+      html+='</div>';
+      html+='<div class="share-card-actions">';
+      html+='<button class="btn btn-'+p.key+'" onclick="shareTo(\''+p.key+'\',\''+esc(text)+'\',\''+esc(k.campaignLink)+'\')"><i class="fab '+p.icon+'"></i> Share</button>';
+      html+='<button class="btn btn-copy" onclick="copyText(\''+esc(text)+'\')"><i class="fas fa-copy"></i> Copy</button>';
+      html+='</div></div>';
+    });
+    html+='</div>';
+
+    if(k.promoters&&k.promoters.length){
+      html+='<div class="section"><div class="sec-title"><i class="fas fa-users"></i>Promoters</div>';
+      html+='<div class="link-card">';
+      k.promoters.forEach(function(p){
+        html+='<div class="promoter-item"><div class="promoter-avatar">'+p.name[0]+'</div><div class="promoter-info"><div class="promoter-name">'+esc(p.name)+'</div><div class="promoter-stats">'+p.clicks+' clicks</div></div><div class="promoter-conversions">'+p.conversions+'</div></div>';
+      });
+      html+='</div></div>';
+    }
+
+    html+='<div class="section"><div class="sec-title"><i class="fas fa-chart-simple"></i>Analytics</div>';
+    html+='<div class="analytics-grid">';
+    html+='<div class="analytics-item"><div class="analytics-num" style="color:var(--blue)">'+a.visitors.toLocaleString()+'</div><div class="analytics-label">Visitors</div></div>';
+    html+='<div class="analytics-item"><div class="analytics-num" style="color:var(--pink)">'+a.clicks.toLocaleString()+'</div><div class="analytics-label">CTA Clicks</div></div>';
+    html+='<div class="analytics-item"><div class="analytics-num" style="color:var(--success)">'+a.conversions.toLocaleString()+'</div><div class="analytics-label">Conversions</div></div>';
+    html+='<div class="analytics-item"><div class="analytics-num" style="color:var(--purple)">'+a.conversionRate+'%</div><div class="analytics-label">Conv. Rate</div></div>';
+    html+='</div>';
+    var maxSrc=Math.max.apply(null,Object.values(k.sources));
+    ['whatsapp','facebook','tiktok','instagram','direct'].forEach(function(s){
+      var count=k.sources[s]||0;var w=maxSrc>0?Math.round((count/maxSrc)*100):0;
+      html+='<div class="source-bar"><div class="icon"><i class="fab fa-'+(s==='direct'?'link':s)+'" style="color:'+(s==='whatsapp'?'#25d366':s==='facebook'?'#1877f2':s==='tiktok'?'#000':s==='instagram'?'#e1306c':'var(--muted)')+'"></i></div><div class="bar"><div class="fill" style="width:'+w+'%;background:'+(s==='whatsapp'?'#25d366':s==='facebook'?'#1877f2':s==='tiktok'?'#000':s==='instagram'?'#e1306c':'var(--muted)')+'"></div></div><div class="count">'+count+'</div></div>';
+    });
+    html+='</div>';
+
+    html+='<div class="section"><div class="sec-title"><i class="fas fa-trophy"></i>Rewards</div><div class="rewards-card">';
+    k.rewards.forEach(function(r){
+      html+='<div class="reward-item"><span class="reward-threshold">'+r.threshold+' conversions</span><span class="reward-label '+(r.earned?'done':'locked')+'">'+(r.earned?'Earned':'Locked')+' — '+esc(r.label)+'</span></div>';
+    });
+    html+='<div class="rewards-progress"><div class="rewards-bar" style="width:'+pct+'%"></div></div>';
+    html+='</div></div>';
+
+    if(k.countdown&&k.countdown.length){
+      html+='<div class="section"><div class="sec-title"><i class="fas fa-clock"></i>Countdown</div>';
+      k.countdown.forEach(function(c){
+        html+='<div class="countdown-item"><div class="countdown-day">'+c.day+'</div><div class="countdown-text">'+esc(c.text)+'</div><button class="countdown-copy" onclick="copyText(\''+esc(c.text)+'\')"><i class="fas fa-copy"></i></button></div>';
+      });
+      html+='</div>';
+    }
+
+    el.innerHTML=html;
+  });
+}
+
+showDashboard();
+</script>
+</body>
+</html>

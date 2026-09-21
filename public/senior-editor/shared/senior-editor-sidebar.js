@@ -6,10 +6,9 @@
  *   SeniorEditorSidebar.attach('#root', { ... })
  *
  * Menu Sections:
- *   🏠 Dashboard       📥 Review Queue     📚 Story Management
+ *   🏠 Dashboard       📥 Review Queue     📚 Book Management
  *   👨‍💼 Authors        ⭐ Featured Stories  🎖️ Editor's Picks
  *   📣 Announcements   📊 Story Analytics   ⚠️ Reports & Compliance
- *   💬 Communication
  *
  * USAGE
  *   <script src="shared/senior-editor-sidebar.js"></script>
@@ -36,23 +35,15 @@
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html',              section: 'Overview' },
 
     { key: 'review-queue',        label: 'Review Queue',        icon: 'fa-inbox',             href: 'review-queue.html',           section: 'Content' },
-    { key: 'story-management',    label: 'Story Management',     icon: 'fa-book',              href: 'story-management.html',       section: 'Content' },
     { key: 'book-management',     label: 'Book Management',      icon: 'fa-book-open',         href: 'book-management.html',        section: 'Content' },
-    { key: 'categories-genres',   label: 'Categories & Genres',  icon: 'fa-tags',              href: 'categories-genres.html',      section: 'Content' },
 
     { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html',                section: 'People' },
     { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html',    section: 'People' },
-    { key: 'communication',       label: 'Communication',        icon: 'fa-comments',          href: 'communication.html',          section: 'People' },
     { key: 'author-messages',     label: 'Author Messages',      icon: 'fa-envelope',          href: 'author-messages.html',        section: 'People' },
 
     { key: 'featured-stories',    label: 'Featured Stories',     icon: 'fa-star',              href: 'featured-stories.html',       section: 'Discovery' },
-    { key: 'featured-banners',    label: 'Featured Banners',     icon: 'fa-images',            href: 'featured-banners.html',       section: 'Discovery' },
-    { key: 'editors-picks',       label: "Editor's Picks",       icon: 'fa-award',             href: 'editors-picks.html',          section: 'Discovery' },
-    { key: 'announcements',       label: 'Announcements',        icon: 'fa-bullhorn',          href: 'announcements.html',          section: 'Discovery' },
-    { key: 'promotions',          label: 'Promotions',           icon: 'fa-rectangle-ad',      href: 'promotions.html',             section: 'Discovery' },
 
     { key: 'contracts',           label: 'Contracts',            icon: 'fa-file-contract',     href: 'contracts.html',              section: 'Finance' },
-    { key: 'payments',            label: 'Payments',             icon: 'fa-money-bill',        href: 'payments.html',               section: 'Finance' },
 
     { key: 'activity-logs',       label: 'Activity Logs',        icon: 'fa-list',              href: 'activity-logs.html',          section: 'System' },
   ];
@@ -95,11 +86,6 @@
   .ses-sidebar .ses-sb-item i.ses-item-ico{width:16px;text-align:center;font-size:14px;flex-shrink:0}
   .ses-sidebar .ses-sb-item:hover{background:rgba(255,255,255,.05);color:#fff}
   .ses-sidebar .ses-sb-item.active{background:var(--accent);color:#fff;font-weight:600;box-shadow:0 4px 14px rgba(255,0,80,.35)}
-  .ses-sb-footer{margin:10px 12px 16px;padding:16px 14px;border-radius:14px;background:var(--sidebar-bg-2);border:1px solid var(--sidebar-border)}
-  .ses-sb-footer i{color:var(--accent);font-size:16px;margin-bottom:8px;display:block}
-  .ses-sb-footer b{color:#fff;font-size:12.5px;display:block;margin-bottom:4px}
-  .ses-sb-footer p{color:#8d86ac;font-size:11px;line-height:1.5;margin-bottom:12px}
-  .ses-sb-footer button{width:100%;background:var(--accent);color:#fff;border:none;padding:9px;border-radius:9px;font-size:12px;font-weight:700}
   .ses-sb-overlay{display:none;position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:290}
   .ses-main{flex:1;min-width:0;display:flex;flex-direction:column}
   .ses-topbar{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:14px 26px}
@@ -217,12 +203,6 @@
             <button class="ses-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>
           <nav class="ses-sb-nav" id="${instId}-nav">${navHtml()}</nav>
-          <div class="ses-sb-footer">
-            <i class="fas fa-headset"></i>
-            <b>Quick Help</b>
-            <p>Escalate to Chief Editor or contact support.</p>
-            <button id="${instId}-support">Contact Support</button>
-          </div>
         </aside>
         <div class="ses-main">
           <div class="ses-topbar">

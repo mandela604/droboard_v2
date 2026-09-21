@@ -204,6 +204,53 @@
     async getAssignments() { return clone(DEMO.seniorEditorAssignments); },
     async saveAssignments(a) { Object.assign(DEMO.seniorEditorAssignments, a); return { ok: true }; },
 
+    async addPendingEditor(data) {
+      var id = 'SE-' + String(DEMO.seniorEditors.length + 1).padStart(2, '0');
+      var token = 'inv_' + Math.random().toString(36).substring(2, 14) + Date.now().toString(36);
+      var editor = {
+        id: id,
+        name: data.name,
+        avatar: 'https://i.pravatar.cc/100?img=' + (Math.floor(Math.random() * 60) + 1),
+        email: data.email,
+        joined: '',
+        authorsManaged: 0,
+        target: data.target || 50,
+        invited: 0,
+        status: 'pending',
+        monthlyPay: data.pay || '$0',
+        ytdPaid: '$0',
+        deadline: data.deadline || '',
+        openReports: 0,
+        inviteToken: token,
+        inviteNote: data.note || '',
+        invitedAt: new Date().toISOString(),
+      };
+      DEMO.seniorEditors.push(editor);
+      DEMO.seniorEditorAssignments[id] = [];
+      return clone(editor);
+    },
+
+    async getByInviteToken(token) {
+      return clone(DEMO.seniorEditors.find(function(e) { return e.inviteToken === token && e.status === 'pending'; }) || null);
+    },
+
+    async acceptInvite(token, password) {
+      var editor = DEMO.seniorEditors.find(function(e) { return e.inviteToken === token && e.status === 'pending'; });
+      if (!editor) return null;
+      editor.status = 'on-track';
+      editor.joined = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+      editor.password = password;
+      return clone(editor);
+    },
+
+    async cancelInvite(id) {
+      var idx = DEMO.seniorEditors.findIndex(function(e) { return e.id === id && e.status === 'pending'; });
+      if (idx === -1) return null;
+      var removed = DEMO.seniorEditors.splice(idx, 1)[0];
+      delete DEMO.seniorEditorAssignments[id];
+      return clone(removed);
+    },
+
     async getEditorialStrategy() {
       return {
         strategyNotes: 'Focus on expanding romance and thriller genres while maintaining quality in fantasy. Partner with 3 new translation services for Asian markets. Launch seasonal writing contests to drive engagement.',

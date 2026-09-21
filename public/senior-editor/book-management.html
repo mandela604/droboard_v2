@@ -3,19 +3,40 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Book Management — Droboard Dashboard</title>
+<title>Book Management — Droboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
-.page{padding:24px 28px 60px;max-width:1500px}
-.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;min-height:120px}.stat-top{display:flex;align-items:center;justify-content:space-between}.stat-ico{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px}.stat-ico.purple{background:#efe7fd;color:var(--accent)}.stat-ico.green{background:var(--green-bg);color:var(--green)}.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}.stat-ico.red{background:var(--red-bg);color:var(--red)}.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}html[data-theme="dark"] .stat-ico.purple{background:rgba(124,58,237,.18)}html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}html[data-theme="dark"] .stat-ico.red{background:rgba(220,38,38,.18)}html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}.stat-num{font-size:28px;font-weight:800;line-height:1}.stat-lbl{font-size:13px;color:var(--text-muted);font-weight:600}
-.filters-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;flex-wrap:wrap}.filt-search{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px}.filt-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}.filt-search input::placeholder{color:var(--text-faint)}.filt-search i{color:var(--text-faint);font-size:13px}.filt-select{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);position:relative}.filt-select select{appearance:none;border:none;background:none;outline:none;color:var(--text);font-size:12.5px;font-weight:600;font-family:inherit;padding-right:14px;cursor:pointer}.filt-select i{color:var(--text-faint);font-size:10px;position:absolute;right:11px;pointer-events:none}.btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.35);white-space:nowrap;cursor:pointer;font-family:inherit}.btn-add:hover{background:var(--accent-2)}
-.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-top:16px;overflow:hidden}.tabs-row{display:flex;align-items:center;gap:26px;padding:16px 20px 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)}.tabs-row::-webkit-scrollbar{display:none}.tab-item{display:flex;align-items:center;gap:7px;padding-bottom:14px;font-size:13px;font-weight:700;color:var(--text-muted);white-space:nowrap;border-bottom:2.5px solid transparent;flex-shrink:0;cursor:pointer;transition:.15s}.tab-item:hover{color:var(--text)}.tab-item.active{color:var(--accent);border-bottom-color:var(--accent)}.tab-count{font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;background:var(--hover);color:var(--text-muted)}.tab-item.active .tab-count{background:var(--accent-soft);color:var(--accent)}
-.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:860px}thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:13px 20px;white-space:nowrap}tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}tbody tr{transition:.1s}tbody tr:hover{background:var(--hover)}.book-cell{display:flex;align-items:center;gap:12px}.book-cover{width:42px;height:56px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.18);background:#1a1a2e}.book-cover img{width:100%;height:100%;object-fit:cover}.book-title{font-weight:700;font-size:13px;line-height:1.3}.book-id{font-size:11px;color:var(--text-faint);margin-top:2px}.author-cell{display:flex;align-items:center;gap:9px}.author-cell img{width:30px;height:30px;border-radius:50%;object-fit:cover}.author-name{font-weight:600;font-size:12.5px}.cat-main{font-weight:600;font-size:12.5px}.cat-sub{font-size:11px;color:var(--text-muted);margin-top:1px}.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap}.status-pill .dot{width:6px;height:6px;border-radius:50%}.status-pill.published{background:var(--green-bg);color:var(--green)}.status-pill.published .dot{background:var(--green)}.status-pill.draft{background:var(--blue-bg);color:var(--blue)}.status-pill.draft .dot{background:var(--blue)}.status-pill.review{background:var(--amber-bg);color:var(--amber)}.status-pill.review .dot{background:var(--amber)}.status-pill.flagged{background:var(--red-bg);color:var(--red)}.status-pill.flagged .dot{background:var(--red)}html[data-theme="dark"] .status-pill.published{background:rgba(22,163,74,.16)}html[data-theme="dark"] .status-pill.draft{background:rgba(37,99,235,.16)}html[data-theme="dark"] .status-pill.review{background:rgba(217,119,6,.18)}html[data-theme="dark"] .status-pill.flagged{background:rgba(220,38,38,.18)}
-.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;flex-wrap:wrap;gap:10px}.page-info{font-size:12px;color:var(--text-muted)}.page-info b{color:var(--text);font-weight:700}.page-btns{display:flex;align-items:center;gap:6px}.pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;font-family:inherit}.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.pg-btn:disabled{opacity:.4;cursor:default}.pg-dots{color:var(--text-faint);font-size:12px;padding:0 2px}
-@media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.filters-card{flex-direction:column;align-items:stretch}.filt-select,.btn-add{width:100%;justify-content:center}.filt-select select{flex:1}.table-wrap{overflow:visible}table,thead,tbody,tr,td{display:block;width:100%}thead{display:none}tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}tbody tr:hover{background:var(--card)}tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}.book-cell,.author-cell{flex:1;justify-content:flex-start}td[data-label="Book Details"]{align-items:flex-start}td[data-label="Book Details"]::before{display:none}.actions-cell{justify-content:flex-end;width:100%}}@media(max-width:420px){.stats-grid{grid-template-columns:1fr}}
+.page{padding:14px 16px 50px;max-width:1500px}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;min-height:0}.stat-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}.stat-ico.purple{background:rgba(255,0,80,.1);color:var(--accent)}.stat-ico.green{background:var(--green-bg);color:var(--green)}.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}.stat-ico.red{background:var(--red-bg);color:var(--red)}.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}html[data-theme="dark"] .stat-ico.purple{background:rgba(255,0,80,.15)}html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.15)}html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.15)}html[data-theme="dark"] .stat-ico.red{background:rgba(220,38,38,.15)}html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.15)}.stat-body{min-width:0}.stat-num{font-size:20px;font-weight:800;line-height:1.1}.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+.filters-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;flex-wrap:wrap}.filt-search{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 12px}.filt-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}.filt-search input::placeholder{color:var(--text-faint)}.filt-search i{color:var(--text-faint);font-size:12px}.filt-select{display:flex;align-items:center;gap:6px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 11px;font-size:12px;font-weight:600;color:var(--text);position:relative}.filt-select select{appearance:none;border:none;background:none;outline:none;color:var(--text);font-size:12px;font-weight:600;font-family:inherit;padding-right:14px;cursor:pointer}.filt-select i{color:var(--text-faint);font-size:9px;position:absolute;right:10px;pointer-events:none}
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-top:14px;overflow:hidden}.tabs-row{display:flex;align-items:center;gap:24px;padding:12px 18px 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)}.tabs-row::-webkit-scrollbar{display:none}.tab-item{display:flex;align-items:center;gap:6px;padding-bottom:12px;font-size:12.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;border-bottom:2.5px solid transparent;flex-shrink:0;cursor:pointer;transition:.15s}.tab-item:hover{color:var(--text)}.tab-item.active{color:var(--accent);border-bottom-color:var(--accent)}.tab-count{font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;background:var(--hover);color:var(--text-muted)}.tab-item.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+.tbl-head{display:grid;grid-template-columns:24px 2fr 1fr 100px 80px 90px 90px;gap:8px;padding:0 14px 8px;align-items:center}.tbl-head span{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint)}
+.tbl-body{display:flex;flex-direction:column;gap:8px;padding:8px 14px}
+.book-row{display:grid;grid-template-columns:24px 2fr 1fr 100px 80px 90px 90px;gap:8px;align-items:center;background:var(--table-head,#eef0f3);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;transition:.15s;cursor:pointer}.book-row:hover{border-color:var(--accent)}.book-row.is-open{border-color:var(--accent);border-radius:10px 10px 0 0}
+.expand-ico{font-size:11px;color:var(--text-faint);transition:.15s;width:20px;text-align:center}.book-row.is-open .expand-ico{transform:rotate(90deg);color:var(--accent)}
+.book-cell{display:flex;align-items:center;gap:10px;min-width:0}.book-cover{width:36px;height:48px;border-radius:6px;flex-shrink:0;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#1a1a2e}.book-cover img{width:100%;height:100%;object-fit:cover}.book-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.book-id{font-size:10px;color:var(--text-faint);margin-top:1px}
+.author-cell{display:flex;align-items:center;gap:7px;min-width:0}.author-cell img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0}.author-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.genre-chip{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap}
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;white-space:nowrap}.status-pill .dot{width:5px;height:5px;border-radius:50%}.status-pill.published{background:var(--green-bg);color:var(--green)}.status-pill.published .dot{background:var(--green)}.status-pill.draft{background:var(--blue-bg);color:var(--blue)}.status-pill.draft .dot{background:var(--blue)}.status-pill.review{background:var(--amber-bg);color:var(--amber)}.status-pill.review .dot{background:var(--amber)}.status-pill.flagged{background:var(--red-bg);color:var(--red)}.status-pill.flagged .dot{background:var(--red)}html[data-theme="dark"] .status-pill.published{background:rgba(22,163,74,.16)}html[data-theme="dark"] .status-pill.draft{background:rgba(37,99,235,.16)}html[data-theme="dark"] .status-pill.review{background:rgba(217,119,6,.16)}html[data-theme="dark"] .status-pill.flagged{background:rgba(220,38,38,.16)}
+.col-num{font-size:12px;font-weight:700}.muted-cell{color:var(--text-muted);font-size:12px}
+.actions-cell{display:flex;gap:5px}.act-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;transition:.15s}.act-btn:hover{border-color:var(--accent);color:var(--accent)}.act-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+.book-detail{display:none;background:linear-gradient(180deg,var(--table-head) 0%,var(--card) 90px);border:1.5px solid var(--accent);border-top:none;border-radius:0 0 12px 12px;padding:0;margin-top:-8px;overflow:hidden}.book-detail.show{display:block}
+.detail-inner{padding:14px 16px 16px}
+.detail-section{margin-bottom:14px}.detail-section:last-of-type{margin-bottom:0}
+.ds-label{font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:5px}.ds-label i{color:var(--accent);font-size:10px}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.detail-grid.three{grid-template-columns:repeat(3,1fr)}
+.detail-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:0}.detail-item span{font-size:8.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:2px}.detail-item b{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}.detail-item.accent{border-color:rgba(255,0,80,.25);background:var(--accent-soft,rgba(255,0,80,.06))}.detail-item.accent b{color:var(--accent)}
+.detail-desc{font-size:11.5px;color:var(--text-muted);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:12px}
+.detail-foot{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.mini-btn{font-size:10.5px;font-weight:700;padding:6px 12px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.12s}.mini-btn:hover{border-color:var(--accent);color:var(--accent)}.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}.mini-btn.primary:hover{filter:brightness(1.05)}.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}.mini-btn.danger:hover{background:var(--red);color:#fff}
+.empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
+.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;flex-wrap:wrap;gap:10px}.page-info{font-size:11px;color:var(--text-muted)}.page-info b{color:var(--text);font-weight:700}.page-btns{display:flex;align-items:center;gap:5px}.pg-btn{min-width:28px;height:28px;padding:0 5px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;font-family:inherit}.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.pg-btn:disabled{opacity:.4;cursor:default}.pg-dots{color:var(--text-faint);font-size:11px;padding:0 2px}
+@media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}.tbl-head{display:none}.book-row{grid-template-columns:24px 1fr 100px 70px 32px}.book-row .col-genre,.book-row .col-added{display:none}.detail-grid,.detail-grid.three{grid-template-columns:1fr 1fr}}@media(max-width:680px){.filters-card{flex-direction:column;align-items:stretch}.filt-select{width:100%}.filt-select select{flex:1}}
 </style>
 </head>
 <body>
@@ -26,10 +47,8 @@
 
   <div class="filters-card">
     <div class="filt-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by book title, author, or ID..."/></div>
-    <div class="filt-select"><select id="fCategory"><option>All Categories</option></select><i class="fas fa-chevron-down"></i></div>
     <div class="filt-select"><select id="fGenre"><option>All Genres</option></select><i class="fas fa-chevron-down"></i></div>
     <div class="filt-select"><select id="fStatus"><option>All Status</option><option>Published</option><option>Draft</option><option>Under Review</option><option>Flagged</option></select><i class="fas fa-chevron-down"></i></div>
-    <button class="btn-add" id="addBookBtn"><i class="fas fa-plus"></i> Add New Book</button>
   </div>
 
   <div class="table-card">
@@ -40,19 +59,19 @@
       <div class="tab-item" data-tab="Under Review">Under Review <span class="tab-count">0</span></div>
       <div class="tab-item" data-tab="Flagged">Flagged <span class="tab-count">0</span></div>
     </div>
-    <div class="table-wrap"><table><thead><tr><th>Book Details</th><th>Author</th><th>Category / Genre</th><th>Status</th><th>Views</th><th>Added On</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table></div>
+    <div class="tbl-head"><span></span><span>Book</span><span>Genre</span><span>Status</span><span>Reads</span><span>Rating</span><span>Actions</span></div>
+    <div class="tbl-body" id="tableBody"></div>
     <div class="pagination-row"><div class="page-info" id="pageInfo">Loading...</div><div class="page-btns" id="pageBtns"></div></div>
   </div>
 
 </div>
 </div>
 
-<div id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:9999"></div>
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:9999"></div>
 <style>#toast.show{opacity:1}</style>
 
 <script src="../data/editor-demo-data.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="book-management-service.js"></script>
 <script>
 SeniorEditorSidebar.attach('#dashboardRoot',{
   activeItem:'book-management',
@@ -60,22 +79,216 @@ SeniorEditorSidebar.attach('#dashboardRoot',{
   subtitle:'Manage and organize all books on your platform',
   user:{name:'Reina Morgan',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=47'},
   notifCount:8,
-  searchPlaceholder:'Search by book title, author, or ID...',
-  onSearch:function(v){document.getElementById('tableSearch').value=v;BookManagement.refresh();}
+  searchPlaceholder:'Search everything...',
 });
 
-/* Populate category/genre filters from demo data */
 (function(){
-  var D=window.EditorDemo||{};
-  var cats={};var genres={};
-  (D.BOOKS||[]).forEach(function(b){
-    if(b.cat)cats[b.cat]=1;
-    if(b.genre)genres[b.genre]=1;
+'use strict';
+
+var D=window.EditorDemo||{};
+var books=(D.BOOKS||[]).slice();
+var activeTab='all';
+var currentPage=1;
+var PER_PAGE=12;
+var openRowId=null;
+
+var GENRE_COLORS={};
+(D.CATEGORIES||[]).forEach(function(c){GENRE_COLORS[c.name]={bg:c.bg,fg:c.color};});
+(D.GENRES||[]).forEach(function(g){if(!GENRE_COLORS[g.name])GENRE_COLORS[g.name]={bg:g.bg,fg:g.color};});
+GENRE_COLORS['Billionaire Romance']={bg:'#ece3fd',fg:'#7c5cfc'};
+GENRE_COLORS['Werewolf Romance']={bg:'#eef0f2',fg:'#5b6470'};
+GENRE_COLORS['Mafia Romance']={bg:'#e7e7ea',fg:'#26262b'};
+GENRE_COLORS['Vampire Romance']={bg:'#fde3e3',fg:'#e0384d'};
+GENRE_COLORS['Royal Romance']={bg:'#ece3fd',fg:'#7c5cfc'};
+GENRE_COLORS['Second Chance']={bg:'#ffe1eb',fg:'#ff0050'};
+GENRE_COLORS['Revenge']={bg:'#fde3e3',fg:'#e0384d'};
+GENRE_COLORS['Family Drama']={bg:'#fef3d8',fg:'#d97706'};
+GENRE_COLORS['Twist']={bg:'#ffe1eb',fg:'#ff0050'};
+GENRE_COLORS['Betrayal']={bg:'#ffe1eb',fg:'#ff0050'};
+GENRE_COLORS['Campus']={bg:'#e3ecfd',fg:'#2f7de1'};
+GENRE_COLORS['Elegy']={bg:'#fde3e3',fg:'#e0384d'};
+
+function statusClass(s){return{Published:'published',Draft:'draft','Under Review':'review',Flagged:'flagged'}[s]||'draft';}
+function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><span class="dot"></span>'+s+'</span>';}
+
+function renderStats(){
+  var t=books.length;
+  var p=books.filter(function(x){return x.status==='Published';}).length;
+  var d=books.filter(function(x){return x.status==='Draft';}).length;
+  var f=books.filter(function(x){return x.status==='Flagged';}).length;
+  var r=books.filter(function(x){return x.status==='Under Review';}).length;
+  document.getElementById('statsGrid').innerHTML=
+    '<div class="stat-card"><div class="stat-ico purple"><i class="fas fa-book"></i></div><div class="stat-body"><div class="stat-num">'+t+'</div><div class="stat-lbl">Total Books</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><div class="stat-body"><div class="stat-num">'+p+'</div><div class="stat-lbl">Published</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><div class="stat-body"><div class="stat-num">'+d+'</div><div class="stat-lbl">Drafts</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico red"><i class="fas fa-flag"></i></div><div class="stat-body"><div class="stat-num">'+f+'</div><div class="stat-lbl">Flagged</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico blue"><i class="fas fa-hourglass-half"></i></div><div class="stat-body"><div class="stat-num">'+r+'</div><div class="stat-lbl">Under Review</div></div></div>';
+}
+
+function renderTabs(){
+  var counts={all:books.length};
+  ['Published','Draft','Under Review','Flagged'].forEach(function(s){counts[s]=books.filter(function(b){return b.status===s;}).length;});
+  document.getElementById('countAll').textContent=counts.all;
+  document.querySelectorAll('.tab-item').forEach(function(t){
+    var k=t.dataset.tab;
+    var c=t.querySelector('.tab-count');
+    if(c&&counts[k]!==undefined)c.textContent=counts[k];
   });
-  var catSel=document.getElementById('fCategory');
-  Object.keys(cats).sort().forEach(function(c){var o=document.createElement('option');o.textContent=c;o.value=c;catSel.appendChild(o);});
-  var genSel=document.getElementById('fGenre');
-  Object.keys(genres).sort().forEach(function(g){var o=document.createElement('option');o.textContent=g;o.value=g;genSel.appendChild(o);});
+}
+
+function refresh(){
+  var q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();
+  var genre=document.getElementById('fGenre').value;
+  var stat=document.getElementById('fStatus').value;
+
+  var filtered=books.filter(function(b){
+    if(activeTab!=='all'&&b.status!==activeTab)return false;
+    if(genre!=='All Genres'&&b.genre!==genre)return false;
+    if(stat!=='All Status'&&b.status!==stat)return false;
+    if(q&&b.title.toLowerCase().indexOf(q)===-1&&b.author.toLowerCase().indexOf(q)===-1&&b.id.toLowerCase().indexOf(q)===-1)return false;
+    return true;
+  });
+
+  renderTable(filtered);
+  renderStats();
+  renderTabs();
+}
+
+function renderTable(list){
+  var body=document.getElementById('tableBody');
+  var total=list.length;
+  var totalPages=Math.max(1,Math.ceil(total/PER_PAGE));
+  if(currentPage>totalPages)currentPage=totalPages;
+  var start=(currentPage-1)*PER_PAGE;
+  var page=list.slice(start,start+PER_PAGE);
+
+  if(!page.length){
+    body.innerHTML='<div class="empty-msg"><i class="fas fa-inbox" style="font-size:20px;margin-bottom:8px;display:block"></i>No books match this filter.</div>';
+  }else{
+    body.innerHTML=page.map(function(b){
+      var gc=GENRE_COLORS[b.genre]||GENRE_COLORS[b.cat]||{bg:'var(--table-head)',fg:'var(--text-muted)'};
+      var isOpen=openRowId===b.id;
+      return '<div>'+
+        '<div class="book-row'+(isOpen?' is-open':'')+'" data-id="'+b.id+'">'+
+          '<i class="fas fa-chevron-right expand-ico"></i>'+
+          '<div class="book-cell"><div class="book-cover"><img src="'+b.img+'" alt=""/></div><div><div class="book-title">'+b.title+'</div><div class="book-id">ID: '+b.id+'</div></div></div>'+
+          '<div class="col-genre"><span class="genre-chip" style="background:'+gc.bg+';color:'+gc.fg+'">'+b.genre+'</span></div>'+
+          '<div>'+statusPillHtml(b.status)+'</div>'+
+          '<div class="col-num">'+b.views+'</div>'+
+          '<div class="col-num muted-cell">'+(b.rating||'\u2014')+'</div>'+
+          '<div class="actions-cell">'+
+            '<button class="act-btn" title="View" onclick="event.stopPropagation();viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
+            '<button class="act-btn" title="Edit" onclick="event.stopPropagation();editBook(\''+b.id+'\')"><i class="fas fa-pen"></i></button>'+
+            '<button class="act-btn danger" title="Flag" onclick="event.stopPropagation();flagBook(\''+b.id+'\')"><i class="fas fa-flag"></i></button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="book-detail'+(isOpen?' show':'')+'" id="detail-'+b.id+'"></div>'+
+      '</div>';
+    }).join('');
+    if(openRowId&&page.some(function(b){return b.id===openRowId;}))renderDetailPanel(openRowId);
+  }
+
+  var pageInfo=document.getElementById('pageInfo');
+  pageInfo.innerHTML=total
+    ?'Showing <b>'+(start+1)+'</b> to <b>'+Math.min(start+PER_PAGE,total)+'</b> of <b>'+total.toLocaleString()+'</b> books'
+    :'No books found';
+  renderPagination(totalPages);
+}
+
+function renderDetailPanel(id){
+  var b=books.find(function(x){return x.id===id;});if(!b)return;
+  var panel=document.getElementById('detail-'+id);if(!panel)return;
+  var gc=GENRE_COLORS[b.genre]||GENRE_COLORS[b.cat]||{bg:'var(--table-head)',fg:'var(--text-muted)'};
+
+  var html='<div class="detail-inner">';
+  if(b.desc)html+='<div class="detail-desc">'+b.desc+'</div>';
+  html+='<div class="detail-section"><div class="ds-label"><i class="fas fa-circle-info"></i> Overview</div><div class="detail-grid">';
+  html+='<div class="detail-item"><span>Category</span><b>'+b.cat+'</b></div>';
+  html+='<div class="detail-item"><span>Genre</span><b><span class="genre-chip" style="background:'+gc.bg+';color:'+gc.fg+'">'+b.genre+'</span></b></div>';
+  html+='<div class="detail-item accent"><span>Reads</span><b>'+b.views+'</b></div>';
+  html+='<div class="detail-item"><span>Rating</span><b>'+(b.rating?'\u2605 '+b.rating:'\u2014')+'</b></div>';
+  html+='<div class="detail-item"><span>Status</span><b>'+statusPillHtml(b.status)+'</b></div>';
+  html+='<div class="detail-item"><span>Added</span><b>'+b.added+'</b></div>';
+  html+='<div class="detail-item"><span>Author</span><b>'+b.author+'</b></div>';
+  html+='<div class="detail-item"><span>Chapters</span><b>'+(b.chapters||'\u2014')+'</b></div>';
+  html+='</div></div>';
+  html+='<div class="detail-foot">';
+  html+='<button class="mini-btn primary" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i> View Book</button>';
+  html+='<button class="mini-btn" onclick="editBook(\''+b.id+'\')"><i class="fas fa-pen"></i> Edit</button>';
+  html+='<button class="mini-btn danger" onclick="flagBook(\''+b.id+'\')"><i class="fas fa-flag"></i> '+(b.status==='Flagged'?'Unflag':'Flag')+'</button>';
+  html+='</div></div>';
+  panel.innerHTML=html;
+}
+
+function renderPagination(tp){
+  var w=document.getElementById('pageBtns');
+  if(tp<=1){w.innerHTML='';return;}
+  var h='<button class="pg-btn"'+(currentPage<=1?' disabled':'')+' onclick="goPage('+(currentPage-1)+')"><i class="fas fa-chevron-left"></i></button>';
+  var sP=Math.max(1,currentPage-2);
+  var eP=Math.min(tp,currentPage+2);
+  if(sP>1)h+='<button class="pg-btn" onclick="goPage(1)">1</button>'+(sP>2?'<span class="pg-dots">\u2026</span>':'');
+  for(var i=sP;i<=eP;i++){
+    h+='<button class="pg-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+  }
+  if(eP<tp)h+=(eP<tp-1?'<span class="pg-dots">\u2026</span>':'')+'<button class="pg-btn" onclick="goPage('+tp+')">'+tp+'</button>';
+  h+='<button class="pg-btn"'+(currentPage>=tp?' disabled':'')+' onclick="goPage('+(currentPage+1)+')"><i class="fas fa-chevron-right"></i></button>';
+  w.innerHTML=h;
+}
+
+function goPage(p){currentPage=p;refresh();window.scrollTo({top:0,behavior:'smooth'});}
+
+function viewBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id);}
+function editBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id)+'&mode=edit';}
+function flagBook(id){
+  var b=books.find(function(x){return x.id===id;});
+  if(b){b.status=b.status==='Flagged'?'Published':'Flagged';openRowId=null;refresh();toast(b.title+' \u2192 '+b.status);}
+}
+
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2200);}
+
+/* Row click → toggle accordion */
+document.addEventListener('click',function(e){
+  var row=e.target.closest('.book-row');
+  if(row&&!e.target.closest('.actions-cell')){
+    var id=row.dataset.id;
+    openRowId=openRowId===id?null:id;
+    refresh();
+  }
+});
+
+/* Populate genre filter */
+(function(){
+  var genres={};
+  books.forEach(function(b){if(b.genre)genres[b.genre]=1;});
+  var sel=document.getElementById('fGenre');
+  Object.keys(genres).sort().forEach(function(g){var o=document.createElement('option');o.textContent=g;o.value=g;sel.appendChild(o);});
+})();
+
+/* Bind events */
+document.querySelectorAll('.tab-item').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.tab-item').forEach(function(t){t.classList.remove('active');});
+    tab.classList.add('active');
+    activeTab=tab.dataset.tab;
+    currentPage=1;
+    refresh();
+  });
+});
+document.getElementById('tableSearch').addEventListener('input',function(){currentPage=1;refresh();});
+document.getElementById('fGenre').addEventListener('change',function(){currentPage=1;refresh();});
+document.getElementById('fStatus').addEventListener('change',function(){currentPage=1;refresh();});
+
+/* Expose for inline onclick */
+window.goPage=goPage;
+window.viewBook=viewBook;
+window.editBook=editBook;
+window.flagBook=flagBook;
+
+/* Init */
+renderStats();
+renderTabs();
+refresh();
+
 })();
 </script>
 </body>

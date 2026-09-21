@@ -110,14 +110,15 @@
   function renderActionRow() {
     const el = document.getElementById('actionRow');
     if (IS_OWNER) {
-      el.innerHTML = `<a class="pact edit" href="edit-profile.html">Edit Profile</a><button class="pact msg" id="settingsBtn" title="Settings"><i class="fas fa-gear"></i></button>`;
-      document.getElementById('settingsBtn').addEventListener('click', () => toast('Settings page coming soon'));
+      el.innerHTML = `<a class="pact edit" href="edit-profile.html">Edit Profile</a><button class="pact msg" id="msgEditorBtn" title="Message your editor"><i class="fas fa-paper-plane"></i></button>`;
+      document.getElementById('msgEditorBtn').addEventListener('click', () => {
+        window.location.href = 'chat.html';
+      });
       return;
     }
     const startedFollowing = (PROFILE.following || []).some(f => f.name === ME_HANDLE && f.following);
-    el.innerHTML = `<button class="pact follow${startedFollowing ? ' ing' : ''}" id="followBtn">${startedFollowing ? '✓ Following' : '+ Follow'}</button><button class="pact msg" id="dmBtn" title="Message"><i class="fas fa-paper-plane"></i></button>`;
+    el.innerHTML = `<button class="pact follow${startedFollowing ? ' ing' : ''}" id="followBtn">${startedFollowing ? '✓ Following' : '+ Follow'}</button>`;
     document.getElementById('followBtn').addEventListener('click', toggleFollowOwner);
-    document.getElementById('dmBtn').addEventListener('click', () => toast('💬 Messaging isn\'t wired up yet'));
   }
 
   async function toggleFollowOwner() {

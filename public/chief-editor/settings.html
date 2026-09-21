@@ -217,56 +217,10 @@ html[data-theme="dark"] body{background:var(--bg)}
         </div>
       </div>
 
-      <!-- Platform Defaults -->
-      <div class="panel">
-        <div class="panel-head"><h2><i class="fas fa-sliders" style="color:var(--purple)"></i> Platform Defaults</h2></div>
-        <div class="panel-sub">Default values applied to new senior editor quotas and contract templates.</div>
-
-        <div class="form-row two-col">
-          <div>
-            <label class="form-label">Default royalty rate (%)</label>
-            <input class="form-input" id="defRoyalty" type="number" min="0" max="100" value="15"/>
-          </div>
-          <div>
-            <label class="form-label">Default monthly invite quota</label>
-            <input class="form-input" id="defQuota" type="number" min="0" value="50"/>
-          </div>
-        </div>
-        <div class="form-row two-col">
-          <div>
-            <label class="form-label">Payment schedule</label>
-            <select class="form-select" id="defPaySchedule">
-              <option>Weekly</option>
-              <option selected>Biweekly</option>
-              <option>Monthly</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Plagiarism auto-flag threshold (%)</label>
-            <input class="form-input" id="defPlagThreshold" type="number" min="0" max="100" value="40"/>
-            <div class="form-hint">Chapters scoring above this similarity are flagged automatically.</div>
-          </div>
-        </div>
-        <div class="panel-foot">
-          <button class="mini-btn primary" id="defSaveBtn"><i class="fas fa-check"></i> Save Defaults</button>
-        </div>
-      </div>
     </div>
 
     <!-- RIGHT COLUMN -->
     <div>
-      <!-- Notifications -->
-      <div class="panel">
-        <div class="panel-head"><h2><i class="fas fa-bell" style="color:var(--amber)"></i> Notifications</h2></div>
-        <div class="panel-sub">Choose what you get notified about.</div>
-
-        <div id="notifList"></div>
-
-        <div class="panel-foot">
-          <button class="mini-btn primary" id="notifSaveBtn"><i class="fas fa-check"></i> Save Preferences</button>
-        </div>
-      </div>
-
       <!-- Appearance -->
       <div class="panel">
         <div class="panel-head"><h2><i class="fas fa-palette" style="color:var(--green)"></i> Appearance</h2></div>
@@ -473,41 +427,10 @@ function renderSessions(){
 }
 renderSessions();
 
-/* ══════════════════ PLATFORM DEFAULTS ══════════════════ */
-document.getElementById('defSaveBtn').addEventListener('click', ()=>{
-  toast('Platform defaults saved', 'fa-sliders');
-});
-
-/* ══════════════════ NOTIFICATIONS ══════════════════ */
-const NOTIF_PREFS = [
-  { id:'contracts', label:'Contract signatures', desc:'When a contract is ready for your countersignature', on:true },
-  { id:'reports', label:'Flagged reports', desc:'New plagiarism flags or author/editor reports', on:true },
-  { id:'quotas', label:'Quota alerts', desc:'When a senior editor falls behind on their monthly quota', on:true },
-  { id:'payments', label:'Payment reminders', desc:'Upcoming and overdue payouts', on:true },
-  { id:'digest', label:'Weekly summary email', desc:'A roundup of platform activity every Monday', on:false },
-];
-function renderNotifs(){
-  document.getElementById('notifList').innerHTML = NOTIF_PREFS.map(n=>`
-    <div class="toggle-row">
-      <div class="toggle-text"><b>${n.label}</b><span>${n.desc}</span></div>
-      <label class="switch"><input type="checkbox" data-notif="${n.id}" ${n.on?'checked':''}/><span class="switch-track"></span></label>
-    </div>`).join('');
-  document.querySelectorAll('[data-notif]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      const n = NOTIF_PREFS.find(x=>x.id===inp.dataset.notif);
-      n.on = inp.checked;
-    });
-  });
-}
-renderNotifs();
-
-document.getElementById('notifSaveBtn').addEventListener('click', ()=>{
-  toast('Notification preferences saved', 'fa-bell');
-});
-
 /* ══════════════════ APPEARANCE ══════════════════ */
 function setTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('droboard-theme', theme);
   document.querySelectorAll('.theme-pill').forEach(p=>p.classList.toggle('active', p.dataset.theme===theme));
 }
 document.querySelectorAll('.theme-pill').forEach(p=>{
@@ -516,7 +439,7 @@ document.querySelectorAll('.theme-pill').forEach(p=>{
     toast(`Switched to ${p.dataset.theme} mode`, p.dataset.theme==='dark'?'fa-moon':'fa-sun');
   });
 });
-setTheme('light');
+setTheme(localStorage.getItem('droboard-theme')||'light');
 
 /* ══════════════════ DANGER ZONE ══════════════════ */
 let pendingDanger = null;

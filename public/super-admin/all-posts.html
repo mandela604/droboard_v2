@@ -31,10 +31,10 @@ body{font-family:'Inter',system-ui,sans-serif}
 .search-box i{color:var(--text-faint);font-size:12.5px}
 .select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
 
-.list-cols{display:grid;grid-template-columns:minmax(0,3.5fr) 110px 80px 80px 100px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
+.list-cols{display:grid;grid-template-columns:26px minmax(0,2.5fr) 110px 80px 80px 100px 80px;gap:8px;align-items:center;padding:0 14px 10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
 .list-cols span.num{text-align:right}
 
-.post-row{display:grid;grid-template-columns:minmax(0,3.5fr) 110px 80px 80px 100px 70px;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);transition:.12s;cursor:pointer}
+.post-row{display:grid;grid-template-columns:26px minmax(0,2.5fr) 110px 80px 80px 100px 80px;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);transition:.12s;cursor:pointer;border-radius:0}
 .post-row:hover{background:var(--hover)}
 .post-row:last-child{border-bottom:none}
 .post-row.is-open{background:var(--hover);border-bottom-color:transparent}
@@ -116,12 +116,18 @@ body{font-family:'Inter',system-ui,sans-serif}
 .empty-state{padding:50px 20px;text-align:center;color:var(--text-faint)}
 .empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
 
-@media (max-width:900px){
-  .list-cols,.post-row{grid-template-columns:minmax(0,1fr) 90px 70px}
-  .list-cols span:nth-child(3),.list-cols span:nth-child(4),
-  .post-row .col-hide{display:none}
+@media (max-width:1100px){
+  .list-cols,.post-row{grid-template-columns:26px minmax(0,2.5fr) 110px 80px 100px}
+  .list-cols span:nth-child(3),.list-cols span:nth-child(7),
+  .post-row .col-type,.post-row .col-date{display:none}
   .detail-grid,.detail-grid.three{grid-template-columns:1fr 1fr}
 }
+@media (max-width:900px){
+  .list-cols,.post-row{grid-template-columns:26px minmax(0,1fr) 100px 70px}
+  .list-cols span:nth-child(3),.list-cols span:nth-child(4),.list-cols span:nth-child(7),
+  .post-row .col-type,.post-row .col-date{display:none}
+}
+@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
 @media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -168,6 +174,7 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
 
     <div class="list-cols">
+      <span></span>
       <span>Post</span>
       <span>Type</span>
       <span class="num">Views</span>
@@ -373,11 +380,11 @@ function renderList(){
               '<div class="post-meta">by <a href="../Pages/profile.html?id='+authorId(p)+'">'+authorName(p)+'</a> \u00b7 '+p.id+'</div>'+
             '</div>'+
           '</div>'+
-          '<div class="col-hide"><span class="type-chip" style="background:'+bg+';color:'+color+'"><i class="fas '+tc.icon+'"></i> '+tc.label+'</span></div>'+
+          '<div class="col-type"><span class="type-chip" style="background:'+bg+';color:'+color+'"><i class="fas '+tc.icon+'"></i> '+tc.label+'</span></div>'+
           '<div class="col-hide num-cell">'+fmtNum(p.views)+'</div>'+
           '<div class="num-cell faint">'+fmtNum(p.comments)+'</div>'+
           '<div><span class="status-chip '+statusClass+'"><i class="fas fa-circle"></i> '+p.status.replace('-',' ')+'</span></div>'+
-          '<div class="col-hide" style="font-size:11px;color:var(--text-faint)">'+fmtHours(p.hoursAgo)+'</div>'+
+          '<div class="col-date" style="font-size:11px;color:var(--text-faint)">'+fmtHours(p.hoursAgo)+'</div>'+
         '</div>'+
         '<div class="post-detail'+(isOpen?' show':'')+'" id="detail-'+p.id+'"></div>'+
       '</div>';

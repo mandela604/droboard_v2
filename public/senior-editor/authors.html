@@ -108,12 +108,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="authorsRoot">
-  <div class="welcome-banner">
-    <div class="welcome-eyebrow">Senior Editor · Authors</div>
-    <div class="welcome-title">Authors 👨‍💼</div>
-    <div class="welcome-sub">Manage your assigned authors — search, filter by genre or status, review performance, and message, warn or suspend directly from here.</div>
-  </div>
-
   <div class="grid-4" id="statCards"></div>
 
   <div class="panel">
@@ -123,7 +117,7 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
     <div class="panel-sub">Click an author to view full details and take action — or jump straight to their profile.</div>
     <div class="add-search">
-      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="authorSearch" placeholder="Search by name or email…"/></div>
+      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="authorSearch" placeholder="Search by name…"/></div>
       <select id="genreFilter"><option value="">All Genres</option></select>
       <select id="statusFilter">
         <option value="">All Statuses</option>
@@ -133,59 +127,6 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
     <div id="authorList"></div>
     <div class="pagination" id="paginationBar"></div>
-  </div>
-</div>
-
-<!-- Warning modal -->
-<div class="modal-overlay" id="warnModalOv">
-  <div class="modal-box">
-    <div class="modal-box-head">
-      <div>
-        <h3>Issue a warning</h3>
-        <p id="warnModalSub">This will be recorded on the author's account.</p>
-      </div>
-      <button class="modal-close-x" data-action="close-warn-modal"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-box-body">
-      <div class="field-group">
-        <label>Reason for warning</label>
-        <textarea id="warnReason" placeholder="e.g. Repeated late chapter uploads, policy violation…"></textarea>
-      </div>
-      <div class="modal-error" id="warnModalError"></div>
-      <div class="modal-box-actions">
-        <button class="cancel-btn" data-action="close-warn-modal">Cancel</button>
-        <button class="confirm-btn warn-variant" id="warnConfirmBtn" data-action="submit-warn"><i class="fas fa-triangle-exclamation"></i> Issue Warning</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Suspend / reinstate modal (reason + password confirmation) -->
-<div class="modal-overlay" id="statusModalOv">
-  <div class="modal-box">
-    <div class="modal-box-head">
-      <div>
-        <h3 id="statusModalTitle">Suspend author</h3>
-        <p id="statusModalSub">This changes what the author can access. Please confirm with a reason and your password.</p>
-      </div>
-      <button class="modal-close-x" data-action="close-status-modal"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-box-body">
-      <div class="field-group">
-        <label id="statusReasonLabel">Reason for suspension</label>
-        <textarea id="statusReason" placeholder="e.g. Violation of content guidelines on story XYZ…"></textarea>
-      </div>
-      <div class="field-group">
-        <label>Confirm your password</label>
-        <input type="password" id="statusPassword" placeholder="Enter your editor password"/>
-        <div class="password-hint"><i class="fas fa-lock"></i> Required to confirm this action.</div>
-      </div>
-      <div class="modal-error" id="statusModalError"></div>
-      <div class="modal-box-actions">
-        <button class="cancel-btn" data-action="close-status-modal">Cancel</button>
-        <button class="confirm-btn" id="statusConfirmBtn" data-action="submit-status"><i class="fas fa-ban"></i> Confirm</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -297,7 +238,7 @@ function getFiltered(){
   const g = document.getElementById('genreFilter').value;
   const st = document.getElementById('statusFilter').value;
   return AUTHORS.filter(a=>{
-    const matchesQ = !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q);
+    const matchesQ = !q || a.name.toLowerCase().includes(q);
     const matchesG = !g || a.genre===g;
     const matchesSt = !st || a.status===st;
     return matchesQ && matchesG && matchesSt;
@@ -341,12 +282,9 @@ function renderAuthors(){
           <div class="mm-item"><div class="mm-lbl">Genre</div><div class="mm-val" style="font-size:12px">${a.genre}</div></div>
           <div class="mm-item"><div class="mm-lbl">Joined</div><div class="mm-val" style="font-size:12px">${a.joined}</div></div>
         </div>
-        <div class="mm-email"><strong>Email:</strong> ${a.email}</div>
         <div class="lib-config-actions">
           <div class="action-btns">
-            <button class="mini-btn danger" data-action="open-warn-modal" data-id="${a.id}"><i class="fas fa-triangle-exclamation"></i> Issue Warning</button>
-            <button class="mini-btn" data-action="message" data-id="${a.id}"><i class="fas fa-comment"></i> Send Message</button>
-            <button class="mini-btn danger" data-action="open-status-modal" data-id="${a.id}">${a.status==='suspended'?'<i class="fas fa-rotate-left"></i> Reinstate':'<i class="fas fa-ban"></i> Suspend'}</button>
+            <button class="mini-btn" data-action="message" data-email="${a.email}" data-id="${a.id}"><i class="fas fa-envelope"></i> Send Message</button>
           </div>
           <a class="profile-link" href="profile.html?id=${a.id}">View full profile <i class="fas fa-arrow-right"></i></a>
         </div>
@@ -382,109 +320,6 @@ function renderPagination(totalPages, totalResults, start, shownCount){
 }
 
 /* ─────────────────────────────────────────
-   WARNING MODAL
-───────────────────────────────────────── */
-let warnTargetId = null;
-
-function openWarnModal(id){
-  const a = AUTHORS.find(x=>x.id===id); if(!a) return;
-  warnTargetId = id;
-  document.getElementById('warnModalSub').textContent = `This will be recorded on ${a.name}'s account.`;
-  document.getElementById('warnReason').value = '';
-  document.getElementById('warnModalError').classList.remove('show');
-  document.getElementById('warnModalOv').classList.add('open');
-}
-function closeWarnModal(){
-  document.getElementById('warnModalOv').classList.remove('open');
-  warnTargetId = null;
-}
-async function submitWarn(){
-  const a = AUTHORS.find(x=>x.id===warnTargetId); if(!a) return;
-  const reason = document.getElementById('warnReason').value.trim();
-  const errBox = document.getElementById('warnModalError');
-  if(!reason){ errBox.textContent = 'Please provide a reason for this warning.'; errBox.classList.add('show'); return; }
-
-  const btn = document.getElementById('warnConfirmBtn');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Issuing…';
-  try{
-    if(!usingDemoData){
-      await apiFetch(`/authors/${a.id}/warn`, { method:'POST', body: JSON.stringify({ reason }) });
-    }
-    a.warnings++;
-    toast(`⚠️ Warning issued to ${a.name}`);
-    closeWarnModal();
-    renderStats(); renderAuthors();
-  }catch(err){
-    errBox.textContent = err.message || 'Something went wrong. Please try again.';
-    errBox.classList.add('show');
-  }finally{
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Issue Warning';
-  }
-}
-
-/* ─────────────────────────────────────────
-   SUSPEND / REINSTATE MODAL (reason + password)
-───────────────────────────────────────── */
-let statusTargetId = null;
-
-function openStatusModal(id){
-  const a = AUTHORS.find(x=>x.id===id); if(!a) return;
-  statusTargetId = id;
-  const suspending = a.status !== 'suspended';
-  document.getElementById('statusModalTitle').textContent = suspending ? `Suspend ${a.name}` : `Reinstate ${a.name}`;
-  document.getElementById('statusModalSub').textContent = suspending
-    ? "This immediately blocks the author's ability to publish or upload. Please confirm with a reason and your password."
-    : "This restores the author's full access. Please confirm with a reason and your password.";
-  document.getElementById('statusReasonLabel').textContent = suspending ? 'Reason for suspension' : 'Reason for reinstating';
-  document.getElementById('statusReason').value = '';
-  document.getElementById('statusPassword').value = '';
-  document.getElementById('statusModalError').classList.remove('show');
-  const confirmBtn = document.getElementById('statusConfirmBtn');
-  confirmBtn.innerHTML = suspending ? '<i class="fas fa-ban"></i> Confirm Suspension' : '<i class="fas fa-rotate-left"></i> Confirm Reinstatement';
-  document.getElementById('statusModalOv').classList.add('open');
-}
-function closeStatusModal(){
-  document.getElementById('statusModalOv').classList.remove('open');
-  statusTargetId = null;
-}
-async function submitStatusChange(){
-  const a = AUTHORS.find(x=>x.id===statusTargetId); if(!a) return;
-  const suspending = a.status !== 'suspended';
-  const reason = document.getElementById('statusReason').value.trim();
-  const password = document.getElementById('statusPassword').value;
-  const errBox = document.getElementById('statusModalError');
-
-  if(!reason){ errBox.textContent = 'Please provide a reason before continuing.'; errBox.classList.add('show'); return; }
-  if(!password){ errBox.textContent = 'Please enter your password to confirm this action.'; errBox.classList.add('show'); return; }
-
-  const btn = document.getElementById('statusConfirmBtn');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming…';
-  try{
-    const newStatus = suspending ? 'suspended' : 'active';
-    if(!usingDemoData){
-      // Real backend verifies the editor's password server-side before applying the change.
-      await apiFetch(`/authors/${a.id}/${suspending?'suspend':'reinstate'}`, {
-        method:'POST',
-        body: JSON.stringify({ reason, password }),
-      });
-    }else{
-      // Demo mode: no backend to verify against, so we just require the field to be filled.
-      await new Promise(r=>setTimeout(r, 500));
-    }
-    a.status = newStatus;
-    toast(suspending ? `🚫 ${a.name} suspended` : `✅ ${a.name} reinstated`);
-    closeStatusModal();
-    renderStats(); renderAuthors();
-  }catch(err){
-    errBox.textContent = err.message || 'Incorrect password or request failed. Please try again.';
-    errBox.classList.add('show');
-  }finally{
-    btn.disabled = false;
-    btn.innerHTML = suspending ? '<i class="fas fa-ban"></i> Confirm Suspension' : '<i class="fas fa-rotate-left"></i> Confirm Reinstatement';
-  }
-}
-
-/* ─────────────────────────────────────────
    EVENT DELEGATION
 ───────────────────────────────────────── */
 document.addEventListener('click', e=>{
@@ -494,21 +329,14 @@ document.addEventListener('click', e=>{
   const id = el.dataset.id;
 
   if(action==='toggle-row'){ expandedId = expandedId===id ? null : id; renderAuthors(); }
-  else if(action==='message'){ const a=AUTHORS.find(x=>x.id===id); if(a) toast(`📨 Opening message to ${a.name}…`); }
-  else if(action==='open-warn-modal'){ openWarnModal(id); }
-  else if(action==='close-warn-modal'){ closeWarnModal(); }
-  else if(action==='submit-warn'){ submitWarn(); }
-  else if(action==='open-status-modal'){ openStatusModal(id); }
-  else if(action==='close-status-modal'){ closeStatusModal(); }
-  else if(action==='submit-status'){ submitStatusChange(); }
+  else if(action==='message'){ const email=el.dataset.email; if(email) window.location.href='mailto:'+email; }
   else if(action==='goto-page'){ currentPage = parseInt(el.dataset.page,10); renderAuthors(); window.scrollTo({top:0,behavior:'smooth'}); }
   else if(action==='prev-page'){ if(currentPage>1){ currentPage--; renderAuthors(); } }
   else if(action==='next-page'){ currentPage++; renderAuthors(); }
 });
 
 // Close modals on backdrop click
-document.getElementById('warnModalOv').addEventListener('click', e=>{ if(e.target.id==='warnModalOv') closeWarnModal(); });
-document.getElementById('statusModalOv').addEventListener('click', e=>{ if(e.target.id==='statusModalOv') closeStatusModal(); });
+
 
 document.getElementById('authorSearch').addEventListener('input', ()=>{ currentPage=1; renderAuthors(); });
 document.getElementById('genreFilter').addEventListener('change', ()=>{ currentPage=1; renderAuthors(); });

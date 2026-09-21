@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>Chat · Droboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
+  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
+  --bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--l3:#ffffff;--l4:#e2e2e4;
+  --bd:rgba(0,0,0,.12);--bd2:rgba(0,0,0,.06);--bd-acc:rgba(255,0,80,.25);
+  --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
+  --nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px);
+}
+[data-theme="dark"]{
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
+  --tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);height:100%}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s ease,color .25s ease}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{display:none}
+
+.phone{
+  width:100%;max-width:420px;min-height:100vh;
+  background:var(--l1);position:relative;
+  box-shadow:0 0 50px rgba(0,0,0,.10);
+  display:flex;flex-direction:column;overflow-x:hidden;
+}
+@media (min-width:421px){ .phone{ box-shadow:0 0 50px rgba(0,0,0,.14) } }
+
+/* ── Top bar ── */
+.top-bar{
+  position:sticky;top:0;z-index:200;
+  display:flex;align-items:center;gap:12px;
+  padding:11px 14px;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.back-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--l2);
+  display:flex;align-items:center;justify-content:center;color:var(--tx-body);
+  font-size:15px;flex-shrink:0;border:none;
+}
+[data-theme="dark"] .back-btn{background:rgba(255,255,255,.06)}
+.editor-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.editor-info{flex:1;min-width:0}
+.editor-name{font-size:14px;font-weight:800;color:var(--tx-high);display:flex;align-items:center;gap:6px}
+.editor-name i{color:var(--acc);font-size:10px}
+.editor-status{font-size:11px;color:var(--tx-muted);display:flex;align-items:center;gap:5px}
+.editor-status .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.theme-toggle{
+  width:36px;height:36px;border-radius:50%;background:var(--l2);
+  display:flex;align-items:center;justify-content:center;color:var(--tx-muted);font-size:15px;border:none;flex-shrink:0;
+}
+[data-theme="dark"] .theme-toggle{background:rgba(255,255,255,.06)}
+
+/* ── Messages ── */
+.messages-wrap{
+  flex:1;overflow-y:auto;padding:16px 14px 20px;display:flex;flex-direction:column;gap:10px;
+  -webkit-user-select:none;user-select:none;
+}
+.date-divider{
+  text-align:center;font-size:10px;font-weight:700;color:var(--tx-faint);
+  padding:8px 0 4px;letter-spacing:.04em;text-transform:uppercase;
+}
+.msg-row{
+  display:flex;gap:8px;max-width:78%;animation:msgIn .2s ease;
+  position:relative;
+}
+.msg-row.out{align-self:flex-end;flex-direction:row-reverse}
+.msg-av{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:2px}
+.msg-content{position:relative}
+.msg-bub{
+  background:var(--l1);border:1px solid var(--bd);border-radius:16px 16px 16px 4px;
+  padding:10px 14px;font-size:13px;line-height:1.5;color:var(--tx-body);
+  box-shadow:0 1px 3px rgba(0,0,0,.04);word-break:break-word;
+}
+.msg-row.out .msg-bub{
+  background:var(--acc);color:#fff;border-color:var(--acc);
+  border-radius:16px 16px 4px 16px;box-shadow:0 2px 8px var(--glow-sm);
+}
+.msg-bub img.msg-img{
+  display:block;border-radius:10px;max-width:220px;max-height:280px;
+  object-fit:cover;margin-bottom:4px;width:100%;
+}
+.msg-time{font-size:9.5px;color:var(--tx-faint);margin-top:4px;display:block}
+.msg-row.out .msg-time{color:rgba(255,255,255,.6);text-align:right}
+.msg-edited{
+  font-size:9.5px;color:var(--tx-faint);font-style:italic;margin-top:1px;display:block;
+}
+.msg-row.out .msg-edited{color:rgba(255,255,255,.5)}
+.typing-dots{display:flex;gap:4px;padding:4px 0}
+.typing-dots span{
+  width:7px;height:7px;border-radius:50%;background:var(--tx-faint);
+  animation:tbounce .9s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes tbounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Context menu ── */
+.ctx-overlay{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,.35);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;
+  animation:fadeIn .15s ease;
+}
+.ctx-overlay.open{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ctx-menu{
+  background:var(--l1);border:1px solid var(--bd);border-radius:16px;
+  box-shadow:0 16px 48px rgba(0,0,0,.2);overflow:hidden;
+  width:200px;animation:popIn .2s cubic-bezier(.17,.67,.35,1.15);
+}
+@keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.ctx-preview{
+  padding:14px 16px;border-bottom:1px solid var(--bd);
+  font-size:12px;color:var(--tx-muted);max-height:60px;overflow:hidden;
+  line-height:1.4;
+}
+.ctx-btn{
+  width:100%;padding:13px 16px;border:none;background:none;
+  font-size:13px;font-weight:600;color:var(--tx-body);
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  transition:.1s;
+}
+.ctx-btn:active{background:rgba(0,0,0,.04)}
+[data-theme="dark"] .ctx-btn:active{background:rgba(255,255,255,.06)}
+.ctx-btn i{width:18px;text-align:center;font-size:13px;color:var(--tx-muted)}
+.ctx-btn.delete{color:var(--tx-muted)}
+.ctx-btn.delete i{color:var(--tx-muted)}
+.ctx-btn.delete:active{background:rgba(0,0,0,.06)}
+[data-theme="dark"] .ctx-btn.delete:active{background:rgba(255,255,255,.06)}
+.ctx-btn+.ctx-btn{border-top:1px solid var(--bd2)}
+
+/* ── Edit mode ── */
+.msg-row.editing .msg-bub{
+  outline:2px solid var(--acc);outline-offset:2px;
+}
+.edit-banner{
+  background:var(--acc);color:#fff;font-size:10px;font-weight:700;
+  padding:4px 12px;border-radius:8px 8px 0 0;display:flex;align-items:center;
+  gap:6px;align-self:flex-start;
+}
+.msg-row.out .edit-banner{align-self:flex-end;border-radius:8px 8px 0 0}
+.edit-banner i{font-size:9px}
+
+/* ── Image preview in compose ── */
+.img-preview-bar{
+  display:none;align-items:center;gap:10px;padding:8px 14px;
+  border-top:1px solid var(--bd2);
+}
+.img-preview-bar.show{display:flex}
+.img-preview-bar img{
+  width:60px;height:60px;border-radius:10px;object-fit:cover;border:2px solid var(--bd);
+}
+.img-preview-info{flex:1;min-width:0;font-size:11px;color:var(--tx-muted)}
+.img-preview-info b{display:block;color:var(--tx-body);font-size:12px;margin-bottom:2px}
+.img-remove{
+  width:28px;height:28px;border-radius:50%;background:var(--l2);border:none;
+  display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx-muted);
+}
+[data-theme="dark"] .img-remove{background:rgba(255,255,255,.08)}
+
+/* ── Compose ── */
+.compose-bar{
+  display:flex;align-items:flex-end;gap:10px;
+  padding:12px 14px;
+  background:var(--l1);border-top:1px solid var(--bd);flex-shrink:0;
+}
+[data-theme="dark"] .compose-bar{background:var(--l1)}
+.attach-btn{
+  width:40px;height:40px;border-radius:50%;background:var(--l2);border:none;
+  display:flex;align-items:center;justify-content:center;color:var(--tx-muted);font-size:16px;flex-shrink:0;
+}
+[data-theme="dark"] .attach-btn{background:rgba(255,255,255,.06)}
+.attach-btn:active{transform:scale(.9)}
+.compose-input{
+  flex:1;min-height:40px;max-height:120px;
+  background:var(--l2);border:1px solid var(--bd);border-radius:22px;
+  padding:10px 16px;color:var(--tx-body);font-size:13px;font-family:inherit;
+  outline:none;resize:none;line-height:1.4;
+}
+.compose-input::placeholder{color:var(--tx-faint)}
+.compose-input:focus{border-color:var(--acc)}
+.send-btn{
+  width:40px;height:40px;border-radius:50%;background:var(--acc);color:#fff;
+  border:none;display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;transition:.15s;
+}
+.send-btn:active{transform:scale(.9)}
+.send-btn:disabled{opacity:.35;cursor:default}
+
+.empty-chat{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--tx-muted);padding:40px;text-align:center;
+}
+.empty-chat i{font-size:36px;color:var(--tx-faint);opacity:.5}
+.empty-chat p{font-size:13px;line-height:1.5}
+
+.toast{
+  position:fixed;bottom:80px;left:50%;
+  transform:translateX(-50%) translateY(12px);
+  background:rgba(22,22,27,.92);color:#fff;
+  padding:9px 18px;border-radius:24px;font-size:12px;font-weight:600;
+  z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;
+  backdrop-filter:blur(12px);box-shadow:0 6px 18px rgba(0,0,0,.18);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Edit input inside bubble ── */
+.edit-input{
+  width:100%;background:transparent;border:none;outline:none;
+  color:inherit;font-size:13px;font-family:inherit;line-height:1.5;
+  resize:none;min-height:20px;
+}
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <div class="top-bar">
+    <button class="back-btn" id="backBtn"><i class="fas fa-chevron-left"></i></button>
+    <img class="editor-avatar" id="edAv" src="https://i.pravatar.cc/100?img=47" alt=""/>
+    <div class="editor-info">
+      <div class="editor-name" id="edName">Your Editor <i class="fas fa-circle-check"></i></div>
+      <div class="editor-status"><span class="dot"></span> Online</div>
+    </div>
+    <button class="theme-toggle" id="themeBtn"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </div>
+
+  <div class="messages-wrap" id="messagesWrap"></div>
+
+  <div class="img-preview-bar" id="imgPreviewBar">
+    <img id="imgPreviewThumb" src="" alt=""/>
+    <div class="img-preview-info"><b>Image</b>Ready to send</div>
+    <button class="img-remove" id="imgRemoveBtn"><i class="fas fa-xmark"></i></button>
+  </div>
+
+  <div class="compose-bar">
+    <button class="attach-btn" id="attachBtn" title="Send image"><i class="fas fa-image"></i></button>
+    <textarea class="compose-input" id="composeInput" rows="1" placeholder="Type a message..."></textarea>
+    <button class="send-btn" id="sendBtn" disabled><i class="fas fa-paper-plane"></i></button>
+  </div>
+
+</div>
+
+<div class="ctx-overlay" id="ctxOverlay">
+  <div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-preview" id="ctxPreview"></div>
+    <button class="ctx-btn" id="ctxEdit"><i class="fas fa-pen"></i> Edit message</button>
+    <button class="ctx-btn delete" id="ctxDelete"><i class="fas fa-trash"></i> Delete message</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none"/>
+
+<script>
+(function(){
+'use strict';
+
+var THEME_KEY = 'droboardTheme';
+function getTheme(){ try{return localStorage.getItem(THEME_KEY)||'light';}catch(e){return 'light';} }
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('themeIcon').className = t==='dark'?'fas fa-sun':'fas fa-moon';
+  try{localStorage.setItem(THEME_KEY,t);}catch(e){}
+}
+setTheme(getTheme());
+document.getElementById('themeBtn').addEventListener('click',function(){
+  setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');
+});
+
+var EDITOR = { name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47', role:'Senior Editor' };
+var msgId = 100;
+var MESSAGES = [
+  { id:++msgId, from:'editor', text:"Hi! I'm your assigned editor. Feel free to reach out anytime about your writing, contracts, or anything else.", time:'Mon 9:00 AM' },
+  { id:++msgId, from:'editor', text:"I reviewed your latest chapter — the pacing in the second half is really strong. Great work.", time:'Mon 9:14 AM' },
+  { id:++msgId, from:'author', text:"Thank you so much! I rewrote that part three times, so I'm glad it landed.", time:'Mon 9:20 AM' },
+  { id:++msgId, from:'editor', text:"It shows. Quick note — the cliffhanger at the end could be sharper. Want to brainstorm?", time:'Mon 9:22 AM' },
+  { id:++msgId, from:'author', text:"Yes please! I was thinking maybe she finds the letter earlier?", time:'Mon 9:30 AM' },
+  { id:++msgId, from:'editor', text:"Love that. Or she overhears a conversation — adds more tension. Let me know what you think.", time:'Mon 9:35 AM' },
+  { id:++msgId, from:'author', image:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', text:'Here\'s the moodboard for the new chapter', time:'Mon 9:40 AM' },
+  { id:++msgId, from:'editor', text:"This is gorgeous! The aesthetic perfectly matches the tone we discussed. Let's use this as the chapter cover.", time:'Mon 9:45 AM' },
+];
+
+var myAvatar = 'https://i.pravatar.cc/100?img=32';
+var pendingImage = null;
+var longPressTimer = null;
+var ctxMsgId = null;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTime(d){
+  var h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+}
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
+
+function renderHeader(){
+  document.getElementById('edAv').src = EDITOR.avatar;
+  document.getElementById('edName').textContent = EDITOR.name;
+}
+
+function renderMessages(){
+  var wrap = document.getElementById('messagesWrap');
+  if(!MESSAGES.length){
+    wrap.innerHTML = '<div class="empty-chat"><i class="fas fa-comments"></i><p>No messages yet. Say hello to your editor!</p></div>';
+    return;
+  }
+  var html = '<div class="date-divider">Today</div>';
+  MESSAGES.forEach(function(m){
+    var isOut = m.from === 'author';
+    var av = isOut ? myAvatar : EDITOR.avatar;
+    var bub = '';
+    if(m.image) bub += '<img class="msg-img" src="'+m.image+'" alt=""/>';
+    if(m.text) bub += '<span>'+esc(m.text)+'</span>';
+    html += '<div class="msg-row '+(isOut?'out':'in')+'" data-mid="'+m.id+'">'
+      + '<img class="msg-av" src="'+av+'" alt=""/>'
+      + '<div class="msg-content"><div class="msg-bub">'+bub+'</div>'
+      + '<span class="msg-time">'+m.time+'</span>'
+      + (m.edited ? '<span class="msg-edited">edited</span>' : '')
+      + '</div></div>';
+  });
+  wrap.innerHTML = html;
+  bindLongPress();
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+/* ── Long press ── */
+function bindLongPress(){
+  var rows = document.querySelectorAll('.msg-row');
+  rows.forEach(function(row){
+    function start(e){
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(function(){ openCtx(row); }, 600);
+    }
+    function cancel(){ clearTimeout(longPressTimer); }
+    row.addEventListener('touchstart', start, {passive:true});
+    row.addEventListener('touchend', cancel);
+    row.addEventListener('touchmove', cancel);
+    row.addEventListener('mousedown', start);
+    row.addEventListener('mouseup', cancel);
+    row.addEventListener('mouseleave', cancel);
+  });
+}
+
+function openCtx(row){
+  var mid = parseInt(row.getAttribute('data-mid'), 10);
+  var msg = null;
+  for(var i=0;i<MESSAGES.length;i++){ if(MESSAGES[i].id===mid){ msg=MESSAGES[i]; break; } }
+  if(!msg) return;
+  ctxMsgId = mid;
+
+  var preview = msg.image ? '[Image] ' : '';
+  preview += msg.text || '';
+  if(preview.length > 80) preview = preview.substring(0,80) + '…';
+  document.getElementById('ctxPreview').textContent = preview;
+  document.getElementById('ctxEdit').style.display = msg.from === 'author' ? 'flex' : 'none';
+  document.getElementById('ctxDelete').style.display = 'flex';
+  document.getElementById('ctxOverlay').classList.add('open');
+  if(navigator.vibrate) navigator.vibrate(30);
+}
+
+function closeCtx(){
+  document.getElementById('ctxOverlay').classList.remove('open');
+  ctxMsgId = null;
+}
+
+document.getElementById('ctxOverlay').addEventListener('click', function(e){
+  if(e.target === this) closeCtx();
+});
+
+document.getElementById('ctxEdit').addEventListener('click', function(e){
+  e.stopPropagation();
+  var mid = ctxMsgId;
+  closeCtx();
+  if(mid !== null) startEdit(mid);
+});
+
+document.getElementById('ctxDelete').addEventListener('click', function(e){
+  e.stopPropagation();
+  var mid = ctxMsgId;
+  closeCtx();
+  if(mid !== null) doDelete(mid);
+});
+
+function startEdit(mid){
+  var row = document.querySelector('.msg-row[data-mid="'+mid+'"]');
+  if(!row) return;
+  var msg = null;
+  for(var i=0;i<MESSAGES.length;i++){ if(MESSAGES[i].id===mid){ msg=MESSAGES[i]; break; } }
+  if(!msg || msg.from !== 'author') return;
+
+  row.classList.add('editing');
+  var bub = row.querySelector('.msg-bub');
+  var originalText = msg.text || '';
+
+  bub.innerHTML = '<div class="edit-banner"><i class="fas fa-pen"></i> Editing message</div>'
+    + '<textarea class="edit-input" rows="1">'+esc(originalText)+'</textarea>';
+
+  var ta = bub.querySelector('.edit-input');
+  ta.focus();
+  ta.style.height = ta.scrollHeight + 'px';
+  var saved = false;
+
+  function save(){
+    if(saved) return;
+    saved = true;
+    var val = ta.value.trim();
+    if(!val){ doDelete(mid); return; }
+    for(var i=0;i<MESSAGES.length;i++){
+      if(MESSAGES[i].id===mid){ MESSAGES[i].text = val; MESSAGES[i].edited = true; break; }
+    }
+    renderMessages();
+    toast('Message edited');
+  }
+
+  ta.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); save(); }
+    if(e.key==='Escape'){ saved = true; renderMessages(); }
+  });
+  ta.addEventListener('blur', function(){ setTimeout(save, 100); });
+}
+
+function doDelete(mid){
+  for(var i=0;i<MESSAGES.length;i++){
+    if(MESSAGES[i].id===mid){ MESSAGES.splice(i,1); break; }
+  }
+  renderMessages();
+  toast('Message deleted');
+}
+
+/* ── Image ── */
+document.getElementById('attachBtn').addEventListener('click', function(){
+  document.getElementById('fileInput').click();
+});
+document.getElementById('fileInput').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    pendingImage = ev.target.result;
+    document.getElementById('imgPreviewThumb').src = pendingImage;
+    document.getElementById('imgPreviewBar').classList.add('show');
+    sendBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+document.getElementById('imgRemoveBtn').addEventListener('click', function(){
+  pendingImage = null;
+  document.getElementById('imgPreviewBar').classList.remove('show');
+  if(!input.value.trim()) sendBtn.disabled = true;
+});
+
+/* ── Compose ── */
+var input = document.getElementById('composeInput');
+var sendBtn = document.getElementById('sendBtn');
+
+input.addEventListener('input', function(){
+  sendBtn.disabled = !input.value.trim() && !pendingImage;
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight,120)+'px';
+});
+
+function sendMessage(){
+  var text = input.value.trim();
+  if(!text && !pendingImage) return;
+  var msg = { id:++msgId, from:'author', time: fmtTime(new Date()) };
+  if(pendingImage){ msg.image = pendingImage; if(text) msg.text = text; }
+  else { msg.text = text; }
+  MESSAGES.push(msg);
+  input.value = ''; input.style.height = 'auto'; sendBtn.disabled = true;
+  pendingImage = null;
+  document.getElementById('imgPreviewBar').classList.remove('show');
+  renderMessages();
+
+  setTimeout(function(){
+    var tRow = document.createElement('div');
+    tRow.className = 'msg-row in'; tRow.id = 'typingRow';
+    tRow.innerHTML = '<img class="msg-av" src="'+EDITOR.avatar+'" alt=""/>'
+      + '<div class="msg-content"><div class="msg-bub"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>';
+    document.getElementById('messagesWrap').appendChild(tRow);
+    document.getElementById('messagesWrap').scrollTop = document.getElementById('messagesWrap').scrollHeight;
+    setTimeout(function(){
+      var el = document.getElementById('typingRow');
+      if(el) el.remove();
+      var replies = [
+        "Thanks for the update! I'll take a look.",
+        "Great work — keep it up!",
+        "Let me check on that and get back to you.",
+        "Noted. I'll review this today.",
+        "That sounds good. Let's discuss more tomorrow.",
+        "Love this! The direction is really coming together.",
+        "I'll send over my notes by end of day.",
+      ];
+      MESSAGES.push({ id:++msgId, from:'editor', text: replies[Math.floor(Math.random()*replies.length)], time: fmtTime(new Date()) });
+      renderMessages();
+    }, 1200 + Math.random()*800);
+  }, 600);
+}
+
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+});
+
+document.getElementById('backBtn').addEventListener('click', function(){
+  if(window.history.length > 1) window.history.back();
+  else window.location.href = 'profile.html';
+});
+
+renderHeader();
+renderMessages();
+})();
+</script>
+</body>
+</html>

@@ -62,6 +62,19 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 .empty-msg{text-align:center;padding:28px;color:var(--text-faint);font-size:12.5px}
 
+/* three-dot menu */
+.row-dots{position:relative;flex-shrink:0}
+.row-dots-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:.15s}
+.row-dots-btn:hover{border-color:var(--accent);color:var(--accent)}
+.row-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:50;min-width:150px;padding:5px;display:none}
+.row-menu.open{display:block}
+.row-menu-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;transition:.12s;white-space:nowrap}
+.row-menu-item:hover{background:var(--hover);color:var(--accent)}
+.row-menu-item i{width:14px;text-align:center;font-size:11px;color:var(--text-faint)}
+.row-menu-item:hover i{color:var(--accent)}
+.row-editor{font-size:10px;color:var(--text-faint);display:flex;align-items:center;gap:4px;margin-top:3px}
+.row-editor img{width:14px;height:14px;border-radius:50%;object-fit:cover}
+
 /* pagination */
 .pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
 .pagination-info{font-size:11.5px;color:var(--text-faint);font-weight:600}
@@ -72,10 +85,10 @@ body{font-family:'Inter',system-ui,sans-serif}
 .page-btn:disabled{opacity:.35;cursor:not-allowed}
 
 /* ── Slide-up detail sheet — centered, NOT edge-to-edge (matches Featured Stories pattern) ── */
-.sheet-backdrop{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:1000;display:none}
-.sheet-backdrop.open{display:block}
-.detail-sheet{position:fixed;left:0;right:0;bottom:0;z-index:1010;background:var(--card);border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -20px 60px rgba(0,0,0,.35);margin:0 auto;max-width:640px}
-.detail-sheet.open{transform:translateY(0)}
+.sheet-backdrop{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:1000;display:none;opacity:0;transition:opacity .25s}
+.sheet-backdrop.open{display:block;opacity:1}
+.detail-sheet{position:fixed;left:0;right:0;bottom:-100%;z-index:1010;background:var(--card);border-radius:20px;max-height:82vh;overflow-y:auto;transform:translateY(0);transition:bottom .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -20px 60px rgba(0,0,0,.35);margin:0 auto 24px;max-width:520px}
+.detail-sheet.open{bottom:0}
 .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:10px auto 4px}
 .sheet-banner{position:relative;height:190px;overflow:hidden}
 .sheet-banner img{width:100%;height:100%;object-fit:cover;display:block}
@@ -101,35 +114,93 @@ body{font-family:'Inter',system-ui,sans-serif}
 .reject-panel textarea:focus{border-color:var(--red)}
 
 .modal-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
-.modal-action-row button{flex:1;min-width:130px;padding:11px 14px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;transition:.14s}
+.modal-action-row button{flex:1;min-width:120px;padding:11px 14px;border-radius:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;transition:.14s;white-space:nowrap}
 .modal-action-row button:hover{border-color:var(--accent);color:var(--accent)}
 .modal-action-row button.primary{background:var(--green);border-color:transparent;color:#fff}
 .modal-action-row button.primary:hover{opacity:.9;color:#fff}
-.modal-action-row button.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.modal-action-row button.primary.outline{background:transparent;border:2px solid var(--green);color:var(--green)}
+.modal-action-row button.primary.outline:hover{background:var(--green);color:#fff}
+.modal-action-row button.danger{background:var(--red-bg);border:1px solid transparent;color:var(--red)}
 .modal-action-row button.danger:hover{background:var(--red);color:#fff}
 .modal-action-row button.ghost{background:transparent}
 
-/* ── Accept confirmation modal (password + contract type) — same pattern as Authors suspend modal ── */
+/* ── Accept confirmation modal — wizard ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1100;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{opacity:1;pointer-events:auto}
-.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:420px;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s}
+.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:480px;max-height:85vh;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s;display:flex;flex-direction:column}
 .modal-overlay.open .modal-box{transform:translateY(0) scale(1);opacity:1}
-.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px}
+.modal-box-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 4px;gap:12px;flex-shrink:0}
 .modal-box-head h3{font-size:15px;font-weight:800}
 .modal-box-head p{font-size:11.5px;color:var(--text-faint);margin-top:4px}
 .modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
-.modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.modal-box-body{padding:14px 20px 10px;flex:1;overflow-y:auto}
 .field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
 .field-group select,.field-group input{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text)}
 .field-group small{display:block;margin-top:5px;font-size:10.5px;color:var(--text-faint)}
-.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.field-row{display:flex;gap:10px}
+.field-row .field-group{flex:1}
+.modal-error{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none;margin-top:10px}
 .modal-error.show{display:block}
-.modal-box-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}
+.modal-box-actions{display:flex;gap:8px;align-items:center;padding:10px 20px 16px;border-top:1px solid var(--border);flex-shrink:0}
 .modal-box-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
 .modal-box-actions .cancel-btn{background:var(--input-bg);color:var(--text-muted)}
 .modal-box-actions .confirm-btn{background:var(--green);border-color:transparent;color:#fff}
 .modal-box-actions .confirm-btn:disabled{opacity:.6;cursor:not-allowed}
 .password-hint{font-size:10.5px;color:var(--text-faint);display:flex;align-items:center;gap:5px}
+
+/* wizard steps */
+.cwiz-steps{display:flex;gap:4px;padding:6px 20px;flex-shrink:0}
+.cwiz-step{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 0;border-radius:8px;font-size:11px;font-weight:700;color:var(--text-faint);background:var(--hover);transition:.15s}
+.cwiz-step.on{background:var(--accent);color:#fff}
+.cwiz-step.done{background:var(--green-bg);color:var(--green)}
+.cwiz-num{width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+.cwiz-step.on .cwiz-num{background:rgba(255,255,255,.25)}
+.cwiz-step.done .cwiz-num{background:rgba(0,0,0,.1)}
+
+/* wizard panels */
+.cwiz-panel{display:none}
+.cwiz-panel.on{display:block}
+
+/* summary box */
+.cwiz-summary{background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7}
+.cwiz-summary .cs-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--border)}
+.cwiz-summary .cs-row:last-child{border-bottom:none}
+.cwiz-summary .cs-label{color:var(--text-muted);font-weight:600}
+.cwiz-summary .cs-val{font-weight:700;color:var(--text);text-align:right}
+
+/* toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:10px 12px;gap:10px}
+.toggle-row .toggle-label{font-size:12px;font-weight:700;color:var(--text)}
+.toggle-row .toggle-sub{font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.toggle-switch{position:relative;width:38px;height:21px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-switch .slider{position:absolute;inset:0;background:var(--input-border);border-radius:21px;cursor:pointer;transition:.2s}
+.toggle-switch .slider::before{content:'';position:absolute;width:15px;height:15px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.slider{background:var(--green)}
+.toggle-switch input:checked+.slider::before{transform:translateX(17px)}
+
+/* chapter pricing table */
+.chpt-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.chpt-count{font-size:10.5px;font-weight:700;color:var(--text-faint);background:var(--hover);border:1px solid var(--border);padding:3px 10px;border-radius:20px}
+.chpt-apply-all{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;background:var(--hover);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+.chpt-apply-all input{border:1px solid var(--input-border);background:var(--input-bg);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;color:var(--text);text-align:center;width:50px}
+.chpt-apply-btn{margin-left:auto;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--accent);background:var(--accent);color:#fff}
+.chpt-apply-btn:hover{opacity:.85}
+.chpt-pricing-wrap{background:var(--hover);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.chpt-pricing-header{display:grid;grid-template-columns:60px 1fr 80px 70px;gap:6px;padding:8px 12px;font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--table-head)}
+.chpt-pricing-scroll{max-height:300px;overflow-y:auto}
+.chpt-pricing-row{display:grid;grid-template-columns:60px 1fr 80px 70px;gap:6px;padding:7px 12px;align-items:center;border-bottom:1px solid var(--border);font-size:12px}
+.chpt-pricing-row:last-child{border-bottom:none}
+.chpt-pricing-row .ch-num{font-weight:700;color:var(--text-muted);font-size:11px}
+.chpt-pricing-row .ch-label{font-weight:600;color:var(--text);font-size:11.5px}
+.chpt-pricing-row .ch-free{color:var(--green);font-weight:700;font-size:10.5px}
+.chpt-pricing-row input[type="number"]{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:7px;padding:6px 8px;font-size:12px;font-family:inherit;color:var(--text);text-align:center}
+.chpt-pricing-row input[type="number"]:focus{border-color:var(--accent);outline:none}
+.chpt-pricing-row .ch-ads-badge{font-size:11px;font-weight:700;color:var(--accent);text-align:center}
+.chpt-pricing-row .ch-ads-free{color:var(--text-faint);font-size:10px;text-align:center}
+.chpt-ad-note{font-size:10px;color:var(--text-faint);padding:6px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:5px}
+.section-divider{font-size:10.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:4px 0 8px;display:flex;align-items:center;gap:6px}
+.section-divider i{font-size:10px}
 
 @media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){
@@ -152,13 +223,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 
     <div class="add-search">
       <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by title or author…"/></div>
-      <select id="genreSel"><option value="">All Genres</option></select>
-      <select id="sortSel">
-        <option value="recent">Most Recent</option>
-        <option value="priority">Priority</option>
-        <option value="words">Most Words</option>
-        <option value="alpha">A → Z</option>
-      </select>
     </div>
 
     <div class="filter-row" id="filterRow"></div>
@@ -184,37 +248,95 @@ body{font-family:'Inter',system-ui,sans-serif}
   <div class="sheet-body" id="sheetBody"></div>
 </div>
 
-<!-- Accept for Contract confirmation modal -->
+<!-- Accept for Contract — 3-step wizard modal -->
 <div class="modal-overlay" id="contractModalOv">
-  <div class="modal-box">
+  <div class="modal-box cwiz">
     <div class="modal-box-head">
       <div>
-        <h3>Accept for contract</h3>
-        <p id="contractModalSub">Confirm the contract type and your password to accept this submission.</p>
+        <h3 id="cwizTitle">Accept for Contract</h3>
+        <p id="cwizSub">Set contract terms and pricing for this submission.</p>
       </div>
       <button class="modal-close-x" data-action="close-contract-modal"><i class="fas fa-xmark"></i></button>
     </div>
+
+    <!-- step indicator -->
+    <div class="cwiz-steps" id="cwizSteps">
+      <div class="cwiz-step on" data-step="1"><span class="cwiz-num">1</span> Contract</div>
+      <div class="cwiz-step" data-step="2"><span class="cwiz-num">2</span> Pricing</div>
+      <div class="cwiz-step" data-step="3"><span class="cwiz-num">3</span> Confirm</div>
+    </div>
+
     <div class="modal-box-body">
-      <div class="field-group">
-        <label>Contract type</label>
-        <select id="contractType"><option value="">Loading contracts…</option></select>
-        <small id="contractHint"></small>
+      <!-- STEP 1: Contract + Terms -->
+      <div class="cwiz-panel on" id="cwizP1">
+        <div class="field-group">
+          <label>Contract type</label>
+          <select id="contractType"><option value="">Loading contracts…</option></select>
+          <small id="contractHint"></small>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Free chapters (lock after)</label>
+            <input type="number" id="freeChapters" value="3" min="0" max="50"/>
+            <small>First N chapters are free. Paywall starts at chapter N+1.</small>
+          </div>
+          <div class="field-group">
+            <label>Ads per chapter</label>
+            <input type="number" id="adsPerChapter" value="2" min="0" max="10"/>
+            <small>How many ads reader watches to unlock (applies to all paid chapters).</small>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Allow ad-based chapter unlock</div>
+            <div class="toggle-sub">Turn off to make all chapters coin-only (no ad option)</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="allowAdUnlock" checked/><span class="slider"></span></label>
+        </div>
       </div>
-      <div class="field-group">
-        <label>Chapter coin price</label>
-        <input type="number" id="chapterCoinPrice" value="15" min="0" placeholder="Coins per chapter"/>
-        <small>Set the default coin price for chapters in this book (0 = free). Editors can override per chapter later.</small>
+
+      <!-- STEP 2: Per-chapter pricing -->
+      <div class="cwiz-panel" id="cwizP2">
+        <div class="chpt-top-row">
+          <div class="section-divider" style="margin:0"><i class="fas fa-list"></i> Per-Chapter Pricing</div>
+          <span class="chpt-count" id="chptCount"></span>
+        </div>
+        <div class="chpt-apply-all" id="chptApplyAll">
+          <span>Set all paid chapters to</span>
+          <input type="number" id="chptBulkCoins" value="15" min="0" max="999" style="width:60px"/>
+          <span>coins</span>
+          <button class="chpt-apply-btn" id="chptApplyBtn">Apply</button>
+        </div>
+        <div class="chpt-pricing-wrap">
+          <div class="chpt-pricing-header">
+            <span>Chapter</span>
+            <span>Status</span>
+            <span style="text-align:center">Coins</span>
+            <span style="text-align:center">Ads</span>
+          </div>
+          <div class="chpt-pricing-scroll" id="chptPricingList"></div>
+          <div class="chpt-ad-note" id="chptAdNote"><i class="fas fa-circle-info"></i> Ad count set in Step 1. Override per chapter if needed.</div>
+        </div>
       </div>
-      <div class="field-group">
-        <label>Confirm your password</label>
-        <input type="password" id="contractPassword" placeholder="Enter your editor password"/>
-        <div class="password-hint"><i class="fas fa-lock"></i> Required to confirm this action.</div>
+
+      <!-- STEP 3: Password + Confirm -->
+      <div class="cwiz-panel" id="cwizP3">
+        <div class="cwiz-summary" id="cwizSummary"></div>
+        <div class="field-group" style="margin-top:14px">
+          <label>Confirm your password</label>
+          <input type="password" id="contractPassword" placeholder="Enter your editor password"/>
+          <div class="password-hint"><i class="fas fa-lock"></i> Required to confirm this action.</div>
+        </div>
+        <div class="modal-error" id="contractModalError"></div>
       </div>
-      <div class="modal-error" id="contractModalError"></div>
-      <div class="modal-box-actions">
-        <button class="cancel-btn" data-action="close-contract-modal">Cancel</button>
-        <button class="confirm-btn" id="contractConfirmBtn" data-action="submit-contract"><i class="fas fa-file-signature"></i> Confirm Acceptance</button>
-      </div>
+    </div>
+
+    <div class="modal-box-actions">
+      <button class="cancel-btn" id="cwizBack" data-action="cwiz-back" style="display:none"><i class="fas fa-arrow-left"></i> Back</button>
+      <div style="flex:1"></div>
+      <button class="cancel-btn" data-action="close-contract-modal">Cancel</button>
+      <button class="confirm-btn" id="cwizNext" data-action="cwiz-next">Next <i class="fas fa-arrow-right"></i></button>
+      <button class="confirm-btn" id="contractConfirmBtn" data-action="submit-contract" style="display:none"><i class="fas fa-file-signature"></i> Confirm Acceptance</button>
     </div>
   </div>
 </div>
@@ -277,16 +399,18 @@ const SYNOPSIS = {
    word counts, so we correct/enrich each submission here to reflect that
    whole-book minimum, and attach a chapter count (4 or 5). */
 const OVERRIDE = {
-  'REV-001': { words: 5450, chapters: 5 },
-  'REV-002': { words: 5600, chapters: 5 },
-  'REV-003': { words: 5100, chapters: 4 },
-  'REV-004': { words: 5300, chapters: 5 },
-  'REV-005': { words: 5150, chapters: 4 },
-  'REV-006': { words: 5400, chapters: 5 },
-  'REV-007': { words: 5050, chapters: 4 },
-  'REV-008': { words: 5250, chapters: 5 },
+  'REV-001': { words: 5450, chapters: 10 },
+  'REV-002': { words: 5600, chapters: 8 },
+  'REV-003': { words: 5100, chapters: 10 },
+  'REV-004': { words: 5300, chapters: 7 },
+  'REV-005': { words: 5150, chapters: 10 },
+  'REV-006': { words: 5400, chapters: 9 },
+  'REV-007': { words: 5050, chapters: 10 },
+  'REV-008': { words: 5250, chapters: 6 },
 };
 const MIN_WORDS = 5000;
+
+const CURRENT_EDITOR = { name: 'Chioma Reddy', avatar: 'https://i.pravatar.cc/100?img=5' };
 
 function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
 
@@ -327,28 +451,55 @@ async function init(){
       cover: coverFor(title, i),
       avatar: AVATARS[it.author] || null,
       synopsis: SYNOPSIS[title] || 'Synopsis not yet provided by the author.',
+      editor: CURRENT_EDITOR,
     };
   });
 
   buildStats();
   buildFilterPills();
-  buildGenreSelect();
   applyFilters();
 
   document.getElementById('searchInput').addEventListener('input', () => { currentPg = 1; applyFilters(); });
-  document.getElementById('genreSel').addEventListener('change', () => { currentPg = 1; applyFilters(); });
-  document.getElementById('sortSel').addEventListener('change', applyFilters);
   document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
   document.getElementById('sheetClose').addEventListener('click', closeSheet);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeContractModal(); closeSheet(); } });
 
   document.getElementById('contractModalOv').addEventListener('click', e => { if (e.target.id === 'contractModalOv') closeContractModal(); });
+  document.addEventListener('mousedown', e => {
+    if (!e.target.closest('.row-dots')) {
+      document.querySelectorAll('.row-menu.open').forEach(m => m.classList.remove('open'));
+    }
+  });
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-action]'); if (!el) return;
-    if (el.dataset.action === 'close-contract-modal') closeContractModal();
-    if (el.dataset.action === 'submit-contract') submitAccept();
+    const action = el.dataset.action;
+    if (action === 'close-contract-modal') closeContractModal();
+    if (action === 'cwiz-next'){
+      if(wizardStep === 1){
+        const cid = document.getElementById('contractType').value;
+        if(!cid){ document.getElementById('contractModalError').textContent = 'Please select a contract type.'; document.getElementById('contractModalError').classList.add('show'); return; }
+        document.getElementById('contractModalError').classList.remove('show');
+        openWizard(2);
+      } else if(wizardStep === 2){
+        syncPricingFromDOM();
+        openWizard(3);
+      }
+    }
+    if (action === 'cwiz-back'){
+      if(wizardStep > 1){
+        if(wizardStep === 3) syncPricingFromDOM();
+        openWizard(wizardStep - 1);
+      }
+    }
+    if (action === 'submit-contract') submitAccept();
   });
   document.getElementById('contractType').addEventListener('change', updateContractHint);
+  document.getElementById('chptApplyBtn').addEventListener('click', function(){
+    const val = parseInt(document.getElementById('chptBulkCoins').value) || 0;
+    const freeCount = parseInt(document.getElementById('freeChapters').value) || 0;
+    chapterPricingData.forEach(ch => { if(ch.num > freeCount) ch.price = val; });
+    renderChapterPricing();
+  });
 }
 
 function buildStats(){
@@ -369,12 +520,6 @@ function buildStats(){
     </div>`).join('');
 }
 
-function buildGenreSelect(){
-  const genres = [...new Set(allSubs.map(s => s.genre))].sort();
-  const el = document.getElementById('genreSel');
-  genres.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; el.appendChild(o); });
-}
-
 function buildFilterPills(){
   const statuses = ['all', ...new Set(allSubs.map(s => s.status))];
   const counts = { all: allSubs.length };
@@ -393,20 +538,12 @@ function buildFilterPills(){
 
 function applyFilters(){
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const genre = document.getElementById('genreSel').value;
-  const sort = document.getElementById('sortSel').value;
-  const prioRank = { high: 0, medium: 1, low: 2 };
 
   filtered = allSubs.filter(s => {
     const matchSt = activeStat === 'all' || s.status === activeStat;
     const matchQ  = !q || s.title.toLowerCase().includes(q) || s.author.toLowerCase().includes(q);
-    const matchG  = !genre || s.genre === genre;
-    return matchSt && matchQ && matchG;
+    return matchSt && matchQ;
   });
-
-  if (sort === 'priority') filtered.sort((a,b) => prioRank[a.priority] - prioRank[b.priority]);
-  if (sort === 'words')    filtered.sort((a,b) => b.words - a.words);
-  if (sort === 'alpha')    filtered.sort((a,b) => a.title.localeCompare(b.title));
 
   document.getElementById('subCount').textContent = `${filtered.length} of ${allSubs.length}`;
   const maxPg = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
@@ -434,15 +571,42 @@ function renderPage(){
           <span class="hide-sm">${s.genre}</span>
           <span>📖 ${s.chapters} ch · ${s.words.toLocaleString()} words</span>
         </div>
+        <div class="row-editor">${s.editor.avatar ? '<img src="'+s.editor.avatar+'" alt=""/>' : ''} ${s.editor.name}</div>
       </div>
       <div class="row-tags">
         <span class="status-pill ${s.status}">${s.status}</span>
         <span class="prio-pill ${s.priority}">${s.priority}</span>
       </div>
-      <i class="fas fa-chevron-right row-chevron"></i>
+      <div class="row-dots">
+        <button class="row-dots-btn" data-menu="${s.id}"><i class="fas fa-ellipsis-vertical"></i></button>
+        <div class="row-menu" id="menu-${s.id}">
+          <div class="row-menu-item" data-view-profile="${s.author}"><i class="fas fa-user"></i> View Profile</div>
+        </div>
+      </div>
     </div>`).join('');
 
-  document.querySelectorAll('.row-item').forEach(el => el.addEventListener('click', () => openSheet(el.dataset.id)));
+  document.querySelectorAll('.row-item').forEach(el => el.addEventListener('click', e => {
+    if (e.target.closest('.row-dots')) return;
+    openSheet(el.dataset.id);
+  }));
+  document.querySelectorAll('.row-dots-btn').forEach(btn => {
+    btn.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.menu;
+      const menu = document.getElementById('menu-' + id);
+      const wasOpen = menu.classList.contains('open');
+      document.querySelectorAll('.row-menu.open').forEach(m => m.classList.remove('open'));
+      if (!wasOpen) menu.classList.add('open');
+    });
+  });
+  document.querySelectorAll('[data-view-profile]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const author = el.dataset.viewProfile;
+      window.location.href = '../Pages/profile.html?author=' + encodeURIComponent(author);
+    });
+  });
   renderPagination();
 }
 
@@ -496,11 +660,17 @@ function openSheet(id){
     <textarea id="rejectFeedback" placeholder="Explain why this submission isn't being accepted…"></textarea>
   </div>`;
 
+  html += `<div class="reject-panel" id="acceptPanel">
+    <div class="sheet-section-lbl">Confirm Acceptance</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">This will approve the book and make it visible on the platform. You can still add a contract later from the Contracts page.</p>
+  </div>`;
+
   if (s.status === 'pending') {
     html += `<div class="modal-action-row">
       <button class="ghost" id="mActRead"><i class="fas fa-book-open"></i> Read Full Manuscript</button>
       <button class="danger" id="mActReject"><i class="fas fa-xmark"></i> Reject</button>
-      <button class="primary" id="mActAccept"><i class="fas fa-file-signature"></i> Accept for Contract</button>
+      <button class="primary" id="mActAccept"><i class="fas fa-check"></i> Accept</button>
+      <button class="primary outline" id="mActContract"><i class="fas fa-file-signature"></i> Accept for Contract</button>
     </div>`;
   } else {
     html += `<div class="modal-action-row">
@@ -511,9 +681,21 @@ function openSheet(id){
 
   document.getElementById('sheetBody').innerHTML = html;
 
-  document.getElementById('mActRead').onclick = () => toast(`📖 Opening full manuscript for "${s.title}"…`);
+  document.getElementById('mActRead').onclick = () => {
+    window.location.href = '../author/book-workspace.html?id=' + encodeURIComponent(s.id);
+  };
   if (s.status === 'pending') {
-    document.getElementById('mActAccept').onclick = () => openContractModal(s.id);
+    let acceptStep = 0;
+    document.getElementById('mActAccept').onclick = () => {
+      if (acceptStep === 0) {
+        document.getElementById('acceptPanel').classList.add('show');
+        document.getElementById('mActAccept').innerHTML = '<i class="fas fa-check"></i> Confirm Accept';
+        acceptStep = 1;
+      } else {
+        doQuickAccept(s);
+      }
+    };
+    document.getElementById('mActContract').onclick = () => openContractModal(s.id);
     document.getElementById('mActReject').onclick = () => {
       const panel = document.getElementById('rejectPanel');
       const showing = panel.classList.toggle('show');
@@ -541,45 +723,180 @@ function openSheet(id){
 function closeSheet(){
   document.getElementById('sheetBackdrop').classList.remove('open');
   document.getElementById('detailSheet').classList.remove('open');
+  const ap = document.getElementById('acceptPanel'); if(ap) ap.classList.remove('show');
+  const rp = document.getElementById('rejectPanel'); if(rp) rp.classList.remove('show');
 }
 
-/* ── Accept for Contract confirmation modal (password + contract type) ── */
+/* ── Quick Accept (no contract) ── */
+async function doQuickAccept(s){
+  const btn = document.getElementById('mActAccept');
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Accepting…';
+    await SeniorEditorData.updateReviewItem(s.id, 'approved', 'Accepted — book is now live on the platform.');
+    s.status = 'approved';
+    s.feedback = 'Accepted — book is now live on the platform.';
+    toast('\u2705 "' + s.title + '" is now live!');
+    closeSheet(); buildStats(); buildFilterPills(); applyFilters();
+  } catch (err) {
+    toast('\u26a0\ufe0f Error: ' + (err.message || 'Something went wrong'));
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Confirm Accept';
+  }
+}
+
+/* ── Accept for Contract — 3-step wizard ── */
+let chapterPricingData = [];
+let wizardStep = 1;
+let totalChaptersForBook = 5;
+
 function updateContractHint(){
   const c = CONTRACTS.find(x => x.id === document.getElementById('contractType').value);
   document.getElementById('contractHint').textContent = c ? c.detail : '';
 }
+
+function buildChapterPricing(){
+  const freeCount = parseInt(document.getElementById('freeChapters').value) || 0;
+  const allowAds = document.getElementById('allowAdUnlock').checked;
+  const adsCount = parseInt(document.getElementById('adsPerChapter').value) || 2;
+  chapterPricingData = [];
+  for(let i = 1; i <= totalChaptersForBook; i++){
+    const isFree = i <= freeCount;
+    chapterPricingData.push({ num: i, price: isFree ? 0 : 15, ads: isFree ? 0 : (allowAds ? adsCount : 0) });
+  }
+}
+
+function renderChapterPricing(){
+  const freeCount = parseInt(document.getElementById('freeChapters').value) || 0;
+  const allowAds = document.getElementById('allowAdUnlock').checked;
+  const list = document.getElementById('chptPricingList');
+  const note = document.getElementById('chptAdNote');
+  const count = document.getElementById('chptCount');
+  const applyAll = document.getElementById('chptApplyAll');
+
+  const paidCount = chapterPricingData.filter(ch => ch.num > freeCount).length;
+  const totalCount = chapterPricingData.length;
+  count.textContent = totalCount + ' chapters · ' + paidCount + ' paid';
+
+  applyAll.style.display = paidCount > 0 ? 'flex' : 'none';
+  note.style.display = allowAds ? 'flex' : 'none';
+
+  list.innerHTML = chapterPricingData.map(ch => {
+    const isFree = ch.num <= freeCount;
+    const isPaid = ch.num > freeCount;
+    return '<div class="chpt-pricing-row" data-ch="'+ch.num+'">' +
+      '<span class="ch-num">Ch. ' + ch.num + '</span>' +
+      '<span class="ch-label">' + (isFree ? '<span class="ch-free">FREE</span>' : 'Paid') + '</span>' +
+      '<span style="text-align:center">' + (isPaid ? '<input type="number" value="' + ch.price + '" min="0" max="999" data-ch="'+ch.num+'" class="ch-price-input"/>' : '<span style="color:var(--text-faint);font-size:10px">\u2014</span>') + '</span>' +
+      '<span style="text-align:center">' + (isFree ? '<span class="ch-ads-free">\u2014</span>' : (allowAds && ch.ads > 0 ? '<span class="ch-ads-badge">' + ch.ads + ' ads</span>' : '<span style="color:var(--text-faint);font-size:10px">\u2014</span>')) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function syncPricingFromDOM(){
+  document.querySelectorAll('.ch-price-input').forEach(inp => {
+    const ch = chapterPricingData.find(x => x.num === parseInt(inp.dataset.ch));
+    if(ch) ch.price = parseInt(inp.value) || 0;
+  });
+}
+
+function openWizard(step){
+  wizardStep = step;
+  const panels = document.querySelectorAll('.cwiz-panel');
+  panels.forEach(p => p.classList.remove('on'));
+  document.getElementById('cwizP' + step).classList.add('on');
+
+  const steps = document.querySelectorAll('.cwiz-step');
+  steps.forEach(s => {
+    const sn = parseInt(s.dataset.step);
+    s.classList.remove('on', 'done');
+    if(sn === step) s.classList.add('on');
+    else if(sn < step) s.classList.add('done');
+  });
+
+  document.getElementById('cwizBack').style.display = step > 1 ? '' : 'none';
+  document.getElementById('cwizNext').style.display = step < 3 ? '' : 'none';
+  document.getElementById('contractConfirmBtn').style.display = step === 3 ? '' : 'none';
+
+  if(step === 2){
+    buildChapterPricing();
+    renderChapterPricing();
+  }
+  if(step === 3){
+    syncPricingFromDOM();
+    buildSummary();
+    document.getElementById('contractPassword').value = '';
+    document.getElementById('contractModalError').classList.remove('show');
+  }
+}
+
+function buildSummary(){
+  const contractId = document.getElementById('contractType').value;
+  const contract = CONTRACTS.find(c => c.id === contractId);
+  const freeChapters = parseInt(document.getElementById('freeChapters').value) || 0;
+  const allowAdUnlock = document.getElementById('allowAdUnlock').checked;
+  const adsPerChapter = parseInt(document.getElementById('adsPerChapter').value) || 0;
+  const paid = chapterPricingData.filter(ch => ch.num > freeChapters);
+  const adCount = paid.filter(ch => ch.ads > 0).length;
+
+  let html = '';
+  html += '<div class="cs-row"><span class="cs-label">Contract</span><span class="cs-val">' + (contract ? contract.label : '\u2014') + '</span></div>';
+  html += '<div class="cs-row"><span class="cs-label">Free chapters</span><span class="cs-val">1 \u2013 ' + freeChapters + '</span></div>';
+  html += '<div class="cs-row"><span class="cs-label">Ad unlock</span><span class="cs-val">' + (allowAdUnlock ? adsPerChapter + ' ads/chapter (' + adCount + ' chapters)' : 'OFF') + '</span></div>';
+  paid.forEach(ch => {
+    html += '<div class="cs-row"><span class="cs-label">Ch. ' + ch.num + '</span><span class="cs-val">' + ch.price + ' coins' + (ch.ads > 0 ? ' or ' + ch.ads + ' ads' : '') + '</span></div>';
+  });
+  document.getElementById('cwizSummary').innerHTML = html;
+}
+
 function openContractModal(id){
   const s = allSubs.find(x => x.id === id); if (!s) return;
   acceptTargetId = id;
-  document.getElementById('contractModalSub').textContent = `Confirm the contract type and your password to accept "${s.title}" by ${s.author}.`;
-  document.getElementById('contractType').innerHTML = CONTRACTS.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  totalChaptersForBook = s.chapters;
+  document.getElementById('cwizSub').textContent = 'Set contract terms and pricing for "' + s.title + '" by ' + s.author + '.';
+  document.getElementById('contractType').innerHTML = CONTRACTS.map(c => '<option value="' + c.id + '">' + c.label + '</option>').join('');
   updateContractHint();
+  document.getElementById('freeChapters').value = 3;
+  document.getElementById('adsPerChapter').value = 2;
+  document.getElementById('allowAdUnlock').checked = true;
   document.getElementById('contractPassword').value = '';
   document.getElementById('contractModalError').classList.remove('show');
   document.getElementById('contractModalOv').classList.add('open');
+  openWizard(1);
 }
+
 function closeContractModal(){
   document.getElementById('contractModalOv').classList.remove('open');
   acceptTargetId = null;
+  chapterPricingData = [];
+  wizardStep = 1;
 }
+
 async function submitAccept(){
   const s = allSubs.find(x => x.id === acceptTargetId); if (!s) return;
+  syncPricingFromDOM();
   const contractId = document.getElementById('contractType').value;
-  const chapterPrice = parseInt(document.getElementById('chapterCoinPrice').value) || 15;
+  const freeChapters = parseInt(document.getElementById('freeChapters').value) || 0;
+  const allowAdUnlock = document.getElementById('allowAdUnlock').checked;
+  const adsPerChapter = parseInt(document.getElementById('adsPerChapter').value) || 0;
   const password = document.getElementById('contractPassword').value;
   const errBox = document.getElementById('contractModalError');
 
-  if (!contractId) { errBox.textContent = 'Please select a contract type.'; errBox.classList.add('show'); return; }
   if (!password) { errBox.textContent = 'Please enter your password to confirm this action.'; errBox.classList.add('show'); return; }
 
   const contract = CONTRACTS.find(c => c.id === contractId);
+  const paid = chapterPricingData.filter(ch => ch.num > freeChapters);
+  const adCount = paid.filter(ch => ch.ads > 0).length;
+  const pricingSummary = paid.map(ch => 'Ch.' + ch.num + ': ' + ch.price + ' coins' + (ch.ads > 0 ? ' or ' + ch.ads + ' ads' : '')).join(', ');
+
   const btn = document.getElementById('contractConfirmBtn');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming…';
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming\u2026';
   try {
-    await SeniorEditorData.updateReviewItem(s.id, 'approved', `Accepted under ${contract.label}. Chapter price: ${chapterPrice} coins.`);
+    const feedback = 'Accepted under ' + contract.label + '. Free chapters: ' + freeChapters + '. Ad unlock: ' + (allowAdUnlock ? 'ON (' + adsPerChapter + ' ads/chapter, ' + adCount + ' chapters)' : 'OFF') + '. Pricing: ' + (pricingSummary || 'all free') + '.';
+    await SeniorEditorData.updateReviewItem(s.id, 'approved', feedback);
     s.status = 'approved';
-    s.feedback = `Accepted under ${contract.label}. Chapter price: ${chapterPrice} coins.`;
-    toast(`✅ "${s.title}" accepted — ${contract.label} · ${chapterPrice} coins/chapter`);
+    s.feedback = feedback;
+    toast('\u2705 "' + s.title + '" accepted \u2014 ' + contract.label);
     closeContractModal(); closeSheet();
     buildStats(); buildFilterPills(); applyFilters();
   } catch (err) {

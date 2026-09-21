@@ -63,8 +63,10 @@
 
     /* ── Feed ── */
     .feed { min-height: 200px; }
+    #feedList { display: flex; flex-direction: column; gap: 2px; background: #d8d8d8; }
+    [data-theme="dark"] #feedList { background: #000; }
+    #feedList > * { background: var(--l2); }
     #promoMount { padding: 12px 16px; }
-    #feedList { display: flex; flex-direction: column; }
 
     /* ── Community Sections ── */
     .comm-sec { padding: 0 0 4px; }

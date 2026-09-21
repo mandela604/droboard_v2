@@ -1,355 +1,232 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>All Books — Droboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Inter',system-ui,sans-serif}
-::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(212,160,23,.3);border-radius:6px}
-
-.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
-.page-head h1{font-size:20px;font-weight:800}
-.page-head p{font-size:12.5px;color:var(--text-faint);margin-top:4px}
-.btn{font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.13s}
-.btn:hover{border-color:var(--gold);color:var(--gold)}
-.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
-.btn.primary:hover{color:#fff;filter:brightness(1.06)}
-
-.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
-.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-.stat-num{font-size:19px;font-weight:800;line-height:1.1}
-.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
-
-.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
-.panel-inner-pad{padding:16px 18px}
-
-/* toolbar */
-.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border)}
-.search-box{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:200px}
-.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
-.search-box i{color:var(--text-faint);font-size:12.5px}
-.select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
-.seg{display:flex;border:1px solid var(--input-border);border-radius:10px;overflow:hidden}
-.seg button{padding:9px 12px;border:none;background:var(--input-bg);color:var(--text-faint);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
-.seg button.active{background:var(--accent);color:#fff}
-
-/* list header row */
-.list-cols{display:grid;grid-template-columns:minmax(0,3fr) 110px 90px 90px 90px 100px 110px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
-.list-cols span.num{text-align:right}
-
-/* list rows */
-.book-row{display:grid;grid-template-columns:minmax(0,3fr) 110px 90px 90px 90px 100px 110px 70px;gap:10px;align-items:center;padding:9px 18px;border-bottom:1px solid var(--border);transition:.12s}
-.book-row:hover{background:var(--hover)}
-.book-row:last-child{border-bottom:none}
-
-.book-main{display:flex;align-items:center;gap:11px;min-width:0}
-.book-thumb{width:32px;height:44px;border-radius:5px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
-.book-info{min-width:0}
-.book-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.book-meta{font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.book-meta a{color:var(--text-muted);font-weight:600}
-.book-meta a:hover{color:var(--gold)}
-
-.genre-chip{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-block}
-
-.status-chip{font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;display:inline-flex;align-items:center;gap:4px}
-.status-chip.published{background:var(--green-bg);color:var(--green)}
-.status-chip.draft{background:var(--table-head);color:var(--text-faint)}
-.status-chip.flagged{background:var(--red-bg);color:var(--red)}
-.status-chip.paused{background:var(--amber-bg);color:var(--amber)}
-.status-chip i{font-size:6px}
-
-.num-cell{font-size:12px;font-weight:700;text-align:right;color:var(--text)}
-.num-cell.faint{color:var(--text-muted);font-weight:600}
-.num-sub{font-size:9.5px;color:var(--text-faint);text-align:right;font-weight:600}
-
-.row-actions{display:flex;justify-content:flex-end;gap:4px}
-.icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
-.icon-btn:hover{background:var(--table-head);color:var(--gold)}
-
-.dense .book-row{padding-top:6px;padding-bottom:6px}
-.dense .book-thumb{width:26px;height:36px}
-.dense .book-title{font-size:12px}
-
-/* pagination */
-.list-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px}
-.list-footer-info{font-size:11.5px;color:var(--text-faint)}
-.pager{display:flex;align-items:center;gap:5px}
-.pager button{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
-.pager button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
-.pager button.active{background:var(--accent);border-color:transparent;color:#fff}
-.pager button:disabled{opacity:.35;cursor:not-allowed}
-.pager-gap{color:var(--text-faint);font-size:11px;padding:0 2px}
-
-.empty-state{padding:50px 20px;text-align:center;color:var(--text-faint)}
-.empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
-
-@media (max-width:900px){
-  .list-cols, .book-row{grid-template-columns:minmax(0,1fr) 90px 70px}
-  .list-cols span:nth-child(4),.list-cols span:nth-child(5),.list-cols span:nth-child(6),
-  .book-row .col-hide{display:none}
-}
-@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page{padding:24px 28px 60px;max-width:1500px}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;min-height:0}.stat-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}.stat-ico.purple{background:rgba(255,0,80,.1);color:var(--accent)}.stat-ico.green{background:var(--green-bg);color:var(--green)}.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}.stat-ico.red{background:var(--red-bg);color:var(--red)}.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}html[data-theme="dark"] .stat-ico.purple{background:rgba(255,0,80,.15)}html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.15)}html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.15)}html[data-theme="dark"] .stat-ico.red{background:rgba(220,38,38,.15)}html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.15)}.stat-body{min-width:0}.stat-num{font-size:22px;font-weight:800;line-height:1.1}.stat-lbl{font-size:11.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+.filters-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;flex-wrap:wrap}.filt-search{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px}.filt-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}.filt-search input::placeholder{color:var(--text-faint)}.filt-search i{color:var(--text-faint);font-size:13px}.filt-select{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);position:relative}.filt-select select{appearance:none;border:none;background:none;outline:none;color:var(--text);font-size:12.5px;font-weight:600;font-family:inherit;padding-right:14px;cursor:pointer}.filt-select i{color:var(--text-faint);font-size:10px;position:absolute;right:11px;pointer-events:none}
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-top:16px;overflow:hidden}.tabs-row{display:flex;align-items:center;gap:26px;padding:16px 20px 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)}.tabs-row::-webkit-scrollbar{display:none}.tab-item{display:flex;align-items:center;gap:7px;padding-bottom:14px;font-size:13px;font-weight:700;color:var(--text-muted);white-space:nowrap;border-bottom:2.5px solid transparent;flex-shrink:0;cursor:pointer;transition:.15s}.tab-item:hover{color:var(--text)}.tab-item.active{color:var(--accent);border-bottom-color:var(--accent)}.tab-count{font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;background:var(--hover);color:var(--text-muted)}.tab-item.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:860px}thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:13px 20px;white-space:nowrap}tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}tbody tr{transition:.1s}tbody tr:hover{background:var(--hover)}.book-cell{display:flex;align-items:center;gap:12px}.book-cover{width:42px;height:56px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.18);background:#1a1a2e}.book-cover img{width:100%;height:100%;object-fit:cover}.book-title{font-weight:700;font-size:13px;line-height:1.3}.book-id{font-size:11px;color:var(--text-faint);margin-top:2px}.author-cell{display:flex;align-items:center;gap:9px}.author-cell img{width:30px;height:30px;border-radius:50%;object-fit:cover}.author-name{font-weight:600;font-size:12.5px}.cat-main{font-weight:600;font-size:12.5px}.cat-sub{font-size:11px;color:var(--text-muted);margin-top:1px}.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap}.status-pill .dot{width:6px;height:6px;border-radius:50%}.status-pill.published{background:var(--green-bg);color:var(--green)}.status-pill.published .dot{background:var(--green)}.status-pill.draft{background:var(--blue-bg);color:var(--blue)}.status-pill.draft .dot{background:var(--blue)}.status-pill.review{background:var(--amber-bg);color:var(--amber)}.status-pill.review .dot{background:var(--amber)}.status-pill.flagged{background:var(--red-bg);color:var(--red)}.status-pill.flagged .dot{background:var(--red)}html[data-theme="dark"] .status-pill.published{background:rgba(22,163,74,.16)}html[data-theme="dark"] .status-pill.draft{background:rgba(37,99,235,.16)}html[data-theme="dark"] .status-pill.review{background:rgba(217,119,6,.16)}html[data-theme="dark"] .status-pill.flagged{background:rgba(220,38,38,.16)}.views-cell{font-weight:700;font-size:13px}.muted-cell{color:var(--text-muted);font-size:12.5px}.actions-cell{display:flex;gap:6px;justify-content:flex-end}.act-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:.15s}.act-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}.act-btn.danger:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;flex-wrap:wrap;gap:10px}.page-info{font-size:12px;color:var(--text-muted)}.page-info b{color:var(--text);font-weight:700}.page-btns{display:flex;align-items:center;gap:6px}.pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;font-family:inherit}.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.pg-btn:disabled{opacity:.4;cursor:default}.pg-dots{color:var(--text-faint);font-size:12px;padding:0 2px}
+.empty-row td{text-align:center;padding:40px 20px;color:var(--text-faint)}.empty-row i{font-size:24px;margin-bottom:8px;display:block;opacity:.5}
+@media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.filters-card{flex-direction:column;align-items:stretch}.filt-select{width:100%}.filt-select select{flex:1}.table-wrap{overflow:visible}table,thead,tbody,tr,td{display:block;width:100%}thead{display:none}tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}tbody tr:hover{background:var(--card)}tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}.book-cell,.author-cell{flex:1;justify-content:flex-start}td[data-label="Book Details"]{align-items:flex-start}td[data-label="Book Details"]::before{display:none}.actions-cell{justify-content:flex-end;width:100%}}@media(max-width:420px){.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="booksRoot">
-  <div class="page-head">
-    <div>
-      <h1>All Books</h1>
-      <p>Every title on the platform — <span id="totalCountLbl">…</span> books.</p>
-    </div>
-    <button class="btn primary"><i class="fas fa-plus"></i> Add Book</button>
+<div class="page">
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="filters-card">
+    <div class="filt-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by book title, author, or ID..."/></div>
+    <div class="filt-select"><select id="fGenre"><option>All Genres</option></select><i class="fas fa-chevron-down"></i></div>
+    <div class="filt-select"><select id="fStatus"><option>All Status</option><option>Published</option><option>Draft</option><option>Under Review</option><option>Flagged</option></select><i class="fas fa-chevron-down"></i></div>
   </div>
 
-  <div class="grid-4" id="statCards"></div>
-
-  <div class="panel">
-    <div class="toolbar">
-      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by title, author, or ID…"/></div>
-      <select class="select" id="genreFilter"><option value="">All Genres</option></select>
-      <select class="select" id="statusFilter">
-        <option value="">All Statuses</option>
-        <option value="published">Published</option>
-        <option value="draft">Draft</option>
-        <option value="paused">Paused</option>
-        <option value="flagged">Flagged</option>
-      </select>
-      <select class="select" id="sortFilter">
-        <option value="reads">Sort: Most Reads</option>
-        <option value="recent">Sort: Recently Updated</option>
-        <option value="title">Sort: Title A–Z</option>
-        <option value="revenue">Sort: Highest Revenue</option>
-      </select>
-      <div class="seg" id="densitySeg">
-        <button data-density="normal" class="active"><i class="fas fa-bars"></i></button>
-        <button data-density="dense"><i class="fas fa-list"></i></button>
-      </div>
+  <div class="table-card">
+    <div class="tabs-row" id="tabsRow">
+      <div class="tab-item active" data-tab="all">All Books <span class="tab-count" id="countAll">0</span></div>
+      <div class="tab-item" data-tab="Published">Published <span class="tab-count">0</span></div>
+      <div class="tab-item" data-tab="Draft">Draft <span class="tab-count">0</span></div>
+      <div class="tab-item" data-tab="Under Review">Under Review <span class="tab-count">0</span></div>
+      <div class="tab-item" data-tab="Flagged">Flagged <span class="tab-count">0</span></div>
     </div>
-
-    <div class="list-cols">
-      <span>Book</span>
-      <span>Genre</span>
-      <span>Status</span>
-      <span class="num">Reads</span>
-      <span class="num">Rating</span>
-      <span class="num">Revenue</span>
-      <span>Updated</span>
-      <span></span>
-    </div>
-
-    <div id="bookList"></div>
-
-    <div class="list-footer">
-      <div class="list-footer-info" id="footerInfo"></div>
-      <div class="pager" id="pager"></div>
-    </div>
+    <div class="table-wrap"><table><thead><tr><th>Book Details</th><th>Author</th><th>Genre</th><th>Status</th><th>Reads</th><th>Rating</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table></div>
+    <div class="pagination-row"><div class="page-info" id="pageInfo">Loading...</div><div class="page-btns" id="pageBtns"></div></div>
   </div>
+
+</div>
 </div>
 
+<div id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:9999"></div>
+<style>#toast.show{opacity:1}</style>
+
+<script src="../data/editor-demo-data.js"></script>
 <script src="shared/chief-editor-sidebar.js"></script>
 <script>
-'use strict';
-const shell = ChiefEditorSidebar.attach('#booksRoot', {
-  activeItem: 'all-books',
-  title: 'All Books',
-  subtitle: 'Browse every title on the platform',
-  user: { name: 'Reina Morgan', role: 'Chief Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
-  notifCount: 9,
-  searchPlaceholder: 'Search everything…',
+ChiefEditorSidebar.attach('#booksRoot',{
+  activeItem:'all-books',
+  title:'All Books',
+  subtitle:'Browse every title on the platform',
+  user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},
+  notifCount:9,
+  searchPlaceholder:'Search everything...',
 });
 
-const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
-const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
-const GENRE_COLORS = { Romance:'red', Fantasy:'purple', Thriller:'blue', 'Sci-Fi':'blue', Horror:'red', 'Drama':'amber', 'Werewolf':'purple', 'Teen Fiction':'green', 'Mystery':'gold' };
+(function(){
+'use strict';
 
-/* ─────────────────────────────────────────
-   MOCK DATASET GENERATOR — simulates a platform-scale catalog
-───────────────────────────────────────── */
-const GENRES = Object.keys(GENRE_COLORS);
-const STATUSES = ['published','published','published','published','draft','paused','flagged'];
-const TITLE_WORDS_A = ['Midnight','Broken','Silver','Wicked','Forbidden','Crimson','Shattered','Golden','Reckless','Fated','Stolen','Hollow','Velvet','Savage','Lost'];
-const TITLE_WORDS_B = ['Vow','Heart','Kingdom','Bride','Alpha','Duke','Bloodline','Contract','Obsession','Legacy','Promise','Throne','Rebellion','Whisper','Storm'];
-const AUTHORS = ['Zara_M','Marcus Webb Jr.','Nadia Cross','Kelo Writes','R.K. Vance','Ife Solarin','Diego Marsh','Lena Okafor','TJ Rourke','Aminah Cole','Chidi Blackwood','Priya Nandan'];
+var D=window.EditorDemo||{};
+var books=(D.BOOKS||[]).slice();
+var activeTab='all';
+var currentPage=1;
+var PER_PAGE=12;
 
-function generateBooks(n){
-  const out = [];
-  for(let i=0;i<n;i++){
-    const title = `${TITLE_WORDS_A[i%TITLE_WORDS_A.length]} ${TITLE_WORDS_B[(i*7)%TITLE_WORDS_B.length]}`;
-    const genre = GENRES[i % GENRES.length];
-    const status = STATUSES[i % STATUSES.length];
-    const reads = Math.floor(Math.pow((i%500)+1, 2.1) * 3.7) + Math.floor(Math.random()*400);
-    const rating = (3.4 + ((i*13)%16)/10).toFixed(1);
-    const revenue = Math.round(reads * 0.012 * (0.5+Math.random()));
-    const daysAgo = i % 240;
-    out.push({
-      id: 'bk-'+(100000+i),
-      title, author: AUTHORS[i % AUTHORS.length], genre, status,
-      reads, rating: Math.min(5, parseFloat(rating)), revenue,
-      chapters: 12 + (i%180),
-      updatedDays: daysAgo,
-      cover: `https://picsum.photos/seed/book${i}/80/110`,
-    });
-  }
-  return out;
+var GENRE_COLORS={};
+(D.CATEGORIES||[]).forEach(function(c){GENRE_COLORS[c.name]={bg:c.bg,fg:c.color};});
+(D.GENRES||[]).forEach(function(g){if(!GENRE_COLORS[g.name])GENRE_COLORS[g.name]={bg:g.bg,fg:g.color};});
+GENRE_COLORS['Billionaire Romance']={bg:'#ece3fd',fg:'#7c5cfc'};
+GENRE_COLORS['Werewolf Romance']={bg:'#eef0f2',fg:'#5b6470'};
+GENRE_COLORS['Mafia Romance']={bg:'#e7e7ea',fg:'#26262b'};
+GENRE_COLORS['Vampire Romance']={bg:'#fde3e3',fg:'#e0384d'};
+GENRE_COLORS['Royal Romance']={bg:'#ece3fd',fg:'#7c5cfc'};
+GENRE_COLORS['Second Chance']={bg:'#ffe1eb',fg:'#ff0050'};
+GENRE_COLORS['Revenge']={bg:'#fde3e3',fg:'#e0384d'};
+GENRE_COLORS['Family Drama']={bg:'#fef3d8',fg:'#d97706'};
+GENRE_COLORS['Twist']={bg:'#ffe1eb',fg:'#ff0050'};
+GENRE_COLORS['Betrayal']={bg:'#ffe1eb',fg:'#ff0050'};
+GENRE_COLORS['Campus']={bg:'#e3ecfd',fg:'#2f7de1'};
+GENRE_COLORS['Elegy']={bg:'#fde3e3',fg:'#e0384d'};
+
+function statusClass(s){return{Published:'published',Draft:'draft','Under Review':'review',Flagged:'flagged'}[s]||'draft';}
+function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><span class="dot"></span>'+s+'</span>';}
+
+function renderStats(){
+  var t=books.length;
+  var p=books.filter(function(x){return x.status==='Published';}).length;
+  var d=books.filter(function(x){return x.status==='Draft';}).length;
+  var f=books.filter(function(x){return x.status==='Flagged';}).length;
+  var r=books.filter(function(x){return x.status==='Under Review';}).length;
+  document.getElementById('statsGrid').innerHTML=
+    '<div class="stat-card"><div class="stat-ico purple"><i class="fas fa-book"></i></div><div class="stat-body"><div class="stat-num">'+t+'</div><div class="stat-lbl">Total Books</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><div class="stat-body"><div class="stat-num">'+p+'</div><div class="stat-lbl">Published</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><div class="stat-body"><div class="stat-num">'+d+'</div><div class="stat-lbl">Drafts</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico red"><i class="fas fa-flag"></i></div><div class="stat-body"><div class="stat-num">'+f+'</div><div class="stat-lbl">Flagged</div></div></div>'+
+    '<div class="stat-card"><div class="stat-ico blue"><i class="fas fa-hourglass-half"></i></div><div class="stat-body"><div class="stat-num">'+r+'</div><div class="stat-lbl">Under Review</div></div></div>';
 }
 
-const ALL_BOOKS = generateBooks(2400); // simulated slice of a much larger (100k+) catalog
-let filtered = ALL_BOOKS.slice();
-let page = 1;
-let pageSize = 25;
-let density = 'normal';
-
-function fmtNum(n){
-  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
-  if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
-  return n.toString();
-}
-function fmtDays(d){
-  if(d===0) return 'Today';
-  if(d===1) return 'Yesterday';
-  if(d<30) return d+'d ago';
-  if(d<365) return Math.floor(d/30)+'mo ago';
-  return Math.floor(d/365)+'y ago';
+function renderTabs(){
+  var counts={all:books.length};
+  ['Published','Draft','Under Review','Flagged'].forEach(function(s){counts[s]=books.filter(function(b){return b.status===s;}).length;});
+  document.getElementById('countAll').textContent=counts.all;
+  document.querySelectorAll('.tab-item').forEach(function(t){
+    var k=t.dataset.tab;
+    var c=t.querySelector('.tab-count');
+    if(c&&counts[k]!==undefined)c.textContent=counts[k];
+  });
 }
 
-function renderStatCards(){
-  const total = ALL_BOOKS.length;
-  const published = ALL_BOOKS.filter(b=>b.status==='published').length;
-  const flagged = ALL_BOOKS.filter(b=>b.status==='flagged').length;
-  const totalRevenue = ALL_BOOKS.reduce((s,b)=>s+b.revenue,0);
-  document.getElementById('totalCountLbl').textContent = fmtNum(total) + '+';
-  const stats = [
-    { n: fmtNum(total)+'+', l:'Total Books', ico:'fa-book-open', cls:'gold' },
-    { n: fmtNum(published), l:'Published', ico:'fa-circle-check', cls:'green' },
-    { n: flagged, l:'Flagged for Review', ico:'fa-flag', cls:'red' },
-    { n: '$'+fmtNum(totalRevenue), l:'Total Revenue (est.)', ico:'fa-sack-dollar', cls:'blue' },
-  ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
-}
+function refresh(){
+  var q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();
+  var genre=document.getElementById('fGenre').value;
+  var stat=document.getElementById('fStatus').value;
 
-function populateGenreFilter(){
-  document.getElementById('genreFilter').innerHTML = '<option value="">All Genres</option>' +
-    GENRES.map(g=>`<option value="${g}">${g}</option>`).join('');
-}
-
-function applyFilters(){
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const genre = document.getElementById('genreFilter').value;
-  const status = document.getElementById('statusFilter').value;
-  const sort = document.getElementById('sortFilter').value;
-
-  filtered = ALL_BOOKS.filter(b=>{
-    if(q && !(b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.id.includes(q))) return false;
-    if(genre && b.genre !== genre) return false;
-    if(status && b.status !== status) return false;
+  var filtered=books.filter(function(b){
+    if(activeTab!=='all'&&b.status!==activeTab)return false;
+    if(genre!=='All Genres'&&b.genre!==genre)return false;
+    if(stat!=='All Status'&&b.status!==stat)return false;
+    if(q&&b.title.toLowerCase().indexOf(q)===-1&&b.author.toLowerCase().indexOf(q)===-1&&b.id.toLowerCase().indexOf(q)===-1)return false;
     return true;
   });
 
-  if(sort==='reads') filtered.sort((a,b)=>b.reads-a.reads);
-  else if(sort==='recent') filtered.sort((a,b)=>a.updatedDays-b.updatedDays);
-  else if(sort==='title') filtered.sort((a,b)=>a.title.localeCompare(b.title));
-  else if(sort==='revenue') filtered.sort((a,b)=>b.revenue-a.revenue);
-
-  page = 1;
-  renderList();
+  renderTable(filtered);
+  renderStats();
+  renderTabs();
 }
 
-function renderList(){
-  const start = (page-1)*pageSize;
-  const pageItems = filtered.slice(start, start+pageSize);
-  const listEl = document.getElementById('bookList');
-  listEl.className = density==='dense' ? 'dense' : '';
+function renderTable(list){
+  var body=document.getElementById('tableBody');
+  var total=list.length;
+  var totalPages=Math.max(1,Math.ceil(total/PER_PAGE));
+  if(currentPage>totalPages)currentPage=totalPages;
+  var start=(currentPage-1)*PER_PAGE;
+  var page=list.slice(start,start+PER_PAGE);
 
-  if(pageItems.length === 0){
-    listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No books match your filters.</div>`;
-  } else {
-    listEl.innerHTML = pageItems.map(b=>`
-      <div class="book-row">
-        <div class="book-main">
-          <img class="book-thumb" src="${b.cover}" alt=""/>
-          <div class="book-info">
-            <div class="book-title">${b.title}</div>
-            <div class="book-meta">by <a href="#">${b.author}</a> · ${b.chapters} ch · ${b.id}</div>
-          </div>
-        </div>
-        <div class="col-hide"><span class="genre-chip" style="background:${BG_MAP[GENRE_COLORS[b.genre]]};color:${ICO_MAP[GENRE_COLORS[b.genre]]}">${b.genre}</span></div>
-        <div><span class="status-chip ${b.status}"><i class="fas fa-circle"></i>${b.status}</span></div>
-        <div class="col-hide num-cell">${fmtNum(b.reads)}</div>
-        <div class="col-hide num-cell faint">★ ${b.rating}</div>
-        <div class="num-cell">$${fmtNum(b.revenue)}</div>
-        <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtDays(b.updatedDays)}</div>
-        <div class="row-actions">
-          <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
-          <button class="icon-btn" title="More"><i class="fas fa-ellipsis-vertical"></i></button>
-        </div>
-      </div>`).join('');
+  if(!page.length){
+    body.innerHTML='<tr class="empty-row"><td colspan="7"><i class="fas fa-inbox"></i> No books match this filter.</td></tr>';
+  }else{
+    body.innerHTML=page.map(function(b){
+      var gc=GENRE_COLORS[b.genre]||GENRE_COLORS[b.cat]||{bg:'var(--table-head)',fg:'var(--text-muted)'};
+      return'<tr>'+
+        '<td data-label="Book Details"><div class="book-cell"><div class="book-cover"><img src="'+b.img+'" alt=""/></div><div><div class="book-title">'+b.title+'</div><div class="book-id">ID: '+b.id+'</div></div></div></td>'+
+        '<td data-label="Author"><div class="author-cell"><img src="'+b.avatar+'" alt=""/><span class="author-name">'+b.author+'</span></div></td>'+
+        '<td data-label="Genre"><div class="cat-main"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+gc.bg+';color:'+gc.fg+'">'+b.genre+'</span></div></td>'+
+        '<td data-label="Status">'+statusPillHtml(b.status)+'</td>'+
+        '<td data-label="Reads" class="views-cell">'+b.views+'</td>'+
+        '<td data-label="Rating" class="muted-cell">★ '+b.rating+'</td>'+
+        '<td data-label="Actions"><div class="actions-cell">'+
+          '<button class="act-btn" title="View" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
+          '<button class="act-btn" title="Edit" onclick="editBook(\''+b.id+'\')"><i class="fas fa-pen"></i></button>'+
+          '<button class="act-btn danger" title="Flag" onclick="flagBook(\''+b.id+'\')"><i class="fas fa-flag"></i></button>'+
+        '</div></td></tr>';
+    }).join('');
   }
 
-  renderFooter();
+  var pageInfo=document.getElementById('pageInfo');
+  pageInfo.innerHTML=total
+    ?'Showing <b>'+(start+1)+'</b> to <b>'+Math.min(start+PER_PAGE,total)+'</b> of <b>'+total.toLocaleString()+'</b> books'
+    :'No books found';
+  renderPagination(totalPages);
 }
 
-function renderFooter(){
-  const total = filtered.length;
-  const start = total === 0 ? 0 : (page-1)*pageSize+1;
-  const end = Math.min(page*pageSize, total);
-  document.getElementById('footerInfo').textContent = `Showing ${start}–${end} of ${fmtNum(total)} books`;
-
-  const totalPages = Math.max(1, Math.ceil(total/pageSize));
-  let html = `<button ${page===1?'disabled':''} data-p="prev"><i class="fas fa-chevron-left"></i></button>`;
-  const pagesToShow = new Set([1, totalPages, page, page-1, page+1]);
-  let last = 0;
-  for(let p=1;p<=totalPages;p++){
-    if(!pagesToShow.has(p)) continue;
-    if(p - last > 1) html += `<span class="pager-gap">…</span>`;
-    html += `<button data-p="${p}" class="${p===page?'active':''}">${p}</button>`;
-    last = p;
+function renderPagination(tp){
+  var w=document.getElementById('pageBtns');
+  if(tp<=1){w.innerHTML='';return;}
+  var h='<button class="pg-btn"'+(currentPage<=1?' disabled':'')+' onclick="goPage('+(currentPage-1)+')"><i class="fas fa-chevron-left"></i></button>';
+  var sP=Math.max(1,currentPage-2);
+  var eP=Math.min(tp,currentPage+2);
+  if(sP>1)h+='<button class="pg-btn" onclick="goPage(1)">1</button>'+(sP>2?'<span class="pg-dots">\u2026</span>':'');
+  for(var i=sP;i<=eP;i++){
+    h+='<button class="pg-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
   }
-  html += `<button ${page===totalPages?'disabled':''} data-p="next"><i class="fas fa-chevron-right"></i></button>`;
-  document.getElementById('pager').innerHTML = html;
-
-  document.querySelectorAll('#pager button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const p = btn.dataset.p;
-      const totalPages2 = Math.max(1, Math.ceil(filtered.length/pageSize));
-      if(p==='prev') page = Math.max(1, page-1);
-      else if(p==='next') page = Math.min(totalPages2, page+1);
-      else page = parseInt(p,10);
-      renderList();
-      document.querySelector('.panel').scrollIntoView({behavior:'smooth', block:'start'});
-    });
-  });
+  if(eP<tp)h+=(eP<tp-1?'<span class="pg-dots">\u2026</span>':'')+'<button class="pg-btn" onclick="goPage('+tp+')">'+tp+'</button>';
+  h+='<button class="pg-btn"'+(currentPage>=tp?' disabled':'')+' onclick="goPage('+(currentPage+1)+')"><i class="fas fa-chevron-right"></i></button>';
+  w.innerHTML=h;
 }
 
-document.getElementById('searchInput').addEventListener('input', applyFilters);
-document.getElementById('genreFilter').addEventListener('change', applyFilters);
-document.getElementById('statusFilter').addEventListener('change', applyFilters);
-document.getElementById('sortFilter').addEventListener('change', applyFilters);
-document.querySelectorAll('#densitySeg button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#densitySeg button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    density = btn.dataset.density;
-    renderList();
+function goPage(p){currentPage=p;refresh();window.scrollTo({top:0,behavior:'smooth'});}
+
+function viewBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id);}
+function editBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id)+'&mode=edit';}
+function flagBook(id){
+  var b=books.find(function(x){return x.id===id;});
+  if(b){b.status=b.status==='Flagged'?'Published':'Flagged';refresh();toast(b.title+' \u2192 '+b.status);}
+}
+
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2200);}
+
+/* Populate genre filter */
+(function(){
+  var genres={};
+  books.forEach(function(b){if(b.genre)genres[b.genre]=1;});
+  var sel=document.getElementById('fGenre');
+  Object.keys(genres).sort().forEach(function(g){var o=document.createElement('option');o.textContent=g;o.value=g;sel.appendChild(o);});
+})();
+
+/* Bind events */
+document.querySelectorAll('.tab-item').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.tab-item').forEach(function(t){t.classList.remove('active');});
+    tab.classList.add('active');
+    activeTab=tab.dataset.tab;
+    currentPage=1;
+    refresh();
   });
 });
+document.getElementById('tableSearch').addEventListener('input',function(){currentPage=1;refresh();});
+document.getElementById('fGenre').addEventListener('change',function(){currentPage=1;refresh();});
+document.getElementById('fStatus').addEventListener('change',function(){currentPage=1;refresh();});
 
-function init(){
-  renderStatCards();
-  populateGenreFilter();
-  document.getElementById('sortFilter').value = 'reads';
-  applyFilters();
-}
-init();
+/* Expose for inline onclick */
+window.goPage=goPage;
+window.viewBook=viewBook;
+window.editBook=editBook;
+window.flagBook=flagBook;
+
+/* Init */
+renderStats();
+renderTabs();
+refresh();
+
+})();
 </script>
 </body>
 </html>

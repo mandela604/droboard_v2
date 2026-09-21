@@ -10,19 +10,16 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Inter',system-ui,sans-serif}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
-
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
 .stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
 .stat-num{font-size:19px;font-weight:800;line-height:1.1}
 .stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
-
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
 .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
 .panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
 .panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:16px}
 .count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
-
 .mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
 .mini-btn:hover{border-color:var(--accent);color:var(--accent)}
 .mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
@@ -31,13 +28,11 @@ body{font-family:'Inter',system-ui,sans-serif}
 .mini-btn.danger:hover{background:var(--red);color:#fff}
 .mini-btn.ghost{background:transparent}
 .mini-btn:disabled{opacity:.4;cursor:default;pointer-events:none}
-
 .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
 .tb-search{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px}
 .tb-search input{border:none;background:none;outline:none;font-size:12.5px;font-family:inherit;color:var(--text);width:100%}
 .tb-search i{color:var(--text-faint);font-size:12px}
 .tb-select{font-size:12px;font-weight:600;font-family:inherit;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;cursor:pointer;outline:none}
-
 .ed-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 .ed-card{border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:.15s}
 .ed-card:hover{border-color:var(--accent);box-shadow:0 8px 22px -12px rgba(255,0,80,.35)}
@@ -51,8 +46,8 @@ body{font-family:'Inter',system-ui,sans-serif}
 .ed-status.on-track{background:var(--blue-bg);color:var(--blue)}
 .ed-status.behind{background:var(--red-bg);color:var(--red)}
 .ed-status.ahead{background:var(--green-bg);color:var(--green)}
+.ed-status.pending{background:var(--amber-bg);color:var(--amber)}
 .report-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
-
 .ed-dots-wrap{position:relative}
 .ed-dots-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
 .ed-dots-btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -62,21 +57,17 @@ body{font-family:'Inter',system-ui,sans-serif}
 .ed-dots-item:hover{background:rgba(255,0,80,.06);color:var(--accent)}
 .ed-dots-item i{font-size:12px;width:16px;text-align:center}
 .ed-dots-badge{margin-left:auto;font-size:10px;font-weight:800;background:var(--accent);color:#fff;padding:1px 7px;border-radius:20px}
-
 .ed-meta-row{display:flex;gap:16px;flex-wrap:wrap}
 .ed-meta-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.02em;display:block;margin-bottom:2px}
 .ed-meta-item b{font-size:12.5px;font-weight:700;color:var(--text)}
-
 .ed-quota-label{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--text-muted);font-weight:700;margin-bottom:5px}
 .ed-quota-track{height:6px;background:var(--table-head);border-radius:4px;overflow:hidden}
 .ed-quota-fill{height:100%;border-radius:4px}
 .ed-quota-fill.on-track{background:var(--blue)}
 .ed-quota-fill.behind{background:var(--red)}
 .ed-quota-fill.ahead{background:var(--green)}
-
 .ed-actions{display:flex;gap:8px;margin-top:2px}
 .ed-actions .mini-btn{flex:1;justify-content:center}
-
 .pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
 .pg-info{font-size:11px;color:var(--text-faint);font-weight:600}
 .pg-controls{display:flex;align-items:center;gap:6px}
@@ -85,10 +76,27 @@ body{font-family:'Inter',system-ui,sans-serif}
 .pg-btn.active{background:var(--accent);border-color:transparent;color:#fff}
 .pg-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
 .pg-ellipsis{font-size:11px;color:var(--text-faint);padding:0 2px}
-
 .empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px;grid-column:1/-1}
 .skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px;grid-column:1/-1}
-
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:480px;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.modal-body{padding:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border)}
+.quota-editor-info{display:flex;align-items:center;gap:12px;padding:12px;background:var(--input-bg);border-radius:10px;border:1px solid var(--input-border)}
+.quota-editor-info img{width:40px;height:40px;border-radius:50%;object-fit:cover}
+.quota-editor-info .qei-name{font-size:13px;font-weight:700}
+.quota-editor-info .qei-email{font-size:10.5px;color:var(--text-faint);margin-top:1px}
+.form-row{margin-bottom:14px}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px;display:block}
+.form-input,.form-select,.form-textarea{width:100%;font-family:inherit;font-size:12.5px;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+.form-textarea{resize:vertical;min-height:50px;line-height:1.5}
 @media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:900px){.ed-grid{grid-template-columns:1fr}}
 @media (max-width:640px){.grid-4{grid-template-columns:1fr}.toolbar{flex-direction:column;align-items:stretch}.pagination{justify-content:center}}
@@ -100,27 +108,101 @@ body{font-family:'Inter',system-ui,sans-serif}
   <div class="panel">
     <div class="panel-head">
       <h2><i class="fas fa-users" style="color:var(--accent)"></i> All Senior Editors</h2>
-      <span class="count-chip" id="resultCount">—</span>
+      <span class="count-chip" id="resultCount"></span>
     </div>
     <div class="panel-sub">Editors sourcing and managing authors on your behalf. Quota is measured in author invites per month.</div>
     <div class="toolbar">
-      <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name or email…"/></div>
+      <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name or email..."/></div>
       <select class="tb-select" id="statusFilter">
         <option value="all">All statuses</option>
         <option value="on-track">On track</option>
         <option value="behind">Behind</option>
         <option value="ahead">Ahead</option>
+        <option value="pending">Pending</option>
       </select>
       <select class="tb-select" id="sortSelect">
-        <option value="name">Sort: Name (A–Z)</option>
+        <option value="name">Sort: Name (A-Z)</option>
         <option value="authors-desc">Sort: Most authors</option>
         <option value="quota-asc">Sort: Furthest behind</option>
         <option value="pay-desc">Sort: Highest pay</option>
       </select>
       <button class="mini-btn primary" id="inviteBtn"><i class="fas fa-user-plus"></i> Invite Senior Editor</button>
     </div>
-    <div class="ed-grid" id="edGrid"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading senior editors…</div></div>
+    <div class="ed-grid" id="edGrid"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading senior editors...</div></div>
     <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- Quota Modal -->
+<div class="modal-overlay" id="quotaModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="fas fa-bullseye" style="color:var(--accent)"></i> Manage Quota</h3>
+      <button class="modal-close" id="quotaModalClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="quota-editor-info" id="quotaEditorInfo"></div>
+      <div class="form-row" style="margin-top:16px">
+        <label class="form-label">Monthly invite target</label>
+        <input class="form-input" id="quotaTarget" type="number" min="1" max="500"/>
+      </div>
+      <div class="form-row two-col">
+        <div><label class="form-label">Invited so far</label><input class="form-input" id="quotaInvited" type="number" min="0" disabled style="opacity:.6"/></div>
+        <div><label class="form-label">Remaining</label><input class="form-input" id="quotaRemaining" type="number" disabled style="opacity:.6"/></div>
+      </div>
+      <div class="form-row two-col">
+        <div><label class="form-label">Deadline</label><input class="form-input" id="quotaDeadline" type="date"/></div>
+        <div><label class="form-label">Monthly pay</label><input class="form-input" id="quotaPay" type="text"/></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Status override</label>
+        <select class="form-select" id="quotaStatus">
+          <option value="on-track">On Track</option>
+          <option value="behind">Behind</option>
+          <option value="ahead">Ahead</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Note (optional)</label>
+        <textarea class="form-textarea" id="quotaNote" rows="2" placeholder="Add a note for this editor..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" id="quotaCancelBtn">Cancel</button>
+      <button class="mini-btn primary" id="quotaSaveBtn"><i class="fas fa-check"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite Modal -->
+<div class="modal-overlay" id="inviteModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="fas fa-user-plus" style="color:var(--accent)"></i> Invite Senior Editor</h3>
+      <button class="modal-close" id="inviteModalClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">Full name</label>
+        <input class="form-input" id="invName" placeholder="e.g. Chioma Reddy"/>
+        <div style="display:none;color:var(--red);font-size:10.5px;margin-top:5px" id="invNameErr">Name is required.</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Email address</label>
+        <input class="form-input" id="invEmail" type="email" placeholder="e.g. chioma@example.com"/>
+        <div style="display:none;color:var(--red);font-size:10.5px;margin-top:5px" id="invEmailErr">Enter a valid email.</div>
+      </div>
+      <div class="form-row two-col">
+        <div><label class="form-label">Default quota target</label><input class="form-input" id="invTarget" type="number" min="1" max="500" value="50"/></div>
+        <div><label class="form-label">Monthly pay</label><input class="form-input" id="invPay" type="text" placeholder="e.g. $3,200"/></div>
+      </div>
+      <div class="form-row"><label class="form-label">Deadline</label><input class="form-input" id="invDeadline" type="date"/></div>
+      <div class="form-row"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="invNote" rows="2" placeholder="A short welcome message..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" id="inviteCancelBtn">Cancel</button>
+      <button class="mini-btn primary" id="inviteSendBtn"><i class="fas fa-paper-plane"></i> Send Invite</button>
+    </div>
   </div>
 </div>
 
@@ -130,82 +212,326 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script>
 'use strict';
 ChiefEditorSidebar.attach('#dashRoot',{
-  activeItem:'senior-editors', title:'Senior Editors', subtitle:'Manage editors, monitor quotas, and review performance',
-  user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'}, notifCount:6,
-  searchPlaceholder:'Search anything…',
+  activeItem:'senior-editors',title:'Senior Editors',subtitle:'Manage editors, monitor quotas, and review performance',
+  user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'},notifCount:6,
+  searchPlaceholder:'Search anything...'
 });
 
-var ICO_MAP={red:'var(--red)',amber:'var(--amber)',blue:'var(--blue)',purple:'var(--purple)',green:'var(--green)',accent:'var(--accent)'};
-var BG_MAP={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple:'var(--purple-bg)',green:'var(--green-bg)',accent:'rgba(255,0,80,.1)'};
-var PAGE_SIZE=6,ALL=[],filtered=[],currentPage=1,authorPool=[],assignments={};
+var ICO={red:'var(--red)',amber:'var(--amber)',blue:'var(--blue)',purple:'var(--purple)',green:'var(--green)',accent:'var(--accent)'};
+var BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple:'var(--purple-bg)',green:'var(--green-bg)',accent:'rgba(255,0,80,.1)'};
+var PAGE=6,ALL=[],filtered=[],curPage=1,authorPool=[],assignments={};
+var _gridBound=false;
 
 function init(){
-  ChiefEditorData.getSeniorEditors().then(function(d){ALL=d;return ChiefEditorData.getAuthorPool()}).then(function(d){authorPool=d;return ChiefEditorData.getAssignments()}).then(function(d){assignments=d;renderStatCards();applyFilters();bindToolbar()}).catch(function(e){console.error(e);document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load.</div>'});
+  ChiefEditorData.getSeniorEditors().then(function(d){
+    ALL=d;return ChiefEditorData.getAuthorPool();
+  }).then(function(d){
+    authorPool=d;return ChiefEditorData.getAssignments();
+  }).then(function(d){
+    assignments=d;renderStats();applyFilters();bindToolbar();
+  }).catch(function(e){
+    console.error(e);
+    document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load.</div>';
+  });
 }
 
-function renderStatCards(){
+function renderStats(){
   var behind=ALL.filter(function(e){return e.status==='behind'}).length;
-  var totalAuthors=ALL.reduce(function(s,e){return s+e.authorsManaged},0);
-  var stats=[
-    {n:ALL.length,l:'Senior Editors',ico:'fa-people-group',cls:'accent'},
-    {n:ALL.length-behind,l:'On Track or Ahead',ico:'fa-circle-check',cls:'blue'},
-    {n:behind,l:'Behind Quota',ico:'fa-triangle-exclamation',cls:'red'},
-    {n:totalAuthors,l:'Authors Managed',ico:'fa-user-tie',cls:'purple'}
-  ];
-  document.getElementById('statCards').innerHTML=stats.map(function(s){return '<div class="stat-card"><div class="stat-ico" style="background:'+BG_MAP[s.cls]+';color:'+ICO_MAP[s.cls]+'"><i class="fas '+s.ico+'"></i></div><div><div class="stat-num">'+s.n+'</div><div class="stat-lbl">'+s.l+'</div></div></div>'}).join('');
+  var pending=ALL.filter(function(e){return e.status==='pending'}).length;
+  var totalA=ALL.reduce(function(s,e){return s+e.authorsManaged},0);
+  var h='';
+  h+=statCard(ALL.length,'Senior Editors','fa-people-group','accent');
+  h+=statCard(ALL.length-behind-pending,'On Track or Ahead','fa-circle-check','blue');
+  h+=statCard(behind,'Behind Quota','fa-triangle-exclamation','red');
+  h+=statCard(pending,'Pending Invites','fa-clock','amber');
+  document.getElementById('statCards').innerHTML=h;
+}
+function statCard(n,l,ico,cls){
+  return '<div class="stat-card"><div class="stat-ico" style="background:'+BG[cls]+';color:'+ICO[cls]+'"><i class="fas '+ico+'"></i></div><div><div class="stat-num">'+n+'</div><div class="stat-lbl">'+l+'</div></div></div>';
 }
 
 function applyFilters(){
   var q=document.getElementById('searchInput').value.trim().toLowerCase();
   var sv=document.getElementById('statusFilter').value;
   var so=document.getElementById('sortSelect').value;
-  filtered=ALL.filter(function(e){return(!q||e.name.toLowerCase().indexOf(q)!==-1||e.email.toLowerCase().indexOf(q)!==-1)&&(sv==='all'||e.status===sv)});
-  filtered.sort(function(a,b){if(so==='name')return a.name.localeCompare(b.name);if(so==='authors-desc')return b.authorsManaged-a.authorsManaged;if(so==='quota-asc')return(a.invited/a.target)-(b.invited/b.target);if(so==='pay-desc')return parseFloat(b.monthlyPay.replace(/[^0-9.]/g,''))-parseFloat(a.monthlyPay.replace(/[^0-9.]/g,''));return 0});
-  currentPage=1;renderGrid();
+  filtered=ALL.filter(function(e){
+    if(q && e.name.toLowerCase().indexOf(q)===-1 && e.email.toLowerCase().indexOf(q)===-1) return false;
+    if(sv!=='all' && e.status!==sv) return false;
+    return true;
+  });
+  filtered.sort(function(a,b){
+    if(so==='name') return a.name.localeCompare(b.name);
+    if(so==='authors-desc') return b.authorsManaged-a.authorsManaged;
+    if(so==='quota-asc') return (a.invited/a.target)-(b.invited/b.target);
+    if(so==='pay-desc') return parseFloat(b.monthlyPay.replace(/[^0-9.]/g,''))-parseFloat(a.monthlyPay.replace(/[^0-9.]/g,''));
+    return 0;
+  });
+  curPage=1;renderGrid();
 }
 
 function renderGrid(){
   document.getElementById('resultCount').textContent=filtered.length;
   var box=document.getElementById('edGrid');
-  if(!filtered.length){box.innerHTML='<div class="empty-msg"><i class="fas fa-user-slash" style="font-size:20px;margin-bottom:8px;display:block"></i>No senior editors match your filters.</div>';document.getElementById('pagination').innerHTML='';return}
-  var tp=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
-  if(currentPage>tp)currentPage=tp;
-  var start=(currentPage-1)*PAGE_SIZE;
-  var items=filtered.slice(start,start+PAGE_SIZE);
-  box.innerHTML=items.map(function(e){
-    var pct=Math.min(100,Math.round(e.invited/e.target*100));
-    var sl=e.status==='behind'?'Behind':e.status==='ahead'?'Ahead':'On track';
-    var ac=(assignments[e.id]||[]).length;
-    return '<div class="ed-card" data-id="'+e.id+'"><div class="ed-top"><img class="ed-avatar" src="'+e.avatar+'" alt="'+e.name+'"/><div class="ed-name-wrap"><div class="ed-name">'+e.name+(e.openReports>0?' <span class="report-dot" title="'+e.openReports+' open report(s)"></span>':'')+'</div><div class="ed-email">'+e.email+'</div></div><div class="ed-top-right"><span class="ed-status '+e.status+'">'+sl+'</span><div class="ed-dots-wrap"><button class="ed-dots-btn" data-eid="'+e.id+'" title="More actions"><i class="fas fa-ellipsis-vertical"></i></button><div class="ed-dots-menu" data-menu="'+e.id+'"><button class="ed-dots-item" data-eaction="assign" data-eid="'+e.id+'"><i class="fas fa-user-plus"></i> Assign Authors'+(ac?'<span class="ed-dots-badge">'+ac+'</span>':'')+'</button></div></div></div></div><div class="ed-meta-row"><div class="ed-meta-item"><span>Authors</span><b>'+e.authorsManaged+'</b></div><div class="ed-meta-item"><span>Assigned</span><b>'+ac+'</b></div><div class="ed-meta-item"><span>Joined</span><b>'+e.joined+'</b></div><div class="ed-meta-item"><span>Monthly Pay</span><b>'+e.monthlyPay+'</b></div><div class="ed-meta-item"><span>YTD Paid</span><b>'+e.ytdPaid+'</b></div></div><div><div class="ed-quota-label"><span>Invite quota \u2014 '+e.invited+'/'+e.target+'</span><span>Due '+e.deadline+'</span></div><div class="ed-quota-track"><div class="ed-quota-fill '+e.status+'" style="width:'+pct+'%"></div></div></div><div class="ed-actions"><button class="mini-btn ghost" data-action="view" data-id="'+e.id+'"><i class="fas fa-eye"></i> View Profile</button><button class="mini-btn" data-action="message" data-id="'+e.id+'"><i class="fas fa-comment-dots"></i> Message</button>'+(e.status==='behind'?'<button class="mini-btn danger" data-action="quota" data-id="'+e.id+'"><i class="fas fa-triangle-exclamation"></i> Take Action</button>':'<button class="mini-btn" data-action="quota" data-id="'+e.id+'"><i class="fas fa-bullseye"></i> Manage Quota</button>')+'</div></div>'
-  }).join('');
-  renderPagination(tp);bindGridEvents();
+  if(!filtered.length){
+    box.innerHTML='<div class="empty-msg"><i class="fas fa-user-slash" style="font-size:20px;margin-bottom:8px;display:block"></i>No senior editors match your filters.</div>';
+    document.getElementById('pagination').innerHTML='';return;
+  }
+  var tp=Math.max(1,Math.ceil(filtered.length/PAGE));
+  if(curPage>tp) curPage=tp;
+  var start=(curPage-1)*PAGE;
+  var items=filtered.slice(start,start+PAGE);
+  var html='';
+  for(var i=0;i<items.length;i++){
+    html+= items[i].status==='pending' ? pendingCard(items[i]) : activeCard(items[i]);
+  }
+  box.innerHTML=html;
+  renderPagination(tp);
+  if(!_gridBound){_gridBound=true;bindGridEvents();}
+}
+
+function pendingCard(e){
+  var h='<div class="ed-card"><div class="ed-top">';
+  h+='<img class="ed-avatar" src="'+e.avatar+'" alt=""/>';
+  h+='<div class="ed-name-wrap"><div class="ed-name">'+e.name+'</div>';
+  h+='<div class="ed-email">'+e.email+'</div></div>';
+  h+='<div class="ed-top-right"><span class="ed-status pending">Pending</span>';
+  h+=dotsMenu(e.id,[
+    {act:'resend-invite',icon:'fa-paper-plane',label:'Resend Invite'},
+    {act:'copy-link',icon:'fa-link',label:'Copy Invite Link'},
+    {act:'cancel-invite',icon:'fa-xmark',label:'Cancel Invite',danger:true}
+  ]);
+  h+='</div></div>';
+  h+='<div class="ed-meta-row">';
+  h+=metaItem('Quota Target',e.target+'/mo');
+  h+=metaItem('Monthly Pay',e.monthlyPay);
+  h+=metaItem('Invited',e.invitedAt.split('T')[0]);
+  h+='</div>';
+  h+='<div class="ed-quota-label"><span>Invite pending \u2014 awaiting acceptance</span><span></span></div>';
+  h+='<div class="ed-quota-track"><div class="ed-quota-fill" style="width:0%;background:var(--amber)"></div></div>';
+  h+='<div class="ed-actions">';
+  h+='<button class="mini-btn" data-eaction="resend-invite" data-id="'+e.id+'"><i class="fas fa-paper-plane"></i> Resend</button>';
+  h+='<button class="mini-btn ghost" data-eaction="copy-link" data-id="'+e.id+'"><i class="fas fa-link"></i> Copy Link</button>';
+  h+='<button class="mini-btn danger" data-eaction="cancel-invite" data-id="'+e.id+'"><i class="fas fa-xmark"></i> Cancel</button>';
+  h+='</div></div>';
+  return h;
+}
+
+function activeCard(e){
+  var pct=Math.min(100,Math.round(e.invited/e.target*100));
+  var sl=e.status==='behind'?'Behind':e.status==='ahead'?'Ahead':'On track';
+  var ac=(assignments[e.id]||[]).length;
+  var h='<div class="ed-card"><div class="ed-top">';
+  h+='<img class="ed-avatar" src="'+e.avatar+'" alt=""/>';
+  h+='<div class="ed-name-wrap"><div class="ed-name">'+e.name;
+  if(e.openReports>0) h+=' <span class="report-dot" title="'+e.openReports+' open report(s)"></span>';
+  h+='</div><div class="ed-email">'+e.email+'</div></div>';
+  h+='<div class="ed-top-right"><span class="ed-status '+e.status+'">'+sl+'</span>';
+  h+=dotsMenu(e.id,[
+    {act:'assign',icon:'fa-user-plus',label:'Assign Authors',badge:ac}
+  ]);
+  h+='</div></div>';
+  h+='<div class="ed-meta-row">';
+  h+=metaItem('Authors',e.authorsManaged);
+  h+=metaItem('Assigned',ac);
+  h+=metaItem('Joined',e.joined);
+  h+=metaItem('Monthly Pay',e.monthlyPay);
+  h+=metaItem('YTD Paid',e.ytdPaid);
+  h+='</div>';
+  h+='<div><div class="ed-quota-label"><span>Invite quota \u2014 '+e.invited+'/'+e.target+'</span>';
+  h+='<span>Due '+e.deadline+'</span></div>';
+  h+='<div class="ed-quota-track"><div class="ed-quota-fill '+e.status+'" style="width:'+pct+'%"></div></div></div>';
+  h+='<div class="ed-actions">';
+  h+='<button class="mini-btn ghost" data-action="view" data-id="'+e.id+'"><i class="fas fa-eye"></i> View Profile</button>';
+  h+='<button class="mini-btn" data-action="message" data-id="'+e.id+'"><i class="fas fa-comment-dots"></i> Message</button>';
+  if(e.status==='behind'){
+    h+='<button class="mini-btn danger" data-action="quota" data-id="'+e.id+'"><i class="fas fa-triangle-exclamation"></i> Take Action</button>';
+  }else{
+    h+='<button class="mini-btn" data-action="quota" data-id="'+e.id+'"><i class="fas fa-bullseye"></i> Manage Quota</button>';
+  }
+  h+='</div></div>';
+  return h;
+}
+
+function metaItem(label,val){
+  return '<div class="ed-meta-item"><span>'+label+'</span><b>'+val+'</b></div>';
+}
+
+function dotsMenu(id,items){
+  var h='<div class="ed-dots-wrap">';
+  h+='<button class="ed-dots-btn" data-eid="'+id+'" title="More actions"><i class="fas fa-ellipsis-vertical"></i></button>';
+  h+='<div class="ed-dots-menu" data-menu="'+id+'">';
+  for(var i=0;i<items.length;i++){
+    var it=items[i];
+    var cls=it.danger?' style="color:var(--red)"':'';
+    var badge=it.badge?'<span class="ed-dots-badge">'+it.badge+'</span>':'';
+    h+='<button class="ed-dots-item" data-eaction="'+it.act+'" data-eid="'+id+'"'+cls+'>';
+    h+='<i class="fas '+it.icon+'"></i> '+it.label+badge+'</button>';
+  }
+  h+='</div></div>';
+  return h;
 }
 
 function renderPagination(tp){
   var box=document.getElementById('pagination');
-  if(tp<=1){box.innerHTML='<div class="pg-info">Showing all '+filtered.length+' editor'+(filtered.length===1?'':'s')+'</div>';return}
-  var start=(currentPage-1)*PAGE_SIZE+1,end=Math.min(filtered.length,currentPage*PAGE_SIZE),pb='';
-  for(var p=1;p<=tp;p++)pb+='<button class="pg-btn'+(p===currentPage?' active':'')+'" data-page="'+p+'">'+p+'</button>';
-  box.innerHTML='<div class="pg-info">Showing '+start+'\u2013'+end+' of '+filtered.length+' editors</div><div class="pg-controls"><button class="pg-btn" id="pgPrev" '+(currentPage===1?'disabled':'')+'><i class="fas fa-chevron-left"></i></button>'+pb+'<button class="pg-btn" id="pgNext" '+(currentPage===tp?'disabled':'')+'><i class="fas fa-chevron-right"></i></button></div>';
-  document.getElementById('pgPrev').addEventListener('click',function(){currentPage--;renderGrid()});
-  document.getElementById('pgNext').addEventListener('click',function(){currentPage++;renderGrid()});
-  box.querySelectorAll('[data-page]').forEach(function(b){b.addEventListener('click',function(){currentPage=parseInt(b.dataset.page,10);renderGrid()})});
+  if(tp<=1){
+    box.innerHTML='<div class="pg-info">Showing all '+filtered.length+' editor'+(filtered.length===1?'':'s')+'</div>';
+    return;
+  }
+  var start=(curPage-1)*PAGE+1;
+  var end=Math.min(filtered.length,curPage*PAGE);
+  var pb='';
+  for(var p=1;p<=tp;p++){
+    pb+='<button class="pg-btn'+(p===curPage?' active':'')+'" data-page="'+p+'">'+p+'</button>';
+  }
+  box.innerHTML='<div class="pg-info">Showing '+start+'\u2013'+end+' of '+filtered.length+' editors</div>'
+    +'<div class="pg-controls">'
+    +'<button class="pg-btn" id="pgPrev"'+(curPage===1?' disabled':'')+'><i class="fas fa-chevron-left"></i></button>'
+    +pb
+    +'<button class="pg-btn" id="pgNext"'+(curPage===tp?' disabled':'')+'><i class="fas fa-chevron-right"></i></button>'
+    +'</div>';
+  document.getElementById('pgPrev').addEventListener('click',function(){curPage--;renderGrid()});
+  document.getElementById('pgNext').addEventListener('click',function(){curPage++;renderGrid()});
+  box.querySelectorAll('[data-page]').forEach(function(b){
+    b.addEventListener('click',function(){curPage=parseInt(b.dataset.page,10);renderGrid()});
+  });
 }
 
 function bindToolbar(){
-  var sd;document.getElementById('searchInput').addEventListener('input',function(){clearTimeout(sd);sd=setTimeout(applyFilters,180)});
+  var sd;
+  document.getElementById('searchInput').addEventListener('input',function(){clearTimeout(sd);sd=setTimeout(applyFilters,180)});
   document.getElementById('statusFilter').addEventListener('change',applyFilters);
   document.getElementById('sortSelect').addEventListener('change',applyFilters);
-  document.getElementById('inviteBtn').addEventListener('click',function(){if(typeof window.toast==='function')window.toast('Opening invite form\u2026')});
+  document.getElementById('inviteBtn').addEventListener('click',openInviteModal);
 }
 
 function bindGridEvents(){
-  var toast=typeof window.toast==='function'?window.toast:function(m){console.log(m)};
-  document.querySelectorAll('.ed-dots-btn').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();var id=btn.dataset.eid;document.querySelectorAll('.ed-dots-menu.open').forEach(function(m){if(m.dataset.menu!==id)m.classList.remove('open')});document.querySelector('.ed-dots-menu[data-menu="'+id+'"]').classList.toggle('open')})});
-  document.addEventListener('click',function(e){if(!e.target.closest('.ed-dots-wrap'))document.querySelectorAll('.ed-dots-menu.open').forEach(function(m){m.classList.remove('open')})});
-  document.querySelectorAll('[data-eaction="assign"]').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();var eid=btn.dataset.eid,ed=ALL.find(function(x){return x.id===eid});if(!ed)return;document.querySelectorAll('.ed-dots-menu.open').forEach(function(m){m.classList.remove('open')});AssignAuthorsSheet.open({editorId:eid,editorName:ed.name,editorAvatar:ed.avatar,authorPool:authorPool,assignedIds:assignments[eid]||[],onSave:function(id,ids){assignments[id]=id;renderGrid();toast('Authors updated for '+ed.name)}})})});
-  document.querySelectorAll('[data-action]').forEach(function(el){el.addEventListener('click',function(){var ed=ALL.find(function(x){return x.id===el.dataset.id});if(!ed)return;if(el.dataset.action==='view')toast('Opening '+ed.name+'\'s profile\u2026');else if(el.dataset.action==='message')toast('Opening message thread with '+ed.name+'\u2026');else if(el.dataset.action==='quota')toast('Opening quota options for '+ed.name+'\u2026')})});
+  document.getElementById('edGrid').addEventListener('click',function(ev){
+    var btn=ev.target.closest('.ed-dots-btn');
+    if(btn){
+      ev.stopPropagation();
+      var id=btn.dataset.eid;
+      document.querySelectorAll('.ed-dots-menu.open').forEach(function(m){if(m.dataset.menu!==id)m.classList.remove('open')});
+      var menu=document.querySelector('.ed-dots-menu[data-menu="'+id+'"]');
+      if(menu) menu.classList.toggle('open');
+      return;
+    }
+    var action=ev.target.closest('[data-action]');
+    if(action){
+      var ed=ALL.find(function(x){return x.id===action.dataset.id});
+      if(!ed) return;
+      if(action.dataset.action==='view') window.location.href='../Pages/profile.html?id='+encodeURIComponent(ed.id);
+      else if(action.dataset.action==='message') window.location.href='mailto:'+ed.email;
+      else if(action.dataset.action==='quota') openQuotaModal(ed);
+      return;
+    }
+    var eaction=ev.target.closest('[data-eaction]');
+    if(eaction){
+      var eid=eaction.dataset.eid;
+      var ed2=ALL.find(function(x){return x.id===eid});
+      document.querySelectorAll('.ed-dots-menu.open').forEach(function(m){m.classList.remove('open')});
+      if(!ed2) return;
+      var act=eaction.dataset.eaction;
+      if(act==='assign'){
+        AssignAuthorsSheet.open({editorId:eid,editorName:ed2.name,editorAvatar:ed2.avatar,
+          authorPool:authorPool,assignedIds:assignments[eid]||[],
+          onSave:function(id,ids){assignments[id]=ids;renderGrid();toast('Authors updated for '+ed2.name)}
+        });
+      } else if(act==='resend-invite'){
+        toast('Invite resent to '+ed2.name,'fa-paper-plane');
+      } else if(act==='copy-link'){
+        var link=window.location.origin+'/public/senior-editor/accept-invite.html?token='+ed2.inviteToken;
+        if(navigator.clipboard){navigator.clipboard.writeText(link);toast('Invite link copied!','fa-link');}
+        else{prompt('Copy this invite link:',link);}
+      } else if(act==='cancel-invite'){
+        ChiefEditorData.cancelInvite(ed2.id).then(function(){
+          ALL=ALL.filter(function(x){return x.id!==ed2.id});
+          toast('Invite cancelled for '+ed2.name,'fa-xmark');
+          renderStats();applyFilters();
+        });
+      }
+      return;
+    }
+  });
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.ed-dots-wrap')&&!e.target.closest('.modal-overlay'))
+      document.querySelectorAll('.ed-dots-menu.open').forEach(function(m){m.classList.remove('open')});
+  });
 }
+
+function toast(msg,icon){
+  var t=document.getElementById('toastHost');
+  if(!t){t=document.createElement('div');t.id='toastHost';t.style.cssText='position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px';document.body.appendChild(t);}
+  var el=document.createElement('div');
+  el.style.cssText='background:#14142b;color:#fff;font-size:12.5px;font-weight:600;padding:12px 16px;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:9px;animation:toastIn .2s ease';
+  el.innerHTML='<i class="fas '+(icon||'fa-circle-check')+'" style="color:var(--accent)"></i><span>'+msg+'</span>';
+  t.appendChild(el);
+  setTimeout(function(){el.style.opacity='0';el.style.transition='.25s';setTimeout(function(){el.remove();},250);},2600);
+}
+
+/* Quota Modal */
+var quotaEd=null;
+function openQuotaModal(ed){
+  quotaEd=ed;
+  document.getElementById('quotaEditorInfo').innerHTML='<img src="'+ed.avatar+'" alt=""/><div><div class="qei-name">'+ed.name+'</div><div class="qei-email">'+ed.email+'</div></div>';
+  document.getElementById('quotaTarget').value=ed.target;
+  document.getElementById('quotaInvited').value=ed.invited;
+  document.getElementById('quotaRemaining').value=Math.max(0,ed.target-ed.invited);
+  document.getElementById('quotaPay').value=ed.monthlyPay;
+  document.getElementById('quotaStatus').value=ed.status;
+  document.getElementById('quotaNote').value='';
+  document.getElementById('quotaModal').classList.add('show');
+}
+document.getElementById('quotaModalClose').addEventListener('click',function(){document.getElementById('quotaModal').classList.remove('show');quotaEd=null});
+document.getElementById('quotaCancelBtn').addEventListener('click',function(){document.getElementById('quotaModal').classList.remove('show');quotaEd=null});
+document.getElementById('quotaModal').addEventListener('click',function(e){if(e.target.id==='quotaModal'){document.getElementById('quotaModal').classList.remove('show');quotaEd=null;}});
+document.getElementById('quotaTarget').addEventListener('input',function(){if(quotaEd){var t=parseInt(this.value)||0;document.getElementById('quotaRemaining').value=Math.max(0,t-quotaEd.invited);}});
+document.getElementById('quotaSaveBtn').addEventListener('click',function(){
+  if(!quotaEd) return;
+  quotaEd.target=parseInt(document.getElementById('quotaTarget').value)||0;
+  quotaEd.status=document.getElementById('quotaStatus').value;
+  var p=document.getElementById('quotaPay').value.trim();
+  if(p) quotaEd.monthlyPay=p;
+  document.getElementById('quotaModal').classList.remove('show');
+  toast('Quota updated for '+quotaEd.name,'fa-bullseye');
+  quotaEd=null;renderStats();applyFilters();
+});
+
+/* Invite Modal */
+function openInviteModal(){
+  document.getElementById('invName').value='';
+  document.getElementById('invEmail').value='';
+  document.getElementById('invTarget').value='50';
+  document.getElementById('invPay').value='';
+  document.getElementById('invNote').value='';
+  document.getElementById('invNameErr').style.display='none';
+  document.getElementById('invEmailErr').style.display='none';
+  var now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);
+  document.getElementById('invDeadline').value=next.toISOString().split('T')[0];
+  document.getElementById('inviteModal').classList.add('show');
+}
+document.getElementById('inviteModalClose').addEventListener('click',function(){document.getElementById('inviteModal').classList.remove('show')});
+document.getElementById('inviteCancelBtn').addEventListener('click',function(){document.getElementById('inviteModal').classList.remove('show')});
+document.getElementById('inviteModal').addEventListener('click',function(e){if(e.target.id==='inviteModal') document.getElementById('inviteModal').classList.remove('show')});
+document.getElementById('inviteSendBtn').addEventListener('click',function(){
+  var name=document.getElementById('invName').value.trim();
+  var email=document.getElementById('invEmail').value.trim();
+  var target=parseInt(document.getElementById('invTarget').value)||50;
+  var pay=document.getElementById('invPay').value.trim()||'$0';
+  var deadline=document.getElementById('invDeadline').value;
+  var note=document.getElementById('invNote').value.trim();
+  var valid=true;
+  if(!name){document.getElementById('invNameErr').style.display='block';valid=false;}else{document.getElementById('invNameErr').style.display='none';}
+  if(!email||!/[^\s@]+@[^\s@]+\.[^\s@]+/.test(email)){document.getElementById('invEmailErr').style.display='block';valid=false;}else{document.getElementById('invEmailErr').style.display='none';}
+  if(!valid) return;
+  ChiefEditorData.addPendingEditor({name:name,email:email,target:target,pay:pay,deadline:deadline,note:note}).then(function(editor){
+    ALL.push(editor);
+    document.getElementById('inviteModal').classList.remove('show');
+    var link=window.location.origin+'/public/senior-editor/accept-invite.html?token='+editor.inviteToken;
+    toast('Invite sent to '+name+'!','fa-paper-plane');
+    if(navigator.clipboard) navigator.clipboard.writeText(link);
+    renderStats();applyFilters();
+  });
+});
 
 init();
 </script>

@@ -6,7 +6,7 @@
  *   MarketingSidebar.attach('#root', { ... })
  *
  * Menu Sections:
- *   🏠 Dashboard         🎯 Campaigns         📊 Marketing Analytics
+ *   Dashboard | Campaigns | Writer Launch Kit | Ad Manager | Marketing Analytics
  *
  * USAGE
  *   <script src="shared/marketing-sidebar.js"></script>
@@ -32,6 +32,7 @@
   const MENU_ITEMS = [
     { key: 'dashboard',            label: 'Dashboard',              icon: 'fa-house',            href: 'dashboard.html' },
     { key: 'campaigns',            label: 'Campaigns',              icon: 'fa-bullseye',         href: 'campaigns.html' },
+    { key: 'launch-kit',           label: 'Writer Launch Kit',      icon: 'fa-rocket',           href: 'writer-launch-kit.html' },
     { key: 'ad-manager',           label: 'Ad Manager',             icon: 'fa-rectangle-ad',     href: 'ad-manager.html' },
     { key: 'marketing-analytics',  label: 'Marketing Analytics',    icon: 'fa-chart-line',       href: 'marketing-analytics.html' },
   ];

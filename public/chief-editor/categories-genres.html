@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Categories & Genres — Platform Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
+     pink --accent) come from shared/dashboard-shell.js — this page just
+     uses the same var()s so it stays in sync automatically. */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+  /* ── Header row: tabs left, add button right ── */
+  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+  .top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
+  .top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px}
+  .top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-add:hover{background:var(--accent-2)}
+
+  /* ── Stat cards ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+  .stat-top{display:flex;align-items:center;justify-content:space-between}
+  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .stat-ico.purple{background:#fde3ee;color:var(--accent)}
+  .stat-ico.green{background:var(--green-bg);color:var(--green)}
+  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+  .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
+  html[data-theme="dark"] .stat-ico.purple{background:rgba(255,0,80,.16)}
+  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
+  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
+  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
+  html[data-theme="dark"] .stat-ico.pink{background:rgba(255,0,80,.16)}
+  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
+  .stat-num{font-size:24px;font-weight:800;line-height:1}
+  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+
+  /* ── Table card ── */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px}
+  .tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 14px;flex-wrap:wrap}
+  .tc-head h2{font-size:15px;font-weight:800}
+  .tc-head-right{display:flex;align-items:center;gap:10px}
+  .tc-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;width:230px}
+  .tc-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+  .tc-search input::placeholder{color:var(--text-faint)}
+  .tc-search i{color:var(--text-faint);font-size:12px}
+  .btn-filters{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit}
+
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:760px}
+  thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
+  tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tbody tr:hover{background:var(--hover)}
+  .cat-cell{display:flex;align-items:center;gap:12px}
+  .cat-icn{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .cat-name{font-weight:700;font-size:13px}
+  .cat-desc{color:var(--text-muted);font-size:12px;line-height:1.4;max-width:260px}
+  .genre-count{font-weight:600;color:var(--accent);font-size:12.5px}
+  .plain-cell{font-weight:600;font-size:12.5px}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
+  html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
+  .status-pill.inactive{background:var(--table-head);color:var(--text-faint)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .status-pill.inactive .dot{background:var(--text-faint)}
+  .actions-cell{display:flex;align-items:center;gap:6px}
+  .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+  .pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border)}
+  .page-info{font-size:12px;color:var(--text-muted)}
+  .page-info b{color:var(--text);font-weight:700}
+  .page-btns{display:flex;align-items:center;gap:6px}
+  .pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pg-btn:disabled{opacity:.4;cursor:default}
+
+  /* ── Popular genres panel ── */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-head h2{font-size:15px;font-weight:800}
+  .panel-head a{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer}
+  .genre-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+  .genre-card{border:1px solid var(--border);border-radius:13px;padding:16px 12px;text-align:center;transition:.15s;cursor:pointer}
+  .genre-card:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(255,0,80,.10)}
+  .genre-ico{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;margin:0 auto 10px}
+  .genre-name{font-size:12.5px;font-weight:700;margin-bottom:4px}
+  .genre-books{font-size:11px;color:var(--text-muted);margin-bottom:8px}
+  .genre-footer{font-size:9px;color:var(--text-faint);margin-top:8px}
+
+  .empty-row td{text-align:center;padding:46px 20px;color:var(--text-muted)}
+  .empty-row i{font-size:26px;display:block;margin-bottom:10px;color:var(--text-faint)}
+
+  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} .genre-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} .genre-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:680px){
+    .tc-head{flex-direction:column;align-items:stretch}
+    .tc-head-right{flex-direction:column;align-items:stretch}
+    .tc-search{width:100%}
+    .btn-filters{justify-content:center}
+    .page-hdr-row{flex-direction:column;align-items:stretch}
+    .btn-add{justify-content:center}
+
+    .table-wrap{overflow:visible}
+    table, thead, tbody, tr, td{display:block;width:100%}
+    thead{display:none}
+    tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}
+    tbody tr:hover{background:var(--card)}
+    tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+    tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}
+    td[data-label="Category Name"]{align-items:flex-start}
+    td[data-label="Category Name"]::before{display:none}
+    td[data-label="Description"]{align-items:flex-start}
+    .cat-desc{max-width:none}
+    .actions-cell{justify-content:flex-end;width:100%}
+  }
+  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} .genre-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- Everything inside this div is page-specific content only.
+     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
+<div id="dashboardRoot">
+
+  <div class="page-hdr-row">
+    <div class="top-tabs">
+      <div class="top-tab active" data-view="categories">Categories</div>
+      <div class="top-tab" data-view="genres">Genres</div>
+    </div>
+    <button class="btn-add" id="addBtn"><i class="fas fa-plus"></i> <span id="addBtnLabel">Add New Category</span></button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="tc-head">
+      <h2 id="tableTitle">All Categories</h2>
+      <div class="tc-head-right">
+        <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search categories..."/></div>
+        <button class="btn-filters"><i class="fas fa-sliders"></i> Filters</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination-row">
+      <div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>18</b> categories</div>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+  <!-- Popular genres -->
+  <div class="panel" id="popularPanel">
+    <div class="panel-head"><h2>Popular Genres</h2><a onclick="toast('Opening full genre list…')">View All Genres</a></div>
+    <div class="genre-grid" id="genreGrid"></div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="formModalTitle">Add Category</h3><div class="modal-close" id="formModalClose"><i class="fas fa-xmark"></i></div></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Name</label><input id="formName" placeholder="e.g. Thriller"/></div>
+      <div class="form-group" id="formDescGroup"><label>Description</label><textarea id="formDesc" placeholder="Short description…"></textarea></div>
+      <div class="form-group" id="formCatGroup"><label>Parent Category</label><select id="formCat"><option value="">Select category…</option></select></div>
+      <div class="form-group"><label>Status</label><select id="formStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" id="formCancel">Cancel</button><button class="btn-send" id="formConfirm"><i class="fas fa-check"></i> <span id="formConfirmLabel">Add</span></button></div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><h3>Confirm Delete</h3><div class="modal-close" id="deleteModalClose"><i class="fas fa-xmark"></i></div></div>
+    <div class="modal-body"><p id="deleteMsg" style="font-size:13px;color:var(--text-muted)">Are you sure you want to delete this item?</p></div>
+    <div class="modal-actions"><button class="btn-cancel" id="deleteCancel">Cancel</button><button class="btn-send" style="background:var(--red)" id="deleteConfirm"><i class="fas fa-trash"></i> Delete</button></div>
+  </div>
+</div>
+
+<style>
+.modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(10,6,25,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:480px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.4);transform:scale(.92);transition:transform .25s;overflow:hidden}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+.modal-hdr h3{font-size:15px;font-weight:800}
+.modal-close{width:30px;height:30px;border-radius:8px;background:var(--input-bg);border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-muted);cursor:pointer}
+.modal-close:hover{color:var(--accent);border-color:var(--accent)}
+.modal-body{padding:20px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:60px}
+.modal-actions{display:flex;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.modal-actions button{flex:1;padding:10px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:.12s}
+.btn-send{background:var(--accent);color:#fff}.btn-send:hover{filter:brightness(1.05)}
+.btn-cancel{background:var(--input-bg);color:var(--text);border:1px solid var(--input-border)}
+</style>
+
+<script src="../data/editor-demo-data.js"></script>
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="categories-genres-service.js"></script>
+<script>
+ChiefEditorSidebar.attach('#dashboardRoot',{
+  activeItem:'categories-genres',title:'Categories & Genres',subtitle:'Organize and manage all categories and genres',
+  user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,
+  searchPlaceholder:'Search by category or genre name...'
+});
+
+var CATEGORIES=[], GENRES=[], POPULAR_GENRES=[];
+var currentView='categories';
+var formMode={type:null, action:null, idx:null};
+
+function statusPillHtml(s){
+  var active=s==='active';
+  return'<span class="status-pill'+(active?'':' inactive')+'"><span class="dot"></span>'+(active?'Active':'Inactive')+'</span>';
+}
+
+function renderStats(){
+  var totalCat=CATEGORIES.length;
+  var totalGen=GENRES.length;
+  var activeCat=CATEGORIES.filter(function(c){return c.status==='active'}).length;
+  var activeGen=GENRES.filter(function(g){return g.status==='active'}).length;
+  var pct=totalCat+totalGen>0?Math.round((activeCat+activeGen)/(totalCat+totalGen)*100):0;
+  document.getElementById('statsGrid').innerHTML=
+    '<div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-grip"></i></div></div><div class="stat-num">'+totalCat+'</div><div class="stat-lbl">Total Categories</div></div>'+
+    '<div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-book"></i></div></div><div class="stat-num">'+totalGen+'</div><div class="stat-lbl">Total Genres</div></div>'+
+    '<div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-shuffle"></i></div></div><div class="stat-num">'+pct+'%</div><div class="stat-lbl">Active</div></div>'+
+    '<div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-tag"></i></div></div><div class="stat-num">'+CATEGORIES.reduce(function(a,c){return a+parseInt((c.books||'0').replace(/,/g,''),10)},0).toLocaleString()+'</div><div class="stat-lbl">Books Assigned</div></div>'+
+    '<div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-eye"></i></div></div><div class="stat-num">'+(CATEGORIES.length*1.4).toFixed(1)+'M</div><div class="stat-lbl">Total Views</div></div>';
+}
+
+function renderCategoriesTable(list){
+  document.getElementById('tableHead').innerHTML='<tr><th>Category Name</th><th>Description</th><th>Genres</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  var body=document.getElementById('tableBody');
+  if(!list.length){body.innerHTML='<tr class="empty-row"><td colspan="6"><i class="fas fa-inbox"></i>No categories match this search.</td></tr>';return;}
+  body.innerHTML=list.slice(0,8).map(function(c){
+    var idx=CATEGORIES.indexOf(c);
+    return'<tr>'+
+      '<td data-label="Category Name"><div class="cat-cell"><div class="cat-icn" style="background:'+c.bg+';color:'+c.color+'"><i class="fas '+c.icon+'"></i></div><div class="cat-name">'+c.name+'</div></div></td>'+
+      '<td data-label="Description"><div class="cat-desc">'+c.desc+'</div></td>'+
+      '<td data-label="Genres" class="genre-count">'+c.genres+' genres</td>'+
+      '<td data-label="Books" class="plain-cell">'+c.books+'</td>'+
+      '<td data-label="Status">'+statusPillHtml(c.status)+'</td>'+
+      '<td data-label="Actions"><div class="actions-cell">'+
+        '<button class="act-btn" title="Edit" data-action="edit" data-idx="'+idx+'"><i class="fas fa-pen"></i></button>'+
+        '<button class="act-btn" title="Toggle Status" data-action="toggle" data-idx="'+idx+'"><i class="fas fa-toggle-on"></i></button>'+
+        '<button class="act-btn" title="Delete" data-action="delete" data-idx="'+idx+'"><i class="fas fa-trash"></i></button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
+function renderGenresTable(list){
+  document.getElementById('tableHead').innerHTML='<tr><th>Genre Name</th><th>Category</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  var body=document.getElementById('tableBody');
+  if(!list.length){body.innerHTML='<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No genres match this search.</td></tr>';return;}
+  body.innerHTML=list.slice(0,8).map(function(g){
+    var idx=GENRES.indexOf(g);
+    return'<tr>'+
+      '<td data-label="Genre Name"><div class="cat-cell"><div class="cat-icn" style="background:'+g.bg+';color:'+g.color+'"><i class="fas '+g.icon+'"></i></div><div class="cat-name">'+g.name+'</div></div></td>'+
+      '<td data-label="Category" class="plain-cell">'+g.cat+'</td>'+
+      '<td data-label="Books" class="plain-cell">'+g.books+'</td>'+
+      '<td data-label="Status">'+statusPillHtml(g.status)+'</td>'+
+      '<td data-label="Actions"><div class="actions-cell">'+
+        '<button class="act-btn" title="Edit" data-action="edit" data-idx="'+idx+'"><i class="fas fa-pen"></i></button>'+
+        '<button class="act-btn" title="Toggle Status" data-action="toggle" data-idx="'+idx+'"><i class="fas fa-toggle-on"></i></button>'+
+        '<button class="act-btn" title="Delete" data-action="delete" data-idx="'+idx+'"><i class="fas fa-trash"></i></button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
+function currentFiltered(){
+  var q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();
+  var source=currentView==='categories'?CATEGORIES:GENRES;
+  if(!q)return source;
+  return source.filter(function(x){return x.name.toLowerCase().indexOf(q)!==-1||(x.desc&&x.desc.toLowerCase().indexOf(q)!==-1)||(x.cat&&x.cat.toLowerCase().indexOf(q)!==-1);});
+}
+
+function renderPageInfo(count){
+  var label=currentView==='categories'?'categories':'genres';
+  var total=currentView==='categories'?CATEGORIES.length:GENRES.length;
+  var shown=Math.min(8,count);
+  document.getElementById('pageInfo').innerHTML='Showing <b>'+(count?1:0)+'</b> to <b>'+shown+'</b> of <b>'+total+'</b> '+label;
+}
+
+function renderPagination(){
+  var wrap=document.getElementById('pageBtns');
+  var total=currentView==='categories'?CATEGORIES.length:GENRES.length;
+  var tp=Math.max(1,Math.ceil(total/8));
+  var pages=[];
+  for(var i=1;i<=Math.min(tp,5);i++)pages.push(i);
+  wrap.innerHTML='<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>'+
+    pages.map(function(p){return'<button class="pg-btn'+(p===1?' active':'')+'" data-p="'+p+'">'+p+'</button>';}).join('')+
+    '<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>';
+  wrap.querySelectorAll('[data-p]').forEach(function(btn){
+    btn.addEventListener('click',function(){wrap.querySelectorAll('.pg-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');});
+  });
+}
+
+function refresh(){
+  var list=currentFiltered();
+  if(currentView==='categories')renderCategoriesTable(list);
+  else renderGenresTable(list);
+  renderPageInfo(list.length);
+  renderStats();
+}
+
+function renderPopularGenres(){
+  document.getElementById('genreGrid').innerHTML=POPULAR_GENRES.map(function(g){
+    return'<div class="genre-card">'+
+      '<div class="genre-ico" style="background:'+g.bg+';color:'+g.color+'"><i class="fas '+g.icon+'"></i></div>'+
+      '<div class="genre-name">'+g.name+'</div>'+
+      '<div class="genre-books">'+g.books+'</div>'+
+      statusPillHtml('active')+
+    '</div>';
+  }).join('');
+}
+
+/* ── Tab switching ── */
+document.querySelectorAll('.top-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.top-tab').forEach(function(t){t.classList.remove('active')});
+    tab.classList.add('active');
+    currentView=tab.dataset.view;
+    document.getElementById('tableTitle').textContent=currentView==='categories'?'All Categories':'All Genres';
+    document.getElementById('addBtnLabel').textContent=currentView==='categories'?'Add New Category':'Add New Genre';
+    document.getElementById('tableSearch').placeholder=currentView==='categories'?'Search categories...':'Search genres...';
+    document.getElementById('tableSearch').value='';
+    renderPagination();
+    refresh();
+  });
+});
+
+/* ── Table actions (edit/toggle/delete) ── */
+document.getElementById('tableBody').addEventListener('click',function(e){
+  var btn=e.target.closest('[data-action]');
+  if(!btn)return;
+  var action=btn.dataset.action;
+  var idx=parseInt(btn.dataset.idx,10);
+  if(action==='edit')openFormModal('edit',idx);
+  else if(action==='toggle')doToggleStatus(idx);
+  else if(action==='delete')openDeleteModal(idx);
+});
+
+/* ── FORM MODAL (Add / Edit) ── */
+function openFormModal(action, idx){
+  formMode={type:currentView, action:action, idx:idx};
+  var isCat=currentView==='categories';
+  var isEdit=action==='edit';
+  document.getElementById('formModalTitle').textContent=(isEdit?'Edit':'Add')+(isCat?' Category':' Genre');
+  document.getElementById('formConfirmLabel').textContent=isEdit?'Save Changes':'Add';
+  document.getElementById('formDescGroup').style.display=isCat?'':'none';
+  document.getElementById('formCatGroup').style.display=isCat?'none':'block';
+  if(isCat){
+    if(isEdit){
+      var c=CATEGORIES[idx];
+      document.getElementById('formName').value=c.name;
+      document.getElementById('formDesc').value=c.desc||'';
+      document.getElementById('formStatus').value=c.status;
+    }else{
+      document.getElementById('formName').value='';
+      document.getElementById('formDesc').value='';
+      document.getElementById('formStatus').value='active';
+    }
+  }else{
+    var catSel=document.getElementById('formCat');
+    catSel.innerHTML='<option value="">Select category…</option>';
+    for(var i=0;i<CATEGORIES.length;i++){
+      var opt=document.createElement('option');
+      opt.value=CATEGORIES[i].name;
+      opt.textContent=CATEGORIES[i].name;
+      catSel.appendChild(opt);
+    }
+    if(isEdit){
+      var g=GENRES[idx];
+      document.getElementById('formName').value=g.name;
+      for(var j=0;j<catSel.options.length;j++){
+        if(catSel.options[j].value===g.cat){catSel.selectedIndex=j;break;}
+      }
+      document.getElementById('formStatus').value=g.status;
+    }else{
+      document.getElementById('formName').value='';
+      catSel.selectedIndex=0;
+      document.getElementById('formStatus').value='active';
+    }
+  }
+  document.getElementById('formModal').classList.add('open');
+  setTimeout(function(){document.getElementById('formName').focus();},200);
+}
+
+document.getElementById('formModalClose').addEventListener('click',function(){document.getElementById('formModal').classList.remove('open')});
+document.getElementById('formCancel').addEventListener('click',function(){document.getElementById('formModal').classList.remove('open')});
+document.getElementById('formModal').addEventListener('click',function(e){if(e.target.id==='formModal')document.getElementById('formModal').classList.remove('open')});
+
+document.getElementById('formConfirm').addEventListener('click',function(){
+  var name=document.getElementById('formName').value.trim();
+  if(!name){toast('Please enter a name.');return;}
+  var isCat=formMode.type==='categories';
+  var isEdit=formMode.action==='edit';
+  var status=document.getElementById('formStatus').value;
+  if(isCat){
+    var desc=document.getElementById('formDesc').value.trim();
+    if(isEdit){
+      CategoriesGenresService.updateCategory(formMode.idx,{name:name,desc:desc,status:status},CATEGORIES);
+      toast('Category updated: '+name);
+    }else{
+      CategoriesGenresService.addCategory({name:name,desc:desc,status:status},CATEGORIES);
+      toast('Category added: '+name);
+    }
+  }else{
+    var cat=document.getElementById('formCat').value;
+    if(!cat){toast('Please select a category.');return;}
+    if(isEdit){
+      CategoriesGenresService.updateGenre(formMode.idx,{name:name,cat:cat,status:status},GENRES);
+      toast('Genre updated: '+name);
+    }else{
+      CategoriesGenresService.addGenre({name:name,cat:cat,status:status},GENRES);
+      toast('Genre added: '+name);
+    }
+  }
+  document.getElementById('formModal').classList.remove('open');
+  renderPagination();
+  refresh();
+});
+
+/* ── TOGGLE STATUS ── */
+function doToggleStatus(idx){
+  if(currentView==='categories'){
+    var c=CATEGORIES[idx];
+    c.status=c.status==='active'?'inactive':'active';
+    CategoriesGenresService.updateCategory(idx,{status:c.status},CATEGORIES);
+    toast(c.name+' set to '+c.status);
+  }else{
+    var g=GENRES[idx];
+    g.status=g.status==='active'?'inactive':'active';
+    CategoriesGenresService.updateGenre(idx,{status:g.status},GENRES);
+    toast(g.name+' set to '+g.status);
+  }
+  refresh();
+}
+
+/* ── DELETE MODAL ── */
+var deleteIdx=null;
+function openDeleteModal(idx){
+  deleteIdx=idx;
+  var name=currentView==='categories'?CATEGORIES[idx].name:GENRES[idx].name;
+  document.getElementById('deleteMsg').textContent='Are you sure you want to delete "'+name+'"? This cannot be undone.';
+  document.getElementById('deleteModal').classList.add('open');
+}
+document.getElementById('deleteModalClose').addEventListener('click',function(){document.getElementById('deleteModal').classList.remove('open')});
+document.getElementById('deleteCancel').addEventListener('click',function(){document.getElementById('deleteModal').classList.remove('open')});
+document.getElementById('deleteModal').addEventListener('click',function(e){if(e.target.id==='deleteModal')document.getElementById('deleteModal').classList.remove('open')});
+
+document.getElementById('deleteConfirm').addEventListener('click',function(){
+  if(deleteIdx===null)return;
+  if(currentView==='categories'){
+    var name=CATEGORIES[deleteIdx].name;
+    CategoriesGenresService.deleteCategory(deleteIdx,CATEGORIES);
+    toast('Deleted category: '+name);
+  }else{
+    var name=GENRES[deleteIdx].name;
+    CategoriesGenresService.deleteGenre(deleteIdx,GENRES);
+    toast('Deleted genre: '+name);
+  }
+  deleteIdx=null;
+  document.getElementById('deleteModal').classList.remove('open');
+  renderPagination();
+  refresh();
+});
+
+/* ── Add button ── */
+document.getElementById('addBtn').addEventListener('click',function(){openFormModal('add',null);});
+
+/* ── Search ── */
+document.getElementById('tableSearch').addEventListener('input',refresh);
+
+/* ── Toast ── */
+function toast(m){var t=document.getElementById('toastEl');if(!t){t=document.createElement('div');t.id='toastEl';t.style.cssText='position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:9000;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)';document.body.appendChild(t);}
+t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(function(){t.style.opacity='0';},2500);}
+
+/* ═══ INIT ═══ */
+function init(){
+  CATEGORIES=CategoriesGenresService.getCategories();
+  GENRES=CategoriesGenresService.getGenres();
+  POPULAR_GENRES=CategoriesGenresService.getPopularGenres();
+  renderPagination();
+  renderPopularGenres();
+  refresh();
+}
+init();
+</script>
+</body>
+</html>

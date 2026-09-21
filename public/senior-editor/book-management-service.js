@@ -11,6 +11,23 @@
   var currentPage = 1;
   var PER_PAGE = 8;
 
+  /* Genre / category background colors — pulled from the CATEGORIES + GENRES data */
+  var GENRE_COLORS = {};
+  (D.CATEGORIES || []).forEach(function (c) { GENRE_COLORS[c.name] = { bg: c.bg, fg: c.color }; });
+  (D.GENRES || []).forEach(function (g) { if (!GENRE_COLORS[g.name]) GENRE_COLORS[g.name] = { bg: g.bg, fg: g.color }; });
+  GENRE_COLORS['Billionaire Romance'] = { bg: '#ece3fd', fg: '#7c5cfc' };
+  GENRE_COLORS['Werewolf Romance'] = { bg: '#eef0f2', fg: '#5b6470' };
+  GENRE_COLORS['Mafia Romance'] = { bg: '#e7e7ea', fg: '#26262b' };
+  GENRE_COLORS['Vampire Romance'] = { bg: '#fde3e3', fg: '#e0384d' };
+  GENRE_COLORS['Royal Romance'] = { bg: '#ece3fd', fg: '#7c5cfc' };
+  GENRE_COLORS['Second Chance'] = { bg: '#ffe1eb', fg: '#ff0050' };
+  GENRE_COLORS['Revenge'] = { bg: '#fde3e3', fg: '#e0384d' };
+  GENRE_COLORS['Family Drama'] = { bg: '#fef3d8', fg: '#d97706' };
+  GENRE_COLORS['Twist'] = { bg: '#ffe1eb', fg: '#ff0050' };
+  GENRE_COLORS['Betrayal'] = { bg: '#ffe1eb', fg: '#ff0050' };
+  GENRE_COLORS['Campus'] = { bg: '#e3ecfd', fg: '#2f7de1' };
+  GENRE_COLORS['Elegy'] = { bg: '#fde3e3', fg: '#e0384d' };
+
   /* ── Init ── */
   function init() {
     if (!document.getElementById('tableBody')) return;
@@ -64,10 +81,11 @@
       body.innerHTML = '<tr class="empty-row"><td colspan="7"><i class="fas fa-inbox"></i> No books match this filter.</td></tr>';
     } else {
       body.innerHTML = page.map(function (b) {
+        var gc = GENRE_COLORS[b.genre] || GENRE_COLORS[b.cat] || { bg: 'var(--table-head)', fg: 'var(--text-muted)' };
         return '<tr>' +
           '<td data-label="Book Details"><div class="book-cell"><div class="book-cover"><img src="' + b.img + '" alt=""/></div><div><div class="book-title">' + b.title + '</div><div class="book-id">ID: ' + b.id + '</div></div></div></td>' +
           '<td data-label="Author"><div class="author-cell"><img src="' + b.avatar + '" alt=""/><span class="author-name">' + b.author + '</span></div></td>' +
-          '<td data-label="Category / Genre"><div class="cat-main">' + b.cat + '</div><div class="cat-sub">' + b.genre + '</div></td>' +
+          '<td data-label="Category / Genre"><div class="cat-main"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:' + gc.bg + ';color:' + gc.fg + '">' + b.cat + '</span></div><div class="cat-sub">' + b.genre + '</div></td>' +
           '<td data-label="Status">' + statusPillHtml(b.status) + '</td>' +
           '<td data-label="Views" class="' + (b.views === '\u2014' ? 'muted-cell' : 'views-cell') + '">' + b.views + '</td>' +
           '<td data-label="Added On" class="muted-cell">' + b.added + '</td>' +

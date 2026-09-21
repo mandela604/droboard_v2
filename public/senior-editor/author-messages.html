@@ -116,6 +116,24 @@
     .top-tabs{overflow-x:auto}
   }
   @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} }
+
+  /* ── Context menu ── */
+  .ctx-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center}
+  .ctx-overlay.open{display:flex}
+  .ctx-menu{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.2);overflow:hidden;width:200px}
+  .ctx-preview{padding:14px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);max-height:60px;overflow:hidden;line-height:1.4}
+  .ctx-btn{width:100%;padding:13px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;cursor:pointer;transition:.1s}
+  .ctx-btn:active{background:var(--hover)}
+  .ctx-btn i{width:18px;text-align:center;font-size:13px;color:var(--text-muted)}
+  .ctx-btn.delete{color:var(--text-muted)}
+  .ctx-btn.delete i{color:var(--text-muted)}
+  .ctx-btn+.ctx-btn{border-top:1px solid var(--border)}
+  .msg-row.editing .msg-bubble{outline:2px solid var(--accent);outline-offset:2px}
+  .edit-banner{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:4px 12px;border-radius:8px 8px 0 0;display:inline-flex;align-items:center;gap:6px}
+  .msg-row.out .edit-banner{border-radius:8px 8px 0 0}
+  .edit-input{width:100%;background:transparent;border:none;outline:none;color:inherit;font-size:13px;font-family:inherit;line-height:1.5;resize:none;min-height:20px}
+  .msg-edited{font-size:9.5px;color:var(--text-faint);font-style:italic;margin-top:1px;display:block}
+  .msg-row.out .msg-edited{color:var(--text-faint)}
 </style>
 </head>
 <body>
@@ -204,22 +222,22 @@ SeniorEditorSidebar.attach('#dashboardRoot', {
 const CONVERSATIONS = [
   { id:1, name:'Sofia Lindqvist', avatar:'https://i.pravatar.cc/100?img=32', role:'Verified Author', unread:2, flagged:false, time:'10m ago',
     messages:[
-      { from:'author', text:"Hi, I wanted to check in about my contract — it's set to expire next month.", time:'2 days ago' },
-      { from:'admin', text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.', time:'2 days ago' },
-      { from:'author', text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.', time:'1 day ago' },
-      { from:'author', text:'Can we discuss extending my contract renewal deadline? I need a bit more time to review the new terms.', time:'10m ago' },
+      { mid:1, from:'author', text:"Hi, I wanted to check in about my contract — it's set to expire next month.", time:'2 days ago' },
+      { mid:2, from:'admin', text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.', time:'2 days ago' },
+      { mid:3, from:'author', text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.', time:'1 day ago' },
+      { mid:4, from:'author', text:'Can we discuss extending my contract renewal deadline? I need a bit more time to review the new terms.', time:'10m ago' },
     ] },
   { id:2, name:'Marcus Chen', avatar:'https://i.pravatar.cc/100?img=12', role:'Verified Author', unread:0, flagged:false, time:'1h ago',
     messages:[
-      { from:'author', text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.', time:'3h ago' },
-      { from:'admin', text:'Reviewed it, looks great. Approved and scheduled for publishing.', time:'2h ago' },
-      { from:'author', text:'Thanks for approving my chapter revision!', time:'1h ago' },
+      { mid:5, from:'author', text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.', time:'3h ago' },
+      { mid:6, from:'admin', text:'Reviewed it, looks great. Approved and scheduled for publishing.', time:'2h ago' },
+      { mid:7, from:'author', text:'Thanks for approving my chapter revision!', time:'1h ago' },
     ] },
   { id:3, name:'Amara Okafor', avatar:'https://i.pravatar.cc/100?img=45', role:'Verified Author', unread:1, flagged:true, time:'3h ago',
     messages:[
-      { from:'author', text:'My earnings dashboard is showing the wrong total again for the second month in a row.', time:'1 day ago' },
-      { from:'admin', text:'Sorry about that, Amara. Escalating to the finance team right now.', time:'22h ago' },
-      { from:'author', text:'This is the third time my earnings report is wrong. I need this resolved this week.', time:'3h ago' },
+      { mid:8, from:'author', text:'My earnings dashboard is showing the wrong total again for the second month in a row.', time:'1 day ago' },
+      { mid:9, from:'admin', text:'Sorry about that, Amara. Escalating to the finance team right now.', time:'22h ago' },
+      { mid:10, from:'author', text:'This is the third time my earnings report is wrong. I need this resolved this week.', time:'3h ago' },
     ] },
   { id:4, name:'Daniel Reyes', avatar:'https://i.pravatar.cc/100?img=51', role:'Pending Author', unread:0, flagged:false, time:'1d ago',
     messages:[
@@ -251,6 +269,7 @@ const CONVERSATIONS = [
 
 let currentView = 'all';
 let activeConvId = CONVERSATIONS[0].id;
+let perspective = 'admin'; // 'admin' = senior editor view, 'author' = author view
 
 function filteredConversations(){
   const q = (document.getElementById('convSearch').value || '').trim().toLowerCase();
@@ -270,7 +289,7 @@ function renderConvList(){
   }
   wrap.innerHTML = list.map(c => {
     const lastMsg = c.messages[c.messages.length - 1];
-    const preview = (lastMsg.from === 'admin' ? 'You: ' : '') + lastMsg.text;
+    const preview = (lastMsg.from === perspective ? 'You: ' : '') + lastMsg.text;
     return `
     <div class="conv-item${c.unread > 0 ? ' unread' : ''}${c.id === activeConvId ? ' active' : ''}" data-id="${c.id}">
       <img class="conv-avatar" src="${c.avatar}" alt="${c.name}"/>
@@ -292,6 +311,7 @@ function renderConvList(){
       if (conv) conv.unread = 0;
       renderConvList();
       renderThread();
+      bindLongPress();
       document.getElementById('inboxCard').classList.add('thread-open');
     });
   });
@@ -319,14 +339,18 @@ function renderThread(){
       </div>
     </div>
     <div class="thread-body" id="threadBody">
-      ${conv.messages.map(m => `
-        <div class="msg-row ${m.from === 'admin' ? 'out' : 'in'}">
-          <img src="${m.from === 'admin' ? 'https://i.pravatar.cc/100?img=47' : conv.avatar}" alt=""/>
+      ${conv.messages.map(m => {
+        const isOut = m.from === perspective;
+        return `
+        <div class="msg-row ${isOut ? 'out' : 'in'}" data-mid="${m.mid || ''}">
+          <img src="${isOut ? 'https://i.pravatar.cc/100?img=47' : conv.avatar}" alt=""/>
           <div>
             <div class="msg-bubble">${m.text}</div>
             <span class="msg-time">${m.time}</span>
+            ${m.edited ? '<span class="msg-edited">edited</span>' : ''}
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>
     <div class="thread-compose">
       <input id="composeInput" placeholder="Type a reply to ${conv.name}..."/>
@@ -343,9 +367,11 @@ function renderThread(){
   const send = () => {
     const text = input.value.trim();
     if (!text) return;
-    conv.messages.push({ from:'admin', text, time:'Just now' });
+    const newMid = Date.now();
+    conv.messages.push({ mid: newMid, from: perspective, text, time:'Just now' });
     input.value = '';
     renderThread();
+    bindLongPress();
     renderConvList();
     toast('Message sent');
   };
@@ -382,11 +408,162 @@ document.getElementById('markAllBtn').addEventListener('click', () => {
 
 document.getElementById('convSearch').addEventListener('input', renderConvList);
 
+/* ═══ LONG PRESS + CONTEXT MENU (edit / delete) ═══ */
+let longPressTimer = null;
+let ctxMsgId = null;
+let ctxConvId = null;
+
+function bindLongPress(){
+  document.querySelectorAll('#threadBody .msg-row').forEach(row => {
+    function start(){ clearTimeout(longPressTimer); longPressTimer = setTimeout(() => openCtx(row), 600); }
+    function cancel(){ clearTimeout(longPressTimer); }
+    row.addEventListener('touchstart', start, {passive:true});
+    row.addEventListener('touchend', cancel);
+    row.addEventListener('touchmove', cancel);
+    row.addEventListener('mousedown', start);
+    row.addEventListener('mouseup', cancel);
+    row.addEventListener('mouseleave', cancel);
+  });
+}
+
+function openCtx(row){
+  const mid = parseInt(row.getAttribute('data-mid'), 10);
+  const conv = CONVERSATIONS.find(c => c.id === activeConvId);
+  if(!conv) return;
+  const msg = conv.messages.find(m => m.mid === mid);
+  if(!msg) return;
+  ctxMsgId = mid;
+  ctxConvId = activeConvId;
+
+  let preview = msg.text || '';
+  if(preview.length > 80) preview = preview.substring(0,80) + '…';
+  document.getElementById('ctxPreview').textContent = preview;
+  document.getElementById('ctxEdit').style.display = msg.from === perspective ? 'flex' : 'none';
+  document.getElementById('ctxDelete').style.display = 'flex';
+  document.getElementById('ctxOverlay').classList.add('open');
+  if(navigator.vibrate) navigator.vibrate(30);
+}
+
+function closeCtx(){
+  document.getElementById('ctxOverlay').classList.remove('open');
+  ctxMsgId = null;
+  ctxConvId = null;
+}
+
+document.getElementById('ctxOverlay').addEventListener('click', e => { if(e.target === this) closeCtx(); });
+
+document.getElementById('ctxEdit').addEventListener('click', e => {
+  e.stopPropagation();
+  const mid = ctxMsgId;
+  const cid = ctxConvId;
+  closeCtx();
+  if(mid !== null) startEdit(mid, cid);
+});
+
+document.getElementById('ctxDelete').addEventListener('click', e => {
+  e.stopPropagation();
+  const mid = ctxMsgId;
+  const cid = ctxConvId;
+  closeCtx();
+  if(mid !== null) doDelete(mid, cid);
+});
+
+function startEdit(mid, cid){
+  const conv = CONVERSATIONS.find(c => c.id === cid);
+  if(!conv) return;
+  const msg = conv.messages.find(m => m.mid === mid);
+  if(!msg || msg.from !== perspective) return;
+
+  const row = document.querySelector(`#threadBody .msg-row[data-mid="${mid}"]`);
+  if(!row) return;
+  row.classList.add('editing');
+  const bub = row.querySelector('.msg-bubble');
+  const originalText = msg.text || '';
+  let saved = false;
+
+  bub.innerHTML = '<div class="edit-banner"><i class="fas fa-pen"></i> Editing</div>'
+    + '<textarea class="edit-input" rows="1">' + originalText.replace(/</g,'&lt;') + '</textarea>';
+
+  const ta = bub.querySelector('.edit-input');
+  ta.focus();
+  ta.style.height = ta.scrollHeight + 'px';
+
+  function save(){
+    if(saved) return;
+    saved = true;
+    const val = ta.value.trim();
+    if(!val){ doDelete(mid, cid); return; }
+    msg.text = val;
+    msg.edited = true;
+    renderThread();
+    bindLongPress();
+    toast('Message edited');
+  }
+
+  ta.addEventListener('keydown', e => {
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); save(); }
+    if(e.key==='Escape'){ saved = true; renderThread(); bindLongPress(); }
+  });
+  ta.addEventListener('blur', () => { setTimeout(save, 100); });
+}
+
+function doDelete(mid, cid){
+  const conv = CONVERSATIONS.find(c => c.id === cid);
+  if(!conv) return;
+  const idx = conv.messages.findIndex(m => m.mid === mid);
+  if(idx === -1) return;
+  conv.messages.splice(idx, 1);
+  renderThread();
+  bindLongPress();
+  toast('Message deleted');
+}
+
 /* ═══════════════════════════════════════════════════════════
-   INIT
+   INIT — check for ?author= param to auto-open a conversation
    ═══════════════════════════════════════════════════════════ */
-renderConvList();
-renderThread();
+(function initMessages() {
+  const params = new URLSearchParams(window.location.search);
+  const authorHandle = params.get('author');
+  const editorMode = params.get('editor');
+
+  if (editorMode) {
+    perspective = 'author';
+  }
+
+  if (authorHandle) {
+    const handleLower = authorHandle.toLowerCase().replace(/_/g, ' ');
+    const match = CONVERSATIONS.find(c => c.name.toLowerCase().includes(handleLower));
+    if (match) {
+      activeConvId = match.id;
+      match.unread = 0;
+    } else {
+      const newConv = {
+        id: Date.now(),
+        name: authorHandle.replace(/_/g, ' '),
+        avatar: 'https://i.pravatar.cc/100?img=' + (Math.floor(Math.random() * 60) + 1),
+        role: 'Author',
+        unread: 0,
+        flagged: false,
+        time: 'Just now',
+        messages: []
+      };
+      CONVERSATIONS.unshift(newConv);
+      activeConvId = newConv.id;
+    }
+    document.getElementById('inboxCard').classList.add('thread-open');
+  }
+
+  renderConvList();
+  renderThread();
+  bindLongPress();
+})();
 </script>
+<div class="ctx-overlay" id="ctxOverlay">
+  <div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-preview" id="ctxPreview"></div>
+    <button class="ctx-btn" id="ctxEdit"><i class="fas fa-pen"></i> Edit message</button>
+    <button class="ctx-btn delete" id="ctxDelete"><i class="fas fa-trash"></i> Delete message</button>
+  </div>
+</div>
 </body>
 </html>

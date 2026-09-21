@@ -243,6 +243,7 @@ function findLibraryMatch(title,author){ return LIBRARY.find(s=>s.title===title 
 
 let mainTab = 'featured';   // 'featured' | 'add' | 'history'  — never defaults to history
 let activeTag = 'all';      // secondary filter for featured tab
+let activeFilter = 'all';   // 'all' | 'active' — filter by active status
 let sectionFilter = 'all';  // section dropdown filter
 let pages = { featured:1, add:1, history:1 };
 
@@ -338,11 +339,11 @@ function getTabsPresent(){
   return Object.keys(TAGS).filter(t=>t!=='featured' && set.has(t));
 }
 function renderTagTabs(){
-  const tabs = [{key:'all',label:'⭐ All Featured'}, ...getTabsPresent().map(t=>({key:t,label:TAGS[t].label}))];
+  const tabs = [{key:'all',label:'⭐ All Featured'}, {key:'active',label:'🟢 Active'}, ...getTabsPresent().map(t=>({key:t,label:TAGS[t].label}))];
   if(!tabs.find(t=>t.key===activeTag)) activeTag='all';
   const base = sectionFilter && sectionFilter!=='all' ? FEATURED.filter(f=>f.placement.section===sectionFilter) : FEATURED;
   document.getElementById('tagTabBar').innerHTML = tabs.map(t=>{
-    const count = t.key==='all' ? base.length : base.filter(f=>f.tags.includes(t.key)).length;
+    const count = t.key==='all' ? base.length : t.key==='active' ? base.filter(f=>daysLeft(f.end)>=0).length : base.filter(f=>f.tags.includes(t.key)).length;
     return `<button class="tab-pill${activeTag===t.key?' on':''}" data-action="set-tag-tab" data-tag="${t.key}">${t.label} <span style="opacity:.7">${count}</span></button>`;
   }).join('');
 }
@@ -399,7 +400,7 @@ function historyRow(h,i){
    UNIFIED TABLE RENDER (with its own pagination per tab)
 ───────────────────────────────────────── */
 function getFeaturedList(){
-  let list = activeTag==='all' ? FEATURED : FEATURED.filter(f=>f.tags.includes(activeTag));
+  let list = activeTag==='all' ? FEATURED : activeTag==='active' ? FEATURED.filter(f=>daysLeft(f.end)>=0) : FEATURED.filter(f=>f.tags.includes(activeTag));
   if(sectionFilter && sectionFilter!=='all') list = list.filter(f=>f.placement.section===sectionFilter);
   return list;
 }

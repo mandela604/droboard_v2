@@ -13,7 +13,8 @@
     { key: 'senior-editors',      label: 'Senior Editors',       href: 'senior-editors.html',       icon: 'fa-users' },
     { key: 'contracts-payments',  label: 'Contracts & Payments', href: 'contracts-payments.html',   icon: 'fa-file-signature' },
     { key: 'reports-actions',     label: 'Reports & Actions',    href: 'reports-actions.html',      icon: 'fa-scale-balanced' },
-    { key: 'all-books',           label: 'All Books',            href: 'all-books.html',            icon: 'fa-book-open' },   // NEW
+    { key: 'all-books',           label: 'All Books',            href: 'all-books.html',            icon: 'fa-book-open' },
+    { key: 'categories-genres',   label: 'Categories & Genres',  href: 'categories-genres.html',    icon: 'fa-tags' },
     { key: 'settings',            label: 'Settings',             href: 'settings.html',             icon: 'fa-gear' },
   ];
 
@@ -31,6 +32,13 @@
       --blue:#2563eb; --blue-bg:#eaf1fe;
       --purple:#7c3aed; --purple-bg:#f2ebfd;
       --amber:#c98a12; --amber-bg:#fdf3e0;
+    }
+    html[data-theme="dark"]{
+      --bg:#101018; --card:#181822; --border:#262633;
+      --text:#f2f2f7; --text-muted:#a8a7bd; --text-faint:#726f8c;
+      --input-bg:#1f1f2c; --input-border:#2e2e3d; --hover:#20202c; --table-head:#1d1d29;
+      --red-bg:rgba(224,41,62,.16); --green-bg:rgba(28,157,91,.16); --blue-bg:rgba(37,99,235,.18);
+      --purple-bg:rgba(124,58,237,.18); --amber-bg:rgba(201,138,18,.18);
     }
     body{background:var(--bg);}
     .ces-app{display:flex;min-height:100vh;width:100%;color:var(--text);font-family:'Inter',system-ui,sans-serif;}
@@ -204,4 +212,10 @@
   }
 
   window.ChiefEditorSidebar = { attach, DEFAULT_NAV };
+
+  /* Apply saved theme on every chief-editor page */
+  (function(){
+    var saved = localStorage.getItem('droboard-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+  })();
 })();
