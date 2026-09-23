@@ -25,7 +25,7 @@
  *
  * ── THEMING ────────────────────────────────────────────────────────
  * Shares the same localStorage key as bottom-nav / search-overlay
- * ('dro_search_theme_v1'). Light is default.
+ * ('droboardTheme'). Light is default.
  *
  *   DroboardWorkspaceTabs.setTheme('dark');
  *   DroboardWorkspaceTabs.setLocalTheme('dark');  // this page only
@@ -93,7 +93,7 @@
     document.head.appendChild(el);
   }
 
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   function _loadTheme() {
     try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
     catch (e) { return 'light'; }

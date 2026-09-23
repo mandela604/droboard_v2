@@ -37,10 +37,10 @@
   }
 
   /* ── Theme ── */
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   function loadSavedTheme() { try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } }
   function saveTheme(t) { try { localStorage.setItem(THEME_KEY, t); } catch (e) {} }
-  function applyThemeIcon(t) { document.getElementById('themeIcon').className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun'; }
+  function applyThemeIcon(t) { var el = document.getElementById('themeIcon'); if (el) el.className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun'; }
   function toggleTheme() {
     const html = document.documentElement;
     const next = (html.getAttribute('data-theme') || 'light') === 'light' ? 'dark' : 'light';

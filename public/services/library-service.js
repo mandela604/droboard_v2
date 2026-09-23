@@ -363,7 +363,7 @@
     if (empty) empty.addEventListener('click', () => { location.href = 'discover.html'; });
   }
 
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   function applyThemeIcon(t) {
     const icon = document.getElementById('themeIcon');
     if (icon) icon.className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun';

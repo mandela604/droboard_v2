@@ -22,7 +22,7 @@
 
   const GENRE_MAP = { Drama: 'drama', Romance: 'romance', Family: 'family', Revenge: 'revenge', Betrayal: 'betrayal', Campus: 'campus', Heartbreak: 'heartbreak', Horror: 'horror', Mafia: 'mafia', Werewolf: 'werewolf', Billionaire: 'billionaire', Mystery: 'mystery' };
   const MORE_LIMIT = 8;
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   let AD_INTERVAL = 6, AD_CYCLE = ['book', 'book', 'book', 'book', 'platform'];
 
   let heroes = [], hi = 0, heroTimer;

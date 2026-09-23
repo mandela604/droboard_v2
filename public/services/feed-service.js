@@ -28,7 +28,7 @@
   }
 
   /* ── Theme ── */
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   function loadSavedTheme() { try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } }
   function saveTheme(t) { try { localStorage.setItem(THEME_KEY, t); } catch (e) {} }
   function applyThemeIcon(theme) {

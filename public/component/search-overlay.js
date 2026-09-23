@@ -37,7 +37,7 @@
  * own look — this is a deliberate product decision, not a "match the
  * OS" auto-detect. A small sun/moon toggle sits in the top bar so the
  * person can flip to dark themselves; their choice is remembered
- * (localStorage, 'dro_search_theme_v1') for next time.
+ * (localStorage, 'droboardTheme') for next time.
  *
  * Hosts can also set the initial/forced theme in code:
  *
@@ -460,7 +460,7 @@
   // auto-detection, by design, so light stays the default even on a
   // device set to dark mode.
   // ══════════════════════════════════════════════════════════════════
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   function _loadTheme() {
     try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
     catch (e) { return 'light'; }

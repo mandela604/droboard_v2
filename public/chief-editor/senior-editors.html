@@ -78,6 +78,9 @@ body{font-family:'Inter',system-ui,sans-serif}
 .pg-ellipsis{font-size:11px;color:var(--text-faint);padding:0 2px}
 .empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px;grid-column:1/-1}
 .skeleton{padding:40px;text-align:center;color:var(--text-faint);font-size:12.5px;grid-column:1/-1}
+.pay-badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.pay-badge.fixed{background:var(--blue-bg);color:var(--blue)}
+.pay-badge.revenue-share{background:var(--green-bg);color:var(--green)}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.show{display:flex}
 .modal-box{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:480px;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}
@@ -152,7 +155,13 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
       <div class="form-row two-col">
         <div><label class="form-label">Deadline</label><input class="form-input" id="quotaDeadline" type="date"/></div>
-        <div><label class="form-label">Monthly pay</label><input class="form-input" id="quotaPay" type="text"/></div>
+        <div><label class="form-label">Payment type</label><select class="form-select" id="quotaPayType"><option value="fixed">Fixed Monthly Pay</option><option value="revenue-share">Revenue Share</option></select></div>
+      </div>
+      <div class="form-row" id="quotaFixedRow">
+        <label class="form-label">Monthly pay amount</label><input class="form-input" id="quotaPay" type="text"/>
+      </div>
+      <div class="form-row" id="quotaRevenueRow" style="display:none">
+        <label class="form-label">Revenue share percentage</label><input class="form-input" id="quotaRevenueShare" type="text" placeholder="e.g. 10%"/>
       </div>
       <div class="form-row">
         <label class="form-label">Status override</label>
@@ -194,7 +203,15 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
       <div class="form-row two-col">
         <div><label class="form-label">Default quota target</label><input class="form-input" id="invTarget" type="number" min="1" max="500" value="50"/></div>
-        <div><label class="form-label">Monthly pay</label><input class="form-input" id="invPay" type="text" placeholder="e.g. $3,200"/></div>
+        <div><label class="form-label">Payment type</label><select class="form-select" id="invPayType"><option value="fixed">Fixed Monthly Pay</option><option value="revenue-share">Revenue Share</option></select></div>
+      </div>
+      <div class="form-row" id="invFixedRow">
+        <label class="form-label">Monthly pay amount</label>
+        <input class="form-input" id="invPay" type="text" placeholder="e.g. $3,200"/>
+      </div>
+      <div class="form-row" id="invRevenueRow" style="display:none">
+        <label class="form-label">Revenue share percentage</label>
+        <input class="form-input" id="invRevenueShare" type="text" placeholder="e.g. 10%"/>
       </div>
       <div class="form-row"><label class="form-label">Deadline</label><input class="form-input" id="invDeadline" type="date"/></div>
       <div class="form-row"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="invNote" rows="2" placeholder="A short welcome message..."></textarea></div>
@@ -303,7 +320,8 @@ function pendingCard(e){
   h+='</div></div>';
   h+='<div class="ed-meta-row">';
   h+=metaItem('Quota Target',e.target+'/mo');
-  h+=metaItem('Monthly Pay',e.monthlyPay);
+  h+=metaItem('Payment',e.paymentType==='revenue-share'?(e.revenueShare||'—')+' rev-share':e.monthlyPay);
+  h+='<div class="ed-meta-item"><span>Type</span><b><span class="pay-badge '+(e.paymentType||'fixed')+'">'+(e.paymentType==='revenue-share'?'Revenue Share':'Fixed Pay')+'</span></b></div>';
   h+=metaItem('Invited',e.invitedAt.split('T')[0]);
   h+='</div>';
   h+='<div class="ed-quota-label"><span>Invite pending \u2014 awaiting acceptance</span><span></span></div>';
@@ -334,7 +352,8 @@ function activeCard(e){
   h+=metaItem('Authors',e.authorsManaged);
   h+=metaItem('Assigned',ac);
   h+=metaItem('Joined',e.joined);
-  h+=metaItem('Monthly Pay',e.monthlyPay);
+  h+='<div class="ed-meta-item"><span>Payment</span><b><span class="pay-badge '+(e.paymentType||'fixed')+'">'+(e.paymentType==='revenue-share'?'Revenue Share':'Fixed Pay')+'</span></b></div>';
+  h+=metaItem('Pay',e.paymentType==='revenue-share'?(e.revenueShare||'—')+' rev-share':e.monthlyPay);
   h+=metaItem('YTD Paid',e.ytdPaid);
   h+='</div>';
   h+='<div><div class="ed-quota-label"><span>Invite quota \u2014 '+e.invited+'/'+e.target+'</span>';
@@ -477,10 +496,19 @@ function openQuotaModal(ed){
   document.getElementById('quotaInvited').value=ed.invited;
   document.getElementById('quotaRemaining').value=Math.max(0,ed.target-ed.invited);
   document.getElementById('quotaPay').value=ed.monthlyPay;
+  document.getElementById('quotaPayType').value=ed.paymentType||'fixed';
+  document.getElementById('quotaRevenueShare').value=ed.revenueShare||'';
   document.getElementById('quotaStatus').value=ed.status;
   document.getElementById('quotaNote').value='';
+  toggleQuotaPayFields();
   document.getElementById('quotaModal').classList.add('show');
 }
+function toggleQuotaPayFields(){
+  var t=document.getElementById('quotaPayType').value;
+  document.getElementById('quotaFixedRow').style.display=t==='fixed'?'':'none';
+  document.getElementById('quotaRevenueRow').style.display=t==='revenue-share'?'':'none';
+}
+document.getElementById('quotaPayType').addEventListener('change',toggleQuotaPayFields);
 document.getElementById('quotaModalClose').addEventListener('click',function(){document.getElementById('quotaModal').classList.remove('show');quotaEd=null});
 document.getElementById('quotaCancelBtn').addEventListener('click',function(){document.getElementById('quotaModal').classList.remove('show');quotaEd=null});
 document.getElementById('quotaModal').addEventListener('click',function(e){if(e.target.id==='quotaModal'){document.getElementById('quotaModal').classList.remove('show');quotaEd=null;}});
@@ -489,8 +517,15 @@ document.getElementById('quotaSaveBtn').addEventListener('click',function(){
   if(!quotaEd) return;
   quotaEd.target=parseInt(document.getElementById('quotaTarget').value)||0;
   quotaEd.status=document.getElementById('quotaStatus').value;
-  var p=document.getElementById('quotaPay').value.trim();
-  if(p) quotaEd.monthlyPay=p;
+  quotaEd.paymentType=document.getElementById('quotaPayType').value;
+  if(quotaEd.paymentType==='fixed'){
+    var p=document.getElementById('quotaPay').value.trim();
+    if(p) quotaEd.monthlyPay=p;
+  } else {
+    var rs=document.getElementById('quotaRevenueShare').value.trim();
+    if(rs) quotaEd.revenueShare=rs;
+    quotaEd.monthlyPay=rs?rs+' share':'—';
+  }
   document.getElementById('quotaModal').classList.remove('show');
   toast('Quota updated for '+quotaEd.name,'fa-bullseye');
   quotaEd=null;renderStats();applyFilters();
@@ -502,13 +537,22 @@ function openInviteModal(){
   document.getElementById('invEmail').value='';
   document.getElementById('invTarget').value='50';
   document.getElementById('invPay').value='';
+  document.getElementById('invRevenueShare').value='';
+  document.getElementById('invPayType').value='fixed';
   document.getElementById('invNote').value='';
   document.getElementById('invNameErr').style.display='none';
   document.getElementById('invEmailErr').style.display='none';
+  toggleInvPayFields();
   var now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);
   document.getElementById('invDeadline').value=next.toISOString().split('T')[0];
   document.getElementById('inviteModal').classList.add('show');
 }
+function toggleInvPayFields(){
+  var t=document.getElementById('invPayType').value;
+  document.getElementById('invFixedRow').style.display=t==='fixed'?'':'none';
+  document.getElementById('invRevenueRow').style.display=t==='revenue-share'?'':'none';
+}
+document.getElementById('invPayType').addEventListener('change',toggleInvPayFields);
 document.getElementById('inviteModalClose').addEventListener('click',function(){document.getElementById('inviteModal').classList.remove('show')});
 document.getElementById('inviteCancelBtn').addEventListener('click',function(){document.getElementById('inviteModal').classList.remove('show')});
 document.getElementById('inviteModal').addEventListener('click',function(e){if(e.target.id==='inviteModal') document.getElementById('inviteModal').classList.remove('show')});
@@ -523,7 +567,16 @@ document.getElementById('inviteSendBtn').addEventListener('click',function(){
   if(!name){document.getElementById('invNameErr').style.display='block';valid=false;}else{document.getElementById('invNameErr').style.display='none';}
   if(!email||!/[^\s@]+@[^\s@]+\.[^\s@]+/.test(email)){document.getElementById('invEmailErr').style.display='block';valid=false;}else{document.getElementById('invEmailErr').style.display='none';}
   if(!valid) return;
-  ChiefEditorData.addPendingEditor({name:name,email:email,target:target,pay:pay,deadline:deadline,note:note}).then(function(editor){
+  var pt=document.getElementById('invPayType').value;
+  var payVal='$0';
+  var revShare='';
+  if(pt==='fixed'){
+    payVal=document.getElementById('invPay').value.trim()||'$0';
+  } else {
+    revShare=document.getElementById('invRevenueShare').value.trim()||'';
+    payVal=revShare?revShare+' share':'—';
+  }
+  ChiefEditorData.addPendingEditor({name:name,email:email,target:target,pay:payVal,paymentType:pt,revenueShare:revShare,deadline:deadline,note:note}).then(function(editor){
     ALL.push(editor);
     document.getElementById('inviteModal').classList.remove('show');
     var link=window.location.origin+'/public/senior-editor/accept-invite.html?token='+editor.inviteToken;

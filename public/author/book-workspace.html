@@ -313,6 +313,7 @@ const TOOLS = [
   { icon:'fa-pen-to-square', title:'Chapter Review', desc:'Submit chapters for editor review.', bg:'var(--blue-soft)', color:'var(--blue)', href:'request-chapter-review.html' },
   { icon:'fa-book-open', title:'Series Changes', desc:'Request series modifications.', bg:'var(--purple-soft)', color:'var(--purple)', href:'request-series-change.html' },
   { icon:'fa-crown', title:'VIP Application', desc:'Apply for VIP author status.', bg:'#F3E9DE', color:'#9A6A3A', href:'apply-vip.html' },
+  { icon:'fa-lock', title:'Request Book Lock', desc:'Request to lock or unlock this book.', bg:'var(--warning-soft)', color:'#b45309', action:'openBookLockModal' },
   { icon:'fa-gear', title:'Book Settings', desc:'Genre, visibility, cover, pricing, tags, delete book.', bg:'#F1F1F4', color:'#5c5c66' },
 ];
 
@@ -435,7 +436,8 @@ function renderTools(){
   document.getElementById('toolList').innerHTML = TOOLS.map(t => {
     const tag = t.href ? 'a' : 'div';
     const hrefAttr = t.href ? ` href="${t.href}"` : '';
-    return `<${tag} class="tool-card"${hrefAttr}>
+    const actionAttr = t.action ? ` data-action="${t.action}"` : '';
+    return `<${tag} class="tool-card"${hrefAttr}${actionAttr}>
       <div class="tool-icon" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
       <div class="tool-info">
         <div class="tool-title">${t.title}</div>
@@ -444,6 +446,16 @@ function renderTools(){
       <i class="fas fa-chevron-right tool-chev"></i>
     </${tag}>`;
   }).join('');
+
+  document.querySelectorAll('.tool-card[data-action]').forEach(function(card){
+    card.addEventListener('click', function(e){
+      e.preventDefault();
+      var action = this.dataset.action;
+      if(action === 'openBookLockModal' && typeof window.openBookLockModal === 'function'){
+        window.openBookLockModal();
+      }
+    });
+  });
 }
 
 function renderDrawer(){
@@ -483,6 +495,77 @@ drawerOverlay.addEventListener('click', closeDrawer);
      name is book-workspace.html either way. ── */
 if (window.DroboardWorkspaceTabs) DroboardWorkspaceTabs.configure({ active: 'chapters' });
 if (window.DroboardNav) DroboardNav.configure({ active: 'profile' });
+
+/* ── Book Lock Request Modal ── */
+</script>
+
+<div id="bookLockModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:90%;max-width:420px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative">
+    <button onclick="closeBookLockModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:16px;color:var(--text-faint);cursor:pointer"><i class="fas fa-xmark"></i></button>
+    <h3 style="font-size:16px;font-weight:800;margin-bottom:4px"><i class="fas fa-lock" style="color:var(--warning);margin-right:6px"></i>Request Book Lock</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:18px">Choose to lock or unlock your entire book. Your senior editor will review the request.</p>
+
+    <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:8px">Action</label>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="lock-action-btn active" data-action="lock" style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--accent);background:rgba(255,0,80,.06);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-lock"></i> Lock Book</button>
+      <button class="lock-action-btn" data-action="unlock" style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:var(--input-bg);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-lock-open"></i> Unlock Book</button>
+    </div>
+
+    <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:8px">Reason</label>
+    <textarea id="bookLockReason" rows="3" placeholder="Why do you want to lock/unlock this book?" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;resize:none;margin-bottom:18px"></textarea>
+
+    <button id="submitBookLockBtn" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-paper-plane"></i> Submit Request</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var selectedAction = 'lock';
+  var modal = document.getElementById('bookLockModal');
+  var reasonEl = document.getElementById('bookLockReason');
+  var submitBtn = document.getElementById('submitBookLockBtn');
+
+  window.openBookLockModal = function(){
+    modal.style.display = 'flex';
+    selectedAction = 'lock';
+    reasonEl.value = '';
+    updateActionBtns();
+  };
+  window.closeBookLockModal = function(){
+    modal.style.display = 'none';
+  };
+
+  function updateActionBtns(){
+    document.querySelectorAll('.lock-action-btn').forEach(function(btn){
+      var isActive = btn.dataset.action === selectedAction;
+      btn.classList.toggle('active', isActive);
+      btn.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+      btn.style.background = isActive ? 'rgba(255,0,80,.06)' : 'var(--input-bg)';
+    });
+  }
+
+  document.querySelectorAll('.lock-action-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      selectedAction = this.dataset.action;
+      updateActionBtns();
+    });
+  });
+
+  modal.addEventListener('click', function(e){
+    if(e.target === modal) closeBookLockModal();
+  });
+
+  submitBtn.addEventListener('click', function(){
+    var reason = reasonEl.value.trim();
+    if(!reason){ reasonEl.focus(); return; }
+    showBtnLoading(submitBtn, 'Submitting…');
+    setTimeout(function(){
+      hideBtnLoading(submitBtn);
+      closeBookLockModal();
+      toast('Request submitted — your SE will review it');
+    }, 1000);
+  });
+})();
 </script>
 </body>
 </html>

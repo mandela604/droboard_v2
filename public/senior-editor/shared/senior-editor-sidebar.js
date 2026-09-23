@@ -42,7 +42,6 @@
     { key: 'completion-review',   label: 'Completion Application',icon:'fa-flag-checkered',    href: 'completion-application.html', section: 'Reviews' },
     { key: 'chapter-review',      label: 'Chapter Edit Review', icon: 'fa-pen-to-square',     href: 'chapter-edit-review.html',    section: 'Reviews' },
     { key: 'book-series-review',  label: 'Book Series Review',  icon: 'fa-book-open',         href: 'book-series-review.html',     section: 'Reviews' },
-    { key: 'editor-bill-review',  label: 'Editor Bill Review',  icon: 'fa-sack-dollar',       href: 'editor-bill-review.html',     section: 'Reviews' },
 
     { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html',                section: 'People' },
     { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html',    section: 'People' },

@@ -124,6 +124,7 @@ const QUEUES = [
   { key:'completion',   label:'Completion Application', icon:'fa-flag-checkered', desc:'Authors apply for book completion. SE approves or rejects.', count:2, cls:'green', href:'completion-application.html' },
   { key:'chapters',     label:'Chapter Edit Review',    icon:'fa-pen-to-square',  desc:'Authors request chapter edits. SE reviews to protect exclusive contracts.', count:8, cls:'red', href:'chapter-edit-review.html' },
   { key:'book-series',  label:'Book Series Review',     icon:'fa-book-open',      desc:'Authors request edits to book details (title, series, etc.).', count:4, cls:'blue', href:'book-series-review.html' },
+  { key:'book-lock',    label:'Book Lock Review',        icon:'fa-lock',           desc:'Authors request to lock or unlock their entire book. SE approves.', count:3, cls:'purple', href:'vip-registration-review.html' },
 ];
 
 const RECENT_SUBS = [
@@ -151,7 +152,7 @@ function renderStats(){
     {n:total,l:'Pending Reviews',ico:'fa-inbox',cls:'amber'},
     {n:urgent,l:'Urgent (Chapter Edits)',ico:'fa-triangle-exclamation',cls:'red'},
     {n:QUEUES.find(q=>q.key==='contracts').count,l:'Contracts',ico:'fa-file-signature',cls:'blue'},
-    {n:QUEUES.find(q=>q.key==='editor-bills').count,l:'Editor Bills',ico:'fa-sack-dollar',cls:'accent'},
+    {n:QUEUES.find(q=>q.key==='book-lock').count,l:'Book Locks',ico:'fa-lock',cls:'purple'},
     {n:87,l:'Approval Rate',ico:'fa-circle-check',cls:'green'},
     {n:'3.4h',l:'Avg Turnaround',ico:'fa-clock',cls:'purple'},
   ].map(s=>`<div class="stat-card"><div class="stat-ico" style="background:${BG[s.cls]};color:${ICO[s.cls]}"><i class="fas ${s.ico}"></i></div><div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div></div>`).join('');

@@ -16,9 +16,9 @@
 .filt-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
 .filt-search i{color:var(--text-faint);font-size:12px}
 .filt-sel{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
-.tbl-head{display:grid;grid-template-columns:24px 2fr 1fr 110px 100px 90px;gap:8px;padding:0 14px 8px}.tbl-head span{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint)}
+.tbl-head{display:grid;grid-template-columns:24px 2fr 1fr 90px 110px 100px 90px;gap:8px;padding:0 14px 8px}.tbl-head span{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint)}
 .tbl-body{display:flex;flex-direction:column;gap:8px;padding:0 14px}
-.item-row{display:grid;grid-template-columns:24px 2fr 1fr 110px 100px 90px;gap:8px;align-items:center;background:var(--table-head,#eef0f3);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;transition:.15s;cursor:pointer}.item-row:hover{border-color:var(--accent)}.item-row.is-open{border-color:var(--accent);border-radius:10px 10px 0 0}
+.item-row{display:grid;grid-template-columns:24px 2fr 1fr 90px 110px 100px 90px;gap:8px;align-items:center;background:var(--table-head,#eef0f3);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;transition:.15s;cursor:pointer}.item-row:hover{border-color:var(--accent)}.item-row.is-open{border-color:var(--accent);border-radius:10px 10px 0 0}
 .expand-ico{font-size:11px;color:var(--text-faint);transition:.15s;width:20px;text-align:center}.item-row.is-open .expand-ico{transform:rotate(90deg);color:var(--accent)}
 .author-cell{display:flex;align-items:center;gap:8px}.author-cell img{width:26px;height:26px;border-radius:50%;object-fit:cover}.author-name{font-size:12px;font-weight:600}
 .col-txt{font-size:12px;font-weight:600}.col-meta{font-size:11px;color:var(--text-muted)}
@@ -32,7 +32,7 @@
 .detail-notes{font-size:11.5px;color:var(--text-muted);line-height:1.6;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:12px}
 .detail-foot{display:flex;gap:7px;flex-wrap:wrap}
 .empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
-@media(max-width:1180px){.tbl-head{display:none}.item-row{grid-template-columns:24px 1fr 110px 90px}.item-row .col-author,.item-row .col-genre{display:none}.detail-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:1180px){.tbl-head{display:none}.item-row{grid-template-columns:24px 1fr 90px 90px}.item-row .col-author,.item-row .col-genre{display:none}.detail-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -44,7 +44,7 @@
       <div class="filt-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by author or book…"/></div>
       <select class="filt-sel" id="statusFilter"><option value="">All Status</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
     </div>
-    <div class="tbl-head"><span></span><span>Author</span><span>Book</span><span>Reason</span><span>Status</span><span>Actions</span></div>
+    <div class="tbl-head"><span></span><span>Author</span><span>Book</span><span>Action</span><span>Reason</span><span>Status</span><span>Actions</span></div>
     <div class="tbl-body" id="tableBody"></div>
   </div>
 </div>
@@ -53,16 +53,16 @@
 <style>#toast.show{opacity:1}</style>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script>
-SeniorEditorSidebar.attach('#dashRoot',{activeItem:'vip-review',title:'VIP Registration Review',subtitle:'Authors apply to lock their chapters',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
+SeniorEditorSidebar.attach('#dashRoot',{activeItem:'vip-review',title:'Book Lock Review',subtitle:'Authors request to lock or unlock their entire book',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
 (function(){
 'use strict';
 var items=[
-  {id:'VIP-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',reason:'Protect exclusive content',submitted:'2h ago',status:'pending',notes:'Author wants to lock Ch.20-24 for VIP readers only.'},
-  {id:'VIP-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',reason:'Monetize premium chapters',submitted:'5h ago',status:'pending',notes:'Locking Ch.10-12 behind VIP.'},
-  {id:'VIP-003',author:'Lyra Night',avatar:'https://i.pravatar.cc/100?img=25',book:'His Hidden Luna',reason:'Exclusive access',submitted:'1d ago',status:'approved',notes:'Approved. Chapters locked.'},
-  {id:'VIP-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',reason:'Revenue generation',submitted:'2d ago',status:'approved',notes:'Done.'},
-  {id:'VIP-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',reason:'Protect content',submitted:'3d ago',status:'rejected',notes:'Does not meet VIP criteria at this time.'},
-  {id:'VIP-006',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'Runaway Bride in Socked Feet',reason:'Premium access',submitted:'4d ago',status:'pending',notes:'Awaiting review.'},
+  {id:'VIP-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',action:'lock',reason:'Protect exclusive content from piracy',submitted:'2h ago',status:'pending',notes:'Author wants to make the entire book VIP-only.'},
+  {id:'VIP-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',action:'lock',reason:'Monetize premium content',submitted:'5h ago',status:'pending',notes:'Requesting full book lock for VIP readers.'},
+  {id:'VIP-003',author:'Lyra Night',avatar:'https://i.pravatar.cc/100?img=25',book:'His Hidden Luna',action:'unlock',reason:'Book is complete, want wider readership',submitted:'1d ago',status:'approved',notes:'Approved. Book unlocked for all readers.'},
+  {id:'VIP-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',action:'lock',reason:'Revenue generation',submitted:'2d ago',status:'approved',notes:'Done. Book is now VIP-only.'},
+  {id:'VIP-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',action:'lock',reason:'Protect content',submitted:'3d ago',status:'rejected',notes:'Does not meet criteria yet. Must have 10K+ reads.'},
+  {id:'VIP-006',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'Runaway Bride in Socked Feet',action:'unlock',reason:'Want more visibility for new readers',submitted:'4d ago',status:'pending',notes:'Awaiting review.'},
 ];
 var currentPage=1,PER_PAGE=6,openRowId=null;
 function filtered(){var q=(document.getElementById('searchInput').value||'').trim().toLowerCase();var st=document.getElementById('statusFilter').value;return items.filter(function(a){if(st&&a.status!==st)return false;if(q&&a.author.toLowerCase().indexOf(q)===-1&&a.book.toLowerCase().indexOf(q)===-1)return false;return true;});}
@@ -75,18 +75,19 @@ function render(){
   if(!page.length){body.innerHTML='<div class="empty-msg"><i class="fas fa-inbox" style="font-size:20px;margin-bottom:8px;display:block"></i>No applications found.</div>';return;}
   body.innerHTML=page.map(function(a){
     var isOpen=openRowId===a.id;
-    return '<div><div class="item-row'+(isOpen?' is-open':'')+'" data-id="'+a.id+'"><i class="fas fa-chevron-right expand-ico"></i><div class="author-cell col-author"><img src="'+a.avatar+'"/><span class="author-name">'+a.author+'</span></div><div class="col-txt col-genre">'+a.book+'</div><div class="col-meta">'+a.reason+'</div><div>'+pill(a.status)+'</div><div class="actions-cell"><button class="mini-btn green" onclick="event.stopPropagation();approve(\''+a.id+'\')"><i class="fas fa-check"></i></button><button class="mini-btn danger" onclick="event.stopPropagation();reject(\''+a.id+'\')"><i class="fas fa-xmark"></i></button></div></div><div class="item-detail'+(isOpen?' show':'')+'" id="detail-'+a.id+'"></div></div>';
+    var actionChip=a.action==='lock'?'<span style="display:inline-flex;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--red-bg);color:var(--red)"><i class="fas fa-lock" style="margin-right:4px"></i>Lock</span>':'<span style="display:inline-flex;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--green-bg);color:var(--green)"><i class="fas fa-lock-open" style="margin-right:4px"></i>Unlock</span>';
+    return '<div><div class="item-row'+(isOpen?' is-open':'')+'" data-id="'+a.id+'"><i class="fas fa-chevron-right expand-ico"></i><div class="author-cell col-author"><img src="'+a.avatar+'"/><span class="author-name">'+a.author+'</span></div><div class="col-txt col-genre">'+a.book+'</div><div>'+actionChip+'</div><div class="col-meta">'+a.reason+'</div><div>'+pill(a.status)+'</div><div class="actions-cell"><button class="mini-btn green" onclick="event.stopPropagation();approve(\''+a.id+'\')"><i class="fas fa-check"></i></button><button class="mini-btn danger" onclick="event.stopPropagation();reject(\''+a.id+'\')"><i class="fas fa-xmark"></i></button></div></div><div class="item-detail'+(isOpen?' show':'')+'" id="detail-'+a.id+'"></div></div>';
   }).join('');
   if(openRowId&&page.some(function(a){return a.id===openRowId;}))renderDetail(openRowId);
 }
 function renderDetail(id){
   var a=items.find(function(x){return x.id===id;});if(!a)return;
   var p=document.getElementById('detail-'+id);if(!p)return;
-  p.innerHTML='<div class="detail-inner"><div class="detail-grid"><div class="detail-item"><span>ID</span><b>'+a.id+'</b></div><div class="detail-item"><span>Author</span><b>'+a.author+'</b></div><div class="detail-item"><span>Book</span><b>'+a.book+'</b></div><div class="detail-item"><span>Status</span><b>'+pill(a.status)+'</b></div><div class="detail-item"><span>Reason</span><b>'+a.reason+'</b></div><div class="detail-item"><span>Submitted</span><b>'+a.submitted+'</b></div></div><div class="detail-notes"><i class="fas fa-note-sticky" style="color:var(--accent);margin-right:4px"></i>'+a.notes+'</div><div class="detail-foot"><button class="mini-btn green" onclick="approve(\''+a.id+'\')"><i class="fas fa-check"></i> Approve</button><button class="mini-btn danger" onclick="reject(\''+a.id+'\')"><i class="fas fa-xmark"></i> Reject</button></div></div>';
+  p.innerHTML='<div class="detail-inner"><div class="detail-grid"><div class="detail-item"><span>ID</span><b>'+a.id+'</b></div><div class="detail-item"><span>Author</span><b>'+a.author+'</b></div><div class="detail-item"><span>Book</span><b>'+a.book+'</b></div><div class="detail-item"><span>Action</span><b>'+(a.action==='lock'?'<i class="fas fa-lock" style="color:var(--red)"></i> Lock Book':'<i class="fas fa-lock-open" style="color:var(--green)"></i> Unlock Book')+'</b></div><div class="detail-item"><span>Status</span><b>'+pill(a.status)+'</b></div><div class="detail-item"><span>Reason</span><b>'+a.reason+'</b></div><div class="detail-item"><span>Submitted</span><b>'+a.submitted+'</b></div></div><div class="detail-notes"><i class="fas fa-note-sticky" style="color:var(--accent);margin-right:4px"></i>'+a.notes+'</div><div class="detail-foot"><button class="mini-btn green" onclick="approve(\''+a.id+'\')"><i class="fas fa-check"></i> Approve</button><button class="mini-btn danger" onclick="reject(\''+a.id+'\')"><i class="fas fa-xmark"></i> Reject</button></div></div>';
 }
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2200);}
-window.approve=function(id){var a=items.find(function(x){return x.id===id;});if(a){a.status='approved';openRowId=null;render();toast(a.author+' — VIP approved');}};
-window.reject=function(id){var a=items.find(function(x){return x.id===id;});if(a){a.status='rejected';openRowId=null;render();toast(a.author+' — VIP rejected');}};
+window.approve=function(id){var a=items.find(function(x){return x.id===id;});if(a){a.status='approved';openRowId=null;render();toast(a.author+' — Book '+(a.action==='lock'?'locked':'unlocked')+' successfully');}};
+window.reject=function(id){var a=items.find(function(x){return x.id===id;});if(a){a.status='rejected';openRowId=null;render();toast(a.author+' — Request rejected');}};
 document.addEventListener('click',function(e){var row=e.target.closest('.item-row');if(row&&!e.target.closest('.actions-cell')){openRowId=openRowId===row.dataset.id?null:row.dataset.id;render();}});
 document.getElementById('searchInput').addEventListener('input',function(){currentPage=1;render();});
 document.getElementById('statusFilter').addEventListener('change',function(){currentPage=1;render();});

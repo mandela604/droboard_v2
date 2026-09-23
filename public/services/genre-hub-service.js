@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
 
   let GENRE = null;
   let GENRE_ID = null;
@@ -54,7 +54,8 @@
     const html = document.documentElement;
     const next = (html.getAttribute('data-theme') || 'light') === 'light' ? 'dark' : 'light';
     html.setAttribute('data-theme', next);
-    document.getElementById('themeIcon').className = next === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    var iconEl = document.getElementById('themeIcon');
+    if (iconEl) iconEl.className = next === 'light' ? 'fas fa-moon' : 'fas fa-sun';
     try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', next === 'light' ? '#ffffff' : '#000000');
@@ -64,7 +65,8 @@
     let t = 'light';
     try { t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) {}
     document.documentElement.setAttribute('data-theme', t);
-    document.getElementById('themeIcon').className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    var iconEl = document.getElementById('themeIcon');
+    if (iconEl) iconEl.className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun';
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', t === 'light' ? '#ffffff' : '#000000');
     const applyNav = () => { if (window.DroboardNav) DroboardNav.setTheme(t); };

@@ -8,7 +8,7 @@
 (function () {
   'use strict';
 
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
 
   let GENRE = null;
   let GENRE_ID = 'fantasy';
@@ -33,7 +33,8 @@
     const html = document.documentElement;
     const next = (html.getAttribute('data-theme') || 'light') === 'light' ? 'dark' : 'light';
     html.setAttribute('data-theme', next);
-    document.getElementById('themeIcon').className = next === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    var iconEl = document.getElementById('themeIcon');
+    if (iconEl) iconEl.className = next === 'light' ? 'fas fa-moon' : 'fas fa-sun';
     try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
     syncCommentTheme();
   }
@@ -41,7 +42,8 @@
     let t = 'light';
     try { t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) {}
     document.documentElement.setAttribute('data-theme', t);
-    document.getElementById('themeIcon').className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    var iconEl = document.getElementById('themeIcon');
+    if (iconEl) iconEl.className = t === 'light' ? 'fas fa-moon' : 'fas fa-sun';
     syncCommentTheme();
   }
   function syncCommentTheme() {

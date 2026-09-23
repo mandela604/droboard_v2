@@ -27,7 +27,7 @@
  *
  * ── THEMING ────────────────────────────────────────────────────────
  * Reads its theme from the SAME localStorage key search-overlay.js
- * uses ('dro_search_theme_v1'), so the nav bar and the search overlay
+ * uses ('droboardTheme'), so the nav bar and the search overlay
  * are always in sync — toggle the theme from either one and both
  * update (this component also listens for the 'storage' event so it
  * updates live if changed in another tab, and re-checks on focus so
@@ -133,7 +133,7 @@
   // over the shared/persisted value for THIS page's render — but is
   // never written to localStorage and never leaks to other pages.
   // ══════════════════════════════════════════════════════════════════
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
   function _loadTheme() {
     try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
     catch (e) { return 'light'; }

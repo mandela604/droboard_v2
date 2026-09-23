@@ -118,7 +118,8 @@
           '<div class="ed-meta-item"><span>Authors</span><b>'+e.authorsManaged+'</b></div>' +
           '<div class="ed-meta-item"><span>Assigned</span><b>'+assignedCount+'</b></div>' +
           '<div class="ed-meta-item"><span>Joined</span><b>'+esc(e.joined)+'</b></div>' +
-          '<div class="ed-meta-item"><span>Monthly Pay</span><b>'+esc(e.monthlyPay)+'</b></div>' +
+          '<div class="ed-meta-item"><span>Payment</span><b><span class="pay-badge '+(e.paymentType||'fixed')+'">'+(e.paymentType==='revenue-share'?'Revenue Share':'Fixed Pay')+'</span></b></div>' +
+          '<div class="ed-meta-item"><span>Pay</span><b>'+(e.paymentType==='revenue-share'?esc(e.revenueShare||'—')+' rev-share':esc(e.monthlyPay))+'</b></div>' +
           '<div class="ed-meta-item"><span>YTD Paid</span><b>'+esc(e.ytdPaid)+'</b></div>' +
         '</div>' +
         '<div>' +

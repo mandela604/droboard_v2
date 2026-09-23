@@ -10,7 +10,7 @@
 
   const USE_API = false;
   const API_BASE = '/api';
-  const THEME_KEY = 'dro_search_theme_v1';
+  const THEME_KEY = 'droboardTheme';
 
   let SERIES = null;
 
