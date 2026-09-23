@@ -425,9 +425,9 @@
           </div>
           <div class="drd-buy-body" id="drdBuyPackages"></div>
           <div class="drd-buy-body" id="drdBuyFund" style="display:none">
-            <div class="drd-fund-lbl">Enter amount (₦)</div>
-            <input class="drd-fund-inp" id="drdFundInp" type="number" min="100" placeholder="e.g. 1000"/>
-            <div class="drd-fund-rate">₦20 = 1 coin · minimum ₦100</div>
+            <div class="drd-fund-lbl">Enter amount ($)</div>
+            <input class="drd-fund-inp" id="drdFundInp" type="number" min="1" placeholder="e.g. 10"/>
+            <div class="drd-fund-rate">$0.02 = 1 coin · minimum $1</div>
             <button class="drd-buy-cta" id="drdFundConfirm">Fund &amp; Convert</button>
           </div>
         </div>
@@ -608,7 +608,7 @@ function _renderRxSlot(story) {
           <div class="drd-pkg-coins"><i class="fas fa-coins"></i> ${_fmtN(p.coins)}</div>
           ${p.bonus ? `<div class="drd-pkg-bonus">+${p.bonus} bonus coins</div>` : ''}
         </div>
-        <div class="drd-pkg-right"><div class="drd-pkg-price">₦${_fmtN(p.price)}</div></div>
+        <div class="drd-pkg-right"><div class="drd-pkg-price">$${_fmtN(p.price)}</div></div>
       </div>`).join('');
   }
   function _setBuyLoading(loading) {
@@ -641,7 +641,7 @@ function _renderRxSlot(story) {
   function _fundWallet() {
     if (_buyPurchasing) return;
     const naira = +document.getElementById('drdFundInp').value;
-    if (!naira || naira < 100) { _toast('Enter at least ₦100'); return; }
+    if (!naira || naira < 1) { _toast('Enter at least $1'); return; }
     document.getElementById('drdFundInp').value = '';
     _setBuyLoading(true);
     setTimeout(() => _grantCoins(Math.floor(naira / 20)), 900);

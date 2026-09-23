@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Inter',system-ui,sans-serif}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
 
 .page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
@@ -43,6 +43,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 table{width:100%;border-collapse:collapse;min-width:900px}
 thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 18px;white-space:nowrap}
 tbody td{padding:13px 18px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
+tbody tr{cursor:pointer;transition:.12s}
 tbody tr:hover{background:var(--hover)}
 .contract-cell{display:flex;align-items:center;gap:10px}
 .contract-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
@@ -248,7 +249,7 @@ tbody tr:hover{background:var(--hover)}
       </div>
       <div class="form-row">
         <div class="form-group"><label>Revenue Split (%)</label><input id="sendRevenue" type="number" placeholder="e.g. 70" min="0" max="100"/></div>
-        <div class="form-group"><label>Advance (₦)</label><input id="sendAdvance" type="number" placeholder="e.g. 50000"/></div>
+        <div class="form-group"><label>Advance ($)</label><input id="sendAdvance" type="number" placeholder="e.g. 500"/></div>
       </div>
       <div class="form-group"><label>Template</label><select id="sendTemplate"><option value="">Select template…</option></select></div>
       <div class="form-group"><label>Notes</label><textarea id="sendNotes" placeholder="Any additional terms or notes…"></textarea></div>
@@ -366,7 +367,7 @@ function renderContracts(){
            '<button class="act-btn reject" title="Reject" data-action="reject" data-idx="'+idx+'"><i class="fas fa-xmark"></i></button>';
     }
     acts+='<button class="act-btn" title="View" data-action="view" data-idx="'+idx+'"><i class="fas fa-eye"></i></button>';
-    return'<tr>'+
+    return'<tr data-idx="'+idx+'">'+
       '<td><div class="contract-cell"><div class="contract-icon" style="background:'+ibg+';color:'+ic+'"><i class="fas fa-file-contract"></i></div><div><div class="contract-id">'+c.id+'</div><div class="contract-type">'+c.type+'</div></div></div></td>'+
       '<td><div class="author-cell"><img src="'+c.authorAv+'" alt=""/><span class="author-name">'+c.author+'</span></div></td>'+
       '<td><div class="book-title">'+c.book+'</div></td>'+
@@ -396,12 +397,19 @@ document.getElementById('typeFilter').addEventListener('change',function(){contr
 
 document.getElementById('contractBody').addEventListener('click',function(e){
   var btn=e.target.closest('[data-action]');
-  if(!btn)return;
-  var action=btn.dataset.action;
-  var idx=parseInt(btn.dataset.idx,10);
-  if(action==='view')openViewModal(allContracts[idx]);
-  else if(action==='approve')doApproveContract(idx);
-  else if(action==='reject')doRejectContract(idx);
+  if(btn){
+    var action=btn.dataset.action;
+    var idx=parseInt(btn.dataset.idx,10);
+    if(action==='view')openViewModal(allContracts[idx]);
+    else if(action==='approve')doApproveContract(idx);
+    else if(action==='reject')doRejectContract(idx);
+    return;
+  }
+  var row=e.target.closest('tr[data-idx]');
+  if(row){
+    var idx=parseInt(row.dataset.idx,10);
+    openViewModal(allContracts[idx]);
+  }
 });
 
 function doApproveContract(idx){

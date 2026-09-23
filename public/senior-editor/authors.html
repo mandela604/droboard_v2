@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Inter',system-ui,sans-serif}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
 
 .welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55)}
@@ -131,6 +131,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 </div>
 
 <script src="shared/senior-editor-sidebar.js"></script>
+<script src="shared/senior-editor-data.js"></script>
 <script>
 'use strict';
 const shell = SeniorEditorSidebar.attach('#authorsRoot',{
@@ -143,61 +144,24 @@ const shell = SeniorEditorSidebar.attach('#authorsRoot',{
 /* ─────────────────────────────────────────
    CONFIG
 ───────────────────────────────────────── */
-const API_BASE = '/api/v1';          // real backend, when available
 const PAGE_SIZE = 5;
 let usingDemoData = false;
-
-/* ─────────────────────────────────────────
-   DEMO FALLBACK DATA
-   Used automatically whenever the real API
-   is unreachable or returns an error, so the
-   page always stays usable.
-───────────────────────────────────────── */
-const DEMO_AUTHORS = [
-  { id:'AU-001', name:'Chioma Okafor', avatar:'https://i.pravatar.cc/100?img=32', genre:'Romance & Betrayal', stories:14, rating:4.5, earnings:'$8,240', status:'active', warnings:0, joined:'Jan 12, 2025', email:'chioma.okafor@mail.com' },
-  { id:'AU-002', name:'Luna Skye', avatar:'https://i.pravatar.cc/100?img=45', genre:'Billionaire & CEO', stories:9, rating:4.3, earnings:'$6,110', status:'active', warnings:1, joined:'Mar 3, 2025', email:'luna.skye@mail.com' },
-  { id:'AU-003', name:'Elena Vasquez', avatar:'https://i.pravatar.cc/100?img=47', genre:'Werewolf & Fantasy', stories:21, rating:4.1, earnings:'$11,980', status:'active', warnings:0, joined:'Aug 19, 2024', email:'elena.vasquez@mail.com' },
-  { id:'AU-004', name:'Marcus Webb Jr.', avatar:'https://i.pravatar.cc/100?img=12', genre:'Mafia & Urban', stories:6, rating:3.9, earnings:'$2,430', status:'suspended', warnings:3, joined:'Nov 2, 2025', email:'marcus.webbjr@mail.com' },
-  { id:'AU-005', name:'Isabelle Moreau', avatar:'https://i.pravatar.cc/100?img=25', genre:'Historical & Regency', stories:18, rating:4.7, earnings:'$14,020', status:'active', warnings:0, joined:'May 27, 2024', email:'isabelle.moreau@mail.com' },
-  { id:'AU-006', name:'Wren Okonkwo', avatar:'https://i.pravatar.cc/100?img=15', genre:'Campus & Revenge', stories:11, rating:4.0, earnings:'$5,760', status:'active', warnings:1, joined:'Feb 14, 2025', email:'wren.okonkwo@mail.com' },
-  { id:'AU-007', name:'Ifeanyi_Story', avatar:'https://i.pravatar.cc/100?img=8', genre:'Twist & Drama', stories:8, rating:4.6, earnings:'$4,890', status:'active', warnings:0, joined:'Jul 9, 2025', email:'ifeanyi.story@mail.com' },
-  { id:'AU-008', name:'Efe_O', avatar:'https://i.pravatar.cc/100?img=19', genre:'Elegy & Heartbreak', stories:5, rating:4.4, earnings:'$3,150', status:'active', warnings:0, joined:'Sep 30, 2025', email:'efe.o@mail.com' },
-  { id:'AU-009', name:'Ada_Writes', avatar:'https://i.pravatar.cc/100?img=28', genre:'Romance & Betrayal', stories:13, rating:4.2, earnings:'$7,020', status:'active', warnings:2, joined:'Apr 21, 2025', email:'ada.writes@mail.com' },
-  { id:'AU-010', name:'Zara_M', avatar:'https://i.pravatar.cc/100?img=36', genre:'Mafia & Urban', stories:4, rating:3.8, earnings:'$1,860', status:'suspended', warnings:2, joined:'Dec 5, 2025', email:'zara.m@mail.com' },
-  { id:'AU-011', name:'Dami_Cole', avatar:'https://i.pravatar.cc/100?img=51', genre:'Romance & Betrayal', stories:7, rating:4.0, earnings:'$3,410', status:'active', warnings:0, joined:'Jun 8, 2025', email:'dami.cole@mail.com' },
-  { id:'AU-012', name:'Chiamaka_N', avatar:'https://i.pravatar.cc/100?img=41', genre:'Campus & Revenge', stories:10, rating:4.3, earnings:'$5,220', status:'active', warnings:0, joined:'Oct 17, 2025', email:'chiamaka.n@mail.com' },
-];
 
 let AUTHORS = [];
 let currentPage = 1;
 let expandedId = null;
 
 /* ─────────────────────────────────────────
-   API HELPERS — real endpoint first,
-   silent fallback to demo data on any failure.
+   LOAD DATA — via SeniorEditorData
 ───────────────────────────────────────── */
-async function apiFetch(path, options){
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers:{'Content-Type':'application/json'},
-    credentials:'include',
-    ...options,
-  });
-  if(!res.ok){
-    let msg = `Request failed (${res.status})`;
-    try{ const body = await res.json(); if(body && body.message) msg = body.message; }catch(_){/* ignore */}
-    throw new Error(msg);
-  }
-  return res.status===204 ? null : res.json();
-}
-
 async function loadAuthors(){
   try{
-    const data = await apiFetch('/authors');
-    AUTHORS = Array.isArray(data) ? data : data.authors;
+    const data = await SeniorEditorData.getAuthors();
+    AUTHORS = Array.isArray(data) ? data : (data.authors || []);
     usingDemoData = false;
   }catch(err){
-    console.warn('Authors API unavailable, falling back to demo data:', err.message);
-    AUTHORS = JSON.parse(JSON.stringify(DEMO_AUTHORS));
+    console.warn('Authors data unavailable:', err.message);
+    AUTHORS = [];
     usingDemoData = true;
   }
   populateGenreFilter();

@@ -57,7 +57,7 @@
 
   const COIN_AMOUNTS = [15, 50, 100];
   const CASH_AMOUNTS = [100, 500, 1000];
-  const DEFAULT_CURRENCY = { symbol: '₦', code: 'NGN' };
+  const DEFAULT_CURRENCY = { symbol: '$', code: 'USD' };
 
   // ══════════════════════════════════════════════════════════════════════
   // CSS (dtp- prefixed, self-contained, falls back gracefully if the
@@ -255,7 +255,7 @@
 
         <div class="dtp-mode-tabs" id="dtp-mode-tabs">
           <div class="dtp-mode-tab on" data-mode="coin"><i class="fas fa-coins" style="font-size:11px"></i> Coin</div>
-          <div class="dtp-mode-tab" data-mode="cash"><span id="dtp-cash-tab-symbol">₦</span> Cash</div>
+          <div class="dtp-mode-tab" data-mode="cash"><span id="dtp-cash-tab-symbol">$</span> Cash</div>
         </div>
 
         <div class="dtp-amt-label">Choose an amount</div>

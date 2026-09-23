@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Book Series Review — Droboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color:var(--text,#1a1730)}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.2);border-radius:10px}
+.page{padding:20px 28px 60px;max-width:1500px}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;width:100%;height:3px;border-radius:16px 16px 0 0}
+.stat-card.c-pending::after{background:linear-gradient(90deg,var(--amber),#f59e0b)}
+.stat-card.c-approved::after{background:linear-gradient(90deg,var(--green),#22c55e)}
+.stat-card.c-rejected::after{background:linear-gradient(90deg,var(--red),#ef4444)}
+.stat-card.c-total::after{background:linear-gradient(90deg,var(--blue),#3b82f6)}
+.stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.stat-card.c-pending .stat-icon{background:var(--amber-bg);color:var(--amber)}
+.stat-card.c-approved .stat-icon{background:var(--green-bg);color:var(--green)}
+.stat-card.c-rejected .stat-icon{background:var(--red-bg);color:var(--red)}
+.stat-card.c-total .stat-icon{background:var(--blue-bg);color:var(--blue)}
+.stat-info{flex:1;min-width:0}
+.stat-num{font-size:22px;font-weight:900;line-height:1}
+.stat-label{font-size:11px;color:var(--text-muted);font-weight:600;margin-top:3px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:18px 22px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px}
+.panel-head h2 i{font-size:16px}
+.panel-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.panel-body{padding:16px 22px 20px}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.filt-search{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:12px;padding:9px 14px;transition:.2s}
+.filt-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,0,80,.08)}
+.filt-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.filt-search input::placeholder{color:var(--text-faint)}
+.filt-search i{color:var(--text-faint);font-size:13px}
+.filt-sel{background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:12px;padding:9px 14px;font-size:12px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer;transition:.2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239694ac'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+.filt-sel:focus{border-color:var(--accent);outline:none}
+
+.tbl-head{display:grid;grid-template-columns:40px 1fr 1.3fr 120px 110px 100px;gap:0;padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.tbl-head span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);padding:0 8px}
+.tbl-body{display:flex;flex-direction:column;gap:4px}
+
+.item-row{display:grid;grid-template-columns:40px 1fr 1.3fr 120px 110px 100px;gap:0;align-items:center;padding:12px 0;border-radius:12px;border:1.5px solid transparent;transition:.18s;cursor:pointer}
+.item-row:hover{background:var(--hover);border-color:var(--border)}
+.item-row.is-open{background:var(--accent-soft);border-color:var(--accent)}
+.expand-ico{font-size:10px;color:var(--text-faint);transition:.2s;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:var(--input-bg);border:1px solid var(--border);flex-shrink:0;margin-left:8px}
+.item-row.is-open .expand-ico{transform:rotate(90deg);color:#fff;background:var(--accent);border-color:var(--accent)}
+
+.author-cell{display:flex;align-items:center;gap:10px;min-width:0;padding:0 8px}
+.author-cell img{width:34px;height:34px;border-radius:10px;object-fit:cover;flex-shrink:0;border:2px solid var(--border)}
+.author-info{min-width:0}
+.author-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.author-id{font-size:10px;color:var(--text-faint);font-weight:600}
+
+.book-cell{min-width:0;padding:0 8px}
+.book-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.book-edit{font-size:10px;color:var(--accent);font-weight:700}
+
+.edit-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:5px 12px;margin:0 8px}
+.edit-badge i{font-size:10px;color:var(--accent)}
+
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:5px 14px;border-radius:20px;white-space:nowrap;margin:0 8px}
+.status-pill i{font-size:9px}
+.status-pill.pending{background:var(--amber-bg);color:var(--amber)}
+.status-pill.approved{background:var(--green-bg);color:var(--green)}
+.status-pill.rejected{background:var(--red-bg);color:var(--red)}
+
+.actions-cell{display:flex;gap:6px;justify-content:flex-end;padding:0 8px 0 0}
+.actions-cell.is-done{visibility:hidden}
+
+.btn{font-size:11px;font-weight:700;padding:7px 10px;border-radius:9px;border:none;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;transition:.15s;white-space:nowrap;text-decoration:none;width:32px;height:32px}
+.btn i{font-size:12px}
+.btn-green{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.2)}.btn-green:hover{filter:brightness(1.08)}
+.btn-danger{background:var(--red);color:#fff;box-shadow:0 2px 8px rgba(224,56,77,.2)}.btn-danger:hover{filter:brightness(1.08)}
+.btn-ghost{background:var(--input-bg);color:var(--text-muted);border:1px solid var(--input-border)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-text{width:auto;height:auto;padding:10px 22px;font-size:12px;gap:6px}
+
+.item-detail{display:none;border-top:1px solid var(--border);background:linear-gradient(180deg,var(--hover) 0%,var(--card) 100%)}
+.item-detail.show{display:block}
+.detail-inner{padding:18px 22px 20px}
+.detail-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+.detail-avatar{width:52px;height:52px;border-radius:14px;object-fit:cover;border:3px solid var(--accent);flex-shrink:0}
+.detail-title{flex:1}
+.detail-title h3{font-size:15px;font-weight:800;margin-bottom:3px}
+.detail-title p{font-size:12px;color:var(--text-muted)}
+
+.change-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.change-box .lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.change-box .lbl i{color:var(--accent)}
+.change-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.change-row:last-child{margin-bottom:0}
+.change-from,.change-to{flex:1;min-width:0}
+.change-from label,.change-to label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:3px}
+.change-from label{color:var(--red)}
+.change-to label{color:var(--green)}
+.change-from b,.change-to b{font-size:12px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.change-from{background:rgba(224,56,77,.06);border:1px solid rgba(224,56,77,.15);border-radius:8px;padding:8px 10px}
+.change-to{background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.15);border-radius:8px;padding:8px 10px}
+.change-arrow{color:var(--text-faint);font-size:14px;flex-shrink:0}
+.change-img{width:48px;height:64px;border-radius:6px;object-fit:cover;border:2px solid var(--border);flex-shrink:0}
+
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.detail-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.detail-card label{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px}
+.detail-card b{font-size:13px;font-weight:800;display:block}
+
+.detail-notes-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.detail-notes-box .lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.detail-notes-box .lbl i{color:var(--accent)}
+.detail-notes-box p{font-size:12.5px;color:var(--text-muted);line-height:1.7}
+
+.detail-actions{display:flex;gap:12px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)}
+.detail-actions .btn-text{padding:10px 22px;font-size:12px}
+
+.pagination-row{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.page-info{font-size:11.5px;color:var(--text-muted);font-weight:500}.page-info b{color:var(--text);font-weight:700}
+.page-btns{display:flex;align-items:center;gap:4px}
+.pg-btn{min-width:30px;height:30px;padding:0 6px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;font-family:inherit}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(255,0,80,.25)}
+.pg-btn:disabled{opacity:.35;cursor:default}
+
+.empty-msg{text-align:center;padding:48px 20px;color:var(--text-faint);font-size:13px}
+.empty-msg i{font-size:28px;margin-bottom:10px;display:block;opacity:.4}
+
+@media(max-width:1200px){.tbl-head{display:none}.item-row{grid-template-columns:40px 1fr 120px 100px}.item-row .col-book,.item-row .col-edit{display:none}.detail-grid{grid-template-columns:1fr 1fr}.stats-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.stats-row{grid-template-columns:1fr}.page{padding:14px 14px 50px}.detail-header{flex-direction:column;align-items:center;text-align:center}.change-row{flex-direction:column}.change-arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div id="dashRoot">
+<div class="page">
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card c-pending"><div class="stat-icon"><i class="fas fa-clock"></i></div><div class="stat-info"><div class="stat-num" id="statPending">0</div><div class="stat-label">Pending Review</div></div></div>
+    <div class="stat-card c-approved"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-info"><div class="stat-num" id="statApproved">0</div><div class="stat-label">Approved</div></div></div>
+    <div class="stat-card c-rejected"><div class="stat-icon"><i class="fas fa-times-circle"></i></div><div class="stat-info"><div class="stat-num" id="statRejected">0</div><div class="stat-label">Rejected</div></div></div>
+    <div class="stat-card c-total"><div class="stat-icon"><i class="fas fa-book-open"></i></div><div class="stat-info"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total Requests</div></div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><div><h2><i class="fas fa-book-open" style="color:var(--blue)"></i> Book Series Review</h2><div class="panel-sub">Authors request edits to book details — title, cover, description, genre</div></div></div>
+    <div class="panel-body">
+      <div class="filters">
+        <div class="filt-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by author, book, or ID…"/></div>
+        <select class="filt-sel" id="statusFilter"><option value="">All Status</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+      </div>
+      <div class="tbl-head"><span></span><span>Author</span><span>Book</span><span>Edit Type</span><span>Status</span><span style="text-align:right">Actions</span></div>
+      <div class="tbl-body" id="tableBody"></div>
+    </div>
+    <div class="pagination-row"><div class="page-info" id="pageInfo"></div><div class="page-btns" id="pageBtns"></div></div>
+  </div>
+</div>
+</div>
+<div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:11px 24px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:.3s;pointer-events:none;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.3)}"></div>
+<style>#toast.show{opacity:1}</style>
+<script src="shared/senior-editor-sidebar.js"></script>
+<script>
+SeniorEditorSidebar.attach('#dashRoot',{activeItem:'book-series-review',title:'Book Series Review',subtitle:'Authors request edits to book details',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
+(function(){
+'use strict';
+var items=[
+  {id:'BSR-001',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Duke\'s Secret',editType:'Title Change',submitted:'12h ago',status:'approved',changeFrom:'The Duke\'s Hidden Past',changeTo:'The Duke\'s Secret',notes:'Title changed for better clarity. Approved.'},
+  {id:'BSR-002',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',editType:'Cover Update',submitted:'1d ago',status:'pending',changeFrom:'https://placehold.co/120x160/1a1a2e/ffffff?text=Old',changeTo:'https://placehold.co/120x160/ff0050/ffffff?text=New',notes:'Author uploaded new cover art. Needs review for quality and guidelines compliance.'},
+  {id:'BSR-003',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',editType:'Description Edit',submitted:'2d ago',status:'pending',changeFrom:'A wolf shifter finds his fated mate in a human village.',changeTo:'When alpha warrior Kael discovers his fated mate is the one woman his pack has sworn to destroy, he must choose between duty and destiny.',notes:'Updated synopsis. Needs review for spoilers and accuracy.'},
+  {id:'BSR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',editType:'Genre Change',submitted:'3d ago',status:'rejected',changeFrom:'Mafia Romance',changeTo:'Romantic Suspense',notes:'Cannot change genre after publication without platform approval. Rejected.'},
+  {id:'BSR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',editType:'Series Name',submitted:'4d ago',status:'approved',changeFrom:'Standalone',changeTo:'Ivy League Revenge Series',notes:'Added to series. Approved.'},
+  {id:'BSR-006',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'She Rejected Me 3 Times',editType:'Title Change',submitted:'5d ago',status:'pending',changeFrom:'She Rejected Me 3 Times',changeTo:'Three Times Rejected: A Love Story',notes:'Proposed new title under review.'},
+  {id:'BSR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',editType:'Cover Update',submitted:'6d ago',status:'approved',changeFrom:'https://placehold.co/120x160/2d1b69/ffffff?text=Old',changeTo:'https://placehold.co/120x160/e0384d/ffffff?text=New',notes:'New cover matches brand guidelines. Approved.'},
+  {id:'BSR-008',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'My Grandmother\'s Will',editType:'Description Edit',submitted:'1w ago',status:'rejected',changeFrom:'A family drama about inheritance and secrets.',changeTo:'When Amara\'s grandmother dies, she leaves behind a will that will tear the family apart and reveal secrets buried for decades.',notes:'Description contains major spoilers. Rejected with feedback.'},
+  {id:'BSR-009',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'The Billionaire\'s Guard',editType:'Title Change',submitted:'1w ago',status:'approved',changeFrom:'Bodyguard Romance',changeTo:'The Billionaire\'s Guard',notes:'Better title. More specific. Approved.'},
+  {id:'BSR-010',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Shadow of the Alpha',editType:'Genre Change',submitted:'1w ago',status:'pending',changeFrom:'Paranormal Romance',changeTo:'Paranormal Romance · Urban Fantasy',notes:'Adding Urban Fantasy subgenre. Needs review.'},
+  {id:'BSR-011',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',editType:'Series Name',submitted:'2w ago',status:'approved',changeFrom:'Standalone',changeTo:'Billionaire Hearts Series',notes:'Added to series. Approved.'},
+  {id:'BSR-012',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',editType:'Cover Update',submitted:'2w ago',status:'pending',changeFrom:'https://placehold.co/120x160/0d0b1a/ffffff?text=Old',changeTo:'https://placehold.co/120x160/16a34a/ffffff?text=New',notes:'New cover with improved typography. Under review.'},
+  {id:'BSR-013',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Princess Guard',editType:'Description Edit',submitted:'3w ago',status:'approved',changeFrom:'A princess falls for her guard.',changeTo:'Princess Elara has one rule: never fall for the guard. But when assassin shadows close in, the man sworn to protect her heart becomes the greatest danger of all.',notes:'Compelling description. Approved.'},
+  {id:'BSR-014',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Campus Queen',editType:'Title Change',submitted:'3w ago',status:'rejected',changeFrom:'Campus Queen',changeTo:'Queen of Campus',notes:'Original title is stronger. Rejected.'},
+  {id:'BSR-015',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',editType:'Title + Cover',submitted:'3d ago',status:'pending',changes:[{type:'Title',from:'Lagos Love Story',to:'Lagos Nights: A Love Story'},{type:'Cover',from:'https://placehold.co/120x160/1a1a2e/ffffff?text=Old',to:'https://placehold.co/120x160/ff6b35/ffffff?text=New'}],notes:'Author wants to rebrand the book with a new title and cover for the series launch.'},
+  {id:'BSR-016',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',editType:'Title + Cover + Description',submitted:'4d ago',status:'pending',changes:[{type:'Title',from:'The Teacher\'s Secret',to:'Behind Closed Doors: A Teacher\'s Story'},{type:'Cover',from:'https://placehold.co/120x160/2d1b69/ffffff?text=Old',to:'https://placehold.co/120x160/dc2626/ffffff?text=New'},{type:'Description',from:'A teacher hides a dangerous secret.',to:'When Elizabeth discovers her student\'s dark home life, she must choose between her career and doing what\'s right — even if it means losing everything.'}],notes:'Full rebrand request. Title, cover, and description all changed to match the new direction of the story.'},
+];
+var currentPage=1,PER_PAGE=5,openRowId=null;
+function filtered(){
+  var q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
+  var st=document.getElementById('statusFilter').value;
+  return items.filter(function(a){if(st&&a.status!==st)return false;if(q&&a.author.toLowerCase().indexOf(q)===-1&&a.book.toLowerCase().indexOf(q)===-1&&a.id.toLowerCase().indexOf(q)===-1)return false;return true;});
+}
+function updateStats(){
+  var p=0,ap=0,r=0,t=items.length;
+  items.forEach(function(a){if(a.status==='pending')p++;else if(a.status==='approved')ap++;else if(a.status==='rejected')r++;});
+  document.getElementById('statPending').textContent=p;
+  document.getElementById('statApproved').textContent=ap;
+  document.getElementById('statRejected').textContent=r;
+  document.getElementById('statTotal').textContent=t;
+}
+function statusPill(s){
+  var icons={pending:'fa-clock',approved:'fa-check-circle',rejected:'fa-times-circle'};
+  return'<span class="status-pill '+s+'"><i class="fas '+icons[s]+'"></i>'+s.charAt(0).toUpperCase()+s.slice(1)+'</span>';
+}
+function editIcon(t){
+  if(t.indexOf('Cover')!==-1)return'fa-image';
+  if(t.indexOf('Title')!==-1)return'fa-pen';
+  if(t.indexOf('Description')!==-1)return'fa-align-left';
+  if(t.indexOf('Genre')!==-1)return'fa-tags';
+  if(t.indexOf('Series')!==-1)return'fa-layer-group';
+  return'fa-pen';
+}
+function render(){
+  updateStats();
+  var list=filtered(),total=list.length,tp=Math.max(1,Math.ceil(total/PER_PAGE));
+  if(currentPage>tp)currentPage=tp;
+  var start=(currentPage-1)*PER_PAGE,page=list.slice(start,start+PER_PAGE);
+  var body=document.getElementById('tableBody');
+  if(!page.length){body.innerHTML='<div class="empty-msg"><i class="fas fa-book-open"></i>No book edits match your filters.</div>';document.getElementById('pageBtns').innerHTML='';document.getElementById('pageInfo').innerHTML='';return;}
+  body.innerHTML=page.map(function(a){
+    var isOpen=openRowId===a.id;
+    var isDone=a.status!=='pending';
+    return '<div><div class="item-row'+(isOpen?' is-open':'')+'" data-id="'+a.id+'"><div class="expand-ico"><i class="fas fa-chevron-right"></i></div><div class="author-cell col-book"><img src="'+a.avatar+'" alt=""/><div class="author-info"><span class="author-name">'+a.author+'</span><span class="author-id">'+a.id+'</span></div></div><div class="book-cell col-edit"><span class="book-title">'+a.book+'</span><span class="book-edit">'+a.editType+'</span></div><div class="edit-badge"><i class="fas '+editIcon(a.editType)+'"></i>'+a.editType+'</div><div>'+statusPill(a.status)+'</div><div class="actions-cell'+(isDone?' is-done':'')+'"><button class="btn btn-green" title="Approve" onclick="event.stopPropagation();approve(\''+a.id+'\')"><i class="fas fa-check"></i></button><button class="btn btn-danger" title="Reject" onclick="event.stopPropagation();reject(\''+a.id+'\')"><i class="fas fa-xmark"></i></button></div></div><div class="item-detail'+(isOpen?' show':'')+'" id="detail-'+a.id+'"></div></div>';
+  }).join('');
+  if(openRowId&&page.some(function(a){return a.id===openRowId;}))renderDetail(openRowId);
+  document.getElementById('pageInfo').innerHTML='Showing <b>'+(start+1)+'</b> – <b>'+Math.min(start+PER_PAGE,total)+'</b> of <b>'+total+'</b> requests';
+  renderPag(tp);
+}
+function renderDetail(id){
+  var a=items.find(function(x){return x.id===id;});if(!a)return;
+  var p=document.getElementById('detail-'+id);if(!p)return;
+  var isDone=a.status!=='pending';
+  var changeHtml='';
+  if(a.changes){
+    var rows=a.changes.map(function(c){
+      if(c.type==='Cover'){
+        return'<div class="change-box" style="margin-bottom:10px"><div class="lbl"><i class="fas fa-image"></i> '+c.type+'</div><div class="change-row"><div class="change-from"><label>Current</label><img class="change-img" src="'+c.from+'" alt="Old"/></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>New</label><img class="change-img" src="'+c.to+'" alt="New"/></div></div></div>';
+      }
+      return'<div class="change-box" style="margin-bottom:10px"><div class="lbl"><i class="fas fa-pen"></i> '+c.type+'</div><div class="change-row"><div class="change-from"><label>From</label><b>'+c.from+'</b></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>To</label><b>'+c.to+'</b></div></div></div>';
+    });
+    changeHtml=rows.join('');
+  }else if(a.editType==='Cover Update'){
+    changeHtml='<div class="change-box"><div class="lbl"><i class="fas fa-image"></i> Cover Change</div><div class="change-row"><div class="change-from"><label>Current Cover</label><img class="change-img" src="'+a.changeFrom+'" alt="Old cover"/></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>New Cover</label><img class="change-img" src="'+a.changeTo+'" alt="New cover"/></div></div></div>';
+  }else{
+    changeHtml='<div class="change-box"><div class="lbl"><i class="fas fa-pen"></i> Content Change</div><div class="change-row"><div class="change-from"><label>From</label><b>'+a.changeFrom+'</b></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>To</label><b>'+a.changeTo+'</b></div></div></div>';
+  }
+  var actionsHtml='';
+  if(isDone){
+    actionsHtml='<a class="btn btn-text btn-ghost" href="book-management.html"><i class="fas fa-eye"></i> View Book</a><a class="btn btn-text btn-ghost" href="author-messages.html"><i class="fas fa-comments"></i> Message Author</a>';
+  }else{
+    actionsHtml='<button class="btn btn-text btn-green" onclick="approve(\''+a.id+'\')"><i class="fas fa-check"></i> Approve</button><button class="btn btn-text btn-danger" onclick="reject(\''+a.id+'\')"><i class="fas fa-xmark"></i> Reject</button><a class="btn btn-text btn-ghost" href="book-management.html"><i class="fas fa-eye"></i> View Book</a><a class="btn btn-text btn-ghost" href="author-messages.html"><i class="fas fa-comments"></i> Message Author</a>';
+  }
+  p.innerHTML='<div class="detail-inner"><div class="detail-header"><img class="detail-avatar" src="'+a.avatar+'" alt=""/><div class="detail-title"><h3>'+a.author+'</h3><p>'+a.id+' · '+a.editType+'</p></div>'+statusPill(a.status)+'</div>'+changeHtml+'<div class="detail-grid"><div class="detail-card"><label>Book</label><b>'+a.book+'</b></div><div class="detail-card"><label>Edit Type</label><b>'+a.editType+'</b></div><div class="detail-card"><label>Submitted</label><b>'+a.submitted+'</b></div><div class="detail-card"><label>Status</label><b>'+statusPill(a.status)+'</b></div></div><div class="detail-notes-box"><div class="lbl"><i class="fas fa-note-sticky"></i> Review Notes</div><p>'+a.notes+'</p></div><div class="detail-actions">'+actionsHtml+'</div></div>';
+}
+function renderPag(tp){
+  var w=document.getElementById('pageBtns');if(tp<=1){w.innerHTML='';return;}
+  var h='<button class="pg-btn"'+(currentPage<=1?' disabled':'')+' onclick="go('+(currentPage-1)+')"><i class="fas fa-chevron-left"></i></button>';
+  for(var i=1;i<=tp;i++)h+='<button class="pg-btn'+(i===currentPage?' active':'')+'" onclick="go('+i+')">'+i+'</button>';
+  h+='<button class="pg-btn"'+(currentPage>=tp?' disabled':'')+' onclick="go('+(currentPage+1)+')"><i class="fas fa-chevron-right"></i></button>';
+  w.innerHTML=h;
+}
+function go(p){currentPage=p;render();}
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
+window.go=go;
+window.approve=function(id){var a=items.find(function(x){return x.id===id;});if(a){a.status='approved';openRowId=null;render();toast(a.book+' — edit approved');}};
+window.reject=function(id){var a=items.find(function(x){return x.id===id;});if(a){a.status='rejected';openRowId=null;render();toast(a.book+' — edit rejected');}};
+document.addEventListener('click',function(e){var row=e.target.closest('.item-row');if(row&&!e.target.closest('.actions-cell')){var id=row.dataset.id;openRowId=openRowId===id?null:id;render();}});
+document.getElementById('searchInput').addEventListener('input',function(){currentPage=1;render();});
+document.getElementById('statusFilter').addEventListener('change',function(){currentPage=1;render();});
+render();
+})();
+</script>
+</body>
+</html>

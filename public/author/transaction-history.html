@@ -17,6 +17,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .tb-title-wrap{flex:1;display:flex;align-items:center;gap:8px}
 .tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
 .tb-title{font-size:15.5px;font-weight:800}
+.avatar-btn{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid var(--border)}
 .avatar-btn img{width:100%;height:100%}
 .menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
 
@@ -89,6 +90,19 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .empty i{font-size:36px;margin-bottom:12px;color:var(--border)}
 .empty p{font-size:13px;line-height:1.5}
 
+/* ── Pagination ── */
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 0}
+.page-btn{
+  min-width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card);color:var(--text);font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;
+}
+.page-btn:active{transform:scale(.95)}
+.page-btn.active{background:var(--pink);color:#fff;border-color:var(--pink)}
+.page-btn:disabled{opacity:.3;cursor:default;transform:none}
+.page-btn.nav{font-size:13px}
+.page-info{font-size:11px;color:var(--muted);margin:0 6px}
+
 /* ── Detail Modal ── */
 .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.25s}
 .modal-overlay.show{opacity:1;pointer-events:auto}
@@ -142,11 +156,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
   <div class="kpi-row" id="kpis"></div>
 
   <div class="tabs" id="tabs">
-    <div class="tab active" data-filter="all">All</div>
-    <div class="tab" data-filter="royalty">Royalties</div>
-    <div class="tab" data-filter="tip">Tips</div>
-    <div class="tab" data-filter="bonus">Bonuses</div>
-    <div class="tab" data-filter="withdrawal">Withdrawals</div>
+    <div class="tab active" data-filter="withdrawal">Withdrawals</div>
   </div>
 
   <div class="search-bar">
@@ -205,13 +215,23 @@ function getMENU_SECTIONS(){
   const bookId=params.get('book');
   const sections=[
     {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
-    {title:'Account',items:[
+    {title:'Applications',items:[
+      {label:'Contracts',icon:'fa-file-signature',href:'apply-contract.html'},
+      {label:'Completion',icon:'fa-flag-checkered',href:'apply-completion.html'},
+      {label:'Chapter Review',icon:'fa-pen-to-square',href:'request-chapter-review.html'},
+      {label:'Series Changes',icon:'fa-book-open',href:'request-series-change.html'},
+      {label:'VIP Application',icon:'fa-crown',href:'apply-vip.html'}
+    ]},
+    {title:'Finance',items:[
       {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
       {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html',active:true},
-      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'},
-      {label:'Contracts',icon:'fa-file-signature',href:'#'},
-      {label:'Messages',icon:'fa-comment-dots',href:'#'},
-      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'}
+    ]},
+    {title:'Communication',items:[
+{label:'Messages',icon:'fa-comment-dots',href:'../Pages/chat.html'},
+{label:'Notifications',icon:'fa-bell',href:'../Pages/notifications.html'}
+    ]},
+    {title:'Settings',items:[
       {label:'Settings',icon:'fa-gear',href:'#'}
     ]}
   ];
@@ -230,6 +250,8 @@ drawerClose.addEventListener('click',closeDrawer);
 drawerOverlay.addEventListener('click',closeDrawer);
 
 let allTxns = [], filtered = [], activeFilter = 'all', currentTxn = null;
+let currentPage = 1;
+const PER_PAGE = 5;
 
 function toast(m){const t=document.getElementById('toastEl')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'toastEl',className:'toast'}));t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500)}
 
@@ -237,10 +259,8 @@ async function render(){
   allTxns = await AuthorFinance.getTransactions();
   const kpis = await AuthorFinance.getTransactionKPIs(allTxns);
   document.getElementById('kpis').innerHTML =
-    '<div class="kpi"><div class="kpi-label">Total Income</div><div class="kpi-val green">'+AuthorFinance.fmtCurrency(kpis.totalIncome)+'</div></div>'+
     '<div class="kpi"><div class="kpi-label">Total Withdrawn</div><div class="kpi-val blue">'+AuthorFinance.fmtCurrency(kpis.totalWithdrawn)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Tips Received</div><div class="kpi-val purple">'+AuthorFinance.fmtCurrency(kpis.totalTips)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Bonuses</div><div class="kpi-val" style="color:var(--warning)">'+AuthorFinance.fmtCurrency(kpis.totalBonuses)+'</div></div>';
+    '<div class="kpi"><div class="kpi-label">Transactions</div><div class="kpi-val" style="color:var(--tx-high)">'+kpis.count+'</div></div>';
   applyFilter();
 }
 
@@ -251,6 +271,7 @@ function applyFilter(){
     if (q && !t.desc.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q) && !(t.book||'').toLowerCase().includes(q)) return false;
     return true;
   });
+  currentPage = 1;
   renderList();
 }
 
@@ -260,9 +281,14 @@ function renderList(){
     el.innerHTML = '<div class="empty"><i class="fas fa-receipt"></i><p>No transactions found.</p></div>';
     return;
   }
-  el.innerHTML = filtered.map(t => {
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  let html = page.map(t => {
     const isPos = t.amount >= 0;
-    const icon = t.type === 'royalty' ? 'fa-book-open' : t.type === 'tip' ? 'fa-gift' : t.type === 'bonus' ? 'fa-trophy' : t.type === 'withdrawal' ? 'fa-building-columns' : 'fa-sliders';
+    const icon = t.type === 'earned' ? 'fa-book-open' : t.type === 'bonus' ? 'fa-trophy' : t.type === 'withdrawal' ? 'fa-building-columns' : 'fa-sliders';
     return '<div class="txn-card" onclick="showDetail(\''+t.id+'\')">'+
       '<div class="txn-top">'+
         '<div class="txn-icon '+t.type+'"><i class="fas '+icon+'"></i></div>'+
@@ -274,6 +300,24 @@ function renderList(){
       '</div>'+
     '</div>';
   }).join('');
+
+  if (totalPages > 1) {
+    html += '<div class="pagination">';
+    html += '<button class="page-btn nav" onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'><i class="fas fa-chevron-left"></i></button>';
+    for (let i = 1; i <= totalPages; i++) {
+      html += '<button class="page-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+    }
+    html += '<button class="page-btn nav" onclick="goPage('+(currentPage+1)+')" '+(currentPage===totalPages?'disabled':'')+'><i class="fas fa-chevron-right"></i></button>';
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function goPage(p){
+  currentPage = p;
+  renderList();
+  document.getElementById('txnList').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function showDetail(id){

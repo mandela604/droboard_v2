@@ -112,7 +112,7 @@
     if (IS_OWNER) {
       el.innerHTML = `<a class="pact edit" href="edit-profile.html">Edit Profile</a><button class="pact msg" id="msgEditorBtn" title="Message your editor"><i class="fas fa-paper-plane"></i></button>`;
       document.getElementById('msgEditorBtn').addEventListener('click', () => {
-        window.location.href = 'chat.html';
+        window.location.href = 'chat.html?contact=ed_morgan';
       });
       return;
     }
@@ -533,7 +533,7 @@
     if (IS_OWNER) html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">Wallet</div><button class="drawer-item" onclick="location.href='store.html'"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.3)"><i class="fas fa-wallet" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--gold)">Wallet</div><div class="drawer-item-sub">Coins, balance &amp; payouts</div></div><div class="drawer-item-right"><i class="fas fa-chevron-right" style="font-size:10px"></i></div></button></div>`;
     html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">Account</div>`;
     if (IS_OWNER) html += `<button class="drawer-item" onclick="location.href='edit-profile.html'"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-user-edit" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Edit Profile</div><div class="drawer-item-sub">Name, bio, avatar, genres</div></div></button><button class="drawer-item" onclick="location.href='settings.html'"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-gear" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Settings</div><div class="drawer-item-sub">Privacy, notifications, payout</div></div></button>`;
-    html += `<button class="drawer-item" id="drawerReferBtn"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.2)"><i class="fas fa-share-alt" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title">Refer a Friend</div><div class="drawer-item-sub">Earn ₦500 per referral</div></div></button>`;
+    html += `<button class="drawer-item" id="drawerReferBtn"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.2)"><i class="fas fa-share-alt" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title">Refer a Friend</div><div class="drawer-item-sub">Earn $5 per referral</div></div></button>`;
     html += `<button class="drawer-item" id="drawerSignOutBtn"><div class="drawer-item-icon" style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15)"><i class="fas fa-sign-out-alt" style="color:#dc2626"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:#dc2626">Sign Out</div></div></button></div>`;
     document.getElementById('drawerBody').innerHTML = html;
     const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };

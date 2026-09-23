@@ -35,15 +35,20 @@
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html',              section: 'Overview' },
 
     { key: 'review-queue',        label: 'Review Queue',        icon: 'fa-inbox',             href: 'review-queue.html',           section: 'Content' },
-    { key: 'book-management',     label: 'Book Management',      icon: 'fa-book-open',         href: 'book-management.html',        section: 'Content' },
+    { key: 'book-management',     label: 'Book Management',      icon: 'fa-book',              href: 'book-management.html',        section: 'Content' },
+
+    { key: 'contract-review',     label: 'Contract Review',     icon: 'fa-file-signature',    href: 'contract-review.html',        section: 'Reviews' },
+    { key: 'vip-review',          label: 'VIP Registration',    icon: 'fa-crown',             href: 'vip-registration-review.html',section: 'Reviews' },
+    { key: 'completion-review',   label: 'Completion Application',icon:'fa-flag-checkered',    href: 'completion-application.html', section: 'Reviews' },
+    { key: 'chapter-review',      label: 'Chapter Edit Review', icon: 'fa-pen-to-square',     href: 'chapter-edit-review.html',    section: 'Reviews' },
+    { key: 'book-series-review',  label: 'Book Series Review',  icon: 'fa-book-open',         href: 'book-series-review.html',     section: 'Reviews' },
+    { key: 'editor-bill-review',  label: 'Editor Bill Review',  icon: 'fa-sack-dollar',       href: 'editor-bill-review.html',     section: 'Reviews' },
 
     { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html',                section: 'People' },
     { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html',    section: 'People' },
     { key: 'author-messages',     label: 'Author Messages',      icon: 'fa-envelope',          href: 'author-messages.html',        section: 'People' },
 
     { key: 'featured-stories',    label: 'Featured Stories',     icon: 'fa-star',              href: 'featured-stories.html',       section: 'Discovery' },
-
-    { key: 'contracts',           label: 'Contracts',            icon: 'fa-file-contract',     href: 'contracts.html',              section: 'Finance' },
 
     { key: 'activity-logs',       label: 'Activity Logs',        icon: 'fa-list',              href: 'activity-logs.html',          section: 'System' },
   ];
@@ -67,7 +72,8 @@
     --border:#2a2648; --input-bg:#1d1a35; --input-border:#332e56; --hover:#1e1a38; --table-head:#191531;
   }
   .ses-root, .ses-root *{box-sizing:border-box}
-  .ses-root{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  .ses-root{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);animation:sesFadeIn .3s ease}
+  @keyframes sesFadeIn{from{opacity:0}to{opacity:1}}
   .ses-root a{text-decoration:none;color:inherit}
   .ses-root button{font-family:inherit;cursor:pointer}
   .ses-shell{display:flex;min-height:100vh}
@@ -80,7 +86,8 @@
   .ses-role-badge{display:flex;align-items:center;gap:8px;margin:0 12px 14px;padding:9px 12px;background:var(--sidebar-bg-2);border:1px solid var(--sidebar-border);border-radius:12px}
   .ses-role-badge i{color:var(--accent);font-size:13px;width:22px;text-align:center}
   .ses-role-badge span{font-size:11px;font-weight:700;color:#cfc9e8;letter-spacing:.03em}
-  .ses-sb-nav{flex:1;overflow-y:auto;padding:4px 12px 12px}
+  .ses-sb-nav{flex:1;overflow-y:auto;padding:4px 12px 12px;scrollbar-width:none;-ms-overflow-style:none}
+.ses-sb-nav::-webkit-scrollbar{display:none}
   .ses-sb-section-lbl{font-size:10px;font-weight:700;letter-spacing:.09em;color:#5f5885;text-transform:uppercase;padding:16px 10px 6px}
   .ses-sidebar .ses-sb-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:10px;color:var(--sidebar-text);font-size:13px;font-weight:500;margin-bottom:2px;transition:.15s;cursor:pointer;position:relative}
   .ses-sidebar .ses-sb-item i.ses-item-ico{width:16px;text-align:center;font-size:14px;flex-shrink:0}
@@ -114,7 +121,8 @@
   .ses-tb-profile-txt span{font-size:10.5px;color:var(--text-muted)}
   .ses-tb-profile i{color:var(--text-faint);font-size:11px;margin-left:2px}
   .ses-mobile-search-btn{display:none;width:38px;height:38px;border-radius:50%;background:var(--input-bg);border:1px solid var(--input-border);align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;flex-shrink:0}
-  .ses-content{padding:22px 26px 60px}
+  .ses-content{padding:22px 26px 60px;animation:sesFadeIn .25s ease}
+  @keyframes sesFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   .ses-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);background:#1a1730;color:#fff;padding:10px 18px;border-radius:24px;font-size:12.5px;font-weight:600;z-index:2000;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3)}
   .ses-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   @media (max-width:1024px){
@@ -134,7 +142,53 @@
     .ses-tb-profile i{display:none}
   }
   .ses-root button:focus-visible, .ses-root input:focus-visible, .ses-root a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ── Shared UI Hover Effects ── */
+  .btn{transition:all .2s cubic-bezier(.4,0,.2,1);position:relative}
+  .btn:hover{transform:translateY(-2px) scale(1.03)}
+  .btn:active{transform:translateY(0) scale(.97)}
+  .btn-primary:hover{box-shadow:0 6px 20px rgba(255,0,80,.4);filter:brightness(1.08)}
+  .btn-green:hover{box-shadow:0 6px 20px rgba(22,163,74,.35);filter:brightness(1.08)}
+  .btn-danger:hover{box-shadow:0 6px 20px rgba(224,56,77,.35);filter:brightness(1.08)}
+  .btn-ghost:hover{transform:translateY(-1px) scale(1.02);border-color:var(--accent);color:var(--accent)}
+  .item-row{transition:all .2s cubic-bezier(.4,0,.2,1)}
+  .item-row:hover{transform:translateX(4px);background:var(--hover);border-color:var(--border)}
+  .stat-card{transition:all .25s cubic-bezier(.4,0,.2,1)}
+  .stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .pg-btn{transition:all .2s cubic-bezier(.4,0,.2,1)}
+  .pg-btn:hover:not(:disabled){transform:translateY(-2px) scale(1.08);border-color:var(--accent);color:var(--accent)}
+  .detail-actions .btn{transition:all .2s cubic-bezier(.4,0,.2,1)}
+  .detail-actions .btn:hover{transform:translateY(-2px) scale(1.04)}
+  .btn.loading{pointer-events:none;opacity:.7;min-width:90px;justify-content:center}
+  .btn.loading .btn-text{visibility:hidden}
+  .btn.loading::after{content:'';position:absolute;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:btnSpin .6s linear infinite}
+  @keyframes btnSpin{to{transform:rotate(360deg)}}
   `;
+
+  /* ── Shared UI JS Helpers ── */
+  function _showBtnLoading(btn, loadingText) {
+    if (typeof btn === 'string') btn = document.getElementById(btn);
+    if (!btn) return;
+    btn.classList.add('loading');
+    btn._origHtml = btn.innerHTML;
+    if (loadingText) btn.innerHTML = '<span class="btn-text">' + loadingText + '</span>';
+  }
+  function _hideBtnLoading(btn) {
+    if (typeof btn === 'string') btn = document.getElementById(btn);
+    if (!btn) return;
+    btn.classList.remove('loading');
+    if (btn._origHtml) btn.innerHTML = btn._origHtml;
+  }
+  window.showBtnLoading = _showBtnLoading;
+  window.hideBtnLoading = _hideBtnLoading;
+  window.withBtnLoading = function(btns, delay, callback, loadingText) {
+    if (!Array.isArray(btns)) btns = [btns];
+    btns.forEach(function(b) { _showBtnLoading(b, loadingText); });
+    setTimeout(function() {
+      btns.forEach(function(b) { _hideBtnLoading(b); });
+      if (callback) callback();
+    }, delay);
+  };
 
   function _esc(s) { return (s || '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>'); }
 

@@ -463,7 +463,7 @@ function renderDetailPanel(id){
   if(u.role==='Writer'){
     overviewCols = '<div class="detail-item"><span>Stories Published</span><b>'+u.stories+'</b></div>'
       + '<div class="detail-item"><span>Total Reads</span><b>'+fmtNum(u.reads)+'</b></div>'
-      + '<div class="detail-item"><span>Earnings</span><b>\u20A6'+fmtNum(u.payout)+'</b></div>'
+      + '<div class="detail-item"><span>Earnings</span><b>$'+fmtNum(u.payout)+'</b></div>'
       + '<div class="detail-item"><span>Coins Spent</span><b>'+fmtNum(u.coinsSpent)+'</b></div>';
   } else {
     overviewCols = '<div class="detail-item"><span>Total Reads</span><b>'+fmtNum(u.reads)+'</b></div>'

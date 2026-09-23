@@ -103,6 +103,8 @@ a{color:inherit;text-decoration:none}
 .ch-badge.scheduled{background:var(--warning-soft);color:#b7690a}
 .ch-badge.draft{background:var(--blue-soft);color:#1d5fd6}
 .ch-more{color:var(--text-2);font-size:14px;padding:2px 4px;flex-shrink:0}
+.ch-edit-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.15s}
+.ch-edit-btn:active{transform:scale(.9);background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
 .ch-meta-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ch-meta{font-size:11.5px;color:var(--text-2);font-weight:500}
 .ch-views{font-size:11.5px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0}
@@ -284,10 +286,14 @@ const CHAPTERS = CHAPTER_TITLES.map((title, i) => {
   const num = i + 1;
   const isLast = num === CHAPTER_TITLES.length;
   const isSecondLast = num === CHAPTER_TITLES.length - 1;
-  const status = isLast ? 'draft' : isSecondLast ? 'scheduled' : 'published';
+  let status = isLast ? 'draft' : isSecondLast ? 'scheduled' : 'published';
+  if (num === 3) status = 'pending_review';
+  if (num === 4) status = 'revision_needed';
   const day = 10 + (i % 40);
   const dateLabel = status === 'published' ? `Published May ${day}, 2025`
     : status === 'scheduled' ? `Scheduled May ${day}, 2025`
+    : status === 'pending_review' ? `Submitted for review`
+    : status === 'revision_needed' ? `Revision requested`
     : `Last edited May ${day}, 2025`;
   const views = status === 'published' ? `${(45 - i * 0.15).toFixed(1)}K` : '\u2013';
   const words = (2100 + (i * 37) % 700).toLocaleString();
@@ -295,14 +301,18 @@ const CHAPTERS = CHAPTER_TITLES.map((title, i) => {
 });
 
 const TOOLS = [
-  { icon:'fa-book-open-reader', title:'Plotting / Story Bible', desc:'Plan your story arcs, twists, pacing and ending.', bg:'var(--purple-soft)', color:'var(--purple)' },
-  { icon:'fa-user-group', title:'Characters', desc:'Manage characters and relationships.', bg:'var(--blue-soft)', color:'var(--blue)' },
+  { icon:'fa-book-open-reader', title:'Plotting / Story Bible', desc:'Plan your story arcs, twists, pacing and ending.', bg:'var(--purple-soft)', color:'var(--purple)', href:'plotting.html' },
+  { icon:'fa-user-group', title:'Characters', desc:'Manage characters and relationships.', bg:'var(--blue-soft)', color:'var(--blue)', href:'characters.html' },
   { icon:'fa-earth-americas', title:'World Building', desc:'Locations, kingdoms, timelines and lore.', bg:'var(--success-soft)', color:'#158a48' },
   { icon:'fa-note-sticky', title:'Notes', desc:'Ideas and research.', bg:'var(--warning-soft)', color:'var(--warning)' },
   { icon:'fa-calendar-days', title:'Schedule', desc:'Plan chapter releases.', bg:'var(--primary-soft)', color:'var(--primary)' },
   { icon:'fa-comments', title:'Reader Comments', desc:'Moderate comments.', bg:'var(--blue-soft)', color:'var(--blue)' },
   { icon:'fa-sack-dollar', title:'Revenue', desc:'Track income.', bg:'var(--success-soft)', color:'#158a48' },
-  { icon:'fa-file-signature', title:'Contract', desc:'View, sign or approve publishing contracts.', bg:'#F3E9DE', color:'#9A6A3A' },
+  { icon:'fa-file-signature', title:'Contract', desc:'Apply for or view publishing contracts.', bg:'#F3E9DE', color:'#9A6A3A', href:'apply-contract.html' },
+  { icon:'fa-flag-checkered', title:'Completion', desc:'Apply for book completion review.', bg:'var(--success-soft)', color:'#158a48', href:'apply-completion.html' },
+  { icon:'fa-pen-to-square', title:'Chapter Review', desc:'Submit chapters for editor review.', bg:'var(--blue-soft)', color:'var(--blue)', href:'request-chapter-review.html' },
+  { icon:'fa-book-open', title:'Series Changes', desc:'Request series modifications.', bg:'var(--purple-soft)', color:'var(--purple)', href:'request-series-change.html' },
+  { icon:'fa-crown', title:'VIP Application', desc:'Apply for VIP author status.', bg:'#F3E9DE', color:'#9A6A3A', href:'apply-vip.html' },
   { icon:'fa-gear', title:'Book Settings', desc:'Genre, visibility, cover, pricing, tags, delete book.', bg:'#F1F1F4', color:'#5c5c66' },
 ];
 
@@ -317,13 +327,23 @@ const MENU_SECTIONS = [
     { label:'Characters', icon:'fa-user-group', href:'characters.html' },
     { label:'Story Bible', icon:'fa-book-bookmark', href:'#' },
   ]},
-  { title:'Account', items:[
+  { title:'Applications', items:[
+    { label:'Contracts', icon:'fa-file-signature', href:'apply-contract.html' },
+    { label:'Completion', icon:'fa-flag-checkered', href:'apply-completion.html' },
+    { label:'Chapter Review', icon:'fa-pen-to-square', href:'request-chapter-review.html' },
+    { label:'Series Changes', icon:'fa-book-open', href:'request-series-change.html' },
+    { label:'VIP Application', icon:'fa-crown', href:'apply-vip.html' },
+  ]},
+  { title:'Finance', items:[
     { label:'Earnings', icon:'fa-sack-dollar', href:'earnings.html' },
     { label:'Transactions', icon:'fa-receipt', href:'transaction-history.html' },
     { label:'Payment Details', icon:'fa-credit-card', href:'payment-details.html' },
-    { label:'Contracts', icon:'fa-file-signature', href:'#' },
-    { label:'Messages', icon:'fa-comment-dots', href:'#' },
-    { label:'Notifications', icon:'fa-bell', href:'#' },
+  ]},
+  { title:'Communication', items:[
+{ label:'Messages', icon:'fa-comment-dots', href:'../Pages/chat.html' },
+{ label:'Notifications', icon:'fa-bell', href:'../Pages/notifications.html' },
+  ]},
+  { title:'Settings', items:[
     { label:'Settings', icon:'fa-gear', href:'#' },
   ]},
 ];
@@ -340,6 +360,8 @@ function chapterBadge(ch){
   if (ch.status === 'published') return `<span class="ch-dot published"></span>`;
   if (ch.status === 'scheduled') return `<span class="ch-badge scheduled">Scheduled</span>`;
   if (ch.status === 'draft') return `<span class="ch-badge draft">Draft</span>`;
+  if (ch.status === 'pending_review') return `<span class="ch-badge" style="background:rgba(217,119,6,.12);color:#b7690a">Pending Review</span>`;
+  if (ch.status === 'revision_needed') return `<span class="ch-badge" style="background:rgba(224,56,77,.1);color:#e0384d">Revision Needed</span>`;
   return '';
 }
 
@@ -357,7 +379,10 @@ function renderChapters(){
           <span class="ch-title">${ch.num}. ${ch.title}</span>
           ${chapterBadge(ch)}
         </div>
-        <span class="ch-more"><i class="fas fa-ellipsis"></i></span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="ch-edit-btn" onclick="editChapter(${ch.num})" title="Edit chapter"><i class="fas fa-pen"></i></button>
+          <span class="ch-more"><i class="fas fa-ellipsis"></i></span>
+        </div>
       </div>
       <div class="ch-meta-row">
         <span class="ch-meta">${ch.words} words &middot; ${ch.date}</span>
@@ -366,6 +391,10 @@ function renderChapters(){
     </div>`).join('');
 
   renderPagination();
+}
+
+function editChapter(num){
+  window.location.href = 'edit-chapter.html?book=b1&chapter=' + num;
 }
 
 function renderPagination(){
@@ -403,15 +432,18 @@ function goToPage(p){
 }
 
 function renderTools(){
-  document.getElementById('toolList').innerHTML = TOOLS.map(t => `
-    <div class="tool-card">
+  document.getElementById('toolList').innerHTML = TOOLS.map(t => {
+    const tag = t.href ? 'a' : 'div';
+    const hrefAttr = t.href ? ` href="${t.href}"` : '';
+    return `<${tag} class="tool-card"${hrefAttr}>
       <div class="tool-icon" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
       <div class="tool-info">
         <div class="tool-title">${t.title}</div>
         <div class="tool-desc">${t.desc}</div>
       </div>
       <i class="fas fa-chevron-right tool-chev"></i>
-    </div>`).join('');
+    </${tag}>`;
+  }).join('');
 }
 
 function renderDrawer(){

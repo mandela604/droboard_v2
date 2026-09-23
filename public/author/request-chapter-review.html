@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>Chapter Review · Droboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{--acc:#ff0050;--bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--card:#ffffff;--bd:rgba(0,0,0,.12);--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666;--tx-faint:#8a8a8a;--green:#16a34a;--green-bg:#e2f8ea;--amber:#d97706;--red:#e0384d;--purple:#5b4bcf;--blue:#2563eb}
+[data-theme="dark"]{--bg:#000;--l1:#08090c;--l2:#0e0f13;--card:#0e0f13;--bd:rgba(255,255,255,.07);--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;--green-bg:rgba(22,163,74,.15)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);height:100%}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh}
+button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;z-index:1;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+@media(min-width:421px){.phone{box-shadow:0 0 50px rgba(0,0,0,.14)}}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-body);font-size:15px;flex-shrink:0;border:none}
+.top-title{flex:1;font-size:16px;font-weight:800;color:var(--tx-high)}
+
+.content{flex:1;overflow-y:auto;padding:16px 14px 30px}
+
+.page-header{padding:8px 0 20px}
+.page-header h1{font-size:22px;font-weight:800;color:var(--tx-high);margin-bottom:4px}
+.page-header p{font-size:13px;color:var(--tx-muted)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto}
+.tab{padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;background:var(--l2);color:var(--tx-muted);white-space:nowrap;cursor:pointer;transition:.15s}
+.tab.active{background:var(--acc);color:#fff}
+
+/* ── Book Section ── */
+.book-section{margin-bottom:16px}
+.book-header{display:flex;align-items:center;gap:10px;padding:12px;background:var(--l2);border-radius:12px;cursor:pointer;margin-bottom:8px}
+.book-cover{width:36px;height:50px;border-radius:6px;object-fit:cover;flex-shrink:0}
+.book-info{flex:1;min-width:0}
+.book-title{font-size:13px;font-weight:700;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book-meta{font-size:11px;color:var(--tx-muted);margin-top:2px}
+.book-chevron{color:var(--tx-muted);font-size:12px;transition:.2s}
+.book-section.open .book-chevron{transform:rotate(180deg)}
+
+/* ── Chapter List ── */
+.chapter-list{display:flex;flex-direction:column;gap:6px;padding:0 0 8px}
+.chapter-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--bd);border-radius:10px;transition:.15s}
+.ch-num{font-size:11px;font-weight:700;color:var(--tx-muted);width:20px;text-align:center;flex-shrink:0}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:13px;font-weight:600;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-meta{font-size:10.5px;color:var(--tx-muted);margin-top:1px}
+.ch-status{font-size:9px;font-weight:700;padding:3px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
+.ch-status.live{background:var(--green-bg);color:var(--green)}
+.ch-status.pending{background:rgba(217,119,6,.1);color:var(--amber)}
+.ch-status.revision{background:rgba(224,56,77,.08);color:var(--red)}
+.ch-status.draft{background:rgba(37,99,235,.1);color:var(--blue)}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.empty i{font-size:36px;margin-bottom:12px;color:var(--tx-faint)}
+.empty p{font-size:13px;line-height:1.5;color:var(--tx-muted)}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(22,22,27,.92);color:#fff;padding:9px 18px;border-radius:24px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Detail Modal ── */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-panel{width:92%;max-width:440px;max-height:85vh;background:var(--card);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.modal-title{font-size:16px;font-weight:800;color:var(--tx-high)}
+.modal-close{width:32px;height:32px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-muted);font-size:13px;border:none;flex-shrink:0}
+.modal-body{flex:1;overflow-y:auto;padding:20px}
+.modal-footer{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--bd);flex-shrink:0}
+.modal-btn{flex:1;padding:11px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.modal-btn:active{transform:scale(.97)}
+.modal-btn.edit{background:var(--acc);color:#fff}
+.modal-btn.close-modal{background:var(--l2);color:var(--tx-body)}
+
+.detail-chapter{font-size:15px;font-weight:700;color:var(--tx-high);margin-bottom:2px}
+.detail-book{font-size:12px;color:var(--tx-muted);margin-bottom:4px}
+.detail-meta{font-size:11px;color:var(--tx-faint);margin-bottom:16px}
+.detail-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:16px}
+.detail-status.pending{background:rgba(217,119,6,.1);color:var(--amber)}
+.detail-status.revision{background:rgba(224,56,77,.08);color:var(--red)}
+
+.note-section{margin-bottom:14px}
+.note-label{font-size:11px;font-weight:700;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.note-label i{font-size:11px}
+.note-box{background:var(--l2);border-radius:10px;padding:12px;font-size:12.5px;line-height:1.6;color:var(--tx-body)}
+.note-box.editor{border-left:3px solid var(--acc)}
+.note-box.empty-note{color:var(--tx-faint);font-style:italic}
+
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--l1);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.drawer-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#8a0030);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1;color:var(--tx-high)}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:var(--l2);color:var(--tx-muted);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;border:none}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--tx-body);text-decoration:none}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--tx-muted);flex-shrink:0}
+.drawer-item:active{background:var(--l2)}
+.drawer-item.active{background:rgba(255,0,80,.08);color:var(--acc)}
+.drawer-item.active i{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button class="back-btn" id="menuBtn" style="font-size:13px"><i class="fas fa-bars"></i></button>
+    <button class="back-btn" id="backBtn"><i class="fas fa-chevron-left"></i></button>
+    <div class="top-title">Chapter Review</div>
+
+  </div>
+
+  <div class="content">
+    <div class="page-header">
+      <h1>Chapter Review</h1>
+      <p>Chapters submitted for editor review.</p>
+    </div>
+
+    <div id="bookList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Chapter Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-title">Chapter Details</div>
+      <button class="modal-close" id="detailClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer" id="detailFooter"></div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-logo"><i class="fas fa-feather-pointed"></i></div>
+    <div class="drawer-head-title">Droboard</div>
+    <button class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var THEME_KEY='droboardTheme';
+function getTheme(){try{return localStorage.getItem(THEME_KEY)||'light';}catch(e){return 'light';}}
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem(THEME_KEY,t);}catch(e){}}
+setTheme(getTheme());
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
+
+var BOOKS=[
+  {id:'b1',title:'The Midnight Protocol',cover:'https://picsum.photos/seed/book1/80/112',chapters:[
+    {num:3,title:'Late Night Call',words:2410,status:'pending',date:'Submitted 2 hours ago',
+      authorNotes:'Focused on pacing and the phone call scene. Let me know if the dialogue feels natural.',
+      editorNotes:''},
+    {num:4,title:'The Door She Finally Opened',words:2250,status:'revision',date:'Revision requested 1 day ago',
+      authorNotes:'Rewrote the ending based on your last feedback. Added more tension.',
+      editorNotes:'The pacing in the middle section drags. Cut paragraphs 4-6 and tighten the dialogue between Luna and Marcus. Also, the twist at the end needs better setup — add a foreshadowing line in the opening scene.'}
+  ]},
+  {id:'b2',title:'Echoes of Yesterday',cover:'https://picsum.photos/seed/book2/80/112',chapters:[
+    {num:2,title:'Old Friends',words:2320,status:'pending',date:'Submitted 1 day ago',
+      authorNotes:'Tightened the dialogue and added more emotional beats. Please check the pacing.',
+      editorNotes:''}
+  ]}
+];
+
+var openBooks={b1:true};
+var currentBookId=null;
+var currentChNum=null;
+
+function renderBooks(){
+  var el=document.getElementById('bookList');
+  var hasAny=false;
+  el.innerHTML=BOOKS.map(function(book){
+    if(!book.chapters.length)return '';
+    hasAny=true;
+    var isOpen=openBooks[book.id];
+    return '<div class="book-section'+(isOpen?' open':'')+'" data-bid="'+book.id+'">'
+      +'<div class="book-header" onclick="toggleBook(\''+book.id+'\')">'
+      +'<img class="book-cover" src="'+book.cover+'" alt=""/>'
+      +'<div class="book-info"><div class="book-title">'+book.title+'</div>'
+      +'<div class="book-meta">'+book.chapters.length+' chapter'+(book.chapters.length>1?'s':'')+' under review</div></div>'
+      +'<i class="fas fa-chevron-down book-chevron"></i></div>'
+      +'<div class="chapter-list" style="display:'+(isOpen?'flex':'none')+'">'
+      +book.chapters.map(function(ch){
+        var statusClass=ch.status==='pending'?'pending':'revision';
+        var statusLabel=ch.status==='pending'?'Under Review':'Revision Needed';
+        return '<div class="chapter-item" onclick="openDetail(\''+book.id+'\','+ch.num+')">'
+          +'<span class="ch-num">'+ch.num+'</span>'
+          +'<div class="ch-info"><div class="ch-name">'+ch.title+'</div>'
+          +'<div class="ch-meta">'+ch.words.toLocaleString()+' words · '+ch.date+'</div></div>'
+          +'<span class="ch-status '+statusClass+'">'+statusLabel+'</span></div>';
+      }).join('')+'</div></div>';
+  }).join('');
+  if(!hasAny){
+    el.innerHTML='<div class="empty"><i class="fas fa-clipboard-check"></i><p>No chapters under review.</p></div>';
+  }
+}
+
+window.toggleBook=function(bid){
+  openBooks[bid]=!openBooks[bid];
+  renderBooks();
+};
+
+window.openDetail=function(bid,chNum){
+  var book=BOOKS.find(function(b){return b.id===bid;});
+  if(!book)return;
+  var ch=book.chapters.find(function(c){return c.num===chNum;});
+  if(!ch)return;
+  currentBookId=bid;
+  currentChNum=chNum;
+
+  var statusClass=ch.status==='pending'?'pending':'revision';
+  var statusLabel=ch.status==='pending'?'Under Review':'Revision Needed';
+
+  var body=document.getElementById('detailBody');
+  body.innerHTML='<div class="detail-chapter">Ch. '+ch.num+' — '+ch.title+'</div>'
+    +'<div class="detail-book">'+book.title+'</div>'
+    +'<div class="detail-meta">'+ch.words.toLocaleString()+' words · '+ch.date+'</div>'
+    +'<div class="detail-status '+statusClass+'">'+statusLabel+'</div>'
+    +'<div class="note-section">'
+    +'<div class="note-label"><i class="fas fa-pen"></i> Your Notes</div>'
+    +'<div class="note-box'+(ch.authorNotes?'':' empty-note')+'">'+(ch.authorNotes||'No notes submitted.')+'</div>'
+    +'</div>'
+    +'<div class="note-section">'
+    +'<div class="note-label"><i class="fas fa-comment-dots"></i> Editor Feedback</div>'
+    +'<div class="note-box editor'+(ch.editorNotes?'':' empty-note')+'">'+(ch.editorNotes||'Awaiting editor review.')+'</div>'
+    +'</div>';
+
+  var footer=document.getElementById('detailFooter');
+  if(ch.status==='revision'){
+    footer.innerHTML='<button class="modal-btn close-modal" onclick="closeDetail()">Close</button>'
+      +'<button class="modal-btn edit" onclick="editChapter('+ch.num+')"><i class="fas fa-pen"></i> Edit Chapter</button>';
+  }else{
+    footer.innerHTML='<button class="modal-btn close-modal" onclick="closeDetail()" style="flex:1">Close</button>';
+  }
+
+  document.getElementById('detailModal').classList.add('open');
+};
+
+window.closeDetail=function(){
+  document.getElementById('detailModal').classList.remove('open');
+};
+
+window.editChapter=function(num){
+  window.location.href='edit-chapter.html?book='+(currentBookId||'b1')+'&chapter='+num;
+};
+
+renderBooks();
+
+document.getElementById('detailClose').onclick=closeDetail;
+document.getElementById('detailModal').onclick=function(e){if(e.target===this)closeDetail();};
+
+document.getElementById('backBtn').addEventListener('click',function(){if(window.history.length>1)window.history.back();else window.location.href='author-center.html';});
+
+var MENU_SECTIONS=[
+  {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
+  {title:'Applications',items:[
+    {label:'Contracts',icon:'fa-file-signature',href:'apply-contract.html'},
+    {label:'Completion',icon:'fa-flag-checkered',href:'apply-completion.html'},
+    {label:'Chapter Review',icon:'fa-pen-to-square',href:'request-chapter-review.html'},
+    {label:'Series Changes',icon:'fa-book-open',href:'request-series-change.html'},
+    {label:'VIP Application',icon:'fa-crown',href:'apply-vip.html'}
+  ]},
+  {title:'Finance',items:[
+    {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
+    {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html'},
+    {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'}
+  ]},
+  {title:'Communication',items:[
+    {label:'Messages',icon:'fa-comment-dots',href:'../Pages/chat.html'},
+    {label:'Notifications',icon:'fa-bell',href:'../Pages/notifications.html'}
+  ]},
+  {title:'Settings',items:[{label:'Settings',icon:'fa-gear',href:'#'}]}
+];
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML=MENU_SECTIONS.map(function(sec){
+    return '<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(function(it){
+      var active=location.pathname.indexOf(it.href.replace('.html',''))!==-1?' active':'';
+      return '<a class="drawer-item'+active+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>';
+    }).join('')+'</div>';
+  }).join('');
+}
+document.getElementById('menuBtn').addEventListener('click',function(){
+  renderDrawer();
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+});
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+document.getElementById('drawerClose').addEventListener('click',closeDrawer);
+document.getElementById('drawerOverlay').addEventListener('click',closeDrawer);
+
+})();
+</script>
+</body>
+</html>

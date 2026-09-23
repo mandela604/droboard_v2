@@ -169,7 +169,7 @@ body{font-family:'Inter',system-ui,sans-serif}
           </select>
         </div>
         <div class="rev-summary">
-          <div class="big" id="revTotal">₦48.2M</div>
+          <div class="big" id="revTotal">$48.2M</div>
           <span class="kpi-trend up"><i class="fas fa-arrow-up" style="font-size:8px"></i> 7.1% vs last month</span>
         </div>
         <div class="chart-wrap" id="chartWrap"></div>
@@ -195,16 +195,7 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
 
     <!-- ── RIGHT COLUMN ── -->
-    <div>
-      <div class="panel">
-        <div class="panel-head">
-          <h2><i class="fas fa-flag" style="color:var(--red)"></i> Moderation Queue</h2>
-          <span class="mod-count" id="modCount">—</span>
-        </div>
-        <div id="modQueue"></div>
-        <a href="#" class="panel-link" style="margin-top:12px;display:flex">View all reports <i class="fas fa-arrow-right" style="font-size:9px"></i></a>
-      </div>
-
+    <div style="min-width:0;overflow:hidden">
       <div class="panel">
         <div class="panel-head">
           <h2><i class="fas fa-user-shield" style="color:var(--accent)"></i> Admin Team</h2>
@@ -220,18 +211,6 @@ body{font-family:'Inter',system-ui,sans-serif}
         <div class="sh-row"><span>Payment Gateway</span><div class="sh-val"><span class="sh-dot ok"></span>Operational</div></div>
         <div class="sh-row"><span>Error Rate (24h)</span><div class="sh-val"><span class="sh-dot warn"></span>0.34%</div></div>
         <div class="sh-row"><span>Last Incident</span><div class="sh-val" style="color:var(--text-faint);font-weight:600">14 days ago</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head"><h2><i class="fas fa-grip" style="color:var(--accent)"></i> Quick Links</h2></div>
-        <div class="ql-grid">
-          <a class="ql-item" href="contracts-payments.html"><i class="fas fa-file-contract" style="color:var(--blue)"></i><b>Contracts</b><span>Writer agreements</span></a>
-          <a class="ql-item" href="campaigns.html"><i class="fas fa-bullhorn" style="color:var(--accent)"></i><b>Campaigns</b><span>Promotions & ads</span></a>
-          <a class="ql-item" href="#"><i class="fas fa-shield-halved" style="color:var(--red)"></i><b>Moderation</b><span>Reports & flags</span></a>
-          <a class="ql-item" href="#"><i class="fas fa-chart-pie" style="color:var(--purple)"></i><b>Analytics</b><span>Platform insights</span></a>
-          <a class="ql-item" href="#"><i class="fas fa-sack-dollar" style="color:var(--green)"></i><b>Payouts</b><span>Writer earnings</span></a>
-          <a class="ql-item" href="#"><i class="fas fa-gear" style="color:var(--text-muted)"></i><b>Settings</b><span>Platform config</span></a>
-        </div>
       </div>
     </div>
   </div>
@@ -318,13 +297,13 @@ const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue
 const ROLE_CLS = { 'Super Admin':'accent', 'Chief Editor':'purple', 'Finance Admin':'green', 'Content Moderator':'red', 'Support Admin':'blue' };
 
 function fmtNum(n){ return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
-function fmtNaira(n){ return '₦'+fmtNum(n); }
+function fmtNaira(n){ return '$'+fmtNum(n); }
 
 /* ── KPI cards ── */
 const KPIS = [
   { n:'284.5K', l:'Total Users', ico:'fa-users', cls:'blue', trend:'+3.2%', up:true },
   { n:'12,340', l:'Total Writers', ico:'fa-feather-pointed', cls:'purple', trend:'+1.8%', up:true },
-  { n:'₦48.2M', l:'Monthly Revenue', ico:'fa-sack-dollar', cls:'green', trend:'+7.1%', up:true },
+  { n:'$48.2M', l:'Monthly Revenue', ico:'fa-sack-dollar', cls:'green', trend:'+7.1%', up:true },
   { n:'9,845', l:'Active Stories', ico:'fa-book', cls:'accent', trend:'+2.4%', up:true },
   { n:'37', l:'Pending Reports', ico:'fa-flag', cls:'red', trend:'+12', up:false },
   { n:'812', l:'Active Contracts', ico:'fa-file-contract', cls:'blue', trend:'+9', up:true },
@@ -376,7 +355,7 @@ const ACTIVITY = [
   { ico:'fa-file-signature', cls:'purple', text:'<b>CT-1012</b> was signed with <b>CampusQueen</b> — Exclusive, 2 years', time:'12m ago' },
   { ico:'fa-flag', cls:'red', text:'A chapter in <b>"The Neighbour Who Reported the Fire"</b> was flagged for plagiarism', time:'38m ago' },
   { ico:'fa-bullhorn', cls:'accent', text:'<b>Kemi_A</b> launched an End of Chapter campaign for <b>"He Proposed With My Best Friend\'s Ring"</b>', time:'1h ago' },
-  { ico:'fa-sack-dollar', cls:'green', text:'Payout of <b>₦1.2M</b> processed for <b>Ifeanyi_Story</b>', time:'2h ago' },
+  { ico:'fa-sack-dollar', cls:'green', text:'Payout of <b>$1.2M</b> processed for <b>Ifeanyi_Story</b>', time:'2h ago' },
   { ico:'fa-user-plus', cls:'blue', text:'<b>842</b> new readers signed up in the last hour', time:'2h ago' },
   { ico:'fa-rotate', cls:'amber', text:"Contract <b>CT-1005</b> with <b>Zara_M</b> is due to renew in 17 days", time:'5h ago' },
   { ico:'fa-book', cls:'accent', text:'<b>Dami_Cole</b> published a new chapter of <b>"She Rejected Me 3 Times"</b>', time:'7h ago' },
@@ -386,38 +365,6 @@ document.getElementById('activityFeed').innerHTML = ACTIVITY.map(a=>`
     <div class="feed-ico" style="background:${BG_MAP[a.cls]};color:${ICO_MAP[a.cls]}"><i class="fas ${a.ico}"></i></div>
     <div class="feed-body"><p>${a.text}</p><div class="feed-time">${a.time}</div></div>
   </div>`).join('');
-
-/* ── Moderation queue ── */
-let REPORTS = [
-  { id:'r1', title:'Chapter 6 — "The Neighbour Who Reported the Fire"', reason:'Suspected plagiarism', reporter:'auto-scan', time:'38m ago' },
-  { id:'r2', title:'Comment on "The Luna Trials"', reason:'Harassment', reporter:'3 readers', time:'1h ago' },
-  { id:'r3', title:'"Campus Queen" story cover', reason:'Copyright claim', reporter:'external DMCA', time:'3h ago' },
-  { id:'r4', title:'Chapter 2 — "He Proposed With My Best Friend\'s Ring"', reason:'Explicit content, unflagged', reporter:'1 reader', time:'6h ago' },
-];
-function renderModQueue(){
-  document.getElementById('modCount').textContent = REPORTS.length + ' pending';
-  document.getElementById('modQueue').innerHTML = REPORTS.map(r=>`
-    <div class="mod-item" data-id="${r.id}">
-      <div class="mod-ico"><i class="fas fa-triangle-exclamation"></i></div>
-      <div class="mod-body">
-        <b>${r.title}</b>
-        <span>${r.reason} · reported by ${r.reporter} · ${r.time}</span>
-        <div class="mod-actions">
-          <button class="mini-btn green" data-act="dismiss" data-id="${r.id}"><i class="fas fa-check"></i> Dismiss</button>
-          <button class="mini-btn danger" data-act="remove" data-id="${r.id}"><i class="fas fa-trash"></i> Take Down</button>
-        </div>
-      </div>
-    </div>`).join('') || '<p style="font-size:12px;color:var(--text-faint);padding:10px 0">Queue is clear — nice work.</p>';
-}
-document.getElementById('modQueue').addEventListener('click', e=>{
-  const btn = e.target.closest('[data-act]'); if(!btn) return;
-  const id = btn.dataset.id;
-  const r = REPORTS.find(x=>x.id===id);
-  REPORTS = REPORTS.filter(x=>x.id!==id);
-  renderModQueue();
-  toast(btn.dataset.act==='dismiss' ? `Dismissed report on "${r.title.slice(0,30)}…"` : `Removed content: "${r.title.slice(0,30)}…"`, btn.dataset.act==='dismiss'?'fa-circle-check':'fa-trash');
-});
-renderModQueue();
 
 /* ── Admin team (full CRUD) ── */
 let ADMINS = [

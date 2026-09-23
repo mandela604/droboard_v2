@@ -253,7 +253,7 @@
     html += _item({
       act: 'refer', icon: 'fa-share-alt',
       iconBg: 'var(--gold-soft,rgba(240,168,0,.12))', border: 'rgba(240,168,0,.2)', iconColor: 'var(--gold,#f0a800)',
-      title: 'Refer a Friend', sub: 'Earn ₦500 per referral',
+      title: 'Refer a Friend', sub: 'Earn $5 per referral',
     });
     html += _item({
       act: 'sign-out', icon: 'fa-sign-out-alt', danger: true,

@@ -42,7 +42,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 .list-cols{display:grid;grid-template-columns:minmax(0,2.2fr) 120px 90px 90px 100px 100px 90px 70px;gap:10px;align-items:center;padding:10px 18px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
 .list-cols span.num{text-align:right}
 
-.editor-row{display:grid;grid-template-columns:minmax(0,2.2fr) 120px 90px 90px 100px 100px 90px 70px;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);transition:.12s}
+.editor-row{display:grid;grid-template-columns:minmax(0,2.2fr) 120px 90px 90px 100px 100px 90px 70px;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);transition:.12s;cursor:pointer}
 .editor-row:hover{background:var(--hover)}
 .editor-row:last-child{border-bottom:none}
 .editor-main{display:flex;align-items:center;gap:11px;min-width:0}
@@ -91,7 +91,105 @@ body{font-family:'Inter',system-ui,sans-serif}
   .list-cols span:nth-child(7),
   .editor-row .col-hide{display:none}
 }
-@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){
+  .grid-4{grid-template-columns:1fr 1fr}
+  .panel{padding:14px}
+  .page-head h1{font-size:17px}
+  .list-cols{display:none}
+  .editor-row{grid-template-columns:1fr 70px;gap:8px}
+  .editor-row .col-hide{display:none}
+}
+
+/* editor detail modal */
+.ed-modal-bg{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;display:none;opacity:0;transition:opacity .2s}
+.ed-modal-bg.open{display:block;opacity:1}
+.ed-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);z-index:1010;background:var(--card);border-radius:18px;width:100%;max-width:440px;box-shadow:0 24px 70px rgba(0,0,0,.3);opacity:0;transition:.2s;max-height:85vh;overflow-y:auto}
+.ed-modal-bg.open .ed-modal{transform:translate(-50%,-50%) scale(1);opacity:1}
+.ed-modal-head{display:flex;align-items:center;gap:14px;padding:22px 22px 0}
+.ed-modal-head img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.ed-modal-head .ed-m-info{flex:1}
+.ed-modal-head .ed-m-name{font-size:16px;font-weight:800}
+.ed-modal-head .ed-m-role{font-size:11.5px;color:var(--text-faint);margin-top:2px}
+.ed-modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
+.ed-modal-close:hover{background:var(--red-bg);color:var(--red)}
+.ed-modal-body{padding:18px 22px 22px}
+.ed-modal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.ed-modal-stat{background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.ed-modal-stat b{display:block;font-size:18px;font-weight:800}
+.ed-modal-stat span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.ed-modal-section{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px}
+.ed-modal-detail{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.ed-modal-detail:last-child{border-bottom:none}
+.ed-modal-detail .lbl{color:var(--text-muted);font-weight:600}
+.ed-modal-detail .val{font-weight:700}
+.ed-modal-actions{display:flex;gap:8px;margin-top:18px}
+.ed-modal-actions button{flex:1;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;gap:6px;transition:.13s}
+.ed-modal-actions .ed-btn-profile{background:var(--accent);border-color:transparent;color:#fff}
+.ed-modal-actions .ed-btn-profile:hover{filter:brightness(1.05);color:#fff}
+.ed-modal-actions .ed-btn-reset{background:var(--input-bg);color:var(--text)}
+.ed-modal-actions .ed-btn-reset:hover{border-color:var(--gold);color:var(--gold)}
+
+/* password reset modal */
+.pw-modal-bg{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1100;display:none;opacity:0;transition:opacity .2s}
+.pw-modal-bg.open{display:block;opacity:1}
+.pw-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);z-index:1110;background:var(--card);border-radius:16px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(0,0,0,.3);opacity:0;transition:.2s}
+.pw-modal-bg.open .pw-modal{transform:translate(-50%,-50%) scale(1);opacity:1}
+.pw-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 4px}
+.pw-modal-head h3{font-size:15px;font-weight:800}
+.pw-modal-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.pw-field label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.pw-field input{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text)}
+.pw-field input:focus{border-color:var(--accent);outline:none}
+.pw-field small{display:block;margin-top:5px;font-size:10.5px;color:var(--text-faint)}
+.pw-err{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;display:none}
+.pw-err.show{display:block}
+.pw-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.pw-actions button{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--input-border)}
+.pw-actions .pw-cancel{background:var(--input-bg);color:var(--text-muted)}
+.pw-actions .pw-confirm{background:var(--green);border-color:transparent;color:#fff}
+.pw-actions .pw-confirm:disabled{opacity:.6;cursor:not-allowed}
+.pw-success{text-align:center;padding:20px;display:none}
+.pw-success.show{display:block}
+.pw-success i{font-size:36px;color:var(--green);margin-bottom:10px}
+.pw-success p{font-size:13px;font-weight:700;color:var(--text)}
+.pw-success small{font-size:11.5px;color:var(--text-faint);margin-top:4px;display:block}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(10,6,25,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:.2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:480px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.35);transform:scale(.92);transition:transform .25s;overflow:hidden}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-hdr{display:flex;align-items:center;gap:14px;padding:20px;border-bottom:1px solid var(--border)}
+.modal-av{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+.modal-hdr-info h3{font-size:16px;font-weight:800}
+.modal-hdr-info p{font-size:12px;color:var(--text-muted);margin-top:2px}
+.modal-close{width:30px;height:30px;border-radius:8px;background:var(--input-bg);border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-muted);cursor:pointer;margin-left:auto;flex-shrink:0}
+.modal-close:hover{color:var(--red);border-color:var(--red)}
+.modal-body{padding:20px}
+.modal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.modal-stat{background:var(--table-head);border-radius:10px;padding:12px;text-align:center}
+.modal-stat b{display:block;font-size:18px;font-weight:800}
+.modal-stat span{font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.modal-detail{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.modal-detail:last-child{border-bottom:none}
+.modal-detail .lbl{color:var(--text-muted);font-weight:600}
+.modal-detail .val{font-weight:700}
+.modal-actions{display:flex;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.modal-actions .btn{flex:1;justify-content:center}
+.modal-actions .btn.danger{border-color:var(--red);color:var(--red)}
+.modal-actions .btn.danger:hover{background:var(--red-bg)}
+
+/* ── Reset Password Modal ── */
+.pw-modal-body{padding:20px}
+.pw-field{margin-bottom:14px}
+.pw-field label{display:block;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.pw-field input{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 13px;color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.pw-field input:focus{border-color:var(--gold)}
+.pw-field .pw-hint{font-size:10.5px;color:var(--text-faint);margin-top:4px}
+.pw-actions{display:flex;gap:10px;margin-top:16px}
+.pw-actions .btn{flex:1;justify-content:center}
+.pw-success{text-align:center;padding:16px;color:var(--green);font-size:13px;font-weight:700}
+.pw-success i{font-size:28px;display:block;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -135,6 +233,61 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="pager" id="pager"></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Editor detail modal -->
+<div class="ed-modal-bg" id="edModalBg">
+  <div class="ed-modal">
+    <div class="ed-modal-head">
+      <img id="edModalAvatar" src="" alt=""/>
+      <div class="ed-m-info">
+        <div class="ed-m-name" id="edModalName"></div>
+        <div class="ed-m-role" id="edModalRole"></div>
+      </div>
+      <button class="ed-modal-close" id="edModalClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="ed-modal-body">
+      <div class="ed-modal-stats" id="edModalStats"></div>
+      <div class="ed-modal-section">Details</div>
+      <div id="edModalDetails"></div>
+      <div class="ed-modal-actions">
+        <button class="ed-btn-profile" id="edModalProfile"><i class="fas fa-user"></i> View Profile</button>
+        <button class="ed-btn-reset" id="edModalReset"><i class="fas fa-key"></i> Reset Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Password reset modal -->
+<div class="pw-modal-bg" id="pwModalBg">
+  <div class="pw-modal">
+    <div class="pw-modal-head">
+      <h3><i class="fas fa-key" style="color:var(--gold)"></i> Reset Password</h3>
+      <button class="ed-modal-close" id="pwModalClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="pw-modal-body" id="pwModalForm">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Set a new password for <strong id="pwEditorName"></strong></div>
+      <div class="pw-field">
+        <label>New Password</label>
+        <input type="password" id="pwNew" placeholder="Enter new password"/>
+        <small>Minimum 8 characters</small>
+      </div>
+      <div class="pw-field">
+        <label>Confirm Password</label>
+        <input type="password" id="pwConfirm" placeholder="Confirm new password"/>
+      </div>
+      <div class="pw-err" id="pwErr"></div>
+      <div class="pw-actions">
+        <button class="pw-cancel" id="pwCancel">Cancel</button>
+        <button class="pw-confirm" id="pwConfirmBtn">Reset Password</button>
+      </div>
+    </div>
+    <div class="pw-success" id="pwSuccess">
+      <i class="fas fa-circle-check"></i>
+      <p>Password reset successful</p>
+      <small id="pwSuccessMsg"></small>
     </div>
   </div>
 </div>
@@ -264,7 +417,7 @@ function renderList(){
       var extra = (e.platformRoles||[]).length;
       var roleLabel = e.role + (extra>0 ? ' +'+extra : '');
       var roleBadge = '<span class="role-pill" style="background:'+BG_MAP[rcls]+';color:'+ICO_MAP[rcls]+'"><i class="fas '+(ROLE_ICO[e.role]||'fa-shield')+'"></i> '+roleLabel+'</span>';
-      return '<div class="editor-row">'
+      return '<div class="editor-row" data-edid="'+e.id+'" style="cursor:pointer">'
         + '<div class="editor-main"><img class="e-avatar" src="'+e.avatar+'" alt=""/><div class="e-info"><div class="e-name">'+e.name+(e.lead?' <i class="fas fa-star lead" title="Team Lead"></i>':'')+'</div><div class="e-meta">'+e.id+'</div></div></div>'
         + '<div class="col-hide">'+roleBadge+'</div>'
         + '<div class="col-hide num-cell faint">'+e.authors+'</div>'
@@ -275,6 +428,13 @@ function renderList(){
         + '<div class="row-actions"><a class="icon-btn" href="../Pages/profile.html?id='+e.id+'" title="View profile"><i class="fas fa-eye"></i></a><div class="row-menu"><button class="row-menu-btn" data-action="toggle-menu" data-id="'+e.id+'" title="More"><i class="fas fa-ellipsis-vertical"></i></button><div class="dropdown" id="menu-'+e.id+'"><a class="dropdown-item" href="../Pages/profile.html?id='+e.id+'"><i class="fas fa-eye"></i> View Profile</a></div></div></div>'
         + '</div>';
     }).join('');
+
+    listEl.querySelectorAll('.editor-row').forEach(function(row){
+      row.addEventListener('click', function(ev){
+        if(ev.target.closest('.row-actions')) return;
+        openEdModal(row.dataset.edid);
+      });
+    });
   }
   renderFooter();
 }
@@ -315,6 +475,10 @@ document.getElementById('searchInput').addEventListener('input', applyFilters);
 document.getElementById('statusFilter').addEventListener('change', applyFilters);
 document.getElementById('sortFilter').addEventListener('change', applyFilters);
 
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){closeEdModal();closePwModal();}
+});
+
 document.addEventListener('click', function(e){
   var btn = e.target.closest('[data-action="toggle-menu"]');
   if(btn){
@@ -332,6 +496,94 @@ function init(){
   document.getElementById('sortFilter').value = 'authors';
   applyFilters();
 }
+
+/* editor detail modal */
+let selectedEditor = null;
+function openEdModal(id){
+  var ed = ALL_EDITORS.find(function(e){return e.id===id;});
+  if(!ed) return;
+  selectedEditor = ed;
+  document.getElementById('edModalAvatar').src = ed.avatar;
+  document.getElementById('edModalName').textContent = ed.name + (ed.lead ? ' ★' : '');
+  document.getElementById('edModalRole').textContent = ed.role;
+
+  /* Stats based on role */
+  var statsHtml = '';
+  if(ed.role === 'Chief Editor'){
+    statsHtml = '<div class="ed-modal-stat"><b>'+ed.authors+'</b><span>Editors Managed</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.contracts+'</b><span>Contracts Oversight</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.reports+'</b><span>Reports Reviewed</span></div>';
+  } else if(ed.role === 'Senior Editor'){
+    statsHtml = '<div class="ed-modal-stat"><b>'+ed.authors+'</b><span>Assigned Authors</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.contracts+'</b><span>Contracts</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.reports+'</b><span>Reports</span></div>';
+  } else if(ed.role === 'Marketing'){
+    statsHtml = '<div class="ed-modal-stat"><b>'+ed.authors+'</b><span>Campaigns</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.contracts+'</b><span>Content Pieces</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.reports+'</b><span>Reports</span></div>';
+  } else if(ed.role === 'Finance'){
+    statsHtml = '<div class="ed-modal-stat"><b>'+ed.authors+'</b><span>Transactions</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.contracts+'</b><span>Payouts Processed</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.reports+'</b><span>Reports</span></div>';
+  } else {
+    statsHtml = '<div class="ed-modal-stat"><b>'+ed.authors+'</b><span>Authors</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.contracts+'</b><span>Contracts</span></div>'
+      +'<div class="ed-modal-stat"><b>'+ed.reports+'</b><span>Reports</span></div>';
+  }
+  document.getElementById('edModalStats').innerHTML = statsHtml;
+
+  var joined = new Date(Date.now() - ed.joinedDaysAgo*86400000);
+  var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var joinedStr = monthNames[joined.getMonth()]+' '+joined.getDate()+', '+joined.getFullYear();
+  document.getElementById('edModalDetails').innerHTML =
+    '<div class="ed-modal-detail"><span class="lbl">Editor ID</span><span class="val">'+ed.id+'</span></div>'
+    +'<div class="ed-modal-detail"><span class="lbl">Status</span><span class="val"><span class="status-chip '+ed.status+'"><i class="fas fa-circle"></i>'+(ed.status==='leave'?'On Leave':ed.status)+'</span></span></div>'
+    +'<div class="ed-modal-detail"><span class="lbl">Role</span><span class="val">'+ed.role+'</span></div>'
+    +(ed.platformRoles&&ed.platformRoles.length?'<div class="ed-modal-detail"><span class="lbl">Platform Roles</span><span class="val">'+ed.platformRoles.join(', ')+'</span></div>':'')
+    +'<div class="ed-modal-detail"><span class="lbl">Joined</span><span class="val">'+joinedStr+'</span></div>'
+    +'<div class="ed-modal-detail"><span class="lbl">Email</span><span class="val">'+ed.name.toLowerCase().replace(/ /g,'.')+'@droboard.io</span></div>';
+  document.getElementById('edModalBg').classList.add('open');
+}
+function closeEdModal(){document.getElementById('edModalBg').classList.remove('open');selectedEditor=null;}
+
+document.getElementById('edModalClose').addEventListener('click',closeEdModal);
+document.getElementById('edModalBg').addEventListener('click',function(e){if(e.target.id==='edModalBg')closeEdModal();});
+document.getElementById('edModalProfile').addEventListener('click',function(){
+  if(selectedEditor) window.location.href='../Pages/profile.html?id='+selectedEditor.id;
+});
+document.getElementById('edModalReset').addEventListener('click',function(){
+  closeEdModal();
+  document.getElementById('pwEditorName').textContent = selectedEditor ? selectedEditor.name : '';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwConfirm').value = '';
+  document.getElementById('pwErr').classList.remove('show');
+  document.getElementById('pwModalForm').style.display = '';
+  document.getElementById('pwSuccess').classList.remove('show');
+  document.getElementById('pwModalBg').classList.add('open');
+});
+
+/* password reset modal */
+function closePwModal(){document.getElementById('pwModalBg').classList.remove('open');}
+document.getElementById('pwModalClose').addEventListener('click',closePwModal);
+document.getElementById('pwCancel').addEventListener('click',closePwModal);
+document.getElementById('pwModalBg').addEventListener('click',function(e){if(e.target.id==='pwModalBg')closePwModal();});
+document.getElementById('pwConfirmBtn').addEventListener('click',function(){
+  var pw = document.getElementById('pwNew').value;
+  var pw2 = document.getElementById('pwConfirm').value;
+  var err = document.getElementById('pwErr');
+  if(pw.length < 8){err.textContent='Password must be at least 8 characters.';err.classList.add('show');return;}
+  if(pw !== pw2){err.textContent='Passwords do not match.';err.classList.add('show');return;}
+  err.classList.remove('show');
+  var btn = document.getElementById('pwConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+  setTimeout(function(){
+    btn.disabled = false; btn.innerHTML = 'Reset Password';
+    document.getElementById('pwModalForm').style.display = 'none';
+    document.getElementById('pwSuccessMsg').textContent = 'New password has been set for '+(selectedEditor?selectedEditor.name:'the editor')+'. They can now log in with the new password.';
+    document.getElementById('pwSuccess').classList.add('show');
+  },1200);
+});
+
 init();
 </script>
 </body>

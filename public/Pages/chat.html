@@ -25,15 +25,107 @@ body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-bod
 button{font-family:inherit;cursor:pointer}
 ::-webkit-scrollbar{display:none}
 
+/* ── Phone shell ── */
 .phone{
   width:100%;max-width:420px;min-height:100vh;
-  background:var(--l1);position:relative;
+  background:var(--l1);position:relative;overflow:hidden;
   box-shadow:0 0 50px rgba(0,0,0,.10);
-  display:flex;flex-direction:column;overflow-x:hidden;
 }
 @media (min-width:421px){ .phone{ box-shadow:0 0 50px rgba(0,0,0,.14) } }
 
-/* ── Top bar ── */
+/* ── Layer container (slide transition) ── */
+.layers{position:relative;width:100%;height:100vh;overflow:hidden}
+.layer{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;background:var(--l1);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.layer-1{z-index:1}
+.layer-2{z-index:2;transform:translateX(100%)}
+.layer-2.open{transform:translateX(0)}
+.layer-1.pushed{transform:translateX(-30%)}
+
+/* ═══════════════════════════════════
+   LAYER 1 — CONTACTS LIST
+   ═══════════════════════════════════ */
+
+/* Top bar */
+.layer1-bar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+[data-theme="dark"] .layer1-bar{background:rgba(0,0,0,.97)}
+.layer1-bar h1{flex:1;font-size:18px;font-weight:800;color:var(--tx-high)}
+.layer1-bar .icon-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--l2);
+  display:flex;align-items:center;justify-content:center;color:var(--tx-muted);
+  font-size:15px;border:none;flex-shrink:0;
+}
+[data-theme="dark"] .layer1-bar .icon-btn{background:rgba(255,255,255,.06)}
+
+/* Search */
+.contact-search{
+  padding:10px 16px;flex-shrink:0;
+}
+.contact-search input{
+  width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:12px;
+  padding:10px 14px 10px 38px;color:var(--tx-body);font-size:13px;font-family:inherit;outline:none;
+}
+.contact-search input:focus{border-color:var(--acc)}
+.contact-search input::placeholder{color:var(--tx-faint)}
+.contact-search{position:relative}
+.contact-search i{
+  position:absolute;left:30px;top:50%;transform:translateY(-50%);
+  font-size:13px;color:var(--tx-faint);pointer-events:none;
+}
+
+/* Contact list */
+.contact-list{flex:1;overflow-y:auto;padding:4px 0}
+
+.contact-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;cursor:pointer;transition:background .12s;
+  position:relative;
+}
+.contact-item:active{background:rgba(0,0,0,.04)}
+[data-theme="dark"] .contact-item:active{background:rgba(255,255,255,.04)}
+
+.contact-av-wrap{position:relative;flex-shrink:0}
+.contact-av{width:48px;height:48px;border-radius:50%;object-fit:cover}
+.contact-online{
+  position:absolute;bottom:1px;right:1px;width:12px;height:12px;
+  border-radius:50%;background:#22c55e;border:2px solid var(--l1);
+}
+.contact-online.offline{background:var(--tx-faint)}
+
+.contact-body{flex:1;min-width:0;border-bottom:1px solid var(--bd2);padding-bottom:12px}
+.contact-item:last-child .contact-body{border-bottom:none}
+
+.contact-top{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.contact-name{font-size:14px;font-weight:700;color:var(--tx-high);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contact-time{font-size:11px;color:var(--tx-faint);flex-shrink:0}
+
+.contact-bottom{display:flex;align-items:center;gap:6px}
+.contact-preview{flex:1;font-size:12.5px;color:var(--tx-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contact-badge{
+  width:20px;height:20px;border-radius:50%;background:var(--acc);color:#fff;
+  font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.contact-role{
+  font-size:10px;font-weight:700;color:var(--tx-faint);text-transform:uppercase;
+  letter-spacing:.03em;
+}
+
+.contact-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--tx-muted);padding:40px;text-align:center;
+}
+.contact-empty i{font-size:40px;color:var(--tx-faint);opacity:.5}
+.contact-empty p{font-size:13px;line-height:1.5}
+
+/* ═══════════════════════════════════
+   LAYER 2 — CHAT INTERFACE
+   ═══════════════════════════════════ */
 .top-bar{
   position:sticky;top:0;z-index:200;
   display:flex;align-items:center;gap:12px;
@@ -54,13 +146,10 @@ button{font-family:inherit;cursor:pointer}
 .editor-name i{color:var(--acc);font-size:10px}
 .editor-status{font-size:11px;color:var(--tx-muted);display:flex;align-items:center;gap:5px}
 .editor-status .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0}
-.theme-toggle{
-  width:36px;height:36px;border-radius:50%;background:var(--l2);
-  display:flex;align-items:center;justify-content:center;color:var(--tx-muted);font-size:15px;border:none;flex-shrink:0;
-}
-[data-theme="dark"] .theme-toggle{background:rgba(255,255,255,.06)}
+.editor-status .dot.offline{background:var(--tx-faint)}
 
-/* ── Messages ── */
+
+/* Messages */
 .messages-wrap{
   flex:1;overflow-y:auto;padding:16px 14px 20px;display:flex;flex-direction:column;gap:10px;
   -webkit-user-select:none;user-select:none;
@@ -105,7 +194,7 @@ button{font-family:inherit;cursor:pointer}
 @keyframes tbounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
 @keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── Context menu ── */
+/* Context menu */
 .ctx-overlay{
   position:fixed;inset:0;z-index:500;
   background:rgba(0,0,0,.35);backdrop-filter:blur(4px);
@@ -140,7 +229,7 @@ button{font-family:inherit;cursor:pointer}
 [data-theme="dark"] .ctx-btn.delete:active{background:rgba(255,255,255,.06)}
 .ctx-btn+.ctx-btn{border-top:1px solid var(--bd2)}
 
-/* ── Edit mode ── */
+/* Edit mode */
 .msg-row.editing .msg-bub{
   outline:2px solid var(--acc);outline-offset:2px;
 }
@@ -152,7 +241,7 @@ button{font-family:inherit;cursor:pointer}
 .msg-row.out .edit-banner{align-self:flex-end;border-radius:8px 8px 0 0}
 .edit-banner i{font-size:9px}
 
-/* ── Image preview in compose ── */
+/* Image preview in compose */
 .img-preview-bar{
   display:none;align-items:center;gap:10px;padding:8px 14px;
   border-top:1px solid var(--bd2);
@@ -169,7 +258,7 @@ button{font-family:inherit;cursor:pointer}
 }
 [data-theme="dark"] .img-remove{background:rgba(255,255,255,.08)}
 
-/* ── Compose ── */
+/* Compose */
 .compose-bar{
   display:flex;align-items:flex-end;gap:10px;
   padding:12px 14px;
@@ -215,7 +304,7 @@ button{font-family:inherit;cursor:pointer}
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ── Edit input inside bubble ── */
+/* Edit input inside bubble */
 .edit-input{
   width:100%;background:transparent;border:none;outline:none;
   color:inherit;font-size:13px;font-family:inherit;line-height:1.5;
@@ -226,31 +315,49 @@ button{font-family:inherit;cursor:pointer}
 <body>
 
 <div class="phone">
+<div class="layers">
 
-  <div class="top-bar">
-    <button class="back-btn" id="backBtn"><i class="fas fa-chevron-left"></i></button>
-    <img class="editor-avatar" id="edAv" src="https://i.pravatar.cc/100?img=47" alt=""/>
-    <div class="editor-info">
-      <div class="editor-name" id="edName">Your Editor <i class="fas fa-circle-check"></i></div>
-      <div class="editor-status"><span class="dot"></span> Online</div>
+  <!-- ═══ LAYER 1: CONTACTS LIST ═══ -->
+  <div class="layer layer-1" id="layer1">
+    <div class="layer1-bar">
+      <h1>Chats</h1>
+
     </div>
-    <button class="theme-toggle" id="themeBtn"><i class="fas fa-moon" id="themeIcon"></i></button>
+    <div class="contact-search">
+      <i class="fas fa-magnifying-glass"></i>
+      <input id="contactSearchInput" placeholder="Search conversations…"/>
+    </div>
+    <div class="contact-list" id="contactList"></div>
   </div>
 
-  <div class="messages-wrap" id="messagesWrap"></div>
+  <!-- ═══ LAYER 2: CHAT INTERFACE ═══ -->
+  <div class="layer layer-2" id="layer2">
+    <div class="top-bar">
+      <button class="back-btn" id="backBtn"><i class="fas fa-chevron-left"></i></button>
+      <img class="editor-avatar" id="edAv" src="" alt=""/>
+      <div class="editor-info">
+        <div class="editor-name" id="edName"></div>
+        <div class="editor-status" id="edStatus"><span class="dot"></span> <span id="edStatusText">Online</span></div>
+      </div>
 
-  <div class="img-preview-bar" id="imgPreviewBar">
-    <img id="imgPreviewThumb" src="" alt=""/>
-    <div class="img-preview-info"><b>Image</b>Ready to send</div>
-    <button class="img-remove" id="imgRemoveBtn"><i class="fas fa-xmark"></i></button>
+    </div>
+
+    <div class="messages-wrap" id="messagesWrap"></div>
+
+    <div class="img-preview-bar" id="imgPreviewBar">
+      <img id="imgPreviewThumb" src="" alt=""/>
+      <div class="img-preview-info"><b>Image</b>Ready to send</div>
+      <button class="img-remove" id="imgRemoveBtn"><i class="fas fa-xmark"></i></button>
+    </div>
+
+    <div class="compose-bar">
+      <button class="attach-btn" id="attachBtn" title="Send image"><i class="fas fa-image"></i></button>
+      <textarea class="compose-input" id="composeInput" rows="1" placeholder="Type a message..."></textarea>
+      <button class="send-btn" id="sendBtn" disabled><i class="fas fa-paper-plane"></i></button>
+    </div>
   </div>
 
-  <div class="compose-bar">
-    <button class="attach-btn" id="attachBtn" title="Send image"><i class="fas fa-image"></i></button>
-    <textarea class="compose-input" id="composeInput" rows="1" placeholder="Type a message..."></textarea>
-    <button class="send-btn" id="sendBtn" disabled><i class="fas fa-paper-plane"></i></button>
-  </div>
-
+</div>
 </div>
 
 <div class="ctx-overlay" id="ctxOverlay">
@@ -262,48 +369,36 @@ button{font-family:inherit;cursor:pointer}
 </div>
 
 <div class="toast" id="toast"></div>
-
 <input type="file" id="fileInput" accept="image/*" style="display:none"/>
 
 <script>
 (function(){
 'use strict';
 
+/* ── Theme ── */
 var THEME_KEY = 'droboardTheme';
 function getTheme(){ try{return localStorage.getItem(THEME_KEY)||'light';}catch(e){return 'light';} }
 function setTheme(t){
   document.documentElement.setAttribute('data-theme',t);
-  document.getElementById('themeIcon').className = t==='dark'?'fas fa-sun':'fas fa-moon';
   try{localStorage.setItem(THEME_KEY,t);}catch(e){}
 }
 setTheme(getTheme());
-document.getElementById('themeBtn').addEventListener('click',function(){
-  setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');
-});
 
-var EDITOR = { name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47', role:'Senior Editor' };
-var msgId = 100;
-var MESSAGES = [
-  { id:++msgId, from:'editor', text:"Hi! I'm your assigned editor. Feel free to reach out anytime about your writing, contracts, or anything else.", time:'Mon 9:00 AM' },
-  { id:++msgId, from:'editor', text:"I reviewed your latest chapter — the pacing in the second half is really strong. Great work.", time:'Mon 9:14 AM' },
-  { id:++msgId, from:'author', text:"Thank you so much! I rewrote that part three times, so I'm glad it landed.", time:'Mon 9:20 AM' },
-  { id:++msgId, from:'editor', text:"It shows. Quick note — the cliffhanger at the end could be sharper. Want to brainstorm?", time:'Mon 9:22 AM' },
-  { id:++msgId, from:'author', text:"Yes please! I was thinking maybe she finds the letter earlier?", time:'Mon 9:30 AM' },
-  { id:++msgId, from:'editor', text:"Love that. Or she overhears a conversation — adds more tension. Let me know what you think.", time:'Mon 9:35 AM' },
-  { id:++msgId, from:'author', image:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', text:'Here\'s the moodboard for the new chapter', time:'Mon 9:40 AM' },
-  { id:++msgId, from:'editor', text:"This is gorgeous! The aesthetic perfectly matches the tone we discussed. Let's use this as the chapter cover.", time:'Mon 9:45 AM' },
-];
-
+/* ── Helpers ── */
 var myAvatar = 'https://i.pravatar.cc/100?img=32';
-var pendingImage = null;
-var longPressTimer = null;
-var ctxMsgId = null;
-
+var msgId = 200;
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(d){
   var h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
   return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+}
+function fmtShort(d){
+  var now = new Date();
+  var diff = now - d;
+  if(diff < 86400000) return fmtTime(d);
+  if(diff < 604800000){ var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; return days[d.getDay()]; }
+  return (d.getMonth()+1)+'/'+d.getDate();
 }
 function toast(msg){
   var t = document.getElementById('toast');
@@ -311,28 +406,164 @@ function toast(msg){
   clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('show'); }, 2400);
 }
 
-function renderHeader(){
-  document.getElementById('edAv').src = EDITOR.avatar;
-  document.getElementById('edName').textContent = EDITOR.name;
-}
+/* ═══════════════════════════════════
+   CONTACTS DATA (demo)
+   ═══════════════════════════════════ */
+var CONTACTS = [
+  {
+    id:'ed_morgan', name:'Reina Morgan', avatar:'https://i.pravatar.cc/100?img=47',
+    role:'Senior Editor', online:true,
+    preview:'Love this! The direction is really coming together.',
+    time: new Date(Date.now() - 1200000),
+    unread: 2,
+    messages:[
+      { id:++msgId, from:'editor', text:"Hi! I'm your assigned editor. Feel free to reach out anytime about your writing, contracts, or anything else.", time:new Date(Date.now()-86400000*2-3600000*9) },
+      { id:++msgId, from:'editor', text:"I reviewed your latest chapter — the pacing in the second half is really strong. Great work.", time:new Date(Date.now()-86400000*2-3600000*8) },
+      { id:++msgId, from:'author', text:"Thank you so much! I rewrote that part three times, so I'm glad it landed.", time:new Date(Date.now()-86400000*2-3600000*7.5) },
+      { id:++msgId, from:'editor', text:"It shows. Quick note — the cliffhanger at the end could be sharper. Want to brainstorm?", time:new Date(Date.now()-86400000*2-3600000*7) },
+      { id:++msgId, from:'author', text:"Yes please! I was thinking maybe she finds the letter earlier?", time:new Date(Date.now()-86400000-3600000*9) },
+      { id:++msgId, from:'editor', text:"Love that. Or she overhears a conversation — adds more tension. Let me know what you think.", time:new Date(Date.now()-86400000-3600000*8) },
+      { id:++msgId, from:'editor', text:"Love this! The direction is really coming together.", time:new Date(Date.now()-1200000) },
+    ]
+  },
+  {
+    id:'admin_chief', name:'Jasmine Cole', avatar:'https://i.pravatar.cc/100?img=44',
+    role:'Chief Editor', online:false,
+    preview:'Your quarterly review is due by Friday.',
+    time: new Date(Date.now() - 86400000),
+    unread: 0,
+    messages:[
+      { id:++msgId, from:'editor', text:"Hi! I'm the Chief Editor. Just a heads-up — your quarterly review is due by Friday.", time:new Date(Date.now()-86400000) },
+      { id:++msgId, from:'author', text:"Got it, I'll submit it on time. Thanks for the reminder!", time:new Date(Date.now()-86400000+600000) },
+    ]
+  },
+  {
+    id:'admin_super', name:'Droboard Support', avatar:'https://i.pravatar.cc/100?img=12',
+    role:'Platform Admin', online:true,
+    preview:'Your payout has been processed.',
+    time: new Date(Date.now() - 86400000*3),
+    unread: 0,
+    messages:[
+      { id:++msgId, from:'editor', text:"Hello! Your payout for last month has been processed. You should see it within 24 hours.", time:new Date(Date.now()-86400000*3) },
+      { id:++msgId, from:'author', text:"Great, thank you!", time:new Date(Date.now()-86400000*3+300000) },
+    ]
+  }
+];
 
-function renderMessages(){
-  var wrap = document.getElementById('messagesWrap');
-  if(!MESSAGES.length){
-    wrap.innerHTML = '<div class="empty-chat"><i class="fas fa-comments"></i><p>No messages yet. Say hello to your editor!</p></div>';
+var activeContact = null;
+var pendingImage = null;
+var longPressTimer = null;
+var ctxMsgId = null;
+
+/* ═══════════════════════════════════
+   LAYER 1: RENDER CONTACTS
+   ═══════════════════════════════════ */
+function renderContacts(filter){
+  var list = document.getElementById('contactList');
+  var q = (filter || '').toLowerCase();
+  var items = CONTACTS;
+  if(q) items = items.filter(function(c){
+    return c.name.toLowerCase().indexOf(q)!==-1 || c.role.toLowerCase().indexOf(q)!==-1;
+  });
+  if(!items.length){
+    list.innerHTML = '<div class="contact-empty"><i class="fas fa-comments"></i><p>No conversations found.</p></div>';
     return;
   }
-  var html = '<div class="date-divider">Today</div>';
-  MESSAGES.forEach(function(m){
+  list.innerHTML = items.map(function(c){
+    var lastMsg = c.messages.length ? c.messages[c.messages.length-1] : null;
+    var preview = lastMsg ? (lastMsg.from==='author'?'You: ':'') + (lastMsg.text||'[Image]') : '';
+    if(preview.length > 50) preview = preview.substring(0,50) + '…';
+    var timeStr = lastMsg ? fmtShort(lastMsg.time) : '';
+    return '<div class="contact-item" data-cid="'+c.id+'">'
+      + '<div class="contact-av-wrap">'
+      +   '<img class="contact-av" src="'+c.avatar+'" alt=""/>'
+      +   '<div class="contact-online'+(c.online?'':' offline')+'"></div>'
+      + '</div>'
+      + '<div class="contact-body">'
+      +   '<div class="contact-top">'
+      +     '<span class="contact-name">'+esc(c.name)+'</span>'
+      +     '<span class="contact-time">'+timeStr+'</span>'
+      +   '</div>'
+      +   '<div class="contact-bottom">'
+      +     '<span class="contact-role">'+esc(c.role)+'</span>'
+      +     '<span class="contact-preview"> · '+esc(preview)+'</span>'
+      +     (c.unread?'<span class="contact-badge">'+c.unread+'</span>':'')
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  list.querySelectorAll('.contact-item').forEach(function(el){
+    el.addEventListener('click', function(){
+      var cid = el.getAttribute('data-cid');
+      var contact = CONTACTS.find(function(c){return c.id===cid;});
+      if(contact) openChat(contact);
+    });
+  });
+}
+
+document.getElementById('contactSearchInput').addEventListener('input', function(){
+  renderContacts(this.value);
+});
+
+/* ═══════════════════════════════════
+   LAYER 2: OPEN / CLOSE CHAT
+   ═══════════════════════════════════ */
+function openChat(contact){
+  activeContact = contact;
+  contact.unread = 0;
+
+  document.getElementById('edAv').src = contact.avatar;
+  document.getElementById('edName').innerHTML = esc(contact.name) + ' <i class="fas fa-circle-check"></i>';
+  var dot = document.querySelector('#edStatus .dot');
+  dot.className = 'dot' + (contact.online ? '' : ' offline');
+  document.getElementById('edStatusText').textContent = contact.online ? 'Online' : 'Offline';
+
+  renderMessages();
+
+  document.getElementById('layer1').classList.add('pushed');
+  document.getElementById('layer2').classList.add('open');
+
+  renderContacts(document.getElementById('contactSearchInput').value);
+}
+
+function closeChat(){
+  activeContact = null;
+  document.getElementById('layer1').classList.remove('pushed');
+  document.getElementById('layer2').classList.remove('open');
+  renderContacts(document.getElementById('contactSearchInput').value);
+}
+
+document.getElementById('backBtn').addEventListener('click', closeChat);
+
+/* ═══════════════════════════════════
+   LAYER 2: RENDER MESSAGES
+   ═══════════════════════════════════ */
+function renderMessages(){
+  var wrap = document.getElementById('messagesWrap');
+  if(!activeContact) return;
+  var msgs = activeContact.messages;
+  if(!msgs.length){
+    wrap.innerHTML = '<div class="empty-chat"><i class="fas fa-comments"></i><p>No messages yet. Say hello!</p></div>';
+    return;
+  }
+  var html = '';
+  var lastDate = '';
+  msgs.forEach(function(m){
+    var dateStr = m.time.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    if(dateStr !== lastDate){
+      html += '<div class="date-divider">'+dateStr+'</div>';
+      lastDate = dateStr;
+    }
     var isOut = m.from === 'author';
-    var av = isOut ? myAvatar : EDITOR.avatar;
+    var av = isOut ? myAvatar : activeContact.avatar;
     var bub = '';
     if(m.image) bub += '<img class="msg-img" src="'+m.image+'" alt=""/>';
     if(m.text) bub += '<span>'+esc(m.text)+'</span>';
     html += '<div class="msg-row '+(isOut?'out':'in')+'" data-mid="'+m.id+'">'
       + '<img class="msg-av" src="'+av+'" alt=""/>'
       + '<div class="msg-content"><div class="msg-bub">'+bub+'</div>'
-      + '<span class="msg-time">'+m.time+'</span>'
+      + '<span class="msg-time">'+fmtTime(m.time)+'</span>'
       + (m.edited ? '<span class="msg-edited">edited</span>' : '')
       + '</div></div>';
   });
@@ -343,7 +574,7 @@ function renderMessages(){
 
 /* ── Long press ── */
 function bindLongPress(){
-  var rows = document.querySelectorAll('.msg-row');
+  var rows = document.querySelectorAll('#messagesWrap .msg-row');
   rows.forEach(function(row){
     function start(e){
       clearTimeout(longPressTimer);
@@ -362,13 +593,14 @@ function bindLongPress(){
 function openCtx(row){
   var mid = parseInt(row.getAttribute('data-mid'), 10);
   var msg = null;
-  for(var i=0;i<MESSAGES.length;i++){ if(MESSAGES[i].id===mid){ msg=MESSAGES[i]; break; } }
+  if(!activeContact) return;
+  for(var i=0;i<activeContact.messages.length;i++){ if(activeContact.messages[i].id===mid){ msg=activeContact.messages[i]; break; } }
   if(!msg) return;
   ctxMsgId = mid;
 
   var preview = msg.image ? '[Image] ' : '';
   preview += msg.text || '';
-  if(preview.length > 80) preview = preview.substring(0,80) + '…';
+  if(preview.length > 80) preview = preview.substring(0,80) + '\u2026';
   document.getElementById('ctxPreview').textContent = preview;
   document.getElementById('ctxEdit').style.display = msg.from === 'author' ? 'flex' : 'none';
   document.getElementById('ctxDelete').style.display = 'flex';
@@ -401,9 +633,9 @@ document.getElementById('ctxDelete').addEventListener('click', function(e){
 
 function startEdit(mid){
   var row = document.querySelector('.msg-row[data-mid="'+mid+'"]');
-  if(!row) return;
+  if(!row || !activeContact) return;
   var msg = null;
-  for(var i=0;i<MESSAGES.length;i++){ if(MESSAGES[i].id===mid){ msg=MESSAGES[i]; break; } }
+  for(var i=0;i<activeContact.messages.length;i++){ if(activeContact.messages[i].id===mid){ msg=activeContact.messages[i]; break; } }
   if(!msg || msg.from !== 'author') return;
 
   row.classList.add('editing');
@@ -423,8 +655,8 @@ function startEdit(mid){
     saved = true;
     var val = ta.value.trim();
     if(!val){ doDelete(mid); return; }
-    for(var i=0;i<MESSAGES.length;i++){
-      if(MESSAGES[i].id===mid){ MESSAGES[i].text = val; MESSAGES[i].edited = true; break; }
+    for(var i=0;i<activeContact.messages.length;i++){
+      if(activeContact.messages[i].id===mid){ activeContact.messages[i].text = val; activeContact.messages[i].edited = true; break; }
     }
     renderMessages();
     toast('Message edited');
@@ -438,8 +670,9 @@ function startEdit(mid){
 }
 
 function doDelete(mid){
-  for(var i=0;i<MESSAGES.length;i++){
-    if(MESSAGES[i].id===mid){ MESSAGES.splice(i,1); break; }
+  if(!activeContact) return;
+  for(var i=0;i<activeContact.messages.length;i++){
+    if(activeContact.messages[i].id===mid){ activeContact.messages.splice(i,1); break; }
   }
   renderMessages();
   toast('Message deleted');
@@ -479,12 +712,15 @@ input.addEventListener('input', function(){
 });
 
 function sendMessage(){
+  if(!activeContact) return;
   var text = input.value.trim();
   if(!text && !pendingImage) return;
-  var msg = { id:++msgId, from:'author', time: fmtTime(new Date()) };
+  var msg = { id:++msgId, from:'author', time: new Date() };
   if(pendingImage){ msg.image = pendingImage; if(text) msg.text = text; }
   else { msg.text = text; }
-  MESSAGES.push(msg);
+  activeContact.messages.push(msg);
+  activeContact.preview = text || '[Image]';
+  activeContact.time = new Date();
   input.value = ''; input.style.height = 'auto'; sendBtn.disabled = true;
   pendingImage = null;
   document.getElementById('imgPreviewBar').classList.remove('show');
@@ -493,7 +729,7 @@ function sendMessage(){
   setTimeout(function(){
     var tRow = document.createElement('div');
     tRow.className = 'msg-row in'; tRow.id = 'typingRow';
-    tRow.innerHTML = '<img class="msg-av" src="'+EDITOR.avatar+'" alt=""/>'
+    tRow.innerHTML = '<img class="msg-av" src="'+activeContact.avatar+'" alt=""/>'
       + '<div class="msg-content"><div class="msg-bub"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>';
     document.getElementById('messagesWrap').appendChild(tRow);
     document.getElementById('messagesWrap').scrollTop = document.getElementById('messagesWrap').scrollHeight;
@@ -509,7 +745,7 @@ function sendMessage(){
         "Love this! The direction is really coming together.",
         "I'll send over my notes by end of day.",
       ];
-      MESSAGES.push({ id:++msgId, from:'editor', text: replies[Math.floor(Math.random()*replies.length)], time: fmtTime(new Date()) });
+      activeContact.messages.push({ id:++msgId, from:'editor', text: replies[Math.floor(Math.random()*replies.length)], time: new Date() });
       renderMessages();
     }, 1200 + Math.random()*800);
   }, 600);
@@ -520,13 +756,20 @@ input.addEventListener('keydown', function(e){
   if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
 });
 
-document.getElementById('backBtn').addEventListener('click', function(){
-  if(window.history.length > 1) window.history.back();
-  else window.location.href = 'profile.html';
-});
+/* ── URL param: open specific contact directly ── */
+function checkUrlParam(){
+  var params = new URLSearchParams(window.location.search);
+  var cid = params.get('contact');
+  if(cid){
+    var contact = CONTACTS.find(function(c){return c.id===cid;});
+    if(contact) openChat(contact);
+  }
+}
 
-renderHeader();
-renderMessages();
+/* ── Boot ── */
+renderContacts();
+checkUrlParam();
+
 })();
 </script>
 </body>

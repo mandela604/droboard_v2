@@ -8,72 +8,76 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Inter',system-ui,sans-serif}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
 
-.welcome-banner{background:linear-gradient(135deg,var(--accent),#7a0030);border-radius:18px;padding:26px 28px;margin-bottom:22px;color:#fff;box-shadow:0 14px 40px -14px rgba(255,0,80,.55);position:relative;overflow:hidden}
-.welcome-banner::after{content:'';position:absolute;top:-40%;right:-6%;width:260px;height:260px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);pointer-events:none}
-.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
-.welcome-title{font-size:21px;font-weight:800}
-.welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:620px}
-.welcome-stats{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap}
-.welcome-stat b{font-size:19px;font-weight:800;display:block}
-.welcome-stat span{font-size:10.5px;opacity:.75;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.page{padding:24px 28px 60px;max-width:1500px}
 
-.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
-.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.grid-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.stat-num{font-size:20px;font-weight:800;line-height:1.1}
 .stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
 
-.dash-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start}
-
-.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
 .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
-.panel-sub{font-size:11.5px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px}
-.panel-link{font-size:11.5px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:5px}
+.panel-head h2{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11px;color:var(--text-faint);margin-top:-8px;margin-bottom:12px}
+.panel-link{font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:5px}
 .panel-link:hover{text-decoration:underline}
 
-/* quick actions */
-.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.qa-card{border:1px solid var(--border);border-radius:12px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.15s;background:var(--card)}
-.qa-card:hover{border-color:var(--accent);background:var(--hover)}
-.qa-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.qa-txt b{font-size:12px;font-weight:700;display:block;line-height:1.3}
-.qa-txt span{font-size:10px;color:var(--text-faint);font-weight:600}
-.qa-count{margin-left:auto;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--red-bg);color:var(--red);flex-shrink:0}
+/* Review queue cards */
+.rq-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rq-card{border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s;background:var(--card)}
+.rq-card:hover{border-color:var(--accent);background:var(--hover)}
+.rq-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.rq-body{flex:1;min-width:0}
+.rq-title{font-size:12.5px;font-weight:700;line-height:1.3}
+.rq-desc{font-size:10px;color:var(--text-faint);font-weight:500;margin-top:2px;line-height:1.4}
+.rq-count{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;flex-shrink:0}
+.rq-count.urgent{background:var(--red-bg);color:var(--red)}
+.rq-count.normal{background:var(--amber-bg);color:var(--amber)}
+.rq-count.zero{background:var(--green-bg);color:var(--green)}
 
-/* recent submissions list */
-.sub-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border)}
-.sub-row:last-child{border-bottom:none}
-.sub-ico{width:34px;height:34px;border-radius:9px;background:var(--table-head);color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.sub-cover{width:38px;height:52px;border-radius:7px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 10px rgba(20,10,50,.18);background:var(--table-head)}
-.sub-body{flex:1;min-width:0}
-.sub-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+/* Recent items list */
+.ri-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.ri-row:last-child{border-bottom:none}
+.ri-ico{width:34px;height:34px;border-radius:9px;background:var(--table-head);color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ri-body{flex:1;min-width:0}
+.ri-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-meta{font-size:10px;color:var(--text-faint);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
 .status-pill{font-size:9px;font-weight:800;padding:2px 9px;border-radius:20px;text-transform:uppercase;white-space:nowrap;flex-shrink:0}
 .status-pill.pending{background:var(--amber-bg);color:var(--amber)}
 .status-pill.approved{background:var(--green-bg);color:var(--green)}
 .status-pill.rejected{background:var(--red-bg);color:var(--red)}
 
-/* activity feed */
-.act-row{display:flex;gap:11px;padding:10px 2px}
-.act-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+/* Activity feed */
+.act-row{display:flex;gap:10px;padding:9px 2px}
+.act-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
 .act-body{flex:1;min-width:0}
-.act-text{font-size:12px;line-height:1.5;color:var(--text)}
+.act-text{font-size:11.5px;line-height:1.5;color:var(--text)}
 .act-text b{font-weight:700}
-.act-time{font-size:10px;color:var(--text-faint);font-weight:600;margin-top:2px}
+.act-time{font-size:9.5px;color:var(--text-faint);font-weight:600;margin-top:1px}
 
-.skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
+.dash-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start}
 
-@media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
-@media (max-width:640px){.grid-4{grid-template-columns:1fr}.qa-grid{grid-template-columns:1fr}.welcome-stats{gap:16px}}
+@media(max-width:1180px){.grid-stats{grid-template-columns:repeat(3,1fr)}.rq-grid{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.grid-stats{grid-template-columns:repeat(2,1fr)}.rq-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="dashRoot">
-  <div class="grid-4" id="statCards"></div>
+<div class="page">
+
+  <div class="grid-stats" id="statCards"></div>
+
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-head">
+      <h2><i class="fas fa-layer-group" style="color:var(--accent)"></i> Review Queues</h2>
+    </div>
+    <div class="panel-sub">Tap any queue to open its full review page.</div>
+    <div class="rq-grid" id="rqGrid"></div>
+  </div>
 
   <div class="dash-grid">
     <div>
@@ -82,144 +86,114 @@ body{font-family:'Inter',system-ui,sans-serif}
           <h2><i class="fas fa-inbox" style="color:var(--accent)"></i> Recent Submissions</h2>
           <a class="panel-link" href="review-queue.html">View all <i class="fas fa-arrow-right"></i></a>
         </div>
-        <div id="subList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h2><i class="fas fa-bolt" style="color:var(--accent)"></i> Quick Actions</h2>
-        </div>
-        <div class="qa-grid" id="qaGrid"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+        <div id="subList"></div>
       </div>
     </div>
 
     <div>
       <div class="panel">
         <div class="panel-head">
-          <h2><i class="fas fa-chart-simple" style="color:var(--blue)"></i> This Week</h2>
-        </div>
-        <div id="weekStats"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
           <h2><i class="fas fa-clock-rotate-left" style="color:var(--text-faint)"></i> Recent Activity</h2>
         </div>
-        <div id="activityList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+        <div id="activityList"></div>
       </div>
     </div>
   </div>
+
+</div>
 </div>
 
+<div id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:9999"></div>
+<style>#toast.show{opacity:1}</style>
+
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="shared/senior-editor-data.js"></script>
 <script>
-'use strict';
+'strict';
 const shell = SeniorEditorSidebar.attach('#dashRoot',{
   activeItem:'dashboard', title:'Dashboard', subtitle:'Your editorial overview',
   user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
   searchPlaceholder:'Search anything…',
 });
 
-const QA_LINKS = {
-  'Review Pending Submissions': 'review-queue.html',
-  "Check Plagiarism Reports": 'reports-compliance.html',
-  'Respond to Author Messages': 'communication.html',
-  "Select Editor's Pick": 'featured-stories.html',
-};
+const ICO={red:'var(--red)',amber:'var(--amber)',blue:'var(--blue)',purple:'var(--purple)',green:'var(--green)',accent:'var(--accent)'};
+const BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple:'var(--purple-bg)',green:'var(--green-bg)',accent:'rgba(255,0,80,.1)'};
 
-/* Cover art — same mapping used across the other Senior Editor pages */
-const COVER_MAP = {
-  "The CEO's Hidden Son":         'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
-  "Wolf King's Vow":              'https://i.postimg.cc/MXBR6bfY/wolf3.jpg',
-  'Betrayed by the Mafia Prince': 'https://i.postimg.cc/fkdXzjS8/wolf.jpg',
-  'Bound by the Ruthless Alpha':  'https://i.postimg.cc/xqmHfyNR/wolf2.jpg',
-  "The Duke's Secret":            'https://i.postimg.cc/fkdXzjSj/wife.jpg',
-};
-const COVER_FALLBACK = [
-  'https://i.postimg.cc/vDn9YLx5/wife2.jpg',
-  'https://i.postimg.cc/cgLZJNmC/8.jpg',
-  'https://i.postimg.cc/0MyxNqfz/7.jpg',
-  'https://i.postimg.cc/N9jY0w4m/5.jpg',
-  'https://i.postimg.cc/tY7KnJyr/images.jpg',
+/* ── Demo data ── */
+const QUEUES = [
+  { key:'contracts',    label:'Contract Review',       icon:'fa-file-signature', desc:'Authors sign first, then contract returns to SE for final platform signature & stamp.', count:5, cls:'amber', href:'contract-review.html' },
+  { key:'completion',   label:'Completion Application', icon:'fa-flag-checkered', desc:'Authors apply for book completion. SE approves or rejects.', count:2, cls:'green', href:'completion-application.html' },
+  { key:'chapters',     label:'Chapter Edit Review',    icon:'fa-pen-to-square',  desc:'Authors request chapter edits. SE reviews to protect exclusive contracts.', count:8, cls:'red', href:'chapter-edit-review.html' },
+  { key:'book-series',  label:'Book Series Review',     icon:'fa-book-open',      desc:'Authors request edits to book details (title, series, etc.).', count:4, cls:'blue', href:'book-series-review.html' },
 ];
-function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
-function coverFor(title, i){ return COVER_MAP[cleanTitle(title)] || COVER_FALLBACK[i % COVER_FALLBACK.length]; }
-const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
-const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
 
-function greetByHour(){
-  const h = new Date().getHours();
-  if(h<12) return 'Good morning, Chioma 👋';
-  if(h<18) return 'Good afternoon, Chioma 👋';
-  return 'Good evening, Chioma 👋';
+const RECENT_SUBS = [
+  { title:'Chapter Edit — The CEO\'s Hidden Son Ch.24', author:'Luna Skye', meta:'Billionaire & CEO · 3,450 words', time:'2h ago', status:'pending' },
+  { title:'Contract Return — Wolf King\'s Vow', author:'Elena Vasquez', meta:'Werewolf & Fantasy · Full contract', time:'4h ago', status:'pending' },
+  { title:'VIP Application — His Hidden Luna', author:'Lyra Night', meta:'Werewolf · Chapter lock request', time:'5h ago', status:'pending' },
+  { title:'Completion Request — Betrayed by the Mafia Prince', author:'Marcus Webb Jr.', meta:'Mafia & Urban · 7 chapters done', time:'8h ago', status:'approved' },
+  { title:'Book Edit — The Duke\'s Secret (title change)', author:'Isabelle Moreau', meta:'Historical & Regency · Metadata', time:'12h ago', status:'approved' },
+  { title:'Editor Bill — Wren Okonkwo withdrawal', author:'Wren Okonkwo', meta:'Campus & Revenge · $1,200', time:'1d ago', status:'pending' },
+];
+
+const ACTIVITY = [
+  { icon:'fa-check-circle', color:'green', text:'Approved <b>Chapter Edit</b> for Wolf King\'s Vow Ch.11', time:'1h ago' },
+  { icon:'fa-file-signature', color:'amber', text:'Contract returned by <b>Isabelle Moreau</b> — pending stamp', time:'3h ago' },
+  { icon:'fa-crown', color:'purple', text:'VIP registration approved for <b>Luna Skye</b>', time:'5h ago' },
+  { icon:'fa-xmark-circle', color:'red', text:'Rejected <b>Chapter Edit</b> — Mafia Prince Ch.6 (policy violation)', time:'8h ago' },
+  { icon:'fa-sack-dollar', color:'accent', text:'Editor bill pending — <b>Wren Okonkwo</b> $1,200', time:'1d ago' },
+];
+
+/* ── Render ── */
+function renderStats(){
+  const total = QUEUES.reduce((s,q)=>s+q.count,0);
+  const urgent = QUEUES.filter(q=>q.cls==='red').reduce((s,q)=>s+q.count,0);
+  document.getElementById('statCards').innerHTML=[
+    {n:total,l:'Pending Reviews',ico:'fa-inbox',cls:'amber'},
+    {n:urgent,l:'Urgent (Chapter Edits)',ico:'fa-triangle-exclamation',cls:'red'},
+    {n:QUEUES.find(q=>q.key==='contracts').count,l:'Contracts',ico:'fa-file-signature',cls:'blue'},
+    {n:QUEUES.find(q=>q.key==='editor-bills').count,l:'Editor Bills',ico:'fa-sack-dollar',cls:'accent'},
+    {n:87,l:'Approval Rate',ico:'fa-circle-check',cls:'green'},
+    {n:'3.4h',l:'Avg Turnaround',ico:'fa-clock',cls:'purple'},
+  ].map(s=>`<div class="stat-card"><div class="stat-ico" style="background:${BG[s.cls]};color:${ICO[s.cls]}"><i class="fas ${s.ico}"></i></div><div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div></div>`).join('');
 }
 
-async function init(){
-  const d = await SeniorEditorData.getDashboard();
-
-  // Stat cards
-  const stats = [
-    { n:d.assignedAuthors, l:'Assigned Authors', ico:'fa-user-tie', cls:'accent' },
-    { n:d.pendingReviews, l:'Pending Reviews', ico:'fa-inbox', cls:'amber' },
-    { n:d.recentSubmissions, l:'Recent Submissions', ico:'fa-file-lines', cls:'blue' },
-    { n:d.approvalRate+'%', l:'Approval Rate', ico:'fa-circle-check', cls:'green' },
-  ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
-    <div class="stat-card">
-      <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
-      <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
-    </div>`).join('');
-
-  // Quick actions
-  document.getElementById('qaGrid').innerHTML = d.quickActions.map(qa=>`
-    <div class="qa-card" data-href="${QA_LINKS[qa.label]||'#'}">
-      <div class="qa-ico" style="background:${BG_MAP[qa.cls]};color:${ICO_MAP[qa.cls]}"><i class="fas ${qa.icon}"></i></div>
-      <div class="qa-txt"><b>${qa.label}</b><span>${qa.count?qa.count+' waiting':'Ready when you are'}</span></div>
-      ${qa.count?`<span class="qa-count">${qa.count}</span>`:''}
-    </div>`).join('');
-  document.querySelectorAll('.qa-card').forEach(c=>{
-    c.addEventListener('click', ()=>{
-      const href = c.dataset.href;
-      if(href && href!=='#') location.href = href; else toast('Opening…');
-    });
+function renderQueues(){
+  document.getElementById('rqGrid').innerHTML=QUEUES.map(q=>{
+    const cls=q.count===0?'zero':q.count>=5?'urgent':'normal';
+    return `<div class="rq-card" data-href="${q.href}">
+      <div class="rq-ico" style="background:${BG[q.cls]};color:${ICO[q.cls]}"><i class="fas ${q.icon}"></i></div>
+      <div class="rq-body"><div class="rq-title">${q.label}</div><div class="rq-desc">${q.desc}</div></div>
+      <span class="rq-count ${cls}">${q.count}</span>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.rq-card').forEach(c=>{
+    c.addEventListener('click',()=>{ const h=c.dataset.href; if(h&&h!=='#') location.href=h; else toast('Opening queue…'); });
   });
+}
 
-  // Recent submissions
-  document.getElementById('subList').innerHTML = d.recentSubs.map((s,i)=>`
-    <div class="sub-row">
-      <img class="sub-cover" src="${coverFor(s.title,i)}" alt="${cleanTitle(s.title)} cover" loading="lazy"/>
-      <div class="sub-body">
-        <div class="sub-title">${cleanTitle(s.title)}</div>
-        <div class="sub-meta"><span>✍️ ${s.author}</span><span>${s.genre}</span><span>${s.submitted}</span></div>
-      </div>
+function renderSubs(){
+  document.getElementById('subList').innerHTML=RECENT_SUBS.map(s=>`
+    <div class="ri-row">
+      <div class="ri-ico"><i class="fas fa-file-lines"></i></div>
+      <div class="ri-body"><div class="ri-title">${s.title}</div><div class="ri-meta"><span>✍️ ${s.author}</span><span>${s.meta}</span><span>${s.time}</span></div></div>
       <span class="status-pill ${s.status}">${s.status}</span>
     </div>`).join('');
+}
 
-  // This week
-  document.getElementById('weekStats').innerHTML = `
-    <div class="sub-row"><div class="sub-ico" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-paper-plane"></i></div>
-      <div class="sub-body"><div class="sub-title">Submissions this week</div></div>
-      <b style="font-size:14px">${d.submissionsThisWeek}</b></div>
-    <div class="sub-row"><div class="sub-ico" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-circle-check"></i></div>
-      <div class="sub-body"><div class="sub-title">Approval rate</div></div>
-      <b style="font-size:14px">${d.approvalRate}%</b></div>
-    <div class="sub-row"><div class="sub-ico" style="background:var(--purple-bg);color:var(--purple)"><i class="fas fa-clock"></i></div>
-      <div class="sub-body"><div class="sub-title">Avg turnaround</div></div>
-      <b style="font-size:14px">${d.avgTurnaround}</b></div>`;
-
-  // Activity feed
-  document.getElementById('activityList').innerHTML = d.activity.map(a=>`
+function renderActivity(){
+  document.getElementById('activityList').innerHTML=ACTIVITY.map(a=>`
     <div class="act-row">
-      <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
-      <div class="act-body">
-        <div class="act-text">${a.text}</div>
-        <div class="act-time">${a.time}</div>
-      </div>
+      <div class="act-dot" style="background:${BG[a.color]||'var(--table-head)'};color:${ICO[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
+      <div class="act-body"><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
     </div>`).join('');
 }
 
-init();
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+
+renderStats();
+renderQueues();
+renderSubs();
+renderActivity();
 </script>
 </body>
 </html>

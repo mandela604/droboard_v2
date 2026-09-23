@@ -361,7 +361,7 @@
       onSend: (id, amount, note, mode) => {
         DATA.tipCount = (DATA.tipCount || 0) + 1;
         renderTipLine();
-        const label = mode === 'cash' ? '₦' + fmtN(amount) : '🪙 ' + amount;
+        const label = mode === 'cash' ? '$' + fmtN(amount) : '🪙 ' + amount;
         toast(label + ' sent to ' + DATA.writer.name + '!');
       }
     });

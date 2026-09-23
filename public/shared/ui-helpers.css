@@ -1,0 +1,33 @@
+/* ── Shared UI Hover Effects + Spinner ── */
+/* Include on any page: <link rel="stylesheet" href="../shared/ui-helpers.css"> */
+
+/* Buttons */
+.btn{transition:all .2s cubic-bezier(.4,0,.2,1);position:relative}
+.btn:hover{transform:translateY(-2px) scale(1.03)}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn-primary:hover{box-shadow:0 6px 20px rgba(255,0,80,.4);filter:brightness(1.08)}
+.btn-green:hover{box-shadow:0 6px 20px rgba(22,163,74,.35);filter:brightness(1.08)}
+.btn-danger:hover{box-shadow:0 6px 20px rgba(224,56,77,.35);filter:brightness(1.08)}
+.btn-ghost:hover{transform:translateY(-1px) scale(1.02);border-color:var(--accent);color:var(--accent)}
+
+/* Table / list rows */
+.item-row{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.item-row:hover{transform:translateX(4px);background:var(--hover);border-color:var(--border)}
+
+/* Stat cards */
+.stat-card{transition:all .25s cubic-bezier(.4,0,.2,1)}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+
+/* Pagination */
+.pg-btn{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.pg-btn:hover:not(:disabled){transform:translateY(-2px) scale(1.08);border-color:var(--accent);color:var(--accent)}
+
+/* Detail action buttons */
+.detail-actions .btn{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.detail-actions .btn:hover{transform:translateY(-2px) scale(1.04)}
+
+/* ── Button loading spinner ── */
+.btn.loading{pointer-events:none;opacity:.7;min-width:90px;justify-content:center}
+.btn.loading .btn-text{visibility:hidden}
+.btn.loading::after{content:'';position:absolute;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:btnSpin .6s linear infinite}
+@keyframes btnSpin{to{transform:rotate(360deg)}}

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>Settings · Droboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{--acc:#ff0050;--bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--card:#ffffff;--bd:rgba(0,0,0,.12);--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666;--tx-faint:#8a8a8a;--green:#16a34a;--red:#e0384d;--blue:#2563eb}
+[data-theme="dark"]{--bg:#000;--l1:#08090c;--l2:#0e0f13;--card:#0e0f13;--bd:rgba(255,255,255,.07);--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);height:100%}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh}
+button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;z-index:1;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+@media(min-width:421px){.phone{box-shadow:0 0 50px rgba(0,0,0,.14)}}
+
+/* ── Top Bar ── */
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-body);font-size:15px;flex-shrink:0;border:none}
+.top-title{flex:1;font-size:16px;font-weight:800;color:var(--tx-high)}
+
+/* ── Content ── */
+.content{flex:1;overflow-y:auto;padding:16px 14px 30px}
+
+/* ── Profile Card ── */
+.profile-card{display:flex;align-items:center;gap:12px;padding:16px;background:var(--l2);border-radius:14px;margin-bottom:20px}
+.profile-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--acc)}
+.profile-info{flex:1;min-width:0}
+.profile-name{font-size:15px;font-weight:700;color:var(--tx-high)}
+.profile-email{font-size:12px;color:var(--tx-muted);margin-top:1px}
+.profile-edit{font-size:11px;font-weight:700;color:var(--acc);cursor:pointer;margin-top:3px}
+
+/* ── Section ── */
+.section{margin-bottom:20px}
+.section-title{font-size:11px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-left:4px}
+
+/* ── Setting Row ── */
+.setting-row{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--card);border:1px solid var(--bd);cursor:pointer;transition:.15s}
+.setting-row:first-child{border-radius:12px 12px 0 0}
+.setting-row:last-child{border-radius:0 0 12px 12px}
+.setting-row:only-child{border-radius:12px}
+.setting-row:not(:last-child){border-bottom:none}
+.setting-row:active{background:var(--l2)}
+.setting-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.setting-info{flex:1;min-width:0}
+.setting-label{font-size:13.5px;font-weight:600;color:var(--tx-high)}
+.setting-desc{font-size:11px;color:var(--tx-muted);margin-top:1px}
+.setting-chevron{color:var(--tx-faint);font-size:12px;flex-shrink:0}
+
+/* ── Theme Toggle ── */
+.theme-options{display:flex;gap:8px;padding:4px}
+.theme-option{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 10px;border-radius:12px;border:2px solid var(--bd);background:var(--card);cursor:pointer;transition:.2s}
+.theme-option.active{border-color:var(--acc);background:rgba(255,0,80,.04)}
+.theme-option i{font-size:20px;color:var(--tx-muted)}
+.theme-option.active i{color:var(--acc)}
+.theme-option span{font-size:11px;font-weight:700;color:var(--tx-muted)}
+.theme-option.active span{color:var(--acc)}
+
+/* ── Toggle Switch ── */
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--l2);border:1px solid var(--bd);position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.toggle.on{background:var(--acc);border-color:var(--acc)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:.2s}
+.toggle.on::after{left:22px}
+
+/* ── Version ── */
+.version{text-align:center;padding:20px 0 10px;font-size:11px;color:var(--tx-faint)}
+
+/* ── Drawer ── */
+.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--l1);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.drawer-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#8a0030);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0}
+.drawer-head-title{font-size:15px;font-weight:800;flex:1;color:var(--tx-high)}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:var(--l2);color:var(--tx-muted);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;border:none}
+.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
+.drawer-section{margin-bottom:6px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--tx-body);text-decoration:none}
+.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--tx-muted);flex-shrink:0}
+.drawer-item:active{background:var(--l2)}
+.drawer-item.active{background:rgba(255,0,80,.08);color:var(--acc)}
+.drawer-item.active i{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button class="back-btn" id="menuBtn" style="font-size:13px"><i class="fas fa-bars"></i></button>
+    <button class="back-btn" id="backBtn"><i class="fas fa-chevron-left"></i></button>
+    <div class="top-title">Settings</div>
+  </div>
+
+  <div class="content">
+    <!-- Profile Card -->
+    <div class="profile-card" onclick="window.location.href='profile.html'">
+      <img class="profile-avatar" src="https://i.pravatar.cc/150?img=32" alt=""/>
+      <div class="profile-info">
+        <div class="profile-name">Luna Morgan</div>
+        <div class="profile-email">luna.morgan@email.com</div>
+        <div class="profile-edit">View Profile</div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:var(--tx-faint);font-size:12px"></i>
+    </div>
+
+    <!-- Appearance -->
+    <div class="section">
+      <div class="section-title">Appearance</div>
+      <div class="theme-options" id="themeOptions">
+        <div class="theme-option active" data-theme="light" onclick="setTheme('light')">
+          <i class="fas fa-sun"></i>
+          <span>Light</span>
+        </div>
+        <div class="theme-option" data-theme="dark" onclick="setTheme('dark')">
+          <i class="fas fa-moon"></i>
+          <span>Dark</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account -->
+    <div class="section">
+      <div class="section-title">Account</div>
+      <div class="setting-row" onclick="window.location.href='edit-profile.html'">
+        <div class="setting-icon" style="background:rgba(255,0,80,.08);color:var(--acc)"><i class="fas fa-user-pen"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Edit Profile</div>
+          <div class="setting-desc">Name, bio, avatar, cover photo</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(37,99,235,.08);color:var(--blue)"><i class="fas fa-envelope"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Email</div>
+          <div class="setting-desc">luna.morgan@email.com</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(22,163,74,.08);color:var(--green)"><i class="fas fa-lock"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Password</div>
+          <div class="setting-desc">Change your password</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="section">
+      <div class="section-title">Notifications</div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(255,0,80,.08);color:var(--acc)"><i class="fas fa-bell"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Push Notifications</div>
+          <div class="setting-desc">Comments, likes, follows</div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(37,99,235,.08);color:var(--blue)"><i class="fas fa-envelope"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Email Notifications</div>
+          <div class="setting-desc">Weekly digest, important updates</div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+
+    <!-- Privacy -->
+    <div class="section">
+      <div class="section-title">Privacy</div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(91,75,207,.08);color:#5b4bcf"><i class="fas fa-eye"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Profile Visibility</div>
+          <div class="setting-desc">Public</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(217,119,6,.08);color:#d97706"><i class="fas fa-book-open"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Reading Activity</div>
+          <div class="setting-desc">Show on profile</div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+
+    <!-- Support -->
+    <div class="section">
+      <div class="section-title">Support</div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(37,99,235,.08);color:var(--blue)"><i class="fas fa-circle-question"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Help Center</div>
+          <div class="setting-desc">FAQs and support</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(22,163,74,.08);color:var(--green)"><i class="fas fa-file-lines"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Terms & Privacy Policy</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row">
+        <div class="setting-icon" style="background:rgba(224,56,77,.08);color:var(--red)"><i class="fas fa-right-from-bracket"></i></div>
+        <div class="setting-info">
+          <div class="setting-label" style="color:var(--red)">Log Out</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+    </div>
+
+    <div class="version">Droboard v1.0.0</div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-logo"><i class="fas fa-feather-pointed"></i></div>
+    <div class="drawer-head-title">Droboard</div>
+    <button class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var THEME_KEY='droboardTheme';
+function getTheme(){try{return localStorage.getItem(THEME_KEY)||'light';}catch(e){return 'light';}}
+
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  try{localStorage.setItem(THEME_KEY,t);}catch(e){}
+  document.querySelectorAll('.theme-option').forEach(function(opt){
+    opt.classList.toggle('active',opt.getAttribute('data-theme')===t);
+  });
+}
+window.setTheme=setTheme;
+
+setTheme(getTheme());
+
+document.getElementById('backBtn').addEventListener('click',function(){if(window.history.length>1)window.history.back();else window.location.href='profile.html';});
+
+var MENU_SECTIONS=[
+  {title:'Home',items:[{label:'Home',icon:'fa-house',href:'index.html'}]},
+  {title:'Browse',items:[
+    {label:'Discover',icon:'fa-compass',href:'discover.html'},
+    {label:'Library',icon:'fa-book',href:'library.html'},
+    {label:'Store',icon:'fa-store',href:'store.html'}
+  ]},
+  {title:'Create',items:[
+    {label:'Write',icon:'fa-pen-fancy',href:'post-writer.html'},
+    {label:'Create Post',icon:'fa-plus',href:'create.html'}
+  ]},
+  {title:'Account',items:[
+    {label:'Profile',icon:'fa-user',href:'profile.html'},
+    {label:'Settings',icon:'fa-gear',href:'settings.html',active:true}
+  ]}
+];
+function renderDrawer(){
+  document.getElementById('drawerBody').innerHTML=MENU_SECTIONS.map(function(sec){
+    return '<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(function(it){
+      var active=location.pathname.indexOf(it.href.replace('.html',''))!==-1?' active':'';
+      return '<a class="drawer-item'+active+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>';
+    }).join('')+'</div>';
+  }).join('');
+}
+document.getElementById('menuBtn').addEventListener('click',function(){
+  renderDrawer();
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+});
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+document.getElementById('drawerClose').addEventListener('click',closeDrawer);
+document.getElementById('drawerOverlay').addEventListener('click',closeDrawer);
+
+})();
+</script>
+</body>
+</html>

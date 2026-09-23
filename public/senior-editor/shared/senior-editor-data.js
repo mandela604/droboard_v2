@@ -168,6 +168,53 @@
         { from: 'Sophia Bennett', text: 'The new quality guidelines are live. Check the policies page.', time: '30m ago' },
       ],
     },
+
+    /* ── Author Messages (conversations) ── */
+    authorMessages: [
+      { id:1, name:'Sofia Lindqvist', avatar:'https://i.pravatar.cc/100?img=32', role:'Verified Author', unread:2, flagged:false, time:'10m ago',
+        messages:[
+          { mid:1, from:'author', text:"Hi, I wanted to check in about my contract — it's set to expire next month.", time:'2 days ago' },
+          { mid:2, from:'admin', text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.', time:'2 days ago' },
+          { mid:3, from:'author', text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.', time:'1 day ago' },
+          { mid:4, from:'author', text:'Can we discuss extending my contract renewal deadline? I need a bit more time to review the new terms.', time:'10m ago' },
+        ] },
+      { id:2, name:'Marcus Chen', avatar:'https://i.pravatar.cc/100?img=12', role:'Verified Author', unread:0, flagged:false, time:'1h ago',
+        messages:[
+          { mid:5, from:'author', text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.', time:'3h ago' },
+          { mid:6, from:'admin', text:'Reviewed it, looks great. Approved and scheduled for publishing.', time:'2h ago' },
+          { mid:7, from:'author', text:'Thanks for approving my chapter revision!', time:'1h ago' },
+        ] },
+      { id:3, name:'Amara Okafor', avatar:'https://i.pravatar.cc/100?img=45', role:'Verified Author', unread:1, flagged:true, time:'3h ago',
+        messages:[
+          { mid:8, from:'author', text:'My earnings dashboard is showing the wrong total again for the second month in a row.', time:'1 day ago' },
+          { mid:9, from:'admin', text:'Sorry about that, Amara. Escalating to the finance team right now.', time:'22h ago' },
+          { mid:10, from:'author', text:'This is the third time my earnings report is wrong. I need this resolved this week.', time:'3h ago' },
+        ] },
+      { id:4, name:'Daniel Reyes', avatar:'https://i.pravatar.cc/100?img=15', role:'Active Author', unread:0, flagged:false, time:'5h ago',
+        messages:[
+          { mid:11, from:'admin', text:'Your latest chapter "The Fall" has been approved. Congrats!', time:'1d ago' },
+          { mid:12, from:'author', text:'Thank you! When will the next payout cycle be?', time:'5h ago' },
+        ] },
+      { id:5, name:'Luna Skye', avatar:'https://i.pravatar.cc/100?img=44', role:'Verified Author', unread:3, flagged:false, time:'20m ago',
+        messages:[
+          { mid:13, from:'author', text:'Hi, I need help with my book cover — can we discuss a redesign?', time:'1d ago' },
+          { mid:14, from:'admin', text:'Sure! I can connect you with our design team. What style are you thinking?', time:'20h ago' },
+          { mid:15, from:'author', text:'Something dark and moody, maybe a silhouette against a city skyline.', time:'6h ago' },
+          { mid:16, from:'author', text:'Also, can we talk about the marketing plan for the new release?', time:'20m ago' },
+        ] },
+    ],
+
+    /* ── Activity Logs ── */
+    activityLogs: [
+      { user:'Reina Morgan', av:'https://i.pravatar.cc/100?img=47', action:'Approved contract CNTR-2026-00125', type:'update', detail:'Signed Exclusive Publishing Agreement for "Bound by the Ruthless Alpha"', ip:'192.168.1.42', time:'Jun 17, 2026 10:24 AM' },
+      { user:'System', av:'https://i.pravatar.cc/100?img=3', action:'Processed payout batch', type:'create', detail:'Monthly payout of $12,840 disbursed to 24 authors', ip:'—', time:'Jun 17, 2026 09:00 AM' },
+      { user:'Daniel Carter', av:'https://i.pravatar.cc/100?img=12', action:'Updated book status: Published', type:'update', detail:'"He Deleted Our Photos" status changed to Published', ip:'10.0.0.15', time:'Jun 16, 2026 04:15 PM' },
+      { user:'Sophia Bennett', av:'https://i.pravatar.cc/100?img=29', action:'Verified author: Sofia Lindqvist', type:'create', detail:'Author verification approved - Sofia Lindqvist', ip:'10.0.0.22', time:'Jun 16, 2026 02:30 PM' },
+      { user:'Reina Morgan', av:'https://i.pravatar.cc/100?img=47', action:'Created announcement', type:'create', detail:'New announcement: "Introducing Book Analytics"', ip:'192.168.1.42', time:'Jun 16, 2026 11:20 AM' },
+      { user:'Ethan Walker', av:'https://i.pravatar.cc/100?img=53', action:'Flagged content as inappropriate', type:'update', detail:'Flagged Chapter 12 in "The Ruthless CEO"', ip:'10.0.0.8', time:'Jun 15, 2026 09:45 AM' },
+      { user:'System', av:'https://i.pravatar.cc/100?img=3', action:'Automated backup completed', type:'create', detail:'Daily system backup completed successfully (2.4 GB)', ip:'—', time:'Jun 15, 2026 03:00 AM' },
+      { user:'Marcus Webb', av:'https://i.pravatar.cc/100?img=33', action:'Rejected author verification', type:'delete', detail:'Verification rejected for Tobias Bergman - insufficient documents', ip:'10.0.0.5', time:'Jun 14, 2026 01:10 PM' },
+    ],
   };
 
   window.SeniorEditorData = {
@@ -228,6 +275,16 @@
     async getMessages() {
       try { return await callBackend('/messages'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.communication)); }
+    },
+    /* Author Messages (conversations) */
+    async getAuthorMessages() {
+      try { return await callBackend('/author-messages'); }
+      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.authorMessages)); }
+    },
+    /* Activity Logs */
+    async getActivityLogs() {
+      try { return await callBackend('/activity-logs'); }
+      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.activityLogs)); }
     },
   };
 })();

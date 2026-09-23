@@ -3,567 +3,398 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Author Messages — Platform Dashboard</title>
+<title>Author Messages — Droboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
-  /* Page-specific styles only. Sidebar/topbar/theme tokens (incl. the
-     pink --accent) come from shared/dashboard-shell.js — this page just
-     uses the same var()s so it stays in sync automatically. */
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{font-family:'Inter',system-ui,sans-serif}
-  ::-webkit-scrollbar{width:6px;height:6px}
-  ::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
+.top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px}
+.top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.top-tab .tab-count{font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;background:var(--hover);color:var(--text-muted)}
+.top-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
+.btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn-add:hover{background:#000}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+.stat-top{display:flex;align-items:center;justify-content:space-between}
+.stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.stat-ico.pink{background:#ffe1eb;color:var(--accent)}
+.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
+.stat-ico.green{background:var(--green-bg);color:var(--green)}
+.stat-ico.red{background:var(--red-bg);color:var(--red)}
+.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
+.stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
+.stat-num{font-size:24px;font-weight:800;line-height:1}
+.stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
+.inbox-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:grid;grid-template-columns:320px 1fr;height:620px}
+.inbox-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
+.inbox-list-head{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+.inbox-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px}
+.inbox-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
+.inbox-search input::placeholder{color:var(--text-faint)}
+.inbox-search i{color:var(--text-faint);font-size:12px}
+.inbox-scroll{flex:1;overflow-y:auto}
+.conv-item{display:flex;gap:11px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border);position:relative;transition:.12s}
+.conv-item:hover{background:var(--hover)}
+.conv-item.active{background:var(--accent-soft)}
+.conv-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.conv-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.conv-body{flex:1;min-width:0}
+.conv-top-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.conv-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+.conv-name i.fa-flag{color:var(--red);font-size:9px}
+.conv-time{font-size:10px;color:var(--text-faint);flex-shrink:0}
+.conv-preview{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-item.unread .conv-preview{color:var(--text);font-weight:600}
+.conv-item.unread .conv-name{font-weight:800}
+.unread-badge{background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0}
+.inbox-thread{display:flex;flex-direction:column;min-width:0}
+.thread-head{display:flex;align-items:center;gap:11px;padding:14px 20px;border-bottom:1px solid var(--border)}
+.thread-head img{width:38px;height:38px;border-radius:50%;object-fit:cover}
+.thread-head-name{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+.thread-head-sub{font-size:11px;color:var(--text-muted)}
+.thread-head-right{margin-left:auto;display:flex;gap:8px}
+.th-act-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.th-act-btn:hover{color:var(--accent);border-color:var(--accent)}
+.thread-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+.msg-row{display:flex;gap:9px;max-width:70%}
+.msg-row.out{align-self:flex-end;flex-direction:row-reverse}
+.msg-row img{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.msg-bubble{background:var(--card);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:12.5px;line-height:1.5;color:var(--text)}
+.msg-row.out .msg-bubble{background:var(--accent);color:#fff;border-color:var(--accent);border-radius:14px 14px 4px 14px}
+.msg-time{font-size:9.5px;color:var(--text-faint);margin-top:4px;display:block}
+.msg-row.out .msg-time{text-align:right}
 
-  /* ── Header row: tabs left, mark-all button right (same pattern as
-     other pages' page-hdr-row) ── */
-  .page-hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
-  .top-tabs{display:flex;gap:22px;border-bottom:2px solid var(--border)}
-  .top-tab{padding:0 2px 10px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px}
-  .top-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-  .top-tab .tab-count{font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;background:var(--hover);color:var(--text-muted)}
-  .top-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
-  .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
-  .btn-add:hover{background:#000}
-
-  /* ── Stat cards (same tokens/pattern as authors.html / categories-genres.html) ── */
-  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
-  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-  .stat-top{display:flex;align-items:center;justify-content:space-between}
-  .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
-  .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
-  .stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
-  .stat-ico.green{background:var(--green-bg);color:var(--green)}
-  .stat-ico.red{background:var(--red-bg);color:var(--red)}
-  .stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
-  html[data-theme="dark"] .stat-ico.pink{background:rgba(255,0,80,.16)}
-  html[data-theme="dark"] .stat-ico.blue{background:rgba(37,99,235,.18)}
-  html[data-theme="dark"] .stat-ico.green{background:rgba(22,163,74,.18)}
-  html[data-theme="dark"] .stat-ico.red{background:rgba(220,38,38,.18)}
-  html[data-theme="dark"] .stat-ico.amber{background:rgba(217,119,6,.18)}
-  .stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
-  html[data-theme="dark"] .stat-delta{background:rgba(22,163,74,.18)}
-  .stat-num{font-size:24px;font-weight:800;line-height:1}
-  .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
-
-  /* ── Inbox split panel ── */
-  .inbox-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:grid;grid-template-columns:320px 1fr;height:620px}
-
-  /* Left: conversation list */
-  .inbox-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
-  .inbox-list-head{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
-  .inbox-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px}
-  .inbox-search input{border:none;background:none;outline:none;color:var(--text);font-size:12.5px;flex:1;font-family:inherit}
-  .inbox-search input::placeholder{color:var(--text-faint)}
-  .inbox-search i{color:var(--text-faint);font-size:12px}
-  .inbox-scroll{flex:1;overflow-y:auto}
-  .conv-item{display:flex;gap:11px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border);position:relative;transition:.12s}
-  .conv-item:hover{background:var(--hover)}
-  .conv-item.active{background:var(--accent-soft)}
-  .conv-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
-  .conv-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0}
-  .conv-body{flex:1;min-width:0}
-  .conv-top-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
-  .conv-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
-  .conv-name i.fa-flag{color:var(--red);font-size:9px}
-  .conv-time{font-size:10px;color:var(--text-faint);flex-shrink:0}
-  .conv-preview{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .conv-item.unread .conv-preview{color:var(--text);font-weight:600}
-  .conv-item.unread .conv-name{font-weight:800}
-  .unread-badge{background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0}
-
-  /* Right: thread */
-  .inbox-thread{display:flex;flex-direction:column;min-width:0}
-  .thread-head{display:flex;align-items:center;gap:11px;padding:14px 20px;border-bottom:1px solid var(--border)}
-  .thread-head img{width:38px;height:38px;border-radius:50%;object-fit:cover}
-  .thread-head-name{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
-  .thread-head-sub{font-size:11px;color:var(--text-muted)}
-  .thread-head-right{margin-left:auto;display:flex;gap:8px}
-  .th-act-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
-  .th-act-btn:hover{color:var(--accent);border-color:var(--accent)}
-  .thread-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
-  .msg-row{display:flex;gap:9px;max-width:70%}
-  .msg-row.out{align-self:flex-end;flex-direction:row-reverse}
-  .msg-row img{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
-  .msg-bubble{background:var(--card);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:12.5px;line-height:1.5;color:var(--text)}
-  .msg-row.out .msg-bubble{background:var(--accent);color:#fff;border-color:var(--accent);border-radius:14px 14px 4px 14px}
-  .msg-time{font-size:9.5px;color:var(--text-faint);margin-top:4px;display:block}
-  .msg-row.out .msg-time{text-align:right}
-  .thread-compose{display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--border)}
-  .thread-compose input{flex:1;background:var(--input-bg);border:1px solid var(--input-border);border-radius:22px;padding:11px 16px;outline:none;color:var(--text);font-size:12.5px;font-family:inherit}
-  .thread-compose input::placeholder{color:var(--text-faint)}
-  .send-btn{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
-  .send-btn:hover{background:#000}
-
-  .inbox-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-muted)}
-  .inbox-empty i{font-size:30px;color:var(--text-faint)}
-
-  @media (max-width:1200px){ .stats-grid{grid-template-columns:repeat(3,1fr)} }
-  @media (max-width:860px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
-  @media (max-width:820px){
-    .inbox-card{grid-template-columns:1fr;height:auto}
-    .inbox-list{border-right:none;border-bottom:1px solid var(--border)}
-    .inbox-list, .inbox-thread{min-height:460px}
-    .inbox-card.thread-open .inbox-list{display:none}
-    .inbox-card:not(.thread-open) .inbox-thread{display:none}
-    .thread-back{display:flex !important}
-  }
-  .thread-back{display:none;width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
-  @media (max-width:680px){
-    .page-hdr-row{flex-direction:column;align-items:stretch}
-    .btn-add{justify-content:center}
-    .top-tabs{overflow-x:auto}
-  }
-  @media (max-width:420px){ .stats-grid{grid-template-columns:1fr} }
-
-  /* ── Context menu ── */
-  .ctx-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center}
-  .ctx-overlay.open{display:flex}
-  .ctx-menu{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.2);overflow:hidden;width:200px}
-  .ctx-preview{padding:14px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);max-height:60px;overflow:hidden;line-height:1.4}
-  .ctx-btn{width:100%;padding:13px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;cursor:pointer;transition:.1s}
-  .ctx-btn:active{background:var(--hover)}
-  .ctx-btn i{width:18px;text-align:center;font-size:13px;color:var(--text-muted)}
-  .ctx-btn.delete{color:var(--text-muted)}
-  .ctx-btn.delete i{color:var(--text-muted)}
-  .ctx-btn+.ctx-btn{border-top:1px solid var(--border)}
-  .msg-row.editing .msg-bubble{outline:2px solid var(--accent);outline-offset:2px}
-  .edit-banner{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:4px 12px;border-radius:8px 8px 0 0;display:inline-flex;align-items:center;gap:6px}
-  .msg-row.out .edit-banner{border-radius:8px 8px 0 0}
-  .edit-input{width:100%;background:transparent;border:none;outline:none;color:inherit;font-size:13px;font-family:inherit;line-height:1.5;resize:none;min-height:20px}
-  .msg-edited{font-size:9.5px;color:var(--text-faint);font-style:italic;margin-top:1px;display:block}
-  .msg-row.out .msg-edited{color:var(--text-faint)}
+.inbox-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-muted)}
+.inbox-empty i{font-size:30px;color:var(--text-faint)}
+.thread-back{display:none;width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+.ctx-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center}
+.ctx-overlay.open{display:flex}
+.ctx-menu{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.2);overflow:hidden;width:200px}
+.ctx-preview{padding:14px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);max-height:60px;overflow:hidden;line-height:1.4}
+.ctx-btn{width:100%;padding:13px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;cursor:pointer;transition:.1s}
+.ctx-btn:active{background:var(--hover)}
+.ctx-btn i{width:18px;text-align:center;font-size:13px;color:var(--text-muted)}
+.ctx-btn.delete{color:var(--text-muted)}
+.ctx-btn+.ctx-btn{border-top:1px solid var(--border)}
+.msg-row.editing .msg-bubble{outline:2px solid var(--accent);outline-offset:2px}
+.edit-banner{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:4px 12px;border-radius:8px 8px 0 0;display:inline-flex;align-items:center;gap:6px}
+.edit-input{width:100%;background:transparent;border:none;outline:none;color:inherit;font-size:13px;font-family:inherit;line-height:1.5;resize:none;min-height:20px}
+.msg-edited{font-size:9.5px;color:var(--text-faint);font-style:italic;margin-top:1px;display:block}
+.compose-row{display:flex;align-items:flex-end;gap:8px;padding:14px 16px;border-top:1px solid var(--border)}
+.compose-inputs{flex:1;display:flex;flex-direction:column;gap:0}
+.reply-preview{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:8px;font-size:11px;color:var(--text-muted);display:none;position:relative}
+.reply-preview.show{display:block}
+.reply-preview .rp-name{font-weight:700;color:var(--accent);font-size:10px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
+.reply-preview .rp-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.reply-preview .rp-close{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px;padding:2px}
+.reply-preview .rp-close:hover{color:var(--red)}
+.compose-bar{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:22px;padding:6px 6px 6px 16px;transition:.2s}
+.compose-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,0,80,.08)}
+.compose-bar input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12.5px;font-family:inherit}
+.compose-bar input::placeholder{color:var(--text-faint)}
+.compose-icon-btn{width:32px;height:32px;border-radius:50%;border:none;background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:.15s;flex-shrink:0}
+.compose-icon-btn:hover{color:var(--accent);background:var(--accent-soft)}
+.send-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;transition:.15s;box-shadow:0 2px 8px rgba(255,0,80,.25)}
+.send-btn:hover{filter:brightness(1.1)}
+.file-badge{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;color:var(--text);margin-top:6px}
+.file-badge i{color:var(--accent);font-size:13px}
+.file-badge .file-name{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-badge .file-remove{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px;padding:2px;margin-left:4px}
+.file-badge .file-remove:hover{color:var(--red)}
+.msg-file{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 12px;font-size:11.5px;font-weight:600;color:inherit;margin-top:6px;cursor:pointer;text-decoration:none}
+.msg-file:hover{background:rgba(255,255,255,.25)}
+.msg-row:not(.out) .msg-file{background:var(--input-bg);border-color:var(--border);color:var(--text)}
+.msg-row:not(.out) .msg-file:hover{border-color:var(--accent)}
+.reply-ref{background:var(--hover);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:6px 10px;margin-bottom:6px;font-size:10.5px;color:var(--text-muted);cursor:pointer}
+.reply-ref:hover{background:var(--accent-soft)}
+.reply-ref .rr-name{font-weight:700;color:var(--accent);display:block;margin-bottom:1px}
+.reply-ref .rr-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px;display:block}
+.ctx-btn i.fa-reply{color:var(--blue)}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-row{animation:slideUp .2s ease}
+@media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:860px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:820px){.inbox-card{grid-template-columns:1fr;height:auto}.inbox-list{border-right:none;border-bottom:1px solid var(--border)}.inbox-list,.inbox-thread{min-height:460px}.inbox-card.thread-open .inbox-list{display:none}.inbox-card:not(.thread-open) .inbox-thread{display:none}.thread-back{display:flex !important}}
+@media(max-width:680px){.page-hdr-row{flex-direction:column;align-items:stretch}.btn-add{justify-content:center}.top-tabs{overflow-x:auto}}
+@media(max-width:420px){.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
-<!-- Everything inside this div is page-specific content only.
-     dashboard-shell.js wraps it with the sidebar + topbar at runtime. -->
-<div id="dashboardRoot">
-
+<div id="dashRoot">
   <div class="page-hdr-row">
     <div class="top-tabs">
-      <div class="top-tab active" data-view="all">All Messages <span class="tab-count" id="countAll">342</span></div>
-      <div class="top-tab" data-view="unread">Unread <span class="tab-count" id="countUnread">27</span></div>
-      <div class="top-tab" data-view="flagged">Flagged <span class="tab-count" id="countFlagged">6</span></div>
+      <div class="top-tab active" data-view="all">All Messages <span class="tab-count" id="countAll">0</span></div>
+      <div class="top-tab" data-view="unread">Unread <span class="tab-count" id="countUnread">0</span></div>
+      <div class="top-tab" data-view="flagged">Flagged <span class="tab-count" id="countFlagged">0</span></div>
     </div>
     <button class="btn-add" id="markAllBtn"><i class="fas fa-check-double"></i> Mark All as Read</button>
   </div>
-
-  <!-- Stat cards -->
   <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-top"><div class="stat-ico pink"><i class="fas fa-comments"></i></div><span class="stat-delta">+18 this week</span></div>
-      <div class="stat-num">342</div>
-      <div class="stat-lbl">Total Conversations</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-envelope"></i></div><span class="stat-delta">+5 today</span></div>
-      <div class="stat-num">27</div>
-      <div class="stat-lbl">Unread Messages</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-top"><div class="stat-ico green"><i class="fas fa-clock"></i></div><span class="stat-delta">-12% faster</span></div>
-      <div class="stat-num">4.2h</div>
-      <div class="stat-lbl">Avg Response Time</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta">+2 this week</span></div>
-      <div class="stat-num">6</div>
-      <div class="stat-lbl">Flagged Conversations</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-top"><div class="stat-ico amber"><i class="fas fa-user-clock"></i></div><span class="stat-delta">+9 this week</span></div>
-      <div class="stat-num">189</div>
-      <div class="stat-lbl">Active Authors</div>
-    </div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-comments"></i></div><span class="stat-delta">+18 this week</span></div><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Total Conversations</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-envelope"></i></div><span class="stat-delta">+5 today</span></div><div class="stat-num" id="statUnread">0</div><div class="stat-lbl">Unread Messages</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-clock"></i></div><span class="stat-delta">-12% faster</span></div><div class="stat-num">4.2h</div><div class="stat-lbl">Avg Response Time</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta">+2 this week</span></div><div class="stat-num" id="statFlagged">0</div><div class="stat-lbl">Flagged Conversations</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-user-clock"></i></div><span class="stat-delta">+9 this week</span></div><div class="stat-num">189</div><div class="stat-lbl">Active Authors</div></div>
   </div>
-
-  <!-- Inbox -->
   <div class="inbox-card" id="inboxCard">
     <div class="inbox-list">
-      <div class="inbox-list-head">
-        <div class="inbox-search"><i class="fas fa-magnifying-glass"></i><input id="convSearch" placeholder="Search conversations..."/></div>
-      </div>
+      <div class="inbox-list-head"><div class="inbox-search"><i class="fas fa-magnifying-glass"></i><input id="convSearch" placeholder="Search conversations..."/></div></div>
       <div class="inbox-scroll" id="convList"></div>
     </div>
     <div class="inbox-thread" id="threadPane"></div>
   </div>
-
 </div>
-
-<script src="shared/api.js"></script>
-<script src="shared/story-modal.js"></script>
+<div class="ctx-overlay" id="ctxOverlay"><div class="ctx-menu"><div class="ctx-preview" id="ctxPreview"></div><button class="ctx-btn" id="ctxReply"><i class="fas fa-reply"></i> Reply</button><button class="ctx-btn" id="ctxEdit"><i class="fas fa-pen"></i> Edit message</button><button class="ctx-btn delete" id="ctxDelete"><i class="fas fa-trash"></i> Delete message</button></div></div>
+<div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:11px 24px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:.3s;pointer-events:none;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.3)}"></div>
+<style>#toast.show{opacity:1}</style>
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="remaining-pages-enhanced.js"></script>
 <script>
-/* ═══════════════════════════════════════════════════════════
-   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
-   already inside #dashboardRoot above.
-   ═══════════════════════════════════════════════════════════ */
-SeniorEditorSidebar.attach('#dashboardRoot', {
-  activeItem: 'author-messages',
-  title: 'Author Messages',
-  subtitle: 'Manage conversations with authors on your platform',
-  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
-  notifCount: 8,
-  searchPlaceholder: 'Search conversations or authors...',
-  mobileSearchTarget: '#convSearch',
-  onSearch: (value) => {
-    document.getElementById('convSearch').value = value;
-    renderConvList();
-  },
-});
+SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
 
-/* ═══════════════════════════════════════════════════════════
-   DATA
-   ═══════════════════════════════════════════════════════════ */
-const CONVERSATIONS = [
-  { id:1, name:'Sofia Lindqvist', avatar:'https://i.pravatar.cc/100?img=32', role:'Verified Author', unread:2, flagged:false, time:'10m ago',
-    messages:[
-      { mid:1, from:'author', text:"Hi, I wanted to check in about my contract — it's set to expire next month.", time:'2 days ago' },
-      { mid:2, from:'admin', text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.', time:'2 days ago' },
-      { mid:3, from:'author', text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.', time:'1 day ago' },
-      { mid:4, from:'author', text:'Can we discuss extending my contract renewal deadline? I need a bit more time to review the new terms.', time:'10m ago' },
-    ] },
-  { id:2, name:'Marcus Chen', avatar:'https://i.pravatar.cc/100?img=12', role:'Verified Author', unread:0, flagged:false, time:'1h ago',
-    messages:[
-      { mid:5, from:'author', text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.', time:'3h ago' },
-      { mid:6, from:'admin', text:'Reviewed it, looks great. Approved and scheduled for publishing.', time:'2h ago' },
-      { mid:7, from:'author', text:'Thanks for approving my chapter revision!', time:'1h ago' },
-    ] },
-  { id:3, name:'Amara Okafor', avatar:'https://i.pravatar.cc/100?img=45', role:'Verified Author', unread:1, flagged:true, time:'3h ago',
-    messages:[
-      { mid:8, from:'author', text:'My earnings dashboard is showing the wrong total again for the second month in a row.', time:'1 day ago' },
-      { mid:9, from:'admin', text:'Sorry about that, Amara. Escalating to the finance team right now.', time:'22h ago' },
-      { mid:10, from:'author', text:'This is the third time my earnings report is wrong. I need this resolved this week.', time:'3h ago' },
-    ] },
-  { id:4, name:'Daniel Reyes', avatar:'https://i.pravatar.cc/100?img=51', role:'Pending Author', unread:0, flagged:false, time:'1d ago',
-    messages:[
-      { from:'author', text:'Hi, just following up on my verification status — submitted docs 2 weeks ago.', time:'1d ago' },
-      { from:'admin', text:'Hi Daniel, your documents are under final review. Should be resolved by Friday.', time:'20h ago' },
-    ] },
-  { id:5, name:'Priya Nair', avatar:'https://i.pravatar.cc/100?img=27', role:'Verified Author', unread:3, flagged:false, time:'2d ago',
-    messages:[
-      { from:'author', text:'Read through the new royalty structure doc — a couple of questions on tiered rates.', time:'2d ago' },
-      { from:'author', text:'Specifically, does the 70% tier apply retroactively to existing contracts?', time:'2d ago' },
-      { from:'author', text:'Also, when does the new structure take effect exactly?', time:'2d ago' },
-    ] },
-  { id:6, name:'Julien Moreau', avatar:'https://i.pravatar.cc/100?img=15', role:'Pending Author', unread:0, flagged:false, time:'3d ago',
-    messages:[
-      { from:'author', text:'Uploaded my new manuscript, please review when you get a chance.', time:'3d ago' },
-      { from:'admin', text:"Got it, added to the review queue — we'll get back within 3-5 business days.", time:'3d ago' },
-    ] },
-  { id:7, name:'Isabella Rossi', avatar:'https://i.pravatar.cc/100?img=38', role:'Verified Author', unread:0, flagged:false, time:'4d ago',
-    messages:[
-      { from:'admin', text:"Congrats Isabella — your book was selected for this month's featured banner!", time:'4d ago' },
-      { from:'author', text:'Thank you so much for featuring my book! Really appreciate the support.', time:'4d ago' },
-    ] },
-  { id:8, name:'Tobias Bergman', avatar:'https://i.pravatar.cc/100?img=8', role:'Suspended Author', unread:1, flagged:true, time:'5d ago',
-    messages:[
-      { from:'admin', text:'Your account has been suspended due to repeated content policy violations.', time:'6d ago' },
-      { from:'author', text:'I want to appeal my suspension. I believe this was a misunderstanding.', time:'5d ago' },
-    ] },
+var PERSPECTIVE='admin';
+var AVATAR_ME='https://i.pravatar.cc/100?img=5';
+
+var CONVERSATIONS=[
+  {id:1,name:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',role:'Verified Author',unread:2,flagged:false,time:'10m ago',messages:[
+    {mid:1,from:'author',text:"Hi, I wanted to check in about my contract — it's set to expire next month.",time:'2 days ago'},
+    {mid:2,from:'admin',text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.',time:'2 days ago'},
+    {mid:3,from:'author',text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.',time:'1 day ago',replyTo:2},
+    {mid:4,from:'author',text:'Can we discuss extending my contract renewal deadline?',time:'10m ago'}
+  ]},
+  {id:2,name:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',role:'Verified Author',unread:0,flagged:false,time:'1h ago',messages:[
+    {mid:5,from:'author',text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.',time:'3h ago'},
+    {mid:6,from:'admin',text:'Reviewed it, looks great. Approved and scheduled for publishing.',time:'2h ago',file:{name:'chapter-12-revised.pdf',size:'2.4 MB'}},
+    {mid:7,from:'author',text:'Thanks for approving my chapter revision!',time:'1h ago',replyTo:6}
+  ]},
+  {id:3,name:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',role:'Verified Author',unread:1,flagged:true,time:'3h ago',messages:[
+    {mid:8,from:'author',text:'My earnings dashboard is showing the wrong total again.',time:'1 day ago'},
+    {mid:9,from:'admin',text:'Sorry about that, Amara. Escalating to the finance team right now.',time:'22h ago'},
+    {mid:10,from:'author',text:'This is the third time. I need this resolved this week.',time:'3h ago',replyTo:9}
+  ]},
+  {id:4,name:'Daniel Reyes',avatar:'https://i.pravatar.cc/100?img=15',role:'Active Author',unread:0,flagged:false,time:'5h ago',messages:[
+    {mid:11,from:'admin',text:'Your latest chapter "The Fall" has been approved. Congrats!',time:'1d ago'},
+    {mid:12,from:'author',text:'Thank you! When will the next payout cycle be?',time:'5h ago',replyTo:11}
+  ]},
+  {id:5,name:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=44',role:'Verified Author',unread:3,flagged:false,time:'20m ago',messages:[
+    {mid:13,from:'author',text:'Hi, I need help with my book cover — can we discuss a redesign?',time:'1d ago'},
+    {mid:14,from:'admin',text:'Sure! I can connect you with our design team. What style are you thinking?',time:'20h ago'},
+    {mid:15,from:'author',text:'Something dark and moody, maybe a silhouette against a city skyline.',time:'6h ago',replyTo:14},
+    {mid:16,from:'author',text:'Also, can we talk about the marketing plan for the new release?',time:'20m ago',file:{name:'cover-concept.png',size:'1.8 MB'}}
+  ]},
+  {id:6,name:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',role:'Verified Author',unread:0,flagged:false,time:'2h ago',messages:[
+    {mid:17,from:'author',text:'My book "Wolf King\'s Vow" just hit 10,000 reads!',time:'3d ago'},
+    {mid:18,from:'admin',text:'Congratulations! You\u2019ve earned a $200 milestone bonus.',time:'2d ago',file:{name:'milestone-certificate.pdf',size:'340 KB'}},
+    {mid:19,from:'author',text:'That\u2019s amazing, thank you so much!',time:'2h ago',replyTo:18}
+  ]},
+  {id:7,name:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',role:'Active Author',unread:0,flagged:false,time:'1d ago',messages:[
+    {mid:20,from:'admin',text:'Your completion application was rejected. Needs 2-3 more chapters.',time:'5d ago'},
+    {mid:21,from:'author',text:'Got it, I\u2019ll add more chapters and resubmit.',time:'1d ago',replyTo:20}
+  ]},
+  {id:8,name:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',role:'Verified Author',unread:2,flagged:false,time:'45m ago',messages:[
+    {mid:22,from:'author',text:'Hey, I just saw my earnings dropped significantly this month.',time:'2d ago'},
+    {mid:23,from:'admin',text:'Let me check the analytics. I\u2019ll get back to you within 24 hours.',time:'2d ago'},
+    {mid:24,from:'author',text:'It\u2019s been 2 days now. Can you please update me?',time:'45m ago',replyTo:23}
+  ]}
 ];
 
-let currentView = 'all';
-let activeConvId = CONVERSATIONS[0].id;
-let perspective = 'admin'; // 'admin' = senior editor view, 'author' = author view
+var currentView='all',activeConvId=CONVERSATIONS[0].id;
+var replyTarget=null,pendingFile=null;
 
 function filteredConversations(){
-  const q = (document.getElementById('convSearch').value || '').trim().toLowerCase();
-  let list = CONVERSATIONS;
-  if (currentView === 'unread') list = list.filter(c => c.unread > 0);
-  else if (currentView === 'flagged') list = list.filter(c => c.flagged);
-  if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
+  var q=(document.getElementById('convSearch').value||'').trim().toLowerCase();
+  var list=CONVERSATIONS;
+  if(currentView==='unread')list=list.filter(function(c){return c.unread>0});
+  else if(currentView==='flagged')list=list.filter(function(c){return c.flagged});
+  if(q)list=list.filter(function(c){return c.name.toLowerCase().indexOf(q)!==-1});
   return list;
 }
 
-function renderConvList(){
-  const list = filteredConversations();
-  const wrap = document.getElementById('convList');
-  if (!list.length){
-    wrap.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--text-muted)"><i class="fas fa-inbox" style="font-size:24px;color:var(--text-faint);display:block;margin-bottom:8px"></i>No conversations here.</div>`;
-    return;
-  }
-  wrap.innerHTML = list.map(c => {
-    const lastMsg = c.messages[c.messages.length - 1];
-    const preview = (lastMsg.from === perspective ? 'You: ' : '') + lastMsg.text;
-    return `
-    <div class="conv-item${c.unread > 0 ? ' unread' : ''}${c.id === activeConvId ? ' active' : ''}" data-id="${c.id}">
-      <img class="conv-avatar" src="${c.avatar}" alt="${c.name}"/>
-      <div class="conv-body">
-        <div class="conv-top-row">
-          <div class="conv-name">${c.name}${c.flagged ? '<i class="fas fa-flag"></i>' : ''}</div>
-          <div class="conv-time">${c.time}</div>
-        </div>
-        <div class="conv-preview">${preview}</div>
-      </div>
-      ${c.unread > 0 ? `<span class="unread-badge">${c.unread}</span>` : ''}
-    </div>`;
-  }).join('');
+function renderStats(){
+  var total=CONVERSATIONS.length,unread=0,flagged=0;
+  CONVERSATIONS.forEach(function(c){unread+=c.unread;if(c.flagged)flagged++});
+  document.getElementById('countAll').textContent=total;
+  document.getElementById('countUnread').textContent=unread;
+  document.getElementById('countFlagged').textContent=flagged;
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statUnread').textContent=unread;
+  document.getElementById('statFlagged').textContent=flagged;
+}
 
-  wrap.querySelectorAll('.conv-item').forEach(el => {
-    el.addEventListener('click', () => {
-      activeConvId = +el.dataset.id;
-      const conv = CONVERSATIONS.find(c => c.id === activeConvId);
-      if (conv) conv.unread = 0;
-      renderConvList();
-      renderThread();
-      bindLongPress();
+function renderConvList(){
+  var list=filteredConversations();
+  var wrap=document.getElementById('convList');
+  if(!wrap)return;
+  if(!list.length){wrap.innerHTML='<div style="padding:40px 16px;text-align:center;color:var(--text-muted)"><i class="fas fa-inbox" style="font-size:24px;color:var(--text-faint);display:block;margin-bottom:8px"></i>No conversations here.</div>';return;}
+  wrap.innerHTML=list.map(function(c){
+    var lastMsg=c.messages[c.messages.length-1];
+    var preview=(lastMsg.from===PERSPECTIVE?'You: ':(lastMsg.file?'📎 File: '+lastMsg.file.name:''))+((lastMsg.text||'').substring(0,60));
+    return '<div class="conv-item'+(c.unread>0?' unread':'')+(c.id===activeConvId?' active':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
+  }).join('');
+  wrap.querySelectorAll('.conv-item').forEach(function(el){
+    el.addEventListener('click',function(){
+      activeConvId=+el.dataset.id;
+      var conv=CONVERSATIONS.find(function(c){return c.id===activeConvId});
+      if(conv)conv.unread=0;
+      replyTarget=null;pendingFile=null;
+      renderConvList();renderThread();bindLongPress();
       document.getElementById('inboxCard').classList.add('thread-open');
     });
   });
 }
 
 function renderThread(){
-  const pane = document.getElementById('threadPane');
-  const conv = CONVERSATIONS.find(c => c.id === activeConvId);
-  if (!conv){
-    pane.innerHTML = `<div class="inbox-empty"><i class="fas fa-comments"></i>Select a conversation to view messages</div>`;
-    return;
-  }
-  pane.innerHTML = `
-    <div class="thread-head">
-      <button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button>
-      <img src="${conv.avatar}" alt="${conv.name}"/>
-      <div>
-        <div class="thread-head-name">${conv.name}${conv.flagged ? '<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>' : ''}</div>
-        <div class="thread-head-sub">${conv.role}</div>
-      </div>
-      <div class="thread-head-right">
-        <button class="th-act-btn" title="View profile" onclick="toast('Opening ${conv.name}\\'s profile…')"><i class="fas fa-user"></i></button>
-        <button class="th-act-btn" title="Flag conversation" onclick="toggleFlag(${conv.id})"><i class="fas fa-flag"></i></button>
-        <button class="th-act-btn" title="Archive" onclick="toast('Conversation archived')"><i class="fas fa-box-archive"></i></button>
-      </div>
-    </div>
-    <div class="thread-body" id="threadBody">
-      ${conv.messages.map(m => {
-        const isOut = m.from === perspective;
-        return `
-        <div class="msg-row ${isOut ? 'out' : 'in'}" data-mid="${m.mid || ''}">
-          <img src="${isOut ? 'https://i.pravatar.cc/100?img=47' : conv.avatar}" alt=""/>
-          <div>
-            <div class="msg-bubble">${m.text}</div>
-            <span class="msg-time">${m.time}</span>
-            ${m.edited ? '<span class="msg-edited">edited</span>' : ''}
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-    <div class="thread-compose">
-      <input id="composeInput" placeholder="Type a reply to ${conv.name}..."/>
-      <button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button>
-    </div>
-  `;
-  const body = document.getElementById('threadBody');
-  body.scrollTop = body.scrollHeight;
+  var pane=document.getElementById('threadPane');
+  if(!pane)return;
+  var conv=CONVERSATIONS.find(function(c){return c.id===activeConvId});
+  if(!conv){pane.innerHTML='<div class="inbox-empty"><i class="fas fa-comments"></i>Select a conversation</div>';return;}
 
-  document.getElementById('threadBackBtn').addEventListener('click', () => {
+  var messagesHtml=conv.messages.map(function(m){
+    var isOut=m.from===PERSPECTIVE;
+    var bodyHtml='';
+    if(m.replyTo){
+      var ref=conv.messages.find(function(r){return r.mid===m.replyTo});
+      if(ref){
+        var rName=ref.from===PERSPECTIVE?'You':conv.name;
+        var rText=(ref.text||'').substring(0,80)+((ref.text||'').length>80?'…':'');
+        bodyHtml+='<div class="reply-ref"><span class="rr-name">'+rName+'</span><span class="rr-text">'+rText+'</span></div>';
+      }
+    }
+    if(m.text)bodyHtml+='<div class="msg-bubble">'+m.text+'</div>';
+    if(m.file){
+      var icon=m.file.name.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)?'fa-file-image':m.file.name.match(/\.pdf$/i)?'fa-file-pdf':m.file.name.match(/\.(doc|docx)$/i)?'fa-file-word':'fa-file';
+      bodyHtml+='<div class="msg-file"><i class="fas '+icon+'"></i> '+m.file.name+' <span style="opacity:.6;font-weight:400">('+m.file.size+')</span></div>';
+    }
+    bodyHtml+='<span class="msg-time">'+m.time+'</span>'+(m.edited?'<span class="msg-edited">edited</span>':'');
+    return '<div class="msg-row '+(isOut?'out':'in')+'" data-mid="'+m.mid+'"><img src="'+(isOut?AVATAR_ME:conv.avatar)+'" alt=""/><div>'+bodyHtml+'</div></div>';
+  }).join('');
+
+  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><button class="th-act-btn" title="Flag" onclick="toggleFlag('+conv.id+')"><i class="fas fa-flag"></i></button></div></div><div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="Type a reply to '+conv.name+'..."/><button class="compose-icon-btn" id="attachBtn" title="Attach file"><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/></div><div id="fileBadge"></div></div><button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button></div>';
+
+  var body=document.getElementById('threadBody');
+  body.scrollTop=body.scrollHeight;
+
+  document.getElementById('threadBackBtn').addEventListener('click',function(){
     document.getElementById('inboxCard').classList.remove('thread-open');
   });
-  const input = document.getElementById('composeInput');
-  const send = () => {
-    const text = input.value.trim();
-    if (!text) return;
-    const newMid = Date.now();
-    conv.messages.push({ mid: newMid, from: perspective, text, time:'Just now' });
-    input.value = '';
-    renderThread();
-    bindLongPress();
-    renderConvList();
+
+  var input=document.getElementById('composeInput');
+  var send=function(){
+    var text=input.value.trim();
+    if(!text&&!pendingFile)return;
+    var msg={mid:Date.now(),from:PERSPECTIVE,time:'Just now'};
+    if(text)msg.text=text;
+    if(pendingFile){msg.file=pendingFile;pendingFile=null;}
+    if(replyTarget){msg.replyTo=replyTarget.mid;replyTarget=null;}
+    conv.messages.push(msg);
+    conv.time='Just now';
+    renderThread();bindLongPress();renderConvList();renderStats();
     toast('Message sent');
   };
-  document.getElementById('sendBtn').addEventListener('click', send);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+  document.getElementById('sendBtn').addEventListener('click',send);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+
+  document.getElementById('attachBtn').addEventListener('click',function(){document.getElementById('fileInput').click();});
+  document.getElementById('fileInput').addEventListener('change',function(){
+    var f=this.files[0];if(!f)return;
+    var size=f.size>1048576?(f.size/1048576).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB';
+    pendingFile={name:f.name,size:size};
+    document.getElementById('fileBadge').innerHTML='<div class="file-badge"><i class="fas fa-file"></i><span class="file-name">'+f.name+'</span><span style="opacity:.6">('+size+')</span><button class="file-remove" id="fileRemove"><i class="fas fa-times"></i></button></div>';
+    document.getElementById('fileRemove').addEventListener('click',function(){pendingFile=null;document.getElementById('fileBadge').innerHTML='';});
+    this.value='';
+  });
+
+  if(replyTarget){
+    document.getElementById('replyPreview').classList.add('show');
+    document.getElementById('rpName').textContent=replyTarget.from===PERSPECTIVE?'You':conv.name;
+    document.getElementById('rpText').textContent=(replyTarget.text||'').substring(0,80);
+  }
+  document.getElementById('replyClose').addEventListener('click',function(){replyTarget=null;document.getElementById('replyPreview').classList.remove('show');});
+
+  bindLongPress();
 }
 
 function toggleFlag(id){
-  const conv = CONVERSATIONS.find(c => c.id === id);
-  if (!conv) return;
-  conv.flagged = !conv.flagged;
-  toast(conv.flagged ? 'Conversation flagged' : 'Flag removed');
-  renderConvList();
-  renderThread();
+  var conv=CONVERSATIONS.find(function(c){return c.id===id});if(!conv)return;
+  conv.flagged=!conv.flagged;
+  toast(conv.flagged?'Conversation flagged':'Flag removed');
+  renderConvList();renderThread();
 }
 
-/* ── Top tab switching (All / Unread / Flagged) ── */
-document.querySelectorAll('.top-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    currentView = tab.dataset.view;
-    renderConvList();
-  });
-});
-
-/* ── Mark all as read ── */
-document.getElementById('markAllBtn').addEventListener('click', () => {
-  CONVERSATIONS.forEach(c => c.unread = 0);
-  document.getElementById('countUnread').textContent = '0';
-  renderConvList();
-  toast('All messages marked as read');
-});
-
-document.getElementById('convSearch').addEventListener('input', renderConvList);
-
-/* ═══ LONG PRESS + CONTEXT MENU (edit / delete) ═══ */
-let longPressTimer = null;
-let ctxMsgId = null;
-let ctxConvId = null;
+var longPressTimer=null,ctxMsgId=null,ctxConvId=null;
 
 function bindLongPress(){
-  document.querySelectorAll('#threadBody .msg-row').forEach(row => {
-    function start(){ clearTimeout(longPressTimer); longPressTimer = setTimeout(() => openCtx(row), 600); }
-    function cancel(){ clearTimeout(longPressTimer); }
-    row.addEventListener('touchstart', start, {passive:true});
-    row.addEventListener('touchend', cancel);
-    row.addEventListener('touchmove', cancel);
-    row.addEventListener('mousedown', start);
-    row.addEventListener('mouseup', cancel);
-    row.addEventListener('mouseleave', cancel);
+  document.querySelectorAll('#threadBody .msg-row').forEach(function(row){
+    function start(){clearTimeout(longPressTimer);longPressTimer=setTimeout(function(){openCtx(row);},500);}
+    function cancel(){clearTimeout(longPressTimer);}
+    row.addEventListener('touchstart',start,{passive:true});
+    row.addEventListener('touchend',cancel);row.addEventListener('touchmove',cancel);
+    row.addEventListener('mousedown',start);row.addEventListener('mouseup',cancel);row.addEventListener('mouseleave',cancel);
   });
 }
 
 function openCtx(row){
-  const mid = parseInt(row.getAttribute('data-mid'), 10);
-  const conv = CONVERSATIONS.find(c => c.id === activeConvId);
-  if(!conv) return;
-  const msg = conv.messages.find(m => m.mid === mid);
-  if(!msg) return;
-  ctxMsgId = mid;
-  ctxConvId = activeConvId;
-
-  let preview = msg.text || '';
-  if(preview.length > 80) preview = preview.substring(0,80) + '…';
-  document.getElementById('ctxPreview').textContent = preview;
-  document.getElementById('ctxEdit').style.display = msg.from === perspective ? 'flex' : 'none';
-  document.getElementById('ctxDelete').style.display = 'flex';
+  var mid=parseInt(row.getAttribute('data-mid'),10);
+  var conv=CONVERSATIONS.find(function(c){return c.id===activeConvId});if(!conv)return;
+  var msg=conv.messages.find(function(m){return m.mid===mid});if(!msg)return;
+  ctxMsgId=mid;ctxConvId=activeConvId;
+  var preview=msg.text||'';if(msg.file)preview='📎 '+msg.file.name;
+  if(preview.length>80)preview=preview.substring(0,80)+'…';
+  document.getElementById('ctxPreview').textContent=preview;
+  document.getElementById('ctxEdit').style.display=msg.from===PERSPECTIVE?'flex':'none';
+  document.getElementById('ctxDelete').style.display='flex';
+  document.getElementById('ctxReply').style.display='flex';
   document.getElementById('ctxOverlay').classList.add('open');
-  if(navigator.vibrate) navigator.vibrate(30);
 }
 
-function closeCtx(){
-  document.getElementById('ctxOverlay').classList.remove('open');
-  ctxMsgId = null;
-  ctxConvId = null;
-}
+function closeCtx(){document.getElementById('ctxOverlay').classList.remove('open');ctxMsgId=null;ctxConvId=null;}
+document.getElementById('ctxOverlay').addEventListener('click',function(e){if(e.target===this)closeCtx();});
 
-document.getElementById('ctxOverlay').addEventListener('click', e => { if(e.target === this) closeCtx(); });
-
-document.getElementById('ctxEdit').addEventListener('click', e => {
-  e.stopPropagation();
-  const mid = ctxMsgId;
-  const cid = ctxConvId;
-  closeCtx();
-  if(mid !== null) startEdit(mid, cid);
+document.getElementById('ctxReply').addEventListener('click',function(e){
+  e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();
+  if(mid===null)return;
+  var conv=CONVERSATIONS.find(function(c){return c.id===cid});if(!conv)return;
+  var msg=conv.messages.find(function(m){return m.mid===mid});if(!msg)return;
+  replyTarget=msg;
+  var rp=document.getElementById('replyPreview');
+  if(rp){rp.classList.add('show');document.getElementById('rpName').textContent=msg.from===PERSPECTIVE?'You':conv.name;document.getElementById('rpText').textContent=(msg.text||'').substring(0,80);}
+  var inp=document.getElementById('composeInput');if(inp)inp.focus();
 });
 
-document.getElementById('ctxDelete').addEventListener('click', e => {
-  e.stopPropagation();
-  const mid = ctxMsgId;
-  const cid = ctxConvId;
-  closeCtx();
-  if(mid !== null) doDelete(mid, cid);
-});
+document.getElementById('ctxEdit').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)startEdit(mid,cid);});
+document.getElementById('ctxDelete').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)doDelete(mid,cid);});
 
-function startEdit(mid, cid){
-  const conv = CONVERSATIONS.find(c => c.id === cid);
-  if(!conv) return;
-  const msg = conv.messages.find(m => m.mid === mid);
-  if(!msg || msg.from !== perspective) return;
-
-  const row = document.querySelector(`#threadBody .msg-row[data-mid="${mid}"]`);
-  if(!row) return;
-  row.classList.add('editing');
-  const bub = row.querySelector('.msg-bubble');
-  const originalText = msg.text || '';
-  let saved = false;
-
-  bub.innerHTML = '<div class="edit-banner"><i class="fas fa-pen"></i> Editing</div>'
-    + '<textarea class="edit-input" rows="1">' + originalText.replace(/</g,'&lt;') + '</textarea>';
-
-  const ta = bub.querySelector('.edit-input');
-  ta.focus();
-  ta.style.height = ta.scrollHeight + 'px';
-
-  function save(){
-    if(saved) return;
-    saved = true;
-    const val = ta.value.trim();
-    if(!val){ doDelete(mid, cid); return; }
-    msg.text = val;
-    msg.edited = true;
-    renderThread();
-    bindLongPress();
-    toast('Message edited');
-  }
-
-  ta.addEventListener('keydown', e => {
-    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); save(); }
-    if(e.key==='Escape'){ saved = true; renderThread(); bindLongPress(); }
-  });
-  ta.addEventListener('blur', () => { setTimeout(save, 100); });
+function startEdit(mid,cid){
+  var conv=CONVERSATIONS.find(function(c){return c.id===cid});if(!conv)return;
+  var msg=conv.messages.find(function(m){return m.mid===mid});if(!msg||msg.from!==PERSPECTIVE)return;
+  var row=document.querySelector('#threadBody .msg-row[data-mid="'+mid+'"]');if(!row)return;
+  row.classList.add('editing');var bub=row.querySelector('.msg-bubble');if(!bub)return;
+  var originalText=msg.text||'';var saved=false;
+  bub.innerHTML='<div class="edit-banner"><i class="fas fa-pen"></i> Editing</div><textarea class="edit-input" rows="1">'+originalText.replace(/</g,'&lt;')+'</textarea>';
+  var ta=bub.querySelector('.edit-input');ta.focus();ta.style.height=ta.scrollHeight+'px';
+  function save(){if(saved)return;saved=true;var val=ta.value.trim();if(!val){doDelete(mid,cid);return;}msg.text=val;msg.edited=true;renderThread();bindLongPress();toast('Message edited');}
+  ta.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();save();}if(e.key==='Escape'){saved=true;renderThread();bindLongPress();}});
+  ta.addEventListener('blur',function(){setTimeout(save,100);});
 }
 
-function doDelete(mid, cid){
-  const conv = CONVERSATIONS.find(c => c.id === cid);
-  if(!conv) return;
-  const idx = conv.messages.findIndex(m => m.mid === mid);
-  if(idx === -1) return;
-  conv.messages.splice(idx, 1);
-  renderThread();
-  bindLongPress();
-  toast('Message deleted');
+function doDelete(mid,cid){
+  var conv=CONVERSATIONS.find(function(c){return c.id===cid});if(!conv)return;
+  var idx=conv.messages.findIndex(function(m){return m.mid===mid});if(idx===-1)return;
+  conv.messages.splice(idx,1);renderThread();bindLongPress();renderConvList();toast('Message deleted');
 }
 
-/* ═══════════════════════════════════════════════════════════
-   INIT — check for ?author= param to auto-open a conversation
-   ═══════════════════════════════════════════════════════════ */
-(function initMessages() {
-  const params = new URLSearchParams(window.location.search);
-  const authorHandle = params.get('author');
-  const editorMode = params.get('editor');
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
 
-  if (editorMode) {
-    perspective = 'author';
-  }
+document.querySelectorAll('.top-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.top-tab').forEach(function(t){t.classList.remove('active')});tab.classList.add('active');currentView=tab.dataset.view;renderConvList();});});
+document.getElementById('markAllBtn').addEventListener('click',function(){CONVERSATIONS.forEach(function(c){c.unread=0});renderStats();renderConvList();toast('All messages marked as read');});
+document.getElementById('convSearch').addEventListener('input',function(){renderConvList();});
 
-  if (authorHandle) {
-    const handleLower = authorHandle.toLowerCase().replace(/_/g, ' ');
-    const match = CONVERSATIONS.find(c => c.name.toLowerCase().includes(handleLower));
-    if (match) {
-      activeConvId = match.id;
-      match.unread = 0;
-    } else {
-      const newConv = {
-        id: Date.now(),
-        name: authorHandle.replace(/_/g, ' '),
-        avatar: 'https://i.pravatar.cc/100?img=' + (Math.floor(Math.random() * 60) + 1),
-        role: 'Author',
-        unread: 0,
-        flagged: false,
-        time: 'Just now',
-        messages: []
-      };
-      CONVERSATIONS.unshift(newConv);
-      activeConvId = newConv.id;
-    }
-    document.getElementById('inboxCard').classList.add('thread-open');
-  }
-
-  renderConvList();
-  renderThread();
-  bindLongPress();
-})();
+activeConvId=CONVERSATIONS[0].id;renderConvList();renderStats();renderThread();bindLongPress();
 </script>
-<div class="ctx-overlay" id="ctxOverlay">
-  <div class="ctx-menu" id="ctxMenu">
-    <div class="ctx-preview" id="ctxPreview"></div>
-    <button class="ctx-btn" id="ctxEdit"><i class="fas fa-pen"></i> Edit message</button>
-    <button class="ctx-btn delete" id="ctxDelete"><i class="fas fa-trash"></i> Delete message</button>
-  </div>
-</div>
 </body>
 </html>

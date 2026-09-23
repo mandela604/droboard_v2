@@ -79,7 +79,7 @@
     const activities = [
       { icon: 'accent', emoji: '📝', text: '<strong>Ifeanyi_Story</strong> signed a contract for <span class="highlight">Runaway Bride</span>', time: '2h ago', unread: true },
       { icon: 'green', emoji: '✅', text: '<strong>Chiamaka_N</strong> story approved — <span class="highlight">Grandmother\'s Will</span>', time: '4h ago', unread: true },
-      { icon: 'yellow', emoji: '💰', text: 'Revenue share of <strong>₦4,200</strong> credited from Ada_Writes reads', time: '5h ago', unread: true },
+      { icon: 'yellow', emoji: '💰', text: 'Revenue share of <strong>$42</strong> credited from Ada_Writes reads', time: '5h ago', unread: true },
       { icon: 'blue', emoji: '📚', text: '<strong>Dami_Cole</strong> submitted new story: <span class="highlight">"She Rejected Me 3 Times"</span>', time: '7h ago', unread: false },
       { icon: 'accent', emoji: '📧', text: '<strong>Kemi_A</strong> opened contract email for <span class="highlight">"He Deleted Our Photos"</span>', time: '1d ago', unread: false },
       { icon: 'green', emoji: '🛡️', text: 'Admin <strong>co-signed</strong> premium contract for <span class="highlight">Chiamaka_N</span>', time: '1d ago', unread: false },

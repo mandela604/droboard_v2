@@ -360,7 +360,6 @@
           <div class="rsh-sb-support">
             <i class="fas fa-headset"></i>
             <b>Quick Support</b>
-            <p>Need help? Contact the engineering team.</p>
             <button id="${instId}-support">Contact Engineer</button>
           </div>
         </aside>

@@ -186,13 +186,23 @@ function getMENU_SECTIONS(){
   const bookId=params.get('book');
   const sections=[
     {title:'Author Center',items:[{label:'Dashboard',icon:'fa-gauge',href:'author-center.html'}]},
-    {title:'Account',items:[
+    {title:'Applications',items:[
+      {label:'Contracts',icon:'fa-file-signature',href:'apply-contract.html'},
+      {label:'Completion',icon:'fa-flag-checkered',href:'apply-completion.html'},
+      {label:'Chapter Review',icon:'fa-pen-to-square',href:'request-chapter-review.html'},
+      {label:'Series Changes',icon:'fa-book-open',href:'request-series-change.html'},
+      {label:'VIP Application',icon:'fa-crown',href:'apply-vip.html'}
+    ]},
+    {title:'Finance',items:[
       {label:'Earnings',icon:'fa-sack-dollar',href:'earnings.html'},
       {label:'Transactions',icon:'fa-receipt',href:'transaction-history.html'},
-      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'},
-      {label:'Contracts',icon:'fa-file-signature',href:'#'},
-      {label:'Messages',icon:'fa-comment-dots',href:'#'},
-      {label:'Notifications',icon:'fa-bell',href:'#'},
+      {label:'Payment Details',icon:'fa-credit-card',href:'payment-details.html'}
+    ]},
+    {title:'Communication',items:[
+{label:'Messages',icon:'fa-comment-dots',href:'../Pages/chat.html'},
+{label:'Notifications',icon:'fa-bell',href:'../Pages/notifications.html'}
+    ]},
+    {title:'Settings',items:[
       {label:'Settings',icon:'fa-gear',href:'#'}
     ]}
   ];

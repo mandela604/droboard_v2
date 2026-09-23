@@ -107,7 +107,14 @@ body{font-family:'Inter',system-ui,sans-serif}
   .list-cols span:nth-child(3),.list-cols span:nth-child(4),.list-cols span:nth-child(5),.list-cols span:nth-child(6),
   .author-row .col-hide{display:none}
 }
-@media (max-width:640px){.kpi-strip{grid-template-columns:1fr 1fr}.genre-grid{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .kpi-strip{grid-template-columns:1fr 1fr}
+  .genre-grid{grid-template-columns:1fr}
+  .panel{padding:14px}
+  .list-cols{display:none}
+  .author-row{grid-template-columns:1fr 70px;gap:8px}
+  .author-row .col-hide{display:none}
+}
 </style>
 </head>
 <body>

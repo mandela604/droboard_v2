@@ -1697,21 +1697,10 @@ const SERIES_CATALOG = {
   };
 
   const AUTHOR_TRANSACTIONS = [
-    { id: 'TXN-5001', type: 'royalty',   desc: 'Chapter reads — Season of Betrayal',         amount: 340,   book: 'Season of Betrayal', date: '2026-07-29T14:20:00', status: 'completed' },
-    { id: 'TXN-5002', type: 'tip',       desc: 'Reader tip from Sarah_Odum',                  amount: 200,   book: null,                 date: '2026-07-28T18:05:00', status: 'completed' },
-    { id: 'TXN-5003', type: 'royalty',   desc: 'Chapter reads — Crowned in Sin',              amount: 185,   book: 'Crowned in Sin',     date: '2026-07-28T10:00:00', status: 'completed' },
-    { id: 'TXN-5004', type: 'withdrawal',desc: 'Bank transfer to GTBank •••• 4821',           amount: -2140, book: null,                 date: '2026-07-27T20:15:00', status: 'completed' },
-    { id: 'TXN-5005', type: 'bonus',     desc: 'July Top Performer Bonus',                    amount: 200,   book: null,                 date: '2026-07-26T09:00:00', status: 'completed' },
-    { id: 'TXN-5006', type: 'royalty',   desc: 'Chapter reads — Until You Regret',            amount: 120,   book: 'Until You Regret',   date: '2026-07-25T16:30:00', status: 'completed' },
-    { id: 'TXN-5007', type: 'tip',       desc: 'Reader tip from Luna_Grey',                   amount: 50,    book: null,                 date: '2026-07-24T12:10:00', status: 'completed' },
-    { id: 'TXN-5008', type: 'royalty',   desc: 'Chapter reads — Season of Betrayal',          amount: 290,   book: 'Season of Betrayal', date: '2026-07-23T08:45:00', status: 'completed' },
-    { id: 'TXN-5009', type: 'withdrawal',desc: 'Bank transfer to GTBank •••• 4821',           amount: -1980, book: null,                 date: '2026-07-15T10:00:00', status: 'completed' },
-    { id: 'TXN-5010', type: 'royalty',   desc: 'Chapter reads — Crowned in Sin',              amount: 210,   book: 'Crowned in Sin',     date: '2026-07-14T11:20:00', status: 'completed' },
-    { id: 'TXN-5011', type: 'tip',       desc: 'Reader tip from CampusQueen',                 amount: 100,   book: null,                 date: '2026-07-12T09:00:00', status: 'completed' },
-    { id: 'TXN-5012', type: 'adjustment',desc: 'Platform correction — overcharged ad fee',    amount: 45,    book: null,                 date: '2026-07-10T14:00:00', status: 'completed' },
-    { id: 'TXN-5013', type: 'royalty',   desc: 'Chapter reads — Season of Betrayal',          amount: 310,   book: 'Season of Betrayal', date: '2026-07-08T16:00:00', status: 'completed' },
-    { id: 'TXN-5014', type: 'withdrawal',desc: 'PayPal transfer to luna.vale@paypal.com',    amount: -870,  book: null,                 date: '2026-06-30T09:00:00', status: 'completed' },
-    { id: 'TXN-5015', type: 'royalty',   desc: 'Chapter reads — Until You Regret',            amount: 95,    book: 'Until You Regret',   date: '2026-06-28T12:00:00', status: 'completed' },
+    { id: 'TXN-5001', type: 'withdrawal', desc: 'Bank transfer to GTBank •••• 4821',           amount: -2140, book: null, date: '2026-07-27T20:15:00', status: 'completed' },
+    { id: 'TXN-5002', type: 'withdrawal', desc: 'Bank transfer to GTBank •••• 4821',           amount: -1980, book: null, date: '2026-07-15T10:00:00', status: 'completed' },
+    { id: 'TXN-5003', type: 'withdrawal', desc: 'PayPal transfer to luna.vale@paypal.com',    amount: -870,  book: null, date: '2026-06-30T09:00:00', status: 'completed' },
+    { id: 'TXN-5004', type: 'withdrawal', desc: 'Bank transfer to GTBank •••• 4821',           amount: -1250, book: null, date: '2026-07-29T12:00:00', status: 'pending' },
   ];
 
   const AUTHOR_PAYMENT_METHODS = [

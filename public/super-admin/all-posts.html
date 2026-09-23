@@ -31,17 +31,17 @@ body{font-family:'Inter',system-ui,sans-serif}
 .search-box i{color:var(--text-faint);font-size:12.5px}
 .select{font-size:12px;font-weight:600;padding:9px 12px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-family:inherit;cursor:pointer}
 
-.list-cols{display:grid;grid-template-columns:26px minmax(0,2.5fr) 110px 80px 80px 100px 80px;gap:8px;align-items:center;padding:0 14px 10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
+.list-cols{display:grid;grid-template-columns:26px 1fr 110px 80px 80px 100px 80px;gap:8px;align-items:center;padding:0 14px 10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);background:var(--table-head);border-bottom:1px solid var(--border)}
 .list-cols span.num{text-align:right}
 
-.post-row{display:grid;grid-template-columns:26px minmax(0,2.5fr) 110px 80px 80px 100px 80px;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);transition:.12s;cursor:pointer;border-radius:0}
+.post-row{display:grid;grid-template-columns:26px 1fr 110px 80px 80px 100px 80px;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);transition:.12s;cursor:pointer;border-radius:0}
 .post-row:hover{background:var(--hover)}
 .post-row:last-child{border-bottom:none}
 .post-row.is-open{background:var(--hover);border-bottom-color:transparent}
 
-.post-main{display:flex;align-items:center;gap:11px;min-width:0}
+.post-main{display:flex;align-items:center;gap:11px;min-width:0;overflow:hidden}
 .post-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}
-.post-info{min-width:0}
+.post-info{min-width:0;overflow:hidden}
 .post-title-link{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.4;color:var(--text);text-decoration:none;cursor:pointer}
 .post-title-link:hover{color:var(--accent)}
 .post-meta{font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
@@ -117,7 +117,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 .empty-state i{font-size:26px;margin-bottom:10px;display:block;opacity:.5}
 
 @media (max-width:1100px){
-  .list-cols,.post-row{grid-template-columns:26px minmax(0,2.5fr) 110px 80px 100px}
+  .list-cols,.post-row{grid-template-columns:26px 1fr 110px 80px 100px}
   .list-cols span:nth-child(3),.list-cols span:nth-child(7),
   .post-row .col-type,.post-row .col-date{display:none}
   .detail-grid,.detail-grid.three{grid-template-columns:1fr 1fr}
@@ -127,8 +127,11 @@ body{font-family:'Inter',system-ui,sans-serif}
   .list-cols span:nth-child(3),.list-cols span:nth-child(4),.list-cols span:nth-child(7),
   .post-row .col-type,.post-row .col-date{display:none}
 }
-@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
-@media (max-width:640px){.grid-4{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){
+  .grid-4{grid-template-columns:1fr 1fr}
+  .panel{padding:14px}
+  .page-head h1{font-size:17px}
+}
 </style>
 </head>
 <body>
@@ -310,7 +313,7 @@ function getPreviewText(p){
 }
 
 function getPostUrl(p){
-  return '../Pages/feed.html?post='+p.id;
+  return '../Pages/post-reader.html?post='+p.id;
 }
 
 function renderStatCards(){

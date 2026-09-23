@@ -51,7 +51,7 @@ const SECTIONS = {
     desc: 'Configure coin rates, pricing, and revenue sharing',
     html: () => `
       <div class="ca-head" style="margin-top:0;padding-bottom:14px;border-bottom:1px solid var(--border)"><h2>Coin Rate</h2><p>Set how coins convert to real currency</p></div>
-      <div class="form-group" style="margin-top:18px"><label>Coin-to-Naira Rate (₦)</label><div class="desc">How much 1 coin costs in Naira</div><input type="number" id="f-coinRate" value="15" min="1"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> 1 coin = ₦<span id="coinRatePreview">15</span> &nbsp;|&nbsp; 100 coins = ₦<span id="coinRate100">1,500</span></div></div>
+      <div class="form-group" style="margin-top:18px"><label>Coin-to-Dollar Rate ($)</label><div class="desc">How much 1 coin costs in USD</div><input type="number" id="f-coinRate" value="0.02" min="0.01" step="0.01"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> 1 coin = $<span id="coinRatePreview">0.02</span> &nbsp;|&nbsp; 100 coins = $<span id="coinRate100">2.00</span></div></div>
       <div class="form-group"><label>Coin-to-USD Rate ($)</label><div class="desc">How much 1 coin costs in USD (for international users)</div><input type="number" id="f-coinRateUsd" value="0.02" min="0.01" step="0.01"/></div>
 
       <div class="ca-head" style="margin-top:28px"><h2>Chapter Pricing</h2><p>Default pricing rules for chapter unlocks</p></div>
@@ -60,9 +60,7 @@ const SECTIONS = {
       <div class="form-group"><label>Maximum Chapter Price (coins)</label><div class="desc">Highest allowed chapter price per chapter</div><input type="number" id="f-maxChapterPrice" value="100" min="1"/></div>
       <div class="toggle-row"><div class="toggle-info"><b>Free First Chapter</b><span>Always make the first chapter of every book free</span></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>
 
-      <div class="ca-head" style="margin-top:28px"><h2>Revenue Sharing</h2><p>How earnings are split between platform and authors</p></div>
-      <div class="form-group" style="margin-top:18px"><label>Platform Commission (%)</label><div class="desc">Percentage of author earnings the platform keeps</div><input type="number" id="f-platformCommission" value="30" min="0" max="100"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--green);margin-right:6px"></i> Author receives <span id="authorSharePreview">70</span>% of earnings</div></div>
-      <div class="form-group"><label>Tip Author Share (%)</label><div class="desc">Percentage of tips that go directly to the author</div><input type="number" id="f-tipShare" value="85" min="0" max="100"/></div>
+
     `
   },
   email: {
@@ -76,7 +74,7 @@ const SECTIONS = {
         <div class="form-group"><label>SMTP Protocol</label><select><option>TLS</option><option>SSL</option></select></div>
       </div>
 
-      <div class="ca-head" style="margin-top:28px;display:flex;align-items:center;justify-content:space-between"><div><h2>Sender Fields</h2><p>Default "From" details and custom fields</p></div><button id="addSenderFieldBtn" style="padding:6px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-plus"></i> Add Field</button></div>
+      <div class="ca-head" style="margin-top:28px;display:flex;align-items:center;justify-content:space-between"><div><h2>Sender Fields</h2><p>Default "From" details and custom fields</p></div><div style="display:flex;gap:6px"><button id="addSenderFieldBtn" style="padding:6px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-plus"></i> Add Field</button><button id="addSenderLinkBtn" style="padding:6px 14px;border-radius:8px;border:1px solid var(--green);background:rgba(16,185,129,.08);color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-link"></i> Add Link</button></div></div>
       <div id="senderFieldsList" style="margin-top:14px;display:flex;flex-direction:column;gap:10px"></div>
 
       <div class="ca-head" style="margin-top:28px"><h2>Email Notifications</h2><p>Toggle which emails are sent automatically</p></div>
@@ -284,10 +282,20 @@ function addSenderField() {
   renderSenderFields();
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function addSenderLink() {
+  const fields = loadSenderFields();
+  fields.push({ id: 'sf_' + Date.now(), label: '', value: '', isLink: true, linkUrl: 'https://' });
+  saveSenderFields(fields);
+  renderSenderFields();
+}
 
-document.getElementById('addSenderFieldBtn')?.addEventListener('click', addSenderField);
-renderSenderFields();
+function initEmailSection() {
+  document.getElementById('addSenderFieldBtn')?.addEventListener('click', addSenderField);
+  document.getElementById('addSenderLinkBtn')?.addEventListener('click', addSenderLink);
+  renderSenderFields();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // ── Email Templates list rendering ────────────────────
 let tplPage = 1;
@@ -409,7 +417,7 @@ window.renderSection = function(id) {
     }, 50);
   }
   if (id === 'email') {
-    setTimeout(function() { renderSenderFields(); }, 50);
+    setTimeout(function() { initEmailSection(); }, 50);
   }
 };
 </script></body></html>

@@ -83,15 +83,14 @@
     },
 
     async getTransactionKPIs(list) {
-      let totalIncome = 0, totalWithdrawn = 0, totalTips = 0, totalBonuses = 0;
+      let totalIncome = 0, totalWithdrawn = 0, totalBonuses = 0;
       list.forEach(t => {
         if (t.status !== 'completed') return;
-        if (t.type === 'royalty') totalIncome += t.amount;
+        if (t.type === 'earned') totalIncome += t.amount;
         else if (t.type === 'withdrawal') totalWithdrawn += Math.abs(t.amount);
-        else if (t.type === 'tip') totalTips += t.amount;
         else if (t.type === 'bonus') totalBonuses += t.amount;
       });
-      return { totalIncome, totalWithdrawn, totalTips, totalBonuses, count: list.length };
+      return { totalIncome, totalWithdrawn, totalBonuses, count: list.length };
     },
 
     /* ── Payment Methods ── */

@@ -38,9 +38,6 @@
       { label: 'Author Messages', icon: 'fa-comment-dots', href: 'author-messages.html' },
       { label: 'Author Verification', icon: 'fa-user-check', href: 'author-verification.html' },
     ] },
-    { section: 'Contract Management', items: [
-      { label: 'Contracts', icon: 'fa-file-contract', href: 'contracts.html' },
-    ] },
     { section: 'Financial Management', items: [
       { label: 'Withdrawal Requests', icon: 'fa-money-bill-wave', href: 'withdrawal-requests.html' },
       { label: 'Payments', icon: 'fa-credit-card', href: 'payments.html' },

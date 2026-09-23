@@ -119,18 +119,17 @@ body{font-family:'Inter',system-ui,sans-serif}
 .empty-msg{text-align:center;padding:20px;color:var(--text-faint);font-size:12px}
 .skeleton{padding:28px;text-align:center;color:var(--text-faint);font-size:12.5px}
 
+.pg-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pg-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pg-btn:disabled{opacity:.35;cursor:default}
+
 @media (max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
 @media (max-width:640px){.grid-4{grid-template-columns:1fr}.qa-grid{grid-template-columns:1fr}.welcome-stats{gap:16px}.ct-actions{width:100%}.ct-actions .mini-btn{flex:1;justify-content:center}}
 </style>
 </head>
 <body>
 <div id="dashRoot">
-  <div class="welcome-banner">
-    <div class="welcome-eyebrow">Chief Editor · Platform Overview</div>
-    <div class="welcome-title" id="greetTitle">Welcome back 👋</div>
-    <div class="welcome-sub">Contracts waiting on your signature, flagged authors needing a final call, senior editor quotas, and payments due — all in one place.</div>
-    <div class="welcome-stats" id="welcomeStats"></div>
-  </div>
 
   <div class="grid-4" id="statCards"></div>
 
@@ -138,11 +137,10 @@ body{font-family:'Inter',system-ui,sans-serif}
     <div>
       <div class="panel">
         <div class="panel-head">
-          <h2><i class="fas fa-file-signature" style="color:var(--blue)"></i> Pending Contract Signatures</h2>
-          <span class="count-chip" id="ctCount">—</span>
+          <h2><i class="fas fa-money-check-dollar" style="color:var(--green)"></i> Payments Due</h2>
+          <a class="panel-link" href="contracts-payments.html">Run payments <i class="fas fa-arrow-right"></i></a>
         </div>
-        <div class="panel-sub">Author has already signed — forwarded by their senior editor for your final countersignature.</div>
-        <div id="contractsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+        <div id="paymentsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
       </div>
 
       <div class="panel">
@@ -174,19 +172,21 @@ body{font-family:'Inter',system-ui,sans-serif}
 
       <div class="panel">
         <div class="panel-head">
-          <h2><i class="fas fa-money-check-dollar" style="color:var(--green)"></i> Payments Due</h2>
-          <a class="panel-link" href="contracts-payments.html">Run payments <i class="fas fa-arrow-right"></i></a>
+          <h2><i class="fas fa-flag" style="color:var(--red)"></i> Flagged for Your Review</h2>
+          <a class="panel-link" href="reports-actions.html">View all <i class="fas fa-arrow-right"></i></a>
         </div>
-        <div id="paymentsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h2><i class="fas fa-clock-rotate-left" style="color:var(--text-faint)"></i> Recent Activity</h2>
-        </div>
-        <div id="activityList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+        <div class="panel-sub">Plagiarism flags from senior editors, and reports authors sent directly to you. Only you can suspend, ban, or remove.</div>
+        <div id="reportsList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
       </div>
     </div>
+  </div>
+
+  <div class="panel" style="margin-top:4px">
+    <div class="panel-head">
+      <h2><i class="fas fa-clock-rotate-left" style="color:var(--text-faint)"></i> Recent Activity</h2>
+    </div>
+    <div id="activityList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+    <div id="activityPager" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px"></div>
   </div>
 </div>
 
@@ -204,37 +204,21 @@ const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', pu
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
 
 let DATA = null;
-
-function greetByHour(){
-  const h = new Date().getHours();
-  if(h<12) return 'Good morning, Adaeze 👋';
-  if(h<18) return 'Good afternoon, Adaeze 👋';
-  return 'Good evening, Adaeze 👋';
-}
+let actPage = 1;
+const ACT_PER_PAGE = 8;
 
 async function init(){
-  document.getElementById('greetTitle').textContent = greetByHour();
   DATA = await ChiefEditorData.getDashboard();
   renderAll();
 }
 
 function renderAll(){
-  renderWelcomeStats();
   renderStatCards();
-  renderContracts();
   renderReports();
   renderQuickActions();
   renderQuotas();
   renderPayments();
   renderActivity();
-}
-
-function renderWelcomeStats(){
-  document.getElementById('welcomeStats').innerHTML = `
-    <div class="welcome-stat"><b>${DATA.pendingContracts.length}</b><span>Awaiting Signature</span></div>
-    <div class="welcome-stat"><b>${DATA.flaggedReports.length}</b><span>Flagged for Review</span></div>
-    <div class="welcome-stat"><b>${DATA.editorsBehindQuota}</b><span>Editors Behind Quota</span></div>
-    <div class="welcome-stat"><b>${DATA.paymentsDueTotal}</b><span>Payments Due</span></div>`;
 }
 
 function renderStatCards(){
@@ -249,38 +233,6 @@ function renderStatCards(){
       <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
       <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>
     </div>`).join('');
-}
-
-/* ── Pending Contract Signatures ── */
-function renderContracts(){
-  document.getElementById('ctCount').textContent = DATA.pendingContracts.length;
-  const box = document.getElementById('contractsList');
-  if(!DATA.pendingContracts.length){ box.innerHTML = `<div class="empty-msg">Nothing waiting on your signature.</div>`; return; }
-  box.innerHTML = DATA.pendingContracts.map(c=>`
-    <div class="ct-card" data-id="${c.id}">
-      <img class="ct-avatar" src="${c.avatar}" alt="${c.author}"/>
-      <div class="ct-body">
-        <div class="ct-title">${c.author} <span class="type-chip">${c.type}</span> <span class="signed-chip"><i class="fas fa-check"></i> Author signed</span></div>
-        <div class="ct-meta">Forwarded by ${c.forwardedBy} · ${c.submitted}</div>
-      </div>
-      <div class="ct-actions">
-        <button class="mini-btn danger" data-action="decline-contract" data-id="${c.id}"><i class="fas fa-xmark"></i> Decline</button>
-        <button class="mini-btn primary" data-action="sign-contract" data-id="${c.id}"><i class="fas fa-signature"></i> Sign</button>
-      </div>
-    </div>`).join('');
-}
-
-function signContract(id){
-  const c = DATA.pendingContracts.find(x=>x.id===id); if(!c) return;
-  DATA.pendingContracts = DATA.pendingContracts.filter(x=>x.id!==id);
-  toast(`✅ Countersigned "${c.type}" for ${c.author}`);
-  renderContracts(); renderStatCards(); renderWelcomeStats();
-}
-function declineContract(id){
-  const c = DATA.pendingContracts.find(x=>x.id===id); if(!c) return;
-  DATA.pendingContracts = DATA.pendingContracts.filter(x=>x.id!==id);
-  toast(`↩️ Declined "${c.type}" for ${c.author}`);
-  renderContracts(); renderStatCards(); renderWelcomeStats();
 }
 
 /* ── Flagged Reports (only Chief Editor can act) ── */
@@ -314,7 +266,7 @@ function renderReports(){
 function resolveReport(id, msg){
   DATA.flaggedReports = DATA.flaggedReports.filter(x=>x.id!==id);
   toast(msg);
-  renderReports(); renderStatCards(); renderWelcomeStats();
+  renderReports();
 }
 
 /* ── Quick Actions ── */
@@ -372,40 +324,65 @@ function renderPayments(){
 
 /* ── Activity feed ── */
 function renderActivity(){
-  document.getElementById('activityList').innerHTML = DATA.recentActivity.map(a=>`
+  const all = DATA.recentActivity;
+  const total = all.length;
+  const totalPages = Math.ceil(total / ACT_PER_PAGE);
+  if(actPage > totalPages) actPage = totalPages;
+  const start = (actPage - 1) * ACT_PER_PAGE;
+  const slice = all.slice(start, start + ACT_PER_PAGE);
+
+  document.getElementById('activityList').innerHTML = slice.map(a=>`
     <div class="act-row">
       <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
       <div class="act-body">
         <div class="act-text">${a.text}</div>
         <div class="act-time">${a.time}</div>
       </div>
-    </div>`).join('');
+    </div>`).join('') || '<div class="empty-msg">No recent activity.</div>';
+
+  const pager = document.getElementById('activityPager');
+  if(totalPages <= 1){ pager.innerHTML = ''; return; }
+  let html = `<button class="pg-btn" data-p="prev" ${actPage===1?'disabled':''}><i class="fas fa-chevron-left"></i></button>`;
+  for(let i = 1; i <= totalPages; i++){
+    html += `<button class="pg-btn${i===actPage?' active':''}" data-p="${i}">${i}</button>`;
+  }
+  html += `<button class="pg-btn" data-p="next" ${actPage===totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>`;
+  pager.innerHTML = html;
 }
 
 /* ── Event delegation ── */
 document.addEventListener('click', e=>{
   const el = e.target.closest('[data-action]');
-  if(!el) return;
-  const action = el.dataset.action;
-  const id = el.dataset.id;
+  if(el){
+    const action = el.dataset.action;
+    const id = el.dataset.id;
 
-  if(action==='sign-contract') signContract(id);
-  else if(action==='decline-contract') declineContract(id);
-  else if(action==='dismiss-report') resolveReport(id, '✅ Report dismissed');
-  else if(action==='suspend-report'){
-    const r = DATA.flaggedReports.find(x=>x.id===id);
-    resolveReport(id, `⏸️ Suspended ${r ? r.target : 'author'}`);
+    if(action==='dismiss-report') resolveReport(id, '✅ Report dismissed');
+    else if(action==='suspend-report'){
+      const r = DATA.flaggedReports.find(x=>x.id===id);
+      resolveReport(id, `⏸️ Suspended ${r ? r.target : 'author'}`);
+    }
+    else if(action==='ban-report'){
+      const r = DATA.flaggedReports.find(x=>x.id===id);
+      resolveReport(id, `🚫 Banned ${r ? r.target : 'author'}`);
+    }
+    else if(action==='remove-report'){
+      const r = DATA.flaggedReports.find(x=>x.id===id);
+      resolveReport(id, `🗑️ Removed ${r ? r.target : 'author'} from the platform`);
+    }
+    else if(action==='open-editors'){ location.href = 'senior-editors.html'; }
+    else if(action==='quota-action'){ toast(`⚠️ Opening options for ${el.dataset.name}…`); }
+    return;
   }
-  else if(action==='ban-report'){
-    const r = DATA.flaggedReports.find(x=>x.id===id);
-    resolveReport(id, `🚫 Banned ${r ? r.target : 'author'}`);
+
+  const pgBtn = e.target.closest('.pg-btn');
+  if(pgBtn && pgBtn.dataset.p){
+    const p = pgBtn.dataset.p;
+    if(p === 'prev') actPage--;
+    else if(p === 'next') actPage++;
+    else actPage = parseInt(p);
+    renderActivity();
   }
-  else if(action==='remove-report'){
-    const r = DATA.flaggedReports.find(x=>x.id===id);
-    resolveReport(id, `🗑️ Removed ${r ? r.target : 'author'} from the platform`);
-  }
-  else if(action==='open-editors'){ location.href = 'senior-editors.html'; }
-  else if(action==='quota-action'){ toast(`⚠️ Opening options for ${el.dataset.name}…`); }
 });
 
 init();
