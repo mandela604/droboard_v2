@@ -131,7 +131,9 @@
   let currentView = { reading: 'grid', saved: 'grid', history: 'grid' };
   let currentFilter = 'all';
   let libPage = 1;
-  const LIB_PAGE_SIZE = 6;
+  const LIB_PAGE_SIZE = 12;
+  let contPage = 1;
+  const CONT_PAGE_SIZE = 12;
 
   function storyHref(s) {
     return 'bridge.html?id=' + encodeURIComponent(s.id || s.title || '');
@@ -202,15 +204,32 @@
 
   function renderContinue() {
     if (!window.LibraryCard) return;
-    LibraryCard.renderContinue('continue-row', CONTINUE);
+    const totalPages = Math.max(1, Math.ceil(CONTINUE.length / CONT_PAGE_SIZE));
+    if (contPage > totalPages) contPage = totalPages;
+    if (contPage < 1) contPage = 1;
+    const start = (contPage - 1) * CONT_PAGE_SIZE;
+    LibraryCard.renderContinue('continue-row', CONTINUE.slice(start, start + CONT_PAGE_SIZE));
+    renderContPagination(totalPages);
     const row = document.getElementById('continue-row');
     if (!row) return;
     Array.from(row.children).forEach((card, i) => {
-      const s = CONTINUE[i];
+      const s = CONTINUE[start + i];
       if (!s) return;
       card.style.cursor = 'pointer';
       card.addEventListener('click', () => { location.href = storyHref(s); });
     });
+  }
+
+  function renderContPagination(totalPages) {
+    const el = document.getElementById('cont-pagination');
+    if (!el) return;
+    if (totalPages <= 1) { el.innerHTML = ''; return; }
+    let html = `<button class="page-btn nav ${contPage === 1 ? 'disabled' : ''}" data-page="prev">${icon('chevronLeft', { size: 14 })}</button>`;
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button class="page-btn ${i === contPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    html += `<button class="page-btn nav ${contPage === totalPages ? 'disabled' : ''}" data-page="next">${icon('chevronRight', { size: 14 })}</button>`;
+    el.innerHTML = html;
   }
 
   /* ── Promo slider ── */
@@ -353,6 +372,67 @@
       else libPage = parseInt(p, 10);
       renderLibrary();
     });
+    const contEl = document.getElementById('cont-pagination');
+    if (contEl) contEl.addEventListener('click', e => {
+      const btn = e.target.closest('.page-btn');
+      if (!btn || btn.classList.contains('disabled')) return;
+      const p = btn.dataset.page;
+      const totalPages = Math.max(1, Math.ceil(CONTINUE.length / CONT_PAGE_SIZE));
+      if (p === 'prev') { if (contPage > 1) contPage--; }
+      else if (p === 'next') { if (contPage < totalPages) contPage++; }
+      else contPage = parseInt(p, 10);
+      renderContinue();
+    });
+  }
+
+  function initHistoryClear() {
+    const clearBtn = document.getElementById('history-clear');
+    const modal = document.getElementById('lb-clear-modal');
+    const titleEl = document.getElementById('lb-clear-title');
+    const subEl = document.getElementById('lb-clear-sub');
+    const cancelBtn = document.getElementById('lb-clear-cancel');
+    const confirmBtn = document.getElementById('lb-clear-confirm');
+    if (!clearBtn || !modal) return;
+    function openClearModal() {
+      const n = HISTORY.length;
+      if (!n) return;
+      if (titleEl) titleEl.textContent = `Clear ${n} ${n === 1 ? 'story' : 'stories'}?`;
+      if (subEl) subEl.textContent = `This will remove ${n} ${n === 1 ? 'story' : 'stories'} from your history. Can't be undone.`;
+      modal.classList.add('open');
+    }
+    function closeClearModal() { modal.classList.remove('open'); }
+    clearBtn.addEventListener('click', openClearModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeClearModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeClearModal(); });
+    if (confirmBtn) confirmBtn.addEventListener('click', () => {
+      HISTORY = [];
+      closeClearModal();
+      renderHistory();
+    });
+  }
+
+  function initContViewAll() {
+    const btn = document.getElementById('cont-viewall');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (!window.BrowseOverlay) return;
+      const stories = CONTINUE.map(s => ({
+        id: s.id,
+        title: s.title,
+        author: s.author || '',
+        img: s.img || s.cover || '',
+        genre: s.genre || 'fiction',
+        badge: s.badge || '',
+        rating: s.rating || '',
+        chapters: s.chapters || '',
+        preview: s.preview || (s.ch ? s.ch + ' · ' + (s.pct || 0) + '%' : ''),
+      }));
+      BrowseOverlay.configure({
+        stories,
+        onOpenStory: s => { location.href = 'bridge.html?id=' + encodeURIComponent(s.id || ''); },
+      });
+      BrowseOverlay.open({ title: 'Continue Reading', mode: 'section' });
+    });
   }
   function initNavButtons() {
     const bell = document.getElementById('bell-btn');
@@ -426,6 +506,8 @@
     initFilters();
     initViewToggles();
     initPagination();
+    initHistoryClear();
+    initContViewAll();
     initNavButtons();
   }
 

@@ -17,6 +17,10 @@
   --font-body:'DM Sans',-apple-system,sans-serif;
   --nav-h:64px; --safe-b:env(safe-area-inset-bottom,12px);
 }
+[data-theme="dark"]{--pink:#FF2D6A;--ink:#e8e0f0;--ink-2:#c4b8d4;--gray-600:#a09ab0;--gray-400:#6b6580;--line:rgba(255,255,255,.08);--divider:#08060a;--white:#0e0c14}
+[data-theme="dark"] html,[data-theme="dark"] body{background:var(--divider)}
+[data-theme="dark"] .phone{background:var(--white)}
+[data-theme="dark"] .topbar{background:rgba(14,12,20,.96)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--divider);}
 body{font-family:var(--font-body);color:var(--ink);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padding-bottom:calc(var(--nav-h) + var(--safe-b))}

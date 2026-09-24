@@ -69,8 +69,8 @@
       --bro-faint:#c7c7cc; --bro-acc:#ff2d55; --bro-acc-soft:rgba(255,45,85,.08);
       --bro-acc-border:rgba(255,45,85,.2); --bro-surface:#f0f0f2;
       --bro-shadow:rgba(0,0,0,.08); --bro-gold:#c9a227; --bro-gold-soft:#fdf7e6;
-      position:fixed;inset:0;z-index:4000;background:var(--bro-bg);color:var(--bro-text);
-      font-family:'Inter','DM Sans',system-ui,sans-serif;display:none;flex-direction:column;overflow:hidden;
+      position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;height:100dvh;z-index:4000;background:var(--bro-bg);color:var(--bro-text);
+      font-family:'Inter','DM Sans',system-ui,sans-serif;display:none;flex-direction:column;overflow:hidden;box-shadow:0 0 50px rgba(0,0,0,.10);
     }
     .bro-root.open{display:flex}
     .bro-root *,.bro-root *::before,.bro-root *::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -273,7 +273,7 @@
   let _observer = null;
   let _promoIndex = 0, _promoTimer = null;
 
-  let _mode = 'section';   // 'genre' | 'section'
+  let _mode = 'section';   // 'genre' | 'section' | 'collections'
   let _title = 'Browse';
   let _filter = 'all';
   let _pool = [];
@@ -307,6 +307,20 @@
   const AD_CYCLE = ['book', 'book', 'book', 'book', 'platform'];
 
   function _buildPool() {
+    // collections mode: pool is collections, no ads/writers, via CollectionData or DemoData
+    if (_mode === 'collections') {
+      var cols = (window.CollectionData && typeof CollectionData.getCollections === 'function')
+        ? null // async — handled in open() via async fetch, fallback sync below
+        : (window.DemoData && DemoData.COLLECTIONS ? DemoData.COLLECTIONS : []);
+      if (cols) return cols.map(function(col){ return Object.assign({ type:'collection' }, col); });
+      return [];
+    }
+    // continueReading mode: pool is CONTINUE_READING with progress
+    if (_mode === 'continueReading') {
+      var cr = (window.DemoData && DemoData.CONTINUE_READING ? DemoData.CONTINUE_READING : []);
+      if (cr && cr.length) return cr.map(function(it){ return Object.assign({ type:'continue' }, it); });
+      return [];
+    }
     let expanded = [];
     for (let i = 0; i < POOL_SIZE; i++) {
       const base = _stories[i % _stories.length];
@@ -393,7 +407,32 @@
     </div>`;
   }
 
+  function _collectionHTML(item) {
+    // covers comes from DemoData.COLLECTIONS.covers (array of 4 urls) — fallback to cover single
+    var covers = item.covers || item.coverGrid || (item.cover ? [item.cover] : []);
+    if (covers.length === 1 && item.covers && item.covers.length === 1) { /* keep single handling */ }
+    var covHtml = '';
+    if (!covers.length) covHtml = '<div class="dcc-cov empty" style="background:#f3f1f5;height:110px"></div>';
+    else if (covers.length === 1) covHtml = '<div class="dcc-cov single"><img src="'+_esc(covers[0])+'" loading="lazy" alt=""/></div>';
+    else covHtml = covers.slice(0,4).map(function(c){ return '<div class="dcc-cov"><img src="'+_esc(c)+'" loading="lazy" alt=""/></div>'; }).join('');
+    var priv = (item.privacy||'Public').toLowerCase();
+    var cnt = item.stories || item.storyList || item.count;
+    if (Array.isArray(cnt)) cnt = cnt.length;
+    return '<div class="dcc-card" data-bro-collection=\''+_esc(JSON.stringify(item))+'\' style="cursor:pointer">' +
+      '<div class="dcc-covers">'+covHtml+'</div>' +
+      '<div class="dcc-info"><div class="dcc-name">'+_esc(item.title||item.name||'')+'</div>' +
+      '<div class="dcc-meta"><span>'+_esc((cnt||0)+' stories')+'</span><span class="dcc-priv '+priv+'">'+_esc(item.privacy||'Public')+'</span></div></div></div>';
+  }
+
+  function _continueHTML(item){
+    return '<div class="bro-list-item" data-bro-story=\''+_esc(JSON.stringify({id:item.id,title:item.title}))+'\' style="cursor:pointer">' +
+      '<div class="bro-list-cover" style="position:relative"><img src="'+_esc(item.cover||item.img||'')+'" loading="lazy" alt=""/><div style="position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.2)"><div style="height:100%;background:#ff2d55;width:'+(item.pct||0)+'%"></div></div></div>' +
+      '<div class="bro-list-body"><div class="bro-list-title">'+_esc(item.title||'')+'</div><div class="bro-list-preview">'+_esc((item.ch||'')+' · '+(item.pct||0)+'%')+'</div></div></div>';
+  }
+
   function _listItemHTML(item) {
+    if (item.type === 'continue') return _continueHTML(item);
+    if (item.type === 'collection') return _collectionHTML(item);
     if (item.type === 'writers') return _writersRowHTML();
     if (item.type === 'platformAd') return _platformAdHTML(item);
 
@@ -496,6 +535,8 @@
     });
 
     _listEl.addEventListener('click', e => {
+      const collEl = e.target.closest('[data-bro-collection]');
+      if (collEl) { try { var col = JSON.parse(collEl.dataset.broCollection); location.href = 'collection.html?id=' + encodeURIComponent(col.id); } catch (_) {} return; }
       const storyEl = e.target.closest('[data-bro-story]');
       if (storyEl) { try { _hooks.onOpenStory(JSON.parse(storyEl.dataset.broStory)); } catch (_) {} return; }
       const adEl = e.target.closest('[data-bro-ad]');
@@ -537,10 +578,25 @@
   /* ═══════════════════════ PAGINATION / INFINITE SCROLL ═══════════════════════ */
   function _reset() {
     _page = 1; _loading = false;
-    _listEl.className = 'bro-list';
+    _listEl.className = _mode === 'collections' ? 'dcc-grid' : 'bro-list';
+    // inject collection grid CSS once when needed
+    if (_mode === 'collections' && !document.getElementById('dcc-style')) {
+      var s = document.createElement('style'); s.id='dcc-style';
+      s.textContent='.dcc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}.dcc-card{background:#fff;border:1px solid #ebebed;border-radius:14px;overflow:hidden;cursor:pointer}.dcc-covers{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;height:110px;padding:8px 8px 0}.dcc-cov{border-radius:6px;overflow:hidden;background:#f3f1f5}.dcc-cov img{width:100%;height:100%;object-fit:cover}.dcc-cov.single{grid-column:1/-1;grid-row:1/-1}.dcc-cov.empty{background:#f3f1f5}.dcc-info{padding:10px 12px 12px}.dcc-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dcc-meta{font-size:10px;color:#8e8e93;display:flex;gap:6px}.dcc-priv{font-size:8px;font-weight:700;padding:2px 6px;border-radius:6px;text-transform:uppercase}.dcc-priv.public{background:rgba(52,211,153,.1);color:#0d9668}.dcc-priv.private{background:rgba(255,0,80,.08);color:#ff2d55}';
+      document.head.appendChild(s);
+    }
     _listEl.innerHTML = '';
     _emptyEl.classList.remove('show');
     _loaderEl.classList.add('hidden');
+    // collections is async via CollectionData — fetch then continue
+    if (_mode === 'collections' && window.CollectionData && typeof CollectionData.getCollections === 'function') {
+      CollectionData.getCollections().then(function(cols){
+        _pool = (cols||[]).map(function(c){ return Object.assign({type:'collection'}, c); });
+        _hasMore = _pool.length > 0;
+        _loadNext();
+      });
+      _pool = []; _hasMore = false; return;
+    }
     _pool = _buildPool();
     _hasMore = _pool.length > 0;
     _loadNext();
@@ -584,7 +640,8 @@
     opts = opts || {};
     _build();
 
-    _mode = opts.mode === 'genre' ? 'genre' : (opts.mode === 'section' ? 'section' : (opts.filter ? 'genre' : 'section'));
+    if (opts.mode === 'collections' || opts.mode === 'continueReading') _mode = opts.mode;
+    else _mode = opts.mode === 'genre' ? 'genre' : (opts.mode === 'section' ? 'section' : (opts.filter ? 'genre' : 'section'));
     _title = opts.title || (_mode === 'genre' ? 'Browse Stories' : 'Browse');
     _filter = _mode === 'genre' ? (opts.filter || 'all') : 'all';
 

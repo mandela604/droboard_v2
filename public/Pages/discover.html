@@ -111,6 +111,7 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 @media(min-width:421px){.phone{border-radius:0}}
 @media print{body *{display:none !important}}
 </style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
 
@@ -142,10 +143,10 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
     <div class="hero-wrap"><div class="hero"><div class="hero-img" id="heroImg"></div><div class="hero-scrim"></div><div class="hero-body"><div class="hero-badge"><i class="fas fa-fire" style="font-size:9px"></i> TRENDING</div><div class="hero-title" id="heroTitle"></div><div class="hero-author" id="heroAuthor"></div><div class="hero-tags" id="heroTags"></div></div></div></div>
     <div class="hero-dots" id="heroDots"></div>
 
-    <section class="section"><div class="sec-head"><h2 class="sec-title">Continue Reading</h2><span class="view-all">View All ›</span></div><div class="h-row" id="continueRow"></div></section>
+    <section class="section"><div class="sec-head"><h2 class="sec-title">Continue Reading</h2><button class="view-all" data-browse-trigger data-browse-mode="continueReading" data-browse-title="Continue Reading">View All ›</button></div><div class="h-row" id="continueRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Top Romance</h2><button class="view-all" data-browse-trigger data-browse-title="Top Romance" data-browse-filter="romance" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="romanceRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Trending Today</h2><button class="view-all" data-browse-trigger data-browse-title="Trending Today" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="trendingRow"></div></section>
-    <section class="section"><div class="sec-head"><h2 class="sec-title">Collections</h2><span class="view-all">View All ›</span></div><div class="coll-row" id="collRow"></div></section>
+    <section class="section"><div class="sec-head"><h2 class="sec-title">Collections</h2><button class="view-all" data-browse-trigger data-browse-mode="collections" data-browse-title="All Collections">View All ›</button></div><div class="coll-row" id="collRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">New Releases</h2><button class="view-all" data-browse-trigger data-browse-title="New Releases" data-browse-sort="new">View All ›</button></div><div class="h-row" id="newRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Editor's Picks</h2><button class="view-all" data-browse-trigger data-browse-title="Editor's Picks" data-browse-sort="rating">View All ›</button></div><div class="h-row" id="editorRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Popular Genres</h2></div><div class="genre-grid" id="genreGrid"></div></section>
@@ -160,6 +161,7 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 
     <script src="../data/central-demo-data.js"></script>
     <script src="../marketing/shared/marketing-data.js"></script>
+    <script src="../services/collection-service.js"></script>
     <script src="../services/ad-service.js"></script>
     <script src="../services/search-service.js"></script>
     <script src="../services/discover-service.js"></script>

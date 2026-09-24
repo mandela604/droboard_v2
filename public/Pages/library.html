@@ -11,6 +11,7 @@
      into a search-opening control, bottom nav builds + appends itself to <body>.
      See component/search-overlay.js and component/bottom-nav.js. -->
 <script src="../component/search-overlay.js"></script>
+<script src="../component/browse-overlay.js"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../services/notification-service.js"></script>
 <style>
@@ -190,13 +191,26 @@
   }
   .gcard-meta{font-size:9.5px;color:var(--gray-400);font-weight:500;}
 
-  /* ===== PAGINATION (Your Library section) ===== */
+  /* ===== PAGINATION ===== */
   .pagination{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 16px 18px;flex-wrap:wrap;}
   .page-btn{min-width:32px;height:32px;padding:0 8px;border-radius:9px;background:var(--divider);
     color:var(--ink-2);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;}
   .page-btn.active{background:var(--pink);color:#fff;}
   .page-btn.nav{color:var(--gray-600);}
   .page-btn.disabled{opacity:.35;pointer-events:none;}
+
+  /* ===== HISTORY CLEAR MODAL ===== */
+  .lb-modal-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
+  .lb-modal-overlay.open{display:flex}
+  .lb-modal{width:90%;max-width:360px;background:var(--white);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  .lb-modal-icon{width:52px;height:52px;border-radius:50%;background:var(--pink-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--pink);font-size:20px}
+  .lb-modal-title{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}
+  .lb-modal-sub{font-size:12.5px;color:var(--gray-400);line-height:1.5;margin-bottom:18px}
+  .lb-modal-actions{display:flex;gap:10px}
+  .lb-modal-btn{flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+  .lb-modal-btn:active{transform:scale(.97)}
+  .lb-modal-btn.cancel{background:var(--divider);color:var(--ink-2)}
+  .lb-modal-btn.confirm{background:var(--pink);color:#fff}
 
   /* ===== EMPTY STATE ===== */
   .empty{padding:48px 24px;text-align:center;}
@@ -219,6 +233,7 @@
     .phone{border-radius:0;}
   }
 </style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
 <div class="phone">
@@ -259,9 +274,10 @@
       <div class="section">
         <div class="sec-head">
           <h2 class="sec-title">Continue Reading</h2>
-          <span class="view-all">View All ›</span>
+          <span class="view-all" id="cont-viewall" style="cursor:pointer">View All ›</span>
         </div>
         <div class="h-row" id="continue-row"></div>
+        <div class="pagination" id="cont-pagination"></div>
       </div>
 
       <div class="section">
@@ -306,7 +322,7 @@
         <div class="sec-head">
           <h2 class="sec-title">Recently Read</h2>
           <div style="display:flex;align-items:center;gap:10px;">
-            <span class="view-all">Clear ›</span>
+            <span class="view-all" id="history-clear" style="cursor:pointer">Clear ›</span>
             <div class="view-toggle" id="history-toggle">
               <button class="view-btn" data-view="list" data-target="history" title="List view"></button>
               <button class="view-btn active" data-view="grid" data-target="history" title="Grid view"></button>
@@ -332,6 +348,19 @@
   <!-- Bottom nav is no longer hand-rolled here — component/bottom-nav.js
        builds it and appends it to <body> automatically, with "Library"
        auto-detected as the active tab from this page's filename. -->
+</div>
+
+<!-- History clear confirmation -->
+<div class="lb-modal-overlay" id="lb-clear-modal">
+  <div class="lb-modal">
+    <div class="lb-modal-icon"><i class="fas fa-trash-can"></i></div>
+    <div class="lb-modal-title" id="lb-clear-title">Clear history?</div>
+    <div class="lb-modal-sub" id="lb-clear-sub">This can't be undone.</div>
+    <div class="lb-modal-actions">
+      <button class="lb-modal-btn cancel" id="lb-clear-cancel">Cancel</button>
+      <button class="lb-modal-btn confirm" id="lb-clear-confirm">Clear</button>
+    </div>
+  </div>
 </div>
 
 <script src="../data/central-demo-data.js"></script>

@@ -1,15 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   HOME PAGE SERVICE
-   All JS logic for index.html. Reads demo data from DemoData.
+   HOME PAGE SERVICE — call-and-render only for Pages/index.html
+   Pages/index.html owns markup only. This file owns fetch + render.
+   Demo data lives in data/central-demo-data.js (via HomeData).
+   Ads render via component/ad-card.js + services/ad-service.js.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-
-  var seed = window.DemoData;
-  if (!seed) { console.error('[Home] DemoData not loaded'); return; }
-
-  var STATUSES = seed.STATUSES;
-  var HERO_STORIES = seed.HERO_STORIES;
 
   function toast(m, d) {
     d = d || 2200;
@@ -41,7 +37,8 @@
   }
 
   /* ── Status Row ── */
-  function renderStatusRow() {
+  function renderStatusRow(statuses) {
+    var STATUSES = statuses || [];
     document.getElementById('statusRow').innerHTML = STATUSES.map(function (s) {
       if (s.isYou) return '<div class="s-item" onclick="toast(\'✏️ Add to your story\')">' +
         '<div class="s-ring ring-none" style="position:relative">' +
@@ -62,51 +59,52 @@
       el.addEventListener('click', function () {
         var wid = el.dataset.statusId;
         if (typeof window.openStatusViewer === 'function') {
-          openStatusViewer(STATUSES.filter(function (s) { return !s.isYou; }), wid);
+          openStatusViewer(statuses.filter(function (s) { return !s.isYou; }), wid);
         } else {
           toast('👁 Viewing status…');
         }
       });
     });
   }
-
   window.onStatusViewerChange = function (wid, ring) {
-    var w = STATUSES.find(function (s) { return s.id === wid; });
+    // re-render on viewer change — keep statuses in closure via DOM re-read
+    var cur = window.__homeStatuses || [];
+    var w = cur.find(function (s) { return s.id === wid; });
     if (w) w.ring = ring;
-    renderStatusRow();
+    renderStatusRow(cur);
   };
 
-  /* ── Hero Slides ── */
+  /* ── Hero slides — stories + FULLSCREEN swipe ads via ad-card ── */
   function heroSlideHTML(s) {
+    // ad-droboard → FULLSCREEN swipe slide (gradient + icon), not small banner card
     if (s.type === 'ad-droboard') {
-      return '<div class="hero-slide ad-drobrand-slide" onclick="toast(\'🌟 Opening Droboard Premium…\')">' +
-        '<div class="ad-drobrand-logo">Dro<span style="color:var(--acc)">●</span></div>' +
+      if (window.AdService) AdService.track(s.id || s.headline, 'impression');
+      // still use ad-card helper for esc consistency if needed, but layout is fullscreen hero-slide
+      var esc = (window.AdCard && AdCard.esc) ? AdCard.esc : function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+      return '<div class="hero-slide ad-drobrand-slide" onclick="if(window.AdService)AdService.track(\''+esc(s.id||'ad-droboard')+'\',\'click\');toast(\'🌟 Opening Droboard Premium…\')">' +
         '<div class="ad-drobrand-glow1"></div><div class="ad-drobrand-glow2"></div>' +
         '<div class="hero-badges-top"><span class="badge-ad">Ad · Droboard</span><span></span></div>' +
         '<div class="hero-content" style="display:flex;flex-direction:column;align-items:flex-start">' +
-        '<div class="ad-drobrand-icon"><i class="fas ' + s.icon + '"></i></div>' +
-        '<div class="hero-title" style="font-size:25px">' + s.headline + '</div>' +
-        '<div class="hero-synopsis" style="-webkit-line-clamp:3">' + s.sub + '</div>' +
-        '<div class="hero-cta-row">' +
-        '<button class="btn-start" onclick="event.stopPropagation();toast(\'🌟 Here we go!\')"><i class="fas fa-arrow-right" style="font-size:12px"></i> ' + s.cta + '</button>' +
-        '</div>' +
-        '</div>' +
-        '</div>';
+        '<div class="ad-drobrand-icon"><i class="fas ' + (s.icon||'fa-crown') + '"></i></div>' +
+        '<div class="hero-title" style="font-size:25px">' + esc(s.headline) + '</div>' +
+        '<div class="hero-synopsis" style="-webkit-line-clamp:3">' + esc(s.sub) + '</div>' +
+        '<div class="hero-cta-row"><button class="btn-start" onclick="event.stopPropagation();if(window.AdService)AdService.track(\''+esc(s.id||'ad-droboard')+'\',\'click\');toast(\'🌟 Here we go!\')"><i class="fas fa-arrow-right" style="font-size:12px"></i> ' + esc(s.cta) + '</button></div>' +
+        '</div></div>';
     }
+    // ad-story → FULLSCREEN swipe slide (cover + scrim + badges), book ad rendered fullscreen, not small dac-story-promo card
     if (s.type === 'ad-story') {
-      return '<div class="hero-slide ad-frame" style="background-image:url(\'' + s.cover + '\')" onclick="toast(\'📖 Opening sponsored story…\')">' +
+      if (window.AdService) AdService.track(s.id || s.brand, 'impression');
+      var esc2 = (window.AdCard && AdCard.esc) ? AdCard.esc : function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+      var href = (window.AdCard && AdCard.storyHref) ? AdCard.storyHref({id:s.brand,title:s.brand}) : 'bridge.html?id='+encodeURIComponent(s.brand||'');
+      return '<div class="hero-slide ad-frame" style="background-image:url(\'' + esc2(s.cover) + '\')" onclick="if(window.AdService)AdService.track(\''+esc2(s.id||s.brand)+'\',\'click\');location.href=\''+href+'\'">' +
         '<div class="hero-scrim"></div>' +
-        '<div class="hero-badges-top"><span class="badge-ad">Ad</span><span class="badge-genre">' + s.genre + '</span></div>' +
+        '<div class="hero-badges-top"><span class="badge-ad">Ad</span><span class="badge-genre">' + esc2(s.genre) + '</span></div>' +
         '<div class="hero-content">' +
-        '<div class="hero-title">' + s.brand + '</div>' +
-        '<div class="hero-author-row"><span class="hero-author-name">By ' + s.author + '</span></div>' +
-        '<div class="hero-synopsis">' + s.sub + '</div>' +
-        '<div class="hero-cta-row">' +
-        '<button class="btn-start" onclick="event.stopPropagation();toast(\'📖 Opening story…\')"><i class="fas fa-book-open" style="font-size:12px"></i> Read Now</button>' +
-        '<button class="btn-icon-only" onclick=\'handleSaveClick(this,' + JSON.stringify({ id: s.brand, title: s.brand, cover: s.cover, author: s.author }) + ')\'><i class="far fa-bookmark"></i></button>' +
-        '</div>' +
-        '</div>' +
-        '</div>';
+        '<div class="hero-title">' + esc2(s.brand) + '</div>' +
+        '<div class="hero-author-row"><span class="hero-author-name">By ' + esc2(s.author) + '</span></div>' +
+        '<div class="hero-synopsis">' + esc2(s.sub) + '</div>' +
+        '<div class="hero-cta-row"><button class="btn-start" onclick="event.stopPropagation();if(window.AdService)AdService.track(\''+esc2(s.id||s.brand)+'\',\'click\');location.href=\''+href+'\'"><i class="fas fa-book-open" style="font-size:12px"></i> Read Now</button></div>' +
+        '</div></div>';
     }
     var saved = isItemSaved(s.id);
     return '<div class="hero-slide" style="background-image:url(\'' + s.cover + '\')" onclick="toast(\'📖 Opening chapter…\')">' +
@@ -132,16 +130,18 @@
       '</div>';
   }
 
-  function renderHero() {
+  function renderHero(heroStories) {
     var dotsEl = document.getElementById('swipeDots');
-    dotsEl.innerHTML = HERO_STORIES.map(function (_, i) {
+    dotsEl.innerHTML = heroStories.map(function (_, i) {
       return '<div class="swipe-dot' + (i === 0 ? ' on' : '') + '"></div>';
     }).join('');
-    document.getElementById('heroSlides').innerHTML = HERO_STORIES.map(heroSlideHTML).join('');
+    document.getElementById('heroSlides').innerHTML = heroStories.map(heroSlideHTML).join('');
+    // impressions tracked inside heroSlideHTML per ad slide via AdService.track
   }
 
   function bindHeroScroll() {
     var heroScroll = document.getElementById('heroScroll');
+    if (!heroScroll) return;
     var heroTicking = false;
     heroScroll.addEventListener('scroll', function () {
       if (heroTicking) return;
@@ -156,15 +156,23 @@
     }, { passive: true });
   }
 
-  /* ── Init ── */
-  function init() {
-    if (window.DroboardNav) DroboardNav.configure({ active: 'home' });
-    renderStatusRow();
-    renderHero();
+  /* ── Public init — call-and-render only ── */
+  async function init() {
+    if (window.DroboardNav) DroboardNav.configure({ active: 'home', localTheme: 'dark' });
+    var data = await HomeData.getHomeData();
+    window.__homeStatuses = data.statuses || [];
+    window.__homeHero = data.heroStories || [];
+    renderStatusRow(window.__homeStatuses);
+    renderHero(window.__homeHero);
     bindHeroScroll();
+    // badge count from service if needed
+    var nc = data.notifCount;
+    var el = document.querySelector('.notif-count');
+    if (el && typeof nc === 'number') el.textContent = nc;
   }
 
-  if (document.body) init();
-  else document.addEventListener('DOMContentLoaded', init);
-
+  window.HomePageService = { init, renderStatusRow, renderHero, heroSlideHTML };
+  // auto-init when DOM ready (Pages/index.html just includes this file)
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();

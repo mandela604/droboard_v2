@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
@@ -9,6 +9,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--success:#22c55e;--success-soft:#e9fbf0;--blue:#3b82f6;--blue-soft:#e7f0fe;--purple:#9333ea;--purple-soft:#f3e8ff;--danger:#ef4444;--danger-soft:#fdeaea;--warning:#f59e0b;--warning-soft:#fef3e2}
+[data-theme="dark"]{--bg:#000;--card:#0e0c14;--text:#e8e0f0;--muted:#6b6580;--border:rgba(255,255,255,.08)}
+[data-theme="dark"] html,[data-theme="dark"] body{background:var(--bg)}
+[data-theme="dark"] .phone{background:var(--card)}
 html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif}
 img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;border:none;background:none}a{color:inherit;text-decoration:none}
 ::-webkit-scrollbar{display:none}
@@ -100,6 +103,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 
 @media (min-width:600px){.content{max-width:480px;margin:0 auto;padding:20px}.topbar{max-width:480px;margin:0 auto}}
 </style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
 
