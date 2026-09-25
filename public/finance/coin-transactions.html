@@ -211,6 +211,15 @@ body{font-family:'Inter',system-ui,sans-serif}
 
     <div class="pricing-section">
       <div class="pricing-section-head">
+        <h3><i class="fas fa-box-open" style="color:var(--accent)"></i> Bundles</h3>
+        <button class="mini-btn primary" id="addBundleBtn"><i class="fas fa-plus"></i> Add Bundle</button>
+      </div>
+      <div class="pkg-grid" id="bundleList"></div>
+      <div class="pagination" id="bundlePagination"></div>
+    </div>
+
+    <div class="pricing-section">
+      <div class="pricing-section-head">
         <h3><i class="fas fa-gift" style="color:var(--purple)"></i> Gift Items</h3>
         <button class="mini-btn primary" id="addGiftBtn"><i class="fas fa-plus"></i> Add Gift</button>
       </div>
@@ -225,6 +234,15 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
       <div class="pkg-grid" id="subList"></div>
       <div class="pagination" id="subPagination"></div>
+    </div>
+
+    <div class="pricing-section">
+      <div class="pricing-section-head">
+        <h3><i class="fas fa-film" style="color:var(--accent)"></i> Earn Coins (Watch & Earn)</h3>
+        <button class="mini-btn primary" id="addEarnBtn"><i class="fas fa-plus"></i> Add Earn Reward</button>
+      </div>
+      <div class="pkg-grid" id="earnList"></div>
+      <div class="pagination" id="earnPagination"></div>
     </div>
   </div>
 
@@ -256,8 +274,10 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label>Type</label>
         <div class="radio-row" id="kindRow">
           <label class="radio-opt active" data-kind="package"><input type="radio" name="kindOpt" value="package" checked/> <i class="fas fa-coins"></i> Coin Package</label>
+          <label class="radio-opt" data-kind="bundle"><input type="radio" name="kindOpt" value="bundle"/> <i class="fas fa-box-open"></i> Bundle</label>
           <label class="radio-opt" data-kind="gift"><input type="radio" name="kindOpt" value="gift"/> <i class="fas fa-gift"></i> Gift Item</label>
           <label class="radio-opt" data-kind="subscription"><input type="radio" name="kindOpt" value="subscription"/> <i class="fas fa-star"></i> Subscription</label>
+          <label class="radio-opt" data-kind="earn"><input type="radio" name="kindOpt" value="earn"/> <i class="fas fa-film"></i> Earn Reward</label>
         </div>
       </div>
 
@@ -273,6 +293,19 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="field-group"><label>Price (USD)</label><input type="number" id="pkgPrice" min="0.01" step="0.01" placeholder="e.g. 49.99"/></div>
         </div>
         <div class="field-group"><label>Bonus % (optional)</label><input type="number" id="pkgBonus" min="0" max="100" placeholder="e.g. 5"/></div>
+      </div>
+
+      <!-- Bundle fields -->
+      <div id="bundleFields" style="display:none">
+        <div class="field-row-2">
+          <div class="field-group"><label>Coins</label><input type="number" id="bundleCoins" min="1" placeholder="e.g. 500"/></div>
+          <div class="field-group"><label>Bonus coins</label><input type="number" id="bundleBonus" min="0" placeholder="e.g. 50"/></div>
+        </div>
+        <div class="field-row-2">
+          <div class="field-group"><label>Price (e.g. $3.99)</label><input type="text" id="bundlePrice" placeholder="$3.99"/></div>
+          <div class="field-group"><label>Icon (fa-*)</label><input type="text" id="bundleIcon" placeholder="fa-seedling"/></div>
+        </div>
+        <div class="field-group"><label>Color</label><input type="color" id="bundleColor" value="#22c55e"/></div>
       </div>
 
       <!-- Gift fields -->
@@ -292,6 +325,36 @@ body{font-family:'Inter',system-ui,sans-serif}
         <div class="field-row-2">
           <div class="field-group"><label>Coins per day</label><input type="number" id="subCoinsPerDay" min="1" placeholder="e.g. 150"/></div>
           <div class="field-group"><label>Bonus % (optional)</label><input type="number" id="subBonus" min="0" max="100" placeholder="e.g. 10"/></div>
+        </div>
+      </div>
+
+      <!-- Earn fields -->
+      <div id="earnFields" style="display:none">
+        <div class="field-group"><label>Action label</label><input type="text" id="earnAction" placeholder="e.g. Watch Ad"/></div>
+        <div class="field-group"><label>Type</label><select id="earnType"><option value="watch_ad">Watch Ad</option><option value="checkin">Daily Check-in</option><option value="rate">Rate Story</option><option value="share">Share</option><option value="blog_read">Blog Read (3 pages)</option><option value="youtube_sub">YouTube Subscribe</option><option value="youtube_watch">YouTube Watch Video</option></select></div>
+        <div class="field-row-2">
+          <div class="field-group"><label>Coins</label><input type="number" id="earnCoins" min="1" placeholder="e.g. 10"/></div>
+          <div class="field-group"><label>Cooldown</label><input type="text" id="earnCooldown" placeholder="e.g. 5 min"/></div>
+        </div>
+        <div class="field-row-2">
+          <div class="field-group"><label>Icon (fa-*)</label><input type="text" id="earnIcon" placeholder="fa-film"/></div>
+          <div class="field-group"><label>Available</label><select id="earnAvailable"><option value="true">Yes</option><option value="false">No</option></select></div>
+        </div>
+        <div id="earnExtraBlog" style="display:none">
+          <div class="field-group"><label>Blog URL (where user lands) <span style="text-transform:none;color:var(--text-faint);font-weight:500">e.g. Pages/blog.html?cat=tech or https://yourblog.com</span></label><input type="text" id="earnBlogUrl" placeholder="Pages/blog.html?cat=tech"/></div>
+          <div class="field-row-2">
+            <div class="field-group"><label>Pages required</label><input type="number" id="earnPages" min="1" placeholder="3"/></div>
+            <div class="field-group"><label>Blog category</label><input type="text" id="earnBlogCat" placeholder="tech"/></div>
+          </div>
+        </div>
+        <div id="earnExtraYTSub" style="display:none">
+          <div class="field-group"><label>YouTube Channel ID / URL</label><input type="text" id="earnChannelId" placeholder="UCxxxx or https://youtube.com/@droboard"/></div>
+        </div>
+        <div id="earnExtraYTWatch" style="display:none">
+          <div class="field-row-2">
+            <div class="field-group"><label>YouTube Video ID / URL</label><input type="text" id="earnVideoId" placeholder="dQw4w9WgXcQ or full URL"/></div>
+            <div class="field-group"><label>Min watch (sec)</label><input type="number" id="earnWatchSec" min="5" placeholder="60"/></div>
+          </div>
         </div>
       </div>
 

@@ -54,6 +54,7 @@
     { key: 'authors-content',      label: 'Authors & Content',      icon: 'fa-book',                href: 'authors-content.html',     section: 'Content' },
     { key: 'all-books',             label: 'All Books',               icon: 'fa-book-open',            href: 'all-books.html',            section: 'Content' },
     { key: 'all-posts',             label: 'All Posts',               icon: 'fa-rss',                  href: 'all-posts.html',            section: 'Content' },
+    { key: 'awards',                label: 'Awards',                  icon: 'fa-award',                href: 'awards.html',               section: 'Content' },
 
     { key: 'platform-analytics',   label: 'Platform Analytics',     icon: 'fa-chart-line',           href: 'platform-analytics.html',  section: 'Platform' },
     { key: 'platform-settings',    label: 'Platform Settings',      icon: 'fa-gear',                 href: 'platform-settings.html',   section: 'Platform' },

@@ -145,9 +145,21 @@
     });
   }
   function renderAchievements(p) {
-    document.getElementById('achRow').innerHTML = (p.achievements || []).map(a =>
-      `<div class="ach-chip ${a.cls || a.color}"><i class="fas ${a.icon || 'fa-star'}"></i> ${a.label}</div>`
-    ).join('');
+    var awarded = [];
+    if(window.AwardsEngine && typeof AwardsEngine.grantedFor === 'function'){
+      try{ awarded = AwardsEngine.grantedFor(p.handle || p.username) || []; }catch(e){}
+    }
+    var list = awarded.length ? awarded.map(function(a){
+      return { label:a.name, icon:a.icon, color:a.color || a.cls };
+    }) : (p.achievements || []);
+    document.getElementById('achRow').innerHTML = list.map(function(a){
+      var c = a.color || a.cls || '';
+      if(c && c.indexOf('#')===0){
+        var soft='rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+parseInt(c.slice(5,7),16)+',.12)';
+        return '<div class="ach-chip" style="background:'+soft+';color:'+c+';border-color:'+c+'"><i class="fas '+(a.icon||'fa-star')+'"></i> '+a.label+'</div>';
+      }
+      return '<div class="ach-chip '+(c||'gold')+'"><i class="fas '+(a.icon||'fa-star')+'"></i> '+a.label+'</div>';
+    }).join('');
   }
   function renderUpgradeStrip(p) {
     document.getElementById('upgradeStrip').style.display = (IS_OWNER && !p.isWriter) ? 'flex' : 'none';

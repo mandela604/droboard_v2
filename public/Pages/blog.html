@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>DroBoard — Blog</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{--pink:#FF2D6A;--ink:#17151B;--gray-400:#9A96A3;--gray-600:#635F6E;--line:#EFEDF2;--divider:#F3F1F5;--white:#fff;--font-display:'Playfair Display',serif;--font-body:'DM Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font-body);background:var(--divider);display:flex;justify-content:center;padding-bottom:80px}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--white);box-shadow:0 0 50px rgba(0,0,0,.08);display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.progress-card{background:linear-gradient(135deg,#FF2D6A,#D6165A);border-radius:16px;padding:16px;color:#fff;margin:16px}
+.progress-bar{height:6px;background:rgba(255,255,255,.3);border-radius:10px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:#fff;border-radius:10px;transition:.3s}
+.post-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 16px 12px;cursor:pointer;transition:.15s}
+.post-card:active{transform:scale(.98)}
+.post-card.read{border-color:var(--pink);background:#FFF0F5}
+.post-title{font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.post-excerpt{font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:8px}
+.post-meta{font-size:10px;color:var(--gray-400);font-weight:600;display:flex;align-items:center;gap:8px}
+.ad-box{background:var(--divider);border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;font-size:11px;color:var(--gray-400);font-weight:700;margin:0 16px 12px}
+.ad-box span{background:var(--pink);color:#fff;padding:2px 6px;border-radius:6px;font-size:9px;margin-right:6px}
+</style>
+<script src="../services/store-service.js"></script>
+</head>
+<body>
+<div class="phone">
+  <div class="topbar">
+    <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div style="font-family:var(--font-display);font-weight:800">Blog & Earn</div>
+    <div class="icon-btn" onclick="location.href='store.html'"><i class="fas fa-coins"></i></div>
+  </div>
+
+  <div style="display:flex;gap:8px;padding:12px 16px">
+    <button class="niche-tab active" data-niche="tech" onclick="switchNiche('tech')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--pink);background:var(--pink);color:#fff;font-weight:800;font-size:12px;cursor:pointer"><i class="fas fa-microchip"></i> Tech</button>
+    <button class="niche-tab" data-niche="health" onclick="switchNiche('health')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--white);color:var(--ink);font-weight:800;font-size:12px;cursor:pointer"><i class="fas fa-heart-pulse"></i> Health</button>
+  </div>
+
+  <div class="progress-card" id="progressCard"></div>
+
+  <div class="ad-box"><span>Ad</span> Sponsored — Ads here earn for you (ca-pub-YOUR_ID) — 1k impressions = RPM</div>
+
+  <div id="blogList"></div>
+
+  <div class="ad-box"><span>Ad</span> More from our sponsors — thank you for reading</div>
+</div>
+
+<script>
+const POSTS=[
+  {id:'t1', cat:'tech', title:'Best budget smartphones 2026 — full review', excerpt:'We tested 12 phones under $300 — here is the winner for battery and camera.', readTime:'4 min'},
+  {id:'t2', cat:'tech', title:'AI side hustles that actually pay', excerpt:'5 tools you can use this week to earn $500/mo — step by step.', readTime:'3 min'},
+  {id:'t3', cat:'tech', title:'Laptop buying guide: students vs creators', excerpt:'Avoid overpaying — specs that matter for 2026.', readTime:'3 min'},
+  {id:'t4', cat:'tech', title:'How to secure your phone in 2 minutes', excerpt:'Simple settings that block 90% of scams.', readTime:'2 min'},
+  {id:'t5', cat:'tech', title:'Starlink vs fiber in Nigeria — real speed test', excerpt:'Latency, cost and uptime compared.', readTime:'3 min'},
+  {id:'h1', cat:'health', title:'5 morning habits that lower blood pressure', excerpt:'Doctor-backed routine — no drugs needed.', readTime:'3 min'},
+  {id:'h2', cat:'health', title:'High-protein meals on a budget', excerpt:'Weekly plan under ₦15k that keeps you full.', readTime:'4 min'},
+  {id:'h3', cat:'health', title:'Sleep better tonight — 7 fixes', excerpt:'Why you wake at 3am and how to stop.', readTime:'2 min'},
+  {id:'h4', cat:'health', title:'Gym vs home workout — what burns more?', excerpt:'Calorie data from 500 users.', readTime:'3 min'},
+  {id:'h5', cat:'health', title:'Supplements that waste your money', excerpt:'What to skip and what actually works.', readTime:'2 min'},
+];
+
+let activeNiche='tech';
+const qs=new URLSearchParams(location.search);
+if(qs.get('cat')) activeNiche=qs.get('cat')==='health'?'health':'tech';
+
+const PAGES_REQUIRED=3;
+function keyFor(cat){ return 'dro_blog_read_ids_'+cat; }
+function getReadIds(cat){ cat=cat||activeNiche; try{ return JSON.parse(localStorage.getItem(keyFor(cat))||'[]'); }catch(e){ return []; } }
+function setReadIds(a,cat){ cat=cat||activeNiche; localStorage.setItem(keyFor(cat), JSON.stringify(a)); }
+function getProgress(cat){ return getReadIds(cat).length; }
+
+function switchNiche(cat){
+  activeNiche=cat;
+  document.querySelectorAll('.niche-tab').forEach(b=>{
+    const on=b.dataset.niche===cat;
+    b.style.background=on?'var(--pink)':'var(--white)';
+    b.style.color=on?'#fff':'var(--ink)';
+    b.style.borderColor=on?'var(--pink)':'var(--line)';
+    b.classList.toggle('active', on);
+  });
+  renderProgress(); renderList();
+}
+
+function renderProgress(){
+  const prog=getProgress();
+  const pct=Math.min(100, prog/PAGES_REQUIRED*100);
+  const done=prog>=PAGES_REQUIRED;
+  const label=activeNiche==='tech'?'Tech Niche — High CPM':'Health Niche — High CPM';
+  document.getElementById('progressCard').innerHTML = `
+    <div style="font-size:11px;font-weight:800;opacity:.8;letter-spacing:.05em">${label.toUpperCase()} — YOUR PROGRESS</div>
+    <div style="font-size:18px;font-weight:800;margin-top:4px">${prog} / ${PAGES_REQUIRED} pages read</div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div style="font-size:11px;margin-top:8px;opacity:.9">${done ? '🎉 Earn ready! Tap Claim to get 20 coins — ads paid for this niche' : 'Read '+ (PAGES_REQUIRED-prog) +' more '+label+' page(s) to earn 20 coins — each page = ad impression for you'}</div>
+    ${done ? '<button onclick="claim()" style="margin-top:10px;background:#fff;color:var(--pink);border:none;padding:8px 14px;border-radius:10px;font-weight:800;cursor:pointer;width:100%">Claim 20 Coins</button>' : ''}
+  `;
+}
+function claim(){
+  if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(20); }
+  localStorage.setItem(keyFor(activeNiche), JSON.stringify([]));
+  alert('✅ +20 coins for '+activeNiche+' niche! Ad impressions counted. Check Store balance.');
+  renderProgress(); renderList();
+}
+
+function renderList(){
+  const read=getReadIds();
+  const filtered=POSTS.filter(p=>p.cat===activeNiche);
+  document.getElementById('blogList').innerHTML = filtered.map(p=>{
+    const isRead=read.includes(p.id);
+    return `<div class="post-card ${isRead?'read':''}" onclick="openPost('${p.id}')">
+      <div class="post-title">${isRead?'✅ ':''}${p.title}</div>
+      <div class="post-excerpt">${p.excerpt}</div>
+      <div class="post-meta"><span><i class="fas fa-clock"></i> ${p.readTime}</span><span>·</span><span>${isRead?'Read':'Tap to read & view ad'}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function openPost(id){
+  let read=getReadIds();
+  if(!read.includes(id)){
+    read.push(id);
+    setReadIds(read);
+  }
+  renderProgress(); renderList();
+  setTimeout(()=> alert('📖 You read: '+ POSTS.find(x=>x.id===id).title + '\n\nAd shown — impression counted for you! Progress: '+getProgress()+'/'+PAGES_REQUIRED), 100);
+}
+
+switchNiche(activeNiche);
+</script>
+</body>
+</html>

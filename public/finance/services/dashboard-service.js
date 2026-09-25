@@ -19,7 +19,7 @@ function greetByHour(){
 }
 
 async function init(){
-  document.getElementById('greetTitle').textContent = greetByHour();
+  const gt=document.getElementById('greetTitle'); if(gt) gt.textContent = greetByHour();
   DATA = await FinanceData.getDashboard();
   renderAll();
 }
@@ -35,7 +35,8 @@ function renderAll(){
 }
 
 function renderWelcomeStats(){
-  document.getElementById('welcomeStats').innerHTML = `
+  const el=document.getElementById('welcomeStats'); if(!el) return;
+  el.innerHTML = `
     <div class="welcome-stat"><b>${DATA.pendingPayoutsTotal}</b><span>Pending Payouts</span></div>
     <div class="welcome-stat"><b>${DATA.totalVolumeMonth}</b><span>Total Volume (Month)</span></div>
     <div class="welcome-stat"><b>${DATA.coinBalance}</b><span>Coin Balance</span></div>
@@ -43,13 +44,14 @@ function renderWelcomeStats(){
 }
 
 function renderStatCards(){
+  const el=document.getElementById('statCards'); if(!el) return;
   const stats = [
     { n:DATA.pendingPayoutsCount, l:'Pending Payouts', ico:'fa-building-columns', cls:'blue' },
     { n:DATA.totalVolumeMonth, l:'Total Volume (Month)', ico:'fa-chart-line', cls:'accent' },
     { n:DATA.coinBalance, l:'Coin Balance', ico:'fa-coins', cls:'amber' },
     { n:DATA.openDisputes, l:'Open Disputes', ico:'fa-scale-balanced', cls:'red' },
   ];
-  document.getElementById('statCards').innerHTML = stats.map(s=>`
+  el.innerHTML = stats.map(s=>`
     <div class="stat-card">
       <div class="stat-ico" style="background:${BG_MAP[s.cls]};color:${ICO_MAP[s.cls]}"><i class="fas ${s.ico}"></i></div>
       <div><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>

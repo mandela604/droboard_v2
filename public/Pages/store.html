@@ -241,6 +241,7 @@ a{color:inherit;text-decoration:none}
 <script>
 let selectedPack = null;
 let currentTab = 'coins';
+let storeData = null;
 
 function switchTab(tab) {
   currentTab = tab;
@@ -288,11 +289,50 @@ function renderRewards(rewards) {
       <div class="reward-icon"><i class="fas ${r.icon}"></i></div>
       <div class="reward-info">
         <div class="reward-action">${r.action}</div>
-        <div class="reward-meta">Every ${r.cooldown}</div>
+        <div class="reward-meta">Every ${r.cooldown}${r.type==='blog_read'?' · '+(r.pagesRequired||3)+' pages':''}${r.type==='youtube_watch' && r.minWatchSec ? ' · '+r.minWatchSec+'s watch':''}</div>
       </div>
       <div class="reward-coins"><i class="fas fa-coins"></i>+${r.coins}</div>
-      <button class="reward-btn" ${r.available ? '' : 'disabled'} onclick="toast('Claiming ${r.coins} coins...')">Claim</button>
+      <button class="reward-btn" ${r.available ? '' : 'disabled'} onclick="handleEarn('${r.id}')">Claim</button>
     </div>`).join('');
+}
+function handleEarn(id){
+  const r=(storeData&&storeData.adRewards?storeData.adRewards:[]).find(x=>x.id===id);
+  if(!r) return toast('Claiming…');
+  if(r.type==='blog_read'){
+    const pages=r.pagesRequired||3;
+    const url=r.blogUrl||('blog.html?cat='+(r.blogCategory||'tech'));
+    // support both relative Pages/blog.html and full https://
+    const target = url.includes('http') ? url : url + (url.includes('?')?'&':'?') + 'earn='+encodeURIComponent(id);
+    // check per-category progress if internal blog, else generic
+    const cat=r.blogCategory||'tech';
+    const key='dro_blog_read_ids_'+cat;
+    let prog=0; try{ const arr=JSON.parse(localStorage.getItem(key)||'[]'); prog=Array.isArray(arr)?arr.length:0; }catch(e){}
+    if(prog>=pages){
+      if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
+      localStorage.setItem(key, JSON.stringify([]));
+      return toast('🎉 +'+r.coins+' coins for reading '+pages+' blog pages!');
+    }
+    window.location.href=target;
+    return;
+  }
+  if(r.type==='youtube_sub'){
+    const ch=r.channelId||r.channelUrl||'';
+    const url= ch.includes('http')?ch:'https://youtube.com/channel/'+ch+'?sub_confirmation=1';
+    window.open(url,'_blank');
+    setTimeout(()=>{
+      if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
+      toast('✅ Subscribed! +'+r.coins+' coins');
+    }, 2000);
+    return;
+  }
+  if(r.type==='youtube_watch'){
+    const vid=r.videoId||'';
+    window.location.href='youtube-earn.html?vid='+encodeURIComponent(vid)+'&coins='+r.coins+'&sec='+(r.minWatchSec||60);
+    return;
+  }
+  // default watch_ad etc
+  if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
+  toast('Claiming +'+r.coins+' coins…');
 }
 
 function renderSubscriptions(subs) {
@@ -359,6 +399,7 @@ function toast(msg) {
 async function init() {
   let data;
   try { data = await StoreService.fetchStoreData(); } catch (e) { data = { balance: { coins: 0, level: 'Bronze' }, packs: [], bundles: [], adRewards: [], subscriptions: [], mergeSub: {} }; }
+  storeData = data;
   renderBalance(data);
   renderPacks(data.packs);
   renderBundles(data.bundles);

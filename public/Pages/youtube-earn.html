@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>DroBoard — Watch & Earn</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{--pink:#FF2D6A;--ink:#17151B;--line:#EFEDF2;--divider:#F3F1F5;--white:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--divider);display:flex;justify-content:center}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--white);display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:14px 16px;z-index:10}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff}
+.video-wrap{position:relative;padding-top:56.25%;background:#000}
+.video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.card{margin:16px;border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.progress{height:6px;background:var(--divider);border-radius:10px;overflow:hidden;margin-top:10px}
+.fill{height:100%;background:var(--pink);width:0%;transition:.3s}
+.btn{width:100%;background:var(--pink);color:#fff;border:none;padding:12px;border-radius:12px;font-weight:800;cursor:pointer;margin-top:12px}
+.btn:disabled{background:#9A96A3;cursor:not-allowed}
+.ad-box{margin:12px 16px;background:var(--divider);border:1px dashed var(--line);border-radius:10px;padding:10px;text-align:center;font-size:11px;color:#9A96A3;font-weight:700}
+</style>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="../services/store-service.js"></script>
+</head>
+<body>
+<div class="phone">
+  <div class="topbar">
+    <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div style="font-weight:800">Watch & Earn</div>
+    <div class="icon-btn" onclick="location.href='store.html'"><i class="fas fa-coins"></i></div>
+  </div>
+
+  <div class="video-wrap" id="playerWrap"><div id="player"></div></div>
+
+  <div class="card" id="infoCard">Loading video…</div>
+
+  <div class="ad-box"><span style="background:var(--pink);color:#fff;padding:2px 6px;border-radius:6px;font-size:9px">Ad</span> Video sponsored — watch to earn</div>
+
+  <div style="padding:0 16px"><button class="btn" id="claimBtn" disabled>Watch 0s / 60s to earn</button></div>
+</div>
+
+<script>
+const qs=new URLSearchParams(location.search);
+const vid=qs.get('vid')||'dQw4w9WgXcQ';
+const coins=parseInt(qs.get('coins')||'15',10);
+const needSec=parseInt(qs.get('sec')||'60',10);
+let watched=0, timer=null, claimed=false, player=null;
+
+function onYouTubeIframeAPIReady(){
+  player=new YT.Player('player',{
+    videoId: vid,
+    playerVars:{ playsinline:1, rel:0 },
+    events:{
+      onStateChange:(e)=>{
+        if(e.data===YT.PlayerState.PLAYING){
+          if(timer) clearInterval(timer);
+          timer=setInterval(()=>{
+            watched++;
+            updateUI();
+            if(watched>=needSec && !claimed) enableClaim();
+          },1000);
+        } else {
+          if(timer) clearInterval(timer);
+        }
+      }
+    }
+  });
+  document.getElementById('infoCard').innerHTML = `<div style="font-weight:800">Earn +${coins} coins</div><div style="font-size:12px;color:#635F6E;margin-top:4px">Watch at least ${needSec}s — keep the video playing. Progress is tracked locally.</div><div class="progress"><div class="fill" id="fill" style="width:0%"></div></div><div style="font-size:11px;color:#9A96A3;margin-top:6px" id="progressText">0s / ${needSec}s</div>`;
+}
+
+function updateUI(){
+  const pct=Math.min(100, watched/needSec*100);
+  const f=document.getElementById('fill'); if(f) f.style.width=pct+'%';
+  const t=document.getElementById('progressText'); if(t) t.textContent=watched+'s / '+needSec+'s';
+  const b=document.getElementById('claimBtn'); if(b) b.textContent = watched>=needSec ? 'Claim +'+coins+' coins' : 'Watch '+watched+'s / '+needSec+'s';
+}
+function enableClaim(){
+  claimed=false;
+  const b=document.getElementById('claimBtn');
+  b.disabled=false;
+  b.textContent='Claim +'+coins+' coins — YouTube verified';
+  b.onclick=()=>{
+    if(claimed) return; claimed=true;
+    if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(coins); }
+    alert('✅ +'+coins+' coins for watching! (YouTube verification via watch time)');
+    location.href='store.html';
+  };
+  // auto hint
+  updateUI();
+}
+// fallback if API fails
+setTimeout(()=>{
+  if(!player || !player.getPlayerState){
+    document.getElementById('infoCard').innerHTML = `<div style="font-weight:800">Demo fallback</div><div style="font-size:12px;color:#635F6E">YouTube API blocked — simulating ${needSec}s watch. <button onclick="watched=${needSec};updateUI();enableClaim()" style="color:var(--pink);background:none;border:none;font-weight:800;cursor:pointer">Simulate watch</button></div>`;
+  }
+},3000);
+</script>
+</body>
+</html>

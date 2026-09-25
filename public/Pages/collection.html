@@ -152,6 +152,7 @@ a{color:inherit;text-decoration:none}
       <div class="icon-btn" id="shareBtn"><i class="fas fa-arrow-up-from-bracket"></i></div>
       <div class="icon-btn" id="menuDots"><i class="fas fa-ellipsis"></i></div>
       <div class="dropdown-menu" id="dropdownMenu">
+        <button class="dropdown-item" id="addStoryBtn"><i class="fas fa-plus"></i> Add Story</button>
         <button class="dropdown-item" id="reportBtn"><i class="fas fa-flag"></i> Report Collection</button>
       </div>
     </div>
@@ -183,6 +184,7 @@ a{color:inherit;text-decoration:none}
       </div>
 
       <div class="story-list" id="storyList"></div>
+      <div id="collPager" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px"></div>
 
       <div class="curated-banner" id="curatedBanner"></div>
     </div>
@@ -216,6 +218,21 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
+<div class="report-overlay" id="addStoryOverlay">
+  <div class="report-sheet" style="max-height:82vh">
+    <div class="report-handle"></div>
+    <div class="report-hdr">
+      <h3><i class="fas fa-plus" style="color:var(--pink)"></i> Add Story</h3>
+      <button class="report-close" id="addStoryClose">✕</button>
+    </div>
+    <div class="report-body">
+      <div class="report-label">Tap stories to add to this collection</div>
+      <div id="addStoryGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:38vh;overflow-y:auto;padding-bottom:8px"></div>
+      <button class="report-submit" id="addStoryConfirm" style="margin-top:12px">Add Selected</button>
+    </div>
+  </div>
+</div>
+
 <!-- SCRIPTS: data → service → component → init -->
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/collection-service.js"></script>
@@ -223,6 +240,23 @@ a{color:inherit;text-decoration:none}
 <script src="../component/share-modal.js"></script>
 <script>
 let currentCollection = null;
+let collStories = []; let collPage = 1; const COLL_PER = 8;
+
+function renderCollPage() {
+  const total = collStories.length; const tp = Math.max(1, Math.ceil(total / COLL_PER));
+  if (collPage > tp) collPage = tp;
+  const start = (collPage - 1) * COLL_PER; const slice = collStories.slice(start, start + COLL_PER);
+  document.getElementById('storyList').innerHTML = slice.map(renderBookCard).join('') || '<div style="padding:30px 14px;text-align:center;color:var(--gray-400)">No stories in this collection yet.</div>';
+  const pager = document.getElementById('collPager');
+  if (tp <= 1) { pager.innerHTML = ''; return; }
+  let h = '<button class="sort-btn" data-p="prev" '+(collPage===1?'style="opacity:.4;pointer-events:none"':'')+'><i class="fas fa-chevron-left"></i></button>';
+  for (let i=1;i<=tp;i++) h += '<button class="sort-btn" data-p="'+i+'" style="'+(i===collPage?'background:var(--pink);color:#fff;border-color:var(--pink)':'')+'">'+i+'</button>';
+  h += '<button class="sort-btn" data-p="next" '+(collPage===tp?'style="opacity:.4;pointer-events:none"':'')+'><i class="fas fa-chevron-right"></i></button>';
+  pager.innerHTML = h;
+  pager.querySelectorAll('[data-p]').forEach(b=> b.addEventListener('click', ()=>{
+    const p=b.dataset.p; if(p==='prev') collPage--; else if(p==='next') collPage++; else collPage=parseInt(p); renderCollPage(); document.getElementById('storyList').scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+}
 
 function renderBookCard(story) {
   const href = `bridge.html?id=${encodeURIComponent(story.id || story.title || '')}`;
@@ -247,16 +281,16 @@ function renderBookCard(story) {
 async function loadCollection() {
   const params = new URLSearchParams(location.search);
   const colId = params.get('id') || 'col1';
-
-  currentCollection = await CollectionData.getCollection(colId);
+  let ov = null; try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); ov = m[colId]||null; } catch(e){}
+  currentCollection = ov || await CollectionData.getCollection(colId);
   renderHero(currentCollection);
   renderStats(currentCollection);
   renderAbout(currentCollection);
   renderCurated(currentCollection);
 
-  const stories = await CollectionData.getCollectionStories(colId);
-  const listEl = document.getElementById('storyList');
-  listEl.innerHTML = stories.map(renderBookCard).join('');
+  collStories = currentCollection.storyList && currentCollection.storyList.length ? currentCollection.storyList : await CollectionData.getCollectionStories(colId);
+  if (ov && ov.storyList) collStories = ov.storyList;
+  renderCollPage();
 
   initTabs();
   initButtons();
@@ -435,6 +469,42 @@ function showToast(msg) {
   t.style.opacity = '1';
   setTimeout(() => { t.style.opacity = '0'; }, 2000);
 }
+
+/* ── Add Story via ⋯ menu ── */
+let addSelected = new Set();
+function openAddStory() {
+  const d = window.DemoData; const stories = d ? (d.STORIES || d.COLLECTIONS?.[0]?.storyList || []) : [];
+  const existing = new Set((currentCollection?.storyList || []).map(s=>s.id));
+  const avail = stories.filter(s=> !existing.has(s.id)).slice(0,18);
+  const grid = document.getElementById('addStoryGrid');
+  addSelected.clear();
+  if (!avail.length) { grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No more stories to add.</div>'; }
+  else {
+    grid.innerHTML = avail.map(s=> '<div class="add-pick" data-id="'+s.id+'" style="border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;background:var(--divider)"><img src="'+s.cover+'" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"/><div style="font-size:9px;font-weight:700;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(s.title||'')+'</div><div style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;opacity:0" class="pick-check"><i class="fas fa-check"></i></div></div>').join('');
+    // make picks position relative
+    grid.querySelectorAll('.add-pick').forEach(el=>{ el.style.position='relative'; el.addEventListener('click', ()=>{
+      const id=el.dataset.id; if(addSelected.has(id)){ addSelected.delete(id); el.style.borderColor='transparent'; el.querySelector('.pick-check').style.opacity='0'; } else { addSelected.add(id); el.style.borderColor='var(--pink)'; el.querySelector('.pick-check').style.opacity='1'; el.querySelector('.pick-check').style.background='var(--pink)'; }
+    }); });
+  }
+  document.getElementById('addStoryOverlay').classList.add('open');
+}
+function closeAddStory(){ document.getElementById('addStoryOverlay').classList.remove('open'); }
+document.getElementById('addStoryBtn').addEventListener('click', ()=>{ document.getElementById('dropdownMenu').classList.remove('show'); openAddStory(); });
+document.getElementById('addStoryClose').addEventListener('click', closeAddStory);
+document.getElementById('addStoryOverlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAddStory(); });
+document.getElementById('addStoryConfirm').addEventListener('click', ()=>{
+  if (!addSelected.size) { showToast('Select at least one story'); return; }
+  const d = window.DemoData; const all = d ? (d.STORIES||[]) : [];
+  const toAdd = all.filter(s=> addSelected.has(s.id));
+  currentCollection.storyList = [...(currentCollection.storyList||[]), ...toAdd];
+  currentCollection.stories = (currentCollection.storyList||[]).length;
+  collStories = currentCollection.storyList;
+  collPage = Math.ceil(collStories.length / COLL_PER);
+  // persist demo override
+  try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); m[currentCollection.id]=currentCollection; localStorage.setItem('dro_collections_override', JSON.stringify(m)); } catch(e){}
+  renderCollPage();
+  closeAddStory(); showToast('Added '+toAdd.length+' story'+(toAdd.length>1?'ies':''));
+});
 
 loadCollection();
 

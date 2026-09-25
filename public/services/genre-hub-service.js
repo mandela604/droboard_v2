@@ -3,7 +3,7 @@
    Genre hub page orchestration. HTML calls GenreHubPage.init().
    Discussions render via component/genre-card.js (window.DroboardGenreCard).
    When going live: swap GenreDemoSeed reads for API calls.
-═══════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
@@ -14,6 +14,7 @@
   let ALL_POSTS = [];
   let PROMO_SLIDES = [];
   let sort = 'hot';
+  let activeTab = 'discussions';
   let joined = true;
   let _adTurn = 0;
 
@@ -75,14 +76,38 @@
   }
 
   /* ── Genre ── */
+  const ABOUT_KEY = 'dro_genre_about_override';
+  const MEMBER_KEY = 'dro_genre_members_override';
+  function readAboutOverride(id) {
+    try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}'); return m[id] || null; } catch (e) { return null; }
+  }
+  function writeAboutOverride(id, patch) {
+    try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}'); m[id] = Object.assign({}, m[id] || {}, patch); localStorage.setItem(ABOUT_KEY, JSON.stringify(m)); } catch (e) {}
+  }
   function loadGenre() {
     const seed = window.GenreDemoSeed;
-    if (!seed) { toast('GenreDemoSeed missing'); return false; }
+    const demo = window.DemoData;
     const params = new URLSearchParams(location.search);
-    GENRE_ID = params.get('genre') || seed.DEFAULT_GENRE_ID;
-    GENRE = seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[seed.DEFAULT_GENRE_ID];
-    GENRE_ID = GENRE.id || GENRE_ID;
-    ALL_POSTS = [seed.DEMO_PINNED[GENRE_ID], ...((seed.DEMO_DISCUSSIONS[GENRE_ID]) || [])].filter(Boolean);
+    const rawId = params.get('genre') || (seed && seed.DEFAULT_GENRE_ID) || 'fantasy';
+    GENRE_ID = (rawId||'fantasy').toLowerCase();
+    let base = null;
+    if (seed && seed.DEMO_GENRES) base = seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[rawId] || seed.DEMO_GENRES[seed.DEFAULT_GENRE_ID];
+    if (!base && demo && demo.GENRES) {
+      const g = demo.GENRES.find(x => (x.id||'').toLowerCase() === GENRE_ID);
+      if (g) base = { id:g.id, name:g.name, tagline:g.tagline, icon:'fa-book', cover:g.cover||'', members:g.members, discussions:g.discussions, stories:g.stories, blurb:g.tagline };
+    }
+    if (!base) { base = { id:'fantasy', name:'Fantasy', tagline:'Where imagination becomes legend.', icon:'fa-hat-wizard', cover:'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&h=400&fit=crop', members:'45.7K', discussions:'3.2K', stories:'1.8K', blurb:'Discuss tropes, argue theories.' }; GENRE_ID='fantasy'; }
+    const ov = readAboutOverride(GENRE_ID);
+    GENRE = Object.assign({}, base, ov || {});
+    GENRE_ID = (GENRE.id||GENRE_ID).toLowerCase();
+    if (seed && seed.DEMO_DISCUSSIONS && seed.DEMO_DISCUSSIONS[GENRE_ID]) {
+      ALL_POSTS = [seed.DEMO_PINNED[GENRE_ID], ...seed.DEMO_DISCUSSIONS[GENRE_ID]].filter(Boolean);
+    } else if (seed && seed.DEMO_DISCUSSIONS && seed.DEMO_DISCUSSIONS[rawId]) {
+      ALL_POSTS = [seed.DEMO_PINNED[rawId], ...seed.DEMO_DISCUSSIONS[rawId]].filter(Boolean);
+    } else {
+      ALL_POSTS = (demo && demo.COMMENTS ? demo.COMMENTS.slice(0,12).map(c=>({id:'c'+c.id,title:c.text,body:c.text,likes:c.likes,comments:2,score:c.likes})) : []);
+      if (!ALL_POSTS.length) ALL_POSTS = [{id:'pinned-fallback',pinned:true,title:'Welcome to '+GENRE.name,desc:'Start a discussion.',likes:0,comments:0}];
+    }
     PROMO_SLIDES = [];
     return true;
   }
@@ -162,27 +187,75 @@
       onSelect: (s) => toast('📖 ' + (s.title || '')),
     });
   }
+  function setActiveTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('#hubTabs .tab').forEach(x => x.classList.toggle('active', x.dataset.tab===tab));
+    const sortRow = document.getElementById('sortRow');
+    const composer = document.getElementById('composerStrip');
+    if (tab==='members' || tab==='about') { sortRow.style.display='none'; composer.style.display='none'; }
+    else { sortRow.style.display='flex'; composer.style.display='flex'; }
+    if (tab==='discussions') renderFeed();
+    else if (tab==='hot') renderHot();
+    else if (tab==='stories') renderStories();
+    else if (tab==='members') renderMembers();
+    else if (tab==='about') renderAbout();
+  }
+
+  /* ── About inline CRUD ── */
+  function renderAbout() {
+    const feed = document.getElementById('feed');
+    feed.innerHTML = '<div style="padding:14px"><div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:14px">About '+GENRE.name+'</b><button id="aboutEditBtn" style="font-size:11px;font-weight:700;color:var(--acc);background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);padding:6px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div><div style="font-size:12px;line-height:1.6;color:var(--tx-body)" id="aboutBlurbView">'+(GENRE.blurb||'')+'</div><div id="aboutForm" style="display:none;margin-top:10px"><input id="aboutName" value="'+(GENRE.name||'').replace(/"/g,'&quot;')+'" placeholder="Genre name" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><input id="aboutTagline" value="'+(GENRE.tagline||'').replace(/"/g,'&quot;')+'" placeholder="Tagline" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><textarea id="aboutBlurb" rows="3" placeholder="About this hub" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:8px">'+(GENRE.blurb||'')+'</textarea><input id="aboutCover" value="'+(GENRE.cover||'').replace(/"/g,'&quot;')+'" placeholder="Cover image URL" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px"/><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--acc);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutDelete" style="flex:1;background:var(--l2);border:1px solid var(--bd);padding:10px;border-radius:10px;font-weight:700">Reset</button><button id="aboutCancel" style="flex:1;background:transparent;border:1px solid var(--bd);padding:10px;border-radius:10px">Cancel</button></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.members||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Members</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.stories||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Stories</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.discussions||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Threads</div></div></div></div>';
+    document.getElementById('aboutEditBtn').onclick = () => { document.getElementById('aboutForm').style.display='block'; document.getElementById('aboutBlurbView').style.display='none'; };
+    document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutBlurbView').style.display='block'; };
+    document.getElementById('aboutSave').onclick = () => {
+      const patch = { name: document.getElementById('aboutName').value.trim()||GENRE.name, tagline: document.getElementById('aboutTagline').value.trim(), blurb: document.getElementById('aboutBlurb').value.trim(), cover: document.getElementById('aboutCover').value.trim() };
+      writeAboutOverride(GENRE_ID, patch); Object.assign(GENRE, patch); applyGenre(); renderAbout(); toast('About saved');
+    };
+    document.getElementById('aboutDelete').onclick = () => { try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY)||'{}'); delete m[GENRE_ID]; localStorage.setItem(ABOUT_KEY, JSON.stringify(m)); } catch(e){} location.reload(); };
+  }
+  function getMembers() {
+    try { const ov = JSON.parse(localStorage.getItem(MEMBER_KEY)||'{}'); if (ov[GENRE_ID]) return ov[GENRE_ID]; } catch(e){}
+    const seed = window.GenreDemoSeed;
+    if (seed && seed.DEMO_MEMBERS && seed.DEMO_MEMBERS[GENRE_ID]) return seed.DEMO_MEMBERS[GENRE_ID];
+    return [];
+  }
+  function toggleMemberFollow(handle) {
+    try { const m = JSON.parse(localStorage.getItem(MEMBER_KEY)||'{}'); if (!m[GENRE_ID]) m[GENRE_ID]=getMembers(); const mem=m[GENRE_ID].find(x=>x.handle===handle); if(mem) mem.following=!mem.following; localStorage.setItem(MEMBER_KEY, JSON.stringify(m)); renderMembers(); } catch(e){}
+  }
+  function renderMembers() {
+    const members = getMembers();
+    const feed = document.getElementById('feed');
+    if (!members.length) { feed.innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No members yet.</div>'; return; }
+    feed.innerHTML = members.map(m => '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--l1)"><img src="'+(m.av||m.avatar||'https://i.pravatar.cc/100?img=12')+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover"/><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(m.name||m.handle)+'</div><div style="font-size:11px;color:var(--tx-muted)">'+(m.role||'')+' · '+(m.posts||0)+' posts</div></div><button onclick="GenreHubPage.toggleMember(\''+m.handle+'\')" style="padding:6px 12px;border-radius:16px;font-size:11px;font-weight:700;border:1px solid var(--bd);background:'+(m.following?'var(--acc);color:#fff':'var(--l2)')+'">'+(m.following?'Following':'Follow')+'</button></div>').join('');
+  }
+  function renderStories() {
+    const seed = window.GenreDemoSeed;
+    let stories = [];
+    if (seed && seed.DEMO_STORIES && seed.DEMO_STORIES[GENRE_ID]) stories = seed.DEMO_STORIES[GENRE_ID];
+    else if (window.DemoData && DemoData.STORIES) stories = DemoData.STORIES.filter(s=> (s.genre||'').toLowerCase().includes(GENRE_ID)).slice(0,12);
+    if (!stories.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No stories in this hub yet.</div>'; return; }
+    const feedEl = document.getElementById('feed');
+    feedEl.innerHTML = stories.map(s => '<div class="story-hit" data-bid="'+(s.id||'').replace(/"/g,'&quot;')+'" style="display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--bd);background:var(--l1);cursor:pointer"><div style="width:76px;height:102px;border-radius:9px;overflow:hidden;flex-shrink:0;background:var(--l2)"><img src="'+(s.cover||s.img||'')+'" style="width:100%;height:100%;object-fit:cover"/></div><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;color:var(--acc);text-transform:uppercase">'+(s.genre||GENRE.name)+'</div><div style="font-size:13.5px;font-weight:700;line-height:1.3;margin:2px 0">'+s.title+'</div><div style="font-size:11.5px;color:var(--tx-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+(s.preview||s.desc||'')+'</div><div style="display:flex;gap:10px;margin-top:6px;font-size:10px;color:var(--tx-muted)"><span>⭐ '+(s.rating||'4.8')+'</span><span>👁 '+(s.reads||'')+'</span></div></div></div>').join('');
+    feedEl.querySelectorAll('.story-hit').forEach(el=> el.addEventListener('click', ()=> location.href='bridge.html?id='+encodeURIComponent(el.dataset.bid)));
+  }
+  function renderHot() {
+    const hot = ALL_POSTS.filter(p=>p.hot).slice(0,12);
+    if (!hot.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No hot topics right now.</div>'; return; }
+    let html=''; hot.forEach(p=>{ html += window.DroboardGenreCard ? DroboardGenreCard.renderCard(p) : '<div style="padding:12px;border-bottom:1px solid var(--bd)">'+p.title+'</div>'; });
+    document.getElementById('feed').innerHTML = html;
+    if (window.DroboardGenreCard) DroboardGenreCard.setPosts(hot);
+  }
 
   /* ── Component wiring ── */
   function wireComponents() {
     const feedEl = document.getElementById('feed');
     if (window.DroboardReactionPicker) {
-      // Paired hooks (component contract): getState reads the post, onReact
-      // mutates it. An onReact alone would swallow taps with no update.
       const findPost = (id) => ALL_POSTS.find(p => String(p.id) === String(id));
       DroboardReactionPicker.attach(feedEl, {
         topRow: 'external',
         getState: (id) => {
           const post = findPost(id);
-          const likes = (post && post.likes) || 0;
-          // Demo spread: love bucket = post likes, second bucket rotates per
-          // post so the top-2 badges always have two icons. Stable per id.
-          const buckets = ['crying', 'shocked', 'emotional'];
-          let h = 0;
-          String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-          const second = {};
-          second[buckets[h]] = Math.max(4, Math.round(likes * 0.3));
-          return Object.assign({ userRx: post && post.liked ? 'love' : null, love: likes }, second);
+          return { userRx: post && post.liked ? 'love' : null, love: (post && post.likes) || 0 };
         },
         onReact: (id) => {
           const post = findPost(id);
@@ -258,24 +331,17 @@
   /* ── Filters / tabs / join / composer ── */
   function initFilters() {
     document.querySelectorAll('#sortRow .sort-chip').forEach(c => {
-      c.addEventListener('click', () => {
+      c.addEventListener('click', (e) => {
+        e.preventDefault();
         document.querySelectorAll('#sortRow .sort-chip').forEach(x => x.classList.remove('active'));
         c.classList.add('active');
         sort = c.dataset.sort;
-        renderFeed();
+        if (activeTab==='discussions' || activeTab==='hot') renderFeed();
+        else if (activeTab==='stories') renderStories();
       });
     });
     document.querySelectorAll('#hubTabs .tab').forEach(t => {
-      t.addEventListener('click', () => {
-        document.querySelectorAll('#hubTabs .tab').forEach(x => x.classList.remove('active'));
-        t.classList.add('active');
-        if (t.dataset.tab === 'hot') {
-          sort = 'hot';
-          document.querySelectorAll('#sortRow .sort-chip').forEach(c => c.classList.toggle('active', c.dataset.sort === 'hot'));
-          renderFeed();
-        }
-        toast(t.textContent.trim());
-      });
+      t.addEventListener('click', (e) => { e.preventDefault(); setActiveTab(t.dataset.tab); });
     });
   }
   function initJoin() {
@@ -332,7 +398,7 @@
     initComposer();
     initToTop();
     applyGenre();
-    renderFeed();
+    setActiveTab('discussions');
     mountPromo();
     if (window.DroboardSearch) {
       let searchData;
@@ -347,5 +413,5 @@
     if (window.DroboardNav) DroboardNav.configure({ active: 'discover' });
   }
 
-  window.GenreHubPage = { init, toast, toggleTheme, renderFeed };
+  window.GenreHubPage = { init, toast, toggleTheme, renderFeed, toggleMember: toggleMemberFollow, renderAbout, renderMembers, renderStories, renderHot, setActiveTab };
 })();

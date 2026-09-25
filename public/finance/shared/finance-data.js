@@ -165,7 +165,46 @@
       { id:'TX-05', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5',  docType:'Withholding Statement', period:'Q2 2026',        amount:2340,  status:'issued', issuedDate:'2026-07-05' },
       { id:'TX-06', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31',  docType:'Receipt',               period:'Jul 2026',       amount:870,   status:'issued', issuedDate:'2026-07-15' },
     ],
+
+    /* ── Store: Coin Packs & Earn Coins (managed by Finance, consumed by Store) ── */
+    coinPacks: [
+      { id:'pack1', coins:100, price:'$0.99', badge:'', color:'#635F6E' },
+      { id:'pack2', coins:500, price:'$3.99', badge:'Popular', color:'#FF2D6A' },
+      { id:'pack3', coins:1200, price:'$7.99', badge:'Best Value', color:'#D6165A' },
+      { id:'pack4', coins:2500, price:'$14.99', badge:'', color:'#16A34A' },
+    ],
+    adRewards: [
+      { id:'ad1', action:'Watch Ad', coins:10, cooldown:'5 min', icon:'fa-film', available:true, type:'watch_ad' },
+      { id:'ad2', action:'Daily Check-in', coins:25, cooldown:'24 hr', icon:'fa-calendar-check', available:true, type:'checkin' },
+      { id:'ad3', action:'Rate Story', coins:5, cooldown:'1 hr', icon:'fa-star', available:true, type:'rate' },
+      { id:'ad4', action:'Share Story', coins:15, cooldown:'2 hr', icon:'fa-share-nodes', available:true, type:'share' },
+      { id:'ad5', action:'Read Blog — Tech Niche (3 pages)', coins:25, cooldown:'24 hr', icon:'fa-microchip', available:true, type:'blog_read', pagesRequired:3, blogCategory:'tech', blogUrl:'Pages/blog.html?cat=tech' },
+      { id:'ad8', action:'Read Blog — Health Niche (3 pages)', coins:25, cooldown:'24 hr', icon:'fa-heart-pulse', available:true, type:'blog_read', pagesRequired:3, blogCategory:'health', blogUrl:'Pages/blog.html?cat=health' },
+      { id:'ad6', action:'Subscribe on YouTube', coins:30, cooldown:'30d', icon:'fa-youtube', available:true, type:'youtube_sub', channelId:'UCxxxxDroboard', channelUrl:'https://youtube.com/@droboard?sub_confirmation=1' },
+      { id:'ad7', action:'Watch YouTube Video', coins:15, cooldown:'24 hr', icon:'fa-circle-play', available:true, type:'youtube_watch', videoId:'dQw4w9WgXcQ', minWatchSec:60 },
+    ],
+    bundles: [
+      { id:'b1', name:'Starter Bundle', coins:500, bonus:50, price:'$3.99', icon:'fa-seedling', color:'#22c55e' },
+      { id:'b2', name:'Pro Bundle', coins:1500, bonus:300, price:'$9.99', icon:'fa-fire', color:'#FF2D6A' },
+      { id:'b3', name:'Elite Bundle', coins:5000, bonus:1500, price:'$29.99', icon:'fa-crown', color:'#D6165A' },
+    ],
   };
+
+  /* ── Finance-managed Store overrides (localStorage, like marketing ads) ── */
+  const FIN_PACKS_KEY = 'dro_finance_packs';
+  const FIN_REWARDS_KEY = 'dro_finance_rewards';
+  const FIN_BUNDLES_KEY = 'dro_finance_bundles';
+  function readStoredPacks(){ try{ const v=JSON.parse(localStorage.getItem(FIN_PACKS_KEY)||'null'); return Array.isArray(v)?v:null; }catch(e){ return null; } }
+  function writeStoredPacks(v){ try{ localStorage.setItem(FIN_PACKS_KEY, JSON.stringify(v)); }catch(e){} }
+  function readStoredRewards(){ try{ const v=JSON.parse(localStorage.getItem(FIN_REWARDS_KEY)||'null'); return Array.isArray(v)?v:null; }catch(e){ return null; } }
+  function writeStoredRewards(v){ try{ localStorage.setItem(FIN_REWARDS_KEY, JSON.stringify(v)); }catch(e){} }
+  function readStoredBundles(){ try{ const v=JSON.parse(localStorage.getItem(FIN_BUNDLES_KEY)||'null'); return Array.isArray(v)?v:null; }catch(e){ return null; } }
+  function writeStoredBundles(v){ try{ localStorage.setItem(FIN_BUNDLES_KEY, JSON.stringify(v)); }catch(e){} }
+  (function seedFinanceStore(){
+    const sp=readStoredPacks(); if(sp) DEMO.coinPacks=sp; else writeStoredPacks(DEMO.coinPacks);
+    const sr=readStoredRewards(); if(sr) DEMO.adRewards=sr; else writeStoredRewards(DEMO.adRewards);
+    const sb=readStoredBundles(); if(sb) DEMO.bundles=sb; else writeStoredBundles(DEMO.bundles);
+  })();
 
   function findWithdrawal(id) {
     const w = DEMO.withdrawals.find(x => x.id === id);
@@ -307,6 +346,69 @@
         DEMO.taxDocuments.unshift(item);
         return JSON.parse(JSON.stringify(item));
       }
+    },
+
+    /* ── Store settings: Coin Packs ── */
+    async getCoinPacks(){
+      try{ const d=await callBackend('/store/coin-packs'); return Array.isArray(d)?d:d.packs; }
+      catch(e){ await delay(); const sp=readStoredPacks(); if(sp) DEMO.coinPacks=sp; return JSON.parse(JSON.stringify(DEMO.coinPacks)); }
+    },
+    async saveCoinPack(pack){
+      try{ return await callBackend('/store/coin-packs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(pack) }); }
+      catch(e){
+        await delay(120);
+        if(!pack.id) pack.id='pack'+(Date.now().toString(36));
+        const idx=DEMO.coinPacks.findIndex(x=>x.id===pack.id);
+        if(idx===-1) DEMO.coinPacks.push(pack); else DEMO.coinPacks[idx]=Object.assign({}, DEMO.coinPacks[idx], pack);
+        writeStoredPacks(DEMO.coinPacks);
+        return JSON.parse(JSON.stringify(pack));
+      }
+    },
+    async deleteCoinPack(id){
+      try{ return await callBackend('/store/coin-packs/'+encodeURIComponent(id), { method:'DELETE' }); }
+      catch(e){ await delay(120); DEMO.coinPacks=DEMO.coinPacks.filter(x=>x.id!==id); writeStoredPacks(DEMO.coinPacks); return { ok:true }; }
+    },
+
+    /* ── Store settings: Earn Coins (Ad Rewards) ── */
+    async getAdRewards(){
+      try{ const d=await callBackend('/store/ad-rewards'); return Array.isArray(d)?d:d.rewards; }
+      catch(e){ await delay(); const sr=readStoredRewards(); if(sr) DEMO.adRewards=sr; return JSON.parse(JSON.stringify(DEMO.adRewards)); }
+    },
+    async saveAdReward(r){
+      try{ return await callBackend('/store/ad-rewards', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(r) }); }
+      catch(e){
+        await delay(120);
+        if(!r.id) r.id='ad'+(Date.now().toString(36));
+        const idx=DEMO.adRewards.findIndex(x=>x.id===r.id);
+        if(idx===-1) DEMO.adRewards.push(r); else DEMO.adRewards[idx]=Object.assign({}, DEMO.adRewards[idx], r);
+        writeStoredRewards(DEMO.adRewards);
+        return JSON.parse(JSON.stringify(r));
+      }
+    },
+    async deleteAdReward(id){
+      try{ return await callBackend('/store/ad-rewards/'+encodeURIComponent(id), { method:'DELETE' }); }
+      catch(e){ await delay(120); DEMO.adRewards=DEMO.adRewards.filter(x=>x.id!==id); writeStoredRewards(DEMO.adRewards); return { ok:true }; }
+    },
+
+    /* ── Store settings: Bundles ── */
+    async getBundles(){
+      try{ const d=await callBackend('/store/bundles'); return Array.isArray(d)?d:d.bundles; }
+      catch(e){ await delay(); const sb=readStoredBundles(); if(sb) DEMO.bundles=sb; return JSON.parse(JSON.stringify(DEMO.bundles)); }
+    },
+    async saveBundle(b){
+      try{ return await callBackend('/store/bundles', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b) }); }
+      catch(e){
+        await delay(120);
+        if(!b.id) b.id='b'+(Date.now().toString(36));
+        const idx=DEMO.bundles.findIndex(x=>x.id===b.id);
+        if(idx===-1) DEMO.bundles.push(b); else DEMO.bundles[idx]=Object.assign({}, DEMO.bundles[idx], b);
+        writeStoredBundles(DEMO.bundles);
+        return JSON.parse(JSON.stringify(b));
+      }
+    },
+    async deleteBundle(id){
+      try{ return await callBackend('/store/bundles/'+encodeURIComponent(id), { method:'DELETE' }); }
+      catch(e){ await delay(120); DEMO.bundles=DEMO.bundles.filter(x=>x.id!==id); writeStoredBundles(DEMO.bundles); return { ok:true }; }
     },
   };
 })();

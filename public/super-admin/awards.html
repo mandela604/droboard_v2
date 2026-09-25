@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Awards — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+html,body{overflow-x:hidden;max-width:100%;height:100%;min-height:100vh}
+body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+#dashRoot{min-height:100vh}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;min-width:0}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:18px;min-width:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px;white-space:nowrap}
+.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{filter:brightness(1.05);color:#fff}
+.mini-btn.ghost{background:transparent}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.tb-search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;min-width:0}
+.tb-search input{border:none;background:none;outline:none;font-size:12.5px;font-family:inherit;color:var(--text);width:100%;min-width:0}
+.tb-search i{color:var(--text-faint);font-size:12px;flex-shrink:0}
+.tb-select{font-size:12px;font-weight:600;font-family:inherit;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;cursor:pointer;outline:none}
+.aw-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--input-bg);cursor:pointer;transition:.15s}
+.aw-card:hover{border-color:var(--accent);background:var(--hover)}
+.aw-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.aw-ico.gold{background:var(--gold-bg);color:var(--gold)}
+.aw-ico.red{background:var(--red-bg);color:var(--red)}
+.aw-ico.blue{background:var(--blue-bg);color:var(--blue)}
+.aw-ico.purple{background:var(--purple-bg);color:var(--purple)}
+.aw-ico.green{background:var(--green-bg);color:var(--green)}
+.aw-main{flex:1;min-width:0}
+.aw-name{font-size:13px;font-weight:700}
+.aw-desc{font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aw-criteria{font-size:10.5px;color:var(--text-faint);margin-top:3px}
+.aw-badges{display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-size:9px;font-weight:800;padding:3px 7px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase}
+.badge.active{background:var(--green-bg);color:var(--green)}
+.badge.draft{background:var(--amber-bg);color:var(--amber)}
+.badge.archived{background:var(--table-head);color:var(--text-faint)}
+.badge.manual{background:var(--blue-bg);color:var(--blue)}
+.badge.auto{background:var(--purple-bg);color:var(--purple)}
+.aw-actions{display:flex;gap:6px;flex-shrink:0}
+.aw-actions button{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer}
+.aw-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.aw-actions button.del:hover{border-color:var(--red);color:var(--red)}
+/* modal */
+.modal-bg{position:fixed;inset:0;z-index:1200;background:rgba(10,6,25,.55);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{width:100%;max-width:480px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.18);overflow:hidden;max-height:90vh;display:flex;flex-direction:column}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
+.modal-head b{font-size:14px;font-weight:800}
+.modal-head button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.modal-body{padding:16px 18px;overflow-y:auto}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.form-row input,.form-row select,.form-row textarea{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent)}
+.form-row textarea{resize:vertical;min-height:64px}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pill-row{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;border:1.5px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer}
+.pill.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.modal-foot{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--border);justify-content:flex-end}
+.btn{font-size:12.5px;font-weight:700;padding:9px 16px;border-radius:10px;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.btn-ghost{background:var(--input-bg);border-color:var(--input-border);color:var(--text)}
+.btn-primary{background:var(--accent);color:#fff}
+.pick{display:flex;align-items:center;gap:8px}
+.pick input[type=color]{width:36px;height:32px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--input-border)}
+.pick span{font-size:11px;color:var(--text-muted);font-family:monospace}
+.icon-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.icon-opt{width:100%;aspect-ratio:1;border-radius:10px;border:1.5px solid var(--input-border);background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--text-muted);cursor:pointer;transition:.12s}
+.icon-opt:hover{border-color:var(--accent);color:var(--accent)}
+.icon-opt.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.badge-preview{display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--border);border-radius:12px;background:var(--table-head);margin-top:6px}
+.badge-preview-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.badge-preview-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap}
+.btn-danger{background:var(--red);color:#fff}
+.hint{font-size:11px;color:var(--text-faint);margin-top:5px;line-height:1.4}
+</style>
+</head>
+<body><div id="dashRoot">
+
+<div class="grid-4" id="statGrid"></div>
+
+<div class="panel">
+  <div class="panel-head"><h2><i class="fas fa-award" style="color:var(--gold)"></i> Awards</h2><span class="count-chip" id="countChip">0</span></div>
+  <div class="toolbar">
+    <div class="tb-search"><i class="fas fa-magnifying-glass"></i><input id="q" placeholder="Search awards…"/></div>
+    <select class="tb-select" id="fStatus"><option value="all">All statuses</option><option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option></select>
+    <select class="tb-select" id="fKind"><option value="all">All kinds</option><option value="auto">Auto (criteria)</option><option value="manual">Manual</option></select>
+    <button class="mini-btn" id="btnRun"><i class="fas fa-bolt"></i> Run auto-grant</button>
+    <button class="mini-btn primary" id="btnNew"><i class="fas fa-plus"></i> New award</button>
+  </div>
+  <div id="list" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+</div>
+
+<!-- Editor -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><b id="modalTitle">New award</b><button id="modalClose"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-row"><label>Name</label><input id="fName" placeholder="e.g. Top Romance 2025"/></div>
+      <div class="form-row"><label>Description</label><textarea id="fDesc" placeholder="Short public description"></textarea></div>
+      <div class="form-row"><label>Icon</label><div class="icon-grid" id="iconGrid"></div></div>
+      <div class="form-row"><label>Badge color</label><div class="pick"><input type="color" id="fColor" value="#d4a017"/><span id="fColorHex">#d4a017</span></div><div class="badge-preview" id="badgePreview"></div></div>
+      <div class="form-row"><label>Status</label><select id="fStatus2"><option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option></select></div>
+      <div class="form-row"><label>Criteria</label>
+        <div class="form-grid2">
+          <select id="fMetric"><option value="reads">Reads ≥</option><option value="genre_rank">Genre Top N</option><option value="manual">Manual (no auto)</option></select>
+          <input id="fValue" type="number" placeholder="Value (e.g. 1000000 or 10)"/>
+        </div>
+        <div class="form-grid2" style="margin-top:8px">
+          <select id="fGenre"><option value="">Any genre</option><option value="romance">Romance</option><option value="werewolf">Werewolf</option><option value="mafia">Mafia</option><option value="fantasy">Fantasy</option><option value="campus">Campus</option></select>
+          <input id="fPeriod" placeholder="Period (e.g. 2025, 2025-H2)"/>
+        </div>
+        <div class="hint">Registered criteria are the <b>single source for auto-grant</b>. Backend evaluates them and populates user awards — no manual granting elsewhere.</div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" id="btnCancel">Cancel</button><button class="btn btn-primary" id="btnSave">Save</button></div>
+  </div>
+</div>
+
+<script src="shared/super-admin-sidebar.js"></script>
+<script src="data/admin-demo-data.js"></script>
+<script src="awards-service.js"></script>
+<script>
+(function(){
+'use strict';
+const shell = SuperAdminSidebar.attach('#dashRoot',{
+  activeItem:'awards', title:'Awards', subtitle:'Define awards and criteria — backend auto-grants from here',
+  user:{ name:'Tobi Adenuga', role:'Super Admin', avatar:'https://i.pravatar.cc/100?img=68' }, notifCount:9
+});
+let editingId = null;
+function statsCards(){
+  const s = AwardsService.stats();
+  document.getElementById('statGrid').innerHTML = ''
+    + card(s.total, 'Total awards', 'fa-award', 'gold')
+    + card(s.active, 'Active', 'fa-circle-check', 'green')
+    + card(s.auto, 'Auto (criteria)', 'fa-bolt', 'purple')
+    + card(s.manual, 'Manual', 'fa-hand', 'blue');
+  function card(n,l,ico,cls){
+    const iconBg = cls==='gold'?'var(--gold-bg)':cls==='green'?'var(--green-bg)':cls==='purple'?'var(--purple-bg)':'var(--blue-bg)';
+    const iconColor = cls==='gold'?'var(--gold)':cls==='green'?'var(--green)':cls==='purple'?'var(--purple)':'var(--blue)';
+    return `<div class="stat-card"><div class="stat-ico" style="background:${iconBg};color:${iconColor}"><i class="fas ${ico}"></i></div><div><div class="stat-num">${n}</div><div class="stat-lbl">${l}</div></div></div>`;
+  }
+}
+function criteriaText(c){
+  if(!c) return '—';
+  if(c.metric==='manual') return 'Manual — no auto-grant';
+  if(c.metric==='genre_rank') return `Top ${c.value} in ${c.genre||'any genre'}${c.period?' · '+c.period:''}`;
+  if(c.metric==='reads') return `Reads ≥ ${Number(c.value).toLocaleString()}${c.period?' · '+c.period:''}`;
+  return `${c.metric} ${c.op} ${c.value}`;
+}
+function filtered(){
+  const q=(document.getElementById('q').value||'').toLowerCase();
+  const fs=document.getElementById('fStatus').value;
+  const fk=document.getElementById('fKind').value;
+  return AwardsService.list().filter(function(a){
+    if(q && (a.name.toLowerCase().indexOf(q)===-1 && a.desc.toLowerCase().indexOf(q)===-1)) return false;
+    if(fs!=='all' && a.status!==fs) return false;
+    const kind = a.criteria.metric==='manual' ? 'manual' : 'auto';
+    if(fk!=='all' && kind!==fk) return false;
+    return true;
+  });
+}
+function render(){
+  statsCards();
+  const items = filtered();
+  document.getElementById('countChip').textContent = items.length + (items.length===1?' award':' awards');
+  const el=document.getElementById('list');
+  if(!items.length){ el.innerHTML='<div style="padding:28px;text-align:center;color:var(--text-faint);font-size:13px">No awards match.</div>'; return; }
+  el.innerHTML = items.map(function(a){
+    const holders = AwardsService.holders(a.id);
+    const kind = a.criteria.metric==='manual' ? 'manual' : 'auto';
+    const isHex = a.color && a.color.indexOf('#')===0;
+    const icoStyle = isHex ? ' style="background:'+hexToSoft(a.color)+';color:'+a.color+';border-color:'+a.color+'"': '';
+    const icoCls = isHex ? '' : ' '+a.color;
+    return `<div class="aw-card" data-id="${a.id}">
+      <div class="aw-ico${icoCls}"${icoStyle}><i class="fas ${a.icon}"></i></div>
+      <div class="aw-main">
+        <div class="aw-name">${esc(a.name)}</div>
+        <div class="aw-desc">${esc(a.desc||'—')}</div>
+        <div class="aw-criteria"><i class="fas fa-sliders" style="margin-right:4px"></i>${esc(criteriaText(a.criteria))} · <span class="badge ${kind}">${kind}</span></div>
+      </div>
+      <div class="aw-badges">
+        <span class="badge ${a.status}">${esc(a.status)}</span>
+        <span class="badge" style="background:var(--table-head);color:var(--text-muted)">${holders.length} holders</span>
+      </div>
+      <div class="aw-actions">
+        <button class="editBtn" title="Edit"><i class="fas fa-pen"></i></button>
+        <button class="del delBtn" title="Delete"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.aw-card').forEach(function(card){
+    const id=card.getAttribute('data-id');
+    card.querySelector('.editBtn').addEventListener('click', function(e){ e.stopPropagation(); openEdit(id); });
+    card.querySelector('.delBtn').addEventListener('click', function(e){ e.stopPropagation(); onDelete(id); });
+  });
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+const ICONS = ['fa-award','fa-crown','fa-fire','fa-star','fa-bolt','fa-check-circle','fa-medal','fa-trophy','fa-heart','fa-gem','fa-feather','fa-book-open','fa-fire-flame-curved','fa-sparkles'];
+const COLOR_MAP = { gold:'#d4a017', red:'#e0384d', blue:'#2f7de1', purple:'#5b4bcf', green:'#16a34a', pink:'#ff0050', orange:'#d97706' };
+let pickedIcon='fa-award', pickedColor='#d4a017';
+function iconFor(c){ return COLOR_MAP[c] || c || '#d4a017'; }
+function renderIconGrid(){ const g=document.getElementById('iconGrid'); if(!g) return; g.innerHTML=ICONS.map(function(ic){ return '<button type="button" class="icon-opt'+(ic===pickedIcon?' on':'')+'" data-ic="'+ic+'"><i class="fas '+ic+'"></i></button>'; }).join(''); g.querySelectorAll('.icon-opt').forEach(function(b){ b.addEventListener('click', function(){ pickedIcon=b.getAttribute('data-ic'); renderIconGrid(); updatePreview(); }); }); }
+function updatePreview(){
+  const col=document.getElementById('fColor').value || pickedColor;
+  const name=(document.getElementById('fName')?.value||'').trim() || 'Preview Award';
+  const hexEl=document.getElementById('fColorHex'); if(hexEl) hexEl.textContent=col;
+  const pv=document.getElementById('badgePreview');
+  if(pv) pv.innerHTML='<div class="badge-preview-ico" style="background:'+hexToSoft(col)+';color:'+col+'"><i class="fas '+pickedIcon+'"></i></div><span class="badge-preview-chip" style="background:'+hexToSoft(col)+';color:'+col+';border:1px solid '+hexToSoft(col,0.22)+'"><i class="fas '+pickedIcon+'"></i> '+esc(name)+'</span> <span style="font-size:11px;color:var(--text-faint)">How it appears on profile</span>';
+}
+function hexToSoft(hex, a){ a=a||0.12; try{ hex=hex.replace('#',''); var r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }catch(e){ return hex; } }
+function openNew(){
+  editingId=null;
+  document.getElementById('modalTitle').textContent='New award';
+  document.getElementById('fName').value=''; document.getElementById('fDesc').value='';
+  pickedIcon='fa-award'; pickedColor='#d4a017'; const ci=document.getElementById('fColor'); if(ci) ci.value=pickedColor;
+  document.getElementById('fStatus2').value='draft';
+  document.getElementById('fMetric').value='reads'; document.getElementById('fValue').value='';
+  document.getElementById('fGenre').value=''; document.getElementById('fPeriod').value='';
+  renderIconGrid(); updatePreview();
+  document.getElementById('modalBg').classList.add('open');
+}
+function openEdit(id){
+  const a=AwardsService.byId(id); if(!a) return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='Edit award';
+  document.getElementById('fName').value=a.name; document.getElementById('fDesc').value=a.desc||'';
+  pickedIcon=a.icon||'fa-award'; pickedColor = iconFor(a.color||'#d4a017');
+  const ci=document.getElementById('fColor'); if(ci) ci.value=pickedColor;
+  document.getElementById('fStatus2').value=a.status;
+  document.getElementById('fMetric').value=a.criteria.metric||'reads';
+  document.getElementById('fValue').value=a.criteria.value||'';
+  document.getElementById('fGenre').value=a.criteria.genre||'';
+  document.getElementById('fPeriod').value=a.criteria.period||'';
+  renderIconGrid(); updatePreview();
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('open'); }
+function collectCriteria(){
+  const metric=document.getElementById('fMetric').value;
+  if(metric==='manual') return { metric:'manual', op:'admin', value:0 };
+  const v = document.getElementById('fValue').value;
+  const gv = document.getElementById('fGenre').value;
+  const pv = document.getElementById('fPeriod').value.trim();
+  const c={ metric:metric, op:metric==='genre_rank'?'top':'>=', value: v?Number(v):0 };
+  if(gv) c.genre=gv; if(pv) c.period=pv;
+  return c;
+}
+function onSave(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){ toast('Name is required'); return; }
+  const payload={
+    name:name, desc:document.getElementById('fDesc').value.trim(),
+    icon:pickedIcon, color:document.getElementById('fColor').value,
+    status:document.getElementById('fStatus2').value, criteria:collectCriteria()
+  };
+  if(editingId) AwardsService.update(editingId, payload); else AwardsService.create(payload);
+  closeModal(); render(); toast(editingId?'Award updated':'Award created');
+}
+async function onDelete(id){
+  const a=AwardsService.byId(id); if(!a) return;
+  if(!confirm(`Delete "${a.name}"? This also removes it from all holders.`)) return;
+  AwardsService.remove(id); render(); toast('Award deleted');
+}
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('fColor').addEventListener('input', updatePreview);
+document.getElementById('fName').addEventListener('input', updatePreview);
+document.getElementById('fStatus').addEventListener('change', render);
+document.getElementById('fKind').addEventListener('change', render);
+document.getElementById('btnNew').addEventListener('click', openNew);
+document.getElementById('btnRun').addEventListener('click', async function(){
+  const btn=this; btn.disabled=true; const prev=btn.innerHTML; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Running…';
+  await AwardsService.runAutoGrant(); render(); toast('Auto-grant evaluated');
+  btn.disabled=false; btn.innerHTML=prev;
+});
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('btnCancel').addEventListener('click', closeModal);
+document.getElementById('btnSave').addEventListener('click', onSave);
+document.getElementById('modalBg').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+render();
+})();
+</script>
+</body>
+</html>

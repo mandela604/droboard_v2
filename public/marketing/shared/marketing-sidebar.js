@@ -32,7 +32,7 @@
   const MENU_ITEMS = [
     { key: 'dashboard',            label: 'Dashboard',              icon: 'fa-house',            href: 'dashboard.html' },
     { key: 'campaigns',            label: 'Campaigns',              icon: 'fa-bullseye',         href: 'campaigns.html' },
-    { key: 'launch-kit',           label: 'Writer Launch Kit',      icon: 'fa-rocket',           href: 'writer-launch-kit.html' },
+    { key: 'templates',            label: 'Flyer Templates',        icon: 'fa-layer-group',      href: 'templates.html' },
     { key: 'ad-manager',           label: 'Ad Manager',             icon: 'fa-rectangle-ad',     href: 'ad-manager.html' },
     { key: 'marketing-analytics',  label: 'Marketing Analytics',    icon: 'fa-chart-line',       href: 'marketing-analytics.html' },
   ];
@@ -60,7 +60,7 @@
   .mkg-root a{text-decoration:none;color:inherit}
   .mkg-root button{font-family:inherit;cursor:pointer}
   .mkg-shell{display:flex;min-height:100vh}
-  .mkg-sidebar{width:270px;flex-shrink:0;background:var(--sidebar-bg);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;border-right:1px solid var(--sidebar-border);z-index:300}
+  .mkg-sidebar{width:270px;flex-shrink:0;background:var(--sidebar-bg);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;border:none;box-shadow:none;z-index:300}
   .mkg-sb-logo{display:flex;align-items:center;gap:11px;padding:20px 18px 14px}
   .mkg-sb-logo-ico{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0}
   .mkg-sb-logo-txt{line-height:1.25}
@@ -82,7 +82,7 @@
   .mkg-sb-footer button{width:100%;background:var(--accent);color:#fff;border:none;padding:9px;border-radius:9px;font-size:12px;font-weight:700}
   .mkg-sb-overlay{display:none;position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:290}
   .mkg-main{flex:1;min-width:0;display:flex;flex-direction:column}
-  .mkg-topbar{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:14px 26px}
+  .mkg-topbar{position:sticky;top:0;z-index:100;background:var(--card);border:none;box-shadow:none;display:flex;align-items:center;gap:18px;padding:14px 26px}
   .mkg-hamburger{display:none;width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
   .mkg-tb-title h1{font-size:18px;font-weight:800;margin:0}
   .mkg-tb-title p{font-size:12px;color:var(--text-muted);margin-top:1px}

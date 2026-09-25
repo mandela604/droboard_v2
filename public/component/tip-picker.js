@@ -58,6 +58,16 @@
   const COIN_AMOUNTS = [15, 50, 100];
   const CASH_AMOUNTS = [100, 500, 1000];
   const DEFAULT_CURRENCY = { symbol: '$', code: 'USD' };
+  const GIFT_CATALOG = [
+    { id:'gift-rose', name:'Rose', price:10, faIcon:'fa-heart', color:'#FF2D6A' },
+    { id:'gift-heart', name:'Big Heart', price:50, faIcon:'fa-heart', color:'#E11D48' },
+    { id:'gift-diamond', name:'Diamond', price:100, faIcon:'fa-gem', color:'#0EA5E9' },
+    { id:'gift-crown', name:'Crown', price:250, faIcon:'fa-crown', color:'#F59E0B' },
+    { id:'gift-rocket', name:'Rocket', price:500, faIcon:'fa-rocket', color:'#7C3AED' },
+    { id:'gift-dragon', name:'Dragon', price:1000, faIcon:'fa-dragon', color:'#16A34A' },
+    { id:'gift-trophy', name:'Trophy', price:750, faIcon:'fa-trophy', color:'#FF8C00' },
+    { id:'gift-fireworks', name:'Fireworks', price:300, faIcon:'fa-wand-sparkles', color:'#EC4899' },
+  ];
 
   // ══════════════════════════════════════════════════════════════════════
   // CSS (dtp- prefixed, self-contained, falls back gracefully if the
@@ -145,6 +155,22 @@
     .dtp-sup-item-name{font-size:12.5px;font-weight:700;color:var(--tx,#e0e0e0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dtp-sup-item-time{font-size:10px;color:#555;margin-top:1px}
 
+    .dtp-bal-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border:1px solid var(--bd,rgba(255,255,255,.06));border-radius:11px;padding:8px 12px;margin:0 16px 12px}
+    .dtp-bal-left{display:flex;align-items:center;gap:8px}
+    .dtp-bal-ico{width:28px;height:28px;border-radius:8px;background:rgba(255,0,80,.15);display:flex;align-items:center;justify-content:center;color:var(--acc,#ff0050);font-size:11px}
+    .dtp-bal-label{font-size:9px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.06em}
+    .dtp-bal-val{font-size:12px;font-weight:800;color:var(--tx,#fff)}
+    .dtp-bal-eye{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--bd,rgba(255,255,255,.08));display:flex;align-items:center;justify-content:center;color:#777;font-size:11px;cursor:pointer}
+    .dtp-gift-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 16px 4px}
+    .dtp-gift-card{background:rgba(255,255,255,.03);border:1.5px solid var(--bd,rgba(255,255,255,.08));border-radius:12px;padding:10px 4px;text-align:center;cursor:pointer;transition:.15s}
+    .dtp-gift-card:active{transform:scale(.96)}
+    .dtp-gift-card.on{background:var(--acc-dim,rgba(255,0,80,.16));border-color:var(--acc,#ff0050);box-shadow:0 2px 10px var(--glow,rgba(255,0,80,.25))}
+    .dtp-gift-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto 6px;font-size:16px}
+    .dtp-gift-name{font-size:10px;font-weight:800;color:var(--tx,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dtp-gift-price{font-size:10px;font-weight:700;color:#888;display:flex;align-items:center;justify-content:center;gap:3px;margin-top:2px}
+    .dtp-gift-card.on .dtp-gift-name{color:var(--acc,#ff0050)}
+    .dtp-gift-card.disabled{opacity:.45;pointer-events:none}
+
     .dtp-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);background:#111;border:1px solid var(--bd,rgba(255,255,255,.08));color:#e0e0e0;padding:8px 18px;border-radius:24px;font-size:12px;font-weight:600;z-index:2700;opacity:0;transition:.26s;pointer-events:none;white-space:nowrap;font-family:'DM Sans',system-ui,sans-serif;}
     .dtp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   `;
@@ -157,7 +183,10 @@
   let _curId = null;
   let _selectedAmount = null;
   let _customMode = false;
-  let _mode = 'coin'; // 'coin' | 'cash'
+  let _mode = 'coin'; // 'coin' | 'cash' | 'gift'
+  let _selectedGiftId = null;
+  let _selectedGiftPrice = null;
+  let _balanceVisible = true;
   const _supportersCache = {}; // per-id demo supporters, so repeated opens stay stable
 
   // ══════════════════════════════════════════════════════════════════════
@@ -220,6 +249,31 @@
     if (typeof _hooks.profileUrl === 'function') return _hooks.profileUrl(supporter);
     return `profile.html?u=${encodeURIComponent(supporter.id || supporter.name)}`;
   }
+  function _getGifts(){
+    if(window.StoreService && typeof window.StoreService.getGifts === 'function') return window.StoreService.getGifts();
+    return GIFT_CATALOG;
+  }
+  function _getBalance(){
+    if(window.StoreService && typeof window.StoreService.getBalance === 'function') return window.StoreService.getBalance();
+    try{ const v=parseInt(localStorage.getItem('dro_store_balance'),10); const c=isNaN(v)?350:v; const lvl=c>=1000?'Gold':c>=500?'Silver':c>=100?'Bronze':'Starter'; return {coins:c, level:lvl}; }catch(e){ return {coins:350, level:'Silver'}; }
+  }
+  function _spendCoins(amt){
+    if(window.StoreService && typeof window.StoreService.spendCoins === 'function') return window.StoreService.spendCoins(amt);
+    try{
+      const cur=_getBalance().coins;
+      if(cur < amt) return false;
+      localStorage.setItem('dro_store_balance', String(cur-amt));
+      return true;
+    }catch(e){ return false; }
+  }
+  function _updateBalanceRow(){
+    const el=document.getElementById('dtp-bal-val');
+    const eye=document.getElementById('dtp-bal-eye');
+    if(!el) return;
+    const bal=_getBalance();
+    el.textContent = _balanceVisible ? bal.coins.toLocaleString() + ' coins · ' + bal.level : '••••';
+    if(eye) eye.innerHTML = _balanceVisible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+  }
 
   // ══════════════════════════════════════════════════════════════════════
   // DOM build (once)
@@ -255,11 +309,24 @@
 
         <div class="dtp-mode-tabs" id="dtp-mode-tabs">
           <div class="dtp-mode-tab on" data-mode="coin"><i class="fas fa-coins" style="font-size:11px"></i> Coin</div>
+          <div class="dtp-mode-tab" data-mode="gift"><i class="fas fa-gift" style="font-size:11px"></i> Gift</div>
           <div class="dtp-mode-tab" data-mode="cash"><span id="dtp-cash-tab-symbol">$</span> Cash</div>
         </div>
 
-        <div class="dtp-amt-label">Choose an amount</div>
+        <div class="dtp-bal-row" id="dtp-bal-row">
+          <div class="dtp-bal-left">
+            <div class="dtp-bal-ico"><i class="fas fa-coins"></i></div>
+            <div>
+              <div class="dtp-bal-label">Your balance</div>
+              <div class="dtp-bal-val" id="dtp-bal-val">—</div>
+            </div>
+          </div>
+          <div class="dtp-bal-eye" id="dtp-bal-eye"><i class="fas fa-eye"></i></div>
+        </div>
+
+        <div class="dtp-amt-label" id="dtp-amt-label">Choose an amount</div>
         <div class="dtp-amt-grid" id="dtp-amt-grid"></div>
+        <div class="dtp-gift-grid" id="dtp-gift-grid" style="display:none"></div>
         <div class="dtp-custom-wrap" id="dtp-custom-wrap">
           <div class="dtp-custom-input-row">
             <span id="dtp-custom-icon">🪙</span>
@@ -358,14 +425,60 @@
     });
   }
 
+  function _renderGiftGrid(){
+    const grid=document.getElementById('dtp-gift-grid');
+    const gifts=_getGifts();
+    const bal=_getBalance().coins;
+    grid.innerHTML = gifts.map(g=>`
+      <div class="dtp-gift-card${bal < g.price ? ' disabled':''}${_selectedGiftId===g.id?' on':''}" data-gift="${g.id}" data-price="${g.price}">
+        <div class="dtp-gift-ico" style="background:${g.color}"><i class="fas ${g.faIcon}"></i></div>
+        <div class="dtp-gift-name">${g.name}</div>
+        <div class="dtp-gift-price"><i class="fas fa-coins" style="font-size:9px"></i> ${g.price}</div>
+      </div>`).join('');
+    grid.querySelectorAll('.dtp-gift-card:not(.disabled)').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const id=card.dataset.gift;
+        const price=+card.dataset.price;
+        if(_selectedGiftId===id){
+          card.classList.remove('on');
+          _selectedGiftId=null; _selectedGiftPrice=null;
+        } else {
+          grid.querySelectorAll('.dtp-gift-card').forEach(c=>c.classList.remove('on'));
+          card.classList.add('on');
+          _selectedGiftId=id; _selectedGiftPrice=price;
+        }
+        _syncSendBtn();
+        _updateSendBtnLabel(_curId);
+      });
+    });
+  }
+
   function _switchMode(mode, id) {
     _mode = mode;
     _selectedAmount = null;
     _customMode = false;
+    if(mode!=='gift'){ _selectedGiftId=null; _selectedGiftPrice=null; }
     document.querySelectorAll('.dtp-mode-tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
     document.getElementById('dtp-custom-wrap').classList.remove('show');
     document.getElementById('dtp-custom-input').value = '';
-    _renderAmountGrid(id);
+    const amtGrid=document.getElementById('dtp-amt-grid');
+    const giftGrid=document.getElementById('dtp-gift-grid');
+    const amtLabel=document.getElementById('dtp-amt-label');
+    const customWrap=document.getElementById('dtp-custom-wrap');
+    if(mode==='gift'){
+      amtGrid.style.display='none';
+      customWrap.style.display='none';
+      amtLabel.textContent='Choose a gift';
+      giftGrid.style.display='grid';
+      _renderGiftGrid();
+    } else {
+      amtGrid.style.display='grid';
+      customWrap.style.display='';
+      amtLabel.textContent='Choose an amount';
+      giftGrid.style.display='none';
+      _renderAmountGrid(id);
+    }
+    _updateBalanceRow();
     _syncSendBtn();
     _updateSendBtnLabel(id);
   }
@@ -375,6 +488,8 @@
     const currency = _getCurrency(id);
     if (_mode === 'cash') {
       btn.innerHTML = `<span style="font-size:14px;font-weight:800">${currency.symbol}</span> Send Support`;
+    } else if (_mode === 'gift') {
+      btn.innerHTML = _selectedGiftPrice ? `<i class="fas fa-gift"></i> Send Gift · ${ _selectedGiftPrice} coins` : `<i class="fas fa-gift"></i> Send Gift`;
     } else {
       btn.innerHTML = `<i class="fas fa-coins"></i> Send Tip`;
     }
@@ -401,7 +516,9 @@
 
   function _syncSendBtn() {
     const btn = document.getElementById('dtp-send');
-    const ok = _selectedAmount && _selectedAmount > 0;
+    let ok=false;
+    if(_mode==='gift') ok = !!_selectedGiftId && !!_selectedGiftPrice;
+    else ok = _selectedAmount && _selectedAmount > 0;
     btn.disabled = !ok;
   }
 
@@ -433,6 +550,11 @@
       if (isOpen) setTimeout(() => document.getElementById('dtp-note').focus(), 200);
     });
 
+    document.getElementById('dtp-bal-eye').addEventListener('click', ()=>{
+      _balanceVisible=!_balanceVisible;
+      _updateBalanceRow();
+    });
+
     document.getElementById('dtp-supp-row').addEventListener('click', () => {
       if (_curId !== null) openSupporters(_curId);
     });
@@ -443,15 +565,38 @@
   }
 
   function _sendTip() {
-    if (!_curId || !_selectedAmount || _selectedAmount <= 0) return;
-    const note = document.getElementById('dtp-note').value.trim();
     const writer = _getWriter(_curId);
+    const note = document.getElementById('dtp-note').value.trim();
+    if(_mode==='gift'){
+      if(!_curId || !_selectedGiftId || !_selectedGiftPrice) return;
+      const bal=_getBalance().coins;
+      if(bal < _selectedGiftPrice){
+        _toast('Not enough coins — buy more in Store');
+        return;
+      }
+      if(!_spendCoins(_selectedGiftPrice)){
+        _toast('Not enough coins');
+        return;
+      }
+      const gift=_getGifts().find(g=>g.id===_selectedGiftId);
+      const giftName=gift?gift.name:_selectedGiftId;
+      if(typeof _hooks.onSend === 'function'){
+        _hooks.onSend(_curId, _selectedGiftPrice, note, 'gift', _selectedGiftId);
+      } else {
+        const list=_demoSupporters(_curId);
+        list.unshift({ id:'you', name:'You', avatar:'https://i.pravatar.cc/100?img=1', time:'Just now · 🎁 '+giftName });
+      }
+      _toast(`🎁 ${giftName} sent to ${writer.name}!`);
+      _updateBalanceRow();
+      close();
+      return;
+    }
+    if (!_curId || !_selectedAmount || _selectedAmount <= 0) return;
     const currency = _getCurrency(_curId);
 
     if (typeof _hooks.onSend === 'function') {
       _hooks.onSend(_curId, _selectedAmount, note, _mode);
     } else {
-      // Standalone demo mode: push "You" into the local supporters cache
       const list = _demoSupporters(_curId);
       list.unshift({ id: 'you', name: 'You', avatar: 'https://i.pravatar.cc/100?img=1', time: 'Just now' });
     }
@@ -508,6 +653,8 @@
     _build();
     _curId = id;
     _selectedAmount = null;
+    _selectedGiftId = null;
+    _selectedGiftPrice = null;
     _customMode = false;
     _mode = 'coin';
 
@@ -523,9 +670,14 @@
     document.getElementById('dtp-note-wrap').classList.remove('open');
     document.getElementById('dtp-note-toggle').classList.remove('open');
     document.getElementById('dtp-custom-wrap').classList.remove('show');
+    document.getElementById('dtp-custom-wrap').style.display='';
     document.getElementById('dtp-custom-input').value = '';
+    document.getElementById('dtp-amt-grid').style.display='grid';
+    document.getElementById('dtp-gift-grid').style.display='none';
+    document.getElementById('dtp-amt-label').textContent='Choose an amount';
     document.querySelectorAll('.dtp-mode-tab').forEach(t => t.classList.toggle('on', t.dataset.mode === 'coin'));
 
+    _updateBalanceRow();
     _renderAmountGrid(id);
     _renderSupportersRow(id);
     _syncSendBtn();

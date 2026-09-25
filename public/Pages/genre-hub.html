@@ -89,6 +89,7 @@ a{color:inherit;text-decoration:none}
   display:flex;gap:0;padding:0 8px;border-bottom:1px solid var(--bd);background:var(--l1);
   position:sticky;top:57px;z-index:150;overflow-x:auto;
 }
+.tabs.is-stuck{box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .tab{
   flex-shrink:0;padding:12px 12px;font-size:12.5px;font-weight:700;color:var(--tx-faint);
   border-bottom:2.5px solid transparent;white-space:nowrap;
@@ -108,8 +109,9 @@ a{color:inherit;text-decoration:none}
 
 .sort-row{
   display:flex;gap:7px;padding:10px 14px;overflow-x:auto;border-bottom:1px solid var(--bd);background:var(--l1);
-  position:sticky;top:101px;z-index:140;
+  position:sticky;top:101px;z-index:140;will-change:transform;align-self:stretch;width:100%;
 }
+.sort-row.is-stuck{box-shadow:0 2px 8px rgba(0,0,0,.06);border-bottom-color:var(--bd);}
 .sort-chip{
   flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:20px;
   font-size:11.5px;font-weight:700;background:var(--l2);border:1px solid var(--bd);color:var(--tx-muted);
@@ -246,7 +248,7 @@ a{color:inherit;text-decoration:none}
 <script src="../services/ad-service.js"></script>
 <script src="../services/search-service.js"></script>
 <script src="../component/post-composer.js"></script>
-<script src="../services/genre-hub-service.js"></script>
+  <script src="../services/genre-hub-service.js?v=6"></script>
 
 <script>GenreHubPage.init();</script>
 </body>

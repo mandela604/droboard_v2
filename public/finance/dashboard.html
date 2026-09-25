@@ -86,14 +86,9 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="dashRoot">
-  <div class="welcome-banner">
-    <div class="welcome-eyebrow">Finance · Overview</div>
-    <div class="welcome-title" id="greetTitle">Welcome back 👋</div>
-    <div class="welcome-sub">Pending payouts, platform transaction volume, coin balance, and open disputes — everything Finance needs to keep the money moving.</div>
-    <div class="welcome-stats" id="welcomeStats"></div>
-  </div>
-
-  <div class="grid-4" id="statCards"></div>
+  <!-- hidden banner kept for service (original removed per request) -->
+  <div style="display:none"><span id="greetTitle"></span><span id="welcomeStats"></span></div>
+  <div class="grid-4" id="statCards" style="display:none"></div>
 
   <div class="dash-grid">
     <div>
