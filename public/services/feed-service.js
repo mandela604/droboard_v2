@@ -628,13 +628,11 @@
       onSelect: (item) => {
         if (item.id === 'new-post') { openPostComposer('text'); return; }
         if (item.id === 'boards-viewall') {
-          DroboardMenu.close();
-          setTimeout(()=> openBoardsExplorer(), 250);
+          openBoardsExplorer();
           return;
         }
         if (item.id === 'collections-viewall') {
-          DroboardMenu.close();
-          setTimeout(()=> { if(window.BrowseOverlay) BrowseOverlay.open({title:'My Collections', mode:'collections'}); else toast('Opening collections…'); }, 250);
+          if(window.BrowseOverlay) BrowseOverlay.open({title:'My Collections', mode:'collections'}); else toast('Opening collections…');
           return;
         }
         if (['latest', 'popular', 'trending', 'following'].includes(item.id)) {
