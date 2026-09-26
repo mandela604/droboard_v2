@@ -156,6 +156,30 @@
       box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);
     }
     [data-theme="dark"] .dgc-foot{border-top-color:rgba(255,255,255,.08)}
+
+    /* ── Feed trending equal height (comm-slide only) ── */
+    .comm-slide .dgc-post{
+      display:flex;flex-direction:column;
+    }
+    .comm-slide .dgc-title{
+      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+      overflow:hidden;min-height:39px;line-height:1.3;
+    }
+    .comm-slide .dgc-body{
+      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+      overflow:hidden;min-height:60px;line-height:1.55;
+    }
+    .comm-slide .dgc-body.clamp{
+      -webkit-line-clamp:3;min-height:60px;
+    }
+    .comm-slide .dgc-tags{
+      flex-wrap:nowrap;overflow:hidden;white-space:nowrap;
+      height:22px;min-height:22px;align-items:center;margin-bottom:0;
+    }
+    .comm-slide .dgc-tags .dgc-tag{flex-shrink:0}
+    .comm-slide .dgc-foot{margin-top:8px;padding-top:8px}
+    .comm-slide .dgc-media{flex-shrink:0}
+    .comm-slide .dgc-story{flex-shrink:0}
   `;
 
   let _root = null;
@@ -187,10 +211,7 @@
       <div class="dgc-pinned-title">${_esc(p.title)}</div>
       <div class="dgc-pinned-desc">${_esc(p.desc || p.body || '')}</div>
       <div class="dgc-pinned-foot">
-        <div class="dgc-pinned-stats">
-          <span><i class="fas fa-heart"></i> ${p.likes || 0}</span>
-          <span><i class="fas fa-comment"></i> ${p.comments || 0}</span>
-        </div>
+        <div></div>
         <button type="button" class="dgc-pinned-more" data-dgc-pinned-more="${_esc(p.id)}">Read more <i class="fas fa-chevron-right"></i></button>
       </div>
     </div>`;
@@ -209,7 +230,7 @@
 
     let tags = '';
     if (p.tag) {
-      tags += `<span class="dgc-tag ${p.tagClass || 'discussion'}">${_esc(p.tag)}${p.isThread && p.replies != null ? ' · ' + p.replies + ' replies' : ''}</span>`;
+      tags += `<span class="dgc-tag ${p.tagClass || 'discussion'}">${_esc(p.tag)}</span>`;
     }
     if (p.hot) tags += `<span class="dgc-tag hot"><i class="fas fa-fire"></i> Hot</span>`;
     if ((p.controversy || 0) >= 50) tags += `<span class="dgc-tag controversial"><i class="fas fa-bolt"></i> Controversial</span>`;
@@ -266,7 +287,7 @@
             <i class="${p.liked ? 'fas' : 'far'} fa-heart"></i> ${p.likes || 0}
           </button>`}
           <button type="button" class="dgc-act" data-dgc-thread="${_esc(p.id)}">
-            <i class="far fa-comment"></i> ${p.comments || 0}${p.isThread ? ' · Thread' : ''}
+            <i class="far fa-comment"></i> ${p.comments || 0} · Thread
           </button>
           <button type="button" class="dgc-act" data-dgc-share="${_esc(p.id)}"><i class="fas fa-share-nodes"></i></button>
           <span class="dgc-topslot">${(window.DroboardReactionPicker && typeof DroboardReactionPicker.renderTop === 'function' && typeof DroboardReactionPicker.topRowMode === 'function' && DroboardReactionPicker.topRowMode() === 'external') ? DroboardReactionPicker.renderTop(String(p.id), 2) : ''}</span>

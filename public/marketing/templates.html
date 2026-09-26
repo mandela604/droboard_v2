@@ -34,7 +34,17 @@
 
 <style>
 *{box-sizing:border-box}
-.tmpl-page{padding:0;margin:0}
+.tmpl-page{padding:0;margin:0;max-width:100%}
+/* Phone container on mobile — keeps inner content centered like author/reader phone, while laptop keeps Marketing full-width shell */
+@media (max-width: 640px){
+  #root .mkg-content{padding:0}
+  .tmpl-page{max-width:420px;margin:0 auto;padding:12px 12px 24px;box-shadow:0 0 24px rgba(0,0,0,.06);border-radius:0}
+  .tmpl-stats{grid-template-columns:repeat(2,1fr)}
+  .tmpl-toolbar{flex-wrap:wrap}
+  .tmpl-search{min-width:0}
+  .tmpl-card{flex-wrap:wrap}
+  .tmpl-card .tmpl-info{min-width:120px}
+}
 .tmpl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
 .tmpl-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
 .tmpl-stat .num{font-size:20px;font-weight:800;margin-bottom:2px}

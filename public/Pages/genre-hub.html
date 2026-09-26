@@ -112,6 +112,8 @@ a{color:inherit;text-decoration:none}
   position:sticky;top:101px;z-index:140;will-change:transform;align-self:stretch;width:100%;
 }
 .sort-row.is-stuck{box-shadow:0 2px 8px rgba(0,0,0,.06);border-bottom-color:var(--bd);}
+.floating-filters{position:fixed;top:101px;left:50%;transform:translateX(-50%);width:100%;max-width:420px;z-index:145;display:none;gap:7px;padding:10px 14px;overflow-x:auto;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);box-shadow:0 4px 12px rgba(0,0,0,.08);}
+.floating-filters.show{display:flex}
 .sort-chip{
   flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:20px;
   font-size:11.5px;font-weight:700;background:var(--l2);border:1px solid var(--bd);color:var(--tx-muted);
@@ -218,7 +220,16 @@ a{color:inherit;text-decoration:none}
   </div>
 
   <div class="sort-row" id="sortRow">
-    <button type="button" class="sort-chip active" data-sort="hot"><i class="fas fa-fire"></i> Hot</button>
+    <button type="button" class="sort-chip active" data-sort="all"><i class="fas fa-layer-group"></i> All</button>
+    <button type="button" class="sort-chip" data-sort="hot"><i class="fas fa-fire"></i> Hot</button>
+    <button type="button" class="sort-chip" data-sort="controversial"><i class="fas fa-bolt"></i> Controversial</button>
+    <button type="button" class="sort-chip" data-sort="new"><i class="fas fa-clock"></i> New</button>
+    <button type="button" class="sort-chip" data-sort="top"><i class="fas fa-arrow-trend-up"></i> Top</button>
+    <button type="button" class="sort-chip" data-sort="unanswered"><i class="fas fa-circle-question"></i> Unanswered</button>
+  </div>
+  <div class="floating-filters" id="floatingFilters">
+    <button type="button" class="sort-chip" data-sort="all"><i class="fas fa-layer-group"></i> All</button>
+    <button type="button" class="sort-chip" data-sort="hot"><i class="fas fa-fire"></i> Hot</button>
     <button type="button" class="sort-chip" data-sort="controversial"><i class="fas fa-bolt"></i> Controversial</button>
     <button type="button" class="sort-chip" data-sort="new"><i class="fas fa-clock"></i> New</button>
     <button type="button" class="sort-chip" data-sort="top"><i class="fas fa-arrow-trend-up"></i> Top</button>
@@ -236,19 +247,21 @@ a{color:inherit;text-decoration:none}
 <div class="toast" id="toast"></div>
 
 <script src="../data/genre-demo-seed.js"></script>
-<script src="../component/genre-card.js"></script>
+<script src="../component/genre-card.js?v=4"></script>
+<script src="../component/book-card.js?v=1"></script>
 <script src="../component/reaction-picker.js"></script>
 <script src="../component/ad-card.js"></script>
 <script src="../component/promo-slider.js"></script>
 <script src="../component/dots-menu.js"></script>
+<script src="../component/follow-list.js?v=2"></script>
 <script src="../component/share-modal.js"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../marketing/shared/marketing-data.js"></script>
 <script src="../services/ad-service.js"></script>
 <script src="../services/search-service.js"></script>
-<script src="../component/post-composer.js"></script>
-  <script src="../services/genre-hub-service.js?v=6"></script>
+<script src="../component/post-composer.js?v=3"></script>
+  <script src="../services/genre-hub-service.js?v=24"></script>
 
 <script>GenreHubPage.init();</script>
 </body>

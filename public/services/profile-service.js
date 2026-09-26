@@ -84,6 +84,60 @@
     ];
   }
 
+  /* ── Coin balance (gold) ── */
+  async function loadCoinBalance(){
+    let coins=0;
+    try{
+      if(window.StoreService && StoreService.getBalance) coins = StoreService.getBalance().coins;
+      else if(window.DemoData && DemoData.USER_COIN_BALANCE) coins = DemoData.USER_COIN_BALANCE;
+      else if(window.FinanceData && FinanceData.getDashboard) { const d=await FinanceData.getDashboard(); coins = parseInt(String(d.coinBalance||'0').replace(/[^0-9]/g,''))||0; }
+    }catch(e){}
+    const el=document.getElementById('coinBalance');
+    if(el) el.textContent = coins>=1000 ? (coins/1000).toFixed(1)+'K' : String(coins||0);
+  }
+
+  /* ── My Circle helpers (same as feed) ── */
+  function getMyBoardsForProfile(){
+    const FALLBACK_ALL=[
+      {id:'fantasy',name:'Fantasy',icon:'fa-hat-wizard',members:'45.7K'},
+      {id:'romance',name:'Romance',icon:'fa-heart',members:'92.1K'},
+      {id:'werewolf',name:'Werewolf',icon:'fa-moon',members:'31.2K'},
+      {id:'mafia',name:'Mafia',icon:'fa-gun',members:'18.4K'},
+      {id:'campus',name:'Campus',icon:'fa-graduation-cap',members:'22.1K'},
+      {id:'revenge',name:'Revenge',icon:'fa-fire',members:'15.3K'},
+      {id:'drama',name:'Drama',icon:'fa-masks-theater',members:'28.9K'},
+      {id:'billionaire',name:'Billionaire',icon:'fa-briefcase',members:'34.5K'},
+    ];
+    try{
+      const seed=window.GenreDemoSeed;
+      if(seed && seed.DEMO_GENRES){
+        const all=Object.values(seed.DEMO_GENRES);
+        const map={}; FALLBACK_ALL.forEach(g=> map[g.id]=g); all.forEach(g=> map[g.id]=Object.assign({}, map[g.id]||{}, g));
+        const allArr=Object.values(map);
+        const joinedIds=['fantasy','romance','werewolf'];
+        return { joined: allArr.filter(g=> joinedIds.includes(g.id)).slice(0,3), rest: allArr.filter(g=> !joinedIds.includes(g.id)), all: allArr };
+      }
+    }catch(e){}
+    return { joined:FALLBACK_ALL.slice(0,3), rest:FALLBACK_ALL.slice(3), all:FALLBACK_ALL };
+  }
+  function getMyCollectionsForProfile(){
+    const FALLBACK=[
+      {id:'coll_1', name:'Midnight Reads', count:12},
+      {id:'coll_2', name:'Tear-jerkers', count:8},
+      {id:'coll_3', name:'Weekend Binge', count:15},
+      {id:'coll_4', name:'Dark Romance Essentials', count:32},
+    ];
+    try{
+      const d=window.DemoData;
+      if(d && (d.COLLECTIONS||d.COLLECTIONS_DATA)){
+        const allRaw=d.COLLECTIONS||d.COLLECTIONS_DATA;
+        const all=allRaw.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||c.title||'Collection', count:c.count||0}));
+        return { joined: all.slice(0,2), rest: all.slice(2), all };
+      }
+    }catch(e){}
+    return { joined:FALLBACK.slice(0,2), rest:FALLBACK.slice(2), all:FALLBACK };
+  }
+
   /* ── Render header / actions / stats ── */
   function renderHeader(p) {
     document.getElementById('heroBg').style.backgroundImage = `url('${p.cover}')`;
@@ -236,32 +290,45 @@
     DroboardCollectionCard.setCollections(withIds);
   }
 
-  /* ── Following ── */
+  /* ── Following — via FollowList component (paginated, reusable) ── */
+  let followApi = null;
   function renderFollowing(p) {
     document.getElementById('followingIntro').innerHTML = `Following <strong style="color:var(--tx-high)">${p.stats.following}</strong> writers &amp; readers`;
-    const el = document.getElementById('followingList');
-    if (!p.following || !p.following.length) { el.innerHTML = `<div class="panel-empty"><i class="fas fa-user-group"></i>Not following anyone yet.</div>`; return; }
-    el.innerHTML = p.following.map((f, i) => {
-      const href = 'profile.html?u=' + encodeURIComponent(f.name);
-      return `
-      <div class="follow-item">
-        <a class="follow-av" style="display:block;text-decoration:none" href="${href}"><img src="${f.av}" loading="lazy"/></a>
-        <a class="follow-info" style="flex:1;min-width:0;text-decoration:none;color:inherit" href="${href}"><div class="follow-name">@${f.name}</div><div class="follow-meta">${f.meta}</div></a>
-        <button class="follow-btn${f.following ? ' ing' : ''}" data-i="${i}">${f.following ? '✓ Following' : '+ Follow'}</button>
-      </div>`;
-    }).join('');
-    el.querySelectorAll('.follow-btn').forEach(btn => btn.addEventListener('click', () => toggleFollowRow(+btn.dataset.i, btn)));
-  }
-  async function toggleFollowRow(i, btn) {
-    const row = PROFILE.following[i];
-    btn.disabled = true;
-    const call = row.following ? ProfileData.unfollowUser : ProfileData.followUser;
-    const result = await call(ME_HANDLE, row.name);
-    btn.disabled = false;
-    if (!result) { toast('Something went wrong — try again.'); return; }
-    row.following = !row.following;
-    btn.textContent = row.following ? '✓ Following' : '+ Follow';
-    btn.classList.toggle('ing', row.following);
+    let list = (p.following || []).map(f => ({ handle: f.name, name: f.name, avatar: f.av, av: f.av, meta: f.meta, following: !!f.following }));
+    // pad to 12 for demo pagination (8 per page = 2 pages)
+    if (list.length && list.length < 12) {
+      const extra = ['Alex_Jones','Mira_Lee','Sam_Wilson','Nina_Patel','Leo_King','Ivy_Chen','Omar_Farouk','Tara_Singh','Yuna_Kim','Jude_Obi'];
+      let i=0; while(list.length < 12 && i < extra.length) {
+        const h = extra[i++]; if (list.find(x=>x.handle===h)) continue;
+        list.push({ handle:h, name:h, avatar:'https://i.pravatar.cc/100?img='+(10+i), av:'https://i.pravatar.cc/100?img='+(10+i), meta:'Reader · demo follow', following: Math.random() > 0.5 });
+      }
+    }
+    if (!followApi) {
+      followApi = FollowList.attach('#followingList', {
+        perPage: 8,
+        emptyText: 'Not following anyone yet.',
+        onProfileClick: (h) => location.href='profile.html?u='+encodeURIComponent(h),
+        onToggle: async (handle, item, btn) => {
+          if (!item) return;
+          btn.disabled = true;
+          const idx = PROFILE.following.findIndex(x=>x.name===handle);
+          // demo extra items not in PROFILE.following — toggle locally only
+          if (idx===-1) {
+            item.following = !item.following;
+            const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = item.following;
+            followApi.render(); btn.disabled=false; toast(item.following ? `Following @${handle}` : `Unfollowed @${handle}`); return;
+          }
+          const row = PROFILE.following[idx];
+          try { const call = row.following ? ProfileData.unfollowUser : ProfileData.followUser; await call(ME_HANDLE, row.name); } catch(e){}
+          row.following = !row.following;
+          item.following = row.following;
+          const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = row.following;
+          followApi.render(); btn.disabled=false;
+          toast(row.following ? `Following @${handle}` : `Unfollowed @${handle}`);
+        }
+      });
+    }
+    followApi.setData(list);
   }
 
   /* ── About ── */
@@ -289,7 +356,21 @@
     if (window.DroboardReactionPicker) DroboardReactionPicker.attach(feedList, {});
     if (window.DroboardDotsMenu) {
       DroboardDotsMenu.configure({
-        onEdit: () => toast('✏️ Editing post isn\'t wired up yet'),
+        onEdit: (post) => {
+          if(!window.DroboardPostComposer){ toast('✏️ Edit — composer missing'); return; }
+          DroboardPostComposer.open({
+            editPost: post,
+            author: { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified },
+            onSubmit: async (updated, isEdit) => {
+              if(!isEdit) return;
+              const patch = Object.assign({}, updated);
+              // keep original id/time if composer generated new id
+              patch.id = post.id;
+              const res = await ProfileData.updatePost(VIEW_HANDLE, post.id, patch);
+              if(res){ PROFILE = res; renderFeed(PROFILE); toast('✅ Post updated'); }
+            }
+          });
+        },
         onDelete: async (post) => { const updated = await ProfileData.deletePost(VIEW_HANDLE, post.id); if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('🗑️ Post deleted'); } },
         onReport: () => toast('🚩 Reported. Thanks for flagging.'),
         onLess: () => toast('Got it — showing less of this.'),
@@ -542,12 +623,35 @@
     html += `<button class="drawer-item" id="drawerFollowingLink"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-user-group" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Following</div><div class="drawer-item-sub">${p.stats.following} accounts</div></div></button>`;
     if (IS_OWNER && !p.isWriter) html += `<button class="drawer-item" id="drawerBecomeWriter"><div class="drawer-item-icon" style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.12)"><i class="fas fa-feather-pointed" style="color:var(--purple)"></i></div><div style="flex:1"><div class="drawer-item-title">Become a Writer</div><div class="drawer-item-sub">Unlock books &amp; author tools</div></div></button>`;
     html += `</div>`;
+    // My Circle — same 2+2 as feed
+    const boardsData = getMyBoardsForProfile();
+    const collDataP = getMyCollectionsForProfile();
+    html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">My Circle</div>`;
+    html += `<button class="drawer-item" id="profileMyCircleToggle"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border:1px solid var(--bd-acc)"><i class="fas fa-circle-nodes" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title">My Circles</div><div class="drawer-item-sub">${boardsData.joined.length} boards · ${collDataP.joined.length} collections</div></div><i class="fas fa-chevron-right" id="profileMyCircleChevron" style="font-size:10px;transition:transform .2s"></i></button>`;
+    html += `<div id="profileMyCircleBody" style="display:none;padding:4px 0 8px">`;
+    html += `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px 4px">My Boards</div>`;
+    html += boardsData.joined.map(g=> `<button class="drawer-item" data-board="${g.id}"><div class="drawer-item-icon"><i class="fas ${g.icon}"></i></div><div style="flex:1"><div class="drawer-item-title">${g.name}</div><div class="drawer-item-sub">${g.members} members</div></div><i class="fas fa-chevron-right" style="font-size:10px"></i></button>`).join('');
+    html += `<button class="drawer-item" id="profileBoardsViewAll" style="color:var(--acc)"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border-color:var(--bd-acc)"><i class="fas fa-arrow-right" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--acc)">View all boards</div></div></button>`;
+    html += `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px 4px">My Collections</div>`;
+    html += collDataP.joined.map(c=> `<button class="drawer-item" data-coll="${c.id}"><div class="drawer-item-icon"><i class="fas fa-folder"></i></div><div style="flex:1"><div class="drawer-item-title">${c.name}</div><div class="drawer-item-sub">${c.count} stories</div></div><i class="fas fa-chevron-right" style="font-size:10px"></i></button>`).join('');
+    html += `<button class="drawer-item" id="profileCollViewAll" style="color:var(--acc)"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border-color:var(--bd-acc)"><i class="fas fa-arrow-right" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--acc)">View all collections</div></div></button>`;
+    html += `</div></div>`;
     if (IS_OWNER) html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">Wallet</div><button class="drawer-item" onclick="location.href='store.html'"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.3)"><i class="fas fa-wallet" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--gold)">Wallet</div><div class="drawer-item-sub">Coins, balance &amp; payouts</div></div><div class="drawer-item-right"><i class="fas fa-chevron-right" style="font-size:10px"></i></div></button></div>`;
     html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">Account</div>`;
     if (IS_OWNER) html += `<button class="drawer-item" onclick="location.href='edit-profile.html'"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-user-edit" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Edit Profile</div><div class="drawer-item-sub">Name, bio, avatar, genres</div></div></button><button class="drawer-item" onclick="location.href='settings.html'"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-gear" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Settings</div><div class="drawer-item-sub">Privacy, notifications, payout</div></div></button>`;
     html += `<button class="drawer-item" id="drawerReferBtn"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.2)"><i class="fas fa-share-alt" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title">Refer a Friend</div><div class="drawer-item-sub">Earn $5 per referral</div></div></button>`;
     html += `<button class="drawer-item" id="drawerSignOutBtn"><div class="drawer-item-icon" style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15)"><i class="fas fa-sign-out-alt" style="color:#dc2626"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:#dc2626">Sign Out</div></div></button></div>`;
     document.getElementById('drawerBody').innerHTML = html;
+    // restore My Circle expanded from previous open
+    try{
+      const saved=JSON.parse(localStorage.getItem('profile_myCircles_expanded')||'null');
+      if(saved){
+        const b=document.getElementById('profileMyCircleBody');
+        const c=document.getElementById('profileMyCircleChevron');
+        if(b) b.style.display='block';
+        if(c) c.style.transform='rotate(90deg)';
+      }
+    }catch(e){}
     const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
     bind('drawerNewPost', openNewPostComposer);
     bind('drawerNewBook', () => { closeDrawer(); location.href = 'create.html'; });
@@ -558,6 +662,24 @@
     bind('drawerBecomeWriter', openUpgradeWizard);
     bind('drawerReferBtn', () => { toast('🤝 Referral service isn\'t wired up yet'); closeDrawer(); });
     bind('drawerSignOutBtn', async () => { closeDrawer(); if (window.AuthSession) await AuthSession.logout(); toast('👋 Signed out!'); setTimeout(() => location.href = 'index.html', 600); });
+    // My Circle accordion
+    const myCircleToggle=document.getElementById('profileMyCircleToggle');
+    const myCircleBody=document.getElementById('profileMyCircleBody');
+    const myCircleChevron=document.getElementById('profileMyCircleChevron');
+    if(myCircleToggle && myCircleBody){
+      myCircleToggle.addEventListener('click', ()=>{
+        const isOpen=myCircleBody.style.display!=='none';
+        myCircleBody.style.display=isOpen?'none':'block';
+        if(myCircleChevron) myCircleChevron.style.transform=isOpen?'':'rotate(90deg)';
+        try{ localStorage.setItem('profile_myCircles_expanded', JSON.stringify(!isOpen)); }catch(e){}
+      });
+    }
+    document.querySelectorAll('[data-board]').forEach(el=> el.addEventListener('click', ()=>{ const id=el.dataset.board; closeDrawer(); setTimeout(()=> location.href='genre-hub.html?genre='+encodeURIComponent(id), 200); }));
+    document.querySelectorAll('[data-coll]').forEach(el=> el.addEventListener('click', ()=>{ const id=el.dataset.coll; closeDrawer(); setTimeout(()=> location.href='collection.html?id='+encodeURIComponent(id), 200); }));
+    const bViewAll=document.getElementById('profileBoardsViewAll');
+    if(bViewAll) bViewAll.addEventListener('click', ()=>{ closeDrawer(); setTimeout(()=>{ if(window.BoardsOverlay){ const d=getMyBoardsForProfile(); BoardsOverlay.open(d); } else location.href='genre-hub.html'; }, 250); });
+    const cViewAll=document.getElementById('profileCollViewAll');
+    if(cViewAll) cViewAll.addEventListener('click', ()=>{ closeDrawer(); setTimeout(()=>{ if(window.BrowseOverlay) BrowseOverlay.open({title:'My Collections', mode:'collections'}); else toast('Opening collections…'); }, 250); });
   }
 
   /* ── Top-level render + boot ── */
@@ -590,6 +712,7 @@
     initTheme();
     window.toast = toast;
     loadNotifCount();
+    loadCoinBalance();
     if (window.DroboardNav) DroboardNav.configure({ active: 'profile' });
     document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);

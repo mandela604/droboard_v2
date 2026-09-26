@@ -264,6 +264,16 @@
     return presentProfile(base);
   }
 
+  async function updatePost(handle, postId, patch) {
+    const key = normalizeHandle(handle);
+    await delay(200);
+    const base = requireProfile(key);
+    const post = findPost(base, postId);
+    Object.assign(post, patch || {});
+    // keep mine flag cleared, presentProfile will re-add
+    return presentProfile(base);
+  }
+
   async function becomeWriter(handle, payload) {
     const key = normalizeHandle(handle);
     const firstBookTitle = (payload && payload.firstBookTitle) || 'Untitled';
@@ -349,6 +359,7 @@
     unlikePost: unlikePost,
     savePost: savePost,
     deletePost: deletePost,
+    updatePost: updatePost,
     becomeWriter: becomeWriter,
     createCollection: createCollection,
     updateCollection: updateCollection,

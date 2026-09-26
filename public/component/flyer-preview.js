@@ -3,7 +3,8 @@
  * Vars can be filled via: typing, file upload (author photo / cover / user photo),
  * searchable story dropdown (autofills title/cover/author/genre/hook/link).
  * CTA always carries the author's inserted link (+ optional Store link).
- * No raw URL pill — only "Available on DroBoard" + CTA.
+ * Every template now ships a premium header, polished hero treatment,
+ * and a Share + Download bar baked into the design.
  */
 (function(global){
 'use strict';
@@ -60,16 +61,71 @@ function ctaEl(v, link, storeUrl, accent){
   var isFollowTpl = /spotlight|follow_me|reader|platform_reader|platform_invite/.test(v._templateId||'') || /spotlight|follow me|reader|invite/i.test(v._templateName||'');
   var fallback = isFollowTpl ? 'Follow Me →' : 'READ NOW →';
   var text = pickCta(v, fallback);
-  var isFollow = /follow/i.test(text);
-  // CTA href is the link the writer pasted; Store is no longer a separate pill — it's just another link option
   var target = (v.link||link||'').trim() || '#';
   var bg = v.accent || accent || 'var(--accent)';
   if(target && target !== '#') return '<a href="'+esc(target)+'" target="_blank" rel="noopener" class="fp-canvas-cta" style="background:'+esc(bg)+';text-decoration:none">'+esc(text)+'</a>';
   return '<span class="fp-canvas-cta" style="background:'+esc(bg)+'">'+esc(text)+'</span>';
 }
+// Legacy footer (kept for compatibility, no longer used by LAYOUTS)
 function linkRow(link, storeUrl){
-  // No Store pill here anymore — per request. Only the DroBoard badge remains.
-  return '<div class="fp-canvas-link-row"><span style="font-size:8px;color:rgba(255,255,255,.45)">Available on DroBoard</span></div>';
+  return '<div class="fp-canvas-link-row" style="flex-wrap:wrap">'
+    + '<span style="font-size:8px;color:rgba(255,255,255,.45)">Available on DroBoard</span>'
+    + '<span style="margin-left:auto;display:inline-flex;gap:6px">'
+    + '<button onclick="FlyerPreview.share()" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff;font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-share-nodes"></i> Share</button>'
+    + '<button onclick="FlyerPreview.download()" style="padding:5px 10px;border-radius:8px;border:none;background:#fff;color:#0f0f22;font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-download"></i> Download</button>'
+    + '</span></div>';
+}
+
+// ── Premium header (logo + tagline), reused across every template ──
+function headerBar(accent){
+  return '<div style="display:flex;align-items:center;gap:7px;padding:10px 12px 0;position:relative;z-index:2">'
+    + '<div style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,'+esc(accent)+',#000);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:12px;flex-shrink:0">D</div>'
+    + '<div><div style="font-weight:900;font-size:10.5px;letter-spacing:-.02em;color:#fff;line-height:1">DroBoard</div><div style="font-size:6.5px;letter-spacing:.16em;color:rgba(255,255,255,.55);font-weight:700">READ · WRITE · CONNECT</div></div>'
+    + '</div>';
+}
+// ── Premium footer: link chip + QR + Share/Download — on EVERY template ──
+function footerBar(v, link, accent, light){
+  var handle=(v.handle||'').replace('@','')||(v.authorName||'user').toLowerCase().replace(/\s+/g,'');
+  var border = light ? '#eceaf5' : 'rgba(255,255,255,.08)';
+  var muted = light ? '#9694ac' : 'rgba(255,255,255,.5)';
+  var shareBg = light ? '#f4f4fb' : 'rgba(255,255,255,.08)';
+  var shareBorder = light ? '#eceaf5' : 'rgba(255,255,255,.18)';
+  var shareColor = light ? '#1a1730' : '#fff';
+  var dlBg = light ? esc(accent) : '#fff';
+  var dlColor = light ? '#fff' : '#0f0f22';
+  return '<div style="position:relative;z-index:2;padding:10px 12px 12px;border-top:1px solid '+border+'">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+    + '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:5px;font-size:8px;color:'+muted+'"><i class="fas fa-link" style="font-size:8px"></i><span style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">droboard.com/'+esc(handle||'story')+'</span></div>'
+    + '<div style="width:28px;height:28px;border-radius:6px;background:'+(light?'#1a1730':'#fff')+';display:flex;align-items:center;justify-content:center;font-size:9px;color:'+(light?'#fff':'#0f0f22')+';flex-shrink:0"><i class="fas fa-qrcode"></i></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="FlyerPreview.share()" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid '+shareBorder+';background:'+shareBg+';color:'+shareColor+';font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-share-nodes"></i> Share</button>'
+    + '<button onclick="FlyerPreview.download()" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:'+dlBg+';color:'+dlColor+';font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-download"></i> Download</button>'
+    + '</div></div>';
+}
+async function shareCurrent(){
+  var link=(currentVars&&currentVars.link)||location.href;
+  var title=(currentVars&&currentVars.title)|| (currentTemplate&&currentTemplate.name) || 'DroBoard flyer';
+  if(navigator.share){ try{ await navigator.share({title:title, url:link}); return; }catch(e){} }
+  try{ await navigator.clipboard.writeText(link); }catch(e){}
+  var t=document.createElement('div'); t.textContent='Link copied — paste to share'; t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f0f22;color:#fff;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:700;z-index:9999'; document.body.appendChild(t); setTimeout(function(){t.remove();},1800);
+}
+async function downloadCurrent(){
+  var mount=document.getElementById('fpCanvasMount'); if(!mount) return;
+  var canvasEl=mount.querySelector('.fp-canvas'); if(!canvasEl) return;
+  async function doCapture(){
+    if(!window.html2canvas) return false;
+    try{ var c=await html2canvas(canvasEl,{backgroundColor:null, scale:2, useCORS:true}); var a=document.createElement('a'); a.download=(currentTemplate?currentTemplate.id:'flyer')+'.png'; a.href=c.toDataURL('image/png'); a.click(); return true; }catch(e){ return false; }
+  }
+  if(await doCapture()) return;
+  await new Promise(function(res, rej){
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    s.onload=res; s.onerror=rej; document.head.appendChild(s);
+  }).catch(function(){});
+  if(!(await doCapture())){
+    var t=document.createElement('div'); t.textContent='Download failed — check images are CORS-enabled'; t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#b00020;color:#fff;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:700;z-index:9999'; document.body.appendChild(t); setTimeout(function(){t.remove();},2200);
+  }
 }
 function statsRow(v){
   var s=v.stats || DEMO_STATS;
@@ -86,52 +142,159 @@ function statsRowReader(v){
   return '<div style="display:flex;gap:6px;margin:8px 0 6px"><span style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,.08)"><b style="display:block;font-size:13px;color:#fff">'+h+'h</b><small style="font-size:8px;color:rgba(255,255,255,.55)">Hours read</small></span><span style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,.08)"><b style="display:block;font-size:13px;color:#fff">'+b+'</b><small style="font-size:8px;color:rgba(255,255,255,.55)">Books read</small></span><span style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,.08)"><b style="display:block;font-size:13px;color:#fff">'+st+'d</b><small style="font-size:8px;color:rgba(255,255,255,.55)">Streak</small></span></div>';
 }
 
-// ── Per-template renderers (each visually distinct) ──
+// ── Premium hero flyer (from screenshot: WHAT HAPPENS NEXT + chat + book angled) ──
+function heroHeadlineVars(){ return [{key:'headline',label:'Headline (use | to split two lines)',type:'text'},{key:'chatTime',label:'Chat time',type:'text'},{key:'chatName',label:'Chat name',type:'text'},{key:'chatText',label:'Chat message',type:'text'},{key:'watchText',label:'Watch text',type:'text'}]; }
+function ensureHeroVars(tmpl){
+  if(!tmpl||tmpl._heroPatched) return;
+  ['headline','chatTime','chatName','chatText','watchText'].forEach(function(k){ if(tmpl.vars.indexOf(k)===-1) tmpl.vars.splice(0,0,k); });
+  tmpl._heroPatched=true;
+}
+function heroPremiumHtml(v, link, cover){
+  // headline empty → remove the pink brush. Hook lines empty → hide that line. Same for every other cell.
+  var isEditing = Object.prototype.hasOwnProperty.call(v,'headline');
+  var headlineRaw = isEditing ? (v.headline||'') : 'WHAT HAPPENS|NEXT?';
+  var headParts=headlineRaw.split('|'); var headA=headParts[0]||''; var headB=headParts[1]||'';
+  var showHeadline = !isEditing || headlineRaw.trim()!=='';
+  var hookLines=(v.hook||'She thought her husband had gone to work...|Then she received a message.').split('|');
+  var h1raw=hookLines[0]||''; var h2raw=hookLines[1]||'';
+  var showH1=h1raw.trim()!==''; var showH2=h2raw.trim()!=='';
+  var h1=esc(h1raw); var h2=esc(h2raw);
+  var title=esc(v.title||'The Last Sunrise'); var author=esc(v.authorName||'Tobi Adenuga');
+  var genres=(v.genre||'Romance|Drama|Suspense').split('|').map(function(g){return esc(g.trim())});
+  var cta=(v.ctaText||'READ NOW →'); var acc=v.accent||'#ff0050';
+  var handle=esc(v.handle||'@tobi_adenuga');
+  return '<div class="fp-canvas v9" style="position:relative;overflow:hidden;background:radial-gradient(520px 360px at 50% -8%, #1a1033 0%, #0b0b18 42%, #050508 100%);display:flex;flex-direction:column">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 12px 0 12px;position:relative;z-index:2"><div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#ff0050,#000);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px">D</div><div><div style="font-weight:900;font-size:11px;letter-spacing:-.02em;color:#fff;line-height:1">DroBoard</div><div style="font-size:7px;letter-spacing:.18em;color:rgba(255,255,255,.6);font-weight:700">READ · WRITE · CONNECT</div></div></div><div style="text-align:right;font-size:8px;line-height:1.35;color:rgba(255,255,255,.9);font-weight:700;font-style:italic">Real Stories.<br/>Real People.<br/>Real Emotions.<span style="display:block;height:2px;margin-top:2px;background:#ff0050;border-radius:2px;transform:rotate(-2deg)"></span></div></div>'
+    +(showHeadline?'<div style="margin:12px 10px 0;position:relative;z-index:2;display:inline-block;transform:rotate(-1deg)"><div style="background:#ff0050;color:#fff;font-weight:900;font-size:19px;line-height:1;padding:6px 14px 8px;border-radius:8px 0 10px 0;box-shadow:0 4px 14px rgba(255,0,80,.4);clip-path:polygon(2% 0,100% 0,98% 18%,100% 100%,2% 100%,0 82%)">'+esc(headA)+(headB?'<br/><span style="font-size:28px;letter-spacing:.04em">'+esc(headB)+'</span>':'')+'</div></div>':'')
+    +(showH1||showH2?'<div style="padding:12px 14px 0 14px;position:relative;z-index:2">'+(showH1?'<div style="font-size:12px;line-height:1.45;color:#fff;font-weight:600;max-width:190px">'+h1+'</div>':'')+(showH2?'<div style="font-size:11px;line-height:1.45;color:#ff2d55;font-weight:700;margin-top:4px">'+h2+'</div>':'')+'</div>':'')
+    +'<div style="position:relative;flex:1;display:flex;align-items:flex-end;gap:10px;padding:10px 10px 0 10px;min-height:210px">'
+    +'<div style="flex:1;max-width:66%;position:relative;z-index:2;background:linear-gradient(180deg,#14141e 0%,#0a0a12 100%);border-radius:16px;padding:10px 10px 14px 10px;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.45)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:10px;color:rgba(255,255,255,.6)">'+esc(v.chatTime||'8:42')+'</span><span style="font-size:9px;color:rgba(255,255,255,.45)"><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:50%;background:#2a2a3a;display:flex;align-items:center;justify-content:center;color:#888;font-size:12px"><i class="fas fa-user"></i></div><div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;color:#fff">'+esc(v.chatName||'Unknown Number')+'</div><div style="font-size:8px;color:rgba(255,255,255,.45)">Today, '+esc(v.chatTime||'8:42')+' PM</div></div></div>'+(v.chatText!==''?'<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;font-size:10px;color:#fff;font-style:italic">'+esc(v.chatText||'I know your secret...')+'</div>':'')+'</div>'
+    +'<div style="width:86px;flex-shrink:0;position:relative;z-index:2;transform:rotate(2deg)"><img src="'+esc(cover||'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=400&fit=crop')+'" style="width:86px;height:118px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 18px rgba(0,0,0,.45)" alt=""/><div style="position:absolute;inset:auto -6px -6px -6px;height:12px;background:#ff0050;opacity:.9;transform:rotate(-1deg);border-radius:2px"></div><div style="position:absolute;bottom:6px;left:6px;right:6px;text-align:center"><div style="font-family:Playfair Display,serif;font-size:11px;font-weight:800;color:#fff;line-height:1;text-shadow:0 1px 6px rgba(0,0,0,.6)">'+title+'</div><div style="font-size:6px;letter-spacing:.14em;color:rgba(255,255,255,.7);font-weight:700;margin-top:2px">'+esc(handle.replace('@','').toUpperCase()||'TOBI ADENUGA')+'</div></div></div>'
+    +'</div>'
+    +'<div style="position:relative;z-index:2;padding:12px 12px 8px 12px"><div style="font-family:Brush Script MT,cursive;font-size:22px;font-weight:800;color:#fff;transform:rotate(-1deg);text-shadow:0 2px 10px rgba(0,0,0,.5)">The<br/>Last Sunrise</div><div style="margin-top:6px;display:flex;align-items:center;gap:6px"><i class="fas fa-user" style="color:#ff0050;font-size:10px"></i><span style="font-size:11px;font-weight:700;color:#fff">By '+author+'</span><span style="margin-left:6px;display:inline-flex;gap:5px"><span style="padding:2px 7px;border-radius:10px;background:#ff0050;color:#fff;font-size:8px;font-weight:700">'+esc(genres[0]||'Romance')+'</span>'+(genres[1]?'<span style="padding:2px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:8px">'+esc(genres[1])+'</span>':'')+(genres[2]?'<span style="padding:2px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:8px">'+esc(genres[2])+'</span>':'')+'</span></div></div>'
+    +'<div style="position:relative;z-index:2;display:flex;align-items:center;gap:10px;padding:6px 12px 8px 12px"><a href="'+esc(link||'#')+'" target="_blank" style="flex:1;display:flex;align-items:center;gap:8px;text-decoration:none"><span style="width:36px;height:36px;border-radius:50%;background:#ff0050;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px"><i class="fas fa-play" style="margin-left:2px"></i></span><span><span style="display:block;font-size:10px;color:rgba(255,255,255,.6);font-weight:600">Watch the full story on</span><span style="display:block;font-size:14px;font-weight:800;color:#fff;line-height:1">DroBoard</span></span></a><a href="'+esc(link||'#')+'" target="_blank" style="padding:8px 14px;border-radius:10px;background:#ff0050;color:#fff;font-size:10px;font-weight:800;text-decoration:none;transform:rotate(-1deg);box-shadow:0 4px 14px rgba(255,0,80,.35)">'+esc(cta||'READ NOW →')+'</a></div>'
+    +'<div style="position:relative;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 12px 8px 12px;border-top:1px solid rgba(255,255,255,.06)"><div style="flex:1"><div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.5)"><i class="fas fa-link" style="font-size:8px"></i> <span style="font-family:monospace">droboard.com/'+esc(handle.replace('@','')||'tobi')+'</span></div></div><div style="display:flex;align-items:center;gap:6px"><span style="font-size:9px;font-style:italic;color:rgba(255,255,255,.7)">Scan to read <i class="fas fa-arrow-right" style="font-size:8px"></i></span><div style="width:44px;height:44px;border-radius:6px;background:#fff;padding:3px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#0f0f22;font-weight:800"><i class="fas fa-qrcode"></i></div></div></div>'
+    +'<div style="position:relative;z-index:2;display:flex;gap:8px;padding:0 12px 8px 12px"><button onclick="FlyerPreview.share()" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-share-nodes"></i> Share</button><button onclick="FlyerPreview.download()" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:#fff;color:#0f0f22;font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-download"></i> Download</button></div>'
+    +'<div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06)"><span style="display:flex;align-items:center;gap:5px;font-size:7px;color:rgba(255,255,255,.6);font-weight:700"><i class="far fa-book-open"></i> Great Stories</span><span style="display:flex;align-items:center;gap:5px;font-size:7px;color:rgba(255,255,255,.6);font-weight:700"><i class="fas fa-users"></i> Amazing Writers</span><span style="display:flex;align-items:center;gap:5px;font-size:7px;color:rgba(255,255,255,.6);font-weight:700"><i class="far fa-heart"></i> A Growing Community</span><span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:4px;background:#ff0050;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:9px">D</span><span style="font-size:9px;font-weight:900;color:#fff">DroBoard</span></span></div>'
+    +'</div>';
+}
+
+// ── Per-template renderers — every one gets a premium header + hero treatment + Share/Download footer ──
 var LAYOUTS = {
-  tmpl_main: function(t, v, link, cover, authorPhoto, storeUrl){
-    var acc=v.accent||t.accent||'#ff0050';
-    return '<div class="fp-canvas sq"><img class="fp-canvas-img" src="'+esc(cover)+'" style="height:46%" alt=""/><div class="fp-canvas-body"><div class="fp-canvas-kicker">'+esc(v.genre||'Featured')+' · DroBoard</div><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div class="fp-canvas-author">By '+esc(v.authorName||'Author Name')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||'One emotional, curiosity-driven hook from the story.')+'"</div>'+ctaEl(v, link, storeUrl, acc)+linkRow(link, storeUrl)+'</div></div>';
-  },
+  tmpl_main: function(t, v, link, cover, authorPhoto, storeUrl){ return heroPremiumHtml(v, link, cover); },
+  tmpl_teaser: function(t, v, link, cover, authorPhoto, storeUrl){ return heroPremiumHtml(v, link, cover); },
+
   tmpl_wa_status: function(t, v, link, cover, authorPhoto, storeUrl){
-    return '<div class="fp-canvas v9"><img class="fp-canvas-img" src="'+esc(cover)+'" style="height:44%" alt=""/><div class="fp-canvas-body" style="background:linear-gradient(180deg,rgba(15,15,34,0) 0%,#0f0f22 8%)"><div class="fp-author-row"><img src="'+esc(authorPhoto)+'" alt=""/><span style="font-size:10.5px;font-weight:700">'+esc(v.authorName||'Author Name')+'</span><span style="margin-left:auto;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:#25d366;color:#fff;padding:3px 7px;border-radius:20px">WhatsApp</span></div><div style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#25d366;margin:6px 0 4px">YOU NEED TO READ THIS STORY.</div><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'+ctaEl(v, link, storeUrl, v.accent||'#25d366')+linkRow(link, storeUrl)+'</div></div>';
+    var acc=v.accent||'#25d366';
+    return '<div class="fp-canvas v9" style="background:radial-gradient(480px 320px at 50% -10%, #128c7e 0%, #0f0f22 45%, #0a0a12 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + headerBar(acc)
+      + '<div style="position:relative;margin:10px 12px 0;transform:rotate(-1deg)"><img src="'+esc(cover)+'" style="width:100%;height:160px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 26px rgba(0,0,0,.45)" alt=""/><span style="position:absolute;top:-6px;left:10px;background:'+esc(acc)+';color:#fff;font-size:8px;font-weight:800;padding:4px 9px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 4px 10px rgba(0,0,0,.3)"><i class="fab fa-whatsapp"></i> Status</span></div>'
+      + '<div style="padding:14px 14px 0"><div class="fp-author-row"><img src="'+esc(authorPhoto)+'" alt=""/><span style="font-size:10.5px;font-weight:700;color:#fff">'+esc(v.authorName||'Author Name')+'</span></div>'
+      + '<div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+';margin:6px 0 4px">You need to read this</div>'
+      + '<div class="fp-canvas-title" style="color:#fff">'+esc(v.title||'Your Story Title')+'</div>'
+      + '<div class="fp-canvas-hook" style="border-left-color:'+esc(acc)+'">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'
+      + ctaEl(v, link, storeUrl, acc)
+      + '</div><div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_wa_share: function(t, v, link, cover, authorPhoto, storeUrl){
-    return '<div class="fp-canvas sq" style="background:#fff;color:#1a1730"><img class="fp-canvas-img" src="'+esc(cover)+'" style="height:50%" alt=""/><div class="fp-canvas-body" style="background:#fff"><div class="fp-canvas-title" style="color:#1a1730">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:9px;color:#8e8e93;margin-bottom:6px">By '+esc(v.authorName||'Author Name')+'</div><div class="fp-canvas-hook" style="color:#434059;border-left-color:#25d366;background:#f4f4fb">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'+ctaEl(v, link, storeUrl, v.accent||'#25d366')+'<div style="margin-top:10px;padding-top:10px;border-top:1px solid #eceaf5;display:flex;align-items:center;gap:6px;font-size:8px;color:#9694ac">Available on DroBoard'+(storeUrl?'<a href="'+esc(storeUrl)+'" target="_blank" style="margin-left:auto;background:#25d366;color:#fff;padding:4px 10px;border-radius:8px;text-decoration:none;font-size:9px;font-weight:700"><i class="fas fa-store"></i> Store</a>':'')+'</div></div></div>';
+    var acc=v.accent||'#25d366';
+    return '<div class="fp-canvas sq" style="background:#ffffff;color:#1a1730;display:flex;flex-direction:column">'
+      + '<div style="display:flex;align-items:center;gap:7px;padding:12px 14px 0"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,'+esc(acc)+',#128c7e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px">D</div><span style="font-weight:900;font-size:10.5px;color:#1a1730">DroBoard</span></div>'
+      + '<div style="position:relative;margin:10px 14px 0"><img src="'+esc(cover)+'" style="width:100%;height:170px;object-fit:cover;border-radius:12px" alt=""/></div>'
+      + '<div style="padding:12px 14px 0"><div class="fp-canvas-title" style="color:#1a1730">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:9.5px;color:#8e8e93;margin-bottom:6px">By '+esc(v.authorName||'Author Name')+'</div>'
+      + '<div class="fp-canvas-hook" style="color:#434059;border-left-color:'+esc(acc)+';background:#f4f4fb">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'
+      + ctaEl(v, link, storeUrl, acc) + '</div><div style="flex:1"></div>'
+      + footerBar(v, link, acc, true)
+      + '</div>';
   },
-  tmpl_teaser: function(t, v, link, cover, authorPhoto, storeUrl){
-    var acc=v.accent||'#7c3aed';
-    return '<div class="fp-canvas sq" style="background:#1a1033;color:#fff"><div style="padding:14px 14px 10px"><div style="font-size:24px;color:'+esc(acc)+';margin-bottom:6px">"</div><div style="font-size:13px;line-height:1.5;font-weight:600;color:#fff;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">"'+esc(v.hook||'One emotional, curiosity-driven hook from the story that makes you need to read the next page.')+'"</div></div><img class="fp-canvas-img" src="'+esc(cover)+'" style="height:36%;border-radius:10px;margin:0 14px;width:calc(100% - 28px)" alt=""/><div class="fp-canvas-body"><div class="fp-canvas-title" style="font-size:14px">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:10px;color:rgba(255,255,255,.6)">'+esc(v.genre||'Romance')+' · DroBoard</div>'+ctaEl(v, link, storeUrl, acc)+linkRow(link, storeUrl)+'</div></div>';
-  },
+
   tmpl_drop: function(t, v, link, cover, authorPhoto, storeUrl){
-    return '<div class="fp-canvas sq"><div style="text-align:center;padding:7px 10px;background:linear-gradient(90deg,#f59e0b,#ff0050);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">NEW CHAPTER OUT NOW</div><img class="fp-canvas-img" src="'+esc(cover)+'" style="height:42%" alt=""/><div class="fp-canvas-body"><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div class="fp-canvas-author">By '+esc(v.authorName||'Author Name')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||'What happens next will leave you speechless.')+'"</div>'+ctaEl(v, link, storeUrl, v.accent||'#f59e0b')+linkRow(link, storeUrl)+'</div></div>';
+    var acc=v.accent||'#f59e0b';
+    return '<div class="fp-canvas sq" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + headerBar(acc)
+      + '<div style="text-align:center;margin:6px 14px 0"><span style="display:inline-block;background:linear-gradient(90deg,'+esc(acc)+',#ff0050);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:20px;box-shadow:0 4px 12px rgba(245,158,11,.35)"><i class="fas fa-fire"></i> New Chapter Out Now</span></div>'
+      + '<div style="position:relative;margin:10px 14px 0;transform:rotate(1deg)"><img src="'+esc(cover)+'" style="width:100%;height:150px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.4)" alt=""/></div>'
+      + '<div style="padding:12px 14px 0"><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div class="fp-canvas-author">By '+esc(v.authorName||'Author Name')+'</div>'
+      + '<div class="fp-canvas-hook">"'+esc(v.hook||'What happens next will leave you speechless.')+'"</div>'
+      + ctaEl(v, link, storeUrl, acc) + '</div><div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_tiktok: function(t, v, link, cover, authorPhoto, storeUrl){
-    return '<div class="fp-canvas v9"><div style="padding:10px 14px;background:#000;display:flex;align-items:center;gap:8px"><i class="fab fa-tiktok" style="color:#fff;font-size:14px"></i><span style="font-size:10px;font-weight:800;letter-spacing:.06em">DroBoard</span><span style="margin-left:auto;font-size:8px;background:rgba(255,255,255,.14);padding:3px 7px;border-radius:20px">9:16 COVER</span></div><img class="fp-canvas-img" src="'+esc(cover)+'" style="height:44%" alt=""/><div class="fp-canvas-body"><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:10.5px;color:rgba(255,255,255,.65);margin-bottom:6px">By '+esc(v.authorName||'Author Name')+'</div><div class="fp-canvas-hook" style="background:rgba(255,255,255,.06);border-left-color:#000">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'+ctaEl(v, link, storeUrl, v.accent||'#000')+linkRow(link, storeUrl)+'</div></div>';
+    var acc=v.accent||'#ff0050';
+    return '<div class="fp-canvas v9" style="background:radial-gradient(480px 320px at 50% -10%, #1a1a1a 0%, #0a0a0a 45%, #000 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px 0"><i class="fab fa-tiktok" style="color:#fff;font-size:15px"></i><span style="font-size:10px;font-weight:800;letter-spacing:.06em;color:#fff">DroBoard</span><span style="margin-left:auto;font-size:7px;background:rgba(255,255,255,.14);padding:3px 8px;border-radius:20px;color:#fff">9:16 COVER</span></div>'
+      + '<div style="position:relative;margin:10px 12px 0"><img src="'+esc(cover)+'" style="width:100%;height:180px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.5)" alt=""/></div>'
+      + '<div style="padding:12px 14px 0"><div class="fp-canvas-title" style="color:#fff">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:10.5px;color:rgba(255,255,255,.65);margin-bottom:6px">By '+esc(v.authorName||'Author Name')+'</div>'
+      + '<div class="fp-canvas-hook" style="background:rgba(255,255,255,.06);border-left-color:'+esc(acc)+'">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'
+      + ctaEl(v, link, storeUrl, acc) + '</div><div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_spotlight: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#a78bfa';
-    var bio=esc(v.bio||v.hook||'Writer of heartfelt stories. Follow me for new chapters every week.');
-    var ctaText=(v.ctaText||'Follow Me →').trim()||'Follow Me →';
-    var v2=Object.assign({}, v, {ctaText:ctaText});
-    return '<div class="fp-canvas sq"><div style="display:flex;gap:12px;padding:14px"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid '+esc(acc)+'" alt=""/><div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+'">Author Spotlight</div><div style="font-size:15px;font-weight:800;margin:2px 0">'+esc(v.authorName||'Author Name')+'</div><div style="font-size:10px;color:rgba(255,255,255,.65)">'+esc(v.handle||'@username')+' · '+esc(v.genre||'Writer')+'</div>'+statsRow(v)+'</div></div><div style="padding:0 14px 6px"><div style="font-size:11px;line-height:1.5;color:rgba(255,255,255,.82)">'+bio+'</div></div><div class="fp-canvas-body" style="padding-top:6px"><div style="display:flex;justify-content:center">'+ctaEl(v2, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'+linkRow(link, storeUrl).replace('fp-canvas-link-row','fp-canvas-link-row" style="justify-content:center')+'</div></div>';
+    var v2=Object.assign({}, v, {ctaText:(v.ctaText||'Follow Me →').trim()||'Follow Me →'});
+    return '<div class="fp-canvas sq" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + headerBar(acc)
+      + '<div style="display:flex;gap:12px;padding:12px 14px 0;align-items:center"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid '+esc(acc)+';box-shadow:0 6px 16px rgba(0,0,0,.3)" alt=""/><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+'"><i class="fas fa-star"></i> Author Spotlight</div><div style="font-size:14px;font-weight:800;color:#fff;margin:2px 0">'+esc(v.authorName||'Author Name')+'</div><div style="font-size:10px;color:rgba(255,255,255,.6)">'+esc(v.handle||'@username')+' · '+esc(v.genre||'Writer')+'</div></div></div>'
+      + '<div style="padding:0 14px">'+statsRow(v)+'</div>'
+      + '<div style="padding:6px 14px 0"><div style="font-size:11px;line-height:1.5;color:rgba(255,255,255,.82)">'+esc(v.bio||v.hook||'Writer of heartfelt stories. Follow me for new chapters every week.')+'</div></div>'
+      + '<div style="padding:10px 14px 0;display:flex;justify-content:center">'+ctaEl(v2, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'
+      + '<div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_follow_me: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#ff0050';
-    return '<div class="fp-canvas sq" style="background:linear-gradient(135deg,#1a1033 30%,#0f0f22 100%)"><div style="text-align:center;padding:14px 14px 6px"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:76px;height:76px;border-radius:50%;object-fit:cover;border:3px solid '+esc(acc)+';margin:0 auto 8px;display:block" alt=""/><div style="font-size:15px;font-weight:800">'+esc(v.authorName||'Author Name')+'</div><div style="font-size:11px;color:'+esc(acc)+';font-weight:700">'+esc(v.handle||'@username')+'</div>'+statsRow(v)+'</div><div class="fp-canvas-body"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:8px;text-align:center">'+esc(v.hook||'Follow my stories on DroBoard — new chapters weekly.')+'</div><div style="display:flex;justify-content:center">'+ctaEl(v, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'+linkRow(link, storeUrl).replace('fp-canvas-link-row','fp-canvas-link-row" style="justify-content:center')+'</div></div>';
+    return '<div class="fp-canvas sq" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + headerBar(acc)
+      + '<div style="text-align:center;padding:10px 14px 0"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid '+esc(acc)+';margin:0 auto 8px;display:block;box-shadow:0 8px 20px rgba(255,0,80,.35)" alt=""/><div style="font-size:15px;font-weight:800;color:#fff">'+esc(v.authorName||'Author Name')+'</div><div style="font-size:11px;color:'+esc(acc)+';font-weight:700">'+esc(v.handle||'@username')+'</div></div>'
+      + '<div style="padding:0 14px">'+statsRow(v)+'</div>'
+      + '<div style="padding:6px 14px 0;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.7)">'+esc(v.hook||'Follow my stories on DroBoard — new chapters weekly.')+'</div></div>'
+      + '<div style="padding:10px 14px 0;display:flex;justify-content:center">'+ctaEl(v, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'
+      + '<div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_platform_invite: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#ff0050';
     var photo=v.userPhoto||authorPhoto||'https://i.pravatar.cc/150?img=12';
-    return '<div class="fp-canvas v9" style="background:linear-gradient(180deg,#1a1033 0%,#0f0f22 45%,#1e1235 100%);display:flex;flex-direction:column"><div style="text-align:center;padding:16px 14px 12px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center"><img src="'+esc(photo)+'" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid '+esc(acc)+';margin:0 auto 10px;display:block" alt=""/><div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:'+esc(acc)+'">Invite friends</div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7);margin:4px 0">'+esc(v.handle||'@username')+'</div><div style="font-size:17px;font-weight:800;line-height:1.25;margin:6px 0;max-width:260px">'+esc(v.platformTag||'Discover stories worth sharing.')+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">Join <b style="color:#fff">DroBoard</b> — where stories come alive</div></div><div style="padding:12px 14px 14px;text-align:center">'+ctaEl(v, link, storeUrl, acc)+'<div style="margin-top:8px">'+linkRow(link, storeUrl).replace('class="fp-canvas-link-row"','style="display:flex;justify-content:center"')+'</div></div></div>';
+    return '<div class="fp-canvas v9" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + headerBar(acc)
+      + '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px 16px"><img src="'+esc(photo)+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid '+esc(acc)+';margin-bottom:10px;box-shadow:0 8px 22px rgba(255,0,80,.35)" alt=""/><div style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:'+esc(acc)+'"><i class="fas fa-user-plus"></i> Invite Friends</div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7);margin:4px 0">'+esc(v.handle||'@username')+'</div><div style="font-size:18px;font-weight:800;line-height:1.25;margin:8px 0;max-width:260px;color:#fff">'+esc(v.platformTag||'Discover stories worth sharing.')+'</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:10px">Join <b style="color:#fff">DroBoard</b> — where stories come alive</div>'+ctaEl(v, link, storeUrl, acc)+'</div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_platform_reader: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#0ea5e9';
-    return '<div class="fp-canvas sq"><div style="text-align:center;padding:14px 14px 6px"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid '+esc(acc)+';margin:0 auto 8px;display:block" alt=""/><div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+'">Reader on DroBoard</div><div style="font-size:14px;font-weight:800;margin:2px 0">'+esc(v.handle||'@reader')+' · '+esc(v.authorName||'Reader')+'</div><div style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:4px">'+esc(v.bio||v.hook||'Love romance & mystery. Always has a book open.')+'</div>'+statsRowReader(v)+'</div><div class="fp-canvas-body"><div style="display:flex;justify-content:center">'+ctaEl(v, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'+linkRow(link, storeUrl).replace('fp-canvas-link-row','fp-canvas-link-row" style="justify-content:center')+'</div></div>';
+    return '<div class="fp-canvas sq" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
+      + headerBar(acc)
+      + '<div style="text-align:center;padding:10px 14px 0"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:68px;height:68px;border-radius:50%;object-fit:cover;border:2px solid '+esc(acc)+';margin:0 auto 8px;display:block;box-shadow:0 8px 20px rgba(14,165,233,.3)" alt=""/><div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+'"><i class="fas fa-book-reader"></i> Reader on DroBoard</div><div style="font-size:14px;font-weight:800;color:#fff;margin:2px 0">'+esc(v.handle||'@reader')+' · '+esc(v.authorName||'Reader')+'</div><div style="font-size:11px;color:rgba(255,255,255,.65)">'+esc(v.bio||v.hook||'Love romance & mystery. Always has a book open.')+'</div></div>'
+      + '<div style="padding:0 14px">'+statsRowReader(v)+'</div>'
+      + '<div style="padding:8px 14px 0;display:flex;justify-content:center">'+ctaEl(v, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'
+      + '<div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_platform_promo: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#7c3aed';
-    return '<div class="fp-canvas sq" style="background:linear-gradient(135deg,#1e1235,#0f0f22)"><img class="fp-canvas-img" src="'+esc(cover||'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&h=600&fit=crop')+'" style="height:50%" alt=""/><div class="fp-canvas-body"><div class="fp-canvas-kicker" style="color:'+esc(acc)+'">'+esc(v.genre||'Featured')+' · DroBoard</div><div class="fp-canvas-title">'+esc(v.title||'Platform Feature Drop')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||'A new season of stories is here. Dont miss it.')+'"</div>'+ctaEl(v, link, storeUrl, acc)+linkRow(link, storeUrl)+'</div></div>';
+    return '<div class="fp-canvas sq" style="background:linear-gradient(180deg,#1e1235,#0f0f22);display:flex;flex-direction:column">'
+      + headerBar(acc)
+      + '<div style="position:relative;margin:10px 14px 0"><img src="'+esc(cover||'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&h=600&fit=crop')+'" style="width:100%;height:160px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.4)" alt=""/><span style="position:absolute;top:8px;left:8px;background:'+esc(acc)+';color:#fff;font-size:8px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em"><i class="fas fa-bullhorn"></i> Featured</span></div>'
+      + '<div style="padding:12px 14px 0"><div class="fp-canvas-kicker" style="color:'+esc(acc)+'">'+esc(v.genre||'Featured')+' · DroBoard</div><div class="fp-canvas-title">'+esc(v.title||'Platform Feature Drop')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||"A new season of stories is here. Don't miss it.")+'"</div>'+ctaEl(v, link, storeUrl, acc)+'</div><div style="flex:1"></div>'
+      + footerBar(v, link, acc)
+      + '</div>';
   },
+
   tmpl_platform_countdown: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#f59e0b';
     var badge=v.variant||'Live Now';
@@ -152,10 +315,10 @@ var LAYOUTS = {
       + '</div>'
       + '<div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 14px 10px;text-align:center">'
       + '<div style="font-size:20px;font-weight:800;line-height:1.2">'+esc(v.title||'Season Drop')+'</div>'
-      + '<div style="font-size:11px;color:rgba(255,255,255,.65);margin:6px 0 12px;max-width:260px;line-height:1.45">'+esc(v.hook||v.bio||'Something big is coming to DroBoard — don\'t miss it.')+'</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.65);margin:6px 0 12px;max-width:260px;line-height:1.45">'+esc(v.hook||v.bio||"Something big is coming to DroBoard — don't miss it.")+'</div>'
       + ctaEl(v, link, storeUrl, acc)
       + '</div>'
-      + '<div style="position:relative;padding:10px 14px 12px">'+linkRow(link, storeUrl)+'</div>'
+      + footerBar(v, link, acc)
       + '</div>';
   },
 };
@@ -271,7 +434,6 @@ function buildForm(){
   el.querySelectorAll('[data-var]').forEach(function(inp){
     inp.addEventListener('input', function(){
       currentVars[this.getAttribute('data-var')] = this.value;
-      // sync color text next to picker
       var next=this.nextElementSibling;
       if(next && this.type==='color') next.textContent=this.value;
       renderCanvas();
@@ -312,5 +474,5 @@ function renderInline(containerEl, templateId, vars){
   containerEl.innerHTML = inlineRender(t, vars||{});
 }
 
-global.FlyerPreview = { open:open, close:close, save:save, render:renderInline, inlineRender:inlineRender };
+global.FlyerPreview = { open:open, close:close, save:save, share:shareCurrent, download:downloadCurrent, render:renderInline, inlineRender:inlineRender };
 })(window);

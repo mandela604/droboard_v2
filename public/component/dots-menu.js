@@ -90,8 +90,9 @@
   }
 
   function _itemsFor(post) {
+    const isOwn = !!(post.mine || post.name === 'You' || post.handle === 'you' || post.isOwn);
     const items = [];
-    if (post.mine) {
+    if (isOwn) {
       items.push({ action: 'Edit', icon: 'fa-pen', label: 'Edit post' });
       items.push({ action: 'Delete', icon: 'fa-trash', label: 'Delete post', danger: true });
     } else {

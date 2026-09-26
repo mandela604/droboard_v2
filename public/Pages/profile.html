@@ -208,6 +208,7 @@ button{font-family:inherit;cursor:pointer}
 
   <div class="top-bar">
     <div class="top-logo" onclick="location.href='index.html'">D</div>
+    <a href="store.html" id="coinPill" title="Coin balance" style="position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top, 0px) + 14px);z-index:201;text-decoration:none;background:var(--gold-soft);border:1px solid rgba(240,168,0,.2);color:#8a6200;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:800"><i class="fas fa-coins" style="font-size:12px"></i><span id="coinBalance">0</span></a>
     <div class="top-right">
       <div class="top-icon-btn" data-search-trigger title="Search"><i class="fas fa-magnifying-glass"></i></div>
       <div class="top-icon-btn" onclick="location.href='notifications.html'" title="Notifications">
@@ -404,7 +405,6 @@ button{font-family:inherit;cursor:pointer}
 <link rel="stylesheet" href="../component/bottom-nav.css">
 <link rel="stylesheet" href="../component/dots-menu.css">
 <link rel="stylesheet" href="../component/library.css">
-<link rel="stylesheet" href="../component/post-composer.css">
 <link rel="stylesheet" href="../component/reaction-picker.css">
 <link rel="stylesheet" href="../component/post-card.css">
 <link rel="stylesheet" href="../component/save-modal.css">
@@ -418,18 +418,23 @@ button{font-family:inherit;cursor:pointer}
 <script src="../super-admin/awards-service.js"></script>
 <script src="../services/profile-data.js"></script>
 <script src="../services/search-service.js"></script>
-<script src="../component/search-overlay.js"></script>
-<script src="../component/bottom-nav.js"></script>
-<script src="../component/dots-menu.js"></script>
-<script src="../component/collection-card.js"></script>
-<script src="../component/library.js"></script>
-<script src="../component/post-composer.js"></script>
-<script src="../component/reaction-picker.js"></script>
+  <script src="../component/search-overlay.js"></script>
+  <script src="../component/bottom-nav.js"></script>
+  <script src="../component/dots-menu.js"></script>
+  <script src="../component/collection-card.js"></script>
+  <script src="../component/library.js"></script>
+  <script src="../component/post-composer.js"></script>
+  <script src="../component/boards-overlay.js"></script>
+  <script src="../component/browse-overlay.js"></script>
+  <script src="../component/ad-card.js"></script>
+  <script src="../services/ad-service.js"></script>
+  <script src="../services/store-service.js"></script>
+  <script src="../component/reaction-picker.js"></script>
 <script src="../component/post-card.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/share-modal.js"></script>
 <script src="../component/book-card.js"></script>
-<script src="../services/profile-service.js"></script>
+<script src="../services/profile-service.js?v=3"></script>
 <script>ProfilePage.init();</script>
 </body>
 </html>

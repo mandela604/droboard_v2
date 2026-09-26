@@ -27,7 +27,8 @@
     }
     await new Promise(r => setTimeout(r, 60));
     const d = window.DemoData;
-    return d.COLLECTIONS.find(c => c.id === id) || d.COLLECTIONS[0];
+    const slug = s => (s.title||s.name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    return d.COLLECTIONS.find(c => c.id === id || slug(c) === (id||'').toLowerCase()) || d.COLLECTIONS[0];
   }
 
   async function getCollectionStories(collectionId) {
@@ -38,7 +39,8 @@
     }
     await new Promise(r => setTimeout(r, 100));
     const d = window.DemoData;
-    const col = d.COLLECTIONS.find(c => c.id === collectionId) || d.COLLECTIONS[0];
+    const slug = s => (s.title||s.name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    const col = d.COLLECTIONS.find(c => c.id === collectionId || slug(c) === (collectionId||'').toLowerCase()) || d.COLLECTIONS[0];
     return col.storyList || d.STORIES.slice(0, 8);
   }
 

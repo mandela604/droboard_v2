@@ -412,6 +412,20 @@
     _elapsed  = 0;
     _paused   = false;
 
+    // ── Mark this slide as viewed (per-segment) ──
+    const vw = _currentWriter();
+    if(vw && vw.statuses[_slideIdx] && !vw.statuses[_slideIdx].viewed){
+      vw.statuses[_slideIdx].viewed = true;
+      const allViewed = vw.statuses.every(st=> st.viewed);
+      const newRing = allViewed ? 'ring-viewed' : 'ring-has';
+      if(vw.ring !== newRing){
+        vw.ring = newRing;
+        if(typeof window.onStatusViewerChange === 'function') window.onStatusViewerChange(vw.id, newRing);
+      } else if(typeof window.onStatusViewerChange === 'function'){
+        window.onStatusViewerChange(vw.id, newRing);
+      }
+    }
+
     // ── Progress bars ──
     const barsEl = document.getElementById('dsv2Bars');
     barsEl.innerHTML = slides.map((_, i) =>
@@ -535,14 +549,6 @@
         _likeState[w.id] = { liked: false, count: w.likes || 0 };
       }
     });
-
-    // Mark as viewed
-    if (_writers[_writerIdx]) {
-      _writers[_writerIdx].ring = 'ring-viewed';
-      if (typeof window.onStatusViewerChange === 'function') {
-        window.onStatusViewerChange(_writers[_writerIdx].id, 'ring-viewed');
-      }
-    }
 
     // Reset reply input
     const inp  = document.getElementById('dsv2ReplyInp');

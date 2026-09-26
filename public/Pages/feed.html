@@ -14,7 +14,7 @@
       --bd: rgba(0,0,0,.10); --bd2: rgba(0,0,0,.05); --bd-acc: rgba(255,0,80,.25); --purple: #a78bfa;
       --acc: #ff0050; --acc-light: rgba(255,0,80,0.1); --acc-lighter: rgba(255,0,80,0.15);
       --border: #f1f1f1; --shadow: 0 2px 12px rgba(0,0,0,0.04); --radius: 14px;
-      --story-size: 62px; --ring-gap: 3px; --max-w: 480px;
+      --story-size: 62px; --ring-gap: 3px; --max-w: 420px;
     }
     [data-theme="dark"] {
       --bg: #000000; --l1: #08090c; --l2: #0e0f13; --l4: #1a1b22; --tx: #e0e0e0; --tx-muted: #71717a;
@@ -35,6 +35,8 @@
     .top-bar .logo { font-weight: 700; font-size: 18px; color: var(--acc); }
     .top-actions { display: flex; gap: 8px; }
     .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--l1); color: var(--tx); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+    .icon-btn.pink { background: var(--acc-light); color: var(--acc); border: 1px solid var(--bd-acc); }
+    svg.ic { display: block; flex-shrink: 0; }
     .icon-btn:active { transform: scale(0.95); }
     .notif-dot { position: absolute; top: 4px; right: 4px; min-width: 14px; height: 14px; border-radius: 7px; background: #ff3b30; color: white; font-size: 8px; font-weight: 700; display: none; align-items: center; justify-content: center; padding: 0 3px; }
 
@@ -50,6 +52,7 @@
     .story-ring.ring-live { box-shadow: 0 0 12px rgba(255,0,80,.55); }
     .story-ring.ring-viewed { background: var(--tx-muted); opacity: .75; }
     .story-ring.ring-none { background: var(--border); }
+    .story-ring.ring-multi { padding: 3px; }
     .story-ring .inner { width: 100%; height: 100%; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--bg); }
     .story-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
     .story-add { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 300; color: var(--tx-muted); border: 2px dashed var(--tx-muted); border-radius: 50%; box-sizing: border-box; }
@@ -114,6 +117,7 @@
     <div class="top-bar">
       <div class="logo">Droboard</div>
       <div class="top-actions">
+        <a href="store.html" class="icon-btn pink" id="feedGiftBtn" aria-label="Store" style="text-decoration:none"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></a>
         <button class="icon-btn" onclick="location.href='notifications.html'"><i class="fas fa-bell"></i><span class="notif-dot" id="notifCount">3</span></button>
         <button class="icon-btn" id="menuBtn"><i class="fas fa-bars"></i></button>
       </div>
@@ -126,8 +130,8 @@
 
     <div class="tabs">
       <div class="f-tab active">All</div>
-      <div class="f-tab">Following</div>
-      <div class="f-tab">Debates</div>
+      <div class="f-tab" style="display:none">Following</div>
+      <div class="f-tab" style="display:none">Debates</div>
     </div>
 
     <section class="comm-sec" id="commSec1" style="display:none">
@@ -168,6 +172,7 @@
       <button class="ctype" data-ct="image"><i class="fas fa-image"></i> Image</button>
       <button class="ctype" data-ct="poll"><i class="fas fa-chart-bar"></i> Poll</button>
       <button class="ctype" data-ct="debate"><i class="fas fa-fire"></i> Debate</button>
+      <button class="ctype" data-ct="ama"><i class="fas fa-microphone"></i> AMA</button>
     </div>
   </div>
 
@@ -190,6 +195,9 @@
   <script src="../data/feed-demo-seed.js"></script>
   <script src="../data/genre-demo-seed.js"></script>
   <script src="../services/feed-data.js"></script>
+  <script src="../component/post-composer.js"></script>
+  <script src="../component/boards-overlay.js"></script>
+  <script src="../component/browse-overlay.js"></script>
   <script src="../component/status-viewer.js"></script>
   <script src="../component/promo-slider.js"></script>
   <script src="../component/dots-menu.js"></script>

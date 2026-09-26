@@ -146,6 +146,25 @@
     .dhm-item-right{flex-shrink:0;color:var(--tx-faint,#3f3f46);font-size:11px}
     .dhm-item.active .dhm-item-right{color:#ff0050}
 
+    .dhm-accordion{margin:2px 0}
+    .dhm-accordion-head{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 10px;border-radius:12px;border:none;background:none;cursor:pointer;font-family:inherit;color:var(--tx-body,#c0c0c0);transition:background .15s}
+    .dhm-accordion-head:hover{background:rgba(127,127,127,.08)}
+    .dhm-accordion-icon{margin-left:auto;transition:transform .2s;color:var(--tx-muted,#71717a);font-size:11px}
+    .dhm-accordion.open .dhm-accordion-icon{transform:rotate(90deg)}
+    .dhm-accordion-body{max-height:0;overflow:hidden;transition:max-height .25s ease}
+    .dhm-accordion.open .dhm-accordion-body{max-height:600px}
+    .dhm-subsection{padding:6px 0 4px}
+    .dhm-subsection-title{display:flex;align-items:center;justify-content:space-between;padding:6px 10px 4px;font-size:10px;font-weight:800;color:var(--tx-muted,#71717a);text-transform:uppercase;letter-spacing:.06em}
+    .dhm-subsection-view{font-size:10px;font-weight:700;color:var(--acc,#ff0050);cursor:pointer;background:none;border:none;font-family:inherit}
+    .dhm-subsection-view:hover{text-decoration:underline}
+    .dhm-subitem{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;cursor:pointer}
+    .dhm-subitem:hover{background:rgba(127,127,127,.06)}
+    .dhm-subitem-icon{width:26px;height:26px;border-radius:7px;background:var(--l2,#0e0f13);border:1px solid var(--bd,rgba(255,255,255,.07));display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx-muted,#71717a);flex-shrink:0}
+    .dhm-subitem-body{flex:1;min-width:0}
+    .dhm-subitem-label{font-size:12px;font-weight:600;color:var(--tx-body,#c0c0c0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dhm-subitem-sub{font-size:10px;color:var(--tx-muted,#71717a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dhm-subitem:hover .dhm-subitem-label{color:var(--tx-high,#e0e0e0)}
+    [data-theme="light"] .dhm-subitem-icon{background:#f1f1f1;border-color:rgba(0,0,0,.08)}
     .dhm-divider{height:1px;background:var(--bd,rgba(255,255,255,.07));margin:8px 14px}
 
     .dhm-foot{
@@ -199,6 +218,16 @@
       if (e.target === _overlay) close();
     });
     _panel.addEventListener('click', (e) => {
+      const accToggle = e.target.closest('[data-accordion-toggle]');
+      if(accToggle){
+        const id = accToggle.dataset.accordionToggle;
+        const acc = _panel.querySelector(`[data-accordion="${CSS.escape ? CSS.escape(id) : id}"]`);
+        if(acc) acc.classList.toggle('open');
+        const it=_findItem(id);
+        if(it) it.expanded = !it.expanded;
+        try{ localStorage.setItem('dhm_myCircles_expanded', JSON.stringify(!!_panel.querySelector('[data-accordion="circles"]')?.classList.contains('open'))); }catch(e){}
+        return;
+      }
       const closeBtn = e.target.closest('[data-dhm-close]');
       if (closeBtn) { close(); return; }
 
@@ -227,6 +256,7 @@
     for (const sec of _cfg.sections || []) {
       for (const it of sec.items || []) {
         if (String(it.id) === String(id)) return it;
+        if(it.children) for(const ch of it.children) if(String(ch.id)===String(id)) return ch;
       }
     }
     return null;
@@ -236,6 +266,7 @@
     (_cfg.sections || []).forEach(sec => {
       (sec.items || []).forEach(it => {
         it.active = String(it.id) === String(id);
+        if(it.children) it.children.forEach(ch=> ch.active = String(ch.id)===String(id));
       });
     });
   }
@@ -244,6 +275,17 @@
     _ensureDom();
     const user = _cfg.user;
     const sections = _cfg.sections || [];
+    // restore My Circles expanded from previous open
+    try{
+      const saved = JSON.parse(localStorage.getItem('dhm_myCircles_expanded')||'null');
+      if(saved!==null){
+        for(const sec of sections){
+          for(const it of sec.items||[]){
+            if(it.id==='circles' && it.children) it.expanded = !!saved;
+          }
+        }
+      }
+    }catch(e){}
 
     let html = `
       <div class="dhm-head">
@@ -271,17 +313,48 @@
       html += `<div class="dhm-section">`;
       if (sec.label) html += `<div class="dhm-section-label">${_esc(sec.label)}</div>`;
       (sec.items || []).forEach(it => {
-        const active = it.active ? ' active' : '';
-        const hrefAttr = it.href ? ` data-dhm-href="${_esc(it.href)}"` : '';
-        html += `
-          <button type="button" class="dhm-item${active}" data-dhm-id="${_esc(it.id)}"${hrefAttr}>
-            <div class="dhm-item-icon"><i class="fas ${ _esc(it.icon || 'fa-circle') }"></i></div>
-            <div class="dhm-item-body">
-              <div class="dhm-item-label">${_esc(it.label || '')}</div>
-              ${it.sub ? `<div class="dhm-item-sub">${_esc(it.sub)}</div>` : ''}
-            </div>
-            <div class="dhm-item-right">${it.active ? '<i class="fas fa-check"></i>' : (it.href ? '<i class="fas fa-chevron-right"></i>' : '')}</div>
-          </button>`;
+        if(it.children && Array.isArray(it.children) && it.children.length){
+          const isOpen = it.expanded ? ' open' : '';
+          html += `<div class="dhm-accordion${isOpen}" data-accordion="${_esc(it.id)}">
+            <button type="button" class="dhm-accordion-head" data-accordion-toggle="${_esc(it.id)}">
+              <div class="dhm-item-icon"><i class="fas ${ _esc(it.icon || 'fa-circle') }"></i></div>
+              <div class="dhm-item-body">
+                <div class="dhm-item-label">${_esc(it.label || '')}</div>
+                ${it.sub ? `<div class="dhm-item-sub">${_esc(it.sub)}</div>` : ''}
+              </div>
+              <i class="fas fa-chevron-right dhm-accordion-icon"></i>
+            </button>
+            <div class="dhm-accordion-body">`;
+          it.children.forEach(ch=>{
+            if(ch.isHeader){
+              html += `<div class="dhm-subsection-title" style="padding:8px 10px 4px">${_esc(ch.label)}</div>`;
+            } else if(ch.isViewAll){
+              html += `<button type="button" class="dhm-item" data-dhm-id="${_esc(ch.id)}" style="color:var(--acc,#ff0050)"><div class="dhm-item-icon" style="color:var(--acc,#ff0050);background:rgba(255,0,80,.08);border-color:rgba(255,0,80,.15)"><i class="fas fa-arrow-right"></i></div><div class="dhm-item-body"><div class="dhm-item-label" style="color:var(--acc,#ff0050)">${_esc(ch.label)}</div></div><div class="dhm-item-right"><i class="fas fa-chevron-right"></i></div></button>`;
+            } else {
+              html += `<button type="button" class="dhm-item" data-dhm-id="${_esc(ch.id)}"${ch.href?` data-dhm-href="${_esc(ch.href)}"`:''}>
+                <div class="dhm-item-icon"><i class="fas ${ _esc(ch.icon || 'fa-circle') }"></i></div>
+                <div class="dhm-item-body">
+                  <div class="dhm-item-label">${_esc(ch.label||'')}</div>
+                  ${ch.sub ? `<div class="dhm-item-sub">${_esc(ch.sub)}</div>` : ''}
+                </div>
+                <div class="dhm-item-right"><i class="fas fa-chevron-right"></i></div>
+              </button>`;
+            }
+          });
+          html += `</div></div>`;
+        } else {
+          const active = it.active ? ' active' : '';
+          const hrefAttr = it.href ? ` data-dhm-href="${_esc(it.href)}"` : '';
+          html += `
+            <button type="button" class="dhm-item${active}" data-dhm-id="${_esc(it.id)}"${hrefAttr}>
+              <div class="dhm-item-icon"><i class="fas ${ _esc(it.icon || 'fa-circle') }"></i></div>
+              <div class="dhm-item-body">
+                <div class="dhm-item-label">${_esc(it.label || '')}</div>
+                ${it.sub ? `<div class="dhm-item-sub">${_esc(it.sub)}</div>` : ''}
+              </div>
+              <div class="dhm-item-right">${it.active ? '<i class="fas fa-check"></i>' : (it.href ? '<i class="fas fa-chevron-right"></i>' : '')}</div>
+            </button>`;
+        }
       });
       html += `</div>`;
     });

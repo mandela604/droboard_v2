@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>Help Center · Droboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{--acc:#ff0050;--bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--card:#ffffff;--bd:rgba(0,0,0,.12);--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666;--tx-faint:#8a8a8a}
+[data-theme="dark"]{--bg:#000;--l1:#08090c;--l2:#0e0f13;--card:#0e0f13;--bd:rgba(255,255,255,.07);--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);height:100%}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh}
+button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-body);font-size:15px;flex-shrink:0;border:none}
+.top-title{flex:1;font-size:16px;font-weight:800;color:var(--tx-high)}
+.content{flex:1;overflow-y:auto;padding:16px 14px 30px}
+.section-title{font-size:11px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-left:4px}
+.faq-item{background:var(--card);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.faq-q{padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.faq-q b{flex:1;font-size:13px;color:var(--tx-high)}
+.faq-q i{color:var(--tx-faint);font-size:11px;transition:.2s}
+.faq-item.open .faq-q i{transform:rotate(180deg)}
+.faq-a{display:none;padding:0 14px 13px;font-size:12.5px;line-height:1.6;color:var(--tx-body)}
+.faq-item.open .faq-a{display:block}
+.contact{display:flex;gap:10px;margin-top:14px}
+.contact a{flex:1;padding:12px;border-radius:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none}
+.contact .primary{background:var(--acc);color:#fff}
+.contact .ghost{background:var(--card);border:1px solid var(--bd);color:var(--tx-high)}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light'}document.documentElement.setAttribute('data-theme',t)})()</script>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button class="back-btn" onclick="history.length>1?history.back():location.href='settings.html'"><i class="fas fa-chevron-left"></i></button>
+    <div class="top-title">Help Center</div>
+  </div>
+  <div class="content">
+    <div class="section-title">FAQs</div>
+    <div class="faq-item open">
+      <div class="faq-q"><b>How do I become a writer?</b><i class="fas fa-chevron-down"></i></div>
+      <div class="faq-a">Go to Profile → Edit Profile → enable Writer mode. Or tap “Become a Writer” from Home.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><b>How do I change my theme?</b><i class="fas fa-chevron-down"></i></div>
+      <div class="faq-a">Open Settings → Appearance → pick Light or Dark. It applies everywhere instantly.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><b>How do I manage my library?</b><i class="fas fa-chevron-down"></i></div>
+      <div class="faq-a">Use Library to track reading, saved stories, and history. Clear history from Library → History → Clear.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q"><b>How do I contact support?</b><i class="fas fa-chevron-down"></i></div>
+      <div class="faq-a">Tap Contact Support below or email support@droboard.app. We reply within 24 hours.</div>
+    </div>
+    <div class="contact">
+      <a class="ghost" href="mailto:support@droboard.app"><i class="fas fa-envelope"></i> Email</a>
+      <a class="primary" href="mailto:support@droboard.app">Contact Support</a>
+    </div>
+  </div>
+</div>
+<script>
+document.querySelectorAll('.faq-item').forEach(function(it){
+  it.querySelector('.faq-q').addEventListener('click',function(){ it.classList.toggle('open'); });
+});
+</script>
+</body>
+</html>

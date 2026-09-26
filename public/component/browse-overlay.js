@@ -307,12 +307,28 @@
   const AD_CYCLE = ['book', 'book', 'book', 'book', 'platform'];
 
   function _buildPool() {
-    // collections mode: pool is collections, no ads/writers, via CollectionData or DemoData
+    // collections mode: pool is collections, no ads/writers, via CollectionData or DemoData — with Following vs Explore grouping
+    const JOINED_COLLS = ['coll_1','coll_2','coll_3'];
+    function withFollowingFlag(list){
+      const flagged = list.map(function(col){ return Object.assign({ type:'collection', isFollowing: JOINED_COLLS.indexOf(col.id)!==-1 }, col); });
+      flagged.sort(function(a,b){ return (b.isFollowing?1:0) - (a.isFollowing?1:0); });
+      const out=[]; let inFollowing=true;
+      out.push({type:'sectionHeader', label:'Following'});
+      let hasFollowing=false;
+      flagged.forEach(function(c){
+        if(c.isFollowing) hasFollowing=true;
+        if(inFollowing && !c.isFollowing){ out.push({type:'sectionHeader', label:'Explore more collections'}); inFollowing=false; }
+        out.push(c);
+      });
+      if(inFollowing) out.push({type:'sectionHeader', label:'Explore more collections'});
+      if(!hasFollowing) out.splice(0,1);
+      return out;
+    }
     if (_mode === 'collections') {
       var cols = (window.CollectionData && typeof CollectionData.getCollections === 'function')
-        ? null // async — handled in open() via async fetch, fallback sync below
+        ? null // async — handled in _reset via async fetch
         : (window.DemoData && DemoData.COLLECTIONS ? DemoData.COLLECTIONS : []);
-      if (cols) return cols.map(function(col){ return Object.assign({ type:'collection' }, col); });
+      if (cols) return withFollowingFlag(cols);
       return [];
     }
     // continueReading mode: pool is CONTINUE_READING with progress
@@ -418,9 +434,10 @@
     var priv = (item.privacy||'Public').toLowerCase();
     var cnt = item.stories || item.storyList || item.count;
     if (Array.isArray(cnt)) cnt = cnt.length;
-    return '<div class="dcc-card" data-bro-collection=\''+_esc(JSON.stringify(item))+'\' style="cursor:pointer">' +
+    var followBadge = item.isFollowing ? '<span style="background:var(--bro-acc);color:#fff;padding:2px 6px;border-radius:6px;font-size:7px;font-weight:800;margin-left:4px;vertical-align:middle">Following</span>' : '';
+    return '<div class="dcc-card" data-bro-collection-id="'+_esc(item.id)+'" style="cursor:pointer">' +
       '<div class="dcc-covers">'+covHtml+'</div>' +
-      '<div class="dcc-info"><div class="dcc-name">'+_esc(item.title||item.name||'')+'</div>' +
+      '<div class="dcc-info"><div class="dcc-name">'+_esc(item.title||item.name||'')+followBadge+'</div>' +
       '<div class="dcc-meta"><span>'+_esc((cnt||0)+' stories')+'</span><span class="dcc-priv '+priv+'">'+_esc(item.privacy||'Public')+'</span></div></div></div>';
   }
 
@@ -431,6 +448,7 @@
   }
 
   function _listItemHTML(item) {
+    if (item.type === 'sectionHeader') return `<div style="grid-column:1/-1;padding:14px 0 6px;font-size:11px;font-weight:800;color:var(--bro-muted,#8e8e93);text-transform:uppercase;letter-spacing:.06em">${_esc(item.label)}</div>`;
     if (item.type === 'continue') return _continueHTML(item);
     if (item.type === 'collection') return _collectionHTML(item);
     if (item.type === 'writers') return _writersRowHTML();
@@ -535,8 +553,8 @@
     });
 
     _listEl.addEventListener('click', e => {
-      const collEl = e.target.closest('[data-bro-collection]');
-      if (collEl) { try { var col = JSON.parse(collEl.dataset.broCollection); location.href = 'collection.html?id=' + encodeURIComponent(col.id); } catch (_) {} return; }
+      const collEl = e.target.closest('[data-bro-collection-id]');
+      if (collEl) { var cid = collEl.getAttribute('data-bro-collection-id'); if (cid) location.href = 'collection.html?id=' + encodeURIComponent(cid); return; }
       const storyEl = e.target.closest('[data-bro-story]');
       if (storyEl) { try { _hooks.onOpenStory(JSON.parse(storyEl.dataset.broStory)); } catch (_) {} return; }
       const adEl = e.target.closest('[data-bro-ad]');
@@ -588,10 +606,18 @@
     _listEl.innerHTML = '';
     _emptyEl.classList.remove('show');
     _loaderEl.classList.add('hidden');
-    // collections is async via CollectionData — fetch then continue
+    // collections is async via CollectionData — fetch then continue (with Following grouping)
     if (_mode === 'collections' && window.CollectionData && typeof CollectionData.getCollections === 'function') {
       CollectionData.getCollections().then(function(cols){
-        _pool = (cols||[]).map(function(c){ return Object.assign({type:'collection'}, c); });
+        const JOINED=['coll_1','coll_2','coll_3'];
+        const flagged=(cols||[]).map(function(c){ return Object.assign({type:'collection', isFollowing: JOINED.indexOf(c.id)!==-1}, c); });
+        flagged.sort(function(a,b){ return (b.isFollowing?1:0)-(a.isFollowing?1:0); });
+        const out=[]; let inFollowing=true; out.push({type:'sectionHeader', label:'Following'});
+        let hasFollowing=false;
+        flagged.forEach(function(c){ if(c.isFollowing) hasFollowing=true; if(inFollowing && !c.isFollowing){ out.push({type:'sectionHeader', label:'Explore more collections'}); inFollowing=false; } out.push(c); });
+        if(inFollowing) out.push({type:'sectionHeader', label:'Explore more collections'});
+        if(!hasFollowing) out.splice(0,1);
+        _pool=out;
         _hasMore = _pool.length > 0;
         _loadNext();
       });

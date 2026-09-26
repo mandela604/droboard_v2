@@ -149,7 +149,7 @@ a{color:inherit;text-decoration:none}
   <div class="topbar">
     <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
     <div class="top-right">
-      <div class="icon-btn" id="shareBtn"><i class="fas fa-arrow-up-from-bracket"></i></div>
+      <div class="icon-btn" id="topShareBtn"><i class="fas fa-share-nodes"></i></div>
       <div class="icon-btn" id="menuDots"><i class="fas fa-ellipsis"></i></div>
       <div class="dropdown-menu" id="dropdownMenu">
         <button class="dropdown-item" id="addStoryBtn"><i class="fas fa-plus"></i> Add Story</button>
@@ -167,7 +167,7 @@ a{color:inherit;text-decoration:none}
 
     <!-- ACTIONS -->
     <div class="action-row">
-      <button class="btn-share" id="shareBtn"><i class="fas fa-arrow-up-from-bracket"></i> Share</button>
+      <button class="btn-share" id="bottomShareBtn"><i class="fas fa-share-nodes"></i> Share</button>
       <button class="btn-follow" id="followBtn"><i class="fas fa-plus"></i> Follow Collection</button>
     </div>
 
@@ -233,14 +233,27 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
+<div class="report-overlay" id="sortOverlay">
+  <div class="report-sheet">
+    <div class="report-handle"></div>
+    <div class="report-hdr"><h3><i class="fas fa-sort" style="color:var(--pink)"></i> Sort Stories</h3><button class="report-close" id="sortClose">✕</button></div>
+    <div class="report-body" id="sortOptions">
+      <div class="report-reason" data-sort="latest"><i class="fas fa-clock"></i> Latest First</div>
+      <div class="report-reason" data-sort="likes"><i class="fas fa-heart"></i> Most Liked</div>
+      <div class="report-reason" data-sort="reads"><i class="fas fa-eye"></i> Most Viewed</div>
+      <div class="report-reason" data-sort="title"><i class="fas fa-font"></i> Title A–Z</div>
+    </div>
+  </div>
+</div>
+
 <!-- SCRIPTS: data → service → component → init -->
 <script src="../data/central-demo-data.js"></script>
-<script src="../services/collection-service.js"></script>
+<script src="../services/collection-service.js?v=2"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../component/share-modal.js"></script>
 <script>
 let currentCollection = null;
-let collStories = []; let collPage = 1; const COLL_PER = 8;
+let collStories = []; let collPage = 1; const COLL_PER = 10; let collSort = 'latest';
 
 function renderCollPage() {
   const total = collStories.length; const tp = Math.max(1, Math.ceil(total / COLL_PER));
@@ -326,10 +339,12 @@ function renderStats(col) {
 
 function renderAbout(col) {
   const genreTags = (col.genres || []).map(g => `<span class="about-tag">${g}</span>`).join('');
-  document.getElementById('panel-about').innerHTML = `
+  const panel = document.getElementById('panel-about');
+  panel.innerHTML = `
     <div class="about-block">
-      <div class="about-label">About this collection</div>
-      <div class="about-text">${col.about || ''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><div class="about-label" style="margin-bottom:0">About this collection</div><button id="editAboutBtn" style="font-size:11px;font-weight:700;color:var(--pink);background:rgba(255,0,80,.08);border:1px solid var(--pink-line);padding:5px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div>
+      <div class="about-text" id="aboutView">${col.about || ''}</div>
+      <div id="aboutForm" style="display:none;margin-top:10px"><textarea id="aboutInput" rows="3" style="width:100%;background:var(--divider);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:10px">${col.about || ''}</textarea><div class="about-label">Genres (from Chief Editor)</div><div id="genreChecks" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px"></div><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--pink);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutCancel" style="flex:1;background:var(--divider);border:1px solid var(--line);padding:10px;border-radius:10px;font-weight:700">Cancel</button></div></div>
     </div>
     <div class="about-block">
       <div class="about-label">Curated by</div>
@@ -340,8 +355,22 @@ function renderAbout(col) {
     </div>
     <div class="about-block">
       <div class="about-label">Genres</div>
-      <div class="about-tags">${genreTags}</div>
+      <div class="about-tags">${genreTags || '<span style="font-size:12px;color:var(--gray-400)">No genres yet</span>'}</div>
     </div>`;
+  const allGenres = (window.DemoData && DemoData.GENRES ? DemoData.GENRES.map(g=>g.name) : ['Romance','Betrayal','Mafia','Werewolf','Fantasy','Campus','Revenge','Drama']);
+  const checks = document.getElementById('genreChecks');
+  if (checks) {
+    checks.innerHTML = allGenres.map(g => '<label style="display:inline-flex;align-items:center;gap:5px;background:var(--divider);padding:6px 10px;border-radius:16px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent"><input type="checkbox" value="'+g.replace(/"/g,'&quot;')+'" '+( (col.genres||[]).includes(g) ? 'checked' : '' )+' style="accent-color:var(--pink)"> '+g+'</label>').join('');
+  }
+  document.getElementById('editAboutBtn').onclick = () => { document.getElementById('aboutForm').style.display='block'; document.getElementById('aboutView').style.display='none'; };
+  document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutView').style.display='block'; };
+  document.getElementById('aboutSave').onclick = () => {
+    const about = document.getElementById('aboutInput').value.trim();
+    const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(i=>i.value);
+    currentCollection.about = about; currentCollection.genres = genres;
+    try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); m[currentCollection.id]=currentCollection; localStorage.setItem('dro_collections_override', JSON.stringify(m)); } catch(e){}
+    renderAbout(currentCollection); showToast('About updated');
+  };
 }
 
 function renderCurated(col) {
@@ -375,16 +404,13 @@ function initButtons() {
       : '<i class="fas fa-plus"></i> Follow Collection';
   });
 
-  document.getElementById('shareBtn').addEventListener('click', () => {
+  function doShare() {
     if (typeof openShareModal === 'function') {
-      openShareModal({
-        title: currentCollection.title,
-        sub: currentCollection.sub,
-        img: currentCollection.cover,
-        url: location.href
-      });
-    }
-  });
+      openShareModal({ title: currentCollection.title, sub: currentCollection.sub, img: currentCollection.cover, url: location.href });
+    } else { showToast('Share: '+location.href); }
+  }
+  document.getElementById('topShareBtn')?.addEventListener('click', doShare);
+  document.getElementById('bottomShareBtn')?.addEventListener('click', doShare);
 
   const menuDots = document.getElementById('menuDots');
   const dropdown = document.getElementById('dropdownMenu');
@@ -505,6 +531,25 @@ document.getElementById('addStoryConfirm').addEventListener('click', ()=>{
   renderCollPage();
   closeAddStory(); showToast('Added '+toAdd.length+' story'+(toAdd.length>1?'ies':''));
 });
+
+function applyCollSort(){
+  if (!collStories.length) return;
+  if (collSort==='likes') collStories.sort((a,b)=> (parseInt(String(b.likes||0).replace(/[^0-9]/g,''))||0) - (parseInt(String(a.likes||0).replace(/[^0-9]/g,''))||0));
+  else if (collSort==='reads') collStories.sort((a,b)=> (parseInt(String(b.reads||0).replace(/[^0-9]/g,''))||0) - (parseInt(String(a.reads||0).replace(/[^0-9]/g,''))||0));
+  else if (collSort==='title') collStories.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+  else { /* latest — restore original order from currentCollection.storyList order */ collStories = [...(currentCollection.storyList||[])]; }
+  collPage=1; renderCollPage();
+}
+document.getElementById('sortBtn')?.addEventListener('click', ()=> document.getElementById('sortOverlay').classList.add('open'));
+document.getElementById('sortClose')?.addEventListener('click', ()=> document.getElementById('sortOverlay').classList.remove('open'));
+document.getElementById('sortOverlay')?.addEventListener('click', e=>{ if(e.target.id==='sortOverlay') e.currentTarget.classList.remove('open'); });
+document.querySelectorAll('#sortOptions .report-reason').forEach(el=> el.addEventListener('click', ()=>{
+  collSort=el.dataset.sort;
+  const label = el.textContent.trim();
+  document.getElementById('sortBtn').innerHTML = label+' <i class="fas fa-chevron-down"></i>';
+  document.getElementById('sortOverlay').classList.remove('open');
+  applyCollSort();
+}));
 
 loadCollection();
 

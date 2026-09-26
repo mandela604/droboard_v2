@@ -55,14 +55,41 @@
   }
 
   /* ── Stories ── */
+  function buildRingStyle(s){
+    const n = s.statuses ? s.statuses.length : 0;
+    if(s.you || n <= 1) return '';
+    const gap = 4; // degrees gap between segments
+    const segAngle = 360 / n;
+    const seg = segAngle - gap;
+    const isViewed = s.ring === 'ring-viewed';
+    const segColor = isViewed ? '#9ca3af' : '#ff0050';
+    const gapColor = 'var(--bg)';
+    let stops = [];
+    for(let i=0;i<n;i++){
+      const start = i * segAngle;
+      const segEnd = start + seg;
+      const gapEnd = start + segAngle;
+      const viewedSeg = s.statuses[i] && s.statuses[i].viewed;
+      const c = (viewedSeg || isViewed) ? '#9ca3af' : segColor;
+      stops.push(`${c} ${start}deg ${segEnd}deg`);
+      stops.push(`${gapColor} ${segEnd}deg ${gapEnd}deg`);
+    }
+    return `background: conic-gradient(from 0deg, ${stops.join(', ')});`;
+  }
   function renderStories(stories) {
-    document.getElementById('storiesRow').innerHTML = stories.map(s => `
+    document.getElementById('storiesRow').innerHTML = stories.map(s => {
+      const n = s.statuses ? s.statuses.length : 0;
+      const isMulti = !s.you && n > 1;
+      const ringClass = s.you ? 'own' : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
+      const style = isMulti ? ` style="${buildRingStyle(s)}"` : '';
+      return `
       <div class="story-item" data-story-id="${s.id}" data-you="${!!s.you}">
-        <div class="story-ring ${s.you ? 'own' : (s.ring || '')}"><div class="inner">
+        <div class="story-ring ${ringClass}"${style}><div class="inner">
           ${s.you ? `<div class="story-add">+</div>` : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`}
         </div></div>
         <div class="story-name">${s.name}</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
   function bindStories() {
     document.getElementById('storiesRow').addEventListener('click', (e) => {
@@ -82,6 +109,11 @@
     if (item) {
       item.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
       if (ring) item.classList.add(ring);
+      if(s && s.statuses && s.statuses.length > 1){
+        item.setAttribute('style', buildRingStyle(s));
+      } else {
+        item.removeAttribute('style');
+      }
     }
   };
 
@@ -286,8 +318,18 @@
       onNameClick: (post) => { location.href = 'profile.html?u=' + encodeURIComponent((post && post.name) || ''); },
       onComment: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
       onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
-      onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || '', url: 'https://droboard.app/post/' + post.id }); },
-      onSave: (post) => { const ref = storyRefFor(post); if (ref && window.openSaveModal) openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: post.id }); else if (window.openSaveModal) { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved!' : 'Removed from saved'); } else toast('Save unavailable'); },
+      onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id }); },
+      onSave: (post) => {
+        if(post.type === 'ama'){
+          if(window.openSaveModal) openSaveModal({ title: (post.amaData && post.amaData.title) || 'AMA', sub: (post.amaData && post.amaData.meta) || '@' + post.name, img: post.avatar || '', storyId: post.id });
+          else { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved AMA!' : 'Removed AMA'); }
+          return;
+        }
+        const ref = storyRefFor(post);
+        if (ref && window.openSaveModal) openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: post.id });
+        else if (window.openSaveModal) { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved!' : 'Removed from saved'); }
+        else toast('Save unavailable');
+      },
       onDots: (post, anchor) => { if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
       onOpenLink: () => toast('📖 Opening story…'),
@@ -372,17 +414,49 @@
     });
   }
 
-  /* ── Post Composer ── */
+  /* ── Post Composer (reusable component) ── */
+  function pushPost(post, isEdit){
+    if(isEdit){
+      const idx=FEED_POSTS.findIndex(p=> String(p.id)===String(post.id));
+      if(idx>-1){ FEED_POSTS[idx]=post; if(window.DroboardPostCard) DroboardPostCard.update(post); }
+      else { FEED_POSTS.unshift(post); if(window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS); }
+    } else {
+      FEED_POSTS.unshift(post);
+      if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
+    }
+    const empty=document.getElementById('emptyState');
+    if(empty) empty.style.display = 'none';
+  }
   function openPostComposer(type) {
-    document.getElementById('postComposerOv').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    if(window.DroboardPostComposer){
+      DroboardPostComposer.open(type||'text');
+      return;
+    }
+    const el=document.getElementById('postComposerOv');
+    if(el){ el.classList.add('open'); document.body.style.overflow = 'hidden'; }
     if (type) document.querySelectorAll('.ctype').forEach(t => t.classList.toggle('active', t.dataset.ct === type));
   }
   function closePostComposer() {
-    document.getElementById('postComposerOv').classList.remove('open');
+    if(window.DroboardPostComposer){ DroboardPostComposer.close(); return; }
+    const el=document.getElementById('postComposerOv');
+    if(el) el.classList.remove('open');
     document.body.style.overflow = '';
   }
   function initComposer() {
+    if(window.DroboardPostComposer){
+      DroboardPostComposer.attach(null, {
+        getUser: ()=> ({ name:'You', avatar:(window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5' }),
+        onSubmit: (post, isEdit)=>{
+          pushPost(post, isEdit);
+          if(isEdit) toast('✅ Post updated!');
+          else {
+            const label={text:'Post', poll:'Poll', debate:'Debate', ama:'AMA', quote:'Quote'}[post.type]||'Post';
+            toast(post.type==='ama' ? '🎙️ AMA posted!' : `✅ ${label} published!`);
+          }
+        }
+      });
+      return;
+    }
     document.querySelectorAll('.ctype').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.ctype').forEach(b => b.classList.remove('active'));
@@ -391,22 +465,150 @@
     });
   }
   function submitPost() {
+    if(window.DroboardPostComposer){
+      // handled inside component
+      return;
+    }
     const text = document.getElementById('composerText').value.trim();
     if (!text) { toast('✍️ Write something first!'); return; }
     const av = (window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5';
-    const newPost = { id: 'p_' + Date.now(), type: 'post', name: 'You', avatar: av, time: 'Just now', text, likes: 0, liked: false, comments: 0 };
-    FEED_POSTS.unshift(newPost);
+    const activeCt = document.querySelector('.composer-tools .ctype.active');
+    const ct = activeCt ? activeCt.dataset.ct : 'text';
+    let newPost;
+    if(ct === 'ama'){
+      newPost = { id: 'p_' + Date.now(), type: 'ama', name: 'You', avatar: av, time: 'Just now', amaData: { isLive: true, viewers: Math.floor(Math.random()*200+20), title: text.slice(0,60) || 'Ask Me Anything', meta: text.slice(0,120) }, likes: 0, liked: false, comments: 0 };
+    } else if(ct === 'poll'){
+      newPost = { id: 'p_' + Date.now(), type: 'poll', name: 'You', avatar: av, time: 'Just now', poll: { question: text, opts: [{label:'Yes', v:0},{label:'No', v:0}], total:0, voted:-1 }, likes:0, liked:false, comments:0 };
+    } else if(ct === 'debate'){
+      newPost = { id: 'p_' + Date.now(), type: 'debate', name: 'You', avatar: av, time: 'Just now', debateData: { question: text, prompt:'Share your thoughts', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null }, likes:0, liked:false, comments:0 };
+    } else if(ct === 'image'){
+      newPost = { id: 'p_' + Date.now(), type: 'post', name: 'You', avatar: av, time: 'Just now', text, image: 'https://picsum.photos/seed/'+Date.now()+'/900/500', likes: 0, liked: false, comments: 0 };
+    } else {
+      newPost = { id: 'p_' + Date.now(), type: 'post', name: 'You', avatar: av, time: 'Just now', text, likes: 0, liked: false, comments: 0 };
+    }
+    pushPost(newPost);
     closePostComposer();
-    document.getElementById('composerText').value = '';
-    if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
-    document.getElementById('emptyState').style.display = 'none';
-    toast('✅ Post published!');
+    const el=document.getElementById('composerText'); if(el) el.value='';
+    toast(ct === 'ama' ? '🎙️ AMA posted!' : '✅ Post published!');
   }
 
-  /* ── Menu ── */
+  /* ── Menu — My Circle accordion ── */
+  function getMyBoards(){
+    const FALLBACK_ALL = [
+      {id:'fantasy',name:'Fantasy',icon:'fa-hat-wizard',members:'45.7K',tagline:'Where imagination becomes legend.'},
+      {id:'romance',name:'Romance',icon:'fa-heart',members:'92.1K',tagline:'Hearts, heat, and happy endings.'},
+      {id:'werewolf',name:'Werewolf',icon:'fa-moon',members:'31.2K',tagline:'Packs, mates, and moonlit chaos.'},
+      {id:'mafia',name:'Mafia',icon:'fa-gun',members:'18.4K',tagline:'Power, loyalty and betrayal.'},
+      {id:'campus',name:'Campus',icon:'fa-graduation-cap',members:'22.1K',tagline:'Youth, drama and first loves.'},
+      {id:'revenge',name:'Revenge',icon:'fa-fire',members:'15.3K',tagline:'Payback is a story.'},
+      {id:'drama',name:'Drama',icon:'fa-masks-theater',members:'28.9K',tagline:'Everyday chaos and twists.'},
+      {id:'billionaire',name:'Billionaire',icon:'fa-briefcase',members:'34.5K',tagline:'Wealth, power, love.'},
+      {id:'mystery',name:'Mystery',icon:'fa-magnifying-glass',members:'19.7K',tagline:'Clues, secrets, whodunit.'},
+      {id:'horror',name:'Horror',icon:'fa-ghost',members:'12.8K',tagline:'Fear lives here.'},
+      {id:'adventure',name:'Adventure',icon:'fa-compass',members:'16.2K',tagline:'Journeys beyond.'},
+      {id:'scifi',name:'Sci-Fi',icon:'fa-rocket',members:'21.4K',tagline:'Future and beyond.'},
+    ];
+    try{
+      const seed = window.GenreDemoSeed;
+      if(seed && seed.DEMO_GENRES){
+        const seedAll = Object.values(seed.DEMO_GENRES);
+        const allMap={}; FALLBACK_ALL.forEach(g=> allMap[g.id]=g); seedAll.forEach(g=> allMap[g.id]=Object.assign({}, allMap[g.id]||{}, g));
+        const all = Object.values(allMap);
+        const joinedIds = ['fantasy','romance','werewolf'];
+        const joined = all.filter(g=> joinedIds.includes(g.id)).slice(0,5);
+        const rest = all.filter(g=> !joinedIds.includes(g.id));
+        return { joined, rest, all };
+      }
+    }catch(e){}
+    const joinedIds2=['fantasy','romance','werewolf'];
+    return { joined:FALLBACK_ALL.filter(g=>joinedIds2.includes(g.id)), rest:FALLBACK_ALL.filter(g=>!joinedIds2.includes(g.id)), all:FALLBACK_ALL };
+  }
+  function getMyCollections(){
+    const FALLBACK_COLLS=[
+      {id:'coll_1', name:'Midnight Reads', count:12, cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},
+      {id:'coll_2', name:'Tear-jerkers', count:8, cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},
+      {id:'coll_3', name:'Weekend Binge', count:15, cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},
+      {id:'coll_4', name:'Dark Romance Essentials', count:32, cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg'},
+      {id:'coll_5', name:'Heartfelt Romance', count:24, cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg'},
+      {id:'coll_6', name:'Best of 2025', count:18, cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg'},
+      {id:'coll_7', name:'Family Secrets', count:15, cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg'},
+      {id:'coll_8', name:'Crowned in Sin', count:22, cover:'https://i.postimg.cc/0MyxNqfz/7.jpg'},
+      {id:'coll_9', name:'Fangs & Fortune', count:19, cover:'https://i.postimg.cc/cgLZJNmC/8.jpg'},
+      {id:'coll_10', name:'The Billionaire Never Forgets', count:27, cover:'https://i.postimg.cc/DJwFzKgd/4.jpg'},
+    ];
+    try{
+      const d=window.DemoData;
+      if(d && (d.COLLECTIONS||d.COLLECTIONS_DATA)){
+        const allRaw=d.COLLECTIONS||d.COLLECTIONS_DATA;
+        const all=allRaw.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||c.title||'Collection', count:c.count||c.stories||0, cover:(c.covers&&c.covers[0])||c.cover||FALLBACK_COLLS[i%FALLBACK_COLLS.length].cover}));
+        const joinedIds=['coll_1','coll_2','coll_3'];
+        const joined=all.filter(c=> joinedIds.includes(c.id)).slice(0,5);
+        const rest=all.filter(c=> !joinedIds.includes(c.id));
+        const finalJoined=joined.length?joined:FALLBACK_COLLS.slice(0,3);
+        const finalRest=rest.length?rest:FALLBACK_COLLS.slice(3);
+        return { joined:finalJoined, rest:finalRest, all: all.length?all:FALLBACK_COLLS };
+      }
+    }catch(e){}
+    return { joined:FALLBACK_COLLS.slice(0,3), rest:FALLBACK_COLLS.slice(3), all:FALLBACK_COLLS };
+  }
+  function openBoardsExplorer(){
+    const data=getMyBoards();
+    if(window.BoardsOverlay){ BoardsOverlay.open(data); return; }
+    let ov=document.getElementById('boardsExplorerOv');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.id='boardsExplorerOv';
+      ov.style.cssText='position:fixed;inset:0;z-index:4000;background:var(--bg,#fff);display:none;flex-direction:column;max-width:420px;margin:0 auto;left:50%;transform:translateX(-50%);box-shadow:0 0 50px rgba(0,0,0,.1)';
+      ov.innerHTML=`
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border,#f1f1f1);background:var(--bg,#fff)">
+          <button id="boardsExBack" style="width:36px;height:36px;border-radius:50%;border:1px solid var(--border,#f1f1f1);background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="fas fa-arrow-left"></i></button>
+          <div style="font-weight:800;font-size:16px">My Boards</div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px" id="boardsExScroll"></div>
+      `;
+      document.body.appendChild(ov);
+      ov.querySelector('#boardsExBack').addEventListener('click', ()=>{ ov.style.display='none'; document.body.style.overflow=''; });
+      ov.addEventListener('click', e=>{ if(e.target===ov){ ov.style.display='none'; document.body.style.overflow=''; } });
+    }
+    const scrollEl=ov.querySelector('#boardsExScroll');
+    const joined=data.joined;
+    const rest=data.rest && data.rest.length? data.rest : (data.all && data.all.length? data.all.filter(g=>!joined.some(j=>j.id===g.id)) : []);
+    const allBoards = [
+      ...joined.map(g=> ({...g, _section:'joined'})),
+      ...rest.slice(0,12).map(g=> ({...g, _section:'explore'}))
+    ];
+    // interleave ads every 6 boards
+    const adHtml = (i)=> `<div style="border:1px solid var(--border,#f1f1f1);border-radius:12px;padding:12px;margin-bottom:8px;background:linear-gradient(135deg,rgba(255,0,80,.06),rgba(167,139,250,.04));display:flex;gap:10px;align-items:center"><div style="width:48px;height:48px;border-radius:8px;background:var(--acc,#ff0050);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0"><i class="fas fa-bullhorn"></i></div><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;color:var(--acc,#ff0050);text-transform:uppercase">Sponsored</div><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Discover Premium Boards</div><div style="font-size:11px;color:var(--tx-muted,#6b7280)">Unlock exclusive hubs & features</div></div><button onclick="location.href='store.html'" style="background:var(--acc,#ff0050);color:#fff;border:none;padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0">View</button></div>`;
+    let html = `<div style="font-size:11px;font-weight:800;color:var(--tx-muted,#6b7280);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Joined hubs</div>`;
+    let count=0;
+    joined.forEach(g=>{
+      html += `<a href="genre-hub.html?genre=${encodeURIComponent(g.id)}" style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border,#f1f1f1);border-radius:10px;margin-bottom:8px;text-decoration:none;color:inherit"><div style="width:36px;height:36px;border-radius:8px;background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;color:var(--acc,#ff0050)"><i class="fas ${g.icon||'fa-hashtag'}"></i></div><div style="flex:1"><div style="font-weight:700;font-size:13px">${g.name}</div><div style="font-size:11px;color:var(--tx-muted,#6b7280)">${g.members||'1.2K'} members</div></div><i class="fas fa-chevron-right" style="font-size:11px;color:var(--tx-muted,#6b7280)"></i></a>`;
+      count++; if(count%6===0) html+=adHtml(count);
+    });
+    if(!joined.length) html+= '<div style="font-size:12px;color:var(--tx-muted)">No hubs joined yet</div>';
+    html += `<div style="font-size:11px;font-weight:800;color:var(--tx-muted,#6b7280);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">Explore more hubs</div>`;
+    rest.slice(0,12).forEach((g, idx)=>{
+      html += `<a href="genre-hub.html?genre=${encodeURIComponent(g.id)}" style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border,#f1f1f1);border-radius:10px;margin-bottom:8px;text-decoration:none;color:inherit"><div style="width:36px;height:36px;border-radius:8px;background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;color:var(--tx-muted,#6b7280)"><i class="fas ${g.icon||'fa-hashtag'}"></i></div><div style="flex:1"><div style="font-weight:700;font-size:13px">${g.name}</div><div style="font-size:11px;color:var(--tx-muted,#6b7280)">${g.tagline||''}</div></div><span style="font-size:11px;font-weight:700;color:var(--acc,#ff0050)">Join</span></a>`;
+      count++; if(count%6===0) html+=adHtml(count);
+    });
+    if(!rest.length) html+= '<div style="font-size:12px;color:var(--tx-muted)">No more hubs</div>';
+    scrollEl.innerHTML = html;
+    ov.style.display='flex';
+    document.body.style.overflow='hidden';
+  }
   function configureMenu() {
     if (!window.DroboardMenu) return;
     const user = { name: 'You', handle: 'you', avatar: (window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5' };
+    const boards = getMyBoards();
+    const collData = getMyCollections();
+    const myCirclesChildren = [
+      { isHeader:true, label:'My Boards' },
+      ...boards.joined.slice(0,2).map(g=> ({ id:'board-'+g.id, label:g.name, icon:g.icon||'fa-hashtag', sub:(g.members||'1.2K')+' members', href:'genre-hub.html?genre='+encodeURIComponent(g.id) })),
+      { id:'boards-viewall', label:'View all boards', isViewAll:true },
+      { isHeader:true, label:'My Collections' },
+      ...collData.joined.slice(0,2).map(c=> ({ id:'coll-'+c.id, label:c.name||c.title||'Collection', icon:'fa-folder', sub:(c.count||c.stories||0)+' stories', href:'collection.html?id='+encodeURIComponent(c.id) })),
+      { id:'collections-viewall', label:'View all collections', isViewAll:true }
+    ];
     DroboardMenu.configure({
       title: 'Feed', subtitle: 'Filters & options', user, footer: 'Droboard',
       sections: [
@@ -418,13 +620,23 @@
           { id: 'following', icon: 'fa-user-group', label: 'Following', sub: 'People you follow', active: FEED_SORT === 'following' },
         ]},
         { label: 'Quick links', items: [
-          { id: 'circles', icon: 'fa-circle-nodes', label: 'My Circles', href: '#' },
+          { id:'circles', icon:'fa-circle-nodes', label:'My Circles', sub: boards.joined.length+' boards · '+collData.joined.length+' collections', children: myCirclesChildren },
           { id: 'saved', icon: 'fa-bookmark', label: 'Saved', href: 'library.html' },
           { id: 'profile', icon: 'fa-user', label: 'My Profile', href: 'profile.html' },
         ]},
       ],
       onSelect: (item) => {
         if (item.id === 'new-post') { openPostComposer('text'); return; }
+        if (item.id === 'boards-viewall') {
+          DroboardMenu.close();
+          setTimeout(()=> openBoardsExplorer(), 250);
+          return;
+        }
+        if (item.id === 'collections-viewall') {
+          DroboardMenu.close();
+          setTimeout(()=> { if(window.BrowseOverlay) BrowseOverlay.open({title:'My Collections', mode:'collections'}); else toast('Opening collections…'); }, 250);
+          return;
+        }
         if (['latest', 'popular', 'trending', 'following'].includes(item.id)) {
           FEED_SORT = item.id;
           if (window.DroboardMenu) DroboardMenu.setActive(item.id);
@@ -450,7 +662,10 @@
     if (window.DroboardNav) DroboardNav.configure({ active: 'feed' });
     if (window.DroboardDotsMenu) {
       DroboardDotsMenu.configure({
-        onEdit: (post) => toast('✏️ Edit · ' + (post.name || '')),
+        onEdit: (post) => {
+          if(window.DroboardPostComposer) DroboardPostComposer.open({editPost: post});
+          else toast('✏️ Edit · ' + (post.name || ''));
+        },
         onDelete: (post) => { const i = FEED_POSTS.findIndex(p => p.id === post.id); if (i >= 0) { FEED_POSTS.splice(i, 1); DroboardPostCard.setPosts(FEED_POSTS); toast('🗑️ Post deleted'); } },
         onReport: () => toast('🚩 Reported. Thanks for flagging.'),
         onLess: () => toast('Got it — showing less of this.'),

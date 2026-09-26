@@ -289,12 +289,20 @@
         </div>`;
     },
 
-    'quote': (post) => `${_pill('quote')}
-      <div class="pcc-quote">
-        <div class="pcc-quote-mark">&ldquo;</div>
-        <div class="pcc-quote-text" data-pcc-openpost>${esc(post.quote)}</div>
-        <div class="pcc-quote-caption">${esc(post.caption)}</div>
-      </div>`,
+    'quote': (post) => {
+      const bgStyle = post.quoteBgCss ? ` style="background:${post.quoteBgCss}"` : '';
+      const isDark = post.quoteBg === 'dark';
+      const textStyle = isDark ? ' style="color:#ffffff;white-space:pre-wrap"' : ' style="white-space:pre-wrap"';
+      const capStyle = isDark ? ' style="color:rgba(255,255,255,.7)"' : '';
+      const markStyle = isDark ? ' style="color:rgba(255,255,255,.35)"' : '';
+      const quoteHtml = esc(post.quote).replace(/\n/g,'<br>');
+      return `${_pill('quote')}
+      <div class="pcc-quote"${bgStyle}>
+        <div class="pcc-quote-mark"${markStyle}>&ldquo;</div>
+        <div class="pcc-quote-text" data-pcc-openpost${textStyle}>&ldquo;${quoteHtml}&rdquo;</div>
+        <div class="pcc-quote-caption"${capStyle}>${esc(post.caption)}</div>
+      </div>`;
+    },
 
     /* Repost — same horizontal shape as recommendation */
     'repost': (post) => {
@@ -353,6 +361,7 @@
           </div>`;
       }).join('');
       return `${_pill('poll')}
+        ${post.image ? `<img class="pcc-image" src="${esc(post.image)}" alt="" data-pcc-open style="margin-bottom:11px">` : ''}
         <div class="pcc-poll-q">${esc(pl.question)}</div>
         ${rows}
         <div class="pcc-poll-footer"><span>${pl.voted >= 0 ? 'Tap results to see more' : 'Tap an option to vote'}</span><span>${total} votes</span></div>`;
