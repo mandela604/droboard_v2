@@ -143,7 +143,7 @@
   function defaultAdInventory() {
     const d = window.DemoData || {};
     return {
-      pools: JSON.parse(JSON.stringify(d.AD_POOLS || { platform: [], book: [], native: [], follow: [], banner: [] })),
+      pools: JSON.parse(JSON.stringify(d.AD_POOLS || { platform: [], book: [], native: [], embed: [], follow: [], banner: [] })),
       placements: JSON.parse(JSON.stringify(d.AD_PLACEMENTS || { discover: { interval: 6 }, feed: { interval: 4 }, genreHub: { interval: 3 } })),
     };
   }

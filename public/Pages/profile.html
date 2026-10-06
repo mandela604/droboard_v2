@@ -27,7 +27,7 @@ html,body{background:var(--bg)}
 body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s ease,color .25s ease}
 button{font-family:inherit;cursor:pointer}
 ::-webkit-scrollbar{display:none}
-.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden;padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:clip;padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 @media (min-width:421px){ .phone{ box-shadow:0 0 50px rgba(0,0,0,.14) } }
 .top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
 [data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
@@ -387,20 +387,6 @@ button{font-family:inherit;cursor:pointer}
   </div>
 </div>
 
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-profile">
-    <div class="drawer-av"><img id="drawerAv" src="" alt=""/></div>
-    <div style="flex:1;min-width:0">
-      <div class="drawer-name" id="drawerName"></div>
-      <div class="drawer-handle" id="drawerHandle"></div>
-      <div class="drawer-badge" id="drawerBadge"></div>
-    </div>
-    <div class="drawer-close" id="drawerCloseBtn"><i class="fas fa-xmark"></i></div>
-  </div>
-  <div class="drawer-body" id="drawerBody"></div>
-</div>
-
 <link rel="stylesheet" href="../component/search-overlay.css">
 <link rel="stylesheet" href="../component/bottom-nav.css">
 <link rel="stylesheet" href="../component/dots-menu.css">
@@ -421,7 +407,9 @@ button{font-family:inherit;cursor:pointer}
   <script src="../component/search-overlay.js"></script>
   <script src="../component/bottom-nav.js"></script>
   <script src="../component/dots-menu.js"></script>
+  <script src="../component/profile-menu.js"></script>
   <script src="../component/collection-card.js"></script>
+  <script src="../component/follow-list.js?v=3"></script>
   <script src="../component/library.js"></script>
   <script src="../component/post-composer.js"></script>
   <script src="../component/boards-overlay.js"></script>
@@ -434,7 +422,7 @@ button{font-family:inherit;cursor:pointer}
 <script src="../component/save-modal.js"></script>
 <script src="../component/share-modal.js"></script>
 <script src="../component/book-card.js"></script>
-<script src="../services/profile-service.js?v=3"></script>
+<script src="../services/profile-service.js?v=5"></script>
 <script>ProfilePage.init();</script>
 </body>
 </html>

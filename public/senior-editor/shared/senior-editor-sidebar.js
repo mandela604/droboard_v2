@@ -36,18 +36,17 @@
 
     { key: 'review-queue',        label: 'Review Queue',        icon: 'fa-inbox',             href: 'review-queue.html',           section: 'Content' },
     { key: 'book-management',     label: 'Book Management',      icon: 'fa-book',              href: 'book-management.html',        section: 'Content' },
+    { key: 'reports-flags',       label: 'Reports & Flags',      icon: 'fa-flag',              href: 'reports-flags.html',          section: 'Content' },
 
     { key: 'contract-review',     label: 'Contract Review',     icon: 'fa-file-signature',    href: 'contract-review.html',        section: 'Reviews' },
-    { key: 'vip-review',          label: 'VIP Registration',    icon: 'fa-crown',             href: 'vip-registration-review.html',section: 'Reviews' },
     { key: 'completion-review',   label: 'Completion Application',icon:'fa-flag-checkered',    href: 'completion-application.html', section: 'Reviews' },
     { key: 'chapter-review',      label: 'Chapter Edit Review', icon: 'fa-pen-to-square',     href: 'chapter-edit-review.html',    section: 'Reviews' },
     { key: 'book-series-review',  label: 'Book Series Review',  icon: 'fa-book-open',         href: 'book-series-review.html',     section: 'Reviews' },
 
     { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html',                section: 'People' },
+    { key: 'invite-authors',      label: 'Invite Authors',       icon: 'fa-user-plus',         href: 'invite-authors.html',        section: 'People' },
     { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html',    section: 'People' },
     { key: 'author-messages',     label: 'Author Messages',      icon: 'fa-envelope',          href: 'author-messages.html',        section: 'People' },
-
-    { key: 'featured-stories',    label: 'Featured Stories',     icon: 'fa-star',              href: 'featured-stories.html',       section: 'Discovery' },
 
     { key: 'activity-logs',       label: 'Activity Logs',        icon: 'fa-list',              href: 'activity-logs.html',          section: 'System' },
   ];
@@ -255,7 +254,7 @@
         <div class="ses-sb-overlay" id="${instId}-overlay"></div>
         <aside class="ses-sidebar" id="${instId}-sidebar">
           <div class="ses-sb-logo">
-            <div class="ses-sb-logo-ico"><i class="fas fa-book-open"></i></div>
+            <div class="ses-sb-logo-ico" style="background:#000;overflow:hidden;padding:0"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
             <div class="ses-sb-logo-txt"><b>DROBOARD</b><b>SENIOR EDITOR</b></div>
             <button class="ses-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>

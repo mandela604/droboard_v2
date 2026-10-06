@@ -117,14 +117,14 @@
     }
   };
 
-  /* ── Promo ── */
+  /* ── Promo (mirrors library slider: slide/CTA → bridge) ── */
   async function mountPromo() {
     if (!window.DroboardPromoSlider || !window.FeedData || !FeedData.getPromoSlides) return;
     const slides = await FeedData.getPromoSlides();
     if (!slides.length) return;
     DroboardPromoSlider.mount('#promoMount', {
       slides, interval: 3200,
-      onSelect: (slide) => toast('📖 ' + (slide.title || 'Opening…')),
+      onSelect: (slide) => { location.href = 'bridge.html?id=' + encodeURIComponent((slide && (slide.id || slide.title)) || ''); },
     });
   }
 
@@ -253,7 +253,9 @@
   function interleaveAds(posts, pools, every) {
     pools = pools || {};
     const natives = (pools.native || []).slice(0, 3);
+    const embeds = (pools.embed || []).filter(a => a && a.code).slice(0, 2);
     const others = [];
+    embeds.forEach(ad => others.push({ format: 'embed', ad })); // paid network first
     const poolPlatform = pools.platform || [];
     const poolBooks = pools.book || [];
     if (poolPlatform[0]) { others.push({ format: 'platform', ad: poolPlatform[0] }); others.push({ format: 'listPlatform', ad: poolPlatform[0] }); }
@@ -301,6 +303,7 @@
       else if (fmt === 'banner') inner = DroboardAdCard.renderBanner(post.ad);
       else if (fmt === 'fullscreen') inner = DroboardAdCard.renderFullscreen(post.ad);
       else if (fmt === 'native') inner = DroboardAdCard.renderNative(post.ad);
+      else if (fmt === 'embed' && DroboardAdCard.renderEmbed) inner = DroboardAdCard.renderEmbed(post.ad);
       else if (String(post.ad.brand || post.ad.sponsor || '').toLowerCase().includes('droboard')) inner = DroboardAdCard.renderPlatform(post.ad);
       else inner = DroboardAdCard.renderNative(post.ad);
     } catch (err) { inner = '<div style="padding:14px;color:var(--acc);font-size:12px">Ad render error: ' + String(err.message || err) + '</div>'; }
@@ -315,7 +318,7 @@
       getReactionHTML: (post) => window.DroboardReactionPicker ? DroboardReactionPicker.renderTrigger(post.id, { liked: post.liked, likeCount: post.likes }) : undefined,
       renderSponsored: renderSponsored,
       onAvatarClick: (post) => openAuthorAvatar(post),
-      onNameClick: (post) => { location.href = 'profile.html?u=' + encodeURIComponent((post && post.name) || ''); },
+      onNameClick: (post) => openAuthorName(post),
       onComment: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
       onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
       onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id }); },
@@ -351,13 +354,19 @@
   }
 
   /* Avatar → status viewer when the author has viewable statuses,
-     else profile. Usernames always go straight to profile. */
+     else profile. Droboard always → droboard-page.html */
   function openAuthorAvatar(post) {
     const name = post && post.name;
+    if(toDroboardPage(name)){ location.href='droboard-page.html'; return; }
     const viewable = STORIES_CACHE.filter(s => !s.you && s.statuses && s.statuses.length);
     const hit = viewable.find(s => s.name === name);
     if (hit && window.openStatusViewer) { openStatusViewer(viewable, hit.id); return; }
     location.href = 'profile.html?u=' + encodeURIComponent(name || '');
+  }
+  function openAuthorName(post){
+    const name = post && post.name;
+    if(toDroboardPage(name)) location.href='droboard-page.html';
+    else location.href='profile.html?u='+encodeURIComponent(name||'');
   }
 
   /* Shared picker hooks (component contract): getState reads the post,
@@ -370,23 +379,53 @@
     }
     return null;
   }
+  var _pickerRx = {}; // per-id { userRx, love, secondId, second, extraId, extra }
+  function _pickerInit(id, p) {
+    if (_pickerRx[id]) return _pickerRx[id];
+    var likes = (p && p.likes) || 0;
+    var buckets = ['crying', 'shocked', 'emotional'];
+    var h = 0;
+    String(id).split('').forEach(function (ch) { h = (h + ch.charCodeAt(0)) % buckets.length; });
+    var secondId = buckets[h];
+    var second = Math.min(5, Math.max(0, likes));
+    var st = { userRx: (p && (p.userRx || (p.liked ? 'love' : null))) || null, love: Math.max(0, likes - second), secondId: secondId, second: second, extraId: null, extra: 0 };
+    _pickerRx[id] = st;
+    return st;
+  }
+  function _pickerTotal(st) { return (st.love || 0) + (st.second || 0) + (st.extra || 0); }
   function pickerHooks() {
     return {
       getState: (id) => {
         const p = findReactPost(id);
-        const likes = (p && p.likes) || 0;
-        const buckets = ['crying', 'shocked', 'emotional'];
-        let h = 0;
-        String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-        const second = {};
-        second[buckets[h]] = Math.max(4, Math.round(likes * 0.3));
-        return Object.assign({ userRx: p && p.liked ? 'love' : null, love: likes }, second);
+        if (!p) return null; // unknown id: let other picker bindings claim it
+        const st = _pickerInit(id, p);
+        const out = { userRx: st.userRx, love: st.love };
+        out[st.secondId] = st.second;
+        if (st.extraId) out[st.extraId] = st.extra;
+        return out;
       },
-      onReact: (id) => {
+      onReact: (id, rid) => {
         const p = findReactPost(id);
         if (!p) return;
-        p.liked = !p.liked;
-        p.likes = (p.likes || 0) + (p.liked ? 1 : -1);
+        const st = _pickerInit(id, p);
+        rid = rid || 'love';
+        if (st.userRx === rid) {
+          if (rid === 'love') st.love = Math.max(0, st.love - 1);
+          else if (rid === st.secondId) st.second = Math.max(0, st.second - 1);
+          else if (rid === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
+          st.userRx = null;
+        } else {
+          if (st.userRx === 'love') st.love = Math.max(0, st.love - 1);
+          else if (st.userRx === st.secondId) st.second = Math.max(0, st.second - 1);
+          else if (st.userRx === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
+          if (rid === 'love') st.love += 1;
+          else if (rid === st.secondId) st.second += 1;
+          else { if (st.extraId && st.extraId !== rid) { st.extra = 0; } st.extraId = rid; st.extra = (st.extra || 0) + 1; }
+          st.userRx = rid;
+        }
+        p.userRx = st.userRx;
+        p.liked = st.userRx === 'love';
+        p.likes = _pickerTotal(st);
         if (FEED_POSTS.includes(p)) { if (window.DroboardPostCard) DroboardPostCard.update(p); }
         else if (window.DroboardGenreCard) DroboardGenreCard.update(p);
       },
@@ -596,6 +635,15 @@
     ov.style.display='flex';
     document.body.style.overflow='hidden';
   }
+  // Droboard official handle always → droboard-page.html (even from demo data)
+  function toDroboardPage(h){
+    var v = String(h||'').replace(/^@/,'').toLowerCase();
+    return v==='droboard' || v==='droboard_official' || v==='dro-board';
+  }
+  function routeHandle(h){
+    if(toDroboardPage(h)) location.href='droboard-page.html';
+    else location.href='profile.html?handle='+encodeURIComponent(String(h||'').replace(/^@/,'')); 
+  }
   function configureMenu() {
     if (!window.DroboardMenu) return;
     const user = { name: 'You', handle: 'you', avatar: (window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5' };
@@ -677,7 +725,14 @@
     initComposer();
     configureMenu();
     await mountPromo();
-    loadNotifCount();
+     // global @droboard tap → droboard-page (catches post-card inline handles)
+    document.addEventListener('click', function(e){
+      const a=e.target.closest('a[href*="profile.html?u=droboard"], a[href*="profile.html?u=Droboard"]');
+      if(a){ e.preventDefault(); location.href='droboard-page.html'; }
+      const at=e.target.closest('[data-handle]');
+      if(at && toDroboardPage(at.dataset.handle)){ e.preventDefault(); location.href='droboard-page.html'; }
+    }, true);
+     loadNotifCount();
     try {
       if (!window.FeedData) throw new Error('FeedData is not defined — check feed-data script path');
       const [stories, posts] = await Promise.all([FeedData.getStories(), FeedData.getFeedPosts()]);
@@ -720,7 +775,11 @@
       DroboardSearch.configure({
         data: searchData,
         onOpenStory: (s) => { location.href = 'bridge.html?id=' + encodeURIComponent((s && s.id) || ''); },
-        onOpenWriter: (w) => { location.href = 'profile.html?u=' + encodeURIComponent(((w && (w.handle || w.name)) || '').replace('@', '')); },
+        onOpenWriter: (w) => {
+          const h = (w && (w.handle || w.name)) || '';
+          if(toDroboardPage(h)) location.href='droboard-page.html';
+          else location.href='profile.html?u=' + encodeURIComponent(h.replace('@',''));
+        },
         onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },
       });
     }

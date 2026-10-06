@@ -91,12 +91,12 @@
     .drp-top-emoji{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1c1d24;border:1.5px solid #0b0b0f;font-size:9px;line-height:1;margin-left:-6px}
     .drp-top-emoji:first-child{margin-left:0}
 
-    .drp-popup{position:absolute;bottom:40px;left:0;z-index:500;background:#13141a;border:1px solid rgba(255,255,255,.07);border-radius:36px;padding:8px 10px;display:none;flex-direction:row;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.95);animation:drp-popIn .2s cubic-bezier(.34,1.56,.64,1)}
+     .drp-popup{position:absolute;bottom:40px;left:0;z-index:500;background:#13141a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:8px 8px;display:none;flex-wrap:wrap;gap:2px;width:268px;box-shadow:0 8px 32px rgba(0,0,0,.95);animation:drp-popIn .2s cubic-bezier(.34,1.56,.64,1)}
     .drp-popup.show{display:flex}
     @keyframes drp-popIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
-    .drp-btn{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:5px 6px;border-radius:12px;transition:.15s;user-select:none}
+    .drp-btn{flex:0 0 calc(20% - 2px);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:5px 2px;border-radius:12px;transition:.15s;user-select:none;box-sizing:border-box}
     .drp-btn:active{transform:scale(.88)}
-    .drp-emoji{font-size:22px;line-height:1}
+    .drp-emoji{font-size:20px;line-height:1}
     .drp-count{font-size:8px;font-weight:700;color:#3f3f46;min-width:16px;text-align:center}
     .drp-btn.reacted .drp-count{color:#ff7a9a}
   `;
@@ -114,13 +114,13 @@
     return REACTIONS.reduce((sum, r) => sum + (rx[r.id] || 0), 0);
   }
 
-  /** Top N reactions (default 3) for a given state object:
+  /** Top N reactions (default 2) for a given state object:
    *   1. keep only reactions with count > 0
    *   2. sort by count, highest first
    *   3. take the first N
    * Returns an array of { id, emoji, label, count }. */
   function _topReactions(rx, n) {
-    n = n || 3;
+    n = n || 2;
     return REACTIONS
       .map(r => ({ id: r.id, emoji: r.emoji, label: r.label, count: rx[r.id] || 0 }))
       .filter(r => r.count > 0)
@@ -128,9 +128,9 @@
       .slice(0, n);
   }
 
-  /** HTML for the top-3 overlapping emoji badges shown beside the heart. */
+  /** HTML for the top-2 overlapping emoji badges shown beside the heart. */
   function _renderTop3Html(rx) {
-    const top = _topReactions(rx, 3);
+    const top = _topReactions(rx, 2);
     if (!top.length) return '';
     return `<span class="drp-top3">${top.map(r =>
       `<span class="drp-top3-emoji" title="${r.label}: ${_fmtN(r.count)}">${r.emoji}</span>`
@@ -160,10 +160,8 @@
   // ══════════════════════════════════════════════════════════════════════
   // State
   // ══════════════════════════════════════════════════════════════════════
-  let _root = null;
-  let _hooks = {};
-  const _rxCache = {}; // per-id: { userRx, love, crying, angry, ... } — the ONLY counters
-
+  let _bindings = []; // [{root, hooks}] — supports feed + comments + hubs on same page
+  const _rxCache = {}; // per-id fallback when no hooks know the id
   function _defaultState(id) {
     if (!_rxCache[id]) {
       const o = { userRx: null };
@@ -172,8 +170,28 @@
     }
     return _rxCache[id];
   }
+  function _hooksFor(id) {
+    for (let i = _bindings.length - 1; i >= 0; i--) {
+      const h = _bindings[i].hooks || {};
+      if (typeof h.getState !== 'function') continue;
+      try {
+        const st = h.getState(id);
+        if (st && typeof st === 'object' && ('userRx' in st || 'love' in st)) return h;
+      } catch (e) {}
+    }
+    for (let i = _bindings.length - 1; i >= 0; i--) {
+      const h = _bindings[i].hooks || {};
+      if (typeof h.onReact === 'function') return h;
+    }
+    return {};
+  }
   function _getState(id) {
-    return (typeof _hooks.getState === 'function') ? _hooks.getState(id) : _defaultState(id);
+    const h = _hooksFor(id);
+    return (typeof h.getState === 'function') ? h.getState(id) : _defaultState(id);
+  }
+  function _topRowModeFor(id) {
+    const h = _hooksFor(id);
+    return (h && h.topRow) || 'inline';
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -199,7 +217,7 @@
     // Seed the internal cache from legacy {liked, likeCount} props, but only
     // the first time we see this id — after that, the reaction state (however
     // it changed since) is the source of truth.
-    if (!(id in _rxCache) && typeof _hooks.getState !== 'function') {
+    if (!(id in _rxCache) && typeof _hooksFor(id).getState !== 'function') {
       const seeded = { userRx: opts.liked ? 'love' : null };
       REACTIONS.forEach(r => (seeded[r.id] = 0));
       seeded.love = opts.liked ? Math.max(1, opts.likeCount || 1) : (opts.likeCount || 0);
@@ -218,7 +236,7 @@
             <span class="drp-count">${_fmtN(rx[r.id] || 0)}</span>
           </div>`).join('')}
       </div>
-      ${_hooks.topRow === 'external' ? '' : _renderTop3Html(rx)}
+      ${_topRowModeFor(id) === 'external' ? '' : _renderTop3Html(rx)}
       <i class="${liked ? 'fas' : 'far'} fa-${icon}" data-drp-icon="${icon}"></i>
       <span class="drp-like-count">${_fmtN(total)}</span>
     </div>`;
@@ -231,8 +249,9 @@
   // apart from each other.
   // ══════════════════════════════════════════════════════════════════════
   function _toggleReaction(id, rid) {
-    if (typeof _hooks.onReact === 'function') {
-      _hooks.onReact(id, rid);
+    const h = _hooksFor(id);
+    if (typeof h.onReact === 'function') {
+      h.onReact(id, rid);
       return;
     }
     const rx = _defaultState(id);
@@ -262,7 +281,7 @@
   }
 
   function _refreshTrigger(id) {
-    const trigger = _root ? _root.querySelector(`.drp-trigger[data-drp-id="${id}"]`) : null;
+    const trigger = document.querySelector(`.drp-trigger[data-drp-id="${id}"]`);
     if (!trigger) return;
     const rx = _getState(id);
     const total = _totalCount(rx);
@@ -290,7 +309,7 @@
     // Rebuild the top-3 emoji row — counts (and therefore ranking/inclusion)
     // may have changed, so the whole badge set is regenerated in place.
     // Skipped entirely in external mode (badges live after share, synced above).
-    if (_hooks.topRow === 'external') return;
+    if (_topRowModeFor(id) === 'external') return;
     const existingTop3 = trigger.querySelector('.drp-top3');
     const newTop3Html = _renderTop3Html(rx);
     if (existingTop3) {
@@ -320,7 +339,8 @@
    * getState, that's your source of truth and update() just re-reads it.
    */
   function update(id, patch) {
-    if (typeof _hooks.getState !== 'function') {
+    const h = _hooksFor(id);
+    if (typeof h.getState !== 'function') {
       _rxCache[id] = Object.assign({}, _defaultState(id), patch || {});
     }
     _refresh(id);
@@ -333,54 +353,67 @@
   // ══════════════════════════════════════════════════════════════════════
   // Events — delegated on the attached root
   // ══════════════════════════════════════════════════════════════════════
-  function _bindEvents() {
+  function _bindEvents(root) {
     let holdTimer = null;
-    let isHolding = false;
+    let heldOpen = false; // true when this press opened the popup (long-press)
+    let downX = 0, downY = 0;
 
-    _root.addEventListener('pointerdown', (e) => {
+    root.addEventListener('pointerdown', (e) => {
       const trigger = e.target.closest('[data-drp-trigger]');
       if (!trigger) return;
-      isHolding = false;
+      heldOpen = false;
+      clearTimeout(holdTimer);
+      if (e.clientX !== undefined) { downX = e.clientX; downY = e.clientY; }
       holdTimer = setTimeout(() => {
-        isHolding = true;
+        heldOpen = true;
         hideAllPopups();
-        document.getElementById('drp-pop-' + trigger.dataset.drpId)?.classList.add('show');
+        const pop = document.getElementById('drp-pop-' + trigger.dataset.drpId);
+        if (pop) pop.classList.add('show');
+        else { const t = root.querySelector('.drp-trigger[data-drp-id="' + trigger.dataset.drpId + '"] .drp-popup'); if (t) t.classList.add('show'); }
       }, 550);
     });
 
-    _root.addEventListener('pointerup', (e) => {
-      clearTimeout(holdTimer);
-      const trigger = e.target.closest('[data-drp-trigger]');
-      if (!trigger || isHolding || e.target.closest('.drp-popup')) return;
-
-      // A quick tap is just "love" going through the exact same toggle
-      // path as picking an emoji from the popup — same counts, same rules.
-      const id = trigger.dataset.drpId;
-      _toggleReaction(id, 'love');
-      _refresh(id);
+    // Drag/scroll during a press is not a tap — never open the popup for it.
+    root.addEventListener('pointermove', (e) => {
+      if (e.clientX === undefined) return;
+      if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 14) clearTimeout(holdTimer);
     });
 
-    _root.addEventListener('pointercancel', () => clearTimeout(holdTimer));
+    root.addEventListener('pointerup', () => { clearTimeout(holdTimer); });
 
-    _root.addEventListener('click', (e) => {
+    root.addEventListener('pointercancel', () => clearTimeout(holdTimer));
+
+    root.addEventListener('click', (e) => {
       const btn = e.target.closest('.drp-btn');
-      if (!btn) return;
-      e.stopPropagation();
-
-      const id = btn.dataset.drpPid;
-      const rid = btn.dataset.drpRid;
-
-      _toggleReaction(id, rid);
+      if (btn) {
+        e.stopPropagation();
+        const id = btn.dataset.drpPid;
+        const rid = btn.dataset.drpRid;
+        _toggleReaction(id, rid);
+        _refresh(id);
+        hideAllPopups();
+        return;
+      }
+      // Plain tap on the trigger toggles Love. Long-press releases land
+      // here too but are ignored (popup already open for picking).
+      if (e.target.closest('.drp-popup')) return;
+      const trigger = e.target.closest('[data-drp-trigger]');
+      if (!trigger || heldOpen) return;
+      const id = trigger.dataset.drpId;
+      _toggleReaction(id, 'love');
       _refresh(id);
       hideAllPopups();
     });
 
-    // Close popups on any outside tap
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('[data-drp-trigger]') && !e.target.closest('.drp-popup')) {
-        hideAllPopups();
-      }
-    });
+    // Close popups on any outside tap (bound once globally)
+    if (!window.__drpDocBound) {
+      window.__drpDocBound = true;
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-drp-trigger]') && !e.target.closest('.drp-popup')) {
+          hideAllPopups();
+        }
+      });
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -393,12 +426,17 @@
       style.textContent = CSS;
       document.head.appendChild(style);
     }
-    _root = rootEl;
-    _hooks = hooks || {};
-    _bindEvents();
+    if (!rootEl) return;
+    if (_bindings.some(b => b.root === rootEl)) {
+      const ex = _bindings.find(b => b.root === rootEl);
+      ex.hooks = hooks || {};
+      return;
+    }
+    _bindings.push({ root: rootEl, hooks: hooks || {} });
+    _bindEvents(rootEl);
   }
 
-  function topRowMode() { return _hooks.topRow || 'inline'; }
+  function topRowMode() { return (_bindings.length && _bindings[0].hooks.topRow) || 'inline'; }
   window.DroboardReactionPicker = {
     attach,
     renderTrigger,

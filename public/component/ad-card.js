@@ -249,6 +249,66 @@
     </div>`;
   }
 
+  /* Third-party network embeds: raw script/HTML pasted in ad-manager.
+     Code runs with full page privileges — only paste from networks you
+     trust. Scripts execute on hydration (see below), so async network
+     tags work; legacy document.write tags do not. */
+  const _embedCode = {};
+  function renderEmbed(ad) {
+    injectStyles();
+    if (!ad || !ad.code) return '';
+    const id = String(ad.id || ('em' + Math.random().toString(36).slice(2)));
+    _embedCode[id] = String(ad.code);
+    return `<div class="dac-embed" data-embedid="${esc(id)}" data-adid="${esc(ad.id || '')}"></div>`;
+  }
+  function _livenScripts(box) {
+    let dead = [];
+    try { dead = Array.from(box.querySelectorAll('script')); } catch (e) { return; }
+    dead.forEach(function (d) {
+      try {
+        const s = document.createElement('script');
+        Array.from(d.attributes || []).forEach(function (a) { try { s.setAttribute(a.name, a.value); } catch (e2) {} });
+        s.text = d.text || '';
+        d.replaceWith(s);
+      } catch (e3) {}
+    });
+  }
+  function hydrateEmbeds(scopeEl) {
+    let nodes = [];
+    try {
+      const root = scopeEl || document;
+      if (root.querySelectorAll) nodes = Array.from(root.querySelectorAll('[data-embedid]:not([data-embeddone])'));
+      if (root.dataset && root.dataset.embedid && !root.dataset.embeddone) nodes.unshift(root);
+    } catch (e) { return; }
+    nodes.forEach(function (box) {
+      const code = _embedCode[box.getAttribute('data-embedid')];
+      if (!code) return;
+      try {
+        box.setAttribute('data-embeddone', '1');
+        box.innerHTML = code;
+        _livenScripts(box);
+      } catch (e) {}
+    });
+  }
+  // Auto-hydrate embeds the moment ad markup lands in the DOM, so comment
+  // slots, page slots and feed cards all render network code with no
+  // caller changes. Runs once per embed (data-embeddone guard).
+  if (typeof MutationObserver !== 'undefined' && !window.__dacEmbedObs) {
+    window.__dacEmbedObs = true;
+    try {
+      const mo = new MutationObserver(function (muts) {
+        muts.forEach(function (m) {
+          (m.addedNodes || []).forEach(function (n) {
+            if (!n || n.nodeType !== 1) return;
+            if (n.dataset && n.dataset.embedid) hydrateEmbeds(n.parentNode || document);
+            else if (n.querySelectorAll && n.querySelector('[data-embedid]:not([data-embeddone])')) hydrateEmbeds(n);
+          });
+        });
+      });
+      if (document.documentElement) mo.observe(document.documentElement, { childList: true, subtree: true });
+    } catch (e) {}
+  }
+
   function renderNative(ad) {
     injectStyles();
     return `<div class="dac-native${ad.isBook ? ' dac-book' : ''}" data-adid="${esc(ad.id || '')}">
@@ -279,6 +339,7 @@
     if (fmt === 'banner') return renderBanner(post.ad);
     if (fmt === 'fullscreen') return renderFullscreen(post.ad);
     if (fmt === 'native') return renderNative(post.ad);
+    if (fmt === 'embed') return renderEmbed(post.ad);
     return renderNative(post.ad);
   }
 
@@ -330,6 +391,7 @@
     platformAd, bookAd, render, renderAll, esc, storyHref, profileHref,
     renderPlatform, renderListPlatform, renderStoryPromo, renderListBook,
     renderFollowPromo, renderBanner, renderFullscreen, renderNative,
+    renderEmbed, hydrateEmbeds,
     renderSponsored, attach, update,
   };
 })();

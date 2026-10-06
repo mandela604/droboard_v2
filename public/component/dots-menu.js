@@ -25,6 +25,8 @@
  *
  * `post.mine` decides which item set renders (Edit/Delete vs
  * Follow/Mute/Not-interested/Report). Copy-link is always shown.
+ * `post.pinnable` adds a Pin/Unpin entry (dispatched to hooks.onPin /
+ * hooks.onUnpin) — only set by managing surfaces like the official page.
  * Positioning is a viewport-clamped dropdown anchored under/aligned to
  * whichever element triggered it (the dots button), not centered over
  * the whole card.
@@ -100,6 +102,11 @@
       items.push({ action: 'Mute', icon: 'fa-volume-xmark', label: 'Mute @' + (post.name || 'user') });
       items.push({ action: 'Less', icon: 'fa-eye-slash', label: 'See less of this' });
       items.push({ action: 'Report', icon: 'fa-flag', label: 'Report post', danger: true });
+    }
+    if (post.pinnable) {
+      items.push(post.pinned
+        ? { action: 'Unpin', icon: 'fa-thumbtack', label: 'Unpin post' }
+        : { action: 'Pin', icon: 'fa-thumbtack', label: 'Pin to top' });
     }
     items.push({ sep: true });
     items.push({ action: 'CopyLink', icon: 'fa-link', label: 'Copy link' });

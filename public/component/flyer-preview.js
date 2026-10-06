@@ -23,8 +23,8 @@ var CSS = ''
   + '.fp-form{padding:16px;overflow-y:auto;border-right:1px solid var(--border)}'
   + '.fp-preview-wrap{padding:16px;overflow-y:auto;background:#f4f4fb;display:flex;flex-direction:column;align-items:center;gap:10px}'
   + '.fp-preview-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em}'
-  + '.fp-canvas{width:100%;max-width:360px;border-radius:14px;overflow:hidden;background:#0f0f22;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.18);font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column}'
-  + '.fp-canvas.v9{aspect-ratio:9/16;max-height:560px} .fp-canvas.sq{aspect-ratio:1/1;max-width:380px}'
+  + '.fp-canvas{width:100%;max-width:460px;border-radius:14px;overflow:hidden;background:#0f0f22;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.18);font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column}'
+  + '.fp-canvas.v9{aspect-ratio:9/16} .fp-canvas.sq{aspect-ratio:1/1}'
   + '.fp-canvas-img{width:100%;object-fit:cover;display:block;flex-shrink:0}'
   + '.fp-canvas-body{padding:12px 14px 12px;flex:1;min-height:0;display:flex;flex-direction:column}'
   + '.fp-canvas-kicker{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#ff9db8;margin-bottom:4px}'
@@ -93,39 +93,112 @@ function footerBar(v, link, accent, light){
   var shareColor = light ? '#1a1730' : '#fff';
   var dlBg = light ? esc(accent) : '#fff';
   var dlColor = light ? '#fff' : '#0f0f22';
-  return '<div style="position:relative;z-index:2;padding:10px 12px 12px;border-top:1px solid '+border+'">'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+  return '<div style="position:relative;z-index:2;padding:8px 12px 10px;border-top:1px solid '+border+'">'
+    + '<div style="display:flex;align-items:center;gap:8px">'
     + '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:5px;font-size:8px;color:'+muted+'"><i class="fas fa-link" style="font-size:8px"></i><span style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">droboard.com/'+esc(handle||'story')+'</span></div>'
-    + '<div style="width:28px;height:28px;border-radius:6px;background:'+(light?'#1a1730':'#fff')+';display:flex;align-items:center;justify-content:center;font-size:9px;color:'+(light?'#fff':'#0f0f22')+';flex-shrink:0"><i class="fas fa-qrcode"></i></div>'
-    + '</div>'
-    + '<div style="display:flex;gap:8px">'
-    + '<button onclick="FlyerPreview.share()" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid '+shareBorder+';background:'+shareBg+';color:'+shareColor+';font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-share-nodes"></i> Share</button>'
-    + '<button onclick="FlyerPreview.download()" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:'+dlBg+';color:'+dlColor+';font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-download"></i> Download</button>'
+    + qrBoxHTML(link, 56)
     + '</div></div>';
 }
+// ── Real QR codes (encode the flyer link — scannable on every network) ──
+var QR_LIB_URL='https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+var _qrLoading=null;
+function loadQRLib(){
+  if(window.QRCode) return Promise.resolve(true);
+  if(_qrLoading) return _qrLoading;
+  _qrLoading=new Promise(function(res){
+    var s=document.createElement('script');
+    s.src=QR_LIB_URL; s.async=true;
+    s.onload=function(){res(!!window.QRCode)}; s.onerror=function(){res(false)};
+    document.head.appendChild(s);
+    setTimeout(function(){res(!!window.QRCode)},8000);
+  });
+  return _qrLoading;
+}
+function qrBoxHTML(link, size){
+  size=size||56;
+  return '<div class="fp-qrbox" data-qrbox data-qr-link="'+esc(link||'')+'" style="width:'+size+'px;height:'+size+'px;border-radius:6px;background:#fff;padding:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden"><i class="fas fa-qrcode" style="color:#0f0f22;font-size:14px"></i></div>';
+}
+async function hydrateQR(scope){
+  var boxes=[];
+  try{
+    var root=scope||document;
+    if(root.querySelectorAll) boxes=Array.from(root.querySelectorAll('[data-qrbox]:not([data-qr-done]),[data-lkqr]:not([data-qr-done])'));
+  }catch(e){ return false; }
+  if(!boxes.length) return true;
+  var ok=await loadQRLib();
+  if(!ok||!window.QRCode) return false;
+  boxes.forEach(function(box){
+    var text=box.getAttribute('data-qr-link')||box.getAttribute('data-lkqr')||'';
+    if(!text) return;
+    var size=parseInt(box.style.width,10)||56;
+    try{
+      box.innerHTML='';
+      new window.QRCode(box,{text:text,width:size-6,height:size-6,correctLevel:window.QRCode.CorrectLevel.M});
+      box.setAttribute('data-qr-done','1');
+    }catch(e){}
+  });
+  return true;
+}
+async function captureBlob(){
+  var mount=document.getElementById('fpCanvasMount'); if(!mount) return null;
+  var canvasEl=mount.querySelector('.fp-canvas'); if(!canvasEl) return null;
+  await hydrateQR(mount);
+  await new Promise(function(r){setTimeout(r,600)});
+  if(!window.html2canvas){
+    try{
+      await new Promise(function(res,rej){
+        var s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+        s.onload=res; s.onerror=rej; document.head.appendChild(s);
+      });
+    }catch(e){ return null; }
+  }
+  try{
+    var c=await html2canvas(canvasEl,{backgroundColor:null, scale:2, useCORS:true});
+    return await new Promise(function(res){ c.toBlob(function(b){res(b)},'image/png'); });
+  }catch(e){ return null; }
+}
+function toastMini(msg, bad){
+  var t=document.createElement('div'); t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:'+(bad?'#b00020':'#0f0f22')+';color:#fff;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:700;z-index:9999';
+  document.body.appendChild(t); setTimeout(function(){t.remove();}, bad?2200:1800);
+}
 async function shareCurrent(){
-  var link=(currentVars&&currentVars.link)||location.href;
+  var link=((currentVars&&currentVars.link)||'').trim();
   var title=(currentVars&&currentVars.title)|| (currentTemplate&&currentTemplate.name) || 'DroBoard flyer';
-  if(navigator.share){ try{ await navigator.share({title:title, url:link}); return; }catch(e){} }
+  var author=(currentVars&&(currentVars.authorName||''))||'';
+  if(!link){ toastMini('Add the story link first — search a story above', true); return; }
+  if(window.openShareModal){
+    var imgUrl=currentVars.cover||'';
+    try{
+      var blob=await captureBlob();
+      if(blob) imgUrl=URL.createObjectURL(blob);
+    }catch(e){}
+    window.openShareModal({ title:title, sub:author, img:imgUrl, url:link });
+    return;
+  }
+  var blob2=await captureBlob();
+  if(blob2){
+    try{
+      var file=new File([blob2],((currentTemplate&&currentTemplate.id)||'flyer')+'.png',{type:'image/png'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:title,text:link});
+        return;
+      }
+    }catch(e){ if(e&&e.name==='AbortError') return; }
+  }
+  if(navigator.share){ try{ await navigator.share({title:title,text:link}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
   try{ await navigator.clipboard.writeText(link); }catch(e){}
-  var t=document.createElement('div'); t.textContent='Link copied — paste to share'; t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f0f22;color:#fff;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:700;z-index:9999'; document.body.appendChild(t); setTimeout(function(){t.remove();},1800);
+  toastMini('Link copied — paste to share');
 }
 async function downloadCurrent(){
-  var mount=document.getElementById('fpCanvasMount'); if(!mount) return;
-  var canvasEl=mount.querySelector('.fp-canvas'); if(!canvasEl) return;
-  async function doCapture(){
-    if(!window.html2canvas) return false;
-    try{ var c=await html2canvas(canvasEl,{backgroundColor:null, scale:2, useCORS:true}); var a=document.createElement('a'); a.download=(currentTemplate?currentTemplate.id:'flyer')+'.png'; a.href=c.toDataURL('image/png'); a.click(); return true; }catch(e){ return false; }
-  }
-  if(await doCapture()) return;
-  await new Promise(function(res, rej){
-    var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-    s.onload=res; s.onerror=rej; document.head.appendChild(s);
-  }).catch(function(){});
-  if(!(await doCapture())){
-    var t=document.createElement('div'); t.textContent='Download failed — check images are CORS-enabled'; t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#b00020;color:#fff;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:700;z-index:9999'; document.body.appendChild(t); setTimeout(function(){t.remove();},2200);
-  }
+  var blob=await captureBlob();
+  if(!blob){ toastMini('Download failed — check images are CORS-enabled', true); return; }
+  var a=document.createElement('a');
+  a.download=((currentTemplate&&currentTemplate.id)||'flyer')+'.png';
+  a.href=URL.createObjectURL(blob);
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },4000);
 }
 function statsRow(v){
   var s=v.stats || DEMO_STATS;
@@ -166,15 +239,14 @@ function heroPremiumHtml(v, link, cover){
   return '<div class="fp-canvas v9" style="position:relative;overflow:hidden;background:radial-gradient(520px 360px at 50% -8%, #1a1033 0%, #0b0b18 42%, #050508 100%);display:flex;flex-direction:column">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 12px 0 12px;position:relative;z-index:2"><div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#ff0050,#000);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px">D</div><div><div style="font-weight:900;font-size:11px;letter-spacing:-.02em;color:#fff;line-height:1">DroBoard</div><div style="font-size:7px;letter-spacing:.18em;color:rgba(255,255,255,.6);font-weight:700">READ · WRITE · CONNECT</div></div></div><div style="text-align:right;font-size:8px;line-height:1.35;color:rgba(255,255,255,.9);font-weight:700;font-style:italic">Real Stories.<br/>Real People.<br/>Real Emotions.<span style="display:block;height:2px;margin-top:2px;background:#ff0050;border-radius:2px;transform:rotate(-2deg)"></span></div></div>'
     +(showHeadline?'<div style="margin:12px 10px 0;position:relative;z-index:2;display:inline-block;transform:rotate(-1deg)"><div style="background:#ff0050;color:#fff;font-weight:900;font-size:19px;line-height:1;padding:6px 14px 8px;border-radius:8px 0 10px 0;box-shadow:0 4px 14px rgba(255,0,80,.4);clip-path:polygon(2% 0,100% 0,98% 18%,100% 100%,2% 100%,0 82%)">'+esc(headA)+(headB?'<br/><span style="font-size:28px;letter-spacing:.04em">'+esc(headB)+'</span>':'')+'</div></div>':'')
-    +(showH1||showH2?'<div style="padding:12px 14px 0 14px;position:relative;z-index:2">'+(showH1?'<div style="font-size:12px;line-height:1.45;color:#fff;font-weight:600;max-width:190px">'+h1+'</div>':'')+(showH2?'<div style="font-size:11px;line-height:1.45;color:#ff2d55;font-weight:700;margin-top:4px">'+h2+'</div>':'')+'</div>':'')
+    +(showH1||showH2?'<div style="padding:10px 12px 0 14px;position:relative;z-index:2">'+(showH1?'<div style="font-size:12px;line-height:1.45;color:#fff;font-weight:600;max-width:190px">'+h1+'</div>':'')+(showH2?'<div style="font-size:11px;line-height:1.45;color:#ff2d55;font-weight:700;margin-top:4px">'+h2+'</div>':'')+'</div>':'')
     +'<div style="position:relative;flex:1;display:flex;align-items:flex-end;gap:10px;padding:10px 10px 0 10px;min-height:210px">'
     +'<div style="flex:1;max-width:66%;position:relative;z-index:2;background:linear-gradient(180deg,#14141e 0%,#0a0a12 100%);border-radius:16px;padding:10px 10px 14px 10px;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.45)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:10px;color:rgba(255,255,255,.6)">'+esc(v.chatTime||'8:42')+'</span><span style="font-size:9px;color:rgba(255,255,255,.45)"><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:50%;background:#2a2a3a;display:flex;align-items:center;justify-content:center;color:#888;font-size:12px"><i class="fas fa-user"></i></div><div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;color:#fff">'+esc(v.chatName||'Unknown Number')+'</div><div style="font-size:8px;color:rgba(255,255,255,.45)">Today, '+esc(v.chatTime||'8:42')+' PM</div></div></div>'+(v.chatText!==''?'<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;font-size:10px;color:#fff;font-style:italic">'+esc(v.chatText||'I know your secret...')+'</div>':'')+'</div>'
     +'<div style="width:86px;flex-shrink:0;position:relative;z-index:2;transform:rotate(2deg)"><img src="'+esc(cover||'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=400&fit=crop')+'" style="width:86px;height:118px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 18px rgba(0,0,0,.45)" alt=""/><div style="position:absolute;inset:auto -6px -6px -6px;height:12px;background:#ff0050;opacity:.9;transform:rotate(-1deg);border-radius:2px"></div><div style="position:absolute;bottom:6px;left:6px;right:6px;text-align:center"><div style="font-family:Playfair Display,serif;font-size:11px;font-weight:800;color:#fff;line-height:1;text-shadow:0 1px 6px rgba(0,0,0,.6)">'+title+'</div><div style="font-size:6px;letter-spacing:.14em;color:rgba(255,255,255,.7);font-weight:700;margin-top:2px">'+esc(handle.replace('@','').toUpperCase()||'TOBI ADENUGA')+'</div></div></div>'
     +'</div>'
     +'<div style="position:relative;z-index:2;padding:12px 12px 8px 12px"><div style="font-family:Brush Script MT,cursive;font-size:22px;font-weight:800;color:#fff;transform:rotate(-1deg);text-shadow:0 2px 10px rgba(0,0,0,.5)">The<br/>Last Sunrise</div><div style="margin-top:6px;display:flex;align-items:center;gap:6px"><i class="fas fa-user" style="color:#ff0050;font-size:10px"></i><span style="font-size:11px;font-weight:700;color:#fff">By '+author+'</span><span style="margin-left:6px;display:inline-flex;gap:5px"><span style="padding:2px 7px;border-radius:10px;background:#ff0050;color:#fff;font-size:8px;font-weight:700">'+esc(genres[0]||'Romance')+'</span>'+(genres[1]?'<span style="padding:2px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:8px">'+esc(genres[1])+'</span>':'')+(genres[2]?'<span style="padding:2px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:8px">'+esc(genres[2])+'</span>':'')+'</span></div></div>'
     +'<div style="position:relative;z-index:2;display:flex;align-items:center;gap:10px;padding:6px 12px 8px 12px"><a href="'+esc(link||'#')+'" target="_blank" style="flex:1;display:flex;align-items:center;gap:8px;text-decoration:none"><span style="width:36px;height:36px;border-radius:50%;background:#ff0050;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px"><i class="fas fa-play" style="margin-left:2px"></i></span><span><span style="display:block;font-size:10px;color:rgba(255,255,255,.6);font-weight:600">Watch the full story on</span><span style="display:block;font-size:14px;font-weight:800;color:#fff;line-height:1">DroBoard</span></span></a><a href="'+esc(link||'#')+'" target="_blank" style="padding:8px 14px;border-radius:10px;background:#ff0050;color:#fff;font-size:10px;font-weight:800;text-decoration:none;transform:rotate(-1deg);box-shadow:0 4px 14px rgba(255,0,80,.35)">'+esc(cta||'READ NOW →')+'</a></div>'
-    +'<div style="position:relative;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 12px 8px 12px;border-top:1px solid rgba(255,255,255,.06)"><div style="flex:1"><div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.5)"><i class="fas fa-link" style="font-size:8px"></i> <span style="font-family:monospace">droboard.com/'+esc(handle.replace('@','')||'tobi')+'</span></div></div><div style="display:flex;align-items:center;gap:6px"><span style="font-size:9px;font-style:italic;color:rgba(255,255,255,.7)">Scan to read <i class="fas fa-arrow-right" style="font-size:8px"></i></span><div style="width:44px;height:44px;border-radius:6px;background:#fff;padding:3px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#0f0f22;font-weight:800"><i class="fas fa-qrcode"></i></div></div></div>'
-    +'<div style="position:relative;z-index:2;display:flex;gap:8px;padding:0 12px 8px 12px"><button onclick="FlyerPreview.share()" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-share-nodes"></i> Share</button><button onclick="FlyerPreview.download()" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:#fff;color:#0f0f22;font-size:9px;font-weight:700;cursor:pointer"><i class="fas fa-download"></i> Download</button></div>'
+    +'<div style="position:relative;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 12px 8px 12px;border-top:1px solid rgba(255,255,255,.06)"><div style="flex:1"><div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.5)"><i class="fas fa-link" style="font-size:8px"></i> <span style="font-family:monospace">droboard.com/'+esc(handle.replace('@','')||'tobi')+'</span></div></div><div style="display:flex;align-items:center;gap:6px"><span style="font-size:9px;font-style:italic;color:rgba(255,255,255,.7)">Scan to read <i class="fas fa-arrow-right" style="font-size:8px"></i></span>'+qrBoxHTML(link,64)+'</div></div>'
     +'<div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06)"><span style="display:flex;align-items:center;gap:5px;font-size:7px;color:rgba(255,255,255,.6);font-weight:700"><i class="far fa-book-open"></i> Great Stories</span><span style="display:flex;align-items:center;gap:5px;font-size:7px;color:rgba(255,255,255,.6);font-weight:700"><i class="fas fa-users"></i> Amazing Writers</span><span style="display:flex;align-items:center;gap:5px;font-size:7px;color:rgba(255,255,255,.6);font-weight:700"><i class="far fa-heart"></i> A Growing Community</span><span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:4px;background:#ff0050;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:9px">D</span><span style="font-size:9px;font-weight:900;color:#fff">DroBoard</span></span></div>'
     +'</div>';
 }
@@ -202,9 +274,9 @@ var LAYOUTS = {
   tmpl_wa_share: function(t, v, link, cover, authorPhoto, storeUrl){
     var acc=v.accent||'#25d366';
     return '<div class="fp-canvas sq" style="background:#ffffff;color:#1a1730;display:flex;flex-direction:column">'
-      + '<div style="display:flex;align-items:center;gap:7px;padding:12px 14px 0"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,'+esc(acc)+',#128c7e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px">D</div><span style="font-weight:900;font-size:10.5px;color:#1a1730">DroBoard</span></div>'
-      + '<div style="position:relative;margin:10px 14px 0"><img src="'+esc(cover)+'" style="width:100%;height:170px;object-fit:cover;border-radius:12px" alt=""/></div>'
-      + '<div style="padding:12px 14px 0"><div class="fp-canvas-title" style="color:#1a1730">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:9.5px;color:#8e8e93;margin-bottom:6px">By '+esc(v.authorName||'Author Name')+'</div>'
+      + '<div style="display:flex;align-items:center;gap:7px;padding:10px 12px 0"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,'+esc(acc)+',#128c7e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px">D</div><span style="font-weight:900;font-size:10.5px;color:#1a1730">DroBoard</span></div>'
+      + '<div style="position:relative;margin:8px 12px 0"><img src="'+esc(cover)+'" style="width:100%;height:170px;object-fit:cover;border-radius:12px" alt=""/></div>'
+      + '<div style="padding:10px 12px 0"><div class="fp-canvas-title" style="color:#1a1730">'+esc(v.title||'Your Story Title')+'</div><div style="font-size:9.5px;color:#8e8e93;margin-bottom:6px">By '+esc(v.authorName||'Author Name')+'</div>'
       + '<div class="fp-canvas-hook" style="color:#434059;border-left-color:'+esc(acc)+';background:#f4f4fb">"'+esc(v.hook||'One emotional, curiosity-driven hook.')+'"</div>'
       + ctaEl(v, link, storeUrl, acc) + '</div><div style="flex:1"></div>'
       + footerBar(v, link, acc, true)
@@ -216,8 +288,8 @@ var LAYOUTS = {
     return '<div class="fp-canvas sq" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
       + headerBar(acc)
       + '<div style="text-align:center;margin:6px 14px 0"><span style="display:inline-block;background:linear-gradient(90deg,'+esc(acc)+',#ff0050);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:20px;box-shadow:0 4px 12px rgba(245,158,11,.35)"><i class="fas fa-fire"></i> New Chapter Out Now</span></div>'
-      + '<div style="position:relative;margin:10px 14px 0;transform:rotate(1deg)"><img src="'+esc(cover)+'" style="width:100%;height:150px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.4)" alt=""/></div>'
-      + '<div style="padding:12px 14px 0"><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div class="fp-canvas-author">By '+esc(v.authorName||'Author Name')+'</div>'
+      + '<div style="position:relative;margin:8px 12px 0;transform:rotate(1deg)"><img src="'+esc(cover)+'" style="width:100%;height:150px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.4)" alt=""/></div>'
+      + '<div style="padding:10px 12px 0"><div class="fp-canvas-title">'+esc(v.title||'Your Story Title')+'</div><div class="fp-canvas-author">By '+esc(v.authorName||'Author Name')+'</div>'
       + '<div class="fp-canvas-hook">"'+esc(v.hook||'What happens next will leave you speechless.')+'"</div>'
       + ctaEl(v, link, storeUrl, acc) + '</div><div style="flex:1"></div>'
       + footerBar(v, link, acc)
@@ -241,7 +313,7 @@ var LAYOUTS = {
     var v2=Object.assign({}, v, {ctaText:(v.ctaText||'Follow Me →').trim()||'Follow Me →'});
     return '<div class="fp-canvas sq" style="background:radial-gradient(480px 320px at 50% -10%, '+esc(acc)+' 0%, #1a1033 45%, #0f0f22 100%);display:flex;flex-direction:column;position:relative;overflow:hidden">'
       + headerBar(acc)
-      + '<div style="display:flex;gap:12px;padding:12px 14px 0;align-items:center"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid '+esc(acc)+';box-shadow:0 6px 16px rgba(0,0,0,.3)" alt=""/><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+'"><i class="fas fa-star"></i> Author Spotlight</div><div style="font-size:14px;font-weight:800;color:#fff;margin:2px 0">'+esc(v.authorName||'Author Name')+'</div><div style="font-size:10px;color:rgba(255,255,255,.6)">'+esc(v.handle||'@username')+' · '+esc(v.genre||'Writer')+'</div></div></div>'
+      + '<div style="display:flex;gap:12px;padding:10px 12px 0;align-items:center"><img src="'+esc(v.userPhoto||authorPhoto)+'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid '+esc(acc)+';box-shadow:0 6px 16px rgba(0,0,0,.3)" alt=""/><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:'+esc(acc)+'"><i class="fas fa-star"></i> Author Spotlight</div><div style="font-size:14px;font-weight:800;color:#fff;margin:2px 0">'+esc(v.authorName||'Author Name')+'</div><div style="font-size:10px;color:rgba(255,255,255,.6)">'+esc(v.handle||'@username')+' · '+esc(v.genre||'Writer')+'</div></div></div>'
       + '<div style="padding:0 14px">'+statsRow(v)+'</div>'
       + '<div style="padding:6px 14px 0"><div style="font-size:11px;line-height:1.5;color:rgba(255,255,255,.82)">'+esc(v.bio||v.hook||'Writer of heartfelt stories. Follow me for new chapters every week.')+'</div></div>'
       + '<div style="padding:10px 14px 0;display:flex;justify-content:center">'+ctaEl(v2, link, storeUrl, acc).replace('align-self:flex-start','align-self:center')+'</div>'
@@ -289,8 +361,8 @@ var LAYOUTS = {
     var acc=v.accent||'#7c3aed';
     return '<div class="fp-canvas sq" style="background:linear-gradient(180deg,#1e1235,#0f0f22);display:flex;flex-direction:column">'
       + headerBar(acc)
-      + '<div style="position:relative;margin:10px 14px 0"><img src="'+esc(cover||'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&h=600&fit=crop')+'" style="width:100%;height:160px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.4)" alt=""/><span style="position:absolute;top:8px;left:8px;background:'+esc(acc)+';color:#fff;font-size:8px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em"><i class="fas fa-bullhorn"></i> Featured</span></div>'
-      + '<div style="padding:12px 14px 0"><div class="fp-canvas-kicker" style="color:'+esc(acc)+'">'+esc(v.genre||'Featured')+' · DroBoard</div><div class="fp-canvas-title">'+esc(v.title||'Platform Feature Drop')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||"A new season of stories is here. Don't miss it.")+'"</div>'+ctaEl(v, link, storeUrl, acc)+'</div><div style="flex:1"></div>'
+      + '<div style="position:relative;margin:8px 12px 0"><img src="'+esc(cover||'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&h=600&fit=crop')+'" style="width:100%;height:160px;object-fit:cover;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.4)" alt=""/><span style="position:absolute;top:8px;left:8px;background:'+esc(acc)+';color:#fff;font-size:8px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em"><i class="fas fa-bullhorn"></i> Featured</span></div>'
+      + '<div style="padding:10px 12px 0"><div class="fp-canvas-kicker" style="color:'+esc(acc)+'">'+esc(v.genre||'Featured')+' · DroBoard</div><div class="fp-canvas-title">'+esc(v.title||'Platform Feature Drop')+'</div><div class="fp-canvas-hook">"'+esc(v.hook||"A new season of stories is here. Don't miss it.")+'"</div>'+ctaEl(v, link, storeUrl, acc)+'</div><div style="flex:1"></div>'
       + footerBar(v, link, acc)
       + '</div>';
   },
@@ -341,7 +413,7 @@ function ensureDOM(){
   backdrop=document.createElement('div'); backdrop.className='fp-backdrop';
   modal=document.createElement('div'); modal.className='fp-modal';
   modal.innerHTML=''
-    + '<div class="fp-head"><b id="fpTitle">Flyer Preview</b><div class="fp-head-actions"><button onclick="FlyerPreview.close()">Close</button><button class="fp-primary" onclick="FlyerPreview.save()">Save</button></div></div>'
+    + '<div class="fp-head"><b id="fpTitle">Flyer Preview</b><div class="fp-head-actions"><button onclick="FlyerPreview.share()">Share</button><button onclick="FlyerPreview.download()">Download</button><button onclick="FlyerPreview.close()">Close</button><button class="fp-primary" onclick="FlyerPreview.save()">Save</button></div></div>'
     + '<div class="fp-body"><div class="fp-form" id="fpForm"></div><div class="fp-preview-wrap"><div class="fp-preview-label">Live preview</div><div id="fpCanvasMount"></div></div></div>';
   backdrop.appendChild(modal); document.body.appendChild(backdrop);
   backdrop.addEventListener('click', function(e){ if(e.target===backdrop) FlyerPreview.close(); });
@@ -355,6 +427,8 @@ function open(opts){
   currentTemplate = list.find(function(t){ return t.id===tid; }) || list[0];
   if(!currentTemplate) { console.warn('[FlyerPreview] no template found for', tid); return; }
   currentVars = Object.assign({ title:'', authorName:'', handle:'', userPhoto:'', bio:'', hook:'', genre:'', link:'', storeUrl:'', cover:'', authorPhoto:'', variant:'', platformTag:'', ctaText:'', accent:'', stats:null, _templateId: currentTemplate.id, _templateName: currentTemplate.name }, opts.vars||{});
+  if(currentVars.link) currentVars.link=fixDomain(currentVars.link);
+  if(currentVars.storeUrl) currentVars.storeUrl=fixDomain(currentVars.storeUrl);
   onSaveCb = opts.onSave || null;
   document.getElementById('fpTitle').textContent = currentTemplate.name;
   buildForm(); renderCanvas(); backdrop.classList.add('open');
@@ -364,23 +438,65 @@ function storyMatches(q, authorFilter){
   var libs=[];
   try{ if(global.StoryLibrary) libs=libs.concat(global.StoryLibrary); }catch(e){}
   try{ if(global.LaunchKitData) libs=libs.concat(global.LaunchKitData.map(function(k){ return { id:k.writerId||k.id, title:k.campaignName, cover:k.campaignImage, genre:'campaign', author:k.writerName, link:k.campaignLink }; })); }catch(e){}
-  try{ if(global.DemoData && global.DemoData.STORIES) libs=libs.concat(global.DemoData.STORIES.map(function(s){ return { id:s.id, title:s.title, cover:s.cover, genre:s.genre||'', author:s.author||'', hook:s.hook||s.preview||'' }; })); }catch(e){}
+  try{ if(global.DemoData && global.DemoData.STORIES) libs=libs.concat(global.DemoData.STORIES.map(function(s){ return { id:s.id, title:s.title, cover:s.cover, genre:s.genre||s.cat||'', author:s.author||'', authorPhoto:s.authorAv||'', hook:s.hook||s.preview||s.desc||'' }; })); }catch(e){}
   if(!q) return [];
   var pool = authorFilter ? libs.filter(function(s){ return (s.author||'').toLowerCase().indexOf(authorFilter.toLowerCase())!==-1; }) : libs;
   if(!pool.length) pool=libs;
-  return pool.filter(function(s){
+  var hits=pool.filter(function(s){
     return (s.title||'').toLowerCase().indexOf(q)!==-1 || (s.genre||'').toLowerCase().indexOf(q)!==-1 || (s.author||'').toLowerCase().indexOf(q)!==-1;
-  }).slice(0,6);
+  });
+  // own / filtered author's stories first, then title-prefix matches
+  var af=(authorFilter||'').toLowerCase();
+  hits.sort(function(a,b){
+    var ao=((a.author||'').toLowerCase().indexOf(af)!==-1 && af)?0:1;
+    var bo=((b.author||'').toLowerCase().indexOf(af)!==-1 && af)?0:1;
+    if(ao!==bo) return ao-bo;
+    var at=(a.title||'').toLowerCase().indexOf(q)===0?0:1;
+    var bt=(b.title||'').toLowerCase().indexOf(q)===0?0:1;
+    return at-bt;
+  });
+  return hits.slice(0,6);
 }
+function authorPool(){
+  var libs=[];
+  try{ if(global.StoryLibrary) libs=libs.concat(global.StoryLibrary); }catch(e){}
+  try{ if(global.LaunchKitData) libs=libs.concat(global.LaunchKitData.map(function(k){ return { author:k.writerName, photo:k.writerAvatar }; })); }catch(e){}
+  try{ if(global.DemoData && global.DemoData.STORIES) libs=libs.concat(global.DemoData.STORIES); }catch(e){}
+  var seen={}, out=[];
+  libs.forEach(function(s){
+    var name=(s.author||s.writerName||'').trim(); if(!name||seen[name.toLowerCase()]) return;
+    seen[name.toLowerCase()]=1;
+    out.push({ name:name, photo:s.authorPhoto||s.writerAvatar||s.authorAv||'', handle:'@'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'') });
+  });
+  return out;
+}
+function authorMatches(q){
+  q=(q||'').toLowerCase(); if(!q) return [];
+  return authorPool().filter(function(a){ return a.name.toLowerCase().indexOf(q)!==-1; }).slice(0,6);
+}
+function fillFromAuthor(a){
+  if(!a) return;
+  currentVars.authorName=a.name||currentVars.authorName;
+  if(a.photo) currentVars.authorPhoto=a.photo;
+  if(a.handle) currentVars.handle=a.handle;
+  buildForm(); renderCanvas();
+}
+function readerUrlFor(s){
+  var id = s.id || s.storyId || '';
+  return 'https://droboard.com/full-reader.html?story=' + encodeURIComponent(id || 'story');
+}
+function fixDomain(u){ return String(u || '').replace(/droboard\.app/gi, 'droboard.com'); }
 function fillFromStory(s){
   if(!s) return;
   currentVars.title = s.title||currentVars.title;
   currentVars.cover = s.cover||s.campaignImage||currentVars.cover;
   currentVars.authorName = s.author||s.writerName||currentVars.authorName;
   currentVars.genre = s.genre||currentVars.genre;
-  currentVars.hook = s.hook||s.preview||s.excerpt||currentVars.hook;
-  currentVars.link = s.link||s.campaignLink||s.destination||currentVars.link;
-  if(s.authorPhoto||s.writerAvatar) currentVars.authorPhoto=s.authorPhoto||s.writerAvatar;
+  currentVars.hook = s.hook||s.preview||s.excerpt||s.desc||currentVars.hook;
+  if(s.campaignLink || s.destination) currentVars.link = fixDomain(s.campaignLink||s.destination);
+  else if(s.id || s.storyId) currentVars.link = readerUrlFor(s);
+  else if(s.link) currentVars.link = fixDomain(s.link);
+  if(s.authorPhoto||s.writerAvatar||s.authorAv) currentVars.authorPhoto=s.authorPhoto||s.writerAvatar||s.authorAv;
   buildForm(); renderCanvas();
 }
 function buildForm(){
@@ -393,6 +509,11 @@ function buildForm(){
     + '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Search story (autofills below)</label>'
     + '<input id="fpStorySearch" placeholder="Type title, genre or author…" style="width:100%;padding:9px 11px;border:1px solid var(--input-border);border-radius:8px;background:var(--input-bg);font-size:12.5px;color:var(--text);font-family:inherit;outline:none"/>'
     + '<div class="fp-dropdown" id="fpDropdown"></div>'
+    + '</div>'
+    + '<div class="fp-story-search" style="margin-bottom:10px">'
+    + '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Search author (fills name/photo)</label>'
+    + '<input id="fpAuthorSearch" placeholder="Type author name…" style="width:100%;padding:9px 11px;border:1px solid var(--input-border);border-radius:8px;background:var(--input-bg);font-size:12.5px;color:var(--text);font-family:inherit;outline:none"/>'
+    + '<div class="fp-dropdown" id="fpAuthorDropdown"></div>'
     + '</div>'
     + fields.map(function(key){
       var meta=varsInfo[key]||{label:key, type:'text'};
@@ -431,6 +552,29 @@ function buildForm(){
       });
     });
   });
+  var authorSearchEl=document.getElementById('fpAuthorSearch');
+  var authorDd=document.getElementById('fpAuthorDropdown');
+  if(authorSearchEl && authorDd){
+    authorSearchEl.addEventListener('input', function(){
+      var q=this.value.trim(); if(!q){ authorDd.style.display='none'; return; }
+      var hits=authorMatches(q);
+      if(!hits.length){ authorDd.style.display='none'; return; }
+      authorDd.innerHTML=hits.map(function(a){
+        return '<div class="fp-opt" data-apick="'+esc(a.name)+'">'
+          + (a.photo?'<img src="'+esc(a.photo)+'" alt=""/>':'<div style="width:32px;height:44px;border-radius:4px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">'+esc(a.name.charAt(0).toUpperCase())+'</div>')
+          + '<div><div class="t">'+esc(a.name)+'</div><div class="g">'+esc(a.handle||'')+'</div></div></div>';
+      }).join('');
+      authorDd.style.display='block';
+      authorDd.querySelectorAll('.fp-opt').forEach(function(row){
+        row.addEventListener('click', function(){
+          var nm=this.getAttribute('data-apick');
+          var found=authorMatches(nm).find(function(a){ return a.name===nm; });
+          authorDd.style.display='none'; authorSearchEl.value='';
+          fillFromAuthor(found||{name:nm});
+        });
+      });
+    });
+  }
   el.querySelectorAll('[data-var]').forEach(function(inp){
     inp.addEventListener('input', function(){
       currentVars[this.getAttribute('data-var')] = this.value;
@@ -465,6 +609,7 @@ function buildForm(){
 function renderCanvas(){
   var mount=document.getElementById('fpCanvasMount'); if(!mount || !currentTemplate) return;
   mount.innerHTML = inlineRender(currentTemplate, currentVars);
+  hydrateQR(mount);
 }
 function close(){ if(backdrop) backdrop.classList.remove('open'); }
 function save(){ if(typeof onSaveCb==='function') try{ onSaveCb(currentTemplate, Object.assign({}, currentVars)); }catch(e){} close(); }
@@ -472,7 +617,8 @@ function renderInline(containerEl, templateId, vars){
   ensureCSS();
   var list=(global.FlyerTemplates||[]); var t=list.find(function(x){ return x.id===templateId; })||list[0]; if(!t||!containerEl) return;
   containerEl.innerHTML = inlineRender(t, vars||{});
+  hydrateQR(containerEl);
 }
 
-global.FlyerPreview = { open:open, close:close, save:save, share:shareCurrent, download:downloadCurrent, render:renderInline, inlineRender:inlineRender };
+global.FlyerPreview = { open:open, close:close, save:save, share:shareCurrent, download:downloadCurrent, render:renderInline, inlineRender:inlineRender, qr:{ load:loadQRLib, draw:hydrateQR, box:qrBoxHTML } };
 })(window);

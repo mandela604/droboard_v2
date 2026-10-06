@@ -48,6 +48,7 @@
     { key: 'dashboard',            label: 'Dashboard',              icon: 'fa-house',              href: 'dashboard.html',           section: 'Overview' },
 
     { key: 'users',                 label: 'Users',                   icon: 'fa-users',                href: 'users.html',                section: 'People & Access' },
+    { key: 'user-insights',         label: 'User Insights',           icon: 'fa-chart-column',         href: 'user-insights.html',        section: 'People & Access' },
     { key: 'roles',                 label: 'Roles',                   icon: 'fa-user-shield',          href: 'roles.html',                section: 'People & Access' },
     { key: 'editorial-team',       label: 'Editorial Team',         icon: 'fa-user-tie',            href: 'editorial-team.html',      section: 'People & Access' },
 

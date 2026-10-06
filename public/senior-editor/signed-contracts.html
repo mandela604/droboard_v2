@@ -27,8 +27,6 @@
 </div>
 <script src="shared/api.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
-<script>
-SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'signed-contracts', title: 'Contract Details', user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' }, notifCount: 8, hideSearch: true, });
-</script>
+<script src="services/signed-contracts-service.js"></script><script>SignedContractsService.init();</script>
 </body>
 </html>

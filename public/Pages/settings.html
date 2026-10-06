@@ -67,23 +67,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 /* ── Version ── */
 .version{text-align:center;padding:20px 0 10px;font-size:11px;color:var(--tx-faint)}
 
-/* ── Drawer ── */
-.drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
-.drawer-overlay.open{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;left:50%;transform:translateX(-50%) translateX(-100%);bottom:0;z-index:201;width:100%;max-width:420px;background:var(--l1);box-shadow:0 0 50px rgba(0,0,0,.12);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
-.drawer.open{transform:translateX(-50%) translateX(0)}
-.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--bd);flex-shrink:0}
-.drawer-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#8a0030);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0}
-.drawer-head-title{font-size:15px;font-weight:800;flex:1;color:var(--tx-high)}
-.drawer-close{width:32px;height:32px;border-radius:50%;background:var(--l2);color:var(--tx-muted);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;border:none}
-.drawer-body{flex:1;overflow-y:auto;padding:10px 8px 24px}
-.drawer-section{margin-bottom:6px}
-.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.04em;padding:14px 12px 6px}
-.drawer-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--tx-body);text-decoration:none}
-.drawer-item i{width:18px;text-align:center;font-size:14px;color:var(--tx-muted);flex-shrink:0}
-.drawer-item:active{background:var(--l2)}
-.drawer-item.active{background:rgba(255,0,80,.08);color:var(--acc)}
-.drawer-item.active i{color:var(--acc)}
+/* ── Modals use same z as drawer component — keep below it ── */
 /* ── Centered modals (constrained to phone width) ── */
 .modal-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px}
 .modal-overlay.open{display:flex}
@@ -114,10 +98,10 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
   <div class="content">
     <!-- Profile Card -->
     <div class="profile-card" onclick="window.location.href='profile.html'">
-      <img class="profile-avatar" src="https://i.pravatar.cc/150?img=32" alt=""/>
+      <img class="profile-avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt=""/>
       <div class="profile-info">
-        <div class="profile-name">Luna Morgan</div>
-        <div class="profile-email">luna.morgan@email.com</div>
+        <div class="profile-name"></div>
+        <div class="profile-email"></div>
         <div class="profile-edit">View Profile</div>
       </div>
       <i class="fas fa-chevron-right" style="color:var(--tx-faint);font-size:12px"></i>
@@ -127,11 +111,11 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
     <div class="section">
       <div class="section-title">Appearance</div>
       <div class="theme-options" id="themeOptions">
-        <div class="theme-option active" data-theme="light" onclick="setTheme('light')">
+        <div class="theme-option active" data-theme="light">
           <i class="fas fa-sun"></i>
           <span>Light</span>
         </div>
-        <div class="theme-option" data-theme="dark" onclick="setTheme('dark')">
+        <div class="theme-option" data-theme="dark">
           <i class="fas fa-moon"></i>
           <span>Dark</span>
         </div>
@@ -153,7 +137,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
         <div class="setting-icon" style="background:rgba(37,99,235,.08);color:var(--blue)"><i class="fas fa-envelope"></i></div>
         <div class="setting-info">
           <div class="setting-label">Email</div>
-          <div class="setting-desc">luna.morgan@email.com</div>
+          <div class="setting-desc" id="emailRowDesc"></div>
         </div>
         <i class="fas fa-chevron-right setting-chevron"></i>
       </div>
@@ -184,7 +168,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
           <div class="setting-label">Reading Activity</div>
           <div class="setting-desc">Show on profile</div>
         </div>
-        <div class="toggle on" id="readingToggle" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'Reading activity visible':'Reading activity hidden')"></div>
+        <div class="toggle on" id="readingToggle"></div>
       </div>
     </div>
 
@@ -206,7 +190,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
         </div>
         <i class="fas fa-chevron-right setting-chevron"></i>
       </div>
-      <div class="setting-row">
+      <div class="setting-row" id="logoutRow">
         <div class="setting-icon" style="background:rgba(224,56,77,.08);color:var(--red)"><i class="fas fa-right-from-bracket"></i></div>
         <div class="setting-info">
           <div class="setting-label" style="color:var(--red)">Log Out</div>
@@ -230,8 +214,8 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
     </div>
     <div class="modal-card-body">
       <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">Current Password</label><input type="password" id="pwCurrent" placeholder="••••••••" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/></div>
-      <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">New Password</label><input type="password" id="pwNew" placeholder="••••••••" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/></div>
-      <div style="margin-bottom:4px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">Confirm New Password</label><input type="password" id="pwConfirm" placeholder="••••••••" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">New Password</label><div style="position:relative;margin-top:6px"><input type="password" id="pwNew" placeholder="••••••••" style="width:100%;padding:10px 36px 10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/><button type="button" class="pw-eye" data-target="pwNew" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:transparent;color:var(--tx-muted);font-size:13px;display:flex;align-items:center;justify-content:center"><i class="far fa-eye"></i></button></div></div>
+      <div style="margin-bottom:4px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">Confirm New Password</label><div style="position:relative;margin-top:6px"><input type="password" id="pwConfirm" placeholder="••••••••" style="width:100%;padding:10px 36px 10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/><button type="button" class="pw-eye" data-target="pwConfirm" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:transparent;color:var(--tx-muted);font-size:13px;display:flex;align-items:center;justify-content:center"><i class="far fa-eye"></i></button></div><div id="pwMatch" style="font-size:11px;font-weight:600;margin-top:6px;display:none"></div></div>
     </div>
     <div class="modal-card-foot">
       <button class="btn-ghost" id="pwCancel">Cancel</button>
@@ -249,7 +233,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
     </div>
     <div class="modal-card-body" style="text-align:center;padding:20px 16px">
       <div style="width:44px;height:44px;border-radius:50%;background:rgba(37,99,235,.1);display:inline-flex;align-items:center;justify-content:center;color:var(--blue);font-size:16px;margin-bottom:10px"><i class="fas fa-envelope"></i></div>
-      <div style="font-size:14px;font-weight:700;color:var(--tx-high);word-break:break-all">luna.morgan@email.com</div>
+      <div style="font-size:14px;font-weight:700;color:var(--tx-high);word-break:break-all" id="emailModalAddr"></div>
       <span class="badge badge-public" style="margin-top:8px"><i class="fas fa-check-circle" style="font-size:9px"></i> Verified</span>
       <div style="font-size:11px;color:var(--tx-muted);margin-top:8px">This is your primary email for login and notifications.</div>
     </div>
@@ -281,129 +265,31 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
   </div>
 </div>
 
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <div class="drawer-logo"><i class="fas fa-feather-pointed"></i></div>
-    <div class="drawer-head-title">Droboard</div>
-    <button class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
+<!-- Logout confirm modal -->
+<div class="modal-overlay" id="logoutOverlay">
+  <div class="modal-card">
+    <div class="modal-card-head">
+      <div class="modal-card-title">Log Out</div>
+      <button class="modal-card-close" id="logoutClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-card-body" style="text-align:center;padding:20px 16px">
+      <div style="width:44px;height:44px;border-radius:50%;background:rgba(224,56,77,.1);display:inline-flex;align-items:center;justify-content:center;color:var(--red);font-size:16px;margin-bottom:10px"><i class="fas fa-right-from-bracket"></i></div>
+      <div style="font-size:14px;font-weight:700;color:var(--tx-high)">Log out of Droboard?</div>
+      <div style="font-size:11px;color:var(--tx-muted);margin-top:6px">You'll need to sign in again to continue.</div>
+    </div>
+    <div class="modal-card-foot">
+      <button class="btn-ghost" id="logoutCancel">Cancel</button>
+      <button class="btn-primary" id="logoutConfirm" style="background:var(--red)">Log Out</button>
+    </div>
   </div>
-  <div class="drawer-body" id="drawerBody"></div>
 </div>
 
-<script>
-(function(){
-'use strict';
-var THEME_KEY='droboardTheme';
-function getTheme(){try{return localStorage.getItem(THEME_KEY)||'light';}catch(e){return 'light';}}
-
-function toast(msg){var t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2200);}
-function setTheme(t){
-  document.documentElement.setAttribute('data-theme',t);
-  try{localStorage.setItem(THEME_KEY,t);}catch(e){}
-  document.querySelectorAll('.theme-option').forEach(function(opt){
-    opt.classList.toggle('active',opt.getAttribute('data-theme')===t);
-  });
-}
-window.setTheme=setTheme;
-window.toast=toast;
-
-setTheme(getTheme());
-
-// demo: visibility toggle — opens confirm modal with badges
-(function(){
-  var isPublic=true;
-  var row=document.getElementById('visibilityRow');
-  var desc=document.getElementById('visibilityDesc');
-  var ov=document.getElementById('visOverlay');
-  var curLabel=document.getElementById('visCurrentLabel');
-  var toggleBtn=document.getElementById('visToggle');
-  function syncVis(){
-    if(desc) desc.textContent=isPublic?'Public':'Private';
-    if(curLabel) curLabel.textContent=isPublic?'Public':'Private';
-    if(toggleBtn) toggleBtn.textContent=isPublic?'Switch to Private':'Switch to Public';
-  }
-  function openVis(){ syncVis(); ov.classList.add('open'); }
-  function closeVis(){ ov.classList.remove('open'); }
-  if(row) row.addEventListener('click', openVis);
-  document.getElementById('visClose').addEventListener('click', closeVis);
-  document.getElementById('visCancel').addEventListener('click', closeVis);
-  ov.addEventListener('click', function(e){ if(e.target===ov) closeVis(); });
-  toggleBtn.addEventListener('click', function(){
-    isPublic=!isPublic;
-    syncVis();
-    closeVis();
-    toast('Profile is now '+(isPublic?'Public':'Private'));
-  });
-})();
-
-// demo: email modal + password centered modal
-(function(){
-  var eOv=document.getElementById('emailOverlay');
-  function openEmail(){ eOv.classList.add('open'); }
-  function closeEmail(){ eOv.classList.remove('open'); }
-  document.getElementById('emailRow').addEventListener('click', openEmail);
-  document.getElementById('emailClose').addEventListener('click', closeEmail);
-  document.getElementById('emailOk').addEventListener('click', closeEmail);
-  eOv.addEventListener('click', function(e){ if(e.target===eOv) closeEmail(); });
-})();
-(function(){
-  var ov=document.getElementById('pwOverlay');
-  function openPw(){ ov.classList.add('open'); }
-  function closePw(){ ov.classList.remove('open'); }
-  document.getElementById('passwordRow').addEventListener('click', openPw);
-  document.getElementById('pwClose').addEventListener('click', closePw);
-  document.getElementById('pwCancel').addEventListener('click', closePw);
-  ov.addEventListener('click', function(e){ if(e.target===ov) closePw(); });
-  document.getElementById('pwSave').addEventListener('click',function(){
-    var cur=document.getElementById('pwCurrent').value, nw=document.getElementById('pwNew').value, cf=document.getElementById('pwConfirm').value;
-    if(!cur||!nw||!cf){ toast('Fill all fields'); return; }
-    if(nw!==cf){ toast('Passwords do not match'); return; }
-    toast('Password updated (demo)');
-    document.getElementById('pwCurrent').value='';document.getElementById('pwNew').value='';document.getElementById('pwConfirm').value='';
-    closePw();
-  });
-})();
-
-document.getElementById('backBtn').addEventListener('click',function(){if(window.history.length>1)window.history.back();else window.location.href='profile.html';});
-
-var MENU_SECTIONS=[
-  {title:'Home',items:[{label:'Home',icon:'fa-house',href:'index.html'}]},
-  {title:'Browse',items:[
-    {label:'Discover',icon:'fa-compass',href:'discover.html'},
-    {label:'Library',icon:'fa-book',href:'library.html'},
-    {label:'Store',icon:'fa-store',href:'store.html'}
-  ]},
-  {title:'Create',items:[
-    {label:'Write',icon:'fa-pen-fancy',href:'post-writer.html'},
-    {label:'Create Post',icon:'fa-plus',href:'create.html'}
-  ]},
-  {title:'Account',items:[
-    {label:'Profile',icon:'fa-user',href:'profile.html'},
-    {label:'Settings',icon:'fa-gear',href:'settings.html',active:true}
-  ]}
-];
-function renderDrawer(){
-  document.getElementById('drawerBody').innerHTML=MENU_SECTIONS.map(function(sec){
-    return '<div class="drawer-section"><div class="drawer-section-title">'+sec.title+'</div>'+sec.items.map(function(it){
-      var active=location.pathname.indexOf(it.href.replace('.html',''))!==-1?' active':'';
-      return '<a class="drawer-item'+active+'" href="'+it.href+'"><i class="fas '+it.icon+'"></i>'+it.label+'</a>';
-    }).join('')+'</div>';
-  }).join('');
-}
-document.getElementById('menuBtn').addEventListener('click',function(){
-  renderDrawer();
-  document.getElementById('drawer').classList.add('open');
-  document.getElementById('drawerOverlay').classList.add('open');
-});
-function closeDrawer(){
-  document.getElementById('drawer').classList.remove('open');
-  document.getElementById('drawerOverlay').classList.remove('open');
-}
-document.getElementById('drawerClose').addEventListener('click',closeDrawer);
-document.getElementById('drawerOverlay').addEventListener('click',closeDrawer);
-
-})();
-</script>
+<script src="../services/auth-session.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../data/profile-demo-seed.js"></script>
+<script src="../services/profile-data.js"></script>
+<script src="../component/profile-menu.js"></script>
+<script src="../services/settings-service.js"></script>
+<script>SettingsPage.init();</script>
 </body>
 </html>

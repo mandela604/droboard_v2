@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<title>Followers · DroBoard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{--pink:#ff0050;--pink-soft:rgba(255,0,80,.08);--pink-line:rgba(255,0,80,.18);--bg:#f7f7f8;--card:#fff;--line:#ebebed;--tx:#1a1a1a;--muted:#8e8e93;--nav-h:66px;--safe-b:env(safe-area-inset-bottom,12px);}
+[data-theme="dark"]{--bg:#000;--card:#0b0b10;--line:rgba(255,255,255,.08);--tx:#f0f0f5;--muted:#71717a;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,sans-serif}
+body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--card);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+img{display:block;object-fit:cover}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);padding:12px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+[data-theme="dark"] .topbar{background:rgba(11,11,16,.96)}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--tx);font-size:15px;flex-shrink:0}
+.title-wrap{flex:1;min-width:0}
+.page-title{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.page-sub{font-size:12px;color:var(--muted);font-weight:500}
+.top-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px}
+.search-wrap{padding:10px 16px 8px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:58px;z-index:40}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.search-box i{color:var(--muted);font-size:13px}
+.search-box input{flex:1;border:none;outline:none;font-size:13px;background:transparent;color:var(--tx)}
+.tabs{display:flex;gap:0;padding:0 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:108px;z-index:39}
+.f-tab{flex:1;text-align:center;padding:12px 0 10px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.f-tab.active{color:var(--pink);border-bottom-color:var(--pink)}
+.filter-scroll{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 10px;background:var(--card);border-bottom:1px solid var(--line);scrollbar-width:none;position:sticky;top:149px;z-index:38}
+.filter-scroll::-webkit-scrollbar{display:none}
+.f-filter-chip{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;background:var(--bg);color:var(--muted);border:1.5px solid transparent;cursor:pointer}
+.f-filter-chip.active{background:var(--pink-soft);color:var(--pink);border-color:var(--pink-line)}
+.content{flex:1;background:var(--card);padding-bottom:20px}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="phone">
+  <div class="topbar">
+    <button class="back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+    <div class="title-wrap"><div class="page-title" id="followersTitle">Following</div><div class="page-sub" id="followersSub">@user</div></div>
+    <div class="top-actions">
+      <button class="icon-btn" data-search-trigger aria-label="Search"><i class="fas fa-search"></i></button>
+      <button class="icon-btn" onclick="location.href='notifications.html'"><i class="fas fa-bell"></i></button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <div class="search-box"><i class="fas fa-search"></i><input id="followersSearch" placeholder="Search handle or name..."/></div>
+  </div>
+  <div class="tabs">
+    <div class="f-tab" data-tab="following">Following</div>
+    <div class="f-tab" data-tab="followers">Followers</div>
+  </div>
+  <div class="filter-scroll">
+    <div class="f-filter-chip active" data-filter="all">All</div>
+    <div class="f-filter-chip" data-filter="writers">Writers</div>
+    <div class="f-filter-chip" data-filter="readers">Readers</div>
+  </div>
+  <div class="content">
+    <div id="followersList"></div>
+    <div id="followersPager"></div>
+  </div>
+</div>
+<script src="../data/central-demo-data.js"></script>
+<script src="../data/profile-demo-seed.js"></script>
+<script src="../services/profile-data.js"></script>
+<script src="../services/ad-service.js"></script>
+<script src="../component/ad-card.js"></script>
+<script src="../component/follow-list.js?v=3"></script>
+<script src="../component/search-overlay.js"></script>
+<script src="../services/search-service.js"></script>
+<script src="../services/followers-service.js"></script>
+<script>FollowersPage.init();</script>
+</body>
+</html>

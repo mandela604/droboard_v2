@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Accept Invite — Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -62,7 +63,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f5f6f9;min-height:100v
 
 <div class="auth-card">
   <div class="auth-logo">
-    <div class="logo-ico"><i class="fas fa-feather-pointed"></i></div>
+    <div class="logo-ico" style="background:#000;overflow:hidden;padding:0"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
     <h1>Join Droboard</h1>
     <p>Senior Editor Invitation</p>
   </div>
@@ -126,81 +127,4 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f5f6f9;min-height:100v
 </div>
 
 <script src="../chief-editor/shared/chief-editor-data.js"></script>
-<script>
-'use strict';
-(function(){
-  var params=new URLSearchParams(window.location.search);
-  var token=params.get('token');
-
-  if(!token){showError();return}
-
-  ChiefEditorData.getByInviteToken(token).then(function(editor){
-    if(!editor){showError();return}
-    document.getElementById('authInfo').style.display='flex';
-    document.getElementById('authAvatar').src=editor.avatar;
-    document.getElementById('authName').textContent=editor.name;
-    document.getElementById('authEmail').textContent=editor.email;
-    document.getElementById('setupName').value=editor.name;
-    document.getElementById('setupEmail').value=editor.email;
-
-    document.getElementById('setupForm').addEventListener('submit',function(e){
-      e.preventDefault();
-      var name=document.getElementById('setupName').value.trim();
-      var pw=document.getElementById('setupPw').value;
-      var pw2=document.getElementById('setupPwConfirm').value;
-      var valid=true;
-
-      if(!name){document.getElementById('setupNameErr').style.display='block';valid=false}else{document.getElementById('setupNameErr').style.display='none'}
-      if(pw.length<8){document.getElementById('setupPwErr').style.display='block';valid=false}else{document.getElementById('setupPwErr').style.display='none'}
-      if(pw!==pw2){document.getElementById('setupPwConfirmErr').style.display='block';valid=false}else{document.getElementById('setupPwConfirmErr').style.display='none'}
-      if(!valid)return;
-
-      ChiefEditorData.acceptInvite(token,pw).then(function(result){
-        if(!result){showError();return}
-        localStorage.setItem('droboard-user',JSON.stringify({
-          id:result.id,name:name,email:result.email,avatar:result.avatar,
-          role:'Senior Editor',dashboard:'senior-editor'
-        }));
-        document.getElementById('setupForm').style.display='none';
-        document.getElementById('authInfo').style.display='none';
-        document.getElementById('authWelcome').style.display='none';
-        document.getElementById('authSuccess').style.display='block';
-        var cd=5;
-        var iv=setInterval(function(){
-          cd--;
-          document.getElementById('countdown').textContent=cd;
-          if(cd<=0){clearInterval(iv);window.location.href='dashboard.html'}
-        },1000);
-        document.getElementById('goDashBtn').addEventListener('click',function(){window.location.href='dashboard.html'});
-      });
-    });
-  });
-
-  function showError(){
-    document.getElementById('setupForm').style.display='none';
-    document.getElementById('authInfo').style.display='none';
-    document.getElementById('authWelcome').style.display='none';
-    document.getElementById('authError').style.display='block';
-  }
-
-  document.getElementById('setupPw').addEventListener('input',function(){
-    var pw=this.value;
-    var score=0;
-    if(pw.length>=8)score++;
-    if(pw.length>=12)score++;
-    if(/[A-Z]/.test(pw)&&/[a-z]/.test(pw))score++;
-    if(/[0-9]/.test(pw))score++;
-    if(/[^A-Za-z0-9]/.test(pw))score++;
-    var pct=Math.min(100,(score/5)*100);
-    var fill=document.getElementById('pwFill');
-    var label=document.getElementById('pwLabel');
-    fill.style.width=pct+'%';
-    if(!pw){fill.style.width='0%';label.innerHTML='&nbsp;';return}
-    if(score<=1){fill.style.background='#e0293e';label.textContent='Weak'}
-    else if(score<=3){fill.style.background='#c98a12';label.textContent='Okay'}
-    else{fill.style.background='#1c9d5b';label.textContent='Strong'}
-  });
-})();
-</script>
-</body>
-</html>
+<script src="services/accept-invite-service.js"></script><script>AcceptInviteService.init();</script></body></html>

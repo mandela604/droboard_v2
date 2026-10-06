@@ -218,6 +218,9 @@ a{color:inherit;text-decoration:none}
 <!-- Platform bottom nav -->
 <script src="component/bottom-nav.js"></script>
 
+<script src="services/api-config.js"></script>
+<script src="services/drawer-service.js"></script>
+<script src="services/author-center-service.js"></script>
 <script>
 /* ═══════════════════════════════
    DATA
@@ -230,13 +233,13 @@ const STATS = [
 ];
 
 const BOOKS = [
-  { title:'Bound By Obsession', genre:'Romance · Drama', reads:'2.3M', likes:'189K', chapters:56, status:'published',
+  { id:'b1', title:'Bound By Obsession', genre:'Romance · Drama', reads:'2.3M', likes:'189K', chapters:56, status:'published',
     cover:'https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop' },
-  { title:'The Way You Stay', genre:'Romance · Contemporary', reads:'1.8M', likes:'142K', chapters:38, status:'ongoing',
+  { id:'b2', title:'The Way You Stay', genre:'Romance · Contemporary', reads:'1.8M', likes:'142K', chapters:38, status:'ongoing',
     cover:'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300&h=400&fit=crop' },
-  { title:'Yours, Always', genre:'Romance · Second Chance', reads:'1.6M', likes:'118K', chapters:42, status:'published',
+  { id:'b3', title:'Yours, Always', genre:'Romance · Second Chance', reads:'1.6M', likes:'118K', chapters:42, status:'published',
     cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&h=400&fit=crop' },
-  { title:'Until Forever', genre:'Romance · Young Adult', reads:'980K', likes:'96K', chapters:27, status:'draft',
+  { id:'b4', title:'Until Forever', genre:'Romance · Young Adult', reads:'980K', likes:'96K', chapters:27, status:'draft',
     cover:'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=400&fit=crop' },
 ];
 
@@ -244,12 +247,11 @@ const STATUS_LABEL = { published:'Published', ongoing:'Ongoing', draft:'Draft', 
 
 // Hamburger drawer tree — mirrors the Author Center / Book Workspace / Account structure
 // HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
-// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+// Book Workspace (Chapters, Characters, Plotting) only shows when ?book= is in URL.
 const BOOK_WORKSPACE_ITEMS=[
   {label:'Chapters',icon:'fa-list-ul',href:'#'},
   {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
-  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
-  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'}
 ];
 function getMENU_SECTIONS(){
   const params=new URLSearchParams(location.search);
@@ -295,7 +297,7 @@ function renderStats(){
 
 function renderBooks(){
   document.getElementById('bookList').innerHTML = BOOKS.map(b => `
-    <div class="book-card" onclick="location.href='book-workspace.html'">
+    <div class="book-card" onclick="location.href='book-workspace.html?book=${b.id}'">
       <div class="book-cover"><img src="${b.cover}" alt="${b.title}" loading="lazy"/></div>
       <div class="book-info">
         <div class="book-title-row">

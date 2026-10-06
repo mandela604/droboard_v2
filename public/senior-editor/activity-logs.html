@@ -13,7 +13,7 @@ html[data-theme="dark"] .act-type.create{background:rgba(22,163,74,.18)}html[dat
 @media (max-width:680px){.filters-row{flex-direction:column;align-items:stretch}.fselect select{width:100%}.page-hdr-row{flex-direction:column;align-items:stretch}.table-wrap{overflow:visible}table,thead,tbody,tr,td{display:block;width:100%}thead{display:none}tbody tr{border:1px solid var(--border);border-radius:12px;margin:0 14px 14px;padding:6px 4px}tbody td{border-top:none;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}tbody td[data-label]::before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);flex-shrink:0}.actions-cell{justify-content:flex-end;width:100%}}
 </style></head>
 <body><div id="dashboardRoot">
-<div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Exporting activity logs…')"><i class="fas fa-download"></i> Export Logs</button></div>
+<div class="page-hdr-row"><div></div><button class="btn-add" onclick="ActivityLogsService.exportLogs()"><i class="fas fa-download"></i> Export Logs</button></div>
 <div class="stats-grid">
 <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-list-check"></i></div><span class="stat-delta">+18% from last month</span></div><div class="stat-num">12,847</div><div class="stat-lbl">Total Activities</div></div>
 <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-plus"></i></div><span class="stat-delta">+12% from last month</span></div><div class="stat-num">4,230</div><div class="stat-lbl">Creations</div></div>
@@ -23,8 +23,8 @@ html[data-theme="dark"] .act-type.create{background:rgba(22,163,74,.18)}html[dat
 <div class="filters-row">
 <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by user, action, or detail..."/></div>
 <div class="fselect"><select id="actionFilter"><option value="">All Actions</option><option value="create">Create</option><option value="update">Update</option><option value="delete">Delete</option><option value="login">Login</option></select><i class="fas fa-chevron-down"></i></div>
-<div class="date-range" onclick="toast('Date picker')">Date Range <i class="fas fa-calendar"></i></div>
-<button class="btn-filters" onclick="toast('Filters')"><i class="fas fa-sliders"></i> Filters</button>
+<div class="date-range" onclick="ActivityLogsService.openDatePicker()">Date Range <i class="fas fa-calendar"></i></div>
+<button class="btn-filters" onclick="ActivityLogsService.openFilters()"><i class="fas fa-sliders"></i> Filters</button>
 </div>
 <div class="table-card">
 <div class="table-wrap"><table><thead><tr><th>User</th><th>Action</th><th>Type</th><th>Details</th><th>IP Address</th><th>Timestamp</th></tr></thead><tbody id="tableBody"></tbody></table></div>
@@ -34,14 +34,4 @@ html[data-theme="dark"] .act-type.create{background:rgba(22,163,74,.18)}html[dat
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script src="shared/senior-editor-data.js"></script>
-<script>
-SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'activity-logs',title:'Activity Logs',subtitle:'Track and monitor all platform activities and user actions',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search by user, action, or detail...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
-let LOGS=[];
-async function init(){const d=await SeniorEditorData.getActivityLogs();LOGS=d;refresh();renderPagination();}
-function refresh(){const q=document.getElementById('tableSearch').value.toLowerCase();const a=document.getElementById('actionFilter').value;let l=LOGS;if(a)l=l.filter(r=>r.type===a);if(q)l=l.filter(r=>r.user.toLowerCase().includes(q)||r.action.toLowerCase().includes(q)||r.detail.toLowerCase().includes(q));renderTable(l);document.getElementById('pageInfo').innerHTML=`Showing <b>${l.length?1:0}</b> to <b>${Math.min(8,l.length)}</b> of <b>${LOGS.length}</b> activities`}
-function renderTable(l){const b=document.getElementById('tableBody');if(!l.length){b.innerHTML=`<tr class="empty-row"><td colspan="6"><i class="fas fa-list-check"></i>No activities match.</td></tr>`;return}
-b.innerHTML=l.slice(0,8).map(r=>`<tr><td data-label="User"><div class="act-user"><img src="${r.av}"/><span>${r.user}</span></div></td><td data-label="Action" class="act-action">${r.action}</td><td data-label="Type"><span class="act-type ${r.type}">${r.type.charAt(0).toUpperCase()+r.type.slice(1)}</span></td><td data-label="Details" class="detail-cell">${r.detail}</td><td data-label="IP Address" style="font-family:monospace;font-size:12px;color:var(--text-faint)">${r.ip}</td><td data-label="Timestamp" class="time-cell">${r.time}</td></tr>`).join('')}
-document.getElementById('tableSearch').addEventListener('input',refresh);document.getElementById('actionFilter').addEventListener('change',refresh);
-function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
-init();
-</script></body></html>
+<script src="services/activity-logs-service.js"></script><script>ActivityLogsService.init();</script></body></html>

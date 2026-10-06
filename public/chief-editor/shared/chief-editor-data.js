@@ -16,7 +16,7 @@
 
       quickActions: [
         { label: 'Sign Pending Contracts', icon: 'fa-file-signature', cls: 'blue',   count: 4, href: 'contracts-payments.html' },
-        { label: 'Review Flagged Authors',  icon: 'fa-flag',           cls: 'red',    count: 6, href: 'reports-actions.html' },
+        { label: 'Review Flagged Stories',  icon: 'fa-flag',           cls: 'red',    count: 6, href: 'reports-flags.html' },
         { label: 'Run Payments',            icon: 'fa-money-check-dollar', cls: 'green', href: 'contracts-payments.html' },
         { label: 'Review Editor Quotas',    icon: 'fa-bullseye',       cls: 'purple', count: 2, href: 'senior-editors.html' },
       ],

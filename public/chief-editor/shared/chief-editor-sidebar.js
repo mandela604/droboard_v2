@@ -12,8 +12,9 @@
     { key: 'dashboard',           label: 'Dashboard',            href: 'dashboard.html',           icon: 'fa-house' },
     { key: 'senior-editors',      label: 'Senior Editors',       href: 'senior-editors.html',       icon: 'fa-users' },
     { key: 'contracts-payments',  label: 'Contracts & Payments', href: 'contracts-payments.html',   icon: 'fa-file-signature' },
-    { key: 'reports-actions',     label: 'Reports & Actions',    href: 'reports-actions.html',      icon: 'fa-scale-balanced' },
-    { key: 'all-books',           label: 'All Books',            href: 'all-books.html',            icon: 'fa-book-open' },
+    { key: 'reports-flags',       label: 'Story Reports',        href: 'reports-flags.html',        icon: 'fa-flag' },
+    { key: 'all-books',           label: 'All Books',            href: 'all-books.html',           icon: 'fa-book-open' },
+    { key: 'featured-stories',    label: 'Featured Stories',     href: 'featured-stories.html',    icon: 'fa-star' },
     { key: 'categories-genres',   label: 'Categories & Genres',  href: 'categories-genres.html',    icon: 'fa-tags' },
     { key: 'settings',            label: 'Settings',             href: 'settings.html',             icon: 'fa-gear' },
   ];

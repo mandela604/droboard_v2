@@ -172,7 +172,7 @@
     .dcs-team-hint{font-size:10.5px;color:var(--dcs-muted2);padding:0 0 6px;}
 
     /* Input row — bottom composer */
-    .dcs-input-row{display:flex;gap:9px;align-items:flex-start;padding:12px 0 4px;border-top:1px solid var(--dcs-bd2);margin-top:6px}
+    .dcs-input-row{display:flex;gap:9px;align-items:flex-start;padding:12px 0 10px;border-top:1px solid var(--dcs-bd2);margin-top:6px;position:sticky;bottom:0;z-index:5;background:var(--dcs-bg)}
     .dcs-input-av{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:rgba(255,0,80,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;overflow:hidden}
     .dcs-input-av img{width:100%;height:100%;object-fit:cover}
     .dcs-input-wrap{flex:1;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px}
@@ -183,10 +183,11 @@
     .dcs-send-btn:disabled{background:var(--dcs-surface2);cursor:default}
 
     /* List */
-    .dcs-list{display:flex;flex-direction:column;gap:0}
-    .dcs-item{position:relative}
-    .dcs-inner{display:flex;gap:9px;padding:10px 0 0}
-    .dcs-item.is-reply .dcs-inner{padding-left:16px;border-left:2px solid rgba(255,0,80,.12);margin-left:18px}
+    .dcs-list{display:flex;flex-direction:column;gap:8px;padding:6px 0}
+    .dcs-item{position:relative;background:var(--dcs-card);border:1px solid var(--dcs-bd);border-radius:10px;overflow:visible}
+    .dcs-inner{display:flex;gap:9px;padding:10px 10px 8px}
+    .dcs-item.is-reply{background:var(--dcs-surface);border-color:var(--dcs-bd2)}
+    .dcs-item.is-reply .dcs-inner{padding-left:16px;border-left:2px solid rgba(255,0,80,.12);margin-left:8px}
 
     .dcs-av-wrap{position:relative;width:32px;height:32px;flex-shrink:0;cursor:pointer}
     .dcs-av-ring{width:32px;height:32px;border-radius:50%;padding:2px}
@@ -206,7 +207,7 @@
     .dcs-team-tag{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.03em;white-space:nowrap;border:1px solid transparent}
     .dcs-time{font-size:10px;color:var(--dcs-muted2)}
     .dcs-edited-tag{font-size:10px;color:var(--dcs-muted2);font-style:italic}
-    .dcs-text{font-size:12.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
+    .dcs-text{font-size:13.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
     .dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700}
 
     /* Inline edit form */
@@ -257,7 +258,7 @@
     .dcs-reply-inp:focus{border-color:rgba(255,0,80,.35)}
     .dcs-reply-send{background:var(--dcs-acc);border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#fff;flex-shrink:0}
     .dcs-reply-send:disabled{background:var(--dcs-card);cursor:default}
-    .dcs-sep{height:1px;background:var(--dcs-bd2);margin:2px 0}
+    .dcs-sep{height:1px;background:var(--dcs-bd);margin:0}
 
     .dcs-empty{text-align:center;padding:28px 14px;color:var(--dcs-muted2)}
     .dcs-empty i{font-size:26px;margin-bottom:8px;display:block;color:var(--dcs-muted3)}
@@ -350,6 +351,72 @@
   // however many comment-section instances you attach.
   function _rpAvailable() { return typeof window.DroboardReactionPicker !== 'undefined'; }
 
+  // ── Placement ad slot (first render in list + thread view) ─────────
+  // Served from the central inventory (AdService page 'comments') through
+  // the shared ad component, so impressions/clicks track like everywhere
+  // else. Marketing toggles it via placements → comments → enabled, no
+  // page code involved. Per-attach escape hatch: { ads:false }.
+  function _adsAvailable() { return typeof window.AdService !== 'undefined' && typeof window.DroboardAdCard !== 'undefined'; }
+  function _trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function _pickSlotAd(pools) {
+    pools = pools || {};
+    // Books first: compact horizontal card with the golden background —
+    // the right size for a comment slot. Big natives would blow it up.
+    const b = (pools.book || []).find(function(a){ return a && (a.cover || a.img); });
+    if (b) return { format: 'storyPromo', ad: b };
+    const e = (pools.embed || [])[0];
+    if (e && e.code) return { format: 'embed', ad: e };
+    const n = (pools.native || [])[0], p = (pools.platform || [])[0];
+    if (n) return { format: 'native', ad: n };
+    if (p) return { format: 'platform', ad: p };
+    if (b) return { format: 'storyPromo', ad: b };
+    return null;
+  }
+  // Pool keys for one slot: host page first (page-scoped ads win), then the
+  // shared 'comments' pool (untargeted + comments-targeted ads). Lets
+  // marketing show a slot ad on one page only via ad.pages targeting.
+  const _PAGEKEY = { 'scroll-reader': 'scrollReader', 'full-reader': 'fullReader', discussion: 'discussion', 'droboard-page': 'droboardPage', feed: 'feed', profile: 'profile', 'genre-hub': 'genreHub', discover: 'discover', library: 'library', home: 'home' };
+  function _slotPageKeys(opts) {
+    if (opts && typeof opts.ads === 'string' && opts.ads) return [opts.ads, 'comments'];
+    if (opts && opts.adsPage) return [opts.adsPage, 'comments'];
+    let host = '';
+    try {
+      const f = (location.pathname.split('/').pop() || '').replace(/\.html?$/i, '');
+      host = _PAGEKEY[f] || '';
+    } catch (e) {}
+    const keys = [];
+    if (host) keys.push(host);
+    if (host !== 'comments') keys.push('comments');
+    return keys.length ? keys : ['comments'];
+  }
+  function _adSlotHTML() { return '<div data-dcs-adslot style="margin:8px 0;display:none"></div>'; }
+  function _renderSlotAd(pick) {
+    try {
+      if ((pick.format === 'storyPromo' || pick.format === 'book') && DroboardAdCard.renderStoryPromo) return DroboardAdCard.renderStoryPromo(pick.ad);
+      if (pick.format === 'embed' && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(pick.ad);
+      if (pick.format === 'platform' && DroboardAdCard.renderPlatform) return DroboardAdCard.renderPlatform(pick.ad);
+      if (pick.format === 'native' && DroboardAdCard.renderNative) return DroboardAdCard.renderNative(pick.ad);
+      if (DroboardAdCard.renderStoryPromo) return DroboardAdCard.renderStoryPromo(pick.ad);
+    } catch (e) {}
+    return '';
+  }
+  function _bindSlotAd(slotEl, pick) {
+    try {
+      DroboardAdCard.attach(slotEl, {
+        getAds: function () { return [pick.ad]; },
+        onOpen: function (ad) { if (ad) _trackAd(ad.id, 'click'); },
+        onCta: function (ad) { if (ad) _trackAd(ad.id, 'click'); },
+        onLike: function () {},
+        onComment: function () {},
+        onShare: function (ad) {
+          if (window.openShareModal && ad) {
+            openShareModal({ title: ad.title || ad.heading || ad.brand, sub: ad.brand || 'Sponsored', img: ad.cover || ad.image || '', url: 'https://droboard.app/ad/' + (ad.id || '') });
+          }
+        },
+      });
+    } catch (e) {}
+  }
+
   function _ensureReactionPickerBound() {
     if (!_rpAvailable() || window.__dcsRPBound) return;
     window.__dcsRPBound = true;
@@ -357,7 +424,8 @@
     window.DroboardReactionPicker.attach(document.body, {
       getState(key) {
         const entry = window.__dcsRPRegistry[key];
-        return entry ? entry.comment.rx : { userRx: null };
+        if (!entry) return null; // unknown key: let other picker bindings claim it
+        return entry.comment.rx || { userRx: null };
       },
       onReact(key, rid) {
         const entry = window.__dcsRPRegistry[key];
@@ -381,6 +449,35 @@
   // ══════════════════════════════════════════════════════════════════════
   let _idCounter = 1000;
   let _instanceCounter = 0;
+
+  // Fills one ad-slot element (list top, every Nth row, thread top). Hidden
+  // unless the stack is loaded, the instance didn't opt out, the 'comments'
+  // placement is enabled, and an eligible ad exists. Host-page pool is
+  // tried first so page-scoped ads win; shared 'comments' pool is fallback.
+  // Impression tracked per fill.
+  async function _mountAdSlot(slotEl, opts) {
+    if (!slotEl) return;
+    slotEl.style.display = 'none';
+    if (!slotEl.isConnected || !_adsAvailable()) return;
+    if (opts && opts.ads === false) return;
+    let placement = null;
+    try { placement = await AdService.getPlacement('comments'); } catch (e) { placement = null; }
+    if (placement && placement.enabled === false) return;
+    if (!slotEl.isConnected) return;
+    const keys = _slotPageKeys(opts);
+    let pick = null;
+    for (let i = 0; i < keys.length; i++) {
+      try { pick = _pickSlotAd(await AdService.getAds({ page: keys[i] })); } catch (e) { pick = null; }
+      if (pick || !slotEl.isConnected) break;
+    }
+    if (!pick || !slotEl.isConnected) return;
+    const inner = _renderSlotAd(pick);
+    if (!inner) return;
+    slotEl.innerHTML = '<div style="font-size:8.5px;font-weight:800;color:var(--dcs-muted2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sponsored</div>' + inner;
+    slotEl.style.display = 'block';
+    _trackAd(pick.ad && pick.ad.id, 'impression');
+    _bindSlotAd(slotEl, pick);
+  }
 
   function _newRx(reactions) {
     const o = { userRx: null };
@@ -407,6 +504,14 @@
     let openDotsId = null;
     let editingId = null;
     let threadOpenId = null;      // id of the top-level comment shown in the thread view, or null
+    let adInterval = 5;           // repeat slot every N rows; refreshed from placement (default 5)
+    (async function _resolveAdInterval() {
+      try {
+        const pl = await AdService.getPlacement('comments');
+        const n = pl && parseInt(pl.interval, 10);
+        if (n > 0 && n !== adInterval) { adInterval = n; render(); }
+      } catch (e) {}
+    })();
 
     function _normalize(c) {
       c = Object.assign({
@@ -430,6 +535,7 @@
           <div class="dcs-toggle-arrow${open ? ' open' : ''}" data-dcs-arrow><i class="fas fa-chevron-down"></i></div>
         </div>` : ''}
         <div class="dcs-body${open ? ' open' : ''}${options.collapsible ? '' : ' no-toggle'}" data-dcs-body>
+          <div data-dcs-adslot style="margin-bottom:8px;display:none"></div>
           ${TEAMS.length ? `
           <div class="dcs-team-hint">${options.requireTeam ? 'Pick a side to comment' : 'Tag your side (optional)'}</div>
           <div class="dcs-team-picker" data-dcs-teams></div>` : ''}
@@ -453,6 +559,8 @@
     const countEl     = root.querySelector('[data-dcs-count]');
     const arrowEl     = root.querySelector('[data-dcs-arrow]');
     const toggleEl    = root.querySelector('[data-dcs-toggle]');
+
+    _mountAdSlot(root.querySelector('[data-dcs-adslot]'), options);
 
     // ── Thread view overlay (built once, appended to <body> so it can
     //     be truly full-screen regardless of where the container sits) ──
@@ -686,7 +794,10 @@
       if (!comments.length) {
         listEl.innerHTML = `<div class="dcs-empty"><i class="fas fa-comment-slash"></i><p>No comments yet.<br/>Be the first to say something.</p></div>`;
       } else {
-        listEl.innerHTML = comments.map(c => renderTopLevelBlock(c)).join('');
+        const n = adInterval > 0 ? adInterval : 5;
+        const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
+        listEl.innerHTML = comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML() : '')).join('');
+        listEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
       }
       refreshCount();
       attachReplyInputListeners(instId, listEl);
@@ -729,8 +840,12 @@
       const ns = instId + '-tv';
       const flat = flattenReplies(c);
       threadTitleEl.textContent = flat.length ? `${flat.length} repl${flat.length === 1 ? 'y' : 'ies'}` : 'Replies';
-      threadBodyEl.innerHTML = renderCommentCard(c, ns, false) + flat.map(r => renderCommentCard(r, ns, true)).join('');
-      registerReactionsFor(ns, [c, ...flat]);
+      registerReactionsFor(ns, [c, ...flat]); // register BEFORE render: triggers read state during render
+      const n = adInterval > 0 ? adInterval : 5;
+      const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
+      const rows = [renderCommentCard(c, ns, false)].concat(flat.map((r, i) => renderCommentCard(r, ns, true) + ((rep && (i + 1) % n === 0) ? _adSlotHTML() : '')));
+      threadBodyEl.innerHTML = '<div data-dcs-adslot style="margin-bottom:8px;display:none"></div>' + rows.join('');
+      threadBodyEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
       attachReplyInputListeners(ns, threadBodyEl);
       attachEditInputListeners(ns);
     }

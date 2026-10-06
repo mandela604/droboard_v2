@@ -8,7 +8,7 @@
 
 const DROBOARD_HERO = {
   name:'Droboard', handle:'@droboard', verified:true,
-  avatar:'', // monogram SVG built by service — keeps seed image-free
+  avatar:'../assets/droboard-icon.png',
   bio:'The official Droboard account. Announcements, writer shoutouts, live debates and the best story picks from across the platform — straight from the team that builds it. 🖤',
   topFollowers:'12.4k followers',
   stats:{ followers:'12.4k', posts:312, writersFeatured:0, founded:2021 },
@@ -44,6 +44,44 @@ const DROBOARD_COLLECTIONS = [
   { id:'cc3', name:'New Voices to Watch', count:9, privacy:'public', covers:['https://i.postimg.cc/0MyxNqfz/7.jpg','https://i.postimg.cc/23WvkFLH/images-(2).jpg','https://i.postimg.cc/fkdXzjSj/wife.jpg'] },
 ];
 
-global.DroboardPageSeed = { DROBOARD_HERO, DROBOARD_POSTS, DROBOARD_MORE_POSTS, DROBOARD_COLLECTIONS };
+const DROBOARD_MANAGERS = [
+  { handle:'Ada_Writes', role:'admin' },
+  { handle:'Tobi_Adenuga', role:'editor' },
+];
+
+const DROBOARD_ALLOWED_TYPES = ['announcement','post','debate','shoutout','repost','forum-poll','ama'];
+
+// Demo pools for composer — searchable, varied stats to verify behaviour
+const DROBOARD_COMPOSER_USERS = [
+  { id:'w1', name:'Ada_Writes', avatar:'https://i.pravatar.cc/100?img=32', handle:'Ada_Writes', stats:{reads:1280000,followers:48200,books:3}, isLive:true, ring:'ring-live' },
+  { id:'w2', name:'CampusQueen', avatar:'https://i.pravatar.cc/100?img=12', handle:'CampusQueen', stats:{reads:340000,followers:12100,books:5}, ring:'ring-has' },
+  { id:'w3', name:'Chiamaka_N', avatar:'https://i.pravatar.cc/100?img=47', handle:'Chiamaka_N', stats:{reads:98000,followers:3400,books:8}, ring:'ring-none' },
+  { id:'w4', name:'Kemi_A', avatar:'https://i.pravatar.cc/100?img=28', handle:'Kemi_A', stats:{reads:56000,followers:2100,books:1}, ring:'ring-viewed' },
+  { id:'w5', name:'Ifeanyi_Story', avatar:'https://i.pravatar.cc/100?img=53', handle:'Ifeanyi_Story', stats:{reads:890000,followers:32000,books:5}, ring:'ring-has' },
+  { id:'w6', name:'Efe_O', avatar:'https://i.pravatar.cc/100?img=22', handle:'Efe_O', stats:{reads:210000,followers:8900,books:2}, ring:'ring-viewed' },
+  { id:'w7', name:'Zara_M', avatar:'https://i.pravatar.cc/100?img=16', handle:'Zara_M', stats:{reads:15000,followers:520,books:1}, ring:'ring-none' },
+  { id:'w8', name:'Dami_Cole', avatar:'https://i.pravatar.cc/100?img=64', handle:'Dami_Cole', stats:{reads:670000,followers:18900,books:4}, ring:'ring-has' },
+  { id:'w9', name:'Bode_Rex', avatar:'https://i.pravatar.cc/100?img=15', handle:'Bode_Rex', stats:{reads:42000,followers:1100,books:2}, ring:'ring-none' },
+  { id:'w10', name:'Ngozi_Pens', avatar:'https://i.pravatar.cc/100?img=26', handle:'Ngozi_Pens', stats:{reads:730000,followers:25000,books:6}, ring:'ring-live' },
+  { id:'w11', name:'Luna_Grey', avatar:'https://i.pravatar.cc/100?img=45', handle:'Luna_Grey', stats:{reads:310000,followers:7800,books:3}, ring:'ring-has' },
+  { id:'w12', name:'Tobi_Adenuga', avatar:'https://i.pravatar.cc/100?img=68', handle:'Tobi_Adenuga', stats:{reads:45000,followers:1800,books:1}, ring:'ring-viewed' },
+];
+
+const DROBOARD_COMPOSER_STORIES = [
+  { id:'cs1', title:'The letter he never sent', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', author:'Efe_O', writer:'Efe_O', genre:'Elegy' },
+  { id:'cs2', title:'His sweet revenge', cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', author:'Ada_Writes', writer:'Ada_Writes', genre:'Betrayal' },
+  { id:'cs3', title:'The richest boy started sitting beside me', cover:'https://i.postimg.cc/cgLZJNmC/8.jpg', author:'CampusQueen', writer:'CampusQueen', genre:'Campus' },
+  { id:'cs4', title:'The wolf beside the bed', cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', author:'Chiamaka_N', writer:'Chiamaka_N', genre:'Werewolf' },
+  { id:'cs5', title:'His secret life', cover:'https://i.postimg.cc/0MyxNqfz/7.jpg', author:'Kemi_A', writer:'Kemi_A', genre:'Drama' },
+  { id:'cs6', title:'Alpha bloodline', cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg', author:'Ifeanyi_Story', writer:'Ifeanyi_Story', genre:'Werewolf' },
+  { id:'cs7', title:'Revenge is a dish we both ordered', cover:'https://i.postimg.cc/DJwFzKgd/4.jpg', author:'Zara_M', writer:'Zara_M', genre:'Revenge' },
+  { id:'cs8', title:'Lagos after midnight', cover:'https://i.postimg.cc/ftRZbhKx/3.jpg', author:'Dami_Cole', writer:'Dami_Cole', genre:'Campus' },
+  { id:'cs9', title:'The house on Willow Lane', cover:'https://i.postimg.cc/JDzmhWqj/2.jpg', author:'Bode_Rex', writer:'Bode_Rex', genre:'Horror' },
+  { id:'cs10', title:'Inheritance war', cover:'https://i.postimg.cc/YGCkSw-33/1.jpg', author:'Ngozi_Pens', writer:'Ngozi_Pens', genre:'Family' },
+  { id:'cs11', title:'Campus lies', cover:'https://i.postimg.cc/tY7KnJyr/images.jpg', author:'Luna_Grey', writer:'Luna_Grey', genre:'Campus' },
+  { id:'cs12', title:'Alpha\'s stolen mate', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', author:'Tobi_Adenuga', writer:'Tobi_Adenuga', genre:'Fantasy' },
+];
+
+global.DroboardPageSeed = { DROBOARD_HERO, DROBOARD_POSTS, DROBOARD_MORE_POSTS, DROBOARD_COLLECTIONS, DROBOARD_MANAGERS, DROBOARD_ALLOWED_TYPES, DROBOARD_COMPOSER_USERS, DROBOARD_COMPOSER_STORIES };
 
 })(window);

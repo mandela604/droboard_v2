@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>Sign Up — Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730;display:flex;justify-content:center;min-height:100vh;padding:16px}
+.card{background:#fff;border:1px solid #eceaf5;border-radius:16px;box-shadow:0 8px 32px rgba(20,10,50,.06);width:100%;max-width:440px;padding:24px;margin:auto}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.logo-ico{width:38px;height:38px;border-radius:11px;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;overflow:hidden;flex-shrink:0}
+.logo-ico img{width:100%;height:100%;object-fit:cover;display:block}
+.logo-txt b{display:block;font-size:13px;font-weight:800;letter-spacing:.04em;line-height:1.1}
+.logo-txt span{font-size:11px;color:#71708a;font-weight:600}
+h1{font-size:18px;font-weight:800;margin-bottom:4px}
+.sub{font-size:12px;color:#9694ac;line-height:1.5;margin-bottom:16px}
+.referral-banner{display:none;align-items:center;gap:10px;background:rgba(255,0,80,.08);border:1px solid rgba(255,0,80,.18);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.referral-banner.show{display:flex}
+.referral-banner i{color:#ff0050;font-size:14px}
+.form-row{margin-bottom:12px}
+.form-label{font-size:11px;font-weight:700;color:#1a1730;display:block;margin-bottom:6px}
+.form-input{width:100%;font-family:inherit;font-size:13px;color:#1a1730;background:#fff;border:1px solid #e4e2f1;border-radius:10px;padding:10px 12px;outline:none;transition:.15s}
+.form-input:focus{border-color:#ff0050;box-shadow:0 0 0 3px rgba(255,0,80,.1)}
+.form-input.prefilled{border-color:#16a34a;background:#f0fdf4}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:36px}
+.pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:transparent;color:#71708a;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pw-match{font-size:11px;font-weight:600;margin-top:6px;display:none}
+.pw-match.ok{color:#16a34a}
+.pw-match.bad{color:#dc2626}
+.hint{font-size:10.5px;color:#9694ac;margin-top:5px;line-height:1.4}
+.btn{width:100%;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:#ff0050;color:#fff;box-shadow:0 4px 14px rgba(255,0,80,.3)}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.primary:active{transform:scale(.98)}
+.btn.ghost{background:#fff;color:#1a1730;border:1px solid #eceaf5}
+.btn.google{background:#fff;color:#1a1730;border:1px solid #e4e2f1}
+.btn.google:hover{background:#faf9ff}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#eceaf5}
+.divider span{font-size:11px;color:#71708a;font-weight:600}
+.success{display:none;text-align:center;padding:18px}
+.btn:disabled{opacity:.7;cursor:wait}
+.btn .fa-spinner{font-size:14px}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light'}document.documentElement.setAttribute('data-theme',t)})()</script>
+</head>
+<body>
+<div class="card" id="signupCard">
+  <div class="logo"><div class="logo-ico"><img src="../assets/droboard-icon.png" alt="Droboard"/></div><div class="logo-txt"><b>DROBOARD</b><span>Read · Write · Earn</span></div></div>
+  <h1>Create account</h1>
+  <div class="sub">Join Droboard to read stories, follow authors, and publish your own work.</div>
+
+  <button class="btn google" id="googleBtn" type="button"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px" alt=""/> Continue with Google</button>
+  <div class="divider"><span>or</span></div>
+
+  <div class="referral-banner" id="referralBanner"><i class="fas fa-user-plus"></i><div><b>Referred by Senior Editor</b> <span id="referralByName">Chioma Reddy</span><br><span>Code <b id="referralByCode" style="color:#ff0050;letter-spacing:.06em">SE-XXXXXX</b> detected — you'll be auto-assigned.</span></div></div>
+
+  <div class="form-row"><label class="form-label">Full name *</label><input class="form-input" id="nameInput" placeholder="e.g. Adaeze Cole"/></div>
+  <div class="form-row"><label class="form-label">Username *</label><input class="form-input" id="usernameInput" placeholder="e.g. adaeze_writes" autocomplete="username" maxlength="20" style="text-transform:lowercase"/>
+    <div class="hint">3–20 characters, starts with a letter. Letters, numbers and _ only, no spaces.</div>
+    <div class="hint" id="usernameHint" style="display:none"></div>
+  </div>
+  <div class="form-row"><label class="form-label">Email address *</label><input class="form-input" id="emailInput" type="email" placeholder="e.g. adaeze@example.com"/></div>
+  <div class="form-row">
+    <label class="form-label">Country</label>
+    <select class="form-input" id="countryInput"><option value="">Select country</option></select>
+    <div class="hint" id="countryHint">Detected automatically from your connection.</div>
+  </div>
+  <div class="form-row">
+    <label class="form-label">Password *</label>
+    <div class="pw-wrap"><input class="form-input" id="passInput" type="password" placeholder="••••••••"/><button type="button" class="pw-eye" data-target="passInput"><i class="far fa-eye"></i></button></div>
+  </div>
+  <div class="form-row">
+    <label class="form-label">Confirm password *</label>
+    <div class="pw-wrap"><input class="form-input" id="confirmInput" type="password" placeholder="••••••••"/><button type="button" class="pw-eye" data-target="confirmInput"><i class="far fa-eye"></i></button></div>
+    <div class="pw-match" id="pwMatch"></div>
+  </div>
+  <div class="form-row">
+    <label class="form-label">Referral Code <span style="font-weight:500;color:#9694ac">(optional — auto-filled from link)</span></label>
+    <input class="form-input" id="refInput" placeholder="e.g. SE-A7K9P2" style="text-transform:uppercase;letter-spacing:.08em;font-weight:700"/>
+    <div class="hint">Link like <b>droboard.com/signup?ref=SE-A7K9P2</b> auto-fills. Typing works too.</div>
+  </div>
+  <button class="btn primary" id="signupBtn"><i class="fas fa-user-plus"></i> Create Account & Join</button>
+  <div style="text-align:center;margin-top:12px;font-size:11px;color:#9694ac">Already have an account? <a href="login.html" style="color:#ff0050;font-weight:700;text-decoration:none">Log in</a></div>
+</div>
+
+<div class="card success" id="successCard">
+  <i class="fas fa-check" style="width:56px;height:56px;border-radius:50%;background:#e2f8ea;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px"></i>
+  <h2 style="font-size:16px;font-weight:800">You're in!</h2>
+  <p style="font-size:12.5px;color:#71708a;margin-top:6px;line-height:1.5" id="successMsg">Assigned and active.</p>
+  <button class="btn primary" style="margin-top:16px" onclick="location.href='../senior-editor/authors.html'">Go to Dashboard</button>
+  <button class="btn ghost" style="margin-top:8px" onclick="location.reload()">Create another (test)</button>
+</div>
+
+<div id="toast" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;z-index:300">Done</div>
+<style>#toast.show{opacity:1}</style>
+
+<script src="../services/signup-service.js"></script>
+</body>
+</html>

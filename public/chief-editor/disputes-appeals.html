@@ -68,23 +68,7 @@ body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;heig
 </div>
 <script src="shared/chief-editor-sidebar.js"></script>
 <script src="shared/chief-editor-data.js"></script>
-<script>
-'use strict';
-const shell = ChiefEditorSidebar.attach('#disputesRoot',{activeItem:'disputes-appeals',title:'Disputes & Appeals',subtitle:'Resolve conflicts & appeals',user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6});
-async function init(){
-  const d = await ChiefEditorData.getDisputesAppeals();
-  document.getElementById('appealsList').innerHTML = d.authorAppeals.map(a => `
-    <div class="case-card"><div class="cc-title">${a.author} — ${a.type} <span class="prio-pill ${a.priority}">${a.priority}</span><span class="status-pill ${a.status}">${a.status}</span></div><div class="cc-detail">${a.detail}</div><div class="cc-meta"><span>📅 ${a.filed}</span><span>🆔 ${a.id}</span></div></div>`).join('');
-  document.getElementById('copyrightList').innerHTML = d.copyrightDisputes.map(c => `
-    <div class="case-card"><div class="cc-title">${c.title} <span class="status-pill ${c.status}">${c.status}</span></div><div class="cc-meta"><span>👤 ${c.claimant} vs ${c.respondent}</span><span>📅 ${c.filed}</span>${c.resolution?`<span>✅ ${c.resolution}</span>`:''}</div></div>`).join('');
-  document.getElementById('plagiarismList').innerHTML = d.plagiarismCases.map(p => `
-    <div class="case-card"><div class="cc-title">"${p.story}" <span class="status-pill ${p.status}">${p.status}</span></div><div class="cc-meta"><span>👤 ${p.accused}</span><span>📅 ${p.filed}</span><span>🔍 ${p.confidence}% confidence</span></div></div>`).join('');
-  document.getElementById('reportsList').innerHTML = d.escalatedReports.map(r => `
-    <div class="case-card"><div class="cc-title">${r.type} <span class="prio-pill ${r.priority}">${r.priority}</span><span class="status-pill ${r.status}">${r.status}</span></div><div class="cc-meta"><span>📅 ${r.filed}</span><span>👤 ${r.reporter} → ${r.against}</span></div></div>`).join('');
-  document.getElementById('historyList').innerHTML = d.resolutionHistory.map(h => `
-    <div class="case-card" style="margin-bottom:6px;padding:10px"><div style="font-size:12px">${h.action}</div><div class="cc-meta"><span>📅 ${h.date}</span><span>✍️ ${h.by}</span></div></div>`).join('');
-}
-init();
-</script>
+<script src="services/disputes-appeals-service.js"></script>
+<script>DisputesAppealsService.init();</script>
 </body>
 </html>

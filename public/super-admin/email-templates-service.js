@@ -4,6 +4,12 @@
 (function () {
   'use strict';
 
+/* Demo-data self-load: page HTML no longer includes data/email-templates-data.js.
+   Service pulls it during parse; delete these 3 lines at go-live. */
+if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="data/email-templates-data.js"><\/script>');
+}
+
   var STORAGE_KEY = 'droboard_email_templates';
 
   function delay(ms) { return new Promise(function(r) { setTimeout(r, ms || 200); }); }

@@ -12,6 +12,7 @@
     { id: 'platform', label: 'Platform', icon: 'fa-megaphone' },
     { id: 'book', label: 'Book promo', icon: 'fa-book-open' },
     { id: 'native', label: 'Native', icon: 'fa-newspaper' },
+    { id: 'embed', label: 'Network embed', icon: 'fa-code' },
     { id: 'follow', label: 'Follow', icon: 'fa-user-plus' },
     { id: 'banner', label: 'Banner', icon: 'fa-flag' },
     { id: 'promo', label: 'Promo slide', icon: 'fa-images' },
@@ -25,12 +26,17 @@
     { id: 'home', label: 'Homepage' },
     { id: 'fullReader', label: 'Full Reader' },
     { id: 'scrollReader', label: 'Scroll Reader' },
+    { id: 'comments', label: 'Comments (all)' },
+    { id: 'discussion', label: 'Discussion' },
+    { id: 'droboardPage', label: 'Droboard Page' },
+    { id: 'profile', label: 'Profile' },
   ];
   /* field: [key, label, type] — type: text | area | img */
   const FIELDS = {
     platform: [['sponsor', 'Sponsor', 'text'], ['title', 'Headline', 'text'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
     book: [['title', 'Book title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['rating', 'Rating', 'text'], ['chapters', 'Chapters', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
     native: [['brand', 'Brand', 'text'], ['heading', 'Headline', 'text'], ['body', 'Body', 'area'], ['cta', 'CTA button', 'text'], ['image', 'Image', 'img']],
+    embed: [['brand', 'Network / label', 'text'], ['title', 'Internal label', 'text'], ['code', 'Ad network code (script / HTML)', 'area']],
     follow: [['name', 'Display name', 'text'], ['handle', 'Handle', 'text'], ['tagline', 'Tagline', 'text'], ['cta', 'CTA button', 'text'], ['avatar', 'Avatar', 'img']],
     banner: [['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
     promo: [['title', 'Title', 'text'], ['sub', 'Sub line', 'text'], ['author', 'Author', 'text'], ['cta', 'CTA button', 'text'], ['genre', 'Hub genre (blank = all hubs)', 'text'], ['img', 'Slide image', 'img']],
@@ -118,20 +124,33 @@
     set('plHomeInt', (p.home || {}).interval || 5);
     set('plFullInt', (p.fullReader || {}).interval || 3);
     set('plScrollInt', (p.scrollReader || {}).interval || 4);
+    const ff = document.getElementById('plFullFmt');
+    if (ff) ff.value = (p.fullReader || {}).format || 'auto';
+    const sf = document.getElementById('plScrollFmt');
+    if (sf) sf.value = (p.scrollReader || {}).format || 'auto';
     const ls = document.getElementById('plLibSlider');
     if (ls) ls.checked = (p.library || {}).promoSlider !== false;
+    const drb = document.getElementById('plDrbOn');
+    if (drb) drb.checked = (p.droboardPage || {}).enabled !== false;
+    set('plDrbInt', (p.droboardPage || {}).interval || 4);
+    const co = document.getElementById('plCommentsOn');
+    if (co) co.checked = (p.comments || {}).enabled !== false;
+    set('plCommentsInt', (p.comments || {}).interval || 5);
   }
   async function savePlacements() {
     const get = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
     const num = (v, fb) => { const n = parseInt(v, 10); return n > 0 ? n : fb; };
+    const getFmt = (id) => { const v = get(id); return ['auto', 'embed', 'native', 'book', 'platform', 'banner'].includes(v) ? v : 'auto'; };
     const patch = {
       discover: { interval: num(get('plDisInt'), 6), cycle: get('plDisCycle').split(',').map(s => s.trim()).filter(Boolean) },
       feed: { interval: num(get('plFeedInt'), 4) },
       genreHub: { interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
       home: { interval: num(get('plHomeInt'), 5) },
-      fullReader: { interval: num(get('plFullInt'), 3) },
-      scrollReader: { interval: num(get('plScrollInt'), 4) },
+      fullReader: { interval: num(get('plFullInt'), 3), format: getFmt('plFullFmt') },
+      scrollReader: { interval: num(get('plScrollInt'), 4), format: getFmt('plScrollFmt') },
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },
+      droboardPage: { interval: num(get('plDrbInt'), 4), enabled: !!document.getElementById('plDrbOn').checked },
+      comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked },
     };
     try {
       INV.placements = await MarketingData.savePlacements(patch);
@@ -304,6 +323,38 @@
       }
       return `<label class="f-lbl">${label}<input class="f-inp" data-k="${key}" value="${esc(ad[key] || '')}"/></label>`;
     }).join('');
+    if (fmt === 'embed') wrap.innerHTML += `<div style="font-size:11px;line-height:1.5;color:#b45309;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 10px;margin-top:8px">⚠️ This code runs with full page privileges wherever the ad serves. Paste only from ad networks you trust. Async tags work; legacy <i>document.write</i> tags do not.</div>`
+      + `<div style="margin-top:10px"><div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:6px">Live preview (sandboxed) <span id="mEmbedStatus" style="font-weight:600;color:var(--text-faint)"></span></div>`
+      + `<iframe id="mEmbedPreview" title="Ad preview" sandbox="allow-scripts" style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:8px;background:#fff"></iframe>`
+      + `<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button type="button" id="mEmbedTest" style="font-size:11px;font-weight:800;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);cursor:pointer">Open test page</button><span style="font-size:10.5px;color:var(--tx-faint,#999)">Pop / redirect tags render nothing here — verify them on the test page.</span></div></div>`;
+    const codeArea = wrap.querySelector('textarea[data-k="code"]');
+    if (codeArea) {
+      const renderPreview = function(){
+        var fr = document.getElementById('mEmbedPreview');
+        if (!fr) return;
+        var code = codeArea.value || '';
+        var st = document.getElementById('mEmbedStatus');
+        if (st) st.textContent = code.trim() ? '· loading…' : '';
+        fr.srcdoc = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:8px;font-family:sans-serif}</style></head><body>' + code + '</body></html>';
+      };
+      let pvT = null;
+      codeArea.addEventListener('input', function(){ clearTimeout(pvT); pvT = setTimeout(renderPreview, 600); });
+      renderPreview();
+      var fr0 = document.getElementById('mEmbedPreview');
+      if (fr0) fr0.addEventListener('load', function(){
+        var st = document.getElementById('mEmbedStatus');
+        if (st && codeArea.value.trim()) st.textContent = '· tag loaded — blank means it renders outside a box (pop/redirect)';
+      });
+      var testBtn = document.getElementById('mEmbedTest');
+      if (testBtn) testBtn.addEventListener('click', function(){
+        var code = codeArea.value || '';
+        if (!code.trim()) return;
+        var w = window.open('', '_blank');
+        if (!w) return;
+        w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ad test</title></head><body>' + code + '</body></html>');
+        w.document.close();
+      });
+    }
     const file = document.getElementById('mFile');
     if (file) file.addEventListener('change', () => {
       const f = file.files && file.files[0];

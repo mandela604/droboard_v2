@@ -23,10 +23,10 @@
   window.__droboardPromoSlider = true;
 
   const CSS = `
-    .dps-row{padding:10px 14px 8px;background:var(--l1,#08090c)}
+    .dps-row{padding:0;background:transparent}
     .dps-slider{
       position:relative;width:100%;height:87px;border-radius:14px;
-      overflow:hidden;background:var(--l2,#0e0f13);
+      overflow:hidden;background:var(--divider,#EFEDF2);
     }
     .dps-track{
       display:flex;width:100%;height:100%;will-change:transform;
@@ -56,7 +56,7 @@
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     }
     .dps-cta{
-      position:relative;z-index:2;flex-shrink:0;background:#fff;color:#ff0050;
+      position:relative;z-index:2;flex-shrink:0;background:#fff;color:var(--pink-deep,#D6165A);
       font-size:10px;font-weight:800;padding:7px 13px;border-radius:16px;
       white-space:nowrap;border:none;cursor:pointer;font-family:inherit;
       box-shadow:0 2px 10px rgba(0,0,0,.2);
@@ -69,8 +69,8 @@
     }
     .dps-dot.on{width:12px;border-radius:3px;background:#fff}
 
-    [data-theme="light"] .dps-row{background:var(--l1,#fff)}
-    [data-theme="light"] .dps-slider{background:var(--l2,#f1f1f1)}
+    [data-theme="light"] .dps-row{background:transparent}
+    [data-theme="light"] .dps-slider{background:var(--divider,#EFEDF2)}
   `;
 
   function _esc(s) {
@@ -86,18 +86,23 @@
     document.head.appendChild(style);
   }
 
+  function _storyHref(s) {
+    return 'bridge.html?id=' + encodeURIComponent((s && (s.id || s.title)) || '');
+  }
+
   /**
    * @param {string|Element} mount
    * @param {{ slides: Array, interval?: number, onSelect?: Function, eyebrow?: string }} opts
+   * Default click (no onSelect) mirrors library slider: slide/CTA → bridge.html?id=
    */
   function mount(mount, opts) {
     _ensureStyle();
     const root = typeof mount === 'string' ? document.querySelector(mount) : mount;
     if (!root) return null;
 
-    const slides = (opts && opts.slides) || [];
+    const slides = ((opts && opts.slides) || []).slice(0, 5);
     const interval = (opts && opts.interval) || 3200;
-    const onSelect = opts && opts.onSelect;
+    const onSelect = (opts && opts.onSelect) || (function (s) { location.href = _storyHref(s); });
     const eyebrow = (opts && opts.eyebrow) || 'Promoted';
 
     if (!slides.length) {
@@ -154,7 +159,7 @@
       const slideEl = e.target.closest('.dps-slide');
       if (!slideEl) return;
       const i = Number(cta ? cta.dataset.dpsCta : slideEl.dataset.dpsI);
-      if (typeof onSelect === 'function') onSelect(slides[i], i);
+      onSelect(slides[i], i);
     });
 
     let startX = 0, deltaX = 0, dragging = false;

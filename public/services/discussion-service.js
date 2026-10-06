@@ -65,6 +65,24 @@
     });
     return out;
   }
+  /* Official Droboard post → discussion OP shape (avatar from asset seed). */
+  function adaptDroboardPost(p) {
+    const hero = (window.DroboardPageSeed && window.DroboardPageSeed.DROBOARD_HERO) || {};
+    const text = p.text || p.note || p.title || '';
+    const motion = (p.debateData && p.debateData.motion) || '';
+    const pollQ = (p.poll && p.poll.q) || '';
+    return {
+      id: p.id, title: p.title || text.slice(0, 70) || 'Droboard post',
+      body: text || motion || pollQ,
+      name: 'Droboard', avatar: hero.avatar || '../assets/droboard-icon.png', time: p.time || '',
+      likes: p.likes || 0, liked: !!p.liked, comments: p.comments || 0,
+      media: p.image || null,
+      story: p.storyRef ? { title: p.storyRef.title, cover: p.storyRef.cover, writer: p.storyRef.writer } : null,
+      _genreId: null, _genreName: null, _feed: false, _droboard: true,
+      tag: p.type === 'announcement' ? 'Announcement' : p.type === 'debate' ? 'Debate' : p.type === 'shoutout' ? 'Shoutout' : null,
+      tagClass: 'discussion',
+    };
+  }
   function adaptFeedPost(p) {
     const text = p.text || p.quote || p.caption || p.note || (p.amaData && p.amaData.title) || '';
     return {
@@ -109,6 +127,17 @@
         }
       }
     }
+    /* Official Droboard page posts (d1..): resolved from the page seed so
+       See-more / view-replies links from anywhere land on a real thread. */
+    if (!POST && window.DroboardPageSeed) {
+      const all = [].concat(window.DroboardPageSeed.DROBOARD_POSTS || [], window.DroboardPageSeed.DROBOARD_MORE_POSTS || []);
+      try {
+        const extra = JSON.parse(localStorage.getItem('drb_posts_extra') || '[]');
+        if (Array.isArray(extra) && extra.length) extra.forEach(p => { if (p && p.id) all.unshift(p); });
+      } catch (e) {}
+      const hit = all.find(p => String(p.id) === String(postId));
+      if (hit) POST = adaptDroboardPost(hit);
+    }
     /* No silent fallback: unknown ids show the not-found state,
        exactly as production will. */
     document.getElementById('hubSub').textContent = (GENRE && GENRE.name && (GENRE_EXPLICIT || (POST && !POST._feed)))
@@ -125,7 +154,7 @@
       document.getElementById('discAd').style.display = 'none';
       return;
     }
-    if (POST.pinned) {
+    if (POST.pinned && !POST._droboard) {
       mount.innerHTML = `<div class="op">
         <div class="op-title">${esc(POST.title)}</div>
         <div class="op-body">${esc(POST.desc || POST.body || '')}</div>
@@ -190,16 +219,19 @@
     if (window.AdService) {
       try {
         const pools = await AdService.getAds({ page: 'discussion' });
+        const em = (pools.embed || []).find(a => a && a.code);
         const book = (pools.book || [])[0];
         const plat = (pools.platform || [])[0];
-        if (book) slot = { format: 'storyPromo', ad: Object.assign({}, book, { cat: (GENRE && GENRE.name) || book.cat }) };
+        if (em) slot = { format: 'embed', ad: em };
+        else if (book) slot = { format: 'storyPromo', ad: Object.assign({}, book, { cat: (GENRE && GENRE.name) || book.cat }) };
         else if (plat) slot = { format: 'platform', ad: plat };
       } catch (e) { slot = null; }
     }
     if (!slot) { el.style.display = 'none'; return; }
     let inner = '';
     try {
-      if (slot.format === 'platform') inner = DroboardAdCard.renderPlatform(slot.ad);
+      if (slot.format === 'embed' && DroboardAdCard.renderEmbed) inner = DroboardAdCard.renderEmbed(slot.ad);
+      else if (slot.format === 'platform') inner = DroboardAdCard.renderPlatform(slot.ad);
       else if (slot.format === 'native') inner = DroboardAdCard.renderNative(slot.ad);
       else inner = DroboardAdCard.renderStoryPromo(slot.ad);
     } catch (e) { el.style.display = 'none'; return; }
@@ -224,8 +256,12 @@
     });
   }
 
-  /* ── Comments: seed thread with the OP reply personalized ── */
+  /* ── Comments: droboard OPs reuse the page comment seed; everything
+     else keeps the genre demo thread. ── */
   function threadComments() {
+    if (POST && POST._droboard && window.COMMENTS_DATA) {
+      return JSON.parse(JSON.stringify(window.COMMENTS_DATA));
+    }
     const seed = (window.GenreDemoSeed && window.GenreDemoSeed.DEMO_THREAD_COMMENTS) || [];
     const list = JSON.parse(JSON.stringify(seed));
     if (POST && !POST.pinned) {
@@ -240,7 +276,7 @@
     return list;
   }
   function mountComments() {
-    if (window.DroboardComments && POST && !POST.pinned) {
+    if (window.DroboardComments && POST && !(POST.pinned && !POST._droboard)) {
       DroboardComments.attach('#commentsPlaceholder', {
         title: 'Replies',
         comments: threadComments(),
@@ -254,7 +290,7 @@
         onEdit: () => toast('✏️ Updated'),
         onProfileClick: (c) => { if (c && c.name) location.href = profileHref(c.name); },
       });
-    } else if (!POST || POST.pinned) {
+    } else if (!POST || (POST.pinned && !POST._droboard)) {
       document.getElementById('commentsPlaceholder').innerHTML =
         '<div class="empty" style="padding:24px 0">No thread on hub rules.</div>';
     } else {
@@ -263,6 +299,23 @@
     }
   }
 
+  /* ── Deep link (?comment=ID): scroll to + flash the comment ── */
+  function scrollToComment() {
+    let cid = null;
+    try { cid = new URLSearchParams(location.search).get('comment'); } catch (e) {}
+    if (!cid) return;
+    cid = String(cid).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!cid) return;
+    setTimeout(function () {
+      let el = null;
+      try { el = document.querySelector('[id$="-ci-' + cid + '"]'); } catch (e) {}
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow .3s';
+      el.style.boxShadow = '0 0 0 2px rgba(255,0,80,.55)';
+      setTimeout(function () { el.style.boxShadow = ''; }, 2400);
+    }, 450);
+  }
   /* ── Wiring ── */
   function initWiring() {
     document.getElementById('backBtn').addEventListener('click', () => {
@@ -298,6 +351,7 @@
     renderOp();
     await mountAd();
     mountComments();
+    scrollToComment();
   }
 
   window.DiscussionPage = { init, toast, toggleTheme, renderOp };

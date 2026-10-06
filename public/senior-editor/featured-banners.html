@@ -7,24 +7,15 @@
 @media (max-width:900px){.banners-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media (max-width:480px){.stats-grid{grid-template-columns:1fr}}
 </style></head>
 <body><div id="dashboardRoot">
-<div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Creating new banner…')"><i class="fas fa-plus"></i> Add New Banner</button></div>
-<div class="stats-grid">
-<div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-images"></i></div><span class="stat-delta">+2 from last month</span></div><div class="stat-num">14</div><div class="stat-lbl">Active Banners</div></div>
-<div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-calendar-check"></i></div><span class="stat-delta">+3 scheduled</span></div><div class="stat-num">5</div><div class="stat-lbl">Scheduled</div></div>
-<div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-eye"></i></div><span class="stat-delta">+24% from last month</span></div><div class="stat-num">68.2K</div><div class="stat-lbl">Total Impressions</div></div>
-<div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-mouse-pointer"></i></div><span class="stat-delta">3.2% CTR</span></div><div class="stat-num">2,182</div><div class="stat-lbl">Total Clicks</div></div>
+<div class="page-hdr-row"><div></div><button class="btn-add" onclick="FeaturedBannersService.createBanner()"><i class="fas fa-plus"></i> Add New Banner</button></div>
+<div class="stats-grid" id="statsGrid"></div>
 </div>
-<div class="banners-grid">
-<div class="banner-card"><div class="banner-preview" style="background:linear-gradient(135deg,#ff0050,#cc0040)"><span>🔥</span><div class="banner-overlay"><div class="title">Summer Reading Sale</div><div class="sub">40% off selected titles</div></div></div><div class="banner-body"><div class="banner-meta"><span class="position">Position: Home Hero</span><span class="date">Jun 1 - Jun 30, 2026</span></div><div class="banner-stats"><div><b>12.4K</b><span>Views</span></div><div><b>486</b><span>Clicks</span></div><div><b>3.9%</b><span>CTR</span></div></div><div class="banner-actions"><button onclick="toast('Editing banner…')">Edit</button><button onclick="toast('Pausing banner…')">Pause</button><button onclick="toast('Banner analytics…')">Analytics</button></div></div></div>
-<div class="banner-card"><div class="banner-preview" style="background:linear-gradient(135deg,#2d2154,#5b4bcf)"><span>🏆</span><div class="banner-overlay"><div class="title">Author Spotlight</div><div class="sub">Featured Author: Amara Okafor</div></div></div><div class="banner-body"><div class="banner-meta"><span class="position">Position: Sidebar</span><span class="date">Jun 15 - Jul 15, 2026</span></div><div class="banner-stats"><div><b>8.2K</b><span>Views</span></div><div><b>215</b><span>Clicks</span></div><div><b>2.6%</b><span>CTR</span></div></div><div class="banner-actions"><button onclick="toast('Editing banner…')">Edit</button><button onclick="toast('Pausing banner…')">Pause</button><button onclick="toast('Banner analytics…')">Analytics</button></div></div></div>
-<div class="banner-card"><div class="banner-preview" style="background:linear-gradient(135deg,#1f3a63,#2f7de1)"><span>📚</span><div class="banner-overlay"><div class="title">New Release: Bound by the Alpha</div><div class="sub">By Luna Skye - Read now</div></div></div><div class="banner-body"><div class="banner-meta"><span class="position">Position: Home Hero</span><span class="date">Jun 14 - Jul 14, 2026</span></div><div class="banner-stats"><div><b>6.8K</b><span>Views</span></div><div><b>178</b><span>Clicks</span></div><div><b>2.6%</b><span>CTR</span></div></div><div class="banner-actions"><button onclick="toast('Editing banner…')">Edit</button><button onclick="toast('Pausing banner…')">Pause</button><button onclick="toast('Banner analytics…')">Analytics</button></div></div></div>
-<div class="banner-card"><div class="banner-preview" style="background:linear-gradient(135deg,#0f5132,#16a34a)"><span>✍️</span><div class="banner-overlay"><div class="title">Writing Contest 2026</div><div class="sub">Win prizes up to $5,000</div></div></div><div class="banner-body"><div class="banner-meta"><span class="position">Position: Pop-up</span><span class="date">Jun 10 - Jul 10, 2026</span></div><div class="banner-stats"><div><b>24.8K</b><span>Views</span></div><div><b>1,203</b><span>Clicks</span></div><div><b>4.8%</b><span>CTR</span></div></div><div class="banner-actions"><button onclick="toast('Editing banner…')">Edit</button><button onclick="toast('Pausing banner…')">Pause</button><button onclick="toast('Banner analytics…')">Analytics</button></div></div></div>
+<div class="banners-grid" id="bannersGrid">
 </div>
 </div>
 <script src="shared/api.js"></script>
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script src="remaining-pages-enhanced.js"></script>
-<script>
-SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'featured-banners',title:'Featured & Banners',subtitle:'Manage promotional banners and featured content placements',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
-</script></body></html>
+<script src="services/featured-banners-service.js"></script>
+<script>window.FeaturedBannersService.init();</script></body></html>

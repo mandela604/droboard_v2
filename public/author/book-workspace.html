@@ -125,19 +125,7 @@ a{color:inherit;text-decoration:none}
 .pg-ellipsis{font-size:12px;color:var(--text-2);padding:0 3px;font-weight:700}
 .pg-info{width:100%;text-align:center;font-size:11.5px;color:var(--text-2);font-weight:600;margin-bottom:10px}
 
-/* ── BOOK TOOLS ── */
-.tools-title{font-size:18px;font-weight:700;letter-spacing:-.01em;margin-bottom:14px}
-.tool-list{display:flex;flex-direction:column;gap:10px}
-.tool-card{
-  display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-md);padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s ease;
-}
-.tool-card:active{transform:scale(.98)}
-.tool-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.tool-info{flex:1;min-width:0}
-.tool-title{font-size:13.5px;font-weight:700;margin-bottom:2px}
-.tool-desc{font-size:11.5px;color:var(--text-2);line-height:1.4}
-.tool-chev{color:var(--text-2);font-size:13px;flex-shrink:0}
+/* Book Tools styles removed */
 
 /* ── HAMBURGER DRAWER ── */
 .drawer-overlay{
@@ -229,7 +217,7 @@ a{color:inherit;text-decoration:none}
   <!-- CHAPTERS HEADER -->
   <div class="chapters-head">
     <h2 class="chapters-title">Chapters (<span id="chaptersTitleCount">56</span>)</h2>
-    <button class="new-chapter-btn"><i class="fas fa-plus"></i> New Chapter</button>
+    <button class="new-chapter-btn" id="newChapterBtn"><i class="fas fa-plus"></i> New Chapter</button>
   </div>
 
   <!-- SEARCH -->
@@ -242,10 +230,6 @@ a{color:inherit;text-decoration:none}
   <div class="pg-info" id="pgInfo"></div>
   <div class="chapter-list" id="chapterList"></div>
   <div class="chapters-pagination" id="chaptersPagination"></div>
-
-  <!-- BOOK TOOLS -->
-  <h2 class="tools-title">Book Tools</h2>
-  <div class="tool-list" id="toolList"></div>
 
 </div>
 
@@ -260,106 +244,22 @@ a{color:inherit;text-decoration:none}
   <div class="drawer-body" id="drawerBody"></div>
 </div>
 
+<script src="services/api-config.js"></script>
+<script src="services/drawer-service.js"></script>
+<script src="services/book-workspace-service.js"></script>
 <script>
-/* ═══════════════════════════════
-   DATA
-═══════════════════════════════ */
-const CHAPTER_TITLES = [
-  'The Beginning of Obsession', "The Girl He Shouldn't Want", "Lines We Shouldn't Cross",
-  'Secrets in the Dark', 'Falling Too Deep', 'The Truth He Hides', 'When Obsession Wins',
-  'The Point of No Return', 'What She Overheard', 'The Contract He Regrets',
-  'Two Rings, One Lie', 'The Night It Unraveled', 'Her Silence Was the Warning',
-  'A Debt He Never Mentioned', 'The Photograph in His Drawer', 'Nothing Left to Hide',
-  'The Apology He Never Gave', 'Between Loyalty and Love', 'The Room She Wasn\u2019t Meant to See',
-  'A Promise Written in Fear', 'The Morning After Everything Changed', 'He Chose Silence Again',
-  'The Weight of What She Knows', 'Every Door He Locked', 'The Call She Didn\u2019t Answer',
-  'What the Letter Said', 'A Stranger at the Wedding', 'The Truth About the Trip',
-  'She Found the Second Phone', 'The Last Time He Lied', 'Nothing Was an Accident',
-  'The Voice on the Recording', 'Her Sister Knew First', 'The Deal He Made Without Her',
-  'What Was Buried in the Garden', 'The Night the Power Went Out', 'He Never Meant for Her to Find It',
-  'A Debt Repaid in Silence', 'The Question She Finally Asked', 'What the Nanny Saw',
-  'The Ring He Took Back', 'Everything He Swore Wasn\u2019t True', 'The Last Message Sent',
-  'She Packed While He Slept', 'The Confession He Owed Her', 'A House Full of Secrets',
-  'The Photograph That Changed Everything', 'What Her Mother Warned Her About',
-  'The Night He Finally Chose', 'Nothing Left to Confess', 'The Beginning of the End',
-  'A Truth Worth the Cost', 'The Last Lie He Told', 'What She Chose to Forgive',
-  'The Door She Finally Opened', 'Where They Go From Here',
-];
+/* Page calls + renders only. Data lives in services/book-workspace-service.js */
+let BOOK_ID = new URLSearchParams(location.search).get('book') || 'b1';
+let CHAPTERS = [];
 
-const CHAPTERS = CHAPTER_TITLES.map((title, i) => {
-  const num = i + 1;
-  const isLast = num === CHAPTER_TITLES.length;
-  const isSecondLast = num === CHAPTER_TITLES.length - 1;
-  let status = isLast ? 'draft' : isSecondLast ? 'scheduled' : 'published';
-  if (num === 3) status = 'pending_review';
-  if (num === 4) status = 'revision_needed';
-  const day = 10 + (i % 40);
-  const dateLabel = status === 'published' ? `Published May ${day}, 2025`
-    : status === 'scheduled' ? `Scheduled May ${day}, 2025`
-    : status === 'pending_review' ? `Submitted for review`
-    : status === 'revision_needed' ? `Revision requested`
-    : `Last edited May ${day}, 2025`;
-  const views = status === 'published' ? `${(45 - i * 0.15).toFixed(1)}K` : '\u2013';
-  const words = (2100 + (i * 37) % 700).toLocaleString();
-  return { num, title, words, status, date: dateLabel, views };
-});
+/* Book Tools removed — preparing for backend. Tools will be re-added via service. */
 
-const TOOLS = [
-  { icon:'fa-book-open-reader', title:'Plotting / Story Bible', desc:'Plan your story arcs, twists, pacing and ending.', bg:'var(--purple-soft)', color:'var(--purple)', href:'plotting.html' },
-  { icon:'fa-user-group', title:'Characters', desc:'Manage characters and relationships.', bg:'var(--blue-soft)', color:'var(--blue)', href:'characters.html' },
-  { icon:'fa-earth-americas', title:'World Building', desc:'Locations, kingdoms, timelines and lore.', bg:'var(--success-soft)', color:'#158a48' },
-  { icon:'fa-note-sticky', title:'Notes', desc:'Ideas and research.', bg:'var(--warning-soft)', color:'var(--warning)' },
-  { icon:'fa-calendar-days', title:'Schedule', desc:'Plan chapter releases.', bg:'var(--primary-soft)', color:'var(--primary)' },
-  { icon:'fa-comments', title:'Reader Comments', desc:'Moderate comments.', bg:'var(--blue-soft)', color:'var(--blue)' },
-  { icon:'fa-sack-dollar', title:'Revenue', desc:'Track income.', bg:'var(--success-soft)', color:'#158a48' },
-  { icon:'fa-file-signature', title:'Contract', desc:'Apply for or view publishing contracts.', bg:'#F3E9DE', color:'#9A6A3A', href:'apply-contract.html' },
-  { icon:'fa-flag-checkered', title:'Completion', desc:'Apply for book completion review.', bg:'var(--success-soft)', color:'#158a48', href:'apply-completion.html' },
-  { icon:'fa-pen-to-square', title:'Chapter Review', desc:'Submit chapters for editor review.', bg:'var(--blue-soft)', color:'var(--blue)', href:'request-chapter-review.html' },
-  { icon:'fa-book-open', title:'Series Changes', desc:'Request series modifications.', bg:'var(--purple-soft)', color:'var(--purple)', href:'request-series-change.html' },
-  { icon:'fa-crown', title:'VIP Application', desc:'Apply for VIP author status.', bg:'#F3E9DE', color:'#9A6A3A', href:'apply-vip.html' },
-  { icon:'fa-lock', title:'Request Book Lock', desc:'Request to lock or unlock this book.', bg:'var(--warning-soft)', color:'#b45309', action:'openBookLockModal' },
-  { icon:'fa-gear', title:'Book Settings', desc:'Genre, visibility, cover, pricing, tags, delete book.', bg:'#F1F1F4', color:'#5c5c66' },
-];
+/* Drawer sections live in services/drawer-service.js */
 
-// Hamburger drawer tree — same structure as author-center.html; Chapters marked active here
-const MENU_SECTIONS = [
-  { title:'Author Center', items:[
-    { label:'Dashboard', icon:'fa-gauge', href:'author-center.html' },
-  ]},
-  { title:'Book Workspace', items:[
-    { label:'Chapters', icon:'fa-list-ul', href:'book-workspace.html', active:true },
-    { label:'Plotting', icon:'fa-diagram-project', href:'plotting.html' },
-    { label:'Characters', icon:'fa-user-group', href:'characters.html' },
-    { label:'Story Bible', icon:'fa-book-bookmark', href:'#' },
-  ]},
-  { title:'Applications', items:[
-    { label:'Contracts', icon:'fa-file-signature', href:'apply-contract.html' },
-    { label:'Completion', icon:'fa-flag-checkered', href:'apply-completion.html' },
-    { label:'Chapter Review', icon:'fa-pen-to-square', href:'request-chapter-review.html' },
-    { label:'Series Changes', icon:'fa-book-open', href:'request-series-change.html' },
-    { label:'VIP Application', icon:'fa-crown', href:'apply-vip.html' },
-  ]},
-  { title:'Finance', items:[
-    { label:'Earnings', icon:'fa-sack-dollar', href:'earnings.html' },
-    { label:'Transactions', icon:'fa-receipt', href:'transaction-history.html' },
-    { label:'Payment Details', icon:'fa-credit-card', href:'payment-details.html' },
-  ]},
-  { title:'Communication', items:[
-{ label:'Messages', icon:'fa-comment-dots', href:'../Pages/chat.html' },
-{ label:'Notifications', icon:'fa-bell', href:'../Pages/notifications.html' },
-  ]},
-  { title:'Settings', items:[
-    { label:'Settings', icon:'fa-gear', href:'#' },
-  ]},
-];
-
-/* ═══════════════════════════════
-   PAGINATION STATE — 12 chapters per page, replaces the old
-   "View All Chapters" button entirely.
-═══════════════════════════════ */
-const PAGE_SIZE = 12;
+/* Pagination — page size comes from service */
+const PAGE_SIZE = (window.BookWorkspaceService && window.BookWorkspaceService.PAGE_SIZE) || 12;
 let currentPage = 1; // 1-indexed
-const totalPages = Math.max(1, Math.ceil(CHAPTERS.length / PAGE_SIZE));
+let totalPages = 1;
 
 function chapterBadge(ch){
   if (ch.status === 'published') return `<span class="ch-dot published"></span>`;
@@ -436,62 +336,35 @@ function goToPage(p){
   document.querySelector('.chapters-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderTools(){
-  document.getElementById('toolList').innerHTML = TOOLS.map(t => {
-    const tag = t.href ? 'a' : 'div';
-    const hrefAttr = t.href ? ` href="${t.href}"` : '';
-    const actionAttr = t.action ? ` data-action="${t.action}"` : '';
-    return `<${tag} class="tool-card"${hrefAttr}${actionAttr}>
-      <div class="tool-icon" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
-      <div class="tool-info">
-        <div class="tool-title">${t.title}</div>
-        <div class="tool-desc">${t.desc}</div>
-      </div>
-      <i class="fas fa-chevron-right tool-chev"></i>
-    </${tag}>`;
-  }).join('');
+/* renderTools removed with Book Tools section */
 
-  document.querySelectorAll('.tool-card[data-action]').forEach(function(card){
-    card.addEventListener('click', function(e){
-      e.preventDefault();
-      var action = this.dataset.action;
-      if(action === 'openBookLockModal' && typeof window.openBookLockModal === 'function'){
-        window.openBookLockModal();
-      }
-    });
-  });
+async function initWorkspace(){
+  try {
+    const [book, chRes] = await Promise.all([
+      window.BookWorkspaceService.getBook(BOOK_ID),
+      window.BookWorkspaceService.getChapters(BOOK_ID, 1, 1000)
+    ]);
+    // book header (render only)
+    document.querySelector('.bh-title').textContent = book.title;
+    document.querySelector('.bh-genre').textContent = book.genre;
+    document.querySelector('.bh-cover img').src = book.cover;
+    CHAPTERS = chRes.items || chRes.total ? (chRes.items || []) : [];
+    // fallback: service returns {total, items}
+    if (!CHAPTERS.length && chRes.total) CHAPTERS = chRes.items || [];
+    totalPages = Math.max(1, Math.ceil(CHAPTERS.length / PAGE_SIZE));
+    document.getElementById('bhChapterCount').textContent = CHAPTERS.length;
+    document.getElementById('chaptersTitleCount').textContent = CHAPTERS.length;
+    renderChapters();
+  } catch(e) { document.getElementById('pgInfo').textContent = 'Failed to load chapters'; }
 }
 
-function renderDrawer(){
-  document.getElementById('drawerBody').innerHTML = MENU_SECTIONS.map(sec => `
-    <div class="drawer-section">
-      <div class="drawer-section-title">${sec.title}</div>
-      ${sec.items.map(it => `
-        <a class="drawer-item${it.active ? ' active' : ''}" href="${it.href}">
-          <i class="fas ${it.icon}"></i>${it.label}
-          ${it.badge ? `<span class="drawer-item-badge">${it.badge}</span>` : ''}
-        </a>`).join('')}
-    </div>`).join('');
-}
+initWorkspace();
+if (window.AuthorDrawer) { window.AuthorDrawer.render('book-workspace.html'); window.AuthorDrawer.bind(); }
 
-document.getElementById('bhChapterCount').textContent = CHAPTERS.length;
-document.getElementById('chaptersTitleCount').textContent = CHAPTERS.length;
-renderChapters();
-renderTools();
-renderDrawer();
-
-/* ── Drawer open/close ── */
-const menuBtn = document.getElementById('menuBtn');
-const drawer = document.getElementById('drawer');
-const drawerOverlay = document.getElementById('drawerOverlay');
-const drawerClose = document.getElementById('drawerClose');
-
-function openDrawer(){ drawer.classList.add('open'); drawerOverlay.classList.add('open'); }
-function closeDrawer(){ drawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
-
-menuBtn.addEventListener('click', openDrawer);
-drawerClose.addEventListener('click', closeDrawer);
-drawerOverlay.addEventListener('click', closeDrawer);
+// + New Chapter -> create page (backend-ready)
+document.getElementById('newChapterBtn').addEventListener('click', function(){
+  location.href = '../Pages/create.html?book=' + encodeURIComponent(BOOK_ID) + '&newChapter=1';
+});
 
 /* ── Shared components: force the correct active tab on both bars.
      workspace-tabs.js already auto-detects "chapters" from the

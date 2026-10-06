@@ -18,7 +18,7 @@
 </head>
 <body>
 <div id="dashboardRoot">
-  <div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Exporting earnings report…')"><i class="fas fa-download"></i> Export Report</button></div>
+  <div class="page-hdr-row"><div></div><button class="btn-add" onclick="EarningsOverviewService.exportReport()"><i class="fas fa-download"></i> Export Report</button></div>
   <div class="stats-grid">
     <div class="stat-card"><div class="num" style="color:var(--green)">$284.5K</div><div class="lbl">Total Platform Earnings</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +18% from last month</div></div>
     <div class="stat-card"><div class="num" style="color:var(--accent)">$148.2K</div><div class="lbl">Author Payouts</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +22% from last month</div></div>
@@ -26,7 +26,7 @@
     <div class="stat-card"><div class="num" style="color:var(--amber)">$43.9K</div><div class="lbl">Ad Revenue</div><div class="delta down"><i class="fas fa-arrow-down" style="font-size:8px"></i> -3% from last month</div></div>
   </div>
   <div class="charts-grid">
-    <div class="panel"><div class="panel-head"><h2>Monthly Earnings Trend</h2><a onclick="toast('Opening detailed analytics…')">View Details</a></div>
+    <div class="panel"><div class="panel-head"><h2>Monthly Earnings Trend</h2><a onclick="EarningsOverviewService.openDetailedAnalytics()">View Details</a></div>
       <div class="legend">
         <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>Author Payouts</div>
         <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span>Platform Commission</div>
@@ -34,7 +34,7 @@
       </div>
       <div class="bar-chart" id="earningsChart"></div>
     </div>
-    <div class="panel"><div class="panel-head"><h2>Top Earning Authors</h2><a onclick="toast('Opening full leaderboard…')">View All</a></div>
+    <div class="panel"><div class="panel-head"><h2>Top Earning Authors</h2><a onclick="EarningsOverviewService.openFullLeaderboard()">View All</a></div>
       <div id="topEarners"></div>
     </div>
   </div>
@@ -43,18 +43,6 @@
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script src="remaining-pages-enhanced.js"></script>
-<script>
-SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
-const MONTHS=['Jan','Feb','Mar','Apr','May','Jun'];const AUTHOR_DATA=[45600,38900,32400,35600,41200,48300];const PLATFORM_DATA=[28400,25600,23800,26400,29100,30800];const AD_DATA=[12600,11800,10900,11400,12100,11500];
-function renderChart(){const max=Math.max(...AUTHOR_DATA,...PLATFORM_DATA,...AD_DATA);const c=document.getElementById('earningsChart');c.innerHTML=MONTHS.map((m,i)=>{const ah=(AUTHOR_DATA[i]/max)*140;const ph=(PLATFORM_DATA[i]/max)*140;const adh=(AD_DATA[i]/max)*140;return `<div class="bar"><div style="display:flex;flex-direction:column;gap:2px;width:100%;align-items:center"><div class="bar-fill" style="height:${ah}px;background:var(--green)"></div><div class="bar-fill" style="height:${ph}px;background:var(--accent)"></div><div class="bar-fill" style="height:${adh}px;background:var(--blue)"></div></div><div class="bar-lbl">${m}</div></div>`}).join('')}
-const TOP_EARNERS=[
-  {name:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',book:'The Ruthless CEO',earn:'$24,110',pct:'+22%'},
-  {name:'Isabella Rossi',avatar:'https://i.pravatar.cc/100?img=38',book:'His Hidden Luna',earn:'$21,050',pct:'+18%'},
-  {name:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',book:'Bound by the Alpha',earn:'$18,420',pct:'+15%'},
-  {name:'Layla Haddad',avatar:'https://i.pravatar.cc/100?img=48',book:'Broken Vows',earn:'$15,780',pct:'+12%'},
-];
-function renderTopEarners(){document.getElementById('topEarners').innerHTML=TOP_EARNERS.map(e=>`<div class="pp-row"><img class="pp-av" src="${e.avatar}"/><div class="pp-info"><div class="pp-name">${e.name}</div><div class="pp-book">${e.book}</div></div><div class="pp-earn"><b>${e.earn}</b><span>${e.pct}</span></div></div>`).join('')}
-renderChart();renderTopEarners();
-</script>
+<script src="services/earnings-overview-service.js"></script><script>EarningsOverviewService.init();</script>
 </body>
 </html>

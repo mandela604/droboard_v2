@@ -5,20 +5,12 @@
 @media (max-width:800px){.pages-grid{grid-template-columns:1fr}}
 </style></head>
 <body><div id="dashboardRoot">
-<div class="page-hdr-row"><div></div><button class="btn-add" onclick="toast('Creating new system page…')"><i class="fas fa-plus"></i> New Page</button></div>
-<div class="pages-grid">
-<div class="page-card"><div class="page-top"><div class="page-icon pink"><i class="fas fa-house"></i></div><div><div class="page-title">Home Page</div><div class="page-url">/home</div></div></div><div class="page-status"><span class="status-dot active"></span> Published · Last updated: Jun 15, 2026</div><div class="page-actions"><button onclick="toast('Editing Home Page…')">Edit</button><button onclick="toast('Previewing Home Page…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon blue"><i class="fas fa-circle-info"></i></div><div><div class="page-title">About Us</div><div class="page-url">/about</div></div></div><div class="page-status"><span class="status-dot active"></span> Published · Last updated: Jun 10, 2026</div><div class="page-actions"><button onclick="toast('Editing About Us…')">Edit</button><button onclick="toast('Previewing About Us…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon amber"><i class="fas fa-envelope"></i></div><div><div class="page-title">Contact Us</div><div class="page-url">/contact</div></div></div><div class="page-status"><span class="status-dot active"></span> Published · Last updated: Jun 8, 2026</div><div class="page-actions"><button onclick="toast('Editing Contact Us…')">Edit</button><button onclick="toast('Previewing Contact Us…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon purple"><i class="fas fa-file-lines"></i></div><div><div class="page-title">Terms of Service</div><div class="page-url">/terms</div></div></div><div class="page-status"><span class="status-dot active"></span> Published · Last updated: Jun 5, 2026</div><div class="page-actions"><button onclick="toast('Editing Terms…')">Edit</button><button onclick="toast('Previewing Terms…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon green"><i class="fas fa-shield"></i></div><div><div class="page-title">Privacy Policy</div><div class="page-url">/privacy</div></div></div><div class="page-status"><span class="status-dot active"></span> Published · Last updated: Jun 3, 2026</div><div class="page-actions"><button onclick="toast('Editing Privacy Policy…')">Edit</button><button onclick="toast('Previewing Privacy Policy…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon pink"><i class="fas fa-question-circle"></i></div><div><div class="page-title">FAQ</div><div class="page-url">/faq</div></div></div><div class="page-status"><span class="status-dot draft"></span> Draft · Last updated: May 28, 2026</div><div class="page-actions"><button onclick="toast('Editing FAQ…')">Edit</button><button onclick="toast('Previewing FAQ…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon blue"><i class="fas fa-bullhorn"></i></div><div><div class="page-title">Help Center</div><div class="page-url">/help</div></div></div><div class="page-status"><span class="status-dot draft"></span> Draft · Last updated: May 25, 2026</div><div class="page-actions"><button onclick="toast('Editing Help Center…')">Edit</button><button onclick="toast('Previewing Help Center…')">Preview</button></div></div>
-<div class="page-card"><div class="page-top"><div class="page-icon amber"><i class="fas fa-gavel"></i></div><div><div class="page-title">Community Guidelines</div><div class="page-url">/guidelines</div></div></div><div class="page-status"><span class="status-dot hidden"></span> Hidden · Last updated: May 20, 2026</div><div class="page-actions"><button onclick="toast('Editing Guidelines…')">Edit</button><button onclick="toast('Previewing Guidelines…')">Preview</button></div></div>
+<div class="page-hdr-row"><div></div><button class="btn-add" onclick="SystemPagesService.createPage()"><i class="fas fa-plus"></i> New Page</button></div>
+<div class="pages-grid" id="pagesGrid">
 </div>
 </div>
 <script src="shared/api.js"></script>
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="remaining-pages-enhanced.js"></script>
-<script>SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'system-pages',title:'System Pages',subtitle:'Manage all system and static pages on your platform',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});</script></body></html>
+<script src="services/system-pages-service.js"></script>
+<script>SystemPagesService.init();</script></body></html>

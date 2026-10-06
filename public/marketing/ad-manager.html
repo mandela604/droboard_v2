@@ -162,14 +162,26 @@ body{font-family:'Inter',system-ui,sans-serif}
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-book-open" style="color:var(--blue)"></i> Full Reader</div>
         <label class="pl-lbl">Ad every N chapters</label><input class="pl-inp" id="plFullInt" type="number" min="1" value="3"/>
+        <label class="pl-lbl">Ad format</label><select class="pl-inp" id="plFullFmt"><option value="auto">Auto (rotate)</option><option value="embed">Network embed</option><option value="native">Native</option><option value="book">Book (gold)</option><option value="platform">Platform</option><option value="banner">Banner</option></select>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-scroll" style="color:var(--amber)"></i> Scroll Reader</div>
         <label class="pl-lbl">Ad every N chapters</label><input class="pl-inp" id="plScrollInt" type="number" min="1" value="4"/>
+        <label class="pl-lbl">Ad format</label><select class="pl-inp" id="plScrollFmt"><option value="auto">Auto (rotate)</option><option value="embed">Network embed</option><option value="native">Native</option><option value="book">Book (gold)</option><option value="platform">Platform</option><option value="banner">Banner</option></select>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-images" style="color:var(--purple)"></i> Library slider</div>
         <label class="pl-check"><input type="checkbox" id="plLibSlider" checked/> Show promo slider</label>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-shield-halved" style="color:var(--blue)"></i> Droboard Page</div>
+        <label class="pl-check"><input type="checkbox" id="plDrbOn" checked/> Ads in page feed</label>
+        <label class="pl-lbl">Every N posts</label><input class="pl-inp" id="plDrbInt" type="number" min="1" value="4"/>
+      </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-comments" style="color:var(--accent)"></i> Comments</div>
+        <label class="pl-check"><input type="checkbox" id="plCommentsOn" checked/> Top ad in comments & replies</label>
+        <label class="pl-lbl">Top + every N comments</label><input class="pl-inp" id="plCommentsInt" type="number" min="1" value="5"/>
       </div>
     </div>
     <div class="pl-actions">
@@ -218,6 +230,7 @@ body{font-family:'Inter',system-ui,sans-serif}
         <option value="follow">Follow promo</option>
         <option value="banner">Banner</option>
         <option value="promo">Promo slide (library / hub sliders)</option>
+        <option value="embed">Network embed (AdSense / Adsterra / Monetag)</option>
       </select>
     </label>
     <div id="mStoryWrap" style="display:none">

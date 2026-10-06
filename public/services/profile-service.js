@@ -190,12 +190,16 @@
   }
 
   function renderStats(p) {
+    const handle = p.handle || p.username || VIEW_HANDLE;
     document.getElementById('statsRow').innerHTML = getStatsForProfile(p).map(s => {
-      const linkable = (s.label === 'Following' || s.label === 'Followers') ? ' data-goto="following"' : '';
+      const isFollow = s.label === 'Following' || s.label === 'Followers';
+      const tab = s.label.toLowerCase();
+      const href = isFollow ? `followers.html?u=${encodeURIComponent(handle)}&tab=${tab}` : '';
+      const linkable = isFollow ? ` data-href="${href}" style="cursor:pointer"` : '';
       return `<div class="stat-item"${linkable}><div class="stat-num ${s.cls}">${fmtN(s.value)}</div><div class="stat-label">${s.label}</div></div>`;
     }).join('');
-    document.querySelectorAll('#statsRow .stat-item[data-goto]').forEach(el => {
-      el.addEventListener('click', () => switchTab(el.dataset.goto));
+    document.querySelectorAll('#statsRow .stat-item[data-href]').forEach(el => {
+      el.addEventListener('click', () => location.href = el.dataset.href);
     });
   }
   function renderAchievements(p) {
@@ -290,45 +294,56 @@
     DroboardCollectionCard.setCollections(withIds);
   }
 
-  /* ── Following — via FollowList component (paginated, reusable) ── */
+  /* ── Following — via FollowList component (paginated, reusable — same as genre hub members) ── */
   let followApi = null;
   function renderFollowing(p) {
-    document.getElementById('followingIntro').innerHTML = `Following <strong style="color:var(--tx-high)">${p.stats.following}</strong> writers &amp; readers`;
-    let list = (p.following || []).map(f => ({ handle: f.name, name: f.name, avatar: f.av, av: f.av, meta: f.meta, following: !!f.following }));
-    // pad to 12 for demo pagination (8 per page = 2 pages)
-    if (list.length && list.length < 12) {
-      const extra = ['Alex_Jones','Mira_Lee','Sam_Wilson','Nina_Patel','Leo_King','Ivy_Chen','Omar_Farouk','Tara_Singh','Yuna_Kim','Jude_Obi'];
-      let i=0; while(list.length < 12 && i < extra.length) {
-        const h = extra[i++]; if (list.find(x=>x.handle===h)) continue;
-        list.push({ handle:h, name:h, avatar:'https://i.pravatar.cc/100?img='+(10+i), av:'https://i.pravatar.cc/100?img='+(10+i), meta:'Reader · demo follow', following: Math.random() > 0.5 });
-      }
-    }
-    if (!followApi) {
-      followApi = FollowList.attach('#followingList', {
-        perPage: 8,
-        emptyText: 'Not following anyone yet.',
-        onProfileClick: (h) => location.href='profile.html?u='+encodeURIComponent(h),
-        onToggle: async (handle, item, btn) => {
-          if (!item) return;
-          btn.disabled = true;
-          const idx = PROFILE.following.findIndex(x=>x.name===handle);
-          // demo extra items not in PROFILE.following — toggle locally only
-          if (idx===-1) {
-            item.following = !item.following;
-            const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = item.following;
-            followApi.render(); btn.disabled=false; toast(item.following ? `Following @${handle}` : `Unfollowed @${handle}`); return;
-          }
-          const row = PROFILE.following[idx];
-          try { const call = row.following ? ProfileData.unfollowUser : ProfileData.followUser; await call(ME_HANDLE, row.name); } catch(e){}
-          row.following = !row.following;
-          item.following = row.following;
-          const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = row.following;
-          followApi.render(); btn.disabled=false;
-          toast(row.following ? `Following @${handle}` : `Unfollowed @${handle}`);
+    const handle = PROFILE.handle || PROFILE.username || VIEW_HANDLE;
+    const intro = document.getElementById('followingIntro');
+    if (intro) intro.innerHTML = `<span>Following <strong style="color:var(--tx-high)">${p.stats.following}</strong> writers &amp; readers</span><a href="followers.html?u=${encodeURIComponent(handle)}&tab=following" style="float:right;color:var(--acc);font-weight:700;text-decoration:none">View all ›</a><div style="clear:both"></div>`;
+    const el = document.getElementById('followingList');
+    if (!el) return;
+    // Use FollowList if available, else fallback to inline (so tab never breaks)
+    if (window.FollowList) {
+      let list = (p.following || []).map(f => ({ handle: f.name, name: f.name, avatar: f.av, av: f.av, meta: f.meta, following: !!f.following }));
+      if (list.length && list.length < 12) {
+        const extra = ['Alex_Jones','Mira_Lee','Sam_Wilson','Nina_Patel','Leo_King','Ivy_Chen','Omar_Farouk','Tara_Singh','Yuna_Kim','Jude_Obi'];
+        let i=0; while(list.length < 12 && i < extra.length) {
+          const h = extra[i++]; if (list.find(x=>x.handle===h)) continue;
+          list.push({ handle:h, name:h, avatar:'https://i.pravatar.cc/100?img='+(10+i), av:'https://i.pravatar.cc/100?img='+(10+i), meta:'Reader · demo follow', following: Math.random() > 0.5 });
         }
-      });
+      }
+      if (!followApi) {
+        followApi = FollowList.attach('#followingList', {
+          perPage: 8,
+          emptyText: 'Not following anyone yet.',
+          onProfileClick: (h) => location.href='profile.html?u='+encodeURIComponent(h),
+          onToggle: async (handle, item, btn) => {
+            if (!item) return;
+            btn.disabled = true;
+            const idx = PROFILE.following.findIndex(x=>x.name===handle);
+            if (idx===-1) {
+              item.following = !item.following;
+              const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = item.following;
+              followApi.render(); btn.disabled=false; toast(item.following ? `Following @${handle}` : `Unfollowed @${handle}`); return;
+            }
+            const row = PROFILE.following[idx];
+            try { const call = row.following ? ProfileData.unfollowUser : ProfileData.followUser; await call(ME_HANDLE, row.name); } catch(e){}
+            row.following = !row.following;
+            item.following = row.following;
+            const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = row.following;
+            followApi.render(); btn.disabled=false;
+            toast(row.following ? `Following @${handle}` : `Unfollowed @${handle}`);
+          }
+        });
+      }
+      followApi.setData(list);
+      // force re-render if tab was hidden when first attached (display:none → pager mis-measure)
+      setTimeout(()=> followApi.render(), 30);
+      return;
     }
-    followApi.setData(list);
+    // Fallback inline (if component missing)
+    if (!p.following || !p.following.length) { el.innerHTML = `<div class="panel-empty"><i class="fas fa-user-group"></i>Not following anyone yet.</div>`; return; }
+    el.innerHTML = p.following.map((f, i) => `<div class="follow-item"><a class="follow-av" href="profile.html?u=${encodeURIComponent(f.name)}"><img src="${f.av}" loading="lazy"/></a><div class="follow-info"><div class="follow-name">@${f.name}</div><div class="follow-meta">${f.meta}</div></div><button class="follow-btn${f.following ? ' ing' : ''}" data-i="${i}">${f.following ? '✓ Following' : '+ Follow'}</button></div>`).join('');
   }
 
   /* ── About ── */
@@ -592,94 +607,31 @@
     toast(`✅ Collection updated · ${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`);
   }
 
-  /* ── Drawer ── */
+  /* ── Drawer (shared component/profile-menu.js) ── */
   function openDrawer() {
     if (!PROFILE) { toast('Still loading your profile…'); return; }
-    document.getElementById('drawer').classList.add('open');
-    document.getElementById('drawerOverlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    renderDrawer(PROFILE);
+    if (window.DroboardProfileMenu) DroboardProfileMenu.open();
   }
   function closeDrawer() {
-    document.getElementById('drawer').classList.remove('open');
-    document.getElementById('drawerOverlay').classList.remove('open');
-    document.body.style.overflow = '';
+    if (window.DroboardProfileMenu) DroboardProfileMenu.close();
   }
   function renderDrawer(p) {
-    document.getElementById('drawerAv').src = p.avatar;
-    document.getElementById('drawerName').textContent = p.name;
-    document.getElementById('drawerHandle').textContent = `@${p.handle} · ${fmtN(p.stats.followers)} followers`;
-    document.getElementById('drawerBadge').textContent = p.isWriter ? '✍️ Verified Writer' : '📖 Verified Reader';
-    let html = `<div class="drawer-section"><div class="drawer-section-title">Create</div>`;
-    html += `<button class="drawer-item" id="drawerNewPost"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border:1px solid var(--bd-acc)"><i class="fas fa-pen" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title">New Post</div><div class="drawer-item-sub">${p.isWriter ? 'Text, photo, chapter or AMA' : 'Quote, reaction or recommendation'}</div></div></button>`;
-    if (p.isWriter) html += `<button class="drawer-item" id="drawerNewBook"><div class="drawer-item-icon" style="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.12)"><i class="fas fa-book-open" style="color:var(--green)"></i></div><div style="flex:1"><div class="drawer-item-title">New Book</div><div class="drawer-item-sub">Start a new story</div></div></button>`;
-    html += `</div><div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">My Content</div>`;
-    if (p.isWriter) {
-      html += `<button class="drawer-item" id="drawerBooksLink"><div class="drawer-item-icon" style="background:rgba(255,0,80,.06);border:1px solid var(--bd-acc)"><i class="fas fa-book" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title">Books</div><div class="drawer-item-sub">${(p.books || []).length} published</div></div><div class="drawer-item-right"><span class="drawer-badge-sm">${(p.books || []).length}</span></div></button>`;
-      if (IS_OWNER) html += `<button class="drawer-item" onclick="location.href='../author/author-center.html'"><div class="drawer-item-icon" style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.15)"><i class="fas fa-gauge" style="color:var(--purple)"></i></div><div style="flex:1"><div class="drawer-item-title">Author Center</div><div class="drawer-item-sub">Dashboard, analytics &amp; revenue</div></div></button>`;
-    } else {
-      html += `<button class="drawer-item" id="drawerLibraryTab"><div class="drawer-item-icon" style="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.12)"><i class="fas fa-bookmark" style="color:var(--blue)"></i></div><div style="flex:1"><div class="drawer-item-title">Library</div><div class="drawer-item-sub">${(p.library || []).length} saved stories</div></div></button>`;
-    }
-    html += `<button class="drawer-item" id="drawerCollectionsLink"><div class="drawer-item-icon" style="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.12)"><i class="fas fa-folder" style="color:var(--green)"></i></div><div style="flex:1"><div class="drawer-item-title">Collections</div><div class="drawer-item-sub" id="drawerCollSub">${(p.collections || []).length} curated lists</div></div></button>`;
-    html += `<button class="drawer-item" id="drawerFollowingLink"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-user-group" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Following</div><div class="drawer-item-sub">${p.stats.following} accounts</div></div></button>`;
-    if (IS_OWNER && !p.isWriter) html += `<button class="drawer-item" id="drawerBecomeWriter"><div class="drawer-item-icon" style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.12)"><i class="fas fa-feather-pointed" style="color:var(--purple)"></i></div><div style="flex:1"><div class="drawer-item-title">Become a Writer</div><div class="drawer-item-sub">Unlock books &amp; author tools</div></div></button>`;
-    html += `</div>`;
-    // My Circle — same 2+2 as feed
-    const boardsData = getMyBoardsForProfile();
-    const collDataP = getMyCollectionsForProfile();
-    html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">My Circle</div>`;
-    html += `<button class="drawer-item" id="profileMyCircleToggle"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border:1px solid var(--bd-acc)"><i class="fas fa-circle-nodes" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title">My Circles</div><div class="drawer-item-sub">${boardsData.joined.length} boards · ${collDataP.joined.length} collections</div></div><i class="fas fa-chevron-right" id="profileMyCircleChevron" style="font-size:10px;transition:transform .2s"></i></button>`;
-    html += `<div id="profileMyCircleBody" style="display:none;padding:4px 0 8px">`;
-    html += `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px 4px">My Boards</div>`;
-    html += boardsData.joined.map(g=> `<button class="drawer-item" data-board="${g.id}"><div class="drawer-item-icon"><i class="fas ${g.icon}"></i></div><div style="flex:1"><div class="drawer-item-title">${g.name}</div><div class="drawer-item-sub">${g.members} members</div></div><i class="fas fa-chevron-right" style="font-size:10px"></i></button>`).join('');
-    html += `<button class="drawer-item" id="profileBoardsViewAll" style="color:var(--acc)"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border-color:var(--bd-acc)"><i class="fas fa-arrow-right" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--acc)">View all boards</div></div></button>`;
-    html += `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px 4px">My Collections</div>`;
-    html += collDataP.joined.map(c=> `<button class="drawer-item" data-coll="${c.id}"><div class="drawer-item-icon"><i class="fas fa-folder"></i></div><div style="flex:1"><div class="drawer-item-title">${c.name}</div><div class="drawer-item-sub">${c.count} stories</div></div><i class="fas fa-chevron-right" style="font-size:10px"></i></button>`).join('');
-    html += `<button class="drawer-item" id="profileCollViewAll" style="color:var(--acc)"><div class="drawer-item-icon" style="background:rgba(255,0,80,.08);border-color:var(--bd-acc)"><i class="fas fa-arrow-right" style="color:var(--acc)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--acc)">View all collections</div></div></button>`;
-    html += `</div></div>`;
-    if (IS_OWNER) html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">Wallet</div><button class="drawer-item" onclick="location.href='store.html'"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.3)"><i class="fas fa-wallet" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:var(--gold)">Wallet</div><div class="drawer-item-sub">Coins, balance &amp; payouts</div></div><div class="drawer-item-right"><i class="fas fa-chevron-right" style="font-size:10px"></i></div></button></div>`;
-    html += `<div class="drawer-divider"></div><div class="drawer-section"><div class="drawer-section-title">Account</div>`;
-    if (IS_OWNER) html += `<button class="drawer-item" onclick="location.href='edit-profile.html'"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-user-edit" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Edit Profile</div><div class="drawer-item-sub">Name, bio, avatar, genres</div></div></button><button class="drawer-item" onclick="location.href='settings.html'"><div class="drawer-item-icon" style="background:rgba(0,0,0,.04);border:1px solid var(--bd)"><i class="fas fa-gear" style="color:var(--tx-muted)"></i></div><div style="flex:1"><div class="drawer-item-title">Settings</div><div class="drawer-item-sub">Privacy, notifications, payout</div></div></button>`;
-    html += `<button class="drawer-item" id="drawerReferBtn"><div class="drawer-item-icon" style="background:var(--gold-soft);border:1px solid rgba(240,168,0,.2)"><i class="fas fa-share-alt" style="color:var(--gold)"></i></div><div style="flex:1"><div class="drawer-item-title">Refer a Friend</div><div class="drawer-item-sub">Earn $5 per referral</div></div></button>`;
-    html += `<button class="drawer-item" id="drawerSignOutBtn"><div class="drawer-item-icon" style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15)"><i class="fas fa-sign-out-alt" style="color:#dc2626"></i></div><div style="flex:1"><div class="drawer-item-title" style="color:#dc2626">Sign Out</div></div></button></div>`;
-    document.getElementById('drawerBody').innerHTML = html;
-    // restore My Circle expanded from previous open
-    try{
-      const saved=JSON.parse(localStorage.getItem('profile_myCircles_expanded')||'null');
-      if(saved){
-        const b=document.getElementById('profileMyCircleBody');
-        const c=document.getElementById('profileMyCircleChevron');
-        if(b) b.style.display='block';
-        if(c) c.style.transform='rotate(90deg)';
-      }
-    }catch(e){}
-    const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
-    bind('drawerNewPost', openNewPostComposer);
-    bind('drawerNewBook', () => { closeDrawer(); location.href = 'create.html'; });
-    bind('drawerBooksLink', () => { closeDrawer(); switchTab('books'); });
-    bind('drawerLibraryTab', () => { closeDrawer(); switchTab('library'); });
-    bind('drawerCollectionsLink', () => { closeDrawer(); switchTab('collections'); });
-    bind('drawerFollowingLink', () => { closeDrawer(); switchTab('following'); });
-    bind('drawerBecomeWriter', openUpgradeWizard);
-    bind('drawerReferBtn', () => { toast('🤝 Referral service isn\'t wired up yet'); closeDrawer(); });
-    bind('drawerSignOutBtn', async () => { closeDrawer(); if (window.AuthSession) await AuthSession.logout(); toast('👋 Signed out!'); setTimeout(() => location.href = 'index.html', 600); });
-    // My Circle accordion
-    const myCircleToggle=document.getElementById('profileMyCircleToggle');
-    const myCircleBody=document.getElementById('profileMyCircleBody');
-    const myCircleChevron=document.getElementById('profileMyCircleChevron');
-    if(myCircleToggle && myCircleBody){
-      myCircleToggle.addEventListener('click', ()=>{
-        const isOpen=myCircleBody.style.display!=='none';
-        myCircleBody.style.display=isOpen?'none':'block';
-        if(myCircleChevron) myCircleChevron.style.transform=isOpen?'':'rotate(90deg)';
-        try{ localStorage.setItem('profile_myCircles_expanded', JSON.stringify(!isOpen)); }catch(e){}
-      });
-    }
-    document.querySelectorAll('[data-board]').forEach(el=> el.addEventListener('click', ()=>{ const id=el.dataset.board; closeDrawer(); setTimeout(()=> location.href='genre-hub.html?genre='+encodeURIComponent(id), 200); }));
-    document.querySelectorAll('[data-coll]').forEach(el=> el.addEventListener('click', ()=>{ const id=el.dataset.coll; closeDrawer(); setTimeout(()=> location.href='collection.html?id='+encodeURIComponent(id), 200); }));
-    const bViewAll=document.getElementById('profileBoardsViewAll');
-    if(bViewAll) bViewAll.addEventListener('click', ()=>{ closeDrawer(); setTimeout(()=>{ if(window.BoardsOverlay){ const d=getMyBoardsForProfile(); BoardsOverlay.open(d); } else location.href='genre-hub.html'; }, 250); });
-    const cViewAll=document.getElementById('profileCollViewAll');
-    if(cViewAll) cViewAll.addEventListener('click', ()=>{ closeDrawer(); setTimeout(()=>{ if(window.BrowseOverlay) BrowseOverlay.open({title:'My Collections', mode:'collections'}); else toast('Opening collections…'); }, 250); });
+    if (!window.DroboardProfileMenu) return;
+    var boardsData = getMyBoardsForProfile();
+    var collDataP = getMyCollectionsForProfile();
+    DroboardProfileMenu.configure({
+      profile: p,
+      isOwner: IS_OWNER,
+      boards: boardsData.joined,
+      collections: collDataP.joined,
+      onNewPost: function () { openNewPostComposer(); },
+      onNewBook: function () { location.href = 'create.html'; },
+      onTab: function (tab) { switchTab(tab); },
+      onBecomeWriter: function () { openUpgradeWizard(); },
+      onRefer: function () { location.href = 'refer.html'; },
+      onSignOut: async function () { if (window.AuthSession) await AuthSession.logout(); toast('👋 Signed out!'); setTimeout(function () { location.href = 'index.html'; }, 600); },
+    });
   }
 
   /* ── Top-level render + boot ── */
@@ -714,8 +666,8 @@
     loadNotifCount();
     loadCoinBalance();
     if (window.DroboardNav) DroboardNav.configure({ active: 'profile' });
-    document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
-    document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+    var _dClose = document.getElementById('drawerCloseBtn'); if (_dClose) _dClose.addEventListener('click', closeDrawer);
+    var _dOv = document.getElementById('drawerOverlay'); if (_dOv) _dOv.addEventListener('click', closeDrawer);
     document.getElementById('upgradeCloseBtn').addEventListener('click', closeUpgradeWizard);
     document.getElementById('upgradeOv').addEventListener('click', function (e) { if (e.target === this) closeUpgradeWizard(); });
     document.getElementById('uwSubmitBtn').addEventListener('click', submitUpgrade);

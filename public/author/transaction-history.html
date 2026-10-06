@@ -202,17 +202,19 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/author-earnings-service.js"></script>
+<script src="services/api-config.js"></script>
+<script src="services/drawer-service.js"></script>
+<script src="services/transaction-history-service.js"></script>
 <script>
-// HIDDEN — Book Workspace items (Chapters, Plotting, Characters, Story Bible) only appear
+// HIDDEN — Book Workspace items (Chapters, Characters, Plotting) only appear
 // contextually when a specific book is selected from the dashboard. These are book-scoped.
 // Additionally hidden for future use: Schedule, Analytics, Revenue, Contract.
 // HIDDEN for future use: Schedule, Analytics, Revenue, Contract.
-// Book Workspace (Chapters, Plotting, Characters, Story Bible) only shows when ?book= is in URL.
+// Book Workspace (Chapters, Characters, Plotting) only shows when ?book= is in URL.
 const BOOK_WORKSPACE_ITEMS=[
   {label:'Chapters',icon:'fa-list-ul',href:'#'},
   {label:'Plotting',icon:'fa-diagram-project',href:'plotting.html'},
-  {label:'Characters',icon:'fa-user-group',href:'characters.html'},
-  {label:'Story Bible',icon:'fa-book-bookmark',href:'#'}
+  {label:'Characters',icon:'fa-user-group',href:'characters.html'}
 ];
 function getMENU_SECTIONS(){
   const params=new URLSearchParams(location.search);

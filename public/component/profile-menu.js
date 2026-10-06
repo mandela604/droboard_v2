@@ -8,6 +8,8 @@
  *   DroboardProfileMenu.configure({
  *     profile: PROFILE,       // full profile object
  *     isOwner: true,
+ *     boards: [],             // joined boards [{id,name,icon,members}]
+ *     collections: [],        // joined collections [{id,name,count}]
  *     onNewPost: () => openNewPostComposer(),
  *     onNewBook: () => toast('…'),
  *     onTab: (tabId) => switchTab(tabId),  // books|library|collections|following
@@ -30,15 +32,8 @@
   const CSS = `
     .dpm-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .22s ease}
     .dpm-overlay.open{opacity:1;pointer-events:auto}
-    .dpm-drawer{
-      position:fixed;top:0;left:0;bottom:0;z-index:501;width:82%;max-width:320px;
-      background:var(--l1,#fff);box-shadow:2px 0 30px rgba(0,0,0,.18);
-      transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
-      display:flex;flex-direction:column;overflow:hidden;
-      font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-      padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
-    }
     .dpm-overlay.open .dpm-drawer{transform:translateX(0)}
+    .dpm-drawer{position:fixed;top:0;left:0;bottom:0;z-index:501;width:82%;max-width:320px;background:var(--l1,#fff);box-shadow:2px 0 30px rgba(0,0,0,.18);transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden;font-family:inherit;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
     .dpm-profile{display:flex;align-items:center;gap:11px;padding:16px 16px 14px;border-bottom:1px solid var(--bd,rgba(0,0,0,.12));flex-shrink:0}
     .dpm-av{width:46px;height:46px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--acc,#ff0050);background:var(--l2,#eee)}
     .dpm-av img{width:100%;height:100%;object-fit:cover;display:block}
@@ -67,6 +62,8 @@
   let _cfg = {
     profile: null,
     isOwner: false,
+    boards: null,
+    collections: null,
     onNewPost: null,
     onNewBook: null,
     onTab: null,
@@ -127,6 +124,17 @@
       const btn = e.target.closest('[data-dpm-act]');
       if (!btn) return;
       const act = btn.dataset.dpmAct;
+      if (act === 'circle-toggle') {
+        const cBody = _body.querySelector('[data-dpm-circle-body]');
+        const chev = btn.querySelector('[data-dpm-chev]');
+        if (cBody) {
+          const isOpen = cBody.style.display !== 'none';
+          cBody.style.display = isOpen ? 'none' : 'block';
+          if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
+          try { localStorage.setItem('profile_myCircles_expanded', JSON.stringify(!isOpen)); } catch (err) {}
+        }
+        return;
+      }
       const tab = btn.dataset.dpmTab;
       close();
       const h = _cfg;
@@ -136,6 +144,22 @@
       else if (act === 'become-writer' && h.onBecomeWriter) h.onBecomeWriter();
       else if (act === 'refer' && h.onRefer) h.onRefer();
       else if (act === 'sign-out' && h.onSignOut) h.onSignOut();
+      else if (act === 'board') {
+        const id = btn.dataset.dpmId;
+        if (id) location.href = 'genre-hub.html?genre=' + encodeURIComponent(id);
+      }
+      else if (act === 'coll') {
+        const id = btn.dataset.dpmId;
+        if (id) location.href = 'collection.html?id=' + encodeURIComponent(id);
+      }
+      else if (act === 'boards-all') {
+        if (window.BoardsOverlay && _cfg.boards) BoardsOverlay.open({ joined: _cfg.boards });
+        else location.href = 'genre-hub.html';
+      }
+      else if (act === 'colls-all') {
+        if (window.BrowseOverlay) BrowseOverlay.open({ title: 'My Collections', mode: 'collections' });
+        else location.href = 'collection.html';
+      }
       else if (act === 'href') {
         const href = btn.dataset.dpmHref;
         if (href) location.href = href;
@@ -194,7 +218,7 @@
       });
       if (isOwner) {
         html += _item({
-          act: 'href', href: 'author/author-center.html', icon: 'fa-gauge',
+          act: 'href', href: '../author/author-center.html', icon: 'fa-gauge',
           iconBg: 'rgba(167,139,250,.08)', border: 'rgba(167,139,250,.15)', iconColor: 'var(--purple,#a78bfa)',
           title: 'Author Center', sub: 'Dashboard, analytics & revenue',
         });
@@ -227,12 +251,43 @@
     }
     html += `</div>`;
 
+    // My Circle — mirrors profile drawer: toggle + joined boards/collections
+    var boards = (_cfg.boards && _cfg.boards.length ? _cfg.boards : (p.boardsJoined || []));
+    var joinedColls = (_cfg.collections && _cfg.collections.length ? _cfg.collections : (p.collectionsJoined || []));
+    var circleOpen = false;
+    try { circleOpen = JSON.parse(localStorage.getItem('profile_myCircles_expanded') || 'false'); } catch (err) {}
+    html += `<div class="dpm-divider"></div><div class="dpm-section"><div class="dpm-section-title">My Circle</div>`;
+    html += `<button type="button" class="dpm-item" data-dpm-act="circle-toggle">`
+      + `<div class="dpm-item-icon" style="background:rgba(255,0,80,.08);border:1px solid var(--bd-acc,rgba(255,0,80,.25))"><i class="fas fa-circle-nodes" style="color:var(--acc,#ff0050)"></i></div>`
+      + `<div style="flex:1;min-width:0"><div class="dpm-item-title">My Circles</div><div class="dpm-item-sub">${boards.length} boards · ${joinedColls.length} collections</div></div>`
+      + `<div class="dpm-item-right"><i class="fas fa-chevron-right" data-dpm-chev style="font-size:10px;transition:transform .2s${circleOpen ? ';transform:rotate(90deg)' : ''}"></i></div></button>`;
+    html += `<div data-dpm-circle-body style="display:${circleOpen ? 'block' : 'none'}">`;
+    html += boards.map(function (g) {
+      return `<button type="button" class="dpm-item" data-dpm-act="board" data-dpm-id="${_esc(g.id)}">`
+        + `<div class="dpm-item-icon"><i class="fas ${_esc(g.icon || 'fa-folder')}"></i></div>`
+        + `<div style="flex:1;min-width:0"><div class="dpm-item-title">${_esc(g.name)}</div><div class="dpm-item-sub">${_esc(g.members || '')} members</div></div>`
+        + `<div class="dpm-item-right"><i class="fas fa-chevron-right" style="font-size:10px"></i></div></button>`;
+    }).join('');
+    html += `<button type="button" class="dpm-item" data-dpm-act="boards-all">`
+      + `<div class="dpm-item-icon" style="background:rgba(255,0,80,.08);border-color:var(--bd-acc,rgba(255,0,80,.25))"><i class="fas fa-arrow-right" style="color:var(--acc,#ff0050)"></i></div>`
+      + `<div style="flex:1;min-width:0"><div class="dpm-item-title" style="color:var(--acc,#ff0050)">View all boards</div></div></button>`;
+    html += joinedColls.map(function (c) {
+      return `<button type="button" class="dpm-item" data-dpm-act="coll" data-dpm-id="${_esc(c.id)}">`
+        + `<div class="dpm-item-icon"><i class="fas fa-folder"></i></div>`
+        + `<div style="flex:1;min-width:0"><div class="dpm-item-title">${_esc(c.name)}</div><div class="dpm-item-sub">${_esc(String(c.count || 0))} stories</div></div>`
+        + `<div class="dpm-item-right"><i class="fas fa-chevron-right" style="font-size:10px"></i></div></button>`;
+    }).join('');
+    html += `<button type="button" class="dpm-item" data-dpm-act="colls-all">`
+      + `<div class="dpm-item-icon" style="background:rgba(255,0,80,.08);border-color:var(--bd-acc,rgba(255,0,80,.25))"><i class="fas fa-arrow-right" style="color:var(--acc,#ff0050)"></i></div>`
+      + `<div style="flex:1;min-width:0"><div class="dpm-item-title" style="color:var(--acc,#ff0050)">View all collections</div></div></button>`;
+    html += `</div></div>`;
+
     if (isOwner) {
       html += `<div class="dpm-divider"></div><div class="dpm-section"><div class="dpm-section-title">Wallet</div>`;
       html += _item({
-        act: 'href', href: 'wallet.html', icon: 'fa-wallet',
+        act: 'href', href: 'store.html', icon: 'fa-wallet',
         iconBg: 'var(--gold-soft,rgba(240,168,0,.12))', border: 'rgba(240,168,0,.3)', iconColor: 'var(--gold,#f0a800)',
-        title: 'Wallet', sub: 'Balance, earnings & payouts', titleColor: 'var(--gold,#f0a800)', rightIcon: 'fa-chevron-right',
+        title: 'Wallet', sub: 'Coins, balance & payouts', titleColor: 'var(--gold,#f0a800)', rightIcon: 'fa-chevron-right',
       });
       html += `</div>`;
     }
@@ -253,7 +308,7 @@
     html += _item({
       act: 'refer', icon: 'fa-share-alt',
       iconBg: 'var(--gold-soft,rgba(240,168,0,.12))', border: 'rgba(240,168,0,.2)', iconColor: 'var(--gold,#f0a800)',
-      title: 'Refer a Friend', sub: 'Earn $5 per referral',
+      title: 'Refer a Friend', sub: 'Earn 5 coins per referral',
     });
     html += _item({
       act: 'sign-out', icon: 'fa-sign-out-alt', danger: true,

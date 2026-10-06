@@ -32,7 +32,7 @@
 
     /* ── Nav ── */
     .top-bar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--border); }
-    .top-bar .logo { font-weight: 700; font-size: 18px; color: var(--acc); }
+    .top-bar .logo { font-weight: 700; font-size: 18px; color: var(--acc); display:flex; align-items:center; }
     .top-actions { display: flex; gap: 8px; }
     .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--l1); color: var(--tx); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
     .icon-btn.pink { background: var(--acc-light); color: var(--acc); border: 1px solid var(--bd-acc); }
@@ -69,7 +69,7 @@
     #feedList { display: flex; flex-direction: column; gap: 2px; background: #d8d8d8; }
     [data-theme="dark"] #feedList { background: #000; }
     #feedList > * { background: var(--l2); }
-    #promoMount { padding: 12px 16px; }
+    #promoMount { padding: 12px 16px 4px; background: transparent; }
 
     /* ── Community Sections ── */
     .comm-sec { padding: 0 0 4px; }
@@ -115,7 +115,7 @@
   <div class="safe"></div>
   <div class="shell">
     <div class="top-bar">
-      <div class="logo">Droboard</div>
+      <div class="logo"><img src="../assets/droboard-icon.png" alt="Droboard" style="height:28px;width:auto;display:block;border-radius:8px"/></div>
       <div class="top-actions">
         <a href="store.html" class="icon-btn pink" id="feedGiftBtn" aria-label="Store" style="text-decoration:none"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></a>
         <button class="icon-btn" onclick="location.href='notifications.html'"><i class="fas fa-bell"></i><span class="notif-dot" id="notifCount">3</span></button>

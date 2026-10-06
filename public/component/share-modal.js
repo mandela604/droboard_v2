@@ -533,7 +533,7 @@
   function openShareModal(data) {
     _data = data || {};
 
-    document.getElementById('dsmLinkInp').value = _data.url || 'https://droboard.app';
+    document.getElementById('dsmLinkInp').value = _data.url || 'https://droboard.com';
     document.getElementById('dsmCopyMsg').textContent = '';
     document.getElementById('dsmCopyBtn').textContent = 'Copy';
 
@@ -700,7 +700,7 @@
   // Platform share
   // ════════════════════════════════════════════════════════════════════════
   function _share(platform) {
-    const url  = encodeURIComponent(_data.url  || 'https://droboard.app');
+    const url  = encodeURIComponent(_data.url  || 'https://droboard.com');
     const text = encodeURIComponent(`📖 "${_data.title || 'Check this out'}" on Droboard!`);
 
     const routes = {

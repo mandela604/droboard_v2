@@ -1097,28 +1097,31 @@
      (demo) or /api/ads (live). marketing/ad-manager.html edits them. */
   const AD_POOLS = {
     platform: [
-      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion'] },
-      { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub'] },
+      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments'] },
+      { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub', 'store', 'fullReader', 'scrollReader'] },
       { id: 'plat_studio', sponsor: 'DroBoard Studio', title: 'Write Your Own Story Today', cta: 'Start Writing', img: c(4), pages: ['discover', 'feed', 'genreHub'] },
     ],
     book: [
-      { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion'], campaign: 'CMP-010' },
-      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub'], campaign: 'CMP-002' },
-      { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub'], campaign: 'CMP-004' },
-      { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub'], campaign: 'CMP-001' },
-      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz.', img: c(0), pages: ['discover', 'feed', 'genreHub'] },
-      { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub'], campaign: 'CMP-004' },
+      { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage'], campaign: 'CMP-010' },
+      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-002' },
+      { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-004' },
+      { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-001' },
+      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'scrollReader'] },
+      { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-004' },
     ],
     native: [
-      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['feed', 'fullReader', 'scrollReader'] },
-      { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader'] },
-      { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader'] },
+      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion'] },
+      { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'comments'] },
+      { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments'] },
     ],
     follow: [
       { id: 'demo_follow_1', userName: 'Amina Okoro', name: 'Amina Okoro', handle: 'aminaokoro', avatar: 'https://i.pravatar.cc/150?img=32', tagline: 'Romance & family drama · 120k readers', cta: 'Follow', pages: ['feed'] },
     ],
+    /* Third-party network embeds (raw script/HTML pasted in ad-manager).
+       Empty by default — marketers add them; served wherever targeted. */
+    embed: [],
     banner: [
-      { id: 'demo_ban_1', brand: 'DroBoard Coins', headline: 'Top up coins — unlock bonus chapters', sub: 'Support writers instantly', cta: 'Get Coins', pages: ['feed', 'fullReader', 'scrollReader'] },
+      { id: 'demo_ban_1', brand: 'DroBoard Coins', headline: 'Top up coins — unlock bonus chapters', sub: 'Support writers instantly', cta: 'Get Coins', pages: ['feed', 'fullReader', 'scrollReader', 'store'] },
     ],
     /* Promo slider slides (library / genre-hub top sliders). `pages`
        decides where a slide shows; `genre` narrows hub slides. */
@@ -1146,11 +1149,14 @@
     feed: { interval: 4 },
     genreHub: { interval: 3, topPromo: true },
     discussion: { slot: 'single' },
+    comments: { interval: 5, enabled: true },
+    droboardPage: { interval: 4, enabled: true },
     series: { slot: 'single' },
     home: { interval: 5 },
-    fullReader: { interval: 3 },
-    scrollReader: { interval: 4 },
+    fullReader: { interval: 3, format: 'book' },
+    scrollReader: { interval: 4, format: 'book' },
     library: { promoSlider: true },
+    store: { interval: 3, topBanner: true },
   };
 
   /* ── EVENT & ANNOUNCEMENT ── */
@@ -1201,19 +1207,40 @@
         ]
       },
       {
-        n: 2, title: 'The Man in the Photograph', words: 720,
+        n: 2, title: 'The Man in the Photograph', words: 690,
         paras: [
           "I studied the photograph for an hour. It was old — the colours faded, the edges soft. A man in a blue shirt, standing beside a red car, smiling at someone just out of frame.",
-          "I called my aunt in Enugu. She answered on the second ring, which was unusual.",
-          "'That is your father,' she said finally. 'Your real father. Your mother never told you because she made a promise.'",
+          "There was something in the way he leaned against that car, one arm resting on the open door, that told me he was the kind of man who never hurried. My mother had always rushed through rooms like weather. This man looked like climate — settled, patient, permanent.",
+          "I turned the photograph over. In my mother's handwriting, in blue biro gone pale with age: 'Jos, 1989. He laughed all day.' Nothing else. No name. As if a name would have made it too real to keep.",
+          "I called my aunt in Enugu. She answered on the second ring, which was unusual for a woman who screened every call like a customs officer.",
+          "I described the photograph first, because that felt safest. The blue shirt. The red car. The smile aimed at someone outside the frame.",
+          "There was a long silence, and then she said, 'That is your father. Your real father. Your mother never told you because she made a promise, and promises outlive the people who make them.'",
+          "I asked what kind of promise. She laughed, a short sound with no joy in it. 'The kind women make when they are nineteen and terrified and a married man tells them he will leave his wife.'",
+          "So there it was. Not a mystery lover, not a tragedy of war or distance. An ordinary, painful story: my mother young, my father older, married, with two children in Jos, a man who visited Lagos and stayed three weeks and paid in cash and never once raised his voice.",
+          "'He wanted you,' my aunt said quietly. 'That part was true. He sent money for two years. Your mother sent it back every single time. Then he stopped writing, and she told everyone the father was a boy from school who died.'",
+          "I sat with that for a while, the phone warm against my ear. All my life there had been a blank space where a father should be, and I had filled it with nothing — which is its own kind of story. Now the blank had a blue shirt and a red car and a laugh that lasted all day in Jos in 1989.",
+          "'Is he alive?' I asked. My aunt hesitated. 'I believe so. There was a cousin who drove trailers through Jos. He said the man with the red car became a man with a transport company. Big compound. Still married.'",
+          "Still married. Two words that rearranged the whole map. I was not a child looking for a father anymore. I was a grown woman considering walking into a family that had never agreed to know me.",
+          "That night I dreamed of the photograph. In the dream the man turned, slowly, from whoever he had been smiling at, and looked straight at me. He did not look surprised. He looked like a man who had been waiting at a window for thirty years.",
         ]
       },
       {
-        n: 3, title: 'The Promise She Made', words: 740,
+        n: 3, title: 'The Promise She Made', words: 710,
         paras: [
           "The letter explained everything. My mother had met my father when she was nineteen, a student at the University of Ibadan. He was older, married, with two children.",
+          "He had come to give a guest lecture on transport economics — of all things — and stayed after to answer her question about rural routes. She wrote that she fell for the way he listened, 'as if my words were cargo he intended to deliver safely.'",
           "'He wanted to be in your life,' she wrote. 'He begged me to let him. But I was young and proud and I did not want to share you.'",
+          "I read that sentence five times. Young and proud. I knew exactly the girl she had been, because I had been her: brilliant, scholarship-bright, certain that love should be clean or not at all. A married man with two children was not clean. So she chose the harder, lonelier clean.",
+          "The letter went on. He had offered money, a house in Bodija, school fees through university. He had offered to tell his wife. My mother refused everything except one hospital visit, when I had malaria at four and she let him stand at the foot of my bed while I slept.",
+          "'You opened your eyes,' she wrote, 'and you smiled at him. He cried. I have never forgiven myself for what I did next — I asked him never to come again. And he, being a decent man in an indecent situation, obeyed.'",
           "I understood the fear. I did not know if I understood the choice. But I knew one thing for certain: I had to meet him.",
+          "Not to accuse. Not to claim. Just to stand in a room with the man from the photograph and see whether his laugh still lasted all day, and whether anything in my face answered anything in his.",
+          "My aunt gave me the cousin's number. The cousin gave me a park name in Jos and a warning: 'Go on a Sunday. He sits outside after church. Don't go with anger, sister. Old men die from that.'",
+          "I booked the night bus. I packed the photograph, the letter, and my mother's wrapper — the blue one with the small white birds — folded at the bottom of my bag like armour.",
+          "On the road north the landscape flattened and reddened, and I thought about promises. My mother promised to never tell. My father promised to stay away. Both kept their promises, and the cost of their honour was me: a woman raised on half a story, now riding through the night to collect the other half.",
+          "We pulled into Jos at dawn, the air cold and smelling of rain and roasted corn. I found a room, washed my face, and stood a long time at the window, practising the first sentence. 'Good morning, sir. My name is —' No. 'Excuse me, you knew my mother —' No.",
+          "In the end I decided on the truth, plain as bread: 'I am the daughter you were not allowed to have. I am not here to spoil anything. I only wanted you to see my face once.'",
+          "Whatever happened next, the story was already mine. But as I stepped out into the Jos morning with the photograph in my pocket, I understood what my mother had known all along: some doors should be knocked on before they are pushed — and this one, at last, I was ready to knock.",
         ]
       },
     ],

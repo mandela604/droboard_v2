@@ -44,6 +44,18 @@
 
   let DATA = null;
 
+  /* ── PREMIUM CHECK ── */
+  function isPremiumUser() {
+    try {
+      const raw = localStorage.getItem('droboard_premium') || localStorage.getItem('dro_premium');
+      if (raw === 'true' || raw === '1') return true;
+      if (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] && DemoData.USERS['You_Reader'].isPremium) return true;
+      if (DATA && DATA.isPremium) return true;
+    } catch(e){}
+    return false;
+  }
+  function countWords(text) { return (text||'').trim().split(/\s+/).filter(Boolean).length; }
+
   /* ══════════════════════════════════════════════════════════════════
      WALLET / COINS
      ══════════════════════════════════════════════════════════════════ */
@@ -192,77 +204,120 @@
      ══════════════════════════════════════════════════════════════════ */
   const ST = { unlockedThrough: 0, saved: false, currentCh: 1 };
 
-  /* ══ MANAGED AD SLOTS ══ */
+  /* ══ MANAGED AD SLOTS — inventory format picked in marketing ══ */
   let READER_BANNERS = [];
   let READER_SERVED = [];
   function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  // placement scrollReader.format: auto|embed|native|book|platform|banner
+  function slotFormatAllows(type) {
+    const f = (READER_SLOT_FORMAT || 'auto');
+    if (!f || f === 'auto') return true;
+    if (f === 'book') return type === 'storyPromo';
+    return type === f;
+  }
+  let READER_SLOT_FORMAT = 'auto';
   async function loadReaderAds() {
     READER_BANNERS = []; READER_SERVED = [];
     if (!window.AdService) return;
     try {
+      try {
+        const pl = await AdService.getPlacement('scrollReader');
+        READER_SLOT_FORMAT = (pl && pl.format) || 'auto';
+      } catch (e) { READER_SLOT_FORMAT = 'auto'; }
       const pools = await AdService.getAds({ page: "scrollReader" });
-      READER_BANNERS = pools.banner || [];
+      (pools.embed || []).filter(function (ad) { return ad && ad.code; }).forEach(function (ad) { READER_BANNERS.push({ type: "embed", ad: ad }); });
+      (pools.banner || []).forEach(function (ad) { READER_BANNERS.push({ type: "banner", ad: ad }); });
+      (pools.native || []).forEach(function (ad) { READER_BANNERS.push({ type: "native", ad: ad }); });
+      (pools.book || []).forEach(function (ad) { READER_BANNERS.push({ type: "storyPromo", ad: ad }); });
+      (pools.platform || []).forEach(function (ad) { READER_BANNERS.push({ type: "platform", ad: ad }); });
+      READER_BANNERS = READER_BANNERS.filter(function (item) { return slotFormatAllows(item.type); });
     } catch (e) { READER_BANNERS = []; }
   }
-
-  function renderAdSlot(afterCh) {
-    if (!READER_BANNERS.length || !window.DroboardAdCard) return "";
-    const ad = READER_BANNERS[Math.floor(afterCh / 2 - 1) % READER_BANNERS.length];
-    if (!ad) return "";
-    READER_SERVED.push(ad.id);
-    return '<div class="ad-slot" data-adid="' + ad.id + '">' +
-      '<div class="ad-slot-lbl">Sponsored</div>' +
-      window.DroboardAdCard.renderBanner(ad) +
-    "</div>";
+  function renderAdSlot(afterCh, wordPos) {
+    if (isPremiumUser()) return "";
+    // inventory only — format + targeting fully marketing-controlled.
+    if (READER_BANNERS.length && window.DroboardAdCard) {
+      const item = READER_BANNERS[(wordPos + (afterCh || 0)) % READER_BANNERS.length];
+      const ad = item.ad; if (!ad) return "";
+      READER_SERVED.push(ad.id); trackAd(ad.id, "impression");
+      var html = "";
+      if (item.type === "embed" && window.DroboardAdCard.renderEmbed) html = window.DroboardAdCard.renderEmbed(ad);
+      else if (item.type === "native") html = window.DroboardAdCard.renderNative(ad);
+      else if (item.type === "storyPromo") html = window.DroboardAdCard.renderStoryPromo(ad);
+      else if (item.type === "platform") html = window.DroboardAdCard.renderPlatform(ad);
+      else html = window.DroboardAdCard.renderBanner(ad);
+      if (!html) return "";
+      try { console.info("[ScrollReader] ad served:", ad.id); } catch (e) {}
+      return '<div class="ad-slot" data-adid="' + ad.id + '"><div class="ad-slot-lbl">Sponsored</div>' + html + '</div>';
+    }
+    return "";
   }
 
-  /* ══ RENDERING ══ */
+  /* ══ RENDERING — 300-word ad slots, premium off, locked no ads ══ */
   function buildReaderColumn() {
     const col = document.getElementById("readerCol");
     let html = "";
-    DATA.chapters.forEach((ch, idx) => {
+    DATA.chapters.forEach((ch) => {
       const locked = ch.n > ST.unlockedThrough;
       html += renderChapterBlock(ch, locked);
-      if (locked) return;
-      if (ch.n % 2 === 0 && idx < DATA.chapters.length - 1) {
-        html += renderAdSlot(ch.n);
-      }
     });
     col.innerHTML = html;
+    // hydrate engagement mounts (polls + predictions + author note) for unlocked chapters
+    if (window.ReaderEngagement) {
+      col.querySelectorAll('[data-eng-mount]').forEach(function (mount) {
+        const key = mount.getAttribute('data-eng-mount');
+        const chN = mount.getAttribute('data-ch');
+        const note = mount.getAttribute('data-note') || '';
+        try { window.ReaderEngagement.renderInto(key, chN, mount, note); } catch (e) {}
+      });
+    }
   }
 
   function renderChapterBlock(ch, locked) {
-    const paras = ch.paras.map(p => "<p>" + esc(p) + "</p>").join("");
-    if (!locked) {
-      return '<section class="chapter-block" data-ch="' + ch.n + '" id="chapterSec-' + ch.n + '">' +
+    if (locked) {
+      const paras = ch.paras.map(p => "<p>" + esc(p) + "</p>").join("");
+      return '<section class="chapter-block locked-wrap" data-ch="' + ch.n + '" id="chapterSec-' + ch.n + '">' +
         '<div class="chapter-heading">Chapter ' + ch.n + " \u2014 " + esc(ch.title) + "</div>" +
-        '<div class="story-text">' + paras + "</div>" +
-        renderEngageBar(ch) +
-        renderCommentLine(ch) +
-      "</section>";
-    }
-    return '<section class="chapter-block locked-wrap" data-ch="' + ch.n + '" id="chapterSec-' + ch.n + '">' +
-      '<div class="chapter-heading">Chapter ' + ch.n + " \u2014 " + esc(ch.title) + "</div>" +
-      '<div class="story-text locked-fade">' + paras + "</div>" +
-      '<div class="unlock-card" id="unlockCard-' + ch.n + '">' +
-        '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
-        '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
-        '<div class="unlock-sub">You\'ve read through Chapter ' + ST.unlockedThrough + " free. Keep going with coins or unlock the rest of the season.</div>" +
-        '<div class="unlock-opts">' +
-          '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 1, 15)\">" +
-            '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
-            '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>' +
-          "</div>" +
-          '<div class="unlock-opt reco" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 5, 60)\">" +
-            '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters \u2B50</div><div class="unlock-opt-s">Best value bundle</div></div>' +
-            '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>' +
-          "</div>" +
-          '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 'all', 120)\">" +
-            '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
-            '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
+        '<div class="story-text locked-fade">' + paras + "</div>" +
+        '<div class="unlock-card" id="unlockCard-' + ch.n + '">' +
+          '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
+          '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
+          '<div class="unlock-sub">You\'ve read through Chapter ' + ST.unlockedThrough + " free. Keep going with coins or unlock the rest of the season.</div>" +
+          '<div class="unlock-opts">' +
+            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 1, 15)\">" +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
+              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>' +
+            "</div>" +
+            '<div class="unlock-opt reco" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 5, 60)\">" +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters \u2B50</div><div class="unlock-opt-s">Best value bundle</div></div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>' +
+            "</div>" +
+            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 'all', 120)\">" +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
+            "</div>" +
           "</div>" +
         "</div>" +
-      "</div>" +
+      "</section>";
+    }
+    let htmlParas = "";
+    let wordCount = 0;
+    let adIdx = 0;
+    ch.paras.forEach(p => {
+      htmlParas += "<p>" + esc(p) + "</p>";
+      wordCount += countWords(p);
+      if (wordCount >= 300) {
+        const adHtml = renderAdSlot(ch.n, adIdx++);
+        if (adHtml) htmlParas += adHtml;
+        wordCount = 0;
+      }
+    });
+    return '<section class="chapter-block" data-ch="' + ch.n + '" id="chapterSec-' + ch.n + '">' +
+      '<div class="chapter-heading">Chapter ' + ch.n + " \u2014 " + esc(ch.title) + "</div>" +
+      '<div class="story-text">' + htmlParas + "</div>" +
+      '<div data-eng-mount="s1c' + ch.n + '" data-ch="' + ch.n + '" data-note="' + esc(ch.authorNote || ch.note || "") + '"></div>' +
+      renderEngageBar(ch) +
+      renderCommentLine(ch) +
     "</section>";
   }
 
@@ -290,12 +345,10 @@
     if (oldSec) oldSec.remove();
 
     let html = "";
-    DATA.chapters.forEach((ch, idx) => {
+    DATA.chapters.forEach((ch) => {
       if (ch.n < fromCh) return;
       const locked = ch.n > ST.unlockedThrough;
       html += renderChapterBlock(ch, locked);
-      if (locked) return;
-      if (ch.n % 2 === 0 && idx < DATA.chapters.length - 1) html += renderAdSlot(ch.n);
     });
     document.getElementById("readerCol").insertAdjacentHTML("beforeend", html);
     wireComponents();
@@ -314,23 +367,30 @@
     return raw.map(mapSeedComment);
   }
 
+  function countAllReplies(list) {
+    return (list || []).reduce((n, c) => n + 1 + countAllReplies(c.replies || []), 0);
+  }
   function wireComponents() {
     const seedComments = getSeedComments();
+    const trueTotal = countAllReplies(seedComments); // same math as the component's own counter
     DATA.chapters.forEach(ch => {
       if (ch.n > ST.unlockedThrough) return;
       const mount = document.getElementById("commentsMount-" + ch.n);
       if (!mount || !window.DroboardComments) return;
-      mount.innerHTML = "";
-      DroboardComments.attach(mount, {
-        storyId: STORY_ID + "-ch" + ch.n,
-        title: fmtN(seedComments.length * 37) + " comments",
-        comments: seedComments.map(c => Object.assign({}, c)),
-        teams: TEAMS,
-        currentUser: { name: "You", avatar: null, team: null },
-        requireTeam: false,
-        collapsible: true,
-        startOpen: false,
-      });
+      try {
+        mount.innerHTML = "";
+        DroboardComments.attach(mount, {
+          storyId: STORY_ID + "-ch" + ch.n,
+          title: fmtN(trueTotal) + " comments",
+          comments: seedComments.map(c => Object.assign({}, c)),
+          teams: TEAMS,
+          currentUser: { name: "You", avatar: null, team: null },
+          requireTeam: false,
+          collapsible: true,
+          startOpen: false,
+          adsRepeat: false, // top ad slot only in reader chapters
+        });
+      } catch (e) { console.warn("[ScrollReader] comments failed for ch" + ch.n, e); }
     });
 
     if (window.DroboardAdCard) {

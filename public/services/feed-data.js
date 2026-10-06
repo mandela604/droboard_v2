@@ -210,7 +210,7 @@
       likes: 44, liked: false, comments: 19,
     },
     {
-      id: 'p9', type: 'debate', name: 'Droboard', avatar: 'https://i.pravatar.cc/100?img=68',
+      id: 'p9', type: 'debate', name: 'Droboard', avatar: '../assets/droboard-icon.png',
       time: '3h ago',
       debateData: { question: 'Should villains get redemption?', prompt: 'Share your thoughts and join the debate!',
         forText: 'Yes, everyone deserves a second chance.', againstText: 'No, some actions are unforgivable.',

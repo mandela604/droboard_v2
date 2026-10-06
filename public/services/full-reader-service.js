@@ -54,6 +54,18 @@
     return CHAPTER_CONTENT[key] || genericParas(ch.title);
   }
 
+  /* ══ PREMIUM + WORD COUNT (for 300-word ads) ══ */
+  function isPremiumUser() {
+    try {
+      const raw = localStorage.getItem('droboard_premium') || localStorage.getItem('dro_premium');
+      if (raw === 'true' || raw === '1') return true;
+      if (D && D.USERS && D.USERS['You_Reader'] && D.USERS['You_Reader'].isPremium) return true;
+      if (FS && FS.isPremium) return true;
+    } catch(e){}
+    return false;
+  }
+  function countWords(s){ return (s||'').trim().split(/\s+/).filter(Boolean).length; }
+
   /* ══ WALLET (demo) ══ */
   let walletBalance = 45;
   function updateCoinPill() {
@@ -102,10 +114,15 @@
     const team = TEAMS.find(x => x.id === t);
     toast(team.icon + " You're " + team.name + "!");
     renderTeams();
-
-    // Sync team to comments component's internal team picker
     const commentTeamChip = document.querySelector('.dcs-team-picker .dcs-team-chip[data-team="' + t + '"]');
     if (commentTeamChip) commentTeamChip.click();
+    // open comment box and scroll there
+    const sec = document.getElementById("commentsSection");
+    if (sec) {
+      try { if (window.DroboardComments && typeof DroboardComments.open === 'function') DroboardComments.open(); } catch(e){}
+      sec.scrollIntoView({behavior:"smooth", block:"start"});
+      setTimeout(()=>{ const inp=document.querySelector('#commentsPlaceholder textarea, .dcs-input, textarea[placeholder*="comment" i]'); if(inp) inp.focus(); }, 350);
+    }
   }
 
   /* ══ REACTIONS — via shared reaction-picker component ══ */
@@ -270,6 +287,17 @@
     document.getElementById("chMetaSC").innerHTML = '<i class="fas fa-book-open" style="font-size:8px"></i> S' + (seasonIdx + 1) + " · Ch " + ch.n;
     document.getElementById("tbChInfo").textContent = season.label + " · Chapter " + ch.n;
     document.getElementById("chNavCenter").textContent = "Ch " + ch.n + " of " + season.chs.length;
+    // topbar + hero chrome (was hardcoded markup) rendered from story data
+    document.getElementById("tbStoryTitle").textContent = FS.title || "Story";
+    var catBadge = document.querySelector(".ch-cat-badge");
+    if (catBadge) {
+      if (FS.category) { catBadge.textContent = FS.category; catBadge.style.display = ""; }
+      else catBadge.style.display = "none";
+    }
+    var authorPill = document.getElementById("chMetaAuthor");
+    if (authorPill) authorPill.innerHTML = "✍️ " + esc(AUTHOR.name);
+    var readPill = document.getElementById("chMetaRead");
+    if (readPill) readPill.innerHTML = '<i class="far fa-clock" style="font-size:8px"></i> ~' + Math.max(1, Math.round((ch.words || 600) / 200)) + " min read";
 
     const prevBtn = document.getElementById("prevChBtn");
     const nextBtn = document.getElementById("nextChBtn");
@@ -297,17 +325,63 @@
 
     const paras = getChapterParas(seasonIdx, ch);
     const storyTextEl = document.getElementById("storyText");
-    storyTextEl.innerHTML = paras.map(p => "<p>" + p + "</p>").join("");
+    if (locked) {
+      storyTextEl.innerHTML = paras.map(p => "<p>" + p + "</p>").join("");
+    } else {
+      let htmlParas = "";
+      let wordCount = 0;
+      let adIdx = 0;
+      paras.forEach(p => {
+        htmlParas += "<p>" + p + "</p>";
+        wordCount += countWords(p);
+        if (wordCount >= 300) {
+          if (!isPremiumUser()) {
+            let adHtml = "";
+            const pool = (window._fullReaderBanners && window._fullReaderBanners.length) ? window._fullReaderBanners : null;
+            if (pool && window.DroboardAdCard) {
+              const item = pool[(adIdx + (ch.n || 0)) % pool.length];
+              const ad = item && item.ad ? item.ad : item;
+              const type = item && item.type ? item.type : "";
+              if (ad) {
+                try { if (window.AdService) AdService.track(ad.id, "impression"); } catch (e) {}
+                let inner = "";
+                if (type === "embed" && DroboardAdCard.renderEmbed) inner = DroboardAdCard.renderEmbed(ad);
+                else if (type === "native") inner = DroboardAdCard.renderNative(ad);
+                else if (type === "storyPromo") inner = DroboardAdCard.renderStoryPromo(ad);
+                else if (type === "platform") inner = DroboardAdCard.renderPlatform(ad);
+                else inner = DroboardAdCard.renderBanner(ad);
+                if (inner) adHtml = '<div class="ad-slot" data-adid="' + ad.id + '"><div class="ad-slot-label">Sponsored</div>' + inner + '</div>';
+              }
+            } else {
+              // pool not ready or empty: render no box (never a fake placeholder)
+              adHtml = "";
+            }
+            if (adHtml) htmlParas += adHtml;
+          }
+          adIdx++;
+          wordCount = 0;
+        }
+      });
+      storyTextEl.innerHTML = htmlParas;
+    }
     storyTextEl.classList.toggle("locked-fade", locked);
 
     const existingCard = document.getElementById("unlockCard");
     if (existingCard) existingCard.remove();
+    // engagement mount (polls + predictions) — reused across chapters
+    let engMount = document.getElementById("readerEngMount");
+    if (engMount) engMount.remove();
+    if (!locked && window.ReaderEngagement) {
+      storyTextEl.insertAdjacentHTML("afterend", '<div id="readerEngMount" style="max-width:680px;margin:0 auto;padding:0 22px"></div>');
+      engMount = document.getElementById("readerEngMount");
+      try { window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || ""); } catch (e) {}
+    }
     if (locked) {
       storyTextEl.insertAdjacentHTML("afterend", renderUnlockCard(seasonIdx, chIdx));
     }
 
     document.getElementById("teamSidingSection").style.display = locked ? "none" : "";
-    document.getElementById("adSlotWrap").style.display = locked ? "none" : "";
+    document.getElementById("adSlotWrap").style.display = "none";
     document.getElementById("commentsSection").style.display = locked ? "none" : "";
     document.getElementById("chEndSection").style.display = locked ? "none" : "";
     if (!locked) {
@@ -407,16 +481,21 @@
   }
   function initComments() {
     if (!window.DroboardComments) return;
-    const SEED_COMMENTS = (FS.comments || []).map(mapSeedComment);
+    const raw = (typeof COMMENTS_DATA !== 'undefined' && COMMENTS_DATA.length) ? COMMENTS_DATA : (FS.comments || []);
+    const SEED_COMMENTS = raw.map(mapSeedComment);
+    const trueTotal = (function countAll(list) {
+      return (list || []).reduce(function (n, c) { return n + 1 + countAll(c.replies || []); }, 0);
+    })(SEED_COMMENTS); // same math as the component's own counter
     DroboardComments.attach("#commentsPlaceholder", {
       storyId: currentStoryId,
-      title: "Comments",
+      title: fmtN(trueTotal) + " comments",
       comments: SEED_COMMENTS,
       teams: TEAMS,
       currentUser: { name: "You", avatar: null, team: null },
       requireTeam: false,
       collapsible: true,
       startOpen: false,
+      adsRepeat: false, // top ad slot only, same as scroll reader
       getCommentUrl: (c) => "https://droboard.app/story/" + currentStoryId + "#comment-" + c.id,
       onPost: (c) => console.log("posted", c),
       onReply: (parentId, c) => console.log("replied to", parentId, c),
@@ -431,17 +510,35 @@
     async function managedPool() {
       const out = [];
       const p = await AdService.getAds({ page: "fullReader" });
+      let fmt = 'auto';
+      try { const pl = await AdService.getPlacement("fullReader"); fmt = (pl && pl.format) || 'auto'; } catch (e) {}
+      const allow = function (t) {
+        if (!fmt || fmt === 'auto') return true;
+        if (fmt === 'book') return t === 'storyPromo';
+        return t === fmt;
+      };
+      (p.embed || []).filter(function (ad) { return ad && ad.code; }).forEach(ad => out.push({ type: "embed", ad }));
       (p.native || []).forEach(ad => out.push({ type: "native", ad }));
       (p.book || []).forEach(ad => out.push({ type: "storyPromo", ad }));
+      (p.platform || []).forEach(ad => out.push({ type: "platform", ad }));
       (p.banner || []).forEach(ad => out.push({ type: "banner", ad }));
-      return out;
+      return out.filter(function (item) { return allow(item.type); });
     }
     (window.AdService ? managedPool().catch(() => []) : Promise.resolve([])).then(function (pool) {
+      window._fullReaderBanners = pool.filter(function (p) { return p && p.ad; });
+      // pool arrived after first paint: re-render current chapter once so
+      // in-chapter slots fill with real ads instead of staying empty.
+      try {
+        if (window._fullReaderBanners.length && !document.querySelector('#storyText .ad-slot')) {
+          renderChapterView(curSeasonIdx, curChIdx);
+        }
+      } catch (e) {}
       const slot = document.getElementById("adSlot");
       if (!pool.length) { document.getElementById("adSlotWrap").style.display = "none"; return; }
 
       const chosen = pool[Math.floor(Math.random() * pool.length)];
       function renderChosen(item) {
+        if (item.type === "embed" && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(item.ad);
         if (item.type === "native") return DroboardAdCard.renderNative(item.ad);
         if (item.type === "storyPromo") return DroboardAdCard.renderStoryPromo(item.ad);
         return DroboardAdCard.renderBanner(item.ad);
@@ -543,9 +640,22 @@
     initReactions();
     initComments();
     initAdSlot();
-    initYML();
     updateCoinPill();
+    applyReaderDeepLink();
     renderChapterView(curSeasonIdx, curChIdx);
+  }
+
+  // Deep link (?story=&ch=): jump straight to a chapter (e.g. from a
+  // moderation report). Unknown chapters fall back to current position.
+  // ?story= is reserved for the multi-story backend; the loaded story wins.
+  function applyReaderDeepLink(){
+    var chN = 0;
+    try { chN = parseInt(new URLSearchParams(location.search).get('ch'), 10) || 0; } catch (e) {}
+    if (!chN) return;
+    for (var s = 0; s < SEASONS_DATA.length; s++) {
+      var idx = (SEASONS_DATA[s].chs || []).findIndex(function(c){ return +c.n === chN; });
+      if (idx > -1) { curSeasonIdx = s; curChIdx = idx; panelActiveSeason = s; return; }
+    }
   }
 
   if (document.readyState === "loading") {

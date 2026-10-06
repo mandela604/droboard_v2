@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Featured Stories — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+@media (max-width:640px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px}
+.count-chip{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--table-head);padding:5px 11px;border-radius:20px}
+
+/* ── Main table tabs (Featured / Add / History) ── */
+.main-tabbar{display:flex;gap:8px;margin:14px 0 14px;border-bottom:1px solid var(--border);padding-bottom:14px;flex-wrap:wrap}
+.main-tab{padding:9px 16px;border-radius:10px;font-size:12.5px;font-weight:800;border:1px solid var(--border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.15s;font-family:inherit;display:flex;align-items:center;gap:7px}
+.main-tab:hover{border-color:var(--accent)}
+.main-tab.on{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,0,80,.3)}
+.main-tab .mtc{font-size:10px;background:rgba(0,0,0,.08);padding:1px 7px;border-radius:20px}
+.main-tab.on .mtc{background:rgba(255,255,255,.25)}
+
+/* ── Secondary tag filter tabs (Featured tab only) ── */
+.tabbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tab-pill{padding:6px 13px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;transition:.15s;font-family:inherit}
+.tab-pill:hover{border-color:var(--accent)}
+.tab-pill.on{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,0,80,.3)}
+
+/* ── One-per-row list ── */
+.row-item{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:9px;cursor:pointer;transition:.15s;background:var(--card)}
+.row-item:hover{border-color:var(--accent);background:var(--hover)}
+.row-cover{width:44px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.row-main{flex:1;min-width:0}
+.row-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-meta{font-size:10.5px;color:var(--text-faint);margin-top:3px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.row-tags{display:flex;gap:4px;flex-shrink:0;align-items:center}
+.row-quick-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-faint);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px}
+.row-quick-btn:hover{color:var(--red);border-color:var(--red)}
+.row-chevron{color:var(--text-faint);font-size:12px;flex-shrink:0}
+.row-badge-chip{font-size:9px;font-weight:800;color:var(--green);background:var(--green-bg);padding:3px 9px;border-radius:20px;flex-shrink:0;white-space:nowrap}
+@media (max-width:560px){.row-meta .hide-sm, .row-tags{display:none}}
+
+.days-badge{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.days-badge.ok{background:var(--green-bg);color:var(--green)}
+.days-badge.soon{background:var(--amber-bg);color:var(--amber)}
+.days-badge.over{background:var(--red-bg);color:var(--red)}
+
+/* ── Pagination ── */
+.wizard-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px;flex-wrap:wrap}
+.wiz-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+.wiz-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.wiz-btn:disabled{opacity:.3;cursor:not-allowed}
+.wiz-page-label{font-size:12px;font-weight:700;color:var(--text-muted)}
+.wiz-dots{display:flex;gap:5px}
+.wiz-dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;border:none}
+.wiz-dot.on{background:var(--accent);width:16px;border-radius:4px}
+
+/* ── Add / Search bar ── */
+.add-search{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.add-search .filter-search{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:180px}
+.add-search .filter-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.add-search .filter-search i{color:var(--text-faint);font-size:12px}
+.add-search select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer}
+
+.empty-msg{text-align:center;padding:28px;color:var(--text-faint);font-size:12.5px}
+
+/* ── CENTERED modal (top & bottom margin, not a bottom sheet) ── */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(15,8,30,.6);z-index:800;display:none;justify-content:center;align-items:flex-start;overflow-y:auto;padding:44px 16px}
+.sheet-backdrop.open{display:flex}
+.detail-sheet{position:relative;margin:auto;background:var(--card);border-radius:20px;max-width:600px;width:100%;overflow:hidden;box-shadow:0 24px 70px rgba(20,10,40,.4);transform:scale(.96) translateY(8px);opacity:0;transition:transform .22s cubic-bezier(.4,0,.2,1),opacity .22s ease}
+.sheet-backdrop.open .detail-sheet{transform:scale(1) translateY(0);opacity:1}
+.sheet-banner{position:relative;height:190px;overflow:hidden;flex-shrink:0}
+.sheet-banner img{width:100%;height:100%;object-fit:cover;display:block}
+.sheet-banner-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.1) 60%)}
+.sheet-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;cursor:pointer}
+.sheet-banner-title{position:absolute;bottom:12px;left:20px;right:20px;color:#fff}
+.sheet-banner-title h2{font-size:18px;font-weight:800;line-height:1.3;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.sheet-banner-title p{font-size:12px;opacity:.85;margin-top:4px;font-weight:600}
+.sheet-body{padding:18px 22px 26px;max-height:calc(100vh - 280px);overflow-y:auto}
+.sheet-meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.sheet-meta-item{background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.sheet-meta-item b{display:block;font-size:14px;font-weight:800}
+.sheet-meta-item span{font-size:9.5px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.sheet-section-lbl{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
+.sheet-section-lbl:first-child{margin-top:0}
+.sheet-synopsis{font-size:13px;line-height:1.7;color:var(--text)}
+.sheet-action{width:100%;border:none;padding:12px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px}
+.sheet-action.add{background:var(--accent);color:#fff}
+.sheet-action.remove{background:var(--red-bg);color:var(--red)}
+
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag-chip{font-size:9.5px;font-weight:800;padding:3px 5px 3px 9px;border-radius:20px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.tag-chip button{background:none;border:none;color:inherit;font-size:8.5px;cursor:pointer;opacity:.65;padding:2px}
+.tag-chip button:hover{opacity:1}
+.tag-add-btn{font-size:10px;font-weight:700;color:var(--text-faint);border:1px dashed var(--border);border-radius:20px;padding:3px 11px;cursor:pointer;background:none;font-family:inherit}
+.tag-add-btn:hover{color:var(--accent);border-color:var(--accent)}
+.tag-picker{display:none;flex-wrap:wrap;gap:6px;background:var(--hover);border:1px solid var(--border);border-radius:10px;padding:8px;margin-top:8px}
+.tag-picker.open{display:flex}
+.tag-opt{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text-muted)}
+.tag-opt.active{opacity:.5;background:var(--accent-soft);border-color:var(--accent)}
+
+.sheet-field{margin-top:12px}
+.sheet-field label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+.sheet-field select,.sheet-field input,.sheet-field textarea{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:8px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text)}
+.sheet-field textarea{resize:vertical;min-height:48px}
+.sheet-row-2{display:flex;gap:10px}
+.sheet-row-2 .sheet-field{flex:1}
+.feat-duration-line{font-size:11.5px;color:var(--text-muted);font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.icon-link{color:var(--text-faint);cursor:pointer;font-size:11px}
+.icon-link:hover{color:var(--accent)}
+.duration-edit{display:none;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.duration-edit.open{display:flex}
+.duration-edit input{border:1px solid var(--input-border);background:var(--input-bg);border-radius:7px;padding:6px 8px;font-size:11px;font-family:inherit;color:var(--text)}
+.mini-btn{font-size:10.5px;font-weight:700;padding:6px 12px;border-radius:7px;border:none;cursor:pointer;font-family:inherit}
+.mini-btn.save{background:var(--accent);color:#fff}
+.mini-btn.cancel{background:var(--table-head);color:var(--text-muted)}
+.sheet-config-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* ── Feature-history-of-this-story list (inside modal) ── */
+.hist-entry{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:7px;background:var(--hover)}
+.hist-ico{width:28px;height:28px;border-radius:8px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.hist-main{flex:1;min-width:0}
+.hist-place{font-size:11.5px;font-weight:700}
+.hist-period{font-size:10px;color:var(--text-faint);margin-top:1px}
+.placement-badge{font-size:9.5px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+
+/* ── Filter row (tabs + section dropdown) ── */
+.fm-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.fm-filters .main-tabbar{flex:1}
+.fm-dropdown{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap}
+.fm-dropdown:focus{outline:2px solid var(--accent);outline-offset:1px}
+</style>
+</head>
+<body>
+<div id="fsRoot">
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-table-list" style="color:var(--accent)"></i> Story Placements</h2>
+      <span class="count-chip" id="tableCount">—</span>
+    </div>
+    <div class="panel-sub" id="tableSub">Currently featured stories across Discover. Tap a row to open it and manage everything in one place.</div>
+
+    <div class="fm-filters" id="filterRow">
+      <div class="main-tabbar" id="mainTabbar"></div>
+      <select class="fm-dropdown" id="sectionFilter" data-action="filter-section">
+        <option value="all">All Discover Sections</option>
+      </select>
+    </div>
+
+    <!-- Featured-tab tag filter -->
+    <div class="tabbar" id="tagTabBar" style="display:none"></div>
+
+    <!-- Add-tab search / genre filter -->
+    <div class="add-search" id="addSearchBar" style="display:none">
+      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="librarySearch" placeholder="Search by title or author…"/></div>
+      <select id="libraryGenreFilter"><option value="">All Genres</option></select>
+    </div>
+
+    <!-- History-tab search -->
+    <div class="add-search" id="histSearchBar" style="display:none">
+      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="historySearch" placeholder="Search past placements…"/></div>
+    </div>
+
+    <div id="tableList"></div>
+    <div class="wizard-nav" id="wizardNav"></div>
+  </div>
+</div>
+
+<!-- CENTERED detail modal — this is where everything about a story lives -->
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="detail-sheet" id="detailSheet">
+    <div class="sheet-banner">
+      <img id="sheetCover" src="" alt=""/>
+      <div class="sheet-banner-scrim"></div>
+      <button class="sheet-close" id="sheetClose"><i class="fas fa-xmark"></i></button>
+      <div class="sheet-banner-title">
+        <h2 id="sheetTitle">—</h2>
+        <p id="sheetAuthor">—</p>
+      </div>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<div id="toastEl" style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)"></div>
+
+<script src="../data/editor-demo-data.js"></script>
+<script src="shared/chief-editor-sidebar.js"></script>
+<script src="services/featured-stories-service.js"></script>
+<script>FeaturedStoriesService.init();</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>Log In — Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730;display:flex;justify-content:center;min-height:100vh;padding:16px}
+.card{background:#fff;border:1px solid #eceaf5;border-radius:16px;box-shadow:0 8px 32px rgba(20,10,50,.06);width:100%;max-width:420px;padding:24px;margin:auto}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.logo-ico{width:38px;height:38px;border-radius:11px;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;overflow:hidden;flex-shrink:0}
+.logo-ico img{width:100%;height:100%;object-fit:cover;display:block}
+.logo-txt b{display:block;font-size:13px;font-weight:800;letter-spacing:.04em;line-height:1.1}
+.logo-txt span{font-size:11px;color:#71708a;font-weight:600}
+h1{font-size:18px;font-weight:800;margin-bottom:4px}
+.sub{font-size:12px;color:#9694ac;line-height:1.5;margin-bottom:16px}
+.form-row{margin-bottom:12px}
+.form-label{font-size:11px;font-weight:700;color:#1a1730;display:block;margin-bottom:6px}
+.form-input{width:100%;font-family:inherit;font-size:13px;color:#1a1730;background:#fff;border:1px solid #e4e2f1;border-radius:10px;padding:10px 12px;outline:none;transition:.15s}
+.form-input:focus{border-color:#ff0050;box-shadow:0 0 0 3px rgba(255,0,80,.1)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:36px}
+.pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:transparent;color:#71708a;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.btn{width:100%;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:#ff0050;color:#fff;box-shadow:0 4px 14px rgba(255,0,80,.3)}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.ghost{background:#fff;color:#1a1730;border:1px solid #eceaf5}
+.btn.google{background:#fff;color:#1a1730;border:1px solid #e4e2f1}
+.btn.google:hover{background:#faf9ff}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#eceaf5}
+.divider span{font-size:11px;color:#71708a;font-weight:600}
+.row-between{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.link{font-size:11px;color:#ff0050;font-weight:700;text-decoration:none}
+.btn:disabled{opacity:.7;cursor:wait}
+.btn .fa-spinner{font-size:14px}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light'}document.documentElement.setAttribute('data-theme',t)})()</script>
+</head>
+<body>
+<div class="card" id="loginCard">
+  <div class="logo"><div class="logo-ico"><img src="../assets/droboard-icon.png" alt="Droboard"/></div><div class="logo-txt"><b>DROBOARD</b><span>Read · Write · Earn</span></div></div>
+  <h1>Welcome back</h1>
+  <div class="sub">Sign in to continue reading and publishing.</div>
+
+  <button class="btn google" id="googleBtn" type="button"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px" alt=""/> Continue with Google</button>
+  <div class="divider"><span>or</span></div>
+
+  <div class="form-row"><label class="form-label">Email address</label><input class="form-input" id="emailInput" type="email" placeholder="e.g. adaeze@example.com" autocomplete="email"/></div>
+  <div class="form-row">
+    <label class="form-label">Password</label>
+    <div class="pw-wrap"><input class="form-input" id="passInput" type="password" placeholder="••••••••" autocomplete="current-password"/><button type="button" class="pw-eye" data-target="passInput"><i class="far fa-eye"></i></button></div>
+  </div>
+  <div class="row-between"><label style="font-size:11px;color:#71708a;display:flex;align-items:center;gap:6px"><input type="checkbox" id="rememberCheck" checked/> Remember me</label><a class="link" href="#" id="forgotLink">Forgot password?</a></div>
+  <button class="btn primary" id="loginBtn"><i class="fas fa-arrow-right-to-bracket"></i> Log In</button>
+  <div style="text-align:center;margin-top:12px;font-size:11px;color:#9694ac">No account? <a href="signup.html" style="color:#ff0050;font-weight:700;text-decoration:none">Create one</a></div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;z-index:300">Done</div>
+<style>#toast.show{opacity:1}</style>
+
+<script src="../services/login-service.js"></script>
+</body>
+</html>

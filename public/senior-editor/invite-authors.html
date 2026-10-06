@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Invite Authors — Droboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
+.page{padding:22px 26px 60px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:var(--card,#fff);border:1px solid var(--border,#eceaf5);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(20,10,50,.04),0 8px 24px -12px rgba(20,10,50,.08);display:flex;align-items:center;gap:12px}
+.stat-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.stat-num{font-size:20px;font-weight:800;line-height:1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted,#71708a);font-weight:600;margin-top:2px}
+.panel{background:var(--card,#fff);border:1px solid var(--border,#eceaf5);border-radius:14px;box-shadow:0 1px 2px rgba(20,10,50,.04),0 8px 24px -12px rgba(20,10,50,.08);padding:20px;margin-bottom:16px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.panel-head h2{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11px;color:var(--text-faint,#9694ac);margin-bottom:14px;line-height:1.5}
+.referral-box{background:linear-gradient(135deg,#14142b 0%,#1a1a38 100%);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;color:#fff;position:relative;overflow:hidden}
+.referral-box::after{content:'';position:absolute;top:-40%;right:-10%;width:220px;height:220px;background:radial-gradient(circle,rgba(255,0,80,.18),transparent 70%);pointer-events:none}
+.code-display{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 8px}
+.code-pill{background:#fff;color:#14142b;font-size:18px;font-weight:800;letter-spacing:.12em;padding:10px 18px;border-radius:10px;user-select:all;border:2px dashed rgba(20,20,43,.12)}
+.link-row{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 10px;flex:1;min-width:260px}
+.link-row input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:12.5px;font-family:'Inter',sans-serif}
+.link-row input::selection{background:rgba(255,0,80,.3)}
+.mini-btn{font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;border:1px solid var(--input-border,#e4e2f1);background:var(--input-bg,#fff);color:var(--text,#1a1730);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;font-family:inherit}
+.mini-btn:hover{border-color:var(--accent,#ff0050);color:var(--accent,#ff0050)}
+.mini-btn.primary{background:var(--accent,#ff0050);border-color:transparent;color:#fff}
+.mini-btn.primary:hover{filter:brightness(1.05);color:#fff}
+.mini-btn.ghost{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff}
+.mini-btn.ghost:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22);color:#fff}
+.mini-btn:disabled{opacity:.5;pointer-events:none}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.qr-box{width:110px;height:110px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;overflow:hidden}
+.qr-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px}
+.qr-cell{width:100%;aspect-ratio:1;border-radius:1px}
+.qr-cell.on{background:#14142b}
+.qr-cell.off{background:#f1f0f8}
+.how-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
+.step-card{border:1px solid var(--border,#eceaf5);border-radius:12px;padding:14px;text-align:center;background:var(--card,#fff)}
+.step-num{width:32px;height:32px;border-radius:50%;background:var(--accent-soft,rgba(255,0,80,.12));color:var(--accent,#ff0050);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;margin:0 auto 8px}
+.step-title{font-size:12px;font-weight:700}
+.step-desc{font-size:11px;color:var(--text-faint,#9694ac);margin-top:4px;line-height:1.4}
+.table-wrap{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint,#9694ac);text-align:left;padding:10px 12px;border-bottom:1px solid var(--border,#eceaf5);white-space:nowrap}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--border,#eceaf5);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+.author-cell{display:flex;align-items:center;gap:10px;min-width:180px}
+.author-cell img{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.author-name{font-weight:700;font-size:12.5px}
+.author-email{font-size:10.5px;color:var(--text-faint,#9694ac)}
+.status-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.status-badge.active{background:#e2f8ea;color:#16a34a}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-input{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--input-bg,#fff);border:1px solid var(--input-border,#e4e2f1);border-radius:10px;padding:8px 12px}
+.filter-input input{flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:12.5px;color:var(--text,#1a1730)}
+.filter-input i{color:var(--text-faint,#9694ac);font-size:12px}
+@media(max-width:900px){.grid-3{grid-template-columns:1fr}.how-steps{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="inviteRoot">
+<div class="page">
+  <div class="grid-3" id="statCards"></div>
+
+  <div class="panel" style="padding:0;overflow:hidden;border:none;background:transparent;box-shadow:none">
+    <div class="referral-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.7">Your Referral Code</div>
+          <div class="code-display">
+            <div class="code-pill" id="codePill">SE-XXXXXX</div>
+            <button class="mini-btn ghost" id="copyCodeBtn"><i class="fas fa-copy"></i> Copy Code</button>
+            <button class="mini-btn ghost" id="regenBtn"><i class="fas fa-rotate"></i> Regenerate</button>
+          </div>
+          <div style="font-size:11px;opacity:.7;line-height:1.5">Share this code — writers can enter it on the signup page.<br>Link works too — auto-fills the code.</div>
+        </div>
+        <div class="qr-box" id="qrBox" title="QR for referral link"></div>
+      </div>
+
+      <div style="margin-top:16px">
+        <div style="font-size:11px;font-weight:700;opacity:.8;margin-bottom:6px">Referral Link (supports ?ref=CODE + code field)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div class="link-row" style="flex:1">
+            <i class="fas fa-link" style="color:rgba(255,255,255,.6);font-size:12px"></i>
+            <input id="linkInput" readonly value="https://droboard.com/signup?ref=SE-XXXXXX"/>
+          </div>
+          <button class="mini-btn ghost" id="copyLinkBtn"><i class="fas fa-copy"></i> Copy Link</button>
+          <button class="mini-btn ghost" id="shareBtn"><i class="fas fa-share-nodes"></i> Share</button>
+        </div>
+        <div class="btn-row">
+          <a class="mini-btn ghost" id="openSignupLink" href="#" target="_blank"><i class="fas fa-external-link"></i> Test Signup Page</a>
+          <span style="font-size:10px;opacity:.6;align-self:center">Writers are auto-active — no approval needed.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2><i class="fas fa-circle-info" style="color:var(--accent)"></i> How it works</h2></div>
+    <div class="how-steps">
+      <div class="step-card"><div class="step-num">1</div><div class="step-title">Share Link or Code</div><div class="step-desc">Send your link <b>droboard.com/signup?ref=CODE</b> or tell writers your 6-char code.</div></div>
+      <div class="step-card"><div class="step-num">2</div><div class="step-title">Writer Signs Up — Both Ways</div><div class="step-desc">If they open the link, code auto-fills. Or they type it in the <b>Referral Code</b> field. Either works.</div></div>
+      <div class="step-card"><div class="step-num">3</div><div class="step-title">Auto-Assigned & Active</div><div class="step-desc">Writer is instantly active under you — appears in your Authors list. No approval step.</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-users" style="color:var(--accent)"></i> Referred Writers <span id="referredCount" style="background:var(--table-head,#faf9ff);color:var(--text-muted,#71708a);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin-left:6px">0</span></h2>
+      <button class="mini-btn" id="exportBtn"><i class="fas fa-download"></i> Export CSV</button>
+    </div>
+    <div class="filter-row">
+      <div class="filter-input"><i class="fas fa-search"></i><input id="searchInput" placeholder="Search writers by name or email..."/></div>
+      <select id="sortSelect" style="font-size:12px;font-weight:600;font-family:inherit;color:var(--text,#1a1730);background:var(--input-bg,#fff);border:1px solid var(--input-border,#e4e2f1);border-radius:10px;padding:8px 12px;outline:none;cursor:pointer">
+        <option value="newest">Newest first</option>
+        <option value="name">Name A-Z</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Writer</th><th>Code Used</th><th>Signed Up</th><th>Status</th></tr></thead>
+        <tbody id="writersBody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" style="display:none;text-align:center;padding:28px 10px;color:var(--text-faint,#9694ac);font-size:12.5px">
+      <i class="fas fa-user-plus" style="font-size:22px;display:block;margin-bottom:8px;opacity:.4"></i>
+      No writers yet — share your link to start.
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:11px 18px;border-radius:24px;font-size:12.5px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:300;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.18)">Copied!</div>
+<style>#toast.show{opacity:1}</style>
+
+<script src="shared/senior-editor-sidebar.js"></script>
+<script src="services/invite-authors-service.js"></script>
+<script>InviteAuthorsService.init();</script>
+</body>
+</html>

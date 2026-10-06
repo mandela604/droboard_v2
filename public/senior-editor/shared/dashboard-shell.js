@@ -207,7 +207,7 @@
         <div class="dsh-sb-overlay" id="${instId}-overlay"></div>
         <aside class="dsh-sidebar" id="${instId}-sidebar">
           <div class="dsh-sb-logo">
-            <div class="dsh-sb-logo-ico"><i class="fas fa-book-open"></i></div>
+            <div class="dsh-sb-logo-ico" style="background:#000;overflow:hidden;padding:0"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
             <div class="dsh-sb-logo-txt"><b>DROBOARD</b><b>DASHBOARD</b></div>
             <button class="dsh-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>

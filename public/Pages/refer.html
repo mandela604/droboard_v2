@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Refer a Friend · Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;
+  --bg:#000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;
+  --bd:rgba(255,255,255,.08);--bd-acc:rgba(255,0,80,.25);
+  --tx-high:#f0f0f2;--tx-body:#c3c1cc;--tx-muted:#7d7a89;--tx-faint:#454350;
+  --gold:#fbbf24;--green:#34d399;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:'DM Sans',sans-serif}
+body{display:flex;justify-content:center;padding-bottom:calc(var(--safe-b) + 24px)}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--bg);position:relative}
+.top-bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:12px;padding:calc(var(--safe-t) + 12px) 16px 12px;background:rgba(0,0,0,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd)}
+.tb-back{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+.tb-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:800;color:var(--tx-high)}
+.content{padding:20px 16px 8px}
+.hero{text-align:center;padding:10px 0 18px}
+.hero-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:var(--tx-high)}
+.hero-sub{font-size:13px;color:var(--tx-muted);margin-top:6px}
+.hero-sub b{color:var(--gold)}
+.card{background:var(--l1);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:12px}
+.card-lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-muted);margin-bottom:10px}
+.code-row{display:flex;align-items:center;gap:10px}
+.code{flex:1;font-size:20px;font-weight:800;letter-spacing:.08em;color:var(--tx-high);background:var(--l2);border:1px dashed var(--bd-acc);border-radius:12px;padding:12px;text-align:center}
+.copy-btn{background:var(--acc);color:#fff;border:none;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px}
+.copy-btn:active{transform:scale(.95)}
+.link-row{display:flex;align-items:center;gap:10px;background:var(--l2);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--tx-muted);overflow:hidden}
+.link-row span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.share-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
+.share-btn{background:var(--l2);border:1px solid var(--bd);border-radius:12px;padding:12px 6px;color:var(--tx-high);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+.share-btn i{font-size:17px}
+.share-btn:active{transform:scale(.96)}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:var(--l2);border:1px solid var(--bd);border-radius:12px;padding:14px 6px;text-align:center}
+.stat-num{font-size:22px;font-weight:800;color:var(--tx-high)}
+.stat-num.gold{color:var(--gold)}
+.stat-lbl{font-size:10px;color:var(--tx-muted);font-weight:600;margin-top:2px}
+.ref-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}
+.ref-row:first-of-type{border-top:none}
+.ref-av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.ref-name{font-size:13px;font-weight:700;color:var(--tx-high)}
+.ref-sub{font-size:10.5px;color:var(--tx-muted)}
+.ref-badge{margin-left:auto;font-size:10px;font-weight:800;padding:4px 10px;border-radius:10px;flex-shrink:0}
+.ref-badge.joined{color:var(--gold);background:rgba(251,191,36,.1)}
+.ref-badge.invited{color:var(--tx-muted);background:rgba(255,255,255,.05)}
+.step{display:flex;gap:12px;padding:10px 0}
+.step-n{width:26px;height:26px;border-radius:50%;background:rgba(255,0,80,.12);color:var(--acc2);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step p{font-size:12.5px;line-height:1.55;color:var(--tx-body)}
+.step p b{color:var(--tx-high)}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:#1c1c22;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{font-size:12px;color:var(--tx-faint);padding:8px 0}
+
+/* ── Light theme (same droboardTheme key as settings page) ── */
+[data-theme="light"]{--bg:#f2f1f6;--l1:#ffffff;--l2:#f4f3f8;--l3:#ecebf2;--bd:rgba(20,12,40,.09);--bd-acc:rgba(255,0,80,.22);--tx-high:#171423;--tx-body:#4a4759;--tx-muted:#8a87a0;--tx-faint:#b9b7c9}
+[data-theme="light"] .top-bar{background:rgba(255,255,255,.9);border-bottom:1px solid var(--bd)}
+[data-theme="light"] .tb-back{background:#f1f0f6;color:#171423;border-color:var(--bd)}
+[data-theme="light"] .card{box-shadow:0 6px 20px rgba(25,15,50,.06)}
+[data-theme="light"] .code{background:#fdf2f6}
+[data-theme="light"] .link-row{background:#f7f6fa}
+[data-theme="light"] .share-btn{background:#fff;box-shadow:0 2px 8px rgba(25,15,50,.05)}
+[data-theme="light"] .stat{background:#f7f6fa}
+[data-theme="light"] .ref-av{border:1px solid var(--bd)}
+[data-theme="light"] .ref-badge.invited{background:rgba(20,12,40,.06)}
+[data-theme="light"] .toast{background:#171423}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></button>
+    <img src="../assets/droboard-icon.png" alt="Droboard" style="width:32px;height:32px;border-radius:9px;flex-shrink:0"/>
+    <div class="tb-title">Refer a Friend</div>
+  </div>
+
+  <div class="content">
+    <div class="hero">
+      <img src="../assets/droboard-icon.png" alt="Droboard" style="width:64px;height:64px;border-radius:18px;margin:0 auto 14px;box-shadow:0 10px 28px rgba(255,0,80,.35)"/>
+      <div class="hero-title">Give coins, get coins</div>
+      <div class="hero-sub">Earn <b><i class="fas fa-coins"></i> 5 coins</b> for every friend who joins with your link</div>
+    </div>
+
+    <div class="card">
+      <div class="card-lbl">Your referral code</div>
+      <div class="code-row">
+        <div class="code" id="refCode">…</div>
+        <button class="copy-btn" id="copyCodeBtn"><i class="fas fa-copy"></i> Copy</button>
+      </div>
+      <div style="height:10px"></div>
+      <div class="link-row"><span id="refLink">…</span></div>
+      <div class="share-row">
+        <button class="share-btn" id="shareBtn"><i class="fas fa-share-alt"></i>Share</button>
+        <button class="share-btn" id="waBtn"><i class="fab fa-whatsapp" style="color:#25D366"></i>WhatsApp</button>
+        <button class="share-btn" id="xBtn"><i class="fab fa-x-twitter"></i>Post on X</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-lbl">Your rewards</div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-num" id="stInvited">0</div><div class="stat-lbl">Invited</div></div>
+        <div class="stat"><div class="stat-num" id="stJoined">0</div><div class="stat-lbl">Joined</div></div>
+        <div class="stat"><div class="stat-num gold" id="stEarned">0</div><div class="stat-lbl">Coins earned</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-lbl">Referred friends</div>
+      <div id="refList"><div class="empty">No referrals yet — share your link above.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-lbl">How it works</div>
+      <div class="step"><div class="step-n">1</div><p><b>Share your link</b> with friends — anywhere, any app.</p></div>
+      <div class="step"><div class="step-n">2</div><p>They sign up with your code <b>auto-filled</b>.</p></div>
+      <div class="step"><div class="step-n">3</div><p>You both get <b><i class="fas fa-coins"></i> 5 coins</b> when they join.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../services/auth-session.js"></script>
+<script src="../services/store-service.js"></script>
+<script src="../services/refer-service.js"></script>
+<script>
+(function(){
+  'use strict';
+  function toast(m){
+    var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
+    clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},2200);
+  }
+  async function currentHandle(){
+    try{
+      if(window.AuthSession && AuthSession.getSession){
+        var s=await AuthSession.getSession();
+        if(s && s.handle) return s.handle;
+      }
+      if(window.ProfileData && ProfileData.getCurrentUserHandle) return await ProfileData.getCurrentUserHandle();
+    }catch(e){}
+    return 'Ada_Writes';
+  }
+  async function init(){
+    var handle=await currentHandle();
+    var code=await ReferService.getCode(handle);
+    var link=ReferService.inviteLink(code);
+    document.getElementById('refCode').textContent=code;
+    document.getElementById('refLink').textContent=link;
+    var stats=await ReferService.getStats(handle);
+    document.getElementById('stInvited').textContent=stats.invited;
+    document.getElementById('stJoined').textContent=stats.joined;
+    document.getElementById('stEarned').textContent=stats.earned;
+    var list=await ReferService.getReferred(handle);
+    if(list && list.length){
+      document.getElementById('refList').innerHTML=list.map(function(r){
+        var joined=r.status==='joined';
+        return '<div class="ref-row">'
+          +'<img class="ref-av" src="'+(r.avatar||'')+'" loading="lazy" alt=""/>'
+          +'<div><div class="ref-name">'+(r.name||'')+'</div><div class="ref-sub">@'+(r.handle||'')+' · '+(r.when||'')+'</div></div>'
+          +'<div class="ref-badge '+(joined?'joined':'invited')+'">'+(joined?'+5 coins':'Invited')+'</div>'
+          +'</div>';
+      }).join('');
+    }
+    document.getElementById('copyCodeBtn').addEventListener('click', async function(){
+      await ReferService.copyLink(link); toast('📋 Link copied!');
+    });
+    document.getElementById('shareBtn').addEventListener('click', async function(){
+      var ok=await ReferService.nativeShare('Join me on Droboard','Sign up with my link and we both earn 5 coins!',link);
+      if(!ok){ await ReferService.copyLink(link); toast('📋 Link copied!'); }
+    });
+    document.getElementById('waBtn').addEventListener('click', function(){ window.open(ReferService.whatsappUrl(link),'_blank'); });
+    document.getElementById('xBtn').addEventListener('click', function(){ window.open(ReferService.xUrl(link),'_blank'); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+</script>
+</body>
+</html>

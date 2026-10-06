@@ -149,6 +149,9 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
   <div class="drawer-body" id="drawerBody"></div>
 </div>
 
+<script src="services/api-config.js"></script>
+<script src="services/drawer-service.js"></script>
+<script src="services/edit-chapter-service.js"></script>
 <script>
 (function(){
 'use strict';
@@ -161,7 +164,9 @@ function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.c
 
 var params=new URLSearchParams(location.search);
 var bookId=params.get('book')||'b1';
-var chapterNum=parseInt(params.get('chapter'))||1;
+var chapterParam=params.get('chapter')||'1';
+var isNew = chapterParam === 'new';
+var chapterNum=parseInt(chapterParam)||1;
 
 var BOOKS=[
   {id:'b1',title:'The Midnight Protocol',genre:'Romance',cover:'https://picsum.photos/seed/book1/100/140',chapters:[
@@ -180,17 +185,32 @@ var BOOKS=[
 
 var book=BOOKS.find(function(b){return b.id===bookId;});
 if(!book)book=BOOKS[0];
-var chapter=book.chapters.find(function(c){return c.n===chapterNum;});
+var chapter;
+if (isNew) {
+  chapter = { n: 'New', title: '', status: 'draft', content: '' };
+  document.getElementById('pageTitle').textContent='New Chapter — '+book.title;
+  document.getElementById('chTitle').value='';
+  document.getElementById('editor').innerHTML='';
+  document.getElementById('chapterInfo').innerHTML=
+    '<img class="chapter-cover" src="'+book.cover+'" alt=""/>'
+    +'<div><div class="chapter-info-title">'+book.title+'</div>'
+    +'<div class="chapter-info-meta">Draft</div>'
+    +'<div class="chapter-info-ch">New chapter</div></div>';
+} else {
+chapter=book.chapters.find(function(c){return c.n===chapterNum;});
 if(!chapter)chapter=book.chapters[0];
+} // end else — common render below works for both new + existing
 
-document.getElementById('pageTitle').textContent='Ch. '+chapter.n+' — '+chapter.title;
+document.getElementById('pageTitle').textContent = isNew ? 'New Chapter — '+book.title : 'Ch. '+chapter.n+' — '+chapter.title;
 document.getElementById('chTitle').value=chapter.title;
 document.getElementById('editor').innerHTML=chapter.content||'';
+if (!isNew) {
 document.getElementById('chapterInfo').innerHTML=
   '<img class="chapter-cover" src="'+book.cover+'" alt=""/>'
   +'<div><div class="chapter-info-title">'+book.title+'</div>'
   +'<div class="chapter-info-meta">'+book.genre+'</div>'
   +'<div class="chapter-info-ch">Chapter '+chapter.n+'</div></div>';
+}
 
 function getStatusBanner(s){
   if(s==='pending_review')return '<i class="fas fa-clock"></i> Pending Review — waiting for editor';

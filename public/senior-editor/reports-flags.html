@@ -127,91 +127,23 @@
 <body>
 <div id="dashboardRoot">
   <div class="page-hdr-row">
-    <div class="top-tabs">
-      <div class="top-tab active" data-view="all">All Reports</div>
-      <div class="top-tab" data-view="pending">Pending <span class="tab-count" id="pendingCount">0</span></div>
-      <div class="top-tab" data-view="resolved">Resolved</div>
-      <div class="top-tab" data-view="dismissed">Dismissed</div>
-    </div>
-    <button class="btn-add" onclick="toast('Opening report settings…')"><i class="fas fa-sliders"></i> Report Settings</button>
+    <div></div>
+    <button class="btn-add" onclick="ReportsFlagsService.openReportSettings()"><i class="fas fa-sliders"></i> Report Settings</button>
   </div>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta down">+12% from last month</span></div><div class="stat-num">47</div><div class="stat-lbl">Total Reports</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta down">+8 awaiting</span></div><div class="stat-num">18</div><div class="stat-lbl">Pending Review</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+15% from last month</span></div><div class="stat-num">24</div><div class="stat-lbl">Resolved</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-rotate-left"></i></div><span class="stat-delta">+5% from last month</span></div><div class="stat-num">5</div><div class="stat-lbl">Dismissed</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta down">+12% from last month</span></div><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Total Reports</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta down">+8 awaiting</span></div><div class="stat-num" id="statPending">0</div><div class="stat-lbl">Pending Review</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+15% from last month</span></div><div class="stat-num" id="statResolved">0</div><div class="stat-lbl">Resolved</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-rotate-left"></i></div><span class="stat-delta">+5% from last month</span></div><div class="stat-num" id="statDismissed">0</div><div class="stat-lbl">Dismissed</div></div>
     <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-gavel"></i></div><span class="stat-delta">-2h avg</span></div><div class="stat-num">4.2h</div><div class="stat-lbl">Avg Response Time</div></div>
   </div>
-  <div class="filters-row">
-    <div class="tc-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by title, reporter, or ID..."/></div>
-    <div class="fselect"><select id="typeSelect"><option value="">All Types</option><option value="content">Content</option><option value="spam">Spam</option><option value="plagiarism">Plagiarism</option><option value="abuse">Abuse</option><option value="other">Other</option></select><i class="fas fa-chevron-down"></i></div>
-    <div class="fselect"><select id="statusSelect"><option value="">All Status</option><option value="pending">Pending</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select><i class="fas fa-chevron-down"></i></div>
-    <button class="btn-filters" onclick="toast('Opening advanced filters…')"><i class="fas fa-sliders"></i> Filters</button>
-  </div>
-  <div class="two-col-grid">
-    <div class="table-card">
-      <div class="table-wrap">
-        <table><thead><tr><th>Flag Details</th><th>Type</th><th>Reported By</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table>
-      </div>
-      <div class="pagination-row"><div class="page-info" id="pageInfo">Showing <b>1</b> to <b>8</b> of <b>47</b> reports</div><div class="page-btns" id="pageBtns"></div></div>
-    </div>
-    <div>
-      <div class="panel"><div class="panel-head"><h2>Report Summary</h2></div>
-        <div class="stat-row"><span class="lbl">Content Violations</span><span class="val red">18</span></div>
-        <div class="stat-row"><span class="lbl">Spam Reports</span><span class="val">12</span></div>
-        <div class="stat-row"><span class="lbl">Plagiarism Claims</span><span class="val">8</span></div>
-        <div class="stat-row"><span class="lbl">Abuse Reports</span><span class="val">6</span></div>
-        <div class="stat-row"><span class="lbl">Other</span><span class="val">3</span></div>
-      </div>
-      <div class="panel"><div class="panel-head"><h2>Quick Actions</h2></div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="btn-add" style="width:100%;justify-content:center" onclick="toast('Opening review queue…')"><i class="fas fa-inbox"></i> Review Queue</button>
-          <button class="btn-add" style="width:100%;justify-content:center;background:var(--input-bg);color:var(--text);box-shadow:none" onclick="toast('Opening moderation log…')"><i class="fas fa-list-check"></i> Moderation Log</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div id="reportsMount"></div>
 </div>
 <script src="shared/api.js"></script>
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="reports-flags-enhanced.js"></script>
-<script src="remaining-pages-enhanced.js"></script>
-<script>
-SeniorEditorSidebar.attach('#dashboardRoot', {
-  activeItem: 'reports-flags',
-  title: 'Reports & Flags',
-  subtitle: 'Review and manage all content reports and flags',
-  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
-  notifCount: 8,
-  searchPlaceholder: 'Search by title, reporter, or ID...',
-  mobileSearchTarget: '#tableSearch',
-  onSearch: (v) => { document.getElementById('tableSearch').value = v; refresh(); },
-});
-const FLAGS = [
-  { id:'FLG-0047', title:'Inappropriate Content in "The Ruthless CEO"', desc:'Chapter 12 contains explicit content not marked as mature.', type:'content', reporter:'Reader_2345', status:'pending', date:'Jun 17, 2026', ico:'fa-flag', bg:'#fde3e3', clr:'var(--red)' },
-  { id:'FLG-0046', title:'Spam Comments on "Bound by the Alpha"', desc:'Multiple spam comments promoting external websites.', type:'spam', reporter:'ModBot', status:'pending', date:'Jun 16, 2026', ico:'fa-bug', bg:'#fde3e3', clr:'var(--red)' },
-  { id:'FLG-0045', title:'Plagiarism: "His Hidden Luna"', desc:'Sections of this story appear to be copied from another work.', type:'plagiarism', reporter:'Author_789', status:'resolved', date:'Jun 15, 2026', ico:'fa-copy', bg:'#e3ecfd', clr:'var(--blue)' },
-  { id:'FLG-0044', title:'Harassment in Comments', desc:'User making offensive remarks towards the author.', type:'abuse', reporter:'LunaSkye', status:'pending', date:'Jun 14, 2026', ico:'fa-hand', bg:'#ece9fb', clr:'#5b4bcf' },
-  { id:'FLG-0043', title:'Fake Account Reporting', desc:'Account suspected of impersonating a verified author.', type:'other', reporter:'Admin_Team', status:'resolved', date:'Jun 13, 2026', ico:'fa-user-slash', bg:'#eef0f2', clr:'#5b6470' },
-  { id:'FLG-0042', title:'Explicit Cover Image', desc:'Book cover contains nudity that violates guidelines.', type:'content', reporter:'Reader_8901', status:'dismissed', date:'Jun 12, 2026', ico:'fa-image', bg:'#fde3e3', clr:'var(--red)' },
-  { id:'FLG-0041', title:'Copyright Infringement', desc:'Author claims their work was republished without permission.', type:'plagiarism', reporter:'MiaCarter', status:'pending', date:'Jun 11, 2026', ico:'fa-copyright', bg:'#e3ecfd', clr:'var(--blue)' },
-  { id:'FLG-0040', title:'Spam Promo in Bio', desc:'Author bio contains links to competitor platform.', type:'spam', reporter:'ModBot', status:'resolved', date:'Jun 10, 2026', ico:'fa-bug', bg:'#fde3e3', clr:'var(--red)' },
-];
-const TYPE_META = { content:{label:'Content',cls:'content'}, spam:{label:'Spam',cls:'spam'}, plagiarism:{label:'Plagiarism',cls:'plagiarism'}, abuse:{label:'Abuse',cls:'abuse'}, other:{label:'Other',cls:'other'} };
-let currentView='all';
-function statusPillHtml(s){const m={pending:{cls:'pending',label:'Pending'},resolved:{cls:'resolved',label:'Resolved'},dismissed:{cls:'dismissed',label:'Dismissed'}}[s]||m.pending;return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`}
-function viewSource(){if(currentView==='all')return FLAGS;return FLAGS.filter(r=>r.status===currentView)}
-function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const t=document.getElementById('typeSelect').value;const s=document.getElementById('statusSelect').value;let l=viewSource();if(s)l=l.filter(r=>r.status===s);if(t)l=l.filter(r=>r.type===t);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.title.toLowerCase().includes(q)||r.reporter.toLowerCase().includes(q));return l}
-function renderTable(list){const b=document.getElementById('tableBody');if(!list.length){b.innerHTML=`<tr class="empty-row"><td colspan="6"><i class="fas fa-flag"></i>No reports match this search.</td></tr>`;return}
-b.innerHTML=list.slice(0,8).map(r=>{const m=TYPE_META[r.type]||TYPE_META.other;return `<tr><td data-label="Flag Details"><div class="flag-cell"><div class="flag-ico" style="background:${r.bg};color:${r.clr}"><i class="fas ${r.ico}"></i></div><div><div class="flag-title">${r.title}</div><div class="flag-desc">${r.desc}</div></div></div></td><td data-label="Type"><span class="type-pill ${m.cls}">${m.label}</span></td><td data-label="Reported By" style="font-weight:600;font-size:12.5px">${r.reporter}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Date" style="font-weight:600;font-size:12.5px">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" title="View" onclick="toast('Opening report…')"><i class="fas fa-eye"></i></button><button class="act-btn" title="Resolve" onclick="toast('Resolving report…')"><i class="fas fa-check"></i></button><button class="act-btn" title="More" onclick="toast('More actions…')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`}).join('')}
-function renderPageInfo(c){const t={all:47,pending:18,resolved:24,dismissed:5};const total=t[currentView]??c;const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>${total.toLocaleString()}</b> reports`}
-function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
-document.querySelectorAll('.top-tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.top-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');currentView=tab.dataset.view;document.getElementById('statusSelect').value='';renderPagination();refresh()})})
-function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,6];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
-document.getElementById('tableSearch').addEventListener('input',refresh);document.getElementById('typeSelect').addEventListener('change',refresh);document.getElementById('statusSelect').addEventListener('change',(e)=>{const s=e.target.value;currentView=s||'all';document.querySelectorAll('.top-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===currentView));renderPagination();refresh()});
-document.getElementById('pendingCount').textContent=FLAGS.filter(r=>r.status==='pending').length;
-renderPagination();refresh();
-</script>
+<script src="../component/reports-table.js"></script>
+<script src="services/reports-flags-service.js"></script>
+<script>ReportsFlagsService.init();</script>
 </body>
 </html>

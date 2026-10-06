@@ -85,7 +85,7 @@
     const pools = inv.pools || {};
     const now = dayStart(new Date());
     const out = {};
-    ['platform', 'book', 'native', 'follow', 'banner', 'promo'].forEach(k => {
+    ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'promo'].forEach(k => {
       out[k] = (Array.isArray(pools[k]) ? pools[k] : []).filter(ad => {
         if (ad.active === false) return false;
         if (!inSchedule(ad, now)) return false;

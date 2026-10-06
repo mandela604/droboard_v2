@@ -20,6 +20,11 @@
 
   function handleSaveClick(btn, item) {
     event.stopPropagation();
+    // Open save component (collections sheet). Backend-ready via DroboardSaveAPI.
+    if (typeof window.openSaveModal === 'function') {
+      window.openSaveModal({ storyId: item.id, title: item.title, img: item.cover, sub: item.author ? 'by @' + item.author : '' });
+      return;
+    }
     if (window.DroboardSave && typeof DroboardSave.toggle === 'function') {
       var saved = DroboardSave.toggle(item);
       btn.classList.toggle('saved', saved);
@@ -36,19 +41,39 @@
     return !!(window.DroboardSave && typeof DroboardSave.isSaved === 'function' && DroboardSave.isSaved(id));
   }
 
-  /* ── Status Row ── */
+  /* ── Status Row — segmented like feed (feed-service.js:58 buildRingStyle) ── */
+  function buildRingStyle(s){
+    const n = s.statuses ? s.statuses.length : 0;
+    if(s.isYou || n <= 1) return '';
+    const gap = 6; const segAngle = 360 / n; const seg = segAngle - gap;
+    const isViewed = s.ring === 'ring-viewed';
+    const segColor = isViewed ? '#9ca3af' : '#ff0050';
+    const gapColor = 'rgba(255,255,255,.12)';
+    let stops = [];
+    for(let i=0;i<n;i++){
+      const start = i * segAngle; const segEnd = start + seg; const gapEnd = start + segAngle;
+      const viewedSeg = s.statuses[i] && s.statuses[i].viewed;
+      const c = (viewedSeg || isViewed) ? '#9ca3af' : segColor;
+      stops.push(c+' '+start+'deg '+segEnd+'deg'); stops.push(gapColor+' '+segEnd+'deg '+gapEnd+'deg');
+    }
+    return 'background: conic-gradient(from 0deg, '+stops.join(', ')+');';
+  }
   function renderStatusRow(statuses) {
     var STATUSES = statuses || [];
     document.getElementById('statusRow').innerHTML = STATUSES.map(function (s) {
       if (s.isYou) return '<div class="s-item" onclick="toast(\'✏️ Add to your story\')">' +
-        '<div class="s-ring ring-none" style="position:relative">' +
+        '<div class="s-ring ring-own" style="position:relative">' +
         '<div class="s-inner"><i class="fas fa-plus s-add-icon"></i></div>' +
         '</div>' +
         '<div class="s-name">You</div>' +
         '</div>';
+      var n = s.statuses ? s.statuses.length : 0;
+      var isMulti = !s.isYou && n > 1;
+      var ringClass = s.isYou ? 'ring-none' : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
+      var style = isMulti ? buildRingStyle(s)+'position:relative' : 'position:relative';
       var live = s.isLive ? '<div class="s-live-dot"><i class="fas fa-signal"></i></div>' : '';
       return '<div class="s-item" data-status-id="' + s.id + '">' +
-        '<div class="s-ring ' + s.ring + '" style="position:relative">' +
+        '<div class="s-ring ' + ringClass + '" style="'+style+'">' +
         '<div class="s-inner"><img src="' + s.avatar + '" loading="lazy" alt=""/></div>' + live +
         '</div>' +
         '<div class="s-name">@' + s.name.split('_')[0] + '</div>' +
@@ -107,7 +132,9 @@
         '</div></div>';
     }
     var saved = isItemSaved(s.id);
-    return '<div class="hero-slide" style="background-image:url(\'' + s.cover + '\')" onclick="toast(\'📖 Opening chapter…\')">' +
+    var readerHref = 'full-reader.html?story=' + encodeURIComponent(s.id);
+    var profileHref = 'profile.html?u=' + encodeURIComponent((s.author || '').replace('@', ''));
+    return '<div class="hero-slide" style="background-image:url(\'' + s.cover + '\')" onclick="location.href=\'' + readerHref + '\'">' +
       '<div class="hero-scrim"></div>' +
       '<div class="hero-badges-top"><span class="badge-genre">' + s.genre + '</span></div>' +
       '<div class="hero-content">' +
@@ -116,14 +143,14 @@
       '<span class="hero-stat"><i class="far fa-eye"></i> ' + s.reads + ' reads</span>' +
       '<span class="hero-stat chapter"><i class="fas fa-bookmark"></i> ' + s.chapter + '</span>' +
       '</div>' +
-      '<div class="hero-title">' + s.title + '</div>' +
-      '<div class="hero-author-row">' +
+      '<div class="hero-title" onclick="event.stopPropagation();location.href=\'' + readerHref + '\'">' + s.title + '</div>' +
+      '<div class="hero-author-row" onclick="event.stopPropagation();location.href=\'' + profileHref + '\'">' +
       '<img class="hero-av" src="' + s.authorAv + '" loading="lazy" alt=""/>' +
       '<span class="hero-author-name">@' + s.author + (s.verified ? ' <i class="fas fa-circle-check"></i>' : '') + '</span>' +
       '</div>' +
       '<div class="hero-synopsis">' + s.synopsis + '</div>' +
       '<div class="hero-cta-row">' +
-      '<button class="btn-start" onclick="event.stopPropagation();toast(\'📖 Opening chapter…\')"><i class="fas fa-play" style="font-size:12px"></i> Start Reading</button>' +
+      '<button class="btn-start" onclick="event.stopPropagation();location.href=\'' + readerHref + '\'"><i class="fas fa-play" style="font-size:12px"></i> Start Reading</button>' +
       '<button class="btn-icon-only' + (saved ? ' saved' : '') + '" onclick=\'handleSaveClick(this,' + JSON.stringify({ id: s.id, title: s.title, cover: s.cover, author: s.author }) + ')\'><i class="' + (saved ? 'fas' : 'far') + ' fa-bookmark"></i></button>' +
       '</div>' +
       '</div>' +

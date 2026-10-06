@@ -5,18 +5,18 @@ var CT=[
   {value:'licensing',label:'Licensing Agreement',term:'9 months',rev:'55/45'}
 ];
 var items=[
-  {id:'CTR-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',bookTitle:'The Last Horizon',bookGenre:'Sci-Fi',ct:'',term:'12 months',rev:'70/30',submitted:'2h ago',status:'pending',notes:'Standard exclusive deal request. Author initiated.',sent:false},
-  {id:'CTR-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',bookTitle:'Wolf Kings Vow',bookGenre:'Fantasy',ct:'',term:'6 months',rev:'60/40',submitted:'5h ago',status:'pending',notes:'Non-exclusive request. Author retains rights.',sent:false},
-  {id:'CTR-003',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',bookTitle:'Midnight Ember',bookGenre:'Romance',ct:'exclusive',term:'18 months',rev:'75/25',submitted:'1d ago',status:'approved',notes:'Premium exclusive. Author signed. Awaiting platform sign.',sent:true},
-  {id:'CTR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'Streetlight Dreams',bookGenre:'Urban Fiction',ct:'revenue-share',term:'12 months',rev:'65/35',submitted:'2d ago',status:'signed',notes:'Completed. Revenue share with milestone bonuses.',sent:true},
-  {id:'CTR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',bookTitle:'Kingdom of Ashes',bookGenre:'Epic Fantasy',ct:'exclusive',term:'24 months',rev:'80/20',submitted:'3d ago',status:'signed',notes:'Long-term exclusive. Premium author.',sent:true},
-  {id:'CTR-006',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',bookTitle:'Lagos After Dark',bookGenre:'Thriller',ct:'',term:'3 months',rev:'55/45',submitted:'4d ago',status:'pending',notes:'Short-term trial. Author initiated.',sent:false},
-  {id:'CTR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',bookTitle:'Crimson Petals',bookGenre:'Literary Fiction',ct:'exclusive',term:'12 months',rev:'70/30',submitted:'5d ago',status:'rejected',notes:'Contract terms rejected. Revenue split dispute.',sent:true},
-  {id:'CTR-008',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',bookTitle:'Neon Streets',bookGenre:'Cyberpunk',ct:'revenue-share',term:'9 months',rev:'60/40',submitted:'6d ago',status:'signed',notes:'Completed. Standard revenue share.',sent:true},
-  {id:'CTR-009',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',bookTitle:'Daughter of Wind',bookGenre:'YA Fantasy',ct:'exclusive',term:'12 months',rev:'70/30',submitted:'1w ago',status:'approved',notes:'Author signed. Awaiting platform final sign.',sent:true},
-  {id:'CTR-010',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',bookTitle:'Shadow Protocol',bookGenre:'Action',ct:'non-exclusive',term:'6 months',rev:'55/45',submitted:'1w ago',status:'signed',notes:'Completed. Second contract for this author.',sent:true},
-  {id:'CTR-011',author:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',bookTitle:'Frozen Echoes',bookGenre:'Nordic Noir',ct:'',term:'',rev:'',submitted:'3h ago',status:'pending',notes:'Author just applied. Editor to select contract type.',sent:false},
-  {id:'CTR-012',author:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'The Silent Accord',bookGenre:'Mystery',ct:'',term:'',rev:'',submitted:'6h ago',status:'pending',notes:'New submission. Needs contract assignment.',sent:false}
+  {id:'CTR-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',bookTitle:'The Last Horizon',bookGenre:'Sci-Fi',chapters:14,ct:'',term:'12 months',rev:'70/30',submitted:'2h ago',status:'pending',notes:'Hi! I would love an exclusive deal for The Last Horizon — I believe in this book and I want us to build it together.',sent:false},
+  {id:'CTR-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',bookTitle:'Wolf Kings Vow',bookGenre:'Fantasy',chapters:22,ct:'',term:'6 months',rev:'60/40',submitted:'5h ago',status:'pending',notes:'Requesting a non-exclusive deal for Wolf Kings Vow — I would like to keep my rights while we work together.',sent:false},
+  {id:'CTR-003',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',bookTitle:'Midnight Ember',bookGenre:'Romance',chapters:18,ct:'exclusive',term:'18 months',rev:'75/25',submitted:'1d ago',status:'approved',notes:'Thank you for the premium exclusive offer on Midnight Ember — I have signed from my side and I am excited for us to begin!',sent:true},
+  {id:'CTR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'Streetlight Dreams',bookGenre:'Urban Fiction',chapters:30,ct:'revenue-share',term:'12 months',rev:'65/35',submitted:'2d ago',status:'signed',notes:'Happy with the revenue share terms for Streetlight Dreams, plus the milestone bonuses. All signed!',sent:true},
+  {id:'CTR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',bookTitle:'Kingdom of Ashes',bookGenre:'Epic Fantasy',chapters:24,ct:'exclusive',term:'24 months',rev:'80/20',submitted:'3d ago',status:'signed',notes:'The 24-month exclusive works for me — Kingdom of Ashes is my heart book and I am glad to commit long-term.',sent:true},
+  {id:'CTR-006',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',bookTitle:'Lagos After Dark',bookGenre:'Thriller',chapters:9,ct:'',term:'3 months',rev:'55/45',submitted:'4d ago',status:'pending',notes:'I would like to start with the short 3-month trial for Lagos After Dark so we can test the waters together.',sent:false},
+  {id:'CTR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',bookTitle:'Crimson Petals',bookGenre:'Literary Fiction',chapters:16,ct:'exclusive',term:'12 months',rev:'70/30',submitted:'5d ago',status:'rejected',notes:'I cannot accept a 70/30 split on Crimson Petals — my work deserves better. Hoping we can revisit the numbers.',sent:true},
+  {id:'CTR-008',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',bookTitle:'Neon Streets',bookGenre:'Cyberpunk',chapters:20,ct:'revenue-share',term:'9 months',rev:'60/40',submitted:'6d ago',status:'signed',notes:'Standard revenue share works for Neon Streets. Signed and ready!',sent:true},
+  {id:'CTR-009',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',bookTitle:'Daughter of Wind',bookGenre:'YA Fantasy',chapters:26,ct:'exclusive',term:'12 months',rev:'70/30',submitted:'1w ago',status:'approved',notes:'I have signed the exclusive for Daughter of Wind — waiting on the final platform sign!',sent:true},
+  {id:'CTR-010',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',bookTitle:'Shadow Protocol',bookGenre:'Action',chapters:12,ct:'non-exclusive',term:'6 months',rev:'55/45',submitted:'1w ago',status:'signed',notes:'Second contract signed for Shadow Protocol. Happy to be working together again!',sent:true},
+  {id:'CTR-011',author:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',bookTitle:'Frozen Echoes',bookGenre:'Nordic Noir',chapters:10,ct:'',term:'',rev:'',submitted:'3h ago',status:'pending',notes:'Hello! I just applied for a contract for Frozen Echoes — please let me know which deal fits best.',sent:false},
+  {id:'CTR-012',author:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'The Silent Accord',bookGenre:'Mystery',chapters:15,ct:'',term:'',rev:'',submitted:'6h ago',status:'pending',notes:'New submission here — The Silent Accord needs a contract home. Awaiting your assignment!',sent:false}
 ];
 var curPage=1,PP=5,openId=null,selCT={};
 function ctLabel(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].label;}return '--';}
@@ -127,10 +127,27 @@ function renderDetail(id){
   var h='<div class="detail-inner">';
   h+='<div class="detail-header"><img class="detail-avatar" src="'+a.avatar+'" alt=""><div class="detail-title"><h3>'+a.author+'</h3><p>'+a.id+' | '+a.bookTitle+' | '+a.bookGenre+'</p></div>'+pill(a.status)+'</div>';
   h+=roNote+grid+ctHtml+terms;
-  h+='<div class="detail-notes-box"><div class="lbl"><i class="fas fa-note-sticky"></i> Notes</div><p>'+a.notes+'</p></div>';
+  if(isA||isS){
+    h+='<div class="detail-contract-select"><div class="lbl"><i class="fas fa-coins"></i> Monetization Terms'+(isS?' (locked)':'')+'</div><div id="mzMount"></div></div>';
+  }
+  h+='<div class="detail-notes-box"><div class="lbl"><i class="fas fa-note-sticky"></i> Author\'s Note</div><p>'+a.notes+'</p></div>';
   h+='<div class="detail-actions">'+actsH+'</div></div>';
   el.innerHTML=h;
   if(isP&&!a.sent&&selCT[id]){var btn=document.getElementById('sendBtn-'+id);if(btn)btn.disabled=false;}
+  // monetization component: editable pre-sign, read-only once signed
+  if((isA||isS)&&window.ContractMonetization){
+    if(window._contractMz&&window._contractMzId&&window._contractMzId!==id){
+      try{var _prev=null;for(var k=0;k<items.length;k++){if(items[k].id===window._contractMzId){_prev=items[k];break;}}
+        if(_prev){var _dt=window._contractMz.getTerms();_prev.pricing={freeChapters:_dt.freeChapters,adsPerChapter:_dt.adsPerChapter,allowAdUnlock:_dt.allowAdUnlock,prices:{},ads:{}};_dt.rows.forEach(function(r){_prev.pricing.prices[r.num]=r.price;_prev.pricing.ads[r.num]=r.ads;});}}catch(e){}
+    }
+    var init={freeChapters:3,adsPerChapter:2,allowAdUnlock:true};
+    if(a.pricing){init={freeChapters:a.pricing.freeChapters,adsPerChapter:a.pricing.adsPerChapter,allowAdUnlock:a.pricing.allowAdUnlock,prices:a.pricing.prices,ads:a.pricing.ads};}
+    if(window._contractMz&&window._contractMzId===id){
+      try{var _lv=window._contractMz.getTerms();init={freeChapters:_lv.freeChapters,adsPerChapter:_lv.adsPerChapter,allowAdUnlock:_lv.allowAdUnlock,prices:{},ads:{}};_lv.rows.forEach(function(r){init.prices[r.num]=r.price;init.ads[r.num]=r.ads;});}catch(e){}
+    }
+    window._contractMz=ContractMonetization.mount('#mzMount',{totalChapters:a.chapters||12,initial:init,readOnly:isS});
+    window._contractMzId=id;
+  }
 }
 function renderPag(tp){
   var w=document.getElementById('pageBtns');if(tp<=1){w.innerHTML='';return;}
@@ -168,6 +185,9 @@ window._doSign=function(id){
   var det=document.getElementById('d-'+id);
   if(det){var dbtn=det.querySelector('.btn-green');if(dbtn){dbtn.classList.add('loading');dbtn.innerHTML='<span class="btn-text"><i class="fas fa-pen-fancy"></i> Signing</span>';}}
   setTimeout(function(){
+    if(window._contractMz&&window._contractMzId===id){
+      try{var t=window._contractMz.getTerms();a.pricing={freeChapters:t.freeChapters,adsPerChapter:t.adsPerChapter,allowAdUnlock:t.allowAdUnlock,prices:{},ads:{}};t.rows.forEach(function(r){a.pricing.prices[r.num]=r.price;a.pricing.ads[r.num]=r.ads;});}catch(e){}
+    }
     a.status='signed';openId=null;render();toast(a.author+' - contract signed and complete');
   },1000);
 };
@@ -202,6 +222,10 @@ window._dlPDF=function(id){
     'Type: '+tl,
     'Term: '+a.term,
     'Revenue Split: '+a.rev,'',
+    '--- MONETIZATION ---',
+    'Free chapters: '+(a.pricing?(a.pricing.freeChapters>0?'1-'+a.pricing.freeChapters:'None'):'--'),
+    'Ad unlock: '+(a.pricing?(a.pricing.allowAdUnlock?a.pricing.adsPerChapter+' ads/chapter':'OFF'):'--'),
+    'Chapter prices: '+(a.pricing?Object.keys(a.pricing.prices).filter(function(k){return parseInt(k,10)>a.pricing.freeChapters;}).map(function(k){return 'Ch.'+k+': '+a.pricing.prices[k]+' coins'+(a.pricing.ads[k]>0?' or '+a.pricing.ads[k]+' ads':'');}).join(', '):'--'),'',
     '--- NOTES ---',
     a.notes,'',
     '=======================================',

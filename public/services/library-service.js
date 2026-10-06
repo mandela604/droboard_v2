@@ -232,57 +232,13 @@
     el.innerHTML = html;
   }
 
-  /* ── Promo slider ── */
-  let promoIndex = 0, promoTimer = null;
-  function renderPromo() {
-    const track = document.getElementById('promo-track');
-    const dots = document.getElementById('promo-dots');
-    const slider = document.getElementById('promo-slider');
-    if (!track || !dots) return;
-    const slides = PROMO.slice(0, 5);
-    if (slider) slider.style.display = slides.length ? '' : 'none';
-    if (!slides.length) return;
-    track.innerHTML = slides.map(s => `
-      <div class="promo-slide" style="background-image:url('${s.img || s.cover || ''}')">
-        <div class="promo-scrim"></div>
-        <div class="promo-text">
-          <div class="promo-eyebrow">Promoted</div>
-          <div class="promo-title">${s.title}</div>
-          <div class="promo-author">by ${s.author}</div>
-        </div>
-        <div class="promo-cta">${s.cta}</div>
-      </div>`).join('');
-    dots.innerHTML = slides.map((_, i) => `<div class="promo-dot${i === 0 ? ' on' : ''}"></div>`).join('');
-    Array.from(track.children).forEach((slide, i) => {
-      slide.addEventListener('click', () => { location.href = storyHref(slides[i]); });
-    });
-  }
-  function goToPromoSlide(i) {
-    const slides = document.querySelectorAll('.promo-slide');
-    if (!slides.length) return;
-    promoIndex = (i + slides.length) % slides.length;
-    document.getElementById('promo-track').style.transform = `translateX(-${promoIndex * 100}%)`;
-    document.querySelectorAll('.promo-dot').forEach((d, idx) => d.classList.toggle('on', idx === promoIndex));
-  }
-  function stopPromoAutoplay() { if (promoTimer) clearInterval(promoTimer); }
-  function startPromoAutoplay() { stopPromoAutoplay(); promoTimer = setInterval(() => goToPromoSlide(promoIndex + 1), 3200); }
+  /* ── Promo slider (shared component; slides + on/off controlled via marketing ad-manager) ── */
   function initPromoSlider() {
-    renderPromo();
-    goToPromoSlide(0);
-    startPromoAutoplay();
-    const slider = document.getElementById('promo-slider');
-    if (!slider) return;
-    slider.addEventListener('touchstart', stopPromoAutoplay, { passive: true });
-    slider.addEventListener('touchend', startPromoAutoplay, { passive: true });
-    slider.addEventListener('mouseenter', stopPromoAutoplay);
-    slider.addEventListener('mouseleave', startPromoAutoplay);
-    let startX = 0, deltaX = 0, dragging = false;
-    slider.addEventListener('touchstart', e => { dragging = true; startX = e.touches[0].clientX; }, { passive: true });
-    slider.addEventListener('touchmove', e => { if (dragging) deltaX = e.touches[0].clientX - startX; }, { passive: true });
-    slider.addEventListener('touchend', () => {
-      if (Math.abs(deltaX) > 40) goToPromoSlide(promoIndex + (deltaX < 0 ? 1 : -1));
-      dragging = false; deltaX = 0;
-    });
+    var mount = document.getElementById('libPromoMount');
+    var row = mount ? mount.closest('.promo-row') : null;
+    if (!PROMO.length || !window.DroboardPromoSlider) { if (row) row.style.display = 'none'; return; }
+    if (row) row.style.display = '';
+    DroboardPromoSlider.mount('#libPromoMount', { slides: PROMO.slice(0, 5), interval: 3200 });
   }
 
   /* ── Static header/decorative icons ── */

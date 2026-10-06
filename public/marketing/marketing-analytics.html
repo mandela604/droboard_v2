@@ -103,22 +103,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="anRoot">
-  <div class="welcome-banner">
-    <div>
-      <div class="welcome-eyebrow">Marketing & Growth · Analytics</div>
-      <div class="welcome-title">Marketing Analytics 📊</div>
-      <div class="welcome-sub">Performance across every campaign, placement and channel — impressions, clicks, conversions and spend, all in one report.</div>
-    </div>
-    <div class="wb-right">
-      <select class="range-select" id="rangeSel">
-        <option value="7">Last 7 days</option>
-        <option value="30" selected>Last 30 days</option>
-        <option value="90">Last 90 days</option>
-      </select>
-      <button class="wb-export-btn" id="exportBtn"><i class="fas fa-arrow-down-to-line"></i> Export Report</button>
-    </div>
-  </div>
-
   <div class="grid-4" id="statCards"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
 
   <div class="dash-grid">
@@ -514,8 +498,8 @@ function renderTopCampaigns() {
     </div>`).join('');
 }
 
-document.getElementById('rangeSel').addEventListener('change', (e) => render(parseInt(e.target.value, 10)));
-document.getElementById('exportBtn').addEventListener('click', () => toast('📄 Report export started — check your downloads shortly'));
+var _rs = document.getElementById('rangeSel'); if (_rs) _rs.addEventListener('change', (e) => render(parseInt(e.target.value, 10)));
+var _eb = document.getElementById('exportBtn'); if (_eb) _eb.addEventListener('click', () => toast('📄 Report export started — check your downloads shortly'));
 
 render(30);
 </script>
