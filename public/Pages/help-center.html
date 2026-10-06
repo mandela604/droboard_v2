@@ -63,10 +63,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
     </div>
   </div>
 </div>
-<script>
-document.querySelectorAll('.faq-item').forEach(function(it){
-  it.querySelector('.faq-q').addEventListener('click',function(){ it.classList.toggle('open'); });
-});
-</script>
+<script src="../services/help-center-service.js"></script>
+<script>HelpCenterService.init();</script>
 </body>
 </html>

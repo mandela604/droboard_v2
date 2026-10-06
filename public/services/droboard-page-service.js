@@ -669,11 +669,42 @@ function dropPostEverywhere(id){
     });
   }
 
+function wirePageChrome(){
+  // Global broken-image fallback — avoids empty grey boxes (moved from inline)
+  if(!wirePageChrome._imgFallback){
+    wirePageChrome._imgFallback=true;
+    document.addEventListener('error', function(e){
+      var t=e.target;
+      if(t && t.tagName==='IMG'){
+        if(t.dataset.fallbackApplied) return;
+        t.dataset.fallbackApplied='1';
+        var isAv = (t.closest && t.closest('.av-ring,.dpm-av,.drb-shout-av')) || (t.width && t.width<=60);
+        t.src = isAv ? 'https://i.pravatar.cc/150?img=12' : 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=400&h=400&fit=crop';
+      }
+    }, true);
+  }
+  // Follow / notify top buttons (owned by service)
+  var fb=document.getElementById('followBtn');
+  if(fb && !fb._wired){ fb._wired=true; fb.addEventListener('click', function(){ global.DroboardOfficial.toggleFollow(); }); }
+  var nb=document.getElementById('notifBtn');
+  if(nb && !nb._wired){ nb._wired=true; nb.addEventListener('click', function(){ global.DroboardOfficial.toggleNotify(); }); }
+  // Keep comment-section colors in sync with page theme (light -> body.theme-white, dark -> default)
+  if(!wirePageChrome._themeSync){
+    wirePageChrome._themeSync=true;
+    var sync=function(){ document.body.classList.toggle('theme-white', document.documentElement.getAttribute('data-theme') !== 'dark'); };
+    sync();
+    try{ new MutationObserver(sync).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] }); }catch(e){}
+  } else {
+    document.body.classList.toggle('theme-white', document.documentElement.getAttribute('data-theme') !== 'dark');
+  }
+}
+
 async function init(){
   // loading → empty → root states like profile.html:30
   const ls=document.getElementById('loadingState');
   const rs=document.getElementById('droboardRoot');
   const es=document.getElementById('emptyState');
+  wirePageChrome();
   try{
     const fp=await fetchPosts(); POSTS=fp.posts||[]; MORE_POSTS=fp.morePosts||[]; allCache=POSTS.slice();
     if(!POSTS.length){

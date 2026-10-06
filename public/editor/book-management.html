@@ -52,32 +52,7 @@
 
 <script src="../data/editor-demo-data.js"></script>
 <script src="shared/dashboard-shell.js"></script>
-<script src="book-management-service.js"></script>
-<script>
-DroboardShell.attach('#dashboardRoot',{
-  activeFile:'book-management.html',
-  title:'Book Management',
-  subtitle:'Manage and organize all books on your platform',
-  user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},
-  notifCount:8,
-  searchPlaceholder:'Search by book title, author, or ID...',
-  mobileSearchTarget:'#tableSearch',
-  onSearch:function(v){document.getElementById('tableSearch').value=v;BookManagement.refresh();}
-});
-
-/* Populate category/genre filters from demo data */
-(function(){
-  var D=window.EditorDemo||{};
-  var cats={};var genres={};
-  (D.BOOKS||[]).forEach(function(b){
-    if(b.cat)cats[b.cat]=1;
-    if(b.genre)genres[b.genre]=1;
-  });
-  var catSel=document.getElementById('fCategory');
-  Object.keys(cats).sort().forEach(function(c){var o=document.createElement('option');o.textContent=c;o.value=c;catSel.appendChild(o);});
-  var genSel=document.getElementById('fGenre');
-  Object.keys(genres).sort().forEach(function(g){var o=document.createElement('option');o.textContent=g;o.value=g;genSel.appendChild(o);});
-})();
-</script>
+<script src="services/book-management-service.js"></script>
+<script>BookManagementService.init();</script>
 </body>
 </html>

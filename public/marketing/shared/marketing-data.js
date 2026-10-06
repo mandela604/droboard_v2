@@ -9,6 +9,12 @@
   if (window.__marketingData) return;
   window.__marketingData = true;
 
+/* Demo-data self-load: pages no longer include ../data/central-demo-data.js.
+   Data layer pulls it during parse; delete these 3 lines at go-live. */
+if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="../data/central-demo-data.js"><\/script>');
+}
+
   const API_BASE = window.DROBOARD_API_BASE || '/api/marketing';
   const TIMEOUT_MS = 2500;
 

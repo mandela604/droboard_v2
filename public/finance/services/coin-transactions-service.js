@@ -93,7 +93,24 @@ function extractYTId(u){
   }catch(e){ return u; }
 }
 
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
+}
+
 async function init(){
+  if(window.FinanceSidebar && FinanceSidebar.attach){
+    FinanceSidebar.attach('#pageRoot',{
+      activeItem:'coin-transactions', title:'Coin Transactions', subtitle:'Monitor coin purchases, usage & balances',
+      user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+      searchPlaceholder:'Search anything…',
+    });
+  }
+  if(typeof window.toast!=='function') window.toast=toast;
   ALL = await FinanceData.getCoinTransactions();
   await loadConfig();
   renderStatCards();
@@ -102,6 +119,40 @@ async function init(){
   renderPricing();
   renderHistFilterPills();
   renderHistory();
+  wireStaticControls();
+}
+
+function wireStaticControls(){
+  document.querySelectorAll('#tabBar .tab-btn').forEach(function(btn){
+    if(btn._wired) return; btn._wired=true;
+    btn.addEventListener('click', function(){
+      activeTab = btn.dataset.tab;
+      document.querySelectorAll('#tabBar .tab-btn').forEach(function(b){ b.classList.toggle('active', b===btn); });
+      document.getElementById('tab-transactions').style.display = activeTab==='transactions' ? 'block':'none';
+      document.getElementById('tab-pricing').style.display = activeTab==='pricing' ? 'block':'none';
+      document.getElementById('tab-history').style.display = activeTab==='history' ? 'block':'none';
+    });
+  });
+  var si=document.getElementById('searchInput');
+  if(si && !si._wired){ si._wired=true; si.addEventListener('input', function(e){ searchTerm=e.target.value; page=1; render(); }); }
+  var sf=document.getElementById('statusFilter');
+  if(sf && !sf._wired){ sf._wired=true; sf.addEventListener('change', function(e){ statusTerm=e.target.value; page=1; render(); }); }
+  var ss=document.getElementById('sortSelect');
+  if(ss && !ss._wired){ ss._wired=true; ss.addEventListener('change', function(e){ sortMode=e.target.value; render(); }); }
+  var nib=document.getElementById('newItemBtn');
+  if(nib && !nib._wired){ nib._wired=true; nib.addEventListener('click', function(){
+    activeTab = 'pricing';
+    document.querySelectorAll('#tabBar .tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='pricing'); });
+    document.getElementById('tab-transactions').style.display = 'none';
+    document.getElementById('tab-pricing').style.display = 'block';
+    document.getElementById('tab-history').style.display = 'none';
+    openCreateModal('package');
+  }); }
+  var map=[['addPackageBtn','package'],['addBundleBtn','bundle'],['addGiftBtn','gift'],['addSubBtn','subscription'],['addEarnBtn','earn']];
+  map.forEach(function(pair){
+    var el=document.getElementById(pair[0]);
+    if(el && !el._wired){ el._wired=true; (function(kind){ el.addEventListener('click', function(){ openCreateModal(kind); }); })(pair[1]); }
+  });
 }
 
 async function loadConfig(){
@@ -768,5 +819,5 @@ document.getElementById('formModalOv').addEventListener('click', e=>{ if(e.targe
 document.getElementById('delModalOv').addEventListener('click', e=>{ if(e.target.id==='delModalOv') closeDelModal(); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeFormModal(); closeDelModal(); ctOverlay.classList.remove('open'); } });
 
-init();
+window.CoinTransactionsService={init:init,toast:toast};
 })();

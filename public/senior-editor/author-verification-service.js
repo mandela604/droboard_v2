@@ -8,6 +8,12 @@
 if(window.__authorVerificationService) return;
 window.__authorVerificationService = true;
 
+/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
+   Service pulls it during parse; delete these 3 lines at go-live. */
+if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="../data/editor-demo-data.js"><\/script>');
+}
+
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/author-verification';
 var TIMEOUT_MS = 2500;
 function delay(ms){ return new Promise(function(r){ setTimeout(r, ms || 200 + Math.random()*200); }); }

@@ -1,0 +1,17 @@
+{
+  "appId": "com.droboard.app",
+  "appName": "Droboard",
+  "webDir": "public",
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#000000"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

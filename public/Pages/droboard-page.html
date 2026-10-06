@@ -257,32 +257,9 @@ a{color:inherit;text-decoration:none}
 <script src="../component/collection-card.js"></script>
 <script src="../component/tip-picker.js"></script>
 <script src="../services/ad-service.js"></script>
-<script>
-// Global broken-image fallback — avoids empty grey boxes
-document.addEventListener('error', function(e){
-  if(e.target.tagName==='IMG'){
-    if(e.target.dataset.fallbackApplied) return;
-    e.target.dataset.fallbackApplied='1';
-    var isAv = e.target.closest('.av-ring,.dpm-av,.drb-shout-av') || (e.target.width && e.target.width<=60);
-    e.target.src = isAv ? 'https://i.pravatar.cc/150?img=12' : 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=400&h=400&fit=crop';
-  }
-}, true);
-</script>
 <script src="../component/droboard-post-composer.js"></script>
 <!-- Call-and-render: service + controller (no inline data) -->
 <script src="../services/droboard-page-service.js"></script>
-<script>
-  // Follow / notify are owned by the service; wire top buttons
-  document.getElementById('followBtn').addEventListener('click', function(){ DroboardOfficial.toggleFollow(); });
-  document.getElementById('notifBtn').addEventListener('click', function(){ DroboardOfficial.toggleNotify(); });
-  // Keep pgTabs clicks inside service via DroboardOfficial.switchTab — no inline switchTab
-  document.querySelectorAll('.pg-tab').forEach(function(t){ t.addEventListener('click', function(){ DroboardOfficial.switchTab(t.dataset.tab); }); });
-  // Keep comment-section colors in sync with page theme (same convention as full-reader:
-  // light -> body.theme-white, dark -> default dark vars)
-  function syncCommentTheme(){ document.body.classList.toggle('theme-white', document.documentElement.getAttribute('data-theme') !== 'dark'); }
-  syncCommentTheme();
-  try{ new MutationObserver(syncCommentTheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] }); }catch(e){}
-  DroboardOfficial.init();
-</script>
+<script>DroboardOfficial.init();</script>
 </body>
 </html>

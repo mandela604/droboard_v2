@@ -5,6 +5,17 @@
 (function () {
   'use strict';
 
+/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
+   Service pulls it during parse; delete these 3 lines at go-live. */
+if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="../data/editor-demo-data.js"><\/script>');
+}
+
+function resyncDemo(){
+  var D = window.EditorDemo || {};
+  if(D.BOOKS && D.BOOKS.length && !books.length) books = D.BOOKS.slice();
+}
+
   var D = window.EditorDemo || {};
   var books = (D.BOOKS || []).slice();
   var activeTab = 'all';
@@ -31,6 +42,7 @@
   /* ── Init ── */
   function init() {
     if (!document.getElementById('tableBody')) return;
+    resyncDemo();
     bindEvents();
     refresh();
   }

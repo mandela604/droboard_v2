@@ -8,6 +8,12 @@
 if(window.__featuredStoriesService) return;
 window.__featuredStoriesService = true;
 
+/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
+   Service pulls it during parse; delete these 3 lines at go-live. */
+if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="../data/editor-demo-data.js"><\/script>');
+}
+
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/featured-stories';
 var TIMEOUT_MS = 2500;
 

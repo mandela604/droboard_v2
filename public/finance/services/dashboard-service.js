@@ -18,7 +18,24 @@ function greetByHour(){
   return 'Good evening, Ngozi 👋';
 }
 
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
+}
+
 async function init(){
+  if(window.FinanceSidebar && FinanceSidebar.attach){
+    FinanceSidebar.attach('#dashRoot',{
+      activeItem:'dashboard', title:'Dashboard', subtitle:'Financial overview',
+      user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+      searchPlaceholder:'Search anything…',
+    });
+  }
+  if(typeof window.toast!=='function') window.toast=toast;
   const gt=document.getElementById('greetTitle'); if(gt) gt.textContent = greetByHour();
   DATA = await FinanceData.getDashboard();
   renderAll();
@@ -156,5 +173,5 @@ document.addEventListener('click', e=>{
   else if(action==='decline-payout') declinePayout(id);
 });
 
-init();
+window.DashboardService={init:init,toast:toast};
 })();

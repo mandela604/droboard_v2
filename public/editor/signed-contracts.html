@@ -310,64 +310,6 @@
 <script src="shared/story-modal.js"></script>
 <script src="shared/dashboard-shell.js"></script>
 <script src="remaining-pages-enhanced.js"></script>
-<script>
-/* ═══════════════════════════════════════════════════════════
-   ATTACH THE SHARED SHELL — sidebar + topbar wrap the content
-   already inside #dashboardRoot above.
-   ═══════════════════════════════════════════════════════════ */
-DroboardShell.attach('#dashboardRoot', {
-  activeFile: 'signed-contracts.html',
-  title: 'Contract Details',
-  subtitle: 'View and manage this publishing agreement',
-  user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
-  notifCount: 8,
-  hideSearch: true,
-});
-
-/* ═══════════════════════════════════════════════════════════
-   TAB SWITCHING (visual only — Overview is the fully-built tab
-   as shown in the reference design; other tabs just re-toggle
-   state so the page still feels alive)
-   ═══════════════════════════════════════════════════════════ */
-const TAB_LABELS = {
-  overview: 'Overview',
-  terms: 'Terms & Clauses',
-  royalty: 'Royalty & Payment',
-  files: 'Files',
-  history: 'History',
-  renewal: 'Renewal',
-};
-document.querySelectorAll('.doc-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    const key = tab.dataset.tab;
-    if (key !== 'overview') toast(`Opening ${TAB_LABELS[key]}…`);
-  });
-});
-
-/* ═══════════════════════════════════════════════════════════
-   DOCUMENT VIEWER — page nav + zoom (visual only, single page
-   of sample content is shown regardless of page number)
-   ═══════════════════════════════════════════════════════════ */
-let currentPage = 1;
-let currentZoom = 100;
-const TOTAL_PAGES = 12;
-
-function changePage(delta){
-  const next = currentPage + delta;
-  if (next < 1 || next > TOTAL_PAGES) return;
-  currentPage = next;
-  document.getElementById('pgNow').textContent = currentPage;
-}
-
-function zoom(delta){
-  const next = currentZoom + (delta * 10);
-  if (next < 50 || next > 150) return;
-  currentZoom = next;
-  document.getElementById('zoomInd').textContent = currentZoom + '%';
-  document.getElementById('docPage').style.transform = `scale(${currentZoom / 100})`;
-}
-</script>
+<script src="services/signed-contracts-service.js"></script><script>SignedContractsService.init();</script>
 </body>
 </html>

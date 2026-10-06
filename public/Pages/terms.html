@@ -66,15 +66,7 @@ li{font-size:12.5px;line-height:1.6;color:var(--tx-body);margin-bottom:4px}
     </div>
   </div>
 </div>
-<script>
-document.querySelectorAll('.tab').forEach(function(tb){
-  tb.addEventListener('click',function(){
-    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
-    tb.classList.add('active');
-    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
-    document.getElementById('panel-'+tb.dataset.tab).classList.add('active');
-  });
-});
-</script>
+<script src="../services/terms-service.js"></script>
+<script>TermsService.init();</script>
 </body>
 </html>

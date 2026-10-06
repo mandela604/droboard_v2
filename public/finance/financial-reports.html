@@ -164,22 +164,8 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="data/finance-demo-data.js"></script>
 <script src="shared/finance-sidebar.js"></script>
 <script src="shared/finance-data.js"></script>
-<script>
-FinanceSidebar.attach('#pageRoot',{
-  activeItem:'financial-reports', title:'Financial Reports', subtitle:'Revenue, expenses & performance',
-  user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
-  searchPlaceholder:'Search anything…',
-});
-function toast(msg){
-  var t=document.getElementById('toast');
-  if(!t)return;
-  t.textContent=msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
-}
-</script>
 <script src="services/financial-reports-service.js"></script>
 <div class="toast" id="toast"></div>
+<script>FinancialReportsService.init();</script>
 </body>
 </html>

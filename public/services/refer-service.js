@@ -116,4 +116,57 @@
       return 'https://twitter.com/intent/tweet?text=' + encodeURIComponent('Join me on Droboard — stories worth your 2am 📚') + '&url=' + encodeURIComponent(link);
     }
   };
+
+  function toast(m) {
+    var t = document.getElementById('toast'); if (!t) return;
+    t.textContent = m; t.classList.add('show');
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  async function currentHandle() {
+    try {
+      if (window.AuthSession && AuthSession.getSession) {
+        var s = await AuthSession.getSession();
+        if (s && s.handle) return s.handle;
+      }
+      if (window.ProfileData && ProfileData.getCurrentUserHandle) return await ProfileData.getCurrentUserHandle();
+    } catch (e) {}
+    return 'Ada_Writes';
+  }
+
+  async function init() {
+    var RS = window.ReferService;
+    var handle = await currentHandle();
+    var code = await RS.getCode(handle);
+    var link = RS.inviteLink(code);
+    document.getElementById('refCode').textContent = code;
+    document.getElementById('refLink').textContent = link;
+    var stats = await RS.getStats(handle);
+    document.getElementById('stInvited').textContent = stats.invited;
+    document.getElementById('stJoined').textContent = stats.joined;
+    document.getElementById('stEarned').textContent = stats.earned;
+    var list = await RS.getReferred(handle);
+    if (list && list.length) {
+      document.getElementById('refList').innerHTML = list.map(function (r) {
+        var joined = r.status === 'joined';
+        return '<div class="ref-row">'
+          + '<img class="ref-av" src="' + (r.avatar || '') + '" loading="lazy" alt=""/>'
+          + '<div><div class="ref-name">' + (r.name || '') + '</div><div class="ref-sub">@' + (r.handle || '') + ' · ' + (r.when || '') + '</div></div>'
+          + '<div class="ref-badge ' + (joined ? 'joined' : 'invited') + '">' + (joined ? '+5 coins' : 'Invited') + '</div>'
+          + '</div>';
+      }).join('');
+    }
+    document.getElementById('copyCodeBtn').addEventListener('click', async function () {
+      await RS.copyLink(link); toast('📋 Link copied!');
+    });
+    document.getElementById('shareBtn').addEventListener('click', async function () {
+      var ok = await RS.nativeShare('Join me on Droboard', 'Sign up with my link and we both earn 5 coins!', link);
+      if (!ok) { await RS.copyLink(link); toast('📋 Link copied!'); }
+    });
+    document.getElementById('waBtn').addEventListener('click', function () { window.open(RS.whatsappUrl(link), '_blank'); });
+    document.getElementById('xBtn').addEventListener('click', function () { window.open(RS.xUrl(link), '_blank'); });
+  }
+
+  window.ReferService.init = init;
+  window.ReferService.toast = toast;
 })();

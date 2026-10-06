@@ -32,11 +32,38 @@ function timeAgo(iso){
   return Math.floor(h/24)+'d ago';
 }
 
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
+}
+
 async function init(){
+  if(window.FinanceSidebar && FinanceSidebar.attach){
+    FinanceSidebar.attach('#pageRoot',{
+      activeItem:'withdrawals', title:'Withdrawals', subtitle:'',
+      user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+      searchPlaceholder:'Search anything…',
+    });
+  }
+  if(typeof window.toast!=='function') window.toast=toast;
   ALL = await FinanceData.getWithdrawals();
   renderStatCards();
   renderFilterPills();
   render();
+  wireStaticControls();
+}
+
+function wireStaticControls(){
+  var si=document.getElementById('searchInput');
+  if(si && !si._wired){ si._wired=true; si.addEventListener('input', function(e){ searchTerm=e.target.value; page=1; render(); }); }
+  var mf=document.getElementById('methodFilter');
+  if(mf && !mf._wired){ mf._wired=true; mf.addEventListener('change', function(e){ methodTerm=e.target.value; page=1; render(); }); }
+  var ss=document.getElementById('sortSelect');
+  if(ss && !ss._wired){ ss._wired=true; ss.addEventListener('change', function(e){ sortMode=e.target.value; render(); }); }
 }
 
 function renderStatCards(){
@@ -254,5 +281,5 @@ document.addEventListener('click', e=>{
   else if(el.dataset.action==='decline') openDeclineModal(w);
 });
 
-init();
+window.WithdrawalsService={init:init,toast:toast};
 })();

@@ -9,6 +9,12 @@
 if(window.__contractsService) return;
 window.__contractsService = true;
 
+/* Demo-data self-load: page HTML no longer includes data/contracts-demo-data.js.
+   Service pulls it during parse; delete these 3 lines at go-live. */
+if(typeof window.ContractsDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="data/contracts-demo-data.js"><\/script>');
+}
+
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/contracts';
 var TIMEOUT_MS = 2500;
 

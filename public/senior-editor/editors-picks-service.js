@@ -8,6 +8,12 @@
 if(window.__editorsPicksService) return;
 window.__editorsPicksService = true;
 
+/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
+   Service pulls it during parse; delete these 3 lines at go-live. */
+if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
+  document.write('<script src="../data/editor-demo-data.js"><\/script>');
+}
+
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/editors-picks';
 var TIMEOUT_MS = 2500;
 
@@ -32,6 +38,8 @@ function loadFromDemo(){
   _log = JSON.parse(JSON.stringify(D.EDITORS_PICKS_LOG || []));
 }
 loadFromDemo();
+/* Injected data script executes after this file — re-sync once parsed (renders only, no re-bind). */
+if(!_picks.length) window.addEventListener('DOMContentLoaded', function(){ loadFromDemo(); renderAll(); });
 
 function picks(){ return _picks; }
 function log(){ return _log; }

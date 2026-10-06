@@ -317,8 +317,26 @@ function exportCSV(){
   if(typeof window.toast==='function') window.toast('Report exported as CSV');
 }
 
+/* ── Shared toast fallback (page inline duplicate moved here) ── */
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
+}
+
 /* ── Init ── */
 async function init(){
+  if(window.FinanceSidebar && FinanceSidebar.attach){
+    FinanceSidebar.attach('#pageRoot',{
+      activeItem:'financial-reports', title:'Financial Reports', subtitle:'Revenue, expenses & performance',
+      user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
+      searchPlaceholder:'Search anything…',
+    });
+  }
+  if(typeof window.toast!=='function') window.toast=toast;
   RAW = getDefaultData();
   renderAll(null, null);
   wireDateFilter();
@@ -326,5 +344,5 @@ async function init(){
   if(exportBtn) exportBtn.addEventListener('click', exportCSV);
 }
 
-init();
+window.FinancialReportsService={init:init,toast:toast};
 })();
