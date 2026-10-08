@@ -576,6 +576,15 @@
       {id:'coll_10', name:'The Billionaire Never Forgets', count:27, cover:'https://i.postimg.cc/DJwFzKgd/4.jpg'},
     ];
     try{
+      const cached = JSON.parse(localStorage.getItem('dro_live_collections') || '[]');
+      if (Array.isArray(cached) && cached.length) {
+        const all = cached.map(c => ({ id: c.id, name: c.name || c.title || 'Collection', count: c.count || c.stories || 0, cover: (c.covers && c.covers[0]) || c.cover || '', _following: c.following === true }));
+        const joined = all.filter(c => c._following);
+        const rest = all.filter(c => !c._following);
+        return { joined: joined.length ? joined.slice(0, 5) : all.slice(0, 3), rest: joined.length ? rest : all.slice(3), all };
+      }
+    }catch(e){}
+    try{
       const d=window.DemoData;
       if(d && (d.COLLECTIONS||d.COLLECTIONS_DATA)){
         const allRaw=d.COLLECTIONS||d.COLLECTIONS_DATA;

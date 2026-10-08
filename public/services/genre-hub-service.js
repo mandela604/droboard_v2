@@ -314,8 +314,8 @@
   function renderStories() {
     const seed = window.GenreDemoSeed;
     let stories = [];
-    if (seed && seed.DEMO_STORIES && seed.DEMO_STORIES[GENRE_ID]) stories = seed.DEMO_STORIES[GENRE_ID].slice(0,10);
-    else if (window.DemoData && DemoData.STORIES) stories = DemoData.STORIES.filter(s=> (s.genre||'').toLowerCase().includes(GENRE_ID)).slice(0,10);
+    if (seed && seed.DEMO_STORIES && seed.DEMO_STORIES[GENRE_ID]) stories = seed.DEMO_STORIES[GENRE_ID].slice(0,4);
+    else if (window.DemoData && DemoData.STORIES) stories = DemoData.STORIES.filter(s=> (s.genre||'').toLowerCase().includes(GENRE_ID)).slice(0,4);
     else stories = [];
     if (!stories.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No stories in this hub yet.</div>'; clearMemberPager(); return; }
     // attach new-drop badge state (2hr window)
@@ -385,6 +385,21 @@
         location.href='bridge.html?id='+encodeURIComponent(el.dataset.bid);
       }));
     }
+    // View All -> full stories page (call-and-render).
+    (function mountViewAll(){
+      const old = document.getElementById('hubViewAllStories');
+      if (old) old.remove();
+      const btn = document.createElement('button');
+      btn.id = 'hubViewAllStories';
+      btn.type = 'button';
+      btn.textContent = 'View all stories';
+      btn.style.cssText = 'width:100%;margin:2px 0 10px;padding:12px;border-radius:12px;background:var(--l2);border:1px solid var(--bd);font-size:13px;font-weight:800;color:var(--tx-high)';
+      btn.addEventListener('click', () => {
+        location.href = 'genre-stories.html?genre=' + encodeURIComponent(GENRE_ID);
+      });
+      const feed = document.getElementById('feed');
+      if (feed && feed.parentNode) feed.parentNode.insertBefore(btn, feed.nextSibling);
+    })();
     clearMemberPager();
   }
   function renderHot() {

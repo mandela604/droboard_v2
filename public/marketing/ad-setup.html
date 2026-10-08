@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ad Setup — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.su-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.su-title{font-size:19px;font-weight:800}
+.su-sub{font-size:12px;color:var(--text-faint);margin-top:4px}
+.su-steps{display:flex;gap:5px;margin-bottom:18px;flex-wrap:wrap}
+.su-step{flex:1;min-width:90px;text-align:center;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);padding:8px 4px 0;border-top:3px solid var(--border);cursor:pointer}
+.su-step.on{color:var(--accent);border-top-color:var(--accent)}
+.su-step.done{color:var(--green);border-top-color:var(--green)}
+
+.su-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.step-lbl{font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.f-lbl{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:11px}
+.f-inp{display:block;width:100%;margin-top:5px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;resize:vertical}
+.f-row{display:flex;gap:10px;margin-top:8px;align-items:center}
+.f-file{font-size:11px;color:var(--text-muted);flex:1}
+.f-preview{width:52px;height:68px;border-radius:8px;object-fit:cover;background:var(--table-head)}
+.fmt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.fmt-card{display:flex;gap:10px;align-items:center;border:1.5px solid var(--input-border);background:var(--input-bg);border-radius:12px;padding:12px;cursor:pointer;text-align:left;width:100%;font-family:inherit;color:var(--text)}
+.fmt-card.on{border-color:var(--accent);background:rgba(255,0,80,.05)}
+.fmt-card i{font-size:17px;color:var(--accent);width:22px;text-align:center;flex-shrink:0}
+.fmt-t{font-size:12.5px;font-weight:800}
+.fmt-d{font-size:10.5px;color:var(--text-faint);margin-top:1px}
+.pg-row{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px}
+.pg-check{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:8px 12px;cursor:pointer}
+.seg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px}
+.seg-card{border:1.5px solid var(--input-border);background:var(--input-bg);border-radius:12px;padding:11px 12px;cursor:pointer;text-align:left;width:100%;font-family:inherit;color:var(--text)}
+.seg-card.on{border-color:var(--accent);background:rgba(255,0,80,.05)}
+.seg-top{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.seg-top i{font-size:13px}
+.seg-t{font-size:12px;font-weight:800;flex:1}
+.seg-r{font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap}
+.seg-d{font-size:10.5px;color:var(--text-faint);line-height:1.45}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px}
+.chip{font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;border:1.5px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-family:inherit}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.reach{margin-top:12px;background:var(--table-head);border-radius:12px;padding:13px 15px}
+.reach-n{font-size:20px;font-weight:800;color:var(--accent)}
+.reach-l{font-size:10.5px;color:var(--text-faint);font-weight:600}
+.story-hits{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:220px;overflow-y:auto}
+.story-hit{display:flex;gap:10px;align-items:center;border:1px solid var(--input-border);background:var(--input-bg);border-radius:10px;padding:8px;cursor:pointer;text-align:left;width:100%;font-family:inherit;color:var(--text)}
+.story-hit:hover{border-color:var(--accent)}
+.story-hit img{width:34px;height:46px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
+.story-hit-t{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-hit-a{font-size:10.5px;color:var(--text-faint);margin-top:1px}
+.picked-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(255,0,80,.08);border:1px solid var(--accent);color:var(--accent);font-size:11.5px;font-weight:800;border-radius:999px;padding:6px 8px 6px 14px;margin-bottom:12px}
+.picked-chip button{border:none;background:var(--accent);color:#fff;font-size:10px;font-weight:800;border-radius:999px;padding:4px 10px;cursor:pointer;font-family:inherit}
+.rev{background:var(--input-bg);border:1px solid var(--input-border);border-radius:12px;padding:13px 15px;font-size:12px;line-height:1.7}
+.rev b{font-weight:800}
+.err{font-size:11.5px;font-weight:700;color:#dc2626;margin-top:10px;min-height:16px}
+.nav-row{display:flex;gap:8px;justify-content:space-between;margin-top:4px;position:sticky;bottom:0;background:var(--card);padding:12px 0}
+.btn-primary{background:var(--accent);color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn-primary:disabled{opacity:.45;cursor:default}
+.btn-ghost{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-muted);padding:11px 22px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* sticky live preview */
+.pv-wrap{position:sticky;top:16px}
+.pv-label{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.pv-for{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.pv-pill{font-size:10px;font-weight:800;color:var(--accent);background:rgba(255,0,80,.08);border:1px solid rgba(255,0,80,.25);border-radius:999px;padding:3px 10px}
+.pv-box{position:relative;border:1px dashed var(--input-border);border-radius:12px;padding:12px;background:rgba(0,0,0,.02);min-height:120px}
+.pv-veil{position:absolute;inset:0;z-index:5;cursor:pointer}
+.pv-note{font-size:10.5px;color:var(--text-faint);margin-top:8px}
+.su-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:#1a1730;color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+.su-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:1020px){.su-grid{grid-template-columns:1fr}.pv-wrap{position:static}}
+@media (max-width:640px){.fmt-grid,.seg-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="setupRoot">
+  <div class="su-head">
+    <div>
+      <div class="su-title" id="suTitle">New ad</div>
+      <div class="su-sub">Format → Creative → Placement → Audience → Schedule → Review. Preview updates live.</div>
+    </div>
+    <button class="btn-ghost" id="suExitBtn"><i class="fas fa-arrow-left"></i> Ad Manager</button>
+  </div>
+
+  <div class="su-steps" id="suSteps"></div>
+
+  <div class="su-grid">
+    <div>
+      <div class="panel">
+        <div class="step-lbl" id="suStepLbl"></div>
+        <div id="suBody"></div>
+        <div class="err" id="suErr"></div>
+        <div class="nav-row">
+          <button class="btn-ghost" id="suBackBtn">Back</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-ghost" id="suCancelBtn">Cancel</button>
+            <button class="btn-primary" id="suNextBtn">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pv-wrap">
+      <div class="panel">
+        <div class="pv-label">Live preview — exactly as readers will see it</div>
+        <div class="pv-for" id="pvFor"></div>
+        <div class="pv-box"><div id="pvCard"></div><div class="pv-veil" id="pvVeil" title="Preview only"></div></div>
+        <div class="pv-note" id="pvNote">Tap the card to test the destination link.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="su-toast" id="suToast"></div>
+
+<script src="../component/ad-card.js"></script>
+<script src="../component/promo-slider.js"></script>
+<script src="shared/marketing-sidebar.js"></script>
+<script src="shared/marketing-data.js"></script>
+<script src="shared/ad-setup-data.js"></script>
+<script src="shared/ad-setup-service.js"></script>
+<script>AdSetupPage.init();</script>
+</body>
+</html>

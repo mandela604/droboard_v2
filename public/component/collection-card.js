@@ -30,6 +30,7 @@
     .dcc-meta{font-size:10px;color:var(--tx-muted,#635f6e);display:flex;align-items:center;gap:6px}
     .dcc-priv{font-size:8px;font-weight:700;padding:2px 6px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
     .dcc-priv.public{background:rgba(52,211,153,.1);color:#0d9668}
+    .dcc-priv.followers{background:rgba(56,189,248,.12);color:#0284c7}
     .dcc-priv.private{background:rgba(255,0,80,.08);color:var(--acc,#ff0050)}
     .dcc-stories{display:none;padding:8px}
     .dcc-stories.open{display:block}

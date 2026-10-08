@@ -60,6 +60,7 @@
     { key: 'platform-analytics',   label: 'Platform Analytics',     icon: 'fa-chart-line',           href: 'platform-analytics.html',  section: 'Platform' },
     { key: 'platform-settings',    label: 'Platform Settings',      icon: 'fa-gear',                 href: 'platform-settings.html',   section: 'Platform' },
     { key: 'system-pages',         label: 'System Pages',           icon: 'fa-layer-group',          href: 'system-pages.html',        section: 'Platform' },
+    { key: 'revenue-splits',       label: 'Revenue Splits',         icon: 'fa-scale-balanced',       href: 'revenue-splits.html',       section: 'Finance' },
   ];
 
   const CSS = `

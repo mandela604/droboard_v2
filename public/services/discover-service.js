@@ -471,6 +471,10 @@
     const pageLoader = document.getElementById('pageLoader');
     let data;
     try { data = await fetchDiscoverData(); } catch (e) { data = { heroes: [], continueReading: [], topRomance: [], trending: [], collections: [], newReleases: [], editorsPicks: [], recommended: [], complete: [], recentlyUpdated: [], moreStories: [] }; }
+    try {
+      const lr = await fetch('/api/collections?limit=12&sort=popular', { credentials: 'include' });
+      if (lr.ok) { const lj = await lr.json(); if (Array.isArray(lj) && lj.length) data.collections = lj; }
+    } catch (e) { /* demo row stands */ }
     try { ADS = await fetchDiscoverAds(); } catch (e) { ADS = { platformAds: [], bookAds: [] }; }
     ADS.platformAds = ADS.platformAds || [];
     ADS.bookAds = ADS.bookAds || [];

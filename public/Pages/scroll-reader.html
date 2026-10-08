@@ -158,49 +158,6 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .exit-close:disabled{opacity:.55;cursor:default}
 .exit-close-ring{position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--acc);clip-path:inset(0 0 0 0);transform:rotate(-90deg);transition:clip-path 1s linear;}
 
-/* ══ INSUFFICIENT BALANCE MODAL ══ */
-.bal-ov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s;}
-.bal-ov.show{opacity:1;pointer-events:auto}
-.bal-card{width:100%;max-width:320px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:20px;padding:28px 22px;text-align:center;transform:scale(.92);transition:transform .25s;}
-.bal-ov.show .bal-card{transform:scale(1)}
-.bal-icon{width:52px;height:52px;border-radius:50%;background:var(--gold-s);border:1.5px solid rgba(217,119,6,.35);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gold);margin:0 auto 14px}
-.bal-title{font-family:var(--font-d);font-size:17px;font-weight:800;color:var(--tx);margin-bottom:6px}
-.bal-sub{font-size:12px;color:var(--tx2);line-height:1.5;margin-bottom:20px}
-.bal-sub b{color:var(--tx)}
-.bal-actions{display:flex;flex-direction:column;gap:8px}
-.bal-btn{padding:12px;border-radius:13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
-.bal-btn.primary{background:var(--acc);color:#fff;box-shadow:0 4px 16px var(--glow)}
-.bal-btn.ghost{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--bd)}
-
-/* ══ BUY COINS / FUND WALLET SHEET ══ */
-.buyc-ov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
-.buyc-ov.show{opacity:1;pointer-events:auto}
-.buyc-sheet{position:relative;width:100%;max-width:480px;background:var(--bg3,#0a0a0d);border:1px solid var(--bd);border-radius:22px 22px 0 0;padding:0 0 calc(20px + var(--safe-b));max-height:82vh;overflow-y:auto;scrollbar-width:none;transform:translateY(16px);transition:transform .25s;}
-.buyc-loading{position:absolute;inset:0;background:rgba(10,10,13,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:22px 22px 0 0;z-index:6;}
-.buyc-loading.show{display:flex}
-.buyc-ov.show .buyc-sheet{transform:translateY(0)}
-.buyc-sheet::-webkit-scrollbar{display:none}
-.buyc-hdr{display:flex;align-items:center;gap:10px;padding:14px 18px 14px}
-.buyc-title{font-family:var(--font-d);font-size:15px;font-weight:800;color:var(--tx);flex:1}
-.buyc-balance{font-size:11px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:5px;white-space:nowrap}
-.buyc-tabs{display:flex;gap:8px;padding:0 18px 14px}
-.buyc-tab{flex:1;text-align:center;padding:9px;border-radius:11px;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface);border:1.5px solid var(--bd);cursor:pointer;transition:.18s;}
-.buyc-tab.on{background:var(--acc-dim);border-color:var(--acc-border);color:var(--acc)}
-.buyc-body{padding:0 18px 4px}
-.pkg-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-radius:14px;border:1.5px solid var(--bd);background:var(--surface);margin-bottom:9px;cursor:pointer;transition:.15s;}
-.pkg-card:active{transform:scale(.98)}
-.pkg-card.reco{border-color:var(--acc-border);background:var(--acc-dim)}
-.pkg-coins{font-size:14px;font-weight:900;color:var(--tx);display:flex;align-items:center;gap:6px}
-.pkg-coins i{color:var(--gold);font-size:13px}
-.pkg-bonus{font-size:9.5px;font-weight:700;color:var(--green);margin-top:2px}
-.pkg-label{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-.pkg-right{text-align:right}
-.pkg-price{font-size:13px;font-weight:800;color:var(--tx)}
-.fund-lbl{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.fund-input{width:100%;background:var(--surface);border:1.5px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx);font-family:inherit;font-size:15px;font-weight:700;outline:none;margin-bottom:8px}
-.fund-rate{font-size:10.5px;color:var(--muted);margin-bottom:16px}
-.buyc-cta{width:100%;padding:13px;border-radius:14px;background:var(--acc);color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 16px var(--glow)}
-
 .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
@@ -238,7 +195,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 <div class="ch-panel" id="chPanel">
   <div class="ch-panel-hdr">
     <div class="ch-panel-title">Chapters</div>
-    <div class="ch-panel-close" onclick="closeChPanel()">✕</div>
+    <div class="ch-panel-close" data-act="close-panels">✕</div>
   </div>
   <div class="ch-panel-body" id="chPanelBody"></div>
 </div>
@@ -250,39 +207,39 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
   <div class="sp-section">
     <div class="sp-label">Font Size</div>
     <div class="font-ctrl">
-      <div class="font-ctrl-btn" onclick="changeFontSize(-1)">A−</div>
+      <div class="font-ctrl-btn" data-act="fs-dec">A−</div>
       <div class="font-size-display" id="fontSizeDisplay">14px</div>
-      <div class="font-ctrl-btn" onclick="changeFontSize(1)">A+</div>
+      <div class="font-ctrl-btn" data-act="fs-inc">A+</div>
     </div>
   </div>
   <div class="sp-section">
     <div class="sp-label">Line Spacing</div>
     <div class="lh-opts">
-      <div class="lh-opt" data-lh="1.6" onclick="setLH(this,'1.6')"><div class="lh-opt-label">Compact</div></div>
-      <div class="lh-opt on" data-lh="1.9" onclick="setLH(this,'1.9')"><div class="lh-opt-label">Normal</div></div>
-      <div class="lh-opt" data-lh="2.25" onclick="setLH(this,'2.25')"><div class="lh-opt-label">Relaxed</div></div>
+      <div class="lh-opt" data-lh="1.6"><div class="lh-opt-label">Compact</div></div>
+      <div class="lh-opt on" data-lh="1.9"><div class="lh-opt-label">Normal</div></div>
+      <div class="lh-opt" data-lh="2.25"><div class="lh-opt-label">Relaxed</div></div>
     </div>
   </div>
   <div class="sp-section">
     <div class="sp-label">Font Style</div>
     <div class="ff-opts">
-      <div class="ff-opt on" onclick="setFF(this,'\'Lora\',serif')"><div class="ff-opt-label" style="font-family:'Lora',serif;">Lora</div></div>
-      <div class="ff-opt" onclick="setFF(this,'\'DM Sans\',sans-serif')"><div class="ff-opt-label" style="font-family:'DM Sans',sans-serif;">DM Sans</div></div>
-      <div class="ff-opt" onclick="setFF(this,'Georgia,serif')"><div class="ff-opt-label" style="font-family:Georgia,serif;">Georgia</div></div>
+      <div class="ff-opt on" data-ff="'Lora',serif"><div class="ff-opt-label" style="font-family:'Lora',serif;">Lora</div></div>
+      <div class="ff-opt" data-ff="'DM Sans',sans-serif"><div class="ff-opt-label" style="font-family:'DM Sans',sans-serif;">DM Sans</div></div>
+      <div class="ff-opt" data-ff="Georgia,serif"><div class="ff-opt-label" style="font-family:Georgia,serif;">Georgia</div></div>
     </div>
   </div>
   <div class="sp-section">
     <div class="sp-label">Background</div>
     <div class="theme-opts">
-      <div class="theme-opt on" onclick="setTheme(this,'theme-dark')"><div class="theme-dot" style="background:#000;border-color:rgba(255,255,255,.3)"></div><div class="theme-name">Dark</div></div>
-      <div class="theme-opt" onclick="setTheme(this,'theme-sepia')"><div class="theme-dot" style="background:#1a1510;border-color:rgba(232,213,176,.3)"></div><div class="theme-name">Sepia</div></div>
-      <div class="theme-opt" onclick="setTheme(this,'theme-grey')"><div class="theme-dot" style="background:#0f1117;border-color:rgba(216,220,232,.3)"></div><div class="theme-name">Slate</div></div>
-      <div class="theme-opt" onclick="setTheme(this,'theme-white')"><div class="theme-dot" style="background:#fff;border-color:rgba(0,0,0,.2)"></div><div class="theme-name">White</div></div>
+      <div class="theme-opt on" data-theme="theme-dark"><div class="theme-dot" style="background:#000;border-color:rgba(255,255,255,.3)"></div><div class="theme-name">Dark</div></div>
+      <div class="theme-opt" data-theme="theme-sepia"><div class="theme-dot" style="background:#1a1510;border-color:rgba(232,213,176,.3)"></div><div class="theme-name">Sepia</div></div>
+      <div class="theme-opt" data-theme="theme-grey"><div class="theme-dot" style="background:#0f1117;border-color:rgba(216,220,232,.3)"></div><div class="theme-name">Slate</div></div>
+      <div class="theme-opt" data-theme="theme-white"><div class="theme-dot" style="background:#fff;border-color:rgba(0,0,0,.2)"></div><div class="theme-name">White</div></div>
     </div>
   </div>
 </div>
 
-<div class="overlay-bg" id="overlayBg" onclick="closeAllSheets()"></div>
+<div class="overlay-bg" id="overlayBg"></div>
 
 <!-- EXIT-INTENT AD -->
 <div class="exit-ov" id="exitOv">
@@ -293,8 +250,8 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
     <div class="exit-headline" id="exitHeadline">Wait — before you go…</div>
     <div class="exit-sub" id="exitSub">Discover more stories like this one, picked for you.</div>
     <div class="exit-actions">
-      <div class="exit-cta" id="exitCta" onclick="exitCtaClick()">Explore</div>
-      <button class="exit-close" id="exitCloseBtn" disabled onclick="confirmExit()">
+      <div class="exit-cta" id="exitCta">Explore</div>
+      <button class="exit-close" id="exitCloseBtn" disabled>
         <span id="exitCountLabel">5</span>
         <div class="exit-close-ring" id="exitRing"></div>
       </button>
@@ -302,51 +259,15 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
   </div>
 </div>
 
-<!-- INSUFFICIENT BALANCE MODAL -->
-<div class="bal-ov" id="balOv">
-  <div class="bal-card">
-    <div class="bal-icon"><i class="fas fa-wallet"></i></div>
-    <div class="bal-title">Not Enough Coins</div>
-    <div class="bal-sub">You need <b id="balNeed">0</b> coins for this, but your wallet only has <b id="balHave">0</b>.</div>
-    <div class="bal-actions">
-      <button class="bal-btn primary" id="balBuyBtn"><i class="fas fa-coins"></i> Buy Coins</button>
-      <button class="bal-btn ghost" id="balCancelBtn">Maybe Later</button>
-    </div>
-  </div>
-</div>
-
-<!-- BUY COINS / FUND WALLET SHEET -->
-<div class="buyc-ov" id="buycOv">
-  <div class="buyc-sheet">
-    <div class="buyc-loading" id="buycLoading">
-      <div class="loading-spin"></div>
-      <div id="buycLoadingText" style="color:var(--tx2);font-size:12px;font-weight:600">Processing purchase…</div>
-    </div>
-    <div class="sp-handle"></div>
-    <div class="buyc-hdr">
-      <div class="buyc-title">Get More Coins</div>
-      <div class="buyc-balance"><i class="fas fa-coins"></i> <span id="buycBalance">0</span></div>
-      <div class="ch-panel-close" id="buycClose">✕</div>
-    </div>
-    <div class="buyc-tabs">
-      <div class="buyc-tab on" data-tab="packages" onclick="setBuyTab(this,'packages')">Coin Packages</div>
-      <div class="buyc-tab" id="buycFundTab" data-tab="fund" onclick="setBuyTab(this,'fund')">Fund Wallet</div>
-    </div>
-    <div class="buyc-body" id="buycPackages"></div>
-    <div class="buyc-body" id="buycFund" style="display:none">
-      <div class="fund-lbl">Enter amount ($)</div>
-      <input class="fund-input" id="fundInput" type="number" min="1" placeholder="e.g. 10"/>
-      <div class="fund-rate">$0.02 = 1 coin · minimum $1</div>
-      <button class="buyc-cta" id="fundConfirmBtn" onclick="fundWallet()">Fund &amp; Convert</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toastEl"></div>
 
 <!-- ═══ Components ═══ -->
+<script src="../services/currency-service.js"></script>
+<script src="../component/reader.js"></script>
+<script src="../component/rewarded-ad.js"></script>
 <script src="../component/reaction-picker.js"></script>
 <script src="../component/share-modal.js"></script>
+<script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
 <script src="../component/ad-card.js"></script>

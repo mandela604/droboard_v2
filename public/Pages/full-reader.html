@@ -131,10 +131,6 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .unlock-opt-s{font-size:9px;color:var(--muted);margin-top:1px}
 .unlock-opt-price{font-size:11.5px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px;white-space:nowrap}
 .unlock-opt.reco .unlock-opt-price{color:var(--acc)}
-.unlock-getcoins{margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;flex-direction:column;gap:8px;align-items:center}
-.unlock-getcoins.show{display:flex}
-.unlock-getcoins-txt{font-size:10.5px;color:var(--acc2);font-weight:700}
-.unlock-getcoins-btn{background:var(--gold);color:#1a1000;border:none;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font-ui)}
 
 /* AD SLOT — sits right after the story, before Prev/Next chapter nav */
 .ad-slot-wrap{padding:16px 16px 4px;max-width:680px;margin:0 auto;}
@@ -289,15 +285,15 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 
   <!-- TOP BAR -->
   <div class="topbar" id="topbar">
-    <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="tb-back" data-act="go-back"><i class="fas fa-chevron-left"></i></div>
     <div class="tb-center">
       <div class="tb-story-title" id="tbStoryTitle"></div>
       <div class="tb-ch-info" id="tbChInfo"></div>
     </div>
     <div class="tb-right">
-      <div class="coin-pill" id="coinPill" onclick="location.href='store.html'" title="Buy coins"><i class="fas fa-coins" style="font-size:11px"></i> <span id="coinBalanceLbl"></span></div>
-      <div class="tb-btn" onclick="openSettings()"><i class="fas fa-text-height"></i></div>
-      <div class="tb-btn" onclick="openChPanel()"><i class="fas fa-list-ul"></i></div>
+      <div class="coin-pill" id="coinPill" data-act="coin-pill" title="Buy coins"><i class="fas fa-coins" style="font-size:11px"></i> <span id="coinBalanceLbl"></span></div>
+      <div class="tb-btn" data-act="open-settings"><i class="fas fa-text-height"></i></div>
+      <div class="tb-btn" data-act="open-chapters"><i class="fas fa-list-ul"></i></div>
     </div>
   </div>
 
@@ -342,12 +338,12 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 
       <!-- CHAPTER NAV -->
       <div class="ch-nav">
-        <div class="ch-nav-side disabled" id="prevChBtn" onclick="goChapter(-1)">
+        <div class="ch-nav-side disabled" id="prevChBtn" data-act="ch-prev">
           <div class="ch-nav-icon"><i class="fas fa-chevron-left"></i></div>
           <span class="ch-nav-label">Previous</span>
         </div>
         <span class="ch-nav-center" id="chNavCenter">Ch 4 of 5</span>
-        <div class="ch-nav-side next-ch" id="nextChBtn" onclick="goChapter(1)">
+        <div class="ch-nav-side next-ch" id="nextChBtn" data-act="ch-next">
           <span class="ch-nav-label" id="nextChLabel">Next</span>
           <div class="ch-nav-icon"><i class="fas fa-chevron-right" id="nextChIcon"></i></div>
         </div>
@@ -363,15 +359,15 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
         <div class="ch-end-title" id="chEndTitle">Chapter 4 complete</div>
         <div class="ch-end-sub" id="chEndSub">Chapter 5 drops Friday midnight.<br/>Don't miss what she discovers next.</div>
         <div class="ch-end-actions">
-          <div class="ch-end-act notify" id="notifyBtn" onclick="FullReader.toggleNotify()">
+          <div class="ch-end-act notify" id="notifyBtn" data-act="toggle-notify">
             <div class="ch-end-act-icon"><i class="far fa-bell" id="notifyIcon"></i></div>
             <div class="ch-end-act-label" id="notifyLabel">Notify</div>
           </div>
-          <div class="ch-end-act" onclick="openShare()">
+          <div class="ch-end-act" data-act="open-share">
             <div class="ch-end-act-icon"><i class="fas fa-share-alt"></i></div>
             <div class="ch-end-act-label">Share</div>
           </div>
-          <div class="ch-end-act" onclick="openTip()">
+          <div class="ch-end-act" data-act="open-tip">
             <div class="ch-end-act-icon"><i class="fas fa-coins"></i></div>
             <div class="ch-end-act-label">Tip</div>
           </div>
@@ -382,20 +378,20 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 
   <!-- BOTTOM BAR -->
   <div class="bottombar" id="bottombar">
-    <div class="bb-read-btn" onclick="location.href='scroll-reader.html?story='+currentStoryId" style="cursor:pointer;flex:1;width:100%">
+    <div class="bb-read-btn" data-act="scroll-mode" style="cursor:pointer;flex:1;width:100%">
       <i class="fas fa-scroll" style="font-size:13px"></i> Scroll Mode
     </div>
   </div>
 </div>
 
 <!-- OVERLAY -->
-<div class="overlay-bg" id="overlayBg" onclick="closeAllSheets()"></div>
+<div class="overlay-bg" id="overlayBg" data-act="close-panels"></div>
 
 <!-- CHAPTERS PANEL -->
 <div class="ch-panel" id="chPanel">
   <div class="ch-panel-hdr">
     <div class="ch-panel-title">Chapters</div>
-    <div class="ch-panel-close" onclick="closeChPanel()">✕</div>
+    <div class="ch-panel-close" data-act="close-panels">✕</div>
   </div>
   <div class="ch-panel-body">
     <div class="season-tabs" id="seasonTabs"></div>
@@ -410,37 +406,37 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
   <div class="sp-section">
     <div class="sp-label">Font Size</div>
     <div class="font-ctrl">
-      <div class="font-ctrl-btn" onclick="changeFontSize(-1)">A−</div>
+      <div class="font-ctrl-btn" data-act="fs-dec">A−</div>
       <div style="flex:1;text-align:center">
         <div class="font-size-display" id="fontSizeDisplay">13px</div>
         <div class="font-preview" id="fontPreview" style="font-family:var(--font-story)">The quick brown fox…</div>
       </div>
-      <div class="font-ctrl-btn" onclick="changeFontSize(1)">A+</div>
+      <div class="font-ctrl-btn" data-act="fs-inc">A+</div>
     </div>
   </div>
   <div class="sp-section">
     <div class="sp-label">Line Spacing</div>
     <div class="lh-opts">
-      <div class="lh-opt" data-lh="1.55" onclick="setLH(this,'1.55')"><div class="lh-opt-icon">≡</div><div class="lh-opt-label">Compact</div></div>
-      <div class="lh-opt on" data-lh="1.85" onclick="setLH(this,'1.85')"><div class="lh-opt-icon" style="letter-spacing:1px">≡</div><div class="lh-opt-label">Normal</div></div>
-      <div class="lh-opt" data-lh="2.2" onclick="setLH(this,'2.2')"><div class="lh-opt-icon" style="letter-spacing:3px">≡</div><div class="lh-opt-label">Relaxed</div></div>
+      <div class="lh-opt" data-lh="1.55"><div class="lh-opt-icon">≡</div><div class="lh-opt-label">Compact</div></div>
+      <div class="lh-opt on" data-lh="1.85"><div class="lh-opt-icon" style="letter-spacing:1px">≡</div><div class="lh-opt-label">Normal</div></div>
+      <div class="lh-opt" data-lh="2.2"><div class="lh-opt-icon" style="letter-spacing:3px">≡</div><div class="lh-opt-label">Relaxed</div></div>
     </div>
   </div>
   <div class="sp-section">
     <div class="sp-label">Font Style</div>
     <div class="ff-opts">
-      <div class="ff-opt on" onclick="setFF(this,'\'Lora\',serif')"><div class="ff-opt-label" style="font-family:'Lora',serif;">Lora</div><div class="ff-opt-sub">Serif</div></div>
-      <div class="ff-opt" onclick="setFF(this,'\'DM Sans\',sans-serif')"><div class="ff-opt-label" style="font-family:'DM Sans',sans-serif;">DM Sans</div><div class="ff-opt-sub">Sans</div></div>
-      <div class="ff-opt" onclick="setFF(this,'Georgia,serif')"><div class="ff-opt-label" style="font-family:Georgia,serif;">Georgia</div><div class="ff-opt-sub">Classic</div></div>
+      <div class="ff-opt on" data-ff="'Lora',serif"><div class="ff-opt-label" style="font-family:'Lora',serif;">Lora</div><div class="ff-opt-sub">Serif</div></div>
+      <div class="ff-opt" data-ff="'DM Sans',sans-serif"><div class="ff-opt-label" style="font-family:'DM Sans',sans-serif;">DM Sans</div><div class="ff-opt-sub">Sans</div></div>
+      <div class="ff-opt" data-ff="Georgia,serif"><div class="ff-opt-label" style="font-family:Georgia,serif;">Georgia</div><div class="ff-opt-sub">Classic</div></div>
     </div>
   </div>
   <div class="sp-section">
     <div class="sp-label">Background</div>
     <div class="theme-opts">
-      <div class="theme-opt on" onclick="setTheme(this,'theme-dark')"><div class="theme-dot" style="background:#000;border-color:rgba(255,255,255,.3)"></div><div class="theme-name">Dark</div></div>
-      <div class="theme-opt" onclick="setTheme(this,'theme-sepia')"><div class="theme-dot" style="background:#1a1510;border-color:rgba(232,213,176,.3)"></div><div class="theme-name">Sepia</div></div>
-      <div class="theme-opt" onclick="setTheme(this,'theme-grey')"><div class="theme-dot" style="background:#0f1117;border-color:rgba(216,220,232,.3)"></div><div class="theme-name">Slate</div></div>
-      <div class="theme-opt" onclick="setTheme(this,'theme-white')"><div class="theme-dot" style="background:#fff;border-color:rgba(0,0,0,.2)"></div><div class="theme-name">White</div></div>
+      <div class="theme-opt on" data-theme="theme-dark"><div class="theme-dot" style="background:#000;border-color:rgba(255,255,255,.3)"></div><div class="theme-name">Dark</div></div>
+      <div class="theme-opt" data-theme="theme-sepia"><div class="theme-dot" style="background:#1a1510;border-color:rgba(232,213,176,.3)"></div><div class="theme-name">Sepia</div></div>
+      <div class="theme-opt" data-theme="theme-grey"><div class="theme-dot" style="background:#0f1117;border-color:rgba(216,220,232,.3)"></div><div class="theme-name">Slate</div></div>
+      <div class="theme-opt" data-theme="theme-white"><div class="theme-dot" style="background:#fff;border-color:rgba(0,0,0,.2)"></div><div class="theme-name">White</div></div>
     </div>
   </div>
 </div>
@@ -448,8 +444,12 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 <div class="toast" id="toastEl"></div>
 
 <!-- ═══ Components ═══ -->
+<script src="../services/currency-service.js"></script>
+<script src="../component/reader.js"></script>
+<script src="../component/rewarded-ad.js"></script>
 <script src="../component/reaction-picker.js"></script>
 <script src="../component/share-modal.js"></script>
+<script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
 <script src="../component/ad-card.js"></script>

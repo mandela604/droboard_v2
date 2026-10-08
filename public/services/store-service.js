@@ -13,10 +13,10 @@
   function getCoinPacks() {
     const fp=_financePacks(); if(fp) return fp;
     return [
-      { id: 'pack1', coins: 100, price: '$0.99', badge: '', color: '#635F6E' },
-      { id: 'pack2', coins: 500, price: '$3.99', badge: 'Popular', color: '#FF2D6A' },
-      { id: 'pack3', coins: 1200, price: '$7.99', badge: 'Best Value', color: '#D6165A' },
-      { id: 'pack4', coins: 2500, price: '$14.99', badge: '', color: '#16A34A' },
+      { id: 'pack1', coins: 100, price: '$0.99', priceUSD: 0.99, prices: { NGN: '₦600', USD: '$0.99', GBP: '£1.13' }, badge: '', color: '#635F6E' },
+      { id: 'pack2', coins: 500, price: '$3.99', priceUSD: 3.99, prices: { NGN: '₦2,400', USD: '$3.99', GBP: '£4.55' }, badge: 'Popular', color: '#FF2D6A' },
+      { id: 'pack3', coins: 1200, price: '$7.99', priceUSD: 7.99, prices: { NGN: '₦4,800', USD: '$7.99', GBP: '£9.11' }, badge: 'Best Value', color: '#D6165A' },
+      { id: 'pack4', coins: 2500, price: '$14.99', priceUSD: 14.99, prices: { NGN: '₦9,000', USD: '$14.99', GBP: '£17.09' }, badge: '', color: '#16A34A' },
     ];
   }
 
@@ -24,9 +24,9 @@
   function getBundles() {
     const fb=_financeBundles(); if(fb) return fb;
     return [
-      { id: 'b1', name: 'Starter Bundle', coins: 500, bonus: 50, price: '$3.99', icon: 'fa-seedling', color: '#22c55e' },
-      { id: 'b2', name: 'Pro Bundle', coins: 1500, bonus: 300, price: '$9.99', icon: 'fa-fire', color: '#FF2D6A' },
-      { id: 'b3', name: 'Elite Bundle', coins: 5000, bonus: 1500, price: '$29.99', icon: 'fa-crown', color: '#D6165A' },
+      { id: 'b1', name: 'Starter Bundle', coins: 500, bonus: 50, price: '$3.99', priceUSD: 3.99, prices: { NGN: '₦2,400', USD: '$3.99', GBP: '£4.55' }, icon: 'fa-seedling', color: '#22c55e' },
+      { id: 'b2', name: 'Pro Bundle', coins: 1500, bonus: 300, price: '$9.99', priceUSD: 9.99, prices: { NGN: '₦6,000', USD: '$9.99', GBP: '£11.39' }, icon: 'fa-fire', color: '#FF2D6A' },
+      { id: 'b3', name: 'Elite Bundle', coins: 5000, bonus: 1500, price: '$29.99', priceUSD: 29.99, prices: { NGN: '₦18,000', USD: '$29.99', GBP: '£34.19' }, icon: 'fa-crown', color: '#D6165A' },
     ];
   }
 
@@ -56,10 +56,10 @@
 
   function getSubscriptions() {
     return [
-      { id: 'sub-daily', name: 'Daily', price: '$0.99', period: 'day', features: ['Unlimited reading for 24 hours', 'Access all stories'], badge: '', color: '#635F6E', icon: 'fa-clock' },
-      { id: 'sub-weekly', name: 'Weekly', price: '$4.99', period: 'week', features: ['Unlimited reading for 7 days', 'Access all stories', 'Save 30% vs daily'], badge: 'Popular', color: '#FF2D6A', icon: 'fa-calendar-week' },
-      { id: 'sub-monthly', name: 'Monthly', price: '$14.99', period: 'month', features: ['Unlimited reading for 30 days', 'Access all stories', 'Save 50% vs daily'], badge: 'Best Value', color: '#D6165A', icon: 'fa-calendar' },
-      { id: 'sub-yearly', name: 'Yearly', price: '$99.99', period: 'year', features: ['Unlimited reading for 365 days', 'Access all stories', 'Save 72% vs daily'], badge: 'Best Deal', color: '#16A34A', icon: 'fa-crown' },
+      { id: 'sub-daily', name: 'Daily', price: '$0.99', priceUSD: 0.99, prices: { NGN: '₦600', USD: '$0.99', GBP: '£1.13' }, period: 'day', features: ['Unlimited reading for 24 hours', 'Access all stories'], badge: '', color: '#635F6E', icon: 'fa-clock' },
+      { id: 'sub-weekly', name: 'Weekly', price: '$4.99', priceUSD: 4.99, prices: { NGN: '₦3,000', USD: '$4.99', GBP: '£5.69' }, period: 'week', features: ['Unlimited reading for 7 days', 'Access all stories', 'Save 30% vs daily'], badge: 'Popular', color: '#FF2D6A', icon: 'fa-calendar-week' },
+      { id: 'sub-monthly', name: 'Monthly', price: '$14.99', priceUSD: 14.99, prices: { NGN: '₦9,000', USD: '$14.99', GBP: '£17.09' }, period: 'month', features: ['Unlimited reading for 30 days', 'Access all stories', 'Save 50% vs daily'], badge: 'Best Value', color: '#D6165A', icon: 'fa-calendar' },
+      { id: 'sub-yearly', name: 'Yearly', price: '$99.99', priceUSD: 99.99, prices: { NGN: '₦60,000', USD: '$99.99', GBP: '£113.99' }, period: 'year', features: ['Unlimited reading for 365 days', 'Access all stories', 'Save 72% vs daily'], badge: 'Best Deal', color: '#16A34A', icon: 'fa-crown' },
     ];
   }
 
@@ -68,6 +68,8 @@
       id: 'sub-merge',
       name: 'Merge Pass',
       price: '$19.99',
+      priceUSD: 19.99,
+      prices: { NGN: '₦12,000', USD: '$19.99', GBP: '£22.79' },
       period: 'month',
       features: ['Ad-free browsing', 'Ad-free reading', 'Unlimited reading', 'Priority support', 'Early access to new stories'],
       badge: 'Premium',

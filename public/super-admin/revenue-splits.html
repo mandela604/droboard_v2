@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Revenue Splits — Platform Dashboard</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.rs-grid{display:grid;gap:16px;margin-bottom:18px}.rs-pools{grid-template-columns:repeat(4,1fr)}.rs-2col{grid-template-columns:1.2fr .8fr}
+@media(max-width:1000px){.rs-pools{grid-template-columns:repeat(2,1fr)}.rs-2col{grid-template-columns:1fr}}
+@media(max-width:560px){.rs-pools{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}.panel-head h2{font-size:14px;font-weight:800}.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px}
+.rs-pool{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.rs-pool-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}.rs-pool-ico{width:34px;height:34px;border-radius:10px;background:var(--accent-soft,#ffe1eb);color:var(--accent,#ff0050);display:flex;align-items:center;justify-content:center;font-size:14px}.rs-pool-lbl{font-size:12px;font-weight:700;color:var(--text-muted)}.rs-pool-val{font-size:22px;font-weight:800}.rs-pool-sub{font-size:10.5px;color:var(--text-faint);margin-top:4px}
+.rs-cut{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--input-bg,#fafaff)}.rs-cut-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.rs-cut-lbl{font-size:13px;font-weight:800}.rs-cut-hint{font-size:10.5px;color:var(--text-faint)}.rs-cut-val{display:flex;align-items:center;gap:4px;font-weight:800}.rs-cut-val input{width:64px;background:var(--card);border:1px solid var(--input-border);border-radius:8px;padding:6px 8px;font-size:13px;font-weight:800;color:var(--text);font-family:inherit;text-align:right}
+input[type=range]{width:100%;accent-color:var(--accent,#ff0050);cursor:pointer}
+.rs-sumrow{display:flex;align-items:center;justify-content:space-between;margin:12px 0;padding:10px 14px;border-radius:10px;background:var(--input-bg,#fafaff);border:1px solid var(--border)}.rs-sum{font-size:16px;font-weight:800}.rs-sum.ok{color:var(--green,#16a34a)}.rs-sum.bad{color:var(--red,#e0384d)}
+.rs-note-in{width:100%;background:var(--card);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--text);font-family:inherit;margin-bottom:10px}
+.rs-actions{display:flex;gap:8px;flex-wrap:wrap}.btn-rs{flex:1;padding:10px;border-radius:10px;border:none;background:var(--accent,#ff0050);color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}.btn-rs:disabled{opacity:.45;cursor:not-allowed}.btn-rs.ghost{background:var(--input-bg);color:var(--text);border:1px solid var(--input-border);box-shadow:none}
+.rs-prev{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--input-bg,#fafaff);margin-top:12px}.rs-prev-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:12.5px;border-bottom:1px dashed var(--border)}.rs-prev-row:last-child{border-bottom:none}.rs-amt-in{width:100%;background:var(--card);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;color:var(--text);font-family:inherit}
+.rs-search{position:relative}.rs-search input{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text);font-family:inherit}#authorHits{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);display:none;z-index:30;overflow:hidden}#authorHits.show{display:block}.rs-hit{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 14px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;font-family:inherit;color:var(--text);font-size:12.5px}.rs-hit:last-child{border-bottom:none}.rs-hit:hover{background:var(--hover)}.rs-hit span{color:var(--text-faint);font-size:11px}.rs-hit-empty{padding:12px 14px;font-size:12px;color:var(--text-faint)}
+.rs-ov{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;background:var(--input-bg,#fafaff)}.rs-ov-main{flex:1;min-width:0}.rs-av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}.rs-av.sm{width:26px;height:26px}.rs-hit .rs-av{margin-right:4px}.rs-ov-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.rs-ov-name a{color:var(--text);text-decoration:none}.rs-ov-name a:hover{color:var(--accent,#ff0050);text-decoration:underline}#overrideName{display:flex;align-items:center;gap:8px}#overrideName a{color:var(--text);text-decoration:none}#overrideName a:hover{color:var(--accent,#ff0050);text-decoration:underline}
+.rs-filter{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--text);font-family:inherit;margin-bottom:10px}select.rs-filter{cursor:pointer}.rs-ov-name{font-size:13px;font-weight:800}.rs-ov-handle{font-size:11px;color:var(--text-faint);font-weight:600}.rs-ov-cuts{font-size:11.5px;color:var(--text-muted);margin-top:2px}.rs-ov-meta{font-size:10.5px;color:var(--text-faint);margin-top:2px}.rs-mini{border:1px solid var(--input-border);background:var(--card);border-radius:8px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit}.rs-mini.danger{color:var(--red,#e0384d)}
+.rs-form{border:1px dashed var(--input-border);border-radius:12px;padding:12px 14px;margin-top:10px}.rs-form h4{font-size:12.5px;font-weight:800;margin-bottom:10px}.rs-form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}@media(max-width:560px){.rs-form-grid{grid-template-columns:repeat(2,1fr)}}.rs-form-grid label{font-size:10px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}.rs-form-grid input{width:100%;background:var(--card);border:1px solid var(--input-border);border-radius:8px;padding:8px;font-size:13px;font-weight:700;color:var(--text);font-family:inherit}
+table.rs-tbl{width:100%;border-collapse:collapse;font-size:12px}table.rs-tbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);padding:8px 10px;border-bottom:1px solid var(--border)}table.rs-tbl td{padding:9px 10px;border-bottom:1px solid var(--border)}.rs-cur{font-size:9.5px;font-weight:800;background:var(--green-bg,#e2f8ea);color:var(--green,#16a34a);border-radius:20px;padding:2px 8px;margin-left:4px}.rs-sub{font-size:10.5px;color:var(--text-faint)}.rs-note{font-size:11.5px;color:var(--text-muted)}.rs-empty{padding:18px;text-align:center;color:var(--text-faint);font-size:12.5px}.rs-empty-row td{text-align:center;padding:22px;color:var(--text-faint)}
+.rs-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:#1a1730;color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw}.rs-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style></head>
+<body><div id="dashboardRoot">
+<div class="rs-grid rs-pools" id="poolRow"></div>
+<div class="rs-grid rs-2col">
+<div class="panel">
+<div class="panel-head"><h2>Global Cuts <span id="curVersion" style="font-size:11px;color:var(--text-faint);font-weight:700;"></span></h2></div>
+<div class="panel-sub">Applies to every sale from the moment you save. Ledger entries stamp the version used.</div>
+<div id="cutSliders"></div>
+<div class="rs-sumrow"><span style="font-size:12px;font-weight:700;color:var(--text-muted);">Total must equal 100%</span><span class="rs-sum" id="cutSum">—</span></div>
+<input class="rs-note-in" id="configNote" placeholder="Change note (e.g. Q4 promo) — optional"/>
+<div class="rs-actions">
+<button class="btn-rs ghost" id="resetConfigBtn">Reset</button>
+<button class="btn-rs" id="saveConfigBtn">Save as new version</button>
+</div>
+<div class="rs-prev">
+<div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:8px;">PREVIEW — HOW A SALE SPLITS (DRAFT VALUES)</div>
+<input class="rs-amt-in" id="previewAmount" type="number" min="0" value="100000" placeholder="Sale amount ₦"/>
+<div id="previewOut" style="margin-top:8px;"></div>
+</div>
+</div>
+<div class="panel">
+<div class="panel-head"><h2>Author Overrides</h2></div>
+<div class="panel-sub">Star authors &amp; promos — overrides global cuts for that author only.</div>
+<div class="rs-search">
+<input id="authorSearch" placeholder="Search authors by name or handle…" autocomplete="off"/>
+<div id="authorHits"></div>
+</div>
+<div class="rs-form" id="overrideForm" style="display:none;">
+<h4 id="overrideName">Author</h4>
+<div class="rs-form-grid">
+<div><label>Google % <i class="fas fa-lock" title="Fixed"></i></label><input type="number" id="oGoogle" min="0" max="100" value="30" disabled/></div>
+<div><label>Marketing %</label><input type="number" id="oMarketing" min="0" max="100"/></div>
+<div><label>Editors %</label><input type="number" id="oEditors" min="0" max="100"/></div>
+<div><label>Writer %</label><input type="number" id="oWriter" min="0" max="100"/></div>
+</div>
+<div class="rs-actions"><button class="btn-rs" id="saveOverrideBtn">Save override</button></div>
+</div>
+<input class="rs-filter" id="overrideFilter" placeholder="Filter overrides by name or handle…"/>
+<div id="overrideList" style="margin-top:4px;"></div>
+</div>
+</div>
+<div class="panel">
+<div class="panel-head"><h2>Version History</h2><select class="rs-filter" id="historyWho" style="width:auto;margin:0;"><option value="">All editors</option></select></div>
+<div class="panel-sub">Every change is versioned — past payouts stay auditable.</div>
+<div style="overflow-x:auto;"><table class="rs-tbl"><thead><tr><th>Version</th><th>Google</th><th>Marketing</th><th>Editors</th><th>Writer</th><th>Saved</th><th>Note</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+</div>
+</div>
+<script src="shared/super-admin-sidebar.js"></script>
+<script src="revenue-splits-service.js"></script>
+<script>RevenueSplitsService.init();</script></body></html>

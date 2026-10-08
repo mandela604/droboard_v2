@@ -79,6 +79,15 @@ async function initDrawer(profile){
     {id:'coll_2', name:'Tear-jerkers', count:8},
     {id:'coll_3', name:'Weekend Binge', count:15}
   ];
+  try{
+    var cached = JSON.parse(localStorage.getItem('dro_live_collections') || '[]');
+    if (Array.isArray(cached) && cached.length) {
+      var mine = cached.filter(function(c){ return c.isOwner === true; });
+      var fol = cached.filter(function(c){ return c.following === true && !c.isOwner; });
+      var both = mine.concat(fol).slice(0, 8);
+      if (both.length) joinedColls = both.map(function(c){ return { id: c.id, name: c.name || c.title, count: c.count || c.stories || 0 }; });
+    }
+  }catch(e){}
   DroboardProfileMenu.configure({
     profile: menuProfile, isOwner: true,
     boards: boards, collections: joinedColls,

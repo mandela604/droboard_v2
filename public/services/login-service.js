@@ -16,6 +16,16 @@ const AUTH_CONFIG = {
   ENDPOINTS: { GOOGLE_URL: '/api/auth/google/url', GOOGLE_CALLBACK: '/api/auth/google/callback', LOGIN: '/api/auth/login' }
 };
 function apiUrl(p){ return (AUTH_CONFIG.API_BASE || '') + p; }
+// Post-login landing: ?next= return-to when it is a safe same-folder page,
+// otherwise Discover for every role. Staff reach dashboards from the
+// profile drawer (role-aware "My Dashboard" section), never forced landing.
+function landingUrl(){
+  try{
+    var n = new URLSearchParams(location.search).get('next') || '';
+    if (/^[A-Za-z0-9_-]+\.html(\?.*)?$/.test(n)) return n;
+  }catch(e){}
+  return 'discover.html';
+}
 function setLoading(btn, on){
   if(!btn) return;
   if(on){ btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Please wait…'; }
@@ -41,12 +51,12 @@ document.querySelectorAll('.pw-eye').forEach(function(btn){
     .then(function(j){
       try{ localStorage.setItem('droboard_session', j.token || ('google-'+Date.now())); if(j.user) localStorage.setItem('droboard_user', JSON.stringify(j.user)); }catch(e){}
       toast('Signed in with Google ✓');
-      setTimeout(function(){ location.href='feed.html'; },500);
+      setTimeout(function(){ location.href=landingUrl(); },500);
     })
     .catch(function(){
       try{ localStorage.setItem('droboard_session','google-demo'); }catch(e){}
       toast('Signed in with Google ✓ (demo — backend not connected)');
-      setTimeout(function(){ location.href='feed.html'; },500);
+      setTimeout(function(){ location.href=landingUrl(); },500);
     })
     .finally(function(){ setLoading(btn, false); });
 })();
@@ -65,7 +75,7 @@ document.getElementById('googleBtn').addEventListener('click',function(){
       setTimeout(function(){
         try{ localStorage.setItem('droboard_session','google-demo'); }catch(e){}
         toast('Google connected ✓ (demo — set droboard_api_base to go live)');
-        setTimeout(function(){ location.href='feed.html'; },500);
+        setTimeout(function(){ location.href=landingUrl(); },500);
         setLoading(btn, false);
       },600);
     });
@@ -82,20 +92,20 @@ document.getElementById('loginBtn').addEventListener('click',function(){
     .then(function(j){
       try{ localStorage.setItem('droboard_session', j.token || ('demo-'+Date.now())); if(j.user) localStorage.setItem('droboard_user', JSON.stringify(j.user)); }catch(e){}
       toast('Welcome back ✓');
-      setTimeout(function(){ location.href='feed.html'; },400);
+      setTimeout(function(){ location.href=landingUrl(); },400);
     })
     .catch(function(){
       // demo fallback: any email+pass passes until backend is live
       try{ localStorage.setItem('droboard_session','demo-'+Date.now()); }catch(e){}
       toast('Welcome back ✓');
-      setTimeout(function(){ location.href='feed.html'; },400);
+      setTimeout(function(){ location.href=landingUrl(); },400);
     })
     .finally(function(){ setTimeout(function(){ setLoading(btn, false); },450); });
 });
 document.getElementById('forgotLink').addEventListener('click',function(e){
   e.preventDefault();
-  const email=document.getElementById('emailInput').value.trim()||'your email';
-  toast('Reset link sent to '+email+' (demo)');
+  const email=document.getElementById('emailInput').value.trim();
+  location.href = 'forgot-password.html' + (email ? '?email=' + encodeURIComponent(email) : '');
 });
 
 // Expose identical window globals (prior top-level names)

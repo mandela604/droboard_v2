@@ -182,7 +182,7 @@ function logHistory(action, itemType, itemName, details){
 }
 function syncPacksToStore(){
   try{
-    const storePacks = PACKAGES.filter(p=>p.status==='active').map(p=>({ id:p.id, coins:p.coins, price:'$'+Number(p.priceUsd).toFixed(2), badge:p.bonusPercent?'+'+p.bonusPercent+'% bonus':'', color: p.coins>=5000?'#D6165A':p.coins>=1000?'#FF2D6A':'#635F6E' }));
+    const storePacks = PACKAGES.filter(p=>p.status==='active').map(p=>({ id:p.id, coins:p.coins, price:'$'+Number(p.priceUsd).toFixed(2), priceUSD:Number(p.priceUsd), prices:p.prices, badge:p.bonusPercent?'+'+p.bonusPercent+'% bonus':'', color: p.coins>=5000?'#D6165A':p.coins>=1000?'#FF2D6A':'#635F6E' }));
     if(storePacks.length) localStorage.setItem('dro_finance_packs', JSON.stringify(storePacks));
   }catch(e){}
 }
@@ -194,9 +194,15 @@ function syncEarnToStore(){
 }
 function syncBundlesToStore(){
   try{
-    const storeBundles = BUNDLES.filter(b=>b.status==='active').map(b=>({ id:b.id, name:b.name, coins:b.coins, bonus:b.bonus, price:b.price, icon:b.icon, color:b.color }));
+    const storeBundles = BUNDLES.filter(b=>b.status==='active').map(b=>({ id:b.id, name:b.name, coins:b.coins, bonus:b.bonus, price:b.price, prices:b.prices, icon:b.icon, color:b.color }));
     if(storeBundles.length) localStorage.setItem('dro_finance_bundles', JSON.stringify(storeBundles));
-    else localStorage.setItem('dro_finance_bundles', JSON.stringify(BUNDLES.map(b=>({ id:b.id, name:b.name, coins:b.coins, bonus:b.bonus, price:b.price, icon:b.icon, color:b.color }))));
+    else localStorage.setItem('dro_finance_bundles', JSON.stringify(BUNDLES.map(b=>({ id:b.id, name:b.name, coins:b.coins, bonus:b.bonus, price:b.price, prices:b.prices, icon:b.icon, color:b.color }))));
+  }catch(e){}
+}
+function syncSubsToStore(){
+  try{
+    const subs = SUBSCRIPTIONS.filter(s=>s.status==='active').map(s=>({ id:s.id, name:s.name, price:'$'+Number(s.priceUsd).toFixed(2), priceUSD:Number(s.priceUsd), prices:s.prices, durationDays:s.durationDays, coinsPerDay:s.coinsPerDay }));
+    if(subs.length) localStorage.setItem('dro_finance_subs', JSON.stringify(subs));
   }catch(e){}
 }
 
@@ -484,15 +490,21 @@ function openCreateModal(kind){
   document.getElementById('itemName').value = '';
   document.getElementById('pkgCoins').value = '';
   document.getElementById('pkgPrice').value = '';
+  document.getElementById('pkgPriceNgn').value = '';
+  document.getElementById('pkgPriceGbp').value = '';
   document.getElementById('pkgBonus').value = '';
   document.getElementById('bundleCoins').value = '';
   document.getElementById('bundleBonus').value = '';
   document.getElementById('bundlePrice').value = '';
+  document.getElementById('bundlePriceNgn').value = '';
+  document.getElementById('bundlePriceGbp').value = '';
   document.getElementById('bundleIcon').value = '';
   document.getElementById('bundleColor').value = '#22c55e';
   document.getElementById('giftIcon').value = '';
   document.getElementById('giftCost').value = '';
   document.getElementById('subPrice').value = '';
+  document.getElementById('subPriceNgn').value = '';
+  document.getElementById('subPriceGbp').value = '';
   document.getElementById('subDuration').value = '';
   document.getElementById('subCoinsPerDay').value = '';
   document.getElementById('subBonus').value = '';
@@ -526,11 +538,15 @@ function openEditModal(kind, id){
   if(kind==='package'){
     document.getElementById('pkgCoins').value = item.coins;
     document.getElementById('pkgPrice').value = item.priceUsd;
+    document.getElementById('pkgPriceNgn').value = (item.prices && item.prices.NGN) || '';
+    document.getElementById('pkgPriceGbp').value = (item.prices && item.prices.GBP) || '';
     document.getElementById('pkgBonus').value = item.bonusPercent || '';
   }else if(kind==='bundle'){
     document.getElementById('bundleCoins').value = item.coins;
     document.getElementById('bundleBonus').value = item.bonus || '';
     document.getElementById('bundlePrice').value = item.price;
+    document.getElementById('bundlePriceNgn').value = (item.prices && item.prices.NGN) || '';
+    document.getElementById('bundlePriceGbp').value = (item.prices && item.prices.GBP) || '';
     document.getElementById('bundleIcon').value = item.icon;
     document.getElementById('bundleColor').value = item.color || '#22c55e';
   }else if(kind==='gift'){
@@ -551,6 +567,8 @@ function openEditModal(kind, id){
     document.getElementById('earnWatchSec').value = item.minWatchSec || 60;
   }else{
     document.getElementById('subPrice').value = item.priceUsd;
+    document.getElementById('subPriceNgn').value = (item.prices && item.prices.NGN) || '';
+    document.getElementById('subPriceGbp').value = (item.prices && item.prices.GBP) || '';
     document.getElementById('subDuration').value = item.durationDays;
     document.getElementById('subCoinsPerDay').value = item.coinsPerDay;
     document.getElementById('subBonus').value = item.bonusPercent || '';
@@ -583,23 +601,37 @@ async function submitForm(){
   const errBox = document.getElementById('formModalError');
   if(formKind!=='earn' && !name){ errBox.textContent='Please enter a name.'; errBox.classList.add('show'); return; }
 
+  // Strict ladders: every purchasable item needs all three legs, otherwise
+  // readers in a missing region would hit NO_LOCAL_PRICE at checkout.
+  function readLadder(usdNum, usdText, ngnText, gbpText) {
+    var usd = usdNum != null ? usdNum : parseFloat((usdText || '').replace(/[$,\s]/g, ''));
+    var ladder = {};
+    if (usd > 0) ladder.USD = '$' + usd.toFixed(2);
+    if ((ngnText || '').trim()) ladder.NGN = ngnText.trim();
+    if ((gbpText || '').trim()) ladder.GBP = gbpText.trim();
+    if (!ladder.USD || !ladder.NGN || !ladder.GBP) return null;
+    return ladder;
+  }
+
   let payload;
   if(formKind==='package'){
     const coins = parseInt(document.getElementById('pkgCoins').value,10) || 0;
     const priceUsd = parseFloat(document.getElementById('pkgPrice').value) || 0;
     const bonusPercent = parseInt(document.getElementById('pkgBonus').value,10) || 0;
+    const prices = readLadder(priceUsd, null, document.getElementById('pkgPriceNgn').value, document.getElementById('pkgPriceGbp').value);
     if(coins<=0){ errBox.textContent='Please enter a coin amount.'; errBox.classList.add('show'); return; }
-    if(priceUsd<=0){ errBox.textContent='Please enter a price.'; errBox.classList.add('show'); return; }
-    payload = { name, coins, priceUsd, bonusPercent, status };
+    if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
+    payload = { name, coins, priceUsd, prices, bonusPercent, status };
   }else if(formKind==='bundle'){
     const coins = parseInt(document.getElementById('bundleCoins').value,10) || 0;
     const bonus = parseInt(document.getElementById('bundleBonus').value,10) || 0;
     const price = document.getElementById('bundlePrice').value.trim();
     const icon = document.getElementById('bundleIcon').value.trim() || 'fa-box-open';
     const color = document.getElementById('bundleColor').value || '#22c55e';
+    const prices = readLadder(null, price, document.getElementById('bundlePriceNgn').value, document.getElementById('bundlePriceGbp').value);
     if(coins<=0){ errBox.textContent='Please enter coins.'; errBox.classList.add('show'); return; }
-    if(!price){ errBox.textContent='Please enter price.'; errBox.classList.add('show'); return; }
-    payload = { name, coins, bonus, price, icon, color, status };
+    if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
+    payload = { name, coins, bonus, price, prices, icon, color, status };
   }else if(formKind==='gift'){
     const icon = document.getElementById('giftIcon').value.trim() || '🎁';
     const costCoins = parseInt(document.getElementById('giftCost').value,10) || 0;
@@ -634,10 +666,11 @@ async function submitForm(){
     const durationDays = parseInt(document.getElementById('subDuration').value,10) || 0;
     const coinsPerDay = parseInt(document.getElementById('subCoinsPerDay').value,10) || 0;
     const bonusPercent = parseInt(document.getElementById('subBonus').value,10) || 0;
-    if(priceUsd<=0){ errBox.textContent='Please enter a price.'; errBox.classList.add('show'); return; }
+    const prices = readLadder(priceUsd, null, document.getElementById('subPriceNgn').value, document.getElementById('subPriceGbp').value);
+    if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
     if(durationDays<=0){ errBox.textContent='Please enter duration in days.'; errBox.classList.add('show'); return; }
     if(coinsPerDay<=0){ errBox.textContent='Please enter coins per day.'; errBox.classList.add('show'); return; }
-    payload = { name, priceUsd, durationDays, coinsPerDay, bonusPercent, status };
+    payload = { name, priceUsd, prices, durationDays, coinsPerDay, bonusPercent, status };
   }
   errBox.classList.remove('show');
 
@@ -671,6 +704,7 @@ async function submitForm(){
     }
     if(formKind==='package') syncPacksToStore();
     if(formKind==='bundle') syncBundlesToStore();
+    if(formKind==='subscription') syncSubsToStore();
     if(formKind==='earn') syncEarnToStore();
     closeFormModal();
     renderPricing(); renderHistFilterPills(); renderHistory();

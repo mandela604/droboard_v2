@@ -57,147 +57,48 @@
   function countWords(text) { return (text||'').trim().split(/\s+/).filter(Boolean).length; }
 
   /* ══════════════════════════════════════════════════════════════════
-     WALLET / COINS
+     WALLET / COINS — delegated to the shared DroboardReader sheet
+     (component/reader.js). This page builds no purchase UI of its own:
+     on coin lock it opens the sheet; the unlock retries after purchase.
      ══════════════════════════════════════════════════════════════════ */
   const IS_APP_BUILD = !!window.DroboardIAP;
-  let walletBalance = 0;
-  let purchaseState = "idle";
-  const COIN_PACKAGES = [
-    { coins: 100, bonus: 0, price: 500, label: "Starter", storeProductId: "coins_100" },
-    { coins: 300, bonus: 20, price: 1200, label: "Popular", storeProductId: "coins_300", reco: true },
-    { coins: 700, bonus: 80, price: 2500, label: "Best Value", storeProductId: "coins_700" },
-    { coins: 1500, bonus: 250, price: 5000, label: "Mega", storeProductId: "coins_1500" },
-  ];
-  let _pendingInsufficientRetry = null;
-  let _pendingBuyRetry = null;
 
-  function updateCoinDisplays() {
+  // Real purchase inside the app build, simulated locally in demo
+  // (the sheet shows its own loading state either way).
+  function buyCoinsViaSheet(p) {
+    if (IS_APP_BUILD && window.DroboardIAP) {
+      return window.DroboardIAP.purchase(p.storeProductId).then(function (result) {
+        const status = result && result.status;
+        if (status === "success") return { ok: true, coins: (result.coins != null ? result.coins : p.coins) };
+        if (status === "cancelled") return { ok: false, message: "Purchase cancelled" };
+        return { ok: false, message: (result && result.message) || "Purchase failed. Please try again." };
+      }).catch(function (err) {
+        console.error("[Droboard IAP] purchase failed", err);
+        return { ok: false, message: "Purchase failed. Please try again." };
+      });
+    }
+    return new Promise(function (resolve) { setTimeout(function () { resolve({ ok: true }); }, 1100); });
+  }
+
+  function updateCoinDisplays(balance) {
     const fc = document.getElementById("fcCoinBalance");
-    if (fc) fc.textContent = fmtN(walletBalance);
-    const buycBal = document.getElementById("buycBalance");
-    if (buycBal) buycBal.textContent = fmtN(walletBalance);
+    if (fc) fc.textContent = fmtN(balance != null ? balance : (window.DroboardReader ? DroboardReader.getBalance() : 0));
   }
 
   function attemptUnlock(fromCh, howMany, cost) {
-    if (walletBalance < cost) {
-      showInsufficientBalance(cost, walletBalance, () => attemptUnlock(fromCh, howMany, cost));
+    if (!window.DroboardReader) { toast("Reader unavailable — please reload"); return; }
+    if (!DroboardReader.spend(cost)) {
+      // Coin lock: open the shared sheet; the unlock retries after purchase.
+      DroboardReader.openBuyCoins(function () { attemptUnlock(fromCh, howMany, cost); });
       return;
     }
-    walletBalance -= cost;
-    updateCoinDisplays();
+    updateCoinDisplays(DroboardReader.getBalance());
     unlockChapters(fromCh, howMany);
   }
 
-  /* ══ INSUFFICIENT BALANCE ══ */
-  function showInsufficientBalance(need, have, retryFn) {
-    _pendingInsufficientRetry = retryFn || null;
-    document.getElementById("balNeed").textContent = need;
-    document.getElementById("balHave").textContent = have;
-    document.getElementById("balOv").classList.add("show");
-  }
-  function closeInsufficientBalance() {
-    document.getElementById("balOv").classList.remove("show");
-  }
-
-  /* ══ COIN PACKAGES ══ */
-  function renderCoinPackages() {
-    const busy = purchaseState !== "idle";
-    document.getElementById("buycPackages").innerHTML = COIN_PACKAGES.map((p, i) =>
-      '<div class="pkg-card' + (p.reco ? " reco" : "") + '" style="' + (busy ? "opacity:.45;pointer-events:none;" : "") + '" onclick="ScrollReader.buyPackage(' + i + ')">' +
-        "<div>" +
-          '<div class="pkg-label">' + esc(p.label) + "</div>" +
-          '<div class="pkg-coins"><i class="fas fa-coins"></i> ' + fmtN(p.coins) + "</div>" +
-          (p.bonus ? '<div class="pkg-bonus">+' + p.bonus + " bonus coins</div>" : "") +
-        "</div>" +
-        '<div class="pkg-right"><div class="pkg-price">\u20A6' + fmtN(p.price) + "</div></div>" +
-      "</div>"
-    ).join("");
-  }
-
-  function openBuyCoins(retryFn) {
-    _pendingBuyRetry = retryFn || null;
-    renderCoinPackages();
-    updateCoinDisplays();
-    const fundTab = document.getElementById("buycFundTab");
-    if (fundTab) fundTab.style.display = IS_APP_BUILD ? "none" : "";
-    setBuyTab(document.querySelector('.buyc-tab[data-tab="packages"]'), "packages");
-    document.getElementById("buycOv").classList.add("show");
-    if (purchaseState !== "idle") setPurchaseUI(purchaseState);
-  }
-  function closeBuyCoins() {
-    if (purchaseState === "purchasing") return;
-    document.getElementById("buycOv").classList.remove("show");
-  }
-  function setBuyTab(el, tab) {
-    document.querySelectorAll(".buyc-tab").forEach(t => t.classList.remove("on"));
-    el.classList.add("on");
-    document.getElementById("buycPackages").style.display = tab === "packages" ? "" : "none";
-    document.getElementById("buycFund").style.display = tab === "fund" ? "" : "none";
-  }
-
-  function setPurchaseUI(state) {
-    purchaseState = state;
-    const loading = document.getElementById("buycLoading");
-    const loadingText = document.getElementById("buycLoadingText");
-    const closeBtn = document.getElementById("buycClose");
-    loading.classList.toggle("show", state === "purchasing" || state === "pending");
-    if (state === "purchasing") loadingText.textContent = "Processing purchase\u2026";
-    if (state === "pending") loadingText.textContent = "Purchase pending \u2014 you'll be credited once it clears.";
-    closeBtn.style.pointerEvents = state === "purchasing" ? "none" : "";
-    closeBtn.style.opacity = state === "purchasing" ? ".4" : "";
-    renderCoinPackages();
-  }
-
-  function _grantCoinsAndRetry(amount) {
-    walletBalance += amount;
-    updateCoinDisplays();
-    toast(fmtN(amount) + " coins added to your wallet!");
-    setPurchaseUI("idle");
-    closeBuyCoins();
-    if (_pendingBuyRetry) { const fn = _pendingBuyRetry; _pendingBuyRetry = null; setTimeout(fn, 200); }
-  }
-
-  async function buyPackage(i) {
-    if (purchaseState !== "idle") return;
-    const p = COIN_PACKAGES[i];
-    if (!p) return;
-    if (!IS_APP_BUILD) {
-      setPurchaseUI("purchasing");
-      setTimeout(() => { _grantCoinsAndRetry(p.coins + (p.bonus || 0)); }, 1100);
-      return;
-    }
-    setPurchaseUI("purchasing");
-    try {
-      const result = await window.DroboardIAP.purchase(p.storeProductId);
-      const status = result && result.status;
-      if (status === "success") {
-        _grantCoinsAndRetry((result.coins != null ? result.coins : p.coins) + (p.bonus || 0));
-      } else if (status === "cancelled") {
-        setPurchaseUI("idle");
-      } else if (status === "pending") {
-        setPurchaseUI("pending");
-        toast("Purchase pending \u2014 you'll be credited once it clears.");
-      } else {
-        setPurchaseUI("idle");
-        toast((result && result.message ? result.message : "Purchase failed. Please try again."));
-      }
-    } catch (err) {
-      console.error("[Droboard IAP] purchase failed", err);
-      setPurchaseUI("idle");
-      toast("Purchase failed. Please try again.");
-    }
-  }
-
-  function fundWallet() {
-    if (IS_APP_BUILD) return;
-    if (purchaseState !== "idle") return;
-    const naira = +document.getElementById("fundInput").value;
-    if (!naira || naira < 100) { toast("Enter at least \u20A6100"); return; }
-    const coins = Math.floor(naira / 20);
-    document.getElementById("fundInput").value = "";
-    setPurchaseUI("purchasing");
-    setTimeout(() => { _grantCoinsAndRetry(coins); }, 900);
-  }
+  /* Purchase UI removed -- the shared DroboardReader sheet (component/
+     reader.js) is the single purchase surface. Coin lock opens the sheet
+     via attemptUnlock; unlocks retry automatically after purchase. */
 
   /* ══════════════════════════════════════════════════════════════════
      STATE
@@ -296,6 +197,10 @@
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
               '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
             "</div>" +
+            '<div class="unlock-opt" onclick="ScrollReader.watchAdsUnlock(' + ch.n + ')">' +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s">2 short ads - unlocks this chapter free</div></div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprog-' + ch.n + '">' + adProgress(ch.n) + "/2</span></div>" +
+            "</div>" +
           "</div>" +
         "</div>" +
       "</section>";
@@ -331,6 +236,36 @@
 
   function renderCommentLine(ch) {
     return '<div class="comment-line-wrap"><div class="comments-inline-mount" id="commentsMount-' + ch.n + '"></div></div>';
+  }
+
+  /* ══ WATCH ADS TO UNLOCK — 2 full ad views unlock 1 chapter free.
+     Progress persists per story+chapter so a refresh never wipes it. ══ */
+  function adKey(chN) { return "dro_adunlock_" + STORY_ID + "_" + chN; }
+  function adProgress(chN) {
+    try { return Math.min(2, parseInt(localStorage.getItem(adKey(chN)) || "0", 10) || 0); }
+    catch (e) { return 0; }
+  }
+  function readerAdInventory() {
+    return (READER_BANNERS || []).filter(function (b) {
+      return b && (b.type === "banner" || b.type === "native") && b.ad;
+    });
+  }
+  function watchAdsUnlock(chN) {
+    if (adProgress(chN) >= 2) { unlockChapters(chN, 1); return; }
+    if (!window.DroboardRewardedAd) { toast("Ads unavailable right now"); return; }
+    var need = 2 - adProgress(chN);
+    DroboardRewardedAd.show({
+      ads: readerAdInventory(),
+      rewardLabel: "Watch to the end (" + need + " more) to unlock Chapter " + chN + " free",
+      onComplete: function () {
+        var n = adProgress(chN) + 1;
+        try { localStorage.setItem(adKey(chN), String(n)); } catch (e) {}
+        var lbl = document.getElementById("adprog-" + chN);
+        if (lbl) lbl.textContent = Math.min(2, n) + "/2";
+        if (n >= 2) { toast("Chapter " + chN + " unlocked - enjoy!"); unlockChapters(chN, 1); }
+        else toast("1 more ad to unlock Chapter " + chN);
+      },
+    });
   }
 
   /* ══ UNLOCKING ══ */
@@ -563,7 +498,11 @@
 
     ST.unlockedThrough = DATA.unlockedThrough;
     await loadReaderAds();
-    walletBalance = 0;
+    // Shared coin sheet owns the wallet now — attach once, start at zero.
+    if (window.DroboardReader) {
+      DroboardReader.attach({ onBalanceChange: updateCoinDisplays, onBuyCoins: buyCoinsViaSheet });
+      DroboardReader.setBalance(0);
+    }
 
     document.getElementById("loadingState").style.display = "none";
     document.getElementById("storyTop").style.display = "";
@@ -577,46 +516,44 @@
     READER_SERVED.forEach(id => trackAd(id, "impression"));
     buildChaptersPanel();
     wireComponents();
+    wireStaticChrome();
     wireFloatingControls();
     wireScrollProgress();
     wireExitIntent();
   }
 
-  /* ══ PUBLIC API ══ */
+  /* ══ PUBLIC API (called by service-rendered templates) ══ */
   window.ScrollReader = {
     attemptUnlock,
-    buyPackage,
+    watchAdsUnlock,
     jumpToChapter,
     doSave,
     doShare,
     doTip,
-    changeFontSize,
-    setLH,
-    setFF,
-    setTheme,
-    openSettings,
-    openChPanel,
-    closeChPanel,
-    closeAllSheets,
-    closeBuyCoins,
-    setBuyTab,
-    fundWallet,
     attemptExit,
     confirmExit,
     exitCtaClick,
   };
 
-  /* Expose for inline onclick handlers in HTML */
-  window.closeAllSheets = closeAllSheets;
-  window.closeChPanel = closeChPanel;
-  window.changeFontSize = changeFontSize;
-  window.setLH = setLH;
-  window.setFF = setFF;
-  window.setTheme = setTheme;
-  window.setBuyTab = setBuyTab;
-  window.fundWallet = fundWallet;
-  window.confirmExit = confirmExit;
-  window.exitCtaClick = exitCtaClick;
+  /* Static shell controls — HTML carries data-act attributes only, no
+     inline handlers. Wired here on init. */
+  function wireStaticChrome() {
+    const q = function (sel) { return document.querySelector(sel); };
+    const qa = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+    const closeBtn = q('#chPanel [data-act="close-panels"]');
+    if (closeBtn) closeBtn.addEventListener("click", closeChPanel);
+    qa('[data-act="fs-dec"]').forEach(function (b) { b.addEventListener("click", function () { changeFontSize(-1); }); });
+    qa('[data-act="fs-inc"]').forEach(function (b) { b.addEventListener("click", function () { changeFontSize(1); }); });
+    qa('[data-lh]').forEach(function (el) { el.addEventListener("click", function () { setLH(el, el.getAttribute("data-lh")); }); });
+    qa('[data-ff]').forEach(function (el) { el.addEventListener("click", function () { setFF(el, el.getAttribute("data-ff")); }); });
+    qa('[data-theme]').forEach(function (el) { el.addEventListener("click", function () { setTheme(el, el.getAttribute("data-theme")); }); });
+    const overlay = document.getElementById("overlayBg");
+    if (overlay) overlay.addEventListener("click", closeAllSheets);
+    const exitCta = document.getElementById("exitCta");
+    if (exitCta) exitCta.addEventListener("click", exitCtaClick);
+    const exitClose = document.getElementById("exitCloseBtn");
+    if (exitClose) exitClose.addEventListener("click", confirmExit);
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

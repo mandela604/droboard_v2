@@ -205,9 +205,6 @@
     .drd-buy-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:#fff;flex:1}
     .drd-buy-bal{font-size:11px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:5px;white-space:nowrap}
     .drd-buy-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:#888;border:none;flex-shrink:0}
-    .drd-buy-tabs{display:flex;gap:8px;padding:0 16px 12px}
-    .drd-buy-tab{flex:1;text-align:center;padding:8px;border-radius:10px;font-size:11px;font-weight:700;color:#888;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.07);cursor:pointer}
-    .drd-buy-tab.on{background:rgba(255,0,80,.12);border-color:rgba(255,0,80,.3);color:var(--acc2,#ff4d7a)}
     .drd-buy-body{padding:0 16px 4px}
     .drd-pkg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;border-radius:13px;border:1.5px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);margin-bottom:8px;cursor:pointer}
     .drd-pkg:active{transform:scale(.98)}
@@ -218,10 +215,6 @@
     .drd-pkg-lbl{font-size:9px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
     .drd-pkg-right{text-align:right}
     .drd-pkg-price{font-size:12px;font-weight:800;color:#fff}
-    .drd-fund-lbl{font-size:10px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-    .drd-fund-inp{width:100%;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);border-radius:11px;padding:11px 13px;color:#fff;font-family:inherit;font-size:14px;font-weight:700;outline:none;margin-bottom:8px}
-    .drd-fund-rate{font-size:10px;color:#666;margin-bottom:16px}
-    .drd-buy-cta{width:100%;padding:12px;border-radius:13px;background:var(--acc,#ff0050);color:#fff;font-weight:800;font-size:12px;cursor:pointer;border:none;font-family:inherit}
 
     .drd-toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:#111;border:1px solid rgba(255,255,255,.08);color:#e0e0e0;padding:8px 18px;border-radius:24px;font-size:12px;font-weight:600;z-index:2000;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;font-family:inherit}
     .drd-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -233,10 +226,10 @@
   ];
 
   const COIN_PACKAGES = [
-    { coins: 100, bonus: 0, price: 500, label: 'Starter' },
-    { coins: 300, bonus: 20, price: 1200, label: 'Popular', reco: true },
-    { coins: 700, bonus: 80, price: 2500, label: 'Best Value' },
-    { coins: 1500, bonus: 250, price: 5000, label: 'Mega' },
+    { coins: 100, bonus: 0, price: 500, label: 'Starter', storeProductId: 'coins_100', prices: { NGN: '₦1,500', USD: '$2.50', GBP: '£2.85' } },
+    { coins: 300, bonus: 20, price: 1200, label: 'Popular', reco: true, storeProductId: 'coins_300', prices: { NGN: '₦4,500', USD: '$7.99', GBP: '£8.99' } },
+    { coins: 700, bonus: 80, price: 2500, label: 'Best Value', storeProductId: 'coins_700', prices: { NGN: '₦11,500', USD: '$19.49', GBP: '£21.99' } },
+    { coins: 1500, bonus: 250, price: 5000, label: 'Mega', storeProductId: 'coins_1500', prices: { NGN: '₦26,000', USD: '$43.99', GBP: '£49.99' } },
   ];
 
   // Locking is now per-CHAPTER, not per-scene: a story/chapter is either
@@ -407,7 +400,7 @@
         </div>
       </div>
 
-      <!-- Buy coins / fund wallet sheet -->
+      <!-- Buy coins sheet — bundles only, no custom funding -->
       <div class="drd-buy-ov" id="drdBuyOv">
         <div class="drd-buy-sheet">
           <div class="drd-buy-loading" id="drdBuyLoading">
@@ -419,17 +412,7 @@
             <div class="drd-buy-bal"><i class="fas fa-coins"></i> <span id="drdBuyBal">0</span></div>
             <button class="drd-buy-close" id="drdBuyClose">✕</button>
           </div>
-          <div class="drd-buy-tabs">
-            <div class="drd-buy-tab on" data-tab="packages">Coin Packages</div>
-            <div class="drd-buy-tab" data-tab="fund">Fund Wallet</div>
-          </div>
           <div class="drd-buy-body" id="drdBuyPackages"></div>
-          <div class="drd-buy-body" id="drdBuyFund" style="display:none">
-            <div class="drd-fund-lbl">Enter amount ($)</div>
-            <input class="drd-fund-inp" id="drdFundInp" type="number" min="1" placeholder="e.g. 10"/>
-            <div class="drd-fund-rate">$0.02 = 1 coin · minimum $1</div>
-            <button class="drd-buy-cta" id="drdFundConfirm">Fund &amp; Convert</button>
-          </div>
         </div>
       </div>
 
@@ -563,16 +546,38 @@ function _renderRxSlot(story) {
 
   /* ══════════════════════════════════════════════════════════════════
      WALLET / PAYWALL — self-contained demo, overridable via hooks:
-       hooks.onUnlockAttempt(story, 0, sceneCount, cost, callback)
-         → call callback(true) to grant, callback(false) to deny/no-op.
-           If omitted, an internal demo wallet handles it (deduct + a
-           real Buy Coins round-trip when balance is short).
-       hooks.onBuyCoins(package) → return { ok, coins? } or a Promise of
-         that shape. If omitted, purchases are simulated locally.
+        hooks.onUnlockAttempt(story, 0, sceneCount, cost, callback)
+          → call callback(true) to grant, callback(false) to deny/no-op.
+            If omitted, an internal demo wallet handles it (deduct + a
+            real Buy Coins round-trip when balance is short).
+        hooks.onBuyCoins(package) → return { ok, coins? } or a Promise of
+          that shape. If omitted, purchases are simulated locally.
+        hooks.onBalanceChange(balance) → fired whenever the sheet wallet
+          balance changes, so host pages can sync their own coin pills.
+     Host pages (full/scroll readers) use the public wallet API below —
+     openBuyCoins / getBalance / setBalance / spend — and never build
+     their own purchase UI.
   ══════════════════════════════════════════════════════════════════ */
   function _syncWalletUI() {
     const bal2 = document.getElementById('drdBuyBal');
     if (bal2) bal2.textContent = _fmtN(_wallet.balance);
+    if (typeof _hooks.onBalanceChange === 'function') {
+      try { _hooks.onBalanceChange(_wallet.balance); } catch (e) {}
+    }
+  }
+
+  // ── Public wallet/sheet API for host pages (readers call these on coin
+  // lock instead of building their own purchase UI). The sheet stays the
+  // single purchase surface; hosts only spend/check balance. ──
+  function openBuyCoins(retryFn) { _openBuyCoins(retryFn || null); }
+  function getBalance() { return _wallet.balance; }
+  function setBalance(n) { _wallet.balance = Math.max(0, +n || 0); _syncWalletUI(); }
+  function spend(n) {
+    n = +n || 0;
+    if (_wallet.balance < n) return false;
+    _wallet.balance -= n;
+    _syncWalletUI();
+    return true;
   }
 
   function _openInsufficientBalance(need, have, retryFn) {
@@ -585,20 +590,15 @@ function _renderRxSlot(story) {
 
   function _openBuyCoins(retryFn) {
     _pendingBuyRetry = retryFn || null;
+    if (window.DroboardCurrency) DroboardCurrency.refresh();
     _renderCoinPackages();
     _syncWalletUI();
-    _setBuyTab('packages');
     document.getElementById('drdBuyOv').classList.add('open');
     if (_buyPurchasing) _setBuyLoading(true);
   }
   function _closeBuyCoins() {
     if (_buyPurchasing) return;
     document.getElementById('drdBuyOv').classList.remove('open');
-  }
-  function _setBuyTab(tab) {
-    document.querySelectorAll('.drd-buy-tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
-    document.getElementById('drdBuyPackages').style.display = tab === 'packages' ? '' : 'none';
-    document.getElementById('drdBuyFund').style.display = tab === 'fund' ? '' : 'none';
   }
   function _renderCoinPackages() {
     document.getElementById('drdBuyPackages').innerHTML = COIN_PACKAGES.map((p, i) => `
@@ -608,7 +608,7 @@ function _renderRxSlot(story) {
           <div class="drd-pkg-coins"><i class="fas fa-coins"></i> ${_fmtN(p.coins)}</div>
           ${p.bonus ? `<div class="drd-pkg-bonus">+${p.bonus} bonus coins</div>` : ''}
         </div>
-        <div class="drd-pkg-right"><div class="drd-pkg-price">$${_fmtN(p.price)}</div></div>
+        <div class="drd-pkg-right"><div class="drd-pkg-price">${(window.DroboardCurrency ? DroboardCurrency.priceFor({ id: p.storeProductId, prices: p.prices, price: p.price }) : '₦' + _fmtN(p.price))}</div></div>
       </div>`).join('');
   }
   function _setBuyLoading(loading) {
@@ -627,6 +627,15 @@ function _renderRxSlot(story) {
     if (_buyPurchasing) return;
     const p = COIN_PACKAGES[i];
     if (!p) return;
+    // Strict pricing: never charge without an exact local price.
+    if (window.DroboardCurrency) {
+      const r = DroboardCurrency.resolve({ id: p.storeProductId, prices: p.prices, price: p.price });
+      if (!r.ok) {
+        try { console.error('[DroboardCurrency]', r.error, r.product || '', r.currency || ''); } catch (e) {}
+        _toast('Price unavailable in your region (' + r.error + ')');
+        return;
+      }
+    }
     if (typeof _hooks.onBuyCoins === 'function') {
       _setBuyLoading(true);
       Promise.resolve(_hooks.onBuyCoins(p)).then(res => {
@@ -638,15 +647,6 @@ function _renderRxSlot(story) {
     _setBuyLoading(true);
     setTimeout(() => _grantCoins(p.coins + (p.bonus || 0)), 1000);
   }
-  function _fundWallet() {
-    if (_buyPurchasing) return;
-    const naira = +document.getElementById('drdFundInp').value;
-    if (!naira || naira < 1) { _toast('Enter at least $1'); return; }
-    document.getElementById('drdFundInp').value = '';
-    _setBuyLoading(true);
-    setTimeout(() => _grantCoins(Math.floor(naira / 20)), 900);
-  }
-
   /* ── Per-CHAPTER unlock (not per-scene): one decision unlocks every
      scene in this story/chapter at once. ── */
   function _attemptUnlockChapter(story, cost) {
@@ -1201,19 +1201,27 @@ function _renderRxSlot(story) {
     });
     document.getElementById('drdBuyClose').addEventListener('click', _closeBuyCoins);
     document.getElementById('drdBuyOv').addEventListener('click', e => { if (e.target === e.currentTarget) _closeBuyCoins(); });
-    document.querySelectorAll('.drd-buy-tab').forEach(t => t.addEventListener('click', () => _setBuyTab(t.dataset.tab)));
     document.getElementById('drdBuyPackages').addEventListener('click', e => {
       const el = e.target.closest('[data-pkgidx]');
       if (el) _buyPackage(+el.dataset.pkgidx);
     });
-    document.getElementById('drdFundConfirm').addEventListener('click', _fundWallet);
   }
 
   function attach(hooks) {
     _hooks = hooks || {};
     _build();
+    // Re-price bundles if geo-detection resolves after the sheet opened.
+    if (window.DroboardCurrency && !attach._curSub) {
+      attach._curSub = true;
+      DroboardCurrency.onChange(function () {
+        try {
+          var ov = document.getElementById('drdBuyOv');
+          if (ov && ov.classList.contains('open')) _renderCoinPackages();
+        } catch (e) {}
+      });
+    }
   }
 
-  window.DroboardReader = { attach, open, close };
+  window.DroboardReader = { attach, open, close, openBuyCoins, getBalance, setBalance, spend };
 
 })();

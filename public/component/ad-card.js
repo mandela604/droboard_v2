@@ -78,6 +78,12 @@
     .dac-follow-tag{font-size:10px;color:#888}
     .dac-follow-btn{background:#ff2d55;color:#fff;font-size:10px;font-weight:800;padding:6px 14px;border-radius:16px;border:none;cursor:pointer}
     .dac-follow-btn:active{transform:scale(.95)}
+    .dac-follow.dac-rich{display:block;padding:0;overflow:hidden}
+    .dac-follow-cover{height:110px;background-size:cover;background-position:center;background-color:#1a0a14}
+    .dac-follow-cover img{width:100%;height:100%;object-fit:cover}
+    .dac-follow-main{display:flex;align-items:center;gap:12px;padding:12px}
+    .dac-follow-headline{font-size:12.5px;font-weight:800;color:#1a1a1a;margin-top:3px}
+    .dac-follow-body{font-size:11px;color:#666;margin-top:2px;line-height:1.45}
 
     /* ── Story promo ── */
     .dac-story-promo{display:flex;gap:12px;background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:12px;margin:8px 0}
@@ -219,6 +225,24 @@
 
   function renderFollowPromo(ad) {
     injectStyles();
+    // Rich variant when the ad carries native-level creative (cover /
+    // headline / body). Plain follow ads render exactly as before.
+    if (ad.cover || ad.headline || ad.body) {
+      return `<div class="dac-follow dac-rich">
+      ${ad.cover ? `<div class="dac-follow-cover"><img src="${esc(ad.cover)}" loading="lazy" alt=""/></div>` : ''}
+      <div class="dac-follow-main">
+        <img class="dac-follow-avatar" src="${esc(ad.avatar)}" loading="lazy" alt=""/>
+        <div class="dac-follow-info">
+          <div class="dac-follow-name">${esc(ad.name || ad.userName)}</div>
+          ${ad.handle ? `<div class="dac-follow-tag">${esc(ad.handle)}</div>` : ''}
+          ${ad.headline ? `<div class="dac-follow-headline">${esc(ad.headline)}</div>` : ''}
+          ${ad.body ? `<div class="dac-follow-body">${esc(ad.body)}</div>` : ''}
+          ${ad.tagline && !ad.headline ? `<div class="dac-follow-tag">${esc(ad.tagline)}</div>` : ''}
+        </div>
+        <button class="dac-follow-btn">${esc(ad.cta || 'Follow')}</button>
+      </div>
+    </div>`;
+    }
     return `<div class="dac-follow">
       <img class="dac-follow-avatar" src="${esc(ad.avatar)}" loading="lazy" alt=""/>
       <div class="dac-follow-info">

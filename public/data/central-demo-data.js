@@ -1243,6 +1243,21 @@
           "Whatever happened next, the story was already mine. But as I stepped out into the Jos morning with the photograph in my pocket, I understood what my mother had known all along: some doors should be knocked on before they are pushed — and this one, at last, I was ready to knock.",
         ]
       },
+      {
+        n: 4, title: 'The Man on the Bench', words: 700,
+        paras: [
+          "The park was smaller than I expected. A patch of green with tired swings, a few mango trees, and old men arranged on benches like punctuation marks at the end of long sentences.",
+          "I spotted him before he saw me. The photograph had aged thirty years into the man in front of me: same lean shoulders, same habit of resting one arm along the back of the bench, as if the whole world were a car door he was in no hurry to close.",
+          "My rehearsed sentences evaporated. Plain-as-bread truth, I reminded myself. Just walk over and say it.",
+          "Halfway across the grass he looked up, and something in his face changed before I said a word. Recognition without a name for itself. He stood slowly, one hand gripping the bench.",
+          "'Good morning, sir,' I said, and my voice did not shake, which surprised us both. 'My name is Adaeze. My mother was Amara Eze.'",
+          "He sat back down. Not from rudeness — his knees simply gave way. For a long moment he stared at my face the way you stare at a letter you have waited decades to receive, afraid opening it will use up the last of your courage.",
+          "'You have her eyes,' he said at last. 'And her stubborn chin. Sit, please. Before somebody's daughter faints in this park and I have to explain myself.'",
+          "We talked until the sun moved off our bench. He told me about the hospital visit when I was four, the malaria, the smile I gave him in my sleep. He told me about the letters he wrote and never sent, a whole drawer of them, because a promise is a promise even when it costs you everything.",
+          "Then he said something that rearranged the furniture in my chest: 'There is one more thing your mother never told you. About the photograph. About why she kept it all these years.'",
+          "He reached into his agbada pocket and began to unfold a second photograph — older, creased, handled often. 'Look closely,' he said. 'Tell me what you see.'",
+        ]
+      },
     ],
     comments: [
       { name: 'Chioma_R', avatar: 'https://i.pravatar.cc/100?img=47', time: '2h', text: 'The box of letters destroyed me. My father did the same thing.', likes: 1200, liked: false },

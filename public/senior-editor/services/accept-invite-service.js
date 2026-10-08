@@ -1,33 +1,39 @@
 /**
- * accept-invite-service.js — Accept Invite (standalone auth page, no sidebar) logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
+ * accept-invite-service.js — Accept Invite (standalone auth page, no sidebar).
+ * PRODUCTION: backend only. No demo data, no fallbacks.
+ * Flow: invite email must belong to a REGISTERED user; invites expire 72h
+ * after issue (410 expired). Accept verifies the account password as proof
+ * of ownership, attaches the senior_editor role, then lands on the dashboard.
+ * Backend: GET/POST /api/chief/invites/by-token|accept
  */
 (function () {
 'use strict';
 
-const USE_API = false;
-const API_BASE = '/api/auth';
+const API_BASE = '/api/chief';
 
 async function callBackend(path, options) {
-  if (!USE_API) return null;
-  try {
-    const res = await fetch(API_BASE + path, options);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
-  } catch (e) {
-    console.warn('[AcceptInviteService] backend unavailable, using demo data', e);
-    return null;
+  const res = await fetch(API_BASE + path, options || {});
+  if (!res.ok) {
+    const err = new Error('HTTP ' + res.status);
+    err.status = res.status;
+    try { err.body = await res.json(); } catch (e) {}
+    throw err;
   }
+  return res.json();
 }
 
 var _initialized = false;
 
-function showError(){
+function showError(msg){
   document.getElementById('setupForm').style.display='none';
   document.getElementById('authInfo').style.display='none';
   document.getElementById('authWelcome').style.display='none';
-  document.getElementById('authError').style.display='block';
+  var box = document.getElementById('authError');
+  box.style.display='block';
+  if (msg) {
+    var p = box.querySelector('p');
+    if (p) p.textContent = msg;
+  }
 }
 
 function bindPasswordStrength(){
@@ -52,23 +58,19 @@ function bindPasswordStrength(){
 
 function init(){
   if(_initialized)return;_initialized=true;
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/invite/validate?token=' + encodeURIComponent(token));
-  callBackend('/invite/validate');
 
   var params=new URLSearchParams(window.location.search);
   var token=params.get('token');
 
-  if(!token){showError();bindPasswordStrength();return}
+  if(!token){showError('This invite link is invalid. Ask your Chief Editor for a new one.');bindPasswordStrength();return}
 
-  ChiefEditorData.getByInviteToken(token).then(function(editor){
-    if(!editor){showError();return}
+  callBackend('/invites/by-token/' + encodeURIComponent(token)).then(function(invite){
     document.getElementById('authInfo').style.display='flex';
-    document.getElementById('authAvatar').src=editor.avatar;
-    document.getElementById('authName').textContent=editor.name;
-    document.getElementById('authEmail').textContent=editor.email;
-    document.getElementById('setupName').value=editor.name;
-    document.getElementById('setupEmail').value=editor.email;
+    document.getElementById('authAvatar').src='https://i.pravatar.cc/100?img=5';
+    document.getElementById('authName').textContent=invite.name;
+    document.getElementById('authEmail').textContent=invite.email;
+    document.getElementById('setupName').value=invite.name;
+    document.getElementById('setupEmail').value=invite.email;
 
     document.getElementById('setupForm').addEventListener('submit',function(e){
       e.preventDefault();
@@ -82,12 +84,17 @@ function init(){
       if(pw!==pw2){document.getElementById('setupPwConfirmErr').style.display='block';valid=false}else{document.getElementById('setupPwConfirmErr').style.display='none'}
       if(!valid)return;
 
-      ChiefEditorData.acceptInvite(token,pw).then(function(result){
-        if(!result){showError();return}
-        localStorage.setItem('droboard-user',JSON.stringify({
-          id:result.id,name:name,email:result.email,avatar:result.avatar,
-          role:'Senior Editor',dashboard:'senior-editor'
-        }));
+      callBackend('/invites/accept', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ token:token, password:pw })
+      }).then(function(result){
+        try{
+          localStorage.setItem('droboard-user',JSON.stringify({
+            id:result.id,name:name,email:result.email,avatar:'https://i.pravatar.cc/100?img=5',
+            role:'Senior Editor',dashboard:'senior-editor'
+          }));
+        }catch(se){}
         document.getElementById('setupForm').style.display='none';
         document.getElementById('authInfo').style.display='none';
         document.getElementById('authWelcome').style.display='none';
@@ -99,8 +106,16 @@ function init(){
           if(cd<=0){clearInterval(iv);window.location.href='dashboard.html'}
         },1000);
         document.getElementById('goDashBtn').addEventListener('click',function(){window.location.href='dashboard.html'});
+      }).catch(function(err){
+        if(err && err.status===410){showError('This invite has expired (72h). Ask your Chief Editor to resend it.');}
+        else if(err && err.status===401){showError('Wrong password for ' + invite.email + '. Log in with your existing account password.');}
+        else if(err && err.status===404){showError('This invite is no longer valid. Ask your Chief Editor for a new one.');}
+        else{showError('Could not accept this invite. Check your connection and try again.');}
       });
     });
+  }).catch(function(err){
+    if(err && err.status===410){showError('This invite has expired (72h). Ask your Chief Editor to resend it.');}
+    else{showError('This invite link is invalid. Ask your Chief Editor for a new one.');}
   });
 
   bindPasswordStrength();

@@ -66,18 +66,28 @@
   }
   function countWords(s){ return (s||'').trim().split(/\s+/).filter(Boolean).length; }
 
-  /* ══ WALLET (demo) ══ */
-  let walletBalance = 45;
-  function updateCoinPill() {
+  /* ══ WALLET — owned by the shared DroboardReader sheet
+     (component/reader.js). This page builds no purchase UI: on coin lock
+     it opens the sheet; the unlock retries after purchase. ══ */
+  function updateCoinPill(balance) {
     const el = document.getElementById("coinBalanceLbl");
-    if (el) el.textContent = fmtN(walletBalance);
+    if (el) el.textContent = fmtN(balance != null ? balance : (window.DroboardReader ? DroboardReader.getBalance() : 0));
   }
-  function grantDemoCoins() {
-    walletBalance += 50;
-    updateCoinPill();
-    toast("+50 coins added (demo)");
-    const getCoinsBox = document.getElementById("unlockGetCoins");
-    if (getCoinsBox) getCoinsBox.classList.remove("show");
+  // Real purchase inside the app build, simulated locally in demo
+  // (the sheet shows its own loading state either way).
+  function buyCoinsViaSheet(p) {
+    if (window.DroboardIAP) {
+      return window.DroboardIAP.purchase(p.storeProductId).then(function (result) {
+        const status = result && result.status;
+        if (status === "success") return { ok: true, coins: (result.coins != null ? result.coins : p.coins) };
+        if (status === "cancelled") return { ok: false, message: "Purchase cancelled" };
+        return { ok: false, message: (result && result.message) || "Purchase failed. Please try again." };
+      }).catch(function (err) {
+        console.error("[Droboard IAP] purchase failed", err);
+        return { ok: false, message: "Purchase failed. Please try again." };
+      });
+    }
+    return new Promise(function (resolve) { setTimeout(function () { resolve({ ok: true }); }, 1100); });
   }
 
   /* ══ TEAMS (from central data) ══ */
@@ -244,23 +254,23 @@
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
         "</div>" +
-      "</div>" +
-      '<div class="unlock-getcoins" id="unlockGetCoins">' +
-        '<div class="unlock-getcoins-txt">Not enough coins.</div>' +
-        '<button class="unlock-getcoins-btn" onclick="grantDemoCoins()"><i class="fas fa-coins" style="font-size:10px"></i> Get 50 coins (demo)</button>' +
+        '<div class="unlock-opt" onclick="FullReader.watchAdsUnlock()">' +
+          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s">2 short ads - unlocks this chapter free</div></div>' +
+          '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprogNow">' + adProgressNow() + "/2</span></div>" +
+        "</div>" +
       "</div>" +
     "</div>";
   }
 
   function attemptUnlockChapter(seasonIdx, chIdx, mode, cost) {
-    if (walletBalance < cost) {
-      const box = document.getElementById("unlockGetCoins");
-      if (box) box.classList.add("show");
+    if (!window.DroboardReader) { toast("Reader unavailable — please reload"); return; }
+    if (!DroboardReader.spend(cost)) {
+      // Coin lock: open the shared sheet; the unlock retries after purchase.
       toast("Not enough coins — top up below");
+      DroboardReader.openBuyCoins(function () { attemptUnlockChapter(seasonIdx, chIdx, mode, cost); });
       return;
     }
-    walletBalance -= cost;
-    updateCoinPill();
+    updateCoinPill(DroboardReader.getBalance());
     const chs = SEASONS_DATA[seasonIdx].chs;
     if (mode === "one") {
       chs[chIdx].state = "current";
@@ -396,8 +406,48 @@
     renderChList();
   }
 
-  function goChapter(dir) {
-    const season = SEASONS_DATA[curSeasonIdx];
+  /* ══ WATCH ADS TO UNLOCK — 2 full ad views unlock 1 chapter free.
+     Progress persists per story+chapter so a refresh never wipes it. ══ */
+  function adKeyNow() {
+    var chs = SEASONS_DATA[curSeasonIdx].chs;
+    return "dro_adunlock_full_" + currentStoryId + "_s" + curSeasonIdx + "c" + chs[curChIdx].n;
+  }
+  function adProgressNow() {
+    try { return Math.min(2, parseInt(localStorage.getItem(adKeyNow()) || "0", 10) || 0); }
+    catch (e) { return 0; }
+  }
+  function fullAdInventory() {
+    return (window._fullReaderBanners || []).filter(function (b) {
+      return b && (b.type === "banner" || b.type === "native") && b.ad;
+    });
+  }
+  function watchAdsUnlock() {
+    var chN = SEASONS_DATA[curSeasonIdx].chs[curChIdx].n;
+    if (adProgressNow() >= 2) { unlockCurrentFree(); return; }
+    if (!window.DroboardRewardedAd) { toast("Ads unavailable right now"); return; }
+    var need = 2 - adProgressNow();
+    DroboardRewardedAd.show({
+      ads: fullAdInventory(),
+      rewardLabel: "Watch to the end (" + need + " more) to unlock Chapter " + chN + " free",
+      onComplete: function () {
+        var n = adProgressNow() + 1;
+        try { localStorage.setItem(adKeyNow(), String(n)); } catch (e) {}
+        var lbl = document.getElementById("adprogNow");
+        if (lbl) lbl.textContent = Math.min(2, n) + "/2";
+        if (n >= 2) { unlockCurrentFree(); }
+        else toast("1 more ad to unlock Chapter " + chN);
+      },
+    });
+  }
+  function unlockCurrentFree() {
+    var chs = SEASONS_DATA[curSeasonIdx].chs;
+    chs[curChIdx].state = "current";
+    toast("Unlocked!");
+    renderChapterView(curSeasonIdx, curChIdx);
+    renderChList();
+  }
+
+  function goChapter(dir) {    const season = SEASONS_DATA[curSeasonIdx];
     const nextIdx = curChIdx + dir;
     if (nextIdx < 0) { toast("You're on the first chapter!"); return; }
     if (nextIdx >= season.chs.length) { toast("You're all caught up!"); return; }
@@ -591,48 +641,54 @@
     document.getElementById("storyText").addEventListener("click", () => topbar.classList.remove("hidden"));
   }
 
-  /* ══ PUBLIC API ══ */
+  /* ══ PUBLIC API (called by service-rendered templates) ══ */
   window.FullReader = {
     pickTeam,
-    changeFontSize,
-    setLH,
-    setFF,
-    setTheme,
-    openSettings,
     setPanelSeason,
     openChapterFromPanel,
-    goChapter,
     attemptUnlockChapter,
-    closeChPanel,
-    closeAllSheets,
-    openShare,
-    openSave,
-    openTip,
-    openChPanel,
-    grantDemoCoins,
+    watchAdsUnlock,
     toggleNotify,
   };
-
-  /* Expose for inline onclick handlers in HTML */
-  window.openSettings = openSettings;
-  window.openChPanel = openChPanel;
-  window.closeChPanel = closeChPanel;
-  window.closeAllSheets = closeAllSheets;
-  window.changeFontSize = changeFontSize;
-  window.setLH = setLH;
-  window.setFF = setFF;
-  window.setTheme = setTheme;
-  window.openShare = openShare;
-  window.openSave = openSave;
-  window.openTip = openTip;
-  window.goChapter = goChapter;
-  window.grantDemoCoins = grantDemoCoins;
+  // Page toast doubles as the shared-component toast target (reader sheet, etc.)
   window.toast = toast;
-  window.toggleNotify = toggleNotify;
-  window.currentStoryId = currentStoryId;
+  /* Static shell controls — HTML carries data-act attributes only, no
+     inline handlers. Wired here on init. */
+  function goBack() {
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = "discover.html";
+  }
+  function goScrollMode() {
+    window.location.href = "scroll-reader.html?story=" + currentStoryId;
+  }
+  function wireStaticChrome() {
+    const qa = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+    qa('[data-act="go-back"]').forEach(function (b) { b.addEventListener("click", goBack); });
+    qa('[data-act="open-settings"]').forEach(function (b) { b.addEventListener("click", openSettings); });
+    qa('[data-act="open-chapters"]').forEach(function (b) { b.addEventListener("click", openChPanel); });
+    qa('[data-act="close-panels"]').forEach(function (b) { b.addEventListener("click", closeAllSheets); });
+    qa('[data-act="ch-prev"]').forEach(function (b) { b.addEventListener("click", function () { goChapter(-1); }); });
+    qa('[data-act="ch-next"]').forEach(function (b) { b.addEventListener("click", function () { goChapter(1); }); });
+    qa('[data-act="toggle-notify"]').forEach(function (b) { b.addEventListener("click", toggleNotify); });
+    qa('[data-act="open-share"]').forEach(function (b) { b.addEventListener("click", openShare); });
+    qa('[data-act="open-tip"]').forEach(function (b) { b.addEventListener("click", openTip); });
+    qa('[data-act="coin-pill"]').forEach(function (b) { b.addEventListener("click", function () { window.location.href = "store.html"; }); });
+    qa('[data-act="scroll-mode"]').forEach(function (b) { b.addEventListener("click", goScrollMode); });
+    qa('[data-act="fs-dec"]').forEach(function (b) { b.addEventListener("click", function () { changeFontSize(-1); }); });
+    qa('[data-act="fs-inc"]').forEach(function (b) { b.addEventListener("click", function () { changeFontSize(1); }); });
+    qa('[data-lh]').forEach(function (el) { el.addEventListener("click", function () { setLH(el, el.getAttribute("data-lh")); }); });
+    qa('[data-ff]').forEach(function (el) { el.addEventListener("click", function () { setFF(el, el.getAttribute("data-ff")); }); });
+    qa('[data-theme]').forEach(function (el) { el.addEventListener("click", function () { setTheme(el, el.getAttribute("data-theme")); }); });
+  }
 
   /* ══ INIT ══ */
   function init() {
+    // Shared coin sheet owns the wallet now — attach once (demo starts at 45).
+    if (window.DroboardReader) {
+      DroboardReader.attach({ onBalanceChange: updateCoinPill, onBuyCoins: buyCoinsViaSheet });
+      DroboardReader.setBalance(45);
+    }
+    wireStaticChrome();
     renderTeams();
     renderSeasonTabs();
     wireScroll();

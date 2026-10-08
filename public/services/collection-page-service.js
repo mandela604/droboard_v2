@@ -11,6 +11,33 @@
 
   let currentCollection = null;
   let collStories = []; let collPage = 1; const COLL_PER = 10; let collSort = 'latest';
+  let following = false;
+
+  function collId() { return (currentCollection && currentCollection.id) || new URLSearchParams(location.search).get('id'); }
+  async function liveReq(method, path, body) {
+    const res = await fetch(API_BASE + path, {
+      method, credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error('api_' + res.status);
+    return res.json();
+  }
+  function paintFollow() {
+    const btn = document.getElementById('followBtn');
+    if (!btn) return;
+    btn.innerHTML = following
+      ? '<i class="fas fa-check"></i> Following'
+      : '<i class="fas fa-plus"></i> Follow Collection';
+  }
+  async function syncLiveState() {
+    try {
+      const j = await liveReq('GET', '/collections/' + encodeURIComponent(collId()));
+      if (!j || !j.id) return;
+      if (typeof j.following === 'boolean') { following = j.following; paintFollow(); }
+      if (j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
+    } catch (e) { /* demo/anonymous stands */ }
+  }
 
   function renderCollPage() {
     const total = collStories.length; const tp = Math.max(1, Math.ceil(total / COLL_PER));
@@ -61,6 +88,7 @@
     collStories = currentCollection.storyList && currentCollection.storyList.length ? currentCollection.storyList : await CollectionData.getCollectionStories(colId);
     if (ov && ov.storyList) collStories = ov.storyList;
     renderCollPage();
+    syncLiveState();
 
     initTabs();
     initButtons();
@@ -121,9 +149,10 @@
     }
     document.getElementById('editAboutBtn').onclick = () => { document.getElementById('aboutForm').style.display='block'; document.getElementById('aboutView').style.display='none'; };
     document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutView').style.display='block'; };
-    document.getElementById('aboutSave').onclick = () => {
+    document.getElementById('aboutSave').onclick = async () => {
       const about = document.getElementById('aboutInput').value.trim();
       const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(i=>i.value);
+      try { await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { about, genres }); } catch (e) {}
       currentCollection.about = about; currentCollection.genres = genres;
       try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); m[currentCollection.id]=currentCollection; localStorage.setItem('dro_collections_override', JSON.stringify(m)); } catch(e){}
       renderAbout(currentCollection); showToast('About updated');
@@ -153,18 +182,20 @@
 
   function initButtons() {
     const followBtn = document.getElementById('followBtn');
-    let following = false;
-    followBtn.addEventListener('click', () => {
-      following = !following;
-      followBtn.innerHTML = following
-        ? '<i class="fas fa-check"></i> Following'
-        : '<i class="fas fa-plus"></i> Follow Collection';
+    followBtn.addEventListener('click', async () => {
+      const want = !following;
+      following = want; paintFollow();
+      try {
+        const j = await liveReq(want ? 'POST' : 'DELETE', '/collections/' + encodeURIComponent(collId()) + '/follow');
+        if (j && j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
+      } catch (e) { following = !want; paintFollow(); }
     });
 
     function doShare() {
       if (typeof openShareModal === 'function') {
         openShareModal({ title: currentCollection.title, sub: currentCollection.sub, img: currentCollection.cover, url: location.href });
       } else { showToast('Share: '+location.href); }
+      try { liveReq('POST', '/collections/' + encodeURIComponent(collId()) + '/share', { channel: 'page' }).catch(() => {}); } catch (e) {}
     }
     document.getElementById('topShareBtn')?.addEventListener('click', doShare);
     document.getElementById('bottomShareBtn')?.addEventListener('click', doShare);
@@ -275,10 +306,12 @@
   document.getElementById('addStoryBtn').addEventListener('click', ()=>{ document.getElementById('dropdownMenu').classList.remove('show'); openAddStory(); });
   document.getElementById('addStoryClose').addEventListener('click', closeAddStory);
   document.getElementById('addStoryOverlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAddStory(); });
-  document.getElementById('addStoryConfirm').addEventListener('click', ()=>{
+  document.getElementById('addStoryConfirm').addEventListener('click', async ()=>{
     if (!addSelected.size) { showToast('Select at least one story'); return; }
     const d = window.DemoData; const all = d ? (d.STORIES||[]) : [];
     const toAdd = all.filter(s=> addSelected.has(s.id));
+    const fullIds = [...(currentCollection.storyList||[]).map(s => s.id || s), ...toAdd.map(s => s.id)].filter(Boolean);
+    try { await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { stories: fullIds }); } catch (e) {}
     currentCollection.storyList = [...(currentCollection.storyList||[]), ...toAdd];
     currentCollection.stories = (currentCollection.storyList||[]).length;
     collStories = currentCollection.storyList;

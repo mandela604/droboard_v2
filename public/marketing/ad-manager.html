@@ -88,30 +88,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .btn-primary{background:var(--accent);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
 .btn-ghost{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-muted);padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
 
-/* ── Modal ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:flex-end;justify-content:center}
-.modal-overlay.open{opacity:1;pointer-events:auto}
-.modal-box{width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:var(--card);border-radius:20px 20px 0 0;padding:22px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
-.modal-overlay.open .modal-box{transform:translateY(0)}
-.modal-box h3{font-size:16px;font-weight:800;margin-bottom:4px}
-.modal-sub{font-size:12px;color:var(--text-faint);margin-bottom:16px}
-.f-lbl{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:11px}
-.f-inp{display:block;width:100%;margin-top:5px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;resize:vertical}
-.f-row{display:flex;gap:10px;margin-top:8px;align-items:center}
-.f-file{font-size:11px;color:var(--text-muted);flex:1}
-.f-preview{width:52px;height:68px;border-radius:8px;object-fit:cover;background:var(--table-head)}
-#mStoryResults{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:220px;overflow-y:auto}
-.story-hit{display:flex;gap:10px;align-items:center;border:1px solid var(--input-border);background:var(--input-bg);border-radius:10px;padding:8px;cursor:pointer;text-align:left;width:100%;font-family:inherit;color:var(--text)}
-.story-hit:hover{border-color:var(--accent)}
-.story-hit img{width:34px;height:46px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
-.story-hit-t{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.story-hit-a{font-size:10.5px;color:var(--text-faint);margin-top:1px}
-.f-select{width:100%;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;font-size:13px;font-weight:700;color:var(--text);font-family:inherit}
-.pg-row{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 14px}
-.pg-check{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text)}
-.active-row{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;margin-bottom:16px}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end}
-
 .adm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:#1a1730;color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
 .adm-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -218,46 +194,9 @@ body{font-family:'Inter',system-ui,sans-serif}
   </div>
 </div>
 
-<div class="modal-overlay" id="admModalOv">
-  <div class="modal-box">
-    <h3 id="mTitle">New ad</h3>
-    <div class="modal-sub">Upload a creative or paste an image URL, pick where it shows.</div>
-    <label class="f-lbl">Format
-      <select class="f-select" id="mFormat">
-        <option value="platform">Platform (house promo)</option>
-        <option value="book">Book promo (gold)</option>
-        <option value="native">Native (sponsored post)</option>
-        <option value="follow">Follow promo</option>
-        <option value="banner">Banner</option>
-        <option value="promo">Promo slide (library / hub sliders)</option>
-        <option value="embed">Network embed (AdSense / Adsterra / Monetag)</option>
-      </select>
-    </label>
-    <div id="mStoryWrap" style="display:none">
-      <div class="f-lbl" style="margin-bottom:6px">Promote a platform story (fills the form)</div>
-      <div class="search-box" style="margin-bottom:8px"><i class="fas fa-magnifying-glass"></i><input id="mStorySearch" placeholder="Search title or author…"/></div>
-      <div id="mStoryResults"></div>
-    </div>
-    <div id="mFields"></div>
-    <div class="f-lbl" style="margin-bottom:6px">Campaign (optional)</div>
-    <select class="f-select" id="mCampaign" style="margin-bottom:14px"><option value="">No campaign</option></select>
-    <div class="f-lbl" style="margin-bottom:6px">Shows on</div>
-    <div class="pg-row" id="mPages"></div>
-    <div class="f-lbl" style="margin-bottom:6px">Schedule (blank = always on)</div>
-    <div style="display:flex;gap:10px;margin-bottom:14px">
-      <label class="f-lbl" style="flex:1;margin-bottom:0">Start date<input type="date" class="f-inp" id="mStart"/></label>
-      <label class="f-lbl" style="flex:1;margin-bottom:0">End date<input type="date" class="f-inp" id="mEnd"/></label>
-    </div>
-    <label class="active-row"><input type="checkbox" id="mActive" checked/> Live immediately</label>
-    <div class="modal-actions">
-      <button class="btn-ghost" id="mCancelBtn">Cancel</button>
-      <button class="btn-primary" id="mSaveBtn">Save ad</button>
-    </div>
-  </div>
-</div>
-
 <div class="adm-toast" id="admToast"></div>
 
+<script src="shared/ad-setup-data.js"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="shared/marketing-data.js"></script>
 <script src="shared/ad-manager.js"></script>

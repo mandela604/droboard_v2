@@ -310,7 +310,7 @@
     // collections mode: pool is collections, no ads/writers, via CollectionData or DemoData — with Following vs Explore grouping
     const JOINED_COLLS = ['coll_1','coll_2','coll_3'];
     function withFollowingFlag(list){
-      const flagged = list.map(function(col){ return Object.assign({ type:'collection', isFollowing: JOINED_COLLS.indexOf(col.id)!==-1 }, col); });
+      const flagged = list.map(function(col){ return Object.assign({ type:'collection' }, col, { isFollowing: col.following === true || JOINED_COLLS.indexOf(col.id) !== -1 }); });
       flagged.sort(function(a,b){ return (b.isFollowing?1:0) - (a.isFollowing?1:0); });
       const out=[]; let inFollowing=true;
       out.push({type:'sectionHeader', label:'Following'});
@@ -609,8 +609,9 @@
     // collections is async via CollectionData — fetch then continue (with Following grouping)
     if (_mode === 'collections' && window.CollectionData && typeof CollectionData.getCollections === 'function') {
       CollectionData.getCollections().then(function(cols){
+        try { localStorage.setItem('dro_live_collections', JSON.stringify((cols || []).slice(0, 20))); } catch (e) {}
         const JOINED=['coll_1','coll_2','coll_3'];
-        const flagged=(cols||[]).map(function(c){ return Object.assign({type:'collection', isFollowing: JOINED.indexOf(c.id)!==-1}, c); });
+        const flagged=(cols||[]).map(function(c){ return Object.assign({type:'collection'}, c, {isFollowing: c.following === true || JOINED.indexOf(c.id)!==-1}); });
         flagged.sort(function(a,b){ return (b.isFollowing?1:0)-(a.isFollowing?1:0); });
         const out=[]; let inFollowing=true; out.push({type:'sectionHeader', label:'Following'});
         let hasFollowing=false;

@@ -54,6 +54,31 @@
     return JSON.parse(JSON.stringify(obj));
   }
 
+  /* Live API (credentials = login cookie). Returns null on any failure so
+     every caller below falls back to the demo store untouched. */
+  async function api(path, opts) {
+    try {
+      const res = await fetch(API_BASE + path, Object.assign(
+        { credentials: 'include', headers: { 'Content-Type': 'application/json' } },
+        opts || {}
+      ));
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) { return null; }
+  }
+
+  /* Backend collection card -> profile card shape (id/name/count/privacy/
+     covers/stories[{id,cover}]) used by collection-card.js + story picker. */
+  function backendToProfile(c, pickedStories) {
+    const covers = (c.covers && c.covers.length ? c.covers : (pickedStories || []).slice(0, 4).map(s => s.cover));
+    const ids = c.storyIds || (c.storyList || []).map(s => s.id || s);
+    return {
+      id: c.id, name: c.name || c.title, count: c.count != null ? c.count : (c.stories || 0),
+      privacy: c.privacy || 'Public', covers: covers || [],
+      stories: ids.map((sid, i) => ({ id: String(sid), cover: (covers || [])[i] || '' })),
+    };
+  }
+
   function normalizeHandle(handle) {
     return (handle || '').replace(/^@/, '');
   }
@@ -118,7 +143,19 @@
       return presentProfile(await res.json());
     }
     await delay(180);
-    return presentProfile(ensureProfile(key));
+    const presented = await presentProfile(ensureProfile(key));
+    if (!presented) return presented;
+    // overlay live collections when reachable: own full list when the viewer
+    // is the owner, privacy-filtered list otherwise. Demo seeds stay otherwise.
+    try {
+      const me = await getCurrentUserHandle();
+      const path = (key === me)
+        ? '/collections?owner=me'
+        : '/collections?owner=' + encodeURIComponent(key);
+      const live = await api(path);
+      if (Array.isArray(live)) presented.collections = live.map(c => backendToProfile(c));
+    } catch (e) { /* demo stands */ }
+    return presented;
   }
 
   async function updateProfile(handle, patch) {
@@ -307,9 +344,18 @@
     const name = ((input && input.name) || '').trim() || 'Untitled Collection';
     const privacy = (input && input.privacy) || 'Public';
     const stories = (input && Array.isArray(input.stories)) ? input.stories : [];
-    await delay(250);
     const base = requireProfile(key);
     base.collections = base.collections || [];
+    // production: persist (POST /api/collections) — falls back to demo below
+    const created = await api('/collections', {
+      method: 'POST',
+      body: JSON.stringify({ name, privacy, stories: stories.map(s => (s && s.id) || s) }),
+    });
+    if (created && created.id) {
+      base.collections.unshift(backendToProfile(created, stories));
+      return presentProfile(base);
+    }
+    await delay(250);
     base.collections.unshift({
       id: 'coll_' + Date.now(),
       name: name,
@@ -323,8 +369,21 @@
 
   async function updateCollection(handle, collId, patch) {
     const key = normalizeHandle(handle);
-    await delay(250);
     const base = requireProfile(key);
+    // production: persist (PATCH /api/collections/:id)
+    const body = {};
+    if (patch && patch.name !== undefined && String(patch.name).trim()) body.name = String(patch.name).trim();
+    if (patch && patch.privacy !== undefined) body.privacy = patch.privacy;
+    if (patch && Array.isArray(patch.stories)) body.stories = patch.stories.map(s => (s && s.id) || s);
+    const saved = await api('/collections/' + encodeURIComponent(collId), { method: 'PATCH', body: JSON.stringify(body) });
+    if (saved && saved.id) {
+      const i = (base.collections || []).findIndex(c => String(c.id) === String(collId));
+      const next = backendToProfile(saved, patch && patch.stories);
+      if (i !== -1) base.collections[i] = next;
+      else (base.collections = base.collections || []).unshift(next);
+      return presentProfile(base);
+    }
+    await delay(250);
     const col = (base.collections || []).find(c => c.id === collId);
     if (!col) throw new Error('Collection not found');
     if (patch && patch.name !== undefined && String(patch.name).trim()) col.name = String(patch.name).trim();
@@ -339,8 +398,14 @@
 
   async function deleteCollection(handle, collId) {
     const key = normalizeHandle(handle);
-    await delay(250);
     const base = requireProfile(key);
+    // production: persist (DELETE /api/collections/:id)
+    const gone = await api('/collections/' + encodeURIComponent(collId), { method: 'DELETE' });
+    if (gone && gone.ok !== false) {
+      base.collections = (base.collections || []).filter(c => String(c.id) !== String(collId));
+      return presentProfile(base);
+    }
+    await delay(250);
     base.collections = (base.collections || []).filter(c => String(c.id) !== String(collId));
     return presentProfile(base);
   }

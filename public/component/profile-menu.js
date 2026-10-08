@@ -75,8 +75,7 @@
   let _drawer = null;
   let _body = null;
 
-  function _esc(s) {
-    return String(s == null ? '' : s)
+  function _esc(s) {    return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function _fmtN(n) {
@@ -165,6 +164,33 @@
         if (href) location.href = href;
       }
     });
+  }
+
+  // Staff dashboards for the signed-in owner, read from the stored session.
+  // Readers see nothing here — no dashboard is ever forced on anyone.
+  function _staffDashboards() {
+    var roles = [];
+    try {
+      var s = JSON.parse(localStorage.getItem('droboard_user') || 'null');
+      if (s) {
+        if (Array.isArray(s.roles)) roles = s.roles;
+        else if (s.role) roles = [s.role];
+      }
+    } catch (e) {}
+    roles = roles.map(function (r) { return String(r).toLowerCase().replace(/[\s-]+/g, '_'); });
+    var has = function () {
+      for (var i = 0; i < arguments.length; i++) {
+        if (roles.indexOf(arguments[i]) !== -1) return true;
+      }
+      return false;
+    };
+    var out = [];
+    if (has('senior_editor')) out.push({ label: 'Senior Editor Dashboard', sub: 'Reviews, authors & reports', href: '../senior-editor/dashboard.html' });
+    if (has('chief_editor')) out.push({ label: 'Chief Editor Dashboard', sub: 'Editors, contracts & flags', href: '../chief-editor/dashboard.html' });
+    if (has('admin')) out.push({ label: 'Super Admin Dashboard', sub: 'Platform overview', href: '../super-admin/dashboard.html' });
+    if (has('finance')) out.push({ label: 'Finance Dashboard', sub: 'Payouts & revenue', href: '../finance/dashboard.html' });
+    if (has('marketing')) out.push({ label: 'Marketing Dashboard', sub: 'Campaigns & growth', href: '../marketing/dashboard.html' });
+    return out;
   }
 
   function _item(opts) {
@@ -290,6 +316,18 @@
         title: 'Wallet', sub: 'Coins, balance & payouts', titleColor: 'var(--gold,#f0a800)', rightIcon: 'fa-chevron-right',
       });
       html += `</div>`;
+      var staffLinks = _staffDashboards();
+      if (staffLinks.length) {
+        html += `<div class="dpm-divider"></div><div class="dpm-section"><div class="dpm-section-title">My Dashboard</div>`;
+        staffLinks.forEach(function (s) {
+          html += _item({
+            act: 'href', href: s.href, icon: 'fa-gauge',
+            iconBg: 'rgba(255,0,80,.08)', border: 'var(--bd-acc,rgba(255,0,80,.25))', iconColor: 'var(--acc,#ff0050)',
+            title: s.label, sub: s.sub, rightIcon: 'fa-chevron-right',
+          });
+        });
+        html += `</div>`;
+      }
     }
 
     html += `<div class="dpm-divider"></div><div class="dpm-section"><div class="dpm-section-title">Account</div>`;

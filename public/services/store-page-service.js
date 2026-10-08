@@ -13,6 +13,15 @@
   let currentTab = 'coins';
   let storeData = null;
 
+  // Localize a price for display. Each product carries an explicit
+  // per-location ladder (prices:{NGN,USD,GBP}); the currency service
+  // picks the reader's string. Legacy price/priceUSD still resolve.
+  function priceFor(item) {
+    if (!item) return '';
+    if (window.DroboardCurrency) return DroboardCurrency.priceFor(item);
+    return item.price || '';
+  }
+
   function switchTab(tab) {
     currentTab = tab;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -36,20 +45,20 @@
         ${p.badge ? `<div class="pack-badge${p.badge === 'Best Value' ? ' green' : ''}">${p.badge}</div>` : ''}
         <div class="pack-coins">${p.coins.toLocaleString()}</div>
         <div class="pack-label">coins</div>
-        <div class="pack-price">${p.price}</div>
+        <div class="pack-price">${priceFor(p)}</div>
       </div>`).join('');
   }
 
   function renderBundles(bundles) {
     document.getElementById('bundlesList').innerHTML = bundles.map(b => `
-      <div class="bundle-card" onclick="toast('Opening ${b.name}...')">
+      <div class="bundle-card" onclick="selectBundle('${b.id}')">
         <div class="bundle-icon" style="background:${b.color}"><i class="fas ${b.icon}"></i></div>
         <div class="bundle-info">
           <div class="bundle-name">${b.name}</div>
           <div class="bundle-coins">${b.coins.toLocaleString()} coins</div>
           <div class="bundle-bonus">+${b.bonus.toLocaleString()} bonus coins</div>
         </div>
-        <div class="bundle-price">${b.price}</div>
+        <div class="bundle-price">${priceFor(b)}</div>
       </div>`).join('');
   }
 
@@ -113,7 +122,7 @@
           <div class="sub-icon" style="background:${s.color}"><i class="fas ${s.icon}"></i></div>
           <div>
             <div class="sub-name">${s.name}</div>
-            <div class="sub-price">${s.price}</div>
+            <div class="sub-price">${priceFor(s)}</div>
             <div class="sub-period">per ${s.period}</div>
           </div>
         </div>
@@ -129,7 +138,7 @@
         <div class="merge-badge">${merge.badge}</div>
         <div class="merge-icon"><i class="fas ${merge.icon}"></i></div>
         <div class="merge-name">${merge.name}</div>
-        <div class="merge-price">${merge.price}</div>
+        <div class="merge-price">${priceFor(merge)}</div>
         <div class="merge-period">per ${merge.period}</div>
         <div class="merge-features">
           ${merge.features.map(f => `<div class="merge-feature"><i class="fas fa-check"></i>${f}</div>`).join('')}
@@ -138,18 +147,63 @@
       </div>`;
   }
 
+  function openCheckout(item) {
+    if (!window.DroboardPaySheet) { toast('Checkout unavailable'); return; }
+    DroboardPaySheet.open({
+      title: item.title, sub: item.sub, price: item.price, coins: item.coins,
+      onSuccess: function (receipt) {
+        // DEMO: credit locally. Live: POST receipt to backend verify endpoint,
+        // backend credits coins only after Play/Paystack verification.
+        var credit = (item.coins || 0) + (item.bonus || 0);
+        if (window.StoreService && StoreService.addCoins && credit > 0) {
+          StoreService.addCoins(credit);
+          try { storeData.balance = StoreService.getBalance(); } catch (e) {}
+          renderBalance(storeData);
+        }
+        toast('✅ Payment successful! +' + credit.toLocaleString() + ' coins');
+      }
+    });
+  }
+
+  // Strict pricing: block checkout unless the item has an exact local
+  // price. Never charge a substituted/fallback price.
+  function priceOk(item) {
+    if (!window.DroboardCurrency) return true;
+    var r = DroboardCurrency.resolve(item);
+    if (!r.ok) {
+      try { console.error('[DroboardCurrency]', r.error, r.product || '', r.currency || ''); } catch (e) {}
+      toast('Price unavailable in your region (' + r.error + ')');
+      return false;
+    }
+    return true;
+  }
+
   function selectPack(id) {
     selectedPack = id;
     document.querySelectorAll('.pack-card').forEach(c => c.classList.toggle('selected', c.dataset.packId === id));
     document.querySelectorAll('.sub-card, .merge-card').forEach(c => c.classList.remove('selected'));
-    toast('Selected pack — tap to purchase');
+    var p = (storeData.packs || []).find(function (x) { return x.id === id; });
+    if (!p) { toast('Selected pack — tap to purchase'); return; }
+    if (!priceOk(p)) return;
+    openCheckout({ title: 'Coin Pack', sub: p.coins.toLocaleString() + ' coins', price: priceFor(p), coins: p.coins, bonus: 0 });
+  }
+
+  function selectBundle(id) {
+    var b = (storeData.bundles || []).find(function (x) { return x.id === id; });
+    if (!b) return;
+    if (!priceOk(b)) return;
+    openCheckout({ title: b.name, sub: b.coins.toLocaleString() + ' coins + ' + b.bonus.toLocaleString() + ' bonus', price: priceFor(b), coins: b.coins, bonus: b.bonus });
   }
 
   function selectSub(id) {
     document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
     document.querySelectorAll('.sub-card').forEach(c => c.classList.toggle('selected', c.dataset.subId === id));
     document.querySelectorAll('.merge-card').forEach(c => c.classList.toggle('selected', c.dataset.subId === id));
-    toast('Selected plan — tap to subscribe');
+    var s = (storeData.subscriptions || []).find(function (x) { return x.id === id; })
+      || ((storeData.mergeSub && storeData.mergeSub.id === id) ? storeData.mergeSub : null);
+    if (!s) { toast('Selected plan — tap to subscribe'); return; }
+    if (!priceOk(s)) return;
+    openCheckout({ title: s.name, sub: 'Subscription · per ' + (s.period || 'month'), price: priceFor(s), coins: 0, bonus: 0 });
   }
 
   function toast(msg) {
@@ -176,6 +230,17 @@
     renderRewards(data.adRewards);
     renderSubscriptions(data.subscriptions);
     renderMergeSub(data.mergeSub);
+    // Re-price if geo-detection resolves after first paint.
+    if (window.DroboardCurrency && !init._curSub) {
+      init._curSub = true;
+      DroboardCurrency.onChange(function () {
+        if (!storeData) return;
+        renderPacks(storeData.packs);
+        renderBundles(storeData.bundles);
+        renderSubscriptions(storeData.subscriptions);
+        renderMergeSub(storeData.mergeSub);
+      });
+    }
   }
 
   init();
@@ -198,6 +263,7 @@
   window.renderSubscriptions = renderSubscriptions;
   window.renderMergeSub = renderMergeSub;
   window.selectPack = selectPack;
+  window.selectBundle = selectBundle;
   window.selectSub = selectSub;
   window.toast = toast;
 })();

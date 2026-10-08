@@ -128,6 +128,19 @@
       {id:'coll_4', name:'Dark Romance Essentials', count:32},
     ];
     try{
+      if (typeof PROFILE !== 'undefined' && PROFILE && Array.isArray(PROFILE.collections) && PROFILE.collections.length) {
+        const mine = PROFILE.collections.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||'Collection', count:c.count||0}));
+        return { joined: mine.slice(0,2), rest: mine.slice(2), all: mine };
+      }
+    }catch(e){}
+    try{
+      const cached = JSON.parse(localStorage.getItem('dro_live_collections') || '[]');
+      if (Array.isArray(cached) && cached.length) {
+        const all = cached.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||c.title||'Collection', count:c.count||c.stories||0}));
+        return { joined: all.slice(0,2), rest: all.slice(2), all };
+      }
+    }catch(e){}
+    try{
       const d=window.DemoData;
       if(d && (d.COLLECTIONS||d.COLLECTIONS_DATA)){
         const allRaw=d.COLLECTIONS||d.COLLECTIONS_DATA;

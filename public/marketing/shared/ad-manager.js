@@ -17,30 +17,6 @@
     { id: 'banner', label: 'Banner', icon: 'fa-flag' },
     { id: 'promo', label: 'Promo slide', icon: 'fa-images' },
   ];
-  const PAGES = [
-    { id: 'discover', label: 'Discover' },
-    { id: 'feed', label: 'Feed' },
-    { id: 'genreHub', label: 'Genre Hub' },
-    { id: 'library', label: 'Library' },
-    { id: 'series', label: 'Series Page' },
-    { id: 'home', label: 'Homepage' },
-    { id: 'fullReader', label: 'Full Reader' },
-    { id: 'scrollReader', label: 'Scroll Reader' },
-    { id: 'comments', label: 'Comments (all)' },
-    { id: 'discussion', label: 'Discussion' },
-    { id: 'droboardPage', label: 'Droboard Page' },
-    { id: 'profile', label: 'Profile' },
-  ];
-  /* field: [key, label, type] — type: text | area | img */
-  const FIELDS = {
-    platform: [['sponsor', 'Sponsor', 'text'], ['title', 'Headline', 'text'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
-    book: [['title', 'Book title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['rating', 'Rating', 'text'], ['chapters', 'Chapters', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
-    native: [['brand', 'Brand', 'text'], ['heading', 'Headline', 'text'], ['body', 'Body', 'area'], ['cta', 'CTA button', 'text'], ['image', 'Image', 'img']],
-    embed: [['brand', 'Network / label', 'text'], ['title', 'Internal label', 'text'], ['code', 'Ad network code (script / HTML)', 'area']],
-    follow: [['name', 'Display name', 'text'], ['handle', 'Handle', 'text'], ['tagline', 'Tagline', 'text'], ['cta', 'CTA button', 'text'], ['avatar', 'Avatar', 'img']],
-    banner: [['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
-    promo: [['title', 'Title', 'text'], ['sub', 'Sub line', 'text'], ['author', 'Author', 'text'], ['cta', 'CTA button', 'text'], ['genre', 'Hub genre (blank = all hubs)', 'text'], ['img', 'Slide image', 'img']],
-  };
 
   let INV = { pools: {}, placements: {} };
   let STATS = [];
@@ -52,8 +28,6 @@
   let searchText = '';
   let listPage = 1;
   const PAGE_SIZE = 10;
-  let editing = null; // { format, ad }
-  let imgDataUrl = '';
 
   /* live | off | scheduled | ended */
   function adStatus(ad) {
@@ -169,7 +143,30 @@
     ).join('');
     wrap.querySelectorAll('[data-fmt]').forEach(b => b.addEventListener('click', () => { filterFormat = b.dataset.fmt; listPage = 1; renderList(); renderFilterPills(); }));
   }
+  function renderCampFilter() {
+    const row = document.getElementById('campFilterRow');
+    if (!row) return;
+    if (!campaignFilter) { row.style.display = 'none'; return; }
+    row.style.display = 'flex';
+    document.getElementById('campFilterText').textContent = '📣 Campaign: ' + campName(campaignFilter);
+  }
   function statFor(id) { return STATS.find(s => String(s.id) === String(id)) || { impressions: 0, clicks: 0, ctr: '0.0' }; }
+  function audienceChip(ad) {
+    const aud = (ad && ad.audience) || {};
+    const n = ((aud.segments || []).length) + ((aud.genres || []).length);
+    return n ? `<span class="type-chip" style="background:var(--amber-bg);color:var(--amber)">🎯 ${n} target${n === 1 ? '' : 's'}</span>` : '';
+  }
+  function audienceText(ad) {
+    const aud = (ad && ad.audience) || {};
+    const names = [];
+    ((aud.segments || [])).forEach(id => {
+      const lbl = window.AdSetupData ? AdSetupData.segmentLabel(id) : id;
+      names.push(lbl);
+    });
+    (aud.genres || []).forEach(g => names.push(g));
+    if ((aud.countries || []).length) names.push(aud.countries.join(', '));
+    return names.length ? ' · 🎯 ' + names.join(', ') : '';
+  }
   function renderStatusPills() {
     const defs = [['all', 'All'], ['live', 'Live'], ['scheduled', 'Scheduled'], ['ended', 'Ended'], ['off', 'Off']];
     const wrap = document.getElementById('statusPills');
@@ -219,9 +216,10 @@
           <div class="ad-top"><span class="ad-name">${esc(adTitle(x.ad))}</span>
             <span class="type-chip">${x.format}</span>
             ${x.ad.campaign ? `<span class="type-chip" style="background:var(--blue-bg);color:var(--blue)">📣 ${esc(campName(x.ad.campaign))}</span>` : ''}
+            ${audienceChip(x.ad)}
             <span class="status-pill ${status}">${pillLabel[status]}</span>
           </div>
-          <div class="ad-sub">${esc(x.ad.sponsor || x.ad.brand || x.ad.author || '')} · shows on ${pages.join(', ')}${esc(scheduleText(x.ad))}</div>
+          <div class="ad-sub">${esc(x.ad.sponsor || x.ad.brand || x.ad.author || '')} · shows on ${pages.join(', ')}${esc(scheduleText(x.ad))}${esc(audienceText(x.ad))}</div>
           <div class="ad-meta"><span><i class="fas fa-eye"></i> ${fmtN(st.impressions)} imp</span><span class="metric-click"><i class="fas fa-mouse-pointer"></i> ${fmtN(st.clicks)} clicks</span><span><i class="fas fa-chart-line"></i> ${st.ctr || '0.0'}% CTR</span></div>
           <div class="ad-actions">
             <button class="ad-btn" data-act="toggle">${x.ad.active === false ? 'Turn on' : 'Turn off'}</button>
@@ -237,7 +235,7 @@
         e.stopPropagation();
         const act = btn.dataset.act;
         if (act === 'toggle') toggleAd(fmt, id);
-        else if (act === 'edit') openModal(fmt, id);
+        else if (act === 'edit') openWizard(fmt, id);
         else if (act === 'del') deleteAd(fmt, id);
       }));
     });
@@ -285,191 +283,10 @@
     } catch (e) { toast('Could not delete ad'); }
   }
 
-  /* ── Modal form ── */
-  function openModal(fmt, id) {
-    editing = { format: fmt || 'platform', ad: null };
-    if (id) {
-      const found = ((INV.pools || {})[editing.format] || []).find(a => String(a.id) === String(id));
-      if (found) editing.ad = JSON.parse(JSON.stringify(found));
-    }
-    imgDataUrl = '';
-    document.getElementById('mTitle').textContent = editing.ad ? 'Edit ad' : 'New ad';
-    const sel = document.getElementById('mFormat');
-    sel.value = editing.format;
-    sel.disabled = !!editing.ad;
-    buildFields();
-    fillCampaignSelect(editing.ad && editing.ad.campaign);
-    syncStoryWrap();
-    document.getElementById('mActive').checked = !editing.ad || editing.ad.active !== false;
-    document.getElementById('mStart').value = (editing.ad && editing.ad.startDate) || '';
-    document.getElementById('mEnd').value = (editing.ad && editing.ad.endDate) || '';
-    renderPageChecks();
-    document.getElementById('admModalOv').classList.add('open');
-  }
-  function closeModal() {
-    document.getElementById('admModalOv').classList.remove('open');
-    editing = null;
-  }
-  function buildFields() {
-    const fmt = editing.format;
-    const ad = editing.ad || {};
-    const wrap = document.getElementById('mFields');
-    wrap.innerHTML = (FIELDS[fmt] || []).map(([key, label, type]) => {
-      if (type === 'area') return `<label class="f-lbl">${label}<textarea class="f-inp" data-k="${key}" rows="2">${esc(ad[key] || '')}</textarea></label>`;
-      if (type === 'img') {
-        const cur = ad[key] || '';
-        return `<label class="f-lbl">${label}<input class="f-inp" data-k="${key}" value="${esc(cur)}" placeholder="https://…"/>
-          <span class="f-row"><input type="file" id="mFile" accept="image/*" class="f-file"/><img id="mPreview" class="f-preview" src="${esc(cur)}" style="${cur ? '' : 'display:none'}"/></span></label>`;
-      }
-      return `<label class="f-lbl">${label}<input class="f-inp" data-k="${key}" value="${esc(ad[key] || '')}"/></label>`;
-    }).join('');
-    if (fmt === 'embed') wrap.innerHTML += `<div style="font-size:11px;line-height:1.5;color:#b45309;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 10px;margin-top:8px">⚠️ This code runs with full page privileges wherever the ad serves. Paste only from ad networks you trust. Async tags work; legacy <i>document.write</i> tags do not.</div>`
-      + `<div style="margin-top:10px"><div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:6px">Live preview (sandboxed) <span id="mEmbedStatus" style="font-weight:600;color:var(--text-faint)"></span></div>`
-      + `<iframe id="mEmbedPreview" title="Ad preview" sandbox="allow-scripts" style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:8px;background:#fff"></iframe>`
-      + `<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button type="button" id="mEmbedTest" style="font-size:11px;font-weight:800;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);cursor:pointer">Open test page</button><span style="font-size:10.5px;color:var(--tx-faint,#999)">Pop / redirect tags render nothing here — verify them on the test page.</span></div></div>`;
-    const codeArea = wrap.querySelector('textarea[data-k="code"]');
-    if (codeArea) {
-      const renderPreview = function(){
-        var fr = document.getElementById('mEmbedPreview');
-        if (!fr) return;
-        var code = codeArea.value || '';
-        var st = document.getElementById('mEmbedStatus');
-        if (st) st.textContent = code.trim() ? '· loading…' : '';
-        fr.srcdoc = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:8px;font-family:sans-serif}</style></head><body>' + code + '</body></html>';
-      };
-      let pvT = null;
-      codeArea.addEventListener('input', function(){ clearTimeout(pvT); pvT = setTimeout(renderPreview, 600); });
-      renderPreview();
-      var fr0 = document.getElementById('mEmbedPreview');
-      if (fr0) fr0.addEventListener('load', function(){
-        var st = document.getElementById('mEmbedStatus');
-        if (st && codeArea.value.trim()) st.textContent = '· tag loaded — blank means it renders outside a box (pop/redirect)';
-      });
-      var testBtn = document.getElementById('mEmbedTest');
-      if (testBtn) testBtn.addEventListener('click', function(){
-        var code = codeArea.value || '';
-        if (!code.trim()) return;
-        var w = window.open('', '_blank');
-        if (!w) return;
-        w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ad test</title></head><body>' + code + '</body></html>');
-        w.document.close();
-      });
-    }
-    const file = document.getElementById('mFile');
-    if (file) file.addEventListener('change', () => {
-      const f = file.files && file.files[0];
-      if (!f) return;
-      const r = new FileReader();
-      r.onload = () => {
-        imgDataUrl = r.result;
-        const pv = document.getElementById('mPreview');
-        if (pv) { pv.src = r.result; pv.style.display = 'block'; }
-      };
-      r.readAsDataURL(f);
-    });
-  }
-  /* ── Platform story lookup (book promos) ── */
-  function storySource() {
-    const d = window.DemoData || {};
-    return Array.isArray(d.STORIES) ? d.STORIES : [];
-  }
-  function renderStoryHits(q) {
-    const box = document.getElementById('mStoryResults');
-    if (!box) return;
-    q = (q || '').trim().toLowerCase();
-    if (!q) { box.innerHTML = ''; return; }
-    const hits = storySource().filter(s =>
-      (s.title || '').toLowerCase().includes(q) || (s.author || '').toLowerCase().includes(q)
-    ).slice(0, 6);
-    box.innerHTML = hits.length ? hits.map((s, i) =>
-      `<button type="button" class="story-hit" data-hit="${i}">
-        ${s.cover ? `<img src="${esc(s.cover)}" loading="lazy" alt=""/>` : ''}
-        <div style="flex:1;min-width:0"><div class="story-hit-t">${esc(s.title)}</div><div class="story-hit-a">${esc(s.author || '')}${s.cat ? ' · ' + esc(s.cat) : ''}</div></div>
-      </button>`
-    ).join('') : `<div class="empty-msg" style="padding:14px">No platform story matches.</div>`;
-    box.querySelectorAll('[data-hit]').forEach(btn => btn.addEventListener('click', () => {
-      const s = hits[+btn.dataset.hit];
-      if (s) fillFromStory(s);
-    }));
-  }
-  function setField(key, val) {
-    const el = document.querySelector(`#mFields [data-k="${key}"]`);
-    if (el && val != null) el.value = val;
-  }
-  function fillFromStory(s) {
-    setField('title', s.title);
-    setField('author', s.author);
-    setField('genre', (s.cat || '').replace(/^[^\s]+\s/, ''));
-    setField('preview', s.desc);
-    setField('chapters', s.chapters);
-    setField('img', s.cover);
-    imgDataUrl = '';
-    const pv = document.getElementById('mPreview');
-    if (pv && s.cover) { pv.src = s.cover; pv.style.display = 'block'; }
-    document.getElementById('mStoryResults').innerHTML = '';
-    document.getElementById('mStorySearch').value = s.title;
-    toast('📖 Prefilled from "' + s.title + '" — author can still send their own image/link');
-  }
-  function syncStoryWrap() {
-    const show = editing && editing.format === 'book';
-    document.getElementById('mStoryWrap').style.display = show ? 'block' : 'none';
-    if (!show) {
-      const si = document.getElementById('mStorySearch');
-      if (si) si.value = '';
-      const box = document.getElementById('mStoryResults');
-      if (box) box.innerHTML = '';
-    }
-  }
-  function renderCampFilter() {
-    const row = document.getElementById('campFilterRow');
-    if (!row) return;
-    if (!campaignFilter) { row.style.display = 'none'; return; }
-    row.style.display = 'flex';
-    document.getElementById('campFilterText').textContent = '📣 Campaign: ' + campName(campaignFilter);
-  }
-  function fillCampaignSelect(selected) {
-    const sel = document.getElementById('mCampaign');
-    sel.innerHTML = '<option value="">No campaign</option>' + CAMPS.map(c =>
-      `<option value="${esc(c.id)}"${String(c.id) === String(selected || '') ? ' selected' : ''}>${esc(c.name || c.id)}</option>`
-    ).join('');
-  }
-  function renderPageChecks() {
-    const ad = (editing && editing.ad) || {};
-    const pages = Array.isArray(ad.pages) && ad.pages.length ? ad.pages : PAGES.map(p => p.id);
-    document.getElementById('mPages').innerHTML = PAGES.map(p =>
-      `<label class="pg-check"><input type="checkbox" data-pg="${p.id}"${pages.includes(p.id) ? ' checked' : ''}/> ${p.label}</label>`
-    ).join('');
-  }
-  /* A dated schedule means "not live right now" — uncheck Live. */
-  function syncLiveCheckbox() {
-    const box = document.getElementById('mActive');
-    if (!box) return;
-    const dated = !!(document.getElementById('mStart').value || document.getElementById('mEnd').value);
-    if (dated) box.checked = false;
-  }
-  async function submitModal() {
-    if (!editing) return;
-    const fmt = editing.format;
-    const payload = Object.assign({}, editing.ad || {});
-    document.querySelectorAll('#mFields [data-k]').forEach(el => { payload[el.dataset.k] = el.value.trim(); });
-    const imgField = (FIELDS[fmt] || []).find(f => f[2] === 'img');
-    if (imgField && imgDataUrl) payload[imgField[0]] = imgDataUrl;
-    if (fmt === 'book') payload.isBook = true;
-    payload.campaign = document.getElementById('mCampaign').value || '';
-    payload.startDate = document.getElementById('mStart').value || '';
-    payload.endDate = document.getElementById('mEnd').value || '';
-    payload.pages = [...document.querySelectorAll('#mPages [data-pg]:checked')].map(el => el.dataset.pg);
-    payload.active = document.getElementById('mActive').checked;
-    if (!adTitle(payload)) { toast('Give the ad a title first'); return; }
-    const btn = document.getElementById('mSaveBtn');
-    btn.textContent = 'Saving…'; btn.disabled = true;
-    try {
-      await MarketingData.saveAd(fmt, payload);
-      closeModal();
-      await reload();
-      toast('✅ Ad saved — serving on client pages');
-    } catch (e) { toast('Could not save ad'); }
-    btn.textContent = 'Save ad'; btn.disabled = false;
+  /* ── Ad setup lives on its own page (ad-setup.html). ── */
+  function openWizard(format, id) {
+    if (id) window.location.href = 'ad-setup.html?edit=' + encodeURIComponent(format) + ':' + encodeURIComponent(id);
+    else window.location.href = 'ad-setup.html' + (format && format !== 'platform' ? '?format=' + encodeURIComponent(format) : '');
   }
 
   /* ── Boot ── */
@@ -502,14 +319,7 @@
       });
     }
     await reload();
-    document.getElementById('newAdBtn').addEventListener('click', () => openModal('platform'));
-    document.getElementById('mFormat').addEventListener('change', (e) => { editing.format = e.target.value; editing.ad = null; buildFields(); syncStoryWrap(); renderPageChecks(); });
-    document.getElementById('mStorySearch').addEventListener('input', (e) => renderStoryHits(e.target.value));
-    document.getElementById('mStart').addEventListener('change', syncLiveCheckbox);
-    document.getElementById('mEnd').addEventListener('change', syncLiveCheckbox);
-    document.getElementById('mCancelBtn').addEventListener('click', closeModal);
-    document.getElementById('mSaveBtn').addEventListener('click', submitModal);
-    document.getElementById('admModalOv').addEventListener('click', (e) => { if (e.target.id === 'admModalOv') closeModal(); });
+    document.getElementById('newAdBtn').addEventListener('click', () => openWizard('platform'));
     document.getElementById('plSaveBtn').addEventListener('click', savePlacements);
     document.getElementById('resetAdsBtn').addEventListener('click', async () => {
       if (!confirm('Reset all ads and frequencies to defaults?')) return;
