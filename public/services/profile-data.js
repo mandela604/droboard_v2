@@ -54,17 +54,26 @@
     return JSON.parse(JSON.stringify(obj));
   }
 
-  /* Live API (credentials = login cookie). Returns null on any failure so
-     every caller below falls back to the demo store untouched. */
+  /* Live API (credentials = login cookie). Always resolves: {ok, status, json}
+     or null on network failure. Callers use unwrap() below. */
   async function api(path, opts) {
     try {
       const res = await fetch(API_BASE + path, Object.assign(
         { credentials: 'include', headers: { 'Content-Type': 'application/json' } },
         opts || {}
       ));
-      if (!res.ok) return null;
-      return await res.json();
+      let json = null;
+      try { json = await res.json(); } catch (e) {}
+      return { ok: res.ok, status: res.status, json };
     } catch (e) { return null; }
+  }
+  /* live-or-throw: 2xx -> json; other 4xx/5xx -> throw server message;
+     401/network -> null so callers fall back to demo (logged-out/offline). */
+  function unwrap(r) {
+    if (!r) return null;
+    if (r.ok) return r.json;
+    if (r.status === 401) return null;
+    throw new Error((r.json && (r.json.error || r.json.message)) || ('Request failed (' + r.status + ')'));
   }
 
   /* Backend collection card -> profile card shape (id/name/count/privacy/
@@ -152,7 +161,8 @@
       const path = (key === me)
         ? '/collections?owner=me'
         : '/collections?owner=' + encodeURIComponent(key);
-      const live = await api(path);
+      const res = await api(path);
+      const live = res && res.ok ? res.json : null;
       if (Array.isArray(live)) presented.collections = live.map(c => backendToProfile(c));
     } catch (e) { /* demo stands */ }
     return presented;
@@ -346,11 +356,11 @@
     const stories = (input && Array.isArray(input.stories)) ? input.stories : [];
     const base = requireProfile(key);
     base.collections = base.collections || [];
-    // production: persist (POST /api/collections) — falls back to demo below
-    const created = await api('/collections', {
+    // production: persist (POST /api/collections) — 4xx throws, else demo below
+    const created = unwrap(await api('/collections', {
       method: 'POST',
       body: JSON.stringify({ name, privacy, stories: stories.map(s => (s && s.id) || s) }),
-    });
+    }));
     if (created && created.id) {
       base.collections.unshift(backendToProfile(created, stories));
       return presentProfile(base);
@@ -375,7 +385,7 @@
     if (patch && patch.name !== undefined && String(patch.name).trim()) body.name = String(patch.name).trim();
     if (patch && patch.privacy !== undefined) body.privacy = patch.privacy;
     if (patch && Array.isArray(patch.stories)) body.stories = patch.stories.map(s => (s && s.id) || s);
-    const saved = await api('/collections/' + encodeURIComponent(collId), { method: 'PATCH', body: JSON.stringify(body) });
+    const saved = unwrap(await api('/collections/' + encodeURIComponent(collId), { method: 'PATCH', body: JSON.stringify(body) }));
     if (saved && saved.id) {
       const i = (base.collections || []).findIndex(c => String(c.id) === String(collId));
       const next = backendToProfile(saved, patch && patch.stories);
@@ -399,8 +409,11 @@
   async function deleteCollection(handle, collId) {
     const key = normalizeHandle(handle);
     const base = requireProfile(key);
-    // production: persist (DELETE /api/collections/:id)
-    const gone = await api('/collections/' + encodeURIComponent(collId), { method: 'DELETE' });
+    // production: persist (DELETE /api/collections/:id); 401/404 -> demo path
+    const r = await api('/collections/' + encodeURIComponent(collId), { method: 'DELETE' });
+    let gone = null;
+    if (r && r.ok) gone = r.json;
+    else if (r && r.status !== 401 && r.status !== 404) gone = unwrap(r); // throws server message
     if (gone && gone.ok !== false) {
       base.collections = (base.collections || []).filter(c => String(c.id) !== String(collId));
       return presentProfile(base);

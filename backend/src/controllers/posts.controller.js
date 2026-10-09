@@ -86,7 +86,7 @@ async function reactions(req, res) {
 async function share(req, res) {
   return base.wrap(res, async () => {
     const post = await posts.loadOr404(req.valid.params.id);
-    return posts.sharePost({ post, channel: req.valid.body.channel });
+    return posts.sharePost({ post, channel: req.valid.body.channel, userId: req.user.id });
   });
 }
 

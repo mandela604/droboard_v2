@@ -103,12 +103,25 @@ router.post('/completion-applications/:id/approve', writeLimiter, audit('senior.
 router.post('/completion-applications/:id/reject', writeLimiter, audit('senior.completions.reject'),
   validate(z.object({ params: z.object({ id }) })), ctrl.res('completions').reject);
 
-// chapter edits
+// chapter edits (proposals apply content ONLY on approve)
 crud('/chapter-edits', 'chapterEdits', { create: false });
 router.post('/chapter-edits/:id/approve', writeLimiter, audit('senior.chapterEdits.approve'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.res('chapterEdits').approve);
+  validate(z.object({ params: z.object({ id }) })), ctrl.approveChapterEdit);
 router.post('/chapter-edits/:id/reject', writeLimiter, audit('senior.chapterEdits.reject'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.res('chapterEdits').reject);
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ note: z.string().max(2000).optional() }).strict(),
+  })), ctrl.rejectChapterEdit);
+
+// book edits (description/cover/... — same approve-to-apply rule)
+crud('/book-edits', 'bookEdits', { create: false });
+router.post('/book-edits/:id/approve', writeLimiter, audit('senior.bookEdits.approve'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.approveBookEdit);
+router.post('/book-edits/:id/reject', writeLimiter, audit('senior.bookEdits.reject'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ note: z.string().max(2000).optional() }).strict(),
+  })), ctrl.rejectBookEdit);
 
 // series changes
 crud('/series-changes', 'seriesChanges', { create: false });

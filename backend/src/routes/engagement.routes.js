@@ -44,6 +44,10 @@ router.post('/:bookId/chapters/:key/debate/vote', requireAuth, writeLimiter, aud
 router.delete('/:bookId/chapters/:key/:kind', requireAuth, writeLimiter, audit('engagement.retract'),
   validate(z.object({ params: z.object({ bookId: id, key, kind: z.enum(['poll', 'prediction', 'debate']) }) })), ctrl.retract);
 
+// reader boot: coin-unlocked chapters + per-chapter progress + continue point
+router.get('/:bookId/read-state', requireAuth, generalLimiter,
+  validate(z.object({ params: z.object({ bookId: id }) })), ctrl.readState);
+
 // Reading time: powers referral stage-2 (30 min / 7 days), streaks, subscriptions.
 router.post('/:bookId/chapters/:key/progress', requireAuth, writeLimiter,
   validate(z.object({

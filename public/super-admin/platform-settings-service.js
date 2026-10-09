@@ -175,7 +175,6 @@ document.getElementById('saveAllBtn').addEventListener('click', async () => {
 });
 
 // ── Init ───────────────────────────────────────────────
-localStorage.removeItem('droboard_email_templates');
 renderSection('general');
 
 // ── Coin Economy live previews ─────────────────────────

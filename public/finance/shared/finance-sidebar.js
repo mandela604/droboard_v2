@@ -38,6 +38,7 @@
     { key: 'coin-transactions',   label: 'Coin Transactions',   icon: 'fa-coins',             href: 'coin-transactions.html' },
     { key: 'payment-disputes',    label: 'Payment Disputes',    icon: 'fa-scale-balanced',    href: 'payment-disputes.html' },
     { key: 'financial-reports',   label: 'Financial Reports',   icon: 'fa-chart-pie',         href: 'financial-reports.html' },
+    { key: 'store-settings',        label: 'Store Settings',        icon: 'fa-store',             href: 'store-settings.html' },
   ];
 
   const CSS = `

@@ -77,8 +77,23 @@ async function register({ fullName, name, username, email, password, referralCod
   const verifyToken = crypto.randomBytes(24).toString('hex');
   user.emailVerifyTokenHash = hashToken(verifyToken);
   await user.save();
-  // TODO: send via email provider; dev returns token in response
-  return { id: user._id, username: user.username, email: user.email, verifyToken, referral };
+  // Verification email via template (admin-defined only — no fallback).
+  // Token is returned ONLY in log (dev) mode — never alongside real delivery.
+  let emailed = false;
+  let emailError = null;
+  try {
+    const mail = require('./mail.service');
+    const appUrl = (mail.cfg().appUrl || '').replace(/\/$/, '');
+    const backendUrl = (process.env.BACKEND_URL || '').replace(/\/$/, '') || 'http://127.0.0.1:4000';
+    await mail.sendTemplate('verify-email', user.email, {
+      name: user.fullName || user.username, appUrl,
+      link: backendUrl + '/api/auth/verify-email?token=' + verifyToken,
+    });
+    emailed = true;
+  } catch (e) { emailed = false; emailError = (e && e.message) || 'email_failed'; }
+  const out = { id: user._id, username: user.username, email: user.email, referral, emailed, emailError };
+  if (require('./mail.service').cfg().provider === 'log') out.verifyToken = verifyToken;
+  return out;
 }
 
 async function registerWithVerify(input) {
@@ -105,8 +120,20 @@ async function forgotPassword(email) {
   user.resetTokenHash = hashToken(raw);
   user.resetExpiresAt = new Date(Date.now() + 60 * 60000);
   await user.save();
-  // TODO: email the link; dev returns token
-  return { ok: true, resetToken: raw };
+  let emailed = false;
+  let emailError = null;
+  try {
+    const mail = require('./mail.service');
+    const appUrl = (mail.cfg().appUrl || '').replace(/\/$/, '') || 'http://127.0.0.1:5501';
+    await mail.sendTemplate('reset-password', user.email, {
+      name: user.fullName || user.username, appUrl,
+      link: appUrl + '/Pages/reset-password.html?token=' + raw,
+    });
+    emailed = true;
+  } catch (e) { emailed = false; emailError = (e && e.message) || 'email_failed'; }
+  const out = { ok: true, emailed, emailError };
+  if (require('./mail.service').cfg().provider === 'log') out.resetToken = raw;
+  return out;
 }
 
 async function resetPassword(token, password) {
@@ -144,6 +171,9 @@ async function login({ emailOrUsername, password, ip }) {
   user.lastLoginAt = new Date();
   user.lastLoginIp = ip || '';
   await user.save();
+  // Banned/suspended accounts authenticate fine but get no session.
+  if (user.status === 'banned') { const e = new Error('banned'); e.status = 403; throw e; }
+  if (user.status === 'suspended') { const e = new Error('suspended'); e.status = 403; throw e; }
   const needsMfa = user.mfaEnabled;
   if (needsMfa) {
     // short-lived single-purpose ticket; full tokens only after TOTP
@@ -410,7 +440,21 @@ async function resendVerification({ userId, email }) {
   const raw = crypto.randomBytes(24).toString('hex');
   user.emailVerifyTokenHash = hashToken(raw);
   await user.save();
-  return { ok: true, verifyToken: raw };
+  let emailed = false;
+  let emailError = null;
+  try {
+    const mail = require('./mail.service');
+    const backendUrl = (process.env.BACKEND_URL || '').replace(/\/$/, '') || 'http://127.0.0.1:4000';
+    await mail.sendTemplate('verify-email', user.email, {
+      name: user.fullName || user.username,
+      appUrl: (mail.cfg().appUrl || '').replace(/\/$/, ''),
+      link: backendUrl + '/api/auth/verify-email?token=' + raw,
+    });
+    emailed = true;
+  } catch (e) { emailed = false; emailError = (e && e.message) || 'email_failed'; }
+  const out = { ok: true, emailed, emailError };
+  if (require('./mail.service').cfg().provider === 'log') out.verifyToken = raw;
+  return out;
 }
 
 // FIX 8b: phone OTP (dev returns code; wire SMS provider here later).

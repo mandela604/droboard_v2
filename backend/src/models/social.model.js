@@ -189,11 +189,21 @@ readingProgressSchema.index({ userId: 1, storyId: 1, chapterId: 1 }, { unique: t
 // Denormalized counts live on Post.reactions / Comment.reactions maps.
 const reactionSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
-  targetType: { type: String, enum: ['post', 'comment'], required: true, index: true },
+  targetType: { type: String, required: true, index: true }, // like|chapter|reply|mention|coins|follow|contract|tip|payout|security.
   targetId: { type: String, required: true, index: true },
   rid: { type: String, required: true },
 }, { timestamps: true });
 reactionSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
+
+// Per-user share log (powers Sharers segment + share analytics).
+// Counters stay denormalized on Post/Collection; this is the per-user trail.
+const shareEventSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  targetType: { type: String, enum: ['post', 'comment', 'collection', 'story'], required: true, index: true },
+  targetId: { type: String, required: true, index: true },
+  channel: { type: String, default: '' },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+shareEventSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
 
 module.exports = {
   Post: mongoose.model('Post', postSchema),
@@ -212,4 +222,5 @@ module.exports = {
   Referral: mongoose.model('Referral', referralSchema),
   ReadingProgress: mongoose.model('ReadingProgress', readingProgressSchema),
   Reaction: mongoose.model('Reaction', reactionSchema),
+  ShareEvent: mongoose.model('ShareEvent', shareEventSchema),
 };

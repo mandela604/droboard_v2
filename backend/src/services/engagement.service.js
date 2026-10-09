@@ -77,6 +77,34 @@ async function results({ chapter, userId }) {
   };
 }
 
+// Reader boot state: coin-unlocked chapters + per-chapter progress + continue point.
+async function readState({ userId, bookId }) {
+  const sid = String(bookId);
+  const uid = String(userId);
+  const { Book } = require('../models/content.model');
+  const { LedgerEntry } = require('../models/money.model');
+  const [book, progress, unlocks] = await Promise.all([
+    Book.findOne({ id: sid }).select('id vipLocked').lean().catch(() => null),
+    ReadingProgress.find({ userId: uid, storyId: sid }).select('chapterId pct finished secondsSpent lastReadAt').lean().catch(() => []),
+    LedgerEntry.find({ debitAcct: 'wallet:' + uid, kind: 'spend', memo: /^unlock ch / }).select('saleId').lean().catch(() => []),
+  ]);
+  const unlocked = [];
+  unlocks.forEach(u => {
+    const parts = String(u.saleId || '').split(':');
+    if (parts.length >= 4 && parts[1] === uid && parts[2] === sid) unlocked.push(parts.slice(3).join(':'));
+  });
+  const pmap = {};
+  let lastId = null, lastAt = 0;
+  progress.forEach(p => {
+    const cid = String(p.chapterId || '');
+    if (!cid) return;
+    pmap[cid] = { pct: p.pct || 0, finished: !!p.finished, secondsSpent: p.secondsSpent || 0 };
+    const t = p.lastReadAt ? new Date(p.lastReadAt).getTime() : 0;
+    if (t > lastAt) { lastAt = t; lastId = cid; }
+  });
+  return { bookId: sid, vipLocked: !!(book && book.vipLocked), unlocked, progress: pmap, lastChapterId: lastId };
+}
+
 // Record reading time. Upserts per (user, story, chapter), clamps deltas to
 // stop clock abuse. On finish-transition (first time this user finishes this
 // chapter) increments Chapter.views + Book.reads and writes today's
@@ -113,6 +141,29 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
       ]);
     } catch (e) { /* reads never break tracking */ }
   }
+  // Finishing the book's last chapter marks it finished in read history
+  // (powers Finishers segment + finished shelves).
+  if (finished && cid) {
+    try {
+      const { LibraryItem } = require('../models/social.model');
+      const { Chapter } = require('../models/content.model');
+      let n = /^\d+$/.test(cid) ? parseInt(cid, 10) : null;
+      if (n === null) {
+        const chx = await Chapter.findOne({ id: cid }).select('n bookId').lean().catch(() => null);
+        if (chx && String(chx.bookId) === sid) n = chx.n;
+      }
+      if (n !== null && Number.isInteger(n)) {
+        const last = await Chapter.findOne({ bookId: sid }).sort({ n: -1 }).select('n').lean().catch(() => null);
+        if (last && n >= last.n) {
+          await LibraryItem.findOneAndUpdate(
+            { userId: String(userId), storyId: sid, list: 'history' },
+            { $set: { status: 'finished' } },
+            { upsert: true, new: true }
+          ).catch(() => {});
+        }
+      }
+    } catch (e) { /* reads never break tracking */ }
+  }
   let referral = null;
   try {
     const referrals = require('./referrals.service');
@@ -125,4 +176,4 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
   return { progress: doc, totalSecs: (totalAgg[0] && totalAgg[0].secs) || 0, referral };
 }
 
-module.exports = { loadChapter, vote, retract, results, trackProgress };
+module.exports = { loadChapter, vote, retract, results, trackProgress, readState };

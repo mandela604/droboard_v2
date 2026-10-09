@@ -10,6 +10,10 @@ async function balance(req, res) {
   });
 }
 
+async function entitlements(req, res) {
+  return base.wrap(res, async () => wallet.entitlements(req.user.id));
+}
+
 async function storeData(req, res) {
   return base.wrap(res, async () => {
     const data = await store.catalog();
@@ -39,4 +43,4 @@ async function tip(req, res) {
   });
 }
 
-module.exports = { balance, storeData, unlock, tip };
+module.exports = { balance, entitlements, storeData, unlock, tip };

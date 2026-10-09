@@ -57,7 +57,7 @@ async function dashboardSummary() {
 
 /* ── users ── */
 const FRONT_STATUS = { active: 'active', pending_verification: 'pending', suspended: 'suspended', banned: 'suspended' };
-const BACK_STATUS = { active: 'active', pending: 'pending_verification', suspended: 'suspended' };
+const BACK_STATUS = { active: 'active', pending: 'pending_verification', suspended: 'suspended', banned: 'banned' };
 
 /* id-flavor helpers: JWT + new writes use uuid `id`, but some FK fields written by
    other modules may still hold ObjectId strings. Match both flavors on every join. */
@@ -870,6 +870,7 @@ module.exports = {
   insightsOverview, insightsLeaderboard,
   authorsAdmin, updateWriter, removeWriter,
   booksAdmin, setBookStatus, deleteBook,
+  collectionsAdmin, collectionDelete,
   postsAdmin, getPost, setPostStatus, deletePost,
   analyticsSummary, analyticsRevenue, analyticsAcquisition, analyticsTopReaders,
   getSettings, putSettings, getSenderFields, putSenderFields,

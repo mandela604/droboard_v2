@@ -7,17 +7,33 @@ const { validate, moneyLimiter } = require('../middleware/http');
 function Router() { return require('express').Router(); }
 const router = Router();
 
-const verifyBody = z.object({
-  coins: z.number().int().min(1).max(100000),
-  amount: z.number().min(0),
-  currency: z.string().max(8).optional(),
-  reference: z.string().max(200).optional(),
-  purchaseToken: z.string().max(1000).optional(),
-  transactionId: z.string().max(200).optional(),
+const packCode = z.string().min(1).max(60);
+
+const paystackBody = z.object({
+  reference: z.string().min(1).max(200),
+  packCode,
 }).strict();
 
-router.post('/paystack/verify', requireAuth, moneyLimiter, validate(z.object({ body: verifyBody })), ctrl.paystack);
-router.post('/play/verify', requireAuth, moneyLimiter, validate(z.object({ body: verifyBody })), ctrl.play);
-router.post('/appstore/verify', requireAuth, moneyLimiter, validate(z.object({ body: verifyBody })), ctrl.appstore);
+const flutterwaveBody = z.object({
+  transactionId: z.union([z.string().min(1).max(200), z.number()]),
+  packCode,
+}).strict();
+
+const playBody = z.object({
+  purchaseToken: z.string().min(1).max(2000),
+  productId: z.string().min(1).max(200),
+}).strict();
+
+// Client verify-then-credit (authed; money rate-limited).
+router.post('/paystack/verify', requireAuth, moneyLimiter, validate(z.object({ body: paystackBody })), ctrl.paystack);
+router.post('/flutterwave/verify', requireAuth, moneyLimiter, validate(z.object({ body: flutterwaveBody })), ctrl.flutterwave);
+router.post('/play/verify', requireAuth, moneyLimiter, validate(z.object({ body: playBody })), ctrl.play);
+router.post('/appstore/verify', requireAuth, moneyLimiter, validate(z.object({ body: playBody })), ctrl.appstore);
+
+// Provider webhooks (no auth; HMAC/hash verified in controller).
+// NOTE: server.js parses these routes with express.raw — do not move them
+// behind express.json or Paystack HMAC verification breaks.
+router.post('/webhook/paystack', ctrl.paystackWebhook);
+router.post('/webhook/flutterwave', ctrl.flutterwaveWebhook);
 
 module.exports = router;

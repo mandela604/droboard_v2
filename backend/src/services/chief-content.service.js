@@ -1,5 +1,5 @@
 'use strict';
-const { Book, Category, Genre } = require('../models/content.model');
+const { Book, Category, Genre, Trope } = require('../models/content.model');
 const { FeaturedSection, FeaturedPlacement, FeaturedHistory } = require('../models/editorial.model');
 
 // ---- helpers (mirror books.service.js / posts.service.js envelope) ----
@@ -309,6 +309,69 @@ async function toggleGenreStatus(id) {
   return doc.toJSON();
 }
 
+// ---- Tropes (managed catalog, child of genre — CE categories/genres module) ----
+function tropeSlug(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'trope';
+}
+async function listTropes({ q, genre, status, page, limit }) {
+  const filter = {};
+  if (q) filter.name = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  if (genre) filter.genre = genre;
+  if (status) filter.status = status;
+  const { pg, lim } = paging({ page, limit });
+  const [items, total] = await Promise.all([
+    Trope.find(filter).sort({ name: 1 }).skip((pg - 1) * lim).limit(lim).lean(),
+    Trope.countDocuments(filter),
+  ]);
+  const names = items.map(t => t.name);
+  const counts = names.length ? await Book.aggregate([
+    { $match: { tropes: { $in: names } } },
+    { $unwind: '$tropes' },
+    { $match: { tropes: { $in: names } } },
+    { $group: { _id: '$tropes', n: { $sum: 1 } } },
+  ]) : [];
+  const cmap = {};
+  counts.forEach(c => { cmap[c._id] = c.n; });
+  return { items: items.map(t => Object.assign({}, t, { booksCount: cmap[t.name] || 0 })), total, page: pg, limit: lim };
+}
+async function createTrope(data) {
+  if (!data.name) err('name_required', 400);
+  if (data.genre) {
+    const g = await Genre.findOne({ name: data.genre, status: 'active' }).select('id').lean();
+    if (!g) err('bad_genre', 400);
+  }
+  const slug = data.slug || tropeSlug(data.name);
+  if (await Trope.exists({ $or: [{ slug }, { name: data.name }] })) err('trope_exists', 409);
+  const doc = await Trope.create(Object.assign({}, data, { slug }));
+  return doc.toJSON();
+}
+async function updateTrope(id, data) {
+  const doc = await Trope.findOne({ id: id });
+  if (!doc) err('not_found', 404);
+  if (data.genre !== undefined && data.genre) {
+    const g = await Genre.findOne({ name: data.genre, status: 'active' }).select('id').lean();
+    if (!g) err('bad_genre', 400);
+  }
+  ['name', 'slug', 'genre', 'desc', 'status'].forEach(k => { if (data[k] !== undefined) doc[k] = data[k]; });
+  await doc.save();
+  return doc.toJSON();
+}
+async function deleteTrope(id) {
+  const doc = await Trope.findOne({ id: id });
+  if (!doc) err('not_found', 404);
+  const booksInUse = await Book.countDocuments({ tropes: doc.name });
+  if (booksInUse) err('trope_in_use', 409);
+  await doc.deleteOne();
+  return { ok: true };
+}
+async function toggleTropeStatus(id) {
+  const doc = await Trope.findOne({ id: id });
+  if (!doc) err('not_found', 404);
+  doc.status = doc.status === 'active' ? 'inactive' : 'active';
+  await doc.save();
+  return doc.toJSON();
+}
+
 async function popularGenres() {
   return Book.aggregate([
     { $match: { genre: { $ne: '' } } },
@@ -324,4 +387,5 @@ module.exports = {
   tags, sections, library, placements, addPlacement, updatePlacement, removePlacement, history, refeature,
   listCategories, createCategory, updateCategory, deleteCategory, toggleCategoryStatus,
   listGenres, createGenre, updateGenre, deleteGenre, toggleGenreStatus, popularGenres,
+  listTropes, createTrope, updateTrope, deleteTrope, toggleTropeStatus,
 };

@@ -105,6 +105,14 @@ async function seriesChangesList(req, res) {
   return base.wrap(res, async () => author.listSeriesChanges({ userId: req.user.id }));
 }
 
+async function chapterEdits(req, res) {
+  return base.wrap(res, async () => author.listChapterEdits({ userId: req.user.id, bookId: req.valid.params.id }));
+}
+
+async function bookEdits(req, res) {
+  return base.wrap(res, async () => author.listBookEdits({ userId: req.user.id, bookId: req.valid.params.id }));
+}
+
 async function launchKit(req, res) {
   return base.wrap(res, async () => author.launchKit({ userId: req.user.id }));
 }
@@ -120,5 +128,5 @@ async function saveLaunchKit(req, res) {
 module.exports = {
   dashboard, books, overview, characters, saveCharacter, deleteCharacter,
   plot, savePlot, bookChapters, contracts, applyContract, applyCompletion,
-  applyVip, chapterReviews, seriesChanges, seriesChangesList, launchKit, saveLaunchKit,
+  applyVip, chapterReviews, seriesChanges, seriesChangesList, chapterEdits, bookEdits, launchKit, saveLaunchKit,
 };

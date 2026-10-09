@@ -142,11 +142,21 @@ async function reactionState({ post, userId }) {
   const prev = userId ? await Reaction.findOne({ userId: String(userId), targetType: 'post', targetId: post.id }).lean() : null;
   return { counts: reactionCounts(post), userRx: prev ? prev.rid : null };
 }
-async function sharePost({ post, channel }) {
+async function sharePost({ post, channel, userId }) {
   post.sharesCount = (post.sharesCount || 0) + 1;
   const ch = post.sharesByChannel || (post.sharesByChannel = new Map());
   ch.set(channel, (ch.get(channel) || 0) + 1);
   await post.save();
+  if (userId) {
+    try {
+      const { ShareEvent } = require('../models/social.model');
+      await ShareEvent.updateOne(
+        { userId: String(userId), targetType: 'post', targetId: String(post.id) },
+        { $setOnInsert: { userId: String(userId), targetType: 'post', targetId: String(post.id), channel: String(channel || '') } },
+        { upsert: true }
+      );
+    } catch (e) { /* analytics never break sharing */ }
+  }
   const byChannel = {};
   ch.forEach((v, k) => { byChannel[k] = v; });
   return { sharesCount: post.sharesCount, byChannel };

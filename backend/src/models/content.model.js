@@ -14,6 +14,7 @@ const bookSchema = new mongoose.Schema({
   categoryId: { type: String, ref: 'Category', default: null },
   synopsis: { type: String, default: '' },
   tags: { type: [String], default: [] },
+  tropes: { type: [String], default: [] }, // managed Trope names (CE module)
   status: { type: String, enum: ['draft', 'ongoing', 'under_review', 'published', 'completed', 'paused', 'flagged'], default: 'draft', index: true },
   contractStatus: { type: String, enum: ['none', 'applied', 'review', 'contracted'], default: 'none' },
   vipLocked: { type: Boolean, default: false },
@@ -106,6 +107,16 @@ const genreMembershipSchema = new mongoose.Schema({
 }, { timestamps: true });
 genreMembershipSchema.index({ userId: 1, genreId: 1 }, { unique: true });
 
+// Tropes: managed catalog, child of genre (CE categories/genres module).
+// Books carry trope NAMES (validated active on write).
+const tropeSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  slug: { type: String, required: true, unique: true, index: true },
+  genre: { type: String, default: '', index: true }, // parent genre name
+  desc: { type: String, default: '' },
+  status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
+}, { timestamps: true });
+
 const categoryMembershipSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
   categoryId: { type: String, ref: 'Category', required: true, index: true },
@@ -132,6 +143,7 @@ module.exports = {
   Plot: mongoose.model('Plot', plotSchema),
   Category: mongoose.model('Category', categorySchema),
   Genre: mongoose.model('Genre', genreSchema),
+  Trope: mongoose.model('Trope', tropeSchema),
   GenreMembership: mongoose.model('GenreMembership', genreMembershipSchema),
   CategoryMembership: mongoose.model('CategoryMembership', categoryMembershipSchema),
   BookDailyStat: mongoose.model('BookDailyStat', bookDailyStatSchema),

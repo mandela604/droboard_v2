@@ -14,10 +14,58 @@
   let ALL_POSTS = [];
   let PROMO_SLIDES = [];
   let sort = 'all';
+  let tropeFilter = '';
   let activeTab = 'discussions';
   let joined = true;
   let _adTurn = 0;
   let memberApi = null;
+
+  /* Reports (DEMO-ONLY while false). Live: POST /api/reports
+     {target:'discussion', targetId:post.id, reason:typeId, title}. */
+  const USE_API_REPORTS = false;
+  const REPORTS_API = '/api/reports';
+
+  async function fileReport(post, typeId) {
+    const label = (window.DroboardDotsMenu && window.DroboardDotsMenu.REPORT_TYPES
+      ? (window.DroboardDotsMenu.REPORT_TYPES.find(t => t.id === typeId) || {}).label
+      : null) || typeId;
+    if (USE_API_REPORTS) {
+      try {
+        const res = await fetch(REPORTS_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            target: 'discussion', targetId: String(post.id || ''),
+            reason: typeId, title: String(post.title || '').slice(0, 160),
+          }),
+        });
+        if (!res.ok) throw new Error('api_' + res.status);
+        toast('Reported: ' + label + '. Thanks — moderators will review.');
+        return;
+      } catch (e) { /* fall through to demo confirmation */ }
+    }
+    toast('Reported: ' + label + ' (demo — flips live with USE_API_REPORTS)');
+  }
+
+  /* Tropes per hub (DEMO-ONLY). Live swap: GET /api/tropes?genre=<id>. */
+  const HUB_TROPES = {
+    fantasy: ['Chosen One', 'Magic Academy', 'Dragons', 'Royal Court', 'Dark Lord', 'Quest'],
+    romance: ['Billionaire Boss', 'Secret Baby', 'Enemies to Lovers', 'Fake Dating', 'Second Chance', 'Forced Proximity'],
+    werewolf: ['Fated Mates', 'Alpha Male', 'Rejected Mate', 'Pack Wars', 'Luna Rising', 'Rogue Wolf'],
+  };
+  function hubTropes() {
+    return HUB_TROPES[GENRE_ID] || HUB_TROPES.fantasy;
+  }
+  function attachDemoTropes() {
+    // DEMO-ONLY: seed posts carry no trope; deal them round-robin so the
+    // filter + pills have data. Live posts arrive with post.trope from API.
+    const pool = hubTropes();
+    let i = 0;
+    ALL_POSTS.forEach(p => {
+      if (!p.pinned && !p.trope) { p.trope = pool[i % pool.length]; i++; }
+    });
+  }
 
   /* Ads: served ONLY by the central inventory (ad-service). Empty pool = no ads. */
   let HUB_AD_CONFIG = { enabled: true, every: 3, topPromo: true };
@@ -110,6 +158,7 @@
       if (!ALL_POSTS.length) ALL_POSTS = [{id:'pinned-fallback',pinned:true,title:'Welcome to '+GENRE.name,desc:'Start a discussion.',likes:0,comments:0}];
     }
     PROMO_SLIDES = [];
+    attachDemoTropes();
     return true;
   }
 
@@ -130,7 +179,9 @@
 
   /* ── Feed ── */
   function sortedDiscussions() {
-    const list = ALL_POSTS.filter(p => !p.pinned).slice();
+    let list = ALL_POSTS.filter(p => !p.pinned);
+    if (tropeFilter) list = list.filter(p => (p.trope || '') === tropeFilter);
+    list = list.slice();
     if (sort === 'hot') return list.sort((a, b) => (b.score || 0) - (a.score || 0) || ((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0)));
     if (sort === 'controversial') return list.sort((a, b) => (b.controversy || 0) - (a.controversy || 0) || (b.comments || 0) - (a.comments || 0));
     if (sort === 'top') return list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
@@ -497,7 +548,11 @@
         onFollow: (post) => toast('Following @' + (post.name || 'user')),
         onMute: (post) => toast('Muted @' + (post.name || 'user')),
         onLess: () => toast('Showing less of this.'),
-        onReport: () => toast('🚩 Reported'),
+        onReport: (post) => {
+          if (window.DroboardDotsMenu.openReportTypes) DroboardDotsMenu.openReportTypes(post);
+          else toast('🚩 Reported');
+        },
+        onReportType: (post, typeId) => fileReport(post, typeId),
         onCopyLink: (post) => {
           const url = 'https://droboard.app/hub/' + GENRE_ID + '/' + post.id;
           if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied')).catch(() => toast(url));
@@ -527,6 +582,34 @@
   }
 
   /* ── Filters / tabs / join / composer ── */
+  function initTropeFilter() {
+    const row = document.getElementById('sortRow');
+    if (!row || document.getElementById('tropeFilterSel')) return;
+    const sel = document.createElement('select');
+    sel.id = 'tropeFilterSel';
+    sel.setAttribute('aria-label', 'Filter by trope');
+    sel.style.cssText = 'flex-shrink:0;padding:7px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:var(--l2);border:1px solid var(--bd);color:var(--tx-muted);font-family:inherit;max-width:150px';
+    const paint = () => {
+      const opts = ['<option value="">All tropes</option>']
+        .concat(hubTropes().map(t => '<option value="' + t + '"' + (tropeFilter === t ? ' selected' : '') + '>' + t + '</option>'));
+      sel.innerHTML = opts.join('');
+      sel.style.borderColor = tropeFilter ? 'var(--bd-acc)' : '';
+      sel.style.color = tropeFilter ? 'var(--acc)' : '';
+    };
+    paint();
+    sel.addEventListener('change', () => {
+      tropeFilter = sel.value;
+      paint();
+      if (activeTab === 'discussions' || activeTab === 'hot') renderFeed();
+    });
+    row.appendChild(sel);
+    sel._repaint = paint;
+  }
+  function repaintTropeFilter() {
+    const sel = document.getElementById('tropeFilterSel');
+    if (sel && sel._repaint) sel._repaint();
+    else initTropeFilter();
+  }
   function initFilters() {
     document.querySelectorAll('#sortRow .sort-chip').forEach(c => {
       c.addEventListener('click', (e) => {
@@ -555,7 +638,7 @@
     if (document.getElementById('ghcOv')) return;
     const css = '.ghc-ov{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);display:flex;justify-content:center;align-items:stretch;opacity:0;pointer-events:none;transition:opacity .22s} .ghc-ov.open{opacity:1;pointer-events:auto} .ghc-sheet{width:100%;max-width:420px;height:100dvh;background:#fff;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:0 0 50px rgba(0,0,0,.3)} .ghc-ov.open .ghc-sheet{transform:translateY(0)} .ghc-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--bd,rgba(0,0,0,.08));background:#fff;flex-shrink:0} .ghc-body{flex:1;overflow-y:auto;padding:16px;background:#fff} .ghc-label{font-size:11px;font-weight:700;color:var(--tx-muted,#666);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px;display:block} .ghc-label:first-child{margin-top:0} .ghc-input,.ghc-textarea{width:100%;border:1.5px solid var(--bd,rgba(0,0,0,.08));border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;background:var(--l2,#f1f1f1);color:var(--tx-high,#161616);outline:none} .ghc-input:focus,.ghc-textarea:focus{border-color:var(--acc,#ff0050);background:#fff} .ghc-textarea{min-height:100px;resize:none} .ghc-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px} .ghc-tag{padding:7px 12px;border-radius:20px;font-size:11.5px;font-weight:700;border:1.5px solid var(--bd,rgba(0,0,0,.08));background:var(--l2,#f1f1f1);color:var(--tx-muted,#666);cursor:pointer} .ghc-tag.on{background:rgba(255,0,80,.08);border-color:var(--bd-acc,rgba(255,0,80,.2));color:var(--acc,#ff0050)}';
     const st=document.createElement('style'); st.id='ghc-style'; st.textContent=css; document.head.appendChild(st);
-    const html = `<div class="ghc-ov" id="ghcOv"><div class="ghc-sheet"><div class="ghc-head"><button id="ghcCancel" style="background:none;border:none;font-size:14px;color:var(--tx-muted);font-family:inherit;cursor:pointer">Cancel</button><div style="font-size:15px;font-weight:700">New in ${GENRE.name}</div><button id="ghcPost" style="background:var(--acc);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:.45;pointer-events:none">Post</button></div><div class="ghc-body"><label class="ghc-label">Title *</label><input id="ghcTitle" class="ghc-input" placeholder="What's the discussion about?"/><label class="ghc-label">Body *</label><textarea id="ghcBody" class="ghc-textarea" placeholder="Share details, ask a question, post a theory…"></textarea><label class="ghc-label">Tag</label><div class="ghc-tags" id="ghcTags"><button class="ghc-tag on" data-tag="Discussion" data-cls="discussion">Discussion</button><button class="ghc-tag" data-tag="Theory" data-cls="theory">Theory</button><button class="ghc-tag" data-tag="Recommendation" data-cls="recommendation">Recommendation</button><button class="ghc-tag" data-tag="Question" data-cls="question">Question</button><button class="ghc-tag" data-tag="Controversial" data-cls="controversial">Controversial</button></div><label class="ghc-label">Photo (optional)</label><input type="file" id="ghcMediaFile" accept="image/*" class="ghc-input"/><div id="ghcMediaPrev" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;max-height:180px"><img id="ghcMediaPrevImg" style="width:100%;max-height:180px;object-fit:cover;display:block"/></div><label class="ghc-label">Image URL (optional)</label><input id="ghcMedia" class="ghc-input" placeholder="https://..."/><label class="ghc-label">Story (optional)</label><input id="ghcStory" class="ghc-input" placeholder="Story title you are discussing"/></div></div></div>`;
+    const html = `<div class="ghc-ov" id="ghcOv"><div class="ghc-sheet"><div class="ghc-head"><button id="ghcCancel" style="background:none;border:none;font-size:14px;color:var(--tx-muted);font-family:inherit;cursor:pointer">Cancel</button><div style="font-size:15px;font-weight:700">New in ${GENRE.name}</div><button id="ghcPost" style="background:var(--acc);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:.45;pointer-events:none">Post</button></div><div class="ghc-body"><label class="ghc-label">Title *</label><input id="ghcTitle" class="ghc-input" placeholder="What's the discussion about?"/><label class="ghc-label">Body *</label><textarea id="ghcBody" class="ghc-textarea" placeholder="Share details, ask a question, post a theory…"></textarea><label class="ghc-label">Tag</label><div class="ghc-tags" id="ghcTags"><button class="ghc-tag on" data-tag="Discussion" data-cls="discussion">Discussion</button><button class="ghc-tag" data-tag="Theory" data-cls="theory">Theory</button><button class="ghc-tag" data-tag="Recommendation" data-cls="recommendation">Recommendation</button><button class="ghc-tag" data-tag="Question" data-cls="question">Question</button><button class="ghc-tag" data-tag="Controversial" data-cls="controversial">Controversial</button></div><label class="ghc-label">Trope (optional)</label><select id="ghcTrope" class="ghc-input"><option value="">No trope</option></select><label class="ghc-label">Photo (optional)</label><input type="file" id="ghcMediaFile" accept="image/*" class="ghc-input"/><div id="ghcMediaPrev" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;max-height:180px"><img id="ghcMediaPrevImg" style="width:100%;max-height:180px;object-fit:cover;display:block"/></div><label class="ghc-label">Image URL (optional)</label><input id="ghcMedia" class="ghc-input" placeholder="https://..."/><label class="ghc-label">Story (optional)</label><input id="ghcStory" class="ghc-input" placeholder="Story title you are discussing"/></div></div></div>`;
     const wrap=document.createElement('div'); wrap.innerHTML=html; while(wrap.firstChild) document.body.appendChild(wrap.firstChild);
     document.getElementById('ghcCancel').addEventListener('click', closeHubComposer);
     document.getElementById('ghcOv').addEventListener('click', e=>{ if(e.target.id==='ghcOv') closeHubComposer(); });
@@ -576,6 +659,13 @@
       });
     }
   }
+  function refreshTropeOptions(){
+    const sel=document.getElementById('ghcTrope');
+    if(!sel) return;
+    const keep=sel.value;
+    sel.innerHTML='<option value="">No trope</option>'+hubTropes().map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+    sel.value=keep;
+  }
   function validateHubComposer(){
     const t=document.getElementById('ghcTitle'), b=document.getElementById('ghcBody'), btn=document.getElementById('ghcPost');
     const ok = t && b && t.value.trim().length>=4 && b.value.trim().length>=6;
@@ -591,10 +681,13 @@
     const tagCls=tagEl ? tagEl.dataset.cls : 'discussion';
     let media=''; const prevImgEl=document.getElementById('ghcMediaPrevImg'); if(prevImgEl && prevImgEl.src && prevImgEl.src.startsWith('data:')) media=prevImgEl.src; else media=document.getElementById('ghcMedia').value.trim() || '';
     const storyTitle=document.getElementById('ghcStory').value.trim();
+    const tropeSel=document.getElementById('ghcTrope');
+    const trope=tropeSel ? tropeSel.value : '';
     const post={
       id:'gh_'+Date.now(), name: (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] ? 'You_Reader' : 'You'), avatar: (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] ? DemoData.USERS['You_Reader'].avatar : 'https://i.pravatar.cc/100?img=12'),
       time:'Just now', title, body, tag, tagClass:tagCls, likes:0, comments:0, liked:false, score:Date.now()
     };
+    if(trope) post.trope=trope;
     if(media) post.media=media;
     if(storyTitle) post.story={ title:storyTitle, writer:'', cover:'' };
     ALL_POSTS.unshift(post);
@@ -603,10 +696,11 @@
     toast('Posted to '+GENRE.name+'!');
     window.scrollTo({top:0, behavior:'smooth'});
     // clear form
-    document.getElementById('ghcTitle').value=''; document.getElementById('ghcBody').value=''; document.getElementById('ghcMedia').value=''; const fe=document.getElementById('ghcMediaFile'); if(fe) fe.value=''; const pv=document.getElementById('ghcMediaPrev'); if(pv) pv.style.display='none'; const pi=document.getElementById('ghcMediaPrevImg'); if(pi) pi.src=''; document.getElementById('ghcStory').value=''; validateHubComposer();
+    document.getElementById('ghcTitle').value=''; document.getElementById('ghcBody').value=''; document.getElementById('ghcMedia').value=''; const fe=document.getElementById('ghcMediaFile'); if(fe) fe.value=''; const pv=document.getElementById('ghcMediaPrev'); if(pv) pv.style.display='none'; const pi=document.getElementById('ghcMediaPrevImg'); if(pi) pi.src=''; document.getElementById('ghcStory').value=''; const ts=document.getElementById('ghcTrope'); if(ts) ts.value=''; validateHubComposer();
   }
   function openComposer() {
     ensureHubComposer();
+    refreshTropeOptions();
     const h=document.querySelector('#ghcOv .ghc-head div'); if(h) h.textContent='New in '+GENRE.name;
     document.getElementById('ghcOv').classList.add('open'); document.body.style.overflow='hidden'; validateHubComposer();
   }
@@ -683,6 +777,7 @@
       await loadHubAds();
     wireComponents();
     initFilters();
+    initTropeFilter();
     initJoin();
     initComposer();
     initToTop();
@@ -702,7 +797,7 @@
         onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },
       });
     }
-    if (window.DroboardNav) DroboardNav.configure({ active: 'discover' });
+    if (window.DroboardNav) DroboardNav.configure({ active: 'none' });
     } catch(e){ console.error(e); toast('Hub load failed'); }
   }
 

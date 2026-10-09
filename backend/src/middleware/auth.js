@@ -12,19 +12,31 @@ function signAccess(user) {
 
 // Express middleware: require valid access JWT (Bearer header or dro_access
 // httpOnly cookie set at login). Sets req.user {id, roles, mfaAt}.
-function requireAuth(req, res, next) {
+// Also enforces account standing on every request, so a ban/suspension
+// takes effect immediately even with a still-valid token.
+async function requireAuth(req, res, next) {
   const hdr = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ')
     ? hdr.slice(7)
     : (req.cookies && req.cookies.dro_access) || null;
   if (!token) return res.status(401).json({ error: 'unauthorized' });
+  let p;
   try {
-    const p = jwt.verify(token, env.jwtAccessSecret);
-    req.user = { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null };
-    return next();
+    p = jwt.verify(token, env.jwtAccessSecret);
   } catch (e) {
     return res.status(401).json({ error: 'unauthorized' });
   }
+  try {
+    const { User } = require('../models/user.model');
+    const u = await User.findOne({ id: p.sub }).select('status deletedAt').lean();
+    if (!u || u.deletedAt) return res.status(401).json({ error: 'unauthorized' });
+    if (u.status === 'banned') return res.status(403).json({ error: 'banned' });
+    if (u.status === 'suspended') return res.status(403).json({ error: 'suspended' });
+  } catch (e) {
+    return res.status(503).json({ error: 'account_check_failed' });
+  }
+  req.user = { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null };
+  return next();
 }
 
 module.exports = { signAccess, requireAuth };

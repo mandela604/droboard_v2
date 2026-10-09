@@ -119,7 +119,11 @@ async function libraryList(userId, list) {
 async function storyDetail(id) {
   const books = require('./books.service');
   const book = await books.getBook(id);
-  const chapters = await Chapter.find({ bookId: book.id }).sort({ n: 1 }).lean();
+  // Public detail: live book + live chapters only.
+  if (!['ongoing', 'published', 'completed'].includes(book.status)) {
+    const e = new Error('not_found'); e.status = 404; throw e;
+  }
+  const chapters = await Chapter.find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 }).lean();
   const author = book.authorId ? await User.findOne({ id: book.authorId }).select('username fullName avatar').lean() : null;
   return Object.assign({}, book, {
     authorName: author ? author.fullName : '',

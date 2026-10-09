@@ -244,22 +244,29 @@
       });
     });
 
-    document.getElementById('reportSubmitBtn').addEventListener('click', () => {
+    document.getElementById('reportSubmitBtn').addEventListener('click', async () => {
       const details = document.getElementById('reportDetails').value.trim();
-      const report = {
-        type: 'collection',
-        collectionId: currentCollection.id,
-        collectionTitle: currentCollection.title,
-        collectionAuthor: currentCollection.author,
-        reason: selectedReason,
-        details: details,
-        reportedBy: 'Current User',
-        date: new Date().toISOString(),
-        status: 'pending'
-      };
-      const reports = JSON.parse(localStorage.getItem('COLLECTION_REPORTS') || '[]');
-      reports.push(report);
-      localStorage.setItem('COLLECTION_REPORTS', JSON.stringify(reports));
+      try {
+        await liveReq('POST', '/reports', {
+          target: 'collection', targetId: collId(),
+          reason: selectedReason || 'other', details,
+        });
+      } catch (e) {
+        const report = {
+          type: 'collection',
+          collectionId: currentCollection.id,
+          collectionTitle: currentCollection.title,
+          collectionAuthor: currentCollection.author,
+          reason: selectedReason,
+          details: details,
+          reportedBy: 'Current User',
+          date: new Date().toISOString(),
+          status: 'pending'
+        };
+        const reports = JSON.parse(localStorage.getItem('COLLECTION_REPORTS') || '[]');
+        reports.push(report);
+        localStorage.setItem('COLLECTION_REPORTS', JSON.stringify(reports));
+      }
 
       document.getElementById('reportBody').innerHTML = `
         <div class="report-success">
@@ -286,8 +293,18 @@
 
   /* ── Add Story via ⋯ menu ── */
   let addSelected = new Set();
-  function openAddStory() {
-    const d = window.DemoData; const stories = d ? (d.STORIES || d.COLLECTIONS?.[0]?.storyList || []) : [];
+  async function openAddStory() {
+    let stories = [];
+    try {
+      const res = await fetch(API_BASE + '/collections/eligible-stories', { credentials: 'include' });
+      if (res.ok) {
+        const j = await res.json();
+        if (j && Array.isArray(j.items)) stories = j.items.filter(s => s.eligible !== false).map(s => ({ id: s.id, title: s.title, cover: s.cover }));
+      }
+    } catch (e) {}
+    if (!stories.length) {
+      const d = window.DemoData; stories = d ? (d.STORIES || d.COLLECTIONS?.[0]?.storyList || []) : [];
+    }
     const existing = new Set((currentCollection?.storyList || []).map(s=>s.id));
     const avail = stories.filter(s=> !existing.has(s.id)).slice(0,18);
     const grid = document.getElementById('addStoryGrid');

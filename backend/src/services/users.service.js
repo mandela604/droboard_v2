@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { User, RefreshFamily } = require('../models/user.model');
 const { Book } = require('../models/content.model');
 const { Follow, Block, Mute, ReadingProgress } = require('../models/social.model');
+const { validateMediaUrl } = require('./media.service');
 
 function publicShape(u) {
   return {
@@ -19,24 +20,6 @@ function publicShape(u) {
 
 function escRx(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// FIX 4: avatar/cover validation — http(s) URL or data:image base64, size-capped.
-function validateMediaUrl(v, field) {
-  if (v === '' || v == null) return '';
-  const s = String(v).trim();
-  if (s.length > 2800000) { const e = new Error(field + '_too_large'); e.status = 400; throw e; }
-  if (s.startsWith('data:image/')) {
-    if (!/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s.slice(0, 2000000)) && s.length > 100) {
-      // allow long payloads; validate prefix only
-      if (!s.startsWith('data:image/png;base64,') && !s.startsWith('data:image/jpeg;base64,') && !s.startsWith('data:image/jpg;base64,') && !s.startsWith('data:image/webp;base64,') && !s.startsWith('data:image/gif;base64,')) {
-        const e = new Error(field + '_bad_data_url'); e.status = 400; throw e;
-      }
-    }
-    return s;
-  }
-  if (!/^https?:\/\/.{4,2000}$/.test(s)) { const e = new Error(field + '_bad_url'); e.status = 400; throw e; }
-  return s;
 }
 
 async function me(userId) {

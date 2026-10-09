@@ -31,9 +31,11 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
     var data = loadLocal();
     if (!data || !data.length) {
       data = getSeedData();
-      saveLocal(data);
+      // Never persist an empty list: a missing seed + empty save is what
+      // wipes the UI permanently. Retry from seed on every load instead.
+      if (data && data.length) saveLocal(data);
     }
-    return data;
+    return data || [];
   }
 
   var EmailTemplates = {
@@ -127,4 +129,5 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
   };
 
   window.DroboardEmailTemplates = EmailTemplates;
+  window.DroboardEmailSeed = getSeedData;
 })();

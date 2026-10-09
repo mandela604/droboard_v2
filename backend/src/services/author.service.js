@@ -56,6 +56,8 @@ async function listCharacters({ book }) {
 }
 
 async function saveCharacter({ book, data, id }) {
+  const { validateMediaUrl } = require('./media.service');
+  if (data.avatar !== undefined) data.avatar = validateMediaUrl(data.avatar, 'avatar');
   if (id) {
     const c = await Character.findOne({ id, bookId: book.id });
     if (!c) { const e = new Error('not_found'); e.status = 404; throw e; }
@@ -123,6 +125,19 @@ async function listSeriesChanges({ userId }) {
   return SeriesChangeRequest.find({ authorId: userId }).sort({ createdAt: -1 }).lean();
 }
 
+// Author's own edit proposals (pending/approved/rejected) per book.
+async function listChapterEdits({ userId, bookId }) {
+  await ownBook({ userId, bookId });
+  const { ChapterEdit } = require('../models/application.model');
+  return ChapterEdit.find({ bookId, authorId: userId }).sort({ createdAt: -1 }).lean();
+}
+
+async function listBookEdits({ userId, bookId }) {
+  await ownBook({ userId, bookId });
+  const { BookEdit } = require('../models/application.model');
+  return BookEdit.find({ bookId, authorId: userId }).sort({ createdAt: -1 }).lean();
+}
+
 async function launchKit({ userId }) {
   const list = await LaunchCampaign.find({ writerId: userId }).sort({ createdAt: -1 }).lean();
   return list;
@@ -146,5 +161,6 @@ module.exports = {
   getPlot, savePlot,
   listContracts, applyContract, applyCompletion, applyVip,
   submitChapterReview, submitSeriesChange, listSeriesChanges,
+  listChapterEdits, listBookEdits,
   launchKit, saveLaunchKit,
 };

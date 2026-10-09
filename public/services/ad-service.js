@@ -37,9 +37,35 @@
     };
   }
 
-  async function getInventory(page) {
+  function slotCfg(placement, slot) {
+    if (!slot || !placement || !placement.slots) return null;
+    var raw = placement.slots[slot];
+    if (raw === undefined || raw === null) return null;
+    if (typeof raw === 'boolean') return { enabled: raw };
+    if (typeof raw === 'object') return raw;
+    return null;
+  }
+  function orderPinned(pools, adIds) {
+    if (!adIds || !adIds.length) return pools;
+    var rank = {};
+    adIds.forEach(function (id, i) { if (rank[id] === undefined) rank[id] = i; });
+    Object.keys(pools).forEach(function (k) {
+      (pools[k] || []).sort(function (x, y) {
+        var ax = rank[x.id] !== undefined ? rank[x.id] : 1e9;
+        var bx = rank[y.id] !== undefined ? rank[y.id] : 1e9;
+        return ax - bx;
+      });
+    });
+    return pools;
+  }
+
+  /* Serving pools, filtered for a page + optional slot: inactive,
+     unscheduled, untargeted and slot-disabled ads are excluded. */
+  async function getInventory(page, slot) {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/ads?placement=${encodeURIComponent(page || '')}`);
+      var url = `${API_BASE}/ads?placement=${encodeURIComponent(page || '')}`;
+      if (slot) url += `&slot=${encodeURIComponent(slot)}`;
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('Ads API failed');
       return res.json();
     }
@@ -56,10 +82,49 @@
     return { placement, pools: inv.pools };
   }
 
+  /* Backend placement map (kill switches + slot flags) + entitlements,
+     cached per page-load so every slot check stays local. */
+  var _placements = null, _placementsAt = 0, _ent = null;
+  function backendPlacements() {
+    if (_placements && Date.now() - _placementsAt < 10 * 60 * 1000) return Promise.resolve(_placements);
+    try {
+      return fetch(`${API_BASE}/ads/placements`, { credentials: 'include' }).then(function (r) {
+        if (!r.ok) return {};
+        return r.json();
+      }).then(function (j) {
+        _placements = j || {};
+        _placementsAt = Date.now();
+        return _placements;
+      }).catch(function () { return _placements || {}; });
+    } catch (e) { return Promise.resolve(_placements || {}); }
+  }
+  function myEntitlements() {
+    if (window.DroboardAdsFreeEverywhere) return Promise.resolve({ adsFreeEverywhere: true });
+    if (_ent !== null && _ent !== undefined) return Promise.resolve(_ent);
+    try {
+      return fetch('/api/wallet/entitlements', { credentials: 'include' }).then(function (r) {
+        if (!r.ok) { _ent = false; return _ent; }
+        return r.json();
+      }).then(function (j) {
+        _ent = j || false;
+        return _ent;
+      }).catch(function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
+  }
+  function emptyPools() {
+    return { platform: [], book: [], native: [], embed: [], follow: [], banner: [], promo: [] };
+  }
+
   /* Placement config for a page: { interval, cycle?, topPromo? } */
   async function getPlacement(page) {
     const inv = await getInventory(page);
-    return inv.placement || { interval: 4 };
+    const base = inv.placement || { interval: 4 };
+    try {
+      const map = await backendPlacements();
+      const live = map && map[page];
+      if (live) return Object.assign({}, base, live);
+    } catch (e) {}
+    return base;
   }
 
   function dayStart(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
@@ -81,8 +146,39 @@
      untargeted ads are excluded. Admin sees everything. */
   async function getAds(opts) {
     const page = opts && opts.page;
-    const inv = await getInventory(page);
+    const slot = opts && opts.slot;
+    // Merge Pass: ad-free everywhere except Discover.
+    try {
+      if (!window.DroboardAdsFreeEverywhere) {
+        const ent = await myEntitlements();
+        if (ent && ent.adsFreeEverywhere && page !== 'discover') return emptyPools();
+      } else if (page !== 'discover') return emptyPools();
+    } catch (e) {}
+    const inv = await getInventory(page, slot);
+    // backend kill switch (marketing toggle) empties pools in any mode
+    try {
+      const map = await backendPlacements();
+      const live = map && map[page];
+      if (live && live.enabled === false) return emptyPools();
+      var cfg = slotCfg(live, slot);
+      if (cfg && cfg.enabled === false) return emptyPools();
+    } catch (e) {}
     const pools = inv.pools || {};
+    // slot programming in demo mode (backend already filters when live)
+    try {
+      if (!USE_API) {
+        const map2 = await backendPlacements();
+        var cfg2 = slotCfg(map2 && map2[page], slot);
+        if (cfg2) {
+          if (cfg2.formats && cfg2.formats.length) {
+            Object.keys(pools).forEach(function (k) {
+              if (pools[k] && cfg2.formats.indexOf(k) === -1) pools[k] = [];
+            });
+          }
+          orderPinned(pools, cfg2.adIds);
+        }
+      }
+    } catch (e) {}
     const now = dayStart(new Date());
     const out = {};
     ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'promo'].forEach(k => {
@@ -90,23 +186,43 @@
         if (ad.active === false) return false;
         if (!inSchedule(ad, now)) return false;
         if (page && Array.isArray(ad.pages) && ad.pages.length && !ad.pages.includes(page)) return false;
+        if (slot && ad.slots && ad.slots.length && ad.slots.indexOf(slot) === -1) return false;
         return true;
       });
     });
+    if (!USE_API) {
+      try {
+        const map3 = await backendPlacements();
+        var cfg3 = slotCfg(map3 && map3[page], slot);
+        if (cfg3) orderPinned(out, cfg3.adIds);
+      } catch (e) {}
+    }
     return out;
   }
 
-  /* Impression / click tracking. Demo: local counters the ad-manager reads. */
+  /* Impression / click tracking. Demo: local counters the ad-manager reads.
+     Live-first: also POSTs /api/ads/track (per-user trail); subscribers
+     (window.DroboardAdsFree) see no ads, so nothing is sent. */
   function track(id, event) {
     if (!id) return;
+    if (window.DroboardAdsFree) return;
     if (USE_API) {
       fetch(`${API_BASE}/ads/track`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, event: event || 'impression' }),
       }).catch(() => {});
       return;
     }
+    try {
+      fetch(`${API_BASE}/ads/track`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, event: event || 'impression' }),
+      }).catch(() => {});
+    } catch (e) {}
     try {
       const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}') || {};
       const row = stats[id] || { impressions: 0, clicks: 0 };
@@ -125,8 +241,8 @@
   /* Promo slider slides for a page (library / genreHub), narrowed by
      genre when the slides carry one. Powers library + hub sliders. */
   async function getPromoSlides(opts) {
-    const page = opts && opts.page, genre = opts && opts.genre;
-    const pools = await getAds({ page });
+    const page = opts && opts.page, genre = opts && opts.genre, slot = opts && opts.slot;
+    const pools = await getAds({ page, slot });
     return (pools.promo || []).filter(s => {
       if (!genre) return true;
       return !s.genre || s.genre === genre;

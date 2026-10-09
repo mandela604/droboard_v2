@@ -89,19 +89,31 @@
   function renderPlacements() {
     const p = INV.placements || {};
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    const on = (id, v) => { const el = document.getElementById(id); if (el) el.checked = v !== false; };
+    const slotOn = (v) => v !== false && !(v && typeof v === 'object' && v.enabled === false);
     set('plDisInt', (p.discover || {}).interval || 6);
     set('plDisCycle', ((p.discover || {}).cycle || []).join(', '));
+    on('plDisOn', (p.discover || {}).enabled);
     set('plFeedInt', (p.feed || {}).interval || 4);
+    on('plFeedOn', (p.feed || {}).enabled);
     set('plHubInt', (p.genreHub || {}).interval || 3);
+    on('plHubOn', (p.genreHub || {}).enabled);
     const tp = document.getElementById('plHubTop');
     if (tp) tp.checked = (p.genreHub || {}).topPromo !== false;
     set('plHomeInt', (p.home || {}).interval || 5);
-    set('plFullInt', (p.fullReader || {}).interval || 3);
-    set('plScrollInt', (p.scrollReader || {}).interval || 4);
-    const ff = document.getElementById('plFullFmt');
-    if (ff) ff.value = (p.fullReader || {}).format || 'auto';
-    const sf = document.getElementById('plScrollFmt');
-    if (sf) sf.value = (p.scrollReader || {}).format || 'auto';
+    on('plHomeOn', (p.home || {}).enabled);
+    on('plFullOn', (p.fullReader || {}).enabled);
+    set('plFullWords', (p.fullReader || {}).wordsPerSlot || 300);
+    const fslots = (p.fullReader || {}).slots || {};
+    on('plFullTop', slotOn(fslots['fullReader:top']));
+    on('plFullInline', slotOn(fslots['fullReader:per-300-words']));
+    on('plFullBottom', slotOn(fslots['fullReader:bottom']));
+    on('plScrollOn', (p.scrollReader || {}).enabled);
+    set('plScrollWords', (p.scrollReader || {}).wordsPerSlot || 300);
+    const sslots = (p.scrollReader || {}).slots || {};
+    on('plScrollTop', slotOn(sslots['scrollReader:top']));
+    on('plScrollInline', slotOn(sslots['scrollReader:per-300-words']));
+    on('plScrollBottom', slotOn(sslots['scrollReader:bottom']));
     const ls = document.getElementById('plLibSlider');
     if (ls) ls.checked = (p.library || {}).promoSlider !== false;
     const drb = document.getElementById('plDrbOn');
@@ -110,21 +122,26 @@
     const co = document.getElementById('plCommentsOn');
     if (co) co.checked = (p.comments || {}).enabled !== false;
     set('plCommentsInt', (p.comments || {}).interval || 5);
+    const cslots = (p.comments || {}).slots || {};
+    on('plSlotListTop', slotOn(cslots['comments:list-top']));
+    on('plSlotEveryNth', slotOn(cslots['comments:every-nth']));
+    on('plSlotThreadTop', slotOn(cslots['comments:thread-top']));
   }
   async function savePlacements() {
     const get = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
     const num = (v, fb) => { const n = parseInt(v, 10); return n > 0 ? n : fb; };
-    const getFmt = (id) => { const v = get(id); return ['auto', 'embed', 'native', 'book', 'platform', 'banner'].includes(v) ? v : 'auto'; };
+    const chk = (id) => { const el = document.getElementById(id); return !!el && el.checked; };
+    const words = (id) => Math.min(5000, Math.max(50, parseInt(get(id), 10) || 300));
     const patch = {
-      discover: { interval: num(get('plDisInt'), 6), cycle: get('plDisCycle').split(',').map(s => s.trim()).filter(Boolean) },
-      feed: { interval: num(get('plFeedInt'), 4) },
-      genreHub: { interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
-      home: { interval: num(get('plHomeInt'), 5) },
-      fullReader: { interval: num(get('plFullInt'), 3), format: getFmt('plFullFmt') },
-      scrollReader: { interval: num(get('plScrollInt'), 4), format: getFmt('plScrollFmt') },
+      discover: { enabled: chk('plDisOn'), interval: num(get('plDisInt'), 6), cycle: get('plDisCycle').split(',').map(s => s.trim()).filter(Boolean) },
+      feed: { enabled: chk('plFeedOn'), interval: num(get('plFeedInt'), 4) },
+      genreHub: { enabled: chk('plHubOn'), interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
+      home: { enabled: chk('plHomeOn'), interval: num(get('plHomeInt'), 5) },
+      fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), slots: { 'fullReader:top': chk('plFullTop'), 'fullReader:per-300-words': chk('plFullInline'), 'fullReader:bottom': chk('plFullBottom') } },
+      scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), slots: { 'scrollReader:top': chk('plScrollTop'), 'scrollReader:per-300-words': chk('plScrollInline'), 'scrollReader:bottom': chk('plScrollBottom') } },
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },
       droboardPage: { interval: num(get('plDrbInt'), 4), enabled: !!document.getElementById('plDrbOn').checked },
-      comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked },
+      comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked, slots: { 'comments:list-top': chk('plSlotListTop'), 'comments:every-nth': chk('plSlotEveryNth'), 'comments:thread-top': chk('plSlotThreadTop') } },
     };
     try {
       INV.placements = await MarketingData.savePlacements(patch);

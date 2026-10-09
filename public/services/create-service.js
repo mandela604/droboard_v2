@@ -11,8 +11,10 @@
    ═══════════════════════════════════════════════════════════════ */
 (function () {
 
-/* Backend-ready pattern only — implement NO fetch calls while false. */
+/* Backend-ready pattern only: USE_API=false, API_BASE='/api' (demo paths run,
+   live paths POST to the backend). Flip USE_API=true when going live. */
 const USE_API=false, API_BASE='/api';
+const SHORT_MAX = 25; // must match backend books.service SHORT_MAX
 
 /* ══════════════════════════════════════════════════════
    CONFIG
@@ -21,11 +23,11 @@ const CATEGORIES = ['💔 Betrayal','👑 Family','🎓 Campus','🔥 Revenge','
 const GENRES = ['💔 Betrayal','👑 Family','✨ Twist','🏙️ Urban','💍 Marriage','🎓 Campus','🔥 Revenge','💔 Heartbreak','😂 Comedy','😱 Thriller','🤝 Friendship','🔍 Mystery','✨ Inspirational','🙏 Faith','🌙 Elegy'];
 const MAX_GENRES = 5, MAX_TAGS = 5;
 
-const DEMO_SERIES = [
-  {id:'s1',title:'His Secret and Her Shadow',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',category:'💔 Betrayal',season:1,lastChapter:7},
-  {id:'s2',title:'The Lagos Wives',cover:'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',category:'💍 Marriage',season:2,lastChapter:14},
-  {id:'s3',title:'Campus Confessions',cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',category:'🎓 Campus',season:1,lastChapter:4},
-  {id:'s4',title:'Midnight Revenge',cover:'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',category:'🔥 Revenge',season:1,lastChapter:12},
+const DEMO_MY_BOOKS = [
+  {id:'s1',title:'His Secret and Her Shadow',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',category:'💔 Betrayal',lastChapter:7},
+  {id:'s2',title:'The Lagos Wives',cover:'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',category:'💍 Marriage',lastChapter:14},
+  {id:'s3',title:'Campus Confessions',cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',category:'🎓 Campus',lastChapter:4},
+  {id:'s4',title:'Midnight Revenge',cover:'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',category:'🔥 Revenge',lastChapter:12},
 ];
 
 const STOCKS = [
@@ -42,12 +44,12 @@ const STOCKS = [
 ══════════════════════════════════════════════════════ */
 let state = {
   type: null, uploadedText: '',
-  isContinuing: false, chosenSeriesId: null,
-  seriesTitle: '', season: 1, chapterNum: 1,
+  isContinuing: false, chosenBookId: null,
+  chapterNum: 1,
   category: null, genres: [], tags: [],
   coverData: '', title: '', synopsis: '', plot: '',
   chapters: [], // {id, title, content, eng:{poll,pred,debate}}
-  pubMode: 'now',
+  pubMode: 'now', schedAt: '',
 };
 let chIdCounter = 0;
 let dropdownOpen = false;
@@ -58,7 +60,7 @@ function mkEngState(){ return {
   debate:{on:false,expanded:false,motion:''},
 };}
 
-/* Stage order depends on type: 'link' only applies to series.
+/* Stage order depends on type: 'link' only applies to long stories.
    New-chapter mode (from book workspace ?book= &newChapter=1) jumps straight to Chapters. */
 function isNewChapterMode(){
   try {
@@ -72,13 +74,13 @@ function getNewChapterBookId(){
 function stageOrder(){
   if (isNewChapterMode()) return ['chapters','review'];
   const all = ['type','link','details','plot','chapters','review'];
-  if (state.type !== 'series') return all.filter(k => k !== 'link');
+  if (state.type !== 'long') return all.filter(k => k !== 'link');
   return all;
 }
 let currentIdx = 0; // index into stageOrder()
 
 const STAGE_TITLES = {
-  type:'Story Type', link:'Series Link', details:'Details', plot:'Full Plot', chapters:'Chapters', review:'Review'
+  type:'Story Type', link:'Book Link', details:'Details', plot:'Full Plot', chapters:'Chapters', review:'Review'
 };
 
 /* ══════════════════════════════════════════════════════
@@ -157,8 +159,8 @@ function updateNavButtons(){
 function stageIsValid(key){
   if (key==='type') return !!state.type;
   if (key==='link'){
-    if (state.isContinuing) return !!state.chosenSeriesId;
-    return document.getElementById('seriesTitleInp').value.trim().length>1;
+    if (state.isContinuing) return !!state.chosenBookId;
+    return document.getElementById('bookTitleInp').value.trim().length>1;
   }
   if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4;
   if (key==='plot') return wordCount(document.getElementById('plotInput').value)>=15;
@@ -173,7 +175,7 @@ function stageIsValid(key){
 function flagInvalid(key){
   const msgs = {
     type:'⚠️ Choose a story type to continue',
-    link:'⚠️ Pick a series to continue, or name your new series',
+    link:'⚠️ Pick a book to continue, or name your new story',
     details:'⚠️ Add a title, category, at least one genre, and a synopsis',
     plot:'⚠️ Add a full plot (15+ words)',
     chapters:'⚠️ Every chapter needs a title and some content (20+ characters)',
@@ -182,12 +184,12 @@ function flagInvalid(key){
   toast(msgs[key] || '⚠️ Please complete this step');
 }
 function getActiveTitle(){
-  if (state.type === 'series'){
-    if (state.isContinuing && state.chosenSeriesId){
-      const s = DEMO_SERIES.find(x=>x.id===state.chosenSeriesId);
+  if (state.type === 'long'){
+    if (state.isContinuing && state.chosenBookId){
+      const s = DEMO_MY_BOOKS.find(x=>x.id===state.chosenBookId);
       return s ? s.title : '';
     }
-    return document.getElementById('seriesTitleInp').value.trim();
+    return document.getElementById('bookTitleInp').value.trim();
   }
   return document.getElementById('titleInput').value.trim();
 }
@@ -198,7 +200,7 @@ function getActiveTitle(){
 function selectType(t){
   state.type = t;
   document.querySelectorAll('.type-card').forEach(c=>c.classList.toggle('sel', c.dataset.type===t));
-  document.getElementById('standaloneTitleFg').style.display = t==='series' ? 'none' : '';
+  document.getElementById('standaloneTitleFg').style.display = t==='long' ? 'none' : '';
   updateNavButtons();
 }
 
@@ -215,7 +217,7 @@ function handleFileSelect(input){
     const guess = file.name.replace(/\.[^.]+$/,'').replace(/[_-]/g,' ');
     const titleGuess = guess.charAt(0).toUpperCase()+guess.slice(1);
     if (!document.getElementById('titleInput').value) document.getElementById('titleInput').value = titleGuess;
-    if (!document.getElementById('seriesTitleInp').value) document.getElementById('seriesTitleInp').value = titleGuess;
+    if (!document.getElementById('bookTitleInp').value) document.getElementById('bookTitleInp').value = titleGuess;
     toast('✅ File imported — text will fill Chapter 1');
   };
   reader.readAsText(file);
@@ -227,16 +229,17 @@ function removeUpload(){
 }
 
 /* ══════════════════════════════════════════════════════
-   STAGE: SERIES LINK
-══════════════════════════════════════════════════════ */
+   STAGE: BOOK LINK
+   (demo list; live: GET /api/author/books — same shape minus season)
+   ══════════════════════════════════════════════════════ */
 function buildDropdownMenu(){
-  document.getElementById('sddMenu').innerHTML = DEMO_SERIES.map(s=>{
+  document.getElementById('sddMenu').innerHTML = DEMO_MY_BOOKS.map(s=>{
     const nextCh = s.lastChapter+1;
-    return `<div class="sdd-item" data-id="${s.id}" onclick="chooseSeries('${s.id}')">
+    return `<div class="sdd-item" data-id="${s.id}" onclick="chooseBook('${s.id}')">
       <img class="sdd-item-img" src="${s.cover}" loading="lazy"/>
       <div>
         <div class="sdd-item-title">${esc(s.title)}</div>
-        <div class="sdd-item-sub">${s.category} · Season ${s.season} · next: Ch.${nextCh}</div>
+        <div class="sdd-item-sub">${s.category} · ${s.lastChapter} chapters · next: Ch.${nextCh}</div>
       </div>
     </div>`;
   }).join('');
@@ -248,31 +251,30 @@ function applyToggleState(isOn){
   document.getElementById('contTogRow').classList.toggle('on', isOn);
   const block = document.getElementById('continueBlock');
   block.classList.toggle('open', isOn);
-  document.getElementById('newSeriesTitleFg').style.display = isOn ? 'none' : '';
-  if (!isOn){ clearSeriesChoice(); }
+  document.getElementById('newBookTitleFg').style.display = isOn ? 'none' : '';
+  if (!isOn){ clearBookChoice(); }
   updateNavButtons();
 }
 function toggleDropdown(){ dropdownOpen = !dropdownOpen; document.getElementById('sddMenu').classList.toggle('show', dropdownOpen); document.getElementById('sddTrigger').classList.toggle('open', dropdownOpen); }
-function chooseSeries(id){
-  const s = DEMO_SERIES.find(x=>x.id===id); if (!s) return;
-  state.chosenSeriesId = id;
+function chooseBook(id){
+  const s = DEMO_MY_BOOKS.find(x=>x.id===id); if (!s) return;
+  state.chosenBookId = id;
   const nextCh = s.lastChapter+1;
-  document.getElementById('seasonInp').value = s.season;
-  document.getElementById('chapterNumInp').value = nextCh;
+  state.chapterNum = nextCh;
   pickCategory(s.category);
   setCover(s.cover);
   document.getElementById('sddFace').innerHTML = `<div class="sdd-sel-inner"><img class="sdd-sel-img" src="${s.cover}"/><div><div class="sdd-sel-title">${esc(s.title)}</div><div class="sdd-sel-meta">Adding Chapter ${nextCh}</div></div></div>`;
   document.getElementById('selStrip').classList.add('show');
   document.getElementById('ssImg').src = s.cover;
   document.getElementById('ssName').textContent = s.title;
-  document.getElementById('ssMeta').textContent = `Season ${s.season} · Adding Chapter ${nextCh}`;
+  document.getElementById('ssMeta').textContent = `${s.lastChapter} chapters · Adding Chapter ${nextCh}`;
   toggleDropdown();
   toast(`✅ Linked to "${s.title}" — writing Chapter ${nextCh}`);
   updateNavButtons();
 }
-function clearSeriesChoice(){
-  state.chosenSeriesId = null;
-  document.getElementById('sddFace').innerHTML = `<span class="sdd-ph">Tap to choose a series…</span>`;
+function clearBookChoice(){
+  state.chosenBookId = null;
+  document.getElementById('sddFace').innerHTML = `<span class="sdd-ph">Tap to choose a book…</span>`;
   document.getElementById('selStrip').classList.remove('show');
   updateNavButtons();
 }
@@ -377,15 +379,20 @@ function renderChapterStageCopy(){
   const isShort = state.type === 'short';
   document.getElementById('chStageTitle').textContent = isShort ? 'Write your story' : 'Write it chapter by chapter';
   document.getElementById('chStageDesc').textContent = isShort
-    ? 'A short story is a single piece — write it below, then optionally add a poll/debate/prediction.'
+    ? `A short story holds up to ${SHORT_MAX} chapters — write below, then optionally add a poll/debate/prediction.`
     : 'Write each chapter, then optionally turn on a poll, debate, or prediction for it.';
-  document.getElementById('addChBtn').style.display = isShort ? 'none' : 'flex';
+  document.getElementById('addChBtn').style.display = (isShort && state.chapters.length>=SHORT_MAX) ? 'none' : 'flex';
   if (isShort && state.chapters.length === 0) addChapter();
   if (!isShort && state.chapters.length === 0) addChapter();
   renderChapters();
 }
+function refreshAddBtn(){
+  const btn = document.getElementById('addChBtn');
+  if (!btn) return;
+  btn.style.display = (state.type==='short' && state.chapters.length>=SHORT_MAX) ? 'none' : 'flex';
+}
 function addChapter(){
-  if (state.type==='short' && state.chapters.length>=1) return;
+  if (state.type==='short' && state.chapters.length>=SHORT_MAX){ toast(`Short stories hold max ${SHORT_MAX} chapters`); return; }
   chIdCounter++;
   const ch = { id: chIdCounter, title:'', content:'', authorNote:'', open:true, eng: mkEngState() };
   state.chapters.push(ch);
@@ -394,12 +401,13 @@ function addChapter(){
     ch.content = state.uploadedText.split(/\n\n+/).map(p=>`<p>${esc(p)}</p>`).join('');
   }
   renderChapters();
+  refreshAddBtn();
   updateNavButtons();
   setTimeout(()=>{ document.getElementById(`chCard-${ch.id}`)?.scrollIntoView({behavior:'smooth', block:'center'}); }, 60);
 }
 function removeChapter(id){
   state.chapters = state.chapters.filter(c=>c.id!==id);
-  renderChapters(); updateNavButtons();
+  renderChapters(); refreshAddBtn(); updateNavButtons();
 }
 function toggleChapterOpen(id){
   syncChapterContent(id);
@@ -630,7 +638,7 @@ function renderReview(){
   document.getElementById('reviewCover').style.backgroundImage = state.coverData ? `url('${state.coverData}')` : 'none';
   document.getElementById('reviewTitle').textContent = getActiveTitle() || 'Untitled Story';
   document.getElementById('reviewBadges').innerHTML = [
-    state.type === 'short' ? '📄 Short Story' : '📖 Series',
+    state.type === 'short' ? '📄 Short Story' : '📖 Long Story',
     state.category || '', ...state.genres
   ].filter(Boolean).map(b=>`<span class="review-badge">${b}</span>`).join('');
   document.getElementById('reviewSynopsis').textContent = document.getElementById('synopsisInput').value.trim() || '—';
@@ -652,7 +660,73 @@ function renderReview(){
 
 /* ══════════════════════════════════════════════════════
    DRAFT SAVE / SUBMIT
-══════════════════════════════════════════════════════ */
+   Demo (USE_API=false): localStorage draft + success screen, so the full
+   flow is visible. Live (USE_API=true): POST /api/books/batch (new story)
+   or POST /api/books/:id/chapters (new-chapter mode), then success screen.
+   ══════════════════════════════════════════════════════ */
+function syncReviewControls(){
+  // Read the schedule control the review stage renders (was dropped before).
+  const sched = document.getElementById('schedDateInp');
+  state.schedAt = (state.pubMode==='schedule' && sched) ? sched.value : '';
+}
+// Demo display names carry emoji ('💔 Betrayal'); live genre names don't.
+// Live swap: fetch GET /api/genres and match — until then, strip + send.
+function apiGenre(g){ return String(g||'').replace(/^[^\p{L}\p{N}]+/u,'').trim(); }
+// Live swap: fetch GET /api/categories and map display→id. Omitted until then
+// (backend categoryId is optional; unknown keys must NOT be sent — strict mode).
+function buildBookPayload(){
+  const kind = state.type === 'short' ? 'short' : 'long';
+  const book = {
+    title: getActiveTitle(),
+    synopsis: document.getElementById('synopsisInput').value.trim(),
+    genre: apiGenre(state.genres[0] || ''),
+    cover: state.coverData || '',
+    tags: state.tags.slice(0, 5),
+    kind,
+  };
+  return book;
+}
+function buildChapterPayload(ch, idx){
+  syncChapterContent(ch.id);
+  const tmp = document.createElement('div'); tmp.innerHTML = ch.content || '';
+  const out = { n: idx + 1 };
+  if ((ch.title||'').trim()) out.title = ch.title.trim();
+  if (ch.content) out.content = ch.content;
+  const wc = wordCount(tmp.innerText || '');
+  if (wc) out.words = wc;
+  if ((ch.authorNote||'').trim()) out.authorNote = ch.authorNote.trim().slice(0, 500);
+  if (ch.eng.poll.on && ch.eng.poll.q.trim()) {
+    const opts = ch.eng.poll.opts.map(o=>String(o||'').trim()).filter(Boolean).slice(0, 4);
+    if (opts.length >= 2) out.poll = { q: ch.eng.poll.q.trim().slice(0,300), opts };
+  }
+  if (ch.eng.pred.on && ch.eng.pred.q.trim()) {
+    const opts = ch.eng.pred.opts.map(o=>String(o||'').trim()).filter(Boolean).slice(0, 4);
+    if (opts.length >= 2) out.prediction = { q: ch.eng.pred.q.trim().slice(0,300), opts };
+  }
+  if (ch.eng.debate.on && (ch.eng.debate.motion||'').trim()) out.debate = { motion: ch.eng.debate.motion.trim().slice(0,500) };
+  if (state.pubMode==='schedule' && state.schedAt) { out.status = 'scheduled'; out.scheduledAt = state.schedAt; }
+  return out;
+}
+async function postJSON(path, body){
+  const res = await fetch(API_BASE + path, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(()=>null);
+  if (!res.ok) throw new Error((data && (data.error || data.message)) || ('submit_' + res.status));
+  return data;
+}
+function showSuccess(){
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+  document.getElementById('successWrap').classList.add('show');
+  document.getElementById('wizardNav').style.display = 'none';
+  document.getElementById('stepRail').style.display = 'none';
+  const label = state.pubMode==='schedule' ? 'Scheduled!' : 'Submitted for review!';
+  document.getElementById('successTitle').textContent = label;
+  document.getElementById('successSub').textContent = `"${getActiveTitle() || 'Your story'}" has been ${state.pubMode==='schedule'?'scheduled and sent to our editors':'sent to our editors'}. We'll notify you once it's live.`;
+  document.getElementById('tbSub').textContent = 'Submitted ✓';
+}
 function saveDraft(manual){
   try{
     // Sync chapter content from DOM into a serializable snapshot
@@ -666,18 +740,30 @@ function saveDraft(manual){
     if (manual) toast('💾 Draft saved');
   }catch(e){ if (manual) toast('⚠️ Could not save draft'); }
 }
-function submitStory(){
+async function submitStory(){
   if (!stageIsValid('review')){ flagInvalid('review'); return; }
   saveDraft(false);
-  localStorage.removeItem('droboard_create_story_draft');
-  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
-  document.getElementById('successWrap').classList.add('show');
-  document.getElementById('wizardNav').style.display = 'none';
-  document.getElementById('stepRail').style.display = 'none';
-  const label = state.pubMode==='schedule' ? 'Scheduled!' : 'Submitted for review!';
-  document.getElementById('successTitle').textContent = label;
-  document.getElementById('successSub').textContent = `"${getActiveTitle() || 'Your story'}" has been ${state.pubMode==='schedule'?'scheduled and sent to our editors':'sent to our editors'}. We'll notify you once it's live.`;
-  document.getElementById('tbSub').textContent = 'Submitted ✓';
+  syncReviewControls();
+  if (!USE_API){ showSuccess(); localStorage.removeItem('droboard_create_story_draft'); return; }
+  const btn = document.getElementById('wnavNext');
+  if (btn) { btn.classList.add('disabled'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
+  try {
+    if (isNewChapterMode()) {
+      const bid = getNewChapterBookId();
+      const ch = state.chapters[0] || { title:'', content:'' };
+      await postJSON(`/api/books/${encodeURIComponent(bid)}/chapters`, buildChapterPayload(ch, state.chapterNum - 1));
+    } else {
+      await postJSON('/api/books/batch', {
+        book: buildBookPayload(),
+        chapters: state.chapters.map((c, i) => buildChapterPayload(c, i)),
+      });
+    }
+    localStorage.removeItem('droboard_create_story_draft');
+    showSuccess();
+  } catch(e) {
+    toast('⚠️ Submit failed: ' + (e.message || 'network error'));
+    updateNavButtons();
+  }
 }
 function startAnother(){
   location.reload();
@@ -702,14 +788,22 @@ renderTags();
 buildStockRow();
 if (isNewChapterMode()) {
   const bid = getNewChapterBookId();
-  state.type = 'series';
+  state.type = 'long';
   state.isContinuing = true;
-  state.chosenSeriesId = bid;
-  state.chapterNum = 57; // TODO backend: GET next chapter number for bid
+  state.chosenBookId = bid;
+  state.chapterNum = 57; // demo fallback; replaced by live count below
   document.querySelector('.tb-h').textContent = 'Add New Chapter';
   document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Chapters';
   goToStage(0); // chapters (order is [chapters, review] in this mode)
   if (state.chapters.length === 0) addChapter();
+  if (USE_API) {
+    // Live: next number = current chapter count + 1.
+    fetch(API_BASE + '/api/books/' + encodeURIComponent(bid) + '/chapters', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null).then(list => {
+        const n = Array.isArray(list) ? list.length : (list && list.length);
+        if (Number.isInteger(n)) { state.chapterNum = n + 1; document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Chapter ' + state.chapterNum; }
+      }).catch(()=>{});
+  }
 } else {
   goToStage(0);
 }
@@ -747,8 +841,8 @@ window.handleToggleClick = handleToggleClick;
 window.handleToggleChange = handleToggleChange;
 window.applyToggleState = applyToggleState;
 window.toggleDropdown = toggleDropdown;
-window.chooseSeries = chooseSeries;
-window.clearSeriesChoice = clearSeriesChoice;
+window.chooseBook = chooseBook;
+window.clearBookChoice = clearBookChoice;
 window.renderCategoryGrid = renderCategoryGrid;
 window.pickCategory = pickCategory;
 window.renderGenreGrid = renderGenreGrid;
@@ -764,6 +858,7 @@ window.setCover = setCover;
 window.buildStockRow = buildStockRow;
 window.pickStock = pickStock;
 window.renderChapterStageCopy = renderChapterStageCopy;
+window.refreshAddBtn = refreshAddBtn;
 window.addChapter = addChapter;
 window.removeChapter = removeChapter;
 window.toggleChapterOpen = toggleChapterOpen;
@@ -783,6 +878,12 @@ window.removeOpt = removeOpt;
 window.renderChapters = renderChapters;
 window.setPubMode = setPubMode;
 window.renderReview = renderReview;
+window.syncReviewControls = syncReviewControls;
+window.apiGenre = apiGenre;
+window.buildBookPayload = buildBookPayload;
+window.buildChapterPayload = buildChapterPayload;
+window.postJSON = postJSON;
+window.showSuccess = showSuccess;
 window.saveDraft = saveDraft;
 window.submitStory = submitStory;
 window.startAnother = startAnother;

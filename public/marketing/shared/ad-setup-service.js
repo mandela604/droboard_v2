@@ -22,8 +22,42 @@
   var SEG_MAP = {};
   SEGMENTS.forEach(function (s) { SEG_MAP[s.id] = s; });
 
+  /* Slot registry per surface (mirrors the backend slot ids). An ad with an
+     empty slots list serves on every slot of its checked pages. */
+  var PAGE_SLOTS = {
+    fullReader: [
+      { id: 'fullReader:top', label: 'Top (above chapter)' },
+      { id: 'fullReader:per-300-words', label: 'In-text (every N words)' },
+      { id: 'fullReader:bottom', label: 'Bottom (after chapter)' },
+    ],
+    scrollReader: [
+      { id: 'scrollReader:top', label: 'Top' },
+      { id: 'scrollReader:per-300-words', label: 'In-text (every N words)' },
+      { id: 'scrollReader:bottom', label: 'Bottom (end of page)' },
+    ],
+    comments: [
+      { id: 'comments:list-top', label: 'List top' },
+      { id: 'comments:every-nth', label: 'Every Nth' },
+      { id: 'comments:thread-top', label: 'Thread top' },
+    ],
+    feed: [{ id: 'feed:in-feed', label: 'In-feed' }],
+    discover: [{ id: 'discover:strip', label: 'Strip' }],
+    genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
+    library: [{ id: 'library:slider', label: 'Slider' }],
+    droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
+    discussion: [{ id: 'discussion:inline', label: 'Inline' }],
+    home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
+    series: [{ id: 'series:main', label: 'Main' }],
+  }; /* profile has page-level targeting only — no ad slot renders there */
+  function pageSlots(pageId) { return PAGE_SLOTS[pageId] || []; }
+  function pageLabel(pageId) {
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === pageId) return PAGES[i].label;
+    return pageId;
+  }
+
   var _step = 0;
   var _draft = null;
+  var _slotsDirty = false;
   var _campaigns = [];
   var _editId = null;
   var _imgDataUrl = '';
@@ -47,9 +81,11 @@
   function adTitleOf(f) { return (f && (f.title || f.heading || f.headline || f.brand || f.name)) || ''; }
 
   function blankDraft(format) {
+    _slotsDirty = false;
     return {
       format: format || 'platform', fields: {}, campaign: '',
       pages: PAGES.map(function (p) { return p.id; }),
+      slots: [],
       segments: [], genres: [], countries: [], offerRef: null,
       startDate: '', endDate: '', active: true,
     };
@@ -63,6 +99,8 @@
     if (ad.url != null) d.fields.url = String(ad.url);
     d.campaign = ad.campaign || '';
     d.pages = Array.isArray(ad.pages) && ad.pages.length ? ad.pages.slice() : PAGES.map(function (p) { return p.id; });
+    d.slots = Array.isArray(ad.slots) ? ad.slots.slice() : [];
+    _slotsDirty = d.slots.length > 0;
     var aud = ad.audience || {};
     d.segments = Array.isArray(aud.segments) ? aud.segments.filter(function (id) { return !!SEG_MAP[id]; }) : [];
     d.genres = Array.isArray(aud.genres) ? aud.genres.slice() : [];
@@ -75,13 +113,21 @@
   }
 
   /* ── Step bodies ── */
-  function bodyFormat() {
-    return '<div class="fmt-grid">' + FORMATS.map(function (f) {
-      return '<button type="button" class="fmt-card' + (_draft.format === f.id ? ' on' : '') + '" data-fmt="' + f.id + '">' +
-        '<i class="fas ' + f.icon + '"></i>' +
-        '<div><div class="fmt-t">' + esc(f.label) + '</div><div class="fmt-d">' + esc(f.desc) + '</div></div>' +
+  function goalForFormat(fmt) {
+    for (var i = 0; i < GOALS.length; i++) {
+      if (GOALS[i].format === fmt) return GOALS[i].id;
+    }
+    return '';
+  }
+  function bodyGoal() {
+    var sel = goalForFormat(_draft.format);
+    return '<div class="fmt-grid">' + GOALS.map(function (g) {
+      return '<button type="button" class="fmt-card' + (sel === g.id ? ' on' : '') + '" data-goal="' + g.id + '">' +
+        '<i class="fas ' + g.icon + '"></i>' +
+        '<div><div class="fmt-t">' + esc(g.label) + '</div><div class="fmt-d">' + esc(g.desc) + '</div></div>' +
       '</button>';
-    }).join('') + '</div>';
+    }).join('') + '</div>' +
+    '<div style="font-size:11px;color:var(--text-faint);margin-top:10px">Each goal picks the right card — you can still switch format here, creative adapts.</div>';
   }
   function bodyCreative() {
     var fmt = _draft.format;
@@ -134,7 +180,36 @@
       PAGES.map(function (p) {
         return '<label class="pg-check"><input type="checkbox" data-pg="' + p.id + '"' + (_draft.pages.indexOf(p.id) !== -1 ? ' checked' : '') + '/> ' + esc(p.label) + '</label>';
       }).join('') + '</div>';
+    html += '<div id="suSlots" style="margin-top:4px">' + slotRowsHtml() + '</div>';
     return html;
+  }
+  function slotOn(sid) {
+    if (!_draft.slots.length && !_slotsDirty) return true; // default: every slot
+    return _draft.slots.indexOf(sid) !== -1;
+  }
+  function slotRowsHtml() {
+    var html = '<div class="f-lbl" style="margin:10px 0 6px">Slots — per checked surface (leave all ticked for every slot)</div>';
+    var any = false;
+    _draft.pages.forEach(function (pid) {
+      var slots = pageSlots(pid);
+      if (!slots.length) return;
+      any = true;
+      html += '<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:800;margin-bottom:4px">' + esc(pageLabel(pid)) + '</div><div class="pg-row">' +
+        slots.map(function (s) {
+          return '<label class="pg-check"><input type="checkbox" data-slot="' + esc(s.id) + '"' + (slotOn(s.id) ? ' checked' : '') + '/> ' + esc(s.label) + '</label>';
+        }).join('') + '</div></div>';
+    });
+    if (!any) html += '<div style="font-size:11px;color:var(--text-faint)">Check a surface above to pick its slots.</div>';
+    return html;
+  }
+  function ensureExplicitSlots() {
+    if (_slotsDirty) return;
+    _slotsDirty = true;
+    var all = [];
+    _draft.pages.forEach(function (pid) {
+      pageSlots(pid).forEach(function (s) { if (all.indexOf(s.id) === -1) all.push(s.id); });
+    });
+    _draft.slots = all;
   }
   function reachLabel(est) {
     var bits = [];
@@ -209,6 +284,7 @@
       '<div><b>Creative:</b> ' + esc(title || '(untitled)') + '</div>' +
       '<div><b>Destination:</b> ' + esc(_draft.fields.url || '—') + '</div>' +
       '<div><b>Shows on:</b> ' + esc(_draft.pages.join(', ') || '—') + '</div>' +
+      '<div><b>Slots:</b> ' + esc(_draft.slots.length ? _draft.slots.join(', ') : 'All slots on checked surfaces') + '</div>' +
       '<div><b>Audience:</b> ' + esc(audLine) + ' (~' + fmtN(est.reach) + ')</div>' +
       '<div><b>Offer:</b> ' + esc(offerText()) + '</div>' +
       '<div><b>Campaign:</b> ' + esc(camp || 'None') + '</div>' +
@@ -481,7 +557,7 @@
   }
 
   /* ── Render + wire ── */
-  var BODIES = [bodyFormat, bodyCreative, bodyPlacement, bodyAudience, bodySchedule, bodyReview];
+  var BODIES = [bodyGoal, bodyCreative, bodyPlacement, bodyAudience, bodySchedule, bodyReview];
   function render() {
     $('suTitle').textContent = (_editId ? 'Edit ad' : 'New ad') + ' · ' + (_step + 1) + ' of ' + STEPS.length;
     $('suSteps').innerHTML = STEPS.map(function (s, i) {
@@ -512,6 +588,12 @@
       _draft.campaign = camp ? camp.value : '';
       _draft.pages = Array.prototype.map.call(
         body.querySelectorAll('[data-pg]:checked'), function (el) { return el.dataset.pg; });
+      if (_slotsDirty) {
+        _draft.slots = Array.prototype.map.call(
+          body.querySelectorAll('[data-slot]:checked'), function (el) { return el.dataset.slot; });
+      } else {
+        _draft.slots = [];
+      }
     }
     if (_step === 4) {
       _draft.startDate = $('suStart').value || '';
@@ -523,6 +605,7 @@
   function validate() {
     if (_step === 1 && !adTitleOf(_draft.fields)) { setErr('Give the ad a title first.'); return false; }
     if (_step === 2 && !_draft.pages.length) { setErr('Pick at least one surface.'); return false; }
+    if (_step === 2 && _slotsDirty && !_draft.slots.length) { setErr('Pick at least one slot.'); return false; }
     return true;
   }
   function next() {
@@ -541,6 +624,7 @@
       format: _draft.format,
       campaign: _draft.campaign || '',
       pages: _draft.pages.slice(),
+      slots: _draft.slots.slice(),
       startDate: _draft.startDate,
       endDate: _draft.endDate,
       active: _draft.active,
@@ -567,10 +651,13 @@
   function wireStep() {
     var body = $('suBody');
     if (_step === 0) {
-      body.querySelectorAll('[data-fmt]').forEach(function (b) {
+      body.querySelectorAll('[data-goal]').forEach(function (b) {
         b.addEventListener('click', function () {
-          _draft.format = b.dataset.fmt;
-          body.querySelectorAll('[data-fmt]').forEach(function (x) { x.classList.toggle('on', x === b); });
+          var g = null;
+          GOALS.forEach(function (x) { if (x.id === b.dataset.goal) g = x; });
+          if (!g) return;
+          _draft.format = g.format;
+          body.querySelectorAll('[data-goal]').forEach(function (x) { x.classList.toggle('on', x === b); });
           updatePreview();
         });
       });
@@ -621,6 +708,42 @@
         r.readAsDataURL(f);
       });
       renderEmbedPreview();
+    }
+    if (_step === 2) {
+      var rerenderSlots = function () {
+        var host = $('suSlots');
+        if (host) {
+          host.innerHTML = slotRowsHtml();
+          bindSlotBoxes();
+        }
+      };
+      var bindSlotBoxes = function () {
+        body.querySelectorAll('[data-slot]').forEach(function (el) {
+          el.addEventListener('change', function () {
+            ensureExplicitSlots();
+            var id = el.dataset.slot;
+            var i = _draft.slots.indexOf(id);
+            if (el.checked && i === -1) _draft.slots.push(id);
+            if (!el.checked && i !== -1) _draft.slots.splice(i, 1);
+          });
+        });
+      };
+      bindSlotBoxes();
+      body.querySelectorAll('[data-pg]').forEach(function (el) {
+        el.addEventListener('change', function () {
+          ensureExplicitSlots();
+          var pid = el.dataset.pg;
+          var ids = pageSlots(pid).map(function (s) { return s.id; });
+          if (el.checked) {
+            if (_draft.pages.indexOf(pid) === -1) _draft.pages.push(pid);
+            ids.forEach(function (sid) { if (_draft.slots.indexOf(sid) === -1) _draft.slots.push(sid); });
+          } else {
+            _draft.pages = _draft.pages.filter(function (x) { return x !== pid; });
+            _draft.slots = _draft.slots.filter(function (sid) { return ids.indexOf(sid) === -1; });
+          }
+          rerenderSlots();
+        });
+      });
     }
     if (_step === 3) {
       var toggle = function (list, v) {

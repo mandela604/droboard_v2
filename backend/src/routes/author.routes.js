@@ -23,7 +23,7 @@ router.post('/books/:id/characters', writeLimiter, audit('author.characters.crea
     params: z.object({ id }),
     body: z.object({
       name: z.string().min(1).max(80), role: z.enum(['lead', 'support', 'antagonist', 'minor']).optional(),
-      avatar: z.string().max(500).optional(), meta: z.string().max(120).optional(),
+      avatar: z.string().max(2000).optional(), meta: z.string().max(120).optional(),
       bio: z.string().max(2000).optional(), arc: z.string().max(2000).optional(),
       traits: z.array(z.string().max(30)).max(12).optional(),
     }).strict(),
@@ -44,6 +44,12 @@ router.put('/books/:id/plot', writeLimiter, audit('author.plot.save'),
 // edit-chapter-service contract (single chapter by number)
 router.get('/books/:id/chapters/:num', generalLimiter,
   validate(z.object({ params: z.object({ id, num: z.string().min(1).max(10) }) })), ctrl.bookChapters);
+
+// my edit proposals (approve/reject happens on the editor side)
+router.get('/books/:id/chapter-edits', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), ctrl.chapterEdits);
+router.get('/books/:id/book-edits', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), ctrl.bookEdits);
 
 router.get('/contracts', generalLimiter, ctrl.contracts);
 router.post('/contracts', writeLimiter, audit('author.contracts.apply'),

@@ -18,6 +18,17 @@ const HEX24 = /^[0-9a-fA-F]{24}$/;
      distinct chapters (ReadingProgress.chapterId). Flip one line to change. */
 const STORY_ACCESS_RULE = { mode: 'any', minChapters: 15 };
 
+/* Read credit: an opened chapter only counts once finished or after 120s of
+   read time — opens alone never qualify (also feeds eligible-stories). */
+const READ_CREDIT_MIN_SECONDS = 120;
+function readCreditMatch(flavors, storyIds) {
+  return {
+    userId: { $in: flavors }, storyId: { $in: storyIds.map(String) },
+    chapterId: { $nin: [null, ''] },
+    $or: [{ finished: true }, { secondsSpent: { $gte: READ_CREDIT_MIN_SECONDS } }],
+  };
+}
+
 function canWrite(col, user) {
   if (!user) return false;
   if ((user.roles || []).includes('admin')) return true;
@@ -79,7 +90,7 @@ async function userFlavors(userId) {
 async function chaptersReadMap(userId, storyIds) {
   const flavors = await userFlavors(userId);
   const rows = await ReadingProgress.aggregate([
-    { $match: { userId: { $in: flavors }, storyId: { $in: storyIds.map(String) }, chapterId: { $ne: null } } },
+    { $match: readCreditMatch(flavors, storyIds) },
     { $group: { _id: '$storyId', chapters: { $addToSet: '$chapterId' } } },
   ]);
   const m = {};
@@ -88,7 +99,7 @@ async function chaptersReadMap(userId, storyIds) {
 }
 /* existence + access rule in one gate (404 unknown, 403 unread in read mode) */
 async function assertStoryEligible({ userId, storyId, isAdmin }) {
-  const book = (await booksByIds([storyId], 'authorId status'))[0] || null;
+  const book = (await booksByIds([storyId], 'authorId status chapterCount'))[0] || null;
   if (!book) throw err(404, 'story_not_found');
   if (isAdmin) return book;
   const flavors = await userFlavors(userId);
@@ -97,9 +108,11 @@ async function assertStoryEligible({ userId, storyId, isAdmin }) {
   const cmap = await chaptersReadMap(userId, [String(storyId)]);
   const keys = [String(storyId), String(book.id), book._id ? String(book._id) : null].filter(Boolean);
   const n = Math.max(0, ...keys.map(k => cmap[k] || 0));
-  if (n >= STORY_ACCESS_RULE.minChapters) return book;
+  // shorts: requirement caps at the book's own length (a 5-chapter short needs 5, not 15)
+  const need = Math.min(STORY_ACCESS_RULE.minChapters, Number(book.chapterCount) || STORY_ACCESS_RULE.minChapters);
+  if (n >= need) return book;
   const e = err(403, 'insufficient_reading');
-  e.required = STORY_ACCESS_RULE.minChapters;
+  e.required = need;
   e.chaptersRead = n;
   throw e;
 }
@@ -416,6 +429,16 @@ async function shareCollection({ userId, id, channel }) {
   const inc = { sharesCount: 1 };
   inc['sharesByChannel.' + ch] = 1;
   await Collection.updateOne({ id: cid }, { $inc: inc }).catch(() => {});
+  if (userId) {
+    try {
+      const { ShareEvent } = require('../models/social.model');
+      await ShareEvent.updateOne(
+        { userId: String(userId), targetType: 'collection', targetId: cid },
+        { $setOnInsert: { userId: String(userId), targetType: 'collection', targetId: cid, channel: ch } },
+        { upsert: true }
+      );
+    } catch (e) { /* analytics never break sharing */ }
+  }
   const fresh = await Collection.findOne({ id: cid }).select('sharesCount').lean();
   return { ok: true, sharesCount: (fresh && fresh.sharesCount) || 0 };
 }
@@ -427,14 +450,17 @@ async function eligibleStories({ userId }) {
     Book.find({ authorId: { $in: flavors } }).select('id title cover genre authorId').limit(200).lean(),
     LibraryItem.find({ userId: { $in: flavors } }).select('storyId').limit(500).lean(),
     ReadingProgress.aggregate([
-      { $match: { userId: { $in: flavors }, chapterId: { $ne: null } } },
+      { $match: {
+        userId: { $in: flavors }, chapterId: { $nin: [null, ''] },
+        $or: [{ finished: true }, { secondsSpent: { $gte: READ_CREDIT_MIN_SECONDS } }],
+      } },
       { $group: { _id: '$storyId', chapters: { $addToSet: '$chapterId' } } },
     ]),
   ]);
   const readMap = {};
   prog.forEach(r => { readMap[String(r._id)] = r.chapters.length; });
   const savedIds = [...new Set(saved.map(i => String(i.storyId)).filter(Boolean))].slice(0, 200);
-  const books = await booksByIds(savedIds, 'id title cover genre authorId');
+  const books = await booksByIds(savedIds, 'id title cover genre authorId chapterCount');
   const seen = new Map();
   mine.forEach(b => { if (b.id) seen.set(String(b.id), { b, mine: true }); });
   books.forEach(b => { if (b.id && !seen.has(String(b.id))) seen.set(String(b.id), { b, mine: false }); });
@@ -444,14 +470,41 @@ async function eligibleStories({ userId }) {
   for (const { b, mine: isMine } of seen.values()) {
     const keys = [String(b.id), b._id ? String(b._id) : null].filter(Boolean);
     const chapters = Math.max(0, ...keys.map(k => readMap[k] || 0));
+    const need = Math.min(rule.minChapters, Number(b.chapterCount) || rule.minChapters);
     items.push({
       id: b.id, title: b.title, cover: b.cover || '', genre: b.genre || '',
-      author: nameOf(String(b.authorId)), chaptersRead: chapters,
-      mine: isMine, eligible: rule.mode !== 'read' || isMine || chapters >= rule.minChapters,
+      author: nameOf(String(b.authorId)), chaptersRead: chapters, required: need,
+      mine: isMine, eligible: rule.mode !== 'read' || isMine || chapters >= need,
     });
   }
   items.sort((a, b2) => ((b2.eligible ? 1 : 0) - (a.eligible ? 1 : 0)) || (b2.chaptersRead - a.chaptersRead));
   return { rule, items: items.slice(0, 200) };
+}
+
+/* admin helpers (super-admin console): raw access, no gating */
+function CollectionCount(filter) { return Collection.countDocuments(filter || {}); }
+function CollectionList(filter, sort, skip, limit) {
+  return Collection.find(filter || {}).sort(sort || { updatedAt: -1 }).skip(skip || 0).limit(limit || 20).lean();
+}
+async function reportedCollectionIds() {
+  const { Report } = require('../models/editorial.model');
+  const rows = await Report.aggregate([
+    { $match: { collectionId: { $ne: null } } },
+    { $group: { _id: '$collectionId' } },
+  ]);
+  return rows.map(r => String(r._id)).filter(Boolean);
+}
+async function collectionReportsMap(ids) {
+  const { Report } = require('../models/editorial.model');
+  const list = (ids || []).map(String).filter(Boolean);
+  if (!list.length) return {};
+  const rows = await Report.aggregate([
+    { $match: { collectionId: { $in: list } } },
+    { $group: { _id: '$collectionId', total: { $sum: 1 }, pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } } } },
+  ]);
+  const m = {};
+  rows.forEach(r => { m[String(r._id)] = { total: r.total, pending: r.pending }; });
+  return m;
 }
 
 module.exports = {
@@ -459,6 +512,7 @@ module.exports = {
   deleteCollection, getStories, addStory, removeStory, loadOr404, canWrite,
   getDetail: getCollection, getStoryCards: getStories,
   followCollection, unfollowCollection, shareCollection, eligibleStories,
+  CollectionCount, CollectionList, reportedCollectionIds, collectionReportsMap,
   STORY_ACCESS_RULE, assertStoryEligible,
   normPrivacy, displayPrivacy, slugify, toCard, listCards, findByIdOrSlug,
 };

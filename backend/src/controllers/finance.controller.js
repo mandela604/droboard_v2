@@ -97,4 +97,47 @@ async function fileDispute(req, res) {
   });
 }
 
-module.exports = { earnings, transactions, methods, addMethod, deleteMethod, withdrawals, requestWithdrawal, disputes, fileDispute };
+/* ── Store settings admin (coin packs / ad rewards / bundles) ── */
+const store = require('../services/store.service');
+
+async function coinPacks(req, res) {
+  return base.wrap(res, async () => store.listPacks());
+}
+async function saveCoinPack(req, res) {
+  return base.wrap(res, async () => {
+    const out = await store.savePack(req.valid.body);
+    if (!req.valid.body.id) res.status(201);
+    return out;
+  });
+}
+async function deleteCoinPack(req, res) {
+  return base.wrap(res, async () => store.deletePack(req.valid.params.id));
+}
+async function adRewards(req, res) {
+  return base.wrap(res, async () => store.listRewards());
+}
+async function saveAdReward(req, res) {
+  return base.wrap(res, async () => {
+    const out = await store.saveReward(req.valid.body);
+    if (!req.valid.body.id) res.status(201);
+    return out;
+  });
+}
+async function deleteAdReward(req, res) {
+  return base.wrap(res, async () => store.deleteReward(req.valid.params.id));
+}
+async function bundles(req, res) {
+  return base.wrap(res, async () => store.listBundles());
+}
+async function saveBundle(req, res) {
+  return base.wrap(res, async () => {
+    const out = await store.saveBundle(req.valid.body);
+    if (!req.valid.body.id) res.status(201);
+    return out;
+  });
+}
+async function deleteBundle(req, res) {
+  return base.wrap(res, async () => store.deleteBundle(req.valid.params.id));
+}
+
+module.exports = { earnings, transactions, methods, addMethod, deleteMethod, withdrawals, requestWithdrawal, disputes, fileDispute, coinPacks, saveCoinPack, deleteCoinPack, adRewards, saveAdReward, deleteAdReward, bundles, saveBundle, deleteBundle };

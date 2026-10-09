@@ -17,6 +17,8 @@ async function main() {
   app.set('trust proxy', 1); // behind Cloudflare
   app.use(helmet());
   app.use(cors({ origin: env.corsOrigins.length ? env.corsOrigins : true, credentials: true }));
+  // Provider webhooks need EXACT raw bytes for HMAC — parse before json().
+  app.use('/api/payments/webhook', require('express').raw({ type: '*/*', limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(require('./middleware/http').generalLimiter);
@@ -37,6 +39,7 @@ async function main() {
   app.use('/api/store', require('./routes/store.routes'));
   app.use('/api/payments', require('./routes/payments.routes'));
   app.use('/api/author/finance', require('./routes/finance.routes'));
+  app.use('/api/finance', require('./routes/finance.routes')); // finance console base (finance-data.js)
   app.use('/api/author', require('./routes/author.routes'));
   app.use('/api/senior-editor', require('./routes/senior.routes'));
   app.use('/api/editor', require('./routes/editor.routes'));
@@ -52,11 +55,15 @@ async function main() {
   app.use('/api', require('./routes/feed.routes'));
   app.use('/api/ads', require('./routes/ads.routes'));
   app.use('/api/users', require('./routes/users.routes'));
+  app.use('/api/uploads', require('./routes/uploads.routes'));
   app.use('/api/statuses', require('./routes/statuses.routes'));
   app.use('/api/saves', require('./routes/saves.routes'));
   app.use('/api/referrals', require('./routes/referrals.routes'));
   app.use('/api/notifications', require('./routes/notifications.routes'));
+  app.use('/api/reports', require('./routes/reports.routes'));
   app.use('/api/search', require('./routes/search.routes'));
+  app.use('/api/marketing', require('./routes/marketing.routes'));
+  app.use('/api/tropes', require('./routes/tropes.routes'));
   app.use('/api/stories', require('./routes/engagement.routes'));
   app.use('/api/awards', require('./routes/awards.routes'));
 
@@ -65,6 +72,7 @@ async function main() {
 
   const server = http.createServer(app);
   require('./socket').init(server);
+  require('./services/scheduler.service').start(); // scheduled → live publisher
   server.listen(env.port, () => console.log('droboard api on :' + env.port));
 }
 

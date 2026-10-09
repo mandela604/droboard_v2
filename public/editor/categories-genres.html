@@ -25,7 +25,7 @@
   .btn-add:hover{background:var(--accent-2)}
 
   /* ── Stat cards ── */
-  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:22px}
   .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
   .stat-top{display:flex;align-items:center;justify-content:space-between}
   .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
@@ -135,6 +135,7 @@
     <div class="top-tabs">
       <div class="top-tab active" data-view="categories">Categories</div>
       <div class="top-tab" data-view="genres">Genres</div>
+      <div class="top-tab" data-view="tropes">Tropes</div>
     </div>
     <button class="btn-add" id="addBtn"><i class="fas fa-plus"></i> <span id="addBtnLabel">Add New Category</span></button>
   </div>
@@ -150,6 +151,11 @@
       <div class="stat-top"><div class="stat-ico green"><i class="fas fa-book"></i></div><span class="stat-delta">+6 from last month</span></div>
       <div class="stat-num">86</div>
       <div class="stat-lbl">Total Genres</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div class="stat-ico pink"><i class="fas fa-wand-magic-sparkles"></i></div><span class="stat-delta">+4 from last month</span></div>
+      <div class="stat-num">24</div>
+      <div class="stat-lbl">Total Tropes</div>
     </div>
     <div class="stat-card">
       <div class="stat-top"><div class="stat-ico blue"><i class="fas fa-shuffle"></i></div><span class="stat-delta">+3.2% from last month</span></div>

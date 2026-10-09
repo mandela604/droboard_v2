@@ -492,6 +492,17 @@
 
   /* ── COLLECTION STORY PICKER — books + library, shared by the
      create and manage sheets. Covers come from the chosen stories. ── */
+  let LIVE_STORIES = null;
+  async function fetchLiveStories() {
+    if (LIVE_STORIES) return LIVE_STORIES;
+    try {
+      const res = await fetch('/api/collections/eligible-stories', { credentials: 'include' });
+      if (!res.ok) return null;
+      const j = await res.json();
+      if (j && Array.isArray(j.items)) { LIVE_STORIES = j; return j; }
+    } catch (e) {}
+    return null;
+  }
   function eligibleStories() {
     const seen = new Set();
     const out = [];
@@ -501,6 +512,13 @@
       seen.add(k);
       out.push(s);
     };
+    if (LIVE_STORIES && Array.isArray(LIVE_STORIES.items) && LIVE_STORIES.items.length) {
+      LIVE_STORIES.items.filter(s => s.eligible !== false).forEach(s => push({
+        id: s.id, title: s.title, cat: s.genre, author: s.author,
+        cover: s.cover, badge: '', reads: '',
+      }));
+      if (out.length) return out;
+    }
     (PROFILE.books || []).forEach(b => push({ id: b.id || ('book_' + b.title), title: b.title, cat: b.cat, author: PROFILE.name, cover: b.cover, badge: '', reads: b.reads || '' }));
     (PROFILE.library || []).forEach((l, i) => push({ id: l.id || ('lib_' + i), title: l.title, cat: l.cat, author: l.author, cover: l.cover, badge: '', reads: '' }));
     return out;
@@ -535,6 +553,10 @@
     const name = document.getElementById('ncName');
     if (name) name.value = '';
     document.querySelectorAll('#ncPrivGrid .uw-genre').forEach(x => x.classList.toggle('on', x.dataset.priv === 'Public'));
+    openNewCollectionLive();
+  }
+  async function openNewCollectionLive() {
+    try { await fetchLiveStories(); } catch (e) {}
     NC_PICK = renderStoryPicker('ncStoryGrid', []);
     document.getElementById('newCollOv').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -556,7 +578,9 @@
     const stories = NC_PICK ? NC_PICK.get() : [];
     const btn = document.getElementById('ncCreateBtn');
     btn.textContent = 'Creating…'; btn.disabled = true;
-    const updated = await ProfileData.createCollection(VIEW_HANDLE, { name, privacy: priv, stories });
+    let updated = null;
+    try { updated = await ProfileData.createCollection(VIEW_HANDLE, { name, privacy: priv, stories }); }
+    catch (e) { btn.disabled = false; btn.textContent = 'Create Collection ✓'; toast('❌ ' + (e.message || 'Could not create collection')); return; }
     btn.disabled = false; btn.textContent = 'Create Collection ✓';
     if (!updated) { toast('Something went wrong — try again.'); return; }
     PROFILE = updated;
@@ -578,7 +602,9 @@
   async function confirmDeleteCollection(col) {
     if (!IS_OWNER) { toast('You can only delete your own collections.'); return; }
     if (!confirm(`Delete "${col.name}"? This cannot be undone.`)) return;
-    const updated = await ProfileData.deleteCollection(VIEW_HANDLE, col.id);
+    let updated = null;
+    try { updated = await ProfileData.deleteCollection(VIEW_HANDLE, col.id); }
+    catch (e) { toast('❌ ' + (e.message || 'Could not delete')); return; }
     if (!updated) { toast('Something went wrong — try again.'); return; }
     PROFILE = updated;
     renderCollections(PROFILE);
@@ -594,6 +620,10 @@
     if (nameEl) nameEl.value = col.name || '';
     document.querySelectorAll('#mcPrivGrid .uw-genre').forEach(x => x.classList.toggle('on', x.dataset.priv === (col.privacy || 'Public')));
     document.getElementById('mcCount').textContent = 'Tap stories to add or remove — covers update automatically.';
+    openManageCollectionLive(col);
+  }
+  async function openManageCollectionLive(col) {
+    try { await fetchLiveStories(); } catch (e) {}
     MC_PICK = renderStoryPicker('mcStoryGrid', (col.stories || []).map(s => s.id));
     document.getElementById('manageCollOv').classList.add('open');
     document.body.style.overflow = 'hidden';

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Ad Manager — Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -119,31 +120,41 @@ body{font-family:'Inter',system-ui,sans-serif}
     <div class="pl-grid">
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-house" style="color:var(--accent)"></i> Discover</div>
+        <label class="pl-check"><input type="checkbox" id="plDisOn" checked/> Ads on this page</label>
         <label class="pl-lbl">Every N stories</label><input class="pl-inp" id="plDisInt" type="number" min="1" value="6"/>
         <label class="pl-lbl">Format cycle (comma separated)</label><input class="pl-inp" id="plDisCycle" value="book, book, book, book, platform"/>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-rss" style="color:var(--blue)"></i> Feed</div>
+        <label class="pl-check"><input type="checkbox" id="plFeedOn" checked/> Ads on this page</label>
         <label class="pl-lbl">Every N posts</label><input class="pl-inp" id="plFeedInt" type="number" min="1" value="4"/>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-layer-group" style="color:var(--purple)"></i> Genre Hub</div>
+        <label class="pl-check"><input type="checkbox" id="plHubOn" checked/> Ads on this page</label>
         <label class="pl-lbl">Every N discussions</label><input class="pl-inp" id="plHubInt" type="number" min="1" value="3"/>
         <label class="pl-check"><input type="checkbox" id="plHubTop" checked/> Top promo slider</label>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-house" style="color:var(--green)"></i> Homepage</div>
-        <label class="pl-lbl">Every N hero cards</label><input class="pl-inp" id="plHomeInt" type="number" min="1" value="5"/>
+        <label class="pl-check"><input type="checkbox" id="plHomeOn" checked/> Ads on this page</label>
+        <label class="pl-lbl">Full-screen ad card after every N story cards</label><input class="pl-inp" id="plHomeInt" type="number" min="1" value="5"/>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-book-open" style="color:var(--blue)"></i> Full Reader</div>
-        <label class="pl-lbl">Ad every N chapters</label><input class="pl-inp" id="plFullInt" type="number" min="1" value="3"/>
-        <label class="pl-lbl">Ad format</label><select class="pl-inp" id="plFullFmt"><option value="auto">Auto (rotate)</option><option value="embed">Network embed</option><option value="native">Native</option><option value="book">Book (gold)</option><option value="platform">Platform</option><option value="banner">Banner</option></select>
+        <label class="pl-check"><input type="checkbox" id="plFullOn" checked/> Ads on this page</label>
+        <label class="pl-lbl">Words between in-text ads</label><input class="pl-inp" id="plFullWords" type="number" min="50" max="5000" step="50" value="300"/>
+        <label class="pl-check"><input type="checkbox" id="plFullTop" checked/> Top slot</label>
+        <label class="pl-check"><input type="checkbox" id="plFullInline" checked/> In-text slot (every N words)</label>
+        <label class="pl-check"><input type="checkbox" id="plFullBottom" checked/> Bottom slot (after chapter)</label>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-scroll" style="color:var(--amber)"></i> Scroll Reader</div>
-        <label class="pl-lbl">Ad every N chapters</label><input class="pl-inp" id="plScrollInt" type="number" min="1" value="4"/>
-        <label class="pl-lbl">Ad format</label><select class="pl-inp" id="plScrollFmt"><option value="auto">Auto (rotate)</option><option value="embed">Network embed</option><option value="native">Native</option><option value="book">Book (gold)</option><option value="platform">Platform</option><option value="banner">Banner</option></select>
+        <label class="pl-check"><input type="checkbox" id="plScrollOn" checked/> Ads on this page</label>
+        <label class="pl-lbl">Words between in-text ads</label><input class="pl-inp" id="plScrollWords" type="number" min="50" max="5000" step="50" value="300"/>
+        <label class="pl-check"><input type="checkbox" id="plScrollTop" checked/> Top slot</label>
+        <label class="pl-check"><input type="checkbox" id="plScrollInline" checked/> In-text slot (every N words)</label>
+        <label class="pl-check"><input type="checkbox" id="plScrollBottom" checked/> Bottom slot (end of page)</label>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-images" style="color:var(--purple)"></i> Library slider</div>
@@ -158,6 +169,9 @@ body{font-family:'Inter',system-ui,sans-serif}
         <div class="pl-name"><i class="fas fa-comments" style="color:var(--accent)"></i> Comments</div>
         <label class="pl-check"><input type="checkbox" id="plCommentsOn" checked/> Top ad in comments & replies</label>
         <label class="pl-lbl">Top + every N comments</label><input class="pl-inp" id="plCommentsInt" type="number" min="1" value="5"/>
+        <label class="pl-check"><input type="checkbox" id="plSlotListTop" checked/> List-top slot</label>
+        <label class="pl-check"><input type="checkbox" id="plSlotEveryNth" checked/> Every-Nth slot</label>
+        <label class="pl-check"><input type="checkbox" id="plSlotThreadTop" checked/> Thread-top slot</label>
       </div>
     </div>
     <div class="pl-actions">

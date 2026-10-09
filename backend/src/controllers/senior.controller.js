@@ -30,6 +30,26 @@ async function activity(req, res) {
   return base.wrap(res, async () => senior.activity(req.valid.query));
 }
 
+// Edit proposals: approve APPLIES content to the live book/chapter (the only
+// time an author edit takes effect). Reject leaves live untouched + note.
+async function approveChapterEdit(req, res) {
+  return base.wrap(res, async () => senior.approveChapterEdit(req.valid.params.id, req.user.id));
+}
+
+async function rejectChapterEdit(req, res) {
+  const note = req.valid.body && req.valid.body.note;
+  return base.wrap(res, async () => senior.rejectChapterEdit(req.valid.params.id, req.user.id, note));
+}
+
+async function approveBookEdit(req, res) {
+  return base.wrap(res, async () => senior.approveBookEdit(req.valid.params.id, req.user.id));
+}
+
+async function rejectBookEdit(req, res) {
+  const note = req.valid.body && req.valid.body.note;
+  return base.wrap(res, async () => senior.rejectBookEdit(req.valid.params.id, req.user.id, note));
+}
+
 // Contract sign: capture monetization pricing + lock terms.
 async function signContract(req, res) {
   return base.wrap(res, async () => {
@@ -148,6 +168,7 @@ async function sendMessage(req, res) {
 
 module.exports = {
   res, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
+  approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
   verificationRequests: (req, res) => verificationList(req, res, 'requests'),
   verificationRecent: (req, res) => verificationList(req, res, 'recent'),
   verificationHistory: (req, res) => verificationList(req, res, 'history'),

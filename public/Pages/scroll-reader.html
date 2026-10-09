@@ -88,7 +88,10 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .eb-lbl{font-size:9px;font-weight:700;color:var(--muted)}
 
 /* ══ COMMENT LINE ══ */
-.comment-line-wrap{padding:14px 0 4px}
+.comment-line-wrap{padding:14px 0 4px;margin:0 -8px}
+
+/* ══ TOP AD SLOT (mirrors discussion disc-ad: one ad above comments) ══ */
+.sl-ad{padding:10px 14px 12px;max-width:640px;margin:0 auto;}
 
 /* ══ AD SLOT ══ */
 .ad-slot{padding:30px 0 4px}
@@ -187,6 +190,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
     <div>Loading story…</div>
   </div>
   <div class="story-top" id="storyTop" style="display:none"></div>
+  <div class="sl-ad" id="slTopAd" style="display:none"></div>
   <div class="reader-col" id="readerCol"></div>
   <div style="height:40vh"></div>
 </div>
@@ -271,6 +275,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
 <script src="../component/ad-card.js"></script>
+<script src="../component/report-sheet.js"></script>
 <script src="../component/comment-section.js"></script>
 
 <!-- ═══ Data ═══ -->
@@ -278,6 +283,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/ad-service.js"></script>
 <script src="../services/reader-engagement-service.js"></script>
+<script src="../services/reader-track.js"></script>
 <script src="../services/scroll-reader-service.js?v=2"></script>
 </body>
 </html>

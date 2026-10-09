@@ -78,6 +78,20 @@
     { name:'Royal Romance', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', books:'612 books' },
   ];
 
+  /* ── TROPES (child of genre; writer tags attach to tropes later) ── */
+  var TROPES = [
+    { name:'Billionaire Boss', genre:'CEO Romance', icon:'fa-briefcase', bg:'#e3ecfd', color:'#2f7de1', books:'842', status:'active' },
+    { name:'Secret Baby', genre:'Secret Baby', icon:'fa-baby', bg:'#fef3d8', color:'#d97706', books:'761', status:'active' },
+    { name:'Enemies to Lovers', genre:'Enemies to Lovers', icon:'fa-heart-crack', bg:'#fde3e3', color:'#e0384d', books:'698', status:'active' },
+    { name:'Fake Dating', genre:'CEO Romance', icon:'fa-masks-theater', bg:'#ece3fd', color:'#7c5cfc', books:'534', status:'active' },
+    { name:'Marriage of Convenience', genre:'Arranged Marriage', icon:'fa-ring', bg:'#fef3d8', color:'#d97706', books:'477', status:'active' },
+    { name:'Fated Mates', genre:'Alpha Romance', icon:'fa-paw', bg:'#eef0f2', color:'#5b6470', books:'453', status:'active' },
+    { name:'Second Chance', genre:'Second Chance', icon:'fa-rotate-left', bg:'#ffe1eb', color:'#ff0050', books:'389', status:'active' },
+    { name:'Forced Proximity', genre:'Mafia Romance', icon:'fa-house-lock', bg:'#e7e7ea', color:'#26262b', books:'312', status:'active' },
+    { name:'Royal Secret', genre:'Royal Romance', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', books:'276', status:'active' },
+    { name:'Love Triangle', genre:'Forbidden Love', icon:'fa-triangle-exclamation', bg:'#ffe1eb', color:'#ff0050', books:'154', status:'inactive' },
+  ];
+
   /* ── ANNOUNCEMENTS ── */
   var ANNOUNCEMENT_TYPE_META = {
     update:   { label: 'Update',   icon: 'fa-rocket',        tile: 'linear-gradient(135deg,#2d2154,#5b4bcf)' },
@@ -477,6 +491,7 @@
     CATEGORIES: CATEGORIES,
     GENRES: GENRES,
     POPULAR_GENRES: POPULAR_GENRES,
+    TROPES: TROPES,
     ANNOUNCEMENT_TYPE_META: ANNOUNCEMENT_TYPE_META,
     ANNOUNCEMENTS: ANNOUNCEMENTS,
     OVERVIEW_BREAKDOWN: OVERVIEW_BREAKDOWN,

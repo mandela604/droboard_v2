@@ -175,8 +175,33 @@
   }
   function setTheme(el, theme) {
     document.body.className = theme;
+    try {
+      localStorage.setItem('dro_reader_theme', theme);
+      if (theme === 'theme-white') localStorage.setItem('droboardTheme', 'light');
+      else if (theme === 'theme-dark') localStorage.setItem('droboardTheme', 'dark');
+    } catch (e) {}
     document.querySelectorAll(".theme-opt").forEach(x => x.classList.remove("on"));
     el.classList.add("on");
+  }
+  // Readers honor the site theme: stored reader choice wins, otherwise the
+  // shared light/dark setting (discussion + every other page use it).
+  function applyStoredTheme() {
+    let theme = null;
+    try {
+      theme = localStorage.getItem('dro_reader_theme');
+      if (!theme || theme === 'theme-dark') {
+        const site = localStorage.getItem('droboardTheme');
+        if (site === 'light') theme = 'theme-white';
+        else if (!theme) theme = 'theme-dark';
+      }
+    } catch (e) {}
+    if (theme) {
+      document.body.className = theme;
+      document.querySelectorAll(".theme-opt").forEach(x => {
+        const on = (x.getAttribute('onclick') || '').indexOf("'" + theme + "'") !== -1;
+        x.classList.toggle("on", on);
+      });
+    }
   }
   function openSettings() {
     document.getElementById("settingsPanel").classList.add("open");
@@ -187,6 +212,79 @@
   let curSeasonIdx = 0;
   let curChIdx = Math.max(0, (FS.unlockedThrough || 1) - 1);
   let panelActiveSeason = curSeasonIdx;
+
+  /* ══ LIVE BOOK + READ TRACKING ══
+     ?story=<bookId> loads the real book/chapters/read-state over the demo
+     seed (demo stands on any failure). Tracking posts only for live books. */
+  let LIVE_BOOK = null;
+  function storyIdNow() { return (LIVE_BOOK && LIVE_BOOK.id) || currentStoryId; }
+  function urlStoryId() { try { return new URLSearchParams(location.search).get('story') || ''; } catch (e) { return ''; } }
+  function htmlToParas(html) {
+    const t = String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p\s*>/gi, '\n\n').replace(/<[^>]+>/g, '');
+    return t.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  }
+  async function bootLive() {
+    const sid = urlStoryId();
+    if (!sid || sid === currentStoryId) return;
+    try {
+      const [bRes, cRes] = await Promise.all([
+        fetch('/api/books/' + encodeURIComponent(sid), { credentials: 'include' }),
+        fetch('/api/books/' + encodeURIComponent(sid) + '/chapters', { credentials: 'include' }),
+      ]);
+      if (!bRes.ok || !cRes.ok) return;
+      const book = await bRes.json();
+      const cj = await cRes.json();
+      const raw = Array.isArray(cj) ? cj : (cj.items || cj.chapters || []);
+      const live = (raw || []).filter(c => ['live', 'published'].includes(String(c.status || 'live')));
+      if (!book || !book.id || !live.length) return;
+      let state = null;
+      try {
+        const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
+        if (sRes.ok) state = await sRes.json();
+      } catch (e) {}
+      applyLiveBook(book, live, state || {});
+      LIVE_BOOK = book;
+    } catch (e) {}
+  }
+  function applyLiveBook(book, live, state) {
+    FS.id = book.id; FS.title = book.title || FS.title;
+    FS.category = book.genre || ''; FS.cover = book.cover || FS.cover;
+    const unlocked = new Set((state.unlocked || []).map(String));
+    const prog = state.progress || {};
+    const chs = live.map(c => {
+      const key = String(c.id || c.n);
+      const p = prog[key] || prog[String(c.n)] || null;
+      const done = !!(p && p.finished);
+      const open = !book.vipLocked || +c.n <= 3 || unlocked.has(key) || unlocked.has(String(c.n)) || done;
+      return { n: c.n, title: c.title, words: c.words || 0, liveId: c.id, state: done ? 'done' : (open ? 'current' : 'locked') };
+    });
+    live.forEach(c => { CHAPTER_CONTENT['s1c' + c.n] = htmlToParas(c.content).slice(0, 60); });
+    SEASONS_DATA.length = 0;
+    SEASONS_DATA.push({ label: 'Season 1', chs });
+    FS.unlockedThrough = chs.filter(c => c.state !== 'locked').length || 1;
+    // initial position: URL ?ch= wins (applyReaderDeepLink), else continue point
+    try {
+      const urlCh = parseInt(new URLSearchParams(location.search).get('ch'), 10) || 0;
+      if (!urlCh && state.lastChapterId) {
+        const idx = chs.findIndex(c => String(c.liveId) === String(state.lastChapterId) || +c.n === +state.lastChapterId);
+        if (idx > -1) { curSeasonIdx = 0; curChIdx = idx; panelActiveSeason = 0; return; }
+      }
+      const firstOpen = chs.findIndex(c => c.state !== 'locked');
+      curSeasonIdx = 0; curChIdx = Math.max(0, firstOpen); panelActiveSeason = 0;
+    } catch (e) {}
+  }
+
+  /* per-chapter read session: flushed on leave, finished at 85% scroll */
+  let TrackSession = null, TrackScrollBound = false;
+  function TrackLeave() { try { if (TrackSession) TrackSession.stop(); } catch (e) {} TrackSession = null; }
+  function TrackScrollCheck() {
+    if (!TrackSession) return;
+    try {
+      const sb = document.getElementById('scrollBody');
+      const max = sb.scrollHeight - sb.clientHeight;
+      if (max > 0 && (sb.scrollTop / max) >= 0.85) TrackSession.finish();
+    } catch (e) {}
+  }
 
   function renderSeasonTabs() {
     document.getElementById("seasonTabs").innerHTML = SEASONS_DATA.map((s, i) =>
@@ -287,11 +385,19 @@
   }
 
   function renderChapterView(seasonIdx, chIdx) {
+    TrackLeave();
     curSeasonIdx = seasonIdx;
     curChIdx = chIdx;
     const season = SEASONS_DATA[seasonIdx];
     const ch = season.chs[chIdx];
     const locked = ch.state === "locked";
+    if (!locked && window.ReaderTrack && LIVE_BOOK) {
+      TrackSession = ReaderTrack.session(storyIdNow(), (ch.liveId || ch.n), ch.words || 0);
+      if (!TrackScrollBound) {
+        TrackScrollBound = true;
+        try { document.getElementById('scrollBody').addEventListener('scroll', TrackScrollCheck, { passive: true }); } catch (e) {}
+      }
+    }
 
     document.getElementById("chTitleEl").textContent = ch.title;
     document.getElementById("chMetaSC").innerHTML = '<i class="fas fa-book-open" style="font-size:8px"></i> S' + (seasonIdx + 1) + " · Ch " + ch.n;
@@ -341,10 +447,11 @@
       let htmlParas = "";
       let wordCount = 0;
       let adIdx = 0;
+      const gap = readerWords();
       paras.forEach(p => {
         htmlParas += "<p>" + p + "</p>";
         wordCount += countWords(p);
-        if (wordCount >= 300) {
+        if (wordCount >= gap) {
           if (!isPremiumUser()) {
             let adHtml = "";
             const pool = (window._fullReaderBanners && window._fullReaderBanners.length) ? window._fullReaderBanners : null;
@@ -378,11 +485,13 @@
 
     const existingCard = document.getElementById("unlockCard");
     if (existingCard) existingCard.remove();
-    // engagement mount (polls + predictions) — reused across chapters
+    // engagement mount (polls + predictions) — reused across chapters.
+    // Anchored after the bottom ad slot when present.
     let engMount = document.getElementById("readerEngMount");
     if (engMount) engMount.remove();
     if (!locked && window.ReaderEngagement) {
-      storyTextEl.insertAdjacentHTML("afterend", '<div id="readerEngMount" style="max-width:680px;margin:0 auto;padding:0 22px"></div>');
+      const anchor = document.getElementById('chBottomAd') || storyTextEl;
+      anchor.insertAdjacentHTML("afterend", '<div id="readerEngMount" style="max-width:680px;margin:0 auto;padding:0 22px"></div>');
       engMount = document.getElementById("readerEngMount");
       try { window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || ""); } catch (e) {}
     }
@@ -554,14 +663,36 @@
     });
   }
 
-  /* ══ SPONSORED AD — via component ══ */
+  /* ══ SPONSORED AD — via component ══
+     Three marketing-programmed slots: top (above chapter), per-N-words
+     inline, bottom (after chapter, before engagement). Gap N comes from
+     placement.wordsPerSlot (default 300). */
+  let READER_WORDS = 300;
+  function readerWords() { return Math.min(2000, Math.max(50, parseInt(READER_WORDS, 10) || 300)); }
+  function ensureBottomAd() {
+    let el = document.getElementById('chBottomAd');
+    if (!el) {
+      const st = document.getElementById('storyText');
+      if (!st || !st.parentNode) return null;
+      el = document.createElement('div');
+      el.id = 'chBottomAd'; el.className = 'ad-slot';
+      el.setAttribute('data-slot', 'fullReader:bottom');
+      el.style.display = 'none';
+      st.parentNode.insertBefore(el, st.nextSibling);
+    }
+    return el;
+  }
   function initAdSlot() {
     function track(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
-    async function managedPool() {
+    async function managedPool(slot) {
       const out = [];
-      const p = await AdService.getAds({ page: "fullReader" });
+      const p = await AdService.getAds({ page: "fullReader", slot: slot || "fullReader:per-300-words" });
       let fmt = 'auto';
-      try { const pl = await AdService.getPlacement("fullReader"); fmt = (pl && pl.format) || 'auto'; } catch (e) {}
+      try {
+        const pl = await AdService.getPlacement("fullReader");
+        fmt = (pl && pl.format) || 'auto';
+        if (pl && pl.wordsPerSlot) READER_WORDS = Math.min(2000, Math.max(50, parseInt(pl.wordsPerSlot, 10) || 300));
+      } catch (e) {}
       const allow = function (t) {
         if (!fmt || fmt === 'auto') return true;
         if (fmt === 'book') return t === 'storyPromo';
@@ -574,7 +705,12 @@
       (p.banner || []).forEach(ad => out.push({ type: "banner", ad }));
       return out.filter(function (item) { return allow(item.type); });
     }
-    (window.AdService ? managedPool().catch(() => []) : Promise.resolve([])).then(function (pool) {
+    (window.AdService ? Promise.all([
+      managedPool("fullReader:top").catch(() => []),
+      managedPool("fullReader:per-300-words").catch(() => []),
+      managedPool("fullReader:bottom").catch(() => []),
+    ]) : Promise.resolve([[], [], []])).then(function (pools) {
+      const topPool = pools[0] || [], pool = pools[1] || [], bottomPool = pools[2] || [];
       window._fullReaderBanners = pool.filter(function (p) { return p && p.ad; });
       // pool arrived after first paint: re-render current chapter once so
       // in-chapter slots fill with real ads instead of staying empty.
@@ -584,9 +720,9 @@
         }
       } catch (e) {}
       const slot = document.getElementById("adSlot");
-      if (!pool.length) { document.getElementById("adSlotWrap").style.display = "none"; return; }
+      if (!topPool.length) { document.getElementById("adSlotWrap").style.display = "none"; return; }
 
-      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      const chosen = topPool[Math.floor(Math.random() * topPool.length)];
       function renderChosen(item) {
         if (item.type === "embed" && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(item.ad);
         if (item.type === "native") return DroboardAdCard.renderNative(item.ad);
@@ -597,13 +733,28 @@
       track(chosen.ad && chosen.ad.id, "impression");
 
       DroboardAdCard.attach(slot, {
-        getAds: () => pool.map(p => p.ad),
+        getAds: () => topPool.map(p => p.ad),
         onOpen(ad) { if (ad) track(ad.id, "click"); if (ad.url) window.open(ad.url, "_blank"); else toast("Opening " + (ad.brand || "sponsor") + "…"); },
         onLike(ad) { ad.liked = !ad.liked; ad.likes += ad.liked ? 1 : -1; slot.innerHTML = DroboardAdCard.renderNative(ad); },
         onComment(ad) { toast(fmtN(ad.comments) + " comments"); },
         onShare(ad) { window.openShareModal({ title: ad.heading || ad.title || ad.brand, sub: "Sponsored · " + ad.brand, img: ad.image || ad.cover || "", url: ad.url || "https://droboard.app" }); },
         onCta(ad) { if (ad) track(ad.id, "click"); toast("Opening " + (ad.brand || "sponsor") + "…"); if (ad.url) window.open(ad.url, "_blank"); },
       });
+
+      // bottom slot: after the chapter, before engagement
+      try {
+        const bottomHost = ensureBottomAd();
+        if (bottomHost) {
+          if (!bottomPool.length) { bottomHost.style.display = 'none'; }
+          else {
+            const bItem = bottomPool[0];
+            bottomHost.innerHTML = renderChosen(bItem);
+            bottomHost.style.display = '';
+            bottomHost.dataset.filled = '1';
+            track(bItem.ad && bItem.ad.id, "impression");
+          }
+        }
+      } catch (e) {}
     });
   }
 
@@ -682,12 +833,18 @@
   }
 
   /* ══ INIT ══ */
-  function init() {
+  async function init() {
+    applyStoredTheme();
     // Shared coin sheet owns the wallet now — attach once (demo starts at 45).
     if (window.DroboardReader) {
       DroboardReader.attach({ onBalanceChange: updateCoinPill, onBuyCoins: buyCoinsViaSheet });
       DroboardReader.setBalance(45);
     }
+    // top slot lives above the chapter: move the wrap up once (no HTML change)
+    try {
+      const wrap = document.getElementById('adSlotWrap'), st = document.getElementById('storyText');
+      if (wrap && st && st.parentNode) st.parentNode.insertBefore(wrap, st);
+    } catch (e) {}
     wireStaticChrome();
     renderTeams();
     renderSeasonTabs();
@@ -697,6 +854,8 @@
     initComments();
     initAdSlot();
     updateCoinPill();
+    try { await bootLive(); } catch (e) {}
+    if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
     applyReaderDeepLink();
     renderChapterView(curSeasonIdx, curChIdx);
   }

@@ -118,9 +118,34 @@ async function popularGenres(req, res) {
   return base.wrap(res, async () => svc.popularGenres());
 }
 
+async function listTropes(req, res) {
+  return base.wrap(res, async () => svc.listTropes(req.valid.query));
+}
+
+async function createTrope(req, res) {
+  return base.wrap(res, async () => {
+    const out = await svc.createTrope(req.valid.body);
+    res.status(201);
+    return out;
+  });
+}
+
+async function updateTrope(req, res) {
+  return base.wrap(res, async () => svc.updateTrope(req.valid.params.id, req.valid.body));
+}
+
+async function deleteTrope(req, res) {
+  return base.wrap(res, async () => svc.deleteTrope(req.valid.params.id));
+}
+
+async function toggleTropeStatus(req, res) {
+  return base.wrap(res, async () => svc.toggleTropeStatus(req.valid.params.id));
+}
+
 module.exports = {
   listBooks, getBook, flagBook, unflagBook, genres,
   tags, sections, library, placements, addPlacement, updatePlacement, removePlacement, history, refeature,
   listCategories, createCategory, updateCategory, deleteCategory, toggleCategoryStatus,
   listGenres, createGenre, updateGenre, deleteGenre, toggleGenreStatus, popularGenres,
+  listTropes, createTrope, updateTrope, deleteTrope, toggleTropeStatus,
 };

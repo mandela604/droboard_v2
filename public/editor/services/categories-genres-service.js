@@ -61,6 +61,19 @@ const POPULAR_GENRES = [
   { name:'Royal Romance', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', books:'612 books' },
 ];
 
+const TROPES = [
+  { name:'Billionaire Boss', genre:'CEO Romance', icon:'fa-briefcase', bg:'#e3ecfd', color:'#2f7de1', books:'842', status:'active' },
+  { name:'Secret Baby', genre:'Secret Baby', icon:'fa-baby', bg:'#fef3d8', color:'#d97706', books:'761', status:'active' },
+  { name:'Enemies to Lovers', genre:'Enemies to Lovers', icon:'fa-heart-crack', bg:'#fde3e3', color:'#e0384d', books:'698', status:'active' },
+  { name:'Fake Dating', genre:'CEO Romance', icon:'fa-masks-theater', bg:'#ece3fd', color:'#7c5cfc', books:'534', status:'active' },
+  { name:'Marriage of Convenience', genre:'Arranged Marriage', icon:'fa-ring', bg:'#fef3d8', color:'#d97706', books:'477', status:'active' },
+  { name:'Fated Mates', genre:'Alpha Romance', icon:'fa-paw', bg:'#eef0f2', color:'#5b6470', books:'453', status:'active' },
+  { name:'Second Chance', genre:'Second Chance', icon:'fa-rotate-left', bg:'#ffe1eb', color:'#ff0050', books:'389', status:'active' },
+  { name:'Forced Proximity', genre:'Mafia Romance', icon:'fa-house-lock', bg:'#e7e7ea', color:'#26262b', books:'312', status:'active' },
+  { name:'Royal Secret', genre:'Royal Romance', icon:'fa-crown', bg:'#ece3fd', color:'#7c5cfc', books:'276', status:'active' },
+  { name:'Love Triangle', genre:'Forbidden Love', icon:'fa-triangle-exclamation', bg:'#ffe1eb', color:'#ff0050', books:'154', status:'inactive' },
+];
+
 /* ═══════════════════════════════════════════════════════════
    STATE
    ═══════════════════════════════════════════════════════════ */
@@ -131,23 +144,53 @@ function renderGenresTable(list){
     </tr>`).join('');
 }
 
+function renderTropesTable(list){
+  document.getElementById('tableHead').innerHTML = `<tr>
+    <th>Trope Name</th><th>Genre</th><th>Books</th><th>Status</th><th>Actions</th>
+  </tr>`;
+  const body = document.getElementById('tableBody');
+  if (!list.length){
+    body.innerHTML = `<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No tropes match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,8).map(t => `
+    <tr>
+      <td data-label="Trope Name">
+        <div class="cat-cell">
+          <div class="cat-icn" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
+          <div class="cat-name">${t.name}</div>
+        </div>
+      </td>
+      <td data-label="Genre" class="plain-cell">${t.genre}</td>
+      <td data-label="Books" class="plain-cell">${t.books}</td>
+      <td data-label="Status">${statusPillHtml(t.status)}</td>
+      <td data-label="Actions">
+        <div class="actions-cell">
+          <button class="act-btn" title="Edit" onclick="toast('Editing \\'${t.name}\\'…')"><i class="fas fa-pen"></i></button>
+          <button class="act-btn" title="More" onclick="toast('More actions for \\'${t.name}\\'')"><i class="fas fa-ellipsis"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
 function currentFiltered(){
   const q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
-  const source = currentView === 'categories' ? CATEGORIES : GENRES;
+  const source = currentView === 'categories' ? CATEGORIES : (currentView === 'genres' ? GENRES : TROPES);
   if (!q) return source;
-  return source.filter(x => x.name.toLowerCase().includes(q) || (x.desc && x.desc.toLowerCase().includes(q)) || (x.cat && x.cat.toLowerCase().includes(q)));
+  return source.filter(x => x.name.toLowerCase().includes(q) || (x.desc && x.desc.toLowerCase().includes(q)) || (x.cat && x.cat.toLowerCase().includes(q)) || (x.genre && x.genre.toLowerCase().includes(q)));
 }
 
 function refresh(){
   const list = currentFiltered();
   if (currentView === 'categories') renderCategoriesTable(list);
-  else renderGenresTable(list);
+  else if (currentView === 'genres') renderGenresTable(list);
+  else renderTropesTable(list);
   renderPageInfo(list.length);
 }
 
 function renderPageInfo(count){
-  const label = currentView === 'categories' ? 'categories' : 'genres';
-  const total = currentView === 'categories' ? 18 : 86;
+  const label = currentView === 'categories' ? 'categories' : (currentView === 'genres' ? 'genres' : 'tropes');
+  const total = currentView === 'categories' ? 18 : (currentView === 'genres' ? 86 : 24);
   const shown = Math.min(8, count);
   document.getElementById('pageInfo').innerHTML = `Showing <b>1</b> to <b>${shown}</b> of <b>${total}</b> ${label}`;
 }
@@ -166,7 +209,7 @@ function renderPopularGenres(){
 /* ── Pagination (visual, matches book-management.html pattern) ── */
 function renderPagination(){
   const wrap = document.getElementById('pageBtns');
-  const pages = currentView === 'categories' ? [1,2,3] : [1,2,3,4,5,'...',11];
+  const pages = currentView === 'categories' ? [1,2,3] : (currentView === 'genres' ? [1,2,3,4,5,'...',11] : [1,2,3]);
   wrap.innerHTML = `<button class="pg-btn" id="pgPrev" disabled><i class="fas fa-chevron-left"></i></button>` +
     pages.map(p => p === '...' ? `<span class="pg-dots" style="color:var(--text-faint);font-size:12px;padding:0 2px">…</span>` : `<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('') +
     `<button class="pg-btn" id="pgNext"><i class="fas fa-chevron-right"></i></button>`;
@@ -186,9 +229,12 @@ function bindEvents(){
       document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentView = tab.dataset.view;
-      document.getElementById('tableTitle').textContent = currentView === 'categories' ? 'All Categories' : 'All Genres';
-      document.getElementById('addBtnLabel').textContent = currentView === 'categories' ? 'Add New Category' : 'Add New Genre';
-      document.getElementById('tableSearch').placeholder = currentView === 'categories' ? 'Search categories...' : 'Search genres...';
+      const titles = { categories: 'All Categories', genres: 'All Genres', tropes: 'All Tropes' };
+      const adds = { categories: 'Add New Category', genres: 'Add New Genre', tropes: 'Add New Trope' };
+      const phs = { categories: 'Search categories...', genres: 'Search genres...', tropes: 'Search tropes...' };
+      document.getElementById('tableTitle').textContent = titles[currentView];
+      document.getElementById('addBtnLabel').textContent = adds[currentView];
+      document.getElementById('tableSearch').placeholder = phs[currentView];
       document.getElementById('tableSearch').value = '';
       renderPagination();
       refresh();
@@ -196,7 +242,7 @@ function bindEvents(){
   });
   /* ── Add button + search wiring ── */
   document.getElementById('addBtn').addEventListener('click', () => {
-    toast(currentView === 'categories' ? 'Opening new category form…' : 'Opening new genre form…');
+    toast(currentView === 'categories' ? 'Opening new category form…' : (currentView === 'genres' ? 'Opening new genre form…' : 'Opening new trope form…'));
   });
   document.getElementById('tableSearch').addEventListener('input', refresh);
 }

@@ -16,7 +16,7 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal }, opts || {}));
+      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal, credentials: 'include' }, opts || {}));
       clearTimeout(timer);
       if (!res.ok) throw new Error('Bad response: ' + res.status);
       return await res.json();

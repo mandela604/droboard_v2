@@ -1,41 +1,107 @@
 'use strict';
+// Verify-first purchase controller. Every channel verifies with its
+// provider and asserts the verified amount against the pack catalog
+// BEFORE crediting. Coins come from the catalog by packCode, never from
+// client claims. Missing provider credentials fail closed (503).
 const wallet = require('../services/wallet.service');
+const verify = require('../services/payments-verify.service');
 const base = require('./base.controller');
 
-// Demo verify: accept receipt, credit on success.
-// LIVE: verify signature/token with Play Developer API / App Store Server
-// API / Paystack API BEFORE crediting. Never trust client claims.
-async function verifyAndCredit({ userId, kind, receipt, expectedCoins, fiatAmount, fiatCurrency }) {
-  if (!receipt) { const e = new Error('no_receipt'); e.status = 400; throw e; }
-  // TODO live verification per channel goes here; reject on failure.
+function storeRefFor(channel, orderId) { return channel + ':' + orderId; }
+
+async function creditVerified({ userId, pack, verified, channel, packCode }) {
+  verify.assertPackAmount(pack, verified.amount, verified.currency);
   return wallet.creditPurchase({
-    userId, coins: expectedCoins, fiatAmount, fiatCurrency: fiatCurrency || 'NGN',
-    channel: kind, storeRef: typeof receipt === 'string' ? receipt : (receipt.token || receipt.reference || ''),
+    userId, coins: pack.coins,
+    fiatAmount: verified.amount, fiatCurrency: verified.currency || 'NGN',
+    channel, storeRef: storeRefFor(channel, verified.orderId), packCode,
   });
 }
 
+// Web (Paystack): client sends the transaction reference + packCode.
 async function paystack(req, res) {
-  return base.wrap(res, async () => verifyAndCredit({
-    userId: req.user.id, kind: 'web',
-    receipt: req.valid.body.reference, expectedCoins: req.valid.body.coins,
-    fiatAmount: req.valid.body.amount, fiatCurrency: req.valid.body.currency,
-  }));
+  return base.wrap(res, async () => {
+    const { reference, packCode } = req.valid.body;
+    const v = await verify.verifyPaystack({ reference });
+    const pack = await verify.lookupPack(packCode);
+    return creditVerified({ userId: req.user.id, pack, verified: v, channel: 'paystack', packCode: pack.code });
+  });
 }
 
+// Web (Flutterwave): client sends the transaction id + packCode.
+async function flutterwave(req, res) {
+  return base.wrap(res, async () => {
+    const { transactionId, packCode } = req.valid.body;
+    const v = await verify.verifyFlutterwave({ transactionId });
+    const pack = await verify.lookupPack(packCode);
+    return creditVerified({ userId: req.user.id, pack, verified: v, channel: 'flutterwave', packCode: pack.code });
+  });
+}
+
+// App (Google Play Billing): Play Console product IDs must equal pack codes.
 async function play(req, res) {
-  return base.wrap(res, async () => verifyAndCredit({
-    userId: req.user.id, kind: 'android-app',
-    receipt: req.valid.body.purchaseToken, expectedCoins: req.valid.body.coins,
-    fiatAmount: req.valid.body.amount, fiatCurrency: req.valid.body.currency,
-  }));
+  return base.wrap(res, async () => {
+    const { purchaseToken, productId } = req.valid.body;
+    const v = await verify.verifyPlay({ purchaseToken, productId });
+    const pack = await verify.lookupPack(productId);
+    return creditVerified({ userId: req.user.id, pack, verified: v, channel: 'play', packCode: pack.code });
+  });
 }
 
+// iOS App Store: not wired (app uses Google Play). Fail closed.
 async function appstore(req, res) {
-  return base.wrap(res, async () => verifyAndCredit({
-    userId: req.user.id, kind: 'ios-app',
-    receipt: req.valid.body.transactionId, expectedCoins: req.valid.body.coins,
-    fiatAmount: req.valid.body.amount, fiatCurrency: req.valid.body.currency,
-  }));
+  return base.wrap(res, async () => {
+    const e = new Error('appstore_not_configured');
+    e.status = 501;
+    throw e;
+  });
 }
 
-module.exports = { paystack, play, appstore };
+/* ── Webhooks (provider -> server, no auth; signature verified).
+   NOTE: express.raw must parse these routes (see server.js) so the HMAC
+   runs over exact bytes. Each webhook re-verifies via the provider API,
+   then credits idempotently (ledger key = channel:orderId). */
+
+// Paystack sends metadata (set at init: { userId, packCode }).
+async function paystackWebhook(req, res) {
+  return base.wrap(res, async () => {
+    const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body || {}));
+    if (!verify.verifyPaystackSig(raw, req.headers['x-paystack-signature'])) {
+      const e = new Error('bad_webhook_signature');
+      e.status = 401;
+      throw e;
+    }
+    let event;
+    try { event = JSON.parse(raw.toString('utf8')); } catch (e) { throw Object.assign(new Error('bad_webhook_body'), { status: 400 }); }
+    if (!event || event.event !== 'charge.success' || !event.data) return { ok: true, ignored: true };
+    const meta = event.data.metadata || {};
+    if (!meta.userId || !meta.packCode) throw Object.assign(new Error('webhook_missing_metadata'), { status: 400 });
+    const v = await verify.verifyPaystack({ reference: event.data.reference });
+    const pack = await verify.lookupPack(meta.packCode);
+    return creditVerified({ userId: String(meta.userId), pack, verified: v, channel: 'paystack', packCode: pack.code });
+  });
+}
+
+// Flutterwave sends meta (set at charge: { userId, packCode }).
+async function flutterwaveWebhook(req, res) {
+  return base.wrap(res, async () => {
+    if (!verify.verifyFlwHash(req.headers['verif-hash'])) {
+      const e = new Error('bad_webhook_signature');
+      e.status = 401;
+      throw e;
+    }
+    let event = req.body;
+    if (Buffer.isBuffer(event)) {
+      try { event = JSON.parse(event.toString('utf8')); } catch (e) { throw Object.assign(new Error('bad_webhook_body'), { status: 400 }); }
+    }
+    if (!event || event.event !== 'charge.completed' || !event.data) return { ok: true, ignored: true };
+    const meta = event.data.meta || event.data.metadata || {};
+    if (!meta.userId || !meta.packCode) throw Object.assign(new Error('webhook_missing_metadata'), { status: 400 });
+    const txId = event.data.id || event.data.tx_ref;
+    const v = await verify.verifyFlutterwave({ transactionId: txId });
+    const pack = await verify.lookupPack(meta.packCode);
+    return creditVerified({ userId: String(meta.userId), pack, verified: v, channel: 'flutterwave', packCode: pack.code });
+  });
+}
+
+module.exports = { paystack, flutterwave, play, appstore, paystackWebhook, flutterwaveWebhook };

@@ -32,6 +32,12 @@ function renderVars(text, vars) {
   });
 }
 
+// Templates live ONLY in the admin email-templates module (EmailTemplate
+// docs keyed by `key`, {{var}} interpolation). There are NO built-in bodies:
+// a templateKey with no matching doc fails closed with missing_template,
+// so every email readers receive comes from what admin defined. New email
+// types = create a template doc. Zero code changes, ever.
+
 async function loadTemplate(key) {
   if (!key) return null;
   try {
@@ -77,10 +83,12 @@ async function deliver({ to, subject, html, text, from }) {
 }
 
 // Any-type sender: explicit content, or a stored template + vars.
+// templateKey with no matching doc fails closed (missing_template:<key>).
 async function sendMail({ to, subject, html, text, templateKey, vars, from }) {
   if (!to) throw Object.assign(new Error('missing_recipient'), { status: 400 });
   let tpl = null;
   if (templateKey) tpl = await loadTemplate(templateKey);
+  if (templateKey && !tpl) throw Object.assign(new Error('missing_template:' + templateKey), { status: 500 });
   const finalSubject = subject || (tpl ? renderVars(tpl.subject, vars) : '');
   const finalHtml = html || (tpl ? renderVars(tpl.body, vars) : '');
   if (!finalSubject || !finalHtml) throw Object.assign(new Error('missing_content'), { status: 400 });

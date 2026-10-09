@@ -131,6 +131,35 @@
     return id;
   }
 
+  /* Live reach: pull /api/marketing/audience-catalog and patch the demo
+     numbers in place (same array refs, so ad-setup screens pick it up).
+     Anonymous/offline -> demo figures stand. */
+  function refreshCatalog() {
+    try {
+      return fetch('/api/marketing/audience-catalog', { credentials: 'include' }).then(function (r) {
+        if (!r.ok) return null;
+        return r.json();
+      }).then(function (j) {
+        if (!j) return;
+        (j.segments || []).forEach(function (s) {
+          for (var i = 0; i < SEGMENTS.length; i++) {
+            if (SEGMENTS[i].id === s.id && s.reach != null) SEGMENTS[i].reach = s.reach;
+          }
+        });
+        if (Array.isArray(j.genres) && j.genres.length) {
+          GENRES.length = 0;
+          j.genres.forEach(function (g) { if (g.name) GENRES.push({ name: g.name, count: g.count || 0 }); });
+        }
+        if (j.totalReaders) {
+          TOTAL_READERS = j.totalReaders;
+          if (window.AdSetupData) window.AdSetupData.TOTAL_READERS = TOTAL_READERS;
+        }
+      }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  }
+  refreshCatalog();
+  try { setInterval(refreshCatalog, 10 * 60 * 1000); } catch (e) {}
+
   /* Goal intents: what the marketer wants to promote. Each maps to the
      right card format, so setup feels guided (Facebook-style) while the
      engine underneath stays format-driven. */
@@ -155,5 +184,6 @@
     TOTAL_READERS: TOTAL_READERS,
     estimateAudience: estimateAudience,
     segmentLabel: segmentLabel,
+    refreshCatalog: refreshCatalog,
   };
 })();

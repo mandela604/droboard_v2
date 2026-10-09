@@ -90,7 +90,7 @@ button{font-family:inherit}
 .uz-file-sub{font-size:9.5px;color:var(--tx-faint);margin-top:1px}
 .uz-file-remove{margin-left:auto;width:26px;height:26px;border-radius:50%;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;flex-shrink:0}
 
-/* ── TOGGLE ROW (continue series) ── */
+/* ── TOGGLE ROW (continue book) ── */
 .tog-row{display:flex;align-items:center;justify-content:space-between;background:var(--l1);border:1.5px solid var(--bd);border-radius:14px;padding:13px 15px;cursor:pointer;transition:.2s;user-select:none}
 .tog-row.on{background:rgba(255,0,80,.05);border-color:rgba(255,0,80,.3)}
 .tog-label{font-size:13px;font-weight:700;color:var(--tx-high)}
@@ -102,7 +102,7 @@ button{font-family:inherit}
 .tog2-th{width:18px;height:18px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .tog2 input:checked + .tog2-tr .tog2-th{transform:translateX(18px)}
 
-/* series dropdown */
+/* book dropdown */
 .continue-block{display:none;margin-top:12px}
 .continue-block.open{display:block}
 .sdd-wrap{position:relative}
@@ -363,15 +363,15 @@ button{font-family:inherit}
         <div class="type-ico"><i class="fas fa-feather"></i></div>
         <div class="type-body">
           <div class="type-name">Short Story</div>
-          <div class="type-desc">A single, self-contained piece. No seasons — just one complete read.</div>
+          <div class="type-desc">A focused story of up to 25 chapters. No seasons — just one complete read.</div>
         </div>
       </div>
-      <div class="type-card" data-type="series" onclick="selectType('series')">
+      <div class="type-card" data-type="long" onclick="selectType('long')">
         <div class="type-check"><i class="fas fa-check"></i></div>
         <div class="type-ico"><i class="fas fa-book-open"></i></div>
         <div class="type-body">
-          <div class="type-name">Series</div>
-          <div class="type-desc">An ongoing story told across multiple chapters.</div>
+          <div class="type-name">Long Story</div>
+          <div class="type-desc">An ongoing story told across as many chapters as it needs. No seasons.</div>
         </div>
       </div>
     </div>
@@ -395,18 +395,18 @@ button{font-family:inherit}
     <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="handleFileSelect(this)"/>
   </div>
 
-  <!-- ═══ STAGE: SERIES LINK (series only) ═══ -->
+  <!-- ═══ STAGE: BOOK LINK (long only) ═══ -->
   <div class="stage" data-key="link">
     <div class="stage-hd">
       <div class="stage-eyebrow">Step</div>
-      <div class="stage-title">New series, or continuing one?</div>
-      <div class="stage-desc">Link this chapter to an existing series and we'll auto-fill the season, chapter number, category and cover.</div>
+      <div class="stage-title">New story, or continuing one?</div>
+      <div class="stage-desc">Link these chapters to one of your existing books and we'll auto-fill the chapter number, category and cover.</div>
     </div>
 
     <div class="tog-row" id="contTogRow" onclick="handleToggleClick(event)">
       <div>
-        <div class="tog-label">📂 Continue an existing series?</div>
-        <div class="tog-sub">Pick a series you already have</div>
+        <div class="tog-label">📚 Continue an existing book?</div>
+        <div class="tog-sub">Pick a book you already have</div>
       </div>
       <label class="tog2" onclick="event.stopPropagation()">
         <input type="checkbox" id="contChk" onchange="handleToggleChange()"/>
@@ -417,7 +417,7 @@ button{font-family:inherit}
     <div class="continue-block" id="continueBlock">
       <div class="sdd-wrap" id="sddWrap">
         <div class="sdd-trigger" id="sddTrigger" onclick="toggleDropdown()">
-          <div id="sddFace"><span class="sdd-ph">Tap to choose a series…</span></div>
+          <div id="sddFace"><span class="sdd-ph">Tap to choose a book…</span></div>
           <i class="fas fa-chevron-down sdd-arrow" id="sddArrow"></i>
         </div>
         <div class="sdd-menu" id="sddMenu"></div>
@@ -428,23 +428,13 @@ button{font-family:inherit}
           <div class="ss-name" id="ssName"></div>
           <div class="ss-meta" id="ssMeta"></div>
         </div>
-        <button class="ss-clear" onclick="clearSeriesChoice()">✕ Change</button>
+        <button class="ss-clear" onclick="clearBookChoice()">✕ Change</button>
       </div>
     </div>
 
-    <div class="field-group" style="margin-top:18px" id="newSeriesTitleFg">
-      <div class="field-label">Series Title</div>
-      <input class="tf-input" id="seriesTitleInp" placeholder="e.g. His Secret and Her Shadow" oninput="markUnsaved();updateNavButtons()"/>
-    </div>
-    <div class="field-row">
-      <div>
-        <div class="field-label">Season</div>
-        <input class="tf-input" id="seasonInp" type="number" value="1" min="1" max="99"/>
-      </div>
-      <div>
-        <div class="field-label">Chapter #</div>
-        <input class="tf-input" id="chapterNumInp" type="number" value="1" min="1"/>
-      </div>
+    <div class="field-group" style="margin-top:18px" id="newBookTitleFg">
+      <div class="field-label">Story Title</div>
+      <input class="tf-input" id="bookTitleInp" placeholder="e.g. His Secret and Her Shadow" oninput="markUnsaved();updateNavButtons()"/>
     </div>
   </div>
 
@@ -574,12 +564,6 @@ button{font-family:inherit}
     </div>
     <div class="sched-row" id="schedRow">
       <input class="tf-input" type="datetime-local" id="schedDateInp"/>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-row"><div><div class="settings-row-label">Allow comments</div><div class="settings-row-sub">Readers can comment on your story</div></div><label class="tog2"><input type="checkbox" id="setComments" checked/><div class="tog2-tr"><div class="tog2-th"></div></div></label></div>
-      <div class="settings-row"><div><div class="settings-row-label">Allow tips</div><div class="settings-row-sub">Readers can send you money</div></div><label class="tog2"><input type="checkbox" id="setTips" checked/><div class="tog2-tr"><div class="tog2-th"></div></div></label></div>
-      <div class="settings-row"><div><div class="settings-row-label">Visible to everyone</div><div class="settings-row-sub">Off = followers only</div></div><label class="tog2"><input type="checkbox" id="setPublic" checked/><div class="tog2-tr"><div class="tog2-th"></div></div></label></div>
     </div>
 
     <div class="agree-row">

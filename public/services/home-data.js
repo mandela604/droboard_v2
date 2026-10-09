@@ -18,18 +18,51 @@
     // demo — unify all homepage demo slices from central-demo-data.js
     await new Promise(r => setTimeout(r, 80));
     const d = window.DemoData || {};
-    // HERO_STORIES already interleaves stories + promo ads (HOME_CD/HOME_AD/HOME_HD) — curated in central-demo-data.js:730
-    // STATUSES is the status ring data — central-demo-data.js:800
-    // ADS.promoSlides can also come from AdService promo pool for home placement
+    // Homepage is a fullscreen swipe deck: every card (story or ad) fills
+    // the screen. Promo ads interleave after every N story cards (N from
+    // the home placement, default 5). Baked-in demo ad slides are used
+    // only when no promo pool exists.
     let promoSlides = [];
+    let homeInterval = 5, homeEnabled = true;
     try {
-      if (window.AdService && typeof AdService.getPromoSlides === 'function') {
-        promoSlides = await AdService.getPromoSlides({ page: 'home' });
+      if (window.AdService) {
+        if (typeof AdService.getPlacement === 'function') {
+          const pl = await AdService.getPlacement('home');
+          if (pl) {
+            if (pl.interval) homeInterval = Math.max(1, parseInt(pl.interval, 10) || 5);
+            if (pl.enabled === false) homeEnabled = false;
+          }
+        }
+        if (typeof AdService.getPromoSlides === 'function' && homeEnabled) {
+          promoSlides = await AdService.getPromoSlides({ page: 'home', slot: 'home:swipe-card' });
+        }
       }
     } catch (e) { promoSlides = d.ADS ? d.ADS.promoSlides : []; }
+    if (!promoSlides.length && d.ADS) promoSlides = d.ADS.promoSlides || [];
+    let heroStories = d.HERO_STORIES || [];
+    if (homeEnabled && promoSlides.length) {
+      const stories = heroStories.filter(s => s.type !== 'ad-droboard' && s.type !== 'ad-story');
+      const deck = [];
+      let pi = 0;
+      stories.forEach((s, i) => {
+        deck.push(s);
+        if ((i + 1) % homeInterval === 0) {
+          const p = promoSlides[pi % promoSlides.length]; pi++;
+          deck.push({
+            type: 'ad-story', id: p.id || ('promo-' + pi),
+            cover: p.img || p.cover || '', genre: p.genre || '',
+            brand: p.title || p.brand || 'Sponsored', author: p.author || '',
+            sub: p.sub || '',
+          });
+        }
+      });
+      heroStories = deck;
+    } else if (!homeEnabled) {
+      heroStories = heroStories.filter(s => s.type !== 'ad-droboard' && s.type !== 'ad-story');
+    }
     return {
       statuses: d.STATUSES || [],
-      heroStories: d.HERO_STORIES || [],
+      heroStories: heroStories,
       promoSlides: promoSlides.length ? promoSlides : (d.ADS ? d.ADS.promoSlides : []),
       notifCount: 3
     };

@@ -34,6 +34,9 @@ router.get('/', generalLimiter,
 router.get('/me', requireAuth, async (req, res) =>
   base.wrap(res, async () => users.me(req.user.id)));
 
+router.get('/me/reading-profile', requireAuth, generalLimiter, async (req, res) =>
+  base.wrap(res, async () => require('../services/audience.service').readingProfile(req.user.id)));
+
 // FIX 1: self-update.
 router.patch('/me', requireAuth, writeLimiter,
   validate(z.object({ body: z.object({
@@ -44,8 +47,8 @@ router.patch('/me', requireAuth, writeLimiter,
     location: z.string().max(120).optional(),
     country: z.string().max(56).optional(),
     locale: z.string().max(10).optional(),
-    avatar: z.string().max(2800000).optional(),
-    cover: z.string().max(2800000).optional(),
+    avatar: z.string().max(2000).optional(),
+    cover: z.string().max(2000).optional(),
     about: z.any().optional(),
     genres: z.array(z.string().max(40)).max(6).optional(),
   }).strict() })),

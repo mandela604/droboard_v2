@@ -17,6 +17,10 @@ async function main() {
   const db = require('./src/config/db');
   db.connect = async () => null; // no DB in this pass
   require('mongoose').plugin(require('./src/models/ids').plugin); // mirror db.connect
+  // requireAuth now enforces account standing per request (DB lookup). In the
+  // no-DB pass, stub healthy accounts so gating/validation cases run offline.
+  const { User } = require('./src/models/user.model');
+  User.findOne = () => ({ select: () => ({ lean: async () => ({ status: 'active', deletedAt: null }) }) });
   require('./src/server.js');
   await new Promise(r => setTimeout(r, 2000));
   const BASE = 'http://localhost:4560';
@@ -81,6 +85,40 @@ async function main() {
     ['collections follow no-auth 401', 'POST', '/api/collections/col-1/follow', null, null, 401],
     ['collections share no-auth 401', 'POST', '/api/collections/col-1/share', null, { channel: 'x' }, 401],
     ['collections bad sort 400', 'GET', '/api/collections?sort=nope', null, null, 400],
+    ['reports file no-auth 401', 'POST', '/api/reports', null, { target: 'collection', targetId: 'c', reason: 'spam' }, 401],
+    ['reports file missing reason 400', 'POST', '/api/reports', atoken, { target: 'collection', targetId: 'c' }, 400],
+    ['reports file bad target 400', 'POST', '/api/reports', atoken, { target: 'planet', targetId: 'c', reason: 'spam' }, 400],
+    ['eligible-stories no-auth 401', 'GET', '/api/collections/eligible-stories', null, null, 401],
+    ['admin collections writer 403', 'GET', '/api/super-admin/collections', wtoken, null, 403],
+    ['admin collections bad query 400', 'GET', '/api/super-admin/collections?privacy=' + 'x'.repeat(30), atoken, null, 400],
+    ['audience catalog no-auth 401', 'GET', '/api/marketing/audience-catalog', null, null, 401],
+    ['audience estimate no-auth 401', 'POST', '/api/marketing/audience-estimate', null, { segments: ['savers'] }, 401],
+    ['audience estimate bad body 400', 'POST', '/api/marketing/audience-estimate', atoken, { segments: 'nope' }, 400],
+    ['read-state no-auth 401', 'GET', '/api/stories/bk-1/read-state', null, null, 401],
+    ['progress bad body 400', 'POST', '/api/stories/bk-1/chapters/1/progress', atoken, { secondsSpent: -5 }, 400],
+    ['tropes bad limit 400', 'GET', '/api/tropes?limit=' + '9'.repeat(10), null, null, 400],
+    ['chief tropes no-auth 401', 'POST', '/api/chief/tropes', null, { name: 'X' }, 401],
+    ['chief tropes writer 403', 'POST', '/api/chief/tropes', wtoken, { name: 'X' }, 403],
+    ['entitlements no-auth 401', 'GET', '/api/wallet/entitlements', null, null, 401],
+    ['reading-profile no-auth 401', 'GET', '/api/users/me/reading-profile', null, null, 401],
+    ['placement patch no-auth 401', 'PATCH', '/api/marketing/ads/placement', null, { page: 'comments', enabled: false }, 401],
+    ['placement patch writer 403', 'PATCH', '/api/marketing/ads/placement', wtoken, { page: 'comments', enabled: false }, 403],
+    ['placement patch missing page 400', 'PATCH', '/api/marketing/ads/placement', atoken, { enabled: false }, 400],
+    ['placements bulk no-auth 401', 'PUT', '/api/marketing/ads/placements', null, { feed: { interval: 5 } }, 401],
+    ['placements bulk writer 403', 'PUT', '/api/marketing/ads/placements', wtoken, { feed: { interval: 5 } }, 403],
+    ['placements bulk bad words 400', 'PUT', '/api/marketing/ads/placements', atoken, { fullReader: { wordsPerSlot: 5 } }, 400],
+    ['ads inventory no-auth 401', 'GET', '/api/marketing/ads/inventory', null, null, 401],
+    ['ads inventory writer 403', 'GET', '/api/marketing/ads/inventory', wtoken, null, 403],
+    ['ads create no-auth 401', 'POST', '/api/marketing/ads', null, { format: 'banner' }, 401],
+    ['ads create bad format 400', 'POST', '/api/marketing/ads', atoken, { format: 'blimp' }, 400],
+    ['ads update writer 403', 'PUT', '/api/marketing/ads/ad-1', wtoken, { active: false }, 403],
+    ['ads delete writer 403', 'DELETE', '/api/marketing/ads/ad-1', wtoken, null, 403],
+    ['store packs no-auth 401', 'GET', '/api/finance/store/coin-packs', null, null, 401],
+    ['store packs writer 403', 'GET', '/api/finance/store/coin-packs', wtoken, null, 403],
+    ['store packs save writer 403', 'POST', '/api/finance/store/coin-packs', wtoken, { code: 'x', coins: 1 }, 403],
+    ['store rewards delete writer 403', 'DELETE', '/api/finance/store/ad-rewards/r1', wtoken, null, 403],
+    ['search q too long 400', 'GET', '/api/search/index?q=' + 'x'.repeat(90), null, null, 400],
+    ['search bad type ok-empty', 'GET', '/api/search/index?q=test&type=nope', null, null, 200],
   ];
   for (const [name, method, path, token, body, want] of cases) {
     const r = await call(method, path, token, body);

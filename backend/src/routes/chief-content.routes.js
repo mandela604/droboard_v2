@@ -134,4 +134,29 @@ router.delete('/genres/:id', ...guard, audit('chief.genres.delete'),
 router.post('/genres/:id/toggle-status', ...guard, audit('chief.genres.toggle-status'),
   validate(z.object({ params: z.object({ id }) })), ctrl.toggleGenreStatus);
 
+// ---- Tropes (managed catalog, child of genre) ----
+const tropeBody = z.object({
+  name: z.string().min(1).max(80), genre: z.string().max(40).optional(),
+  slug: z.string().max(80).optional(), desc: z.string().max(2000).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+}).strict();
+
+router.get('/tropes', ...guard,
+  validate(z.object({ query: pageQuery.extend({
+    q: z.string().max(80).optional(), genre: z.string().max(40).optional(),
+    status: z.string().max(20).optional(),
+  }).strict() })), ctrl.listTropes);
+
+router.post('/tropes', ...guard, audit('chief.tropes.create'),
+  validate(z.object({ body: tropeBody })), ctrl.createTrope);
+
+router.patch('/tropes/:id', ...guard, audit('chief.tropes.update'),
+  validate(z.object({ params: z.object({ id }), body: tropeBody.partial() })), ctrl.updateTrope);
+
+router.delete('/tropes/:id', ...guard, audit('chief.tropes.delete'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.deleteTrope);
+
+router.post('/tropes/:id/toggle-status', ...guard, audit('chief.tropes.toggle-status'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.toggleTropeStatus);
+
 module.exports = router;

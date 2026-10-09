@@ -38,6 +38,9 @@ module.exports = {
   bookSetStatus: wrap(async (req) => sa.setBookStatus(req.valid.params.id, req.valid.body.status)),
   bookDelete: wrap(async (req) => sa.deleteBook(req.valid.params.id)),
 
+  collectionsList: wrap(async (req) => sa.collectionsAdmin(req.valid.query)),
+  collectionDelete: wrap(async (req) => sa.collectionDelete(req.valid.params.id)),
+
   postsList: wrap(async (req) => sa.postsAdmin(req.valid.query)),
   postGet: wrap(async (req) => sa.getPost(req.valid.params.id)),
   postSetStatus: wrap(async (req) => sa.setPostStatus(req.valid.params.id, req.valid.body.status)),

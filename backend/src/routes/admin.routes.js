@@ -116,6 +116,14 @@ router.patch('/books/:id/status', ...A, require('../middleware/http').writeLimit
 router.delete('/books/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.books.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.bookDelete);
 
+// collections moderation
+router.get('/collections', ...A, validate(z.object({ query: z.object({
+  ...PG, q: z.string().max(80).optional(), privacy: z.string().max(20).optional(),
+  sort: z.string().max(20).optional(), reported: z.string().max(5).optional(),
+}).strict() })), sa.collectionsList);
+router.delete('/collections/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.collections.delete'),
+  validate(z.object({ params: z.object({ id: ID }) })), sa.collectionDelete);
+
 // posts moderation
 router.get('/posts', ...A, validate(z.object({ query: z.object({
   ...PG, q: z.string().max(80).optional(), type: z.string().max(20).optional(),

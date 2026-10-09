@@ -1,1 +1,111 @@
-<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=dashboard.html"><title>Removed</title></head><body>Page removed — redirecting to <a href="dashboard.html">Dashboard</a></body></html>
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Store Settings — Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px}
+table.store-tbl{width:100%;border-collapse:collapse;font-size:12px}
+table.store-tbl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);padding:8px 10px;border-bottom:1px solid var(--border)}
+table.store-tbl td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.store-tbl tr:last-child td{border-bottom:none}
+.sub{font-size:10.5px;color:var(--text-faint);font-weight:600}
+.st-chip{font-size:9px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.st-chip.on{background:var(--green-bg);color:var(--green)}
+.st-chip.off{background:var(--red-bg);color:var(--red)}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.empty-msg{padding:16px;text-align:center;color:var(--text-faint);font-size:12px}
+.mini-btn{font-size:10.5px;font-weight:700;padding:6px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:.13s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}
+.add-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border)}
+.add-form label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);display:flex;flex-direction:column;gap:5px}
+.add-form input,.add-form select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:8px 10px;font-size:12px;font-family:inherit;color:var(--text);font-weight:600;text-transform:none;letter-spacing:normal}
+.add-form .form-actions{grid-column:1/-1;display:flex;gap:8px;align-items:center}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:#17132b;color:#fff;font-size:12px;font-weight:700;padding:10px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:9999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.skeleton{color:var(--text-faint);font-size:12px;padding:14px;text-align:center}
+</style>
+</head>
+<body>
+<div id="storeRoot"></div>
+
+<script src="shared/finance-sidebar.js"></script>
+<script src="shared/finance-data.js"></script>
+<script src="services/store-settings-service.js"></script>
+<div class="toast" id="toast"></div>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('storeRoot');
+  root.innerHTML = `
+  <div style="padding:22px;max-width:1100px;margin:0 auto">
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-coins" style="color:var(--amber,#d97706)"></i> Coin Packs</h2></div>
+      <div class="panel-sub">Packs sold in the reader store. Price is in NGN.</div>
+      <div style="overflow-x:auto"><table class="store-tbl">
+        <thead><tr><th>Code</th><th>Coins</th><th>Bonus</th><th>Price</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody id="packsBody"><tr><td colspan="6"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></td></tr></tbody>
+      </table></div>
+      <form class="add-form" id="packForm">
+        <input type="hidden" id="packId"/>
+        <label>Code<input id="packCode" maxlength="40" placeholder="pack5"/></label>
+        <label>Coins<input id="packCoins" type="number" min="1" placeholder="5000"/></label>
+        <label>Bonus %<input id="packBonus" type="number" min="0" max="100" placeholder="20"/></label>
+        <label>Price (NGN)<input id="packPrice" type="number" min="0" placeholder="60000"/></label>
+        <label>Status<select id="packStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+        <div class="form-actions"><button class="mini-btn primary" type="submit">Save pack</button><button class="mini-btn" type="reset">Clear</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-gift" style="color:var(--purple,#5b4bcf)"></i> Ad Rewards (Earn Coins)</h2></div>
+      <div class="panel-sub">Actions that earn readers coins.</div>
+      <div style="overflow-x:auto"><table class="store-tbl">
+        <thead><tr><th>Reward</th><th>Coins</th><th>Cooldown</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody id="rewardsBody"><tr><td colspan="5"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></td></tr></tbody>
+      </table></div>
+      <form class="add-form" id="rewardForm">
+        <input type="hidden" id="rewardId"/>
+        <label>Code<input id="rewardCode" maxlength="40" placeholder="ad9"/></label>
+        <label>Action<input id="rewardAction" maxlength="120" placeholder="Watch Ad"/></label>
+        <label>Type<select id="rewardType"><option value="watch_ad">Watch ad</option><option value="checkin">Check-in</option><option value="rate">Rate</option><option value="share">Share</option><option value="blog_read">Blog read</option><option value="youtube_sub">YouTube sub</option><option value="youtube_watch">YouTube watch</option></select></label>
+        <label>Coins<input id="rewardCoins" type="number" min="0" placeholder="10"/></label>
+        <label>Cooldown<input id="rewardCooldown" maxlength="20" placeholder="5 min"/></label>
+        <label>Status<select id="rewardStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+        <div class="form-actions"><button class="mini-btn primary" type="submit">Save reward</button><button class="mini-btn" type="reset">Clear</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-box-open" style="color:var(--blue,#2f7de1)"></i> Bundles</h2></div>
+      <div class="panel-sub">Value bundles sold in the reader store.</div>
+      <div style="overflow-x:auto"><table class="store-tbl">
+        <thead><tr><th>Bundle</th><th>Coins</th><th>Price</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody id="bundlesBody"><tr><td colspan="5"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></td></tr></tbody>
+      </table></div>
+      <form class="add-form" id="bundleForm">
+        <input type="hidden" id="bundleId"/>
+        <label>Code<input id="bundleCode" maxlength="40" placeholder="b4"/></label>
+        <label>Name<input id="bundleName" maxlength="80" placeholder="Mega Bundle"/></label>
+        <label>Coins<input id="bundleCoins" type="number" min="1" placeholder="10000"/></label>
+        <label>Bonus coins<input id="bundleBonus" type="number" min="0" placeholder="2000"/></label>
+        <label>Price (NGN)<input id="bundlePrice" type="number" min="0" placeholder="60000"/></label>
+        <label>Status<select id="bundleStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+        <div class="form-actions"><button class="mini-btn primary" type="submit">Save bundle</button><button class="mini-btn" type="reset">Clear</button></div>
+      </form>
+    </div>
+  </div>`;
+  StoreSettingsService.init();
+})();
+</script>
+</body>
+</html>

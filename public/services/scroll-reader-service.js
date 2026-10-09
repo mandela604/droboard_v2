@@ -100,14 +100,55 @@
      reader.js) is the single purchase surface. Coin lock opens the sheet
      via attemptUnlock; unlocks retry automatically after purchase. */
 
+  /* ══ TOP AD SLOT — one ad above the comments, mirroring discussion's
+     disc-ad (embed first, else book, else platform). Hidden when empty. ══ */
+  function fillTopAd() {
+    const el = document.getElementById("slTopAd");
+    if (!el || !window.DroboardAdCard) { if (el) el.style.display = "none"; return; }
+    if (!window.AdService) { el.style.display = "none"; return; }
+    AdService.getAds({ page: "scrollReader" }).then(pools => {
+      const em = (pools.embed || []).find(a => a && a.code);
+      const book = (pools.book || [])[0];
+      const plat = (pools.platform || [])[0];
+      let slot = null;
+      if (em) slot = { format: "embed", ad: em };
+      else if (book) slot = { format: "storyPromo", ad: book };
+      else if (plat) slot = { format: "platform", ad: plat };
+      if (!slot) { el.style.display = "none"; return; }
+      let inner = "";
+      try {
+        if (slot.format === "embed" && DroboardAdCard.renderEmbed) inner = DroboardAdCard.renderEmbed(slot.ad);
+        else if (slot.format === "platform") inner = DroboardAdCard.renderPlatform(slot.ad);
+        else inner = DroboardAdCard.renderStoryPromo(slot.ad);
+      } catch (e) { el.style.display = "none"; return; }
+      if (!inner) { el.style.display = "none"; return; }
+      el.innerHTML = inner;
+      el.style.display = "";
+      trackAd(slot.ad.id, "impression");
+      DroboardAdCard.attach(el, {
+        getAds: () => [slot.ad],
+        onOpen: (ad) => { if (ad) trackAd(ad.id, "click"); },
+        onCta: (ad) => { if (ad) trackAd(ad.id, "click"); toast("Opening story…"); },
+        onLike: () => {},
+        onComment: () => {},
+        onShare: () => {},
+      });
+    }).catch(() => { el.style.display = "none"; });
+  }
+
   /* ══════════════════════════════════════════════════════════════════
      STATE
      ══════════════════════════════════════════════════════════════════ */
   const ST = { unlockedThrough: 0, saved: false, currentCh: 1 };
 
-  /* ══ MANAGED AD SLOTS — inventory format picked in marketing ══ */
+  /* ══ MANAGED AD SLOTS — inventory format picked in marketing ══
+     Three slots: top (above chapters), per-N-words inline, bottom (end of
+     column). Gap N comes from placement.wordsPerSlot (default 300). */
   let READER_BANNERS = [];
   let READER_SERVED = [];
+  let READER_WORDS = 300;
+  let TOP_POOL = [], BOTTOM_POOL = [];
+  function readerWords() { return Math.min(2000, Math.max(50, parseInt(READER_WORDS, 10) || 300)); }
   function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
   // placement scrollReader.format: auto|embed|native|book|platform|banner
   function slotFormatAllows(type) {
@@ -118,21 +159,57 @@
   }
   let READER_SLOT_FORMAT = 'auto';
   async function loadReaderAds() {
-    READER_BANNERS = []; READER_SERVED = [];
+    READER_BANNERS = []; READER_SERVED = []; TOP_POOL = []; BOTTOM_POOL = [];
     if (!window.AdService) return;
     try {
       try {
         const pl = await AdService.getPlacement('scrollReader');
         READER_SLOT_FORMAT = (pl && pl.format) || 'auto';
+        if (pl && pl.wordsPerSlot) READER_WORDS = Math.min(2000, Math.max(50, parseInt(pl.wordsPerSlot, 10) || 300));
       } catch (e) { READER_SLOT_FORMAT = 'auto'; }
-      const pools = await AdService.getAds({ page: "scrollReader" });
+      const pools = await AdService.getAds({ page: "scrollReader", slot: "scrollReader:per-300-words" });
       (pools.embed || []).filter(function (ad) { return ad && ad.code; }).forEach(function (ad) { READER_BANNERS.push({ type: "embed", ad: ad }); });
       (pools.banner || []).forEach(function (ad) { READER_BANNERS.push({ type: "banner", ad: ad }); });
       (pools.native || []).forEach(function (ad) { READER_BANNERS.push({ type: "native", ad: ad }); });
       (pools.book || []).forEach(function (ad) { READER_BANNERS.push({ type: "storyPromo", ad: ad }); });
       (pools.platform || []).forEach(function (ad) { READER_BANNERS.push({ type: "platform", ad: ad }); });
       READER_BANNERS = READER_BANNERS.filter(function (item) { return slotFormatAllows(item.type); });
+      try {
+        const tp = await AdService.getAds({ page: "scrollReader", slot: "scrollReader:top" });
+        const bp = await AdService.getAds({ page: "scrollReader", slot: "scrollReader:bottom" });
+        Object.keys(tp).forEach(function (k) { (tp[k] || []).forEach(function (ad) { if (ad) TOP_POOL.push({ type: k, ad: ad }); }); });
+        Object.keys(bp).forEach(function (k) { (bp[k] || []).forEach(function (ad) { if (ad) BOTTOM_POOL.push({ type: k, ad: ad }); }); });
+      } catch (e) {}
+      renderEdgeSlots();
     } catch (e) { READER_BANNERS = []; }
+  }
+  function renderEdgeAd(item) {
+    if (!item || !item.ad || !window.DroboardAdCard) return '';
+    var ad = item.ad;
+    if (item.type === 'embed' && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(ad);
+    if (item.type === 'native' && DroboardAdCard.renderNative) return DroboardAdCard.renderNative(ad);
+    if (item.type === 'storyPromo' && DroboardAdCard.renderStoryPromo) return DroboardAdCard.renderStoryPromo(ad);
+    if (DroboardAdCard.renderBanner) return DroboardAdCard.renderBanner(ad);
+    return '';
+  }
+  function renderEdgeSlots() {
+    var top = document.getElementById('scrollTopAd'), bottom = document.getElementById('scrollBottomAd');
+    if (top) {
+      if (!TOP_POOL.length) { top.style.display = 'none'; }
+      else {
+        var t = TOP_POOL[0];
+        top.innerHTML = renderEdgeAd(t);
+        if (top.innerHTML) { top.style.display = ''; trackAd(t.ad && t.ad.id, 'impression'); }
+      }
+    }
+    if (bottom) {
+      if (!BOTTOM_POOL.length) { bottom.style.display = 'none'; }
+      else {
+        var b = BOTTOM_POOL[BOTTOM_POOL.length - 1];
+        bottom.innerHTML = renderEdgeAd(b);
+        if (bottom.innerHTML) { bottom.style.display = ''; trackAd(b.ad && b.ad.id, 'impression'); }
+      }
+    }
   }
   function renderAdSlot(afterCh, wordPos) {
     if (isPremiumUser()) return "";
@@ -154,12 +231,66 @@
     return "";
   }
 
-  /* ══ RENDERING — 300-word ad slots, premium off, locked no ads ══ */
+  /* ══ LIVE BOOK + READ TRACKING ══
+     ?story=<bookId> loads the real book/chapters/read-state over the demo
+     seed (demo stands on any failure). Tracking posts only for live books. */
+  let LIVE = false;
+  let TrackSession = null, TrackN = null;
+  function htmlToParas(html) {
+    const t = String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p\s*>/gi, '\n\n').replace(/<[^>]+>/g, '');
+    return t.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  }
+  async function bootLiveScroll() {
+    if (!STORY_ID || STORY_ID === 'story-8') return;
+    try {
+      const [bRes, cRes] = await Promise.all([
+        fetch('/api/books/' + encodeURIComponent(STORY_ID), { credentials: 'include' }),
+        fetch('/api/books/' + encodeURIComponent(STORY_ID) + '/chapters', { credentials: 'include' }),
+      ]);
+      if (!bRes.ok || !cRes.ok) return;
+      const book = await bRes.json();
+      const cj = await cRes.json();
+      const raw = Array.isArray(cj) ? cj : (cj.items || cj.chapters || []);
+      const live = (raw || []).filter(c => ['live', 'published'].includes(String(c.status || 'live')));
+      if (!book || !book.id || !live.length) return;
+      let state = null;
+      try {
+        const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
+        if (sRes.ok) state = await sRes.json();
+      } catch (e) {}
+      const unlocked = new Set(((state && state.unlocked) || []).map(String));
+      const prog = (state && state.progress) || {};
+      DATA.id = book.id; DATA.title = book.title || DATA.title;
+      DATA.category = book.genre || DATA.category; DATA.cover = book.cover || DATA.cover;
+      DATA.chapters = live.map(c => {
+        const key = String(c.id || c.n);
+        const p = prog[key] || prog[String(c.n)] || null;
+        const done = !!(p && p.finished);
+        const open = !book.vipLocked || +c.n <= 3 || unlocked.has(key) || unlocked.has(String(c.n)) || done;
+        return { n: c.n, title: c.title, paras: htmlToParas(c.content).slice(0, 80), liveId: c.id, words: c.words || 0, locked: !open };
+      });
+      DATA.unlockedThrough = DATA.chapters.filter(c => !c.locked).length || 3;
+      LIVE = true;
+    } catch (e) {}
+  }
+  function TrackLeave() { try { if (TrackSession) TrackSession.stop(); } catch (e) {} TrackSession = null; TrackN = null; }
+  function TrackStart(el) {
+    if (!LIVE || !window.ReaderTrack || !el || el.classList.contains('locked-wrap')) return;
+    const n = +el.dataset.ch;
+    const ch = (DATA.chapters || []).find(c => +c.n === n);
+    TrackN = n;
+    TrackSession = ReaderTrack.session(STORY_ID, (el.dataset && el.dataset.cid) || n, (ch && ch.words) || 0);
+  }
+  function TrackFinishIf(el) {
+    if (TrackSession && TrackN !== null && el && +el.dataset.ch === TrackN) {
+      try { TrackSession.finish(); } catch (e) {}
+    }
+  }
   function buildReaderColumn() {
     const col = document.getElementById("readerCol");
     let html = "";
     DATA.chapters.forEach((ch) => {
-      const locked = ch.n > ST.unlockedThrough;
+      const locked = ch.locked !== undefined ? ch.locked : (ch.n > ST.unlockedThrough);
       html += renderChapterBlock(ch, locked);
     });
     col.innerHTML = html;
@@ -177,7 +308,7 @@
   function renderChapterBlock(ch, locked) {
     if (locked) {
       const paras = ch.paras.map(p => "<p>" + esc(p) + "</p>").join("");
-      return '<section class="chapter-block locked-wrap" data-ch="' + ch.n + '" id="chapterSec-' + ch.n + '">' +
+      return '<section class="chapter-block locked-wrap" data-ch="' + ch.n + '" data-cid="' + (ch.liveId || '') + '" id="chapterSec-' + ch.n + '">' +
         '<div class="chapter-heading">Chapter ' + ch.n + " \u2014 " + esc(ch.title) + "</div>" +
         '<div class="story-text locked-fade">' + paras + "</div>" +
         '<div class="unlock-card" id="unlockCard-' + ch.n + '">' +
@@ -208,16 +339,17 @@
     let htmlParas = "";
     let wordCount = 0;
     let adIdx = 0;
+    const gap = readerWords();
     ch.paras.forEach(p => {
       htmlParas += "<p>" + esc(p) + "</p>";
       wordCount += countWords(p);
-      if (wordCount >= 300) {
+      if (wordCount >= gap) {
         const adHtml = renderAdSlot(ch.n, adIdx++);
         if (adHtml) htmlParas += adHtml;
         wordCount = 0;
       }
     });
-    return '<section class="chapter-block" data-ch="' + ch.n + '" id="chapterSec-' + ch.n + '">' +
+    return '<section class="chapter-block" data-ch="' + ch.n + '" data-cid="' + (ch.liveId || '') + '" id="chapterSec-' + ch.n + '">' +
       '<div class="chapter-heading">Chapter ' + ch.n + " \u2014 " + esc(ch.title) + "</div>" +
       '<div class="story-text">' + htmlParas + "</div>" +
       '<div data-eng-mount="s1c' + ch.n + '" data-ch="' + ch.n + '" data-note="' + esc(ch.authorNote || ch.note || "") + '"></div>' +
@@ -388,7 +520,36 @@
   function changeFontSize(d) { fsVal = Math.min(FS_MAX, Math.max(FS_MIN, fsVal + d)); document.documentElement.style.setProperty("--fs", fsVal + "px"); document.getElementById("fontSizeDisplay").textContent = fsVal + "px"; }
   function setLH(el, val) { document.querySelectorAll(".lh-opt").forEach(x => x.classList.remove("on")); el.classList.add("on"); document.documentElement.style.setProperty("--lh", val); }
   function setFF(el, val) { document.querySelectorAll(".ff-opt").forEach(x => x.classList.remove("on")); el.classList.add("on"); document.documentElement.style.setProperty("--font-story", val); }
-  function setTheme(el, theme) { document.body.className = theme; document.querySelectorAll(".theme-opt").forEach(x => x.classList.remove("on")); el.classList.add("on"); }
+  function setTheme(el, theme) {
+    document.body.className = theme;
+    try {
+      localStorage.setItem('dro_reader_theme', theme);
+      if (theme === 'theme-white') localStorage.setItem('droboardTheme', 'light');
+      else if (theme === 'theme-dark') localStorage.setItem('droboardTheme', 'dark');
+    } catch (e) {}
+    document.querySelectorAll(".theme-opt").forEach(x => x.classList.remove("on"));
+    el.classList.add("on");
+  }
+  // Readers honor the site theme: stored reader choice wins, otherwise the
+  // shared light/dark setting (discussion + every other page use it).
+  function applyStoredTheme() {
+    let theme = null;
+    try {
+      theme = localStorage.getItem('dro_reader_theme');
+      if (!theme || theme === 'theme-dark') {
+        const site = localStorage.getItem('droboardTheme');
+        if (site === 'light') theme = 'theme-white';
+        else if (!theme) theme = 'theme-dark';
+      }
+    } catch (e) {}
+    if (theme) {
+      document.body.className = theme;
+      document.querySelectorAll(".theme-opt").forEach(x => {
+        const on = (x.getAttribute('data-theme') || '') === theme;
+        x.classList.toggle("on", on);
+      });
+    }
+  }
   function openSettings() { document.getElementById("settingsPanel").classList.add("open"); document.getElementById("overlayBg").classList.add("show"); }
   function closeAllSheets() {
     document.getElementById("settingsPanel").classList.remove("open");
@@ -431,8 +592,10 @@
       entries.forEach(en => {
         if (en.isIntersecting) {
           const n = +en.target.dataset.ch;
-          ST.currentCh = n;
+          if (n !== ST.currentCh) { TrackLeave(); ST.currentCh = n; TrackStart(en.target); }
           document.getElementById("fcProgressPill").textContent = "Ch " + n;
+        } else if (en.boundingClientRect && en.boundingClientRect.top < 0) {
+          TrackFinishIf(en.target); // fully scrolled past = read
         }
       });
     }, { root: sb, threshold: 0.5 });
@@ -495,9 +658,30 @@
       }
     } catch (err) { console.warn("[Droboard] Could not load FULL_STORY from central-demo-data", err); }
     DATA = story || FALLBACK_DEMO;
+    try { await bootLiveScroll(); } catch (e) {}
+    if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
+    // top + bottom edge slots (JS-created: no HTML change)
+    try {
+      const col0 = document.getElementById('readerCol');
+      if (col0) {
+        if (!document.getElementById('scrollTopAd')) {
+          const t = document.createElement('div');
+          t.id = 'scrollTopAd'; t.className = 'ad-slot';
+          t.setAttribute('data-slot', 'scrollReader:top'); t.style.display = 'none';
+          col0.parentNode.insertBefore(t, col0);
+        }
+        if (!document.getElementById('scrollBottomAd')) {
+          const b = document.createElement('div');
+          b.id = 'scrollBottomAd'; b.className = 'ad-slot';
+          b.setAttribute('data-slot', 'scrollReader:bottom'); b.style.display = 'none';
+          col0.parentNode.insertBefore(b, col0.nextSibling);
+        }
+      }
+    } catch (e) {}
 
     ST.unlockedThrough = DATA.unlockedThrough;
     await loadReaderAds();
+    applyStoredTheme();
     // Shared coin sheet owns the wallet now — attach once, start at zero.
     if (window.DroboardReader) {
       DroboardReader.attach({ onBalanceChange: updateCoinDisplays, onBuyCoins: buyCoinsViaSheet });
@@ -513,6 +697,7 @@
 
     updateCoinDisplays();
     buildReaderColumn();
+    fillTopAd();
     READER_SERVED.forEach(id => trackAd(id, "impression"));
     buildChaptersPanel();
     wireComponents();

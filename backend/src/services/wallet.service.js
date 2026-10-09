@@ -1,6 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
-const { Wallet, CoinTransaction, AuthorTransaction, Withdrawal, PaymentMethod, PaymentDispute, CoinPack, CoinBundle, SubscriptionPlan, Gift } = require('../models/money.model');
+const { Wallet, CoinTransaction, AuthorTransaction, Withdrawal, PaymentMethod, PaymentDispute, CoinPack, CoinBundle, SubscriptionPlan, Subscription, Gift } = require('../models/money.model');
 const { PoolBalance } = require('../models/revenue.model');
 const ledger = require('./ledger.service');
 const revenue = require('./revenue.service');
@@ -126,4 +126,27 @@ async function sendTip({ fromUserId, authorId, coins, giftCode, coinFaceNGN }) {
   } finally { session.endSession(); }
 }
 
-module.exports = { getOrCreateWallet, creditPurchase, unlockChapter, sendTip };
+// Reader entitlements: current plan (daily/weekly/monthly/yearly/merge),
+// adsFree = any active plan (readers go ad-free),
+// adsFreeEverywhere = Merge Pass only (ad-free on every page but Discover).
+const PLAN_DAYS = { 'sub-daily': 1, 'sub-weekly': 7, 'sub-monthly': 30, 'sub-yearly': 365, 'sub-merge': 30 };
+async function entitlements(userId) {
+  const [sub, w] = await Promise.all([
+    Subscription.findOne({ userId: String(userId), status: 'active' }).sort({ startedAt: -1 }).lean(),
+    Wallet.findOne({ userId: String(userId), kind: 'reader' }).select('coinBalance').lean(),
+  ]);
+  let expiresAt = null;
+  if (sub && PLAN_DAYS[sub.planCode] && sub.startedAt) {
+    expiresAt = new Date(new Date(sub.startedAt).getTime() + PLAN_DAYS[sub.planCode] * 86400000).toISOString();
+  }
+  return {
+    plan: sub ? sub.planCode : null,
+    status: sub ? sub.status : 'none',
+    adsFree: !!sub,
+    adsFreeEverywhere: !!sub && sub.planCode === 'sub-merge',
+    expiresAt,
+    coins: (w && w.coinBalance) || 0,
+  };
+}
+
+module.exports = { getOrCreateWallet, creditPurchase, unlockChapter, sendTip, entitlements };

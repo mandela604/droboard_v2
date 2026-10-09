@@ -14,7 +14,23 @@ async function register(req, res) {
 }
 
 async function verifyEmail(req, res) {
-  return base.wrap(res, async () => auth.verifyEmail(req.valid.query.token || req.valid.body.token));
+  // Browser click from the email (Accept: text/html) lands on login with a
+  // status flag; API clients keep the JSON contract.
+  const wantsHtml = String((req.headers && req.headers.accept) || '').includes('text/html');
+  try {
+    await auth.verifyEmail(req.valid.query.token || req.valid.body.token);
+    if (wantsHtml) {
+      const appUrl = ((process.env.APP_URL || '').replace(/\/$/, '')) || 'http://127.0.0.1:5501';
+      return res.redirect(302, appUrl + '/Pages/login.html?verified=1');
+    }
+    return base.wrap(res, async () => ({ ok: true }));
+  } catch (e) {
+    if (wantsHtml) {
+      const appUrl = ((process.env.APP_URL || '').replace(/\/$/, '')) || 'http://127.0.0.1:5501';
+      return res.redirect(302, appUrl + '/Pages/login.html?verified=0');
+    }
+    return base.wrap(res, async () => { throw e; });
+  }
 }
 
 async function forgotPassword(req, res) {

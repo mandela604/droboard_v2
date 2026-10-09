@@ -34,7 +34,9 @@ const adInventorySchema = new mongoose.Schema({
   image: { type: String, default: '' },
   code: { type: String, default: '' }, // network embed script/HTML
   cta: { type: String, default: '' },
+  url: { type: String, default: '' }, // destination link
   pages: { type: [String], default: [] }, // placement targeting
+  slots: { type: [String], default: [] }, // slot targeting (empty = any slot)
   genre: { type: String, default: '' },
   active: { type: Boolean, default: true, index: true },
   startAt: { type: Date, default: null },
@@ -42,8 +44,15 @@ const adInventorySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const adPlacementSchema = new mongoose.Schema({
-  page: { type: String, required: true, unique: true }, // discover|feed|genreHub|fullReader|scrollReader|library|store
+  page: { type: String, required: true, unique: true }, // discover|feed|genreHub|fullReader|scrollReader|library|store|comments|profile|discussion
+  enabled: { type: Boolean, default: true, index: true }, // master kill switch for the page
+  // Per-slot programming: slotId -> false (off) or
+  // { enabled, formats: [subset], adIds: [pinned inventory ids, served first] }.
+  // Canonical ids: fullReader:top|per-300-words, scrollReader:per-300-words,
+  // comments:list-top|every-nth|thread-top, feed:in-feed, discover:strip, ...
+  slots: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
   interval: { type: Number, default: 4 },
+  wordsPerSlot: { type: Number, default: 300 }, // in-text ad every N words (readers)
   cycle: { type: [String], default: [] },
   format: { type: String, default: 'auto' }, // auto|embed|native|book|platform|banner
   topPromo: { type: Boolean, default: false },
@@ -57,6 +66,21 @@ const adStatSchema = new mongoose.Schema({
   clicks: { type: Number, default: 0 },
 }, { timestamps: false });
 adStatSchema.index({ adId: 1, day: 1 }, { unique: true });
+
+// Per-user ad clicks (powers Ad Responders segment; aggregates stay in AdStat).
+const adClickSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  adId: { type: String, required: true, index: true },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+adClickSchema.index({ userId: 1, createdAt: -1 });
+
+// Per-user ad views, one row per user+ad+day ("ads seen" + frequency caps).
+const adViewSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  adId: { type: String, required: true, index: true },
+  day: { type: String, required: true, index: true }, // YYYY-MM-DD UTC
+}, { timestamps: { createdAt: true, updatedAt: false } });
+adViewSchema.index({ userId: 1, adId: 1, day: 1 }, { unique: true });
 
 const activityLogSchema = new mongoose.Schema({
   userLabel: { type: String, default: '' },
@@ -75,5 +99,7 @@ module.exports = {
   AdInventory: mongoose.model('AdInventory', adInventorySchema),
   AdPlacement: mongoose.model('AdPlacement', adPlacementSchema),
   AdStat: mongoose.model('AdStat', adStatSchema),
+  AdClick: mongoose.model('AdClick', adClickSchema),
+  AdView: mongoose.model('AdView', adViewSchema),
   ActivityLog: mongoose.model('ActivityLog', activityLogSchema),
 };

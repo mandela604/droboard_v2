@@ -28,6 +28,7 @@ function getDemo(){
   return {
     categories: JSON.parse(JSON.stringify(D.CATEGORIES || [])),
     genres: JSON.parse(JSON.stringify(D.GENRES || [])),
+    tropes: JSON.parse(JSON.stringify(D.TROPES || [])),
     popularGenres: JSON.parse(JSON.stringify(D.POPULAR_GENRES || []))
   };
 }
@@ -61,6 +62,10 @@ window.CategoriesGenresService = {
 
   getGenres: function(){
     return getDemo().genres;
+  },
+
+  getTropes: function(){
+    return getDemo().tropes;
   },
 
   getPopularGenres: function(){
@@ -105,6 +110,24 @@ window.CategoriesGenresService = {
     genres.splice(idx, 1);
   },
 
+  addTrope: function(payload, tropes){
+    var ico = pickIcon();
+    var item = Object.assign({icon:ico.icon, bg:ico.bg, color:ico.color, books:'0'}, payload);
+    tropes.unshift(item);
+    return item;
+  },
+
+  updateTrope: function(idx, payload, tropes){
+    if(idx < 0 || idx >= tropes.length) return null;
+    Object.assign(tropes[idx], payload);
+    return tropes[idx];
+  },
+
+  deleteTrope: function(idx, tropes){
+    if(idx < 0 || idx >= tropes.length) return;
+    tropes.splice(idx, 1);
+  },
+
   openFullGenreList: function(){
     if(typeof window.toast==='function'){ try{ window.toast('Opening full genre list…'); return; }catch(e){} }
   }
@@ -123,7 +146,7 @@ SeniorEditorSidebar.attach('#dashboardRoot',{
   onSearch:function(v){document.getElementById('tableSearch').value=v;refresh();}
 });
 
-var CATEGORIES=[], GENRES=[], POPULAR_GENRES=[];
+var CATEGORIES=[], GENRES=[], TROPES=[], POPULAR_GENRES=[];
 var currentView='categories';
 var formMode={type:null, action:null, idx:null};
 
@@ -135,12 +158,15 @@ function statusPillHtml(s){
 function renderStats(){
   var totalCat=CATEGORIES.length;
   var totalGen=GENRES.length;
+  var totalTro=TROPES.length;
   var activeCat=CATEGORIES.filter(function(c){return c.status==='active'}).length;
   var activeGen=GENRES.filter(function(g){return g.status==='active'}).length;
-  var pct=totalCat+totalGen>0?Math.round((activeCat+activeGen)/(totalCat+totalGen)*100):0;
+  var activeTro=TROPES.filter(function(t){return t.status==='active'}).length;
+  var pct=totalCat+totalGen+totalTro>0?Math.round((activeCat+activeGen+activeTro)/(totalCat+totalGen+totalTro)*100):0;
   document.getElementById('statsGrid').innerHTML=
     '<div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-grip"></i></div></div><div class="stat-num">'+totalCat+'</div><div class="stat-lbl">Total Categories</div></div>'+
     '<div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-book"></i></div></div><div class="stat-num">'+totalGen+'</div><div class="stat-lbl">Total Genres</div></div>'+
+    '<div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-wand-magic-sparkles"></i></div></div><div class="stat-num">'+totalTro+'</div><div class="stat-lbl">Total Tropes</div></div>'+
     '<div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-shuffle"></i></div></div><div class="stat-num">'+pct+'%</div><div class="stat-lbl">Active</div></div>'+
     '<div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-tag"></i></div></div><div class="stat-num">'+CATEGORIES.reduce(function(a,c){return a+parseInt((c.books||'0').replace(/,/g,''),10)},0).toLocaleString()+'</div><div class="stat-lbl">Books Assigned</div></div>'+
     '<div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-eye"></i></div></div><div class="stat-num">'+(CATEGORIES.length*1.4).toFixed(1)+'M</div><div class="stat-lbl">Total Views</div></div>';
@@ -185,23 +211,42 @@ function renderGenresTable(list){
   }).join('');
 }
 
+function renderTropesTable(list){
+  document.getElementById('tableHead').innerHTML='<tr><th>Trope Name</th><th>Genre</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  var body=document.getElementById('tableBody');
+  if(!list.length){body.innerHTML='<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No tropes match this search.</td></tr>';return;}
+  body.innerHTML=list.slice(0,8).map(function(t){
+    var idx=TROPES.indexOf(t);
+    return'<tr>'+
+      '<td data-label="Trope Name"><div class="cat-cell"><div class="cat-icn" style="background:'+t.bg+';color:'+t.color+'"><i class="fas '+t.icon+'"></i></div><div class="cat-name">'+t.name+'</div></div></td>'+
+      '<td data-label="Genre" class="plain-cell">'+t.genre+'</td>'+
+      '<td data-label="Books" class="plain-cell">'+t.books+'</td>'+
+      '<td data-label="Status">'+statusPillHtml(t.status)+'</td>'+
+      '<td data-label="Actions"><div class="actions-cell">'+
+        '<button class="act-btn" title="Edit" data-action="edit" data-idx="'+idx+'"><i class="fas fa-pen"></i></button>'+
+        '<button class="act-btn" title="Toggle Status" data-action="toggle" data-idx="'+idx+'"><i class="fas fa-toggle-on"></i></button>'+
+        '<button class="act-btn" title="Delete" data-action="delete" data-idx="'+idx+'"><i class="fas fa-trash"></i></button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
 function currentFiltered(){
   var q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();
-  var source=currentView==='categories'?CATEGORIES:GENRES;
+  var source=currentView==='categories'?CATEGORIES:(currentView==='genres'?GENRES:TROPES);
   if(!q)return source;
-  return source.filter(function(x){return x.name.toLowerCase().indexOf(q)!==-1||(x.desc&&x.desc.toLowerCase().indexOf(q)!==-1)||(x.cat&&x.cat.toLowerCase().indexOf(q)!==-1);});
+  return source.filter(function(x){return x.name.toLowerCase().indexOf(q)!==-1||(x.desc&&x.desc.toLowerCase().indexOf(q)!==-1)||(x.cat&&x.cat.toLowerCase().indexOf(q)!==-1)||(x.genre&&x.genre.toLowerCase().indexOf(q)!==-1);});
 }
 
 function renderPageInfo(count){
-  var label=currentView==='categories'?'categories':'genres';
-  var total=currentView==='categories'?CATEGORIES.length:GENRES.length;
+  var label=currentView==='categories'?'categories':(currentView==='genres'?'genres':'tropes');
+  var total=currentView==='categories'?CATEGORIES.length:(currentView==='genres'?GENRES.length:TROPES.length);
   var shown=Math.min(8,count);
   document.getElementById('pageInfo').innerHTML='Showing <b>'+(count?1:0)+'</b> to <b>'+shown+'</b> of <b>'+total+'</b> '+label;
 }
 
 function renderPagination(){
   var wrap=document.getElementById('pageBtns');
-  var total=currentView==='categories'?CATEGORIES.length:GENRES.length;
+  var total=currentView==='categories'?CATEGORIES.length:(currentView==='genres'?GENRES.length:TROPES.length);
   var tp=Math.max(1,Math.ceil(total/8));
   var pages=[];
   for(var i=1;i<=Math.min(tp,5);i++)pages.push(i);
@@ -216,7 +261,8 @@ function renderPagination(){
 function refresh(){
   var list=currentFiltered();
   if(currentView==='categories')renderCategoriesTable(list);
-  else renderGenresTable(list);
+  else if(currentView==='genres')renderGenresTable(list);
+  else renderTropesTable(list);
   renderPageInfo(list.length);
   renderStats();
 }
@@ -238,9 +284,12 @@ document.querySelectorAll('.top-tab').forEach(function(tab){
     document.querySelectorAll('.top-tab').forEach(function(t){t.classList.remove('active')});
     tab.classList.add('active');
     currentView=tab.dataset.view;
-    document.getElementById('tableTitle').textContent=currentView==='categories'?'All Categories':'All Genres';
-    document.getElementById('addBtnLabel').textContent=currentView==='categories'?'Add New Category':'Add New Genre';
-    document.getElementById('tableSearch').placeholder=currentView==='categories'?'Search categories...':'Search genres...';
+    var titles={categories:'All Categories',genres:'All Genres',tropes:'All Tropes'};
+    var adds={categories:'Add New Category',genres:'Add New Genre',tropes:'Add New Trope'};
+    var phs={categories:'Search categories...',genres:'Search genres...',tropes:'Search tropes...'};
+    document.getElementById('tableTitle').textContent=titles[currentView];
+    document.getElementById('addBtnLabel').textContent=adds[currentView];
+    document.getElementById('tableSearch').placeholder=phs[currentView];
     document.getElementById('tableSearch').value='';
     renderPagination();
     refresh();
@@ -262,11 +311,14 @@ document.getElementById('tableBody').addEventListener('click',function(e){
 function openFormModal(action, idx){
   formMode={type:currentView, action:action, idx:idx};
   var isCat=currentView==='categories';
+  var isTrope=currentView==='tropes';
   var isEdit=action==='edit';
-  document.getElementById('formModalTitle').textContent=(isEdit?'Edit':'Add')+(isCat?' Category':' Genre');
+  var kindLabel=isCat?' Category':(isTrope?' Trope':' Genre');
+  document.getElementById('formModalTitle').textContent=(isEdit?'Edit':'Add')+kindLabel;
   document.getElementById('formConfirmLabel').textContent=isEdit?'Save Changes':'Add';
   document.getElementById('formDescGroup').style.display=isCat?'':'none';
-  document.getElementById('formCatGroup').style.display=isCat?'none':'block';
+  document.getElementById('formCatGroup').style.display=(!isCat&&!isTrope)?'block':'none';
+  document.getElementById('formTropeGroup').style.display=isTrope?'block':'none';
   if(isCat){
     if(isEdit){
       var c=CATEGORIES[idx];
@@ -276,6 +328,27 @@ function openFormModal(action, idx){
     }else{
       document.getElementById('formName').value='';
       document.getElementById('formDesc').value='';
+      document.getElementById('formStatus').value='active';
+    }
+  }else if(isTrope){
+    var genreSel=document.getElementById('formTropeGenre');
+    genreSel.innerHTML='<option value="">Select genre…</option>';
+    for(var k=0;k<GENRES.length;k++){
+      var gopt=document.createElement('option');
+      gopt.value=GENRES[k].name;
+      gopt.textContent=GENRES[k].name;
+      genreSel.appendChild(gopt);
+    }
+    if(isEdit){
+      var t=TROPES[idx];
+      document.getElementById('formName').value=t.name;
+      for(var m=0;m<genreSel.options.length;m++){
+        if(genreSel.options[m].value===t.genre){genreSel.selectedIndex=m;break;}
+      }
+      document.getElementById('formStatus').value=t.status;
+    }else{
+      document.getElementById('formName').value='';
+      genreSel.selectedIndex=0;
       document.getElementById('formStatus').value='active';
     }
   }else{
@@ -312,6 +385,7 @@ document.getElementById('formConfirm').addEventListener('click',function(){
   var name=document.getElementById('formName').value.trim();
   if(!name){toast('Please enter a name.');return;}
   var isCat=formMode.type==='categories';
+  var isTrope=formMode.type==='tropes';
   var isEdit=formMode.action==='edit';
   var status=document.getElementById('formStatus').value;
   if(isCat){
@@ -322,6 +396,16 @@ document.getElementById('formConfirm').addEventListener('click',function(){
     }else{
       CategoriesGenresService.addCategory({name:name,desc:desc,status:status},CATEGORIES);
       toast('Category added: '+name);
+    }
+  }else if(isTrope){
+    var pgenre=document.getElementById('formTropeGenre').value;
+    if(!pgenre){toast('Please select a genre.');return;}
+    if(isEdit){
+      CategoriesGenresService.updateTrope(formMode.idx,{name:name,genre:pgenre,status:status},TROPES);
+      toast('Trope updated: '+name);
+    }else{
+      CategoriesGenresService.addTrope({name:name,genre:pgenre,status:status},TROPES);
+      toast('Trope added: '+name);
     }
   }else{
     var cat=document.getElementById('formCat').value;
@@ -346,11 +430,16 @@ function doToggleStatus(idx){
     c.status=c.status==='active'?'inactive':'active';
     CategoriesGenresService.updateCategory(idx,{status:c.status},CATEGORIES);
     toast(c.name+' set to '+c.status);
-  }else{
+  }else if(currentView==='genres'){
     var g=GENRES[idx];
     g.status=g.status==='active'?'inactive':'active';
     CategoriesGenresService.updateGenre(idx,{status:g.status},GENRES);
     toast(g.name+' set to '+g.status);
+  }else{
+    var t=TROPES[idx];
+    t.status=t.status==='active'?'inactive':'active';
+    CategoriesGenresService.updateTrope(idx,{status:t.status},TROPES);
+    toast(t.name+' set to '+t.status);
   }
   refresh();
 }
@@ -359,7 +448,7 @@ function doToggleStatus(idx){
 var deleteIdx=null;
 function openDeleteModal(idx){
   deleteIdx=idx;
-  var name=currentView==='categories'?CATEGORIES[idx].name:GENRES[idx].name;
+  var name=currentView==='categories'?CATEGORIES[idx].name:(currentView==='genres'?GENRES[idx].name:TROPES[idx].name);
   document.getElementById('deleteMsg').textContent='Are you sure you want to delete "'+name+'"? This cannot be undone.';
   document.getElementById('deleteModal').classList.add('open');
 }
@@ -373,10 +462,14 @@ document.getElementById('deleteConfirm').addEventListener('click',function(){
     var name=CATEGORIES[deleteIdx].name;
     CategoriesGenresService.deleteCategory(deleteIdx,CATEGORIES);
     toast('Deleted category: '+name);
-  }else{
+  }else if(currentView==='genres'){
     var name=GENRES[deleteIdx].name;
     CategoriesGenresService.deleteGenre(deleteIdx,GENRES);
     toast('Deleted genre: '+name);
+  }else{
+    var name=TROPES[deleteIdx].name;
+    CategoriesGenresService.deleteTrope(deleteIdx,TROPES);
+    toast('Deleted trope: '+name);
   }
   deleteIdx=null;
   document.getElementById('deleteModal').classList.remove('open');
@@ -398,6 +491,7 @@ t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(function(
 function initPageData(){
   CATEGORIES=CategoriesGenresService.getCategories();
   GENRES=CategoriesGenresService.getGenres();
+  TROPES=CategoriesGenresService.getTropes();
   POPULAR_GENRES=CategoriesGenresService.getPopularGenres();
   renderPagination();
   renderPopularGenres();

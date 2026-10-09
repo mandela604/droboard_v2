@@ -25,7 +25,7 @@
   .btn-add:hover{background:var(--accent-2)}
 
   /* ── Stat cards ── */
-  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
+  .stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:22px}
   .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
   .stat-top{display:flex;align-items:center;justify-content:space-between}
   .stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
@@ -135,6 +135,7 @@
     <div class="top-tabs">
       <div class="top-tab active" data-view="categories">Categories</div>
       <div class="top-tab" data-view="genres">Genres</div>
+      <div class="top-tab" data-view="tropes">Tropes</div>
     </div>
     <button class="btn-add" id="addBtn"><i class="fas fa-plus"></i> <span id="addBtnLabel">Add New Category</span></button>
   </div>
@@ -178,6 +179,7 @@
       <div class="form-group"><label>Name</label><input id="formName" placeholder="e.g. Thriller"/></div>
       <div class="form-group" id="formDescGroup"><label>Description</label><textarea id="formDesc" placeholder="Short description…"></textarea></div>
       <div class="form-group" id="formCatGroup"><label>Parent Category</label><select id="formCat"><option value="">Select category…</option></select></div>
+      <div class="form-group" id="formTropeGroup" style="display:none"><label>Parent Genre</label><select id="formTropeGenre"><option value="">Select genre…</option></select></div>
       <div class="form-group"><label>Status</label><select id="formStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
     </div>
     <div class="modal-actions"><button class="btn-cancel" id="formCancel">Cancel</button><button class="btn-send" id="formConfirm"><i class="fas fa-check"></i> <span id="formConfirmLabel">Add</span></button></div>

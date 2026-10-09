@@ -27,6 +27,7 @@
  *   {
  *     id, name, avatar, time, title, body,
  *     tag, tagClass,          // discussion | recommendation | theory | question | controversial
+ *     trope?,                 // story trope pill, e.g. 'Secret Baby' (rendered beside tag)
  *     badge?, badgeClass?,
  *     media?, story?: { title, writer, cover },
  *     likes, comments, liked?,
@@ -86,6 +87,8 @@
     .dgc-tag.theory{background:rgba(56,189,248,.12);color:#0284c7}
     .dgc-tag.question{background:rgba(52,211,153,.12);color:#0d9668}
     .dgc-tag.controversial{background:rgba(251,146,60,.14);color:#c2410c}
+    .dgc-tag.trope{background:transparent;border:1px solid var(--bd-acc,rgba(255,0,80,.25));color:var(--acc,#ff0050)}
+    [data-theme="dark"] .dgc-tag.trope{border-color:rgba(255,0,80,.4);color:#ff7a9a}
     .dgc-tag.hot{background:rgba(255,0,80,.1);color:var(--acc,#ff0050)}
     [data-theme="dark"] .dgc-tag.hot{background:rgba(255,0,80,.25);color:#ff7a9a;border:1px solid rgba(255,0,80,.4)}
 
@@ -229,11 +232,17 @@
       : '';
 
     let tags = '';
+    const tagName = String(p.tag || '').toLowerCase();
+    const tagCls = String(p.tagClass || 'discussion').toLowerCase();
     if (p.tag) {
       tags += `<span class="dgc-tag ${p.tagClass || 'discussion'}">${_esc(p.tag)}</span>`;
     }
-    if (p.hot) tags += `<span class="dgc-tag hot"><i class="fas fa-fire"></i> Hot</span>`;
-    if ((p.controversy || 0) >= 50) tags += `<span class="dgc-tag controversial"><i class="fas fa-bolt"></i> Controversial</span>`;
+    if (p.trope) {
+      tags += `<span class="dgc-tag trope"><i class="fas fa-wand-magic-sparkles"></i> ${_esc(p.trope)}</span>`;
+    }
+    // One pill per meaning: skip auto pills the type tag already covers.
+    if (p.hot && tagName !== 'hot') tags += `<span class="dgc-tag hot"><i class="fas fa-fire"></i> Hot</span>`;
+    if ((p.controversy || 0) >= 50 && tagName !== 'controversial' && tagCls !== 'controversial') tags += `<span class="dgc-tag controversial"><i class="fas fa-bolt"></i> Controversial</span>`;
 
     const media = p.media
       ? `<div class="dgc-media" data-dgc-thread="${_esc(p.id)}"><img src="${_esc(p.media)}" alt="" loading="lazy"/></div>`

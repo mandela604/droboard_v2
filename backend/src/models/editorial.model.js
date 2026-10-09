@@ -54,6 +54,10 @@ const announcementSchema = new mongoose.Schema({
 const reportSchema = new mongoose.Schema({
   storyId: { type: String, ref: 'Book' },
   chapterId: { type: String, ref: 'Chapter' },
+  collectionId: { type: String, ref: 'Collection', index: true },
+  discussionId: { type: String, default: null, index: true },
+  postId: { type: String, ref: 'Post', default: null, index: true },
+  commentId: { type: String, ref: 'Comment', default: null, index: true },
   title: { type: String, required: true },
   desc: { type: String, required: true },
   type: { type: String, enum: ['content', 'spam', 'plagiarism', 'abuse', 'other'], default: 'other', index: true },

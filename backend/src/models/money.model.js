@@ -35,6 +35,7 @@ const ledgerEntrySchema = new mongoose.Schema({
   memo: { type: String, default: '' },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 ledgerEntrySchema.index({ authorId: 1, createdAt: -1 });
+ledgerEntrySchema.index({ debitAcct: 1, kind: 1, createdAt: -1 }); // tip/unlock segment lookups
 
 const coinPackSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true },
@@ -43,6 +44,7 @@ const coinPackSchema = new mongoose.Schema({
   prices: { type: Map, of: Number, default: {} }, // countryCode -> local price
   basePriceNGN: { type: Number, required: true }, // 100 coins = 1500
   status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
+  meta: { type: mongoose.Schema.Types.Mixed, default: null }, // UI extras (badge/color/icon)
 }, { timestamps: true });
 
 const coinBundleSchema = new mongoose.Schema({
@@ -51,9 +53,11 @@ const coinBundleSchema = new mongoose.Schema({
   coins: { type: Number, required: true },
   bonus: { type: Number, default: 0 },
   basePriceNGN: { type: Number, required: true },
+  prices: { type: Map, of: Number, default: {} }, // countryCode|ISO currency -> local price
   icon: { type: String, default: '' },
   color: { type: String, default: '' },
   status: { type: String, default: 'active' },
+  meta: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 const subscriptionPlanSchema = new mongoose.Schema({
@@ -62,6 +66,7 @@ const subscriptionPlanSchema = new mongoose.Schema({
   period: { type: String, enum: ['day', 'week', 'month', 'year'], required: true },
   durationDays: { type: Number, required: true },
   basePriceNGN: { type: Number, required: true },
+  prices: { type: Map, of: Number, default: {} }, // countryCode|ISO currency -> local price
   features: { type: [String], default: [] },
   badge: { type: String, default: '' },
   status: { type: String, default: 'active' },
@@ -104,6 +109,7 @@ const earnRewardSchema = new mongoose.Schema({
   cooldown: { type: String, default: '' },
   pagesRequired: { type: Number, default: 0 },
   status: { type: String, default: 'active' },
+  meta: { type: mongoose.Schema.Types.Mixed, default: null }, // UI extras (icon/blog/channel)
 }, { timestamps: true });
 
 const coinTransactionSchema = new mongoose.Schema({

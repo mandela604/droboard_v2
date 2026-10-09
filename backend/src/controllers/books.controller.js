@@ -10,32 +10,68 @@ async function create(req, res) {
   });
 }
 
+async function createBatch(req, res) {
+  return base.wrap(res, async () => {
+    const out = await books.createBookWithChapters({
+      authorId: req.user.id,
+      book: req.valid.body.book,
+      chapters: req.valid.body.chapters,
+    });
+    res.status(201);
+    return out;
+  });
+}
+
 async function list(req, res) {
-  return base.wrap(res, async () => books.listBooks(req.valid.query));
+  return base.wrap(res, async () => books.listBooks(Object.assign({}, req.valid.query, {
+    viewer: req.user ? { roles: req.user.roles } : null,
+  })));
 }
 
 async function get(req, res) {
-  return base.wrap(res, async () => books.getBook(req.valid.params.id));
+  return base.wrap(res, async () => {
+    const book = await books.getBook(req.valid.params.id);
+    // Public reads show ONLY approved/live books (staff preview via /api/chief).
+    if (!books.VISIBLE_BOOK_STATUS.includes(book.status)) { const e = new Error('not_found'); e.status = 404; throw e; }
+    return book;
+  });
 }
 
 async function detail(req, res) {
-  return base.wrap(res, async () => books.getBookDetail(req.valid.params.id));
+  return base.wrap(res, async () => {
+    const out = await books.getBookDetail(req.valid.params.id);
+    if (!books.VISIBLE_BOOK_STATUS.includes(out.status)) { const e = new Error('not_found'); e.status = 404; throw e; }
+    return out;
+  });
 }
 
 async function update(req, res) {
   return base.wrap(res, async () => {
-    const book = await books.loadBookOr404(req.valid.params.id);
+    // Mutations are id-only (never slug).
+    const book = await books.loadBookById(req.valid.params.id);
     if (!books.canWrite(book, req.user)) { const e = new Error('forbidden'); e.status = 403; throw e; }
-    return books.updateBook({ book, data: req.valid.body });
+    const body = req.valid.body || {};
+    const wantsContent = books.BOOK_CONTENT_FIELDS.some(k => body[k] !== undefined);
+    const wantsPublish = body.status !== undefined && books.VISIBLE_BOOK_STATUS.includes(body.status);
+    // Author editing live content OR asking to publish → proposal for editor
+    // approval (202, nothing applied). Every submitted book appears on the
+    // platform only after approve. Staff, drafts, and non-visible workflow
+    // states (e.g. submit draft→under_review) apply directly.
+    if (!books.isStaff(req.user) && (wantsPublish || (wantsContent && books.bookNeedsProposal(book)))) {
+      const proposal = await books.proposeBookEdit({ book, authorId: req.user.id, data: body });
+      res.status(202);
+      return { applied: false, proposal };
+    }
+    return books.updateBook({ book, data: body });
   });
 }
 
 async function remove(req, res) {
   return base.wrap(res, async () => {
-    const book = await books.loadBookOr404(req.valid.params.id);
+    const book = await books.loadBookById(req.valid.params.id);
     if (!books.canWrite(book, req.user)) { const e = new Error('forbidden'); e.status = 403; throw e; }
     return books.deleteBook({ book });
   });
 }
 
-module.exports = { create, list, get, detail, update, remove };
+module.exports = { create, createBatch, list, get, detail, update, remove };

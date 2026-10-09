@@ -47,4 +47,10 @@ async function progress(req, res) {
   });
 }
 
-module.exports = { votePoll, votePrediction, voteDebate, retract, results, progress };
+async function readState(req, res) {
+  return base.wrap(res, async () => engagement.readState({
+    bookId: req.valid.params.bookId, userId: req.user.id,
+  }));
+}
+
+module.exports = { votePoll, votePrediction, voteDebate, retract, results, progress, readState };

@@ -8,6 +8,7 @@ function Router() { return require('express').Router(); }
 const router = Router();
 
 router.get('/balance', requireAuth, ctrl.balance);
+router.get('/entitlements', requireAuth, ctrl.entitlements);
 router.get('/store', requireAuth, ctrl.storeData);
 router.post('/unlock', requireAuth, moneyLimiter,
   validate(z.object({ body: z.object({

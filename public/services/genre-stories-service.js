@@ -235,7 +235,7 @@
       page += 1;
       load(false);
     });
-    if (window.DroboardNav) DroboardNav.configure({ active: 'discover' });
+    if (window.DroboardNav) DroboardNav.configure({ active: 'none' });
   }
 
   function init() {

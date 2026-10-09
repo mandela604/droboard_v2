@@ -11,12 +11,17 @@
  *   DroboardDotsMenu.configure({
  *     onEdit:      (post) => { ...open composer prefilled... },
  *     onDelete:    (post) => { ...remove from FEED_POSTS, re-render... },
- *     onReport:    (post) => toast('🚩 Reported. Thanks for flagging.'),
+ *     onReport:    (post) => DroboardDotsMenu.openReportTypes(post),
+ *     onReportType:(post, typeId) => { ...POST /api/reports {target, targetId:post.id, reason:typeId}... },
  *     onLess:      (post) => toast('Got it — showing less of this.'),
  *     onFollow:    (post) => toast('Following @' + post.name),
  *     onMute:      (post) => toast('Muted @' + post.name),
  *     onCopyLink:  (post) => { navigator.clipboard.writeText(...); toast('🔗 Link copied'); },
  *   });
+ *
+ * `Report post` opens the predefined-types sheet (openReportTypes);
+ * picking a type fires onReportType(post, typeId). Pages that never set
+ * onReportType fall back to plain onReport(post).
  *
  *   DroboardPostCard.attach(feedList, {
  *     onDots: (post, anchorEl) => DroboardDotsMenu.open(post, anchorEl),
@@ -62,6 +67,23 @@
   let _overlayEl = null;
   let _openPost = null;
 
+  /* Predefined report types — single source is DroboardReportSheet
+     (component/report-sheet.js, loaded before this file). Inline copy
+     below is a fallback only; edit the shared file, not this one. */
+  const FALLBACK_REPORT_TYPES = [
+    { id: 'spam', label: 'Spam or scam', icon: 'fa-ban' },
+    { id: 'harassment', label: 'Harassment or bullying', icon: 'fa-user-slash' },
+    { id: 'hate', label: 'Hate speech', icon: 'fa-circle-exclamation' },
+    { id: 'sexual', label: 'Sexual content', icon: 'fa-eye-slash' },
+    { id: 'violence', label: 'Violence or threats', icon: 'fa-triangle-exclamation' },
+    { id: 'misinformation', label: 'Misinformation', icon: 'fa-circle-question' },
+    { id: 'copyright', label: 'Copyright violation', icon: 'fa-copyright' },
+    { id: 'other', label: 'Something else', icon: 'fa-flag' },
+  ];
+  function REPORT_TYPES_LIVE() {
+    return (window.DroboardReportSheet && window.DroboardReportSheet.REPORT_TYPES) || FALLBACK_REPORT_TYPES;
+  }
+
   function _ensureDom() {
     if (_menuEl) return;
     const style = document.createElement('style');
@@ -83,6 +105,14 @@
       if (!item || !_openPost) return;
       const action = item.dataset.action;
       const post = _openPost;
+      if (action === '__reportBack') { _menuEl.innerHTML = _renderItems(post); _position(_positionAnchor); return; }
+      if (action && action.indexOf('report:') === 0) {
+        const typeId = action.slice(7);
+        close();
+        if (typeof _hooks.onReportType === 'function') _hooks.onReportType(post, typeId);
+        else if (typeof _hooks.onReport === 'function') _hooks.onReport(post);
+        return;
+      }
       close();
       const fn = _hooks['on' + action];
       if (typeof fn === 'function') fn(post);
@@ -120,33 +150,57 @@
     ).join('');
   }
 
+  function _renderReportTypes() {
+    return `<div style="padding:8px 12px 4px;font-size:11px;font-weight:800;color:var(--tx-muted,#888);text-transform:uppercase;letter-spacing:.05em">Why are you reporting?</div>` +
+      REPORT_TYPES_LIVE().map(t =>
+        `<button class="ddm-item" data-action="report:${t.id}"><i class="fas ${t.icon}"></i>${t.label}</button>`
+      ).join('') +
+      `<div class="ddm-sep"></div>` +
+      `<button class="ddm-item" data-action="__reportBack"><i class="fas fa-arrow-left"></i>Back</button>`;
+  }
+
   function open(post, anchorEl) {
     _ensureDom();
     _openPost = post;
+    _positionAnchor = anchorEl || null;
     _menuEl.innerHTML = _renderItems(post);
     _menuEl.classList.add('open');
     _overlayEl.classList.add('on');
 
     // Position as a viewport-clamped dropdown anchored to the trigger
     // element (the dots button), not centered over the whole card.
-    requestAnimationFrame(() => {
-      const mw = _menuEl.offsetWidth || 210;
-      const mh = _menuEl.offsetHeight || 160;
-      let top, left;
-      if (anchorEl && anchorEl.getBoundingClientRect) {
-        const r = anchorEl.getBoundingClientRect();
-        top = r.bottom + 6;
-        left = r.right - mw;
-        if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;
-      } else {
-        top = (window.innerHeight - mh) / 2;
-        left = (window.innerWidth - mw) / 2;
-      }
-      left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
-      top = Math.max(8, Math.min(top, window.innerHeight - mh - 8));
-      _menuEl.style.top = top + 'px';
-      _menuEl.style.left = left + 'px';
-    });
+    requestAnimationFrame(() => _position(_positionAnchor));
+  }
+
+  function openReportTypes(post, anchorEl) {
+    _ensureDom();
+    _openPost = post;
+    if (anchorEl) _positionAnchor = anchorEl;
+    _menuEl.innerHTML = _renderReportTypes();
+    _menuEl.classList.add('open');
+    _overlayEl.classList.add('on');
+    requestAnimationFrame(() => _position(_positionAnchor));
+  }
+
+  let _positionAnchor = null;
+  function _position(anchorEl) {
+    if (!_menuEl) return;
+    const mw = _menuEl.offsetWidth || 210;
+    const mh = _menuEl.offsetHeight || 160;
+    let top, left;
+    if (anchorEl && anchorEl.getBoundingClientRect) {
+      const r = anchorEl.getBoundingClientRect();
+      top = r.bottom + 6;
+      left = r.right - mw;
+      if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;
+    } else {
+      top = (window.innerHeight - mh) / 2;
+      left = (window.innerWidth - mw) / 2;
+    }
+    left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - mh - 8));
+    _menuEl.style.top = top + 'px';
+    _menuEl.style.left = left + 'px';
   }
 
   function close() {
@@ -159,6 +213,9 @@
     _hooks = Object.assign({}, _hooks, hooks || {});
   }
 
-  window.DroboardDotsMenu = { configure, open, close };
+  window.DroboardDotsMenu = {
+    configure, open, openReportTypes, close,
+    get REPORT_TYPES() { return REPORT_TYPES_LIVE(); },
+  };
 
 })();

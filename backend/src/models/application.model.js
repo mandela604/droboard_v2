@@ -95,14 +95,32 @@ const inviteCodeSchema = new mongoose.Schema({
 
 const chapterEditSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },
+  chapterId: { type: String, ref: 'Chapter', required: true, index: true },
+  chapterN: { type: Number, default: null },
   authorId: { type: String, ref: 'User', required: true, index: true },
-  chapterNum: { type: String, default: '' },
-  words: { type: String, default: '' },
-  editType: { type: String, default: '' },
-  authorNote: { type: String, default: '' },
+  // Proposed content (title/content/words/authorNote/poll/prediction/debate/n).
+  // Applied to the chapter ONLY on approve — live chapter untouched until then.
+  proposed: { type: mongoose.Schema.Types.Mixed, required: true },
+  baseVersion: { type: Number, default: null },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
-  reviewerId: { type: String, ref: 'User' },
+  reviewerId: { type: String, ref: 'User', default: null },
+  reviewNote: { type: String, default: '' },
+  decidedAt: { type: Date, default: null },
 }, { timestamps: true });
+chapterEditSchema.index({ chapterId: 1, status: 1 });
+
+// Book-level edit proposals (description/cover/title/genre/tags/...).
+// Same rule: applied ONLY on editor approve.
+const bookEditSchema = new mongoose.Schema({
+  bookId: { type: String, ref: 'Book', required: true, index: true },
+  authorId: { type: String, ref: 'User', required: true, index: true },
+  proposed: { type: mongoose.Schema.Types.Mixed, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
+  reviewerId: { type: String, ref: 'User', default: null },
+  reviewNote: { type: String, default: '' },
+  decidedAt: { type: Date, default: null },
+}, { timestamps: true });
+bookEditSchema.index({ bookId: 1, status: 1 });
 
 const seriesChangeSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },
@@ -126,5 +144,6 @@ module.exports = {
   AuthorVerification: mongoose.model('AuthorVerification', authorVerificationSchema),
   InviteCode: mongoose.model('InviteCode', inviteCodeSchema),
   ChapterEdit: mongoose.model('ChapterEdit', chapterEditSchema),
+  BookEdit: mongoose.model('BookEdit', bookEditSchema),
   SeriesChange: mongoose.model('SeriesChange', seriesChangeSchema),
 };

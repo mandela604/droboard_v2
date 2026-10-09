@@ -12,15 +12,15 @@ async function index({ q, type, limit }) {
   const out = { books: [], users: [], collections: [], tags: [] };
   if (!type || type === 'books') {
     out.books = await Book.find({ $or: [{ title: rx }, { genre: rx }] })
-      .select('title genre cover reads rating').limit(lim).lean();
+      .select('id title genre cover reads rating').limit(lim).lean();
   }
   if (!type || type === 'users') {
     out.users = await User.find({ $or: [{ username: rx }, { fullName: rx }] })
-      .select('username fullName avatar roles').limit(lim).lean();
+      .select('id username fullName avatar roles').limit(lim).lean();
   }
   if (!type || type === 'collections') {
     out.collections = await Collection.find({ title: rx, privacy: 'public' })
-      .select('title cover storiesCount').limit(lim).lean();
+      .select('id title cover storiesCount').limit(lim).lean();
   }
   if (!type || type === 'tags') {
     out.tags = await Genre.find({ name: rx }).select('name').limit(lim).lean();

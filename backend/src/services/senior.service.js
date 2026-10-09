@@ -4,7 +4,7 @@
 const { Book } = require('../models/content.model');
 const { User } = require('../models/user.model');
 const { ReviewSubmission, AuthorVerification, CompletionApplication } = require('../models/application.model');
-const { InviteCode, ChapterEdit, SeriesChange } = require('../models/application.model');
+const { InviteCode, ChapterEdit, SeriesChange, BookEdit } = require('../models/application.model');
 const { Contract } = require('../models/contract.model');
 const { Report } = require('../models/editorial.model');
 const { Conversation } = require('../models/social.model');
@@ -80,6 +80,7 @@ const R = {
   contracts: () => resource(Contract, {}),
   completions: () => resource(CompletionApplication, {}),
   chapterEdits: () => resource(ChapterEdit, {}),
+  bookEdits: () => resource(BookEdit, {}),
   seriesChanges: () => resource(SeriesChange, {}),
   reviews: () => resource(ReviewSubmission, {}),
   verifications: () => resource(AuthorVerification, {}),
@@ -95,8 +96,48 @@ async function dashboard() {
   return { pendingReviews, pendingContracts, activeReports: pendingReports };
 }
 
+// Edit proposals: approve APPLIES the proposed content (the only time an
+// author edit takes effect on live books/chapters). Reject leaves live untouched.
+async function approveChapterEdit(id, reviewerId) {
+  const proposal = await ChapterEdit.findOne({ id });
+  if (!proposal) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const chapters = require('./chapters.service');
+  return chapters.applyChapterProposal({ proposal, reviewerId });
+}
+
+async function rejectChapterEdit(id, reviewerId, note) {
+  const proposal = await ChapterEdit.findOne({ id });
+  if (!proposal) { const e = new Error('not_found'); e.status = 404; throw e; }
+  if (proposal.status !== 'pending') { const e = new Error('not_pending'); e.status = 409; throw e; }
+  proposal.status = 'rejected';
+  proposal.reviewerId = reviewerId || null;
+  proposal.reviewNote = String(note || '').slice(0, 2000);
+  proposal.decidedAt = new Date();
+  await proposal.save();
+  return proposal.toJSON();
+}
+
+async function approveBookEdit(id, reviewerId) {
+  const proposal = await BookEdit.findOne({ id });
+  if (!proposal) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const books = require('./books.service');
+  return books.applyBookProposal({ proposal, reviewerId });
+}
+
+async function rejectBookEdit(id, reviewerId, note) {
+  const proposal = await BookEdit.findOne({ id });
+  if (!proposal) { const e = new Error('not_found'); e.status = 404; throw e; }
+  if (proposal.status !== 'pending') { const e = new Error('not_pending'); e.status = 409; throw e; }
+  proposal.status = 'rejected';
+  proposal.reviewerId = reviewerId || null;
+  proposal.reviewNote = String(note || '').slice(0, 2000);
+  proposal.decidedAt = new Date();
+  await proposal.save();
+  return proposal.toJSON();
+}
+
 async function activity(query) {
   return paged(AuditLog, searchFilter(query.q, ['action', 'entity', 'actorId']), { at: -1 }, query);
 }
 
-module.exports = { pg, paged, searchFilter, resource, R, dashboard, activity };
+module.exports = { pg, paged, searchFilter, resource, R, dashboard, activity, approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit };

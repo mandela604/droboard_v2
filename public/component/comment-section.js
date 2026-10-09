@@ -33,7 +33,11 @@
  *     onEdit:        (comment, oldText, newText) => { ... your API call ... },
  *     onLike:        (comment, isLiked) => { ... },               // fallback mode only
  *     onReact:       (comment, reactionId) => { ... },            // fires either way
- *     onDotsAction:  (action, comment) => { ... 'report'|'copy'|'share'|'edit'|'delete'|'follow' },
+  *     onDotsAction:  (action, comment) => { ... 'report'|'copy'|'share'|'edit'|'delete'|'follow' },
+  *     onCommentReport: (comment, typeId) => { ...POST /api/reports {target:'comment',...}... },
+  *       // optional host-owned sender; without it the component confirms
+  *       // demo-side (or POSTs itself when useApiReports:true).
+  *     useApiReports: false, // set true to let the component POST reports itself
  *     onTeamPick:    (teamId) => { ... },
  *     onProfileClick:(comment) => { ... },  // override the default location.href='profile.html'
  *     getCommentUrl: (comment) => 'https://yourapp.com/story/5#comment-' + comment.id, // used for Share
@@ -160,7 +164,7 @@
     .dcs-toggle-arrow{font-size:11px;color:var(--dcs-muted2);transition:transform .25s}
     .dcs-toggle-arrow.open{transform:rotate(180deg)}
     .dcs-body{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0}
-    .dcs-body.open{max-height:none;opacity:1}
+    .dcs-body.open{max-height:none;opacity:1;overflow:visible}
     .dcs-body.no-toggle{max-height:none;opacity:1;overflow:visible}
 
     /* Team picker — top of the list */
@@ -241,7 +245,7 @@
 
     .dcs-dots-btn{margin-left:auto;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--dcs-muted2);cursor:pointer;flex-shrink:0;transition:.15s}
     .dcs-dots-btn:active{background:var(--dcs-card);color:var(--dcs-tx)}
-    .dcs-dots-menu{position:fixed;z-index:1900;background:var(--dcs-bg);border:1px solid var(--dcs-bd);border-radius:12px;padding:5px;min-width:170px;box-shadow:0 8px 32px var(--dcs-shadow-lg);display:none}
+    .dcs-dots-menu{position:fixed;z-index:1900;background:var(--dcs-bg);border:1px solid var(--dcs-bd);border-radius:12px;padding:5px;min-width:170px;max-width:calc(100vw - 16px);max-height:min(72vh,430px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 8px 32px var(--dcs-shadow-lg);display:none;-webkit-overflow-scrolling:touch}
     .dcs-dots-menu.open{display:block}
     .dcs-dots-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;font-size:13px;font-weight:600;color:var(--dcs-muted);cursor:pointer;transition:.12s}
     .dcs-dots-item:active{background:var(--dcs-hover);color:var(--dcs-tx)}
@@ -389,7 +393,7 @@
     if (host !== 'comments') keys.push('comments');
     return keys.length ? keys : ['comments'];
   }
-  function _adSlotHTML() { return '<div data-dcs-adslot style="margin:8px 0;display:none"></div>'; }
+  function _adSlotHTML(slot) { return '<div data-dcs-adslot data-slot="comments:' + (slot || 'inline') + '" style="margin:8px 0;display:none"></div>'; }
   function _renderSlotAd(pick) {
     try {
       if ((pick.format === 'storyPromo' || pick.format === 'book') && DroboardAdCard.renderStoryPromo) return DroboardAdCard.renderStoryPromo(pick.ad);
@@ -463,11 +467,14 @@
     let placement = null;
     try { placement = await AdService.getPlacement('comments'); } catch (e) { placement = null; }
     if (placement && placement.enabled === false) return;
+    const slotId = slotEl.dataset && slotEl.dataset.slot;
+    if (slotId && placement && placement.slots && placement.slots[slotId] === false) return;
     if (!slotEl.isConnected) return;
     const keys = _slotPageKeys(opts);
+    const slotId = slotEl.dataset && slotEl.dataset.slot;
     let pick = null;
     for (let i = 0; i < keys.length; i++) {
-      try { pick = _pickSlotAd(await AdService.getAds({ page: keys[i] })); } catch (e) { pick = null; }
+      try { pick = _pickSlotAd(await AdService.getAds({ page: keys[i], slot: slotId })); } catch (e) { pick = null; }
       if (pick || !slotEl.isConnected) break;
     }
     if (!pick || !slotEl.isConnected) return;
@@ -535,7 +542,7 @@
           <div class="dcs-toggle-arrow${open ? ' open' : ''}" data-dcs-arrow><i class="fas fa-chevron-down"></i></div>
         </div>` : ''}
         <div class="dcs-body${open ? ' open' : ''}${options.collapsible ? '' : ' no-toggle'}" data-dcs-body>
-          <div data-dcs-adslot style="margin-bottom:8px;display:none"></div>
+          <div data-dcs-adslot data-slot="comments:list-top" style="margin-bottom:8px;display:none"></div>
           ${TEAMS.length ? `
           <div class="dcs-team-hint">${options.requireTeam ? 'Pick a side to comment' : 'Tag your side (optional)'}</div>
           <div class="dcs-team-picker" data-dcs-teams></div>` : ''}
@@ -796,7 +803,7 @@
       } else {
         const n = adInterval > 0 ? adInterval : 5;
         const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
-        listEl.innerHTML = comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML() : '')).join('');
+        listEl.innerHTML = comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')).join('');
         listEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
       }
       refreshCount();
@@ -843,8 +850,8 @@
       registerReactionsFor(ns, [c, ...flat]); // register BEFORE render: triggers read state during render
       const n = adInterval > 0 ? adInterval : 5;
       const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
-      const rows = [renderCommentCard(c, ns, false)].concat(flat.map((r, i) => renderCommentCard(r, ns, true) + ((rep && (i + 1) % n === 0) ? _adSlotHTML() : '')));
-      threadBodyEl.innerHTML = '<div data-dcs-adslot style="margin-bottom:8px;display:none"></div>' + rows.join('');
+      const rows = [renderCommentCard(c, ns, false)].concat(flat.map((r, i) => renderCommentCard(r, ns, true) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')));
+      threadBodyEl.innerHTML = '<div data-dcs-adslot data-slot="comments:thread-top" style="margin-bottom:8px;display:none"></div>' + rows.join('');
       threadBodyEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
       attachReplyInputListeners(ns, threadBodyEl);
       attachEditInputListeners(ns);
@@ -985,6 +992,100 @@
     }
 
     // ── 3-dot menu ──
+    // Reporting uses the shared DroboardReportSheet types
+    // (component/report-sheet.js, loaded before this file) — same 8 ids
+    // as the dots-menu sheet and POST /api/reports reasons.
+    // Inline copy below is a fallback only; edit the shared file.
+    const FALLBACK_REPORT_TYPES = [
+      { id: 'spam', label: 'Spam or scam', icon: 'fa-ban' },
+      { id: 'harassment', label: 'Harassment or bullying', icon: 'fa-user-slash' },
+      { id: 'hate', label: 'Hate speech', icon: 'fa-circle-exclamation' },
+      { id: 'sexual', label: 'Sexual content', icon: 'fa-eye-slash' },
+      { id: 'violence', label: 'Violence or threats', icon: 'fa-triangle-exclamation' },
+      { id: 'misinformation', label: 'Misinformation', icon: 'fa-circle-question' },
+      { id: 'copyright', label: 'Copyright violation', icon: 'fa-copyright' },
+      { id: 'other', label: 'Something else', icon: 'fa-flag' },
+    ];
+    function commentReportTypes() {
+      return (window.DroboardReportSheet && window.DroboardReportSheet.REPORT_TYPES) || FALLBACK_REPORT_TYPES;
+    }
+    const COMMENT_REPORTS_API = '/api/reports';
+    let _lastDotsTrigger = null;
+    function reportTypeLabel(id) {
+      if (window.DroboardReportSheet) return window.DroboardReportSheet.label(id);
+      const t = commentReportTypes().find(x => x.id === id);
+      return t ? t.label : id;
+    }
+    async function fileCommentReport(c, typeId) {
+      // Host-owned hook wins (page sends with its own USE_API pattern).
+      if (typeof options.onCommentReport === 'function') {
+        try { await options.onCommentReport(c, typeId); } catch (e) { _toast('Could not file report.'); }
+        return;
+      }
+      if (options.useApiReports) {
+        try {
+          const res = await fetch(COMMENT_REPORTS_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              target: 'comment', targetId: String(c.id || ''),
+              reason: typeId,
+              title: c && c.text ? ('Comment: ' + String(c.text).slice(0, 140)) : 'Comment',
+            }),
+          });
+          if (!res.ok) throw new Error('api_' + res.status);
+          _toast('Reported: ' + reportTypeLabel(typeId) + '. Thanks — moderators will review.');
+          return;
+        } catch (e) { /* fall through to demo confirmation */ }
+      }
+      _toast('Reported: ' + reportTypeLabel(typeId) + ' (demo)');
+    }
+    function openReportTypes(cid) {
+      const c = findById(comments, cid);
+      // The main menu is torn down on item click — rebuild the shell if gone.
+      let overlay = document.getElementById(instId + '-menuov');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = instId + '-menuov';
+        overlay.className = 'dcs-menu-overlay';
+        overlay.addEventListener('click', closeDots);
+        document.body.appendChild(overlay);
+      }
+      overlay.classList.add('on');
+      let menu = document.getElementById(instId + '-dotsmenu');
+      if (!menu) {
+        menu = document.createElement('div');
+        menu.className = 'dcs-dots-menu open';
+        menu.id = instId + '-dotsmenu';
+        document.body.appendChild(menu);
+        if (_lastDotsTrigger && _lastDotsTrigger.getBoundingClientRect) {
+          const rect = _lastDotsTrigger.getBoundingClientRect();
+          let top = rect.bottom + 4, left = rect.right - 175;
+          if (left < 8) left = 8;
+          if (top + 180 > window.innerHeight) top = rect.top - 185;
+          menu.style.top = top + 'px'; menu.style.left = left + 'px';
+        } else {
+          menu.style.top = '40%'; menu.style.left = '50%';
+        }
+      }
+      menu.innerHTML =
+        `<div style="padding:7px 11px 3px;font-size:10.5px;font-weight:800;color:var(--dcs-muted2);text-transform:uppercase;letter-spacing:.05em">Why report?</div>` +
+        commentReportTypes().map(t =>
+          `<div class="dcs-dots-item" data-act="report:${t.id}"><i class="fas ${t.icon}"></i> ${t.label}</div>`
+        ).join('') +
+        `<div class="dcs-dots-sep"></div><div class="dcs-dots-item" data-act="__back"><i class="fas fa-arrow-left"></i> Back</div>`;
+      menu.querySelectorAll('.dcs-dots-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const act = item.dataset.act;
+          if (act === '__back') { closeDots(); if (_lastDotsTrigger) openDots(cid, _lastDotsTrigger); return; }
+          const typeId = act.slice(7);
+          closeDots();
+          fileCommentReport(c, typeId);
+          if (typeof options.onDotsAction === 'function') options.onDotsAction('report', c);
+        });
+      });
+    }
     function closeDots() {
       if (openDotsId !== null) {
         document.getElementById(instId + '-dotsmenu')?.remove();
@@ -996,6 +1097,8 @@
       if (openDotsId === cid) { closeDots(); return; }
       closeDots();
       openDotsId = cid;
+      _lastDotsTrigger = triggerEl || null;
+      bindMenuDismiss();
       const c = findById(comments, cid);
       const isOwn = c && c.name === currentUser.name;
       let overlay = document.getElementById(instId + '-menuov');
@@ -1026,12 +1129,22 @@
       if (top + 180 > window.innerHeight) top = rect.top - 185;
       menu.style.top = top + 'px'; menu.style.left = left + 'px';
       menu.querySelectorAll('.dcs-dots-item').forEach(item => {
-        item.addEventListener('click', () => { dotAction(item.dataset.act, cid); closeDots(); });
+        item.addEventListener('click', () => { const keep = dotAction(item.dataset.act, cid); if (!keep) closeDots(); });
       });
+    }
+    // A fixed-position menu must die when the page moves under it —
+    // otherwise it sticks to the viewport while its comment scrolls away.
+    let _dismissBound = false;
+    function bindMenuDismiss() {
+      if (_dismissBound) return;
+      _dismissBound = true;
+      window.addEventListener('scroll', () => { if (openDotsId !== null) closeDots(); }, { passive: true });
+      window.addEventListener('resize', () => { if (openDotsId !== null) closeDots(); });
     }
     function dotAction(action, cid) {
       const c = findById(comments, cid);
-      if (action === 'report') _toast('🚩 Comment reported.');
+      // Return true when the action keeps a menu open (caller skips closeDots).
+      if (action === 'report') { openReportTypes(cid); return true; }
       else if (action === 'copy') { navigator.clipboard?.writeText(c?.text || '').catch(() => {}); _toast('📋 Copied!'); }
       else if (action === 'share') {
         if (typeof window.openShareModal === 'function') {
