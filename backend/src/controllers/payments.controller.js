@@ -11,11 +11,23 @@ function storeRefFor(channel, orderId) { return channel + ':' + orderId; }
 
 async function creditVerified({ userId, pack, verified, channel, packCode }) {
   verify.assertPackAmount(pack, verified.amount, verified.currency);
-  return wallet.creditPurchase({
+  const out = await wallet.creditPurchase({
     userId, coins: pack.coins,
     fiatAmount: verified.amount, fiatCurrency: verified.currency || 'NGN',
     channel, storeRef: storeRefFor(channel, verified.orderId), packCode,
   });
+  // Subscriptions fulfill as plan rows (coins stay 0); packs/bundles as coins.
+  if (pack.kind === 'subscription' && pack.plan) {
+    const { Subscription } = require('../models/money.model');
+    const days = Number(pack.plan.durationDays) || 30;
+    const startedAt = new Date();
+    const sub = await Subscription.create({
+      userId, planCode: pack.code, status: 'active', startedAt,
+      expiresAt: new Date(startedAt.getTime() + days * 86400000),
+    });
+    return Object.assign({}, out, { plan: pack.code, subscriptionId: sub.id, expiresAt: sub.expiresAt });
+  }
+  return out;
 }
 
 // Web (Paystack): client sends the transaction reference + packCode.
@@ -54,6 +66,17 @@ async function appstore(req, res) {
     const e = new Error('appstore_not_configured');
     e.status = 501;
     throw e;
+  });
+}
+
+async function config(req, res) {
+  return base.wrap(res, async () => {
+    const env = require('../config/env');
+    return {
+      paystackPublicKey: env.paystackPublicKey || '',
+      flutterwavePublicKey: env.flwPublicKey || '',
+      currency: 'NGN',
+    };
   });
 }
 
@@ -104,4 +127,4 @@ async function flutterwaveWebhook(req, res) {
   });
 }
 
-module.exports = { paystack, flutterwave, play, appstore, paystackWebhook, flutterwaveWebhook };
+module.exports = { paystack, flutterwave, play, appstore, paystackWebhook, flutterwaveWebhook, config };

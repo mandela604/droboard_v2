@@ -31,6 +31,27 @@ router.get('/', generalLimiter,
   validate(z.object({ query: z.object({ q: z.string().max(80).optional(), page: pg.page, limit: pg.limit }).strict() })),
   async (req, res) => base.wrap(res, async () => users.searchUsers(req.valid.query)));
 
+// Username availability check.
+router.get('/check-username', generalLimiter,
+  validate(z.object({ query: z.object({ username: z.string().min(3).max(24) }).strict() })),
+  async (req, res) => base.wrap(res, async () => users.checkUsername(req.valid.query.username)));
+
+// Self-serve reader→writer upgrade.
+router.post('/me/become-writer', requireAuth, writeLimiter,
+  validate(z.object({ body: z.object({
+    firstBookTitle: z.string().min(2).max(160),
+    genre: z.string().max(40).optional(),
+  }).strict() })),
+  async (req, res) => base.wrap(res, async () => {
+    const out = await users.becomeWriter(req.user.id, req.valid.body);
+    res.status(201);
+    return out;
+  }));
+
+// GDPR data export.
+router.get('/me/export', requireAuth, generalLimiter, async (req, res) =>
+  base.wrap(res, async () => users.exportData(req.user.id)));
+
 router.get('/me', requireAuth, async (req, res) =>
   base.wrap(res, async () => users.me(req.user.id)));
 
@@ -88,6 +109,7 @@ router.patch('/me/settings', requireAuth, writeLimiter,
     theme: z.enum(['light', 'dark']).optional(),
     notifications: z.boolean().optional(),
     privacy: z.enum(['public', 'private']).optional(),
+    readingActivity: z.boolean().optional(),
   }).strict() })),
   async (req, res) => base.wrap(res, async () => users.updateSettings(req.user.id, req.valid.body)));
 
@@ -124,7 +146,7 @@ router.get('/:handle/followers', generalLimiter,
   async (req, res) => base.wrap(res, async () => users.followersOf(req.valid.params.handle, req.valid.query)));
 
 router.get('/:handle/following', generalLimiter,
-  validate(z.object({ params: z.object({ handle }), query: z.object({ page: pg.page, limit: pg.limit, q: z.string().max(80).optional() }).strict() })),
+  validate(z.object({ params: z.object({ handle }), query: z.object({ page: pg.page, limit: pg.limit, q: z.string().max(80).optional(), filter: z.string().max(20).optional() }).strict() })),
   async (req, res) => base.wrap(res, async () => users.followingOf(req.valid.params.handle, req.valid.query)));
 
 router.post('/:handle/follow', requireAuth, writeLimiter,

@@ -22,7 +22,7 @@ const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue
 const ROLE_CLS = { 'Super Admin':'accent', 'Chief Editor':'purple', 'Finance Admin':'green', 'Content Moderator':'red', 'Support Admin':'blue' };
 
 function fmtNum(n){ return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
-function fmtNaira(n){ return '$'+fmtNum(n); }
+function fmtNaira(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$'+fmtNum(n); }
 
 /* ── KPI cards ── */
 const KPIS = [

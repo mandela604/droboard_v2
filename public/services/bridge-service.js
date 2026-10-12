@@ -13,7 +13,7 @@
   let STORY_ID = null;
   const S = { heroFollow: false, debateVote: null, pollVoted: -1, predVoted: -1, synExp: false, engOpen: null };
 
-  function fmtN(n) { n = +n || 0; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+  function fmtN(n) { n = +n || 0; if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'; if (n >= 1000) return (n / 1000).toFixed(1) + 'k'; return String(n); }
   function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   function toast(m) {
@@ -44,24 +44,227 @@
     return null;
   }
 
+  function parseCount(v) {
+    if (typeof v === 'number') return v;
+    const m = String(v || '').trim().match(/^([\d.]+)\s*([MK])?$/i);
+    if (!m) return 0;
+    return Math.round(parseFloat(m[1]) * (m[2] ? (m[2].toUpperCase() === 'M' ? 1000000 : 1000) : 1));
+  }
+  function splitCat(cat) {
+    const parts = String(cat || '').trim().split(/\s+/);
+    if (!parts.length) return { emoji: '📖', name: 'Story' };
+    const first = parts[0];
+    const isEmoji = /\p{Extended_Pictographic}/u.test(first);
+    return isEmoji
+      ? { emoji: first, name: parts.slice(1).join(' ') || 'Story' }
+      : { emoji: '📖', name: parts.join(' ') || 'Story' };
+  }
+
+  // Deterministic demo richness: stable per-story numbers derived from
+  // the id (same every visit, no data files). Default story keeps its
+  // handcrafted content; only normalized catalog records use this.
+  function hashStr(s) {
+    let h = 2166136261;
+    const str = String(s || '');
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function rng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const GENRE_BY_CATEGORY = {
+    betrayal: 'Romance', romance: 'Romance', fantasy: 'Fantasy', revenge: 'Revenge',
+    mafia: 'Mafia', urban: 'Mafia', billionaire: 'Billionaire', ceo: 'Billionaire',
+    werewolf: 'Werewolf', horror: 'Horror', heartbreak: 'Heartbreak', elegy: 'Elegy',
+    twist: 'Twist', drama: 'Drama', comedy: 'Comedy', campus: 'Campus',
+  };
+  const TROPES_BY_GENRE = {
+    Romance: ['Second Chance', 'Secret Baby', 'Forced Proximity', 'Fake Dating'],
+    Fantasy: ['Chosen One', 'Hidden Magic', 'Prophecy', 'Reluctant Hero'],
+    Revenge: ['Sweet Revenge', 'Hidden Identity', 'Downfall', 'Justice Served'],
+    Mafia: ['Mafia Bride', 'Power Couple', 'Underworld Heir', 'Loyalty Test'],
+    Billionaire: ['Secret Billionaire', 'Contract Marriage', 'Office Romance', 'Hidden Heir'],
+    Default: ['Slow Burn', 'Plot Twist', 'Hidden Truth', 'Second Chance'],
+  };
+  function genreFor(catName) {
+    const key = Object.keys(GENRE_BY_CATEGORY).find(k => (catName || '').toLowerCase().includes(k));
+    return key ? GENRE_BY_CATEGORY[key] : 'Drama';
+  }
+  function tropesFor(genre, r) {
+    const pool = (TROPES_BY_GENRE[genre] || TROPES_BY_GENRE.Default).slice();
+    const out = [];
+    while (out.length < 3 && pool.length) {
+      out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+    }
+    return out;
+  }
+  const TAG_POOL = {
+    betrayal: ['#betrayal', '#grief', '#marriage', '#secrets', '#redemption', '#nigeria'],
+    romance: ['#romance', '#love', '#drama', '#slowburn', '#nigeria'],
+    fantasy: ['#fantasy', '#magic', '#werewolf', '#adventure'],
+    revenge: ['#revenge', '#drama', '#betrayal', '#justice'],
+    mafia: ['#mafia', '#urban', '#power', '#crime'],
+    billionaire: ['#billionaire', '#romance', '#ceo', '#drama'],
+  };
+  function tagsFor(genreName, r) {
+    const key = Object.keys(TAG_POOL).find(k => (genreName || '').toLowerCase().includes(k)) || null;
+    const pool = key ? TAG_POOL[key] : ['#drama', '#love', '#secrets', '#nigeria', '#trending'];
+    const n = 4 + Math.floor(r() * 2);
+    const out = [];
+    for (let i = 0; i < n && pool.length; i++) {
+      out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+    }
+    return out;
+  }
+  // gentle=true fills only missing/empty fields (passthrough data keeps
+  // its real numbers); gentle=false seeds everything (built objects).
+  function enrichDemo(d, gentle) {
+    const r = rng(hashStr(d.id));
+    const pick = (a, b) => Math.round(a + r() * (b - a));
+    d.stats = d.stats || {};
+    d.engagement = d.engagement || {};
+    d.engagement.poll = d.engagement.poll || { q: '', opts: [] };
+    d.engagement.debate = d.engagement.debate || { q: '', dFor: 0, dAg: 0 };
+    d.engagement.pred = d.engagement.pred || { q: '', opts: [] };
+    d.hubs = d.hubs || {};
+    d.hubs.genre = d.hubs.genre || {};
+    d.hubs.circle = d.hubs.circle || {};
+    d.reactions = d.reactions || { userRx: null };
+    d.writer = d.writer || {};
+    const setN = (obj, key, val) => { if (!gentle || obj[key] == null) obj[key] = val; };
+    const setS = (obj, key, val) => { if (!gentle || obj[key] == null || obj[key] === '') obj[key] = val; };
+    const setA = (obj, key, val) => { if (!gentle || !Array.isArray(obj[key]) || !obj[key].length) obj[key] = val; };
+    setN(d.stats, 'comments', pick(800, 9000));
+    setN(d.stats, 'shares', pick(8000, 70000));
+    setN(d.stats, 'rating', (42 + Math.floor(r() * 8)) / 10);
+    setA(d, 'tags', tagsFor(d.category && d.category.name, r));
+    const pv = (a, b) => pick(a, b);
+    if (!gentle || !d.engagement.poll.opts.length) {
+      d.engagement.poll.opts = [{ t: '❤️ Loving it', v: 0 }, { t: '🤷 Still deciding', v: 0 }];
+    }
+    d.engagement.poll.opts.forEach(o => { if (!gentle || !(o.v > 0)) o.v = pv(400, 5200); });
+    setN(d.engagement.debate, 'dFor', pv(1500, 4200));
+    setN(d.engagement.debate, 'dAg', pv(1500, 5200));
+    if (!gentle || !d.engagement.pred.opts.length) {
+      d.engagement.pred.opts = [{ t: '🔥 A twist', v: 0 }, { t: '💔 Heartbreak', v: 0 }];
+    }
+    d.engagement.pred.opts.forEach(o => { if (!gentle || !(o.v > 0)) o.v = pv(300, 2600); });
+    setN(d.hubs.genre, 'members', pick(20000, 380000));
+    setN(d.hubs.circle, 'members', pick(800, 9200));
+    setN(d, 'tipCount', pick(200, 2400));
+    [['love', 2000, 12000], ['crying', 1000, 7000], ['shocked', 300, 2500], ['broken', 500, 4500],
+     ['emotional', 300, 2200], ['savage', 200, 1200], ['sus', 100, 800], ['twist', 100, 900]
+    ].forEach(([k, a, b]) => setN(d.reactions, k, pick(a, b)));
+    setN(d.writer, 'followers', pick(3000, 60000));
+    setN(d.writer, 'reads', d.stats.reads || pick(40000, 900000));
+    setN(d.writer, 'rating', d.stats.rating);
+    setN(d.writer, 'stories', pick(1, 12));
+    setS(d.writer, 'bio', 'Telling stories that live in your chest long after you close the tab.');
+    setS(d.engagement.poll, 'q', 'What do you think so far?');
+    setS(d.engagement.debate, 'q', 'Join the debate.');
+    setS(d.engagement.pred, 'q', 'What happens next?');
+    return d;
+  }
+
+  // Flat catalog records (DemoData.STORIES) → full bridge shape so every
+  // renderer below gets the fields it expects. Short = 25 chapters max.
+  function normalizeStory(s) {
+    if (!s) return null;
+    // Already bridge-shaped: complete any missing pieces instead of
+    // trusting it blindly (an empty chapters list must never render).
+    if (s.writer && Array.isArray(s.chapters)) {
+      if (!s.length) s.length = (s.chapters.length || 0) <= 25 ? 'short' : 'long';
+      if (!s.genre && s.category) s.genre = genreFor(s.category.name || s.category);
+      if (!Array.isArray(s.tropes) || !s.tropes.length) {
+        try { s.tropes = tropesFor(s.genre || 'Drama', rng(hashStr('tropes:' + (s.id || '')))); } catch (e) { s.tropes = []; }
+      }
+      if (s.likes == null) {
+        try {
+          const rx = s.reactions || {};
+          s.likes = Object.keys(rx).reduce((sum, k) => sum + (k === 'userRx' ? 0 : (+rx[k] || 0)), 0);
+        } catch (e) { s.likes = 0; }
+      }
+      return enrichDemo(s, true);
+    }
+    const totalCh = Math.max(1, parseInt(s.chapters, 10) || 1);
+    const cat = splitCat(s.cat || s.category);
+    const chapters = [];
+    for (let n = 1; n <= totalCh; n++) {
+      chapters.push({ n, title: 'Chapter ' + n, meta: '~4 min', badge: n === 1 ? 'free' : null, state: n === 1 ? 'current' : 'done' });
+    }
+    const genreName = (cat.name || 'Story') + ' Hub';
+    const genre = genreFor(cat.name);
+    const stories = (window.DemoData && window.DemoData.STORIES) || [];
+    const _r = rng(hashStr('tropes:' + (s.id || '')));
+    const tropes = tropesFor(genre, _r);
+    return enrichDemo({
+      id: s.id, title: s.title || 'Untitled', cover: s.cover || '',
+      category: cat, genre: genre, tropes: tropes, length: totalCh <= 25 ? 'short' : 'long',
+      chapterLabel: 'Ch 1',
+      writer: {
+        name: s.author || 'Unknown', handle: '@' + String(s.author || 'writer').replace('@', ''),
+        avatar: s.authorAv || '', followers: 0, following: false,
+        verified: !!s.verified, stories: 0, reads: 0, rating: 0, bio: '',
+      },
+      stats: { comments: 0, reads: parseCount(s.reads), shares: 0, rating: 0 },
+      likes: parseCount(s.likes),
+      likes: parseCount(s.likes),
+      continue: { chapterId: 1, chapterTitle: 'Chapter 1', progress: 0, timeLeft: '' },
+      synopsis: { short: s.desc || '', more: '' },
+      engagement: {
+        poll: { q: 'What do you think so far?', opts: [{ t: '❤️ Loving it', v: 0 }, { t: '🤷 Still deciding', v: 0 }] },
+        debate: { q: 'Debate opens after Chapter 3.', dFor: 0, dAg: 0 },
+        pred: { q: 'What happens next?', opts: [{ t: '🔥 A twist', v: 0 }, { t: '💔 Heartbreak', v: 0 }] },
+      },
+      hubs: {
+        genre: { name: genreName, icon: cat.emoji, members: 0, joined: false },
+        circle: { name: (s.author || 'Writer') + "'s Inner Circle", members: 0, joined: false, perks: 'Early chapters, behind-the-scenes, live Q&As' },
+      },
+      details: [
+        { icon: '📚', lbl: 'Type', val: (totalCh <= 25 ? 'Short' : 'Long') + ' story · Ongoing' },
+        { icon: '🏷️', lbl: 'Category', val: cat.emoji + ' ' + cat.name, acc: true },
+        { icon: '🎭', lbl: 'Genre', val: genre, acc: true },
+        { icon: '✨', lbl: 'Trope', val: tropes.slice(0, 2).join(' · ') },
+        { icon: '📅', lbl: 'Chapters', val: totalCh + ' Chapter' + (totalCh === 1 ? '' : 's') },
+        { icon: '⏱️', lbl: 'Read time', val: '~4 min/chapter' },
+        { icon: '✅', lbl: 'Status', val: 'Ongoing', acc: true },
+      ],
+      tags: [],
+      similar: stories.filter(x => String(x.id) !== String(s.id)).slice(0, 4),
+      reactions: { userRx: null, love: 0, crying: 0, angry: 0, shocked: 0, broken: 0, emotional: 0, savage: 0, sus: 0, twist: 0, laughing: 0 },
+      tipCount: 0,
+    });
+  }
+
   function getDefaultStory(id) {
+    const defRx = { userRx: null, love: 9000, crying: 6000, angry: 0, shocked: 2000, broken: 4000, emotional: 1500, savage: 900, sus: 500, twist: 400, laughing: 0 };
+    const defLikes = Object.keys(defRx).reduce((s, k) => s + (k === 'userRx' ? 0 : (defRx[k] || 0)), 0);
     return {
       id: id,
       title: "I came home early and caught my husband kissing my late sister's photograph",
       cover: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=900&q=85',
       category: { emoji: '💔', name: 'Betrayal' },
-      type: 'Series',
-      seasonChapterLabel: 'S2 · Ch 4',
+      genre: 'Romance',
+      tropes: ['Second Chance', 'Secret Baby', 'Forced Proximity'],
+      length: 'long',
+      chapterLabel: 'Ch 15',
       writer: {
         name: 'Ada_Writes', handle: '@ada_writes', avatar: 'https://i.pravatar.cc/100?img=32',
         followers: 12400, following: false, verified: true, stories: 8, reads: 171000, rating: 4.7,
         bio: "Telling stories that live in your chest long after you close the tab. Betrayal · Family · Redemption. Lagos-based, always online at 2am."
       },
       stats: { comments: 4100, reads: 171000, shares: 34000, rating: 4.7 },
-      continue: { chapterId: 4, chapterTitle: 'Chapter 4 — The night she asked him to be honest', progress: 62, timeLeft: '~3 min left' },
+      likes: defLikes,
+      continue: { chapterId: 15, chapterTitle: 'Chapter 15 — The night she asked him to be honest', progress: 62, timeLeft: '~3 min left' },
       synopsis: {
         short: "A woman returns home early to find her husband in an intimate moment with a photograph of her deceased sister. What follows is not a fight — it is the slow unravelling of a marriage built on two griefs that never met.",
-        more: " Ada_Writes' most read series explores betrayal, grief, and the love that hides inside silence. Season 2 picks up a year after Ada moved back home — the husband has a new therapist, and Ada has a new question. Neither of them is ready for the answers."
+        more: " Ada_Writes' most read story explores betrayal, grief, and the love that hides inside silence. It picks up a year after Ada moved back home — the husband has a new therapist, and Ada has a new question. Neither of them is ready for the answers."
       },
       engagement: {
         poll: { q: 'Who was truly at fault in this situation?', opts: [
@@ -77,41 +280,40 @@
           { t: '🏠 Ada moves out quietly', v: 574 },
         ]},
       },
-      seasons: [
-        { label: 'Season 1', chs: [
-          { n: 1, title: 'The knock on the door', meta: '3 min · 640 words', badge: 'free', state: 'done' },
-          { n: 2, title: 'The photograph he kept', meta: '4 min · 820 words', badge: null, state: 'done' },
-          { n: 3, title: 'She asked him nothing that night', meta: '3 min · 700 words', badge: null, state: 'done' },
-          { n: 4, title: 'The anniversary dinner', meta: '4 min · 790 words', badge: null, state: 'done' },
-          { n: 5, title: 'What the neighbours heard', meta: '4 min · 810 words', badge: null, state: 'done' },
-          { n: 6, title: "Her mother knew", meta: '3 min · 670 words', badge: null, state: 'done' },
-          { n: 7, title: 'Two sleepless mornings', meta: '4 min · 830 words', badge: null, state: 'done' },
-          { n: 8, title: 'She packed the small bag first', meta: '5 min · 960 words', badge: null, state: 'done' },
-          { n: 9, title: 'The last Sunday meal', meta: '4 min · 800 words', badge: null, state: 'done' },
-          { n: 10, title: 'She left the key under the mat', meta: '5 min · 980 words', badge: null, state: 'done' },
-          { n: 11, title: 'One year later', meta: '6 min · 1100 words', badge: null, state: 'done' },
-        ]},
-        { label: 'Season 2', chs: [
-          { n: 1, title: 'New apartment, same nightmares', meta: '4 min · 800 words', badge: null, state: 'done' },
-          { n: 2, title: 'He texted. She waited.', meta: '3 min · 650 words', badge: null, state: 'done' },
-          { n: 3, title: "The therapist asked about her sister", meta: '4 min · 820 words', badge: null, state: 'done' },
-          { n: 4, title: 'The night she asked him to be honest', meta: '5 min · 940 words', badge: 'new', state: 'current', progress: 62 },
-          { n: 5, title: 'What he finally told her', meta: '5 min · 950 words', badge: null, state: 'locked' },
-          { n: 6, title: 'The choice she almost made', meta: '4 min · 880 words', badge: null, state: 'locked' },
-        ]},
+      // Flat chapter list — stories are short (25 chapters max) or long.
+      chapters: [
+        { n: 1, title: 'The knock on the door', meta: '3 min · 640 words', badge: 'free', state: 'done' },
+        { n: 2, title: 'The photograph he kept', meta: '4 min · 820 words', badge: null, state: 'done' },
+        { n: 3, title: 'She asked him nothing that night', meta: '3 min · 700 words', badge: null, state: 'done' },
+        { n: 4, title: 'The anniversary dinner', meta: '4 min · 790 words', badge: null, state: 'done' },
+        { n: 5, title: 'What the neighbours heard', meta: '4 min · 810 words', badge: null, state: 'done' },
+        { n: 6, title: "Her mother knew", meta: '3 min · 670 words', badge: null, state: 'done' },
+        { n: 7, title: 'Two sleepless mornings', meta: '4 min · 830 words', badge: null, state: 'done' },
+        { n: 8, title: 'She packed the small bag first', meta: '5 min · 960 words', badge: null, state: 'done' },
+        { n: 9, title: 'The last Sunday meal', meta: '4 min · 800 words', badge: null, state: 'done' },
+        { n: 10, title: 'She left the key under the mat', meta: '5 min · 980 words', badge: null, state: 'done' },
+        { n: 11, title: 'One year later', meta: '6 min · 1100 words', badge: null, state: 'done' },
+        { n: 12, title: 'New apartment, same nightmares', meta: '4 min · 800 words', badge: null, state: 'done' },
+        { n: 13, title: 'He texted. She waited.', meta: '3 min · 650 words', badge: null, state: 'done' },
+        { n: 14, title: "The therapist asked about her sister", meta: '4 min · 820 words', badge: null, state: 'done' },
+        { n: 15, title: 'The night she asked him to be honest', meta: '5 min · 940 words', badge: 'new', state: 'current', progress: 62 },
+        { n: 16, title: 'What he finally told her', meta: '5 min · 950 words', badge: null, state: 'locked' },
+        { n: 17, title: 'The choice she almost made', meta: '4 min · 880 words', badge: null, state: 'locked' },
       ],
-      reactions: { userRx: null, love: 9000, crying: 6000, angry: 0, shocked: 2000, broken: 4000, emotional: 1500, savage: 900, sus: 500, twist: 400, laughing: 0 },
+      reactions: defRx,
       hubs: {
         genre: { name: 'Betrayal Hub', icon: '💔', members: 84200, joined: false },
         circle: { name: "Ada_Writes' Inner Circle", members: 3200, joined: false, perks: 'Early chapters, behind-the-scenes, live Q&As' },
       },
       details: [
-        { icon: '📚', lbl: 'Type', val: 'Series · Ongoing' },
+        { icon: '📚', lbl: 'Type', val: 'Long story · Ongoing' },
         { icon: '🏷️', lbl: 'Category', val: '💔 Betrayal', acc: true },
-        { icon: '📅', lbl: 'Seasons', val: '2 Seasons · 17 Chapters' },
+        { icon: '🎭', lbl: 'Genre', val: 'Romance', acc: true },
+        { icon: '✨', lbl: 'Trope', val: 'Second Chance · Secret Baby' },
+        { icon: '📅', lbl: 'Chapters', val: '17 Chapters · Long' },
         { icon: '⏱️', lbl: 'Read time', val: '~4 min/chapter' },
         { icon: '📅', lbl: 'Started', val: 'Jan 2025' },
-        { icon: '✅', lbl: 'Status', val: 'Ongoing · Ch5 soon', acc: true },
+        { icon: '✅', lbl: 'Status', val: 'Ongoing · Ch16 soon', acc: true },
       ],
       tags: ['#betrayal', '#grief', '#marriage', '#secrets', '#redemption', '#nigeria'],
       similar: [
@@ -130,6 +332,7 @@
     renderStats();
     renderContinue();
     renderSynopsis();
+    renderTropes();
     renderEngagement();
     renderChapterCount();
     renderReactions();
@@ -150,8 +353,9 @@
       <div class="hero-scrim"></div>
       <div class="hero-top">
         <span class="hbadge hb-cat">${d.category.emoji} ${esc(d.category.name)}</span>
-        ${d.type === 'Series' ? '<span class="hbadge hb-series">Series</span>' : ''}
-        <span class="hbadge hb-type">${esc(d.seasonChapterLabel)}</span>
+        ${d.genre ? `<span class="hbadge hb-genre">${esc(d.genre)}</span>` : ''}
+        ${d.tropes && d.tropes[0] ? `<span class="hbadge hb-trope">✨ ${esc(d.tropes[0])}</span>` : ''}
+        <span class="hbadge hb-type">${esc(d.chapterLabel || '')}</span>
       </div>
       <div class="hero-body">
         <div class="hero-title">${esc(d.title)}</div>
@@ -168,8 +372,9 @@
 
   function renderStats() {
     const d = DATA;
+    const likes = d.likes != null ? d.likes : ((d.reactions || {}).love || 0);
     document.getElementById('statsStrip').innerHTML = `
-      <div class="stat-cell"><div class="sn acc" id="likesStatN">0</div><div class="sl">Likes</div></div>
+      <div class="stat-cell"><div class="sn acc" id="likesStatN">${fmtN(likes)}</div><div class="sl">Likes</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.comments)}</div><div class="sl">Comments</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.reads)}</div><div class="sl">Reads</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.shares)}</div><div class="sl">Shares</div></div>
@@ -186,6 +391,8 @@
 
   function renderSynopsis() {
     document.getElementById('synText').innerHTML = `${esc(DATA.synopsis.short)}<span id="synExt" style="display:none">${esc(DATA.synopsis.more)}</span>`;
+    const btn = document.getElementById('synBtn');
+    if (btn) btn.style.display = (DATA.synopsis.more || '').trim() ? '' : 'none';
   }
 
   function renderEngagement() {
@@ -235,12 +442,24 @@
     document.getElementById('predTotal').textContent = fmtN(opts.reduce((s, o) => s + o.v, 0)) + ' predictions';
   }
 
+  function chapterCountTotal() {
+    const direct = (DATA.chapters || []).length;
+    if (direct > 0) return direct;
+    // Last resort: the catalog record's own count (never render bare 0).
+    try {
+      const all = (window.DemoData && window.DemoData.STORIES) || [];
+      const hit = all.find(s => String(s.id) === String(STORY_ID));
+      const n = hit && parseInt(hit.chapters, 10);
+      if (n > 0) return n;
+    } catch (e) {}
+    return 0;
+  }
   function renderChapterCount() {
-    let totalCh = 0;
-    DATA.seasons.forEach(s => totalCh += s.chs.length);
-    const firstSeason = DATA.seasons[0] ? DATA.seasons[0].label : '';
-    document.getElementById('chCountN').textContent = totalCh + ' Chapters';
-    document.getElementById('chCountSub').textContent = DATA.seasons.length + ' seasons · ' + firstSeason + ' to ' + (DATA.seasons[DATA.seasons.length - 1] ? DATA.seasons[DATA.seasons.length - 1].label : '');
+    const totalCh = chapterCountTotal();
+    const kind = DATA.length === 'short' ? 'Short story' : 'Long story';
+    try { console.info('[Bridge] chapters:', totalCh, 'story:', STORY_ID); } catch (e) {}
+    document.getElementById('chCountN').textContent = totalCh > 0 ? totalCh + ' Chapters' : '—';
+    document.getElementById('chCountSub').textContent = totalCh > 0 ? totalCh + ' chapters · ' + kind : kind;
   }
 
   function renderReactions() {
@@ -261,25 +480,13 @@
   }
 
   function renderHubs() {
-    const h = DATA.hubs;
-    const genreId = h.genre.name.toLowerCase().replace(/[^a-z]+/g,'').replace('hub','').trim() || 'betrayal';
-    document.getElementById('hubsWrap').innerHTML = `
-      <div class="hub-card" onclick="location.href='genre-hub.html?genre=${genreId}'">
-        <div class="hub-icon">${h.genre.icon}</div>
-        <div class="hub-body">
-          <div class="hub-name">${esc(h.genre.name)}</div>
-          <div class="hub-sub"><i class="fas fa-users" style="font-size:9px"></i> ${fmtN(h.genre.members)} members · Tap to open hub</div>
-        </div>
-        <button class="hub-join-btn${h.genre.joined ? ' joined' : ''}" onclick="event.stopPropagation(); BridgePage.joinHub('genre')">${h.genre.joined ? '✓ Joined' : '+ Join'}</button>
-      </div>
-      <div class="hub-card">
-        <div class="hub-icon circle-icon"><img src="${DATA.writer.avatar}" alt=""/></div>
-        <div class="hub-body">
-          <div class="hub-name">${esc(h.circle.name)}</div>
-          <div class="hub-sub"><i class="fas fa-star" style="font-size:9px;color:var(--gold)"></i> ${fmtN(h.circle.members)} members · ${esc(h.circle.perks)}</div>
-        </div>
-        <button class="hub-join-btn circle-btn${h.circle.joined ? ' joined' : ''}" onclick="event.stopPropagation(); BridgePage.joinHub('circle')">${h.circle.joined ? '✓ Joined' : '+ Join'}</button>
-      </div>`;
+    const h = DATA.hubs || {};
+    if (!window.DroboardCommunityCards) return;
+    DroboardCommunityCards.mount('#hubsWrap', {
+      genre: h.genre,
+      circle: Object.assign({}, h.circle, { avatar: DATA.writer && DATA.writer.avatar }),
+      onJoin: (type, joined) => joinHub(type, joined),
+    });
   }
 
   function renderWriter() {
@@ -316,6 +523,17 @@
     ).join('');
   }
 
+  function renderTropes() {
+    const el = document.getElementById('tropeRow');
+    if (!el) return;
+    const tropes = (DATA.tropes || []).slice(0, 2);
+    if (!tropes.length) { el.innerHTML = ''; return; }
+    const gid = (DATA.genre || DATA.category && DATA.category.name || 'drama').toLowerCase().replace(/[^a-z]+/g, '');
+    el.innerHTML = tropes.map(t =>
+      `<div class="tag" onclick="location.href='genre-hub.html?genre=${encodeURIComponent(gid)}'">✨ ${esc(t)}</div>`
+    ).join('');
+  }
+
   function renderTags() {
     document.getElementById('tagsRow').innerHTML = DATA.tags.map(t => {
       const gid = t.replace('#','').toLowerCase();
@@ -337,10 +555,8 @@
       ).join('');
       return;
     }
-    const chs = ['Chapter 18','Chapter 12','Chapter 24','Chapter 31'];
-    const items = DATA.similar.slice(0,4).map((s,i) => ({
+    const items = DATA.similar.slice(0,4).map((s) => ({
       id: s.title, img: s.cover, title: s.title, author: s.author,
-      ch: chs[i] || 'Chapter ' + (12+i*6)
     }));
     el.innerHTML = items.map(it => DiscoverCard.scard(it)).join('');
     el.style.display = 'flex';
@@ -478,8 +694,8 @@
     toast(S.heroFollow ? `✅ Following ${DATA.writer.handle}` : 'Unfollowed');
   }
 
-  function joinHub(type) {
-    DATA.hubs[type].joined = !DATA.hubs[type].joined;
+  function joinHub(type, joined) {
+    DATA.hubs[type].joined = (joined !== undefined) ? joined : !DATA.hubs[type].joined;
     renderHubs();
     toast(DATA.hubs[type].joined ? `✅ Joined ${DATA.hubs[type].name}` : `Left ${DATA.hubs[type].name}`);
   }
@@ -494,7 +710,15 @@
   }
 
   async function init(id) {
-    STORY_ID = id || new URLSearchParams(location.search).get('id') || new URLSearchParams(location.search).get('story') || 'st1';
+    STORY_ID = id || new URLSearchParams(location.search).get('id') || new URLSearchParams(location.search).get('story');
+    // No id: rotate through the demo catalog so every load renders a
+    // complete demo-data story (same story all day, different tomorrow).
+    if (!STORY_ID) {
+      const all = (window.DemoData && window.DemoData.STORIES) || [];
+      STORY_ID = all.length
+        ? String(all[Math.floor(Date.now() / 86400000) % all.length].id || 'st1')
+        : 'st1';
+    }
     document.getElementById('tbTitle').textContent = 'Loading...';
     let data = null;
     try {
@@ -502,7 +726,7 @@
     } catch (err) {
       console.warn('[Bridge] API failed, using default story', err);
     }
-    DATA = data || getDefaultStory(STORY_ID);
+    DATA = normalizeStory(data) || getDefaultStory(STORY_ID);
     document.getElementById('tbTitle').textContent = DATA.title;
     renderAll();
   }

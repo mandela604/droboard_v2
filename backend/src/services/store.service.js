@@ -27,6 +27,12 @@ const SEED_REWARDS = [
   { code: 'ad2', action: 'Daily Check-in', type: 'checkin', coins: 25, cooldown: '24 hr', status: 'active' },
 ];
 
+const SEED_BUNDLES = [
+  { code: 'b1', name: 'Starter Bundle', coins: 500, bonus: 50, basePriceNGN: 2400, status: 'active' },
+  { code: 'b2', name: 'Pro Bundle', coins: 1500, bonus: 300, basePriceNGN: 6000, status: 'active' },
+  { code: 'b3', name: 'Elite Bundle', coins: 5000, bonus: 1500, basePriceNGN: 18000, status: 'active' },
+];
+
 async function seed(Model, rows) {
   if ((await Model.countDocuments()) === 0) await Model.insertMany(rows);
 }
@@ -90,14 +96,16 @@ async function catalog() {
     seed(SubscriptionPlan, SEED_SUBS),
     seed(Gift, SEED_GIFTS),
     seed(EarnReward, SEED_REWARDS),
+    seed(CoinBundle, SEED_BUNDLES),
   ]);
-  const [packs, subscriptions, gifts, adRewards] = await Promise.all([
+  const [packs, subscriptions, gifts, adRewards, bundles] = await Promise.all([
     CoinPack.find({ status: 'active' }).lean(),
     SubscriptionPlan.find({ status: 'active' }).lean(),
     Gift.find({ status: 'active' }).lean(),
     EarnReward.find({ status: 'active' }).lean(),
+    CoinBundle.find({ status: 'active' }).lean(),
   ]);
-  return { packs, subscriptions, gifts, adRewards, bundles: [] };
+  return { packs, subscriptions, gifts, adRewards, bundles };
 }
 
 module.exports = {

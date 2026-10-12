@@ -457,42 +457,6 @@ async function resendVerification({ userId, email }) {
   return out;
 }
 
-// FIX 8b: phone OTP (dev returns code; wire SMS provider here later).
-async function requestPhoneOtp(userId, { phone }) {
-  const user = await User.findOne({ id: userId }).select('+phoneOtpHash');
-  if (!user) { const e = new Error('no_user'); e.status = 404; throw e; }
-  const digits = String(phone || user.phone || '').replace(/\D/g, '');
-  if (digits.length < 7 || digits.length > 15) { const e = new Error('bad_phone'); e.status = 400; throw e; }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  user.phone = '+' + digits;
-  user.phoneVerified = false;
-  user.phoneOtpHash = hashToken(code);
-  user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60000);
-  user.phoneOtpAttempts = 0;
-  await user.save();
-  return { ok: true, otp: code };
-}
-
-async function verifyPhoneOtp(userId, { code }) {
-  const user = await User.findOne({ id: userId }).select('+phoneOtpHash');
-  if (!user || !user.phoneOtpHash) { const e = new Error('no_otp'); e.status = 400; throw e; }
-  if (user.phoneOtpExpiresAt && user.phoneOtpExpiresAt < new Date()) {
-    const e = new Error('otp_expired'); e.status = 400; throw e;
-  }
-  if ((user.phoneOtpAttempts || 0) >= 5) { const e = new Error('too_many_attempts'); e.status = 429; throw e; }
-  if (hashToken(String(code || '').trim()) !== user.phoneOtpHash) {
-    user.phoneOtpAttempts = (user.phoneOtpAttempts || 0) + 1;
-    await user.save();
-    const e = new Error('bad_code'); e.status = 401; throw e;
-  }
-  user.phoneVerified = true;
-  user.phoneOtpHash = null;
-  user.phoneOtpExpiresAt = null;
-  user.phoneOtpAttempts = 0;
-  await user.save();
-  return { ok: true, phoneVerified: true, phone: user.phone };
-}
-
 // FIX 8c: disable MFA (password or TOTP checked) + regenerate backup codes + status.
 async function disableMfa(userId, { password, code }) {
   const user = await User.findOne({ id: userId }).select('+passwordHash +mfaSecret +mfaBackupCodes');
@@ -560,4 +524,9 @@ async function revokeOtherSessions(userId, currentFamilyId) {
   return { ok: true };
 }
 
-module.exports = { register, registerWithVerify, verifyEmail, forgotPassword, resetPassword, login, verifyMfa, refresh, logout, enrollMfa, confirmMfa, resendVerification, requestPhoneOtp, verifyPhoneOtp, disableMfa, mfaStatus, regenerateBackupCodes, listSessions, revokeSession, revokeOtherSessions, googleConfigured, getGoogleAuthUrl, googleCallback };
+async function revokeAllSessions(userId) {
+  await RefreshFamily.deleteMany({ userId });
+  return { ok: true };
+}
+
+module.exports = { register, registerWithVerify, verifyEmail, forgotPassword, resetPassword, login, verifyMfa, refresh, logout, enrollMfa, confirmMfa, resendVerification, disableMfa, mfaStatus, regenerateBackupCodes, listSessions, revokeSession, revokeOtherSessions, revokeAllSessions, googleConfigured, getGoogleAuthUrl, googleCallback };

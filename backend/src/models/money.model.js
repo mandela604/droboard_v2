@@ -166,6 +166,7 @@ const paymentMethodSchema = new mongoose.Schema({
   accountName: { type: String, required: true },
   bankName: { type: String, default: '' },
   accountNumber: { type: String, default: '', select: false }, // masked on read
+  routingCode: { type: String, default: '' },
   email: { type: String, default: '' },
   provider: { type: String, default: '' },
   phoneNumber: { type: String, default: '' },

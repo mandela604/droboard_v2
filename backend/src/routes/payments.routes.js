@@ -1,8 +1,9 @@
 'use strict';
 const { z } = require('zod');
 const ctrl = require('../controllers/payments.controller');
+const base = require('../controllers/base.controller');
 const { requireAuth } = require('../middleware/auth');
-const { validate, moneyLimiter } = require('../middleware/http');
+const { validate, moneyLimiter, generalLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
 const router = Router();
@@ -30,6 +31,9 @@ router.post('/flutterwave/verify', requireAuth, moneyLimiter, validate(z.object(
 router.post('/play/verify', requireAuth, moneyLimiter, validate(z.object({ body: playBody })), ctrl.play);
 router.post('/appstore/verify', requireAuth, moneyLimiter, validate(z.object({ body: playBody })), ctrl.appstore);
 
+// Publishable config for inline SDKs (public keys only — never secrets).
+router.get('/config', requireAuth, generalLimiter,
+  async (req, res) => base.wrap(res, async () => ctrl.config()));
 // Provider webhooks (no auth; HMAC/hash verified in controller).
 // NOTE: server.js parses these routes with express.raw — do not move them
 // behind express.json or Paystack HMAC verification breaks.

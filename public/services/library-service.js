@@ -71,9 +71,9 @@
     }
     await new Promise(r => setTimeout(r, 80));
     const d = window.DemoData;
-    return (d.SAVED || []).map(s => ({
-      ...s,
-      img: s.img || s.cover,
+    return (d.SAVED_POSTS || []).map(p => ({
+      ...p,
+      img: p.avatar,
     }));
   }
 
@@ -127,13 +127,18 @@
     return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   let CONTINUE = [], PROMO = [], LIBRARY = [], SAVED = [], HISTORY = [];
   let currentView = { reading: 'grid', saved: 'grid', history: 'grid' };
   let currentFilter = 'all';
   let libPage = 1;
   const LIB_PAGE_SIZE = 12;
   let contPage = 1;
-  const CONT_PAGE_SIZE = 12;
+  const CONT_PAGE_SIZE = 4;
 
   function storyHref(s) {
     return 'bridge.html?id=' + encodeURIComponent(s.id || s.title || '');
@@ -192,10 +197,58 @@
     el.innerHTML = html;
   }
 
+  function renderPosts(containerId, posts) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const typeIcon = { debate: 'fa-comments', poll: 'fa-poll', repost: 'fa-retweet', quote: 'fa-quote-left', ama: 'fa-circle-question' };
+    const typeLabel = { debate: 'Debate', poll: 'Poll', repost: 'Repost', quote: 'Quote', ama: 'AMA' };
+    el.innerHTML = posts.map(p => {
+      const isLong = p.text && p.text.length > 90;
+      const shortText = isLong ? p.text.substring(0, 90).trim() + '…' : p.text;
+      return `
+      <div class="lib-item post-item" data-id="${esc(p.id)}">
+        <img class="post-avatar" src="${esc(p.avatar)}" alt="" onerror="this.style.display='none'"/>
+        <div class="lib-body">
+          <div class="lib-title">
+            <a href="profile.html?u=${esc(p.name)}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(p.name)}</a>
+            <span class="post-type">${typeLabel[p.type] || ''}</span>
+          </div>
+          <div class="lib-preview post-text">${esc(shortText)} <a href="discussion.html?id=${esc(p.id)}" onclick="event.stopPropagation()" style="color:var(--pink);font-weight:600">see more</a></div>
+          <div class="lib-foot">
+            <span class="lib-ch"><i class="fas ${typeIcon[p.type] || 'fa-comment'}"></i> ${p.likes || 0} likes · ${p.comments || 0} comments</span>
+            <div style="display:flex;align-items:center;gap:8px;position:relative">
+              <span class="lib-pct">${esc(p.time || '')}</span>
+              <button class="post-menu-btn" onclick="event.stopPropagation();togglePostMenu('${esc(p.id)}')" title="More"><i class="fas fa-ellipsis"></i></button>
+              <div class="post-menu" id="menu-${esc(p.id)}" style="display:none;position:absolute;right:0;top:32px;background:var(--white);border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:10;min-width:120px">
+                <button onclick="event.stopPropagation();confirmRemovePost('${esc(p.id)}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;font-size:13px;color:var(--ink-2);border-radius:10px;text-align:left"><i class="fas fa-trash-can" style="color:var(--pink)"></i> Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `}).join('');
+  }
+
+  function togglePostMenu(id) {
+    document.querySelectorAll('.post-menu').forEach(m => { if (m.id !== 'menu-' + id) m.style.display = 'none'; });
+    const menu = document.getElementById('menu-' + id);
+    if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function confirmRemovePost(id) {
+    const post = SAVED.find(p => p.id === id);
+    if (!post) return;
+    openModal(
+      'Remove post?',
+      'This will remove the post from your saved list.',
+      () => { SAVED = SAVED.filter(p => p.id !== id); renderSaved(); }
+    );
+  }
+
   function renderSaved() {
     const count = document.getElementById('saved-count');
-    if (count) count.textContent = SAVED.length + ' stories';
-    renderItems(SAVED, currentView.saved, 'saved-container');
+    if (count) count.textContent = SAVED.length + '/10';
+    renderPosts('saved-container', SAVED);
   }
 
   function renderHistory() {
@@ -204,12 +257,8 @@
 
   function renderContinue() {
     if (!window.LibraryCard) return;
-    const totalPages = Math.max(1, Math.ceil(CONTINUE.length / CONT_PAGE_SIZE));
-    if (contPage > totalPages) contPage = totalPages;
-    if (contPage < 1) contPage = 1;
     const start = (contPage - 1) * CONT_PAGE_SIZE;
     LibraryCard.renderContinue('continue-row', CONTINUE.slice(start, start + CONT_PAGE_SIZE));
-    renderContPagination(totalPages);
     const row = document.getElementById('continue-row');
     if (!row) return;
     Array.from(row.children).forEach((card, i) => {
@@ -218,18 +267,6 @@
       card.style.cursor = 'pointer';
       card.addEventListener('click', () => { location.href = storyHref(s); });
     });
-  }
-
-  function renderContPagination(totalPages) {
-    const el = document.getElementById('cont-pagination');
-    if (!el) return;
-    if (totalPages <= 1) { el.innerHTML = ''; return; }
-    let html = `<button class="page-btn nav ${contPage === 1 ? 'disabled' : ''}" data-page="prev">${icon('chevronLeft', { size: 14 })}</button>`;
-    for (let i = 1; i <= totalPages; i++) {
-      html += `<button class="page-btn ${i === contPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-    }
-    html += `<button class="page-btn nav ${contPage === totalPages ? 'disabled' : ''}" data-page="next">${icon('chevronRight', { size: 14 })}</button>`;
-    el.innerHTML = html;
   }
 
   /* ── Promo slider (shared component; slides + on/off controlled via marketing ad-manager) ── */
@@ -298,14 +335,6 @@
         renderLibrary();
       });
     });
-    document.querySelectorAll('#saved-toggle .view-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#saved-toggle .view-btn').forEach(x => x.classList.remove('active'));
-        btn.classList.add('active');
-        currentView.saved = btn.dataset.view;
-        renderSaved();
-      });
-    });
     document.querySelectorAll('#history-toggle .view-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('#history-toggle .view-btn').forEach(x => x.classList.remove('active'));
@@ -341,29 +370,61 @@
     });
   }
 
-  function initHistoryClear() {
-    const clearBtn = document.getElementById('history-clear');
+  let pendingAction = null;
+
+  function initModal() {
+    const modal = document.getElementById('lb-clear-modal');
+    if (!modal) return;
+    const cancelBtn = document.getElementById('lb-clear-cancel');
+    const confirmBtn = document.getElementById('lb-clear-confirm');
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (confirmBtn) confirmBtn.addEventListener('click', () => {
+      if (pendingAction) pendingAction();
+      closeModal();
+    });
+  }
+
+  function openModal(title, sub, action) {
     const modal = document.getElementById('lb-clear-modal');
     const titleEl = document.getElementById('lb-clear-title');
     const subEl = document.getElementById('lb-clear-sub');
-    const cancelBtn = document.getElementById('lb-clear-cancel');
-    const confirmBtn = document.getElementById('lb-clear-confirm');
-    if (!clearBtn || !modal) return;
-    function openClearModal() {
+    if (titleEl) titleEl.textContent = title;
+    if (subEl) subEl.textContent = sub;
+    pendingAction = action;
+    modal.classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('lb-clear-modal').classList.remove('open');
+    pendingAction = null;
+  }
+
+  function initHistoryClear() {
+    const clearBtn = document.getElementById('history-clear');
+    if (!clearBtn) return;
+    clearBtn.addEventListener('click', () => {
       const n = HISTORY.length;
       if (!n) return;
-      if (titleEl) titleEl.textContent = `Clear ${n} ${n === 1 ? 'story' : 'stories'}?`;
-      if (subEl) subEl.textContent = `This will remove ${n} ${n === 1 ? 'story' : 'stories'} from your history. Can't be undone.`;
-      modal.classList.add('open');
-    }
-    function closeClearModal() { modal.classList.remove('open'); }
-    clearBtn.addEventListener('click', openClearModal);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeClearModal);
-    modal.addEventListener('click', e => { if (e.target === modal) closeClearModal(); });
-    if (confirmBtn) confirmBtn.addEventListener('click', () => {
-      HISTORY = [];
-      closeClearModal();
-      renderHistory();
+      openModal(
+        `Clear ${n} ${n === 1 ? 'story' : 'stories'}?`,
+        `This will remove ${n} ${n === 1 ? 'story' : 'stories'} from your history. Can't be undone.`,
+        () => { HISTORY = []; renderHistory(); }
+      );
+    });
+  }
+
+  function initSavedClear() {
+    const clearBtn = document.getElementById('saved-clear');
+    if (!clearBtn) return;
+    clearBtn.addEventListener('click', () => {
+      const n = SAVED.length;
+      if (!n) return;
+      openModal(
+        `Clear ${n} ${n === 1 ? 'post' : 'posts'}?`,
+        `This will remove ${n} ${n === 1 ? 'post' : 'posts'} from your saved. Can't be undone.`,
+        () => { SAVED = []; renderSaved(); }
+      );
     });
   }
 
@@ -462,10 +523,13 @@
     initFilters();
     initViewToggles();
     initPagination();
+    initModal();
     initHistoryClear();
-    initContViewAll();
+    initSavedClear();
     initNavButtons();
   }
 
   window.LibraryPage = { init, toggleTheme };
+  window.togglePostMenu = togglePostMenu;
+  window.confirmRemovePost = confirmRemovePost;
 })();

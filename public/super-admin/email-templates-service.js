@@ -11,6 +11,8 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
 }
 
   var STORAGE_KEY = 'droboard_email_templates';
+  var _memoryOnly = false; // localStorage blocked/poisoned: keep working in memory
+  var _memoryCache = null;
 
   function delay(ms) { return new Promise(function(r) { setTimeout(r, ms || 200); }); }
 
@@ -20,7 +22,8 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
   }
 
   function saveLocal(templates) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(templates)); }
+    catch (e) { _memoryOnly = true; }
   }
 
   function getSeedData() {
@@ -28,6 +31,7 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
   }
 
   function ensureLocalData() {
+    if (_memoryCache && _memoryCache.length) return _memoryCache;
     var data = loadLocal();
     if (!data || !data.length) {
       data = getSeedData();
@@ -35,6 +39,7 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
       // wipes the UI permanently. Retry from seed on every load instead.
       if (data && data.length) saveLocal(data);
     }
+    if (data && data.length) _memoryCache = data;
     return data || [];
   }
 
@@ -130,4 +135,5 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
 
   window.DroboardEmailTemplates = EmailTemplates;
   window.DroboardEmailSeed = getSeedData;
+  try { console.info('[tpl-service] v4 loaded'); } catch (e) {}
 })();

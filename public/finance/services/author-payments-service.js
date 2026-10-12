@@ -16,7 +16,7 @@ let HISTORY = [];
 let searchTerm = '', statusTerm = '', sortMode = 'pending-desc';
 let authorPage = 1, historyPage = 1;
 
-function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n||0).toLocaleString('en-US'); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function fmtDateTime(iso){ const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
 

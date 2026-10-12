@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
-<title>Apply for Contract · Droboard</title>
+<title>Apply for Contract Ã‚Â· Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 :root{
@@ -53,12 +54,12 @@ button{font-family:inherit;cursor:pointer}
 
 .content{flex:1;overflow-y:auto;padding:16px 14px 30px}
 
-/* ── Page Header ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Page Header Ã¢â€â‚¬Ã¢â€â‚¬ */
 .page-header{padding:8px 0 20px}
 .page-header h1{font-size:22px;font-weight:800;color:var(--tx-high);margin-bottom:4px}
 .page-header p{font-size:13px;color:var(--tx-muted)}
 
-/* ── Book List ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Book List Ã¢â€â‚¬Ã¢â€â‚¬ */
 .book-list{display:flex;flex-direction:column;gap:10px}
 
 .book-row{
@@ -77,7 +78,7 @@ button{font-family:inherit;cursor:pointer}
 .book-chevron{font-size:12px;color:var(--tx-muted);transition:.2s;flex-shrink:0}
 .book-row.open .book-chevron{transform:rotate(180deg)}
 
-/* ── Status Tag ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Status Tag Ã¢â€â‚¬Ã¢â€â‚¬ */
 .status-tag{
   display:inline-flex;align-items:center;gap:4px;
   font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;
@@ -87,7 +88,7 @@ button{font-family:inherit;cursor:pointer}
 .tag-pending{background:var(--amber-bg);color:var(--amber)}
 .tag-none{background:var(--l2);color:var(--tx-muted)}
 
-/* ── Accordion ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Accordion Ã¢â€â‚¬Ã¢â€â‚¬ */
 .book-accordion{
   max-height:0;overflow:hidden;transition:max-height .3s ease;
 }
@@ -106,7 +107,7 @@ button{font-family:inherit;cursor:pointer}
 .apply-btn.pending{background:var(--amber);cursor:default}
 .apply-btn.sign{background:var(--green)}
 
-/* ── Status Detail ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Status Detail Ã¢â€â‚¬Ã¢â€â‚¬ */
 .status-detail{
   display:flex;align-items:center;gap:8px;
   padding:10px 12px;border-radius:10px;margin-top:10px;
@@ -117,7 +118,7 @@ button{font-family:inherit;cursor:pointer}
 .status-detail.rejected{background:rgba(239,68,68,.08);color:var(--red)}
 .status-detail i{font-size:14px}
 
-/* ── Modal ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Modal Ã¢â€â‚¬Ã¢â€â‚¬ */
 .modal-overlay{
   position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
   background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;
@@ -169,7 +170,7 @@ button{font-family:inherit;cursor:pointer}
 
 .contract-sign-row{padding:0 0 4px}
 
-/* ── Success ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Success Ã¢â€â‚¬Ã¢â€â‚¬ */
 .success-view{display:none;text-align:center;padding:40px 20px}
 .success-view.show{display:block}
 .success-icon{
@@ -273,7 +274,7 @@ button{font-family:inherit;cursor:pointer}
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
-    <div class="drawer-logo"><i class="fas fa-feather-pointed"></i></div>
+    <div class="drawer-logo" style="overflow:hidden"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
     <div class="drawer-head-title">Droboard</div>
     <button class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
   </div>

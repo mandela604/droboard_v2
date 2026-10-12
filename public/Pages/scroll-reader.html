@@ -23,12 +23,16 @@ body.theme-grey{--bg:#0f1117;--bg2:#151820;--bg3:#1c2028;--surface:#1c2028;--bd:
 body.theme-white{--bg:#ffffff;--bg2:#f5f5f5;--bg3:#ececec;--surface:#efefef;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);--muted:#999;--tx:#111;--tx2:#555;}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font-ui);transition:background .3s,color .3s}
+@media(min-width:421px){body{background:#111}}
 img{display:block;user-select:none}
 button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 
+/* ══ PHONE FRAME (420px app container, like every reader surface) ══ */
+.phone{width:100%;max-width:420px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;box-shadow:0 0 50px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow-x:clip}
+
 /* ══ FLOATING CONTROLS ══ */
-.floating-controls{position:fixed;top:0;left:0;right:0;z-index:150;display:flex;align-items:center;justify-content:space-between;padding:calc(var(--safe-t) + 8px) 14px 10px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);opacity:0;pointer-events:none;transform:translateY(-8px);transition:opacity .25s,transform .25s;}
-.floating-controls.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+.floating-controls{position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-8px);width:100%;max-width:420px;z-index:150;display:flex;align-items:center;justify-content:space-between;padding:calc(var(--safe-t) + 8px) 14px 10px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
+.floating-controls.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
 .fc-left,.fc-right{display:flex;gap:8px;align-items:center}
 .fc-btn{width:36px;height:36px;border-radius:50%;background:rgba(20,20,24,.85);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px;color:#eee;cursor:pointer;flex-shrink:0;transition:.15s;}
 .fc-btn:active{transform:scale(.9)}
@@ -38,7 +42,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .fc-coin-pill i{font-size:12px}
 
 /* thin progress bar */
-.read-progress{position:fixed;top:0;left:0;right:0;height:2.5px;background:transparent;z-index:151;}
+.read-progress{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;height:2.5px;background:transparent;z-index:151;}
 .read-progress-fill{height:100%;background:var(--acc);width:0%;transition:width .15s linear}
 
 /* ══ SCROLL BODY ══ */
@@ -89,12 +93,11 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 
 /* ══ COMMENT LINE ══ */
 .comment-line-wrap{padding:14px 0 4px;margin:0 -8px}
-
-/* ══ TOP AD SLOT (mirrors discussion disc-ad: one ad above comments) ══ */
-.sl-ad{padding:10px 14px 12px;max-width:640px;margin:0 auto;}
+.comm-chapter-mount{padding:14px 0 4px;margin:0 -8px}
 
 /* ══ AD SLOT ══ */
 .ad-slot{padding:30px 0 4px}
+.ch-edge-ad{padding:16px 0 4px}
 .ad-slot-lbl{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px;text-align:center}
 
 /* ══ CHAPTERS PANEL ══ */
@@ -116,8 +119,8 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .ch-row-meta{font-size:9px;color:var(--muted)}
 
 /* ══ SETTINGS PANEL ══ */
-.settings-panel{position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--bg3,#0a0a0d);border-radius:22px 22px 0 0;border-top:1px solid var(--bd);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:0 0 calc(20px + var(--safe-b));}
-.settings-panel.open{transform:translateY(0)}
+.settings-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:420px;z-index:300;background:var(--bg3,#0a0a0d);border-radius:22px 22px 0 0;border-top:1px solid var(--bd);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:0 0 calc(20px + var(--safe-b));}
+.settings-panel.open{transform:translateX(-50%) translateY(0)}
 .sp-handle{width:36px;height:4px;background:var(--bd);border-radius:4px;margin:12px auto 16px}
 .sp-title{font-size:12px;font-weight:800;color:var(--tx2);text-align:center;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px}
 .sp-section{padding:0 20px 16px}
@@ -184,15 +187,16 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 </div>
 
 <!-- SCROLL BODY -->
+<div class="phone">
 <div class="scroll-body" id="scrollBody">
   <div class="loading-state" id="loadingState">
     <div class="loading-spin"></div>
     <div>Loading story…</div>
   </div>
   <div class="story-top" id="storyTop" style="display:none"></div>
-  <div class="sl-ad" id="slTopAd" style="display:none"></div>
   <div class="reader-col" id="readerCol"></div>
   <div style="height:40vh"></div>
+</div>
 </div>
 
 <!-- CHAPTERS PANEL -->
@@ -276,7 +280,8 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 <script src="../component/tip-picker.js"></script>
 <script src="../component/ad-card.js"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/comment-section.js"></script>
+<script src="../component/comment-section.js?v=3"></script>
+<script src="../component/community-cards.js?v=3"></script>
 
 <!-- ═══ Data ═══ -->
 <script src="../data/comments-data.js"></script>
@@ -284,6 +289,6 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 <script src="../services/ad-service.js"></script>
 <script src="../services/reader-engagement-service.js"></script>
 <script src="../services/reader-track.js"></script>
-<script src="../services/scroll-reader-service.js?v=2"></script>
+<script src="../services/scroll-reader-service.js?v=3"></script>
 </body>
 </html>

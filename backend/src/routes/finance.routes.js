@@ -19,6 +19,7 @@ router.post('/payment-methods', requireAuth, writeLimiter, validate(z.object({
   body: z.object({
     type: z.enum(['bank', 'paypal', 'mobile']), accountName: z.string().min(1).max(120),
     bankName: z.string().max(120).optional(), accountNumber: z.string().max(40).optional(),
+    routingCode: z.string().max(40).optional(),
     email: z.string().max(160).optional(), provider: z.string().max(60).optional(),
     phoneNumber: z.string().max(30).optional(),
   }).strict(),
@@ -27,6 +28,21 @@ router.delete('/payment-methods/:id', requireAuth, writeLimiter, validate(z.obje
   query: z.object({ authorId: z.string().max(40).optional() }).strict(),
   params: z.object({ id }),
 })), ctrl.deleteMethod);
+router.put('/payment-methods/:id', requireAuth, writeLimiter, audit('finance.methods.update'), validate(z.object({
+  query: z.object({ authorId: z.string().max(40).optional() }).strict(),
+  params: z.object({ id }),
+  body: z.object({
+    type: z.enum(['bank', 'paypal', 'mobile']).optional(), accountName: z.string().min(1).max(120).optional(),
+    bankName: z.string().max(120).optional(), accountNumber: z.string().max(40).optional(),
+    routingCode: z.string().max(40).optional(),
+    email: z.string().max(160).optional(), provider: z.string().max(60).optional(),
+    phoneNumber: z.string().max(30).optional(),
+  }).strict(),
+})), ctrl.updateMethod);
+router.put('/payment-methods/:id/default', requireAuth, writeLimiter, audit('finance.methods.default'), validate(z.object({
+  query: z.object({ authorId: z.string().max(40).optional() }).strict(),
+  params: z.object({ id }),
+})), ctrl.defaultMethod);
 
 router.get('/withdrawals', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.withdrawals);
 router.post('/withdrawals', requireAuth, writeLimiter, validate(z.object({
@@ -37,7 +53,7 @@ router.post('/withdrawals', requireAuth, writeLimiter, validate(z.object({
 router.get('/disputes', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.disputes);
 router.post('/disputes', requireAuth, writeLimiter, validate(z.object({
   query: z.object({ authorId: z.string().max(40).optional() }).strict(),
-  body: z.object({ transactionId: z.string().max(40).optional(), amount: z.number().min(0), reason: z.string().min(1).max(1000) }).strict(),
+  body: z.object({ transactionId: z.string().max(40).optional(), amount: z.number().min(0).optional(), reason: z.string().min(1).max(1000) }).strict(),
 })), ctrl.fileDispute);
 
 // ── Store settings admin (coin packs / ad rewards / bundles) ──

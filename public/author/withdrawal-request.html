@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Request Withdrawal · DroBoard</title>
+<title>Request Withdrawal Ã‚Â· DroBoard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -23,7 +24,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .avatar-btn img{width:100%;height:100%}
 .menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
 
-/* ── HAMBURGER DRAWER ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
 .drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .drawer-overlay.open{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
@@ -43,13 +44,13 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 
 .content{padding:16px}
 
-/* ── Balance Banner ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Balance Banner Ã¢â€â‚¬Ã¢â€â‚¬ */
 .balance-mini{background:linear-gradient(135deg,var(--pink),#7a0030);border-radius:16px;padding:18px 16px;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
 .bal-label{font-size:11px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.05em}
 .bal-amount{font-size:26px;font-weight:800;margin-top:2px}
 .bal-min{font-size:10.5px;opacity:.6;margin-top:4px}
 
-/* ── Form ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Form Ã¢â€â‚¬Ã¢â€â‚¬ */
 .form-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .form-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .form-title i{color:var(--pink);font-size:15px}
@@ -65,7 +66,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .withdraw-all{display:inline-block;font-size:12px;font-weight:700;color:var(--pink);cursor:pointer;margin-top:6px}
 .withdraw-all:active{opacity:.7}
 
-/* ── Method Selector ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Method Selector Ã¢â€â‚¬Ã¢â€â‚¬ */
 .method-option{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:.15s}
 .method-option.selected{border-color:var(--pink);background:rgba(255,45,85,.04)}
 .method-option:active{opacity:.85}
@@ -82,27 +83,27 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .add-method-link{display:flex;align-items:center;gap:8px;padding:12px;color:var(--pink);font-size:13px;font-weight:700;cursor:pointer}
 .add-method-link:active{opacity:.7}
 
-/* ── Empty State ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Empty State Ã¢â€â‚¬Ã¢â€â‚¬ */
 .empty-state{text-align:center;padding:30px 20px;color:var(--muted)}
 .empty-state i{font-size:32px;margin-bottom:10px;color:var(--border)}
 .empty-state p{font-size:13px;line-height:1.5}
 
-/* ── Submit ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Submit Ã¢â€â‚¬Ã¢â€â‚¬ */
 .submit-btn{width:100%;padding:14px;border-radius:14px;background:var(--pink);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;box-shadow:0 6px 20px rgba(255,0,80,.3)}
 .submit-btn:active{opacity:.85}
 .submit-btn:disabled{opacity:.5;pointer-events:none}
 
-/* ── Summary ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Summary Ã¢â€â‚¬Ã¢â€â‚¬ */
 .summary-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}
 .summary-row .label{color:var(--muted);font-weight:600}
 .summary-row .value{font-weight:700}
 .summary-divider{border-top:1px solid var(--border);margin:4px 0}
 
-/* ── Toast ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Toast Ã¢â€â‚¬Ã¢â€â‚¬ */
 .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ── Success Modal ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Success Modal Ã¢â€â‚¬Ã¢â€â‚¬ */
 .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.25s}
 .modal-overlay.show{opacity:1;pointer-events:auto}
 .modal{width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:30px 24px;text-align:center;transform:scale(.9);transition:.25s}
@@ -167,7 +168,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
-    <div class="tb-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="tb-logo" style="overflow:hidden"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
     <div class="drawer-head-title">DroBoard</div>
     <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
   </div>
@@ -175,6 +176,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 </div>
 
 <script src="../data/central-demo-data.js"></script>
+<script src="../services/currency-service.js"></script>
 <script src="../services/author-earnings-service.js"></script>
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js"></script>

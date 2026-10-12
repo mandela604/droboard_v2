@@ -2,8 +2,8 @@
 const argon2 = require('argon2');
 const crypto = require('crypto');
 const { User, RefreshFamily } = require('../models/user.model');
-const { Book } = require('../models/content.model');
-const { Follow, Block, Mute, ReadingProgress } = require('../models/social.model');
+const { Book, Chapter, Genre } = require('../models/content.model');
+const { Follow, Block, Mute, ReadingProgress, LibraryItem, Notification, Referral } = require('../models/social.model');
 const { validateMediaUrl } = require('./media.service');
 
 function publicShape(u) {
@@ -228,6 +228,7 @@ async function updateSettings(userId, patch) {
     if (!['public', 'private'].includes(patch.privacy)) { const e = new Error('bad_privacy'); e.status = 400; throw e; }
     u.settings.privacy = patch.privacy;
   }
+  if (patch.readingActivity !== undefined) u.settings.readingActivity = !!patch.readingActivity;
   await u.save();
   return u.settings;
 }
@@ -384,6 +385,61 @@ async function blockedIds(userId) {
   return s;
 }
 
+async function becomeWriter(userId, { firstBookTitle, genre } = {}) {
+  const u = await User.findOne({ id: userId });
+  if (!u || u.deletedAt) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const writerRoles = ['writer', 'senior_editor', 'chief_editor', 'admin'];
+  if ((u.roles || []).some(r => writerRoles.includes(r))) {
+    const e = new Error('already_writer'); e.status = 400; throw e;
+  }
+  const title = String(firstBookTitle || '').trim();
+  if (!title) { const e = new Error('bad_firstBookTitle'); e.status = 400; throw e; }
+  let genreName = '';
+  if (genre !== undefined && genre !== null && String(genre).trim() !== '') {
+    genreName = String(genre).trim();
+    const g = await Genre.findOne({ name: genreName, status: 'active' }).select('name').lean();
+    if (!g) { const e = new Error('bad_genre'); e.status = 400; throw e; }
+  }
+  if (!u.roles.includes('writer')) u.roles.push('writer');
+  if (u.primaryRole === 'reader') u.primaryRole = 'writer';
+  await u.save();
+  const book = await Book.create({ title, authorId: u.id, kind: 'long', genre: genreName, status: 'draft' });
+  return { user: publicShape(u.toJSON ? u.toJSON() : u), book };
+}
+
+async function checkUsername(username) {
+  const exists = await User.exists({ username: String(username || '').toLowerCase() });
+  return { available: !exists };
+}
+
+async function exportData(userId) {
+  const u = await User.findOne({ id: userId })
+    .select('-passwordHash -mfaSecret -mfaBackupCodes -emailVerifyTokenHash -resetTokenHash')
+    .lean();
+  if (!u) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const bookIds = (await Book.find({ authorId: userId }).select('id').lean()).map(b => b.id);
+  const [books, chapters, follows, readingProgress, library, notifications, referrals] = await Promise.all([
+    Book.find({ authorId: userId }).lean(),
+    bookIds.length ? Chapter.find({ bookId: { $in: bookIds } }).lean() : [],
+    Follow.find({ $or: [{ followerId: userId }, { followingId: userId }] }).lean(),
+    ReadingProgress.find({ userId }).lean(),
+    LibraryItem.find({ userId }).lean(),
+    Notification.find({ recipientId: userId }).lean(),
+    Referral.find({ ownerId: userId }).lean(),
+  ]);
+  return {
+    exportedAt: new Date(),
+    user: u,
+    books,
+    chapters,
+    follows,
+    readingProgress,
+    library,
+    notifications,
+    referrals,
+  };
+}
+
 module.exports = {
   me, profile, searchUsers,
   updateMe, changePassword, requestEmailChange, confirmEmailChange, deleteMe,
@@ -391,4 +447,5 @@ module.exports = {
   followersOf, followingOf, follow, unfollow,
   blockUser, unblockUser, listBlocks, muteUser, unmuteUser, listMutes,
   mutedIds, blockedIds, publicShape,
+  becomeWriter, checkUsername, exportData,
 };

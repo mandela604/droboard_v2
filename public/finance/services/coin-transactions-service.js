@@ -77,7 +77,7 @@ let searchTerm = '', statusTerm = '', sortMode = 'recent';
 let page = 1, pkgPage = 1, bundlePage = 1, giftPage = 1, subPage = 1, earnPage = 1, histPage = 1;
 let activeHistFilter = 'all';
 
-function money(n){ const v = Number(n||0); return (v<0?'-':'') + '$' + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function money(n){ const v = Number(n||0); if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return (v<0?'-':'') + DroboardCurrency.usdToMoney(Math.abs(v)); return (v<0?'-':'') + '$' + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function coinsFmt(n){ const v=Number(n||0); return (v>0?'+':'') + v.toLocaleString('en-US'); }
 function fmtDateTime(iso){ const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }

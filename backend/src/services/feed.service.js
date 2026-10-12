@@ -27,17 +27,31 @@ function cardShape(b, author) {
   };
 }
 
-async function topBooks(sort, limit) {
-  const books = await Book.find({ status: { $in: ['ongoing', 'completed', 'published'] } })
-    .sort(sort).limit(limit || 10).lean();
+async function topBooks(sort, limit, viewerId) {
+  const filter = { status: { $in: ['ongoing', 'completed', 'published'] } };
+  if (viewerId) {
+    const usersSvc = require('./users.service');
+    const [mutes, blocks] = await Promise.all([
+      usersSvc.mutedIds(viewerId).catch(() => new Set()),
+      usersSvc.blockedIds(viewerId).catch(() => new Set()),
+    ]);
+    const excluded = new Set([...mutes, ...blocks]);
+    if (excluded.size) {
+      filter.$or = [
+        { authorId: { $nin: [...excluded] } },
+        { authorId: viewerId }, // always see your own stories
+      ];
+    }
+  }
+  const books = await Book.find(filter).sort(sort).limit(limit || 10).lean();
   const am = await authorMap(books.map(b => b.authorId));
   return books.map(b => cardShape(b, am[b.authorId]));
 }
 
-async function home() {
+async function home(viewerId) {
   const [top, rated, promos] = await Promise.all([
-    topBooks({ reads: -1 }, 8),
-    topBooks({ rating: -1 }, 5),
+    topBooks({ reads: -1 }, 8, viewerId),
+    topBooks({ rating: -1 }, 5, viewerId),
     AdInventory.find({ format: 'promo', active: true }).limit(5).lean(),
   ]);
   const recentUsers = await User.find({}).sort({ updatedAt: -1 }).limit(8)
@@ -54,12 +68,12 @@ async function home() {
   };
 }
 
-async function discoverData() {
+async function discoverData(viewerId) {
   const [heroes, trending, rated, recent] = await Promise.all([
-    topBooks({ reads: -1 }, 5),
-    topBooks({ reads: -1 }, 10),
-    topBooks({ rating: -1 }, 8),
-    Book.find({ status: { $in: ['ongoing', 'completed', 'published'] } }).sort({ updatedAt: -1 }).limit(8).lean(),
+    topBooks({ reads: -1 }, 5, viewerId),
+    topBooks({ reads: -1 }, 10, viewerId),
+    topBooks({ rating: -1 }, 8, viewerId),
+    topBooks({ updatedAt: -1 }, 8, viewerId),
   ]);
   const am = await authorMap(recent.map(b => b.authorId));
   const shape = (b) => cardShape(b, am[b.authorId]);
@@ -74,10 +88,24 @@ async function discoverData() {
   };
 }
 
-async function discoverStories({ page, limit }) {
+async function discoverStories({ page, limit, viewerId }) {
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
   const filter = { status: { $in: ['ongoing', 'completed', 'published'] } };
+  if (viewerId) {
+    const usersSvc = require('./users.service');
+    const [mutes, blocks] = await Promise.all([
+      usersSvc.mutedIds(viewerId).catch(() => new Set()),
+      usersSvc.blockedIds(viewerId).catch(() => new Set()),
+    ]);
+    const excluded = new Set([...mutes, ...blocks]);
+    if (excluded.size) {
+      filter.$or = [
+        { authorId: { $nin: [...excluded] } },
+        { authorId: viewerId },
+      ];
+    }
+  }
   const [books, total] = await Promise.all([
     Book.find(filter).sort({ updatedAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Book.countDocuments(filter),
@@ -116,12 +144,24 @@ async function libraryList(userId, list) {
   }).filter(Boolean);
 }
 
-async function storyDetail(id) {
+async function storyDetail(id, viewerId) {
   const books = require('./books.service');
   const book = await books.getBook(id);
   // Public detail: live book + live chapters only.
   if (!['ongoing', 'published', 'completed'].includes(book.status)) {
     const e = new Error('not_found'); e.status = 404; throw e;
+  }
+  // Blocked/muted authors' stories are hidden from viewers (except own).
+  if (viewerId && String(book.authorId) !== String(viewerId)) {
+    const usersSvc = require('./users.service');
+    const [mutes, blocks] = await Promise.all([
+      usersSvc.mutedIds(viewerId).catch(() => new Set()),
+      usersSvc.blockedIds(viewerId).catch(() => new Set()),
+    ]);
+    const excluded = new Set([...mutes, ...blocks]);
+    if (excluded.has(String(book.authorId))) {
+      const e = new Error('not_found'); e.status = 404; throw e;
+    }
   }
   const chapters = await Chapter.find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 }).lean();
   const author = book.authorId ? await User.findOne({ id: book.authorId }).select('username fullName avatar').lean() : null;

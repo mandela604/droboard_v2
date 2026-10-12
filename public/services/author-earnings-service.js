@@ -16,7 +16,7 @@
   /* ── helpers ── */
   function delay(ms) { return new Promise(r => setTimeout(r, ms || 150 + Math.random() * 150)); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
-  function fmtCurrency(n) { return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0 }); }
+  function fmtCurrency(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0 }); }
   function fmtDate(d) {
     if (!d) return '—';
     const dt = new Date(d);
@@ -119,6 +119,16 @@
       demo.methods.splice(idx, 1);
       if (wasDefault && demo.methods.length > 0) demo.methods[0].isDefault = true;
       return { ok: true };
+    },
+
+    async updatePaymentMethod(id, data) {
+      if (USE_API) { try { return await callBackend('/payment-methods/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) { /* fallthrough */ } }
+      await delay(200);
+      const demo = getDemo();
+      const idx = demo.methods.findIndex(m => m.id === id);
+      if (idx === -1) throw new Error('Method not found');
+      demo.methods[idx] = Object.assign({}, demo.methods[idx], data, { id });
+      return clone(demo.methods[idx]);
     },
 
     async setDefaultMethod(id) {

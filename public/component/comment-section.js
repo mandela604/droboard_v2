@@ -156,7 +156,7 @@
     }
 
     .dcs-wrap{font-family:'DM Sans',system-ui,sans-serif;color:var(--dcs-tx);}
-    .dcs-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;padding:12px 14px;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:12px;transition:.18s;}
+    .dcs-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;padding:12px 14px;background:var(--surface,var(--dcs-card));border:1.5px solid var(--bd,var(--dcs-bd));border-radius:12px;transition:.18s;}
     .dcs-toggle:active{transform:scale(.99)}
     .dcs-toggle-icon{width:32px;height:32px;border-radius:50%;background:var(--dcs-bg);border:1px solid var(--dcs-bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--dcs-muted);flex-shrink:0}
     .dcs-toggle-label{flex:1;font-size:13px;font-weight:700;color:var(--dcs-muted)}
@@ -186,8 +186,10 @@
     .dcs-send-btn:active{transform:scale(.9)}
     .dcs-send-btn:disabled{background:var(--dcs-surface2);cursor:default}
 
-    /* List */
+    /* List — internally scrollable when open, so the composer below
+       stays pinned like an overlay sheet on every host page. */
     .dcs-list{display:flex;flex-direction:column;gap:8px;padding:6px 0}
+    .dcs-body.open .dcs-list{max-height:min(58vh,520px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
     .dcs-item{position:relative;background:var(--dcs-card);border:1px solid var(--dcs-bd);border-radius:10px;overflow:visible}
     .dcs-inner{display:flex;gap:9px;padding:10px 10px 8px}
     .dcs-item.is-reply{background:var(--dcs-surface);border-color:var(--dcs-bd2)}
@@ -471,7 +473,6 @@
     if (slotId && placement && placement.slots && placement.slots[slotId] === false) return;
     if (!slotEl.isConnected) return;
     const keys = _slotPageKeys(opts);
-    const slotId = slotEl.dataset && slotEl.dataset.slot;
     let pick = null;
     for (let i = 0; i < keys.length; i++) {
       try { pick = _pickSlotAd(await AdService.getAds({ page: keys[i], slot: slotId })); } catch (e) { pick = null; }

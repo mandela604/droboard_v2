@@ -2,7 +2,9 @@
  * save-modal.js — Droboard Reusable Save Modal
  * ─────────────────────────────────────────────
  * Drop one <script src="save-modal.js"></script> in any page.
- * Then call:  openSaveModal({ title, sub, img, storyId })
+ * Then call:  openSaveModal({ title, sub, img, storyId, type })
+ *   type: 'story' (default) → Library row; anything else
+ *   ('post', 'repost', 'debate'…) → Save row (Library → Saved section).
  *
  * Exposes globals:
  *   openSaveModal(data)    — opens the save sheet
@@ -11,12 +13,14 @@
  *
  * Production API hooks (optional — set before the script tag):
  *   window.DroboardSaveAPI = {
- *     getSaveState:       async (storyId) => { ok, state:{library,fav,later}, collections:[{id,name,icon,count,saved}] }
- *     toggleQuickSave:    async (storyId, key, value) => { ok }
+ *     getSaveState:       async (storyId) => { ok, state:{library,save}, collections:[{id,name,icon,count,saved}] }
+ *     toggleQuickSave:    async (storyId, key, value) => { ok }   // key: 'library' | 'save'
  *     toggleCollection:   async (storyId, collId, value) => { ok, count }
- *     createCollection:   async (storyId, name, icon) => { ok, collection:{id,name,icon,count,saved} }
  *   }
  *   If DroboardSaveAPI is not defined, falls back to in-memory demo state.
+ *   Demo collections come from CollectionData (live inventory) with a
+ *   bundled fallback list. "Create new collection" always routes to
+ *   profile.html?tab=collections&create=1 — all creation lives there.
  *
  * onSaveChange callback (optional):
  *   window.onDroboardSaveChange = (storyId, isSaved) => { ... }
@@ -150,90 +154,6 @@
     .dsv-new-coll:hover { border-color: rgba(255,0,80,.3); color: #ff4d7a; }
     .dsv-new-coll i { font-size: 14px; }
 
-    /* ════════════════════════════════════════
-       NEW COLLECTION MODAL
-    ════════════════════════════════════════ */
-    .dsv-modal-bg {
-      position: fixed; inset: 0; z-index: 2610;
-      background: rgba(0,0,0,.78); backdrop-filter: blur(10px);
-      display: none; align-items: center; justify-content: center;
-      padding: 20px;
-    }
-    .dsv-modal-bg.open { display: flex; }
-
-    .dsv-modal-box {
-      background: #0d0d0d;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 20px; padding: 24px 20px;
-      width: 100%; max-width: 340px;
-      animation: dsv-modal-in .26s cubic-bezier(.34,1.56,.64,1);
-    }
-    @keyframes dsv-modal-in {
-      from { opacity: 0; transform: scale(.88) translateY(16px); }
-      to   { opacity: 1; transform: scale(1)   translateY(0);    }
-    }
-
-    .dsv-modal-title {
-      font-size: 16px; font-weight: 800; color: #e0e0e0;
-      margin-bottom: 4px; font-family: inherit;
-    }
-    .dsv-modal-sub {
-      font-size: 11px; color: #555; margin-bottom: 18px;
-      line-height: 1.5;
-    }
-
-    .dsv-modal-lbl {
-      font-size: 9px; font-weight: 800; color: #555;
-      text-transform: uppercase; letter-spacing: .08em;
-      margin-bottom: 6px; display: block;
-    }
-    .dsv-modal-inp {
-      width: 100%; background: rgba(255,255,255,.06);
-      border: 1.5px solid rgba(255,255,255,.08);
-      border-radius: 10px; padding: 10px 13px;
-      color: #e0e0e0; font-family: inherit; font-size: 13px;
-      outline: none; margin-bottom: 14px; transition: border-color .2s;
-    }
-    .dsv-modal-inp:focus { border-color: rgba(255,0,80,.35); }
-
-    .dsv-emoji-row {
-      display: flex; gap: 7px; flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-    .dsv-emoji-btn {
-      width: 36px; height: 36px; border-radius: 9px;
-      background: rgba(255,255,255,.05);
-      border: 1.5px solid rgba(255,255,255,.07);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; cursor: pointer; transition: .15s;
-    }
-    .dsv-emoji-btn:active { transform: scale(.88); }
-    .dsv-emoji-btn.on {
-      border-color: rgba(255,0,80,.4);
-      background: rgba(255,0,80,.12);
-    }
-
-    .dsv-modal-actions { display: flex; gap: 10px; }
-    .dsv-modal-cancel {
-      flex: 1; padding: 11px; border-radius: 12px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.07);
-      font-size: 13px; font-weight: 700; color: #aaa;
-      cursor: pointer; font-family: inherit;
-    }
-    .dsv-modal-confirm {
-      flex: 1; padding: 11px; border-radius: 12px;
-      background: #ff0050; border: none;
-      font-size: 13px; font-weight: 800; color: #fff;
-      cursor: pointer; font-family: inherit;
-      box-shadow: 0 2px 12px rgba(255,0,80,.3);
-    }
-    .dsv-modal-confirm:active { transform: scale(.97); }
-    .dsv-modal-confirm:disabled {
-      background: #1a1a1a; color: #444;
-      box-shadow: none; cursor: not-allowed;
-    }
-
     /* ── Loading skeleton for collections ── */
     .dsv-skeleton {
       height: 62px; border-radius: 11px;
@@ -273,11 +193,11 @@
         <div class="dsv-handle"></div>
 
         <div class="dsv-hdr">
-          <h3>Save Story</h3>
+          <h3 id="dsvTitle">Save Story</h3>
           <button class="dsv-close" id="dsvClose">✕</button>
         </div>
 
-        <!-- Quick save -->
+        <!-- Quick save: Library for stories, Save for everything else -->
         <div class="dsv-section-lbl">Quick Save</div>
         <div class="dsv-opts">
 
@@ -285,31 +205,20 @@
             <div class="dsv-opt-icon" style="background:rgba(255,0,80,.1)">📚</div>
             <div class="dsv-opt-body">
               <div class="dsv-opt-title">Library</div>
-              <div class="dsv-opt-sub">Your personal reading list</div>
+              <div class="dsv-opt-sub">Stories live here</div>
             </div>
             <div class="dsv-opt-check" id="dsvChkLibrary">
               <i class="far fa-circle"></i>
             </div>
           </div>
 
-          <div class="dsv-opt" id="dsvOptFav" data-key="fav">
-            <div class="dsv-opt-icon" style="background:rgba(250,204,21,.08)">⭐</div>
+          <div class="dsv-opt" id="dsvOptSave" data-key="save">
+            <div class="dsv-opt-icon" style="background:rgba(96,165,250,.08)">📌</div>
             <div class="dsv-opt-body">
-              <div class="dsv-opt-title">Favourites</div>
-              <div class="dsv-opt-sub">Stories you love most</div>
+              <div class="dsv-opt-title">Save</div>
+              <div class="dsv-opt-sub">Posts, reposts, debates & more</div>
             </div>
-            <div class="dsv-opt-check" id="dsvChkFav">
-              <i class="far fa-circle"></i>
-            </div>
-          </div>
-
-          <div class="dsv-opt" id="dsvOptLater" data-key="later">
-            <div class="dsv-opt-icon" style="background:rgba(96,165,250,.08)">🕐</div>
-            <div class="dsv-opt-body">
-              <div class="dsv-opt-title">Read Later</div>
-              <div class="dsv-opt-sub">Finish when you're ready</div>
-            </div>
-            <div class="dsv-opt-check" id="dsvChkLater">
+            <div class="dsv-opt-check" id="dsvChkSave">
               <i class="far fa-circle"></i>
             </div>
           </div>
@@ -325,38 +234,23 @@
       </div>
     </div>
 
-    <!-- ── New Collection Modal ── -->
-    <div class="dsv-modal-bg" id="dsvModalBg">
-      <div class="dsv-modal-box">
-        <div class="dsv-modal-title">📂 New Collection</div>
-        <div class="dsv-modal-sub">Give your collection a name and pick an emoji.</div>
-
-        <label class="dsv-modal-lbl">Collection Name</label>
-        <input class="dsv-modal-inp" id="dsvCollName"
-               placeholder="e.g. Midnight Reads…" maxlength="40"/>
-
-        <label class="dsv-modal-lbl">Pick an Icon</label>
-        <div class="dsv-emoji-row" id="dsvEmojiRow"></div>
-
-        <div class="dsv-modal-actions">
-          <button class="dsv-modal-cancel" id="dsvModalCancel">Cancel</button>
-          <button class="dsv-modal-confirm" id="dsvModalConfirm">Create</button>
-        </div>
-      </div>
-    </div>
-
     <div class="dsv-toast" id="dsvToast"></div>
   `;
 
   // ════════════════════════════════════════════════════════════════════════
   // Constants
   // ════════════════════════════════════════════════════════════════════════
-  const COLL_EMOJIS = ['📖','💕','😭','🔥','🌙','✨','👑','🏆','💎','🎭','📝','🌟','💔','🕊️','⚡'];
-
   const QUICK_OPTS = [
     { key: 'library', optId: 'dsvOptLibrary', chkId: 'dsvChkLibrary' },
-    { key: 'fav',     optId: 'dsvOptFav',     chkId: 'dsvChkFav'     },
-    { key: 'later',   optId: 'dsvOptLater',   chkId: 'dsvChkLater'   },
+    { key: 'save',    optId: 'dsvOptSave',    chkId: 'dsvChkSave'    },
+  ];
+
+  // Demo collections (shown until backend integration lands).
+  const DEMO_COLLECTIONS = [
+    { id: 'c1', name: 'Romance Reads',       icon: '💕', count: 14 },
+    { id: 'c2', name: 'Weekend Binge',        icon: '📺', count: 8  },
+    { id: 'c3', name: 'Tear-jerkers',         icon: '😭', count: 22 },
+    { id: 'c4', name: 'Nigerian Narratives',  icon: '🇳🇬', count: 31 },
   ];
 
   // ════════════════════════════════════════════════════════════════════════
@@ -368,13 +262,8 @@
   function _getDemoState(storyId) {
     if (!_demoState[storyId]) {
       _demoState[storyId] = {
-        quickSave: { library: false, fav: false, later: false },
-        collections: [
-          { id: 'c1', name: 'Romance Reads',       icon: '💕', count: 14, saved: false },
-          { id: 'c2', name: 'Weekend Binge',        icon: '📺', count: 8,  saved: false },
-          { id: 'c3', name: 'Tear-jerkers',         icon: '😭', count: 22, saved: false },
-          { id: 'c4', name: 'Nigerian Narratives',  icon: '🇳🇬', count: 31, saved: false },
-        ],
+        quickSave: { library: false, save: false },
+        collections: DEMO_COLLECTIONS.map(c => ({ ...c, saved: false })),
       };
     }
     return _demoState[storyId];
@@ -384,11 +273,15 @@
   // Module state
   // ════════════════════════════════════════════════════════════════════════
   let _data            = {};
-  let _quickSave       = { library: false, fav: false, later: false };
+  let _quickSave       = { library: false, save: false };
   let _collections     = [];
-  let _selectedEmoji   = '📖';
   let _loading         = false;
   let _posting         = false;
+
+  function _itemType() {
+    const t = String((_data && _data.type) || 'story').toLowerCase();
+    return t === 'story' ? 'story' : 'post';
+  }
 
   // ════════════════════════════════════════════════════════════════════════
   // Toast
@@ -422,6 +315,8 @@
   // Render
   // ════════════════════════════════════════════════════════════════════════
   function _renderQuickSave() {
+    // Both rows always show: Library takes stories, Save takes posts,
+    // reposts, debates and everything else (Library → Saved section).
     QUICK_OPTS.forEach(({ key, optId, chkId }) => {
       const on = _quickSave[key];
       const opt = document.getElementById(optId);
@@ -482,23 +377,34 @@
     _loading = true;
     _renderCollections(); // show skeletons immediately
 
+    document.getElementById('dsvTitle').textContent =
+      _itemType() === 'story' ? 'Save Story' : 'Save Post';
     document.getElementById('dsvBg').classList.add('open');
     document.body.style.overflow = 'hidden';
 
-    // Load state
+    // Load state: live API first, demo on any failure (no backend yet —
+    // a failed fetch must never surface as an error here).
     try {
+      let result = null;
       if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.getSaveState === 'function') {
+        try {
+          result = await window.DroboardSaveAPI.getSaveState(_data.storyId);
+        } catch (e) { result = null; }
+      }
+      if (result && result.ok) {
         // ── Production ─────────────────────────────────────────────────
-        const result = await window.DroboardSaveAPI.getSaveState(_data.storyId);
-        if (!result || !result.ok) throw new Error(result?.message || 'Failed to load');
-        _quickSave   = result.state       || { library: false, fav: false, later: false };
+        _quickSave   = { library: !!result.state?.library, save: !!result.state?.save };
         _collections = result.collections || [];
       } else {
         // ── Demo ───────────────────────────────────────────────────────
         await new Promise(r => setTimeout(r, 400)); // simulate network
         const demo = _getDemoState(_data.storyId || 'default');
         _quickSave   = { ...demo.quickSave };
-        _collections = demo.collections.map(c => ({ ...c }));
+        _collections = await _demoCollections();
+        // keep per-item saved flags across opens (demo)
+        const flagged = {};
+        demo.collections.forEach(c => { if (c.saved) flagged[c.id] = true; });
+        _collections.forEach(c => { if (flagged[c.id]) c.saved = true; });
       }
     } catch (err) {
       _toast('❌ ' + (err.message || 'Could not load save state'));
@@ -509,6 +415,25 @@
     _renderCollections();
   }
 
+  // Demo collections: live inventory first, bundled demo list as fallback.
+  async function _demoCollections() {
+    try {
+      if (window.CollectionData && typeof window.CollectionData.getCollections === 'function') {
+        const live = await window.CollectionData.getCollections();
+        if (Array.isArray(live) && live.length) {
+          return live.map((c, i) => ({
+            id: c.id || ('coll_' + i),
+            name: c.name || c.title || 'Collection',
+            icon: c.icon || c.emoji || '📁',
+            count: c.count || c.stories || 0,
+            saved: false,
+          }));
+        }
+      }
+    } catch (e) {}
+    return DEMO_COLLECTIONS.map(c => ({ ...c, saved: false }));
+  }
+
   function closeSaveModal() {
     document.getElementById('dsvBg').classList.remove('open');
     document.body.style.overflow = '';
@@ -517,6 +442,22 @@
   // ════════════════════════════════════════════════════════════════════════
   // Toggle quick save option
   // ════════════════════════════════════════════════════════════════════════
+  // Demo: mirror the toggle into DemoData so the Library page reflects
+  // it immediately in-session (Library row → Library section, Save row
+  // → Saved section).
+  function _syncLibraryStore(key, on) {
+    try {
+      const d = window.DemoData;
+      if (!d || !_data.storyId) return;
+      const item = { id: _data.storyId, title: _data.title, sub: _data.sub, img: _data.img };
+      const listName = key === 'save' ? 'SAVED' : 'LIBRARY';
+      d[listName] = d[listName] || [];
+      const i = d[listName].findIndex(s => s.id === item.id);
+      if (on && i === -1) d[listName].unshift(item);
+      if (!on && i !== -1) d[listName].splice(i, 1);
+    } catch (e) {}
+  }
+
   async function _toggleQuickSave(key) {
     if (_posting) return;
     _posting = true;
@@ -529,18 +470,23 @@
     _notifyChange();
 
     try {
+      let ok = false;
       if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.toggleQuickSave === 'function') {
-        const result = await window.DroboardSaveAPI.toggleQuickSave(_data.storyId, key, newVal);
-        if (!result || !result.ok) throw new Error(result?.message || 'Failed');
-      } else {
+        try {
+          const result = await window.DroboardSaveAPI.toggleQuickSave(_data.storyId, key, newVal);
+          ok = !!(result && result.ok);
+        } catch (e) { ok = false; }
+      }
+      if (!ok) {
         // Demo: persist in memory
         await new Promise(r => setTimeout(r, 200));
         const demo = _getDemoState(_data.storyId || 'default');
         demo.quickSave[key] = newVal;
       }
 
-      const labels = { library: 'Library', fav: 'Favourites', later: 'Read Later' };
-      _toast(newVal ? `📌 Saved to ${labels[key]}!` : `Removed from ${labels[key]}`);
+      const labels = { library: 'Library', save: 'Saved' };
+      _syncLibraryStore(key, newVal);
+      _toast(newVal ? (key === 'library' ? `📌 Saved to Library!` : `📌 Saved! Find it in Library → Saved.`) : `Removed from ${labels[key]}`);
     } catch (err) {
       // Rollback
       _quickSave[key] = !newVal;
@@ -571,12 +517,18 @@
     _notifyChange();
 
     try {
+      let ok = false;
       if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.toggleCollection === 'function') {
-        const result = await window.DroboardSaveAPI.toggleCollection(_data.storyId, collId, newVal);
-        if (!result || !result.ok) throw new Error(result?.message || 'Failed');
-        if (result.count !== undefined) coll.count = result.count;
-        _renderCollections();
-      } else {
+        try {
+          const result = await window.DroboardSaveAPI.toggleCollection(_data.storyId, collId, newVal);
+          if (result && result.ok) {
+            ok = true;
+            if (result.count !== undefined) coll.count = result.count;
+            _renderCollections();
+          }
+        } catch (e) { ok = false; }
+      }
+      if (!ok) {
         await new Promise(r => setTimeout(r, 200));
         const demo = _getDemoState(_data.storyId || 'default');
         const dc = demo.collections.find(c => c.id === collId);
@@ -599,67 +551,11 @@
   // ════════════════════════════════════════════════════════════════════════
   // New collection modal
   // ════════════════════════════════════════════════════════════════════════
+  // New collections are created ONLY on the profile collection section —
+  // this row closes the sheet and takes the user there.
   function _openNewCollection() {
-    _selectedEmoji = '📖';
-    document.getElementById('dsvCollName').value = '';
-    document.getElementById('dsvModalConfirm').disabled = true;
-
-    const row = document.getElementById('dsvEmojiRow');
-    row.innerHTML = COLL_EMOJIS.map(e =>
-      `<div class="dsv-emoji-btn${e === '📖' ? ' on' : ''}" data-emoji="${e}">${e}</div>`
-    ).join('');
-
-    row.querySelectorAll('.dsv-emoji-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        _selectedEmoji = btn.dataset.emoji;
-        row.querySelectorAll('.dsv-emoji-btn').forEach(b => b.classList.toggle('on', b === btn));
-      });
-    });
-
-    document.getElementById('dsvModalBg').classList.add('open');
-  }
-
-  function _closeNewCollection() {
-    document.getElementById('dsvModalBg').classList.remove('open');
-  }
-
-  async function _confirmNewCollection() {
-    const name = document.getElementById('dsvCollName').value.trim();
-    if (!name) { document.getElementById('dsvCollName').focus(); return; }
-
-    const confirmBtn = document.getElementById('dsvModalConfirm');
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Creating…';
-
-    try {
-      let newColl;
-
-      if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.createCollection === 'function') {
-        // ── Production ──────────────────────────────────────────────────
-        const result = await window.DroboardSaveAPI.createCollection(
-          _data.storyId, name, _selectedEmoji
-        );
-        if (!result || !result.ok) throw new Error(result?.message || 'Failed');
-        newColl = result.collection;
-      } else {
-        // ── Demo ────────────────────────────────────────────────────────
-        await new Promise(r => setTimeout(r, 500));
-        newColl = { id: 'c_' + Date.now(), name, icon: _selectedEmoji, count: 1, saved: true };
-        const demo = _getDemoState(_data.storyId || 'default');
-        demo.collections.push({ ...newColl });
-      }
-
-      _collections.push(newColl);
-      _closeNewCollection();
-      _renderCollections();
-      _notifyChange();
-      _toast(`${_selectedEmoji} "${name}" created!`);
-    } catch (err) {
-      _toast('❌ ' + (err.message || 'Could not create collection'));
-    }
-
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Create';
+    closeSaveModal();
+    window.location.href = 'profile.html?tab=collections&create=1';
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -692,20 +588,8 @@
       document.getElementById(optId).addEventListener('click', () => _toggleQuickSave(key));
     });
 
-    // New collection
+    // New collection → profile section
     document.getElementById('dsvNewColl').addEventListener('click', _openNewCollection);
-
-    // Modal cancel / confirm / backdrop
-    document.getElementById('dsvModalCancel').addEventListener('click', _closeNewCollection);
-    document.getElementById('dsvModalConfirm').addEventListener('click', _confirmNewCollection);
-    document.getElementById('dsvModalBg').addEventListener('click', function (e) {
-      if (e.target === this) _closeNewCollection();
-    });
-
-    // Enable confirm button when name is typed
-    document.getElementById('dsvCollName').addEventListener('input', function () {
-      document.getElementById('dsvModalConfirm').disabled = this.value.trim().length === 0;
-    });
   }
 
   // ════════════════════════════════════════════════════════════════════════

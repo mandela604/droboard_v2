@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
-<title>Chapter Review · Droboard</title>
+<title>Chapter Review Ã‚Â· Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 :root{--acc:#ff0050;--bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--card:#ffffff;--bd:rgba(0,0,0,.12);--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666;--tx-faint:#8a8a8a;--green:#16a34a;--green-bg:#e2f8ea;--amber:#d97706;--red:#e0384d;--purple:#5b4bcf;--blue:#2563eb}
@@ -25,12 +26,12 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .page-header h1{font-size:22px;font-weight:800;color:var(--tx-high);margin-bottom:4px}
 .page-header p{font-size:13px;color:var(--tx-muted)}
 
-/* ── Tabs ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Tabs Ã¢â€â‚¬Ã¢â€â‚¬ */
 .tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto}
 .tab{padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;background:var(--l2);color:var(--tx-muted);white-space:nowrap;cursor:pointer;transition:.15s}
 .tab.active{background:var(--acc);color:#fff}
 
-/* ── Book Section ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Book Section Ã¢â€â‚¬Ã¢â€â‚¬ */
 .book-section{margin-bottom:16px}
 .book-header{display:flex;align-items:center;gap:10px;padding:12px;background:var(--l2);border-radius:12px;cursor:pointer;margin-bottom:8px}
 .book-cover{width:36px;height:50px;border-radius:6px;object-fit:cover;flex-shrink:0}
@@ -40,7 +41,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .book-chevron{color:var(--tx-muted);font-size:12px;transition:.2s}
 .book-section.open .book-chevron{transform:rotate(180deg)}
 
-/* ── Chapter List ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Chapter List Ã¢â€â‚¬Ã¢â€â‚¬ */
 .chapter-list{display:flex;flex-direction:column;gap:6px;padding:0 0 8px}
 .chapter-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--bd);border-radius:10px;transition:.15s}
 .ch-num{font-size:11px;font-weight:700;color:var(--tx-muted);width:20px;text-align:center;flex-shrink:0}
@@ -60,7 +61,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(22,22,27,.92);color:#fff;padding:9px 18px;border-radius:24px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ── Detail Modal ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Detail Modal Ã¢â€â‚¬Ã¢â€â‚¬ */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-panel{width:92%;max-width:440px;max-height:85vh;background:var(--card);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
@@ -143,7 +144,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
-    <div class="drawer-logo"><i class="fas fa-feather-pointed"></i></div>
+    <div class="drawer-logo" style="overflow:hidden"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
     <div class="drawer-head-title">Droboard</div>
     <button class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></button>
   </div>

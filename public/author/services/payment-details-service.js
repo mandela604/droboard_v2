@@ -11,6 +11,8 @@
   Svc.setDefault = Svc.setDefault || async function (id) { return window.AuthorFinance ? window.AuthorFinance.setDefaultMethod(id) : { ok: true }; };
 
   var methods = [];
+  var EDIT_ID = null;
+  function typeIcon(t) { return t === 'bank' ? 'fa-building-columns' : t === 'paypal' ? 'fa-paypal' : 'fa-mobile-screen'; }
 
   function toast(m){var t=document.getElementById('toastEl')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'toastEl',className:'toast'}));t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2500);}
 
@@ -30,8 +32,9 @@
       if (m.verified) tags.push('<span class="tag verified"><i class="fas fa-check"></i> Verified</span>');
       else tags.push('<span class="tag unverified"><i class="fas fa-clock"></i> Unverified</span>');
       return '<div class="method-card'+(m.isDefault?' default':'')+'">'+
+        '<button class="method-edit" onclick="editMethod(\''+m.id+'\')" title="Edit"><i class="fas fa-pencil"></i></button>'+
         '<div class="method-top">'+
-          '<div class="method-icon '+m.type+'"><i class="fas '+m.icon+'"></i></div>'+
+          '<div class="method-icon '+m.type+'"><i class="fas '+(m.icon || typeIcon(m.type))+'"></i></div>'+
           '<div><div class="method-type">'+(m.type==='bank'?'Bank Transfer':m.type==='paypal'?'PayPal':'Mobile Money')+'</div><div class="method-name">'+(m.accountName||'')+'</div></div>'+
         '</div>'+
         '<div class="method-detail">'+detail+'</div>'+
@@ -51,13 +54,40 @@
     document.getElementById('mobileFields').style.display = t === 'mobile' ? '' : 'none';
   }
 
-  function closeForm(){ document.getElementById('addForm').classList.remove('show'); }
+  function closeForm(){
+    document.getElementById('addForm').classList.remove('show');
+    EDIT_ID = null;
+    document.getElementById('formTitle').textContent = 'Add Payment Method';
+    document.querySelector('.form-submit').innerHTML = '<i class="fas fa-plus"></i> Add Method';
+  }
+
+  function openForm(){
+    document.getElementById('addForm').classList.add('show');
+  }
+
+  function editMethod(id){
+    var m = methods.find(function (x) { return String(x.id) === String(id); });
+    if (!m) return;
+    EDIT_ID = m.id;
+    document.getElementById('fType').value = m.type || 'bank';
+    toggleTypeFields();
+    document.getElementById('fBankName').value = m.bankName || '';
+    document.getElementById('fAccountNum').value = m.accountNumber || '';
+    document.getElementById('fRouting').value = m.routingCode || '';
+    document.getElementById('fPaypalEmail').value = m.email || '';
+    document.getElementById('fProvider').value = m.provider || '';
+    document.getElementById('fPhone').value = m.phoneNumber || '';
+    document.getElementById('fAccountName').value = m.accountName || '';
+    document.getElementById('formTitle').textContent = 'Edit Payment Method';
+    document.querySelector('.form-submit').innerHTML = '<i class="fas fa-check"></i> Save Changes';
+    openForm();
+  }
 
   async function addMethod(){
     var type = document.getElementById('fType').value;
     var accountName = document.getElementById('fAccountName').value.trim();
     if (!accountName) { toast('Enter account name'); return; }
-    var data = { type: type, accountName: accountName, icon: type === 'bank' ? 'fa-building-columns' : type === 'paypal' ? 'fa-paypal' : 'fa-mobile-screen' };
+    var data = { type: type, accountName: accountName };
     if (type === 'bank') {
       data.bankName = document.getElementById('fBankName').value.trim();
       data.accountNumber = document.getElementById('fAccountNum').value.trim();
@@ -72,9 +102,14 @@
       if (!data.provider || !data.phoneNumber) { toast('Fill in all mobile details'); return; }
     }
     try {
-      await window.AuthorFinance.addPaymentMethod(data);
+      if (EDIT_ID) {
+        if (window.AuthorFinance && window.AuthorFinance.updatePaymentMethod) await window.AuthorFinance.updatePaymentMethod(EDIT_ID, data);
+        toast('Payment method updated');
+      } else {
+        await window.AuthorFinance.addPaymentMethod(data);
+        toast('Payment method added');
+      }
       closeForm();
-      toast('Payment method added');
       render();
     } catch (e) { toast(e.message); }
   }
@@ -109,6 +144,7 @@
   /* onclick refs in markup + generated HTML (+ onchange) */
   window.closeForm = closeForm;
   window.addMethod = addMethod;
+  window.editMethod = editMethod;
   window.setDefault = setDefault;
   window.deleteMethod = deleteMethod;
   window.toggleTypeFields = toggleTypeFields;

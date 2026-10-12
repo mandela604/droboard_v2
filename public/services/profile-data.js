@@ -141,7 +141,7 @@
     if (global.AuthSession && AuthSession.getCurrentUserHandle) {
       return AuthSession.getCurrentUserHandle();
     }
-    return 'Ada_Writes';
+    return 'You_Reader';
   }
 
   async function getProfile(handle) {

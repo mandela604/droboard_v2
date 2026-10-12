@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
    STORE PAGE SERVICE (call-and-render)
    Page-inline logic moved verbatim from Pages/store.html.
-   Backend-ready: set USE_API=true and point API_BASE at the live API;
-   demo behavior stays (StoreService fallback) while USE_API=false.
+   Catalog demo-driven until backend store catalog lands; checkout is live
+   (server-verified, no local crediting).
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -43,7 +43,7 @@
     document.getElementById('packsGrid').innerHTML = packs.map(p => `
       <div class="pack-card" data-pack-id="${p.id}" onclick="selectPack('${p.id}')">
         ${p.badge ? `<div class="pack-badge${p.badge === 'Best Value' ? ' green' : ''}">${p.badge}</div>` : ''}
-        <div class="pack-coins">${p.coins.toLocaleString()}</div>
+        <div class="pack-coins"><i class="fas fa-coins"></i>${p.coins.toLocaleString()}</div>
         <div class="pack-label">coins</div>
         <div class="pack-price">${priceFor(p)}</div>
       </div>`).join('');
@@ -63,7 +63,9 @@
   }
 
   function renderRewards(rewards) {
-    document.getElementById('rewardsList').innerHTML = rewards.map(r => `
+    // Earn Coins keeps Watch Ad only — everything else is cut.
+    const list = (rewards || []).filter(function (r) { return r && r.type === 'watch_ad'; });
+    document.getElementById('rewardsList').innerHTML = list.map(r => `
       <div class="reward-card">
         <div class="reward-icon"><i class="fas ${r.icon}"></i></div>
         <div class="reward-info">
@@ -147,21 +149,65 @@
       </div>`;
   }
 
+  var _catalog = null;
+  async function liveCatalog() {
+    if (_catalog) return _catalog;
+    try {
+      const res = await fetch('/api/store', { credentials: 'include' });
+      if (res.ok) { _catalog = await res.json(); return _catalog; }
+    } catch (e) {}
+    return null;
+  }
+  function parseNGN(s) {
+    const n = parseFloat(String(s || '').replace(/[^0-9.]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+  // Canonical charge amount (NGN) for an item: live catalog leg first,
+  // demo price string as fallback. Null = unpriceable, never charge.
+  async function amountNGNFor(kind, item) {
+    try {
+      const cat = await liveCatalog();
+      const list = (cat && ((kind === 'pack' && cat.packs) || (kind === 'bundle' && cat.bundles) || (kind === 'sub' && cat.subscriptions))) || [];
+      const code = item.code || item.id;
+      const hit = list.find(function (x) { return String(x.code || x.id) === String(code); });
+      if (hit && Number(hit.basePriceNGN) > 0) return Number(hit.basePriceNGN);
+    } catch (e) {}
+    const fallback = parseNGN(item.prices && item.prices.NGN);
+    return fallback > 0 ? fallback : null;
+  }
+
+  async function refreshBalance() {
+    try {
+      const res = await fetch('/api/wallet/balance', { credentials: 'include' });
+      if (!res.ok) return;
+      const j = await res.json();
+      storeData.balance = { coins: j.coins != null ? j.coins : 0, level: j.level || 'Starter' };
+      renderBalance(storeData);
+    } catch (e) {}
+  }
+
   function openCheckout(item) {
     if (!window.DroboardPaySheet) { toast('Checkout unavailable'); return; }
-    DroboardPaySheet.open({
-      title: item.title, sub: item.sub, price: item.price, coins: item.coins,
-      onSuccess: function (receipt) {
-        // DEMO: credit locally. Live: POST receipt to backend verify endpoint,
-        // backend credits coins only after Play/Paystack verification.
-        var credit = (item.coins || 0) + (item.bonus || 0);
-        if (window.StoreService && StoreService.addCoins && credit > 0) {
-          StoreService.addCoins(credit);
-          try { storeData.balance = StoreService.getBalance(); } catch (e) {}
-          renderBalance(storeData);
-        }
-        toast('✅ Payment successful! +' + credit.toLocaleString() + ' coins');
-      }
+    if (!item.packCode) { toast('Item unavailable'); return; }
+    amountNGNFor(item.kind, item).then(function (amountNGN) {
+      if (!(amountNGN > 0)) { toast('Price unavailable in your region'); return; }
+      DroboardPaySheet.open({
+        title: item.title, sub: item.sub, price: item.price,
+        packCode: item.packCode, amountNGN: amountNGN,
+        onSuccess: function (receipt) {
+          // Server truth only: backend verified + credited. Refresh balance.
+          refreshBalance();
+          if (receipt && receipt.plan) toast('✅ Subscribed! Enjoy unlimited reading');
+          else toast('✅ Payment successful! Balance updated');
+        },
+        onError: function (err) {
+          if (!err) { toast('Payment failed'); return; }
+          if (err.message === 'paystack_not_configured' || err.message === 'flutterwave_not_configured') toast('Payments not enabled yet');
+          else if (err.message === 'store_billing_unavailable') toast('In-app billing coming soon');
+          else if (err.message === 'email_required') toast('Add an email to your profile first');
+          else toast('Payment failed' + (err.status ? ' (' + err.status + ')' : ''));
+        },
+      });
     });
   }
 
@@ -185,14 +231,14 @@
     var p = (storeData.packs || []).find(function (x) { return x.id === id; });
     if (!p) { toast('Selected pack — tap to purchase'); return; }
     if (!priceOk(p)) return;
-    openCheckout({ title: 'Coin Pack', sub: p.coins.toLocaleString() + ' coins', price: priceFor(p), coins: p.coins, bonus: 0 });
+    openCheckout({ kind: 'pack', packCode: p.code || p.id, title: 'Coin Pack', sub: p.coins.toLocaleString() + ' coins', price: priceFor(p), prices: p.prices, coins: p.coins, bonus: 0 });
   }
 
   function selectBundle(id) {
     var b = (storeData.bundles || []).find(function (x) { return x.id === id; });
     if (!b) return;
     if (!priceOk(b)) return;
-    openCheckout({ title: b.name, sub: b.coins.toLocaleString() + ' coins + ' + b.bonus.toLocaleString() + ' bonus', price: priceFor(b), coins: b.coins, bonus: b.bonus });
+    openCheckout({ kind: 'bundle', packCode: b.code || b.id, title: b.name, sub: b.coins.toLocaleString() + ' coins + ' + b.bonus.toLocaleString() + ' bonus', price: priceFor(b), prices: b.prices, coins: b.coins, bonus: b.bonus });
   }
 
   function selectSub(id) {
@@ -203,7 +249,7 @@
       || ((storeData.mergeSub && storeData.mergeSub.id === id) ? storeData.mergeSub : null);
     if (!s) { toast('Selected plan — tap to subscribe'); return; }
     if (!priceOk(s)) return;
-    openCheckout({ title: s.name, sub: 'Subscription · per ' + (s.period || 'month'), price: priceFor(s), coins: 0, bonus: 0 });
+    openCheckout({ kind: 'sub', packCode: s.code || s.id, title: s.name, sub: 'Subscription · per ' + (s.period || 'month'), price: priceFor(s), prices: s.prices, coins: 0, bonus: 0 });
   }
 
   function toast(msg) {

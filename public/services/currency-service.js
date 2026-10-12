@@ -6,7 +6,7 @@
    Each product carries its own ladder:
      { id:'coins_100', prices:{ NGN:'₦1,500', USD:'$2.50', GBP:'£2.85' } }
    This service detects the reader's country (ipapi, cached 7 days,
-   defaults to NG) and resolves the matching leg.
+   unknown location shows USD) and resolves the matching leg.
 
    STRICT — no silent fallback. resolve() returns an error result when
    a price cannot be determined, and purchase surfaces must block instead
@@ -19,10 +19,13 @@
    finance-dashboard saves (localStorage 'dro_finance_prices') <
    backend GET /api/pricing/ladders when USE_API is true.
 
-   Finance overrides without code: localStorage 'dro_finance_prices'
-     { "coins_100": { "USD":"$1.99", "NGN":"₦1,200", "GBP":"£2.20" } }
-   Backend-ready: GET /api/pricing/ladders -> same shape merges over
-   everything when USE_API is true.
+   Global currency config (ONE switch, Super Admin → Coin Economy):
+   localStorage 'dro_currency_config' { base:'NGN', locked:null|'NGN'|'USD'|'GBP' }
+   - base: home/settlement currency (finance legs are authored in this).
+   - locked: null = automatic per-location ladders (unknown location
+     shows USD); set = force one currency on every page.
+   Missing legs fail strict as usual. Backend-ready: GET
+   /api/platform-settings/currency merges over local config.
    =============================================================== */
 (function () {
   'use strict';
@@ -32,15 +35,49 @@
 
   var GEO_KEY = 'droboard_geo';
   var FIN_KEY = 'dro_finance_prices';
+  var CFG_KEY = 'dro_currency_config';
   var GEO_TTL = 7 * 24 * 3600 * 1000;
 
   var BY_COUNTRY = {
     NG: 'NGN', US: 'USD', GB: 'GBP'
   };
-  var DEFAULT_CURRENCY = 'NGN';
+  var VALID = ['NGN', 'USD', 'GBP'];
 
-  var _country = 'NG';
-  var _currency = 'NGN';
+  var _country = '';
+  var _geoCurrency = 'USD';
+  var _currency = 'USD';
+  var _config = { base: 'NGN', locked: 'USD' };
+
+  // Display-only conversion (admin/editor reporting — NEVER pricing).
+  // Ladders stay explicit; these only restate stored NGN/USD amounts.
+  var REPORT_RATES = { NGN: 1, USD: 1538, GBP: 1940 }; // NGN per unit
+  var COIN_FACE = { USD: 0.02, NGN: 15, GBP: 0.0285 }; // face value per coin
+  var SYMBOLS = { NGN: '₦', USD: '$', GBP: '£' };
+  function num(n, dec) {
+    n = +n || 0;
+    try { return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+    catch (e) { return dec ? n.toFixed(dec) : String(Math.round(n)); }
+  }
+  function sym() { return SYMBOLS[_currency] || ''; }  function dec() { return _currency === 'NGN' ? 0 : 2; }
+  // Coins -> money in the effective currency.
+  function coinsToMoney(coins) {
+    var face = COIN_FACE[_currency] != null ? COIN_FACE[_currency] : COIN_FACE.USD;
+    return sym() + num((+coins || 0) * face, dec());
+  }
+  // Stored NGN amount -> money in the effective currency.
+  function ngnToMoney(ngn) {
+    var rate = REPORT_RATES[_currency] || REPORT_RATES.USD;
+    var val = (+ngn || 0) / rate;
+    return sym() + num(_currency === 'NGN' ? Math.round(val) : val, dec());
+  }
+  // Stored USD amount -> money in the effective currency.
+  function usdToMoney(usd) {
+    if (typeof usd === 'string') {
+      var m = usd.match(/-?[\d.,]+/);
+      usd = m ? parseFloat(m[0].replace(/,/g, '')) : 0;
+    }
+    return ngnToMoney((+usd || 0) * REPORT_RATES.USD);
+  }
   var _ready = false;
   var _listeners = [];
   var _remoteLadders = {};
@@ -61,9 +98,36 @@
       return (v && typeof v === 'object') ? v : {};
     } catch (e) { return {}; }
   }
+  function _loadConfig() {
+    try {
+      var c = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
+      if (c && typeof c === 'object') {
+        if (VALID.indexOf(c.base) !== -1) _config.base = c.base;
+        _config.locked = VALID.indexOf(c.locked) !== -1 ? c.locked : null;
+      }
+    } catch (e) {}
+    _retarget();
+  }
+  function _retarget() {
+    // Locked display wins; else geo-detected; else USD for unknown.
+    _currency = _config.locked || _geoCurrency || 'USD';
+  }
   function _applyCountry(code) {
-    _country = code || 'NG';
-    _currency = BY_COUNTRY[_country] || 'USD';
+    if (!code) return;
+    _country = code;
+    _geoCurrency = BY_COUNTRY[_country] || 'USD';
+    _retarget();
+  }
+  function getConfig() { return { base: _config.base, locked: _config.locked }; }
+  function setConfig(patch) {
+    if (patch && typeof patch === 'object') {
+      if (VALID.indexOf(patch.base) !== -1) _config.base = patch.base;
+      _config.locked = VALID.indexOf(patch.locked) !== -1 ? patch.locked : (patch.locked === null ? null : _config.locked);
+      try { localStorage.setItem(CFG_KEY, JSON.stringify(_config)); } catch (e) {}
+    }
+    _retarget();
+    _notify();
+    return getConfig();
   }
   function _notify() {
     _listeners.forEach(function (fn) { try { fn(_currency); } catch (e) {} });
@@ -129,6 +193,7 @@
   function init() {
     if (_ready) return Promise.resolve(_currency);
     _ready = true;
+    _loadConfig();
     var cached = _loadGeo();
     if (cached) { _applyCountry(cached); }
     function liveLadders() {
@@ -138,7 +203,18 @@
         return r.json();
       }).then(function (j) {
         if (j && typeof j === 'object') { _remoteLadders = j; _notify(); }
-        return _currency;
+        return fetch(API_BASE + '/platform-settings/currency').then(function (r2) {
+          if (!r2.ok) return _currency;
+          return r2.json().then(function (c) {
+            if (c && typeof c === 'object') {
+              if (VALID.indexOf(c.base) !== -1) _config.base = c.base;
+              _config.locked = VALID.indexOf(c.locked) !== -1 ? c.locked : null;
+              _retarget();
+              _notify();
+            }
+            return _currency;
+          });
+        }).catch(function () { return _currency; });
       }).catch(function () { return _currency; });
     }
     return new Promise(function (resolve) {
@@ -158,11 +234,23 @@
     init: init,
     refresh: refresh,
     onChange: onChange,
-    get: function () { return { country: _country, currency: _currency }; },
+    get: function () { return { country: _country, currency: _currency, base: _config.base, locked: _config.locked }; },
+    getConfig: getConfig,
+    setConfig: setConfig,
+    symbol: sym,
+    coinsToMoney: coinsToMoney,
+    ngnToMoney: ngnToMoney,
+    usdToMoney: usdToMoney,
     pick: pick,
     resolve: resolve,
     priceFor: priceFor
   };
+
+  try {
+    window.addEventListener('storage', function (e) {
+      if (e && e.key === CFG_KEY) { _loadConfig(); _notify(); }
+    });
+  } catch (e) {}
 
   init();
 })();

@@ -123,13 +123,6 @@ router.post('/book-edits/:id/reject', writeLimiter, audit('senior.bookEdits.reje
     body: z.object({ note: z.string().max(2000).optional() }).strict(),
   })), ctrl.rejectBookEdit);
 
-// series changes
-crud('/series-changes', 'seriesChanges', { create: false });
-router.post('/series-changes/:id/approve', writeLimiter, audit('senior.seriesChanges.approve'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.res('seriesChanges').approve);
-router.post('/series-changes/:id/reject', writeLimiter, audit('senior.seriesChanges.reject'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.res('seriesChanges').reject);
-
 // authors + invites
 router.get('/authors', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.res('authors').list);
 router.get('/invites', generalLimiter, ctrl.res('invites').list);

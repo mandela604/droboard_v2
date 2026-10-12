@@ -28,8 +28,7 @@
         { label: 'Contracts', icon: 'fa-file-signature', href: 'apply-contract.html' },
         { label: 'Completion', icon: 'fa-flag-checkered', href: 'apply-completion.html' },
         { label: 'Chapter Review', icon: 'fa-pen-to-square', href: 'request-chapter-review.html' },
-        { label: 'Series Changes', icon: 'fa-book-open', href: 'request-series-change.html' },
-        { label: 'VIP Application', icon: 'fa-crown', href: 'apply-vip.html' }
+        { label: 'Book Changes', icon: 'fa-book-open', href: 'request-book-change.html' }
       ]},
       { title: 'Finance', items: [
         { label: 'Earnings', icon: 'fa-sack-dollar', href: 'earnings.html' },
@@ -40,7 +39,7 @@
         { label: 'Messages', icon: 'fa-comment-dots', href: '../Pages/chat.html' },
         { label: 'Notifications', icon: 'fa-bell', href: '../Pages/notifications.html' }
       ]},
-      { title: 'Settings', items: [{ label: 'Settings', icon: 'fa-gear', href: '#' }] }
+      { title: 'Settings', items: [{ label: 'Settings', icon: 'fa-gear', href: '../Pages/settings.html' }] }
     ];
     if (bookId) sections.splice(1, 0, { title: 'Book Workspace', items: BOOK_WORKSPACE_ITEMS.map(function (it) { return { label: it.label, icon: it.icon, href: it.href + '?book=' + bookId }; }) });
     if (activeHref) sections.forEach(function (s) { s.items.forEach(function (it) { if (it.href.split('?')[0] === activeHref) it.active = true; }); });

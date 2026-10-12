@@ -61,6 +61,35 @@ async function bookChapters(req, res) {
   });
 }
 
+async function book(req, res) {
+  return base.wrap(res, async () => author.getBook({ userId: req.user.id, bookId: req.valid.params.id }));
+}
+
+async function bookChaptersList(req, res) {
+  return base.wrap(res, async () => author.listChapters({
+    userId: req.user.id, bookId: req.valid.params.id,
+    page: req.valid.query.page, limit: req.valid.query.limit,
+  }));
+}
+
+async function saveBookChapter(req, res) {
+  return base.wrap(res, async () => author.saveBookChapter({
+    userId: req.user.id, bookId: req.valid.params.id,
+    num: req.valid.params.num, data: req.valid.body,
+  }));
+}
+
+async function requestBookChange(req, res) {
+  return base.wrap(res, async () => {
+    const out = await author.requestBookChange({
+      userId: req.user.id, bookId: req.valid.params.id,
+      changes: req.valid.body.changes, details: req.valid.body.details, order: req.valid.body.order,
+    });
+    res.status(201);
+    return out;
+  });
+}
+
 async function contracts(req, res) {
   return base.wrap(res, async () => author.listContracts({ userId: req.user.id }));
 }
@@ -93,18 +122,6 @@ async function chapterReviews(req, res) {
   return base.wrap(res, async () => author.submitChapterReview({ userId: req.user.id, bookId: req.valid.body.bookId, data: req.valid.body }));
 }
 
-async function seriesChanges(req, res) {
-  return base.wrap(res, async () => {
-    const out = await author.submitSeriesChange({ userId: req.user.id, bookId: req.valid.body.bookId, data: req.valid.body });
-    res.status(201);
-    return out;
-  });
-}
-
-async function seriesChangesList(req, res) {
-  return base.wrap(res, async () => author.listSeriesChanges({ userId: req.user.id }));
-}
-
 async function chapterEdits(req, res) {
   return base.wrap(res, async () => author.listChapterEdits({ userId: req.user.id, bookId: req.valid.params.id }));
 }
@@ -126,7 +143,8 @@ async function saveLaunchKit(req, res) {
 }
 
 module.exports = {
-  dashboard, books, overview, characters, saveCharacter, deleteCharacter,
+  dashboard, books, overview, book, bookChaptersList, saveBookChapter, requestBookChange,
+  characters, saveCharacter, deleteCharacter,
   plot, savePlot, bookChapters, contracts, applyContract, applyCompletion,
-  applyVip, chapterReviews, seriesChanges, seriesChangesList, chapterEdits, bookEdits, launchKit, saveLaunchKit,
+  applyVip, chapterReviews, chapterEdits, bookEdits, launchKit, saveLaunchKit,
 };

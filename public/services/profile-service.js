@@ -415,7 +415,7 @@
         onComment: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onShare: (post) => { if (!window.openShareModal) return; openShareModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, url: 'https://droboard.app/post/' + post.id }); },
-        onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id }); },
+        onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id, type: 'post' }); },
         onDots: (post, anchorEl) => { if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
         onJoinAma: () => toast('🎙️ Joining AMA…'),
         onOpenLink: () => toast('📖 Opening story…'),
@@ -735,12 +735,23 @@
     const params = new URLSearchParams(location.search);
     ME_HANDLE = await ProfileData.getCurrentUserHandle();
     VIEW_HANDLE = params.get('u') || ME_HANDLE;
-    const data = await ProfileData.getProfile(VIEW_HANDLE);
+    let data = await ProfileData.getProfile(VIEW_HANDLE);
+    if (!data) { data = await ProfileData.getProfile('You_Reader'); } // hardcode reader fallback (remove after testing)
     document.getElementById('loadingState').style.display = 'none';
     if (!data) { document.getElementById('emptyState').style.display = 'block'; return; }
     PROFILE = data;
     document.getElementById('profileRoot').style.display = 'block';
     renderProfile(PROFILE);
+    // Deep links: ?tab=collections opens the tab, ?create=1 opens the
+    // new-collection sheet (all collection creation flows through here).
+    try {
+      const tab = params.get('tab');
+      if (tab && ['feed', 'books', 'library', 'collections', 'following', 'about'].indexOf(tab) !== -1) switchTab(tab);
+      if (params.get('create') === '1') {
+        if (tab === 'collections' || !tab) switchTab('collections');
+        setTimeout(function () { openNewCollection(); }, 350);
+      }
+    } catch (e) {}
     if (window.DroboardSearch) {
       let searchData;
       if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }

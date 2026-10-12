@@ -185,7 +185,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .yml-text-author{font-size:9px;color:var(--muted);margin-top:2px;font-weight:600;}
 
 /* BOTTOM BAR */
-.bottombar{flex-shrink:0;height:calc(var(--bottombar-h) + var(--safe-b));background:rgba(0,0,0,.92);backdrop-filter:blur(24px);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 12px var(--safe-b);gap:6px;z-index:100;}
+.bottombar{flex-shrink:0;height:auto;min-height:var(--bottombar-h);background:rgba(0,0,0,.92);backdrop-filter:blur(24px);border-top:1px solid var(--bd);display:flex;align-items:center;padding:10px 12px max(10px, var(--safe-b));gap:6px;z-index:100;}
 body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 .bb-act{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex-shrink:0;padding:5px 6px;border-radius:10px;transition:.15s;user-select:none;}
 .bb-act:active{background:var(--surface)}
@@ -336,6 +336,11 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
         <div id="adSlot"></div>
       </div>
 
+      <!-- COMMENTS — rendered by DroboardComments.attach() below -->
+      <div class="comments-section" id="commentsSection">
+        <div id="commentsPlaceholder"></div>
+      </div>
+
       <!-- CHAPTER NAV -->
       <div class="ch-nav">
         <div class="ch-nav-side disabled" id="prevChBtn" data-act="ch-prev">
@@ -349,9 +354,9 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
         </div>
       </div>
 
-      <!-- COMMENTS — rendered by DroboardComments.attach() below -->
-      <div class="comments-section" id="commentsSection">
-        <div id="commentsPlaceholder"></div>
+      <!-- COMMUNITIES — genre board + author circle via shared component -->
+      <div class="comments-section" id="communitiesSection" style="padding-top:0">
+        <div id="communitiesMount"></div>
       </div>
 
       <!-- CHAPTER END -->
@@ -454,7 +459,8 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 <script src="../component/tip-picker.js"></script>
 <script src="../component/ad-card.js"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/comment-section.js"></script>
+<script src="../component/comment-section.js?v=3"></script>
+<script src="../component/community-cards.js?v=3"></script>
 
 <!-- ═══ Data ═══ -->
 <script src="../data/comments-data.js"></script>
@@ -463,6 +469,6 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 <script src="../services/ad-service.js"></script>
 <script src="../services/reader-engagement-service.js"></script>
 <script src="../services/reader-track.js"></script>
-<script src="../services/full-reader-service.js?v=2"></script>
+<script src="../services/full-reader-service.js?v=3"></script>
 </body>
 </html>

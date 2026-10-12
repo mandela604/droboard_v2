@@ -530,8 +530,28 @@
   // ════════════════════════════════════════════════════════════════════════
   // Open / close — main share sheet
   // ════════════════════════════════════════════════════════════════════════
+  // Theme bridge: host pages theme two ways (html[data-theme] on most
+  // pages, body.theme-* on readers). The sheet CSS keys off the html
+  // attribute, so mirror the body class when the page doesn't set it.
+  // Pages using data-theme own it — never overridden here.
+  let _themeBridged = false;
+  function _syncTheme() {
+    try {
+      const html = document.documentElement;
+      if (html.dataset.theme) { _themeBridged = false; return; }
+      _themeBridged = true;
+      html.dataset.theme = document.body.className.indexOf('theme-white') !== -1 ? 'light' : 'dark';
+    } catch (e) {}
+  }
+  function _unsyncTheme() {
+    try {
+      if (_themeBridged) { delete document.documentElement.dataset.theme; _themeBridged = false; }
+    } catch (e) {}
+  }
+
   function openShareModal(data) {
     _data = data || {};
+    _syncTheme();
 
     document.getElementById('dsmLinkInp').value = _data.url || 'https://droboard.com';
     document.getElementById('dsmCopyMsg').textContent = '';
@@ -555,6 +575,7 @@
   function closeShareModal() {
     document.getElementById('dsmBg').classList.remove('open');
     document.body.style.overflow = '';
+    _unsyncTheme();
   }
 
   // ════════════════════════════════════════════════════════════════════════

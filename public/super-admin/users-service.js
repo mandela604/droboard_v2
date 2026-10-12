@@ -161,6 +161,10 @@ let tempRoles = [];
 let openRowId = null;
 
 function fmtNum(n){ n=n||0; return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
+// Money displays follow the global currency toggle (Super Admin → Coin
+// Economy). Coins and NGN amounts convert; plain counts stay fmtNum.
+function moneyCoins(n){ if(window.DroboardCurrency && DroboardCurrency.coinsToMoney) return DroboardCurrency.coinsToMoney(n); return '$'+fmtNum(n); }
+function moneyNGN(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$'+fmtNum(n); }
 function fmtDate(d){ const dt=new Date(d+'T00:00:00'); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return months[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear(); }
 function daysAgo(d){ return Math.round((new Date()-new Date(d+'T00:00:00'))/86400000); }
 
@@ -314,13 +318,13 @@ function renderDetailPanel(id){
   if(u.role==='Writer'){
     overviewCols = '<div class="detail-item"><span>Stories Published</span><b>'+u.stories+'</b></div>'
       + '<div class="detail-item"><span>Total Reads</span><b>'+fmtNum(u.reads)+'</b></div>'
-      + '<div class="detail-item"><span>Earnings</span><b>$'+fmtNum(u.payout)+'</b></div>'
+      + '<div class="detail-item"><span>Earnings</span><b>'+moneyNGN(u.payout)+'</b></div>'
       + '<div class="detail-item"><span>Coins Spent</span><b>'+fmtNum(u.coinsSpent)+'</b></div>';
   } else {
     overviewCols = '<div class="detail-item"><span>Total Reads</span><b>'+fmtNum(u.reads)+'</b></div>'
       + '<div class="detail-item"><span>Coins Spent</span><b>'+fmtNum(u.coinsSpent)+'</b></div>'
       + '<div class="detail-item"><span>Following</span><b>'+u.following+'</b></div>'
-      + '<div class="detail-item"><span>Tips Given</span><b>\u20A6'+fmtNum(u.tipsAmount)+'</b></div>';
+      + '<div class="detail-item"><span>Tips Given</span><b>'+moneyCoins(u.tipsAmount)+'</b></div>';
   }
   var notesHtml = u.notes ? '<div class="detail-notes"><i class="fas fa-note-sticky" style="color:var(--accent);margin-right:5px"></i>'+u.notes+'</div>' : '';
   var lockIco = u.status==='active' ? 'lock' : 'unlock';
@@ -349,7 +353,7 @@ function renderDetailPanel(id){
   html += '<div class="detail-item"><span>Saves</span><b>'+fmtNum(u.savesCount)+'</b></div>';
   html += '</div></div>';
   html += '<div class="detail-section"><div class="ds-label"><i class="fas fa-coins"></i> Tips</div>';
-  html += '<div class="tip-banner"><div class="tb-left"><div class="tb-ico"><i class="fas fa-coins"></i></div><div><div class="tb-label">'+tipLabel+'</div><div class="tb-val">\u20A6'+fmtNum(u.tipsAmount)+'</div></div></div></div></div>';
+  html += '<div class="tip-banner"><div class="tb-left"><div class="tb-ico"><i class="fas fa-coins"></i></div><div><div class="tb-label">'+tipLabel+'</div><div class="tb-val">'+moneyCoins(u.tipsAmount)+'</div></div></div></div></div>';
   html += notesHtml;
   html += '<div class="detail-foot">';
   html += '<button class="mini-btn primary" data-action="assign-role" data-id="'+u.id+'"><i class="fas fa-user-shield"></i> Assign Role</button>';

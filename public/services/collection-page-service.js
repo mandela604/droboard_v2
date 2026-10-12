@@ -80,6 +80,11 @@
     const colId = params.get('id') || 'col1';
     let ov = null; try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); ov = m[colId]||null; } catch(e){}
     currentCollection = ov || await CollectionData.getCollection(colId);
+    if (!currentCollection) {
+      document.getElementById('heroSection').innerHTML =
+        '<div style="padding:40px 20px;text-align:center;color:var(--tx-muted)">Collection not found.</div>';
+      return;
+    }
     renderHero(currentCollection);
     renderStats(currentCollection);
     renderAbout(currentCollection);

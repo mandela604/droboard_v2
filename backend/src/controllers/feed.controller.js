@@ -4,7 +4,7 @@ const base = require('./base.controller');
 
 async function home(req, res) {
   return base.wrap(res, async () => {
-    const d = await feed.home();
+    const d = await feed.home(req.user && req.user.id);
     if (req.user) {
       const { Notification } = require('../models/social.model');
       d.notifCount = await Notification.countDocuments({ recipientId: req.user.id, unread: true });
@@ -14,11 +14,11 @@ async function home(req, res) {
 }
 
 async function discover(req, res) {
-  return base.wrap(res, async () => feed.discoverData());
+  return base.wrap(res, async () => feed.discoverData(req.user && req.user.id));
 }
 
 async function discoverStories(req, res) {
-  return base.wrap(res, async () => feed.discoverStories(req.valid.query));
+  return base.wrap(res, async () => feed.discoverStories(Object.assign({}, req.valid.query, { viewerId: req.user && req.user.id })));
 }
 
 async function libraryStats(req, res) {
@@ -32,7 +32,7 @@ function libraryList(which) {
 }
 
 async function storyDetail(req, res) {
-  return base.wrap(res, async () => feed.storyDetail(req.valid.params.id));
+  return base.wrap(res, async () => feed.storyDetail(req.valid.params.id, req.user && req.user.id));
 }
 
 async function libraryAdd(req, res) {

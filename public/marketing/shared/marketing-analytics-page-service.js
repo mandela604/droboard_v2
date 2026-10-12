@@ -147,7 +147,7 @@ function renderStats(totals, days) {
     { n: fmtNum(totals.impressions), l: 'Impressions', ico: 'fa-eye', clr: COLORS.accent, bg: 'rgba(255,0,80,.1)', delta: '+12.4%', up: true },
     { n: fmtNum(totals.clicks), l: 'Clicks', ico: 'fa-arrow-pointer', clr: COLORS.blue, bg: 'var(--blue-bg)', delta: '+8.1%', up: true },
     { n: totals.ctr.toFixed(1) + '%', l: 'Avg. CTR', ico: 'fa-percent', clr: COLORS.green, bg: 'var(--green-bg)', delta: '+0.6pt', up: true },
-    { n: '$' + fmtNum(totals.spend), l: 'Total Spend', ico: 'fa-sack-dollar', clr: COLORS.amber, bg: 'var(--amber-bg)', delta: days === 90 ? '+21.0%' : '+4.2%', up: true },
+    { n: (window.DroboardCurrency && DroboardCurrency.usdToMoney ? DroboardCurrency.usdToMoney(totals.spend) : '$' + fmtNum(totals.spend)), l: 'Total Spend', ico: 'fa-sack-dollar', clr: COLORS.amber, bg: 'var(--amber-bg)', delta: days === 90 ? '+21.0%' : '+4.2%', up: true },
   ];
   document.getElementById('statCards').innerHTML = stats.map(s => `
     <div class="stat-card">

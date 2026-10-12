@@ -66,6 +66,36 @@
   }
   function countWords(s){ return (s||'').trim().split(/\s+/).filter(Boolean).length; }
 
+  /* ══ AD STATE — mirrors scroll reader: how each chapter was unlocked
+     (free/coin/ads), the fullReader placement flags, and slot toggles.
+     Coin-unlocked chapters stay ad-free unless marketing flips
+     fullReader.paidUnlockAds. ══ */
+  const ADST = { unlockMode: {}, paidUnlockAdsOn: false, adsEnabled: true, slots: {} };
+  function chKey(si, ci) {
+    const chs = (SEASONS_DATA[si] || {}).chs || [];
+    return si + ':' + ((chs[ci] || {}).n || ci);
+  }
+  function markUnlockRange(si, fromIdx, howMany, mode) {
+    const chs = (SEASONS_DATA[si] || {}).chs || [];
+    const last = howMany === "all" ? chs.length - 1 : Math.min(chs.length - 1, fromIdx + howMany - 1);
+    for (let i = fromIdx; i <= last; i++) {
+      if (chs[i]) ADST.unlockMode[si + ':' + chs[i].n] = mode;
+    }
+  }
+  function paidAdsOff() { return ADST.paidUnlockAdsOn !== true; }
+  function chapterAdFree(si, ci) {
+    const chs = (SEASONS_DATA[si] || {}).chs || [];
+    const ch = chs[ci];
+    if (!ch) return false;
+    return paidAdsOff() && ADST.unlockMode[si + ':' + ch.n] === 'coin';
+  }
+  function slotOn(key) {
+    const s = ADST.slots || {};
+    if (!(key in s)) return true;
+    const v = s[key];
+    return v !== false && !(v && typeof v === 'object' && v.enabled === false);
+  }
+
   /* ══ WALLET — owned by the shared DroboardReader sheet
      (component/reader.js). This page builds no purchase UI: on coin lock
      it opens the sheet; the unlock retries after purchase. ══ */
@@ -287,11 +317,13 @@
   }
 
   function renderSeasonTabs() {
-    document.getElementById("seasonTabs").innerHTML = SEASONS_DATA.map((s, i) =>
-      '<div class="stab' + (i === panelActiveSeason ? " active" : "") + '" onclick="FullReader.setPanelSeason(' + i + ')">' + s.label + "</div>"
-    ).join("");
+    // Single flat chapter list — no seasons, so no tabs. Container hidden.
+    try {
+      document.getElementById("seasonTabs").innerHTML = "";
+      document.getElementById("seasonTabs").style.display = "none";
+    } catch (e) {}
   }
-  function setPanelSeason(i) { panelActiveSeason = i; renderSeasonTabs(); renderChList(); }
+  function setPanelSeason(i) { panelActiveSeason = 0; renderSeasonTabs(); renderChList(); }
   function renderChList() {
     const chs = SEASONS_DATA[panelActiveSeason].chs;
     document.getElementById("chListPanel").innerHTML = chs.map((c, idx) => {
@@ -338,7 +370,7 @@
     return '<div class="unlock-card" id="unlockCard">' +
       '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
       '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
-      '<div class="unlock-sub">Continue with coins, or unlock the rest of the season.</div>' +
+      '<div class="unlock-sub">Continue with coins, or unlock the rest of the story.</div>' +
       '<div class="unlock-opts">' +
         '<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'one',15)\">" +
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
@@ -348,8 +380,8 @@
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>' +
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>' +
         "</div>" +
-        '<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'season',120)\">" +
-          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
+'<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'story',120)\">" +
+'<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full story</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
         "</div>" +
         '<div class="unlock-opt" onclick="FullReader.watchAdsUnlock()">' +
@@ -371,17 +403,30 @@
     updateCoinPill(DroboardReader.getBalance());
     const chs = SEASONS_DATA[seasonIdx].chs;
     if (mode === "one") {
+      markUnlockRange(seasonIdx, chIdx, 1, 'coin');
       chs[chIdx].state = "current";
     } else if (mode === "bundle") {
+      markUnlockRange(seasonIdx, chIdx, 5, 'coin');
       for (let i = chIdx; i < Math.min(chs.length, chIdx + 5); i++) chs[i].state = "done";
       chs[chIdx].state = "current";
-    } else if (mode === "season") {
+    } else if (mode === "story") {
+      markUnlockRange(seasonIdx, chIdx, "all", 'coin');
       for (let i = chIdx; i < chs.length; i++) chs[i].state = "done";
       chs[chIdx].state = "current";
     }
     toast("Unlocked!");
     renderChapterView(seasonIdx, chIdx);
     renderChList();
+  }
+
+  /* Re-mount the thread when moving between paid and free chapters so
+     the thread slot follows the same ad-free rule. */
+  let _lastThreadAdFree = null;
+  function syncThreadAds() {
+    const free = ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx);
+    if (free === _lastThreadAdFree) return;
+    _lastThreadAdFree = free;
+    try { initComments(); } catch (e) {}
   }
 
   function renderChapterView(seasonIdx, chIdx) {
@@ -400,8 +445,8 @@
     }
 
     document.getElementById("chTitleEl").textContent = ch.title;
-    document.getElementById("chMetaSC").innerHTML = '<i class="fas fa-book-open" style="font-size:8px"></i> S' + (seasonIdx + 1) + " · Ch " + ch.n;
-    document.getElementById("tbChInfo").textContent = season.label + " · Chapter " + ch.n;
+    document.getElementById("chMetaSC").innerHTML = '<i class="fas fa-book-open" style="font-size:8px"></i> Ch ' + ch.n;
+    document.getElementById("tbChInfo").textContent = ch.title;
     document.getElementById("chNavCenter").textContent = "Ch " + ch.n + " of " + season.chs.length;
     // topbar + hero chrome (was hardcoded markup) rendered from story data
     document.getElementById("tbStoryTitle").textContent = FS.title || "Story";
@@ -452,7 +497,7 @@
         htmlParas += "<p>" + p + "</p>";
         wordCount += countWords(p);
         if (wordCount >= gap) {
-          if (!isPremiumUser()) {
+          if (!isPremiumUser() && ADST.adsEnabled !== false && slotOn('fullReader:per-300-words') && !chapterAdFree(seasonIdx, chIdx)) {
             let adHtml = "";
             const pool = (window._fullReaderBanners && window._fullReaderBanners.length) ? window._fullReaderBanners : null;
             if (pool && window.DroboardAdCard) {
@@ -500,15 +545,26 @@
     }
 
     document.getElementById("teamSidingSection").style.display = locked ? "none" : "";
-    document.getElementById("adSlotWrap").style.display = "none";
     document.getElementById("commentsSection").style.display = locked ? "none" : "";
+    if (locked) {
+      // Locked chapters carry no ads anywhere.
+      document.getElementById("adSlotWrap").style.display = "none";
+      try {
+        const bh = document.getElementById('chBottomAd');
+        if (bh) bh.style.display = 'none';
+      } catch (e) {}
+    } else {
+      try { fillTopSlot(); } catch (e) {}
+      try { fillBottomSlot(); } catch (e) {}
+    }
+    if (!locked) { try { syncThreadAds(); } catch (e) {} }
     document.getElementById("chEndSection").style.display = locked ? "none" : "";
     if (!locked) {
       document.getElementById("chEndTitle").textContent = "Chapter " + ch.n + " complete";
       const nextExists = chIdx < season.chs.length - 1;
       document.getElementById("chEndSub").innerHTML = nextExists
         ? "Ready for the next chapter?<br/>" + season.chs[chIdx + 1].title
-        : "You're all caught up on " + season.label + ".<br/>New chapters drop soon.";
+        : "You're all caught up on " + esc(FS.title || "this story") + ".<br/>New chapters drop soon.";
     }
 
     document.getElementById("scrollBody").scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
@@ -550,6 +606,7 @@
   }
   function unlockCurrentFree() {
     var chs = SEASONS_DATA[curSeasonIdx].chs;
+    markUnlockRange(curSeasonIdx, curChIdx, 1, 'ads');
     chs[curChIdx].state = "current";
     toast("Unlocked!");
     renderChapterView(curSeasonIdx, curChIdx);
@@ -631,6 +688,32 @@
     }
   }
 
+  /* ══ COMMUNITIES — genre board + author circle via component ══ */
+  function initCommunities() {
+    if (!window.DroboardCommunityCards) return;
+    const mount = document.getElementById("communitiesMount");
+    if (!mount) return;
+    const g = DroboardCommunityCards.genreInfo(FS.category);
+    const state = { genreJoined: false, circleJoined: false };
+    const paint = () => DroboardCommunityCards.mount(mount, {
+      genre: { name: g.name, icon: g.icon, members: DroboardCommunityCards.demoMembers(g.name, 20000, 380000), joined: state.genreJoined },
+      circle: {
+        name: AUTHOR.name + "'s Inner Circle",
+        members: DroboardCommunityCards.demoMembers(AUTHOR.name || AUTHOR.handle, 800, 9200),
+        perks: 'Early chapters, behind-the-scenes, live Q&As',
+        joined: state.circleJoined, avatar: AUTHOR.avatar,
+      },
+      showCircle: true,
+      onJoin: (type, joined) => {
+        if (type === 'genre') state.genreJoined = joined;
+        else state.circleJoined = joined;
+        paint();
+        toast(joined ? '✅ Joined!' : 'Left the community');
+      },
+    });
+    paint();
+  }
+
   /* ══ COMMENTS — via component ══ */
   function mapSeedComment(c) {
     return Object.assign({}, c, {
@@ -639,13 +722,22 @@
     });
   }
   function initComments() {
-    if (!window.DroboardComments) return;
+    const mount = document.getElementById("commentsPlaceholder");
+    const fail = (msg) => {
+      try {
+        if (mount) mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)">💬 ' + msg + '</div>';
+        console.error('[FullReader] comments:', msg);
+      } catch (e) {}
+    };
+    if (!window.DroboardComments) { fail('Comments failed to load — hard-refresh (Ctrl+Shift+R).'); return; }
+    if (!mount) { fail('Comment mount missing on this page.'); return; }
     const raw = (typeof COMMENTS_DATA !== 'undefined' && COMMENTS_DATA.length) ? COMMENTS_DATA : (FS.comments || []);
     const SEED_COMMENTS = raw.map(mapSeedComment);
     const trueTotal = (function countAll(list) {
       return (list || []).reduce(function (n, c) { return n + 1 + countAll(c.replies || []); }, 0);
     })(SEED_COMMENTS); // same math as the component's own counter
-    DroboardComments.attach("#commentsPlaceholder", {
+    try {
+      DroboardComments.attach("#commentsPlaceholder", {
       storyId: currentStoryId,
       title: fmtN(trueTotal) + " comments",
       comments: SEED_COMMENTS,
@@ -655,12 +747,16 @@
       collapsible: true,
       startOpen: false,
       adsRepeat: false, // top ad slot only, same as scroll reader
+      ads: (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)) ? false : undefined,
       getCommentUrl: (c) => "https://droboard.app/story/" + currentStoryId + "#comment-" + c.id,
       onPost: (c) => console.log("posted", c),
       onReply: (parentId, c) => console.log("replied to", parentId, c),
       onEdit: (c, oldText, newText) => console.log("edited", c.id, oldText, "->", newText),
       onDotsAction: (action) => { if (action === "delete") toast("Comment deleted."); },
-    });
+      });
+    } catch (err) {
+      fail('Comments crashed on load (' + ((err && err.message) || err) + ').');
+    }
   }
 
   /* ══ SPONSORED AD — via component ══
@@ -692,6 +788,9 @@
         const pl = await AdService.getPlacement("fullReader");
         fmt = (pl && pl.format) || 'auto';
         if (pl && pl.wordsPerSlot) READER_WORDS = Math.min(2000, Math.max(50, parseInt(pl.wordsPerSlot, 10) || 300));
+        ADST.paidUnlockAdsOn = !!(pl && pl.paidUnlockAds);
+        ADST.adsEnabled = !(pl && pl.enabled === false);
+        ADST.slots = (pl && pl.slots) || {};
       } catch (e) {}
       const allow = function (t) {
         if (!fmt || fmt === 'auto') return true;
@@ -701,9 +800,8 @@
       (p.embed || []).filter(function (ad) { return ad && ad.code; }).forEach(ad => out.push({ type: "embed", ad }));
       (p.native || []).forEach(ad => out.push({ type: "native", ad }));
       (p.book || []).forEach(ad => out.push({ type: "storyPromo", ad }));
-      (p.platform || []).forEach(ad => out.push({ type: "platform", ad }));
-      (p.banner || []).forEach(ad => out.push({ type: "banner", ad }));
-      return out.filter(function (item) { return allow(item.type); });
+      // No platform/house banners and no red banner creatives in full reader.
+      return out.filter(function (item) { return item.type !== "platform" && item.type !== "banner" && allow(item.type); });
     }
     (window.AdService ? Promise.all([
       managedPool("fullReader:top").catch(() => []),
@@ -712,6 +810,8 @@
     ]) : Promise.resolve([[], [], []])).then(function (pools) {
       const topPool = pools[0] || [], pool = pools[1] || [], bottomPool = pools[2] || [];
       window._fullReaderBanners = pool.filter(function (p) { return p && p.ad; });
+      window._fullReaderTopPool = topPool;
+      window._fullReaderBottomPool = bottomPool;
       // pool arrived after first paint: re-render current chapter once so
       // in-chapter slots fill with real ads instead of staying empty.
       try {
@@ -719,43 +819,64 @@
           renderChapterView(curSeasonIdx, curChIdx);
         }
       } catch (e) {}
-      const slot = document.getElementById("adSlot");
-      if (!topPool.length) { document.getElementById("adSlotWrap").style.display = "none"; return; }
-
-      const chosen = topPool[Math.floor(Math.random() * topPool.length)];
-      function renderChosen(item) {
-        if (item.type === "embed" && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(item.ad);
-        if (item.type === "native") return DroboardAdCard.renderNative(item.ad);
-        if (item.type === "storyPromo") return DroboardAdCard.renderStoryPromo(item.ad);
-        return DroboardAdCard.renderBanner(item.ad);
-      }
-      slot.innerHTML = renderChosen(chosen);
-      track(chosen.ad && chosen.ad.id, "impression");
-
+      fillTopSlot();
+      fillBottomSlot();
+    });
+  }
+  function renderChosenAd(item) {
+    if (!item || !window.DroboardAdCard) return "";
+    try {
+      if (item.type === "embed" && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(item.ad);
+      if (item.type === "native") return DroboardAdCard.renderNative(item.ad);
+      if (item.type === "storyPromo") return DroboardAdCard.renderStoryPromo(item.ad);
+      return DroboardAdCard.renderBanner(item.ad);
+    } catch (e) { return ""; }
+  }
+  function currentChNum() {
+    const chs = (SEASONS_DATA[curSeasonIdx] || {}).chs || [];
+    return (chs[curChIdx] || {}).n || 1;
+  }
+  // Top edge slot, refilled for every chapter view (rotation by chapter).
+  function fillTopSlot() {
+    const wrap = document.getElementById("adSlotWrap");
+    const slot = document.getElementById("adSlot");
+    if (!wrap || !slot) return;
+    const pool = window._fullReaderTopPool || [];
+    const n = currentChNum();
+    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:top') && !chapterAdFree(curSeasonIdx, curChIdx);
+    const item = pool.length ? pool[n % pool.length] : null;
+    const html = (allowed && item) ? renderChosenAd(item) : "";
+    if (!html) { wrap.style.display = "none"; return; }
+    slot.innerHTML = html;
+    wrap.style.display = "";
+    try { if (window.AdService) AdService.track(item.ad && item.ad.id, "impression"); } catch (e) {}
+    try {
       DroboardAdCard.attach(slot, {
-        getAds: () => topPool.map(p => p.ad),
+        getAds: () => pool.map(p => p.ad),
         onOpen(ad) { if (ad) track(ad.id, "click"); if (ad.url) window.open(ad.url, "_blank"); else toast("Opening " + (ad.brand || "sponsor") + "…"); },
         onLike(ad) { ad.liked = !ad.liked; ad.likes += ad.liked ? 1 : -1; slot.innerHTML = DroboardAdCard.renderNative(ad); },
         onComment(ad) { toast(fmtN(ad.comments) + " comments"); },
         onShare(ad) { window.openShareModal({ title: ad.heading || ad.title || ad.brand, sub: "Sponsored · " + ad.brand, img: ad.image || ad.cover || "", url: ad.url || "https://droboard.app" }); },
         onCta(ad) { if (ad) track(ad.id, "click"); toast("Opening " + (ad.brand || "sponsor") + "…"); if (ad.url) window.open(ad.url, "_blank"); },
       });
-
-      // bottom slot: after the chapter, before engagement
-      try {
-        const bottomHost = ensureBottomAd();
-        if (bottomHost) {
-          if (!bottomPool.length) { bottomHost.style.display = 'none'; }
-          else {
-            const bItem = bottomPool[0];
-            bottomHost.innerHTML = renderChosen(bItem);
-            bottomHost.style.display = '';
-            bottomHost.dataset.filled = '1';
-            track(bItem.ad && bItem.ad.id, "impression");
-          }
-        }
-      } catch (e) {}
-    });
+    } catch (e) {}
+    function track(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e2) {} }
+  }
+  // Bottom edge slot, refilled for every chapter view.
+  function fillBottomSlot() {
+    let host = null;
+    try { host = ensureBottomAd(); } catch (e) { host = null; }
+    if (!host) return;
+    const pool = window._fullReaderBottomPool || [];
+    const n = currentChNum();
+    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:bottom') && !chapterAdFree(curSeasonIdx, curChIdx);
+    const item = pool.length ? pool[(n + 1) % pool.length] : null;
+    const html = (allowed && item) ? renderChosenAd(item) : "";
+    if (!html) { host.style.display = 'none'; return; }
+    host.innerHTML = html;
+    host.style.display = '';
+    host.dataset.filled = '1';
+    try { if (window.AdService) AdService.track(item.ad && item.ad.id, "impression"); } catch (e) {}
   }
 
   /* ══ YOU MAY ALSO LIKE — from central data ══ */
@@ -790,6 +911,13 @@
       else if (d < -6) topbar.classList.remove("hidden");
     }, { passive: true });
     document.getElementById("storyText").addEventListener("click", () => topbar.classList.remove("hidden"));
+    // Any tap on the page brings back the top bar (font size, chapters)
+    // alongside the always-visible Scroll Mode button — except taps on
+    // interactive elements, which keep their own behavior.
+    sb.addEventListener("click", (e) => {
+      if (e.target.closest('button, a, input, textarea, select, .unlock-opt, .ch-row, .team-btn, .eb-btn, .ch-end-act, .bb-act, .bb-read-btn, [data-pkgidx]')) return;
+      topbar.classList.remove("hidden");
+    });
   }
 
   /* ══ PUBLIC API (called by service-rendered templates) ══ */
@@ -852,6 +980,8 @@
     initShareSaveTip();
     initReactions();
     initComments();
+    try { _lastThreadAdFree = (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)); } catch (e) {}
+    initCommunities();
     initAdSlot();
     updateCoinPill();
     try { await bootLive(); } catch (e) {}

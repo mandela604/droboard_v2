@@ -35,6 +35,10 @@ const SECTIONS = {
       <div class="form-group" style="margin-top:18px"><label>Coin-to-Dollar Rate ($)</label><div class="desc">How much 1 coin costs in USD</div><input type="number" id="f-coinRate" value="0.02" min="0.01" step="0.01"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> 1 coin = $<span id="coinRatePreview">0.02</span> &nbsp;|&nbsp; 100 coins = $<span id="coinRate100">2.00</span></div></div>
       <div class="form-group"><label>Coin-to-USD Rate ($)</label><div class="desc">How much 1 coin costs in USD (for international users)</div><input type="number" id="f-coinRateUsd" value="0.02" min="0.01" step="0.01"/></div>
 
+      <div class="ca-head" style="margin-top:28px"><h2>Display Currency</h2><p>One switch for every price on every page</p></div>
+      <div class="form-group" style="margin-top:18px"><label>Base currency (Naira recommended)</label><div class="desc">Home/settlement currency — finance legs are authored in this. Unknown locations display USD.</div><select id="f-curBase" class="f-inp" style="max-width:240px"><option value="NGN">NGN ₦ Naira</option><option value="USD">USD $ Dollar</option><option value="GBP">GBP £ Pound</option></select></div>
+      <div class="form-group"><label>Force one currency everywhere</label><div class="desc">Auto shows each reader their local ladder. Lock to override all pages at once.</div><select id="f-curLock" class="f-inp" style="max-width:240px"><option value="">Auto (per-location)</option><option value="NGN">NGN ₦ only</option><option value="USD">USD $ only</option><option value="GBP">GBP £ only</option></select><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> Now showing: <b id="curNow">—</b></div></div>
+
       <div class="ca-head" style="margin-top:28px"><h2>Chapter Pricing</h2><p>Default pricing rules for chapter unlocks</p></div>
       <div class="form-group" style="margin-top:18px"><label>Default Chapter Price (coins)</label><div class="desc">Default coin cost editors can use when setting chapter prices</div><input type="number" id="f-defaultChapterPrice" value="15" min="0"/></div>
       <div class="form-group"><label>Minimum Chapter Price (coins)</label><div class="desc">Lowest allowed chapter price (0 = free)</div><input type="number" id="f-minChapterPrice" value="0" min="0"/></div>
@@ -71,12 +75,12 @@ const SECTIONS = {
     html: () => `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:12px;color:var(--text-muted)" id="tplCountInfo"></div>
-        <button id="addNewTemplateBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px"><i class="fas fa-plus"></i> New Template</button>
+        <button onclick="newEmailTemplate()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px"><i class="fas fa-plus"></i> New Template</button>
       </div>
-      <div id="emailTemplatesList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="emailTemplatesList" style="display:flex;flex-direction:column;gap:8px">${tplSeedRows()}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-        <button id="resetTemplatesBtn" style="padding:7px 14px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-rotate-left"></i> Reset to Defaults</button>
-        <div id="tplPager" style="display:flex;align-items:center;gap:4px"></div>
+        <button onclick="resetEmailTemplates()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="fas fa-rotate-left"></i> Reset to Defaults</button>
+        <div style="display:flex;align-items:center;gap:4px"><div id="tplPager" style="display:flex;align-items:center;gap:4px"></div><span id="tplVer" style="font-size:9px;color:var(--text-faint)"></span></div>
       </div>
     `
   },
@@ -176,6 +180,30 @@ document.getElementById('saveAllBtn').addEventListener('click', async () => {
 
 // ── Init ───────────────────────────────────────────────
 renderSection('general');
+
+// ── Display currency: one switch for every page (live demo save) ──
+function syncCurrencyInputs() {
+  if (!window.DroboardCurrency) return;
+  var c = DroboardCurrency.getConfig();
+  var base = document.getElementById('f-curBase');
+  var lock = document.getElementById('f-curLock');
+  if (base) base.value = c.base;
+  if (lock) lock.value = c.locked || '';
+  var now = document.getElementById('curNow');
+  if (now) {
+    var g = DroboardCurrency.get();
+    now.textContent = g.locked ? g.locked + ' (locked everywhere)' : g.currency + ' (auto' + (g.country ? ', ' + g.country : '') + '), base ' + g.base;
+  }
+}
+document.getElementById('settingsContent').addEventListener('change', function (e) {
+  if ((e.target.id === 'f-curBase' || e.target.id === 'f-curLock') && window.DroboardCurrency) {
+    var base = document.getElementById('f-curBase');
+    var lock = document.getElementById('f-curLock');
+    DroboardCurrency.setConfig({ base: base ? base.value : undefined, locked: lock && lock.value ? lock.value : null });
+    syncCurrencyInputs();
+    toast('Currency switch applied everywhere');
+  }
+});
 
 // ── Coin Economy live previews ─────────────────────────
 document.getElementById('settingsContent').addEventListener('input', function(e) {
@@ -285,13 +313,46 @@ function extractHeaderColor(t) {
   return t.headerColor || '#ff0050';
 }
 
+function tplRowHtml(t) {
+  return ''
+    + '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.15s" onmouseenter="this.style.borderColor=\'var(--accent)\'" onmouseleave="this.style.borderColor=\'var(--border)\'" onclick="editEmailTemplate(\'' + t.id + '\')">'
+    +   '<div style="width:40px;height:40px;border-radius:10px;background:' + extractHeaderColor(t) + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0"><i class="fas fa-envelope" style="color:#fff"></i></div>'
+    +   '<div style="flex:1;min-width:0">'
+    +     '<div style="font-size:13px;font-weight:700">' + esc(t.name) + '</div>'
+    +     '<div style="font-size:10.5px;color:var(--text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(t.subject) + ' | ' + esc(t.fromName || '') + '</div>'
+    +   '</div>'
+    +   '<div style="width:10px;height:10px;border-radius:50%;background:' + extractHeaderColor(t) + ';flex-shrink:0"></div>'
+    +   '<div style="text-align:right;flex-shrink:0">'
+    +     '<div style="font-size:10px;color:var(--text-faint)">' + (t.lastEdited || '') + '</div>'
+    +     '<div style="font-size:9px;color:' + (t.status === 'active' ? 'var(--green)' : 'var(--text-faint)') + ';font-weight:700;margin-top:2px;text-transform:uppercase">' + (t.status || 'active') + '</div>'
+    +   '</div>'
+    +   '<button onclick="event.stopPropagation();openTemplateSettings(\'' + t.id + '\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0" title="Settings"><i class="fas fa-cog"></i></button>'
+    +   '<button onclick="event.stopPropagation();deleteEmailTemplate(\'' + t.id + '\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0" title="Delete"><i class="fas fa-trash"></i></button>'
+    + '</div>';
+}
+
+// First paint: seed rows straight from the data file — zero async, zero
+// storage dependency. The authoritative render replaces them right after.
+function tplSeedRows() {
+  try {
+    var seed = (typeof EmailTemplatesData !== 'undefined' ? EmailTemplatesData : []).slice(0, 8);
+    return seed.map(tplRowHtml).join('');
+  } catch (e) { return ''; }
+}
+
 async function renderEmailTemplatesList() {
   const container = document.getElementById('emailTemplatesList');
   const countInfo = document.getElementById('tplCountInfo');
   const pager = document.getElementById('tplPager');
   if (!container) return;
 
-  const allTemplates = await DroboardEmailTemplates.getAll();
+  let allTemplates = [];
+  try {
+    allTemplates = await DroboardEmailTemplates.getAll();
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:#e0384d;font-size:13px">Could not load templates: ' + esc((err && err.message) || err) + '</div>';
+    return;
+  }
   const totalPages = Math.max(1, Math.ceil(allTemplates.length / TPL_PER_PAGE));
   if (tplPage > totalPages) tplPage = totalPages;
   const start = (tplPage - 1) * TPL_PER_PAGE;
@@ -299,23 +360,7 @@ async function renderEmailTemplatesList() {
 
   if (countInfo) countInfo.textContent = `Showing ${start + 1}–${Math.min(start + TPL_PER_PAGE, allTemplates.length)} of ${allTemplates.length} templates`;
 
-  container.innerHTML = pageItems.map(function(t) {
-    return ''
-      + '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.15s" onmouseenter="this.style.borderColor=\'var(--accent)\'" onmouseleave="this.style.borderColor=\'var(--border)\'" onclick="editEmailTemplate(\'' + t.id + '\')">'
-      +   '<div style="width:40px;height:40px;border-radius:10px;background:' + extractHeaderColor(t) + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0"><i class="fas fa-envelope" style="color:#fff"></i></div>'
-      +   '<div style="flex:1;min-width:0">'
-      +     '<div style="font-size:13px;font-weight:700">' + esc(t.name) + '</div>'
-      +     '<div style="font-size:10.5px;color:var(--text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(t.subject) + ' | ' + esc(t.fromName || '') + '</div>'
-      +   '</div>'
-      +   '<div style="width:10px;height:10px;border-radius:50%;background:' + extractHeaderColor(t) + ';flex-shrink:0"></div>'
-      +   '<div style="text-align:right;flex-shrink:0">'
-      +     '<div style="font-size:10px;color:var(--text-faint)">' + (t.lastEdited || '') + '</div>'
-      +     '<div style="font-size:9px;color:' + (t.status === 'active' ? 'var(--green)' : 'var(--text-faint)') + ';font-weight:700;margin-top:2px;text-transform:uppercase">' + (t.status || 'active') + '</div>'
-      +   '</div>'
-      +   '<button onclick="event.stopPropagation();openTemplateSettings(\'' + t.id + '\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0" title="Settings"><i class="fas fa-cog"></i></button>'
-      +   '<button onclick="event.stopPropagation();deleteEmailTemplate(\'' + t.id + '\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0" title="Delete"><i class="fas fa-trash"></i></button>'
-      + '</div>';
-  }).join('');
+  container.innerHTML = pageItems.map(tplRowHtml).join('');
 
   if (!pageItems.length) {
     container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-faint);font-size:13px">No templates yet. Click "+ New Template" to create one.</div>';
@@ -360,40 +405,91 @@ async function openTemplateSettings(id) {
 }
 
 async function deleteEmailTemplate(id) {
-  if (!confirm('Delete this template?')) return;
+  const t = await DroboardEmailTemplates.getById(id).catch(function() { return null; });
+  const ok = await tplConfirm({
+    title: 'Delete template?',
+    body: '“' + ((t && t.name) || 'This template') + '” will be permanently removed.',
+    confirmText: 'Delete',
+  });
+  if (!ok) return;
   await DroboardEmailTemplates.remove(id);
   renderEmailTemplatesList();
   toast('Template deleted');
 }
 
+async function resetEmailTemplates() {
+  const ok = await tplConfirm({
+    title: 'Reset to defaults?',
+    body: 'All templates return to the 11 defaults. Your edits will be lost.',
+    confirmText: 'Reset',
+  });
+  if (!ok) return;
+  localStorage.removeItem('droboard_email_templates');
+  await DroboardEmailTemplates.reset();
+  tplPage = 1;
+  renderEmailTemplatesList();
+  toast('Templates reset to defaults');
+}
+
+function newEmailTemplate() {
+  if (!window.DroboardEmailEditor || typeof DroboardEmailEditor.createNew !== 'function') {
+    toast('Editor failed to load — hard-refresh the page');
+    return;
+  }
+  DroboardEmailEditor.createNew();
+}
+
+// Branded confirm modal (no browser confirm boxes anywhere here).
+function tplConfirm(opts) {
+  opts = opts || {};
+  return new Promise(function (resolve) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:24px';
+    ov.innerHTML =
+      '<div style="width:100%;max-width:360px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.35)">' +
+        '<div style="width:44px;height:44px;border-radius:12px;background:rgba(224,56,77,.1);display:flex;align-items:center;justify-content:center;font-size:18px;color:#e0384d;margin-bottom:12px"><i class="fas fa-trash"></i></div>' +
+        '<div style="font-size:15px;font-weight:800;margin-bottom:6px">' + esc(opts.title || 'Are you sure?') + '</div>' +
+        '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin-bottom:18px">' + esc(opts.body || '') + '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+          '<button data-x="no" style="padding:10px 18px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>' +
+          '<button data-x="yes" style="padding:10px 18px;border-radius:10px;border:none;background:#e0384d;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit">' + esc(opts.confirmText || 'Confirm') + '</button>' +
+        '</div>' +
+      '</div>';
+    var done = function (v) { try { ov.remove(); } catch (e) {} resolve(v); };
+    ov.querySelector('[data-x="no"]').addEventListener('click', function () { done(false); });
+    ov.querySelector('[data-x="yes"]').addEventListener('click', function () { done(true); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) done(false); });
+    document.body.appendChild(ov);
+  });
+}
+
 function bindTemplateButtons() {
-  var addBtn = document.getElementById('addNewTemplateBtn');
-  var resetBtn = document.getElementById('resetTemplatesBtn');
-  if (addBtn) {
-    addBtn.onclick = function() {
-      DroboardEmailEditor.createNew();
-    };
-  }
-  if (resetBtn) {
-    resetBtn.onclick = async function() {
-      if (!confirm('Reset all templates to defaults?')) return;
-      localStorage.removeItem('droboard_email_templates');
-      await DroboardEmailTemplates.reset();
-      tplPage = 1;
-      renderEmailTemplatesList();
-      toast('Templates reset to defaults');
-    };
-  }
+  // Buttons now use inline onclick (newEmailTemplate/resetEmailTemplates)
+  // so they work with zero timing dependence. Kept for compatibility.
 }
 
 var origRender = renderSection;
 window.renderSection = function(id) {
-  origRender(id);
+origRender(id);
+if (id === 'coin-economy') {
+  setTimeout(function() { syncCurrencyInputs(); }, 50);
+}
   if (id === 'email-templates') {
     tplPage = 1;
+    try { console.info('[tpl-section] render requested'); } catch (e4) {}
     setTimeout(function() {
-      renderEmailTemplatesList();
-      bindTemplateButtons();
+      try {
+        renderEmailTemplatesList();
+        bindTemplateButtons();
+      } catch (err) {
+        var c = document.getElementById('emailTemplatesList');
+        if (c) c.innerHTML = '<div style="text-align:center;padding:30px;color:#e0384d;font-size:13px">Section failed: ' + esc(String((err && err.message) || err)) + '</div>';
+        try { console.error('[email-templates] section failed:', err); } catch (e2) {}
+      }
+      try {
+        var v = document.getElementById('tplVer');
+        if (v) v.textContent = 'tpl-v3 · seed:' + ((typeof EmailTemplatesData !== 'undefined' && EmailTemplatesData.length) || 0);
+      } catch (e3) {}
     }, 50);
   }
   if (id === 'email') {
@@ -407,6 +503,8 @@ window.removeSenderField = removeSenderField;
 window.addSenderField = addSenderField;
 window.addSenderLink = addSenderLink;
 window.renderEmailTemplatesList = renderEmailTemplatesList;
+window.newEmailTemplate = newEmailTemplate;
+window.resetEmailTemplates = resetEmailTemplates;
 window.editEmailTemplate = editEmailTemplate;
 window.openTemplateSettings = openTemplateSettings;
 window.deleteEmailTemplate = deleteEmailTemplate;

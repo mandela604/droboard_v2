@@ -24,8 +24,8 @@ var BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple
 
 var COIN_RATE=15;
 function fmtNum(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n);}
-function fmtMoney(n){if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n;}
-function coinToUSD(c){return Math.round(c/COIN_RATE);}
+function fmtMoney(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n;}
+function coinToUSD(c){ if(window.DroboardCurrency && DroboardCurrency.coinsToMoney) return DroboardCurrency.coinsToMoney(c); return Math.round(c/COIN_RATE); }
 
 /* ── Platform data (aggregated from all modules) ── */
 var DATA = {

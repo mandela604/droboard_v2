@@ -69,7 +69,7 @@ function fmtNum(n){
   if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K';
   return String(n);
 }
-function fmtUSD(n){ return '$' + (Number(n) || 0); }
+function fmtUSD(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + (Number(n) || 0); }
 function fmtBonusRange(min, max){
   min = Number(min) || 0; max = Number(max) || 0;
   if (!min && !max) return null;

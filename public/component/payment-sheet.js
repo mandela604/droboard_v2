@@ -1,6 +1,6 @@
 /**
- * component/payment-sheet.js — bottom payment sheet (demo checkout).
- * DroboardPaySheet.open({ title, sub, price, coins, onSuccess(receipt) })
+ * component/payment-sheet.js — bottom payment sheet (live checkout).
+ * DroboardPaySheet.open({ title, sub, price, packCode, amountNGN, onSuccess(receipt), onError(err) })
  * Self-contained CSS. Page stays call-and-render (no page edits needed
  * beyond loading this file).
  */
@@ -54,12 +54,11 @@
       + '<div id="dpsMethods">' + methods.map(function (m, i) {
         return '<button class="dps-m' + (i === 0 ? ' on' : '') + '" data-m="' + m.id + '">'
           + '<i class="' + m.icon + '"></i><span style="flex:1">' + m.name + '<small>' + (m.hint || '') + '</small></span>'
-          + (window.PaymentService && PaymentService.isApp() ? '' : '<span style="font-size:9px;font-weight:800;color:var(--gold,#b45309);background:rgba(251,191,36,.12);padding:3px 8px;border-radius:8px">DEMO</span>')
           + '</button>';
       }).join('') + '</div>'
       + '<button class="dps-pay" id="dpsPay">Pay ' + esc(opts.price || '') + '</button>'
       + '<button class="dps-cancel" id="dpsCancel">Cancel</button>'
-      + '<div class="dps-note">Demo checkout — no real charge. Live: verified server-side before coins credit.</div>'
+      + '<div class="dps-note">Secured checkout · coins credit after verification.</div>'
       + '</div>';
     document.body.appendChild(ov);
     requestAnimationFrame(function () { ov.classList.add('open'); });
@@ -79,11 +78,15 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="dps-spin"></span>Processing…';
       const p = { title: opts.title, price: opts.price, coins: opts.coins, method: method,
-        cancelHook: function (fn) { cancelHook = fn; } };
+        packCode: opts.packCode, amountNGN: opts.amountNGN, email: opts.email };
       window.PaymentService.checkout(p).then(function (receipt) {
         done();
         if (opts.onSuccess) opts.onSuccess(receipt);
-      }).catch(function () { done(); });
+      }).catch(function (err) {
+        done();
+        if (err && err.cancelled) return;
+        if (opts.onError) opts.onError(err);
+      });
     });
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

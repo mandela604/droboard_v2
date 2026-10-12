@@ -76,6 +76,7 @@ const reviewFeedbackSchema = new mongoose.Schema({
 const authorVerificationSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, index: true },
+  userId: { type: String, ref: 'User', default: null, index: true },
   avatar: { type: String, default: '' },
   docType: { type: String, enum: ['Government_ID', 'Passport', 'Drivers_License'] },
   docUrl: { type: String, default: '' },

@@ -24,8 +24,8 @@
       if (Array.isArray(j)) return j;
     }
     await new Promise(r => setTimeout(r, 80));
-    const d = window.DemoData;
-    return d.COLLECTIONS;
+    const d = window.DemoData || {};
+    return d.COLLECTIONS || [];
   }
 
   async function getCollection(id) {
@@ -34,9 +34,10 @@
       if (j && j.id) return j;
     }
     await new Promise(r => setTimeout(r, 60));
-    const d = window.DemoData;
+    const d = window.DemoData || {};
+    const cols = d.COLLECTIONS || [];
     const slug = s => (s.title||s.name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-    return d.COLLECTIONS.find(c => c.id === id || slug(c) === (id||'').toLowerCase()) || d.COLLECTIONS[0];
+    return cols.find(c => c.id === id || slug(c) === (id||'').toLowerCase()) || cols[0] || null;
   }
 
   async function getCollectionStories(collectionId) {
@@ -45,10 +46,12 @@
       if (Array.isArray(j)) return j;
     }
     await new Promise(r => setTimeout(r, 100));
-    const d = window.DemoData;
+    const d = window.DemoData || {};
+    const cols = d.COLLECTIONS || [];
     const slug = s => (s.title||s.name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-    const col = d.COLLECTIONS.find(c => c.id === collectionId || slug(c) === (collectionId||'').toLowerCase()) || d.COLLECTIONS[0];
-    return col.storyList || d.STORIES.slice(0, 8);
+    const col = cols.find(c => c.id === collectionId || slug(c) === (collectionId||'').toLowerCase()) || cols[0];
+    if (!col) return [];
+    return col.storyList || (d.STORIES || []).slice(0, 8);
   }
 
   async function getStoryById(storyId) {
@@ -57,8 +60,8 @@
       if (j && (j.id || j.story)) return j.story || j;
     }
     await new Promise(r => setTimeout(r, 50));
-    const d = window.DemoData;
-    return d.STORIES.find(s => s.id === storyId) || null;
+    const d = window.DemoData || {};
+    return (d.STORIES || []).find(s => s.id === storyId) || null;
   }
 
   window.CollectionData = {

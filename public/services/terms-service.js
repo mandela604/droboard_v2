@@ -9,12 +9,20 @@
     document.querySelectorAll('.tab').forEach(function (tb) {
       if (tb._wired) return; tb._wired = true;
       tb.addEventListener('click', function () {
-        document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
-        tb.classList.add('active');
-        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
-        document.getElementById('panel-' + tb.dataset.tab).classList.add('active');
+        activate(tb.dataset.tab);
       });
     });
+    // deep-link: terms.html#privacy opens the Privacy tab
+    try {
+      if ((location.hash || '').replace('#', '') === 'privacy') activate('privacy');
+    } catch (e) {}
+  }
+
+  function activate(tab) {
+    document.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === tab); });
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+    var panel = document.getElementById('panel-' + tab);
+    if (panel) panel.classList.add('active');
   }
 
   window.TermsService = { init: init };

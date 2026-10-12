@@ -4,8 +4,7 @@
 (function () {
   'use strict';
 
-  window.EmailTemplatesData = [
-    {
+  window.EmailTemplatesData = [    {
       id: 'welcome',
       name: 'Welcome Email',
       subject: 'Welcome to Droboard, Tobi!',
@@ -236,4 +235,5 @@
       lastEdited: 'Oct 9, 2026',
     },
   ];
+  try { console.info('[tpl-data] loaded,' + window.EmailTemplatesData.length + ' templates'); } catch (e) {}
 })();

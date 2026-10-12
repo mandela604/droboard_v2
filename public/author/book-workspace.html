@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>Bound By Obsession · Workspace</title>
+<title>Bound By Obsession Ã‚Â· Workspace</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -39,7 +40,7 @@ a{color:inherit;text-decoration:none}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .fade{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
 
-/* ── TOP BAR ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ TOP BAR Ã¢â€â‚¬Ã¢â€â‚¬ */
 .topbar{
   position:sticky;top:0;z-index:90;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);
   border-bottom:1px solid var(--border);
@@ -50,7 +51,7 @@ a{color:inherit;text-decoration:none}
 .topbar-left{display:flex;align-items:center;gap:8px}
 .topbar-right{display:flex;align-items:center;gap:8px}
 
-/* ── BOOK HEADER ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ BOOK HEADER Ã¢â€â‚¬Ã¢â€â‚¬ */
 .book-head{padding:16px 16px 0;display:flex;gap:14px;background:var(--surface)}
 .bh-cover{width:82px;height:110px;border-radius:14px;overflow:hidden;flex-shrink:0;box-shadow:0 6px 18px rgba(0,0,0,.1)}
 .bh-cover img{width:100%;height:100%}
@@ -68,7 +69,7 @@ a{color:inherit;text-decoration:none}
 
 .wrap{padding:16px}
 
-/* ── CHAPTERS HEADER ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ CHAPTERS HEADER Ã¢â€â‚¬Ã¢â€â‚¬ */
 .chapters-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .chapters-title{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .new-chapter-btn{
@@ -77,7 +78,7 @@ a{color:inherit;text-decoration:none}
 }
 .new-chapter-btn:active{transform:scale(.96)}
 
-/* ── SEARCH ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ SEARCH Ã¢â€â‚¬Ã¢â€â‚¬ */
 .search-row{display:flex;gap:9px;margin-bottom:16px}
 .search-bar{
   flex:1;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);
@@ -89,7 +90,7 @@ a{color:inherit;text-decoration:none}
   display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;flex-shrink:0;
 }
 
-/* ── CHAPTER CARDS ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ CHAPTER CARDS Ã¢â€â‚¬Ã¢â€â‚¬ */
 .chapter-list{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
 .chapter-card{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
@@ -112,7 +113,7 @@ a{color:inherit;text-decoration:none}
 .ch-views{font-size:11.5px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0}
 .ch-views i{font-size:10.5px}
 
-/* ── PAGINATION (replaces the old "View All Chapters" button) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ PAGINATION (replaces the old "View All Chapters" button) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .chapters-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin:4px 0 26px;flex-wrap:wrap}
 .pg-btn{
   min-width:34px;height:34px;padding:0 4px;border-radius:50%;background:var(--surface);border:1px solid var(--border);
@@ -126,7 +127,7 @@ a{color:inherit;text-decoration:none}
 
 /* Book Tools styles removed */
 
-/* ── HAMBURGER DRAWER ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
 .drawer-overlay{
   position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);
   opacity:0;pointer-events:none;transition:opacity .22s ease;
@@ -168,7 +169,7 @@ a{color:inherit;text-decoration:none}
   background:var(--primary-soft);padding:2px 6px;border-radius:20px;text-transform:uppercase;
 }
 
-/* ── DESKTOP CENTERING — matches author-center.html ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ DESKTOP CENTERING Ã¢â‚¬â€ matches author-center.html Ã¢â€â‚¬Ã¢â€â‚¬ */
 @media (min-width:600px){
   .topbar{max-width:560px;margin:0 auto;padding-left:16px;padding-right:16px}
   .book-head{max-width:560px;margin:0 auto;padding:16px 20px 0}
@@ -196,7 +197,7 @@ a{color:inherit;text-decoration:none}
   <div class="bh-cover"><img src="https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop" alt="Bound By Obsession"/></div>
   <div class="bh-info">
     <div class="bh-title">Bound By Obsession</div>
-    <div class="bh-genre">Romance · Drama</div>
+    <div class="bh-genre">Romance Ã‚Â· Drama</div>
     <span class="status-badge published">Published</span>
     <div class="bh-stats">
       <div class="bh-stat"><i class="far fa-eye"></i> 2.3M</div>
@@ -207,7 +208,7 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
-<!-- Workspace tabs are now injected by component/workspace-tabs.js —
+<!-- Workspace tabs are now injected by component/workspace-tabs.js Ã¢â‚¬â€
      it detects "book-workspace.html" as the active tab automatically
      and inserts itself right after .book-head. -->
 
@@ -236,7 +237,7 @@ a{color:inherit;text-decoration:none}
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
-    <div class="dh-logo"><i class="fas fa-feather-alt"></i></div>
+    <div class="dh-logo" style="overflow:hidden"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block"/></div>
     <div class="drawer-head-title">DroBoard</div>
     <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
   </div>

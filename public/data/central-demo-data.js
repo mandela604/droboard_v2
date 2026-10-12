@@ -1320,6 +1320,14 @@
     { id: 'saved5', title: 'Blood and Roses', author: 'Ada Writes', preview: 'The deal was clean on paper. In the room, nothing was.', ch: 'Saved', pct: 0, img: c(0), status: 'saved' },
   ];
 
+  const SAVED_POSTS = [
+    { id: 'sp1', type: 'debate', name: 'Ada Writes', avatar: 'https://i.pravatar.cc/100?img=32', text: 'Unpopular opinion: the villain in "Married for Revenge" was right. Change my mind.', likes: 342, comments: 89, time: '2h' },
+    { id: 'sp2', type: 'poll', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', text: 'Which trope hits harder? A) Secret Baby B) Enemies to Lovers C) Second Chance', likes: 518, comments: 234, time: '5h' },
+    { id: 'sp3', type: 'repost', name: 'Kemi_A', avatar: 'https://i.pravatar.cc/100?img=45', text: 'Reposting: "The Night She Returned" Ch. 40 broke me. That final line??', likes: 201, comments: 45, time: '1d' },
+    { id: 'sp4', type: 'quote', name: 'Efe_O', avatar: 'https://i.pravatar.cc/100?img=53', text: '"She married him for revenge. He stayed for love." — If that is not the best opening line I have ever read.', likes: 876, comments: 167, time: '2d' },
+    { id: 'sp5', type: 'ama', name: 'Luna_Grey', avatar: 'https://i.pravatar.cc/100?img=11', text: 'AMA: Ask me anything about writing werewolf romance. I will be live for 2 hours!', likes: 1204, comments: 456, time: '3d' },
+  ];
+
   const HISTORY = [
     { id: 'hist1', title: "His Sweet Revenge", author: 'Luna Grey', preview: 'Last read · Chapter 21 · 2 hours ago', ch: 'Ch. 21', pct: 68, img: c(0), status: 'progress' },
     { id: 'hist2', title: 'Forbidden Hearts', author: 'Mia Clark', preview: 'Last read · Chapter 9 · Yesterday', ch: 'Ch. 9', pct: 42, img: c(1), status: 'progress' },
@@ -1794,6 +1802,7 @@ const SERIES_CATALOG = {
     READER_REACTIONS,
     LIBRARY,
     SAVED,
+    SAVED_POSTS,
     HISTORY,
     AD_POOLS,
     AD_PLACEMENTS,

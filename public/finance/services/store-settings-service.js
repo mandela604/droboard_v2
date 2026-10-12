@@ -16,7 +16,7 @@
     t._t = setTimeout(() => t.classList.remove('show'), 2400);
   }
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const naira = (n) => (n === undefined || n === null || n === '') ? '—' : '₦' + Number(n).toLocaleString('en-US');
+  const naira = (n) => (n === undefined || n === null || n === '') ? '—' : (window.DroboardCurrency && DroboardCurrency.ngnToMoney ? DroboardCurrency.ngnToMoney(n) : '₦' + Number(n).toLocaleString('en-US'));
 
   const state = { packs: [], rewards: [], bundles: [] };
 

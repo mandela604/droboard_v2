@@ -238,6 +238,7 @@ function fmtDate(d) {
   return months[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10) + ', ' + parts[0];
 }
 function fmtNum(n) { n = n || 0; return n >= 1000 ? (n/1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/,'') + 'K' : String(n); }
+function mUSD(n) { if (window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + fmtNum(n); }
 function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function placementChipsHtml(ids, limit) {
@@ -306,7 +307,7 @@ function renderPage() {
       ? `Promoting <b>${esc(c.storyTitle)}</b> by @${esc(c.storyAuthor)}`
       : `Advertiser: <b>${esc(c.advertiserName)}</b>${c.advertiserEmail ? ' · ' + esc(c.advertiserEmail) : ''}`;
     const budgetStat = c.hasBudget
-      ? `<span class="cmp-stat"><i class="fas fa-sack-dollar"></i>$${fmtNum(c.spent)} / $${fmtNum(c.budget)}</span>`
+      ? `<span class="cmp-stat"><i class="fas fa-sack-dollar"></i>${mUSD(c.spent)} / ${mUSD(c.budget)}</span>`
       : `<span class="cmp-stat"><i class="fas fa-gift"></i>No budget</span>`;
 
     return `<div class="cmp-card" data-id="${c.id}">
@@ -404,7 +405,7 @@ function openDetail(id) {
     { l: 'Reach', v: fmtNum(c.reach) },
     { l: 'CTR', v: (c.ctr||0) + '%' },
     { l: 'Conversions', v: fmtNum(c.conversions) },
-    { l: 'Budget', v: c.hasBudget ? ('$' + fmtNum(c.spent) + ' / $' + fmtNum(c.budget)) : 'No budget' },
+      { l: 'Budget', v: c.hasBudget ? (mUSD(c.spent) + ' / ' + mUSD(c.budget)) : 'No budget' },
     { l: 'Owner', v: esc(c.owner || 'Unassigned') },
     { l: 'Dates', v: (c.startDate || c.endDate) ? (fmtDate(c.startDate) + ' – ' + fmtDate(c.endDate)) : 'Not scheduled' },
   ];

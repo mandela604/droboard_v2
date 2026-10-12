@@ -60,6 +60,30 @@ async function deleteMethod(req, res) {
   });
 }
 
+const METHOD_FIELDS = ['type', 'accountName', 'bankName', 'accountNumber', 'routingCode', 'email', 'provider', 'phoneNumber'];
+async function updateMethod(req, res) {
+  return base.wrap(res, async () => {
+    const authorId = mine(req);
+    const m = await PaymentMethod.findOne({ id: req.valid.params.id, authorId });
+    if (!m) { const e = new Error('not_found'); e.status = 404; throw e; }
+    METHOD_FIELDS.forEach(k => { if (req.valid.body[k] !== undefined) m[k] = req.valid.body[k]; });
+    await m.save();
+    return m.toJSON();
+  });
+}
+
+async function defaultMethod(req, res) {
+  return base.wrap(res, async () => {
+    const authorId = mine(req);
+    const m = await PaymentMethod.findOne({ id: req.valid.params.id, authorId });
+    if (!m) { const e = new Error('not_found'); e.status = 404; throw e; }
+    await PaymentMethod.updateMany({ authorId }, { $set: { isDefault: false } });
+    m.isDefault = true;
+    await m.save();
+    return m.toJSON();
+  });
+}
+
 async function withdrawals(req, res) {
   return base.wrap(res, async () => {
     const authorId = mine(req);
@@ -92,7 +116,8 @@ async function disputes(req, res) {
 async function fileDispute(req, res) {
   return base.wrap(res, async () => {
     const authorId = mine(req);
-    const d = await PaymentDispute.create(Object.assign({}, req.valid.body, { authorId, status: 'open' }));
+    const body = Object.assign({ amount: 0 }, req.valid.body, { authorId, status: 'open' });
+    const d = await PaymentDispute.create(body);
     return d.toJSON();
   });
 }
@@ -140,4 +165,4 @@ async function deleteBundle(req, res) {
   return base.wrap(res, async () => store.deleteBundle(req.valid.params.id));
 }
 
-module.exports = { earnings, transactions, methods, addMethod, deleteMethod, withdrawals, requestWithdrawal, disputes, fileDispute, coinPacks, saveCoinPack, deleteCoinPack, adRewards, saveAdReward, deleteAdReward, bundles, saveBundle, deleteBundle };
+module.exports = { earnings, transactions, methods, addMethod, updateMethod, deleteMethod, defaultMethod, withdrawals, requestWithdrawal, disputes, fileDispute, coinPacks, saveCoinPack, deleteCoinPack, adRewards, saveAdReward, deleteAdReward, bundles, saveBundle, deleteBundle };

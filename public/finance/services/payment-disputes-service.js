@@ -17,7 +17,7 @@ let searchTerm = '';
 let sortMode = 'recent';
 let page = 1;
 
-function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n||0).toLocaleString('en-US'); }
 function fmtDateTime(iso){
   if(!iso) return '';
   const d = new Date(iso);

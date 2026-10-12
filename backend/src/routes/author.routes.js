@@ -13,6 +13,27 @@ router.use(requireAuth);
 
 router.get('/dashboard', generalLimiter, ctrl.dashboard);
 router.get('/books', generalLimiter, ctrl.books);
+router.get('/books/:id', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), ctrl.book);
+router.get('/books/:id/chapters', generalLimiter,
+  validate(z.object({
+    params: z.object({ id }),
+    query: z.object({ page: z.string().max(6).optional(), limit: z.string().max(6).optional() }).strict(),
+  })), ctrl.bookChaptersList);
+router.put('/books/:id/chapters/:num', writeLimiter, audit('author.chapters.save'),
+  validate(z.object({
+    params: z.object({ id, num: z.string().min(1).max(10) }),
+    body: z.object({}).catchall(z.unknown()),
+  })), ctrl.saveBookChapter);
+router.post('/books/:id/change-requests', writeLimiter, audit('author.changeRequests.submit'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({
+      changes: z.array(z.string().max(80)).max(12).optional(),
+      details: z.string().max(2000).optional(),
+      order: z.array(z.string().max(120)).max(500).optional(),
+    }).strict().refine(b => (b.changes && b.changes.length) || (b.order && b.order.length), { message: 'empty_request' }),
+  })), ctrl.requestBookChange);
 router.get('/books/:id/overview', generalLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.overview);
 
@@ -72,9 +93,5 @@ router.post('/launch-kit', writeLimiter, audit('author.launchKit.save'),
   validate(z.object({ body: z.object({}).catchall(z.unknown()) })), ctrl.saveLaunchKit);
 router.put('/launch-kit/:id', writeLimiter, audit('author.launchKit.save'),
   validate(z.object({ params: z.object({ id }), body: z.object({}).catchall(z.unknown()) })), ctrl.saveLaunchKit);
-
-router.get('/series-changes', generalLimiter, ctrl.seriesChangesList);
-router.post('/series-changes', writeLimiter, audit('author.seriesChanges.submit'),
-  validate(z.object({ body: z.object({ bookId: z.string().min(1).max(40) }).strict().catchall(z.unknown()) })), ctrl.seriesChanges);
 
 module.exports = router;

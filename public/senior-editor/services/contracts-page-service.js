@@ -36,7 +36,7 @@ function statusPill(s) {
   return '<span class="status-pill ' + (m[s] || '') + '"><span class="dot"></span>' + (l[s] || s) + '</span>';
 }
 
-function money(n) { return '$' + Number(n || 0).toLocaleString('en-US'); }
+function money(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n || 0).toLocaleString('en-US'); }
 
 async function init() {
   SeniorEditorSidebar.attach('#pageRoot', {

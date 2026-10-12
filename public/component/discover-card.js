@@ -45,6 +45,9 @@
     .dc-list-cover-link:active .dc-list-cover,.dc-list-title-link:active .dc-list-title{opacity:.7}
     .dc-list-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
     .dc-list-genre{font-size:9px;font-weight:800;color:#ff2d55;text-transform:uppercase;letter-spacing:.05em}
+    .dc-list-catrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .dc-list-cat{font-size:9px;font-weight:800;color:#8e8e93;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dc-list-trope{font-size:9px;font-weight:800;color:#ff2d55;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex-shrink:0}
     .dc-list-title{font-size:13.5px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .dc-list-preview{font-size:11.5px;color:#8e8e93;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .dc-list-foot{display:flex;align-items:center;gap:10px;margin-top:2px;flex-wrap:wrap}
@@ -86,8 +89,7 @@
 
   function esc(s) { return (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-  function storyHref(s) {
-    const id = s.id || (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  function storyHref(s) {    const id = s.id || (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     return `bridge.html?id=${encodeURIComponent(id)}`;
   }
 
@@ -132,13 +134,46 @@
     </a>`;
   }
 
+  /* Trope per story: explicit trope/tropes win, else a stable pick from the
+     CE catalog pool for the story's genre (live books carry tropes). */
+  const TROPE_POOL = {
+    romance: ['Enemies to Lovers', 'Secret Baby', 'Second Chance'],
+    billionaire: ['Billionaire Boss', 'Secret Baby', 'Fake Dating'],
+    ceo: ['CEO Romance', 'Fake Dating', 'Billionaire Boss'],
+    werewolf: ['Fated Mates', 'Alpha Romance', 'Second Chance'],
+    fantasy: ['Royal Romance', 'Royal Secret', 'Fated Mates'],
+    mafia: ['Mafia Romance', 'Forced Proximity', 'Secret Baby'],
+    campus: ['Fake Dating', 'Forced Proximity', 'Love Triangle'],
+    revenge: ['Second Chance', 'Forced Proximity', 'Secret Baby'],
+    drama: ['Second Chance', 'Marriage of Convenience', 'Forbidden Love'],
+    betrayal: ['Secret Baby', 'Love Triangle', 'Second Chance'],
+    family: ['Arranged Marriage', 'Secret Baby', 'Second Chance'],
+    heartbreak: ['Second Chance', 'Forbidden Love', 'Love Triangle'],
+    horror: ['Forbidden Love', 'Fated Mates', 'Vampire Romance'],
+    mystery: ['Secret Baby', 'Forced Proximity', 'Love Triangle'],
+    marriage: ['Arranged Marriage', 'Marriage of Convenience', 'Second Chance'],
+    vampire: ['Vampire Romance', 'Forbidden Love', 'Fated Mates'],
+  };
+  const TROPE_FALLBACK = ['Second Chance', 'Forbidden Love', 'Secret Baby'];
+  function storyTrope(s) {
+    if (s.trope) return s.trope;
+    if (s.tropes && s.tropes.length) return s.tropes[0];
+    const pool = TROPE_POOL[String(s.genre || '').toLowerCase()] || TROPE_FALLBACK;
+    const key = String(s.id || s.title || '');
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return pool[h % pool.length];
+  }
+
   function listItem(s) {
     injectStyles();
     const href = storyHref(s);
+    const cat = (s.cat || s.category || s.genre || '');
+    const trope = storyTrope(s);
     return `<div class="dc-list-item">
       <a class="dc-list-cover-link" href="${href}"><div class="dc-list-cover"><img src="${esc(s.img)}" loading="lazy" alt=""/></div></a>
       <div class="dc-list-body">
-        <div class="dc-list-genre">${esc(s.genre || '')}</div>
+        <div class="dc-list-catrow"><span class="dc-list-cat">${esc(cat)}</span>${trope ? `<span class="dc-list-trope"><i class="fas fa-wand-magic-sparkles"></i> ${esc(trope)}</span>` : ''}</div>
         <a class="dc-list-title-link" href="${href}"><div class="dc-list-title">${esc(s.title)}</div></a>
         ${s.preview ? `<div class="dc-list-preview">${esc(s.preview)}</div>` : ''}
         <div class="dc-list-foot"><a class="dc-list-stat dc-list-author" href="${profileHref(s.author)}" onclick="event.stopPropagation()">${esc(s.author || '')}</a></div>

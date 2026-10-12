@@ -33,16 +33,43 @@
   function _financeRewards(){ try{ const v=JSON.parse(localStorage.getItem('dro_finance_rewards')||'null'); return Array.isArray(v)&&v.length?v:null; }catch(e){ return null; } }
   function getAdRewards() {
     const fr=_financeRewards(); if(fr) return fr;
+    // Earn section shows Watch Ad only — the rest are commented out below.
+    // Marketing can show/hide or add options live (finance → Store Settings);
+    // live rewards overlay these demo entries in fetchStoreData.
     return [
       { id: 'ad1', action: 'Watch Ad', coins: 10, cooldown: '5 min', icon: 'fa-film', available: true, type:'watch_ad' },
-      { id: 'ad2', action: 'Daily Check-in', coins: 25, cooldown: '24 hr', icon: 'fa-calendar-check', available: true, type:'checkin' },
-      { id: 'ad3', action: 'Rate Story', coins: 5, cooldown: '1 hr', icon: 'fa-star', available: true, type:'rate' },
-      { id: 'ad4', action: 'Share Story', coins: 15, cooldown: '2 hr', icon: 'fa-share-nodes', available: true, type:'share' },
-      { id: 'ad5', action: 'Read Blog — Tech (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-microchip', available: true, type:'blog_read', pagesRequired:3, blogCategory:'tech', blogUrl:'Pages/blog.html?cat=tech' },
-      { id: 'ad8', action: 'Read Blog — Health (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-heart-pulse', available: true, type:'blog_read', pagesRequired:3, blogCategory:'health', blogUrl:'Pages/blog.html?cat=health' },
-      { id: 'ad6', action: 'Subscribe on YouTube', coins: 30, cooldown: '30d', icon: 'fa-youtube', available: true, type:'youtube_sub', channelId:'UCxxxxDroboard' },
-      { id: 'ad7', action: 'Watch YouTube Video', coins: 15, cooldown: '24 hr', icon: 'fa-circle-play', available: true, type:'youtube_watch', videoId:'dQw4w9WgXcQ', minWatchSec:60 },
+      // { id: 'ad2', action: 'Daily Check-in', coins: 25, cooldown: '24 hr', icon: 'fa-calendar-check', available: true, type:'checkin' },
+      // { id: 'ad3', action: 'Rate Story', coins: 5, cooldown: '1 hr', icon: 'fa-star', available: true, type:'rate' },
+      // { id: 'ad4', action: 'Share Story', coins: 15, cooldown: '2 hr', icon: 'fa-share-nodes', available: true, type:'share' },
+      // { id: 'ad5', action: 'Read Blog — Tech (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-microchip', available: true, type:'blog_read', pagesRequired:3, blogCategory:'tech', blogUrl:'Pages/blog.html?cat=tech' },
+      // { id: 'ad8', action: 'Read Blog — Health (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-heart-pulse', available: true, type:'blog_read', pagesRequired:3, blogCategory:'health', blogUrl:'Pages/blog.html?cat=health' },
+      // { id: 'ad6', action: 'Subscribe on YouTube', coins: 30, cooldown: '30d', icon: 'fa-youtube', available: true, type:'youtube_sub', channelId:'UCxxxxDroboard' },
+      // { id: 'ad7', action: 'Watch YouTube Video', coins: 15, cooldown: '24 hr', icon: 'fa-circle-play', available: true, type:'youtube_watch', videoId:'dQw4w9WgXcQ', minWatchSec:60 },
     ];
+  }
+
+  /* Live rewards (finance → Store Settings) normalized to the card shape.
+     Inactive rewards never reach the page; extras ride in meta. */
+  function normalizeReward(r) {
+    const m = (r && r.meta && typeof r.meta === 'object') ? r.meta : {};
+    return {
+      id: r.id, action: r.action, type: r.type, coins: r.coins, cooldown: r.cooldown || '',
+      pagesRequired: r.pagesRequired || 0,
+      icon: m.icon || 'fa-coins', available: (r.status || 'active') === 'active',
+      blogCategory: m.blogCategory, blogUrl: m.blogUrl,
+      channelId: m.channelId, channelUrl: m.channelUrl,
+      videoId: m.videoId, minWatchSec: m.minWatchSec,
+    };
+  }
+  async function liveRewards() {
+    try {
+      const res = await fetch(`${API_BASE}/store`, { credentials: 'include' });
+      if (!res.ok) return null;
+      const j = await res.json();
+      const list = j.adRewards || (j.data && j.data.adRewards);
+      if (!Array.isArray(list) || !list.length) return null;
+      return list.map(normalizeReward);
+    } catch (e) { return null; }
   }
 
   const BALANCE_KEY = 'dro_store_balance';
@@ -98,7 +125,7 @@
       return res.json();
     }
     await new Promise(r => setTimeout(r, 80));
-    return {
+    const data = {
       balance: getBalance(),
       packs: getCoinPacks(),
       bundles: getBundles(),
@@ -107,6 +134,10 @@
       mergeSub: getMergeSubscription(),
       gifts: getGifts(),
     };
+    // marketing overlay: live Earn options (show/hide/add) replace the demo list
+    const live = await liveRewards();
+    if (live) data.adRewards = live;
+    return data;
   }
 
   function spendCoins(amount){

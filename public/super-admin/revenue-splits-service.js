@@ -83,7 +83,7 @@ var pickedAuthor = null;
 
 /* ── Helpers ── */
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-function fmtN(n) { return '₦' + Math.round(Number(n) || 0).toLocaleString('en-NG'); }
+function fmtN(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '₦' + Math.round(Number(n) || 0).toLocaleString('en-NG'); }
 function toast(m) { if (typeof window.toast === 'function') { try { window.toast(m); return; } catch (e) {} } }
 function draftSum() { return (Number(draft.google) || 0) + (Number(draft.marketing) || 0) + (Number(draft.editors) || 0) + (Number(draft.writerShare) || 0); }
 

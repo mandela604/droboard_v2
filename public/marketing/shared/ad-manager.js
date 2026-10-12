@@ -108,12 +108,14 @@
     on('plFullTop', slotOn(fslots['fullReader:top']));
     on('plFullInline', slotOn(fslots['fullReader:per-300-words']));
     on('plFullBottom', slotOn(fslots['fullReader:bottom']));
+    on('plFullPaidAds', (p.fullReader || {}).paidUnlockAds === true);
     on('plScrollOn', (p.scrollReader || {}).enabled);
     set('plScrollWords', (p.scrollReader || {}).wordsPerSlot || 300);
     const sslots = (p.scrollReader || {}).slots || {};
     on('plScrollTop', slotOn(sslots['scrollReader:top']));
     on('plScrollInline', slotOn(sslots['scrollReader:per-300-words']));
     on('plScrollBottom', slotOn(sslots['scrollReader:bottom']));
+    on('plScrollPaidAds', (p.scrollReader || {}).paidUnlockAds === true);
     const ls = document.getElementById('plLibSlider');
     if (ls) ls.checked = (p.library || {}).promoSlider !== false;
     const drb = document.getElementById('plDrbOn');
@@ -137,8 +139,8 @@
       feed: { enabled: chk('plFeedOn'), interval: num(get('plFeedInt'), 4) },
       genreHub: { enabled: chk('plHubOn'), interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
       home: { enabled: chk('plHomeOn'), interval: num(get('plHomeInt'), 5) },
-      fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), slots: { 'fullReader:top': chk('plFullTop'), 'fullReader:per-300-words': chk('plFullInline'), 'fullReader:bottom': chk('plFullBottom') } },
-      scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), slots: { 'scrollReader:top': chk('plScrollTop'), 'scrollReader:per-300-words': chk('plScrollInline'), 'scrollReader:bottom': chk('plScrollBottom') } },
+      fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), paidUnlockAds: chk('plFullPaidAds'), slots: { 'fullReader:top': chk('plFullTop'), 'fullReader:per-300-words': chk('plFullInline'), 'fullReader:bottom': chk('plFullBottom') } },
+      scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), paidUnlockAds: chk('plScrollPaidAds'), slots: { 'scrollReader:top': chk('plScrollTop'), 'scrollReader:per-300-words': chk('plScrollInline'), 'scrollReader:bottom': chk('plScrollBottom') } },
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },
       droboardPage: { interval: num(get('plDrbInt'), 4), enabled: !!document.getElementById('plDrbOn').checked },
       comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked, slots: { 'comments:list-top': chk('plSlotListTop'), 'comments:every-nth': chk('plSlotEveryNth'), 'comments:thread-top': chk('plSlotThreadTop') } },

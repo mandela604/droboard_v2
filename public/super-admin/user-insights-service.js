@@ -39,7 +39,7 @@ function fmtNum(n){
   if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
   return String(Math.round(n));
 }
-function fmtMoney(n){ return '$' + fmtNum(n); }
+function fmtMoney(n){ if(window.DroboardCurrency && DroboardCurrency.coinsToMoney) return DroboardCurrency.coinsToMoney(n); return '$' + fmtNum(n); }
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function dayDiff(a, b){
   try { return Math.floor((new Date(a) - new Date(b)) / 86400000); } catch (e){ return 9999; }

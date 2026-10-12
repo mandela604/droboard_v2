@@ -119,6 +119,17 @@ async function main() {
     ['store rewards delete writer 403', 'DELETE', '/api/finance/store/ad-rewards/r1', wtoken, null, 403],
     ['search q too long 400', 'GET', '/api/search/index?q=' + 'x'.repeat(90), null, null, 400],
     ['search bad type ok-empty', 'GET', '/api/search/index?q=test&type=nope', null, null, 200],
+    ['author book no-auth 401', 'GET', '/api/author/books/bk-1', null, null, 401],
+    ['author chapters no-auth 401', 'GET', '/api/author/books/bk-1/chapters', null, null, 401],
+    ['author chapter save no-auth 401', 'PUT', '/api/author/books/bk-1/chapters/1', null, { title: 'X' }, 401],
+    ['finance pay default no-auth 401', 'PUT', '/api/finance/payment-methods/m1/default', null, null, 401],
+    ['finance pay update no-auth 401', 'PUT', '/api/finance/payment-methods/m1', null, { accountName: 'X' }, 401],
+    ['finance pay update empty-name 400', 'PUT', '/api/finance/payment-methods/m1', wtoken, { accountName: '' }, 400],
+    ['change-request no-auth 401', 'POST', '/api/author/books/bk-1/change-requests', null, { changes: ['x'] }, 401],
+    ['change-request empty 400', 'POST', '/api/author/books/bk-1/change-requests', wtoken, {}, 400],
+    ['pay config no-auth 401', 'GET', '/api/payments/config', null, null, 401],
+    ['paystack verify missing pack 400', 'POST', '/api/payments/paystack/verify', atoken, { reference: 'x' }, 400],
+    ['flutterwave verify bad body 400', 'POST', '/api/payments/flutterwave/verify', atoken, { packCode: 'pack1' }, 400],
   ];
   for (const [name, method, path, token, body, want] of cases) {
     const r = await call(method, path, token, body);

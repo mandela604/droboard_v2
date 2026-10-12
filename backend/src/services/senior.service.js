@@ -4,7 +4,7 @@
 const { Book } = require('../models/content.model');
 const { User } = require('../models/user.model');
 const { ReviewSubmission, AuthorVerification, CompletionApplication } = require('../models/application.model');
-const { InviteCode, ChapterEdit, SeriesChange, BookEdit } = require('../models/application.model');
+const { InviteCode, ChapterEdit, BookEdit } = require('../models/application.model');
 const { Contract } = require('../models/contract.model');
 const { Report } = require('../models/editorial.model');
 const { Conversation } = require('../models/social.model');
@@ -81,7 +81,6 @@ const R = {
   completions: () => resource(CompletionApplication, {}),
   chapterEdits: () => resource(ChapterEdit, {}),
   bookEdits: () => resource(BookEdit, {}),
-  seriesChanges: () => resource(SeriesChange, {}),
   reviews: () => resource(ReviewSubmission, {}),
   verifications: () => resource(AuthorVerification, {}),
   invites: () => resource(InviteCode, {}),

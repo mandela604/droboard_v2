@@ -102,15 +102,6 @@ router.post('/verify-email/resend', authLimiter, validate(z.object({ body: z.obj
   email: z.string().email().max(160).optional(),
 }).strict() })), ctrl.resendVerification);
 
-// FIX 8: phone OTP.
-router.post('/phone/request', requireAuth, validate(z.object({ body: z.object({
-  phone: z.string().min(7).max(20).optional(),
-}).strict() })), ctrl.requestPhoneOtp);
-
-router.post('/phone/verify', requireAuth, validate(z.object({ body: z.object({
-  code: z.string().min(4).max(10),
-}).strict() })), ctrl.verifyPhoneOtp);
-
 // FIX 8: MFA management.
 router.get('/mfa/status', requireAuth, ctrl.mfaStatus);
 router.delete('/mfa', requireAuth, validate(z.object({ body: z.object({
@@ -124,5 +115,6 @@ router.get('/sessions', requireAuth, ctrl.listSessions);
 router.delete('/sessions/:familyId', requireAuth, validate(z.object({
   params: z.object({ familyId: z.string().min(3).max(80) }),
 })), ctrl.revokeSession);
+router.delete('/sessions', requireAuth, ctrl.revokeAllSessions);
 
 module.exports = router;

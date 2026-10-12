@@ -105,8 +105,9 @@ body.theme-white .hero-scrim{background:linear-gradient(0deg,rgba(255,255,255,.9
 .hero-top{position:absolute;top:14px;left:14px;right:14px;display:flex;gap:5px;flex-wrap:wrap;z-index:4}
 .hbadge{font-size:8.5px;font-weight:800;padding:3px 9px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:3px;letter-spacing:.03em;}
 .hb-cat{background:var(--acc);color:#fff}
+.hb-genre{background:rgba(167,139,250,.85);color:#fff}
+.hb-trope{background:rgba(217,119,6,.85);color:#fff}
 .hb-type{background:rgba(255,255,255,.16);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.22)}
-.hb-series{background:rgba(26,108,232,.85);color:#fff}
 .hero-body{position:absolute;bottom:0;left:0;right:0;z-index:4;padding:14px 14px 18px}
 .hero-title{font-family:var(--font-d);font-size:20px;font-weight:900;line-height:1.22;color:var(--tx);text-shadow:0 2px 14px rgba(0,0,0,.15);margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .hero-writer{display:flex;align-items:center;gap:9px}
@@ -228,20 +229,7 @@ body.theme-white .hw-follow{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.
 .rx-n{font-size:10px;font-weight:800;color:var(--tx)}
 .rx-card.picked .rx-n{color:var(--acc)}
 
-/* ── JOIN HUBS ── */
-.hub-card{display:flex;align-items:center;gap:11px;background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);padding:13px;cursor:pointer;transition:.15s;margin-bottom:9px;}
-.hub-card:active{transform:scale(.99)}
-.hub-icon{width:44px;height:44px;border-radius:12px;background:var(--acc-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
-.hub-icon.circle-icon{border-radius:50%;overflow:hidden;background:var(--bg2);border:2px solid var(--gold);padding:0}
-.hub-icon.circle-icon img{width:100%;height:100%;object-fit:cover}
-.hub-body{flex:1;min-width:0}
-.hub-name{font-size:12.5px;font-weight:800;color:var(--tx);display:flex;align-items:center;gap:5px}
-.hub-sub{font-size:10px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:4px}
-.hub-join-btn{flex-shrink:0;background:var(--bg2);color:var(--tx);border:1.5px solid var(--bd);padding:8px 14px;border-radius:var(--r-pill);font-size:10.5px;font-weight:800;transition:.18s;}
-.hub-join-btn.joined{background:var(--green-s);border-color:rgba(22,163,74,.3);color:var(--green)}
-.hub-join-btn.circle-btn{background:var(--acc);border-color:var(--acc);color:#fff;}
-.hub-join-btn.circle-btn.joined{background:var(--gold-s);border-color:rgba(217,119,6,.35);color:var(--gold)}
-.hub-join-btn:active{transform:scale(.94)}
+/* ── JOIN HUBS — markup + styling owned by component/community-cards.js ── */
 
 /* ── AUTHOR CARD ── */
 .writer-card{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;}
@@ -368,6 +356,7 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
       <div class="synopsis-box">
         <div class="synopsis-text" id="synText"></div>
         <div class="synopsis-more" id="synBtn" onclick="BridgePage.toggleSyn()"><i class="fas fa-chevron-down" style="font-size:9px"></i> Read more</div>
+        <div class="tags-row" id="tropeRow" style="margin-top:10px"></div>
       </div>
     </div>
 
@@ -427,9 +416,8 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
 
     <div class="divider"></div>
 
-    <!-- CHAPTER COUNT — the full chapters list/season tabs/pagination
-         has been removed; this is a plain read-out of how many
-         chapters exist, tapping through to the reader like before. -->
+    <!-- CHAPTER COUNT — plain read-out of how many chapters exist,
+         tapping through to the reader like before. -->
     <div class="sec fu d3">
       <div class="ch-count-line" onclick="BridgePage.goToReader()">
         <div class="ch-count-icon"><i class="fas fa-book"></i></div>
@@ -528,13 +516,14 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
 <script src="../component/report-sheet.js"></script>
 <script src="../component/comment-section.js"></script>
 <script src="../component/discover-card.js"></script>
+<script src="../component/community-cards.js"></script>
 
 <!-- ═══ Seed data ═══ -->
 <script src="../data/central-demo-data.js"></script>
 <script src="../data/comments-data.js"></script>
 
 <!-- ═══ Page service ═══ -->
-<script src="../services/bridge-service.js"></script>
+<script src="../services/bridge-service.js?v=2"></script>
 
 <script>
 BridgePage.init();

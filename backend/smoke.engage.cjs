@@ -304,6 +304,36 @@ async function main() {
   r = await call('DELETE', '/api/marketing/ads/' + String(smokeAdId), atoken);
   check('ad delete', r.status === 200, 'got ' + r.status);
 
+  // author book workspace: get + chapters + chapter save
+  r = await call('GET', '/api/author/books/' + String(bookId), wtoken);
+  check('author book get', r.status === 200 && String(r.json.id) === String(bookId), 'got ' + r.status);
+  r = await call('GET', '/api/author/books/' + String(bookId) + '/chapters', wtoken);
+  check('author chapters list', r.status === 200 && Array.isArray(r.json.items) && r.json.items.length === 2, JSON.stringify(r.json).slice(0, 160));
+  r = await call('PUT', '/api/author/books/' + String(bookId) + '/chapters/2', wtoken, { title: 'Ch 2 edited' });
+  check('author chapter save', r.status === 200, 'got ' + r.status);
+  r = await call('PUT', '/api/author/books/' + String(bookId) + '/chapters/2', otoken, { title: 'Hijack' });
+  check('author chapter stranger 404', r.status === 404, 'got ' + r.status);
+
+  // request-book-change flow: propose via books PATCH -> 202 -> track in book-edits
+  r = await call('PATCH', '/api/books/' + String(bookId), wtoken, { title: 'Lib Book Revised' });
+  check('book edit proposes 202', r.status === 202 && r.json.applied === false && !!r.json.proposal, JSON.stringify(r.json).slice(0, 160));
+  r = await call('GET', '/api/author/books/' + String(bookId) + '/book-edits', wtoken);
+  check('book-edits lists proposal', r.status === 200 && Array.isArray(r.json) && r.json.some(e => e.status === 'pending'), JSON.stringify(r.json).slice(0, 160));
+
+  // series-style change request (reorder chapters)
+  r = await call('POST', '/api/author/books/' + String(bookId) + '/change-requests', wtoken, { changes: ['Reorder Chapters'], order: ['ch2', 'ch1'], details: 'Flow reads better swapped.' });
+  check('change-request 201', r.status === 201 && r.json.applied === false && !!r.json.proposal, JSON.stringify(r.json).slice(0, 160));
+
+  // payment default + dispute without amount
+  const { PaymentMethod } = require('./src/models/money.model');
+  const pm = await PaymentMethod.create({ authorId: String(writer.id), type: 'bank', accountName: 'Smoke', bankName: 'Test Bank', accountNumber: '001' });
+  r = await call('PUT', '/api/finance/payment-methods/' + String(pm.id) + '/default', wtoken);
+  check('payment default set', r.status === 200 && r.json.isDefault === true, JSON.stringify(r.json));
+  r = await call('PUT', '/api/finance/payment-methods/' + String(pm.id), wtoken, { accountName: 'Smoke Edited', routingCode: '058' });
+  check('payment edit saves', r.status === 200 && r.json.accountName === 'Smoke Edited' && r.json.routingCode === '058', JSON.stringify(r.json));
+  r = await call('POST', '/api/finance/disputes', wtoken, { transactionId: 'tx-smoke', reason: 'smoke test' });
+  check('dispute without amount 201', r.status === 201 && !!r.json.id, 'got ' + r.status);
+
   // store settings admin (packs / rewards / bundles)
   r = await call('POST', '/api/finance/store/coin-packs', atoken, { code: 'pack-smoke', coins: 500, bonusPct: 5, basePriceNGN: 7000 });
   check('pack create 201', r.status === 201 && !!r.json.id, 'got ' + r.status);

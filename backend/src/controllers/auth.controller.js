@@ -97,14 +97,6 @@ async function resendVerification(req, res) {
   return base.wrap(res, async () => auth.resendVerification({ userId: req.user && req.user.id, email: b.email }));
 }
 
-async function requestPhoneOtp(req, res) {
-  return base.wrap(res, async () => auth.requestPhoneOtp(req.user.id, req.valid.body));
-}
-
-async function verifyPhoneOtp(req, res) {
-  return base.wrap(res, async () => auth.verifyPhoneOtp(req.user.id, req.valid.body));
-}
-
 async function mfaDisable(req, res) {
   return base.wrap(res, async () => auth.disableMfa(req.user.id, req.valid.body || {}));
 }
@@ -123,6 +115,10 @@ async function listSessions(req, res) {
 
 async function revokeSession(req, res) {
   return base.wrap(res, async () => auth.revokeSession(req.user.id, req.valid.params.familyId));
+}
+
+async function revokeAllSessions(req, res) {
+  return base.wrap(res, async () => auth.revokeAllSessions(req.user.id));
 }
 
 async function googleUrl(req, res) {
@@ -153,4 +149,4 @@ async function googleCallback(req, res) {
   });
 }
 
-module.exports = { register, verifyEmail, forgotPassword, resetPassword, login, mfaVerify, refresh, logout, mfaEnroll, mfaConfirm, resendVerification, requestPhoneOtp, verifyPhoneOtp, mfaDisable, mfaStatus, mfaBackupRegen, listSessions, revokeSession, googleUrl, googleCallback };
+module.exports = { register, verifyEmail, forgotPassword, resetPassword, login, mfaVerify, refresh, logout, mfaEnroll, mfaConfirm, resendVerification, mfaDisable, mfaStatus, mfaBackupRegen, listSessions, revokeSession, revokeAllSessions, googleUrl, googleCallback };

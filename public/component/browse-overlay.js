@@ -136,6 +136,9 @@
     .bro-list-cover img{width:100%;height:100%}
     .bro-list-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
     .bro-list-genre{font-size:9px;font-weight:800;color:var(--bro-gold);text-transform:uppercase;letter-spacing:.05em}
+    .bro-list-catrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .bro-list-cat{font-size:9px;font-weight:800;color:var(--bro-muted,#8e8e93);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bro-list-trope{font-size:9px;font-weight:800;color:var(--bro-acc,#ff2d55);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex-shrink:0}
     .bro-list-title{font-size:13.5px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
       -webkit-box-orient:vertical;overflow:hidden}
     .bro-list-preview{font-size:11.5px;color:var(--bro-muted);line-height:1.45;display:-webkit-box;
@@ -447,6 +450,37 @@
       '<div class="bro-list-body"><div class="bro-list-title">'+_esc(item.title||'')+'</div><div class="bro-list-preview">'+_esc((item.ch||'')+' · '+(item.pct||0)+'%')+'</div></div></div>';
   }
 
+  /* Trope per story: explicit trope/tropes win, else a stable pick from the
+     CE catalog pool for the story's genre (live books carry tropes). */
+  var _TROPE_POOL = {
+    romance: ['Enemies to Lovers', 'Secret Baby', 'Second Chance'],
+    billionaire: ['Billionaire Boss', 'Secret Baby', 'Fake Dating'],
+    ceo: ['CEO Romance', 'Fake Dating', 'Billionaire Boss'],
+    werewolf: ['Fated Mates', 'Alpha Romance', 'Second Chance'],
+    fantasy: ['Royal Romance', 'Royal Secret', 'Fated Mates'],
+    mafia: ['Mafia Romance', 'Forced Proximity', 'Secret Baby'],
+    campus: ['Fake Dating', 'Forced Proximity', 'Love Triangle'],
+    revenge: ['Second Chance', 'Forced Proximity', 'Secret Baby'],
+    drama: ['Second Chance', 'Marriage of Convenience', 'Forbidden Love'],
+    betrayal: ['Secret Baby', 'Love Triangle', 'Second Chance'],
+    family: ['Arranged Marriage', 'Secret Baby', 'Second Chance'],
+    heartbreak: ['Second Chance', 'Forbidden Love', 'Love Triangle'],
+    horror: ['Forbidden Love', 'Fated Mates', 'Vampire Romance'],
+    mystery: ['Secret Baby', 'Forced Proximity', 'Love Triangle'],
+    marriage: ['Arranged Marriage', 'Marriage of Convenience', 'Second Chance'],
+    vampire: ['Vampire Romance', 'Forbidden Love', 'Fated Mates'],
+  };
+  var _TROPE_FALLBACK = ['Second Chance', 'Forbidden Love', 'Secret Baby'];
+  function _storyTrope(s) {
+    if (s.trope) return s.trope;
+    if (s.tropes && s.tropes.length) return s.tropes[0];
+    var pool = _TROPE_POOL[String(s.genre || '').toLowerCase()] || _TROPE_FALLBACK;
+    var key = String(s.id || s.title || '');
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return pool[h % pool.length];
+  }
+
   function _listItemHTML(item) {
     if (item.type === 'sectionHeader') return `<div style="grid-column:1/-1;padding:14px 0 6px;font-size:11px;font-weight:800;color:var(--bro-muted,#8e8e93);text-transform:uppercase;letter-spacing:.06em">${_esc(item.label)}</div>`;
     if (item.type === 'continue') return _continueHTML(item);
@@ -455,9 +489,12 @@
     if (item.type === 'platformAd') return _platformAdHTML(item);
 
     const isBookAd = item.type === 'bookAd';
+    const _cat = item.cat || item.category || item.genre || '';
+    const _trope = _storyTrope(item);
     return `<div class="bro-list-item${isBookAd ? ' bro-book-ad' : ''}" data-bro-story='${_esc(JSON.stringify(item))}'>
       <div class="bro-list-cover">${isBookAd ? '<span class="bro-ad-tag">Promoted</span>' : ''}<img src="${_esc(item.img)}" loading="lazy" alt=""/></div>
       <div class="bro-list-body">
+        <div class="bro-list-catrow"><span class="bro-list-cat">${_esc(_cat)}</span>${_trope ? `<span class="bro-list-trope"><i class="fas fa-wand-magic-sparkles"></i> ${_esc(_trope)}</span>` : ''}</div>
         <div class="bro-list-title">${_esc(item.title)}</div>
         ${item.preview ? `<div class="bro-list-preview">${_esc(item.preview)}</div>` : ''}
         <div class="bro-list-foot">

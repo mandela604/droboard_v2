@@ -147,14 +147,16 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label class="pl-check"><input type="checkbox" id="plFullTop" checked/> Top slot</label>
         <label class="pl-check"><input type="checkbox" id="plFullInline" checked/> In-text slot (every N words)</label>
         <label class="pl-check"><input type="checkbox" id="plFullBottom" checked/> Bottom slot (after chapter)</label>
+<label class="pl-check"><input type="checkbox" id="plFullPaidAds"/> Show ads on coin-unlocked chapters</label>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-scroll" style="color:var(--amber)"></i> Scroll Reader</div>
         <label class="pl-check"><input type="checkbox" id="plScrollOn" checked/> Ads on this page</label>
         <label class="pl-lbl">Words between in-text ads</label><input class="pl-inp" id="plScrollWords" type="number" min="50" max="5000" step="50" value="300"/>
-        <label class="pl-check"><input type="checkbox" id="plScrollTop" checked/> Top slot</label>
-        <label class="pl-check"><input type="checkbox" id="plScrollInline" checked/> In-text slot (every N words)</label>
-        <label class="pl-check"><input type="checkbox" id="plScrollBottom" checked/> Bottom slot (end of page)</label>
+<label class="pl-check"><input type="checkbox" id="plScrollTop" checked/> Top slot</label>
+<label class="pl-check"><input type="checkbox" id="plScrollInline" checked/> In-text slot (every N words)</label>
+<label class="pl-check"><input type="checkbox" id="plScrollBottom" checked/> Bottom slot (end of page)</label>
+<label class="pl-check"><input type="checkbox" id="plScrollPaidAds"/> Show ads on coin-unlocked chapters</label>
       </div>
       <div class="pl-card">
         <div class="pl-name"><i class="fas fa-images" style="color:var(--purple)"></i> Library slider</div>
@@ -212,6 +214,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <script src="shared/ad-setup-data.js"></script>
 <script src="shared/marketing-sidebar.js"></script>
+<script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
 <script src="shared/ad-manager.js"></script>
 <script>AdManagerPage.init();</script>

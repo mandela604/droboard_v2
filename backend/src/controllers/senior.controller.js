@@ -136,6 +136,7 @@ async function verificationDecide(req, res, decision) {
     const idx = parseInt(req.valid.params.idx, 10);
     const target = pending[idx];
     if (!target) { const e = new Error('not_found'); e.status = 404; throw e; }
+    // Verification = verified badge on profile only. No role grants here.
     await AuthorVerification.updateOne({ id: target.id }, { status: decision });
     return { ok: true, id: target.id, status: decision };
   });

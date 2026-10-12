@@ -324,7 +324,7 @@
       onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id }); },
       onSave: (post) => {
         if(post.type === 'ama'){
-          if(window.openSaveModal) openSaveModal({ title: (post.amaData && post.amaData.title) || 'AMA', sub: (post.amaData && post.amaData.meta) || '@' + post.name, img: post.avatar || '', storyId: post.id });
+          if(window.openSaveModal) openSaveModal({ title: (post.amaData && post.amaData.title) || 'AMA', sub: (post.amaData && post.amaData.meta) || '@' + post.name, img: post.avatar || '', storyId: post.id, type: 'post' });
           else { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved AMA!' : 'Removed AMA'); }
           return;
         }
