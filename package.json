@@ -19,6 +19,7 @@
   "homepage": "https://github.com/mandela604/droboard_v2#readme",
   "dependencies": {
     "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/push-notifications": "^8.1.3",
