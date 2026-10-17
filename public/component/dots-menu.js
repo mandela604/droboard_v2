@@ -32,6 +32,9 @@
  * Follow/Mute/Not-interested/Report). Copy-link is always shown.
  * `post.pinnable` adds a Pin/Unpin entry (dispatched to hooks.onPin /
  * hooks.onUnpin) — only set by managing surfaces like the official page.
+ * A post counts as pinned when `post.pinned` (feed/profile cards) or
+ * `post.pinTop` (genre-hub discussions, which reserve `pinned` for the
+ * hub-rules card) is truthy.
  * Positioning is a viewport-clamped dropdown anchored under/aligned to
  * whichever element triggered it (the dots button), not centered over
  * the whole card.
@@ -129,12 +132,14 @@
       items.push({ action: 'Delete', icon: 'fa-trash', label: 'Delete post', danger: true });
     } else {
       items.push({ action: 'Follow', icon: 'fa-user-plus', label: 'Follow @' + (post.name || 'user') });
-      items.push({ action: 'Mute', icon: 'fa-volume-xmark', label: 'Mute @' + (post.name || 'user') });
-      items.push({ action: 'Less', icon: 'fa-eye-slash', label: 'See less of this' });
+      if (!post.noMute) {
+        items.push({ action: 'Mute', icon: 'fa-volume-xmark', label: 'Mute @' + (post.name || 'user') });
+        items.push({ action: 'Less', icon: 'fa-eye-slash', label: 'See less of this' });
+      }
       items.push({ action: 'Report', icon: 'fa-flag', label: 'Report post', danger: true });
     }
     if (post.pinnable) {
-      items.push(post.pinned
+      items.push((post.pinned || post.pinTop)
         ? { action: 'Unpin', icon: 'fa-thumbtack', label: 'Unpin post' }
         : { action: 'Pin', icon: 'fa-thumbtack', label: 'Pin to top' });
     }

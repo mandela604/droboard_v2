@@ -62,7 +62,7 @@
         { label: 'Weekly Streak', cls: 'purple' },
       ],
       books: [
-        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS.c1, reads: '820k', likes: '94k', rating: '4.9', chapters: 62 },
+        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS.c1, reads: '820k', likes: '94k', rating: '4.9', chapters: 62, seriesId: 's1' },
         { id: 'b2', title: 'Crowned in Sin', cat: 'Mafia', cover: COVERS.c2, reads: '310k', likes: '41k', rating: '4.7', chapters: 48 },
         { id: 'b3', title: 'Until You Regret', cat: 'Revenge · Romance', cover: COVERS.c4, reads: '150k', likes: '22k', rating: '4.8', chapters: 35 },
       ],
@@ -208,6 +208,8 @@
         saved: 14,
         reactions: 86,
         comments: 31,
+        readingHours: 46,
+        streak: 12,
       },
       achievements: [
         { label: 'Early Supporter', cls: 'green' },

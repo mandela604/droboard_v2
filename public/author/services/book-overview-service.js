@@ -23,7 +23,7 @@
   var QUICK_ACTIONS = [
     { label: 'New Chapter', icon: 'fa-plus', bg: 'var(--primary-soft)', color: 'var(--primary)', href: 'book-workspace.html' },
     { label: 'Plotting', icon: 'fa-diagram-project', bg: 'var(--purple-soft)', color: 'var(--purple)', href: 'plotting.html' },
-    { label: 'Analytics', icon: 'fa-chart-line', bg: 'var(--blue-soft)', color: 'var(--blue)', href: 'book-analytics.html' },
+    { label: 'Characters', icon: 'fa-user-group', bg: 'var(--blue-soft)', color: 'var(--blue)', href: 'characters.html' },
     { label: 'Schedule', icon: 'fa-calendar-days', bg: 'var(--warning-soft)', color: 'var(--warning)', href: '#' }
   ];
 

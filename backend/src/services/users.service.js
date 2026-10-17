@@ -3,19 +3,172 @@ const argon2 = require('argon2');
 const crypto = require('crypto');
 const { User, RefreshFamily } = require('../models/user.model');
 const { Book, Chapter, Genre } = require('../models/content.model');
-const { Follow, Block, Mute, ReadingProgress, LibraryItem, Notification, Referral } = require('../models/social.model');
+const { Follow, Block, Mute, ReadingProgress, LibraryItem, Notification, Referral, Post, Status } = require('../models/social.model');
 const { validateMediaUrl } = require('./media.service');
+
+const WRITER_ROLES = ['writer', 'senior_editor', 'chief_editor', 'admin'];
+
+function joinedLabel(d) {
+  if (!d) return '';
+  try {
+    return 'Joined ' + new Date(d).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  } catch (e) { return ''; }
+}
+
+// Frontend card time: "Just now" / "2h" / "3d" / "2w" / "May 12".
+function relTime(d) {
+  if (!d) return '';
+  const t = new Date(d).getTime();
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return 'Just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  if (s < 86400) return Math.floor(s / 3600) + 'h';
+  if (s < 604800) return Math.floor(s / 86400) + 'd';
+  if (s < 2592000) return Math.floor(s / 604800) + 'w';
+  try {
+    return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+  } catch (e) { return ''; }
+}
+
+// Post model → frontend post-card shape (profile/feed card contract).
+function toCardPost(p, viewerId) {
+  const o = p.toJSON ? p.toJSON() : p;
+  const poll = o.poll && o.poll.opts ? {
+    q: o.poll.q || '',
+    opts: (o.poll.opts || []).map(x => ({ t: x.t, v: x.v || 0 })),
+    total: o.poll.total || 0,
+    voted: viewerId ? (o.poll.votedBy || []).map(String).indexOf(String(viewerId)) : -1,
+  } : null;
+  return {
+    id: o.id, type: o.type, time: relTime(o.createdAt), pinned: !!o.pinned,
+    liked: viewerId ? ((o.likedBy || []).map(String).includes(String(viewerId))) : false,
+    likes: o.likesCount || 0, comments: o.commentsCount || 0,
+    saved: viewerId ? ((o.savedBy || []).map(String).includes(String(viewerId))) : false,
+    text: o.text || '', quote: o.quote || '', caption: o.caption || '', note: o.note || '',
+    image: o.image || '', poll,
+    amaData: o.amaData || null,
+    debateData: o.debateData && o.debateData.motion ? {
+      motion: o.debateData.motion, forV: o.debateData.forV || 0, agV: o.debateData.agV || 0,
+      userVote: null,
+    } : null,
+    storyRef: o.storyRef && o.storyRef.title ? {
+      title: o.storyRef.title, cat: o.storyRef.cat || '', author: o.storyRef.writer || '',
+      cover: o.storyRef.cover || '',
+    } : null,
+    shares: o.sharesCount || 0,
+  };
+}
+
+// Status doc → story-slide shape ({bg, quote, caption, time}).
+function toSlide(s) {
+  const o = s.toJSON ? s.toJSON() : s;
+  return {
+    id: o.id, bg: o.bg, quote: o.quote || '', caption: o.caption || '',
+    time: relTime(o.createdAt), likes: o.likes || 0, viewed: !!o.viewed,
+    ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
+    expiresAt: o.expiresAt,
+  };
+}
 
 function publicShape(u) {
   return {
-    id: u.id, username: u.username, fullName: u.fullName, name: u.fullName,
+    id: u.id, username: u.username, handle: u.username,
+    fullName: u.fullName, name: u.fullName,
     avatar: u.avatar || '', cover: u.cover || '', bio: u.bio || '',
     location: u.location || '', about: u.about || null, genres: u.genres || [],
     country: u.country || '',
     roles: u.roles, primaryRole: u.primaryRole,
-    isWriter: (u.roles || []).some(r => ['writer', 'senior_editor', 'chief_editor', 'admin'].includes(r)),
-    status: u.status, createdAt: u.createdAt,
+    isWriter: (u.roles || []).some(r => WRITER_ROLES.includes(r)),
+    verified: !!u.emailVerified,
+    status: u.status, createdAt: u.createdAt, joinedLabel: joinedLabel(u.createdAt),
   };
+}
+
+// Card-ready row for following/followers lists ({name, av, meta, following}).
+function toFollowRow(u, following) {
+  const bio = String(u.bio || '').split('\n')[0].slice(0, 60);
+  const meta = bio || ((u.roles || []).includes('writer') ? 'Writer on Droboard' : 'Reader on Droboard');
+  return {
+    name: u.username, handle: u.username, av: u.avatar || '', avatar: u.avatar || '',
+    fullName: u.fullName, meta, following: !!following,
+    verified: !!u.emailVerified, isWriter: (u.roles || []).some(r => WRITER_ROLES.includes(r)),
+  };
+}
+
+// Reader stats: hours, finished books, day-streak from ReadingProgress.
+async function readingStatsFor(userId) {
+  try {
+    const [agg, finished, days] = await Promise.all([
+      ReadingProgress.aggregate([
+        { $match: { userId: String(userId) } },
+        { $group: { _id: null, seconds: { $sum: '$secondsSpent' }, words: { $sum: '$wordsRead' } } },
+      ]),
+      ReadingProgress.countDocuments({ userId, finished: true }),
+      ReadingProgress.aggregate([
+        { $match: { userId: String(userId) } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$lastReadAt' } } } },
+        { $sort: { _id: -1 } }, { $limit: 60 },
+      ]),
+    ]);
+    let streak = 0;
+    const dayKeys = days.map(d => d._id);
+    if (dayKeys.length) {
+      const today = new Date();
+      const fmt = (dt) => dt.toISOString().slice(0, 10);
+      let cursor = new Date(today);
+      // streak may start today or yesterday (today's read not yet logged)
+      if (dayKeys[0] !== fmt(cursor)) {
+        cursor = new Date(today.getTime() - 86400000);
+        if (dayKeys[0] !== fmt(cursor)) return { hoursRead: Math.round(((agg[0] && agg[0].seconds) || 0) / 3600), booksFinished: finished, dayStreak: 0 };
+      }
+      const set = new Set(dayKeys);
+      while (set.has(fmt(cursor))) { streak += 1; cursor = new Date(cursor.getTime() - 86400000); }
+    }
+    return {
+      hoursRead: Math.round(((agg[0] && agg[0].seconds) || 0) / 3600),
+      wordsRead: (agg[0] && agg[0].words) || 0,
+      booksFinished: finished,
+      dayStreak: streak,
+    };
+  } catch (e) {
+    return { hoursRead: 0, wordsRead: 0, booksFinished: 0, dayStreak: 0 };
+  }
+}
+
+// Profile tabs: library items joined with books (card shape).
+async function libraryFor(userId) {
+  const rows = await LibraryItem.find({ userId: String(userId), list: { $in: ['library', 'saved', 'continue'] } })
+    .sort({ updatedAt: -1 }).limit(60).lean();
+  if (!rows.length) return [];
+  const books = await Book.find({ id: { $in: rows.map(r => String(r.storyId)) } })
+    .select('id title cover genre authorId reads').lean();
+  const authorIds = [...new Set(books.map(b => String(b.authorId)))];
+  const authors = authorIds.length
+    ? await User.find({ id: { $in: authorIds } }).select('id username fullName').lean()
+    : [];
+  const bm = {}; books.forEach(b => { bm[String(b.id)] = b; });
+  const am = {}; authors.forEach(a => { am[String(a.id)] = a; });
+  return rows.filter(r => bm[String(r.storyId)]).map(r => {
+    const b = bm[String(r.storyId)];
+    const a = am[String(b.authorId)];
+    return {
+      id: String(r.storyId), title: b.title, cover: b.cover || '', cat: b.genre || '',
+      author: a ? (a.fullName || a.username) : '', authorHandle: a ? a.username : '',
+      badge: r.status === 'finished' ? 'done' : (r.list === 'saved' ? 'saved' : ''),
+      ch: r.currentChN ? 'Ch. ' + r.currentChN : '', pct: r.pct || 0, list: r.list,
+    };
+  });
+}
+
+// Achievements chips from the awards console ({label, icon, color}).
+async function achievementsFor(handle) {
+  try {
+    const rows = await require('./awards.service').grantsForHandle(handle);
+    return rows.filter(r => r.award).map(r => ({
+      label: r.award.name, icon: r.award.icon || 'fa-award', color: r.award.color || 'gold',
+      grantedAt: r.grantedAt,
+    }));
+  } catch (e) { return []; }
 }
 
 function escRx(s) {
@@ -25,20 +178,51 @@ function escRx(s) {
 async function me(userId) {
   const u = await User.findOne({ id: userId }).lean();
   if (!u) { const e = new Error('not_found'); e.status = 404; throw e; }
-  const [following, followers, reads] = await Promise.all([
+  const [following, followers, reads, ent, wallet, vipApp] = await Promise.all([
     Follow.countDocuments({ followerId: userId }),
     Follow.countDocuments({ followingId: userId }),
     ReadingProgress.countDocuments({ userId, finished: true }),
+    require('./wallet.service').entitlements(userId).catch(() => null),
+    require('../models/money.model').Wallet.findOne({ userId: String(userId), kind: 'reader' })
+      .select('coinBalance bonusBalance level currency').lean().catch(() => null),
+    require('../models/application.model').VipApplication.findOne({ authorId: userId })
+      .select('status').sort({ createdAt: -1 }).lean().catch(() => null),
   ]);
+  // subscription detail row (planCode/status/dates) for the Store tab
+  let sub = null;
+  try {
+    const { Subscription } = require('../models/money.model');
+    sub = await Subscription.findOne({ userId: String(userId), status: 'active' })
+      .sort({ startedAt: -1 }).lean();
+  } catch (e) { /* store down — plan stays free */ }
+  const plan = ent && ent.plan ? 'premium' : 'free';
   return Object.assign(publicShape(u), {
     email: u.email, emailVerified: u.emailVerified, phone: u.phone || null, phoneVerified: !!u.phoneVerified,
     following, followers, reads,
     mfaEnabled: !!u.mfaEnabled,
-    settings: u.settings || { theme: 'dark', notifications: true, privacy: 'public' },
+    settings: Object.assign({ theme: 'dark', notifications: true, privacy: 'public', readingActivity: true }, u.settings || {}),
+    // store / plan (frontend: free|trial|premium + subscription detail)
+    plan,
+    subscription: sub ? {
+      planCode: sub.planCode, status: sub.status,
+      startedAt: sub.startedAt, expiresAt: sub.expiresAt,
+      adsFree: !!(ent && ent.adsFree), adsFreeEverywhere: !!(ent && ent.adsFreeEverywhere),
+    } : null,
+    wallet: {
+      coins: (wallet && wallet.coinBalance) || 0,
+      bonusCoins: (wallet && wallet.bonusBalance) || 0,
+      level: (wallet && wallet.level) || 'Starter',
+      currency: (wallet && wallet.currency) || 'NGN',
+    },
+    referralCode: u.referralCode || null,
+    platformRoles: u.platformRoles || [],
+    vip: vipApp ? vipApp.status : 'none',
   });
 }
 
 // FIX 5 (privacy): private profiles return limited shape to non-owners.
+// Enriched to the frontend profile-page contract: nested stats, card-ready
+// posts, library rows, following rows, story-ring statuses, achievements.
 async function profile(handle, viewerId) {
   const u = await User.findOne({
     $or: [{ username: String(handle).toLowerCase() }, { id: handle }],
@@ -46,19 +230,20 @@ async function profile(handle, viewerId) {
   if (!u || u.deletedAt) { const e = new Error('not_found'); e.status = 404; throw e; }
   const privacy = (u.settings && u.settings.privacy) || 'public';
   const isOwner = viewerId && String(viewerId) === String(u.id);
-  const [following, followers, books] = await Promise.all([
+  const isWriter = (u.roles || []).some(r => WRITER_ROLES.includes(r));
+  const [following, followers] = await Promise.all([
     Follow.countDocuments({ followerId: u.id }),
     Follow.countDocuments({ followingId: u.id }),
-    Book.countDocuments({ authorId: u.id }),
   ]);
   if (privacy === 'private' && !isOwner) {
     return {
-      id: u.id, username: u.username, fullName: u.fullName, name: u.fullName,
+      id: u.id, username: u.username, handle: u.username,
+      fullName: u.fullName, name: u.fullName,
       avatar: u.avatar || '', cover: '', bio: '', location: '', about: null, genres: [],
       country: '', roles: u.roles, primaryRole: u.primaryRole,
-      isWriter: (u.roles || []).some(r => ['writer', 'senior_editor', 'chief_editor', 'admin'].includes(r)),
-      status: u.status, createdAt: u.createdAt,
-      following, followers, books: 0, isPrivate: true,
+      isWriter, verified: !!u.emailVerified,
+      status: u.status, createdAt: u.createdAt, joinedLabel: joinedLabel(u.createdAt),
+      following, followers, books: 0, isPrivate: true, isOwner: false,
     };
   }
   let isFollowing = false;
@@ -71,7 +256,56 @@ async function profile(handle, viewerId) {
     isFollowing = !!f;
     isBlocked = !!b;
   }
-  return Object.assign(publicShape(u), { following, followers, books, isFollowing, isBlockedByViewer: isBlocked });
+  // books (writers) — card shape the Books tab consumes
+  const bookDocs = isWriter
+    ? await Book.find({ authorId: u.id }).sort({ createdAt: -1 }).limit(50)
+      .select('id title cover genre reads likes rating chapterCount status').lean()
+    : [];
+  const books = bookDocs.map(b => ({
+    id: b.id, title: b.title, cat: b.genre || '', cover: b.cover || '',
+    reads: b.reads || 0, likes: b.likes || 0, rating: b.rating || 0,
+    chapters: b.chapterCount || 0, status: b.status || 'ongoing',
+  }));
+  const [readingStats, lib, ach, postDocs, followEdges, statusDocs] = await Promise.all([
+    readingStatsFor(u.id),
+    libraryFor(u.id),
+    achievementsFor(u.username),
+    Post.find({ authorId: u.id }).sort({ pinned: -1, createdAt: -1 }).limit(20).lean(),
+    Follow.find({ followerId: u.id }).sort({ createdAt: -1 }).limit(12).select('followingId').lean(),
+    Status.find({ userId: String(u.id), expiresAt: { $gt: new Date() } })
+      .sort({ createdAt: -1 }).limit(20).lean(),
+  ]);
+  // following rows for the Following tab
+  let followingRows = [];
+  if (followEdges.length) {
+    const fu = await User.find({ id: { $in: followEdges.map(e => String(e.followingId)) } })
+      .select('id username fullName avatar bio roles emailVerified').lean();
+    const fm = {}; fu.forEach(x => { fm[String(x.id)] = x; });
+    followingRows = followEdges
+      .filter(e => fm[String(e.followingId)])
+      .map(e => toFollowRow(fm[String(e.followingId)], true));
+  }
+  const base = publicShape(u);
+  return Object.assign(base, {
+    following, followers, books: books.length, isFollowing, isBlockedByViewer: isBlocked,
+    isOwner: !!isOwner,
+    stats: {
+      following, followers,
+      books: books.length,
+      reads: bookDocs.reduce((n, b) => n + (b.reads || 0), 0),
+      likes: bookDocs.reduce((n, b) => n + (b.likes || 0), 0),
+      saved: lib.length,
+      readingHours: readingStats.hoursRead,
+      streak: readingStats.dayStreak,
+    },
+    readingStats,
+    achievements: ach,
+    books,
+    library: lib,
+    following: followingRows,
+    posts: postDocs.map(p => toCardPost(p, viewerId)),
+    statuses: statusDocs.map(toSlide),
+  });
 }
 
 // FIX 1+4: self-update — name/bio/location/avatar/cover/about/genres/country/locale/username.
@@ -233,7 +467,7 @@ async function updateSettings(userId, patch) {
   return u.settings;
 }
 
-// FIX 7: paged public user search.
+// FIX 7: paged public user search (card shape: handle/name/verified/isWriter).
 async function searchUsers({ q, page, limit }) {
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
@@ -245,9 +479,12 @@ async function searchUsers({ q, page, limit }) {
   const [total, rows] = await Promise.all([
     User.countDocuments(filter),
     User.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim)
-      .select('username fullName avatar roles').lean(),
+      .select('username fullName avatar roles emailVerified bio').lean(),
   ]);
-  return { items: rows.map(r => ({ id: r.id, username: r.username, fullName: r.fullName, avatar: r.avatar, roles: r.roles })), total, page: pg, limit: lim };
+  return {
+    items: rows.map(r => Object.assign(toFollowRow(r, false), { id: r.id, roles: r.roles })),
+    total, page: pg, limit: lim,
+  };
 }
 
 // FIX 7b: followers/following with q + filter (writers|verified).
@@ -267,8 +504,12 @@ async function followersOf(handle, { page, limit, q, filter }) {
   }
   if (filter === 'writers') userFilter.roles = 'writer';
   if (filter === 'verified') userFilter.emailVerified = true;
-  const users = await User.find(userFilter).select('username fullName avatar roles emailVerified').lean();
-  return { items: users, total: await Follow.countDocuments({ followingId: u.id }), page: pg, limit: lim };
+  const users = await User.find(userFilter).select('username fullName avatar roles emailVerified bio').lean();
+  // edges may be empty → users empty; keep total accurate
+  return {
+    items: users.map(x => Object.assign(toFollowRow(x, true), { id: x.id })),
+    total: await Follow.countDocuments({ followingId: u.id }), page: pg, limit: lim,
+  };
 }
 
 async function followingOf(handle, { page, limit, q }) {
@@ -285,8 +526,11 @@ async function followingOf(handle, { page, limit, q }) {
     const rx = new RegExp(escRx(q), 'i');
     userFilter.$or = [{ username: rx }, { fullName: rx }];
   }
-  const users = await User.find(userFilter).select('username fullName avatar roles').lean();
-  return { items: users, total: await Follow.countDocuments({ followerId: u.id }), page: pg, limit: lim };
+  const users = await User.find(userFilter).select('username fullName avatar roles emailVerified bio').lean();
+  return {
+    items: users.map(x => Object.assign(toFollowRow(x, true), { id: x.id })),
+    total: await Follow.countDocuments({ followerId: u.id }), page: pg, limit: lim,
+  };
 }
 
 async function resolveTarget(target) {

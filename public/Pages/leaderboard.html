@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<title>Droboard · Reader League</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:var(--font-ui);overflow-x:hidden}
+body{display:flex;justify-content:center}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);padding-bottom:110px}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 11px) 14px 11px;background:var(--l1);border-bottom:1px solid var(--bd)}
+.tb-back{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx-muted);cursor:pointer;flex-shrink:0}
+.tb-title{flex:1;min-width:0}
+.tb-name{font-size:15px;font-weight:800;color:var(--tx-high)}
+.tb-sub{font-size:10px;color:var(--tx-muted);margin-top:1px}
+.season-pill{font-size:9px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--gold,#f59e0b);white-space:nowrap}
+.hero{margin:14px 14px 0;background:linear-gradient(135deg,rgba(255,0,80,.10),rgba(245,158,11,.08));border:1px solid var(--bd-acc);border-radius:16px;padding:16px 14px;text-align:center}
+.hero-crown{font-size:26px;margin-bottom:4px}
+.hero-t{font-size:15px;font-weight:800;color:var(--tx-high)}
+.hero-s{font-size:11px;color:var(--tx-muted);margin-top:3px}
+.hero-my{margin-top:10px;display:inline-flex;align-items:center;gap:8px;background:var(--l1);border:1px solid var(--bd);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;color:var(--tx-high)}
+.hero-my b{color:var(--gold,#f59e0b)}
+.tabs{display:flex;gap:8px;padding:14px 14px 0}
+.tab{flex:1;text-align:center;padding:9px 0;font-size:12px;font-weight:800;color:var(--tx-muted);cursor:pointer;border-radius:12px;border:1.5px solid var(--bd);background:var(--l1)}
+.tab.on{color:var(--acc);border-color:var(--bd-acc);background:rgba(255,0,80,.06)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;padding:18px 14px 6px}
+.pod{flex:1;max-width:120px;text-align:center;border-radius:14px;padding:12px 6px 10px;border:1px solid var(--bd);background:var(--l1)}
+.pod.p1{border-color:rgba(245,158,11,.45);background:linear-gradient(180deg,rgba(245,158,11,.12),var(--l1) 70%);padding-top:16px}
+.pod.p2{border-color:rgba(160,160,176,.4)}
+.pod.p3{border-color:rgba(160,112,64,.4)}
+.pod-av{width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 6px;display:block;border:2px solid var(--bd)}
+.pod.p1 .pod-av{border-color:var(--gold,#f59e0b);width:60px;height:60px}
+.pod-medal{font-size:18px}
+.pod-name{font-size:11px;font-weight:800;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pod-pts{font-size:12px;font-weight:800;color:var(--gold,#f59e0b);margin-top:2px}
+.rows{padding:10px 14px 0;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:10px;background:var(--l1);border:1px solid var(--bd);border-radius:12px;padding:9px 12px}
+.row.me{border-color:var(--bd-acc);background:rgba(255,0,80,.05)}
+.row-rank{font-size:13px;font-weight:800;color:var(--tx-muted);width:26px;text-align:center;flex-shrink:0}
+.row.me .row-rank{color:var(--acc)}
+.row-av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.row-av-ph{width:34px;height:34px;border-radius:50%;background:rgba(255,0,80,.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.row-body{flex:1;min-width:0}
+.row-name{font-size:12px;font-weight:800;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-bar{height:4px;border-radius:4px;background:var(--bd);margin-top:5px;overflow:hidden}
+.row-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc),var(--gold,#f59e0b))}
+.row-pts{text-align:right;flex-shrink:0}
+.row-pts b{font-size:13px;color:var(--tx-high)}
+.row-pts span{display:block;font-size:9px;color:var(--tx-muted);font-weight:600}
+.card{margin:14px 14px 0;background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px}
+.card-t{font-size:11px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.prize{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.prize:last-child{border-bottom:none}
+.prize-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.prize-body{flex:1}.prize-t{font-size:12px;font-weight:800;color:var(--tx-high)}.prize-s{font-size:10px;color:var(--tx-muted);margin-top:1px}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.score{background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font-size:11px;font-weight:700;color:var(--tx-muted)}
+.score b{color:var(--tx-high)}
+.me-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;z-index:300;background:var(--l1);border-top:1px solid var(--bd);padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;align-items:center;gap:10px}
+.me-bar .row{flex:1;margin:0}
+.me-cta{background:var(--acc);color:#fff;border:none;border-radius:12px;padding:11px 16px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:9px 18px;border-radius:28px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:92vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.crown-banner{margin:14px 14px 0;background:linear-gradient(135deg,rgba(245,158,11,.14),rgba(255,0,80,.08));border:1px solid rgba(245,158,11,.35);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.crown-banner .cb-ic{font-size:22px}
+.crown-banner .cb-t{font-size:12px;font-weight:800;color:var(--tx-high)}
+.crown-banner .cb-s{font-size:10px;color:var(--tx-muted);margin-top:1px}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="tb-title"><div class="tb-name">🏆 Reader League</div><div class="tb-sub" id="seasonSub">Weekly season</div></div>
+    <div class="season-pill" id="seasonPill">—</div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-crown">👑</div>
+    <div class="hero-t">Read. React. Climb.</div>
+    <div class="hero-s" id="heroSub">New season every Monday · resets Sunday night</div>
+    <div><span class="hero-my">You are <b id="myRankLbl">#–</b> · <span id="myPtsLbl">0 pts</span></span></div>
+  </div>
+
+  <div class="crown-banner" id="crownBanner" style="display:none">
+    <div class="cb-ic">👑</div>
+    <div><div class="cb-t" id="crownTitle">Monthly crown</div><div class="cb-s" id="crownSub"></div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" id="tabWeekly">⚡ This week</div>
+    <div class="tab" id="tabAlltime">🏛 All-time</div>
+  </div>
+
+  <div class="podium" id="podium"></div>
+  <div class="rows" id="rows"></div>
+
+  <div class="card">
+    <div class="card-t">🎁 Weekly prizes · zero cash, all glory</div>
+    <div id="prizes"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-t">⚡ How scoring works</div>
+    <div class="score-grid" id="scoring"></div>
+    <div style="font-size:10px;color:var(--tx-muted);margin-top:9px;line-height:1.5">Reading earns, social earns more. Streak days multiply the grind — miss a day, rivals pass you.</div>
+  </div>
+
+  <div class="me-bar">
+    <div class="row me" id="meRow"></div>
+    <button class="me-cta" onclick="location.href='discover.html'">Earn +</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../services/auth-session.js"></script>
+<script src="../services/store-service.js"></script>
+<script src="../services/league-service.js"></script>
+<script>
+(function () {
+  'use strict';
+  var scope = 'weekly';
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function toast(m) {
+    var t = document.getElementById('toast');
+    t.textContent = m; t.classList.add('show');
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+  function av(e, cls) {
+    if (e.avatar) return '<img class="' + cls + '" src="' + e.avatar + '" loading="lazy" alt=""/>';
+    return '<div class="' + cls + '-ph">' + esc((e.name || '?')[0].toUpperCase()) + '</div>';
+  }
+  function medal(i) { return ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1)); }
+  function render() {
+    var b = ReaderLeague.board(scope);
+    if (b.enabled === false) {
+      document.getElementById('heroSub').textContent = 'League paused — back soon';
+      document.getElementById('rows').innerHTML = '<div class="card" style="margin:10px 0 0;text-align:center;font-size:12px;color:var(--tx-muted)">⏸ The league is paused this week. Your activity still counts.</div>';
+      return;
+    }
+    var champ = null;
+    try { champ = ReaderLeague.reigning(); } catch (e) {}
+    var isChamp = function (e) { return !!(champ && champ.handle && e.handle === champ.handle); };
+    document.getElementById('seasonSub').textContent = scope === 'weekly'
+      ? 'Week ' + b.season + ' · ' + b.endsIn
+      : 'All-time legends';
+    document.getElementById('seasonPill').textContent = scope === 'weekly' ? b.endsIn : b.season;
+    var top = b.entries.slice(0, 3), rest = b.entries.slice(3);
+    var order = [top[1], top[0], top[2]].filter(Boolean);
+    document.getElementById('podium').innerHTML = order.map(function (e) {
+      var cls = e.rank === 1 ? 'p1' : (e.rank === 2 ? 'p2' : 'p3');
+      return '<div class="pod ' + cls + '"' + (isChamp(e) ? ' style="box-shadow:0 0 0 2px var(--gold,#f59e0b)"' : '') + '>' +
+        '<div class="pod-medal">' + medal(e.rank - 1) + '</div>' + av(e, 'pod-av') +
+        '<div class="pod-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
+        '<div class="pod-pts">' + e.points.toLocaleString() + ' pts</div></div>';
+    }).join('');
+    var max = Math.max.apply(null, b.entries.map(function (e) { return e.points; }).concat([1]));
+    document.getElementById('rows').innerHTML = rest.map(function (e) {
+      return '<div class="row' + (e.isMe ? ' me' : '') + '"' + (isChamp(e) ? ' style="border-color:var(--gold,#f59e0b)"' : '') + '>' +
+        '<div class="row-rank">' + e.rank + '</div>' + av(e, 'row-av') +
+        '<div class="row-body"><div class="row-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
+        '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round(e.points / max * 100)) + '%"></div></div></div>' +
+        '<div class="row-pts"><b>' + e.points.toLocaleString() + '</b><span>' + (e.gap ? '+' + e.gap + ' to pass' : 'leader') + '</span></div></div>';
+    }).join('');
+    var mine = null;
+    b.entries.forEach(function (e) { if (e.isMe) mine = e; });
+    document.getElementById('myRankLbl').textContent = '#' + mine.rank;
+    document.getElementById('myPtsLbl').textContent = mine.points.toLocaleString() + ' pts';
+    document.getElementById('meRow').innerHTML =
+      '<div class="row-rank">#' + mine.rank + '</div>' + av(mine, 'row-av') +
+      '<div class="row-body"><div class="row-name">' + esc(mine.name) + ' · you</div>' +
+      '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round(mine.points / max * 100)) + '%"></div></div></div>' +
+      '<div class="row-pts"><b>' + mine.points.toLocaleString() + '</b><span>' + (mine.rank > 1 ? '+' + mine.gap + ' to #' + (mine.rank - 1) : 'leader') + '</span></div>';
+  }
+  function renderStatic() {
+    var W = ReaderLeague.WEIGHTS;
+    var known = { chapter: '📖 Chapter', hour: '⏱ Hour read', reaction: '❤️ Reaction', comment: '💬 Comment', reply: '↩️ Reply', debate: '🗳 Debate vote', win: '🏆 Debate win', streak: '🔥 Streak day' };
+    var pretty = function (k) {
+      if (known[k]) return known[k];
+      var icon = '✦', lbl = k.replace(/_/g, ' ');
+      try {
+        var customI = (ReaderLeague.actionIcon && ReaderLeague.actionIcon(k)) || '';
+        if (customI) icon = customI;
+        var custom = (ReaderLeague.actionLabel && ReaderLeague.actionLabel(k)) || '';
+        if (custom) lbl = custom;
+      } catch (e) {}
+      return icon + ' ' + lbl;
+    };
+    document.getElementById('scoring').innerHTML = Object.keys(W).map(function (k) {
+      return '<div class="score"><b>+' + W[k] + '</b> ' + pretty(k) + '</div>';
+    }).join('');
+    var medalC = ['#f59e0b', '#a0a0b0', '#a07040'];
+    document.getElementById('prizes').innerHTML = ReaderLeague.PRIZES.map(function (p, i) {
+      var perks = (p.perks && p.perks.length ? p.perks.join(' · ') : p.badge);
+      return '<div class="prize"><div class="prize-ic" style="background:' + medalC[i] + '22;color:' + medalC[i] + '"><i class="fas ' + p.icon + '"></i></div>' +
+        '<div class="prize-body"><div class="prize-t">#' + p.place + ' · ' + perks + '</div>' +
+        '<div class="prize-s">' + p.badge + ' badge on your profile</div></div></div>';
+    }).join('');
+    try {
+      var mc = ReaderLeague.monthlyLeader();
+      if (mc) {
+        document.getElementById('crownBanner').style.display = 'flex';
+        document.getElementById('crownTitle').textContent = '👑 ' + mc.handle + ' leads ' + mc.month;
+        document.getElementById('crownSub').textContent = mc.wins + ' weekly crown' + (mc.wins === 1 ? '' : 's') + ' this month';
+      }
+    } catch (e) {}
+  }
+  document.getElementById('tabWeekly').addEventListener('click', function () {
+    scope = 'weekly';
+    this.classList.add('on'); document.getElementById('tabAlltime').classList.remove('on');
+    render();
+  });
+  document.getElementById('tabAlltime').addEventListener('click', function () {
+    scope = 'alltime';
+    this.classList.add('on'); document.getElementById('tabWeekly').classList.remove('on');
+    render();
+  });
+  renderStatic();
+  render();
+  try {
+    var t = ReaderLeague.pendingToast();
+    if (t) setTimeout(function () { toast(t); render(); }, 800);
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

@@ -11,6 +11,42 @@ async function callBackend(path, options){
   return res.json();
 }
 
+/* Demo handoff: review outcomes feed the reader -> writer UI on the profile.
+   Backend replaces this once the API owns submissions. Returns true if this
+   queue item was the current reader's pending book. */
+function recordFlowOutcome(s, status, feedback){
+  if (USE_API) return false;
+  try {
+    const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
+    if (!flow || flow.status !== 'pending') return false;
+    if (flow.title && s.title && cleanTitle(flow.title) !== cleanTitle(s.title)) return false;
+    flow.status = status;
+    if (feedback) flow.feedback = String(feedback).slice(0, 300);
+    flow.at = Date.now();
+    localStorage.setItem('dro_writer_flow', JSON.stringify(flow));
+    return true;
+  } catch (e) { return false; }
+}
+
+/* Demo handoff: surface the current reader's pending book at the top of the
+   queue so an editor can review it (the API serves this later). */
+function ownPendingSubmission(){
+  if (USE_API) return null;
+  try {
+    const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
+    if (!flow || flow.status !== 'pending' || !flow.title) return null;
+    const title = cleanTitle(flow.title);
+    return {
+      id: 'REV-ME', title, author: 'You_Reader', genre: flow.genre || 'Fiction',
+      submitted: 'just now', words: Math.max(MIN_WORDS, Number(flow.words) || 0),
+      status: 'pending', priority: 'high', feedback: '',
+      chapters: 1, cover: coverFor(title, 0), avatar: null,
+      synopsis: 'Just submitted from the app — first book awaiting approval.',
+      editor: CURRENT_EDITOR,
+    };
+  } catch (e) { return null; }
+}
+
 const shell = SeniorEditorSidebar.attach('#queueRoot', {
   activeItem: 'review-queue',
   title: 'Review Queue',
@@ -120,6 +156,9 @@ async function init(){
       editor: CURRENT_EDITOR,
     };
   });
+
+  const own = ownPendingSubmission();
+  if (own) allSubs.unshift(own);
 
   buildStats();
   buildFilterPills();
@@ -367,7 +406,8 @@ function openSheet(id){
           if (!fb) { toast('⚠️ Add feedback for the author before rejecting'); return; }
           await SeniorEditorData.updateReviewItem(s.id, 'rejected', fb);
           s.status = 'rejected'; s.feedback = fb;
-          toast(`↩️ "${s.title}" declined`);
+          const wasOurs = recordFlowOutcome(s, 'rejected', fb);
+          toast(`↩️ "${s.title}" declined` + (wasOurs ? ' — author stays a reader, feedback sent' : ''));
           closeSheet(); buildStats(); buildFilterPills(); applyFilters();
         };
       }
@@ -396,7 +436,8 @@ async function doQuickAccept(s){
     await SeniorEditorData.updateReviewItem(s.id, 'approved', 'Accepted — book is now live on the platform.');
     s.status = 'approved';
     s.feedback = 'Accepted — book is now live on the platform.';
-    toast('\u2705 "' + s.title + '" is now live!');
+    const upgraded = recordFlowOutcome(s, 'approved');
+    toast('✅ "' + s.title + '" is now live!' + (upgraded ? ' — author upgraded to Writer' : ''));
     closeSheet(); buildStats(); buildFilterPills(); applyFilters();
   } catch (err) {
     toast('\u26a0\ufe0f Error: ' + (err.message || 'Something went wrong'));
@@ -514,7 +555,8 @@ async function submitAccept(){
     await SeniorEditorData.updateReviewItem(s.id, 'approved', feedback);
     s.status = 'approved';
     s.feedback = feedback;
-    toast('\u2705 "' + s.title + '" accepted \u2014 ' + contract.label);
+    const upgraded = recordFlowOutcome(s, 'approved', feedback);
+    toast('✅ "' + s.title + '" accepted — ' + contract.label + (upgraded ? ' · author upgraded to Writer' : ''));
     closeContractModal(); closeSheet();
     buildStats(); buildFilterPills(); applyFilters();
   } catch (err) {

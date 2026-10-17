@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Earnings Ã‚Â· DroBoard</title>
+<title>Earnings · DroBoard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -28,7 +28,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .avatar-btn img{width:100%;height:100%}
 .menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── HAMBURGER DRAWER ──────── */
 .drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .drawer-overlay.open{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
@@ -48,7 +48,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 
 .content{padding:14px 16px 20px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Balance Card Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Balance Card ──────── */
 .balance-card{background:linear-gradient(135deg,var(--pink),#7a0030);border-radius:18px;padding:22px 20px;color:#fff;margin-bottom:20px;box-shadow:0 10px 30px rgba(255,0,80,.3)}
 .balance-label{font-size:11px;font-weight:700;opacity:.75;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
 .balance-amount{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
@@ -64,7 +64,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .btn-outline{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
 .btn-outline:active{opacity:.85}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Month Comparison Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Month Comparison ──────── */
 .month-row{display:flex;gap:10px;margin-bottom:20px}
 .month-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .month-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
@@ -73,13 +73,13 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .month-delta.up{color:var(--success)}
 .month-delta.down{color:var(--danger)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Section Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Section ──────── */
 .section{margin-bottom:22px}
 .sec-head{display:flex;align-items:center;justify-content:space-between;padding:0 0 10px}
 .sec-title{font-size:16px;font-weight:700}
 .view-all{font-size:12px;font-weight:600;color:var(--pink);cursor:pointer}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Book Earnings Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Book Earnings ──────── */
 .book-earn-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .book-earn-cover{width:48px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#e8e8ed}
 .book-earn-cover img{width:100%;height:100%}
@@ -88,14 +88,14 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .book-earn-stats{font-size:11px;color:var(--muted);margin-top:2px}
 .book-earn-amount{font-size:16px;font-weight:800;color:var(--success);flex-shrink:0}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Quick Actions Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Quick Actions ──────── */
 .actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .action-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer}
 .action-card:active{opacity:.85}
 .action-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 8px}
 .action-label{font-size:11.5px;font-weight:700}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Toast Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Toast ──────── */
 .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 

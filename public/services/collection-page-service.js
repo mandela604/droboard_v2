@@ -98,6 +98,7 @@
     initTabs();
     initButtons();
     initReportModal();
+    try { if (window.InsightsTracker) InsightsTracker.hit('collection', String(colId)); } catch (e) {}
   }
 
   function renderHero(col) {
@@ -217,6 +218,10 @@
       dropdown.classList.remove('show');
       openReportModal();
     });
+    document.getElementById('collStatsBtn')?.addEventListener('click', () => {
+      dropdown.classList.remove('show');
+      location.href = 'insights.html?surface=collection&id=' + encodeURIComponent(collId());
+    });
   }
 
   /* ── Report Modal ── */
@@ -296,42 +301,58 @@
     setTimeout(() => { t.style.opacity = '0'; }, 2000);
   }
 
-  /* ── Add Story via ⋯ menu ── */
+  /* ── Add Story via ⋯ menu (with live search; picks survive filtering) ── */
   let addSelected = new Set();
+  let addStories = [];
+  function paintAddGrid(query) {
+    const grid = document.getElementById('addStoryGrid');
+    if (!grid) return;
+    const q = (query || '').trim().toLowerCase();
+    const hits = !q ? addStories.slice(0, 30) : addStories.filter(s =>
+      ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.author || '').toLowerCase().indexOf(q) !== -1));
+    if (!addStories.length) { grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No more stories to add.</div>'; }
+    else if (!hits.length) { grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No stories match your search.</div>'; }
+    else {
+      grid.innerHTML = hits.map(s=> '<div class="add-pick" data-id="'+s.id+'" style="border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;background:var(--divider)"><img src="'+s.cover+'" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"/><div style="font-size:9px;font-weight:700;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(s.title||'')+'</div><div style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;opacity:0" class="pick-check"><i class="fas fa-check"></i></div></div>').join('');
+      // make picks position relative + restore picked state
+      grid.querySelectorAll('.add-pick').forEach(el=>{ el.style.position='relative';
+        const id = String(el.dataset.id);
+        if (addSelected.has(id)) { el.style.borderColor='var(--pink)'; el.querySelector('.pick-check').style.opacity='1'; el.querySelector('.pick-check').style.background='var(--pink)'; }
+        el.addEventListener('click', ()=>{
+          if(addSelected.has(id)){ addSelected.delete(id); el.style.borderColor='transparent'; el.querySelector('.pick-check').style.opacity='0'; } else { addSelected.add(id); el.style.borderColor='var(--pink)'; el.querySelector('.pick-check').style.opacity='1'; el.querySelector('.pick-check').style.background='var(--pink)'; }
+        });
+      });
+    }
+  }
   async function openAddStory() {
     let stories = [];
     try {
       const res = await fetch(API_BASE + '/collections/eligible-stories', { credentials: 'include' });
       if (res.ok) {
         const j = await res.json();
-        if (j && Array.isArray(j.items)) stories = j.items.filter(s => s.eligible !== false).map(s => ({ id: s.id, title: s.title, cover: s.cover }));
+        if (j && Array.isArray(j.items)) stories = j.items.filter(s => s.eligible !== false).map(s => ({ id: s.id, title: s.title, cover: s.cover, author: s.author || '' }));
       }
     } catch (e) {}
     if (!stories.length) {
       const d = window.DemoData; stories = d ? (d.STORIES || d.COLLECTIONS?.[0]?.storyList || []) : [];
     }
-    const existing = new Set((currentCollection?.storyList || []).map(s=>s.id));
-    const avail = stories.filter(s=> !existing.has(s.id)).slice(0,18);
-    const grid = document.getElementById('addStoryGrid');
+    const existing = new Set((currentCollection?.storyList || []).map(s=>String(s.id || s)));
+    addStories = stories.filter(s=> !existing.has(String(s.id)));
     addSelected.clear();
-    if (!avail.length) { grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No more stories to add.</div>'; }
-    else {
-      grid.innerHTML = avail.map(s=> '<div class="add-pick" data-id="'+s.id+'" style="border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;background:var(--divider)"><img src="'+s.cover+'" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"/><div style="font-size:9px;font-weight:700;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(s.title||'')+'</div><div style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;opacity:0" class="pick-check"><i class="fas fa-check"></i></div></div>').join('');
-      // make picks position relative
-      grid.querySelectorAll('.add-pick').forEach(el=>{ el.style.position='relative'; el.addEventListener('click', ()=>{
-        const id=el.dataset.id; if(addSelected.has(id)){ addSelected.delete(id); el.style.borderColor='transparent'; el.querySelector('.pick-check').style.opacity='0'; } else { addSelected.add(id); el.style.borderColor='var(--pink)'; el.querySelector('.pick-check').style.opacity='1'; el.querySelector('.pick-check').style.background='var(--pink)'; }
-      }); });
-    }
+    const searchEl = document.getElementById('addStorySearch');
+    if (searchEl) searchEl.value = '';
+    paintAddGrid('');
     document.getElementById('addStoryOverlay').classList.add('open');
   }
   function closeAddStory(){ document.getElementById('addStoryOverlay').classList.remove('open'); }
   document.getElementById('addStoryBtn').addEventListener('click', ()=>{ document.getElementById('dropdownMenu').classList.remove('show'); openAddStory(); });
   document.getElementById('addStoryClose').addEventListener('click', closeAddStory);
   document.getElementById('addStoryOverlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAddStory(); });
+  document.getElementById('addStorySearch').addEventListener('input', e=> paintAddGrid(e.target.value));
   document.getElementById('addStoryConfirm').addEventListener('click', async ()=>{
     if (!addSelected.size) { showToast('Select at least one story'); return; }
     const d = window.DemoData; const all = d ? (d.STORIES||[]) : [];
-    const toAdd = all.filter(s=> addSelected.has(s.id));
+    const toAdd = all.filter(s=> addSelected.has(String(s.id)));
     const fullIds = [...(currentCollection.storyList||[]).map(s => s.id || s), ...toAdd.map(s => s.id)].filter(Boolean);
     try { await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { stories: fullIds }); } catch (e) {}
     currentCollection.storyList = [...(currentCollection.storyList||[]), ...toAdd];
@@ -366,10 +387,10 @@
   loadCollection();
 
   if (window.DroboardNav) {
-    DroboardNav.configure({ active: 'library' });
+    DroboardNav.configure({ active: 'none' });
   } else {
     document.addEventListener('DOMContentLoaded', () => {
-      if (window.DroboardNav) DroboardNav.configure({ active: 'library' });
+      if (window.DroboardNav) DroboardNav.configure({ active: 'none' });
     });
   }
 

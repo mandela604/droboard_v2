@@ -1,5 +1,23 @@
 'use strict';
 const { Comment, Reaction } = require('../models/social.model');
+const { User } = require('../models/user.model');
+
+// Attach display author ({name, avatar}) to lean comment rows so clients
+// never need a second lookup per comment.
+async function withAuthors(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const ids = [...new Set(list.map(c => String(c.authorId || '')).filter(Boolean))];
+  if (!ids.length) return list;
+  const users = await User.find({ $or: [{ id: { $in: ids } }, { _id: { $in: ids } }] })
+    .select('id username fullName avatar emailVerified').lean().catch(() => []);
+  const byId = {};
+  (users || []).forEach(u => {
+    const key = String(u.id || u._id || '');
+    if (key) byId[key] = { name: u.username || 'User', handle: u.username || '', avatar: u.avatar || '', verified: !!u.emailVerified };
+  });
+  list.forEach(c => { c.author = byId[String(c.authorId || '')] || { name: 'User', avatar: '' }; });
+  return list;
+}
 
 function canWrite(comment, user) {
   if (!user) return false;
@@ -8,35 +26,48 @@ function canWrite(comment, user) {
 }
 
 async function createComment({ authorId, data }) {
-  const { scope, storyId, chapterId, postId, parentId, text } = data;
+  const { scope, storyId, chapterId, postId, discussionId, parentId, team, text } = data;
   if (parentId) {
     const parent = await Comment.findOne({ id: parentId }).lean();
     if (!parent) { const e = new Error('no_parent'); e.status = 404; throw e; }
   }
+  if (scope === 'discussion') {
+    const { Discussion } = require('../models/social.model');
+    const disc = await Discussion.findOne({ id: String(discussionId || postId || '') }).select('id').lean();
+    if (!disc) { const e = new Error('no_discussion'); e.status = 404; throw e; }
+    await Discussion.updateOne({ id: disc.id }, { $inc: { commentsCount: 1 } });
+  }
   const comment = await Comment.create({
-    authorId, scope, storyId, chapterId, postId, parentId: parentId || null, text,
+    authorId, scope, storyId, chapterId, postId, discussionId: scope === 'discussion' ? String(discussionId || postId || '') : null,
+    parentId: parentId || null, team: team || null, text,
   });
   if (parentId) await Comment.updateOne({ id: parentId }, { $inc: { repliesCount: 1 } });
-  return comment.toJSON();
+  const out = comment.toJSON();
+  await withAuthors([out]);
+  return out;
 }
 
-async function listComments({ scope, storyId, chapterId, postId, page, limit }) {
+async function listComments({ scope, storyId, chapterId, postId, discussionId, page, limit }) {
   const filter = { parentId: null };
   if (scope) filter.scope = scope;
   if (storyId) filter.storyId = storyId;
   if (chapterId) filter.chapterId = chapterId;
   if (postId) filter.postId = postId;
+  if (discussionId) filter.discussionId = discussionId;
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
   const [items, total] = await Promise.all([
     Comment.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Comment.countDocuments(filter),
   ]);
+  await withAuthors(items);
   return { items, total, page: pg, limit: lim };
 }
 
 async function getReplies({ comment }) {
-  return Comment.find({ parentId: comment.id }).sort({ createdAt: 1 }).lean();
+  const rows = await Comment.find({ parentId: comment.id }).sort({ createdAt: 1 }).lean();
+  await withAuthors(rows);
+  return rows;
 }
 
 async function toggleLike({ comment, userId }) {
@@ -48,16 +79,24 @@ async function toggleLike({ comment, userId }) {
 }
 
 async function deleteComment({ comment }) {
+  const replies = comment.repliesCount || 0;
   await Comment.deleteMany({ parentId: comment.id });
   if (comment.parentId) await Comment.updateOne({ id: comment.parentId }, { $inc: { repliesCount: -1 } });
+  if (comment.scope === 'discussion' && comment.discussionId) {
+    const { Discussion } = require('../models/social.model');
+    await Discussion.updateOne({ id: comment.discussionId }, { $inc: { commentsCount: -(1 + replies) } });
+  }
   await comment.deleteOne();
   return { ok: true };
 }
 
 async function updateComment({ comment, text }) {
   comment.text = text;
+  comment.edited = true;
   await comment.save();
-  return comment.toJSON();
+  const out = comment.toJSON();
+  await withAuthors([out]);
+  return out;
 }
 
 function commentReactionCounts(comment) {

@@ -33,26 +33,28 @@
  * ─────
  *   <script src="reaction-picker.js"></script>
  *
- *   DroboardReactionPicker.attach(document.getElementById('feedArea'), {
- *     onReact:  (id, rid)   => { ... a reaction was picked/changed/removed ... },
- *     getState: (id)        => ({ userRx, love: 40, crying: 12, angry: 3, ... }),  // optional
- *   });
- *
- *   // Anywhere inside the attached root:
- *   `<div>${DroboardReactionPicker.renderTrigger('post-1', { liked:false, likeCount:42 })}</div>`
- *
- * Behaviour:
- *   • Tap the trigger  → toggles the "love" reaction (same as tapping ❤️ in the popup)
- *   • Hold the trigger → after ~550ms opens the reaction popup
- *   • Tap an emoji     → fires onReact(id, reactionId), moves the vote to
- *                        that reaction (only one active reaction per id)
- *   • Tap elsewhere    → closes any open popup
- *
- * Without any hooks supplied, the component runs entirely standalone,
- * keeping its own per-id reaction counts (seeded with random demo
- * numbers) — exactly like ad-card.js / post-card.js do when no hook
- * is given.
- */
+  *   DroboardReactionPicker.attach(document.getElementById('feedArea'), {
+  *     getState: (id)   => ({ userRx, love: 40, crying: 12, angry: 3, ... }) | null,
+  *     onReact:  (id, rid) => { ... a reaction was picked/changed/removed ... },
+  *   });
+  *
+  *   // Anywhere inside the attached root:
+  *   `<div>${DroboardReactionPicker.renderTrigger('post-1')}</div>`
+  *
+  * ── STATE OWNERSHIP (strict, no internal fallback) ──────────────────────
+  * All reaction state lives in the HOST. getState(id) is the single source
+  * of truth: return a state object for ids you own, or null to let another
+  * binding claim them. The component NEVER stores counts, NEVER seeds demo
+  * numbers, and NEVER mutates anything itself — onReact is the only write
+  * path. An id no binding owns renders inert (zero counts, taps do nothing).
+  *
+  * Behaviour:
+  *   • Tap the trigger  → toggles the "love" reaction (same as tapping ❤️ in the popup)
+  *   • Hold the trigger → after ~550ms opens the reaction popup
+  *   • Tap an emoji     → fires onReact(id, reactionId), moves the vote to
+  *                        that reaction (only one active reaction per id)
+  *   • Tap elsewhere    → closes any open popup
+  */
 (function () {
   'use strict';
   if (window.__droboardReactionPicker) return;
@@ -158,41 +160,27 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // State
+  // State — the component holds NO reaction counts. It resolves ownership
+  // per id by asking each binding's getState. Reverse iteration so the most
+  // recently attached binding wins ties. A binding OWNS an id iff its
+  // getState returns a non-null object; otherwise the id passes to the next
+  // binding. If no binding owns the id it is unowned → render inert, taps
+  // are a no-op. No internal cache, no random demo numbers.
   // ══════════════════════════════════════════════════════════════════════
   let _bindings = []; // [{root, hooks}] — supports feed + comments + hubs on same page
-  const _rxCache = {}; // per-id fallback when no hooks know the id
-  function _defaultState(id) {
-    if (!_rxCache[id]) {
-      const o = { userRx: null };
-      REACTIONS.forEach(r => (o[r.id] = Math.floor(Math.random() * 60) + 2));
-      _rxCache[id] = o;
-    }
-    return _rxCache[id];
-  }
-  function _hooksFor(id) {
+  /** Returns { hooks, state } for the binding that owns `id`, or null. */
+  function _resolve(id) {
     for (let i = _bindings.length - 1; i >= 0; i--) {
       const h = _bindings[i].hooks || {};
       if (typeof h.getState !== 'function') continue;
-      try {
-        const st = h.getState(id);
-        if (st && typeof st === 'object' && ('userRx' in st || 'love' in st)) return h;
-      } catch (e) {}
+      let st = null;
+      try { st = h.getState(id); } catch (e) { st = null; }
+      if (st && typeof st === 'object') return { hooks: h, state: st };
     }
-    for (let i = _bindings.length - 1; i >= 0; i--) {
-      const h = _bindings[i].hooks || {};
-      if (typeof h.onReact === 'function') return h;
-    }
-    return {};
+    return null;
   }
-  function _getState(id) {
-    const h = _hooksFor(id);
-    return (typeof h.getState === 'function') ? h.getState(id) : _defaultState(id);
-  }
-  function _topRowModeFor(id) {
-    const h = _hooksFor(id);
-    return (h && h.topRow) || 'inline';
-  }
+  function _getState(id) { const r = _resolve(id); return r ? r.state : null; }
+  function _topRowModeFor(id) { const r = _resolve(id); return (r && r.hooks.topRow) || 'inline'; }
 
   // ══════════════════════════════════════════════════════════════════════
   // Render
@@ -201,30 +189,25 @@
   /**
    * renderTrigger(id, opts)
    *   id                  — unique id for the item this trigger belongs to
-   *   opts.liked          — boolean, legacy seed: true means the user's
-   *                          current reaction is "love" (only used the
-   *                          FIRST time this id is rendered, to seed the
-   *                          internal cache — ignored once state exists)
-   *   opts.likeCount       — number, legacy seed for the "love" bucket's
-   *                          starting count (same first-render-only rule)
+   *   opts.liked          — display seed used ONLY when no binding owns this
+   *                          id (ephemeral, never stored): true = show as loved
+   *   opts.likeCount       — display seed for the count when unowned (ephemeral)
    *   opts.icon            — Font Awesome icon name without prefix (default: 'heart')
    * Returns an HTML string — drop it anywhere inside the element passed to attach().
+   * Once a binding owns `id`, its getState is the source of truth (opts ignored).
    */
   function renderTrigger(id, opts) {
     opts = opts || {};
     const icon = opts.icon || 'heart';
 
-    // Seed the internal cache from legacy {liked, likeCount} props, but only
-    // the first time we see this id — after that, the reaction state (however
-    // it changed since) is the source of truth.
-    if (!(id in _rxCache) && typeof _hooksFor(id).getState !== 'function') {
-      const seeded = { userRx: opts.liked ? 'love' : null };
-      REACTIONS.forEach(r => (seeded[r.id] = 0));
-      seeded.love = opts.liked ? Math.max(1, opts.likeCount || 1) : (opts.likeCount || 0);
-      _rxCache[id] = seeded;
+    let rx = _getState(id);
+    if (!rx) {
+      // Unowned id: render an inert display seeded from opts. Nothing is
+      // stored and taps stay inert — real counts require an owning binding.
+      rx = { userRx: opts.liked ? 'love' : null };
+      REACTIONS.forEach(r => (rx[r.id] = 0));
+      rx.love = opts.liked ? Math.max(1, opts.likeCount || 1) : (opts.likeCount || 0);
     }
-
-    const rx = _getState(id);
     const total = _totalCount(rx);
     const liked = !!rx.userRx; // trigger reads "active" whenever ANY reaction is picked
 
@@ -249,20 +232,10 @@
   // apart from each other.
   // ══════════════════════════════════════════════════════════════════════
   function _toggleReaction(id, rid) {
-    const h = _hooksFor(id);
-    if (typeof h.onReact === 'function') {
-      h.onReact(id, rid);
-      return;
-    }
-    const rx = _defaultState(id);
-    if (rx.userRx === rid) {
-      rx[rid] = Math.max(0, (rx[rid] || 0) - 1);
-      rx.userRx = null;
-    } else {
-      if (rx.userRx) rx[rx.userRx] = Math.max(0, (rx[rx.userRx] || 0) - 1);
-      rx[rid] = (rx[rid] || 0) + 1;
-      rx.userRx = rid;
-    }
+    const r = _resolve(id);
+    // No owning binding (or it can't write) → inert. State lives in the host.
+    if (!r || typeof r.hooks.onReact !== 'function') return;
+    r.hooks.onReact(id, rid);
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -273,6 +246,7 @@
     const pop = document.getElementById('drp-pop-' + id);
     if (!pop) return;
     const rx = _getState(id);
+    if (!rx) return;
     pop.innerHTML = REACTIONS.map(r => `
       <div class="drp-btn${rx.userRx === r.id ? ' reacted' : ''}" data-drp-pid="${id}" data-drp-rid="${r.id}">
         <span class="drp-emoji">${r.emoji}</span>
@@ -284,6 +258,7 @@
     const trigger = document.querySelector(`.drp-trigger[data-drp-id="${id}"]`);
     if (!trigger) return;
     const rx = _getState(id);
+    if (!rx) return;
     const total = _totalCount(rx);
     const liked = !!rx.userRx;
 
@@ -299,12 +274,9 @@
 
     // Keep any external top-N slots for this id in sync (e.g. badges
     // rendered after a card's share button via renderTop).
-    try {
-      const rx2 = _getState(id);
-      document.querySelectorAll('[data-drp-top="' + _escSel(id) + '"]').forEach(slot => {
-        slot.innerHTML = _topInner(rx2, 2);
-      });
-    } catch (e) {}
+    document.querySelectorAll('[data-drp-top="' + _escSel(id) + '"]').forEach(slot => {
+      slot.innerHTML = _topInner(rx, 2);
+    });
 
     // Rebuild the top-3 emoji row — counts (and therefore ranking/inclusion)
     // may have changed, so the whole badge set is regenerated in place.
@@ -333,16 +305,15 @@
    * Public method for the host page to push a reaction-state change into
    * an already-rendered trigger (e.g. after its own data mutation),
    * without needing to re-render the whole card. `patch` merges onto the
-   * internal cache the same shape getState()/onReact use, e.g.:
+   * state object returned by the owning binding's getState(), same shape
+   * getState/onReact use, e.g.:
    *   DroboardReactionPicker.update('post-1', { userRx: 'love', love: 41 });
-   * Only meaningful when no getState hook is supplied — if you provide
-   * getState, that's your source of truth and update() just re-reads it.
+   * getState is the source of truth — update() only re-reads it (and
+   * optionally merges a patch onto that state object) then re-renders.
    */
   function update(id, patch) {
-    const h = _hooksFor(id);
-    if (typeof h.getState !== 'function') {
-      _rxCache[id] = Object.assign({}, _defaultState(id), patch || {});
-    }
+    const r = _resolve(id);
+    if (r && patch) Object.assign(r.state, patch);
     _refresh(id);
   }
 
@@ -399,6 +370,7 @@
       if (e.target.closest('.drp-popup')) return;
       const trigger = e.target.closest('[data-drp-trigger]');
       if (!trigger || heldOpen) return;
+      e.stopPropagation();
       const id = trigger.dataset.drpId;
       _toggleReaction(id, 'love');
       _refresh(id);

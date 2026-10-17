@@ -124,6 +124,23 @@
   }
 
   /**
+   * Generated cover for a demo-created book (title initials on a gradient),
+   * so the approved book has art without depending on external assets.
+   */
+  function flowCover(title) {
+    const initials = String(title).split(/\s+/).slice(0, 2)
+      .map(w => (w[0] || '').toUpperCase()).join('') || 'B';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160">' +
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" stop-color="#ff0050"/><stop offset="1" stop-color="#a78bfa"/>' +
+      '</linearGradient></defs>' +
+      '<rect width="120" height="160" fill="url(#g)"/>' +
+      '<text x="60" y="92" font-family="Arial" font-size="40" font-weight="700" fill="#ffffff" text-anchor="middle">' +
+      initials.replace(/[<>&]/g, '') + '</text></svg>';
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+
+  /**
    * Clone a profile for the UI: isOwner flag + card-ready posts.
    * STORE stays raw; only the returned copy is adapted.
    */
@@ -133,6 +150,31 @@
     const isOwner = raw.handle === me;
     const p = clone(raw);
     p.isOwner = isOwner;
+    // Demo reader->writer approval: editor approved our first book => writer.
+    // Gated on !USE_API so the backend owns this flag once the API is live.
+    if (isOwner && !USE_API && !p.isWriter) {
+      try {
+        const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
+        if (flow && flow.status === 'approved') {
+          p.isWriter = true;
+          const t = String(flow.title || '').trim();
+          if (t && !(p.books || []).some(b => b.title === t)) {
+            p.books = (p.books || []);
+            p.books.unshift({
+              id: 'me_' + (flow.at || Date.now()),
+              title: t,
+              cat: flow.genre || 'Fiction',
+              cover: flowCover(t),
+              reads: '0', likes: '0', rating: 'New',
+              status: 'ongoing',
+              chapters: Number(flow.chapters) || 1,
+            });
+            p.stats = p.stats || {};
+            p.stats.books = p.books.length;
+          }
+        }
+      } catch (e) {}
+    }
     p.posts = (p.posts || []).map(post => toCardPost(post, p, isOwner));
     return p;
   }
@@ -238,6 +280,7 @@
     const {
       type = 'post', text = '', quote = '', caption = '', note = '',
       chapterRef = null, storyRef = null, amaData = null, pinned = false,
+      image = '', poll = null, prediction = null, debateData = null,
     } = payload || {};
     await delay(300);
     const base = requireProfile(key);
@@ -247,6 +290,10 @@
       liked: false, likes: 0, comments: 0, saved: false,
       text, quote, caption, note, chapterRef, storyRef, amaData,
     };
+    if (image) post.image = image;
+    if (poll) post.poll = poll;
+    if (prediction) post.prediction = prediction;
+    if (debateData) post.debateData = debateData;
     if (pinned) base.posts.forEach(p => { p.pinned = false; });
     base.posts.unshift(post);
     return presentProfile(base);

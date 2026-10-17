@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<title>Debate · DroBoard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
+<style>
+:root{
+  --green-s:rgba(52,211,153,.10);--green-bd:rgba(52,211,153,.30);
+  --red:#f87171;--red-s:rgba(248,113,113,.10);--red-bd:rgba(248,113,113,.30);
+  --safe-b:env(safe-area-inset-bottom,12px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);
+  font-family:var(--font-ui)}
+body{display:flex;justify-content:center;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{display:none}
+
+.phone{
+  width:100%;max-width:420px;min-height:100vh;background:var(--l1);
+  box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;
+  padding-bottom:calc(var(--safe-b) + 16px);
+}
+
+.top-bar{
+  position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px;
+  padding:11px 12px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);
+}
+[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.top-icon-btn{
+  width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--tx-muted);flex-shrink:0;
+}
+.top-center{flex:1;min-width:0}
+.top-title{font-size:15px;font-weight:800;color:var(--tx-high)}
+.top-sub{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── QUESTION ── */
+.deb-q-wrap{padding:18px 14px 14px;border-bottom:8px solid var(--bg)}
+[data-theme="dark"] .deb-q-wrap{border-bottom-color:#000;box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
+.deb-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:4px 10px;border-radius:12px;background:rgba(255,0,80,.08);color:var(--acc);margin-bottom:10px}
+.deb-live{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:blink 1.3s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.deb-q{font-size:18px;font-weight:800;color:var(--tx-high);line-height:1.3;letter-spacing:-.02em;margin-bottom:6px}
+.deb-prompt{font-size:13px;color:var(--tx-muted);line-height:1.5}
+
+/* ── VOTE SIDES ── */
+.deb-sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
+.deb-side{
+  border-radius:14px;padding:16px 12px;cursor:pointer;border:2px solid var(--bd);
+  background:var(--l2);text-align:center;transition:all .2s;position:relative;overflow:hidden;
+}
+.deb-side.for.chosen{border-color:var(--green-bd);background:var(--green-s)}
+.deb-side.against.chosen{border-color:var(--red-bd);background:var(--red-s)}
+.deb-side.for:hover{border-color:var(--green-bd)}
+.deb-side.against:hover{border-color:var(--red-bd)}
+.deb-side-emoji{font-size:26px;margin-bottom:6px}
+.deb-side-label{font-size:12px;font-weight:800;margin-bottom:8px}
+.deb-side.for .deb-side-label{color:#0d9668}
+.deb-side.against .deb-side-label{color:#dc2626}
+.deb-side-bar{height:4px;background:var(--bd);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.deb-side-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.deb-side.for .deb-side-fill{background:var(--green)}
+.deb-side.against .deb-side-fill{background:var(--red)}
+.deb-side-pct{font-size:16px;font-weight:900;color:var(--tx-high)}
+.deb-side-count{font-size:10px;color:var(--tx-muted);margin-top:2px}
+.deb-side-check{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;font-size:9px;display:none;align-items:center;justify-content:center}
+.deb-side.against .deb-side-check{background:var(--red)}
+.deb-side.chosen .deb-side-check{display:flex}
+.deb-total{padding:0 14px 14px;font-size:12px;color:var(--tx-muted);text-align:center;font-weight:600}
+
+/* ── PICK PROMPT ── */
+.deb-pick-prompt{
+  margin:0 14px 14px;padding:14px;border-radius:12px;background:var(--l2);border:1.5px dashed var(--bd);
+  text-align:center;cursor:pointer;transition:.15s;
+}
+.deb-pick-prompt:active{transform:scale(.98)}
+.deb-pick-prompt i{font-size:16px;color:var(--acc);margin-bottom:5px;display:block}
+.deb-pick-prompt-t{font-size:12.5px;font-weight:700;color:var(--tx-high)}
+.deb-pick-prompt-s{font-size:11px;color:var(--tx-muted);margin-top:3px}
+
+/* ── ARGUMENTS ── */
+.deb-args{padding:0 14px 20px}
+.deb-args-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.deb-args-title{font-size:14px;font-weight:800;color:var(--tx-high)}
+.deb-args-filter{display:flex;gap:5px}
+.deb-filter-btn{font-size:10px;font-weight:700;padding:5px 10px;border-radius:10px;background:var(--l2);border:1px solid var(--bd);color:var(--tx-muted)}
+.deb-filter-btn.on{background:rgba(255,0,80,.08);border-color:var(--bd-acc);color:var(--acc)}
+.deb-arg{
+  padding:12px;border-radius:12px;background:var(--l2);border:1px solid var(--bd);margin-bottom:8px;
+}
+.deb-arg-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.deb-arg-av{width:30px;height:30px;border-radius:50%;object-fit:cover;background:var(--l4)}
+.deb-arg-name{font-size:12px;font-weight:700;color:var(--tx-high)}
+.deb-arg-side{font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px}
+.deb-arg-side.for{background:var(--green-s);color:#0d9668}
+.deb-arg-side.against{background:var(--red-s);color:#dc2626}
+.deb-arg-time{font-size:10px;color:var(--tx-faint);margin-left:auto}
+.deb-arg-text{font-size:13px;color:var(--tx-body);line-height:1.55}
+.deb-arg-foot{display:flex;align-items:center;gap:12px;margin-top:8px}
+.deb-arg-like{font-size:11px;color:var(--tx-muted);cursor:pointer;display:flex;align-items:center;gap:4px}
+.deb-arg-like.liked{color:var(--acc)}
+.deb-empty{text-align:center;padding:30px 10px;color:var(--tx-muted);font-size:12.5px}
+
+/* ── COMMENT INPUT ── */
+.deb-input-bar{
+  position:sticky;bottom:0;z-index:100;display:flex;gap:8px;align-items:center;
+  padding:10px 14px calc(10px + var(--safe-b));background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-top:1px solid var(--bd);
+}
+[data-theme="dark"] .deb-input-bar{background:rgba(0,0,0,.97)}
+.deb-input{
+  flex:1;border:1.5px solid var(--bd);border-radius:20px;padding:10px 14px;font-size:13px;
+  font-family:inherit;background:var(--l2);color:var(--tx-high);outline:none;resize:none;max-height:80px;
+}
+.deb-input:focus{border-color:var(--bd-acc);background:var(--l1)}
+.deb-send{
+  width:38px;height:38px;border-radius:50%;background:var(--acc);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:.15s;
+}
+.deb-send:disabled{opacity:.35;pointer-events:none}
+.deb-send:active{transform:scale(.92)}
+
+/* ── SIDE PICK MODAL ── */
+.deb-modal-ov{
+  position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
+  display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.deb-modal-ov.open{opacity:1;pointer-events:auto}
+.deb-modal{
+  width:100%;max-width:420px;background:var(--l1);border-radius:20px 20px 0 0;padding:20px 16px calc(20px + var(--safe-b));
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+.deb-modal-ov.open .deb-modal{transform:translateY(0)}
+.deb-modal-title{font-size:16px;font-weight:800;color:var(--tx-high);text-align:center;margin-bottom:4px}
+.deb-modal-sub{font-size:12px;color:var(--tx-muted);text-align:center;margin-bottom:16px}
+.deb-modal-opt{
+  display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;border:2px solid var(--bd);
+  background:var(--l2);cursor:pointer;margin-bottom:10px;transition:.15s;
+}
+.deb-modal-opt:active{transform:scale(.98)}
+.deb-modal-opt.for{border-color:var(--green-bd)}
+.deb-modal-opt.against{border-color:var(--red-bd)}
+.deb-modal-emoji{font-size:24px}
+.deb-modal-opt-label{font-size:14px;font-weight:800}
+.deb-modal-opt.for .deb-modal-opt-label{color:#0d9668}
+.deb-modal-opt.against .deb-modal-opt-label{color:#dc2626}
+.deb-modal-opt-sub{font-size:11px;color:var(--tx-muted);margin-top:2px}
+.deb-modal-cancel{width:100%;padding:12px;border-radius:12px;background:var(--l2);border:1px solid var(--bd);font-size:13px;font-weight:700;color:var(--tx-muted);margin-top:4px}
+
+.toast{
+  position:fixed;bottom:calc(var(--safe-b) + 70px);left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:9px 16px;border-radius:24px;
+  font-size:12px;font-weight:600;z-index:900;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.deb-top-ad{padding:12px 14px 4px}
+.deb-top-ad-label{font-size:9px;font-weight:800;color:var(--tx-faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.deb-top-ad-slot .dac-native,.deb-top-ad-slot .dac-promo,.deb-top-ad-slot .dac-platform{border-radius:14px;border-bottom:none}
+.deb-top-ad-slot .dac-banner{border-radius:14px}
+.da-ad-slot{margin:0 0 12px}
+.da-ad-slot-lbl{font-size:9px;font-weight:800;color:var(--tx-faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.da-ad-slot .dac-native,.da-ad-slot .dac-promo,.da-ad-slot .dac-platform{border-radius:14px;border-bottom:none}
+.da-ad-slot .dac-banner{border-radius:14px}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button type="button" class="top-icon-btn" onclick="history.back()" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <div class="top-center">
+      <div class="top-title">Debate</div>
+      <div class="top-sub" id="debSub">Reader Engagement</div>
+    </div>
+    <button type="button" class="top-icon-btn" onclick="DebatePage.share()" aria-label="Share"><i class="fas fa-share-nodes"></i></button>
+  </div>
+
+  <div class="deb-top-ad" id="debTopAd" style="display:none">
+    <div class="deb-top-ad-label">Sponsored</div>
+    <div class="deb-top-ad-slot" id="debTopAdSlot" data-ad-slot="debate:top"></div>
+  </div>
+
+  <div class="deb-q-wrap">
+    <div class="deb-badge"><span class="deb-live"></span> Live Debate</div>
+    <div class="deb-q" id="debQ"></div>
+    <div class="deb-prompt" id="debPrompt"></div>
+  </div>
+
+  <div class="deb-sides">
+    <div class="deb-side for" id="sideFor" onclick="DebatePage.vote('for')">
+      <div class="deb-side-check"><i class="fas fa-check"></i></div>
+      <div class="deb-side-emoji">✅</div>
+      <div class="deb-side-label" id="forLabel">FOR</div>
+      <div class="deb-side-bar"><div class="deb-side-fill" id="forFill" style="width:50%"></div></div>
+      <div class="deb-side-pct" id="forPct">50%</div>
+      <div class="deb-side-count" id="forCnt">0</div>
+    </div>
+    <div class="deb-side against" id="sideAg" onclick="DebatePage.vote('against')">
+      <div class="deb-side-check"><i class="fas fa-check"></i></div>
+      <div class="deb-side-emoji">❌</div>
+      <div class="deb-side-label" id="agLabel">AGAINST</div>
+      <div class="deb-side-bar"><div class="deb-side-fill" id="agFill" style="width:50%"></div></div>
+      <div class="deb-side-pct" id="agPct">50%</div>
+      <div class="deb-side-count" id="agCnt">0</div>
+    </div>
+  </div>
+  <div class="deb-total" id="debTotal">0 joined the discussion</div>
+
+  <div class="deb-args">
+    <div id="argsMount"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../component/debate-args.js"></script>
+<script src="../component/status-viewer.js?v=2"></script>
+<script src="../component/report-sheet.js"></script>
+<script src="../component/dots-menu.js"></script>
+<script src="../component/ad-card.js?v=2"></script>
+<script src="../data/ad-data.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/feed-data.js"></script>
+<script src="../services/ad-service.js"></script>
+<script src="../component/ad-slot.js"></script>
+<script src="../services/league-service.js"></script>
+<script src="../services/debate-service.js"></script>
+<script>DebatePage.init();</script>
+</body>
+</html>

@@ -75,12 +75,16 @@
       { label: 'Reads', value: s.reads, cls: 'r' },
       { label: 'Likes', value: s.likes, cls: 'g' },
     ];
+    var _rank = null;
+    try { _rank = (window.ReaderLeague && !p.isWriter) ? ReaderLeague.myRank() : null; } catch (e) {}
     return [
       { label: 'Following', value: s.following, cls: '' },
       { label: 'Followers', value: s.followers, cls: 'r' },
-      { label: 'Saved', value: s.saved, cls: 'b' },
-      { label: 'Reactions', value: s.reactions, cls: 'g' },
-      { label: 'Comments', value: s.comments, cls: '' },
+      _rank
+        ? { label: 'Rank', value: '#' + _rank.rank, cls: 'gold', href: 'leaderboard.html', sub: _rank.endsIn }
+        : { label: 'Saved', value: s.saved, cls: 'b' },
+      { label: 'Time Spent', value: (Number(s.readingHours) || 0) + 'h', cls: 'g' },
+      { label: 'Streak', value: (Number(s.streak) || 0) + 'd', cls: '' },
     ];
   }
 
@@ -157,7 +161,14 @@
     document.getElementById('avImg').src = p.avatar;
     document.getElementById('avImg').alt = p.name;
     document.getElementById('avRing').className = 'av-ring ' + (p.isWriter ? 'role-writer' : 'role-reader');
+    try {
+      var _rg = (window.ReaderLeague && ReaderLeague.reigning) ? ReaderLeague.reigning() : null;
+      if (_rg && _rg.handle && (p.handle === _rg.handle || p.username === _rg.handle)) {
+        document.getElementById('avRing').className += ' champ';
+      }
+    } catch (e) {}
     document.getElementById('verifiedBadge').style.display = p.verified ? 'flex' : 'none';
+    refreshStoryRing(p);
     document.getElementById('profileName').textContent = p.name;
     document.getElementById('roleTag').className = 'role-tag ' + (p.isWriter ? 'writer' : 'reader');
     document.getElementById('roleTag').textContent = p.isWriter ? '✍️ Writer' : '📖 Reader';
@@ -165,6 +176,7 @@
     document.getElementById('verifiedInline').style.display = p.verified ? 'inline-flex' : 'none';
     document.getElementById('profileBio').textContent = p.bio;
     document.getElementById('heroEditBtn').style.display = IS_OWNER ? 'flex' : 'none';
+    document.getElementById('heroStatsBtn').style.display = IS_OWNER ? 'flex' : 'none';
     const shown = (p.genres || []).slice(0, 5);
     document.getElementById('genrePillsDisplay').innerHTML = shown.map(id => {
       const g = GENRES_ALL.find(x => x.id === id);
@@ -172,6 +184,58 @@
     }).join('') + (IS_OWNER ? `<div class="genre-pill inactive" id="editGenresPill">+ Edit</div>` : '');
     const pill = document.getElementById('editGenresPill');
     if (pill) pill.addEventListener('click', openGenreEdit);
+  }
+
+  function handleStatusSlide(slide) {
+    try { if (window.DroboardStatus) window.DroboardStatus.post(slide); } catch (e) {}
+    try { refreshStoryRing(PROFILE); } catch (e) {}
+    toast('🟢 Status posted to your story!');
+  }
+  /* ── Story ring + post entry on avatar ──
+     Tap avatar = VIEW (opens viewer if a live story exists).
+     Plus badge (owner) = POST (composer straight to status). */
+  function myLiveSlides() {
+    try { return (window.DroboardStatus && window.DroboardStatus.slides()) || []; }
+    catch (e) { return []; }
+  }
+  function refreshStoryRing(p) {
+    var ring = document.getElementById('avRing');
+    var plus = document.getElementById('avPlus');
+    var img = document.getElementById('avImg');
+    if (!ring) return;
+    var isOwner = (typeof IS_OWNER !== 'undefined') ? IS_OWNER : true;
+    var slides = isOwner ? myLiveSlides() : ((p && p.statuses) || []);
+    var has = !!(slides && slides.length);
+    var isChamp = false;
+    try {
+      var _rg = (window.ReaderLeague && ReaderLeague.reigning) ? ReaderLeague.reigning() : null;
+      isChamp = !!(_rg && _rg.handle && (p.handle === _rg.handle || p.username === _rg.handle));
+    } catch (e) {}
+    /* No story → neutral ring (never the red story ring). Story → conic.
+       Champion keeps the gold frame. */
+    var base = 'av-ring' + (isChamp ? ' champ' : (has ? ' ' + (p.isWriter ? 'role-writer' : 'role-reader') + ' has-story' : ' no-story'));
+    ring.className = base;
+    if (img) { img.style.cursor = has ? 'pointer' : ''; img.onclick = null; ring.onclick = null;
+      if (has) {
+        var open = function () {
+          if (!window.openStatusViewer) { toast('Story viewer missing'); return; }
+          var me = { id: 'you', name: (p && p.name) || 'You', avatar: img.src, ring: 'ring-live', likes: 0, statuses: slides.map(function (s) { return { bg: s.bg, quote: s.quote, caption: s.caption, time: s.time || 'Just now' }; }) };
+          window.openStatusViewer([me], 'you');
+        };
+        img.onclick = open; ring.onclick = open;
+      } else if (isOwner) {
+        var hint = function () { toast('No story yet — tap + to post one'); };
+        img.onclick = hint; ring.onclick = hint;
+      }
+    }
+    if (plus) {
+      plus.style.display = isOwner ? 'flex' : 'none';
+      plus.onclick = function (e) {
+        if (e) e.stopPropagation();
+        if (!window.DroboardPostComposer) { toast('Composer failed to load.'); return; }
+        DroboardPostComposer.open({ type: 'status', author: { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified }, onStatusSlide: handleStatusSlide });
+      };
+    }
   }
 
   function renderActionRow() {
@@ -207,9 +271,10 @@
     document.getElementById('statsRow').innerHTML = getStatsForProfile(p).map(s => {
       const isFollow = s.label === 'Following' || s.label === 'Followers';
       const tab = s.label.toLowerCase();
-      const href = isFollow ? `followers.html?u=${encodeURIComponent(handle)}&tab=${tab}` : '';
-      const linkable = isFollow ? ` data-href="${href}" style="cursor:pointer"` : '';
-      return `<div class="stat-item"${linkable}><div class="stat-num ${s.cls}">${fmtN(s.value)}</div><div class="stat-label">${s.label}</div></div>`;
+      const href = s.href || (isFollow ? `followers.html?u=${encodeURIComponent(handle)}&tab=${tab}` : '');
+      const linkable = href ? ` data-href="${href}" style="cursor:pointer"` : '';
+      const title = s.sub ? ` title="${s.sub}"` : '';
+      return `<div class="stat-item"${linkable}${title}><div class="stat-num ${s.cls}">${fmtN(s.value)}</div><div class="stat-label">${s.label}</div></div>`;
     }).join('');
     document.querySelectorAll('#statsRow .stat-item[data-href]').forEach(el => {
       el.addEventListener('click', () => location.href = el.dataset.href);
@@ -223,6 +288,10 @@
     var list = awarded.length ? awarded.map(function(a){
       return { label:a.name, icon:a.icon, color:a.color || a.cls };
     }) : (p.achievements || []);
+    try {
+      var lb = (window.ReaderLeague && typeof ReaderLeague.myBadges === 'function') ? ReaderLeague.myBadges() : [];
+      lb.forEach(function (b) { list.unshift({ label: b.label, icon: b.icon, color: b.color }); });
+    } catch (e) {}
     document.getElementById('achRow').innerHTML = list.map(function(a){
       var c = a.color || a.cls || '';
       if(c && c.indexOf('#')===0){
@@ -233,7 +302,38 @@
     }).join('');
   }
   function renderUpgradeStrip(p) {
-    document.getElementById('upgradeStrip').style.display = (IS_OWNER && !p.isWriter) ? 'flex' : 'none';
+    const el = document.getElementById('upgradeStrip');
+    if (!el) return;
+    if (!IS_OWNER || p.isWriter) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+    let flow = null;
+    try { flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null'); } catch (e) {}
+
+    let icon, title, sub, btn = '';
+    if (flow && flow.status === 'pending') {
+      icon = 'fa-hourglass-half';
+      title = 'Book in review';
+      sub = (flow.title ? '"' + flow.title + '" is ' : 'Your submission is ') +
+            'with our editors. Your reader tools stay on until it\u2019s approved.';
+    } else if (flow && flow.status === 'rejected') {
+      icon = 'fa-rotate-left';
+      title = 'Book needs changes';
+      sub = (flow.feedback || 'The editor left feedback.') + ' Edit and resubmit to earn writer status.';
+      btn = '<button class="upgrade-strip-btn" onclick="location.href=\'create.html\'">Edit &amp; resubmit</button>';
+    } else {
+      icon = 'fa-feather-pointed';
+      title = 'Ready to publish?';
+      sub = 'Create your first book \u2014 once an editor approves it, you become a writer.';
+      btn = '<button class="upgrade-strip-btn" onclick="location.href=\'create.html\'">Create a book</button>';
+    }
+
+    el.style.display = 'flex';
+    el.innerHTML =
+      '<i class="fas ' + icon + '"></i>' +
+      '<div class="upgrade-strip-text">' +
+      '  <div class="upgrade-strip-title">' + esc(title) + '</div>' +
+      '  <div class="upgrade-strip-sub">' + esc(sub) + '</div>' +
+      '</div>' + btn;
   }
 
   /* ── Tabs ── */
@@ -375,13 +475,71 @@
 
   /* ── Feed ── */
   function adaptPost(post) {
-    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER });
+    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER });
+  }
+  /* Shared picker hooks (component contract): getState reads the profile
+     post, onReact mutates it. Mirrors feed-service's pickerHooks so the
+     multi-emoji buckets + top-3 badges behave identically here. */
+  var _FEED_POSTS = []; // adapted posts handed to DroboardPostCard (picker reads these)
+  function findReactPost(id) {
+    return _FEED_POSTS.find(x => String(x.id) === String(id)) || null;
+  }
+  var _pickerRx = {}; // per-id { userRx, love, secondId, second, extraId, extra }
+  function _pickerInit(id, p) {
+    if (_pickerRx[id]) return _pickerRx[id];
+    var likes = (p && p.likes) || 0;
+    var buckets = ['crying', 'shocked', 'emotional'];
+    var h = 0;
+    String(id).split('').forEach(function (ch) { h = (h + ch.charCodeAt(0)) % buckets.length; });
+    var secondId = buckets[h];
+    var second = Math.min(5, Math.max(0, likes));
+    var st = { userRx: (p && (p.userRx || (p.liked ? 'love' : null))) || null, love: Math.max(0, likes - second), secondId: secondId, second: second, extraId: null, extra: 0 };
+    _pickerRx[id] = st;
+    return st;
+  }
+  function _pickerTotal(st) { return (st.love || 0) + (st.second || 0) + (st.extra || 0); }
+  function pickerHooks() {
+    return {
+      getState: (id) => {
+        const p = findReactPost(id);
+        if (!p) return null; // unknown id: let other picker bindings claim it
+        const st = _pickerInit(id, p);
+        const out = { userRx: st.userRx, love: st.love };
+        out[st.secondId] = st.second;
+        if (st.extraId) out[st.extraId] = st.extra;
+        return out;
+      },
+      onReact: (id, rid) => {
+        const p = findReactPost(id);
+        if (!p) return;
+        const st = _pickerInit(id, p);
+        rid = rid || 'love';
+        if (st.userRx === rid) {
+          if (rid === 'love') st.love = Math.max(0, st.love - 1);
+          else if (rid === st.secondId) st.second = Math.max(0, st.second - 1);
+          else if (rid === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
+          st.userRx = null;
+        } else {
+          if (st.userRx === 'love') st.love = Math.max(0, st.love - 1);
+          else if (st.userRx === st.secondId) st.second = Math.max(0, st.second - 1);
+          else if (st.userRx === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
+          if (rid === 'love') st.love += 1;
+          else if (rid === st.secondId) st.second += 1;
+          else { if (st.extraId && st.extraId !== rid) { st.extra = 0; } st.extraId = rid; st.extra = (st.extra || 0) + 1; }
+          st.userRx = rid;
+        }
+        p.userRx = st.userRx;
+        p.liked = st.userRx === 'love';
+        p.likes = _pickerTotal(st);
+        if (window.DroboardPostCard) DroboardPostCard.update(p);
+      },
+    };
   }
   function ensureFeedComponents() {
     if (FEED_HOOKED) return;
     FEED_HOOKED = true;
     const feedList = document.getElementById('feedList');
-    if (window.DroboardReactionPicker) DroboardReactionPicker.attach(feedList, {});
+    if (window.DroboardReactionPicker) DroboardReactionPicker.attach(feedList, pickerHooks());
     if (window.DroboardDotsMenu) {
       DroboardDotsMenu.configure({
         onEdit: (post) => {
@@ -400,7 +558,28 @@
           });
         },
         onDelete: async (post) => { const updated = await ProfileData.deletePost(VIEW_HANDLE, post.id); if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('🗑️ Post deleted'); } },
-        onReport: () => toast('🚩 Reported. Thanks for flagging.'),
+        onPin: async (post) => {
+          if (!IS_OWNER) { toast('Only the profile owner can pin.'); return; }
+          const updated = await ProfileData.pinPost(VIEW_HANDLE, post.id, true);
+          if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('📌 Pinned to top'); }
+        },
+        onUnpin: async (post) => {
+          if (!IS_OWNER) { toast('Only the profile owner can unpin.'); return; }
+          const updated = await ProfileData.pinPost(VIEW_HANDLE, post.id, false);
+          if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('Unpinned'); }
+        },
+        onReport: (post) => {
+          if (window.DroboardDotsMenu && DroboardDotsMenu.openReportTypes) DroboardDotsMenu.openReportTypes(post, window._lastDotsAnchor || null);
+          else toast('🚩 Reported. Thanks for flagging.');
+        },
+        onReportType: (post, typeId) => {
+          try {
+            const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
+            reports.push({ postId: post.id, typeId, at: Date.now() });
+            localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
+          } catch(e) {}
+          toast('🚩 Report filed. Our team will review it.');
+        },
         onLess: () => toast('Got it — showing less of this.'),
         onFollow: (post) => toast('Following @' + post.name),
         onMute: (post) => toast('Muted @' + post.name),
@@ -416,9 +595,20 @@
         onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onShare: (post) => { if (!window.openShareModal) return; openShareModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, url: 'https://droboard.app/post/' + post.id }); },
         onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id, type: 'post' }); },
-        onDots: (post, anchorEl) => { if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
+        onDots: (post, anchorEl) => { try { window._lastDotsAnchor = anchorEl || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
         onJoinAma: () => toast('🎙️ Joining AMA…'),
-        onOpenLink: () => toast('📖 Opening story…'),
+        onPollVote: (post, i) => { if (!post.poll) return; if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; } post.poll.opts[i].v = (post.poll.opts[i].v || 0) + 1; post.poll.voted = i; post.poll.total = (post.poll.total || 0) + 1; DroboardPostCard.update(post); toast('✅ Vote cast!'); },
+        onPredVote: (post, i) => { if (!post.prediction) return; if (post.prediction.voted >= 0) { toast('✅ Already predicted!'); return; } post.prediction.opts[i].v = (post.prediction.opts[i].v || 0) + 1; post.prediction.voted = i; post.prediction.total = (post.prediction.total || 0) + 1; DroboardPostCard.update(post); toast('🔮 Prediction locked!'); },
+        onDebateVote: (post, side) => { if (!post.debateData) return; if (post.debateData.userVote) { toast('✅ Already voted!'); return; } post.debateData.userVote = side; if (side === 'for') post.debateData.forV = (post.debateData.forV || 0) + 1; else post.debateData.agV = (post.debateData.agV || 0) + 1; DroboardPostCard.update(post); toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!'); },
+        onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
+        onOpenLink: (post) => {
+          const ref = (post && (post.storyRef || post.chapterRef)) || null;
+          const sid = ref && (ref.id || '');
+          const ttl = (ref && (ref.title || '')) || PROFILE.name;
+          if (sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
+          if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
+          toast('📖 Opening story…');
+        },
       });
     }
     window.onDroboardSaveChange = (storyId, isSaved) => { if (!storyId) return; ProfileData.savePost(VIEW_HANDLE, storyId, isSaved); };
@@ -426,6 +616,8 @@
   function renderFeed(p) {
     ensureFeedComponents();
     const posts = (p.posts || []).map(adaptPost);
+    posts.sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)));
+    _FEED_POSTS = posts;
     if (!window.DroboardPostCard) { document.getElementById('feedList').innerHTML = `<div class="panel-empty" style="padding:40px 16px"><i class="fas fa-triangle-exclamation"></i>Post component failed to load.</div>`; return; }
     DroboardPostCard.setPosts(posts);
     if (!posts.length) document.getElementById('feedList').innerHTML = `<div class="panel-empty" style="padding:40px 16px"><i class="fas fa-inbox"></i>No posts yet.</div>`;
@@ -435,11 +627,19 @@
   function openNewPostComposer() {
     closeDrawer();
     if (!window.DroboardPostComposer) { toast('Composer failed to load.'); return; }
+    const bookStories = (PROFILE.books || []).map(b => ({ id: b.id, title: b.title, author: PROFILE.name || '', cat: b.cat, cover: b.cover }));
+    const demoStories = (window.DemoData && DemoData.STORIES) || [];
+    const seen = new Set(bookStories.map(s => s.id));
+    const pool = bookStories.concat(demoStories.filter(s => !seen.has(s.id)));
     DroboardPostComposer.open({
       author: { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified },
-      stories: (PROFILE.books || []).map(b => ({ id: b.id, title: b.title, cat: b.cat, cover: b.cover })),
-      defaultType: 'post',
-      onSubmit: async (post) => { const updated = await ProfileData.createPost(VIEW_HANDLE, post); if (!updated) { toast('Something went wrong — try again.'); return; } PROFILE = updated; renderFeed(PROFILE); switchTab('feed'); },
+      stories: pool,
+      draftKey: 'dro_profile_composer_draft',
+      defaultType: 'text',
+      onStatusSlide: handleStatusSlide,
+      onSubmit: async (post) => {
+        if (post && post.type === 'status') { handleStatusSlide(post.statusSlide); return; }
+        const updated = await ProfileData.createPost(VIEW_HANDLE, post); if (!updated) { toast('Something went wrong — try again.'); return; } PROFILE = updated; renderFeed(PROFILE); switchTab('feed'); },
     });
   }
 
@@ -463,31 +663,6 @@
     if (RENDERED.about) renderAbout(PROFILE);
     closeGenreEdit();
     toast('✅ Genres saved!');
-  }
-
-  /* ── Become-a-Writer Wizard ── */
-  function openUpgradeWizard() {
-    closeDrawer();
-    const grid = document.getElementById('uwGenreGrid');
-    grid.innerHTML = GENRES_ALL.slice(0, 10).map((g, i) => `<div class="uw-genre${i === 0 ? ' on' : ''}" data-gid="${g.id}">${g.label}</div>`).join('');
-    grid.querySelectorAll('.uw-genre').forEach(el => el.addEventListener('click', () => { grid.querySelectorAll('.uw-genre').forEach(x => x.classList.remove('on')); el.classList.add('on'); }));
-    document.getElementById('upgradeOv').classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeUpgradeWizard() { document.getElementById('upgradeOv').classList.remove('open'); document.body.style.overflow = ''; }
-  async function submitUpgrade() {
-    const title = document.getElementById('uwTitle').value.trim();
-    if (!title) { toast('✍️ Give your first book a title!'); return; }
-    const genre = document.querySelector('.uw-genre.on')?.dataset.gid;
-    const btn = document.getElementById('uwSubmitBtn');
-    btn.textContent = 'Publishing…'; btn.disabled = true;
-    const updated = await ProfileData.becomeWriter(PROFILE.handle, { firstBookTitle: title, genre });
-    btn.disabled = false; btn.textContent = 'Publish & Unlock Writer Tools ✓';
-    if (!updated) { toast('Something went wrong — try again.'); return; }
-    PROFILE = updated;
-    closeUpgradeWizard();
-    renderProfile(PROFILE);
-    toast('🎉 Writer tools unlocked!');
   }
 
   /* ── COLLECTION STORY PICKER — books + library, shared by the
@@ -523,25 +698,51 @@
     (PROFILE.library || []).forEach((l, i) => push({ id: l.id || ('lib_' + i), title: l.title, cat: l.cat, author: l.author, cover: l.cover, badge: '', reads: '' }));
     return out;
   }
-  function renderStoryPicker(gridId, selectedIds) {
+  /* ── STORY PICKER + LIVE SEARCH — selection lives in state (not DOM)
+     so filtering never loses picked stories. ── */
+  const PICK_STATE = {};
+  function pickSearchId(gridId) { return gridId === 'ncStoryGrid' ? 'ncStorySearch' : 'mcStorySearch'; }
+  function paintStoryGrid(gridId) {
     const grid = document.getElementById(gridId);
-    const stories = eligibleStories();
-    const sel = new Set((selectedIds || []).map(String));
-    if (!stories.length) {
+    const st = PICK_STATE[gridId];
+    if (!grid || !st) return;
+    if (!st.stories.length) {
       grid.innerHTML = `<div class="panel-empty" style="grid-column:1/-1"><i class="fas fa-book"></i>No stories available yet — publish or save stories first.</div>`;
-      return { get: () => [] };
+      return;
     }
-    grid.innerHTML = stories.map(s => `
-      <div class="story-pick${sel.has(String(s.id)) ? ' on' : ''}" data-sid="${escAttr(s.id)}">
+    const q = ((document.getElementById(pickSearchId(gridId)) || {}).value || '').trim().toLowerCase();
+    const hits = !q ? st.stories : st.stories.filter(s =>
+      ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.author || '').toLowerCase().indexOf(q) !== -1));
+    if (!hits.length) {
+      grid.innerHTML = `<div class="panel-empty" style="grid-column:1/-1"><i class="fas fa-search"></i>No stories match your search.</div>`;
+      return;
+    }
+    grid.innerHTML = hits.map(s => `
+      <div class="story-pick${st.selected.has(String(s.id)) ? ' on' : ''}" data-sid="${escAttr(s.id)}">
         <img src="${s.cover}" loading="lazy" alt=""/>
         <div class="story-pick-check"><i class="fas fa-check"></i></div>
         <div class="story-pick-title">${s.title}</div>
       </div>`).join('');
-    grid.querySelectorAll('.story-pick').forEach(el => el.addEventListener('click', () => el.classList.toggle('on')));
+    grid.querySelectorAll('.story-pick').forEach(el => el.addEventListener('click', () => {
+      const id = String(el.dataset.sid);
+      if (st.selected.has(id)) { st.selected.delete(id); el.classList.remove('on'); }
+      else { st.selected.add(id); el.classList.add('on'); }
+    }));
+  }
+  function renderStoryPicker(gridId, selectedIds) {
+    PICK_STATE[gridId] = {
+      stories: eligibleStories(),
+      selected: new Set((selectedIds || []).map(String)),
+    };
+    const searchEl = document.getElementById(pickSearchId(gridId));
+    if (searchEl) searchEl.value = '';
+    paintStoryGrid(gridId);
     return {
-      get: () => [...grid.querySelectorAll('.story-pick.on')]
-        .map(el => stories.find(s => String(s.id) === el.dataset.sid))
-        .filter(Boolean),
+      get: () => {
+        const st = PICK_STATE[gridId];
+        if (!st) return [];
+        return st.stories.filter(s => st.selected.has(String(s.id)));
+      },
     };
   }
 
@@ -671,7 +872,6 @@
       onNewPost: function () { openNewPostComposer(); },
       onNewBook: function () { location.href = 'create.html'; },
       onTab: function (tab) { switchTab(tab); },
-      onBecomeWriter: function () { openUpgradeWizard(); },
       onRefer: function () { location.href = 'refer.html'; },
       onSignOut: async function () { if (window.AuthSession) await AuthSession.logout(); toast('👋 Signed out!'); setTimeout(function () { location.href = 'index.html'; }, 600); },
     });
@@ -708,12 +908,13 @@
     window.toast = toast;
     loadNotifCount();
     loadCoinBalance();
+    try {
+      var _pt = (window.ReaderLeague && ReaderLeague.pendingToast) ? ReaderLeague.pendingToast() : null;
+      if (_pt) setTimeout(function () { toast(_pt, 4200); loadCoinBalance(); }, 900);
+    } catch (e) {}
     if (window.DroboardNav) DroboardNav.configure({ active: 'profile' });
     var _dClose = document.getElementById('drawerCloseBtn'); if (_dClose) _dClose.addEventListener('click', closeDrawer);
     var _dOv = document.getElementById('drawerOverlay'); if (_dOv) _dOv.addEventListener('click', closeDrawer);
-    document.getElementById('upgradeCloseBtn').addEventListener('click', closeUpgradeWizard);
-    document.getElementById('upgradeOv').addEventListener('click', function (e) { if (e.target === this) closeUpgradeWizard(); });
-    document.getElementById('uwSubmitBtn').addEventListener('click', submitUpgrade);
     document.getElementById('genreCloseBtn').addEventListener('click', closeGenreEdit);
     document.getElementById('genreEditOv').addEventListener('click', function (e) { if (e.target === this) closeGenreEdit(); });
     document.getElementById('genreSaveBtn').addEventListener('click', saveGenres);
@@ -732,6 +933,10 @@
       document.querySelectorAll('#mcPrivGrid .uw-genre').forEach(x => x.classList.remove('on'));
       el.classList.add('on');
     }));
+    const ncSearch = document.getElementById('ncStorySearch');
+    if (ncSearch) ncSearch.addEventListener('input', () => paintStoryGrid('ncStoryGrid'));
+    const mcSearch = document.getElementById('mcStorySearch');
+    if (mcSearch) mcSearch.addEventListener('input', () => paintStoryGrid('mcStoryGrid'));
     const params = new URLSearchParams(location.search);
     ME_HANDLE = await ProfileData.getCurrentUserHandle();
     VIEW_HANDLE = params.get('u') || ME_HANDLE;
@@ -764,5 +969,5 @@
     }
   }
 
-  window.ProfilePage = { init, toast, toggleTheme, openDrawer, closeDrawer, openGenreEdit, closeGenreEdit, saveGenres, openUpgradeWizard, closeUpgradeWizard, submitUpgrade, openNewCollection, closeNewCollection, submitNewCollection, openManageCollection, closeManageCollection, submitManageCollection, switchTab };
+  window.ProfilePage = { init, toast, toggleTheme, openDrawer, closeDrawer, openGenreEdit, closeGenreEdit, saveGenres, openNewCollection, closeNewCollection, submitNewCollection, openManageCollection, closeManageCollection, submitManageCollection, switchTab };
 })();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Transaction History Ã‚Â· DroBoard</title>
+<title>Transaction History · DroBoard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -25,7 +25,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .avatar-btn img{width:100%;height:100%}
 .menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── HAMBURGER DRAWER ──────── */
 .drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .drawer-overlay.open{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
@@ -45,7 +45,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 
 .content{padding:16px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ KPIs Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── KPIs ──────── */
 .kpi-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .kpi-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
@@ -55,19 +55,19 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .kpi-val.purple{color:var(--purple)}
 .kpi-val.red{color:var(--danger)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Tabs Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Tabs ──────── */
 .tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex:1;padding:8px 4px;border-radius:9px;font-size:12px;font-weight:700;text-align:center;color:var(--muted);white-space:nowrap;cursor:pointer;transition:.15s}
 .tab.active{background:var(--pink);color:#fff}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Search Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Search ──────── */
 .search-bar{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:16px}
 .search-bar input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
 .search-bar input::placeholder{color:var(--muted)}
 .search-bar i{color:var(--muted);font-size:13px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Transaction Item Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Transaction Item ──────── */
 .txn-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer;transition:.1s}
 .txn-card:active{opacity:.85}
 .txn-top{display:flex;align-items:center;gap:12px}
@@ -89,12 +89,12 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .txn-status.completed{background:var(--success-soft);color:var(--success)}
 .txn-status.pending{background:var(--warning-soft);color:var(--warning)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Empty Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Empty ──────── */
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty i{font-size:36px;margin-bottom:12px;color:var(--border)}
 .empty p{font-size:13px;line-height:1.5}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Pagination Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Pagination ──────── */
 .pagination{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 0}
 .page-btn{
   min-width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
@@ -107,7 +107,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .page-btn.nav{font-size:13px}
 .page-info{font-size:11px;color:var(--muted);margin:0 6px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Detail Modal Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Detail Modal ──────── */
 .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:.25s}
 .modal-overlay.show{opacity:1;pointer-events:auto}
 .modal{width:100%;max-width:400px;background:var(--card);border-radius:20px;padding:24px 20px;transform:scale(.9);transition:.25s}
@@ -122,7 +122,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .dispute-btn{width:100%;padding:12px;border-radius:12px;background:var(--danger-soft);color:var(--danger);font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px}
 .dispute-btn:active{opacity:.7}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Dispute Form Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Dispute Form ──────── */
 .dispute-overlay{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.25s}
 .dispute-overlay.show{opacity:1;pointer-events:auto}
 .dispute-panel{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 30px;transform:translateY(100%);transition:.3s;max-height:80vh;overflow-y:auto}
@@ -138,7 +138,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .form-submit{width:100%;padding:13px;border-radius:12px;background:var(--danger);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:14px}
 .form-submit:active{opacity:.85}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Toast Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Toast ──────── */
 .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 

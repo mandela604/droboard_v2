@@ -13,14 +13,17 @@ const commentBody = z.object({
   storyId: z.string().max(40).optional(),
   chapterId: z.string().max(40).optional(),
   postId: z.string().max(40).optional(),
+  discussionId: z.string().max(40).optional(),
   parentId: z.string().max(40).optional(),
+  team: z.string().max(40).optional(),
   text: z.string().min(1).max(2000),
 }).strict();
 
 router.get('/', generalLimiter, validate(z.object({ query: z.object({
   scope: z.enum(['story', 'chapter', 'post', 'discussion']).optional(),
   storyId: z.string().max(40).optional(), chapterId: z.string().max(40).optional(),
-  postId: z.string().max(40).optional(), page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
+  postId: z.string().max(40).optional(), discussionId: z.string().max(40).optional(),
+  page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
 }).strict() })), ctrl.list);
 
 router.post('/', requireAuth, writeLimiter, audit('comments.create'),

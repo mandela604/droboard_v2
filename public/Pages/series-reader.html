@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <meta name="theme-color" content="#000000"/>
-<title>Droboard · Series</title>
+<title>Droboard · Story</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -17,6 +17,24 @@
   --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;
   --safe-b:env(safe-area-inset-bottom,0px);--nav-h:60px;
 }
+/* ─── LIGHT THEME (mirrors Settings droboardTheme → body.theme-white,
+       same pattern as bridge.html) ─── */
+body.theme-white{
+  --bg:#e9e9ec;--l1:#ffffff;--l2:#f3f3f5;--l3:#ffffff;--l4:#ebebed;
+  --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.05);--bd-acc:rgba(255,0,80,.25);
+  --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
+}
+body.theme-white .top-bar{background:rgba(255,255,255,.94)}
+body.theme-white .section-tabs{background:rgba(255,255,255,.94)}
+body.theme-white .hero-grad{background:linear-gradient(0deg,#fff 0%,rgba(255,255,255,.75) 45%,rgba(255,255,255,.15) 100%)}
+body.theme-white .hero-cover{filter:brightness(.85)}
+body.theme-white .hero-title{color:#161616;text-shadow:none}
+body.theme-white .tb-back,body.theme-white .tb-btn{color:#444}
+body.theme-white .hw-follow{background:rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.15);color:#161616}
+body.theme-white .hw-follow.ing{background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.18);color:#444}
+body.theme-white .hw-name{color:#333}
+body.theme-white .tb-series-name{color:#161616}
+body.theme-white .ch-read-btn{background:#161616}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:'DM Sans',sans-serif;overflow-x:hidden}
 body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
@@ -181,8 +199,8 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .team-bar-seg[data-team="b"]{background:#38bdf8}
 .team-bar-seg[data-team="c"]{background:#34d399}
 .team-bar-seg[data-team="d"]{background:#a78bfa}
-.team-bar-labels{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
-.tbl-item{font-size:8px;font-weight:800;display:flex;align-items:center;gap:3px}
+.team-bar-labels{display:flex;flex-wrap:nowrap;gap:2px}
+.tbl-item{font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;white-space:nowrap}
 .tbl-dot{width:7px;height:7px;border-radius:50%}
 
 /* ─── POLLS ─── */
@@ -310,12 +328,20 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .rev-meta{font-size:9px;color:var(--tx-faint);margin-top:1px}
 .rev-text{font-size:12.5px;line-height:1.55;color:var(--tx-body);margin-bottom:8px}
 .rev-foot{font-size:10.5px;font-weight:700;color:var(--tx-muted);display:flex;align-items:center;gap:5px}
+.rev-helpful{cursor:pointer;user-select:none}
+.rev-helpful:active{transform:scale(.97)}
+.rev-stars{margin-left:auto;color:var(--gold);font-size:10px;display:flex;align-items:center;gap:1px;flex-shrink:0}
+.rev-star-num{font-size:9px;font-weight:800;color:var(--tx-muted);margin-left:4px}
 .hw-name{cursor:pointer}
 </style>
-<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);try{document.body.classList.toggle('theme-white',t==='light');}catch(e){}})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
-<div class="phone">
+<script>/* mirror Settings page theme (droboardTheme light/dark) onto body class */
+try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){document.body.classList.add('theme-white');}else{document.body.classList.remove('theme-white');}}catch(e){}</script>
+  <div class="phone">
 
 <!-- TOP BAR -->
 <div class="top-bar" id="topBar">
@@ -383,20 +409,12 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 
   <div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px" id="infoRows"></div>
 
-  <!-- Ad -->
-  <div class="ad-strip">
-    <div class="ad-strip-logo">💰</div>
-    <div class="ad-strip-body">
-      <div class="ad-strip-brand">PiggyVest</div>
-      <div class="ad-strip-h">Save money. Build your future.</div>
-      <div class="ad-strip-sub">4M+ Nigerians saving smarter</div>
-    </div>
-    <button class="ad-strip-cta">Start</button>
-  </div>
+  <!-- Ad — allocated by DroboardAdSlot -->
+  <div data-ad-slot="series:top" id="adStripWrap" style="margin:0 0 14px"></div>
 
-  <!-- Series stats deep dive -->
+  <!-- Story stats deep dive -->
   <div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px">
-    <div class="sh" style="margin-bottom:10px"><div class="sh-title">Series Stats</div></div>
+    <div class="sh" style="margin-bottom:10px"><div class="sh-title">Story Stats</div></div>
     <div id="statsDeep"></div>
   </div>
 
@@ -431,8 +449,11 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../data/central-demo-data.js"></script>
+<script src="../component/ad-card.js?v=2"></script>
 <script src="../services/ad-service.js"></script>
-<script src="../services/series-reader-service.js"></script>
+<script src="../component/ad-slot.js"></script>
+<script src="../services/reader-engagement-service.js?v=2"></script>
+<script src="../services/series-reader-service.js?v=2"></script>
 <script>SeriesReaderPage.init();</script>
 
 </body>

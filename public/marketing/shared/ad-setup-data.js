@@ -28,9 +28,62 @@
     { id: 'scrollReader', label: 'Scroll Reader' },
     { id: 'comments', label: 'Comments (all)' },
     { id: 'discussion', label: 'Discussion' },
+    { id: 'debate', label: 'Debate' },
     { id: 'droboardPage', label: 'Droboard Page' },
+    { id: 'collection', label: 'Collection' },
+    { id: 'followers', label: 'Followers' },
     { id: 'profile', label: 'Profile' },
   ];
+
+  /* Slot registry per surface (mirrors the backend slot ids). An ad with an
+     empty slots list serves on every slot of its checked pages. Shared by
+     ad-setup-service.js (ad setup page) and ad-manager.js (placements). */
+  var PAGE_SLOTS = {
+    fullReader: [
+      { id: 'fullReader:top', label: 'Top (above chapter)' },
+      { id: 'fullReader:per-300-words', label: 'In-text (every N words)' },
+      { id: 'fullReader:bottom', label: 'Bottom (after chapter)' },
+    ],
+    scrollReader: [
+      { id: 'scrollReader:top', label: 'Top' },
+      { id: 'scrollReader:per-300-words', label: 'In-text (every N words)' },
+      { id: 'scrollReader:bottom', label: 'Bottom (end of page)' },
+    ],
+    comments: [
+      { id: 'comments:list-top', label: 'List top' },
+      { id: 'comments:every-nth', label: 'Every Nth' },
+      { id: 'comments:thread-top', label: 'Thread top' },
+    ],
+    feed: [{ id: 'feed:in-feed', label: 'In-feed' }],
+    discover: [{ id: 'discover:strip', label: 'Strip' }],
+    genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
+    library: [{ id: 'library:slider', label: 'Slider' }],
+    droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
+    collection: [{ id: 'collection:top', label: 'Top (below Follow)' }],
+    discussion: [{ id: 'discussion:inline', label: 'Inline' }],
+    debate: [
+      { id: 'debate:top', label: 'Top (above question)' },
+      { id: 'debate:inline', label: 'Inline (between arguments)' },
+    ],
+    home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
+    series: [{ id: 'series:main', label: 'Main' }],
+  }; /* profile has page-level targeting only — no ad slot renders there */
+
+  function pageSlots(pageId) { return PAGE_SLOTS[pageId] || []; }
+  function pageLabel(pageId) {
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === pageId) return PAGES[i].label;
+    return pageId;
+  }
+  /* Flat [{page, pageLabel, id, label}] for the slot-programming dropdown. */
+  function allSlots() {
+    var out = [];
+    Object.keys(PAGE_SLOTS).forEach(function (pid) {
+      (PAGE_SLOTS[pid] || []).forEach(function (s) {
+        out.push({ page: pid, pageLabel: pageLabel(pid), id: s.id, label: s.label });
+      });
+    });
+    return out;
+  }
 
   /* field: [key, label, type] — type: text | area | img */
   var FIELDS = {
@@ -177,6 +230,7 @@
     GOALS: GOALS,
     FORMATS: FORMATS,
     PAGES: PAGES,
+    PAGE_SLOTS: PAGE_SLOTS,
     FIELDS: FIELDS,
     SEGMENTS: SEGMENTS,
     GENRES: GENRES,
@@ -184,6 +238,9 @@
     TOTAL_READERS: TOTAL_READERS,
     estimateAudience: estimateAudience,
     segmentLabel: segmentLabel,
+    pageSlots: pageSlots,
+    pageLabel: pageLabel,
+    allSlots: allSlots,
     refreshCatalog: refreshCatalog,
   };
 })();

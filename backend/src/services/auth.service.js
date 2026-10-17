@@ -183,6 +183,13 @@ async function login({ emailOrUsername, password, ip }) {
   const refresh = await issueFamily(user.id, { ip });
   const out = Object.assign({ mfaRequired: false, refresh }, tokensFor(user, null));
   out.mfaSetupRequired = adminNeedsMfaSetup(user);
+  // Frontend compat: legacy clients read token/user at top level (same as Google).
+  out.token = out.access;
+  out.user = {
+    id: user.id, username: user.username, handle: user.username,
+    email: user.email, fullName: user.fullName, name: user.fullName,
+    avatar: user.avatar || '', roles: user.roles, primaryRole: user.primaryRole,
+  };
   return out;
 }
 
@@ -205,7 +212,13 @@ async function verifyMfa({ ticket, code, ip }) {
   const mfaAt = new Date().toISOString();
   await user.save();
   const refresh = await issueFamily(user.id, { ip, mfaAt });
-  return Object.assign({ refresh, usedBackup }, tokensFor(user, mfaAt));
+  return Object.assign({ refresh, usedBackup }, tokensFor(user, mfaAt), {
+    user: {
+      id: user.id, username: user.username, handle: user.username,
+      email: user.email, fullName: user.fullName, name: user.fullName,
+      avatar: user.avatar || '', roles: user.roles, primaryRole: user.primaryRole,
+    },
+  });
 }
 
 async function refresh({ token, ip }) {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>Bound By Obsession Ã‚Â· Plotting</title>
+<title>Bound By Obsession · Plotting</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
@@ -37,7 +37,7 @@ a{color:inherit;text-decoration:none}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .fade{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ TOP BAR Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── TOP BAR ──────── */
 .topbar{
   position:sticky;top:0;z-index:90;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);
   border-bottom:1px solid var(--border);
@@ -48,7 +48,7 @@ a{color:inherit;text-decoration:none}
 .topbar-left{display:flex;align-items:center;gap:8px}
 .topbar-right{display:flex;align-items:center;gap:8px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ BOOK HEADER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── BOOK HEADER ──────── */
 .book-head{padding:16px 16px 0;display:flex;gap:14px;background:var(--surface)}
 .bh-cover{width:82px;height:110px;border-radius:14px;overflow:hidden;flex-shrink:0;box-shadow:0 6px 18px rgba(0,0,0,.1)}
 .bh-cover img{width:100%;height:100%}
@@ -58,7 +58,7 @@ a{color:inherit;text-decoration:none}
 .status-badge{display:inline-flex;font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:var(--r-pill);letter-spacing:.03em;text-transform:uppercase;margin-bottom:10px}
 .status-badge.published{background:var(--success-soft);color:#158a48}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ WRITTEN-VS-PLANNED PROGRESS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── WRITTEN-VS-PLANNED PROGRESS ──────── */
 .progress-row{display:flex;align-items:center;gap:9px;padding-bottom:16px}
 .progress-track{flex:1;height:6px;border-radius:var(--r-pill);background:var(--border);overflow:hidden}
 .progress-fill{height:100%;background:var(--primary);border-radius:var(--r-pill)}
@@ -67,20 +67,20 @@ a{color:inherit;text-decoration:none}
 
 .wrap{padding:16px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SECTION Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── SECTION ──────── */
 .section{margin-bottom:24px}
 .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .section-title{font-size:16px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
 .section-title i{font-size:13px;color:var(--primary)}
 .section-note{font-size:11px;color:var(--text-2);font-weight:600}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ LOGLINE CARD Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── LOGLINE CARD ──────── */
 .logline-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow)}
 .logline-text{font-size:13.5px;line-height:1.65;color:var(--text)}
 .logline-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .tag-chip{font-size:10.5px;font-weight:700;color:var(--text-2);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:var(--r-pill)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ ACT CARDS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── ACT CARDS ──────── */
 .act-list{display:flex;flex-direction:column;gap:10px}
 .act-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:15px;box-shadow:var(--shadow)}
 .act-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
@@ -91,7 +91,7 @@ a{color:inherit;text-decoration:none}
 .beat{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5}
 .beat i{font-size:8px;color:var(--primary);margin-top:6px;flex-shrink:0}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ CHAPTER ROADMAP Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── CHAPTER ROADMAP ──────── */
 .roadmap-list{display:flex;flex-direction:column;gap:8px}
 .roadmap-row{
   display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
@@ -110,7 +110,7 @@ a{color:inherit;text-decoration:none}
 .roadmap-status.written{background:var(--success-soft);color:#158a48}
 .roadmap-status.planned{background:var(--blue-soft);color:#1d5fd6}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ TURNING POINTS TIMELINE Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── TURNING POINTS TIMELINE ──────── */
 .timeline{position:relative;padding-left:22px}
 .timeline::before{content:'';position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--border)}
 .tp-item{position:relative;padding-bottom:18px}
@@ -120,7 +120,7 @@ a{color:inherit;text-decoration:none}
 .tp-title{font-size:13px;font-weight:700;margin-bottom:3px}
 .tp-desc{font-size:11.5px;color:var(--text-2);line-height:1.5}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ CHARACTER ARCS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── CHARACTER ARCS ──────── */
 .char-list{display:flex;flex-direction:column;gap:10px}
 .char-card{display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:13px 14px;box-shadow:var(--shadow)}
 .char-avatar{width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0;background:var(--bg)}
@@ -131,12 +131,12 @@ a{color:inherit;text-decoration:none}
 .char-role{font-size:9px;font-weight:800;color:var(--purple);background:var(--purple-soft);padding:2px 7px;border-radius:var(--r-pill);text-transform:uppercase;letter-spacing:.02em}
 .char-arc{font-size:11.5px;color:var(--text-2);line-height:1.5}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ ENDING CARD Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── ENDING CARD ──────── */
 .ending-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow)}
 .ending-label{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:800;color:var(--danger);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
 .ending-text{font-size:13px;line-height:1.65;color:var(--text)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── HAMBURGER DRAWER ──────── */
 .drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .drawer-overlay.open{opacity:1;pointer-events:auto}
 .drawer{
@@ -185,7 +185,7 @@ a{color:inherit;text-decoration:none}
   <div class="bh-cover"><img src="https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop" alt="Bound By Obsession"/></div>
   <div class="bh-info">
     <div class="bh-title">Bound By Obsession</div>
-    <div class="bh-genre">Romance Ã‚Â· Drama</div>
+    <div class="bh-genre">Romance · Drama</div>
     <span class="status-badge published">Under Review</span>
     <div class="progress-row">
       <div class="progress-track"><div class="progress-fill" style="width:9%"></div></div>
@@ -201,7 +201,7 @@ a{color:inherit;text-decoration:none}
   <section class="section">
     <div class="section-head"><h2 class="section-title"><i class="fas fa-quote-left"></i>Logline</h2></div>
     <div class="logline-card">
-      <div class="logline-text">A ruthless hotel heir vows to ruin the family that destroyed his Ã¢â‚¬â€ until he's forced into a marriage of convenience with the one woman standing in his way, and finds that revenge and obsession look a lot alike.</div>
+      <div class="logline-text">A ruthless hotel heir vows to ruin the family that destroyed his … until he's forced into a marriage of convenience with the one woman standing in his way, and finds that revenge and obsession look a lot alike.</div>
       <div class="logline-tags">
         <span class="tag-chip">Enemies to Lovers</span>
         <span class="tag-chip">Marriage of Convenience</span>
@@ -242,8 +242,8 @@ a{color:inherit;text-decoration:none}
   <section class="section" style="margin-bottom:6px">
     <div class="section-head"><h2 class="section-title"><i class="fas fa-flag-checkered"></i>Planned Ending</h2></div>
     <div class="ending-card">
-      <div class="ending-label"><i class="fas fa-triangle-exclamation"></i>Spoiler Ã¢â‚¬â€ editor eyes only</div>
-      <div class="ending-text">Their engagement, begun as a weapon on both sides, becomes real. The rival family's fraud is exposed publicly in Ch. 54, clearing his father's name. The final chapter closes on their wedding, reframing the marriage of convenience that opened the book Ã¢â‚¬â€ full-circle structure, no dangling threads planned.</div>
+      <div class="ending-label"><i class="fas fa-triangle-exclamation"></i>Spoiler … editor eyes only</div>
+      <div class="ending-text">Their engagement, begun as a weapon on both sides, becomes real. The rival family's fraud is exposed publicly in Ch. 54, clearing his father's name. The final chapter closes on their wedding, reframing the marriage of convenience that opened the book … full-circle structure, no dangling threads planned.</div>
     </div>
   </section>
 

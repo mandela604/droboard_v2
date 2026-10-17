@@ -2,8 +2,10 @@
 const { AdInventory, AdPlacement, AdStat } = require('../models/platform.model');
 
 async function placement(page) {
-  const p = await AdPlacement.findOne({ page }).lean();
-  return p || { interval: 4 };
+  // Fail closed: no placement doc means NO ads. There is deliberately no
+  // fallback default in production — marketing must program every page.
+  const p = await AdPlacement.findOne({ page }).lean().catch(() => null);
+  return p || null;
 }
 
 /* console inventory: all creatives grouped by format + placement map */
@@ -69,14 +71,14 @@ async function placements() {
       enabled: r.enabled !== false, slots: r.slots || {},
       interval: r.interval, cycle: r.cycle || [], format: r.format || 'auto',
       topPromo: !!r.topPromo, promoSlider: r.promoSlider !== false,
-      wordsPerSlot: r.wordsPerSlot || 300,
+      wordsPerSlot: r.wordsPerSlot || 300, repeat: !!r.repeat,
     };
   });
   return map;
 }
 
 async function savePlacement({ page, patch }) {
-  const allowed = ['enabled', 'interval', 'cycle', 'format', 'topPromo', 'promoSlider', 'wordsPerSlot'];
+  const allowed = ['enabled', 'interval', 'cycle', 'format', 'topPromo', 'promoSlider', 'wordsPerSlot', 'repeat'];
   const set = {};
   allowed.forEach(k => { if (patch[k] !== undefined) set[k] = patch[k]; });
   if (set.wordsPerSlot !== undefined) {
@@ -101,7 +103,7 @@ async function savePlacement({ page, patch }) {
     { $set: set, $setOnInsert: { page: String(page) } },
     { upsert: true, new: true }
   ).lean();
-  return { page: doc.page, enabled: doc.enabled !== false, slots: doc.slots || {}, interval: doc.interval };
+  return { page: doc.page, enabled: doc.enabled !== false, slots: doc.slots || {}, interval: doc.interval, repeat: !!doc.repeat };
 }
 
 function slotCfg(placement, slot) {

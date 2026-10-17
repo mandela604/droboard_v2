@@ -28,6 +28,8 @@
   let searchText = '';
   let listPage = 1;
   const PAGE_SIZE = 10;
+  let _slotProg = {};      // slotId -> {formats:[], adIds:[]} — pending programming edits
+  let _curSlotId = null;   // slot selected in the programming card
 
   /* live | off | scheduled | ended */
   function adStatus(ad) {
@@ -86,6 +88,35 @@
   }
 
   /* ── Placements ── */
+  /* Pages with hand-built cards above (extra fields: interval, cycle,
+     words…). Every other page in the registry gets a generic on/off card
+     rendered from AdSetupData.PAGES — add a page to the registry and it
+     appears here with no further wiring. */
+  const BESPOKE_PAGES = ['discover', 'feed', 'genreHub', 'home', 'fullReader', 'scrollReader', 'library', 'droboardPage', 'comments'];
+  const GEN_ICONS = {
+    series: ['fa-book', 'var(--blue)'], debate: ['fa-scale-balanced', 'var(--accent)'],
+    discussion: ['fa-comments', 'var(--purple)'], collection: ['fa-layer-group', 'var(--green)'],
+    followers: ['fa-user-group', 'var(--amber)'], profile: ['fa-user', 'var(--accent)'],
+  };
+  function renderGenericSurfaces() {
+    const grid = document.querySelector('#plBody .pl-grid');
+    const anchor = document.getElementById('plProgCard');
+    if (!grid || !anchor) return;
+    grid.querySelectorAll('.pl-gen-card').forEach(n => n.remove());
+    const pages = (window.AdSetupData && AdSetupData.PAGES) ? AdSetupData.PAGES : [];
+    const p = INV.placements || {};
+    let html = '';
+    pages.forEach(pg => {
+      if (BESPOKE_PAGES.indexOf(pg.id) !== -1) return;
+      const [ico, col] = GEN_ICONS[pg.id] || ['fa-ad', 'var(--gray-400)'];
+      const on = (p[pg.id] || {}).enabled !== false;
+      html += `<div class="pl-card pl-gen-card" data-page="${esc(pg.id)}">` +
+        `<div class="pl-name"><i class="fas ${ico}" style="color:${col}"></i> ${esc(pg.label)}</div>` +
+        `<label class="pl-check"><input type="checkbox" id="plGen_${esc(pg.id)}"${on ? ' checked' : ''}/> Ads on this page</label>` +
+        `</div>`;
+    });
+    if (html) anchor.insertAdjacentHTML('beforebegin', html);
+  }
   function renderPlacements() {
     const p = INV.placements || {};
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
@@ -128,27 +159,319 @@
     on('plSlotListTop', slotOn(cslots['comments:list-top']));
     on('plSlotEveryNth', slotOn(cslots['comments:every-nth']));
     on('plSlotThreadTop', slotOn(cslots['comments:thread-top']));
+    renderGenericSurfaces();
+    renderSlotProgram();
+  }
+
+  /* ── Slot programming (per-slot formats / pinned ad ids) ── */
+  const PROG_FMTS = ['platform', 'book', 'native', 'embed', 'follow', 'banner']; // promo excluded (slider only)
+  function allSlots() {
+    return (window.AdSetupData && AdSetupData.allSlots) ? AdSetupData.allSlots() : [];
+  }
+  function readSlotCfg(slotId) {
+    const meta = allSlots().find(s => s.id === slotId);
+    if (!meta) return null;
+    const raw = ((INV.placements || {})[meta.page] || {}).slots || {};
+    const v = raw[slotId];
+    if (v && typeof v === 'object') return { enabled: v.enabled !== false, formats: v.formats || [], adIds: v.adIds || [] };
+    return { enabled: v !== false, formats: [], adIds: [] };
+  }
+  function persistSlotForm() {
+    if (!_curSlotId) return;
+    const sel = document.getElementById('plProgFmts');
+    const adInp = document.getElementById('plProgAdIds');
+    const fmts = [];
+    if (sel) sel.querySelectorAll('input[type=checkbox]:checked').forEach(c => fmts.push(c.value));
+    const adIds = adInp ? adInp.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    _slotProg[_curSlotId] = { formats: fmts, adIds };
+  }
+  function loadSlotForm(slotId) {
+    _curSlotId = slotId;
+    const cfg = readSlotCfg(slotId) || { formats: [], adIds: [] };
+    const fmts = (_slotProg[slotId] ? _slotProg[slotId].formats : cfg.formats) || [];
+    const adIds = (_slotProg[slotId] ? _slotProg[slotId].adIds : cfg.adIds) || [];
+    const sel = document.getElementById('plProgFmts');
+    if (sel) sel.querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = fmts.indexOf(c.value) !== -1; });
+    const adInp = document.getElementById('plProgAdIds');
+    if (adInp) adInp.value = adIds.join(', ');
+  }
+  function renderSlotProgram() {
+    const selSlot = document.getElementById('plProgSlot');
+    const fmtBox = document.getElementById('plProgFmts');
+    if (!selSlot || !fmtBox) return;
+    const slots = allSlots();
+    if (selSlot.dataset.bound !== '1') {
+      let html = '<option value="">— choose a slot —</option>';
+      let lastPage = null;
+      slots.forEach(s => {
+        if (s.page !== lastPage) {
+          if (lastPage !== null) html += '</optgroup>';
+          html += `<optgroup label="${esc(s.pageLabel)}">`;
+          lastPage = s.page;
+        }
+        html += `<option value="${esc(s.id)}">${esc(s.label)}</option>`;
+      });
+      if (lastPage !== null) html += '</optgroup>';
+      selSlot.innerHTML = html;
+      selSlot.dataset.bound = '1';
+      selSlot.addEventListener('change', () => { persistSlotForm(); loadSlotForm(selSlot.value); });
+      fmtBox.innerHTML = PROG_FMTS.map(f => `<label class="pl-fmt-chk"><input type="checkbox" value="${f}"/> ${f}</label>`).join('');
+      fmtBox.addEventListener('change', persistSlotForm);
+      const adInp = document.getElementById('plProgAdIds');
+      if (adInp) adInp.addEventListener('change', persistSlotForm);
+      const clearBtn = document.getElementById('plProgClear');
+      if (clearBtn) clearBtn.addEventListener('click', () => {
+        if (!_curSlotId) return;
+        delete _slotProg[_curSlotId];
+        loadSlotForm(_curSlotId);
+        toast('Programming cleared for this slot (save to apply)');
+      });
+    }
+    const target = _curSlotId || (slots[0] && slots[0].id) || '';
+    if (selSlot && target && selSlot.value !== target) selSlot.value = target;
+    loadSlotForm(target);
   }
   async function savePlacements() {
+    persistSlotForm(); // capture any in-progress programming edits
     const get = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
     const num = (v, fb) => { const n = parseInt(v, 10); return n > 0 ? n : fb; };
     const chk = (id) => { const el = document.getElementById(id); return !!el && el.checked; };
     const words = (id) => Math.min(5000, Math.max(50, parseInt(get(id), 10) || 300));
+    /* Merge a slot's on/off state with any programming (formats / pinned
+       adIds). Bare boolean when no programming — matches slotCfg()'s shape. */
+    const progFor = (slotId) => _slotProg[slotId] || null;
+    const slotVal = (slotId, enabled) => {
+      const p = progFor(slotId);
+      if (p && (p.formats.length || p.adIds.length)) return { enabled: !!enabled, formats: p.formats, adIds: p.adIds };
+      return !!enabled;
+    };
     const patch = {
       discover: { enabled: chk('plDisOn'), interval: num(get('plDisInt'), 6), cycle: get('plDisCycle').split(',').map(s => s.trim()).filter(Boolean) },
       feed: { enabled: chk('plFeedOn'), interval: num(get('plFeedInt'), 4) },
       genreHub: { enabled: chk('plHubOn'), interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
       home: { enabled: chk('plHomeOn'), interval: num(get('plHomeInt'), 5) },
-      fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), paidUnlockAds: chk('plFullPaidAds'), slots: { 'fullReader:top': chk('plFullTop'), 'fullReader:per-300-words': chk('plFullInline'), 'fullReader:bottom': chk('plFullBottom') } },
-      scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), paidUnlockAds: chk('plScrollPaidAds'), slots: { 'scrollReader:top': chk('plScrollTop'), 'scrollReader:per-300-words': chk('plScrollInline'), 'scrollReader:bottom': chk('plScrollBottom') } },
+      fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), paidUnlockAds: chk('plFullPaidAds'), slots: { 'fullReader:top': slotVal('fullReader:top', chk('plFullTop')), 'fullReader:per-300-words': slotVal('fullReader:per-300-words', chk('plFullInline')), 'fullReader:bottom': slotVal('fullReader:bottom', chk('plFullBottom')) } },
+      scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), paidUnlockAds: chk('plScrollPaidAds'), slots: { 'scrollReader:top': slotVal('scrollReader:top', chk('plScrollTop')), 'scrollReader:per-300-words': slotVal('scrollReader:per-300-words', chk('plScrollInline')), 'scrollReader:bottom': slotVal('scrollReader:bottom', chk('plScrollBottom')) } },
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },
       droboardPage: { interval: num(get('plDrbInt'), 4), enabled: !!document.getElementById('plDrbOn').checked },
-      comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked, slots: { 'comments:list-top': chk('plSlotListTop'), 'comments:every-nth': chk('plSlotEveryNth'), 'comments:thread-top': chk('plSlotThreadTop') } },
+      comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked, slots: { 'comments:list-top': slotVal('comments:list-top', chk('plSlotListTop')), 'comments:every-nth': slotVal('comments:every-nth', chk('plSlotEveryNth')), 'comments:thread-top': slotVal('comments:thread-top', chk('plSlotThreadTop')) } },
     };
+    /* Every registered page must land in the patch, or its on/off is
+       silently dropped on save. Bespoke cards above already set theirs;
+       the rest read their generic toggle (plGen_<pageId>). */
+    const pages = (window.AdSetupData && AdSetupData.PAGES) ? AdSetupData.PAGES : [];
+    pages.forEach(pg => {
+      if (patch[pg.id]) return;
+      const el = document.getElementById('plGen_' + pg.id);
+      patch[pg.id] = { enabled: el ? !!el.checked : true };
+    });
+    /* Slots with no on/off checkbox in the panel (debate, feed, home, …):
+       programming-only writes must still land on the right page, keeping the
+       slot's existing enabled state from INV.placements. */
+    Object.keys(_slotProg).forEach(slotId => {
+      const meta = allSlots().find(s => s.id === slotId);
+      if (!meta) return;
+      if (!patch[meta.page]) patch[meta.page] = { enabled: true };
+      if (!patch[meta.page].slots) patch[meta.page].slots = {};
+      if (patch[meta.page].slots[slotId] !== undefined) return; // already handled via checkbox
+      const existing = (((INV.placements || {})[meta.page] || {}).slots || {})[slotId];
+      const wasOn = existing === undefined ? true : (typeof existing === 'object' ? existing.enabled !== false : existing !== false);
+      patch[meta.page].slots[slotId] = slotVal(slotId, wasOn);
+    });
     try {
       INV.placements = await MarketingData.savePlacements(patch);
+      _slotProg = {}; // committed — clear pending edits
       toast('✅ Placement frequency saved — live on client pages');
+      renderPlacements(); // refresh programming form from saved state
     } catch (e) { toast('Could not save placements'); }
+  }
+
+  /* ── Reader League (full CRUD: weights, prizes, kill switch) ── */
+  const LEAGUE_ACTIONS = [
+    { id: 'chapter', label: '📖 Chapter' }, { id: 'hour', label: '⏱ Hour read' },
+    { id: 'reaction', label: '❤️ Reaction' }, { id: 'comment', label: '💬 Comment' },
+    { id: 'reply', label: '↩️ Reply' }, { id: 'debate', label: '🗳 Debate vote' },
+    { id: 'win', label: '🏆 Debate win' }, { id: 'streak', label: '🔥 Streak day' },
+  ];
+  let LEAGUE = null;
+  let _lgRemoved = [];
+  function lgCustomActions() {
+    const core = {};
+    LEAGUE_ACTIONS.forEach(a => (core[a.id] = true));
+    return Object.keys((LEAGUE && LEAGUE.weights) || {}).filter(k => !core[k]);
+  }
+  function renderLeague() {
+    const wWrap = document.getElementById('lgWeights');
+    const pWrap = document.getElementById('lgPrizes');
+    if (!wWrap || !pWrap || !LEAGUE) return;
+    const on = document.getElementById('lgOn');
+    if (on) on.checked = LEAGUE.enabled !== false;
+    const labels = LEAGUE.actionLabels || {};
+    const icons = LEAGUE.actionIcons || {};
+    wWrap.innerHTML = LEAGUE_ACTIONS.map(a =>
+      `<div><label class="pl-lbl">${a.label}</label>` +
+      `<input class="pl-inp" id="lgW_${a.id}" type="number" min="0" value="${(+((LEAGUE.weights || {})[a.id]) || 0)}"/></div>`
+    ).join('') + lgCustomActions().map(id =>
+      `<div><label class="pl-lbl"><span id="lgE_${id}">${esc(icons[id] || '✦')}</span> <span id="lgL_${id}">${esc(labels[id] || id)}</span> <a href="#" data-lgdel="${esc(id)}" style="color:var(--red);font-weight:800" title="Remove action">✕</a></label>` +
+      `<div style="display:flex;gap:6px"><input class="pl-inp" id="lgI_${esc(id)}" value="${esc(icons[id] || '✦')}" maxlength="4" title="Emoji icon" style="max-width:52px;margin-bottom:0;text-align:center"/>` +
+      `<input class="pl-inp" id="lgW_${esc(id)}" type="number" min="0" value="${(+(LEAGUE.weights || {})[id] || 0)}" style="margin-bottom:0"/></div></div>`
+    ).join('') +
+    `<div><label class="pl-lbl">＋ New action label</label>` +
+    `<input class="pl-inp" id="lgNewLabel" placeholder="e.g. Story shared" style="margin-bottom:6px"/>` +
+    `<div style="display:flex;gap:6px"><input class="pl-inp" id="lgNewIcon" value="✦" maxlength="4" title="Emoji icon" style="max-width:52px;margin-bottom:0;text-align:center"/>` +
+    `<input class="pl-inp" id="lgNewPts" type="number" min="0" value="5" style="margin-bottom:0"/>` +
+    `<button class="btn-ghost" id="lgAddBtn" style="padding:9px 12px;white-space:nowrap">Add</button></div></div>`;
+    wWrap.querySelectorAll('[data-lgdel]').forEach(a => a.addEventListener('click', (e) => {      e.preventDefault();
+      const id = a.dataset.lgdel;
+      if (!confirm(`Remove the "${id}" action from scoring?`)) return;
+      _lgRemoved.push(id);
+      delete LEAGUE.weights[id];
+      renderLeague();
+      toast('Action removed (Save league to apply)');
+    }));
+    lgCustomActions().forEach(id => {
+      const inp = document.getElementById('lgI_' + id);
+      if (inp) inp.addEventListener('input', () => {
+        const s = document.getElementById('lgE_' + id);
+        if (s) s.textContent = inp.value.trim().slice(0, 4) || '✦';
+      });
+    });
+    const addBtn = document.getElementById('lgAddBtn');
+    if (addBtn) addBtn.addEventListener('click', () => {
+      const lblEl = document.getElementById('lgNewLabel');
+      const ptsEl = document.getElementById('lgNewPts');
+      const icoEl = document.getElementById('lgNewIcon');
+      const label = (lblEl.value || '').trim();
+      if (!label) { toast('Name the action first'); return; }
+      const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || ('action_' + Date.now());
+      LEAGUE.weights = LEAGUE.weights || {};
+      LEAGUE.actionLabels = LEAGUE.actionLabels || {};
+      LEAGUE.actionIcons = LEAGUE.actionIcons || {};
+      LEAGUE.weights[id] = Math.max(0, parseInt(ptsEl.value, 10) || 0);
+      LEAGUE.actionLabels[id] = label;
+      LEAGUE.actionIcons[id] = ((icoEl && icoEl.value) || '✦').trim().slice(0, 4) || '✦';
+      _lgRemoved = _lgRemoved.filter(k => k !== id);
+      renderLeague();
+      toast(`✅ “${label}” scores +${LEAGUE.weights[id]} — Save league to apply`);
+    });
+    pWrap.innerHTML = (LEAGUE.prizes || []).map((p, i) =>
+      `<div class="pl-card"><div class="pl-name">#${p.place || (i + 1)}</div>` +
+      `<div class="pl-lbl">Live preview — exactly as winners see it</div>` +
+      `<div id="lgP${i}_prev" style="margin-bottom:9px"></div>` +
+      `<label class="pl-lbl">Badge label (text on the winner's profile)</label><input class="pl-inp" id="lgP${i}_badge" data-lgprev="${i}" value="${esc(p.badge || '')}"/>` +
+      `<label class="pl-lbl">Icon (Font Awesome name, e.g. fa-crown)</label><input class="pl-inp" id="lgP${i}_icon" data-lgprev="${i}" value="${esc(p.icon || 'fa-medal')}"/>` +
+      `<label class="pl-lbl">Color</label>` +
+      `<div style="display:flex;gap:8px;align-items:center;margin-bottom:9px">` +
+      `<input type="color" id="lgP${i}_color" data-lgprev="${i}" value="${esc(p.color || '#f59e0b')}" style="width:44px;height:36px;padding:3px;border:1px solid var(--input-border);border-radius:9px;background:var(--input-bg);cursor:pointer;flex-shrink:0"/>` +
+      `<input class="pl-inp" id="lgP${i}_hex" data-lgprev="${i}" value="${esc(p.color || '#f59e0b')}" style="margin-bottom:0" maxlength="7" spellcheck="false"/>` +
+      `</div>` +
+      `<label class="pl-lbl">Perks (comma separated)</label><input class="pl-inp" id="lgP${i}_perks" value="${esc((p.perks || []).join(', '))}"/>` +
+      `<label class="pl-lbl">Ad-free days</label><input class="pl-inp" id="lgP${i}_days" type="number" min="0" max="30" value="${(p.adFreeDays == null ? 0 : +p.adFreeDays)}"/>` +
+      `</div>`
+    ).join('');
+    (LEAGUE.prizes || []).forEach((p, i) => bindLeaguePreview(i));
+  }
+  /* Live badge preview — mirrors profile ach-chip rendering exactly. */
+  function leagueHexSoft(hex) {
+    var h = String(hex || '#f59e0b').replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    var r = parseInt(h.substr(0, 2), 16) || 0, g = parseInt(h.substr(2, 2), 16) || 0, b = parseInt(h.substr(4, 2), 16) || 0;
+    return `rgba(${r},${g},${b},.12)`;
+  }
+  function paintLeaguePreview(i) {
+    const prev = document.getElementById(`lgP${i}_prev`);
+    if (!prev) return;
+    const badgeEl = document.getElementById(`lgP${i}_badge`);
+    const iconEl = document.getElementById(`lgP${i}_icon`);
+    const badge = badgeEl ? badgeEl.value : 'Badge';
+    const icon = iconEl ? iconEl.value : 'fa-medal';
+    let color = '#f59e0b';
+    const hexEl = document.getElementById(`lgP${i}_hex`);
+    const colEl = document.getElementById(`lgP${i}_color`);
+    const raw = ((hexEl && hexEl.value) || (colEl && colEl.value) || '').trim();
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) color = raw;
+    prev.innerHTML =
+      `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;` +
+      `background:${leagueHexSoft(color)};color:${color};border:1px solid ${color}">` +
+      `<i class="fas ${esc(icon)}"></i> ${esc(badge) || 'Badge'}</span>`;
+  }
+  function bindLeaguePreview(i) {
+    paintLeaguePreview(i);
+    ['badge', 'icon', 'hex'].forEach(k => {
+      const el = document.getElementById(`lgP${i}_${k}`);
+      if (el) el.addEventListener('input', () => {
+        if (k === 'hex') {
+          const col = document.getElementById(`lgP${i}_color`);
+          if (col && /^#([0-9a-fA-F]{6})$/.test(el.value.trim())) col.value = el.value.trim();
+        }
+        paintLeaguePreview(i);
+      });
+    });
+    const col = document.getElementById(`lgP${i}_color`);
+    if (col) col.addEventListener('input', () => {
+      const hex = document.getElementById(`lgP${i}_hex`);
+      if (hex) hex.value = col.value;
+      paintLeaguePreview(i);
+    });
+  }
+  async function saveLeague() {
+    const get = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const num = (v) => Math.max(0, parseInt(v, 10) || 0);
+    const weights = {};
+    LEAGUE_ACTIONS.forEach(a => { weights[a.id] = num(get('lgW_' + a.id)); });
+    lgCustomActions().forEach(id => {
+      const el = document.getElementById('lgW_' + id);
+      if (el) weights[id] = num(el.value);
+    });
+    const labels = {};
+    lgCustomActions().forEach(id => {
+      const el = document.getElementById('lgL_' + id);
+      labels[id] = el ? el.textContent : id;
+    });
+    const icons = {};
+    lgCustomActions().forEach(id => {
+      const el = document.getElementById('lgI_' + id);
+      icons[id] = el ? el.value.trim().slice(0, 4) : '✦';
+    });
+    const newLbl = ((document.getElementById('lgNewLabel') || {}).value || '').trim();
+    const newPts = (document.getElementById('lgNewPts') || {}).value || '';
+    if (newLbl) {
+      const nid = newLbl.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || ('action_' + Date.now());
+      LEAGUE.weights = LEAGUE.weights || {};
+      LEAGUE.actionLabels = LEAGUE.actionLabels || {};
+      LEAGUE.actionIcons = LEAGUE.actionIcons || {};
+      if (LEAGUE.weights[nid] == null) {
+        LEAGUE.weights[nid] = Math.max(0, parseInt(newPts, 10) || 0);
+        LEAGUE.actionLabels[nid] = newLbl;
+        LEAGUE.actionIcons[nid] = ((document.getElementById('lgNewIcon') || {}).value || '✦').trim().slice(0, 4) || '✦';
+      }
+    }
+    const prizes = (LEAGUE.prizes || []).map((p, i) => ({
+      place: p.place || (i + 1),
+      badge: get(`lgP${i}_badge`) || p.badge,
+      icon: get(`lgP${i}_icon`) || 'fa-medal',
+      color: (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(get(`lgP${i}_hex`).trim()) ? get(`lgP${i}_hex`).trim() : (get(`lgP${i}_color`) || '#f59e0b')),
+      perks: get(`lgP${i}_perks`).split(',').map(s => s.trim()).filter(Boolean),
+      adFreeDays: Math.min(30, num(get(`lgP${i}_days`))),
+    }));
+    try {
+      LEAGUE = await MarketingData.saveLeagueConfig({
+        enabled: !!document.getElementById('lgOn').checked,
+        weights, actionLabels: labels, actionIcons: icons, prizes,
+        removeActions: _lgRemoved,
+      });
+      _lgRemoved = [];
+      renderLeague();
+      toast('✅ League saved — live on client pages at next load');
+    } catch (e) { toast('Could not save league'); }
+  }
+  async function resetLeague() {
+    if (!confirm('Reset league scoring and prizes to defaults?')) return;
+    try {
+      LEAGUE = await MarketingData.resetLeague();
+      renderLeague();
+      toast('League reset to defaults');
+    } catch (e) { toast('Could not reset league'); }
   }
 
   /* ── Ad list ── */
@@ -313,8 +636,10 @@
     try { INV = await MarketingData.getAdInventory(); } catch (e) {}
     try { STATS = await MarketingData.getAdStats(); } catch (e) { STATS = []; }
     try { CAMPS = await MarketingData.getCampaigns(); } catch (e) { CAMPS = []; }
+    try { LEAGUE = await MarketingData.getLeagueConfig(); } catch (e) { LEAGUE = null; }
     renderStats();
     renderPlacements();
+    renderLeague();
     renderFilterPills();
     renderStatusPills();
     renderCampFilter();
@@ -340,6 +665,30 @@
     await reload();
     document.getElementById('newAdBtn').addEventListener('click', () => openWizard('platform'));
     document.getElementById('plSaveBtn').addEventListener('click', savePlacements);
+    const _lgSave = document.getElementById('lgSaveBtn');
+    if (_lgSave) _lgSave.addEventListener('click', saveLeague);
+    const _lgReset = document.getElementById('lgResetBtn');
+    if (_lgReset) _lgReset.addEventListener('click', resetLeague);
+    const _lgPrev = document.getElementById('lgPreviewBtn');
+    if (_lgPrev) _lgPrev.addEventListener('click', () => {
+      try {
+        if (window.ReaderLeague && ReaderLeague.previewAsChampion()) toast('👑 Preview on — open your profile to see badge + gold frame');
+        else toast('Could not set preview');
+      } catch (e) { toast('Could not set preview'); }
+    });
+    const _lgPrevClr = document.getElementById('lgPreviewClearBtn');
+    if (_lgPrevClr) _lgPrevClr.addEventListener('click', () => {
+      try {
+        if (window.ReaderLeague && ReaderLeague.clearPreview()) toast('Preview cleared');
+        else toast('Could not clear preview');
+      } catch (e) { toast('Could not clear preview'); }
+    });
+    const _lgHead = document.getElementById('lgHead');
+    if (_lgHead) {
+      const toggle = () => document.getElementById('lgPanel').classList.toggle('collapsed');
+      _lgHead.addEventListener('click', toggle);
+      _lgHead.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    }
     document.getElementById('resetAdsBtn').addEventListener('click', async () => {
       if (!confirm('Reset all ads and frequencies to defaults?')) return;
       await MarketingData.resetAds();

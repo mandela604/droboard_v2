@@ -24,9 +24,17 @@
  *       { id:'d', icon:'👀', name:'Team Watching',col:'#a78bfa' },
  *     ],
  *     currentUser: { name:'You', avatar:null, team:null },
- *     requireTeam: false,           // true = must pick a team before posting
- *     collapsible: true,            // true = toggle header like reader.html
- *     startOpen: false,
+  *     requireTeam: false,           // true = must pick a team before posting
+  *     collapsible: true,            // true = toggle header like reader.html
+  *     startOpen: false,
+  *     scrollBox: false,             // true = bounded inner-scroll list + pinned
+  *                                    // composer (readers); number = max-height px
+  *     scrollMax: 320,               // list max-height px when scrollBox is true
+  *     fillHeight: false,            // true = fill available height (comments page)
+  *     fullCommentsUrl: null,        // string or () => string — "View all ›" link
+  *                                    // next to "Tag your side" jumps here
+  *     headerHtml: '',               // trusted host HTML pinned to the top of
+  *                                    // the scroll flow (scrolls away)
  *
  *     onPost:        (comment) => { ... your API call ... },
  *     onReply:       (parentId, comment) => { ... },
@@ -148,7 +156,7 @@
       --dcs-acc:#ff0050; --dcs-acc2:#ff4d7a;
     }
     body.theme-white{
-      --dcs-bg:#f5f5f5; --dcs-card:#ffffff; --dcs-surface:rgba(0,0,0,.03); --dcs-surface2:#ececec;
+      --dcs-bg:#f5f5f5; --dcs-card:#f7f7f8; --dcs-surface:rgba(0,0,0,.03); --dcs-surface2:#ececec;
       --dcs-tx:#1a1a1a; --dcs-muted:#555555; --dcs-muted2:#888888; --dcs-muted3:#cfcfd4;
       --dcs-bd:rgba(0,0,0,.08); --dcs-bd2:rgba(0,0,0,.04); --dcs-hover:rgba(0,0,0,.04);
       --dcs-ring-viewed:#d4d4d8;
@@ -186,14 +194,12 @@
     .dcs-send-btn:active{transform:scale(.9)}
     .dcs-send-btn:disabled{background:var(--dcs-surface2);cursor:default}
 
-    /* List — internally scrollable when open, so the composer below
-       stays pinned like an overlay sheet on every host page. */
-    .dcs-list{display:flex;flex-direction:column;gap:8px;padding:6px 0}
-    .dcs-body.open .dcs-list{max-height:min(58vh,520px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+    /* List — flows naturally so the whole page scrolls natively. */
+    .dcs-list{display:flex;flex-direction:column;gap:9px;padding:6px 0}
     .dcs-item{position:relative;background:var(--dcs-card);border:1px solid var(--dcs-bd);border-radius:10px;overflow:visible}
     .dcs-inner{display:flex;gap:9px;padding:10px 10px 8px}
-    .dcs-item.is-reply{background:var(--dcs-surface);border-color:var(--dcs-bd2)}
-    .dcs-item.is-reply .dcs-inner{padding-left:16px;border-left:2px solid rgba(255,0,80,.12);margin-left:8px}
+.dcs-item.is-reply{background:var(--dcs-surface);border-color:var(--dcs-bd2);margin-left:22px}
+.dcs-item.is-reply .dcs-inner{padding-left:10px;border-left:2px solid rgba(255,0,80,.12);margin-left:0}
 
     .dcs-av-wrap{position:relative;width:32px;height:32px;flex-shrink:0;cursor:pointer}
     .dcs-av-ring{width:32px;height:32px;border-radius:50%;padding:2px}
@@ -207,13 +213,12 @@
     .dcs-cbody{flex:1;min-width:0}
     .dcs-chead{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap}
     .dcs-name{font-size:12px;font-weight:800;color:var(--dcs-tx);cursor:pointer}
-    .dcs-verified{width:13px;height:13px;border-radius:50%;background:#38bdf8;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-    .dcs-verified i{font-size:6px;color:#fff}
-    .dcs-verified.writer{background:#ff0050}
+    .dcs-verified{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:#1d9bf0;border:2px solid var(--dcs-card);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .dcs-verified i{font-size:8px;color:#fff}
     .dcs-team-tag{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.03em;white-space:nowrap;border:1px solid transparent}
     .dcs-time{font-size:10px;color:var(--dcs-muted2)}
     .dcs-edited-tag{font-size:10px;color:var(--dcs-muted2);font-style:italic}
-    .dcs-text{font-size:13.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
+    .dcs-text{font-size:15.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
     .dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700}
 
     /* Inline edit form */
@@ -233,6 +238,8 @@
     .dcs-action-btn:active{background:rgba(255,0,80,.1)}
     .dcs-action-btn.liked{color:var(--dcs-acc)}
     .dcs-action-btn i{font-size:11px}
+    .dcs-reply-total{font-size:11px;font-weight:700;color:var(--dcs-muted2);display:flex;align-items:center;gap:4px;margin-left:4px}
+    .dcs-reply-total i{font-size:12px}
 
     /* Fallback reaction popup (only used without reaction-picker.js) */
     .dcs-rx-popup{position:absolute;left:0;bottom:100%;z-index:400;background:var(--dcs-bg);border:1px solid var(--dcs-bd);border-radius:30px;padding:6px 8px;display:none;flex-direction:row;gap:2px;box-shadow:0 8px 24px var(--dcs-shadow-md);animation:dcsRxPop .18s cubic-bezier(.34,1.56,.64,1)}
@@ -270,23 +277,55 @@
     .dcs-empty i{font-size:26px;margin-bottom:8px;display:block;color:var(--dcs-muted3)}
     .dcs-empty p{font-size:11.5px;line-height:1.5}
 
+    .dcs-skel-row{display:flex;gap:10px;padding:11px 0;align-items:flex-start}
+    .dcs-skel-av{width:34px;height:34px;border-radius:50%;flex-shrink:0}
+    .dcs-skel-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;padding-top:2px}
+    .dcs-skel-ln{height:10px;border-radius:6px}
+    .dcs-skel-av,.dcs-skel-ln{background:linear-gradient(90deg,var(--dcs-surface2) 25%,var(--dcs-hover) 50%,var(--dcs-surface2) 75%);background-size:200% 100%;animation:dcsShimmer 1.2s infinite}
+    @keyframes dcsShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+
     /* "View all N replies" control */
     .dcs-view-replies{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--dcs-acc2);cursor:pointer;padding:8px 0 10px 16px;margin-left:18px;user-select:none}
     .dcs-view-replies:active{opacity:.7}
     .dcs-view-replies i{font-size:10px}
 
-    /* ── Thread view — full-screen flattened reply page ── */
-    .dcs-thread-ov{position:fixed;inset:0;z-index:1850;background:var(--dcs-bg);display:none;flex-direction:column;font-family:'DM Sans',system-ui,sans-serif;color:var(--dcs-tx)}
+    /* ── Thread view — replies page: same card spacing as main list,
+       full phone page (solid bg, .phone column max 420px centered) ── */
+    .dcs-thread-ov{position:fixed;inset:0;z-index:1850;background:var(--dcs-bg);display:none;flex-direction:column;align-items:center;font-family:'DM Sans',system-ui,sans-serif;color:var(--dcs-tx)}
     .dcs-thread-ov.open{display:flex}
-    .dcs-thread-sheet{display:flex;flex-direction:column;height:100%;min-height:0}
+    .dcs-thread-sheet{display:flex;flex-direction:column;height:100%;min-height:0;width:100%;max-width:420px;margin:0 auto;background:var(--dcs-bg);box-shadow:0 0 50px rgba(0,0,0,.35)}
     .dcs-thread-hdr{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;border-bottom:1px solid var(--dcs-bd);flex-shrink:0}
     .dcs-thread-back{width:32px;height:32px;border-radius:50%;background:var(--dcs-surface2);border:none;color:var(--dcs-tx);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:13px;transition:.15s}
     .dcs-thread-back:active{transform:scale(.9);background:var(--dcs-hover)}
     .dcs-thread-title{font-size:13px;font-weight:800;color:var(--dcs-tx)}
-    .dcs-thread-body{flex:1;min-height:0;overflow-y:auto;padding:6px 14px 14px;-webkit-overflow-scrolling:touch}
+    .dcs-thread-body{flex:1;min-height:0;overflow-y:auto;padding:6px 14px 14px;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:9px}
     .dcs-thread-composer{flex-shrink:0;padding:0 14px calc(env(safe-area-inset-bottom,0px) + 12px);border-top:1px solid var(--dcs-bd2);background:var(--dcs-bg)}
     .dcs-thread-composer .dcs-team-picker{padding-top:10px}
     .dcs-thread-composer .dcs-input-row{border-top:none;margin-top:0}
+    /* Bottom-sheet thread (opt-in via threadSheet:true): slides from below,
+       dim backdrop, page stays visible behind — droboard-page style */
+    .dcs-thread-ov.as-sheet{justify-content:flex-end;background:rgba(0,0,0,.8)}
+    .dcs-thread-ov.as-sheet .dcs-thread-sheet{height:auto;min-height:40vh;max-height:86vh;max-width:520px;border-radius:20px 20px 0 0;animation:dcsSheetUp .28s ease}
+    @keyframes dcsSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+    /* Inner-scroll list (readers): the list becomes a bounded box that
+       scrolls internally while the page stays put; the composer below it
+       stays visible (pinned) so there's no need to scroll down to type.
+       Page scroll still works normally outside the box, so you can scroll
+       away from the chapter + comments. Enable with scrollBox:true. */
+    .dcs-wrap.dcs-scrollbox .dcs-list{max-height:var(--dcs-list-max,320px);overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+    /* Fill-height mode (dedicated comments page): the body itself is the
+       scroller, so header + team picker scroll away like normal content
+       while the composer pins to the bottom via its sticky rule. */
+    .dcs-wrap.dcs-fill{display:flex;flex-direction:column;height:100%;min-height:0}
+    .dcs-wrap.dcs-fill .dcs-body.open,.dcs-wrap.dcs-fill .dcs-body.no-toggle{flex:1;min-height:0;max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .dcs-wrap.dcs-fill .dcs-list{overflow:visible}
+    .dcs-headblock{padding:2px 0 0}
+    /* Team row: hint left, View-all link right */
+    .dcs-team-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .dcs-team-row .dcs-team-hint{padding-bottom:6px}
+    .dcs-view-all{background:none;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;color:var(--dcs-acc2);white-space:nowrap;padding:0 0 6px}
+    .dcs-view-all:active{opacity:.7}
 
     /* Built-in fallback toast (used only if the host page has no window.toast) */
     .dcs-fallback-toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--dcs-card);border:1px solid var(--dcs-bd);color:var(--dcs-tx);padding:8px 18px;border-radius:24px;font-size:12px;font-weight:600;z-index:2200;opacity:0;transition:.26s;pointer-events:none;white-space:nowrap;font-family:'DM Sans',sans-serif;box-shadow:0 4px 20px var(--dcs-shadow-sm);}
@@ -444,6 +483,7 @@
           if (c.rx.userRx) c.rx[c.rx.userRx] = Math.max(0, (c.rx[c.rx.userRx] || 0) - 1);
           c.rx[rid] = (c.rx[rid] || 0) + 1;
           c.rx.userRx = rid;
+          try { if (window.ReaderLeague) ReaderLeague.track('reaction'); } catch (e) {}
         }
         if (typeof entry.onReact === 'function') entry.onReact(c, rid);
       },
@@ -456,41 +496,85 @@
   let _idCounter = 1000;
   let _instanceCounter = 0;
 
-  // Fills one ad-slot element (list top, every Nth row, thread top). Hidden
-  // unless the stack is loaded, the instance didn't opt out, the 'comments'
-  // placement is enabled, and an eligible ad exists. Host-page pool is
+  // Fills one ad-slot element (list top, every Nth row, thread top) via the
+  // unified DroboardAdSlot owner (view-track + user ctx). Host-page pool is
   // tried first so page-scoped ads win; shared 'comments' pool is fallback.
-  // Impression tracked per fill.
   async function _mountAdSlot(slotEl, opts) {
     if (!slotEl) return;
     slotEl.style.display = 'none';
     if (!slotEl.isConnected || !_adsAvailable()) return;
     if (opts && opts.ads === false) return;
-    let placement = null;
-    try { placement = await AdService.getPlacement('comments'); } catch (e) { placement = null; }
-    if (placement && placement.enabled === false) return;
-    const slotId = slotEl.dataset && slotEl.dataset.slot;
-    if (slotId && placement && placement.slots && placement.slots[slotId] === false) return;
+    if (!window.DroboardAdSlot) return;
     if (!slotEl.isConnected) return;
+    const full = (slotEl.dataset && slotEl.dataset.slot) || 'comments:inline';
+    const local = full.indexOf(':') > 0 ? full.split(':')[1] : full;
     const keys = _slotPageKeys(opts);
-    let pick = null;
+    const pid = (opts && (opts.storyId || opts.postId)) || '';
     for (let i = 0; i < keys.length; i++) {
-      try { pick = _pickSlotAd(await AdService.getAds({ page: keys[i], slot: slotId })); } catch (e) { pick = null; }
-      if (pick || !slotEl.isConnected) break;
+      if (!slotEl.isConnected) return;
+      const page = keys[i], slot = page + ':' + local;
+      let filled = false;
+      try { filled = await window.DroboardAdSlot.mount(slotEl, { slot: slot, page: page, postId: pid, storyId: pid }); } catch (e) { filled = false; }
+      if (filled && slotEl.isConnected) {
+        try {
+          if (!slotEl.innerHTML.includes('Sponsored')) {
+            slotEl.innerHTML = '<div style="font-size:8.5px;font-weight:800;color:var(--dcs-muted2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sponsored</div>' + slotEl.innerHTML;
+          }
+        } catch (e) {}
+        slotEl.style.display = 'block';
+        return;
+      }
     }
-    if (!pick || !slotEl.isConnected) return;
-    const inner = _renderSlotAd(pick);
-    if (!inner) return;
-    slotEl.innerHTML = '<div style="font-size:8.5px;font-weight:800;color:var(--dcs-muted2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sponsored</div>' + inner;
-    slotEl.style.display = 'block';
-    _trackAd(pick.ad && pick.ad.id, 'impression');
-    _bindSlotAd(slotEl, pick);
+  }
+
+  /* Impression counts on first view (not on fill) — in-flow slots may sit
+     below the fold or inside a collapsed section. */
+  function trackOnView(slotEl, adId) {
+    if (!adId) return;
+    try {
+      if (!('IntersectionObserver' in window)) { _trackAd(adId, 'impression'); return; }
+      const ob = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            try { ob.disconnect(); } catch (e) {}
+            _trackAd(adId, 'impression');
+          }
+        });
+      }, { threshold: 0.5 });
+      ob.observe(slotEl);
+    } catch (e) { _trackAd(adId, 'impression'); }
   }
 
   function _newRx(reactions) {
     const o = { userRx: null };
     reactions.forEach(r => (o[r.id] = 0));
     return o;
+  }
+
+  /* Legacy seed ids (comments-data.js: fire/cry/shock/emo/clap/…) predate
+     reaction-picker ids (savage/crying/shocked/emotional/love/…). Without
+     remapping, _totalCount sums only new ids → 0 while userRx='fire' is
+     truthy → filled heart with 0. Remap so old seeds render correctly. */
+  const _LEGACY_RX = { fire: 'savage', cry: 'crying', shock: 'shocked', emo: 'emotional', emotional: 'emotional', broken: 'broken', sus: 'sus', mindblown: 'twist', twist: 'twist', clap: 'love', love: 'love', crying: 'crying', shocked: 'shocked', savage: 'savage', laughing: 'laughing', angry: 'angry' };
+  function _normalizeRx(src, reactions) {
+    const out = _newRx(reactions);
+    const valid = {};
+    reactions.forEach(r => (valid[r.id] = true));
+    src = src || {};
+    Object.keys(src).forEach(k => {
+      if (k === 'userRx') return;
+      const v = +src[k] || 0;
+      if (!v) return;
+      const nid = _LEGACY_RX[k] || k;
+      if (valid[nid]) out[nid] = (out[nid] || 0) + v;
+    });
+    const u = src.userRx;
+    const nu = (u && (_LEGACY_RX[u] || u)) || null;
+    out.userRx = (nu && valid[nu] && ((out[nu] || 0) > 0 || u === nu)) ? nu : ((nu && valid[nu]) ? nu : null);
+    // legacy seeds with userRx but zeroed buckets (counts dropped): keep
+    // filled state only if the bucket has a count — else unfill (no 0-filled)
+    if (out.userRx && !(out[out.userRx] > 0)) out.userRx = null;
+    return out;
   }
 
   function attach(target, options) {
@@ -505,6 +589,31 @@
     const TEAMS = options.teams || [];
     const REACTIONS = _rpAvailable() ? window.DroboardReactionPicker.REACTIONS : (options.reactions || DEFAULT_REACTIONS);
     const currentUser = Object.assign({ name: 'You', avatar: null, team: null }, options.currentUser || {});
+    // Demo identity: when the caller leaves the 'You' placeholder, use the
+    // demo session account (Jordan Blake reader / Ada Writes writer via ?as=)
+    // so new posts render with avatar + name like everyone else.
+    try {
+      const _ph = !((options.currentUser || {}).name) || (((options.currentUser || {}).name === 'You') && !((options.currentUser || {}).avatar));
+      if (_ph && window.AuthSession && typeof window.AuthSession.getSync === 'function') {
+        const _s = window.AuthSession.getSync() || {};
+        if (_s.name) currentUser.name = _s.name;
+        if (_s.avatar) currentUser.avatar = _s.avatar;
+      }
+    } catch (e) {}
+    // Production identity bridge: when the app sets window.DroboardUser from
+    // the logged-in session (name/avatar/verified/wid/statuses), new posts
+    // render with the real profile instead of the 'You' placeholder.
+    try {
+      const du = window.DroboardUser || null;
+      if (du) {
+        if (du.name && !((options.currentUser || {}).name)) currentUser.name = du.name;
+        if (du.avatar) currentUser.avatar = du.avatar;
+        if (du.verified !== undefined) currentUser.verified = du.verified;
+        if (du.wid && !currentUser.wid) currentUser.wid = du.wid;
+        if (du.statusRing && !currentUser.statusRing) currentUser.statusRing = du.statusRing;
+        if (du.statuses && !currentUser.statuses) currentUser.statuses = du.statuses;
+      }
+    } catch (e) {}
     let comments = (options.comments || []).map(_normalize);
     let open = !options.collapsible || !!options.startOpen;
     let pickedTeam = currentUser.team || null;
@@ -527,14 +636,28 @@
         verified: false, team: null, statusRing: 'none', statuses: null,
         time: 'Just now', text: '', edited: false, likes: 0, liked: false, replies: [],
       }, c);
-      c.rx = Object.assign(_newRx(REACTIONS), c.rx || {});
+      c.rx = _normalizeRx(c.rx || c.reactions || null, REACTIONS);
+      // fallback-era seeds (likes/liked, no buckets): carry the count into
+      // love so the picker shows unfilled N instead of unfilled 0
+      try {
+        let tot = 0;
+        REACTIONS.forEach(r => (tot += (c.rx[r.id] || 0)));
+        if (!tot && (c.likes > 0) && c.rx.hasOwnProperty('love')) {
+          c.rx.love = +c.likes || 0;
+          if (c.liked) c.rx.userRx = 'love';
+        }
+      } catch (e) {}
       c.replies = (c.replies || []).map(_normalize);
       return c;
     }
 
     // ── Build shell: team picker at TOP, list, composer at BOTTOM ──
+    const scrollMax = (typeof options.scrollBox === 'number' && options.scrollBox > 0) ? options.scrollBox
+      : (options.scrollMax > 0 ? options.scrollMax : 320);
+    const fullUrl = () => (typeof options.fullCommentsUrl === 'function' ? options.fullCommentsUrl() : options.fullCommentsUrl);
+    const teamHint = options.requireTeam ? 'Pick a side to comment' : 'Tag your side (optional)';
     container.innerHTML = `
-      <div class="dcs-wrap" id="${instId}">
+      <div class="dcs-wrap${options.scrollBox ? ' dcs-scrollbox' : ''}${options.fillHeight ? ' dcs-fill' : ''}" id="${instId}"${options.scrollBox ? ` style="--dcs-list-max:${scrollMax}px"` : ''}>
         ${options.collapsible ? `
         <div class="dcs-toggle" data-dcs-toggle>
           <div class="dcs-toggle-icon"><i class="fas fa-comment-dots"></i></div>
@@ -543,10 +666,14 @@
           <div class="dcs-toggle-arrow${open ? ' open' : ''}" data-dcs-arrow><i class="fas fa-chevron-down"></i></div>
         </div>` : ''}
         <div class="dcs-body${open ? ' open' : ''}${options.collapsible ? '' : ' no-toggle'}" data-dcs-body>
-          <div data-dcs-adslot data-slot="comments:list-top" style="margin-bottom:8px;display:none"></div>
-          ${TEAMS.length ? `
-          <div class="dcs-team-hint">${options.requireTeam ? 'Pick a side to comment' : 'Tag your side (optional)'}</div>
-          <div class="dcs-team-picker" data-dcs-teams></div>` : ''}
+          ${options.headerHtml ? `<div class="dcs-headblock">${options.headerHtml}</div>` : ''}
+          ${options.fullCommentsUrl ? `
+          <div class="dcs-team-row">
+            ${TEAMS.length ? `<div class="dcs-team-hint">${teamHint}</div>` : '<div></div>'}
+            <button type="button" class="dcs-view-all" data-dcs-viewall>View all ›</button>
+          </div>` : (TEAMS.length ? `
+          <div class="dcs-team-hint">${teamHint}</div>` : '')}
+          ${TEAMS.length ? `<div class="dcs-team-picker" data-dcs-teams></div>` : ''}
           <div class="dcs-list" data-dcs-list></div>
           <div class="dcs-input-row">
             <div class="dcs-input-av" data-dcs-my-av>${currentUser.avatar ? `<img src="${currentUser.avatar}"/>` : (currentUser.name || '?')[0].toUpperCase()}</div>
@@ -567,18 +694,31 @@
     const countEl     = root.querySelector('[data-dcs-count]');
     const arrowEl     = root.querySelector('[data-dcs-arrow]');
     const toggleEl    = root.querySelector('[data-dcs-toggle]');
+    const viewAllBtn  = root.querySelector('[data-dcs-viewall]');
+    if (viewAllBtn) viewAllBtn.addEventListener('click', () => { const u = fullUrl(); if (u) location.href = u; });
 
-    _mountAdSlot(root.querySelector('[data-dcs-adslot]'), options);
+    // Skeleton until first resolve (initial render or async setComments).
+    listEl.innerHTML = [0, 1, 2].map(() => `
+      <div class="dcs-skel-row" aria-hidden="true">
+        <div class="dcs-skel-av"></div>
+        <div class="dcs-skel-body">
+          <div class="dcs-skel-ln" style="width:38%"></div>
+          <div class="dcs-skel-ln" style="width:92%"></div>
+          <div class="dcs-skel-ln" style="width:71%"></div>
+        </div>
+      </div>`).join('');
 
-    // ── Thread view overlay (built once, appended to <body> so it can
-    //     be truly full-screen regardless of where the container sits) ──
+    // ── Thread view overlay (built once, appended to <body> so it isn't
+    //     clipped by the container; threadSheet:true renders it as a
+    //     bottom sheet instead of a full page) ──
     const threadWrap = document.createElement('div');
     threadWrap.innerHTML = `
-      <div class="dcs-thread-ov" id="${instId}-threadov">
+      <div class="dcs-thread-ov${options.threadSheet ? ' as-sheet' : ''}" id="${instId}-threadov">
         <div class="dcs-thread-sheet">
           <div class="dcs-thread-hdr">
             <button class="dcs-thread-back" id="${instId}-threadback"><i class="fas fa-arrow-left"></i></button>
-            <div class="dcs-thread-title" id="${instId}-threadtitle">Replies</div>
+            <div style="flex:1;min-width:0"><div class="dcs-thread-title" id="${instId}-threadtitle">Replies</div></div>
+            ${options.fullCommentsUrl ? `<button type="button" class="dcs-view-all" id="${instId}-threadviewall" style="padding:0">View all ›</button>` : ''}
           </div>
           <div class="dcs-thread-body" id="${instId}-threadbody"></div>
           <div class="dcs-thread-composer">
@@ -663,8 +803,8 @@
     }
     function verifiedBadge(v) {
       if (!v) return '';
-      if (v === 'writer') return `<span class="dcs-verified writer" title="Verified Writer"><i class="fas fa-check"></i></span>`;
-      return `<span class="dcs-verified" title="Verified"><i class="fas fa-check"></i></span>`;
+      const label = v === 'writer' ? 'Verified Writer' : 'Verified';
+      return `<div class="dcs-verified" title="${label}"><i class="fas fa-check"></i></div>`;
     }
     function ringClass(r) { return r === 'has' ? 'ring-has' : r === 'viewed' ? 'ring-viewed' : 'ring-none'; }
     function buildAvatar(c) {
@@ -672,7 +812,7 @@
       const inner = c.avatar
         ? `<img src="${c.avatar}" loading="lazy"/>`
         : `<div class="dcs-av-initial" style="background:${c.avatarBg || 'rgba(255,0,80,.25)'}">${(c.name || '?')[0].toUpperCase()}</div>`;
-      return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}"><div class="dcs-av-ring ${ring}"><div class="dcs-av-ring-inner">${inner}</div></div></div>`;
+      return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}"><div class="dcs-av-ring ${ring}"><div class="dcs-av-ring-inner">${inner}</div></div>${verifiedBadge(c.verified)}</div>`;
     }
 
     // ── Find helpers ──
@@ -746,6 +886,7 @@
     //     rendered in more than one place without id collisions. ──
     function renderCommentCard(c, ns, isReply) {
       const isEditing = editingId === c.id;
+      const nRep = countAll(c.replies || []);
       return `
         <div class="dcs-item${isReply ? ' is-reply' : ''}" id="${ns}-ci-${c.id}">
           <div class="dcs-inner">
@@ -753,7 +894,6 @@
             <div class="dcs-cbody">
               <div class="dcs-chead">
                 <span class="dcs-name" data-dcs-nameclick="${c.id}">${_esc(c.name)}</span>
-                ${verifiedBadge(c.verified)}
                 ${teamTag(c.team)}
                 <span class="dcs-time">${_esc(c.time)}</span>
                 ${c.edited ? `<span class="dcs-edited-tag">(edited)</span>` : ''}
@@ -769,6 +909,7 @@
               <div class="dcs-actions" style="position:relative">
                 ${renderLikeTrigger(c, ns)}
                 <div class="dcs-action-btn" data-dcs-replybtn="${c.id}"><i class="fas fa-reply"></i> Reply</div>
+                ${nRep ? `<span class="dcs-reply-total"><i class="fas fa-comments"></i> ${nRep}</span>` : ''}
                 <div class="dcs-dots-btn" data-dcs-dots="${c.id}"><i class="fas fa-ellipsis-vertical"></i></div>
               </div>`}
             </div>
@@ -803,8 +944,8 @@
         listEl.innerHTML = `<div class="dcs-empty"><i class="fas fa-comment-slash"></i><p>No comments yet.<br/>Be the first to say something.</p></div>`;
       } else {
         const n = adInterval > 0 ? adInterval : 5;
-        const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
-        listEl.innerHTML = comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')).join('');
+        const rep = options.adsRepeat !== false; // adsRepeat:false → first-item slot only
+        listEl.innerHTML = _adSlotHTML('list-top') + comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')).join('');
         listEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
       }
       refreshCount();
@@ -852,7 +993,7 @@
       const n = adInterval > 0 ? adInterval : 5;
       const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
       const rows = [renderCommentCard(c, ns, false)].concat(flat.map((r, i) => renderCommentCard(r, ns, true) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')));
-      threadBodyEl.innerHTML = '<div data-dcs-adslot data-slot="comments:thread-top" style="margin-bottom:8px;display:none"></div>' + rows.join('');
+      threadBodyEl.innerHTML = '<div data-dcs-adslot data-slot="comments:thread-top" style="margin:8px 0;display:none"></div>' + rows.join('');
       threadBodyEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
       attachReplyInputListeners(ns, threadBodyEl);
       attachEditInputListeners(ns);
@@ -869,6 +1010,10 @@
       threadOv.classList.remove('open');
       document.body.style.overflow = '';
     }
+    // sheet mode: tap the dim backdrop to dismiss (same as commentOverlay)
+    if (options.threadSheet) {
+      threadOv.addEventListener('click', function (e) { if (e.target === threadOv) closeThread(); });
+    }
     function postThreadReply() {
       if (threadOpenId === null) return;
       const text = threadInputEl.value.trim();
@@ -878,18 +1023,22 @@
       if (!parent) return;
       const c = _normalize({
         name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam, statusRing: 'none',
+        verified: currentUser.verified || false, team: pickedTeam,
+        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
         time: 'Just now', text, likes: 0, liked: false, replies: [],
       });
       parent.replies = parent.replies || [];
       parent.replies.push(c);
       threadInputEl.value = ''; threadSendBtn.disabled = true;
+      try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
       syncAll();
       if (typeof options.onReply === 'function') options.onReply(threadOpenId, c);
       _toast('💬 Reply posted!');
       setTimeout(() => document.getElementById(instId + '-tv-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
     }
     threadBackBtn.addEventListener('click', closeThread);
+    const threadViewAllBtn = document.getElementById(instId + '-threadviewall');
+    if (threadViewAllBtn) threadViewAllBtn.addEventListener('click', () => { const u = fullUrl(); if (u) location.href = u; });
     threadInputEl.addEventListener('input', () => { threadSendBtn.disabled = threadInputEl.value.trim().length < 1; });
     threadInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') postThreadReply(); });
     threadSendBtn.addEventListener('click', postThreadReply);
@@ -901,11 +1050,13 @@
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
       const c = _normalize({
         name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam, statusRing: 'none',
+        verified: currentUser.verified || false, team: pickedTeam,
+        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
         time: 'Just now', text, likes: 0, liked: false, replies: [],
       });
       comments.push(c);
       inputEl.value = ''; sendBtn.disabled = true;
+      try { if (window.ReaderLeague) ReaderLeague.track('comment'); } catch (e) {}
       syncAll();
       if (typeof options.onPost === 'function') options.onPost(c);
       _toast('💬 Comment posted!');
@@ -920,12 +1071,14 @@
       const full = text.startsWith('@') ? text : `@${parent.name} ${text}`;
       const c = _normalize({
         name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam, statusRing: 'none',
+        verified: currentUser.verified || false, team: pickedTeam,
+        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
         time: 'Just now', text: full, likes: 0, liked: false, replies: [],
       });
       parent.replies = parent.replies || [];
       parent.replies.push(c);
       inp.value = '';
+      try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
       document.getElementById(ns + '-cra-' + parentId)?.classList.remove('open');
       syncAll();
       if (typeof options.onReply === 'function') options.onReply(parentId, c);
@@ -965,6 +1118,7 @@
     function toggleLike(cid) {
       const c = findById(comments, cid); if (!c) return;
       c.liked = !c.liked; c.likes += c.liked ? 1 : -1;
+      if (c.liked) { try { if (window.ReaderLeague) ReaderLeague.track('reaction'); } catch (e) {} }
       syncAll();
       if (typeof options.onLike === 'function') options.onLike(c, c.liked);
     }
@@ -1175,17 +1329,76 @@
     }
 
     // ── Status viewer hookup (avatar) + profile navigation (username) ──
+    // Viewer list: thread order (top comment → its replies → next top
+    // comment), deduped by author, rotated to start at the tapped author —
+    // same cross-person browsing as index/feed rows.
+    function viewerAuthorsFor(tapped) {
+      const out = [];
+      const seen = {};
+      const pushAuthor = (m) => {
+        if (!m || !m.statuses || !m.statuses.length || !m.name) return;
+        const key = String(m.name) + '|' + String(m.avatar || '');
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push({
+          id: 'dcs_' + instId + '_' + m.id, name: m.name, avatar: m.avatar,
+          ring: m.statusRing === 'has' ? 'ring-has' : m.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none',
+          likes: 0, threads: 0, statuses: m.statuses,
+        });
+      };
+      (function walk(list) { (list || []).forEach(m => { pushAuthor(m); walk(m.replies || []); }); })(comments);
+      return out;
+    }
     function openStatusFor(cid) {
-      const c = findById(comments, cid);
+      const c = findByAnyId(comments, cid) || findById(comments, cid);
       if (!c) return;
-      if (c.statuses && c.statuses.length && typeof window.openStatusViewer === 'function') {
-        window.openStatusViewer([{
-          id: 'dcs_' + c.id, name: c.name, avatar: c.avatar, ring: c.statusRing,
-          likes: 0, threads: 0, statuses: c.statuses,
-        }], 'dcs_' + c.id);
+      if (!c.statuses || !c.statuses.length || typeof window.openStatusViewer !== 'function') return;
+      const authors = viewerAuthorsFor(c).slice(0, 50);
+      if (!authors.length) return;
+      const vid = 'dcs_' + instId + '_' + c.id;
+      if (authors[0].id !== vid) {
+        const at = authors.findIndex(w => w.id === vid);
+        if (at > 0) authors.push(...authors.splice(0, at));
       }
+      window.openStatusViewer(authors, vid);
       // No statuses on this comment's author → intentionally do nothing.
     }
+    // ── Status-viewer sync: gray the ring after viewing — same contract
+    // as debate-args/people-to-follow, so it works in every host page.
+    // Chains onto any previous handler; stale (destroyed) instances no-op
+    // on the id-prefix check, so re-attaches never break the chain.
+    function findByAnyId(list, id) {
+      const key = String(id);
+      const walk = (arr) => {
+        for (const m of (arr || [])) {
+          if (String(m.id) === key) return m;
+          const f = walk(m.replies || []);
+          if (f) return f;
+        }
+        return null;
+      };
+      return walk(list);
+    }
+    (function bindStatusSync() {
+      const prefix = 'dcs_' + instId + '_';
+      const prev = window.onStatusViewerChange;
+      window.onStatusViewerChange = function (wid, ring) {
+        if (typeof prev === 'function') { try { prev(wid, ring); } catch (e) {} }
+        if (!wid || String(wid).indexOf(prefix) !== 0) return;
+        const c = findByAnyId(comments, String(wid).slice(prefix.length));
+        if (!c) return;
+        c.statusRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+        [root, threadOv].forEach(scopeEl => {
+          if (!scopeEl) return;
+          scopeEl.querySelectorAll('[data-dcs-avatar]').forEach(av => {
+            if (String(av.getAttribute('data-dcs-avatar')) === String(c.id)) {
+              const ringEl = av.querySelector('.dcs-av-ring');
+              if (ringEl) ringEl.className = 'dcs-av-ring ring-' + c.statusRing;
+            }
+          });
+        });
+      };
+    })();
     function goToProfile(cid) {
       const c = findById(comments, cid);
       if (typeof options.onProfileClick === 'function') { options.onProfileClick(c); return; }
@@ -1225,9 +1438,10 @@
         const replybtn = e.target.closest('[data-dcs-replybtn]');
         if (replybtn) {
           const cid = +replybtn.dataset.dcsReplybtn;
-          scopeEl.querySelectorAll('.dcs-reply-area').forEach(a => a.classList.remove('open'));
           const area = document.getElementById(ns + '-cra-' + cid);
-          if (area) { area.classList.add('open'); document.getElementById(ns + '-cri-' + cid)?.focus(); }
+          const wasOpen = !!(area && area.classList.contains('open'));
+          scopeEl.querySelectorAll('.dcs-reply-area').forEach(a => a.classList.remove('open'));
+          if (area && !wasOpen) { area.classList.add('open'); document.getElementById(ns + '-cri-' + cid)?.focus(); }
           return;
         }
 
@@ -1257,7 +1471,13 @@
     inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') postTop(); });
     sendBtn.addEventListener('click', postTop);
 
-    render();
+    // First paint stays skeleton until resolve: defer initial render a frame
+    // so the shimmer actually paints (sync attach would replace it unseen).
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(function () { try { render(); } catch (e) {} });
+    } else {
+      render();
+    }
 
     // ── Public control object ──
     return {
@@ -1266,6 +1486,7 @@
         const c = _normalize(Object.assign({
           name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
           verified: currentUser.verified || false, team: pickedTeam, time: 'Just now',
+          wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
           text, likes: 0, liked: false, replies: [],
         }, opts || {}));
         comments.push(c); syncAll();

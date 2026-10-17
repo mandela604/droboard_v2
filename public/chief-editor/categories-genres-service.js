@@ -315,6 +315,10 @@ function openFormModal(action, idx){
   document.getElementById('formDescGroup').style.display=isCat?'':'none';
   document.getElementById('formCatGroup').style.display=(!isCat&&!isTrope)?'block':'none';
   document.getElementById('formTropeGroup').style.display=isTrope?'block':'none';
+  // Wipe leftover text immediately so a previous item's description can
+  // never linger (e.g. opening Edit Genre after editing a category).
+  // Category-edit repopulates it right below when needed.
+  document.getElementById('formDesc').value='';
   if(isCat){
     if(isEdit){
       var c=CATEGORIES[idx];

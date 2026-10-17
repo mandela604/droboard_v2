@@ -3,28 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Droboard – Your Feed</title>
-  <meta name="theme-color" content="#ffffff">
+  <title>Droboard · Your Feed</title>
+  <meta name="theme-color" content="#FFFFFF">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../shared/theme.css"/>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     :root {
-      --bg: #ffffff; --l1: #f8f9fa; --l2: #ffffff; --l4: #e8e8e8; --tx: #1a1a2e; --tx-muted: #6b7280;
-      --tx-high: #161616; --tx-body: #3a3a3a; --tx-faint: #8a8a8a;
-      --bd: rgba(0,0,0,.10); --bd2: rgba(0,0,0,.05); --bd-acc: rgba(255,0,80,.25); --purple: #a78bfa;
-      --acc: #ff0050; --acc-light: rgba(255,0,80,0.1); --acc-lighter: rgba(255,0,80,0.15);
-      --border: #f1f1f1; --shadow: 0 2px 12px rgba(0,0,0,0.04); --radius: 14px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.04); --radius: 14px;
       --story-size: 62px; --ring-gap: 3px; --max-w: 420px;
     }
     [data-theme="dark"] {
-      --bg: #000000; --l1: #08090c; --l2: #0e0f13; --l4: #1a1b22; --tx: #e0e0e0; --tx-muted: #71717a;
-      --tx-high: #e0e0e0; --tx-body: #c0c0c0; --tx-faint: #3f3f46;
-      --bd: rgba(255,255,255,.07); --bd2: rgba(255,255,255,.04); --bd-acc: rgba(255,0,80,.20); --purple: #a78bfa;
-      --acc: #ff0050; --acc-light: rgba(255,0,80,0.14); --acc-lighter: rgba(255,0,80,0.2);
-      --border: rgba(255,255,255,.07); --shadow: 0 2px 12px rgba(0,0,0,.3);
+      --shadow: 0 2px 12px rgba(0,0,0,.3);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--tx); -webkit-tap-highlight-color: transparent; }
+    body { font-family: var(--font-ui); background: var(--bg); color: var(--tx); -webkit-tap-highlight-color: transparent; }
     .safe { height: env(safe-area-inset-top, 0px); }
 
     /* ── Shell ── */
@@ -41,7 +34,7 @@
     .notif-dot { position: absolute; top: 4px; right: 4px; min-width: 14px; height: 14px; border-radius: 7px; background: #ff3b30; color: white; font-size: 8px; font-weight: 700; display: none; align-items: center; justify-content: center; padding: 0 3px; }
 
     /* ── Stories ── */
-    .stories-wrap { padding: 14px 0 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .stories-wrap { padding: 14px 0 10px 16px; border-bottom: 1px solid var(--border); background: var(--l1); }
     .stories-label { font-size: 12px; font-weight: 600; color: var(--tx-muted); margin-bottom: 10px; }
     .stories-row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; -ms-overflow-style: none; scrollbar-width: none; }
     .stories-row::-webkit-scrollbar { display: none; }
@@ -57,27 +50,31 @@
     .story-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
     .story-add { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 300; color: var(--tx-muted); border: 2px dashed var(--tx-muted); border-radius: 50%; box-sizing: border-box; }
     .story-name { font-size: 10px; font-weight: 500; color: var(--tx-muted); max-width: var(--story-size); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .story-item { position: relative; }
+    .story-post-plus { position: absolute; top: 40px; left: calc(50% + 10px); width: 22px; height: 22px; border-radius: 50%; background: var(--acc); border: 2px solid var(--bg); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; line-height: 1; z-index: 2; }
+    .story-post-plus:active { transform: scale(.9); }
 
     /* ── Tabs ── */
-    .tabs { display: flex; gap: 0; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 49px; z-index: 39; }
+    .tabs { display: flex; gap: 0; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--bg); }
     .f-tab { flex: 1; text-align: center; padding: 12px 0 10px; font-size: 13px; font-weight: 600; color: var(--tx-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.2s; }
     .f-tab.active { color: var(--acc); border-bottom-color: var(--acc); }
     .f-tab:active { opacity: 0.7; }
 
     /* ── Feed ── */
     .feed { min-height: 200px; }
-    #feedList { display: flex; flex-direction: column; gap: 2px; background: #d8d8d8; }
+    #feedList { display: flex; flex-direction: column; gap: 8px; background: #d8d8d8; }
     [data-theme="dark"] #feedList { background: #000; }
-    #feedList > * { background: var(--l2); }
-    #promoMount { padding: 12px 16px 4px; background: transparent; }
+    #feedList > * { background: var(--l1); }
+    #promoMount { padding: 12px 16px 12px; background: transparent; border-top: 8px solid #d8d8d8; border-bottom: 8px solid #d8d8d8; }
+    [data-theme="dark"] #promoMount { background: transparent; border-top-color: #000; border-bottom-color: #000; }
 
     /* ── Community Sections ── */
-    .comm-sec { padding: 0 0 4px; }
+    .comm-sec { padding: 0; }
     .comm-sec-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px; }
     .comm-sec-title { font-size: 14px; font-weight: 700; color: var(--tx); display: flex; align-items: center; gap: 8px; }
     .comm-sec-title i { color: var(--acc); font-size: 13px; }
     .comm-sec-link { background: none; border: none; font-size: 12px; font-weight: 600; color: var(--tx-muted); cursor: pointer; }
-    .comm-row { display: flex; gap: 12px; overflow-x: auto; padding: 0 16px 14px; -ms-overflow-style: none; scrollbar-width: none; }
+    .comm-row { display: flex; gap: 12px; overflow-x: auto; padding: 0 16px 0; -ms-overflow-style: none; scrollbar-width: none; }
     .comm-row::-webkit-scrollbar { display: none; }
     .comm-slide { flex-shrink: 0; width: 260px; }
 
@@ -110,6 +107,8 @@
     .toast.show { opacity: 1; }
   </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
   <div class="safe"></div>
@@ -146,6 +145,7 @@
       <div class="loading-state" id="loadingState"><div class="spinner"></div><div style="font-size:13px;color:var(--tx-muted)">Loading feed…</div></div>
       <div class="empty-state" id="emptyState"><div class="icon">📭</div><h3 id="emptyTitle">Your feed is empty</h3><p id="emptySub">Follow some writers or join communities to see posts here.</p></div>
       <div id="promoMount"></div>
+      <div data-ad-slot="feed:top" style="padding:0 16px 8px"></div>
       <div id="feedList"></div>
     </div>
 
@@ -173,6 +173,7 @@
       <button class="ctype" data-ct="poll"><i class="fas fa-chart-bar"></i> Poll</button>
       <button class="ctype" data-ct="debate"><i class="fas fa-fire"></i> Debate</button>
       <button class="ctype" data-ct="ama"><i class="fas fa-microphone"></i> AMA</button>
+      <button class="ctype" data-ct="status"><i class="fas fa-circle-dot"></i> Status</button>
     </div>
   </div>
 
@@ -196,26 +197,31 @@
   <script src="../data/genre-demo-seed.js"></script>
   <script src="../services/feed-data.js"></script>
   <script src="../component/post-composer.js"></script>
+<script src="../services/reading-history.js"></script>
   <script src="../component/boards-overlay.js"></script>
   <script src="../component/browse-overlay.js"></script>
-  <script src="../component/status-viewer.js"></script>
+  <script src="../component/status-viewer.js?v=2"></script>
   <script src="../component/promo-slider.js"></script>
   <script src="../component/report-sheet.js"></script>
   <script src="../component/dots-menu.js"></script>
   <script src="../component/post-card.js"></script>
+  <script src="../component/debate-args.js"></script>
   <script src="../component/reaction-picker.js"></script>
   <script src="../component/share-modal.js"></script>
   <script src="../services/saves-bridge.js"></script>
   <script src="../component/save-modal.js"></script>
   <script src="../component/genre-card.js"></script>
-  <script src="../component/ad-card.js"></script>
+  <script src="../component/ad-card.js?v=2"></script>
   <script src="../component/bottom-nav.js"></script>
   <script src="../component/hamburger-menu.js"></script>
   <script src="../component/search-overlay.js"></script>
   <script src="../data/central-demo-data.js"></script>
   <script src="../marketing/shared/marketing-data.js"></script>
   <script src="../services/ad-service.js"></script>
+  <script src="../component/ad-slot.js"></script>
+  <script src="../services/status-service.js"></script>
   <script src="../services/search-service.js"></script>
+  <script src="../shared/ui-helpers.js"></script>
   <script src="../services/feed-service.js"></script>
   <script>FeedPage.init();</script>
 </body>

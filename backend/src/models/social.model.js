@@ -36,6 +36,7 @@ const commentSchema = new mongoose.Schema({
   storyId: { type: String, ref: 'Book', index: true },
   chapterId: { type: String, ref: 'Chapter', index: true },
   postId: { type: String, ref: 'Post', index: true },
+  discussionId: { type: String, ref: 'Discussion', default: null, index: true }, // scope=discussion target
   parentId: { type: String, ref: 'Comment', default: null, index: true },
   text: { type: String, required: true },
   likes: { type: Number, default: 0 },
@@ -43,6 +44,7 @@ const commentSchema = new mongoose.Schema({
   reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   reactions: { type: Map, of: Number, default: {} },
   team: { type: String, default: null },
+  edited: { type: Boolean, default: false },
   repliesCount: { type: Number, default: 0 },
 }, { timestamps: true });
 commentSchema.index({ postId: 1, createdAt: -1 });
@@ -58,6 +60,7 @@ const discussionSchema = new mongoose.Schema({
   score: { type: Number, default: 0 },
   hot: { type: Boolean, default: false, index: true },
   likes: { type: Number, default: 0 },
+  likedBy: [{ type: String, ref: 'User' }], // per-user like toggle state (matches Post/Comment)
   commentsCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
@@ -132,6 +135,7 @@ const statusSchema = new mongoose.Schema({
   caption: { type: String, default: '' },
   likes: { type: Number, default: 0 },
   likedBy: [{ type: String, ref: 'User' }],
+  viewedBy: [{ type: String, ref: 'User' }], // per-viewer read tracking (story ring)
   isLive: { type: Boolean, default: false },
   viewed: { type: Boolean, default: false },
   expiresAt: { type: Date, required: true, index: true },

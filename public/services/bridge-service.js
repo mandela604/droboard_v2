@@ -327,11 +327,26 @@
     };
   }
 
+  /* ── SITE THEME — mirror Settings page (droboardTheme light/dark).
+     Bridge styles key off body.theme-white, so map it here on every
+     init + when returning via bfcache. ── */
+  function applySiteTheme() {
+    try {
+      const t = localStorage.getItem('droboardTheme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      if (t === 'light') document.body.classList.add('theme-white');
+      else document.body.classList.remove('theme-white');
+    } catch (e) {}
+  }
+  try { window.addEventListener('pageshow', applySiteTheme); } catch (e) {}
+  try { window.addEventListener('storage', (e) => { if (e && e.key === 'droboardTheme') applySiteTheme(); }); } catch (e) {}
+
   function renderAll() {
     renderHero();
     renderStats();
     renderContinue();
     renderSynopsis();
+    renderRating();
     renderTropes();
     renderEngagement();
     renderChapterCount();
@@ -344,6 +359,74 @@
     renderSimilar();
     setupTip();
     setupScrollListener();
+  }
+
+  /* ── RATING ── */
+  /* ── RATING (in-memory only, no localStorage) ──
+     Stars persist across open/close toggles via myRating. */
+  let myRating = 0;
+  function goToDebate() {
+    location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || 'deb_default');
+  }
+  function toggleRate() {
+    const box = document.getElementById('rateBox');
+    if (box) box.classList.toggle('open');
+    // Re-paint from memory so open/close never clears lit stars.
+    try {
+      const wrap = document.getElementById('rateStars');
+      if (wrap) [...wrap.querySelectorAll('.rate-star')].forEach((s, i) => s.classList.toggle('lit', i < myRating));
+    } catch (e) {}
+  }
+  function renderRating() {
+    const wrap = document.getElementById('rateStars');
+    if (!wrap) return;
+    const stars = [...wrap.querySelectorAll('.rate-star')];
+    const label = document.getElementById('rateLabel');
+    const avgEl = document.getElementById('rateAvg');
+    const yoursEl = document.getElementById('rateYours');
+    const hint = document.getElementById('rateHint');
+    const base = parseFloat(DATA.stats.rating) || 0;
+
+    function paint(n) {
+      stars.forEach((s, i) => {
+        s.classList.toggle('lit', i < n);
+        s.classList.remove('pop');
+        if (i === n - 1) { void s.offsetWidth; s.classList.add('pop'); }
+      });
+    }
+    function updateAvg() {
+      avgEl.innerHTML = `<b>${base.toFixed(1)}★</b> · ${fmtN(1247)} ratings`;
+    }
+    function syncText() {
+      if (myRating) {
+        label.textContent = ['Terrible', 'Bad', 'Okay', 'Good', 'Great!'][myRating - 1];
+        yoursEl.textContent = '✓ You rated ' + myRating + ' star' + (myRating > 1 ? 's' : '');
+        yoursEl.classList.add('show');
+        hint.textContent = 'Tap to see details';
+      } else {
+        label.textContent = 'Tap a star to rate';
+        yoursEl.classList.remove('show');
+        hint.textContent = 'Tap to rate this story';
+      }
+    }
+    paint(myRating);
+    syncText();
+    updateAvg();
+
+    stars.forEach(s => {
+      s.addEventListener('mouseenter', () => { if (!myRating) paint(+s.dataset.r); });
+      s.addEventListener('mouseleave', () => { if (!myRating) paint(0); });
+      s.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const box = document.getElementById('rateBox');
+        if (box) box.classList.add('open');
+        myRating = +s.dataset.r;
+        paint(myRating);
+        syncText();
+        updateAvg();
+        toast('⭐ Rated ' + myRating + ' star' + (myRating > 1 ? 's' : '') + '!');
+      });
+    });
   }
 
   function renderHero() {
@@ -706,10 +789,11 @@
   }
 
   function goToAllComments() {
-    window.location.href = `full-reader.html?story=${encodeURIComponent(STORY_ID)}#comments`;
+    window.location.href = `comments.html?story=${encodeURIComponent(STORY_ID)}`;
   }
 
   async function init(id) {
+    applySiteTheme();
     STORY_ID = id || new URLSearchParams(location.search).get('id') || new URLSearchParams(location.search).get('story');
     // No id: rotate through the demo catalog so every load renders a
     // complete demo-data story (same story all day, different tomorrow).
@@ -747,5 +831,7 @@
     openTip,
     openSave,
     openShare,
+    toggleRate,
+    goToDebate,
   };
 })();

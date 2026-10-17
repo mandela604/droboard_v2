@@ -67,6 +67,15 @@ const DROBOARD_COMPOSER_USERS = [
   { id:'w12', name:'Tobi_Adenuga', avatar:'https://i.pravatar.cc/100?img=68', handle:'Tobi_Adenuga', stats:{reads:45000,followers:1800,books:1}, ring:'ring-viewed' },
 ];
 
+const DROBOARD_COMPOSER_READERS = [
+  { id:'r1', name:'BookLover92', avatar:'https://i.pravatar.cc/100?img=10', handle:'BookLover92', role:'Reader', readingHours:48, chaptersRead:312, streak:18, ring:'ring-has' },
+  { id:'r2', name:'ChapterChaser', avatar:'https://i.pravatar.cc/100?img=11', handle:'ChapterChaser', role:'Reader', readingHours:126, chaptersRead:844, streak:45, ring:'ring-viewed' },
+  { id:'r3', name:'PageTurner_J', avatar:'https://i.pravatar.cc/100?img=13', handle:'PageTurner_J', role:'Reader', readingHours:21, chaptersRead:126, streak:9, ring:'ring-none' },
+  { id:'r4', name:'Nneka_Reads', avatar:'https://i.pravatar.cc/100?img=25', handle:'Nneka_Reads', role:'Reader', readingHours:210, chaptersRead:1420, streak:62, ring:'ring-has' },
+  { id:'r5', name:'StoryAddict', avatar:'https://i.pravatar.cc/100?img=33', handle:'StoryAddict', role:'Reader', readingHours:37, chaptersRead:245, streak:14, ring:'ring-none' },
+  { id:'r6', name:'Tunde_Reader', avatar:'https://i.pravatar.cc/100?img=52', handle:'Tunde_Reader', role:'Reader', readingHours:88, chaptersRead:570, streak:27, ring:'ring-viewed' },
+];
+
 const DROBOARD_COMPOSER_STORIES = [
   { id:'cs1', title:'The letter he never sent', cover:'https://i.postimg.cc/N9jY0w4m/5.jpg', author:'Efe_O', writer:'Efe_O', genre:'Elegy' },
   { id:'cs2', title:'His sweet revenge', cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', author:'Ada_Writes', writer:'Ada_Writes', genre:'Betrayal' },
@@ -82,6 +91,6 @@ const DROBOARD_COMPOSER_STORIES = [
   { id:'cs12', title:'Alpha\'s stolen mate', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', author:'Tobi_Adenuga', writer:'Tobi_Adenuga', genre:'Fantasy' },
 ];
 
-global.DroboardPageSeed = { DROBOARD_HERO, DROBOARD_POSTS, DROBOARD_MORE_POSTS, DROBOARD_COLLECTIONS, DROBOARD_MANAGERS, DROBOARD_ALLOWED_TYPES, DROBOARD_COMPOSER_USERS, DROBOARD_COMPOSER_STORIES };
+global.DroboardPageSeed = { DROBOARD_HERO, DROBOARD_POSTS, DROBOARD_MORE_POSTS, DROBOARD_COLLECTIONS, DROBOARD_MANAGERS, DROBOARD_ALLOWED_TYPES, DROBOARD_COMPOSER_USERS, DROBOARD_COMPOSER_READERS, DROBOARD_COMPOSER_STORIES };
 
 })(window);

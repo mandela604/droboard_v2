@@ -69,6 +69,18 @@
     .dac-banner-sub{font-size:11px;opacity:.8;margin-bottom:12px}
     .dac-banner-cta{background:#fff;color:#d6165a;font-size:11px;font-weight:800;padding:8px 18px;border-radius:20px;border:none;cursor:pointer}
     .dac-banner-cta:active{transform:scale(.95)}
+    .dac-fs{position:relative;height:100%;min-height:420px;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#1a0a12,#3b0f22);background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end}
+    .dac-fs-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.12) 100%)}
+    .dac-fs-top{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;z-index:2}
+    .dac-fs-tag{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#ff0050;color:#fff;padding:4px 10px;border-radius:8px}
+    .dac-fs-genre{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.18);color:#fff;padding:4px 10px;border-radius:8px}
+    .dac-fs-body{position:relative;z-index:2;padding:18px 16px 20px;color:#fff;font-family:inherit}
+    .dac-fs-brand{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#ff9db8;margin-bottom:6px}
+    .dac-fs-title{font-size:22px;font-weight:800;line-height:1.2;margin-bottom:6px}
+    .dac-fs-by{font-size:12px;color:rgba(255,255,255,.8);margin-bottom:8px}
+    .dac-fs-sub{font-size:13px;line-height:1.5;color:rgba(255,255,255,.85);margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .dac-fs-cta{background:#fff;color:#D6165A;font-size:12px;font-weight:800;padding:11px 22px;border-radius:24px;border:none;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+    .dac-fs-cta:active{transform:scale(.96)}
 
     /* ── Follow promo ── */
     .dac-follow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:12px;margin:8px 0}
@@ -273,17 +285,55 @@
     </div>`;
   }
 
+  /* Full-bleed creatives (status viewer, index hero slides): cover +
+     scrim + badges — same visual language as index fullscreen ads. */
+  function renderFullscreenStory(ad) {
+    injectStyles();
+    ad = ad || {};
+    const cover = ad.cover || ad.img || ad.image || '';
+    const byName = String(ad.author || ad.authorName || '').replace(/^@/, '');
+    return `<div class="dac-fs"${cover ? ` style="background-image:url('${esc(cover)}')"` : ''}>` +
+      `<div class="dac-fs-scrim"></div>` +
+      `<div class="dac-fs-top"><span class="dac-fs-tag">Ad</span>${ad.genre || ad.cat ? `<span class="dac-fs-genre">${esc(ad.genre || ad.cat)}</span>` : ''}</div>` +
+      `<div class="dac-fs-body">` +
+        `<div class="dac-fs-title">${esc(ad.title || '')}</div>` +
+        (byName ? `<div class="dac-fs-by">By ${esc(byName)}</div>` : '') +
+        ((ad.desc || ad.body || ad.text || ad.preview) ? `<div class="dac-fs-sub">${esc(ad.desc || ad.body || ad.text || ad.preview)}</div>` : '') +
+        `<button class="dac-fs-cta" data-fs-story="${esc(ad.storyId || ad.title || '')}">${esc(ad.cta || 'Read Now')}</button>` +
+      `</div></div>`;
+  }
+  function renderFullscreenBrand(ad) {
+    injectStyles();
+    ad = ad || {};
+    const img = ad.image || ad.cover || '';
+    const brand = ad.brand || ad.sponsor || '';
+    return `<div class="dac-fs"${img ? ` style="background-image:url('${esc(img)}')"` : ''}>` +
+      `<div class="dac-fs-scrim"></div>` +
+      `<div class="dac-fs-top"><span class="dac-fs-tag">Sponsored</span></div>` +
+      `<div class="dac-fs-body">` +
+        (brand ? `<div class="dac-fs-brand">${esc(brand)}</div>` : '') +
+        `<div class="dac-fs-title">${esc(ad.headline || ad.heading || ad.title || brand)}</div>` +
+        ((ad.body || ad.text) ? `<div class="dac-fs-sub">${esc(ad.body || ad.text)}</div>` : '') +
+        `<button class="dac-fs-cta" data-fs-url="${esc(ad.url || '')}">${esc(ad.cta || 'Learn More')}</button>` +
+      `</div></div>`;
+  }
+
   /* Third-party network embeds: raw script/HTML pasted in ad-manager.
      Code runs with full page privileges — only paste from networks you
-     trust. Scripts execute on hydration (see below), so async network
-     tags work; legacy document.write tags do not. */
+     trust. Scripts execute on hydration (see below).
+     Tags that call document.write() (Monetag / Adsterra legacy zones) are
+     isolated in an iframe, where document.write still works instead of
+     wiping the host page. Everything else runs inline so top-level APIs
+     (notification prompts, popunders) keep working. */
   const _embedCode = {};
   function renderEmbed(ad) {
     injectStyles();
     if (!ad || !ad.code) return '';
     const id = String(ad.id || ('em' + Math.random().toString(36).slice(2)));
-    _embedCode[id] = String(ad.code);
-    return `<div class="dac-embed" data-embedid="${esc(id)}" data-adid="${esc(ad.id || '')}"></div>`;
+    const code = String(ad.code);
+    _embedCode[id] = code;
+    const iframeMode = /document\s*\.\s*write\s*\(/.test(code);
+    return `<div class="dac-embed" data-embedid="${esc(id)}" data-adid="${esc(ad.id || '')}"${iframeMode ? ' data-embedmode="iframe"' : ''}></div>`;
   }
   function _livenScripts(box) {
     let dead = [];
@@ -297,6 +347,24 @@
       } catch (e3) {}
     });
   }
+  /* srcdoc iframes share our origin, so we can read their height and stretch
+     the frame to fit whatever the network tag grew to. Poll for ~10s — most
+     tags settle well inside that. */
+  function _fitEmbedFrame(box, f) {
+    let tries = 0;
+    const fit = function () {
+      try {
+        const doc = f.contentDocument;
+        const h = doc && doc.documentElement
+          ? Math.max(doc.documentElement.scrollHeight, (doc.body && doc.body.scrollHeight) || 0)
+          : 0;
+        if (h > 0) f.style.height = Math.min(h + 4, 2000) + 'px';
+      } catch (e) {}
+      if (tries++ < 40) setTimeout(fit, 250);
+    };
+    setTimeout(fit, 250);
+    try { f.addEventListener('load', fit); } catch (e) {}
+  }
   function hydrateEmbeds(scopeEl) {
     let nodes = [];
     try {
@@ -309,8 +377,20 @@
       if (!code) return;
       try {
         box.setAttribute('data-embeddone', '1');
-        box.innerHTML = code;
-        _livenScripts(box);
+        if (box.getAttribute('data-embedmode') === 'iframe') {
+          const f = document.createElement('iframe');
+          f.setAttribute('scrolling', 'no');
+          f.setAttribute('title', 'Advertisement');
+          f.style.width = '100%';
+          f.style.border = '0';
+          f.style.display = 'block';
+          box.appendChild(f);
+          f.srcdoc = code;
+          _fitEmbedFrame(box, f);
+        } else {
+          box.innerHTML = code;
+          _livenScripts(box);
+        }
       } catch (e) {}
     });
   }
@@ -414,7 +494,7 @@
   window.DroboardAdCard = {
     platformAd, bookAd, render, renderAll, esc, storyHref, profileHref,
     renderPlatform, renderListPlatform, renderStoryPromo, renderListBook,
-    renderFollowPromo, renderBanner, renderFullscreen, renderNative,
+    renderFollowPromo, renderBanner, renderFullscreen, renderFullscreenStory, renderFullscreenBrand, renderNative,
     renderEmbed, hydrateEmbeds,
     renderSponsored, attach, update,
   };

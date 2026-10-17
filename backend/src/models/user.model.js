@@ -35,8 +35,10 @@ const userSchema = new mongoose.Schema({
   mfaBackupCodes: { type: [String], default: [], select: false }, // hashed, single-use
   mfaEnrolledAt: { type: Date, default: null },
   // roles[] drives MFA enforcement + RBAC; primaryRole for display
-  roles: { type: [String], default: ['reader'], index: true }, // reader|writer|senior_editor|chief_editor|finance|admin
+  roles: { type: [String], default: ['reader'], index: true }, // reader|writer|senior_editor|chief_editor|finance|admin|marketing
   primaryRole: { type: String, default: 'reader' },
+  // console-curated extra role labels (Marketing, Support, Moderator…) — additive display
+  platformRoles: { type: [String], default: [] },
   status: { type: String, enum: ['active', 'suspended', 'banned', 'pending_verification'], default: 'active', index: true },
   suspendedReason: { type: String, default: '' },
   // login protection
@@ -51,6 +53,7 @@ const userSchema = new mongoose.Schema({
     theme: { type: String, default: 'dark' },
     notifications: { type: Boolean, default: true },
     privacy: { type: String, default: 'public' },
+    readingActivity: { type: Boolean, default: true },
   },
   termsVersion: { type: String, default: '' },
   // super-admin console extras (admin-curated, additive)

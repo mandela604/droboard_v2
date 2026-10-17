@@ -17,8 +17,12 @@ function canManageRoles(){ try{ return global.DroboardPageData && DroboardPageDa
 // ── Data helpers ──
 function getWriterPool(){
   // 1) dedicated demo pool so behaviour is testable without depending on global seed order
-  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_USERS) return global.DroboardPageSeed.DROBOARD_COMPOSER_USERS.slice(); }catch(e){}
-  try{ return (typeof WRITER_STATUSES!=='undefined') ? WRITER_STATUSES.filter(function(w){return !w.isYou}) : []; }catch(e){ return []; }
+  var pool=[];
+  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_USERS) pool=global.DroboardPageSeed.DROBOARD_COMPOSER_USERS.slice(); }catch(e){}
+  try{ if(!pool.length && typeof WRITER_STATUSES!=='undefined') pool=WRITER_STATUSES.filter(function(w){return !w.isYou}); }catch(e){}
+  // 2) include readers so shoutout search finds them too
+  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_READERS) pool=pool.concat(global.DroboardPageSeed.DROBOARD_COMPOSER_READERS.slice()); }catch(e){}
+  return pool;
 }
 function getStoryPool(){
   try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_STORIES) return global.DroboardPageSeed.DROBOARD_COMPOSER_STORIES.slice(); }catch(e){}
@@ -117,7 +121,7 @@ function renderBody(){
     html+='<div class="drb-field"><label class="drb-label">Title</label><input class="drb-input" id="drbTitleF" placeholder="Title (optional)"/></div>';
   }
   if(_cur==='shoutout'){
-    html+='<div class="drb-field"><label class="drb-label">Search writer</label><div class="drb-search-wrap"><input class="drb-input" id="drbUserSearch" placeholder="Type writer name…"/><div class="drb-dropdown" id="drbUserDrop"></div></div><div id="drbUserPicked"></div></div>';
+    html+='<div class="drb-field"><label class="drb-label">Search writer or reader</label><div class="drb-search-wrap"><input class="drb-input" id="drbUserSearch" placeholder="Type a name to search…"/><div class="drb-dropdown" id="drbUserDrop"></div></div><div id="drbUserPicked"></div></div>';
     html+='<div class="drb-field"><label class="drb-label">Shoutout message</label><textarea class="drb-textarea" id="drbText" rows="3" placeholder="Why are you shouting them out?"></textarea></div>';
   } else if(_cur==='repost'){
     html+='<div class="drb-field"><label class="drb-label">Search story</label><div class="drb-search-wrap"><input class="drb-input" id="drbStorySearch" placeholder="Type story title…"/><div class="drb-dropdown" id="drbStoryDrop"></div></div><div id="drbStoryPicked"></div></div>';
@@ -200,13 +204,20 @@ function bindBodyEvents(){
       const drop=document.getElementById('drbUserDrop');
       if(!q){ drop.classList.remove('open'); return; }
       const pool=getWriterPool();
-      const hits=pool.filter(function(w){ return w.name.toLowerCase().indexOf(q)!==-1 || w.id.toLowerCase().indexOf(q)!==-1; }).slice(0,6);
+      const hits=pool.filter(function(w){ return w.name.toLowerCase().indexOf(q)!==-1 || w.id.toLowerCase().indexOf(q)!==-1 || (w.handle||'').toLowerCase().indexOf(q)!==-1; }).slice(0,6);
       if(!hits.length){ drop.classList.remove('open'); return; }
       drop.innerHTML=hits.map(function(w){
-        const reads=w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '—';
-        const followers=w.stats&&w.stats.followers || 0;
-        const books=(w.books&&w.books.length)||0;
-        return '<div class="drb-user-opt" data-wid="'+escAttr(w.id)+'"><img class="drb-user-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-user-info"><div class="drb-user-name">'+esc(w.name)+'</div><div class="drb-user-meta">@'+esc(w.id)+' · '+(w.isLive?'🔴 Live':'')+'</div><div class="drb-user-stats"><span><b>'+esc(reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String(books))+'</b> books</span></div></div></div>';
+        const role=w.role||'Writer';
+        let statsHtml;
+        if(role==='Reader'){
+          statsHtml='<span><b>'+esc(String(w.readingHours||0))+'</b>h read</span><span><b>'+esc(String(w.chaptersRead||0))+'</b> chapters</span><span><b>'+esc(String(w.streak||0))+'</b> day streak</span>';
+        } else {
+          const reads=w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '—';
+          const followers=w.stats&&w.stats.followers || 0;
+          const books=(w.books&&w.books.length)||0;
+          statsHtml='<span><b>'+esc(reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String(books))+'</b> books</span>';
+        }
+        return '<div class="drb-user-opt" data-wid="'+escAttr(w.id)+'"><img class="drb-user-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-user-info"><div class="drb-user-name">'+esc(w.name)+'</div><div class="drb-user-meta">@'+esc(w.id)+' · '+role+(w.isLive?' · 🔴 Live':'')+'</div><div class="drb-user-stats">'+statsHtml+'</div></div></div>';
       }).join('');
       drop.classList.add('open');
       drop.querySelectorAll('[data-wid]').forEach(function(el){
@@ -285,10 +296,16 @@ function renderUserPicked(){
   const box=document.getElementById('drbUserPicked'); if(!box) return;
   if(!_pickedUser){ box.innerHTML=''; return; }
   const w=_pickedUser;
-  const reads=w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '—';
-  const followers=w.stats&&w.stats.followers||0;
-  const books=(w.books&&w.books.length)||0;
-  box.innerHTML='<div class="drb-picked"><img class="drb-picked-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-picked-info"><div class="drb-picked-name">@'+esc(w.name)+'</div><div class="drb-picked-tag">'+esc(w.id)+' · '+(w.isLive?'🔴 Live':'Member')+'</div><div class="drb-picked-stats"><span><b>'+esc(reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String(books))+'</b> books</span></div></div><button class="drb-picked-x" id="drbClearUser"><i class="fas fa-xmark"></i></button></div>';
+  const role=w.role||'Writer';
+  let statsHtml;
+  if(role==='Reader'){
+    statsHtml='<span><b>'+esc(String(w.readingHours||0))+'</b>h read</span><span><b>'+esc(String(w.chaptersRead||0))+'</b> chapters</span><span><b>'+esc(String(w.streak||0))+'</b> day streak</span>';
+  } else {
+    const reads=w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '—';
+    const followers=w.stats&&w.stats.followers||0;
+    statsHtml='<span><b>'+esc(reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String((w.books&&w.books.length)||0))+'</b> books</span>';
+  }
+  box.innerHTML='<div class="drb-picked"><img class="drb-picked-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-picked-info"><div class="drb-picked-name">@'+esc(w.name)+'</div><div class="drb-picked-tag">'+esc(w.id)+' · '+(w.isLive?'🔴 Live':esc(role))+'</div><div class="drb-picked-stats">'+statsHtml+'</div></div><button class="drb-picked-x" id="drbClearUser"><i class="fas fa-xmark"></i></button></div>';
   box.querySelector('#drbClearUser').addEventListener('click', function(){ _pickedUser=null; renderUserPicked(); updatePostBtn(); });
 }
 function renderStoryPicked(){
@@ -316,10 +333,11 @@ async function doPost(){
       base.type='debate'; base.title=title||undefined; base.text=text||undefined;
       base.debateData={ motion: motion || '"This platform is better because of its readers."', forV:0, agV:0, userVote:null };
     } else if(_cur==='shoutout'){
-      if(!_pickedUser) throw new Error('Search and select a writer');
+      if(!_pickedUser) throw new Error('Search and select a writer or reader');
       const text=document.getElementById('drbText')?.value.trim();
       base.type='shoutout'; base.text=text||undefined;
-      base.shoutout={ id:_pickedUser.id, name:_pickedUser.name, avatar:_pickedUser.avatar, tagline: text||'Featured by the Droboard team', stats:_pickedUser.stats, handle:_pickedUser.handle||_pickedUser.id, following:!!_pickedUser.following };
+      const u=_pickedUser; const urole=u.role||'Writer';
+      base.shoutout={ id:u.id, name:u.name, avatar:u.avatar, tagline:(u.handle||u.id)+' · '+urole, stats:u.stats, role:urole, readingHours:u.readingHours, chaptersRead:u.chaptersRead, streak:u.streak, handle:u.handle||u.id, following:!!u.following };
     } else if(_cur==='repost'){
       if(!_pickedStory) throw new Error('Search and select a story');
       const note=document.getElementById('drbText')?.value.trim();

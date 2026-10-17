@@ -57,6 +57,7 @@ const adPlacementSchema = new mongoose.Schema({
   format: { type: String, default: 'auto' }, // auto|embed|native|book|platform|banner
   topPromo: { type: Boolean, default: false },
   promoSlider: { type: Boolean, default: true },
+  repeat: { type: Boolean, default: false }, // repeat comment/thread ads (marketing-owned; readers default off)
 }, { timestamps: true });
 
 const adStatSchema = new mongoose.Schema({

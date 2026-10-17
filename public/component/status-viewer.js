@@ -147,6 +147,14 @@
     .dsv2-slide-caption {
       font-size: 12px; color: rgba(255,255,255,.52); margin-top: 10px;
     }
+    .dsv2-slide-story {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px; padding: 7px 14px 7px 8px; cursor: pointer;
+      position: relative; z-index: 20; max-width: 100%;
+    }
+    .dsv2-slide-story img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+    .dsv2-slide-story span { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* Tap nav zones */
     .dsv2-nav-left {
@@ -241,6 +249,12 @@
     .dsv2-toast.show {
       opacity: 1; transform: translateX(-50%) translateY(0);
     }
+
+    /* ── Ad slides reuse the shared ad-card stage; hide viewer chrome ── */
+    .dsv2-ov.showing-ad .dsv2-engage, .dsv2-ov.showing-ad .dsv2-bottom { display: none; }
+    /* ── Love-only engagement: threads + reply bar hidden everywhere ── */
+    .dsv2-engage-threads, .dsv2-engage-div { display: none; }
+    .dsv2-bottom { display: none; }
   `;
 
   // ══════════════════════════════════════════════════════════════════════
@@ -321,6 +335,59 @@
   let _likeState    = {};   // { [wid]: { liked: bool, count: number } }
   let _animFrame    = null;
 
+  /* ── Status ads: a full-page ad slide after every Nth status ──
+     Slot id `status:every-3rd` is marketing-targetable (page `status`):
+     kill switch, per-slot flags and inventory all apply. No pool (or a
+     failed load) means no ad slides at all — never an empty ad frame. */
+  const STATUS_AD_EVERY = 3;
+  const STATUS_AD_SLOT  = 'status:every-3rd';
+  let _statusEvery = STATUS_AD_EVERY;
+  let _seq        = [];   // flat playback timeline: {kind:'status',wi,si} | {kind:'ad',ad,wi}
+  let _seqIdx     = 0;
+  let _onAd       = false;
+  let _statusAds  = [];
+  let _adCursor   = 0;
+
+  function _trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  async function loadStatusAds() {
+    _statusAds = [];
+    try {
+      if (!window.AdService) return;
+      let placement = null;
+      try { placement = await AdService.getPlacement('status'); } catch (e) { placement = null; }
+      if (placement && placement.enabled === false) return;
+      _statusEvery = Math.max(1, parseInt(placement && placement.interval, 10) || STATUS_AD_EVERY);
+      try {
+        const sk = placement && placement.slots && placement.slots[STATUS_AD_SLOT];
+        if (sk === false || (sk && typeof sk === 'object' && sk.enabled === false)) return;
+      } catch (e) {}
+      const pools = await AdService.getAds({ page: 'status', slot: STATUS_AD_SLOT });
+      const all = [].concat(pools.fullscreen || [], pools.native || [], pools.banner || [], pools.book || []).filter(Boolean);
+      _statusAds = all.slice(0, 6);
+    } catch (e) { _statusAds = []; }
+  }
+  function nextStatusAd() {
+    if (!_statusAds.length) return null;
+    const ad = _statusAds[_adCursor % _statusAds.length]; _adCursor++;
+    return ad;
+  }
+  function buildSeq() {
+    _seq = []; _seqIdx = 0; _onAd = false;
+    let n = 0;
+    _writers.forEach((w, wi) => {
+      (w.statuses || []).forEach((s, si) => {
+        _seq.push({ kind: 'status', wi: wi, si: si }); n++;
+        if (n % _statusEvery === 0) {
+          const ad = nextStatusAd();
+          if (ad) _seq.push({ kind: 'ad', ad: ad, wi: wi });
+        }
+      });
+    });
+  }
+  function _fillEl() {
+    return document.getElementById(_onAd ? 'dsv2FillAd' : 'dsv2Fill' + _slideIdx);
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // Toast
   // ══════════════════════════════════════════════════════════════════════
@@ -360,7 +427,7 @@
     _pauseStart = Date.now();
     clearTimeout(_timer);
     // Freeze the fill bar
-    const fill = document.getElementById('dsv2Fill' + _slideIdx);
+    const fill = _fillEl();
     if (fill) {
       const computed = window.getComputedStyle(fill).width;
       const parentW  = fill.parentElement.offsetWidth || 1;
@@ -378,7 +445,7 @@
     const remaining = Math.max(0, STATUS_DUR - _elapsed);
 
     // Re-animate the bar for the remaining time
-    const fill = document.getElementById('dsv2Fill' + _slideIdx);
+    const fill = _fillEl();
     if (fill) {
       const computed = window.getComputedStyle(fill).width;
       const parentW  = fill.parentElement.offsetWidth || 1;
@@ -401,16 +468,22 @@
   // Render
   // ══════════════════════════════════════════════════════════════════════
   function _renderSlide() {
+    clearTimeout(_timer);
+    _elapsed  = 0;
+    _paused   = false;
+    const entry = _seq[_seqIdx];
+    if (!entry) return;
+    if (entry.kind === 'ad' && entry.ad) { _renderAd(entry); return; }
+    _onAd = false;
+    document.getElementById('dsv2Ov').classList.remove('showing-ad');
+    _writerIdx = entry.wi; _slideIdx = entry.si;
+
     const w = _currentWriter();
     if (!w) return;
 
     const slides  = w.statuses || [];
     const slide   = slides[_slideIdx];
     if (!slide) return;
-
-    clearTimeout(_timer);
-    _elapsed  = 0;
-    _paused   = false;
 
     // ── Mark this slide as viewed (per-segment) ──
     const vw = _currentWriter();
@@ -447,14 +520,18 @@
       avWrap.innerHTML = `<div class="dsv2-writer-av-init" onclick="location.href='profile.html'">${init}</div>`;
     }
 
-    // ── Slide content ──
+    // ── Slide content (bg may be an image URL or a CSS gradient) ──
+    const bgStyle = (slide.bg && slide.bg.indexOf('linear-gradient') === 0)
+      ? `background:${slide.bg}`
+      : `background-image:url('${slide.bg || ''}')`;
     const contentEl = document.getElementById('dsv2Content');
     contentEl.innerHTML = `
-      <div class="dsv2-slide" style="background-image:url('${slide.bg}')">
+      <div class="dsv2-slide" style="${bgStyle};background-size:cover;background-position:center">
         <div class="dsv2-slide-grad"></div>
         <div class="dsv2-slide-text">
           <div class="dsv2-slide-quote">${slide.quote || ''}</div>
           ${slide.caption ? `<div class="dsv2-slide-caption">${slide.caption}</div>` : ''}
+          ${slide.storyRef && slide.storyRef.id ? `<div><div class="dsv2-slide-story" data-story-open="${String(slide.storyRef.id).replace(/"/g, '&quot;')}">${slide.storyRef.cover ? `<img src="${slide.storyRef.cover}" alt=""/>` : ''}<span>📖 ${slide.storyRef.title || 'Open story'}</span></div></div>` : ''}
         </div>
       </div>
       <div class="dsv2-nav-left"  id="dsv2NavLeft"></div>
@@ -464,6 +541,14 @@
     // Tap navigation
     document.getElementById('dsv2NavLeft').addEventListener('click',  () => _navigate(-1));
     document.getElementById('dsv2NavRight').addEventListener('click', () => _navigate(1));
+    // Linked story chip (status posted with a story attached)
+    contentEl.querySelectorAll('[data-story-open]').forEach(function (chip) {
+      chip.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var sid = chip.getAttribute('data-story-open');
+        if (sid) location.href = 'bridge.html?id=' + encodeURIComponent(sid);
+      });
+    });
 
     // ── Engagement ──
     const ls = _likeState[w.id];
@@ -478,7 +563,76 @@
     // ── Animate fill bar for current slide ──
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const fill = document.getElementById('dsv2Fill' + _slideIdx);
+        const fill = _fillEl();
+        if (fill) {
+          fill.style.transition = `width ${STATUS_DUR}ms linear`;
+          fill.style.width      = '100%';
+        }
+        _startTimer(STATUS_DUR);
+      });
+    });
+  }
+
+  /* ── Full-page ad slide: same stage, same duration, same timer ── */
+  function _renderAd(entry) {
+    const ad = entry.ad || {};
+    _onAd = true;
+    if (typeof entry.wi === 'number') _writerIdx = entry.wi;
+    const w = _writers[_writerIdx] || {};
+    const slides = w.statuses || [];
+    const ov = document.getElementById('dsv2Ov');
+    ov.classList.add('showing-ad');
+
+    // Bars: writer's bars complete + one animating ad bar
+    const barsEl = document.getElementById('dsv2Bars');
+    barsEl.innerHTML = slides.map((_, i) =>
+      `<div class="dsv2-bar"><div class="dsv2-bar-fill complete" id="dsv2Fill${i}"></div></div>`
+    ).join('') + `<div class="dsv2-bar"><div class="dsv2-bar-fill" id="dsv2FillAd"></div></div>`;
+
+    // Header carries the sponsor
+    document.getElementById('dsv2WriterName').textContent = 'Sponsored';
+    document.getElementById('dsv2WriterTime').textContent = ad.brand || '';
+    const avWrap = document.getElementById('dsv2AvWrap');
+    avWrap.innerHTML = ad.logo ? `<img class="dsv2-writer-av" src="${ad.logo}" alt=""/>` : '';
+
+    // Full-bleed creative from the shared ad-card component (same visual
+    // language as index fullscreen ads): story → cover slide, else brand.
+    let inner = '';
+    try {
+      if (window.DroboardAdCard) {
+        inner = (ad.isBook || ad.format === 'book' || ad.format === 'storyPromo')
+          ? DroboardAdCard.renderFullscreenStory(ad)
+          : DroboardAdCard.renderFullscreenBrand(ad);
+      }
+    } catch (e) { inner = ''; }
+    if (!inner) { _navigate(1); return; }
+    const contentEl = document.getElementById('dsv2Content');
+    contentEl.innerHTML = `
+      <div data-slot="status:every-3rd"${ad.id ? ` data-adid="${ad.id}"` : ''} style="height:100%">
+        ${inner}
+      </div>
+      <div class="dsv2-nav-left" id="dsv2NavLeft"></div>
+      <div class="dsv2-nav-right" id="dsv2NavRight"></div>
+    `;
+    document.getElementById('dsv2NavLeft').addEventListener('click', () => _navigate(-1));
+    document.getElementById('dsv2NavRight').addEventListener('click', () => _navigate(1));
+    contentEl.querySelectorAll('[data-fs-story]').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _trackAd(ad.id, 'click');
+      location.href = 'bridge.html?id=' + encodeURIComponent(btn.dataset.fsStory || '');
+    }));
+    contentEl.querySelectorAll('[data-fs-url]').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _trackAd(ad.id, 'click');
+      const url = btn.dataset.fsUrl;
+      if (url) { try { window.open(url, '_blank'); } catch (err) {} }
+      else _toast('🔗 ' + (ad.brand || ad.cta || 'Sponsored'));
+    }));
+
+    _trackAd(ad.id, 'impression');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const fill = document.getElementById('dsv2FillAd');
         if (fill) {
           fill.style.transition = `width ${STATUS_DUR}ms linear`;
           fill.style.width      = '100%';
@@ -496,33 +650,23 @@
     _paused  = false;
     _elapsed = 0;
 
-    const w = _currentWriter();
-    if (!w) return;
-
-    const slides = w.statuses || [];
-    const nextSlide = _slideIdx + dir;
-
-    if (nextSlide >= 0 && nextSlide < slides.length) {
-      _slideIdx = nextSlide;
-      _renderSlide();
-      return;
-    }
-
-    // Move to prev/next writer
-    const nextWriter = _writerIdx + dir;
-    if (nextWriter < 0 || nextWriter >= _writers.length) {
+    const next = _seqIdx + dir;
+    if (next < 0 || next >= _seq.length) {
       closeStatusViewer();
       return;
     }
+    const prevEntry = _seq[_seqIdx];
+    _seqIdx = next;
+    const entry = _seq[_seqIdx];
 
-    _writerIdx = nextWriter;
-    _slideIdx  = dir > 0 ? 0 : (_writers[_writerIdx].statuses || []).length - 1;
-
-    // Mark as viewed
-    if (_writers[_writerIdx]) {
-      _writers[_writerIdx].ring = 'ring-viewed';
-      if (typeof window.onStatusViewerChange === 'function') {
-        window.onStatusViewerChange(_writers[_writerIdx].id, 'ring-viewed');
+    // Keep writer-viewed semantics when crossing into another writer's status
+    if (entry.kind === 'status') {
+      const w = _writers[entry.wi];
+      if (w && (!prevEntry || prevEntry.wi !== entry.wi)) {
+        w.ring = 'ring-viewed';
+        if (typeof window.onStatusViewerChange === 'function') {
+          window.onStatusViewerChange(w.id, 'ring-viewed');
+        }
       }
     }
 
@@ -532,14 +676,22 @@
   // ══════════════════════════════════════════════════════════════════════
   // Public: open / close
   // ══════════════════════════════════════════════════════════════════════
-  function openStatusViewer(writerStatuses, wid) {
+  async function openStatusViewer(writerStatuses, wid) {
     _writers = (writerStatuses || []).filter(w => w.statuses && w.statuses.length);
     if (!_writers.length) { _toast('No statuses available'); return; }
+    // Await the ad pool BEFORE building the timeline — otherwise the
+    // first session always builds an ad-free timeline (pool not warm yet).
+    try { await loadStatusAds(); } catch (e) {}
 
-    // Find target writer
-    const idx = _writers.findIndex(w => w.id === wid);
-    _writerIdx = idx >= 0 ? idx : 0;
-    _slideIdx  = 0;
+    // Flat playback timeline (status slides + ad markers)
+    buildSeq();
+
+    // Find target writer's first status
+    _seqIdx = 0;
+    for (let i = 0; i < _seq.length; i++) {
+      const e = _seq[i];
+      if (e.kind === 'status' && _writers[e.wi] && _writers[e.wi].id === wid) { _seqIdx = i; break; }
+    }
     _paused    = false;
     _elapsed   = 0;
 
@@ -565,6 +717,17 @@
   function closeStatusViewer() {
     clearTimeout(_timer);
     _paused = false;
+    // Mark current writer as viewed on close (covers single-status writers
+    // and early-close — the slide-advance path only fires on multi-slide).
+    // Never mark while sitting on an ad slide.
+    const vw = _currentWriter();
+    if (vw && !_onAd && vw.ring !== 'ring-viewed') {
+      vw.ring = 'ring-viewed';
+      (vw.statuses || []).forEach(function (st) { st.viewed = true; });
+      if (typeof window.onStatusViewerChange === 'function') {
+        window.onStatusViewerChange(vw.id, 'ring-viewed');
+      }
+    }
     document.getElementById('dsv2Ov').classList.remove('open');
     document.body.style.overflow = '';
   }
@@ -653,6 +816,8 @@
   // ══════════════════════════════════════════════════════════════════════
   window.openStatusViewer  = openStatusViewer;
   window.closeStatusViewer = closeStatusViewer;
+  window.STATUS_VIEWED_RING = '#f1f1f1';
+  document.documentElement.style.setProperty('--status-viewed-ring', '#f1f1f1');
 
   // ══════════════════════════════════════════════════════════════════════
   // Init
@@ -662,5 +827,7 @@
   } else {
     _inject();
   }
+  // Warm the status-ad pool early so it's ready by first open
+  try { loadStatusAds(); } catch (e) {}
 
 })();

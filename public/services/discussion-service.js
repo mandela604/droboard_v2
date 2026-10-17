@@ -26,7 +26,7 @@
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function trackAd() {}
 
   /* ── Theme ── */
   function toggleTheme() {
@@ -102,7 +102,16 @@
     if (!seed) return false;
     GENRE_EXPLICIT = !!params.get('genre');
     GENRE_ID = params.get('genre') || seed.DEFAULT_GENRE_ID;
-    const postId = params.get('id') || params.get('d');
+    let postId = params.get('id') || params.get('d');
+    // Feed community cards link with prefixed ids ('fc_<genre>_<id>') —
+    // unwrap to the original hub post id before pool lookup.
+    if (typeof postId === 'string' && postId.indexOf('fc_') === 0) {
+      const rest = postId.slice(3);
+      const gids = Object.keys(seed.DEMO_GENRES || {}).sort((a, b) => b.length - a.length);
+      for (const gid of gids) {
+        if (rest.indexOf(gid + '_') === 0) { postId = rest.slice(gid.length + 1); break; }
+      }
+    }
     GENRE = seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[seed.DEFAULT_GENRE_ID];
     const pool = genrePool(seed);
     POST = postId ? pool.find(p => String(p.id) === String(postId)) : null;
@@ -151,7 +160,6 @@
     const mount = document.getElementById('opMount');
     if (!POST) {
       mount.innerHTML = '<div class="empty">Discussion not found. <a href="genre-hub.html">Back to hub</a></div>';
-      document.getElementById('discAd').style.display = 'none';
       return;
     }
     if (POST.pinned && !POST._droboard) {
@@ -180,6 +188,9 @@
     const rx = window.DroboardReactionPicker
       ? DroboardReactionPicker.renderTrigger(String(POST.id), { liked: !!POST.liked, likeCount: POST.likes || 0 })
       : `<span style="font-weight:700;color:var(--tx-muted)">${POST.likes || 0}</span>`;
+    const actions = `${rx}
+      <button type="button" class="op-act" id="opReplyBtn"><i class="far fa-comment"></i> ${POST.comments || 0}</button>
+      <button type="button" class="op-act" id="opShareBtn"><i class="fas fa-share-nodes"></i> Share</button>`;
     mount.innerHTML = `<div class="op">
       <div class="op-head">
         <img class="op-av" id="opAv" src="${esc(POST.avatar || '')}" alt=""/>
@@ -192,7 +203,7 @@
       <div class="op-body">${esc(POST.body || '')}</div>
       ${tags ? `<div class="op-tags">${tags}</div>` : ''}
       ${media}${story}
-      <div class="op-actions" id="opActions">${rx}</div>
+      <div class="op-actions" id="opActions">${actions}</div>
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';
     document.getElementById('opAv')?.addEventListener('click', async () => {
@@ -209,55 +220,67 @@
     });
     document.getElementById('opName')?.addEventListener('click', () => { location.href = profileHref(POST.name); });
     document.getElementById('storyRef')?.addEventListener('click', () => toast('📖 Opening story…'));
-  }
-
-  /* ── Mid-page ad: central inventory only (book first, else platform) ── */
-  async function mountAd() {
-    const el = document.getElementById('discAd');
-    if (!el || !window.DroboardAdCard) { if (el) el.style.display = 'none'; return; }
-    let slot = null;
-    if (window.AdService) {
-      try {
-        const pools = await AdService.getAds({ page: 'discussion' });
-        const em = (pools.embed || []).find(a => a && a.code);
-        const book = (pools.book || [])[0];
-        const plat = (pools.platform || [])[0];
-        if (em) slot = { format: 'embed', ad: em };
-        else if (book) slot = { format: 'storyPromo', ad: Object.assign({}, book, { cat: (GENRE && GENRE.name) || book.cat }) };
-        else if (plat) slot = { format: 'platform', ad: plat };
-      } catch (e) { slot = null; }
-    }
-    if (!slot) { el.style.display = 'none'; return; }
-    let inner = '';
-    try {
-      if (slot.format === 'embed' && DroboardAdCard.renderEmbed) inner = DroboardAdCard.renderEmbed(slot.ad);
-      else if (slot.format === 'platform') inner = DroboardAdCard.renderPlatform(slot.ad);
-      else if (slot.format === 'native') inner = DroboardAdCard.renderNative(slot.ad);
-      else inner = DroboardAdCard.renderStoryPromo(slot.ad);
-    } catch (e) { el.style.display = 'none'; return; }
-    el.innerHTML = inner;
-    trackAd(slot.ad.id, 'impression');
-    DroboardAdCard.attach(el, {
-      getAds: () => [slot.ad],
-      onOpen: (ad) => { if (ad) trackAd(ad.id, 'click'); toast('📖 ' + (ad.title || ad.heading || 'Ad')); },
-      onCta: (ad) => { if (ad) trackAd(ad.id, 'click'); toast('🔗 ' + (ad.cta || 'CTA')); },
-      onLike: () => {},
-      onComment: () => toast('💬'),
-      onShare: (ad) => {
-        if (window.openShareModal) {
-          openShareModal({
-            title: ad.title || ad.heading || ad.brand,
-            sub: ad.brand || 'Sponsored',
-            img: ad.cover || ad.image || '',
-            url: 'https://droboard.app/ad/' + (ad.id || ''),
-          });
-        }
-      },
+    document.getElementById('opReplyBtn')?.addEventListener('click', () => {
+      const inp = document.querySelector('#commentsPlaceholder .dcs-input, #commentsPlaceholder input[type="text"], #commentsPlaceholder textarea');
+      if (inp) {
+        inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => inp.focus(), 350);
+      } else {
+        document.getElementById('commentsPlaceholder')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+    document.getElementById('opShareBtn')?.addEventListener('click', () => {
+      const data = {
+        title: POST.title || 'Discussion',
+        sub: (POST.name || '') + (GENRE ? ' · ' + GENRE.name : ''),
+        img: POST.story?.cover || POST.media || POST.avatar || '',
+        url: location.href,
+      };
+      if (typeof window.openShareModal === 'function') window.openShareModal(data);
+      else if (navigator.clipboard) { navigator.clipboard.writeText(location.href).then(() => toast('📋 Link copied!')).catch(() => toast('📤 Share link copied!')); }
+      else toast('📤 Share link copied!');
     });
   }
 
+  /* ── Discussion ads removed per product request: no mid-page slot. ── */
+  async function mountAd() { return; }
+
   /* ── Comments: droboard OPs reuse the page comment seed; everything
      else keeps the genre demo thread. ── */
+  function normThreadRing(r) {
+    const s = String(r || '').replace(/^ring-/, '');
+    return (s === 'has' || s === 'viewed') ? s : 'none';
+  }
+  /* Thread seeds carry no status data — match authors against COMMENTS_DATA
+     first, else deal statuses round-robin so every comment behaves like
+     reader comments (ring shows, avatar opens the viewer). */
+  function enrichThreadStatuses(list) {
+    let pool = [];
+    try {
+      pool = (window.COMMENTS_DATA || []).filter(c => c && c.statuses && c.statuses.length);
+    } catch (e) { pool = []; }
+    if (!pool.length) return list;
+    const byName = {};
+    pool.forEach(p => { if (p.name && !byName[p.name]) byName[p.name] = p; });
+    let n = 0;
+    (function walk(arr) {
+      (arr || []).forEach(c => {
+        const hit = byName[c.name];
+        if (hit) {
+          if (!c.statuses || !c.statuses.length) c.statuses = hit.statuses;
+          c.statusRing = normThreadRing((c.statusRing && c.statusRing !== 'none') ? c.statusRing : hit.statusRing);
+        } else if (!c.statuses || !c.statuses.length) {
+          const p = pool[n++ % pool.length];
+          c.statuses = p.statuses;
+          c.statusRing = (n % 3 === 0) ? 'viewed' : 'has';
+        } else {
+          c.statusRing = normThreadRing(c.statusRing);
+        }
+        walk(c.replies || []);
+      });
+    })(list);
+    return list;
+  }
   function threadComments() {
     if (POST && POST._droboard && window.COMMENTS_DATA) {
       return JSON.parse(JSON.stringify(window.COMMENTS_DATA));
@@ -273,7 +296,7 @@
         }
       }));
     }
-    return list;
+    return enrichThreadStatuses(list);
   }
   function mountComments() {
     if (window.DroboardComments && POST && !(POST.pinned && !POST._droboard)) {
@@ -338,7 +361,27 @@
       } else toast(url);
     });
     if (window.DroboardReactionPicker) {
-      DroboardReactionPicker.attach(document.getElementById('opMount'), {});
+      const opRx = { userRx: POST && POST.liked ? 'love' : null };
+      if (POST) { opRx.love = POST.likes || 0; }
+      DroboardReactionPicker.attach(document.getElementById('opMount'), {
+        getState: (id) => {
+          if (!POST || String(id) !== String(POST.id)) return null;
+          return opRx;
+        },
+        onReact: (id, rid) => {
+          if (!POST || String(id) !== String(POST.id)) return;
+          if (opRx.userRx === rid) {
+            if (rid === 'love') opRx.love = Math.max(0, (opRx.love || 0) - 1);
+            opRx.userRx = null;
+          } else {
+            if (opRx.userRx === 'love') opRx.love = Math.max(0, (opRx.love || 0) - 1);
+            if (rid === 'love') opRx.love = (opRx.love || 0) + 1;
+            opRx.userRx = rid;
+          }
+          POST.likes = opRx.love || 0;
+          POST.liked = opRx.userRx === 'love';
+        },
+      });
     }
   }
 
@@ -349,7 +392,6 @@
     if (!(await loadThread())) { toast('GenreDemoSeed missing'); return; }
     initWiring();
     renderOp();
-    await mountAd();
     mountComments();
     scrollToComment();
   }

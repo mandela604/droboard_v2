@@ -39,7 +39,7 @@ const chapterSchema = new mongoose.Schema({
   authorNote: { type: String, default: '' },
   poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }] },
   prediction: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }] },
-  debate: { motion: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 } },
+  debate: { motion: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 } },
 }, { timestamps: true });
 chapterSchema.index({ bookId: 1, n: 1 }, { unique: true });
 

@@ -161,6 +161,36 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
     return base;
   }
 
+  /* ── Reader League: scoring + prizes, shared with services/league-service.js ──
+     Demo persistence goes to localStorage 'dro_league_override', which the
+     client league reads synchronously — admin edits apply on next page load.
+     Live, these hit /api/marketing/league. */
+  const LEAGUE_KEY = 'dro_league_override';
+  function defaultLeagueConfig() {
+    return {
+      enabled: true,
+      weights: { chapter: 10, hour: 5, reaction: 2, comment: 8, reply: 8, debate: 4, win: 25, streak: 6 },
+      actionLabels: {},
+      actionIcons: {},
+      prizes: [
+        { place: 1, badge: 'League Champion', icon: 'fa-crown', color: '#f59e0b', perks: ['Champion frame', 'Ad-free week', 'Shoutout spotlight'], adFreeDays: 7 },
+        { place: 2, badge: 'League 2nd', icon: 'fa-medal', color: '#a0a0b0', perks: ['Ad-free week'], adFreeDays: 7 },
+        { place: 3, badge: 'League 3rd', icon: 'fa-medal', color: '#a07040', perks: [], adFreeDays: 0 },
+      ],
+    };
+  }
+  function currentLeagueConfig() {
+    const base = defaultLeagueConfig();
+    let ov = {};
+    try { ov = JSON.parse(localStorage.getItem(LEAGUE_KEY) || '{}') || {}; } catch (e) {}
+    if (typeof ov.enabled === 'boolean') base.enabled = ov.enabled;
+    if (ov.weights) Object.keys(ov.weights).forEach(k => { base.weights[k] = +ov.weights[k] || 0; });
+    if (ov.actionLabels) base.actionLabels = ov.actionLabels;
+    if (ov.actionIcons) base.actionIcons = ov.actionIcons;
+    if (Array.isArray(ov.prizes) && ov.prizes.length) base.prizes = ov.prizes;
+    return base;
+  }
+
   /* ── Campaign ↔ ad connection ──
      Campaigns gate their ads: pausing/ending a campaign switches its ads
      off (flagged autoPaused); resuming restores only those — a manually
@@ -372,6 +402,45 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
         await delay();
         try { localStorage.removeItem(ADS_OVERRIDE_KEY); } catch (e2) {}
         return currentAdInventory();
+      }
+    },
+
+    /* ── Reader League: full CRUD ── */
+    async getLeagueConfig() {
+      try {
+        const live = await callBackend('/league/config');
+        if (live) return live;
+      } catch (e) { /* fall through to demo */ }
+      await delay(120);
+      return currentLeagueConfig();
+    },
+
+    async saveLeagueConfig(patch) {
+      try {
+        return await callBackend('/league/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+      } catch (e) {
+        await delay();
+        const cur = currentLeagueConfig();
+        const next = {
+          enabled: (patch.enabled !== undefined) ? !!patch.enabled : cur.enabled,
+          weights: Object.assign({}, cur.weights, patch.weights || {}),
+          actionLabels: Object.assign({}, cur.actionLabels, patch.actionLabels || {}),
+          actionIcons: Object.assign({}, cur.actionIcons, patch.actionIcons || {}),
+          prizes: Array.isArray(patch.prizes) && patch.prizes.length ? patch.prizes : cur.prizes,
+        };
+        (patch.removeActions || []).forEach(k => { delete next.weights[k]; delete next.actionLabels[k]; delete next.actionIcons[k]; });
+        try { localStorage.setItem(LEAGUE_KEY, JSON.stringify(next)); } catch (e2) {}
+        return next;
+      }
+    },
+
+    async resetLeague() {
+      try {
+        return await callBackend('/league/reset', { method: 'POST' });
+      } catch (e) {
+        await delay();
+        try { localStorage.removeItem(LEAGUE_KEY); } catch (e2) {}
+        return currentLeagueConfig();
       }
     },
 

@@ -132,7 +132,7 @@
     .dtp-supp-av:first-child{margin-left:0}
     .dtp-supp-more{width:26px;height:26px;border-radius:50%;border:2px solid var(--bg3,#0a0a0d);margin-left:-9px;background:#1c1d24;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#aaa;flex-shrink:0;}
     .dtp-supp-plus{width:26px;height:26px;border-radius:50%;border:2px dashed rgba(255,255,255,.2);margin-left:-9px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;flex-shrink:0;background:var(--bg3,#0a0a0d);}
-    .dtp-supp-text{flex:1;font-size:11.5px;font-weight:700;color:#ccc;}
+    .dtp-supp-text{flex:1;font-size:11.5px;font-weight:700;color:var(--tx-muted,#555);}
     .dtp-supp-text b{color:var(--tx,#fff)}
     .dtp-supp-chev{font-size:11px;color:#555;flex-shrink:0}
 
@@ -310,7 +310,6 @@
         <div class="dtp-mode-tabs" id="dtp-mode-tabs">
           <div class="dtp-mode-tab on" data-mode="coin"><i class="fas fa-coins" style="font-size:11px"></i> Coin</div>
           <div class="dtp-mode-tab" data-mode="gift"><i class="fas fa-gift" style="font-size:11px"></i> Gift</div>
-          <div class="dtp-mode-tab" data-mode="cash"><span id="dtp-cash-tab-symbol">$</span> Cash</div>
         </div>
 
         <div class="dtp-bal-row" id="dtp-bal-row">
@@ -664,7 +663,8 @@
     document.getElementById('dtp-writer-av').src = writer.avatar;
     document.getElementById('dtp-writer-name').textContent = writer.name;
     document.getElementById('dtp-writer-sub').textContent = writer.handle || 'Support this writer';
-    document.getElementById('dtp-cash-tab-symbol').textContent = currency.symbol;
+    var cashTab = document.getElementById('dtp-cash-tab-symbol');
+    if (cashTab) cashTab.textContent = currency.symbol;
 
     document.getElementById('dtp-note').value = '';
     document.getElementById('dtp-note-wrap').classList.remove('open');

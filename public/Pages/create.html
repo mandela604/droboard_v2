@@ -143,6 +143,78 @@ button{font-family:inherit}
 .sel-pill:active{transform:scale(.95)}
 .sel-pill.on{background:rgba(255,0,80,.1);border-color:var(--acc);color:var(--acc3);box-shadow:0 0 0 2px var(--glow-sm)}
 .sel-pill.disabled{opacity:.3;pointer-events:none}
+.field-subhint{font-size:10.5px;color:var(--tx-faint);margin-top:7px;font-weight:600}
+
+/* plot — line-item beats (mirrors the author center arc UI) */
+.plot-acts{display:flex;flex-direction:column;gap:10px}
+.plot-act{background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.plot-act-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.plot-act-name{font-size:11.5px;font-weight:800;color:var(--tx-high);letter-spacing:.02em}
+.plot-act-count{font-size:9px;font-weight:800;color:var(--tx-faint);background:rgba(255,255,255,.04);border:1px solid var(--bd2);padding:2px 8px;border-radius:20px}
+.plot-act-hint{font-size:11px;color:var(--tx-muted);line-height:1.5;margin-bottom:9px}
+.plot-act-summary{width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:9px;padding:10px 11px;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:12.5px;line-height:1.55;outline:none;resize:vertical;min-height:64px;transition:border-color .16s}
+.plot-act-summary:focus{border-color:var(--bd-acc)}
+.plot-act-summary::placeholder{color:var(--tx-faint)}
+.plot-range-inp{width:32px;background:transparent;border:none;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:9px;font-weight:800;text-align:center;outline:none;padding:0;-moz-appearance:textfield}
+.plot-range-inp::-webkit-outer-spin-button,.plot-range-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.plot-act-name-inp{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:800;letter-spacing:.02em;padding:0}
+.plot-act-name-inp::placeholder{color:var(--tx-faint)}
+.plot-act-actions{display:flex;gap:4px;flex-shrink:0}
+.plot-act-btn{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--tx-faint);cursor:pointer;font-size:10px;transition:.15s}
+.plot-act-btn:active{background:rgba(255,255,255,.06);color:var(--tx-high)}
+.plot-act-btn.danger:active{background:rgba(244,63,94,.12);color:#f43f5e}
+.plot-act-range-row{margin-top:8px;display:flex;align-items:center}
+.plot-act-range-row + .plot-act-summary{margin-top:9px}
+.plot-acts-add{margin-top:2px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed var(--bd);background:transparent;border-radius:10px;padding:9px;color:var(--tx-muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:.15s}
+.plot-acts-add:active{border-color:var(--bd-acc);color:var(--acc3)}
+.plot-acts-add i{font-size:9px}
+.cast-card{margin-top:18px;background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px}
+.cast-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.cast-hd-lbl{font-size:11.5px;font-weight:800;color:var(--tx-high)}
+.cast-hint{font-size:9.5px;color:var(--tx-faint);font-weight:600;background:rgba(255,255,255,.04);border:1px solid var(--bd);padding:2px 8px;border-radius:20px}
+.cast-empty{font-size:11px;color:var(--tx-faint);text-align:center;padding:4px 0 10px;line-height:1.5}
+.cast-row{background:var(--l2);border:1px solid var(--bd);border-radius:12px;padding:11px;margin-bottom:9px}
+.cast-top{display:flex;gap:10px}
+.cast-av{width:42px;height:42px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;position:relative;overflow:hidden;cursor:pointer}
+.cast-av-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cast-presets{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.cast-preset{font-size:9.5px;font-weight:700;padding:4px 9px;border-radius:20px;border:1px solid var(--bd);background:var(--l1);color:var(--tx-muted);cursor:pointer;user-select:none;transition:.15s}
+.cast-preset.on{background:rgba(255,0,80,.1);border-color:var(--acc);color:var(--acc3)}
+.cast-top-main{flex:1;min-width:0}
+.cast-name-line{display:flex;align-items:center;gap:8px}
+.cast-name-inp{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:800;padding:0}
+.cast-name-inp::placeholder{color:var(--tx-faint);font-weight:700}
+.cast-role-sel{background-color:rgba(255,0,80,.1);background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="%23fb7185" stroke-width="3" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>');background-repeat:no-repeat;background-position:right 6px center;border:1px solid var(--acc);color:var(--acc3);font-family:'DM Sans',sans-serif;font-size:9px;font-weight:800;padding:4px 17px 4px 8px;border-radius:20px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
+.cast-role-sel option{background:#0e0f13;color:var(--tx-high)}
+.cast-del{width:24px;height:24px;flex-shrink:0;border:none;background:transparent;color:var(--tx-faint);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px}
+.cast-del:active{background:rgba(244,63,94,.12);color:#f43f5e}
+.cast-meta-line{display:flex;align-items:center;gap:5px;margin-top:4px}
+.cast-age-inp{width:34px;background:transparent;border:none;outline:none;color:var(--tx-muted);font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:600;padding:0;-moz-appearance:textfield}
+.cast-age-inp::-webkit-outer-spin-button,.cast-age-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cast-age-inp::placeholder{color:var(--tx-faint)}
+.cast-meta-dot{color:var(--tx-faint);font-size:11px}
+.cast-arch-inp{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--tx-muted);font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:600;padding:0}
+.cast-arch-inp::placeholder{color:var(--tx-faint)}
+.cast-arc-inp{width:100%;background:var(--l1);border:1px solid var(--bd);border-radius:9px;padding:8px 10px;color:var(--tx-body);font-family:'DM Sans',sans-serif;font-size:11.5px;line-height:1.5;outline:none;transition:border-color .16s}
+.cast-arc-inp:focus{border-color:var(--bd-acc)}
+.cast-arc-inp::placeholder{color:var(--tx-faint)}
+.cast-body{display:none}
+.cast-body.open{display:block}
+.cast-arrow{transition:transform .2s}
+.cast-arrow.open{transform:rotate(180deg)}
+.cast-role-other-inp{width:110px;background:transparent;border:none;border-bottom:1px solid var(--bd);outline:none;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;padding:1px 0}
+.cast-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.cast-tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--bd);color:var(--tx-body)}
+.cast-tag i{font-size:8px;cursor:pointer;color:var(--tx-faint)}
+.cast-tag-inp{width:84px;background:transparent;border:none;outline:none;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:600;padding:0}
+.cast-tag-inp::placeholder{color:var(--tx-faint)}
+.cast-add{margin-top:2px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed var(--bd);background:transparent;border-radius:10px;padding:8px;color:var(--tx-muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:.15s}
+.cast-add:active{border-color:var(--bd-acc);color:var(--acc3)}
+.cast-add i{font-size:9px}
+.plot-act-body{display:none}
+.plot-act-body.open{display:block}
+.plot-act-arrow{transition:transform .2s}
+.plot-act-arrow.open{transform:rotate(180deg)}
 
 .tf-input,.tf-textarea{width:100%;background:var(--l1);border:1.5px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx-high);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .18s}
 .tf-input:focus,.tf-textarea:focus{border-color:var(--bd-acc)}
@@ -215,11 +287,14 @@ button{font-family:inherit}
 .mt-div{width:1px;height:16px;background:var(--bd);margin:0 3px;flex-shrink:0}
 .ch-writing-area{
   min-height:150px;background:var(--l1);border:1px solid var(--bd);border-top:none;border-radius:0 0 12px 12px;
-  padding:12px 14px;color:var(--tx-high);font-size:13px;line-height:1.65;outline:none;
+  padding:12px 14px;color:var(--tx-high);font-size:14px;line-height:1.65;outline:none;
 }
 .ch-writing-area:empty::before{content:attr(data-placeholder);color:var(--tx-faint);pointer-events:none}
 .ch-writing-area blockquote{border-left:3px solid var(--acc);padding:2px 0 2px 12px;color:var(--tx-muted);font-style:italic;margin:8px 0}
+.ch-writing-area blockquote::before{content:'\201C';color:var(--acc);font-weight:800;font-style:normal;margin-right:3px}
+.ch-writing-area blockquote::after{content:'\201D';color:var(--acc);font-weight:800;font-style:normal;margin-left:3px}
 .ch-writing-area h1,.ch-writing-area h2{font-family:'Playfair Display',serif;color:var(--tx-high);margin:8px 0}
+.ch-writing-area h5{font-family:'Playfair Display',serif;color:var(--tx-high);font-size:15px;font-weight:800;margin:10px 0 6px}
 .ch-word-count{font-size:9.5px;color:var(--tx-faint);text-align:right;margin-top:5px;font-weight:600}
 
 .empty-ch{text-align:center;padding:36px 16px;color:var(--tx-faint);border:1.5px dashed var(--bd);border-radius:14px}
@@ -332,6 +407,8 @@ button{font-family:inherit}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
 
@@ -455,10 +532,6 @@ button{font-family:inherit}
         <div class="cover-drop-txt">Tap to upload a cover image</div>
       </div>
       <input type="file" id="coverFile" accept="image/*" style="display:none" onchange="handleCoverFile(event)"/>
-      <div class="cover-url-row">
-        <input class="tf-input" id="coverUrlInput" placeholder="…or paste an image URL"/>
-        <button class="cover-url-btn" onclick="applyCoverUrl()">Use</button>
-      </div>
       <div class="stock-row" id="stockRow"></div>
     </div>
 
@@ -471,11 +544,18 @@ button{font-family:inherit}
     <div class="field-group">
       <div class="field-label">Category <span class="field-hint">pick 1</span></div>
       <div class="pill-grid" id="categoryGrid"></div>
+      <div class="field-subhint" id="catHint">Genres and tropes appear once you pick a category.</div>
     </div>
 
-    <div class="field-group">
+    <div class="field-group" id="genreFg" style="display:none">
       <div class="field-label">Genres <span class="field-hint" id="genreCounter">0 / 5 selected</span></div>
       <div class="pill-grid" id="genreGrid"></div>
+    </div>
+
+    <div class="field-group" id="tropeFg" style="display:none">
+      <div class="field-label">Tropes <span class="field-hint" id="tropeCounter">0 / 3 selected</span></div>
+      <div class="pill-grid" id="tropeGrid"></div>
+      <div class="field-subhint">Tropes come from our editors' catalogue — pick what fits your story.</div>
     </div>
 
     <div class="field-group">
@@ -500,8 +580,13 @@ button{font-family:inherit}
       <div class="stage-desc">Map out the whole story, beginning to end. This is for our editors — it isn't shown to readers.</div>
     </div>
     <div class="field-group" style="margin-bottom:0">
-      <textarea class="tf-textarea tall" id="plotInput" placeholder="Lay out the full arc of your story here — where it starts, the turns it takes, and how it ends."></textarea>
+      <div class="plot-acts" id="plotActs"></div>
       <div class="char-count" id="plotCount">0 words</div>
+      <div class="cast-card">
+        <div class="cast-hd"><span class="cast-hd-lbl">Your main cast</span><span class="cast-hint">optional</span></div>
+        <div id="castList"></div>
+        <button type="button" class="cast-add" onclick="addCastMember()"><i class="fas fa-plus"></i> Add character</button>
+      </div>
     </div>
   </div>
 
@@ -547,6 +632,8 @@ button{font-family:inherit}
       <div class="review-plot" id="reviewSynopsis" style="margin-bottom:10px"></div>
       <div class="review-row"><span class="review-row-lbl">Full plot</span></div>
       <div class="review-plot" id="reviewPlot"></div>
+      <div class="review-row" id="castReviewRow" style="display:none"><span class="review-row-lbl">Main cast</span></div>
+      <div id="reviewCast"></div>
     </div>
 
     <div class="review-card">
@@ -578,8 +665,8 @@ button{font-family:inherit}
     <div class="success-title" id="successTitle">Submitted for review!</div>
     <div class="success-sub" id="successSub">Your story has been sent to our editors.</div>
     <div class="success-actions">
-      <button class="success-btn primary" onclick="location.href='profile.html'">Go to my profile</button>
-      <button class="success-btn ghost" onclick="startAnother()">Submit another story</button>
+      <button class="success-btn primary" id="successPrimaryBtn" onclick="location.href='profile.html'">Go to my profile</button>
+      <button class="success-btn ghost" id="successGhostBtn" onclick="startAnother()">Submit another story</button>
     </div>
   </div>
 
@@ -593,6 +680,7 @@ button{font-family:inherit}
 
 <div class="toast" id="toast"></div>
 
+<script src="../data/editor-demo-data.js"></script>
 <script src="../services/create-service.js"></script>
 </body>
 </html>

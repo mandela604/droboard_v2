@@ -35,7 +35,7 @@ a{color:inherit;text-decoration:none}
 @media(min-width:421px){.phone{border-radius:0}}
 
 /* TOP BAR */
-.topbar{flex-shrink:0;height:var(--topbar-h);display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;}
+.topbar{position:sticky;top:0;flex-shrink:0;height:var(--topbar-h);display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;}
 body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .topbar.hidden{transform:translateY(-100%);opacity:0;pointer-events:none}
 .tb-back{width:34px;height:34px;border-radius:50%;background:var(--surface);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx2);cursor:pointer;flex-shrink:0;}
@@ -68,7 +68,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .ch-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ch-meta-pill{font-size:9px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;gap:4px;}
 
-/* TEAM SIDING — multi-team support */
+/* TEAM SIDING ── multi-team support */
 .team-siding{padding:16px 22px 0;max-width:680px;margin:0 auto;}
 .team-siding-label{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
 .team-grid{display:grid;gap:7px;}
@@ -102,8 +102,8 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .team-bar-seg[data-team="b"]{background:#60a5fa;}
 .team-bar-seg[data-team="c"]{background:#34d399;}
 .team-bar-seg[data-team="d"]{background:#a78bfa;}
-.team-bar-label-row{display:flex;justify-content:space-between;margin-top:6px;flex-wrap:wrap;gap:4px;}
-.team-bar-lbl{font-size:8px;font-weight:800;display:flex;align-items:center;gap:3px;}
+.team-bar-label-row{display:flex;margin-top:6px;gap:0;}
+.team-bar-lbl{font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;white-space:nowrap;overflow:visible;}
 .team-bar-lbl .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
 
 /* STORY TEXT */
@@ -116,7 +116,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .story-divider span{font-size:12px;color:var(--tx2)}
 .story-text p:first-child::first-letter{font-family:var(--font-story);font-size:3.2em;font-weight:700;float:left;line-height:.82;margin-right:.08em;margin-top:.04em;color:var(--acc);}
 
-/* ══ LOCKED / PAYWALL FADE (in-place, no navigation away) ══ */
+/* ── LOCKED / PAYWALL FADE (in-place, no navigation away) ── */
 .story-text.locked-fade{max-height:260px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(to bottom, black 25%, transparent 92%);mask-image:linear-gradient(to bottom, black 25%, transparent 92%);opacity:.55;pointer-events:none;user-select:none;}
 .unlock-card{margin:-40px auto 18px;position:relative;z-index:5;max-width:420px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:18px;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6);text-align:center;}
 .unlock-icon{width:46px;height:46px;border-radius:50%;background:var(--acc-dim);border:1.5px solid var(--acc-border);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--acc);margin:0 auto 12px}
@@ -132,8 +132,11 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .unlock-opt-price{font-size:11.5px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px;white-space:nowrap}
 .unlock-opt.reco .unlock-opt-price{color:var(--acc)}
 
-/* AD SLOT — sits right after the story, before Prev/Next chapter nav */
-.ad-slot-wrap{padding:16px 16px 4px;max-width:680px;margin:0 auto;}
+/* AD SLOT ── sits right after the story, before Prev/Next chapter nav.
+   NOTE: parent .story-wrap already has 22px side padding (same as
+   scroll-reader .reader-col), so this wrap uses 0 side padding to match
+   scroll-reader .ch-edge-ad width exactly. */
+.ad-slot-wrap{padding:16px 0 4px;max-width:680px;margin:0 auto;}
 .ad-slot-label{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
 .ad-slot-wrap .dac-native,.ad-slot-wrap .dac-promo{border-radius:14px;border-bottom:none;border:1px solid var(--bd);}
 .ad-slot-wrap .dac-banner{border-radius:14px;}
@@ -151,16 +154,24 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .ch-nav-side.next-ch.locked-next .ch-nav-label{color:var(--gold)}
 .ch-nav-center{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;}
 
-/* COMMENTS — component (comment-section.js) renders into #commentsPlaceholder;
-   this wrapper just gives it the same content-column width/padding as the
-   rest of the page. */
-.comments-section{padding:0 14px 24px;max-width:680px;margin:0 auto;}
+/* COMMENTS ── component (comment-section.js) renders into #commentsPlaceholder;
+   zero side padding here: .story-wrap already gives the column edge, same
+   as the engagement accordions above and the scroll reader column. */
+.comments-section{padding:0 0 24px;max-width:680px;margin:0 auto;}
 
 /* CHAPTER END */
 .ch-end-section{padding:0 22px 28px;text-align:center;background:var(--bg);}
 .ch-end-title{font-family:var(--font-story);font-size:14px;font-weight:700;color:var(--tx2);margin-bottom:4px;}
 .ch-end-sub{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:20px;}
-.ch-end-actions{display:flex;align-items:center;justify-content:center;gap:32px;}
+.ch-end-actions{display:flex;align-items:center;justify-content:center;gap:10px;}
+/* engage-bar buttons (same as scroll reader) */
+.engage-bar{display:flex;align-items:center;justify-content:center;gap:10px;}
+.eb-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--bd);cursor:pointer;transition:.15s;min-width:74px;}
+.eb-btn:active{transform:scale(.95)}
+.eb-btn.saved{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.25)}
+.eb-btn.saved i{color:#60a5fa}
+.eb-icon{font-size:16px;color:var(--tx2)}
+.eb-lbl{font-size:9px;font-weight:700;color:var(--muted)}
 .ch-end-act{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:.15s;user-select:none;}
 .ch-end-act:active{transform:scale(.9)}
 .ch-end-act-icon{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:20px;}
@@ -278,8 +289,40 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 .drp-btn.reacted .drp-count{color:var(--acc)!important}
 .drp-top3-emoji,.drp-top-emoji{background:var(--surface)!important;border-color:var(--bd)!important}
 </style>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body class="theme-dark">
+<script>/* early theme: match stored reader/site theme before first paint (no dark flash) */
+try{var _t=localStorage.getItem('dro_reader_theme');if(!_t||_t==='theme-dark'){var _s=localStorage.getItem('droboardTheme');_t=(_s==='light')?'theme-white':(_t||'theme-dark');}document.body.className=_t;}catch(e){}</script>
+<style>
+#pageSkeleton{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;background:#fff;transition:opacity .3s;padding:18px 22px 0}
+#pageSkeleton[data-theme="dark"]{background:#0a0a0d}
+#pageSkeleton .sk{border-radius:10px;background:linear-gradient(90deg,#ececee 25%,#f7f7f9 50%,#ececee 75%);background-size:200% 100%;animation:skShim 1.2s infinite}
+#pageSkeleton[data-theme="dark"] .sk{background:linear-gradient(90deg,#1c1c22 25%,#26262e 50%,#1c1c22 75%);background-size:200% 100%}
+@keyframes skShim{from{background-position:200% 0}to{background-position:-200% 0}}
+</style>
+<div id="pageSkeleton" aria-hidden="true">
+  <div class="sk" style="width:100%;max-width:420px;height:44px;border-radius:22px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:22px;margin-top:22px"></div>
+  <div class="sk" style="width:72%;max-width:300px;height:14px;margin-top:10px;align-self:center"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:12px;margin-top:26px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:12px;margin-top:10px"></div>
+  <div class="sk" style="width:88%;max-width:370px;height:12px;margin-top:10px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:56px;border-radius:14px;margin-top:26px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:56px;border-radius:14px;margin-top:10px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:56px;border-radius:14px;margin-top:10px"></div>
+</div>
+<script>
+try{
+  var _sk=document.getElementById('pageSkeleton');
+  var _th=localStorage.getItem('dro_reader_theme')||'';
+  var _st=localStorage.getItem('droboardTheme')||'';
+  if(_sk&&(_th==='theme-dark'||(!_th&&_st!=='light')||_th==='theme-sepia'||_th==='theme-grey')){_sk.setAttribute('data-theme','dark');}
+  setTimeout(function(){if(_sk&&!window.__pageReady){_sk.style.opacity='0';_sk.style.pointerEvents='none';setTimeout(function(){if(_sk.parentNode)_sk.parentNode.removeChild(_sk);},400);}},6000);
+}catch(e){}
+/* Change log: page skeleton + early theme (revert = delete this block + hidePageSkeleton call). */
+</script>
 
 <div class="phone">
 
@@ -318,7 +361,7 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
       </div>
     </div>
 
-    <!-- TEAM SIDING — 4 teams -->
+    <!-- TEAM SIDING ── 4 teams -->
     <div class="team-siding fu" id="teamSidingSection">
       <div class="team-siding-label">Pick your side</div>
       <div class="team-grid cols-2" id="teamGrid"></div>
@@ -330,13 +373,13 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
     <div class="story-wrap fu">
       <div class="story-text" id="storyText"></div>
 
-      <!-- SPONSORED AD — one ad, right after the story, before Prev/Next -->
+      <!-- SPONSORED AD ── one ad, right after the story, before Prev/Next -->
       <div class="ad-slot-wrap" id="adSlotWrap">
         <div class="ad-slot-label">Sponsored</div>
         <div id="adSlot"></div>
       </div>
 
-      <!-- COMMENTS — rendered by DroboardComments.attach() below -->
+      <!-- COMMENTS ── rendered by DroboardComments.attach() below -->
       <div class="comments-section" id="commentsSection">
         <div id="commentsPlaceholder"></div>
       </div>
@@ -354,7 +397,7 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
         </div>
       </div>
 
-      <!-- COMMUNITIES — genre board + author circle via shared component -->
+      <!-- COMMUNITIES ── genre board + author circle via shared component -->
       <div class="comments-section" id="communitiesSection" style="padding-top:0">
         <div id="communitiesMount"></div>
       </div>
@@ -363,19 +406,10 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
       <div class="ch-end-section" id="chEndSection">
         <div class="ch-end-title" id="chEndTitle">Chapter 4 complete</div>
         <div class="ch-end-sub" id="chEndSub">Chapter 5 drops Friday midnight.<br/>Don't miss what she discovers next.</div>
-        <div class="ch-end-actions">
-          <div class="ch-end-act notify" id="notifyBtn" data-act="toggle-notify">
-            <div class="ch-end-act-icon"><i class="far fa-bell" id="notifyIcon"></i></div>
-            <div class="ch-end-act-label" id="notifyLabel">Notify</div>
-          </div>
-          <div class="ch-end-act" data-act="open-share">
-            <div class="ch-end-act-icon"><i class="fas fa-share-alt"></i></div>
-            <div class="ch-end-act-label">Share</div>
-          </div>
-          <div class="ch-end-act" data-act="open-tip">
-            <div class="ch-end-act-icon"><i class="fas fa-coins"></i></div>
-            <div class="ch-end-act-label">Tip</div>
-          </div>
+        <div class="ch-end-actions engage-bar">
+          <div class="eb-btn" id="ebSaveEnd" data-act="open-save"><i class="far fa-bookmark eb-icon"></i><span class="eb-lbl">Save</span></div>
+          <div class="eb-btn" data-act="open-share"><i class="fas fa-share-alt eb-icon"></i><span class="eb-lbl" id="ebShareCount">Share</span></div>
+          <div class="eb-btn" data-act="open-tip"><i class="fas fa-coins eb-icon"></i><span class="eb-lbl" id="ebTipsCount">Tips</span></div>
         </div>
       </div>
 
@@ -448,7 +482,7 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 
 <div class="toast" id="toastEl"></div>
 
-<!-- ═══ Components ═══ -->
+<!-- ── Components ── -->
 <script src="../services/currency-service.js"></script>
 <script src="../component/reader.js"></script>
 <script src="../component/rewarded-ad.js"></script>
@@ -457,18 +491,23 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
-<script src="../component/ad-card.js"></script>
+<script src="../component/ad-card.js?v=2"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/comment-section.js?v=3"></script>
+<script src="../component/status-viewer.js?v=2"></script>
+<script src="../component/comment-section.js?v=5"></script>
 <script src="../component/community-cards.js?v=3"></script>
 
-<!-- ═══ Data ═══ -->
+<!-- ── Data ── -->
 <script src="../data/comments-data.js"></script>
 <script src="../data/ad-data.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/ad-service.js"></script>
-<script src="../services/reader-engagement-service.js"></script>
+<script src="../component/ad-slot.js"></script>
+<script src="../services/auth-session.js"></script>
+<script src="../services/league-service.js"></script>
+<script src="../services/reader-engagement-service.js?v=2"></script>
 <script src="../services/reader-track.js"></script>
-<script src="../services/full-reader-service.js?v=3"></script>
+<script src="../services/reading-history.js"></script>
+<script src="../services/full-reader-service.js?v=6"></script>
 </body>
 </html>

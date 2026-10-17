@@ -70,7 +70,7 @@
         { label: 'Weekly Streak', cls: 'purple' },
       ],
       books: [
-        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS[1], reads: '820k', likes: '94k', rating: '4.9', chapters: 62 },
+        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS[1], reads: '820k', likes: '94k', rating: '4.9', chapters: 62, seriesId: 's1' },
         { id: 'b2', title: 'Crowned in Sin', cat: 'Mafia', cover: COVERS[2], reads: '310k', likes: '41k', rating: '4.7', chapters: 48 },
         { id: 'b3', title: 'Until You Regret', cat: 'Revenge · Romance', cover: COVERS[4], reads: '150k', likes: '22k', rating: '4.8', chapters: 35 },
       ],
@@ -1097,22 +1097,23 @@
      (demo) or /api/ads (live). marketing/ad-manager.html edits them. */
   const AD_POOLS = {
     platform: [
-      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments'] },
-      { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub', 'store', 'fullReader', 'scrollReader'] },
-      { id: 'plat_studio', sponsor: 'DroBoard Studio', title: 'Write Your Own Story Today', cta: 'Start Writing', img: c(4), pages: ['discover', 'feed', 'genreHub'] },
+      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments', 'debate', 'collection'] },
+      { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub', 'store', 'fullReader', 'scrollReader', 'debate'] },
+      { id: 'plat_studio', sponsor: 'DroBoard Studio', title: 'Write Your Own Story Today', cta: 'Start Writing', img: c(4), pages: ['discover', 'feed', 'genreHub', 'debate'] },
     ],
     book: [
-      { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage'], campaign: 'CMP-010' },
-      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-002' },
-      { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-004' },
-      { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-001' },
-      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'scrollReader'] },
-      { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub', 'scrollReader'], campaign: 'CMP-004' },
+      { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'debate', 'collection'], campaign: 'CMP-010' },
+      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate', 'status'], campaign: 'CMP-002' },
+      { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate'], campaign: 'CMP-004' },
+      { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'], campaign: 'CMP-001' },
+      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'] },
+      { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'], campaign: 'CMP-004' },
     ],
     native: [
+      { id: 'nat_status_1', brand: 'DroBoard Premium', heading: 'Read ad-free, anywhere', body: 'Unlimited coins, zero interruptions across stories and statuses.', cta: 'Go Premium', image: c(2), pages: ['status'], slots: ['status:every-3rd'] },
       { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion'] },
       { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'comments'] },
-      { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments'] },
+      { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments', 'status'] },
     ],
     follow: [
       { id: 'demo_follow_1', userName: 'Amina Okoro', name: 'Amina Okoro', handle: 'aminaokoro', avatar: 'https://i.pravatar.cc/150?img=32', tagline: 'Romance & family drama · 120k readers', cta: 'Follow', pages: ['feed'] },
@@ -1150,6 +1151,7 @@
     genreHub: { interval: 3, topPromo: true },
     discussion: { slot: 'single' },
     comments: { interval: 5, enabled: true },
+    status: { interval: 3, enabled: true },
     droboardPage: { interval: 4, enabled: true },
     series: { slot: 'single' },
     home: { interval: 5 },
@@ -1157,6 +1159,7 @@
     scrollReader: { interval: 4, format: 'book' },
     library: { promoSlider: true },
     store: { interval: 3, topBanner: true },
+    debate: { interval: 2, slots: { 'debate:top': true, 'debate:inline': true } },
   };
 
   /* ── EVENT & ANNOUNCEMENT ── */
@@ -1466,7 +1469,7 @@ const SERIES_CATALOG = {
     ],
     polls: [
       {
-        id: 'p1', season: 1,
+        id: 'p1', season: 1, chapter: 3,
         question: "Did Ada's husband truly love Adaeze, or was it obsession? ",
         options: [
           { text: '💔 True love — just buried', votes: 9200 },
@@ -1476,7 +1479,7 @@ const SERIES_CATALOG = {
         voted: -1
       },
       {
-        id: 'p2', season: 2,
+        id: 'p2', season: 2, chapter: 3,
         question: 'Should Ada confront the truth publicly or keep it within the marriage?',
         options: [
           { text: '📢 Speak out — she deserves the world to know', votes: 6800 },
@@ -1488,7 +1491,7 @@ const SERIES_CATALOG = {
     ],
     predictions: [
       {
-        id: 'pr1',
+        id: 'pr1', season: 2, chapter: 7,
         question: 'How does Season 2 end for Ada?',
         options: [
           { em: '💪', text: 'She rebuilds alone, stronger', sub: '9.4k predict this', votes: 9400, picked: false },
@@ -1500,8 +1503,10 @@ const SERIES_CATALOG = {
     ],
     debates: [
       {
-        id: 'deb1',
+        id: 'deb1', season: 1, chapter: 4,
         motion: 'Ada should leave her husband immediately — emotional betrayal is still betrayal.',
+        forText: 'Yes — if he could hide it this long, he can hide worse.',
+        againstText: 'No — marriage means staying through the hard parts.',
         forV: 14800, agV: 8200,
         userVote: null,
         comments: [
@@ -1511,8 +1516,10 @@ const SERIES_CATALOG = {
         ]
       },
       {
-        id: 'deb2',
+        id: 'deb2', season: 1, chapter: 8,
         motion: 'The sister Adaeze is the true protagonist of this series.',
+        forText: 'Her choices drive every twist in the story.',
+        againstText: "We follow Ada's pain — she carries the plot.",
         forV: 7600, agV: 9400,
         userVote: null,
         comments: [
@@ -1575,7 +1582,7 @@ const SERIES_CATALOG = {
     ],
     polls: [
       {
-        id: 'p3', season: 1,
+        id: 'p3', season: 1, chapter: 2,
         question: 'Who was more wrong — the boyfriend or Bisi?',
         options: [
           { text: '💍 The boyfriend — he planned it', votes: 8400 },
@@ -1587,7 +1594,7 @@ const SERIES_CATALOG = {
     ],
     predictions: [
       {
-        id: 'pr2',
+        id: 'pr2', season: 1, chapter: 3,
         question: 'What does the novel she writes become?',
         options: [
           { em: '🏆', text: 'A bestseller that exposes them', sub: '6.1k predict', votes: 6100, picked: false },
@@ -1599,8 +1606,10 @@ const SERIES_CATALOG = {
     ],
     debates: [
       {
-        id: 'deb3',
+        id: 'deb3', season: 1, chapter: 1,
         motion: 'Walking out of the restaurant without a word was the bravest thing she did.',
+        forText: 'Silence was her power — words would have weakened it.',
+        againstText: 'Brave would have been saying it to his face.',
         forV: 11200, agV: 3400,
         userVote: null,
         comments: [
@@ -1648,7 +1657,7 @@ const SERIES_CATALOG = {
     ],
     polls: [
       {
-        id: 'p4', season: 3,
+        id: 'p4', season: 3, chapter: 7,
         question: 'Will the grandfather testify in court in Season 3 finale?',
         options: [
           { text: '✅ Yes — he will speak', votes: 7800 },
@@ -1660,7 +1669,7 @@ const SERIES_CATALOG = {
     ],
     predictions: [
       {
-        id: 'pr3',
+        id: 'pr3', season: 3, chapter: 7,
         question: 'How does the inheritance story end?',
         options: [
           { em: '🏆', text: 'She wins in court completely', sub: '8.8k predict', votes: 8800, picked: false },
@@ -1672,8 +1681,10 @@ const SERIES_CATALOG = {
     ],
     debates: [
       {
-        id: 'deb4',
+        id: 'deb4', season: 3, chapter: 5,
         motion: 'The aunts who stayed silent are more guilty than the uncle who acted.',
+        forText: 'Silence protects the wicked — they chose comfort.',
+        againstText: "They were afraid too — don't punish the victims.",
         forV: 9800, agV: 6200,
         userVote: null,
         comments: [

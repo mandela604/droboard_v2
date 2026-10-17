@@ -142,9 +142,10 @@
     document.getElementById("teamBarsWrap").innerHTML = TEAMS.map(t =>
       '<div class="team-bar-seg" data-team="' + t.id + '" style="width:' + Math.round(teamCounts[t.id] / tot * 100) + '%"></div>'
     ).join("");
-    document.getElementById("teamBarLabels").innerHTML = TEAMS.map(t =>
-      '<div class="team-bar-lbl"><span class="dot" style="background:' + t.col + '"></span><span style="color:' + t.col + ';font-size:8px;">' + Math.round(teamCounts[t.id] / tot * 100) + '%</span></div>'
-    ).join("");
+    document.getElementById("teamBarLabels").innerHTML = TEAMS.map(t => {
+      const pct = Math.round(teamCounts[t.id] / tot * 100);
+      return '<div class="team-bar-lbl" style="width:' + pct + '%"><span class="dot" style="background:' + t.col + '"></span><span style="color:' + t.col + ';font-size:8px;">' + pct + '%</span></div>';
+    }).join("");
   }
   function pickTeam(t) {
     if (teamPicked === t) return;
@@ -172,13 +173,32 @@
     const phoneEl = document.querySelector(".phone");
     if (!phoneEl) return;
 
-    // No onReact hook — let the component manage its own state internally
-    DroboardReactionPicker.attach(phoneEl);
+    // Story-level reaction state (single story per page). Seeded from
+    // shares + tips; the picker reads it via getState and writes via onReact.
+    const sid = "story-" + currentStoryId;
+    const rx = { userRx: null };
+    DroboardReactionPicker.REACTIONS.forEach(r => (rx[r.id] = 0));
+    rx.love = totalReactions;
+
+    DroboardReactionPicker.attach(phoneEl, {
+      getState: (id) => (String(id) === sid ? rx : null),
+      onReact: (id, rid) => {
+        if (String(id) !== sid) return;
+        if (rx.userRx === rid) {
+          rx[rid] = Math.max(0, (rx[rid] || 0) - 1);
+          rx.userRx = null;
+        } else {
+          if (rx.userRx) rx[rx.userRx] = Math.max(0, (rx[rx.userRx] || 0) - 1);
+          rx[rid] = (rx[rid] || 0) + 1;
+          rx.userRx = rid;
+        }
+      },
+    });
 
     // Replace bottom bar Like button with reaction-picker trigger
     const bbLike = document.getElementById("bbLike");
     if (bbLike) {
-      bbLike.outerHTML = DroboardReactionPicker.renderTrigger("story-" + currentStoryId, {
+      bbLike.outerHTML = DroboardReactionPicker.renderTrigger(sid, {
         liked: false,
         likeCount: totalReactions,
       });
@@ -350,7 +370,10 @@
   }
   function openChapterFromPanel(seasonIdx, idx) {
     closeChPanel();
-    renderChapterView(seasonIdx, idx);
+    const ch = ((SEASONS_DATA[seasonIdx] || {}).chs || [])[idx];
+    if (!ch) return;
+    TrackLeave();
+    window.location.href = chapterUrl(ch.n);
   }
   function openChPanel() {
     panelActiveSeason = curSeasonIdx;
@@ -433,6 +456,10 @@
     TrackLeave();
     curSeasonIdx = seasonIdx;
     curChIdx = chIdx;
+    try {
+      const _chs = (SEASONS_DATA[seasonIdx] || {}).chs || [];
+      if (window.ReadingHistory && _chs[chIdx]) ReadingHistory.touch(currentStoryId, _chs[chIdx].n);
+    } catch (e) {}
     const season = SEASONS_DATA[seasonIdx];
     const ch = season.chs[chIdx];
     const locked = ch.state === "locked";
@@ -536,7 +563,7 @@
     if (engMount) engMount.remove();
     if (!locked && window.ReaderEngagement) {
       const anchor = document.getElementById('chBottomAd') || storyTextEl;
-      anchor.insertAdjacentHTML("afterend", '<div id="readerEngMount" style="max-width:680px;margin:0 auto;padding:0 22px"></div>');
+      anchor.insertAdjacentHTML("afterend", '<div id="readerEngMount" style="max-width:680px;margin:0 auto;padding:0"></div>');
       engMount = document.getElementById("readerEngMount");
       try { window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || ""); } catch (e) {}
     }
@@ -561,14 +588,34 @@
     document.getElementById("chEndSection").style.display = locked ? "none" : "";
     if (!locked) {
       document.getElementById("chEndTitle").textContent = "Chapter " + ch.n + " complete";
+      try {
+        var shEl = document.getElementById("ebShareCount");
+        if (shEl) shEl.textContent = fmtN(FS.shares || 0);
+        var tpEl = document.getElementById("ebTipsCount");
+        if (tpEl) tpEl.textContent = fmtN(FS.tips || 0) + " tips";
+      } catch (e) {}
       const nextExists = chIdx < season.chs.length - 1;
       document.getElementById("chEndSub").innerHTML = nextExists
         ? "Ready for the next chapter?<br/>" + season.chs[chIdx + 1].title
         : "You're all caught up on " + esc(FS.title || "this story") + ".<br/>New chapters drop soon.";
     }
 
-    document.getElementById("scrollBody").scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
+    scrollChapterTop();
     renderChList();
+  }
+
+  /* Chapter navigation always restarts at the top: instant jump + a
+     next-frame re-pin (covers late layout shifts from loading images). */
+  function scrollChapterTop() {
+    try {
+      const sb = document.getElementById("scrollBody");
+      if (!sb) return;
+      try { sb.scrollTo({ top: 0, behavior: "auto" }); } catch (e) { sb.scrollTop = 0; }
+      sb.scrollTop = 0;
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(function () { try { sb.scrollTop = 0; } catch (e) {} });
+      }
+    } catch (e) {}
   }
 
   /* ══ WATCH ADS TO UNLOCK — 2 full ad views unlock 1 chapter free.
@@ -613,11 +660,18 @@
     renderChList();
   }
 
-  function goChapter(dir) {    const season = SEASONS_DATA[curSeasonIdx];
+  /* Chapter navigation = real navigation (?story=&ch=): a fresh page load
+     always starts at the top — no scroll-position fights. */
+  function chapterUrl(n) {
+    return 'full-reader.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + n;
+  }
+  function goChapter(dir) {
+    const season = SEASONS_DATA[curSeasonIdx];
     const nextIdx = curChIdx + dir;
     if (nextIdx < 0) { toast("You're on the first chapter!"); return; }
     if (nextIdx >= season.chs.length) { toast("You're all caught up!"); return; }
-    renderChapterView(curSeasonIdx, nextIdx);
+    TrackLeave();
+    window.location.href = chapterUrl(season.chs[nextIdx].n);
   }
 
   /* ══ CLOSE ALL ══ */
@@ -651,10 +705,17 @@
     // Save modal callback
     window.onDroboardSaveChange = function (storyId, saved) {
       const bbSave = document.getElementById("bbSave");
-      if (!bbSave) return;
-      bbSave.classList.toggle("saved", saved);
-      bbSave.querySelector(".bb-icon").innerHTML = saved ? '<i class="fas fa-bookmark"></i>' : '<i class="far fa-bookmark"></i>';
-      bbSave.querySelector(".bb-label").textContent = saved ? "Saved" : "Save";
+      if (bbSave) {
+        bbSave.classList.toggle("saved", saved);
+        bbSave.querySelector(".bb-icon").innerHTML = saved ? '<i class="fas fa-bookmark"></i>' : '<i class="far fa-bookmark"></i>';
+        bbSave.querySelector(".bb-label").textContent = saved ? "Saved" : "Save";
+      }
+      const endSave = document.getElementById("ebSaveEnd");
+      if (endSave) {
+        endSave.classList.toggle("saved", !!saved);
+        const ico = endSave.querySelector(".eb-icon");
+        if (ico) ico.className = (saved ? "fas fa-bookmark eb-icon" : "far fa-bookmark eb-icon");
+      }
     };
   }
 
@@ -703,7 +764,7 @@
         perks: 'Early chapters, behind-the-scenes, live Q&As',
         joined: state.circleJoined, avatar: AUTHOR.avatar,
       },
-      showCircle: true,
+      showCircle: false, // genre board only — circle lives on the bridge page
       onJoin: (type, joined) => {
         if (type === 'genre') state.genreJoined = joined;
         else state.circleJoined = joined;
@@ -747,6 +808,10 @@
       collapsible: true,
       startOpen: false,
       adsRepeat: false, // top ad slot only, same as scroll reader
+      scrollBox: 420, // bounded inner-scroll list (ad + ~2 comments) + pinned composer
+      fullCommentsUrl: function () {
+        return 'comments.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + currentChNum();
+      },
       ads: (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)) ? false : undefined,
       getCommentUrl: (c) => "https://droboard.app/story/" + currentStoryId + "#comment-" + c.id,
       onPost: (c) => console.log("posted", c),
@@ -800,18 +865,12 @@
       (p.embed || []).filter(function (ad) { return ad && ad.code; }).forEach(ad => out.push({ type: "embed", ad }));
       (p.native || []).forEach(ad => out.push({ type: "native", ad }));
       (p.book || []).forEach(ad => out.push({ type: "storyPromo", ad }));
-      // No platform/house banners and no red banner creatives in full reader.
+      // Same edge recipe as scroll reader: embed + native + book only
+      // (no platform/house banners), so both readers show the same card.
       return out.filter(function (item) { return item.type !== "platform" && item.type !== "banner" && allow(item.type); });
     }
-    (window.AdService ? Promise.all([
-      managedPool("fullReader:top").catch(() => []),
-      managedPool("fullReader:per-300-words").catch(() => []),
-      managedPool("fullReader:bottom").catch(() => []),
-    ]) : Promise.resolve([[], [], []])).then(function (pools) {
-      const topPool = pools[0] || [], pool = pools[1] || [], bottomPool = pools[2] || [];
-      window._fullReaderBanners = pool.filter(function (p) { return p && p.ad; });
-      window._fullReaderTopPool = topPool;
-      window._fullReaderBottomPool = bottomPool;
+    (window.AdService ? managedPool("fullReader:per-300-words").catch(() => []) : Promise.resolve([])).then(function (pool) {
+      window._fullReaderBanners = (pool || []).filter(function (p) { return p && p.ad; });
       // pool arrived after first paint: re-render current chapter once so
       // in-chapter slots fill with real ads instead of staying empty.
       try {
@@ -823,60 +882,38 @@
       fillBottomSlot();
     });
   }
-  function renderChosenAd(item) {
-    if (!item || !window.DroboardAdCard) return "";
-    try {
-      if (item.type === "embed" && DroboardAdCard.renderEmbed) return DroboardAdCard.renderEmbed(item.ad);
-      if (item.type === "native") return DroboardAdCard.renderNative(item.ad);
-      if (item.type === "storyPromo") return DroboardAdCard.renderStoryPromo(item.ad);
-      return DroboardAdCard.renderBanner(item.ad);
-    } catch (e) { return ""; }
-  }
   function currentChNum() {
     const chs = (SEASONS_DATA[curSeasonIdx] || {}).chs || [];
     return (chs[curChIdx] || {}).n || 1;
   }
-  // Top edge slot, refilled for every chapter view (rotation by chapter).
+  // Top edge slot. Reader gates (premium / ad-free chapter / slot toggle)
+  // are checked here; the creative itself is filled by DroboardAdSlot.
+  // The component is mounted explicitly (no data-ad-slot attribute) so its
+  // auto-scanner never bypasses the chapter-level gates below.
   function fillTopSlot() {
     const wrap = document.getElementById("adSlotWrap");
     const slot = document.getElementById("adSlot");
     if (!wrap || !slot) return;
-    const pool = window._fullReaderTopPool || [];
-    const n = currentChNum();
-    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:top') && !chapterAdFree(curSeasonIdx, curChIdx);
-    const item = pool.length ? pool[n % pool.length] : null;
-    const html = (allowed && item) ? renderChosenAd(item) : "";
-    if (!html) { wrap.style.display = "none"; return; }
-    slot.innerHTML = html;
-    wrap.style.display = "";
-    try { if (window.AdService) AdService.track(item.ad && item.ad.id, "impression"); } catch (e) {}
-    try {
-      DroboardAdCard.attach(slot, {
-        getAds: () => pool.map(p => p.ad),
-        onOpen(ad) { if (ad) track(ad.id, "click"); if (ad.url) window.open(ad.url, "_blank"); else toast("Opening " + (ad.brand || "sponsor") + "…"); },
-        onLike(ad) { ad.liked = !ad.liked; ad.likes += ad.liked ? 1 : -1; slot.innerHTML = DroboardAdCard.renderNative(ad); },
-        onComment(ad) { toast(fmtN(ad.comments) + " comments"); },
-        onShare(ad) { window.openShareModal({ title: ad.heading || ad.title || ad.brand, sub: "Sponsored · " + ad.brand, img: ad.image || ad.cover || "", url: ad.url || "https://droboard.app" }); },
-        onCta(ad) { if (ad) track(ad.id, "click"); toast("Opening " + (ad.brand || "sponsor") + "…"); if (ad.url) window.open(ad.url, "_blank"); },
-      });
-    } catch (e) {}
-    function track(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e2) {} }
+    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:top')
+      && !chapterAdFree(curSeasonIdx, curChIdx);
+    if (!allowed || !window.DroboardAdSlot) { wrap.style.display = "none"; return; }
+    DroboardAdSlot.mount(slot, { slot: 'fullReader:top', max: 1 }).then(function (filled) {
+      wrap.style.display = filled ? "" : "none";
+    });
   }
-  // Bottom edge slot, refilled for every chapter view.
+  // Bottom edge slot, refilled for every chapter view. Same gate + mount
+  // pattern as the top slot.
   function fillBottomSlot() {
     let host = null;
     try { host = ensureBottomAd(); } catch (e) { host = null; }
     if (!host) return;
-    const pool = window._fullReaderBottomPool || [];
-    const n = currentChNum();
-    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:bottom') && !chapterAdFree(curSeasonIdx, curChIdx);
-    const item = pool.length ? pool[(n + 1) % pool.length] : null;
-    const html = (allowed && item) ? renderChosenAd(item) : "";
-    if (!html) { host.style.display = 'none'; return; }
-    host.innerHTML = html;
-    host.style.display = '';
-    host.dataset.filled = '1';
-    try { if (window.AdService) AdService.track(item.ad && item.ad.id, "impression"); } catch (e) {}
+    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:bottom')
+      && !chapterAdFree(curSeasonIdx, curChIdx);
+    if (!allowed || !window.DroboardAdSlot) { host.style.display = 'none'; return; }
+    DroboardAdSlot.mount(host, { slot: 'fullReader:bottom', max: 1 }).then(function (filled) {
+      host.style.display = filled ? '' : 'none';
+      if (filled) host.dataset.filled = '1';
+    });
   }
 
   /* ══ YOU MAY ALSO LIKE — from central data ══ */
@@ -893,31 +930,48 @@
     ).join("");
   }
 
-  /* ══ SCROLL + TOPBAR ══ */
+  /* ══ SCROLL + TOPBAR — same wiring as scroll-reader floating
+     controls: tap anywhere toggles the top bar, scroll hides it,
+     tap-show auto-hides after 3s. ══ */
   function wireScroll() {
     const sb = document.getElementById("scrollBody");
-    sb.addEventListener("scroll", () => {
-      const max = sb.scrollHeight - sb.clientHeight;
-      const pct = max > 0 ? Math.round(sb.scrollTop / max * 100) : 0;
-      document.getElementById("readProgressFill").style.width = pct + "%";
-    }, { passive: true });
-
-    let lastY = 0;
     const topbar = document.getElementById("topbar");
-    sb.addEventListener("scroll", () => {
-      const y = sb.scrollTop, d = y - lastY; lastY = y;
-      if (y < 60) { topbar.classList.remove("hidden"); return; }
-      if (d > 6) topbar.classList.add("hidden");
-      else if (d < -6) topbar.classList.remove("hidden");
-    }, { passive: true });
-    document.getElementById("storyText").addEventListener("click", () => topbar.classList.remove("hidden"));
-    // Any tap on the page brings back the top bar (font size, chapters)
-    // alongside the always-visible Scroll Mode button — except taps on
-    // interactive elements, which keep their own behavior.
-    sb.addEventListener("click", (e) => {
-      if (e.target.closest('button, a, input, textarea, select, .unlock-opt, .ch-row, .team-btn, .eb-btn, .ch-end-act, .bb-act, .bb-read-btn, [data-pkgidx]')) return;
+    if (!sb || !topbar) return;
+    // Progress follows the real page scroll: the inner container only
+    // scrolls when the phone shell is height-bounded, otherwise the
+    // window does — measure whichever one actually moves.
+    function paintProgress() {
+      const fill = document.getElementById("readProgressFill");
+      if (!fill) return;
+      let pct = 0;
+      const maxSb = sb.scrollHeight - sb.clientHeight;
+      if (maxSb > 0) {
+        pct = Math.round(sb.scrollTop / maxSb * 100);
+      } else {
+        const doc = document.documentElement;
+        const maxW = doc.scrollHeight - doc.clientHeight;
+        if (maxW > 0) pct = Math.round(((window.scrollY || doc.scrollTop || 0) / maxW) * 100);
+      }
+      fill.style.width = Math.min(100, Math.max(0, pct)) + "%";
+    }
+    sb.addEventListener("scroll", paintProgress, { passive: true });
+
+    let hideTimer = null;
+    function showTopbar() {
       topbar.classList.remove("hidden");
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => topbar.classList.add("hidden"), 3000);
+    }
+    function hideTopbarNow() {
+      topbar.classList.add("hidden");
+      clearTimeout(hideTimer);
+    }
+    sb.addEventListener("click", (e) => {
+      if (e.target.closest(".eb-btn, .unlock-opt, .team-btn, .ch-row, .dcs-wrap, .dac-banner, a, button, input, textarea, select")) return;
+      topbar.classList.contains("hidden") ? showTopbar() : hideTopbarNow();
     });
+    sb.addEventListener("scroll", hideTopbarNow, { passive: true });
+    window.addEventListener("scroll", () => { paintProgress(); hideTopbarNow(); }, { passive: true });
   }
 
   /* ══ PUBLIC API (called by service-rendered templates) ══ */
@@ -942,14 +996,14 @@
   }
   function wireStaticChrome() {
     const qa = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
-    qa('[data-act="go-back"]').forEach(function (b) { b.addEventListener("click", goBack); });
-    qa('[data-act="open-settings"]').forEach(function (b) { b.addEventListener("click", openSettings); });
+    qa('[data-act="go-back"]').forEach(function (b) { b.addEventListener("click", goBack); });    qa('[data-act="open-settings"]').forEach(function (b) { b.addEventListener("click", openSettings); });
     qa('[data-act="open-chapters"]').forEach(function (b) { b.addEventListener("click", openChPanel); });
     qa('[data-act="close-panels"]').forEach(function (b) { b.addEventListener("click", closeAllSheets); });
     qa('[data-act="ch-prev"]').forEach(function (b) { b.addEventListener("click", function () { goChapter(-1); }); });
     qa('[data-act="ch-next"]').forEach(function (b) { b.addEventListener("click", function () { goChapter(1); }); });
     qa('[data-act="toggle-notify"]').forEach(function (b) { b.addEventListener("click", toggleNotify); });
     qa('[data-act="open-share"]').forEach(function (b) { b.addEventListener("click", openShare); });
+    qa('[data-act="open-save"]').forEach(function (b) { b.addEventListener("click", openSave); });
     qa('[data-act="open-tip"]').forEach(function (b) { b.addEventListener("click", openTip); });
     qa('[data-act="coin-pill"]').forEach(function (b) { b.addEventListener("click", function () { window.location.href = "store.html"; }); });
     qa('[data-act="scroll-mode"]').forEach(function (b) { b.addEventListener("click", goScrollMode); });
@@ -963,6 +1017,12 @@
   /* ══ INIT ══ */
   async function init() {
     applyStoredTheme();
+    try {
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+      window.scrollTo(0, 0);
+      const sb0 = document.getElementById('scrollBody');
+      if (sb0) sb0.scrollTop = 0;
+    } catch (e) {}
     // Shared coin sheet owns the wallet now — attach once (demo starts at 45).
     if (window.DroboardReader) {
       DroboardReader.attach({ onBalanceChange: updateCoinPill, onBuyCoins: buyCoinsViaSheet });
@@ -988,6 +1048,19 @@
     if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
     applyReaderDeepLink();
     renderChapterView(curSeasonIdx, curChIdx);
+    hidePageSkeleton();
+  }
+
+  function hidePageSkeleton() {
+    try {
+      window.__pageReady = true;
+      var sk = document.getElementById('pageSkeleton');
+      if (!sk) return;
+      sk.style.transition = 'opacity .3s';
+      sk.style.opacity = '0';
+      sk.style.pointerEvents = 'none';
+      setTimeout(function () { if (sk.parentNode) sk.parentNode.removeChild(sk); }, 350);
+    } catch (e) {}
   }
 
   // Deep link (?story=&ch=): jump straight to a chapter (e.g. from a

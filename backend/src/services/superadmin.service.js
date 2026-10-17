@@ -58,6 +58,14 @@ async function dashboardSummary() {
 /* ── users ── */
 const FRONT_STATUS = { active: 'active', pending_verification: 'pending', suspended: 'suspended', banned: 'suspended' };
 const BACK_STATUS = { active: 'active', pending: 'pending_verification', suspended: 'suspended', banned: 'banned' };
+// Console displays Title-Case roles ("Senior Editor") — backend stores snake_case.
+const FRONT_ROLE = {
+  reader: 'Reader', writer: 'Writer', senior_editor: 'Senior Editor',
+  chief_editor: 'Chief Editor', finance: 'Finance', admin: 'Admin', marketing: 'Marketing',
+};
+const BACK_ROLE = Object.fromEntries(Object.entries(FRONT_ROLE).map(([k, v]) => [v, k]));
+function frontRole(r) { return FRONT_ROLE[r] || (r ? r.charAt(0).toUpperCase() + r.slice(1) : 'Reader'); }
+function backRole(r) { return BACK_ROLE[r] || String(r || '').toLowerCase().replace(/\s+/g, '_'); }
 
 /* id-flavor helpers: JWT + new writes use uuid `id`, but some FK fields written by
    other modules may still hold ObjectId strings. Match both flavors on every join. */
@@ -109,7 +117,7 @@ function toAdminUser(u, extra) {
     name: u.fullName,
     username: u.username,
     email: u.email,
-    role: u.primaryRole || (u.roles && u.roles[0]) || 'reader',
+    role: frontRole(u.primaryRole || (u.roles && u.roles[0]) || 'reader'),
     status: FRONT_STATUS[u.status] || u.status,
     avatar: u.avatar || '',
     verified: !!u.emailVerified,
@@ -131,7 +139,7 @@ function toAdminUser(u, extra) {
     sharesCount: 0,
     savesCount: 0,
     tipsAmount: extra.tipsAmount || 0,
-    platformRoles: u.roles || [],
+    platformRoles: (u.platformRoles && u.platformRoles.length ? u.platformRoles : (u.roles || [])).map(frontRole),
     notes: u.adminNotes || '',
   };
 }
@@ -143,7 +151,10 @@ async function listUsers(q) {
     const rx = new RegExp(q.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     filter.$or = [{ fullName: rx }, { username: rx }, { email: rx }];
   }
-  if (q.role) filter.$or ? filter.$and = [{ roles: q.role }] : (filter.roles = q.role);
+  if (q.role) {
+    const role = backRole(q.role); // frontend sends Title-Case ("Senior Editor")
+    filter.$or ? filter.$and = [{ roles: role }] : (filter.roles = role);
+  }
   if (q.status && BACK_STATUS[q.status]) filter.status = BACK_STATUS[q.status];
   const sort = { '-active': { lastLoginAt: -1 }, newest: { createdAt: -1 }, oldest: { createdAt: 1 }, 'a-z': { fullName: 1 } }[q.sort] || { createdAt: -1 };
   const [total, users] = await Promise.all([
@@ -200,8 +211,9 @@ async function createUser(data, by) {
     fullName: data.name, username: data.username, email: data.email,
     passwordHash, authProvider: 'local',
     avatar: data.avatar || '', phone: data.phone || '',
-    roles: data.roles && data.roles.length ? data.roles : ['reader'],
-    primaryRole: data.role || 'reader',
+    roles: data.roles && data.roles.length ? data.roles.map(backRole) : ['reader'],
+    primaryRole: data.role ? backRole(data.role) : 'reader',
+    platformRoles: (data.platformRoles || []).map(backRole).slice(0, 10),
     status: data.status && BACK_STATUS[data.status] ? BACK_STATUS[data.status] : 'active',
     adminNotes: data.notes || '',
   });
@@ -216,8 +228,19 @@ async function updateUser(id, patch) {
   if (patch.username !== undefined) u.username = String(patch.username).toLowerCase();
   if (patch.avatar !== undefined) u.avatar = patch.avatar;
   if (patch.phone !== undefined) u.phone = patch.phone;
-  if (patch.role !== undefined) { u.primaryRole = patch.role; if (!u.roles.includes(patch.role)) u.roles.push(patch.role); }
-  if (patch.roles !== undefined) { u.roles = patch.roles; u.primaryRole = patch.roles[0] || u.primaryRole; }
+  if (patch.role !== undefined) {
+    const r = backRole(patch.role);
+    u.primaryRole = r;
+    if (!u.roles.includes(r)) u.roles.push(r);
+  }
+  if (patch.roles !== undefined) {
+    u.roles = patch.roles.map(backRole);
+    u.primaryRole = u.roles[0] || u.primaryRole;
+  }
+  if (patch.platformRoles !== undefined) {
+    // console-curated extra labels (Marketing, Support…) — stored snake_case
+    u.platformRoles = (patch.platformRoles || []).map(backRole).slice(0, 10);
+  }
   if (patch.status !== undefined && BACK_STATUS[patch.status]) u.status = BACK_STATUS[patch.status];
   if (patch.verified !== undefined) { u.emailVerified = !!patch.verified; if (patch.verified) u.emailVerifiedAt = u.emailVerifiedAt || new Date(); }
   if (patch.notes !== undefined) u.adminNotes = patch.notes;

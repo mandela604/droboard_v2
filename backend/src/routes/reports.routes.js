@@ -48,8 +48,14 @@ router.post('/', requireAuth, writeLimiter, audit('reports.file'),
       if (!col) { const e = new Error('not_found'); e.status = 404; throw e; }
       doc = await filed({ collectionId: String(col.id), title: col.title || 'Collection' });
     } else if (target === 'discussion') {
-      // Demo hub discussions carry client-side ids (gh_…) — no existence check.
-      doc = await filed({ discussionId: String(targetId), title: String(title || 'Discussion').slice(0, 160) || 'Discussion' });
+      // Real threads resolve title; legacy demo ids (gh_…) keep the supplied label.
+      let label = String(title || 'Discussion').slice(0, 160) || 'Discussion';
+      try {
+        const { Discussion } = require('../models/social.model');
+        const disc = await Discussion.findOne({ id: String(targetId) }).select('id title').lean();
+        if (disc && disc.title) label = disc.title;
+      } catch (e) { /* demo id — keep supplied label */ }
+      doc = await filed({ discussionId: String(targetId), title: label });
     } else if (target === 'comment') {
       // Demo comments carry client-side ids — accept anyway; use real text when found.
       let label = String(title || 'Comment').slice(0, 160) || 'Comment';

@@ -5,23 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <title>Chat · Droboard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
 <style>
 :root{
-  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
-  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
-  --bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--l3:#ffffff;--l4:#e2e2e4;
-  --bd:rgba(0,0,0,.12);--bd2:rgba(0,0,0,.06);--bd-acc:rgba(255,0,80,.25);
-  --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
   --nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px);
-}
-[data-theme="dark"]{
-  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
-  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
-  --tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);height:100%}
-body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s ease,color .25s ease}
+body{font-family:var(--font-ui);color:var(--tx-body);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s ease,color .25s ease}
 button{font-family:inherit;cursor:pointer}
 ::-webkit-scrollbar{display:none}
 
@@ -311,6 +302,8 @@ button{font-family:inherit;cursor:pointer}
   resize:none;min-height:20px;
 }
 </style>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Payment Details Ã‚Â· DroBoard</title>
+<title>Payment Details · DroBoard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -25,7 +25,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .avatar-btn img{width:100%;height:100%}
 .menu-btn{width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;flex-shrink:0;cursor:pointer}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── HAMBURGER DRAWER ──────── */
 .drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .drawer-overlay.open{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--card);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
@@ -47,7 +47,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 
 .section-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Method Card Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Method Card ──────── */
 .method-card{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);position:relative}
 .method-card.default{border-color:var(--pink)}
 .method-edit{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;background:var(--bg);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px}
@@ -72,14 +72,14 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .method-btn.danger{color:var(--danger);border-color:var(--danger)}
 .method-btn.primary{background:var(--pink);color:#fff;border-color:var(--pink)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Add Method Card Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Add Method Card ──────── */
 .add-card{border:1.5px dashed var(--border);border-radius:16px;padding:24px 16px;text-align:center;cursor:pointer;margin-bottom:12px;transition:.15s}
 .add-card:active{opacity:.7}
 .add-card i{font-size:28px;color:var(--pink);margin-bottom:8px}
 .add-card .add-title{font-size:14px;font-weight:700;margin-bottom:2px}
 .add-card .add-sub{font-size:12px;color:var(--muted)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Form Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Form ──────── */
 .form-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.25s}
 .form-overlay.show{opacity:1;pointer-events:auto}
 .form-panel{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 30px;transform:translateY(100%);transition:.3s;max-height:85vh;overflow-y:auto}
@@ -96,12 +96,12 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .form-submit{width:100%;padding:14px;border-radius:14px;background:var(--pink);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:6px}
 .form-submit:active{opacity:.85}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Empty Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Empty ──────── */
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty i{font-size:36px;margin-bottom:12px;color:var(--border)}
 .empty p{font-size:13px;line-height:1.5}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Toast Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── Toast ──────── */
 .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 

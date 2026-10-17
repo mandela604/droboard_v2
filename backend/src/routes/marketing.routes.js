@@ -46,6 +46,7 @@ router.patch('/ads/placement', requireAuth, requireRole('admin'), writeLimiter, 
       topPromo: z.boolean().optional(),
       promoSlider: z.boolean().optional(),
       wordsPerSlot: z.number().int().min(50).max(5000).optional(),
+      repeat: z.boolean().optional(),
     }).strict(),
   })), async (req, res) => base.wrap(res, async () => {
     const b = req.valid.body;
@@ -55,9 +56,10 @@ router.patch('/ads/placement', requireAuth, requireRole('admin'), writeLimiter, 
 // bulk placements save — matches the ad-manager console call
 // (PUT /api/marketing/ads/placements with the full placements map).
 router.put('/ads/placements', requireAuth, requireRole('admin'), writeLimiter, audit('marketing.ads.placements'),  validate(z.object({
-    body: z.record(z.string().max(40), z.object({
-      enabled: z.boolean().optional(),
-      interval: z.number().int().min(1).max(50).optional(),
+      body: z.record(z.string().max(40), z.object({
+        enabled: z.boolean().optional(),
+        repeat: z.boolean().optional(),
+        interval: z.number().int().min(1).max(50).optional(),
       cycle: z.array(z.string().max(20)).max(10).optional(),
       format: z.string().max(20).optional(),
       topPromo: z.boolean().optional(),

@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#000000"/>
+<title>Droboard · Interactive Demo — The Third Passenger</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --acc:#ff0050;--acc2:#ff4d7a;--acc-dim:rgba(255,0,80,.12);--acc-bd:rgba(255,0,80,.32);
+  --bg:#000;--l1:#0a0a0d;--l2:#131318;--l3:#1b1b22;
+  --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.045);
+  --tx:#f0f0f0;--tx2:#b9b9c2;--mut:#71717a;
+  --gold:#fbbf24;--green:#34d399;--blue:#38bdf8;--purple:#a78bfa;
+  --safe-b:env(safe-area-inset-bottom,14px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#111;color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100%}
+.phone{width:100%;max-width:420px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;position:relative;box-shadow:0 0 50px rgba(0,0,0,.55)}
+.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(0,0,0,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)}
+.back{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);color:#ccc;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+.back:active{transform:scale(.9)}
+.tt{flex:1;min-width:0}
+.tt1{font-size:9px;font-weight:800;color:var(--acc);letter-spacing:.1em;text-transform:uppercase}
+.tt2{font-family:'Playfair Display',serif;font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);color:#ccc;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer}
+.iconbtn:active{transform:scale(.9)}
+.hero{padding:18px 18px 4px}
+.badgeRow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.b{font-size:8px;font-weight:800;padding:3px 9px;border-radius:8px;letter-spacing:.06em;text-transform:uppercase}
+.b-acc{background:var(--acc);color:#fff}
+.b-ghost{background:rgba(255,255,255,.06);border:1px solid var(--bd);color:#999}
+.b-gold{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold)}
+.hTitle{font-family:'Playfair Display',serif;font-size:24px;font-weight:900;line-height:1.2;color:#fff;margin-bottom:6px}
+.hSub{font-size:12px;color:var(--tx2);line-height:1.55;margin-bottom:12px}
+.storyTabs{display:flex;gap:6px;margin-bottom:12px}
+.stbtn{flex:1;padding:10px 6px;border-radius:11px;border:1.5px solid var(--bd);background:var(--l1);color:var(--mut);font-size:11px;font-weight:800;cursor:pointer;font-family:'DM Sans'}
+.stbtn.on{border-color:var(--acc);background:var(--acc-dim);color:#fff}
+.stbtn:active{transform:scale(.98)}
+.chapTabs{display:flex;gap:6px;padding:10px 18px;position:sticky;top:60px;z-index:40;background:rgba(0,0,0,.96);border-bottom:1px solid var(--bd2)}
+.ct{flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--bd);background:var(--l1);color:var(--mut);font-size:10px;font-weight:800;cursor:pointer;text-align:center}
+.ct small{display:block;font-size:8px;font-weight:600;margin-top:1px}
+.ct.done{color:var(--green);border-color:rgba(52,211,153,.3)}
+.ct.cur{color:#fff;border-color:var(--acc-bd);background:var(--acc-dim)}
+.ct.locked{opacity:.35}
+.body{padding:16px 18px 140px}
+.chapLabel{font-family:'Lora',serif;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;text-align:center;margin:6px 0 4px}
+.chapTitle{font-family:'Playfair Display',serif;font-size:19px;font-weight:900;color:#fff;text-align:center;margin-bottom:14px;line-height:1.3}
+.prose{font-family:'Lora',serif;font-size:14.5px;line-height:1.9;color:var(--tx)}
+.prose p{margin-bottom:1.4em}
+.prose .cond{background:rgba(167,139,250,.06);border-left:2px solid var(--purple);padding:10px 12px;border-radius:0 10px 10px 0;font-size:13.5px}
+.prose .condTag{font-family:'DM Sans';font-size:8px;font-weight:800;color:var(--purple);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:4px}
+.qbox{margin:18px 0;background:var(--l1);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.qhdr{padding:12px 14px;border-bottom:1px solid var(--bd2);display:flex;gap:8px;align-items:center}
+.qico{width:30px;height:30px;border-radius:9px;background:var(--acc-dim);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);font-size:14px;flex-shrink:0}
+.qlab{font-size:8px;font-weight:800;color:var(--acc);letter-spacing:.08em;text-transform:uppercase}
+.qq{font-size:13px;font-weight:700;color:#fff;line-height:1.45;margin-top:2px}
+.qopts{padding:10px}
+.qopt{display:block;width:100%;text-align:left;padding:11px 12px;border-radius:11px;border:1.5px solid var(--bd);background:rgba(255,255,255,.02);margin-bottom:8px;cursor:pointer;transition:.15s}
+.qopt:last-child{margin-bottom:0}
+.qopt:active{transform:scale(.99)}
+.qopt.picked{border-color:var(--acc);background:var(--acc-dim)}
+.qopt:disabled{cursor:default}
+.qopt:disabled:not(.picked){opacity:.45}
+.qo-t{font-size:12.5px;font-weight:700;color:var(--tx)}
+.qo-s{font-size:10.5px;color:var(--mut);margin-top:2px;line-height:1.4}
+.qnote{padding:0 14px 12px;font-size:10.5px;color:var(--green);display:none;line-height:1.5}
+.qnote.show{display:block}
+.endbox{margin:22px 0 6px;background:linear-gradient(180deg,rgba(255,0,80,.07),rgba(255,0,80,.02));border:1px solid var(--acc-bd);border-radius:16px;overflow:hidden}
+.endhdr{padding:14px 16px 4px;text-align:center}
+.endlab{font-size:9px;font-weight:800;color:var(--acc);letter-spacing:.1em;text-transform:uppercase}
+.endq{font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:#fff;margin-top:4px;line-height:1.4}
+.endopts{padding:12px}
+.copt{display:block;width:100%;text-align:left;border-radius:12px;border:1.5px solid var(--bd);background:var(--l1);padding:12px 13px;margin-bottom:8px;cursor:pointer}
+.copt:last-child{margin-bottom:0}
+.copt:active{transform:scale(.99)}
+.copt.chosen{border-color:var(--acc);background:var(--acc-dim)}
+.copt:disabled{cursor:default}
+.copt:disabled:not(.chosen){opacity:.45}
+.co-L{font-size:8px;font-weight:800;color:var(--acc);letter-spacing:.06em}
+.co-T{font-size:13px;font-weight:800;color:#fff;margin:2px 0}
+.co-R{font-size:11px;color:var(--tx2);line-height:1.45}
+.co-F{font-size:10px;color:var(--gold);margin-top:5px;display:none}
+.copt.chosen .co-F{display:block}
+.conseq{margin:14px 0;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.25);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--tx2);line-height:1.6;display:none}
+.conseq.show{display:block}
+.conseq b{color:var(--green)}
+.tbc{margin:20px 0;text-align:center;background:var(--l1);border:1px dashed rgba(255,255,255,.18);border-radius:14px;padding:18px 14px}
+.tbc1{font-size:22px;margin-bottom:6px}
+.tbc2{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:#fff}
+.tbc3{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.5}
+.navrow{display:flex;gap:8px;margin-top:16px}
+.nbtn{flex:1;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--l2);color:var(--tx);font-size:12px;font-weight:800;cursor:pointer;font-family:'DM Sans'}
+.nbtn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.nbtn:disabled{opacity:.35}
+.nbtn:active{transform:scale(.98)}
+.drawer{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:420px;z-index:80;background:#0c0c10;border-top:1px solid var(--bd);border-radius:18px 18px 0 0;padding:12px 16px calc(var(--safe-b) + 12px);max-height:62vh;overflow-y:auto;display:none}
+.drawer.open{display:block}
+.dr-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.dr-t{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.rel{margin-bottom:10px}
+.rel-h{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:4px}
+.rel-bar{height:5px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden}
+.rel-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.clue{display:flex;gap:9px;align-items:center;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:9px 11px;margin-bottom:7px;font-size:12px}
+.clue .e{font-size:16px}
+.clue small{display:block;font-size:10px;color:var(--mut)}
+.trait{display:inline-block;font-size:10px;font-weight:800;padding:4px 10px;border-radius:12px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);color:var(--purple);margin:0 5px 6px 0}
+.rst{width:100%;margin-top:10px;padding:11px;border-radius:11px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#fca5a5;font-size:12px;font-weight:800;cursor:pointer}
+.fabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:420px;z-index:70;display:flex;gap:8px;padding:10px 14px calc(var(--safe-b) + 10px);background:linear-gradient(0deg,#000 60%,transparent)}
+.fab{flex:1;padding:12px;border-radius:13px;border:1px solid var(--bd);background:var(--l2);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:'DM Sans'}
+.fab.acc{background:var(--acc);border-color:var(--acc)}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(14px);bottom:110px;background:#1c1c22;border:1px solid var(--bd);color:var(--tx);padding:9px 16px;border-radius:24px;font-size:12px;font-weight:600;z-index:120;opacity:0;transition:.25s;pointer-events:none;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.demoNote{margin:0 18px 14px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.25);border-radius:12px;padding:10px 12px;font-size:11px;color:var(--tx2);line-height:1.55}
+.demoNote b{color:var(--blue)}
+</style>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
+</head>
+<body>
+<div class="phone">
+  <div class="top">
+    <div class="back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="tt"><div class="tt1">Droboard · Interactive demo</div><div class="tt2" id="ttTitle">…</div></div>
+    <div class="iconbtn" onclick="Demo.toggleDrawer()" title="Story state"><i class="fas fa-fingerprint"></i></div>
+  </div>
+
+  <div class="hero">
+    <div class="badgeRow">
+      <span class="b b-acc">Interactive</span>
+      <span class="b b-ghost">Demo · isolated page</span>
+      <span class="b b-gold">Choices matter</span>
+    </div>
+    <div class="hTitle" id="hTitle">…</div>
+    <div class="hSub" id="hSub">…</div>
+    <div class="storyTabs" id="storyTabs"></div>
+  </div>
+
+  <div class="demoNote"><b>How to test:</b> read a chapter → answer the in-chapter question → make the end-of-chapter choice → watch relationships + clues change (fingerprint icon). Replay with different picks to see different Chapter 3 scenes. Progress saves on this device.</div>
+
+  <div class="chapTabs" id="chapTabs"></div>
+  <div class="body" id="body"></div>
+
+  <div class="fabbar">
+    <button class="fab" onclick="Demo.toggleDrawer()"><i class="fas fa-fingerprint"></i> State</button>
+    <button class="fab acc" id="nextBtn" onclick="Demo.next()">Continue →</button>
+  </div>
+
+  <div class="drawer" id="drawer">
+    <div class="dr-h"><div class="dr-t">Story state · choices & consequences</div><div class="iconbtn" onclick="Demo.toggleDrawer()"><i class="fas fa-times"></i></div></div>
+    <div id="drawerBody"></div>
+    <button class="rst" onclick="Demo.reset()">↺ Restart demo (clear choices)</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   THE THIRD PASSENGER — isolated interactive-story demo
+   Engine: data-driven chapters. To add Chapter 4, append one object
+   to STORY.chapters (see ADD_CHAPTER_HERE marker). No other edits.
+   State: localStorage only. Backend wiring comes later.
+   ════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+
+/* ── Story data ─────────────────────────────────────────────── */
+var STORY_THIRD = {
+  title: "The Third Passenger",
+  blurb: "Last BRT out of Oshodi. The conductor counts two passengers. Ada counts three. Every question you ask and every choice you make changes who trusts you, what clues you carry, and what each chapter reveals.",
+  characters: [
+    { id: "musa",  name: "Musa (driver)",    icon: "🚌" },
+    { id: "funke", name: "Funke (passenger)", icon: "🧣" }
+  ],
+  chapters: [
+    {
+      id: "ch1", n: 1, title: "The Last BRT",
+      intro: [
+        "The last announcement cracked over Oshodi terminal at 11:31pm: “Final BRT, Yaba direct. No stops after Mile 2.” Then the lights over bay 6 went out — all at once, like someone had cut them.",
+        "Ada ran. Her ticket machine had printed something wrong — seat B-13, on a bus that didn't do seat numbers — but the rain was drowning the terminal and the doors were already sighing shut.",
+        "Inside, the air was wrong. Too still. A woman in a yellow scarf (Funke) sat mid-row, handbag clamped on her lap with both hands. At the back, a man sat facing the glass, dripping wet — though it hadn't rained inside the bus.",
+        "Driver Musa caught her eye in the mirror and said flatly: “Two passengers. Light load.” Ada's stomach dropped. Her, the woman, the man in back — that was three. And Musa had stared straight at the back row as he said it."
+      ],
+      /* In-chapter question: the answer picks which scene comes next (see afterVariants) */
+      inChapter: {
+        id: "ch1_q1",
+        label: "In-chapter question · the conductor",
+        question: "The conductor holds out his hand for her fare. The back row is dripping audibly now. What does Ada do?",
+        options: [
+          { id:"q1a", t:"Challenge him softly", s:"“Two? Sir, I count three.”", fx:{ rel:{ musa:-1 }, trait:{ brave:1 }, flag:["asked_openly"] }, note:"The words hang in the still air. Musa's jaw tightens — and the man in the back row lifts his head for the first time. Brave +1, Musa trust −1." },
+          { id:"q1b", t:"Pay and watch the mirror", s:"She hands over her fare without a word.", fx:{ trait:{ cautious:1 }, flag:["observed"] }, note:"In the side mirror, every seat reflects — except the back row, which shows empty vinyl. Yet dripping sounds come from exactly there. Cautious +1." },
+          { id:"q1c", t:"Sit by Funke, say nothing to Musa", s:"She slides in beside the woman in yellow.", fx:{ rel:{ funke:1 }, trait:{ warm:1 }, flag:["greeted_funke"] }, note:"Funke doesn't look up, but her whisper barely moves the air: “Don't say his name first. Whatever happens — not first.” Funke trust +1." }
+        ]
+      },
+      /* Next scene branches on the in-chapter answer — then the shared aftermath follows */
+      afterVariants: [
+        { when:{ answer:{ ch:"ch1", opt:"q1a" } }, scene:"Because you challenged Musa",
+          text:"Musa says nothing. But at the terminal exit he swings the wheel toward the unmarked service road instead of the Mile 2 ramp — a road with no lights at all. From the back row, a voice like wet cloth: “She sees. Finally. One who sees.”" },
+        { when:{ answer:{ ch:"ch1", opt:"q1b" } }, scene:"Because you watched first",
+          text:"Ada keeps her eyes down — and hears Funke counting under her breath: “One… two… two…” stopping every time at the back row, starting over. Funke knows. Funke is pretending, exactly like Ada." },
+        { when:{ answer:{ ch:"ch1", opt:"q1c" } }, scene:"Because you sat with Funke",
+          text:"Under cover of the engine noise, Funke presses two words into Ada's sleeve: “Seat B-13. Check your ticket.” Ada looks. Her misprinted ticket reads B-13 — and the dripping man sits exactly where B-13 would be." }
+      ],
+      after: [
+        "The BRT gathers speed. The terminal lights shrink behind them — then go black entirely, as if the whole of Oshodi just closed its eyes.",
+        "Three breaths fill the bus now. Ada counts them the way you count heartbeats in the dark: hers, Funke's… and a third, slow one, close enough to stir the hair at the back of her neck."
+      ],
+      /* End-of-chapter choice: max 3, routes + consequences */
+      endChoice: {
+        id: "ch1_end",
+        question: "The third breathing stops the instant Ada turns her head. The back of her neck is ice. What should she do?",
+        options: [
+          { id:"A", letter:"A", t:"Confront Musa now", risk:"Stand and say it loud: “Who is in the back row?”", feedback:"The bus swerves. Musa slams the wheel straight and snarls: “Nobody don use that back seat since the accident!” — then goes white, as if the sentence escaped him. The whole bus heard it. There is no going back now.",
+            fx:{ rel:{ musa:-1 }, trait:{ brave:1 }, clue:{ id:"torn_ticket", icon:"🎫", name:"Torn ticket stub", desc:"Seat B-13, dated a year ago tomorrow. Wedged beside Ada's seat — waiting for her." }, flag:["confronted"] }, next:"ch2" },
+          { id:"B", letter:"B", t:"Whisper to Funke", risk:"“You see him too — Abeg, tell me I'm not mad.”", feedback:"Funke's composure cracks all at once. She seizes Ada's wrist and presses something small and cold into her palm, hidden from the mirror. “If the lights go off, hold this and don't let go.”",
+            fx:{ rel:{ funke:2 }, trait:{ warm:1 }, clue:{ id:"brass_key", icon:"🔑", name:"Small brass key", desc:"Funke whispers: “If the lights go off, hold this tight.”" }, flag:["allied_funke"] }, next:"ch2" },
+          { id:"C", letter:"C", t:"Play asleep, listen", risk:"Head on the glass, eyes slits, ears open.", feedback:"It works. A voice breathes along the aisle, patient as rain: “Tunde… Tunde…” — and Musa's knuckles go bloodless on the wheel. He heard it too. He's been hearing it every night.",
+            fx:{ trait:{ cautious:1 }, clue:{ id:"whispered_name", icon:"👂", name:"Whispered name: Tunde", desc:"The third passenger keeps repeating one name." }, flag:["listened"] }, next:"ch2" }
+        ]
+      }
+    },
+    {
+      id: "ch2", n: 2, title: "What the Lights Saw",
+      /* Conditional intro: shown based on Chapter 1 end choice */
+      introVariants: [
+        { when:{ flag:"confronted" }, text:"Nobody has spoken since Ada stood up. The torn ticket stub in her pocket — B-13, dated a year ago tomorrow — feels like it is burning through the fabric. Somebody sat in her exact seat. Somebody never got off." },
+        { when:{ flag:"allied_funke" }, text:"Funke's brass key bites into Ada's palm. Musa keeps checking the mirror now — not the road, the mirror — and every time his eyes find the back row, his shoulders climb higher. The driver is afraid of his own bus." },
+        { when:{ flag:"listened" }, text:"“Tunde.” The name sits behind Ada's teeth like a stone. Musa heard her breathe it in her fake sleep and nearly put the bus into the barrier. He hasn't touched the mirror since." }
+      ],
+      introFallback: "Past Anthony Village the streetlights smear into orange ribbons. Nobody gets on. Nobody gets off. The doors haven't opened since Oshodi.",
+      intro: [
+        "At the mouth of the Maryland underpass, the engine note drops half a tone — like the bus itself is holding its breath. The lights flicker. Once. Twice.",
+        "In the black between flickers, the back row turns suddenly clear: a boy, sixteen maybe, in a soaked school uniform, water pooling at his feet — facing forward now, staring at the back of Musa's head.",
+        "Funke's whisper comes without lip movement: “Don't let him touch your ticket. Whatever he asks for — not the ticket.”",
+        "Ada's phone screams in the silence. Unknown number. Preview: “ASK HIM ABOUT THE DEPOT. — T”"
+      ],
+      inChapter: {
+        id: "ch2_q1",
+        label: "In-chapter question · the message",
+        question: "The unknown message glows on her screen — and Musa is watching her in the mirror. What does Ada do with it?",
+        options: [
+          { id:"q2a", t:"Reply: “Who is Tunde?”", s:"Send, before courage runs out.", fx:{ clue:{ id:"depot_hint", icon:"💬", name:"Reply from T", desc:"“Tunde drove this route. Ask Musa about the depot fire.” Plus a line that appeared on its own: “HE CAN HEAR YOU TYPING.”" }, trait:{ brave:1 }, rel:{ musa:-1 } }, note:"Three dots. Then the depot warning — plus a second line that wasn't there a second ago. Musa's eyes are fixed on her. Clue gained, Musa trust −1." },
+          { id:"q2b", t:"Show it to Funke", s:"Tilt the screen toward the yellow scarf.", fx:{ rel:{ funke:1 }, trait:{ warm:1 }, flag:["shared_message"] }, note:"Funke reads it and stops breathing for three full seconds. “Then it's started again,” she says — and Ada understands, ice-cold: Funke has ridden this bus before. Funke trust +1." },
+          { id:"q2c", t:"Screenshot, then delete", s:"Evidence first. The number already smells wrong.", fx:{ trait:{ cautious:1 }, clue:{ id:"screenshot", icon:"📸", name:"Screenshot of message", desc:"The chat deleted itself seconds later. The screenshot keeps what the original hid: 11:47, seat B-13." } }, note:"Good instinct — the chat deletes itself ten seconds later. But the screenshot holds something the live message never showed. Cautious +1, proof kept." }
+        ]
+      },
+      /* The next scene branches on the in-chapter answer */
+      afterVariants: [
+        { when:{ answer:{ ch:"ch2", opt:"q2a" } }, scene:"Because you replied",
+          text:"The phone rings instantly — same unknown number. Ada doesn't answer. It rings eleven times, and each time depot noise leaks through before she can silence it: metal gates, a bus engine, a boy shouting “Conductor!” Then quiet. Then one final text: “DON'T LET HIM TAKE YOU PAST MILE 2.”" },
+        { when:{ answer:{ ch:"ch2", opt:"q2b" } }, scene:"Because you showed Funke",
+          text:"Funke holds the phone like it might bite. “A year ago tomorrow,” she says quietly. “This same bus, this same rain. My brother rode home that night and never arrived. I ride the last BRT every Friday looking for him — and tonight the bus finally let me see.” Her hand shakes. “Read the signature again. T.”" },
+        { when:{ answer:{ ch:"ch2", opt:"q2c" } }, scene:"Because you kept proof",
+          text:"Ada zooms the screenshot — and her blood runs cold. Beneath the message, in pixels the live chat never displayed: “SEAT B-13 IS ALREADY TAKEN. CHECK YOUR TICKET.” Her ticket reads B-13. Slowly, she turns toward the back row. The boy is smiling at her. Politely. Waiting." }
+      ],
+      after: [
+        "The underpass swallows the bus whole. The lights die — not a flicker this time, a full four seconds of dark — and the seat beside Ada dips under new weight. Cold spreads through the vinyl into her thigh.",
+        "A wet sleeve brushes her arm. A young, courteous voice: “Sister… have you seen my conductor's badge? I can't close my shift without it.”"
+      ],
+      endChoice: {
+        id: "ch2_end",
+        question: "Something cold touches her arm in the dark — the edge of a metal badge, or the edge of a hand. The lights are still dead. What now?",
+        options: [
+          { id:"A", letter:"A", t:"Take what he offers", risk:"Close her fist around it in the dark.", feedback:"Metal. Ice-cold, heavy, real. The lights slam back — the seat beside her is empty, but her fist holds a conductor's badge: T. AJAYI. Across the aisle, Funke stares at Ada's hand like it's a loaded gun.",
+            fx:{ trait:{ brave:1 }, clue:{ id:"badge", icon:"🪪", name:"Conductor's badge: T. Ajayi", desc:"Ice-cold. The name matches the whispered name: Tunde." }, rel:{ funke:1 } }, next:"ch3" },
+          { id:"B", letter:"B", t:"Speak his name aloud", risk:"Say it into the dark: “Tunde Ajayi?”", feedback:"The cold flinches back like a burned hand. The whole bus shudders, windows rattling — and in the juddering light Musa is crying openly, still driving. “I told them the depot was unsafe,” he whispers. “God help me, I told them.”",
+            fx:{ rel:{ musa:1 }, trait:{ warm:1 }, flag:["named_him"] }, next:"ch3" },
+          { id:"C", letter:"C", t:"Raise the key with Funke", risk:"Grab Funke's hand, hold the brass key up like a lamp.", feedback:"The key flares warm — impossibly warm — and the cold withdraws down the aisle step by step, almost gratefully. In the returning light, the back-row boy is watching them. He nods once. Respect, or relief.",
+            fx:{ rel:{ funke:1 }, trait:{ cautious:1 }, flag:["used_key"] }, next:"ch3" }
+        ]
+      }
+    },
+    {
+      id: "ch3", n: 3, title: "The Depot That Isn't There",
+      intro: [
+        "Musa blows straight past the Yaba exit. The indicator isn't even on. When Ada twists to protest, Funke catches her wrist and shakes her head once: don't.",
+        "The BRT rolls downhill toward gates that shouldn't exist — rusted, chained, lit by one sodium lamp: AJAYI DEPOT — CONDEMNED. The chains hang open. Cut. Recently.",
+        "Funke rises, and in the orange light she looks both sixteen and sixty. “He can't close his shift alone. That's why this bus keeps coming back every rainy Friday. It is looking for someone who can finish it.”"
+      ],
+      /* Conditional scenes: engine shows matching ones based on state */
+      conditional: [
+        { when:{ clue:"brass_key", rel:{ funke:1 } }, tag:"Unlocked · Funke trusts you + brass key",
+          text:"Funke folds Ada's fingers over the key one by one. “My brother's locker key. Tunde was his conductor — his friend. Locker 13 holds Tunde's shift log. If you open it, tonight ends. If you walk away…” She doesn't finish. Beyond the gates, something drips in the dark." },
+        { when:{ clue:"badge" }, tag:"Unlocked · you hold the badge",
+          text:"The badge in Ada's fist beats like a second pulse. From the back row, the boy's voice — closer now, no longer polite but pleading: “You have it, sister? Then you can sign me off. Only a passenger who isn't afraid can write the last line.” The engine ticks as it cools. Counting down." },
+        { when:{ clue:"depot_hint" }, tag:"Unlocked · T's warning",
+          text:"The message burns in Ada's memory: ASK MUSA ABOUT THE DEPOT FIRE. Musa meets her eyes in the mirror and mouths two words, clear and terrible: “Forgive me.” He is not talking to her." },
+        { when:{ trait:"cautious", min:2 }, tag:"Trait · very cautious",
+          text:"Two chapters of careful watching pay off: the depot clock is frozen at 11:47 — the exact timestamp on her screenshot. And the sodium lamp is buzzing faster. Whatever 11:47 means, it is almost here again." }
+      ],
+      inChapter: {
+        id: "ch3_q1",
+        label: "In-chapter question · the gates",
+        question: "The gates stand open and the lamp is buzzing faster. Musa turns in his seat, grey-faced. “Somebody must walk him in. It can't be me — I left him here.” Who goes?",
+        options: [
+          { id:"q3a", t:"“I'll walk him in.”", s:"Ada is on her feet before fear votes.", fx:{ trait:{ brave:1 }, rel:{ funke:1 }, flag:["volunteered"] }, note:"The back row exhales — relief or hunger, she can't tell. Funke stands with her: “Then I walk with you.” Musa lowers his head onto the wheel. Brave +1." },
+          { id:"q3b", t:"“We all go. No one goes alone.”", s:"She looks from Musa to Funke and back.", fx:{ rel:{ musa:1, funke:1 }, trait:{ warm:1 }, flag:["together"] }, note:"A long silence. Then Musa kills the engine — the sound of a man burning his last excuse. His hands finally stop shaking. Both relationships +1." },
+          { id:"q3c", t:"“No. Truth first.”", s:"She blocks the aisle until Musa speaks.", fx:{ trait:{ cautious:1 }, clue:{ id:"depot_truth", icon:"🔥", name:"Truth about the fire", desc:"Musa: condemned wiring, a locked back gate, a fire — and the bus he drove away with one seat still occupied." } }, note:"It pours out of him: the condemned wiring, the locked back gate, the fire — and the bus he drove away. Clue gained: the whole ugly truth." }
+        ]
+      },
+      /* The next scene branches on the in-chapter answer */
+      afterVariants: [
+        { when:{ answer:{ ch:"ch3", opt:"q3a" } }, scene:"Because you volunteered",
+          text:"As Ada steps down, the boy says her name. Her full name. She never told him. Behind her, Funke breathes: “He knows you now. That means you can finish it — or he can keep you.” The gravel is cold through her shoes. Four sets of footprints cross the yard. One of them is still being made." },
+        { when:{ answer:{ ch:"ch3", opt:"q3b" } }, scene:"Because you chose together",
+          text:"Three doors hiss — even the back door, which hasn't worked in years. They step down as one, and the depot lamp steadies, as if the place itself is watching. Musa tries the engine once more out of habit. It won't turn over. There is no driving out of this. Only walking through." },
+        { when:{ answer:{ ch:"ch3", opt:"q3c" } }, scene:"Because you demanded the truth",
+          text:"Musa's confession hangs in the air like smoke. Then Funke does the math aloud, voice hollow: “Ada. Your ticket. Read the seat.” B-13. Her seat. The boy's seat. The seat nobody has used since the fire — except tonight, it was already taken. By her." }
+      ],
+      after: [
+        "Four footsteps cross the yard — three living, one in a school shoe that squeaks. Locker 13 stands at the far end, door ajar, breathing cold air into the rain.",
+        "Inside the sliver of dark: paper. A shift log. And something that glints — badge-metal, or key-metal. Ada walks forward, and every choice tonight walks with her."
+      ],
+      endChoice: {
+        id: "ch3_end",
+        question: "At locker 13 the boy is fully visible at last — sixteen, exhausted, patient as rain. He waits for her verdict. What does Ada do?",
+        options: [
+          { id:"A", letter:"A", t:"Sign him off with the badge", risk:"Pin T. AJAYI to the log and speak the line: shift closed.", feedback:"Her voice doesn't shake. The depot exhales — gates, lamp, rain, all of it. But the log's last page is blank except one line, already written: her own name. (Chapter 4 opens the log.)",
+            fx:{ flag:["signed_off"] }, next:null },
+          { id:"B", letter:"B", t:"Turn the brass key in locker 13", risk:"Funke's key — if you earned it, it turns.", feedback:"Click. Warm, human light pours from the seam, smelling of diesel and rain. Inside: a second logbook — and a photograph. (Chapter 4 develops the photograph.)",
+            fx:{ requires:{ clue:"brass_key" }, flag:["opened_locker"] }, next:null },
+          { id:"C", letter:"C", t:"Make Musa say it to his face", risk:"The apology has to come from him. No substitutes.", feedback:"Musa drops to his knees in the gravel. What comes out of him isn't words at first. The boy listens to all of it — then turns to Ada. The verdict is hers. (Chapter 4 is the verdict.)",
+            fx:{ rel:{ musa:1 }, flag:["demanded_truth"] }, next:null }
+        ]
+      },
+      toBeContinued: "Chapter 3 ends with Ada's hand on locker 13. Nothing is resolved — Chapter 4 continues from exactly this state: every clue, relationship and flag carries over."
+    }
+    /* ADD_CHAPTER_HERE — append { id:"ch4", n:4, ... } with the same shape.
+       Engine needs no other changes. */
+  ]
+};
+
+/* ══════════════ STORY 2 — THE MIDNIGHT CHOICE ══════════════ */
+var STORY_MIDNIGHT = {
+  title: "The Midnight Choice",
+  blurb: "Her father is three years dead. Her mother's letter says never to trust her brother. Tonight Amara learns why — if the house lets her. Tracked: trust, clues, traits, and how much danger she is in.",
+  characters: [
+    { id: "mother", name: "Mother",         icon: "🌙" },
+    { id: "daniel", name: "Daniel (brother)", icon: "🧑🏾" }
+  ],
+  chapters: [
+    {
+      id: "m1", n: 1, title: "The Letter",
+      intro: [
+        "The house had been asleep for an hour when Amara lifted the loose floorboard in her father's study. She wasn't looking for anything — just the thumbnail she'd lost there as a child. Her fingers found paper instead.",
+        "An envelope. Her name on the front — in her mother's handwriting. But it was hidden in her dead father's study, three years after his death, under a board he'd fixed himself.",
+        "She weighed it in her palm. Still sealed. Down the hall, her mother's bedroom door was shut. Across the landing, Daniel's light burned late, as it always did. Whatever this was, she was the only one awake with it."
+      ],
+      inChapter: {
+        id: "m1_q1",
+        label: "In-chapter question · the envelope",
+        question: "The envelope is sealed. The house is asleep. Her mother's door is shut; Daniel's light is on. What does Amara do?",
+        options: [
+          { id:"q1a", t:"Steam it open over the kettle", s:"No torn paper. No evidence she was ever here.", fx:{ trait:{ cautious:1 }, flag:["opened_clean"] }, note:"Patience. Ten careful minutes and the flap lifts unmarked. Whatever is inside, no one will know she read it. Cautious +1." },
+          { id:"q1b", t:"Rip it open now", s:"Three years of questions tear with it.", fx:{ trait:{ brave:1 }, heat:1, flag:["ripped_open"] }, note:"The tear is loud in the silent house — and Daniel's light goes out across the landing. Did he hear? Brave +1, danger +1." },
+          { id:"q1c", t:"Take it to Daniel first", s:"“If this is about him, he should see it with me.”", fx:{ rel:{ daniel:1 }, heat:1, flag:["showed_daniel"] }, note:"Daniel reads it twice without blinking. Then: 'Put it back. Tell no one. Not even mother.' His hand shakes. Daniel trust +1 — but now he knows she has it. Danger +1." }
+        ]
+      },
+      afterVariants: [
+        { when:{ answer:{ ch:"m1", opt:"q1a" } }, scene:"Because you opened it cleanly",
+          text:"Clean opening, clean hands. She reads by the kettle's dying light — and has to grip the counter. One sentence. Eleven words. She reseals it so perfectly that even she doubts she opened it. The secret is hers alone now. That is exactly what frightens her." },
+        { when:{ answer:{ ch:"m1", opt:"q1b" } }, scene:"Because you ripped it open",
+          text:"The sentence hits like cold water: IF AMARA EVER DISCOVERS WHAT HAPPENED THAT NIGHT, DON'T LET HER TRUST HER BROTHER. Behind her — nothing. Just the settling house. But Daniel's door, which was spilling light, is dark now. And she cannot remember hearing it close." },
+        { when:{ answer:{ ch:"m1", opt:"q1c" } }, scene:"Because you showed Daniel",
+          text:"Daniel goes grey as he reads. 'Where did you find this?' — 'Father's study.' — 'Listen to me.' He takes both her wrists. 'Mother must never know you saw this. Promise me.' It is the first time in her life her big brother has sounded afraid of their mother." }
+      ],
+      after: [
+        "One sentence. Eleven words: “If Amara ever discovers what happened that night, don't let her trust her brother.”",
+        "Her brother — two years older, her protector since their father died. The boy who taught her to ride a bicycle and waited up every night she was late. Someone in this house believes he is dangerous. Someone in this house wrote it down."
+      ],
+      endChoice: {
+        id: "m1_end",
+        question: "The letter burns in her pocket like a coal. Tonight, before sleep — what does she do?",
+        options: [
+          { id:"A", letter:"A", t:"Confront her mother tonight", risk:"Knock on the shut door and hold up the envelope.", feedback:"Her mother reads it, goes white to the lips — and says the last thing Amara expects: 'Burn it. For your own good, burn it tonight.' Then she locks her door. From the inside. Against her own daughter.",
+            fx:{ rel:{ mother:-1 }, heat:2, clue:{ id:"mothers_fear", icon:"😨", name:"Mother's fear", desc:"She didn't deny writing it. She begged Amara to burn it." }, flag:["confronted_mother"] }, next:"m2" },
+          { id:"B", letter:"B", t:"Say nothing. Search the study", risk:"Patience. Preparation. Secrets.", feedback:"She sleeps with the letter under her pillow and dreams of floorboards. By morning she has a plan — and daylight proves her right: the floorboard's nails are newly scratched. Someone else lifted that board. Recently.",
+            fx:{ trait:{ cautious:1 }, clue:{ id:"fresh_scratches", icon:"🔍", name:"Fresh scratches", desc:"The floorboard was lifted by someone else — recently, often." }, flag:["searched_secretly"] }, next:"m2" },
+          { id:"C", letter:"C", t:"Trust Daniel with everything", risk:"He is her brother. He has never lied to her. Has he?", feedback:"Daniel studies the seal, the paper, the hiding place — like evidence. 'You're sure mother wrote this?' A pause. 'Then we find out what happened that night before she finds out we know.' For the first time, it's the two of them against something.",
+            fx:{ rel:{ daniel:1 }, heat:1, trait:{ warm:1 }, flag:["allied_daniel"] }, next:"m2" }
+        ]
+      }
+    },
+    {
+      id: "m2", n: 2, title: "The Space Beneath the Floor",
+      introVariants: [
+        { when:{ flag:"confronted_mother" }, text:"Her mother's door hasn't opened since last night — not for breakfast, not for anything. The house feels occupied and empty at once. The study, at least, will not lock its door against her." },
+        { when:{ flag:"searched_secretly" }, text:"Morning light changes the study completely — and proves her plan right. The floorboard scratches are obvious by day. Someone else has been here. Recently. Often." },
+        { when:{ flag:"allied_daniel" }, text:"Daniel covers for her — 'Mother, Amara's helping me sort father's papers' — and stands guard in the hall while she works. It feels like childhood games. It feels like the last morning of childhood." }
+      ],
+      introFallback: "The study smells of old books and, faintly, her father's cologne — three years gone, still here.",
+      intro: [
+        "The desk drawers give up nothing but dead paper: old receipts, expired documents, a broken wristwatch stopped at 11:47. She is about to quit when she notices the bookshelf standing a finger's width from the wall.",
+        "Behind it: a narrow compartment, invisible under dust. Inside, a small black box and a photograph. The photo shows her father, ten years younger, beside a young woman she has never seen — wearing a silver necklace with a tiny crescent pendant. On the back: 'December 14. The night everything changed.'",
+        "December 14. Her birthday. Her hands go cold.",
+        "The black box holds a key, a folded document, and a tiny audio recorder. The document bears her father's signature: 'In the event of my death, the truth about what happened to Daniel must remain hidden until Amara turns twenty-five.' Daniel — only two years older. What could a child have done that must stay buried?",
+        "She presses play. Static — then her father's voice, weak and hurried: 'If you're hearing this, someone has found the letter. Amara, your brother didn't cause the accident. What happened that night was my fault.' A pause. 'Your mother knows everything. But she doesn't know that I—'",
+        "Click. Dead. And underneath the silence — the study door handle begins to turn."
+      ],
+      inChapter: {
+        id: "m2_q1",
+        label: "In-chapter question · the turning handle",
+        question: "The recorder is dead in her hand. The handle is turning. Seconds. What does Amara do?",
+        options: [
+          { id:"q2a", t:"Kill the lamp, pocket recorder + document", s:"Evidence first. Breathing later.", fx:{ trait:{ cautious:1 }, clue:{ id:"recorder", icon:"🎙️", name:"Father's last words", desc:"The recorder is dead — but she has it. What little played is hers now." }, flag:["kept_evidence"] }, note:"Darkness. Recorder and document vanish into her clothes. But the photograph flutters — slides under the shelf, out of reach. Evidence kept, photo lost. Cautious +1." },
+          { id:"q2b", t:"Hit play once more — risk the noise", s:"She needs the cut-off ending.", fx:{ trait:{ brave:1 }, heat:1, clue:{ id:"fragment", icon:"✂️", name:"The cut-off fragment", desc:"One more burst before it dies forever: '…that I never—'" }, flag:["heard_fragment"] }, note:"Her father's voice fills the study: '…that I never—' CUT. And the door stops moving. Whoever is outside just heard it too. Fragment gained. Danger +1." },
+          { id:"q2c", t:"Step into the open, hands visible", s:"No crouching. No lies. Face it.", fx:{ trait:{ warm:1 }, heat:1, flag:["faced_openly"] }, note:"She steps into the lamplight as the door opens — and it's Daniel. His eyes go from her face to the open compartment. Being seen here will cost her. But he looks… relieved? Warm +1, danger +1." }
+        ]
+      },
+      afterVariants: [
+        { when:{ answer:{ ch:"m2", opt:"q2a" } }, scene:"Because you hid the evidence",
+          text:"The door opens on darkness. Daniel's silhouette fills the frame. 'Amara?' A beat. 'What are you doing in here — in the dark?' She can't see his face. That, she realizes, terrified, is the point: he can see hers. 'Couldn't sleep,' she says into the black. A long silence. Then: 'You found it, didn't you?'" },
+        { when:{ answer:{ ch:"m2", opt:"q2b" } }, scene:"Because you replayed it",
+          text:"The door opens mid-echo. Daniel stands frozen, her father's severed sentence still hanging in the air between them. Color drains from his face — not guilt, something worse: recognition. 'Please,' he whispers. 'Tell me you didn't hear the end of that.'" },
+        { when:{ answer:{ ch:"m2", opt:"q2c" } }, scene:"Because you faced him openly",
+          text:"Daniel stops dead, hand still on the handle. Behind Ada the compartment gapes open — black box, displaced shelf, everything exposed. No denials left. His shoulders drop, like a boy caught and almost glad. 'Okay,' he says quietly. 'Okay. Then we don't pretend anymore.'" }
+      ],
+      after: [
+        "He steps inside and closes the door behind him. The lock clicks — soft, deliberate.",
+        "“Please tell me you didn't listen to the recording.”"
+      ],
+      conditional: [
+        { when:{ heat:3 }, tag:"⚠️ Danger · the house is awake",
+          text:"Something else is wrong: the landing floorboard creaks — a second set of steps. Mother is up too, moving without lights. Whoever Daniel is protecting Ada from may already be outside this door." },
+        { when:{ clue:"recorder" }, tag:"Kept · father's voice",
+          text:"The dead recorder weighs in her pocket like a promise. Whatever Daniel says now, she has her father's voice to measure it against." }
+      ],
+      endChoice: {
+        id: "m2_end",
+        question: "Daniel locks the door and leans against it. Waiting. The recording sits between them like a lit fuse. What should Amara do next?",
+        options: [
+          { id:"A", letter:"A", t:"Confront her brother", risk:"“I listened to it. Now tell me what happened to Daniel.”", feedback:"He flinches as if struck — then anger takes him, and in the anger a name escapes: half-heard, but hers now. 'You want the truth? Ask—' He bites it off. Too late.",
+            fx:{ trait:{ brave:1 }, heat:1, clue:{ id:"half_name", icon:"🗣️", name:"Half a name", desc:"Spat in anger, swallowed too late. Chapter 3 will confirm it." }, flag:["confronted_daniel"] }, next:null },
+          { id:"B", letter:"B", t:"Pretend she found nothing", risk:"“I don't know what you're talking about.” Smile. Hold it.", feedback:"The lie sits between them, trembling. Daniel studies her — then, slowly, starts talking anyway. About December 14. About the ice. About what mother made everyone agree to. Information he would never give an accuser.",
+            fx:{ rel:{ daniel:1 }, trait:{ cautious:1 }, flag:["fooled_him"] }, next:null },
+          { id:"C", letter:"C", t:"Keep the evidence secret — find the woman", risk:"Distract him, leave, and hunt the crescent pendant.", feedback:"She cries — real tears, useful tears — and he lets her go. By midnight she's at her window with the recorder and the document… and one fixed idea: the photograph under the shelf. Someone in this town wears a crescent moon. Someone will talk.",
+            fx:{ trait:{ brave:1 }, heat:1, clue:{ id:"crescent_photo", icon:"🌙", name:"The crescent pendant", desc:"Silver, tiny moon. Retrieved on a second trip — Daniel now watches the study." }, flag:["hunting_woman"] }, next:null }
+        ]
+      },
+      toBeContinued: "Chapter 2 ends with the locked door between Amara and the truth. Chapter 3 opens with the half-heard name, the pendant woman, and whatever mother is doing on the landing — every clue, scar and flag carries over."
+    }
+    /* ADD_CHAPTER_HERE (midnight) — append { id:"m3", n:3, ... } with the same
+       shape. Point m2 options' next to "m3" when it exists. */
+  ]
+};
+
+/* ── Active story bootstrap (progress kept separately per story) ── */
+var SAVE_KEY = "droboard_interactive_demo_v3";
+var storyId = "third";
+try{ var _s = localStorage.getItem(SAVE_KEY + "_active"); if(_s === "midnight" || _s === "third") storyId = _s; }catch(e){}
+var STORY = storyId === "midnight" ? STORY_MIDNIGHT : STORY_THIRD;
+
+/* ── Engine (generic — works for any chapters appended above) ── */
+function freshState(){
+  var rel={}; STORY.characters.forEach(function(c){ rel[c.id]=0; });
+  return { chapterIdx:0, rel:rel, traits:{ brave:0, cautious:0, warm:0 }, heat:0,
+           clues:{}, flags:{}, inAnswers:{}, endAnswers:{}, unlocked:[STORY.chapters[0].id] };
+}
+function skey(){ return SAVE_KEY + "_" + storyId; }
+function load(){ try{ var s = JSON.parse(localStorage.getItem(skey())); if(s && s.rel) return s; }catch(e){} return freshState(); }
+function save(){ try{ localStorage.setItem(skey(), JSON.stringify(state)); }catch(e){} }
+var state = load();
+
+function hasFlag(f){ return !!state.flags[f]; }
+function hasClue(c){ return !!state.clues[c]; }
+function checkWhen(w){
+  if(!w) return true;
+  if(w.flag && !hasFlag(w.flag)) return false;
+  if(w.clue && !hasClue(w.clue)) return false;
+  if(w.answer && state.inAnswers[w.answer.ch] !== w.answer.opt) return false;
+  if(w.heat && (state.heat||0) < w.heat) return false;
+  if(w.rel){ for(var k in w.rel){ if((state.rel[k]||0) < w.rel[k]) return false; } }
+  if(w.trait){ var n = state.traits[w.trait]||0; if(n < (w.min||1)) return false; }
+  return true;
+}
+function applyFx(fx){
+  fx = fx||{};
+  var out = [];
+  if(fx.rel){ for(var k in fx.rel){ state.rel[k]=(state.rel[k]||0)+fx.rel[k];
+    out.push((fx.rel[k]>0?"+":"")+fx.rel[k]+" "+k+" trust"); } }
+  if(fx.trait){ for(var k2 in fx.trait){ state.traits[k2]=(state.traits[k2]||0)+fx.trait[k2];
+    out.push(k2+" +"+fx.trait[k2]); } }
+  if(fx.clue && !state.clues[fx.clue.id]){ state.clues[fx.clue.id]=fx.clue;
+    out.push("🔍 Clue: "+fx.clue.name); }
+  if(fx.heat){ state.heat=(state.heat||0)+fx.heat;
+    out.push("⚠️ danger +"+fx.heat); }
+  if(fx.flag){ fx.flag.forEach(function(f){ state.flags[f]=true; }); }
+  return out;
+}
+function chapterById(id){ for(var i=0;i<STORY.chapters.length;i++) if(STORY.chapters[i].id===id) return STORY.chapters[i]; return null; }
+function toast(msg){ var t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove("show");},2600); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+window.Demo = {
+  toggleDrawer: function(){
+    var d=document.getElementById("drawer"); d.classList.toggle("open");
+    if(d.classList.contains("open")) renderDrawer();
+  },
+  reset: function(){
+    if(!confirm("Restart this story and clear its choices?")) return;
+    try{localStorage.removeItem(skey());}catch(e){}
+    state=freshState(); save();
+    document.getElementById("drawer").classList.remove("open");
+    render(); toast("Story restarted.");
+  },
+  switchStory: function(id){
+    if(id===storyId) return;
+    save();
+    storyId=id;
+    try{localStorage.setItem(SAVE_KEY+"_active",id);}catch(e){}
+    STORY = id==="midnight" ? STORY_MIDNIGHT : STORY_THIRD;
+    state=load(); save();
+    document.getElementById("drawer").classList.remove("open");
+    render(); window.scrollTo({top:0});
+    toast("Switched story — each story keeps its own progress.");
+  },
+  next: function(){
+    var ch=STORY.chapters[state.chapterIdx];
+    if(!ch) return;
+    if(!state.inAnswers[ch.id] && ch.inChapter){ toast("Answer the in-chapter question first ↑"); return; }
+    if(!state.endAnswers[ch.id]){
+      toast("Make the end-of-chapter choice ↑");
+      document.getElementById("endbox").scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
+    if(state.chapterIdx < STORY.chapters.length-1){
+      state.chapterIdx++; unlock(ch.id); save(); render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    } else {
+      toast("To be continued — add Chapter 4 (see code marker).");
+    }
+  },
+  go: function(i){
+    var ch=STORY.chapters[i]; if(!ch) return;
+    if(state.unlocked.indexOf(ch.id)<0){ toast("Finish the current chapter first."); return; }
+    state.chapterIdx=i; save(); render(); window.scrollTo({top:0});
+  },
+  answerIn: function(optIdx){
+    var ch=STORY.chapters[state.chapterIdx], q=ch.inChapter;
+    if(state.inAnswers[ch.id]) return;
+    var opt=q.options[optIdx];
+    var deltas=applyFx(opt.fx);
+    state.inAnswers[ch.id]=opt.id; unlock(ch.id); save(); render();
+    toast(deltas.length?("Consequence → "+deltas.join(" · ")):"Noted.");
+  },
+  answerEnd: function(optIdx){
+    var ch=STORY.chapters[state.chapterIdx], c=ch.endChoice;
+    if(state.endAnswers[ch.id]) return;
+    var opt=c.options[optIdx];
+    if(opt.fx && opt.fx.requires && opt.fx.requires.clue && !hasClue(opt.fx.requires.clue)){
+      toast("Requires clue: "+opt.fx.requires.clue+" — try another path or replay.");
+      return;
+    }
+    var deltas=applyFx(opt.fx);
+    state.endAnswers[ch.id]=opt.id;
+    if(opt.next && chapterById(opt.next) && state.unlocked.indexOf(opt.next)<0) state.unlocked.push(opt.next);
+    if(!opt.next && state.chapterIdx===STORY.chapters.length-1){ /* open ending: stays, more chapters can attach */ }
+    save(); render();
+    toast(deltas.length?("Consequence → "+deltas.join(" · ")):"Choice recorded.");
+  }
+};
+function unlock(){ /* unlocked handled in answer fns; next chapter unlocks on end choice */ }
+
+function render(){
+  renderHero(); renderTabs(); renderBody(); renderNext();
+}
+function renderHero(){
+  document.getElementById("ttTitle").textContent=STORY.title;
+  document.getElementById("hTitle").textContent=STORY.title;
+  document.getElementById("hSub").textContent=STORY.blurb||"";
+  var tabs=document.getElementById("storyTabs"); tabs.innerHTML="";
+  var list=[{id:"third",t:"🚌 Third Passenger"},{id:"midnight",t:"🌙 Midnight Choice"}];
+  list.forEach(function(s){
+    var b=document.createElement("button");
+    b.className="stbtn"+(s.id===storyId?" on":"");
+    b.textContent=s.t;
+    b.onclick=(function(id){return function(){Demo.switchStory(id);};})(s.id);
+    tabs.appendChild(b);
+  });
+}
+function renderTabs(){
+  var el=document.getElementById("chapTabs"); el.innerHTML="";
+  STORY.chapters.forEach(function(ch,i){
+    var b=document.createElement("button");
+    var cls="ct";
+    if(state.unlocked.indexOf(ch.id)<0) cls+=" locked";
+    else if(i===state.chapterIdx) cls+=" cur";
+    else if(state.endAnswers[ch.id]) cls+=" done";
+    b.className=cls;
+    b.innerHTML="Ch "+ch.n+"<small>"+esc(ch.title)+"</small>";
+    b.onclick=(function(idx){return function(){Demo.go(idx);};})(i);
+    el.appendChild(b);
+  });
+}
+function renderNext(){
+  var btn=document.getElementById("nextBtn");
+  if(state.chapterIdx<STORY.chapters.length-1) btn.textContent="Continue → Ch "+STORY.chapters[state.chapterIdx+1].n;
+  else btn.textContent="To be continued…";
+}
+function paraHtml(t, condTag){
+  if(condTag) return '<p class="cond"><span class="condTag">'+esc(condTag)+'</span>'+esc(t)+'</p>';
+  return "<p>"+esc(t)+"</p>";
+}
+function renderBody(){
+  var ch=STORY.chapters[state.chapterIdx];
+  var el=document.getElementById("body");
+  var h="";
+  h+='<div class="chapLabel">Chapter '+ch.n+'</div>';
+  h+='<div class="chapTitle">'+esc(ch.title)+'</div>';
+  h+='<div class="prose">';
+  /* conditional intro variants first */
+  var shown=false;
+  (ch.introVariants||[]).forEach(function(v){ if(!shown && checkWhen(v.when)){ h+=paraHtml(v.text,"Your path · "+ch.n); shown=true; } });
+  if(!shown && ch.introFallback) h+=paraHtml(ch.introFallback);
+  (ch.intro||[]).forEach(function(p){ h+="<p>"+esc(p)+"</p>"; });
+  h+='</div>';
+
+  /* in-chapter question — the rest of the chapter stays locked until it is answered */
+  var answered = ch.inChapter ? state.inAnswers[ch.id] : true;
+  if(ch.inChapter){
+    var q=ch.inChapter;
+    h+='<div class="qbox"><div class="qhdr"><div class="qico">💬</div><div><div class="qlab">'+esc(q.label)+'</div><div class="qq">'+esc(q.question)+'</div></div></div><div class="qopts">';
+    q.options.forEach(function(o,i){
+      var picked = answered===o.id;
+      h+='<button class="qopt'+(picked?" picked":"")+'" '+(answered?"disabled":"")+' onclick="Demo.answerIn('+i+')"><div class="qo-t">'+esc(o.t)+'</div><div class="qo-s">'+esc(o.s)+'</div></button>';
+    });
+    h+='</div>';
+    q.options.forEach(function(o){
+      if(answered===o.id && o.note) h+='<div class="qnote show">↳ '+esc(o.note)+'</div>';
+    });
+    h+='</div>';
+  }
+
+  if(!answered){
+    h+='<div class="tbc"><div class="tbc1">🔒</div><div class="tbc2">The story waits here.</div><div class="tbc3">Answer the question above — your answer decides the next scene.</div></div>';
+  } else {
+
+  /* afterVariants: the next scene changes based on the in-chapter answer.
+     First matching variant wins; shared `after` paragraphs follow it. */
+  var shownAv=false;
+  (ch.afterVariants||[]).forEach(function(v){ if(!shownAv && checkWhen(v.when)){ h+='<div class="prose">'+paraHtml(v.text, v.scene||"The story shifts · your answer")+"</div>"; shownAv=true; } });
+
+  (ch.after||[]).forEach(function(p){ h+='<div class="prose"><p>'+esc(p)+'</p></div>'; });
+
+  /* conditional scenes (Chapter 3 style) */
+  var anyCond=false;
+  (ch.conditional||[]).forEach(function(c){
+    if(checkWhen(c.when)){ if(!anyCond){ h+='<div class="prose">'; anyCond=true; } h+=paraHtml(c.text, c.tag||"Unlocked by your choices"); }
+  });
+  if(anyCond) h+='</div>';
+
+  /* end-of-chapter choice */
+  if(ch.endChoice){
+    var c=ch.endChoice, chosen=state.endAnswers[ch.id];
+    h+='<div class="endbox" id="endbox"><div class="endhdr"><div class="endlab">End of Chapter '+ch.n+' · choose (max 3)</div><div class="endq">'+esc(c.question)+'</div></div><div class="endopts">';
+    c.options.forEach(function(o,i){
+      var isCh = chosen===o.id;
+      var lock = o.fx&&o.fx.requires&&o.fx.requires.clue&&!hasClue(o.fx.requires.clue);
+      h+='<button class="copt'+(isCh?" chosen":"")+'" '+(chosen?"disabled":"")+' onclick="Demo.answerEnd('+i+')"><div class="co-L">Choice '+o.letter+(lock?" · 🔒 needs clue":"")+'</div><div class="co-T">'+esc(o.t)+'</div><div class="co-R">'+esc(o.risk)+'</div>'+(isCh?'<div class="co-F">↳ '+esc(o.feedback)+'</div>':"")+'</button>';
+    });
+    h+='</div></div>';
+    if(chosen){
+      var opt=c.options.filter(function(o){return o.id===chosen;})[0];
+      if(opt) h+='<div class="conseq show"><b>Consequence saved.</b> '+esc(opt.feedback)+'</div>';
+    }
+  }
+
+  } /* end locked gate — after/endChoice only render once the question is answered */
+
+  if(ch.toBeContinued){
+    h+='<div class="tbc"><div class="tbc1">🌙</div><div class="tbc2">To be continued…</div><div class="tbc3">'+esc(ch.toBeContinued)+'<br>Replay with different choices to unlock different scenes. New chapters attach here without changing the engine.</div></div>';
+  }
+
+  h+='<div class="navrow"><button class="nbtn" '+(state.chapterIdx===0?"disabled":"")+' onclick="Demo.go('+(state.chapterIdx-1)+')">← Back</button><button class="nbtn primary" onclick="Demo.next()">'+(state.chapterIdx<STORY.chapters.length-1?"Continue →":"Replay choices ↑")+'</button></div>';
+  el.innerHTML=h;
+}
+function renderDrawer(){
+  var b=document.getElementById("drawerBody");
+  var h='<div class="dr-t" style="margin-bottom:6px">Relationships</div>';
+  STORY.characters.forEach(function(c){
+    var v=state.rel[c.id]||0;
+    var pct=Math.min(100,Math.max(0,50+v*17));
+    h+='<div class="rel"><div class="rel-h"><span>'+c.icon+' '+esc(c.name)+'</span><span>'+(v>0?"+":"")+v+'</span></div><div class="rel-bar"><div class="rel-fill" style="width:'+pct+'%"></div></div></div>';
+  });
+  var heat=state.heat||0;
+  var hlabel = heat<=0 ? "Quiet" : heat<=2 ? "Noticed" : heat<=4 ? "Watched" : "Hunted";
+  h+='<div class="rel"><div class="rel-h"><span>🔥 Danger</span><span>'+heat+' · '+hlabel+'</span></div><div class="rel-bar"><div class="rel-fill" style="width:'+Math.min(100,heat*16)+'%;background:linear-gradient(90deg,#f59e0b,#ef4444)"></div></div></div>';
+  h+='<div style="font-size:10px;color:var(--mut);margin:-4px 0 8px">Risky answers and confrontations raise it. At high danger, new scenes unlock — and some doors close.</div>';
+  h+='<div class="dr-t" style="margin:10px 0 6px">Clues ('+Object.keys(state.clues).length+')</div>';
+  var ids=Object.keys(state.clues);
+  if(!ids.length) h+='<div style="font-size:11px;color:var(--mut);margin-bottom:8px">No clues yet — choices and questions unlock them.</div>';
+  ids.forEach(function(id){ var cl=state.clues[id];
+    h+='<div class="clue"><div class="e">'+esc(cl.icon||"🔍")+'</div><div><b>'+esc(cl.name)+'</b><small>'+esc(cl.desc||"")+'</small></div></div>'; });
+  h+='<div class="dr-t" style="margin:10px 0 6px">Traits</div><div>';
+  var tn=Object.keys(state.traits);
+  var anyT=false;
+  tn.forEach(function(k){ if(state.traits[k]>0){ anyT=true; h+='<span class="trait">'+esc(k)+' ×'+state.traits[k]+'</span>'; } });
+  if(!anyT) h+='<span style="font-size:11px;color:var(--mut)">No traits yet.</span>';
+  h+='</div>';
+  h+='<div class="dr-t" style="margin:10px 0 6px">Progress</div><div style="font-size:11px;color:var(--tx2);line-height:1.6">Chapter '+(state.chapterIdx+1)+' of '+STORY.chapters.length+' · choices saved on this device.<br>Flags: '+(Object.keys(state.flags).join(", ")||"—")+'</div>';
+  b.innerHTML=h;
+}
+
+render();
+})();
+</script>
+</body>
+</html>

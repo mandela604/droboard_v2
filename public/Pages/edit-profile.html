@@ -6,19 +6,16 @@
 <meta name="theme-color" content="#d8d8d8"/>
 <title>Droboard · Edit Profile</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
 <style>
 :root{
-  --acc:#ff0050;--acc2:#ff4d7a;
-  --glow:rgba(255,0,80,.18);
-  --bg:#d8d8d8;--l1:#ffffff;--l2:#f0f0f0;--l3:#e8e8e8;
-  --bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.06);--bd-acc:rgba(255,0,80,.25);
-  --tx:#161616;--tx2:#3a3a3a;--tx3:#666;--tx4:#8a8a8a;
-  --blue:#38bdf8;--green:#34d399;--safe-b:env(safe-area-inset-bottom,12px);
+  --tx2:var(--tx-body);--tx3:var(--tx-muted);--tx4:var(--tx-faint);
+  --safe-b:env(safe-area-inset-bottom,12px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);min-height:100%}
 body{
-  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+  font-family:var(--font-ui);
   color:var(--tx2);display:flex;justify-content:center;min-height:100vh;
 }
 button,input,textarea,select{font-family:inherit}
@@ -162,6 +159,8 @@ button,input,textarea,select{font-family:inherit}
 .loading i{font-size:22px;color:var(--acc);display:block;margin-bottom:10px}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
 <div class="phone">
@@ -178,7 +177,8 @@ button,input,textarea,select{font-family:inherit}
     <div class="hero-preview">
       <div class="cover" id="coverPreview"></div>
       <div class="grad"></div>
-      <button class="cover-edit" type="button" onclick="promptCover()"><i class="fa-solid fa-camera"></i> Cover</button>
+      <button class="cover-edit" type="button" onclick="document.getElementById('coverFile').click()"><i class="fa-solid fa-camera"></i> Cover</button>
+      <input type="file" id="coverFile" accept="image/*" style="display:none" onchange="handleImageFile(event,'cover')"/>
     </div>
 
     <div class="av-wrap">
@@ -186,7 +186,8 @@ button,input,textarea,select{font-family:inherit}
         <div class="av-ring" id="avRing">
           <div class="av-inner"><img id="avatarPreview" src="" alt="Avatar"/></div>
         </div>
-        <div class="av-change" onclick="promptAvatar()"><i class="fa-solid fa-camera"></i> Change photo</div>
+        <div class="av-change" onclick="document.getElementById('avatarFile').click()"><i class="fa-solid fa-camera"></i> Change photo</div>
+        <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="handleImageFile(event,'avatar')"/>
       </div>
       <div id="roleBadge"></div>
     </div>
@@ -213,15 +214,8 @@ button,input,textarea,select{font-family:inherit}
           <label>Location</label>
           <input id="fLocation" type="text" maxlength="60" placeholder="City, Country"/>
         </div>
-        <div class="field">
-          <label>Avatar URL</label>
-          <input id="fAvatar" type="url" placeholder="https://…" oninput="syncAvatar()"/>
-          <div class="hint">Paste an image link — used in demo &amp; live until upload exists.</div>
-        </div>
-        <div class="field">
-          <label>Cover URL</label>
-          <input id="fCover" type="url" placeholder="https://…" oninput="syncCover()"/>
-        </div>
+        <input type="hidden" id="fAvatar"/>
+        <input type="hidden" id="fCover"/>
       </div>
 
       <div class="section-label">Favorite genres</div>

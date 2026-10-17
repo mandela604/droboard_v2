@@ -85,6 +85,14 @@
     return String(n);
   }
 
+  // Reader -> writer submission state (demo handoff; backend replaces this later).
+  function _flow() {
+    try {
+      const v = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
+      return (v && typeof v === 'object') ? v : null;
+    } catch (e) { return null; }
+  }
+
   function _ensureDom() {
     if (_overlay) return;
     const style = document.createElement('style');
@@ -227,13 +235,12 @@
       title: 'New Post',
       sub: p.isWriter ? 'Text, photo, chapter or AMA' : 'Quote, reaction or recommendation',
     });
-    if (p.isWriter) {
-      html += _item({
-        act: 'new-book', icon: 'fa-book-open',
-        iconBg: 'rgba(52,211,153,.07)', border: 'rgba(52,211,153,.12)', iconColor: 'var(--green,#34d399)',
-        title: 'New Book', sub: 'Start a new story',
-      });
-    }
+    // New Book is open to everyone: readers submit for review, writers publish.
+    html += _item({
+      act: 'new-book', icon: 'fa-book-open',
+      iconBg: 'rgba(52,211,153,.07)', border: 'rgba(52,211,153,.12)', iconColor: 'var(--green,#34d399)',
+      title: 'New Book', sub: p.isWriter ? 'Start a new story' : 'Write & submit for review',
+    });
     html += `</div><div class="dpm-divider"></div><div class="dpm-section"><div class="dpm-section-title">My Content</div>`;
 
     if (p.isWriter) {
@@ -269,11 +276,29 @@
     });
 
     if (isOwner && !p.isWriter) {
-      html += _item({
-        act: 'become-writer', icon: 'fa-feather-pointed',
-        iconBg: 'rgba(167,139,250,.07)', border: 'rgba(167,139,250,.12)', iconColor: 'var(--purple,#a78bfa)',
-        title: 'Become a Writer', sub: 'Unlock books & author tools',
-      });
+      const flow = _flow();
+      if (flow && flow.status === 'pending') {
+        html += _item({
+          act: '', icon: 'fa-hourglass-half',
+          iconBg: 'rgba(245,158,11,.07)', border: 'rgba(245,158,11,.15)', iconColor: 'var(--amber,#f59e0b)',
+          title: 'Book in review',
+          sub: (flow.title ? '"' + flow.title + '" ' : '') + 'awaiting editor approval',
+        });
+      } else if (flow && flow.status === 'rejected') {
+        html += _item({
+          act: 'new-book', icon: 'fa-rotate-left',
+          iconBg: 'rgba(244,63,94,.07)', border: 'rgba(244,63,94,.15)', iconColor: 'var(--red,#f43f5e)',
+          title: 'Book needs changes',
+          sub: (flow.feedback || 'Editor left feedback') + ' · Edit & resubmit',
+        });
+      } else {
+        html += _item({
+          act: 'new-book', icon: 'fa-feather-pointed',
+          iconBg: 'rgba(167,139,250,.07)', border: 'rgba(167,139,250,.12)', iconColor: 'var(--purple,#a78bfa)',
+          title: 'Create your first book',
+          sub: 'Approved = writer status',
+        });
+      }
     }
     html += `</div>`;
 

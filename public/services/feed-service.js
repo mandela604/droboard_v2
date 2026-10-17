@@ -12,11 +12,84 @@
   let COMM_POSTS_A = [];
   let COMM_POSTS_B = [];
   let COMM_POSTS_MID = [];
+  let BASE_POSTS = []; // organic posts, original order (sort source of truth)
+  let AD_POOLS = {}, AD_GAP = 3;
+
+  /* ── Following (feed-local set, persisted; feeds the menu filter) ── */
+  const FOLLOW_KEY = 'dro_following';
+  let FOLLOWING = new Set();
+  function loadFollowing() {
+    FOLLOWING = new Set();
+    try { (JSON.parse(localStorage.getItem(FOLLOW_KEY) || '[]') || []).forEach(h => FOLLOWING.add(String(h))); } catch (e) {}
+  }
+  function followName(name) {
+    if (!name) return;
+    FOLLOWING.add(String(name));
+    try { localStorage.setItem(FOLLOW_KEY, JSON.stringify([...FOLLOWING])); } catch (e) {}
+  }
+
+  /* ── Mod pins (staff only; persisted; pinned posts lead) ── */
+  const PIN_KEY = 'dro_pinned_posts';
+  function staffOK() { try { return window.canModerate ? window.canModerate() : false; } catch (e) { return false; } }
+  function loadPinIds() { try { return JSON.parse(localStorage.getItem(PIN_KEY) || '[]') || []; } catch (e) { return []; } }
+  function savePinId(id, on) {
+    try {
+      const ids = loadPinIds().filter(x => String(x) !== String(id));
+      if (on) ids.push(String(id));
+      localStorage.setItem(PIN_KEY, JSON.stringify(ids));
+    } catch (e) {}
+  }
+  function stampFeedPins(posts) {
+    const ids = loadPinIds();
+    const staff = staffOK();
+    (posts || []).forEach(p => {
+      if (!p || p.type === 'sponsored') return;
+      if (!p.pinned && ids.indexOf(String(p.id)) > -1) p.pinned = true;
+      if (!p.pinnable) p.pinnable = staff;
+    });
+    const top = posts.filter(p => p && p.pinned);
+    if (top.length) {
+      const rest = posts.filter(p => !p.pinned);
+      posts.length = 0; top.concat(rest).forEach(p => posts.push(p));
+    }
+  }
+
+  /* ── Debate comment count = total arguments posted (seeds + user posts) ── */
+  function debateArgCount(post) {
+    try {
+      if (post && post.type === 'debate' && window.DroboardDebateArgs && DroboardDebateArgs.countFor) {
+        return DroboardDebateArgs.countFor(post.id);
+      }
+    } catch (e) {}
+    return (post && post.comments) || 0;
+  }
+  function stampDebateCounts(posts) {
+    (posts || []).forEach(p => { if (p && p.type === 'debate') p.comments = debateArgCount(p); });
+  }
+
+  /* ── Hamburger sort/filter — actually re-orders the rendered feed ── */
+  function applySort(scroll) {
+    let organic = BASE_POSTS.slice();
+    if (FEED_SORT === 'popular') {
+      organic.sort((a, b) => (((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0))));
+    } else if (FEED_SORT === 'trending') {
+      organic.sort((a, b) => ((b.comments || 0) - (a.comments || 0)) || ((b.likes || 0) - (a.likes || 0)));
+    } else if (FEED_SORT === 'following') {
+      const keep = organic.filter(p => p.type !== 'sponsored' && FOLLOWING.has(p.name));
+      if (!keep.length) toast('You are not following anyone yet — showing everything');
+      else organic = keep;
+    }
+    FEED_POSTS = interleaveAds(organic, AD_POOLS, AD_GAP);
+    if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.style.display = FEED_POSTS.length ? 'none' : 'block';
+    if (scroll !== false) { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {} }
+  }
 
   function fmtN(n) { if (typeof n === 'string') return n; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
   function escAttr(s) { return String(s || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
 
-  function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'feed', slot: 'feed:in-feed' }); } catch (e) {} }
   function toast(msg, dur) {
     dur = dur || 2500;
     const t = document.getElementById('toast');
@@ -80,25 +153,33 @@
     document.getElementById('storiesRow').innerHTML = stories.map(s => {
       const n = s.statuses ? s.statuses.length : 0;
       const isMulti = !s.you && n > 1;
-      const ringClass = s.you ? 'own' : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
+      const ringClass = s.you ? (n ? 'ring-live' : 'own') : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
       const style = isMulti ? ` style="${buildRingStyle(s)}"` : '';
       return `
       <div class="story-item" data-story-id="${s.id}" data-you="${!!s.you}">
         <div class="story-ring ${ringClass}"${style}><div class="inner">
-          ${s.you ? `<div class="story-add">+</div>` : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`}
+          ${s.you ? (n ? `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">` : `<div class="story-add">+</div>`) : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`}
         </div></div>
+        ${s.you ? `<div class="story-post-plus" data-act="post-status" title="Post a status">+</div>` : ``}
         <div class="story-name">${s.name}</div>
       </div>`;
     }).join('');
   }
   function bindStories() {
     document.getElementById('storiesRow').addEventListener('click', (e) => {
+      const postBtn = e.target.closest('[data-act="post-status"]');
+      if (postBtn) { openPostComposer('status'); return; }
       const item = e.target.closest('.story-item');
       if (!item) return;
-      if (item.dataset.you === 'true') { toast('📸 Add to your story'); return; }
+      if (!window.openStatusViewer) { toast('Status viewer unavailable'); return; }
+      if (item.dataset.you === 'true') {
+        const mine = (STORIES_CACHE || []).find(s => s.you) || ((window.DroboardStatus && window.DroboardStatus.myEntry()) || null);
+        if (mine && mine.statuses && mine.statuses.length) { openStatusViewer([mine], mine.id || 'you'); return; }
+        openPostComposer('status');
+        return;
+      }
       const viewable = STORIES_CACHE.filter(s => !s.you && s.statuses && s.statuses.length);
       if (!viewable.length) { toast('No statuses available'); return; }
-      if (!window.openStatusViewer) { toast('Status viewer unavailable'); return; }
       openStatusViewer(viewable, item.dataset.storyId);
     });
   }
@@ -124,7 +205,7 @@
     if (!slides.length) return;
     DroboardPromoSlider.mount('#promoMount', {
       slides, interval: 3200,
-      onSelect: (slide) => { location.href = 'bridge.html?id=' + encodeURIComponent((slide && (slide.id || slide.title)) || ''); },
+      // No onSelect: the component default navigates slide/CTA → bridge.
     });
   }
 
@@ -155,6 +236,13 @@
     return posts.map(p => `<div class="comm-slide">${DroboardGenreCard.renderCard(p)}</div>`).join('');
   }
 
+  function openStoryGuarded(ref) {
+    const sid = ref && (ref.id || '');
+    const ttl = (ref && (ref.title || '')) || 'Story';
+    if (sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
+    if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
+    toast('📖 ' + ttl);
+  }
   function genreCardHooks() {
     return {
       getReactionHTML: (post) => {
@@ -164,10 +252,10 @@
         return DroboardReactionPicker.renderTrigger(String(post.id), { liked: !!post.liked, likeCount: post.likes || 0 });
       },
       onLike: (post) => { post.liked = !post.liked; post.likes = (post.likes || 0) + (post.liked ? 1 : -1); if (window.DroboardGenreCard) DroboardGenreCard.update(post); },
-      onThread: (post) => { location.href = 'genre-hub.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id); },
+      onThread: (post) => { location.href = 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id); },
       onShare: (post) => { if (window.openShareModal) openShareModal({ title: post.title, sub: '@' + (post.name || '') + (post._genreName ? ' · ' + post._genreName : ''), img: '', url: 'https://droboard.app/hub/' + (post._genreId || 'fantasy') + '/' + post.id }); else toast('Share · ' + (post.title || '')); },
-      onDots: (post, el) => { if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, el); else toast('More…'); },
-      onStory: (post) => toast('📖 ' + ((post.story && post.story.title) || 'Story')),
+      onDots: (post, el) => { try { window._lastDotsAnchor = el || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, el); else toast('More…'); },
+      onStory: (post) => openStoryGuarded(post && (post.story || post.storyRef)),
       onAvatar: (post) => openAuthorAvatar(post),
       onNameClick: (post, name) => { location.href = 'profile.html?u=' + encodeURIComponent(name || (post && post.name) || ''); },
       onPinned: () => toast('Hub rules…'),
@@ -187,7 +275,7 @@
         return;
       }
       const thread = e.target.closest('[data-dgc-thread]');
-      if (thread) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(thread.dataset.dgcThread)); if (p) location.href = 'genre-hub.html?genre=' + encodeURIComponent(p._genreId || 'fantasy') + '&id=' + encodeURIComponent(p.id); return; }
+      if (thread) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(thread.dataset.dgcThread)); if (p) location.href = 'discussion.html?genre=' + encodeURIComponent(p._genreId || 'fantasy') + '&id=' + encodeURIComponent(p.id); return; }
       const share = e.target.closest('[data-dgc-share]');
       if (share) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(share.dataset.dgcShare)); if (p && window.openShareModal) openShareModal({ title: p.title, sub: '@' + (p.name || '') + (p._genreName ? ' · ' + p._genreName : ''), img: '', url: 'https://droboard.app/hub/' + (p._genreId || 'fantasy') + '/' + p.id }); return; }
       const av = e.target.closest('[data-dgc-av]');
@@ -319,8 +407,14 @@
       renderSponsored: renderSponsored,
       onAvatarClick: (post) => openAuthorAvatar(post),
       onNameClick: (post) => openAuthorName(post),
-      onComment: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
-      onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
+      onComment: (post) => {
+        if (post && post.type === 'debate') { location.href = 'debate.html?id=' + encodeURIComponent(post.id); return; }
+        location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || '');
+      },
+      onOpenPost: (post) => {
+        if (post && post.type === 'debate') { location.href = 'debate.html?id=' + encodeURIComponent(post.id); return; }
+        location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || '');
+      },
       onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id }); },
       onSave: (post) => {
         if(post.type === 'ama'){
@@ -333,11 +427,13 @@
         else if (window.openSaveModal) { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved!' : 'Removed from saved'); }
         else toast('Save unavailable');
       },
-      onDots: (post, anchor) => { if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
+      onDots: (post, anchor) => { try { window._lastDotsAnchor = anchor || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
-      onOpenLink: () => toast('📖 Opening story…'),
+      onOpenLink: (post) => openStoryGuarded(storyRefFor(post) || (post && (post.storyRef || post.chapterRef))),
       onPollVote: (post, i) => { if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; } post.poll.opts[i].v++; post.poll.voted = i; post.poll.total = (post.poll.total || 0) + 1; DroboardPostCard.update(post); toast('✅ Vote cast!'); },
+      onPredVote: (post, i) => { if (!post.prediction) return; if (post.prediction.voted >= 0) { toast('✅ Already predicted!'); return; } post.prediction.opts[i].v = (post.prediction.opts[i].v || 0) + 1; post.prediction.voted = i; post.prediction.total = (post.prediction.total || 0) + 1; DroboardPostCard.update(post); toast('🔮 Prediction locked!'); },
       onDebateVote: (post, side) => { if (post.debateData.userVote) { toast('✅ Already voted!'); return; } post.debateData.userVote = side; if (side === 'for') post.debateData.forV = (post.debateData.forV || 0) + 1; else post.debateData.agV = (post.debateData.agV || 0) + 1; DroboardPostCard.update(post); toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!'); },
+      onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
     });
   }
 
@@ -455,13 +551,17 @@
 
   /* ── Post Composer (reusable component) ── */
   function pushPost(post, isEdit){
+    if (post && post.type === 'debate') post.comments = debateArgCount(post);
     if(isEdit){
-      const idx=FEED_POSTS.findIndex(p=> String(p.id)===String(post.id));
-      if(idx>-1){ FEED_POSTS[idx]=post; if(window.DroboardPostCard) DroboardPostCard.update(post); }
-      else { FEED_POSTS.unshift(post); if(window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS); }
+      [BASE_POSTS, FEED_POSTS].forEach(arr => {
+        const idx=arr.findIndex(p=> String(p.id)===String(post.id));
+        if(idx>-1) arr[idx]=post;
+      });
+      if(window.DroboardPostCard) DroboardPostCard.update(post);
     } else {
-      FEED_POSTS.unshift(post);
-      if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
+      BASE_POSTS.unshift(post);
+      applySort(true);
+      return;
     }
     const empty=document.getElementById('emptyState');
     if(empty) empty.style.display = 'none';
@@ -481,15 +581,47 @@
     if(el) el.classList.remove('open');
     document.body.style.overflow = '';
   }
+  function composerStories() {
+    const out = [];
+    const seen = new Set();
+    const push = (s) => {
+      if(!s) return;
+      const key = String(s.id || s.title || '').toLowerCase();
+      if(!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(s);
+    };
+    try { ((window.DemoData && DemoData.STORIES) || []).forEach(push); } catch(e){}
+    try {
+      const seed = window.GenreDemoSeed;
+      if(seed && seed.DEMO_STORIES) Object.keys(seed.DEMO_STORIES).forEach(gid => { (seed.DEMO_STORIES[gid] || []).forEach(push); });
+    } catch(e){}
+    return out;
+  }
   function initComposer() {
     if(window.DroboardPostComposer){
       DroboardPostComposer.attach(null, {
         getUser: ()=> ({ name:'You', avatar:(window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5' }),
+        draftKey: 'dro_feed_composer_draft',
+        stories: composerStories(),
+        onStatusSlide: (slide)=>{
+          if(window.DroboardStatus){ try { window.DroboardStatus.post(slide); } catch (e) {} }
+          STORIES_CACHE = window.DroboardStatus ? window.DroboardStatus.mergeStories(STORIES_CACHE) : STORIES_CACHE;
+          renderStories(STORIES_CACHE);
+          toast('🟢 Status posted to your story!');
+        },
         onSubmit: (post, isEdit)=>{
+          if(post && post.type==='status'){
+            if(window.DroboardStatus){ try { window.DroboardStatus.post(post.statusSlide); } catch (e) {} }
+            STORIES_CACHE = window.DroboardStatus ? window.DroboardStatus.mergeStories(STORIES_CACHE) : STORIES_CACHE;
+            renderStories(STORIES_CACHE);
+            toast('🟢 Status posted to your story!');
+            return;
+          }
           pushPost(post, isEdit);
           if(isEdit) toast('✅ Post updated!');
           else {
-            const label={text:'Post', poll:'Poll', debate:'Debate', ama:'AMA', quote:'Quote'}[post.type]||'Post';
+            const label={text:'Post', post:'Post', poll:'Poll', debate:'Debate', ama:'AMA', quote:'Quote', recommendation:'Recommendation', 'chapter-drop':'Chapter drop'}[post.type]||'Post';
             toast(post.type==='ama' ? '🎙️ AMA posted!' : `✅ ${label} published!`);
           }
         }
@@ -513,6 +645,15 @@
     const av = (window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5';
     const activeCt = document.querySelector('.composer-tools .ctype.active');
     const ct = activeCt ? activeCt.dataset.ct : 'text';
+    if(ct === 'status'){
+      if(window.DroboardStatus){ try { window.DroboardStatus.post({ quote: text ? '"'+text+'"' : '', caption: '' }); } catch (e) {} }
+      STORIES_CACHE = window.DroboardStatus ? window.DroboardStatus.mergeStories(STORIES_CACHE) : STORIES_CACHE;
+      renderStories(STORIES_CACHE);
+      closePostComposer();
+      const el=document.getElementById('composerText'); if(el) el.value='';
+      toast('🟢 Status posted to your story!');
+      return;
+    }
     let newPost;
     if(ct === 'ama'){
       newPost = { id: 'p_' + Date.now(), type: 'ama', name: 'You', avatar: av, time: 'Just now', amaData: { isLive: true, viewers: Math.floor(Math.random()*200+20), title: text.slice(0,60) || 'Ask Me Anything', meta: text.slice(0,120) }, likes: 0, liked: false, comments: 0 };
@@ -695,6 +836,7 @@
         if (['latest', 'popular', 'trending', 'following'].includes(item.id)) {
           FEED_SORT = item.id;
           if (window.DroboardMenu) DroboardMenu.setActive(item.id);
+          applySort(true);
           toast('Sorted by ' + item.label);
         }
       },
@@ -713,6 +855,7 @@
 
   /* ── Boot ── */
   async function init() {
+    if (window.ScrollKeep) ScrollKeep.arm();
     initTheme();
     if (window.DroboardNav) DroboardNav.configure({ active: 'feed' });
     if (window.DroboardDotsMenu) {
@@ -721,11 +864,36 @@
           if(window.DroboardPostComposer) DroboardPostComposer.open({editPost: post});
           else toast('✏️ Edit · ' + (post.name || ''));
         },
-        onDelete: (post) => { const i = FEED_POSTS.findIndex(p => p.id === post.id); if (i >= 0) { FEED_POSTS.splice(i, 1); DroboardPostCard.setPosts(FEED_POSTS); toast('🗑️ Post deleted'); } },
-        onReport: () => toast('🚩 Reported. Thanks for flagging.'),
+        onDelete: (post) => { const i = BASE_POSTS.findIndex(p => p.id === post.id); if (i >= 0) { BASE_POSTS.splice(i, 1); applySort(false); toast('🗑️ Post deleted'); } },
+        onReport: (post) => {
+          if (window.DroboardDotsMenu && DroboardDotsMenu.openReportTypes) DroboardDotsMenu.openReportTypes(post, window._lastDotsAnchor || null);
+          else toast('🚩 Reported. Thanks for flagging.');
+        },
+        onReportType: (post, typeId) => {
+          try {
+            const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
+            reports.push({ postId: post.id, typeId, at: Date.now() });
+            localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
+          } catch(e) {}
+          toast('🚩 Report filed. Our team will review it.');
+        },
         onLess: () => toast('Got it — showing less of this.'),
-        onFollow: (post) => toast('Following @' + (post.name || 'user')),
-        onMute: (post) => toast('Muted @' + (post.name || 'user')),
+        onFollow: (post) => { followName(post && post.name); toast('Following @' + (post.name || 'user')); },
+          onMute: (post) => toast('Muted @' + (post.name || 'user')),
+          onPin: (post) => {
+            if (!staffOK()) { toast('Only moderators can pin.'); return; }
+            post.pinned = true; savePinId(post.id, true);
+            const i = FEED_POSTS.findIndex(p => p.id === post.id);
+            if (i > 0) { FEED_POSTS.splice(i, 1); FEED_POSTS.unshift(post); }
+            if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
+            toast('📌 Pinned to top');
+          },
+          onUnpin: (post) => {
+            if (!staffOK()) { toast('Only moderators can unpin.'); return; }
+            post.pinned = false; savePinId(post.id, false);
+            if (window.DroboardPostCard) DroboardPostCard.update(post);
+            toast('Unpinned');
+          },
         onCopyLink: (post) => { const url = 'https://droboard.app/post/' + post.id; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied')).catch(() => toast('🔗 ' + url)); else toast('🔗 ' + url); },
       });
     }
@@ -744,7 +912,8 @@
      loadNotifCount();
     try {
       if (!window.FeedData) throw new Error('FeedData is not defined — check feed-data script path');
-      const [stories, posts] = await Promise.all([FeedData.getStories(), FeedData.getFeedPosts()]);
+      let [stories, posts] = await Promise.all([FeedData.getStories(), FeedData.getFeedPosts()]);
+      try { if (window.DroboardStatus) stories = window.DroboardStatus.mergeStories(stories); } catch (e) {}
       let adPools = {}, adGap = 3;
       if (window.AdService) {
         try {
@@ -755,7 +924,12 @@
       }
       document.getElementById('loadingState').style.display = 'none';
       STORIES_CACHE = stories;
-      FEED_POSTS = interleaveAds(posts, adPools, adGap);
+      BASE_POSTS = posts;
+      AD_POOLS = adPools; AD_GAP = adGap;
+      loadFollowing();
+      stampDebateCounts(BASE_POSTS);
+      stampFeedPins(BASE_POSTS);
+      FEED_POSTS = interleaveAds(BASE_POSTS, AD_POOLS, AD_GAP);
       renderStories(STORIES_CACHE);
       mountCommunitySections();
       if (!FEED_POSTS.length) {
@@ -792,6 +966,7 @@
         onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },
       });
     }
+    if (window.ScrollKeep) ScrollKeep.restore();
   }
 
   function goToHubs() { location.href = 'genre-hub.html'; }

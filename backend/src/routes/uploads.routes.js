@@ -27,21 +27,15 @@ const upload = multer({
   },
 });
 
+const { uploadImageBuffer } = require('../services/media.service');
+
 async function uploadToImages(buffer, mimetype, name) {
-  const form = new FormData();
-  form.append('file', new Blob([buffer], { type: mimetype }), name || 'upload');
-  const res = await fetch(
-    'https://api.cloudflare.com/client/v4/accounts/' + env.cfAccountId + '/images/v1',
-    { method: 'POST', headers: { Authorization: 'Bearer ' + env.cfImagesToken }, body: form }
-  );
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data || !data.success) {
-    const e = new Error((data && data.errors && data.errors[0] && data.errors[0].message) || 'images_upload_failed');
-    e.status = res.status === 401 || res.status === 403 ? 503 : 502;
-    throw e;
+  try {
+    return await uploadImageBuffer(buffer, mimetype, name);
+  } catch (e) {
+    if (e && e.status === 503) throw e;
+    return null;
   }
-  const variants = (data.result && data.result.variants) || [];
-  return variants[0] || null;
 }
 
 function multerMw(req, res, next) {

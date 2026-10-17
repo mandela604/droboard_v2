@@ -70,11 +70,11 @@ body{
   transition:background .3s,box-shadow .3s;
 }
 @media (min-width:701px){
-  body{align-items:center;padding:32px 0;background:radial-gradient(120% 120% at 50% 0%,var(--bg2) 0%,var(--bg) 60%);}
+  body{align-items:flex-start;padding:0;background:#111;}
   .phone{
-    height:min(880px,92vh);
-    border-radius:36px;
-    box-shadow:0 40px 90px rgba(0,0,0,.55),0 0 0 1px var(--bd);
+    height:100dvh;min-height:100vh;
+    border-radius:0;
+    box-shadow:0 0 50px rgba(0,0,0,.55);
   }
 }
 
@@ -158,7 +158,7 @@ body.theme-white .hw-follow{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.
 .synopsis-more{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--acc);margin-top:8px;cursor:pointer;}
 
 /* ── ENGAGEMENT ── */
-.eng-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
+.eng-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;justify-content:center;}
 .eng-row::-webkit-scrollbar{display:none}
 .eng-pill{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:var(--r);cursor:pointer;border:1.5px solid var(--bd);background:var(--card);transition:all .18s;}
 .eng-pill:active{transform:scale(.97)}
@@ -204,6 +204,25 @@ body.theme-white .hw-follow{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.
 .d-total{padding:0 14px 7px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px}
 .live-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);animation:livep 1.3s ease-in-out infinite;flex-shrink:0}
 @keyframes livep{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
+
+/* ── RATE THIS STORY ── */
+.rate-box{background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r);padding:10px 15px;text-align:center;cursor:pointer}
+.rate-stars{display:flex;justify-content:center;gap:4px;align-items:center}
+.rate-hint{font-size:9px;color:var(--muted2);margin-top:5px;display:flex;align-items:center;justify-content:center;gap:3px;transition:transform .3s}
+.rate-box.open .rate-hint{transform:rotate(180deg)}
+.rate-box.open .rate-hint span{display:none}
+.rate-star{font-size:20px;cursor:pointer;color:var(--muted2);transition:color .15s,transform .12s;line-height:1;user-select:none}
+.rate-star:hover{transform:scale(1.15)}
+.rate-star.lit{color:var(--gold)}
+.rate-star.pop{animation:starPop .3s ease}
+@keyframes starPop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.rate-details{max-height:0;overflow:hidden;transition:max-height .3s ease,opacity .25s ease;opacity:0}
+.rate-box.open .rate-details{max-height:80px;opacity:1;padding-top:6px}
+.rate-label{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:4px;min-height:14px}
+.rate-avg{font-size:11px;color:var(--tx2);font-weight:600}
+.rate-avg b{color:var(--gold)}
+.rate-yours{font-size:10px;color:var(--acc);font-weight:700;margin-top:3px;display:none}
+.rate-yours.show{display:block}
 
 /* ── TIP LINE ── */
 .tip-line{display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--bd);border-radius:var(--r-pill);padding:9px 15px;cursor:pointer;font-size:11.5px;font-weight:700;color:var(--tx2);transition:.15s;}
@@ -310,9 +329,13 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
 .d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}
 .d4{animation-delay:.2s}.d5{animation-delay:.25s}.d6{animation-delay:.3s}
 </style>
-<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);try{document.documentElement.setAttribute('data-bg',t);}catch(e){}})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
+<script>/* mirror Settings page theme (droboardTheme light/dark) onto bridge body class */
+try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){document.body.classList.add('theme-white');}else{document.body.classList.remove('theme-white');}}catch(e){}</script>
 
 <div class="phone">
 
@@ -362,6 +385,28 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
 
     <div class="divider"></div>
 
+    <!-- RATE THIS STORY -->
+    <div class="sec fu d2">
+      <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(217,119,6,.08)">⭐</div>Rate this Story</div></div>
+      <div class="rate-box" id="rateBox" onclick="BridgePage.toggleRate()">
+        <div class="rate-stars" id="rateStars">
+          <span class="rate-star" data-r="1">★</span>
+          <span class="rate-star" data-r="2">★</span>
+          <span class="rate-star" data-r="3">★</span>
+          <span class="rate-star" data-r="4">★</span>
+          <span class="rate-star" data-r="5">★</span>
+        </div>
+        <div class="rate-hint"><span id="rateHint">Tap to rate this story</span> <i class="fas fa-chevron-down" style="font-size:8px"></i></div>
+        <div class="rate-details">
+          <div class="rate-label" id="rateLabel">Tap a star to rate</div>
+          <div class="rate-avg" id="rateAvg"></div>
+          <div class="rate-yours" id="rateYours"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
     <!-- ENGAGEMENT -->
     <div class="sec fu d3">
       <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(255,0,80,.08)">⚡</div>Reader Engagement</div></div>
@@ -396,7 +441,7 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
           </div>
         </div>
         <div class="d-total"><span class="live-dot"></span> <span id="debateLiveTotal"></span> readers debating live right now</div>
-        <div class="ec-footer"><span class="ec-total" id="debateVoicesTotal"></span><span class="ec-share" onclick="toast('⚔️ Full debate…')"><i class="fas fa-gavel" style="font-size:9px"></i> Full Debate</span></div>
+        <div class="ec-footer"><span class="ec-total" id="debateVoicesTotal"></span><span class="ec-share" onclick="BridgePage.goToDebate()"><i class="fas fa-gavel" style="font-size:9px"></i> Full Debate</span></div>
       </div>
       <div class="eng-card" id="card-pred">
         <div class="ec-header"><span class="ec-badge pred">🔮 Prediction</span><div class="ec-q" id="predQ"></div></div>
@@ -514,6 +559,7 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
 <script src="../component/report-sheet.js"></script>
+<script src="../component/status-viewer.js?v=2"></script>
 <script src="../component/comment-section.js"></script>
 <script src="../component/discover-card.js"></script>
 <script src="../component/community-cards.js"></script>

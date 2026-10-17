@@ -43,10 +43,10 @@
   window.__droboardGenreCard = true;
 
   const CSS = `
-    .dgc-post{
-      background:var(--l1,#fff);border-bottom:8px solid var(--dgc-div,var(--bg,#d8d8d8));
-      padding:14px 14px 12px;position:relative;
-      font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+      .dgc-post{
+        background:var(--l1,#fff);border-bottom:8px solid var(--dgc-div,var(--bg,#d8d8d8));
+        padding:14px 14px 12px;position:relative;
+      font-family:var(--font-ui,'Inter',system-ui,sans-serif);
       box-sizing:border-box;
     }
     .dgc-post *,.dgc-pinned *{box-sizing:border-box}
@@ -90,10 +90,52 @@
     .dgc-tag.trope{background:transparent;border:1px solid var(--bd-acc,rgba(255,0,80,.25));color:var(--acc,#ff0050)}
     [data-theme="dark"] .dgc-tag.trope{border-color:rgba(255,0,80,.4);color:#ff7a9a}
     .dgc-tag.hot{background:rgba(255,0,80,.1);color:var(--acc,#ff0050)}
+    .dgc-tag.pinned{background:rgba(240,168,0,.12);color:#b57e00;border:1px solid rgba(240,168,0,.3)}
     [data-theme="dark"] .dgc-tag.hot{background:rgba(255,0,80,.25);color:#ff7a9a;border:1px solid rgba(255,0,80,.4)}
 
     .dgc-media{width:100%;max-height:220px;border-radius:12px;overflow:hidden;margin-bottom:10px;background:var(--l2,#f1f1f1);cursor:pointer}
     .dgc-media img{width:100%;height:100%;max-height:220px;object-fit:cover;display:block}
+
+    /* ── Engagement widgets (poll / prediction / debate) — same reader-page
+       UI, always expanded (no accordion), dgc- prefixed, host CSS vars. ── */
+    .dgc-eng{border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:14px;overflow:hidden;margin-bottom:10px;background:var(--l2,#f1f1f1)}
+    .dgc-eng-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px}
+    .dgc-eng-hdr-ico{font-size:14px;line-height:1}
+    .dgc-eng-hdr-body{flex:1;min-width:0}
+    .dgc-eng-hdr-title{font-size:12px;font-weight:800;color:var(--tx-high,#161616)}
+    .dgc-eng-hdr-sub{font-size:10px;color:var(--tx-muted,#666);margin-top:1px}
+    .dgc-eng-panel{display:block;border-top:1px solid var(--bd,rgba(0,0,0,.1))}
+    .dgc-eng-q{padding:10px 14px 8px;font-size:13px;font-weight:700;color:var(--tx-high,#161616)}
+    .dgc-eng-opts{padding:0 14px 6px}
+    .dgc-eng-opt{position:relative;border-radius:10px;padding:10px 12px;overflow:hidden;border:1.5px solid var(--bd,rgba(0,0,0,.1));margin-bottom:7px;cursor:pointer;transition:border-color .2s;user-select:none}
+    .dgc-eng-opt:last-child{margin-bottom:0}
+    .dgc-eng-opt.voted{border-color:#ff0050}
+    .dgc-eng-opt-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,0,80,.09);transition:width .6s cubic-bezier(.4,0,.2,1);z-index:0}
+    .dgc-eng-opt-row{position:relative;z-index:1;display:flex;justify-content:space-between;gap:8px}
+    .dgc-eng-opt-txt{font-size:12px;font-weight:600;color:var(--tx-body,#3a3a3a)}
+    .dgc-eng-opt-pct{font-size:11px;font-weight:800;color:var(--acc,#ff0050)}
+    .dgc-eng-opt-mine{color:var(--acc,#ff0050);font-weight:700}
+    .dgc-eng.pred .dgc-eng-opt.voted{border-color:var(--purple,#a78bfa)}
+    .dgc-eng.pred .dgc-eng-opt-bar{background:rgba(167,139,250,.12)}
+    .dgc-eng.pred .dgc-eng-opt-pct,.dgc-eng.pred .dgc-eng-opt-mine{color:var(--purple,#a78bfa)}
+    .dgc-eng-foot{padding:8px 14px;font-size:10px;color:var(--tx-muted,#666);display:flex;justify-content:space-between;align-items:center}
+    .dgc-eng-foot-link{color:var(--acc,#ff0050);font-weight:800;cursor:pointer}
+    .dgc-eng-deb-sides{display:flex;gap:8px;padding:0 14px 6px}
+    .dgc-eng-deb-side{flex:1;position:relative;border-radius:12px;padding:10px 8px;text-align:center;border:2px solid var(--bd,rgba(0,0,0,.1));cursor:pointer;overflow:hidden;transition:all .2s;user-select:none;display:flex;flex-direction:column}
+    .dgc-eng-deb-side.for.chosen{border-color:#0d9668;background:rgba(52,211,153,.06)}
+    .dgc-eng-deb-side.against.chosen{border-color:var(--acc,#ff0050);background:rgba(255,0,80,.06)}
+    .dgc-eng-deb-check{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;background:#0d9668;color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center}
+    .dgc-eng-deb-side.against .dgc-eng-deb-check{background:var(--acc,#ff0050)}
+    .dgc-eng-deb-em{font-size:20px;margin-bottom:4px;flex-shrink:0}
+    .dgc-eng-deb-lbl{font-size:11px;font-weight:800;line-height:1.35;min-height:30px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;flex:1}
+    .dgc-eng-deb-side.for .dgc-eng-deb-lbl{color:#0d9668}
+    .dgc-eng-deb-side.against .dgc-eng-deb-lbl{color:var(--acc,#ff0050)}
+    .dgc-eng-deb-barwrap{height:4px;background:var(--bd,rgba(0,0,0,.08));border-radius:4px;overflow:hidden;margin-bottom:5px}
+    .dgc-eng-deb-bar{height:100%;border-radius:4px;transition:width .6s ease}
+    .dgc-eng-deb-side.for .dgc-eng-deb-bar{background:#0d9668}
+    .dgc-eng-deb-side.against .dgc-eng-deb-bar{background:var(--acc,#ff0050)}
+    .dgc-eng-deb-pct{font-size:14px;font-weight:900;color:var(--tx-high,#161616)}
+    .dgc-eng-deb-cnt{font-size:10px;color:var(--tx-muted,#666);margin-top:2px}
 
     .dgc-story{
       display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;
@@ -106,6 +148,13 @@
     .dgc-story-title{font-size:12.5px;font-weight:700;color:var(--tx-high,#161616);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dgc-story-by{font-size:11px;color:var(--tx-muted,#666)}
     .dgc-story-go{color:var(--acc,#ff0050);font-size:12px;flex-shrink:0}
+    /* Recommendation row — compact story promo (cover + genre + hook + author) */
+    .dgc-story.rec{background:#eef2f6;padding:12px;gap:12px;border-radius:14px}
+    [data-theme="dark"] .dgc-story.rec{background:#121318;border-color:rgba(255,255,255,.08)}
+    .dgc-story.rec .dgc-story-cover{width:56px;height:80px;border-radius:8px}
+    .dgc-story-cat{font-size:10px;font-weight:800;color:#0d9668;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+    .dgc-story.rec .dgc-story-title{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;line-height:1.35;white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .dgc-story.rec .dgc-story-by{font-size:12px;font-weight:600}
 
     .dgc-foot{
       display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -125,10 +174,10 @@
     .dgc-part:first-child{margin-left:0}
     .dgc-part-more{font-size:10.5px;font-weight:700;color:var(--tx-muted,#666);margin-left:5px}
 
-    .dgc-pinned{
-      background:linear-gradient(135deg,rgba(255,0,80,.05),rgba(167,139,250,.05));
-      border-bottom:8px solid var(--dgc-div,var(--bg,#d8d8d8));padding:14px;margin:0;
-      font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+      .dgc-pinned{
+        background:linear-gradient(135deg,rgba(255,0,80,.05),rgba(167,139,250,.05));
+        border-bottom:8px solid var(--dgc-div,var(--bg,#d8d8d8));padding:14px;margin:0;
+      font-family:var(--font-ui,'Inter',system-ui,sans-serif);
     }
     .dgc-pinned-tag{font-size:10.5px;font-weight:800;color:var(--acc,#ff0050);display:flex;align-items:center;gap:5px;margin-bottom:6px}
     .dgc-pinned-title{font-size:14.5px;font-weight:800;color:var(--tx-high,#161616);margin-bottom:4px}
@@ -208,6 +257,79 @@
     return _posts.find(p => String(p.id) === String(id));
   }
 
+  // ── Engagement widgets (poll / prediction / debate) — reader-page UI, always expanded ──
+  function _fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n || 0); }
+  function _engShell(icon, title, sub, bodyHtml) {
+    return `<div class="dgc-eng" data-dgc-eng>
+      <div class="dgc-eng-hdr">
+        <span class="dgc-eng-hdr-ico">${icon}</span>
+        <div class="dgc-eng-hdr-body">
+          <div class="dgc-eng-hdr-title">${_esc(title)}</div>
+          <div class="dgc-eng-hdr-sub">${sub}</div>
+        </div>
+      </div>
+      <div class="dgc-eng-panel">${bodyHtml}</div>
+    </div>`;
+  }
+  function _pollHtml(p) {
+    const pl = p.poll || {};
+    const opts = pl.opts || [];
+    const total = pl.total || opts.reduce((a, o) => a + (o.v || 0), 0) || 1;
+    const rows = opts.map((o, i) => {
+      const pct = Math.round(((o.v || 0) / total) * 100) || 0;
+      const voted = pl.voted === i;
+      return `<div class="dgc-eng-opt${voted ? ' voted' : ''}" data-dgc-poll-opt="${_esc(p.id)}:${i}">
+        <div class="dgc-eng-opt-bar" style="width:${pct}%"></div>
+        <div class="dgc-eng-opt-row"><span class="dgc-eng-opt-txt">${_esc(o.label || o.t)}${voted ? ' <span class="dgc-eng-opt-mine">· your vote</span>' : ''}</span><span class="dgc-eng-opt-pct">${pct}%</span></div>
+      </div>`;
+    }).join('');
+    const body = `<div class="dgc-eng-q">${_esc(pl.question || pl.q)}</div><div class="dgc-eng-opts">${rows}</div>
+      <div class="dgc-eng-foot"><span>${pl.voted >= 0 ? 'Thanks for voting' : 'Tap an option to vote'}</span><span>${_fmtN(total)} votes</span></div>`;
+    return _engShell('📊', 'Poll', `${_fmtN(total)} votes`, body);
+  }
+  function _predHtml(p) {
+    const pr = p.prediction || {};
+    const opts = pr.opts || [];
+    const total = pr.total || opts.reduce((a, o) => a + (o.v || 0), 0) || 1;
+    const rows = opts.map((o, i) => {
+      const pct = Math.round(((o.v || 0) / total) * 100) || 0;
+      const voted = pr.voted === i;
+      return `<div class="dgc-eng-opt${voted ? ' voted' : ''}" data-dgc-pred-opt="${_esc(p.id)}:${i}">
+        <div class="dgc-eng-opt-bar" style="width:${pct}%"></div>
+        <div class="dgc-eng-opt-row"><span class="dgc-eng-opt-txt">${_esc(o.label || o.t || o.text)}${voted ? ' <span class="dgc-eng-opt-mine">· your pick</span>' : ''}</span><span class="dgc-eng-opt-pct">${pct}%</span></div>
+      </div>`;
+    }).join('');
+    const body = `<div class="dgc-eng-q">${_esc(pr.question || pr.q)}</div><div class="dgc-eng-opts">${rows}</div>
+      <div class="dgc-eng-foot"><span>${pr.voted >= 0 ? 'Prediction locked in' : 'Tap an option to predict'}</span><span>${_fmtN(total)} predicts</span></div>`;
+    return _engShell('🔮', 'Prediction', `${_fmtN(total)} predicts`, body);
+  }
+  function _debHtml(p) {
+    const d = p.debateData || {};
+    const f = d.forV || 0, a = d.agV || 0, tot = (f + a) || 1;
+    const fp = Math.round(f / tot * 100), ap = 100 - fp;
+    const voted = d.userVote || null;
+    const side = (s, lbl, cnt, em, cls, pct) => `<div class="dgc-eng-deb-side ${cls}${voted === s ? ' chosen' : ''}" data-dgc-debate="${_esc(p.id)}:${s}">
+      ${voted === s ? `<div class="dgc-eng-deb-check"><i class="fas fa-check"></i></div>` : ''}
+      <div class="dgc-eng-deb-em">${em}</div>
+      <div class="dgc-eng-deb-lbl">${_esc(lbl)}</div>
+      <div class="dgc-eng-deb-barwrap"><div class="dgc-eng-deb-bar" style="width:${pct}%"></div></div>
+      <div class="dgc-eng-deb-pct">${pct}%</div>
+      <div class="dgc-eng-deb-cnt">${_fmtN(cnt)} votes</div>
+    </div>`;
+    const body = `<div class="dgc-eng-q">${_esc(d.motion || d.question)}</div>
+      <div class="dgc-eng-deb-sides">${side('for', d.forText || 'For', f, '✅', 'for', fp)}${side('against', d.againstText || 'Against', a, '❌', 'against', ap)}</div>
+      <div class="dgc-eng-foot"><span>${_fmtN(f + a)} joined the discussion</span><span class="dgc-eng-foot-link" data-dgc-debate-open="${_esc(p.id)}">View full debate <i class="fas fa-chevron-right"></i></span></div>`;
+    return _engShell('⚖️', 'Debate', `${_fmtN(f + a)} takes`, body);
+  }
+  // Returns the engagement accordion HTML for a post, or '' if it has none.
+  function _engHtml(p) {
+    let h = '';
+    if (p.poll) h += _pollHtml(p);
+    if (p.prediction) h += _predHtml(p);
+    if (p.debateData) h += _debHtml(p);
+    return h;
+  }
+
   function renderPinned(p) {
     return `<div class="dgc-pinned" data-dgc-id="${_esc(p.id)}" data-dgc-pinned="1">
       <div class="dgc-pinned-tag"><i class="fas fa-thumbtack"></i> Pinned · Hub rules</div>
@@ -235,6 +357,7 @@
     const tagName = String(p.tag || '').toLowerCase();
     const tagCls = String(p.tagClass || 'discussion').toLowerCase();
     if (p.tag) {
+      if (p.pinTop) tags += `<span class="dgc-tag pinned"><i class="fas fa-thumbtack"></i> Pinned</span>`;
       tags += `<span class="dgc-tag ${p.tagClass || 'discussion'}">${_esc(p.tag)}</span>`;
     }
     if (p.trope) {
@@ -248,15 +371,18 @@
       ? `<div class="dgc-media" data-dgc-thread="${_esc(p.id)}"><img src="${_esc(p.media)}" alt="" loading="lazy"/></div>`
       : '';
 
+    const isRec = String(p.tagClass || '').toLowerCase() === 'recommendation';
+    const storyBy = p.story ? (p.story.writer || p.story.author || '') : '';
+    const storyCat = (p.story && (p.story.cat || p.story.genre)) || _genreName || 'Recommended';
     const story = p.story
-      ? `<div class="dgc-story" data-dgc-story="${_esc(p.id)}">
+      ? `<div class="dgc-story${isRec ? ' rec' : ''}" data-dgc-story="${_esc(p.id)}">
           <img class="dgc-story-cover" src="${_esc(p.story.cover || '')}" alt=""/>
           <div class="dgc-story-body">
-            <div class="dgc-story-lbl">${p.tagClass === 'recommendation' ? 'Recommending' : 'Discussing'}</div>
+            ${isRec ? `<div class="dgc-story-cat">${_esc(storyCat)}</div>` : `<div class="dgc-story-lbl">Discussing</div>`}
             <div class="dgc-story-title">${_esc(p.story.title || '')}</div>
-            <div class="dgc-story-by">by ${_esc(p.story.writer || p.story.author || '')}</div>
+            <div class="dgc-story-by">by ${isRec ? '@' : ''}${_esc(storyBy)}</div>
           </div>
-          <i class="fas fa-arrow-right dgc-story-go"></i>
+          ${isRec ? '' : '<i class="fas fa-arrow-right dgc-story-go"></i>'}
         </div>`
       : '';
 
@@ -287,7 +413,7 @@
           <button type="button" class="dgc-more" data-dgc-thread="${_esc(p.id)}">… See more</button>`;
       })()}
       ${tags ? `<div class="dgc-tags">${tags}</div>` : ''}
-      ${media}${story}
+      ${media}${story}${_engHtml(p)}
       <div class="dgc-foot">
         <div class="dgc-actions">
           ${typeof _hooks.getReactionHTML === 'function'
@@ -348,6 +474,39 @@
     if (_hooks.sort) _sort = _hooks.sort;
 
     _root.addEventListener('click', (e) => {
+      // ── Engagement widgets (poll / prediction / debate) ──
+      const pollOpt = e.target.closest('[data-dgc-poll-opt]');
+      if (pollOpt) {
+        e.stopPropagation();
+        const [pid, idx] = pollOpt.dataset.dgcPollOpt.split(':');
+        const p = _find(pid);
+        if (p && typeof _hooks.onPollVote === 'function') _hooks.onPollVote(p, parseInt(idx, 10));
+        return;
+      }
+      const predOpt = e.target.closest('[data-dgc-pred-opt]');
+      if (predOpt) {
+        e.stopPropagation();
+        const [pid, idx] = predOpt.dataset.dgcPredOpt.split(':');
+        const p = _find(pid);
+        if (p && typeof _hooks.onPredVote === 'function') _hooks.onPredVote(p, parseInt(idx, 10));
+        return;
+      }
+      const debSide = e.target.closest('[data-dgc-debate]');
+      if (debSide) {
+        e.stopPropagation();
+        const [pid, side] = debSide.dataset.dgcDebate.split(':');
+        const p = _find(pid);
+        if (p && typeof _hooks.onDebateVote === 'function') _hooks.onDebateVote(p, side);
+        return;
+      }
+      const debOpen = e.target.closest('[data-dgc-debate-open]');
+      if (debOpen) {
+        e.stopPropagation();
+        const p = _find(debOpen.dataset.dgcDebateOpen);
+        if (p && typeof _hooks.onOpenDebate === 'function') _hooks.onOpenDebate(p);
+        return;
+      }
+
       const like = e.target.closest('[data-dgc-like]');
       if (like) {
         e.stopPropagation();

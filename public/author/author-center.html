@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>Author Center Ã‚Â· DroBoard</title>
+<title>Author Center · DroBoard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -26,7 +26,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 a{color:inherit;text-decoration:none}
 ::-webkit-scrollbar{display:none}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ TOP BAR Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── TOP BAR ──────── */
 .topbar{
   position:sticky;top:0;z-index:50;
   background:rgba(247,247,248,.95);backdrop-filter:blur(12px);
@@ -54,7 +54,7 @@ a{color:inherit;text-decoration:none}
 
 .content{padding:14px 16px 20px}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ WELCOME Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── WELCOME ──────── */
 .welcome{
   background:var(--card);border:1px solid var(--border);border-radius:16px;
   box-shadow:0 1px 4px rgba(0,0,0,.04);padding:18px 16px;margin-bottom:20px;
@@ -62,13 +62,13 @@ a{color:inherit;text-decoration:none}
 .welcome-greet{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.3;margin-bottom:4px}
 .welcome-sub{font-size:12.5px;color:var(--muted);line-height:1.5}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SECTION HEAD Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── SECTION HEAD ──────── */
 .section{margin-bottom:22px}
 .sec-head{display:flex;align-items:center;justify-content:space-between;padding:0 0 10px}
 .sec-title{font-size:16px;font-weight:700}
 .view-all{font-size:12px;font-weight:600;color:var(--muted)}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ STAT GRID Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── STAT GRID ──────── */
 .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .stat-card{
   background:var(--card);border-radius:14px;padding:14px 12px;
@@ -80,7 +80,7 @@ a{color:inherit;text-decoration:none}
 .stat-growth{font-size:10.5px;font-weight:700;color:var(--success);display:flex;align-items:center;gap:3px}
 .stat-growth .dim{color:var(--muted);font-weight:500}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ BOOK CARDS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── BOOK CARDS ──────── */
 .book-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
 .book-card{
   display:flex;gap:12px;background:var(--card);border:1px solid var(--border);
@@ -106,7 +106,7 @@ a{color:inherit;text-decoration:none}
 .status-badge.paused{background:#f1f1f4;color:#5c5c66}
 .status-badge.rejected{background:var(--danger-soft);color:#c92a2a}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ NEW BOOK CARD Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── NEW BOOK CARD ──────── */
 .new-book-card{
   border:1.5px dashed #ffb8c8;background:rgba(255,45,85,.05);border-radius:14px;
   padding:20px 16px;text-align:center;cursor:pointer;
@@ -116,7 +116,7 @@ a{color:inherit;text-decoration:none}
 .new-book-title{font-size:13.5px;font-weight:800;color:var(--pink);margin-bottom:3px}
 .new-book-sub{font-size:11.5px;color:#c23a63;font-weight:500}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ HAMBURGER DRAWER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── HAMBURGER DRAWER ──────── */
 .drawer-overlay{
   position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);
   opacity:0;pointer-events:none;transition:opacity .22s ease;
@@ -155,7 +155,7 @@ a{color:inherit;text-decoration:none}
   background:rgba(255,45,85,.1);padding:2px 6px;border-radius:20px;text-transform:uppercase;
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ RESPONSIVE Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ──────── RESPONSIVE ──────── */
 @media (max-width:359px){
   .stat-num{font-size:17px}
   .book-cover{width:56px;height:78px}
@@ -184,7 +184,7 @@ a{color:inherit;text-decoration:none}
 <div class="content">
 
   <div class="welcome">
-    <div class="welcome-greet">Welcome back, Luna Vale Ã°Å¸â€˜â€¹</div>
+    <div class="welcome-greet">Welcome back, Luna Vale 👋</div>
     <div class="welcome-sub">Here's what's happening with your stories today.</div>
   </div>
 
@@ -194,7 +194,7 @@ a{color:inherit;text-decoration:none}
   </section>
 
   <section class="section" style="margin-bottom:6px">
-    <div class="sec-head"><h2 class="sec-title">My Books</h2><span class="view-all">View All Ã¢â‚¬Âº</span></div>
+    <div class="sec-head"><h2 class="sec-title">My Books</h2><span class="view-all">View All ›</span></div>
     <div class="book-list" id="bookList"></div>
     <div class="new-book-card" id="newBookBtn">
       <div class="new-book-plus"><i class="fas fa-plus"></i></div>

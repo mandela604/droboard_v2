@@ -53,6 +53,7 @@ router.post('/users', ...A, require('../middleware/http').writeLimiter, audit('a
     passwordHash: z.string().max(200).optional(),
     avatar: z.string().max(500).optional(), phone: z.string().max(30).optional(),
     roles: z.array(z.string().max(30)).max(10).optional(), role: z.string().max(30).optional(),
+    platformRoles: z.array(z.string().max(30)).max(10).optional(),
     status: z.string().max(20).optional(), notes: z.string().max(1000).optional(),
   }).strict() })), sa.createUser);
 router.patch('/users/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.users.update'),
@@ -61,6 +62,7 @@ router.patch('/users/:id', ...A, require('../middleware/http').writeLimiter, aud
     email: z.string().email().max(120).optional(), avatar: z.string().max(500).optional(),
     phone: z.string().max(30).optional(), roles: z.array(z.string().max(30)).max(10).optional(),
     role: z.string().max(30).optional(), status: z.string().max(20).optional(),
+    platformRoles: z.array(z.string().max(30)).max(10).optional(),
     verified: z.boolean().optional(), notes: z.string().max(1000).optional(),
   }).strict() })), sa.updateUser);
 router.delete('/users/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.users.delete'),

@@ -1,0 +1,32 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Droboard shared theme — SINGLE SOURCE OF TRUTH for font + light/dark
+   colour tokens. Include on every non-reader page, BEFORE page CSS:
+     <link rel="stylesheet" href="../shared/theme.css">
+   Pages then use ONLY var(--*) tokens — no local :root palette, no local
+   [data-theme="dark"] block, no hardcoded font stacks. The theme switcher
+   flips data-theme on <html> (+ persists); every page follows automatically.
+   Reader pages are deliberately excluded (own Lora/DM Sans + body classes).
+   ═══════════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --font-ui:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  /* Canonical light scheme (hub scheme: gray page, white surfaces) */
+  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
+  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
+  --bg:#d8d8d8;--l1:#ffffff;--l2:#f1f1f1;--l3:#ffffff;--l4:#e8e8e8;
+  --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.05);--bd-acc:rgba(255,0,80,.25);
+  --tx:#1a1a2e;--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
+  --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;
+  --acc-light:rgba(255,0,80,0.1);--acc-lighter:rgba(255,0,80,0.15);
+  --border:#ebebed;
+  /* discover legacy aliases (same values, old names) */
+  --card:#ffffff;--text:#161616;--muted:#666666;--pink:#ff0050;
+}
+[data-theme="dark"]{
+  --border:rgba(255,255,255,.07);
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
+  --tx:#e0e0e0;--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
+  --card:#08090c;--text:#e0e0e0;--muted:#71717a;--pink:#ff0050;
+}

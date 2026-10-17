@@ -14,6 +14,10 @@ const COMMENTS_DATA = [
         likes: 324,
         liked: false,
         reactions: { fire: 12, cry: 45, broken: 8, shock: 3, mindblown: 0, emo: 6, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400', quote: 'Writing Ch.6 now...', caption: 'The next chapter hurts more', time: '1h ago' },
+            { bg: 'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=400', quote: 'Thank you for reading', caption: 'Ada', time: '5h ago' }
+        ],
         replies: [
             {
                 id: 101,
@@ -28,6 +32,9 @@ const COMMENTS_DATA = [
                 likes: 89,
                 liked: false,
                 reactions: { fire: 0, cry: 12, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 5, userRx: null },
+                statuses: [
+                    { bg: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400', quote: 'New story dropping soon', caption: 'Stay tuned', time: '2h ago' }
+                ],
                 replies: []
             }
         ]
@@ -45,6 +52,9 @@ const COMMENTS_DATA = [
         likes: 156,
         liked: true,
         reactions: { fire: 8, cry: 23, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: 'fire' },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400', quote: 'On chapter 15 rn', caption: 'This story owns me', time: '3h ago' }
+        ],
         replies: [
             {
                 id: 102,
@@ -76,6 +86,9 @@ const COMMENTS_DATA = [
         likes: 78,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=400', quote: 'Reading until 3am again', caption: 'No regrets', time: '4h ago' }
+        ],
         replies: []
     },
     {
@@ -91,6 +104,9 @@ const COMMENTS_DATA = [
         likes: 45,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400', quote: 'This chapter destroyed me', caption: 'send help', time: '5h ago' }
+        ],
         replies: []
     },
     {
@@ -106,6 +122,9 @@ const COMMENTS_DATA = [
         likes: 234,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400', quote: 'New story dropping soon', caption: 'Stay tuned', time: '2h ago' }
+        ],
         replies: []
     },
     {
@@ -121,6 +140,9 @@ const COMMENTS_DATA = [
         likes: 189,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=400', quote: 'Beautiful writing', caption: 'Efe', time: '6h ago' }
+        ],
         replies: []
     },
     {
@@ -136,6 +158,9 @@ const COMMENTS_DATA = [
         likes: 167,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=400', quote: 'gasped out loud fr', caption: 'Zara', time: '7h ago' }
+        ],
         replies: [
             {
                 id: 103,
@@ -150,6 +175,9 @@ const COMMENTS_DATA = [
                 likes: 45,
                 liked: false,
                 reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+                statuses: [
+                    { bg: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400', quote: 'Writing Ch.6 now...', caption: 'The next chapter hurts more', time: '1h ago' }
+                ],
                 replies: []
             }
         ]
@@ -182,6 +210,9 @@ const COMMENTS_DATA = [
         likes: 210,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400', quote: 'best story on here', caption: 'period', time: '8h ago' }
+        ],
         replies: []
     },
     {
@@ -212,6 +243,9 @@ const COMMENTS_DATA = [
         likes: 512,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400', quote: 'Writing Ch.6 now...', caption: 'The next chapter hurts more', time: '1h ago' }
+        ],
         replies: []
     },
     {
@@ -227,6 +261,9 @@ const COMMENTS_DATA = [
         likes: 78,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400', quote: 'On chapter 15 rn', caption: 'This story owns me', time: '3h ago' }
+        ],
         replies: [
             {
                 id: 104,
@@ -241,6 +278,9 @@ const COMMENTS_DATA = [
                 likes: 23,
                 liked: false,
                 reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+                statuses: [
+                    { bg: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400', quote: 'New story dropping soon', caption: 'Stay tuned', time: '2h ago' }
+                ],
                 replies: [
                     {
                         id: 105,
@@ -255,6 +295,9 @@ const COMMENTS_DATA = [
                         likes: 34,
                         liked: false,
                         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+                        statuses: [
+                            { bg: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400', quote: 'On chapter 15 rn', caption: 'This story owns me', time: '3h ago' }
+                        ],
                         replies: []
                     }
                 ]
@@ -274,6 +317,9 @@ const COMMENTS_DATA = [
         likes: 67,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=400', quote: 'Reading until 3am again', caption: 'No regrets', time: '4h ago' }
+        ],
         replies: []
     },
     {
@@ -289,6 +335,9 @@ const COMMENTS_DATA = [
         likes: 156,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400', quote: 'This chapter destroyed me', caption: 'send help', time: '5h ago' }
+        ],
         replies: []
     },
     {
@@ -304,6 +353,9 @@ const COMMENTS_DATA = [
         likes: 89,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=400', quote: 'Beautiful writing', caption: 'Efe', time: '6h ago' }
+        ],
         replies: []
     },
     {
@@ -319,6 +371,9 @@ const COMMENTS_DATA = [
         likes: 123,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=400', quote: 'gasped out loud fr', caption: 'Zara', time: '7h ago' }
+        ],
         replies: []
     },
     {
@@ -349,6 +404,9 @@ const COMMENTS_DATA = [
         likes: 92,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400', quote: 'best story on here', caption: 'period', time: '8h ago' }
+        ],
         replies: []
     },
     {
@@ -379,7 +437,9 @@ const COMMENTS_DATA = [
         likes: 421,
         liked: false,
         reactions: { fire: 0, cry: 0, broken: 0, shock: 0, mindblown: 0, emo: 0, sus: 0, clap: 0, userRx: null },
+        statuses: [
+            { bg: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400', quote: 'Writing Ch.6 now...', caption: 'The next chapter hurts more', time: '1h ago' }
+        ],
         replies: []
     }
 ];
-

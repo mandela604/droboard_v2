@@ -14,10 +14,10 @@
  *   Chapters   → book-workspace.html    (fa-book-open)
  *   Plotting   → plotting.html          (fa-diagram-project)
  *   Characters → characters.html        (fa-user-group)
- *   Analytics  → book-analytics.html    (fa-chart-line)
- *   Revenue    → book-revenue.html      (fa-sack-dollar)
- *   Contract   → contract.html          (fa-file-signature)
- *   More       → book-more.html         (fa-ellipsis)
+ *   Analytics  → book-analytics.html    (fa-chart-line)    [HIDDEN — not ready]
+ *   Revenue    → book-revenue.html      (fa-sack-dollar)   [HIDDEN — not ready]
+ *   Contract   → contract.html          (fa-file-signature)[HIDDEN — not ready]
+ *   More       → book-more.html         (fa-ellipsis)      [HIDDEN — not ready]
  *
  * Active tab is auto-detected from the current filename. Override:
  *
@@ -135,10 +135,13 @@
     { key: 'chapters',   label: 'Chapters',   href: 'book-workspace.html',  icon: 'fa-book-open' },
     { key: 'plotting',   label: 'Plotting',   href: 'plotting.html',        icon: 'fa-diagram-project' },
     { key: 'characters', label: 'Characters', href: 'characters.html',      icon: 'fa-user-group' },
-    { key: 'analytics',  label: 'Analytics',  href: 'book-analytics.html',  icon: 'fa-chart-line' },
-    { key: 'revenue',    label: 'Revenue',    href: 'book-revenue.html',    icon: 'fa-sack-dollar' },
-    { key: 'contract',   label: 'Contract',   href: 'contract.html',        icon: 'fa-file-signature' },
-    { key: 'more',       label: 'More',       href: 'book-more.html',       icon: 'fa-ellipsis' },
+    // HIDDEN FOR NOW — Analytics → More aren't ready for real use yet;
+    // each one needs proper data + backend work to ship well. To bring a
+    // tab back, delete its `hidden: true` flag (nothing else to change).
+    { key: 'analytics',  label: 'Analytics',  href: 'book-analytics.html',  icon: 'fa-chart-line',     hidden: true },
+    { key: 'revenue',    label: 'Revenue',    href: 'book-revenue.html',    icon: 'fa-sack-dollar',    hidden: true },
+    { key: 'contract',   label: 'Contract',   href: 'contract.html',        icon: 'fa-file-signature', hidden: true },
+    { key: 'more',       label: 'More',       href: 'book-more.html',       icon: 'fa-ellipsis',       hidden: true },
   ];
 
   let _forcedActive = null;
@@ -182,7 +185,7 @@
     _root.setAttribute('data-wt-theme', _theme);
     _root.innerHTML = `
       <div class="wt-scroll">
-        ${TABS.map(t => `
+        ${TABS.filter(t => !t.hidden).map(t => `
           <a class="wt-item" data-wt-key="${t.key}" href="${t.href}">
             <i class="fas ${t.icon}"></i>${t.label}
           </a>`).join('')}

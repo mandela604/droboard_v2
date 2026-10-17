@@ -33,26 +33,27 @@ function updateChar(id, countId, max){
   document.getElementById(countId).textContent = (el.value || '').length;
 }
 function syncAvatar(){
-  const url = document.getElementById('fAvatar').value.trim();
+  const url = document.getElementById('fAvatar').value;
   if (url) document.getElementById('avatarPreview').src = url;
 }
 function syncCover(){
-  const url = document.getElementById('fCover').value.trim();
+  const url = document.getElementById('fCover').value;
   document.getElementById('coverPreview').style.backgroundImage = url ? `url('${url}')` : 'none';
 }
-function promptAvatar(){
-  const cur = document.getElementById('fAvatar').value;
-  const next = prompt('Avatar image URL', cur || '');
-  if (next === null) return;
-  document.getElementById('fAvatar').value = next.trim();
-  syncAvatar();
-}
-function promptCover(){
-  const cur = document.getElementById('fCover').value;
-  const next = prompt('Cover image URL', cur || '');
-  if (next === null) return;
-  document.getElementById('fCover').value = next.trim();
-  syncCover();
+/* Image upload — no URL fields anywhere. FileReader → dataURL into the
+   hidden fAvatar/fCover inputs; saveAll already reads those inputs.
+   Live swap: upload the File to storage, then store the returned URL. */
+function handleImageFile(ev, which){
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = function(){
+    if (which === 'avatar'){ document.getElementById('fAvatar').value = r.result; syncAvatar(); }
+    else { document.getElementById('fCover').value = r.result; syncCover(); }
+    toast(which === 'avatar' ? 'Photo updated — save changes' : 'Cover updated — save changes');
+  };
+  r.readAsDataURL(f);
+  ev.target.value = '';
 }
 
 function renderGenres(){
@@ -213,8 +214,7 @@ window.goBack = goBack;
 window.updateChar = updateChar;
 window.syncAvatar = syncAvatar;
 window.syncCover = syncCover;
-window.promptAvatar = promptAvatar;
-window.promptCover = promptCover;
+window.handleImageFile = handleImageFile;
 window.renderGenres = renderGenres;
 window.renderExtras = renderExtras;
 window.escAttr = escAttr;

@@ -42,13 +42,57 @@ async function homeStatuses({ userId }) {
   };
 }
 
-async function createStatus({ userId, data }) {
-  const ttlH = Math.min(72, Math.max(1, data.ttlHours || DEFAULT_TTL_HOURS));
+// Frontend contract: GET /api/statuses/me → { statuses: [{bg,quote,caption,time}] }
+async function myStatuses({ userId }) {
+  const rows = await Status.find({ userId: String(userId), expiresAt: { $gt: new Date() } })
+    .sort({ createdAt: -1 }).limit(20).lean();
+  return {
+    statuses: rows.map(s => {
+      const o = toStatus(s, userId);
+      return {
+        id: o.id, bg: o.bg, quote: o.quote, caption: o.caption,
+        time: relTimeLabel(o.createdAt), ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
+        likes: o.likes, viewed: o.viewed, isLive: o.isLive, expiresAt: o.expiresAt,
+      };
+    }),
+  };
+}
+
+function relTimeLabel(d) {
+  if (!d) return 'Just now';
+  const s = Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 1000));
+  if (s < 60) return 'Just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+// File upload (preferred) OR JSON {bg: <uploaded media URL>}.
+// bg-as-URL must pass validateMediaUrl (Cloudflare Images delivery only) —
+// clients upload via POST /api/uploads/image first, then post the URL.
+async function createStatus({ userId, file, data }) {
+  let bg;
+  if (file && file.buffer && file.buffer.length) {
+    const { uploadImageBuffer, validateMediaUrl } = require('./media.service');
+    const url = await uploadImageBuffer(file.buffer, file.mimetype, file.originalname);
+    bg = validateMediaUrl(url, 'bg');
+  } else if (data && data.bg) {
+    const { validateMediaUrl } = require('./media.service');
+    bg = validateMediaUrl(data.bg, 'bg');
+    if (!bg) { const e = new Error('bad_bg'); e.status = 400; throw e; }
+  } else {
+    const e = new Error('no_file'); e.status = 400; throw e;
+  }
+  const ttlH = Math.min(72, Math.max(1, (data && data.ttlHours) || DEFAULT_TTL_HOURS));
   const doc = await Status.create({
-    userId: String(userId), bg: data.bg, quote: data.quote || '', caption: data.caption || '',
-    isLive: !!data.isLive, expiresAt: new Date(Date.now() + ttlH * 3600000),
+    userId: String(userId), bg,
+    quote: (data && data.quote) || '', caption: (data && data.caption) || '',
+    isLive: !!(data && data.isLive), expiresAt: new Date(Date.now() + ttlH * 3600000),
   });
-  return toStatus(doc, userId);
+  const out = toStatus(doc, userId);
+  out.time = 'Just now';
+  out.ts = doc.createdAt ? new Date(doc.createdAt).getTime() : Date.now();
+  return out;
 }
 
 async function loadOr404(id) {
@@ -84,4 +128,4 @@ async function deleteStatus({ status }) {
   return { ok: true };
 }
 
-module.exports = { toStatus, homeStatuses, createStatus, loadOr404, canWrite, viewStatus, toggleLike, deleteStatus };
+module.exports = { toStatus, homeStatuses, myStatuses, createStatus, loadOr404, canWrite, viewStatus, toggleLike, deleteStatus };

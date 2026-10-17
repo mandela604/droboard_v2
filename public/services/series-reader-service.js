@@ -64,7 +64,16 @@ function resolveSeries(id) {
       for (const handle of Object.keys(seed.DEMO_PROFILES)) {
         const p = seed.DEMO_PROFILES[handle];
         const b = (p.books || []).find(x => String(x.id) === String(id));
-        if (b) return synthFromBook(p, b);
+        if (b) {
+          // Books tagged with a catalogue id open the rich series record
+          // (polls, predictions, debates, teams) instead of a bare synth.
+          if (b.seriesId && CATALOG[b.seriesId]) {
+            const rec = CATALOG[b.seriesId];
+            rec._bookId = b.id; // keep original id for back-navigation
+            return rec;
+          }
+          return synthFromBook(p, b);
+        }
       }
     }
   } catch (e) {}
@@ -106,14 +115,16 @@ async function init() {
   SERIES = resolveSeries(seriesId);
   isFollowing = SERIES && SERIES.writer ? !!SERIES.writer.isFollowed : false;
   if (!SERIES || !SERIES.writer) {
-    document.getElementById('tbSeriesName').textContent = 'Series not found';
+    document.getElementById('tbSeriesName').textContent = 'Story not found';
     document.getElementById('chaptersContent').innerHTML =
       '<div class="empty-state"><i class="fas fa-book-open"></i><p>Series data failed to load. Check that data files are reachable.</p></div>';
     return;
   }
-  // Top bar
+  // Top bar — only short story / long story types (no seasons)
   document.getElementById('tbSeriesName').textContent = SERIES.title;
-  document.getElementById('tbSeriesSub').textContent = `@${SERIES.writer.name} · ${SERIES.seasons} Season${SERIES.seasons > 1 ? 's' : ''} · ${SERIES.totalChapters} chapters`;
+  var _chTotal = SERIES.totalChapters || 0;
+  var _storyType = _chTotal > 1 ? 'Long story' : 'Short story';
+  document.getElementById('tbSeriesSub').textContent = `@${SERIES.writer.name} · ${_storyType} · ${_chTotal} chapter${_chTotal === 1 ? '' : 's'}`;
 
   // Hero
   document.getElementById('heroCover').style.backgroundImage = `url('${SERIES.cover}')`;
@@ -132,7 +143,7 @@ async function init() {
   document.getElementById('heroBadges').innerHTML = `
     <span class="hbadge hb-cat">${SERIES.cat}</span>
     ${statusBadge}
-    <span class="hbadge hb-complete">S${SERIES.seasons} · ${SERIES.totalChapters} chapters</span>
+    <span class="hbadge hb-complete">${_storyType} · ${SERIES.totalChapters} chapter${SERIES.totalChapters === 1 ? '' : 's'}</span>
     ${contestBadge}
   `;
 
@@ -148,9 +159,9 @@ async function init() {
     `<div class="qs-item"><div class="qs-num ${q.cls}">${q.num}</div><div class="qs-label">${q.label}</div></div>`
   ).join('');
 
-  // Continue banner
+  // Continue banner (no seasons — chapter only)
   const cp = SERIES.currentProgress;
-  document.getElementById('cbChName').textContent = `S${cp.season} · Ch${cp.chapter} — ${cp.chapterTitle}`;
+  document.getElementById('cbChName').textContent = `Ch${cp.chapter} — ${cp.chapterTitle}`;
   document.getElementById('cbChMeta').textContent = `${cp.percent}% through this chapter`;
   document.getElementById('cbProgress').style.width = cp.percent + '%';
 
@@ -181,30 +192,18 @@ async function init() {
   mountAdStrip();
 }
 
-function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'series', slot: 'series:top' }); } catch (e) {} }
 async function mountAdStrip() {
-  var el = document.getElementById("adStrip");
+  var el = document.getElementById("adStripWrap");
   if (!el) return;
-  var ad = null;
-  if (window.AdService) {
-    try {
-      var pools = await AdService.getAds({ page: "series" });
-      ad = (pools.platform || [])[0] || (pools.banner || [])[0] || null;
-    } catch (e) { ad = null; }
-  }
-  if (!ad) { el.style.display = "none"; return; }
-  el.style.display = "flex";
-  el.setAttribute("data-adid", ad.id || "");
-  el.querySelector(".ad-strip-brand").textContent = ad.sponsor || ad.brand || "Sponsored";
-  el.querySelector(".ad-strip-h").textContent = ad.title || ad.headline || "";
-  el.querySelector(".ad-strip-sub").textContent = ad.cta || "";
-  var cta = el.querySelector(".ad-strip-cta");
-  if (cta) cta.textContent = ad.cta || "Open";
-  trackAd(ad.id, "impression");
-  el.addEventListener("click", function () { trackAd(ad.id, "click"); toast((ad.cta || "Opening") + "..."); });
+  if (!window.DroboardAdSlot) { el.style.display = "none"; return; }
+  try {
+    var filled = await window.DroboardAdSlot.mount(el, { slot: "series:top", page: "series", postId: seriesId });
+    el.style.display = filled ? "" : "none";
+  } catch (e) { el.style.display = "none"; }
 }
 
-window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis };
+window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, moreEng: moreEng, helpfulTake: helpfulTake };
 
 /* ══ REVIEWS (top-liked debate takes) + MORE LIKE THIS (book-details merge) ══ */
 function renderReviews() {
@@ -216,16 +215,45 @@ function renderReviews() {
   ));
   takes.sort((a, b) => b.likes - a.likes);
   const top = takes.slice(0, 3);
+  top.forEach((t, i) => { t.helpful = !!helpfulPicks[i]; });
   if (!top.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-star"></i><p>No reviews yet — debates are where takes live.</p></div>`; return; }
   el.innerHTML = top.map(t => `
     <div class="rev-card">
       <div class="rev-head">
         <div class="rev-av">${t.avatar ? `<img src="${t.avatar}" alt=""/>` : esc0((t.name || '?')[0])}</div>
         <div><div class="rev-name">${t.name}</div><div class="rev-meta">${t.time} · ${t.side === 'for' ? 'For' : 'Against'} the motion</div></div>
+        <div class="rev-stars">${starHtml(t)}</div>
       </div>
       <div class="rev-text">${t.text}</div>
-      <div class="rev-foot"><i class="far fa-thumbs-up"></i> Helpful (${fmtN(t.likes)})</div>
+      <div class="rev-foot rev-helpful" data-idx="${top.indexOf(t)}" onclick="SeriesReaderPage.helpfulTake(${top.indexOf(t)})"><i class="${t.helpful ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.likes + (t.helpful ? 1 : 0))})</div>
     </div>`).join('');
+}
+const helpfulPicks = {};
+function helpfulTake(idx) {
+  if (helpfulPicks[idx]) { toast('Already marked helpful'); return; }
+  helpfulPicks[idx] = true;
+  renderReviews();
+  toast('👍 Marked helpful');
+}
+/* Deterministic demo rating: explicit t.rating if seeded, else hash the
+   take text → stable 3.5–5 stars (mostly high, feels real). */
+function takeRating(t) {
+  if (t.rating != null) return t.rating;
+  let h = 0; const s = String(t.text || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return 3.5 + (h % 4) * 0.5; // 3.5, 4, 4.5, 5
+}
+function starHtml(t) {
+  const r = takeRating(t);
+  const full = Math.floor(r);
+  const half = r - full >= 0.5;
+  let out = '';
+  for (let i = 0; i < 5; i++) {
+    if (i < full) out += '<i class="fas fa-star"></i>';
+    else if (i === full && half) out += '<i class="fas fa-star-half-alt"></i>';
+    else out += '<i class="far fa-star"></i>';
+  }
+  return `<span class="rev-stars" title="${r} out of 5">${out}<span class="rev-star-num">${r.toFixed(1)}</span></span>`;
 }
 function esc0(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
 function renderMoreLike() {
@@ -243,44 +271,42 @@ function renderMoreLike() {
   }));
 }
 
-/* ══ CHAPTERS ══ */
+/* ══ CHAPTERS — flat list (no seasons: short story vs long story only) ══ */
+function allChaptersFlat() {
+  if (Array.isArray(SERIES.chapters) && SERIES.chapters.length) return SERIES.chapters;
+  const out = [];
+  (SERIES.seasonData || []).forEach(s => (s.chapters || []).forEach(c => { c._s = s.season; out.push(c); }));
+  return out;
+}
+/* Chapter → engagement icons (poll 🔮📊 / debate ⚔️) from the
+   season+chapter refs on SERIES.polls / predictions / debates. */
+function engMap() {
+  const m = {};
+  const add = (item, key) => {
+    if (!item || item.season == null || item.chapter == null) return;
+    const k = item.season + ':' + item.chapter;
+    (m[k] = m[k] || []).push(key);
+  };
+  (SERIES.polls || []).forEach(p => add(p, '📊'));
+  (SERIES.predictions || []).forEach(p => add(p, '🔮'));
+  (SERIES.debates || []).forEach(d => add(d, '⚔️'));
+  return m;
+}
+function engChipHtml(season, chapter, label) {
+  if (season == null || chapter == null) return '';
+  return `<span class="eng-chip" onclick="event.stopPropagation();SeriesReaderPage.openChapter(${chapter})" title="Opens Ch.${chapter}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;background:rgba(255,0,80,.1);border:1px solid var(--bd-acc);color:var(--acc3);border-radius:20px;padding:3px 9px;font-size:9.5px;font-weight:800;flex-shrink:0">📖 ${label || ('Ch. ' + chapter)}</span>`;
+}
+function openChapter(n) {
+  location.href = 'full-reader.html?story=' + encodeURIComponent(SERIES && (SERIES._bookId || SERIES.id) || seriesId) + '&ch=' + n;
+}
 function renderChapters() {
   const container = document.getElementById('chaptersContent');
-  let html = '';
-
-  SERIES.seasonData.forEach((season, si) => {
-    const isLast = si === SERIES.seasonData.length - 1;
-    const isOpen = isLast; // last season open by default
-    const hasNew = season.chapters.some(c => c.state === 'current' || (c.badges && c.badges.includes('new')));
-    const doneCount = season.chapters.filter(c => c.state === 'done').length;
-    const statusBadge = season.status === 'ongoing'
-      ? `<span class="season-badge sb-new">🔥 Ongoing</span>`
-      : `<span class="season-badge sb-done">✓ Complete</span>`;
-
-    html += `
-      <div class="season-block" id="sb-${si}">
-        <div class="season-hdr" onclick="SeriesReaderPage.toggleSeason(${si})">
-          <div class="season-num">S${season.season}</div>
-          <div class="season-meta">
-            <div class="season-title">${season.title}</div>
-            <div class="season-sub">
-              ${season.chapters.length} chapters · ${doneCount} read
-              ${statusBadge}
-              ${hasNew ? '<span class="season-badge sb-new">NEW</span>' : ''}
-            </div>
-          </div>
-          <i class="fas fa-chevron-down season-arrow ${isOpen ? 'open' : ''}" id="sarr-${si}"></i>
-        </div>
-        <div class="season-body ${isOpen ? 'open' : ''}" id="sbody-${si}">
-          ${renderChapterList(season.chapters, si)}
-        </div>
-      </div>`;
-  });
-
-  container.innerHTML = html;
+  const chapters = allChaptersFlat();
+  container.innerHTML = renderChapterList(chapters, 0);
 }
 
 function renderChapterList(chapters, si) {
+  const em = engMap();
   return chapters.map((ch, ci) => {
     const numCls = ch.state === 'done' ? 'done' : ch.state === 'current' ? 'current' : 'locked';
     const numIcon = ch.state === 'done'
@@ -293,20 +319,24 @@ function renderChapterList(chapters, si) {
       if (b === 'free') return `<span class="ch-badge crb-free">FREE</span>`;
       return '';
     }).join('');
+    const eng = (em[(ch._s || 1) + ':' + ch.n] || []).map(icon =>
+      `<span title="Engagement in this chapter" style="font-size:10px">${icon}</span>`
+    ).join('');
     const rightEl = ch.state === 'current'
-      ? `<span class="ch-current-tag">Reading</span><button class="ch-read-btn" onclick="event.stopPropagation();toast('📖 Opening chapter…')">Continue</button>`
+      ? `<span class="ch-current-tag">Reading</span><button class="ch-read-btn" onclick="event.stopPropagation();SeriesReaderPage.openChapter(${ch.n})">Continue</button>`
       : ch.state === 'done'
         ? `<i class="fas fa-check-circle ch-done-ico"></i>`
         : `<i class="fas fa-lock ch-lock-ico"></i>`;
 
     return `
-      <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="${ch.state !== 'locked' ? "toast('📖 Reading chapter…')" : "toast('🔒 Not yet available')"}">
+      <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="${ch.state !== 'locked' ? `SeriesReaderPage.openChapter(${ch.n})` : "toast('🔒 Not yet available')"}">
         <div class="ch-num-badge ${numCls}">${numIcon}</div>
         <div class="ch-info">
           <div class="ch-title">Ch.${ch.n} — ${ch.title}</div>
           <div class="ch-meta">
             ${ch.reads !== '–' ? `<span><i class="far fa-eye" style="font-size:8px"></i> ${ch.reads}</span>` : ''}
             <span>⏱ ${ch.time}</span>
+            ${eng}
             ${badges}
           </div>
         </div>
@@ -316,23 +346,21 @@ function renderChapterList(chapters, si) {
 }
 
 function toggleSeason(si) {
-  const body = document.getElementById('sbody-' + si);
-  const arr = document.getElementById('sarr-' + si);
-  const isOpen = body.classList.contains('open');
-  body.classList.toggle('open', !isOpen);
-  arr.classList.toggle('open', !isOpen);
+  // deprecated: chapters are flat (no seasons) — kept so old onclicks don't throw
+  return;
 }
 
 /* ══ OVERVIEW ══ */
 function renderOverview() {
   document.getElementById('synopsisText').textContent = SERIES.synopsis;
 
+  const _isLong = (SERIES.totalChapters || 0) > 1;
   const infoRows = [
     { icon: '✍️', label: 'Author', val: `@${SERIES.writer.name} · ${SERIES.writer.followers} followers` },
     { icon: '📅', label: 'Started', val: SERIES.startDate },
     { icon: '🔄', label: 'Last updated', val: SERIES.lastUpdated },
-    { icon: '📺', label: 'Seasons', val: `${SERIES.seasons} season${SERIES.seasons > 1 ? 's' : ''}` },
-    { icon: '📖', label: 'Chapters', val: `${SERIES.totalChapters} total · ${SERIES.seasonData.map(s => s.chapters.filter(c => c.state !== 'locked').length).reduce((a,b) => a+b, 0)} published` },
+    { icon: '📖', label: 'Type', val: _isLong ? `Long story · ${SERIES.totalChapters} chapters` : 'Short story · 1 chapter' },
+    { icon: '📖', label: 'Chapters', val: `${SERIES.totalChapters} total · ${allChaptersFlat().filter(c => c.state !== 'locked').length} published` },
     { icon: '⏱', label: 'Read time', val: SERIES.avgReadTime },
     { icon: '📝', label: 'Word count', val: SERIES.wordCount },
     { icon: '🏷️', label: 'Genres', val: null, pills: SERIES.genres },
@@ -349,7 +377,7 @@ function renderOverview() {
     </div>`).join('');
 
   // Stats deep
-  const topReads = SERIES.seasonData.flatMap(s => s.chapters).filter(c => c.reads !== '–').sort((a,b) => parseInt((b.reads||'0').replace('k','000')) - parseInt((a.reads||'0').replace('k','000'))).slice(0,3);
+  const topReads = allChaptersFlat().filter(c => c.reads !== '–').sort((a,b) => parseInt((b.reads||'0').replace('k','000')) - parseInt((a.reads||'0').replace('k','000'))).slice(0,3);
   document.getElementById('statsDeep').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
       ${[
@@ -396,9 +424,10 @@ function renderTeams() {
     `<div class="team-bar-seg" data-team="${t.id}" style="width:${Math.round(t.count/tot*100)}%;background:${t.color}"></div>`
   ).join('');
 
-  const barLabels = teams.map(t =>
-    `<div class="tbl-item"><span class="tbl-dot" style="background:${t.color}"></span><span style="color:${t.color}">${t.icon} ${Math.round(t.count/tot*100)}%</span></div>`
-  ).join('');
+  const barLabels = teams.map(t => {
+    const pct = Math.round(t.count/tot*100);
+    return `<div class="tbl-item" style="flex:${pct} 1 0"><span class="tbl-dot" style="background:${t.color}"></span><span style="color:${t.color}">${t.icon} ${pct}%</span></div>`;
+  }).join('');
 
   const topTeam = [...teams].sort((a,b) => b.count - a.count)[0];
 
@@ -457,77 +486,94 @@ function pickTeam(id) {
   renderTeams();
 }
 
-/* ══ POLLS & PREDICTIONS ══ */
+/* ══ POLLS & PREDICTIONS ══
+   Rendered with the shared ReaderEngagement accordion component —
+   same collapsed-by-default cards as full-reader / scroll-reader.
+   Each item shows its chapter in the accordion title.
+   Paginated 10 per page. */
+function chLabel(item) {
+  if (item.chapter == null) return '';
+  return 'Ch. ' + item.chapter;
+}
+const ENG_PAGE = 10;
+const engShown = { poll: ENG_PAGE, pred: ENG_PAGE, deb: ENG_PAGE };
+function moreEng(kind) {
+  engShown[kind] += ENG_PAGE;
+  if (kind === 'deb') renderDebates(); else renderPolls();
+}
+function engMoreBtn(kind, total) {
+  if (total <= engShown[kind]) return '';
+  const left = total - engShown[kind];
+  return `<button onclick="SeriesReaderPage.moreEng('${kind}')" style="width:100%;margin-top:10px;padding:11px;border-radius:12px;background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);font-size:12px;font-weight:700;cursor:pointer">Show more (${left} remaining)</button>`;
+}
 function renderPolls() {
   const container = document.getElementById('pollsContent');
   let html = '';
 
   if (!SERIES.polls.length && !SERIES.predictions.length) {
-    html = `<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet for this series</p></div>`;
-  } else {
-    // Polls
-    if (SERIES.polls.length) {
-      html += `<div class="sh" style="margin-bottom:10px"><div class="sh-title">📊 Reader Polls</div></div>`;
-      SERIES.polls.forEach(poll => {
-        const tot = poll.options.reduce((a,o) => a + o.votes, 0) || 1;
-        html += `
-          <div class="poll-card">
-            <div class="poll-hdr">
-              <span class="poll-icon">📊</span>
-              <div class="poll-title">${poll.question}</div>
-              <span class="poll-season-tag">Season ${poll.season}</span>
-            </div>
-            <div class="poll-opts">
-              ${poll.options.map((opt, i) => {
-                const pct = Math.round(opt.votes / tot * 100);
-                return `<div class="poll-opt${poll.voted === i ? ' voted' : ''}" data-pollid="${poll.id}" data-oi="${i}" onclick="SeriesReaderPage.votePoll('${poll.id}',${i})">
-                  <div class="poll-bar" style="width:${pct}%"></div>
-                  <div class="poll-row">
-                    <span class="poll-opt-txt">${opt.text}</span>
-                    <span class="poll-pct">${pct}%</span>
-                  </div>
-                </div>`;
-              }).join('')}
-            </div>
-            <div class="poll-footer">
-              <span class="poll-total"><i class="fas fa-users" style="font-size:9px;margin-right:3px"></i>${fmtN(tot)} votes</span>
-              <span class="poll-share" onclick="toast('📤 Poll link copied!')"><i class="fas fa-share-alt" style="font-size:9px;margin-right:3px"></i>Share</span>
-            </div>
-          </div>`;
-      });
-    }
-
-    // Predictions
-    if (SERIES.predictions.length) {
-      html += `<div class="sh" style="margin:14px 0 10px"><div class="sh-title">🔮 Predictions</div></div>`;
-      SERIES.predictions.forEach(pred => {
-        const tot = pred.options.reduce((a,o) => a + o.votes, 0) || 1;
-        html += `
-          <div class="pred-card">
-            <div class="pred-hdr">
-              <div class="pred-label"><i class="fas fa-crystal-ball" style="font-size:8px"></i> Reader Prediction</div>
-              <div class="pred-question">${pred.question}</div>
-            </div>
-            <div class="pred-opts">
-              ${pred.options.map((opt, i) => {
-                const pct = Math.round(opt.votes / tot * 100);
-                return `<div class="pred-opt${opt.picked ? ' picked' : ''}" onclick="SeriesReaderPage.pickPrediction('${pred.id}',${i})">
-                  <div class="pred-opt-em">${opt.em}</div>
-                  <div class="pred-opt-body">
-                    <div class="pred-opt-txt">${opt.text}</div>
-                    <div class="pred-opt-sub">${opt.sub}</div>
-                  </div>
-                  <div class="pred-opt-pct">${pct}%</div>
-                </div>`;
-              }).join('')}
-            </div>
-            <div class="pred-footer"><i class="fas fa-users" style="font-size:9px"></i> ${fmtN(tot)} predictions · Reveals at series end</div>
-          </div>`;
-      });
-    }
+    html = `<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet for this story</p></div>`;
+    container.innerHTML = html;
+    return;
   }
 
+  const polls = SERIES.polls.slice(0, engShown.poll);
+  const preds = SERIES.predictions.slice(0, engShown.pred);
+
+  if (polls.length) {
+    html += `<div class="sh" style="margin-bottom:10px"><div class="sh-title">📊 Reader Polls</div></div>`;
+    polls.forEach(poll => {
+      html += `<div id="eng-${SERIES.id}-poll-${poll.id}"></div>`;
+    });
+    html += engMoreBtn('poll', SERIES.polls.length);
+  }
+  if (preds.length) {
+    html += `<div class="sh" style="margin:14px 0 10px"><div class="sh-title">🔮 Predictions</div></div>`;
+    preds.forEach(pred => {
+      html += `<div id="eng-${SERIES.id}-pred-${pred.id}"></div>`;
+    });
+    html += engMoreBtn('pred', SERIES.predictions.length);
+  }
   container.innerHTML = html;
+
+  if (!window.ReaderEngagement) return;
+  polls.forEach(poll => {
+    const mount = document.getElementById(`eng-${SERIES.id}-poll-${poll.id}`);
+    if (!mount) return;
+    ReaderEngagement.renderInto(
+      `${SERIES.id}-poll-${poll.id}`,
+      poll.chapter || 1,
+      mount,
+      '',
+      {
+        poll: {
+          q: poll.question,
+          opts: poll.options.map(o => ({ t: o.text, v: o.votes })),
+          voted: poll.voted != null ? poll.voted : -1
+        },
+        kinds: { poll: true, pred: false, deb: false },
+        chapterLabel: chLabel(poll)
+      }
+    );
+  });
+  preds.forEach(pred => {
+    const mount = document.getElementById(`eng-${SERIES.id}-pred-${pred.id}`);
+    if (!mount) return;
+    ReaderEngagement.renderInto(
+      `${SERIES.id}-pred-${pred.id}`,
+      pred.chapter || 1,
+      mount,
+      '',
+      {
+        prediction: {
+          q: pred.question,
+          opts: pred.options.map(o => ({ t: (o.em ? o.em + ' ' : '') + o.text, v: o.votes })),
+          voted: predPickedMap[pred.id] != null ? predPickedMap[pred.id] : -1
+        },
+        kinds: { poll: false, pred: true, deb: false },
+        chapterLabel: chLabel(pred)
+      }
+    );
+  });
 }
 
 function votePoll(pollId, oi) {
@@ -560,15 +606,19 @@ function pickPrediction(predId, oi) {
   renderPolls();
 }
 
-/* ══ DEBATES ══ */
+/* ══ DEBATES ══
+   Same accordion debate card as the reader pages — both boxes carry
+   argument text (forText / againstText). Full threads live on
+   debate.html (View full debate →). Paginated 10 per page. */
 function renderDebates() {
   const container = document.getElementById('debatesContent');
   if (!SERIES.debates.length) {
-    container.innerHTML = `<div class="empty-state"><i class="fas fa-comments"></i><p>No debates yet for this series</p></div>`;
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-comments"></i><p>No debates yet for this story</p></div>`;
     return;
   }
 
   const userTeam = teamPicked ? SERIES.teams.find(t => t.id === teamPicked) : null;
+  const debits = SERIES.debates.slice(0, engShown.deb);
 
   let html = '';
   if (userTeam) {
@@ -577,56 +627,37 @@ function renderDebates() {
       Debating as <strong style="color:${userTeam.color}">${userTeam.name}</strong>
     </div>`;
   }
-
-  SERIES.debates.forEach(deb => {
-    if (!debateCms[deb.id]) debateCms[deb.id] = [...deb.comments.map(c => ({...c, liked: false}))];
-    const cms = debateCms[deb.id];
-    const uv = debateUserVotes[deb.id] || deb.userVote;
-    const tot = (deb.forV + deb.agV) || 1;
-    const fp = Math.round(deb.forV / tot * 100);
-    const ap = 100 - fp;
-
-    html += `
-      <div class="debate-card">
-        <div class="debate-hdr">
-          <div class="debate-live-tag"><div class="dlive-dot"></div>LIVE DEBATE · ${fmtN(deb.forV + deb.agV)} arguing</div>
-          <div class="debate-motion">${deb.motion}</div>
-        </div>
-        <div class="debate-sides">
-          <div class="deb-side for${uv === 'for' ? ' chosen' : ''}" data-debid="${deb.id}" data-side="for" onclick="SeriesReaderPage.voteDebate('${deb.id}','for')">
-            <div class="deb-em">✅</div>
-            <div class="deb-lbl">FOR</div>
-            <div class="deb-bar-wrap"><div class="deb-bar" style="width:${fp}%"></div></div>
-            <div class="deb-pct">${fp}%</div>
-            <div class="deb-cnt">${fmtN(deb.forV)}</div>
-          </div>
-          <div class="deb-side against${uv === 'against' ? ' chosen' : ''}" data-debid="${deb.id}" data-side="against" onclick="SeriesReaderPage.voteDebate('${deb.id}','against')">
-            <div class="deb-em">❌</div>
-            <div class="deb-lbl">AGAINST</div>
-            <div class="deb-bar-wrap"><div class="deb-bar" style="width:${ap}%"></div></div>
-            <div class="deb-pct">${ap}%</div>
-            <div class="deb-cnt">${fmtN(deb.agV)}</div>
-          </div>
-        </div>
-        <div class="debate-stats-row">
-          <i class="fas fa-fire" style="color:var(--acc);font-size:9px"></i>
-          ${fmtN(deb.forV + deb.agV)} readers debating · Tap a side to join
-        </div>
-        <div class="debate-comments">
-          <div class="deb-cm-label">💬 Arguments</div>
-          <div class="deb-cm-list" id="debcms-${deb.id}">
-            ${cms.map(c => renderDebCm(c)).join('')}
-          </div>
-        </div>
-        <div class="debate-input-row">
-          <input class="deb-inp" id="debinp-${deb.id}" placeholder="${uv ? 'Make your argument…' : 'Pick a side first…'}" ${!uv ? 'disabled' : ''}/>
-          <button class="deb-post-btn" onclick="SeriesReaderPage.postDebCm('${deb.id}')">Post</button>
-        </div>
-      </div>`;
+  debits.forEach(deb => {
+    html += `<div id="eng-${SERIES.id}-deb-${deb.id}"></div>`;
   });
-
+  html += engMoreBtn('deb', SERIES.debates.length);
   container.innerHTML = html;
-  attachDebateLikes();
+
+  if (!window.ReaderEngagement) return;
+  debits.forEach(deb => {
+    const mount = document.getElementById(`eng-${SERIES.id}-deb-${deb.id}`);
+    if (!mount) return;
+    const uv = debateUserVotes[deb.id] || deb.userVote;
+    ReaderEngagement.renderInto(
+      `${SERIES.id}-deb-${deb.id}`,
+      deb.chapter || 1,
+      mount,
+      '',
+      {
+        debate: {
+          motion: deb.motion,
+          forText: deb.forText || 'For',
+          againstText: deb.againstText || 'Against',
+          forV: deb.forV,
+          agV: deb.agV,
+          voted: uv === 'for' ? 0 : uv === 'against' ? 1 : -1
+        },
+        kinds: { poll: false, pred: false, deb: true },
+        chapterLabel: chLabel(deb),
+        debateId: deb.id
+      }
+    );
+  });
 }
 
 function renderDebCm(c) {
@@ -659,6 +690,7 @@ function voteDebate(debId, side) {
   debateUserVotes[debId] = side;
   if (side === 'for') deb.forV++;
   else deb.agV++;
+  try { if (window.ReaderLeague) ReaderLeague.track('debate'); } catch (e) {}
   toast(side === 'for' ? '✅ You\'re FOR!' : '❌ You\'re AGAINST!');
   renderDebates();
 }

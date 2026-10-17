@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <title>Settings · Droboard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
 <style>
-:root{--acc:#ff0050;--bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--card:#ffffff;--bd:rgba(0,0,0,.12);--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666;--tx-faint:#8a8a8a;--green:#16a34a;--red:#e0384d;--blue:#2563eb}
-[data-theme="dark"]{--bg:#000;--l1:#08090c;--l2:#0e0f13;--card:#0e0f13;--bd:rgba(255,255,255,.07);--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46}
+:root{--green:#16a34a;--red:#e0384d;--blue:#2563eb}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);height:100%}
-body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh}
+body{font-family:var(--font-ui);color:var(--tx-body);display:flex;justify-content:center;min-height:100vh}
 button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;z-index:1;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
 @media(min-width:421px){.phone{box-shadow:0 0 50px rgba(0,0,0,.14)}}
@@ -86,6 +86,8 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(22,22,22,.92);color:#fff;padding:9px 16px;border-radius:20px;font-size:12px;font-weight:600;z-index:400;opacity:0;pointer-events:none;transition:.25s}
 .toast.show{opacity:1}
 </style>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
 <div class="phone">

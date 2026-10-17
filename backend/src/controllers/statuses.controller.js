@@ -6,9 +6,14 @@ async function home(req, res) {
   return base.wrap(res, async () => statuses.homeStatuses({ userId: req.user && req.user.id }));
 }
 
+// Frontend contract: GET /api/statuses/me → { statuses: [{bg,quote,caption,time}] }
+async function me(req, res) {
+  return base.wrap(res, async () => statuses.myStatuses({ userId: req.user.id }));
+}
+
 async function create(req, res) {
   return base.wrap(res, async () => {
-    const out = await statuses.createStatus({ userId: req.user.id, data: req.valid.body });
+    const out = await statuses.createStatus({ userId: req.user.id, file: req.file, data: req.valid.body });
     res.status(201);
     return out;
   });
@@ -36,4 +41,4 @@ async function remove(req, res) {
   });
 }
 
-module.exports = { home, create, view, like, remove };
+module.exports = { home, me, create, view, like, remove };

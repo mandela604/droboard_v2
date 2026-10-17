@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>My Campaign Ã‚Â· DroBoard</title>
+<title>My Campaign · DroBoard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -387,7 +387,7 @@ function showDashboard(){
 
     html+='<div class="section"><div class="sec-title"><i class="fas fa-trophy"></i>Rewards</div><div class="rewards-card">';
     k.rewards.forEach(function(r){
-      html+='<div class="reward-item"><span class="reward-threshold">'+r.threshold+' conversions</span><span class="reward-label '+(r.earned?'done':'locked')+'">'+(r.earned?'Earned':'Locked')+' Ã¢â‚¬â€ '+esc(r.label)+'</span></div>';
+      html+='<div class="reward-item"><span class="reward-threshold">'+r.threshold+' conversions</span><span class="reward-label '+(r.earned?'done':'locked')+'">'+(r.earned?'Earned':'Locked')+' … '+esc(r.label)+'</span></div>';
     });
     html+='<div class="rewards-progress"><div class="rewards-bar" style="width:'+pct+'%"></div></div>';
     html+='</div></div>';

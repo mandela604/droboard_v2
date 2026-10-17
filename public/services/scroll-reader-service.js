@@ -438,7 +438,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
         perks: 'Early chapters, behind-the-scenes, live Q&As',
         joined: COMMSTATE.circleJoined, avatar: author.avatar,
       },
-      showCircle: true,
+      showCircle: false, // genre board only — circle lives on the bridge page
       onJoin: (type, joined) => {
         if (type === 'genre') COMMSTATE.genreJoined = joined;
         else COMMSTATE.circleJoined = joined;
@@ -492,6 +492,8 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           collapsible: true,
           startOpen: false,
           adsRepeat: false, // top ad slot only in reader chapters
+          scrollBox: 420, // bounded inner-scroll list (ad + ~2 comments) + pinned composer
+          fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n,
           ads: (ST.adsEnabled === false || chapterAdFree(ch.n)) ? false : undefined, // paid unlock / page-off = ad-free thread
         });
       } catch (e) {
@@ -635,7 +637,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       entries.forEach(en => {
         if (en.isIntersecting) {
           const n = +en.target.dataset.ch;
-          if (n !== ST.currentCh) { TrackLeave(); ST.currentCh = n; TrackStart(en.target); }
+          if (n !== ST.currentCh) { TrackLeave(); ST.currentCh = n; TrackStart(en.target); try { if (window.ReadingHistory) ReadingHistory.touch(STORY_ID, n); } catch (e) {} }
           document.getElementById("fcProgressPill").textContent = "Ch " + n;
         } else if (en.boundingClientRect && en.boundingClientRect.top < 0) {
           TrackFinishIf(en.target); // fully scrolled past = read
@@ -731,6 +733,19 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     wireFloatingControls();
     wireScrollProgress();
     wireExitIntent();
+    hidePageSkeleton();
+  }
+
+  function hidePageSkeleton() {
+    try {
+      window.__pageReady = true;
+      var sk = document.getElementById('pageSkeleton');
+      if (!sk) return;
+      sk.style.transition = 'opacity .3s';
+      sk.style.opacity = '0';
+      sk.style.pointerEvents = 'none';
+      setTimeout(function () { if (sk.parentNode) sk.parentNode.removeChild(sk); }, 350);
+    } catch (e) {}
   }
 
   /* ══ PUBLIC API (called by service-rendered templates) ══ */

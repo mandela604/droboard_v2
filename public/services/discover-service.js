@@ -467,6 +467,7 @@
     if (window.DroboardNav) DroboardNav.setTheme(next);
   }
   async function init() {
+    if (window.ScrollKeep) ScrollKeep.arm();
     initTheme();
     const pageLoader = document.getElementById('pageLoader');
     let data;
@@ -504,6 +505,7 @@
     initToTop();
     initContentProtection();
 
+    if (window.ScrollKeep) ScrollKeep.restore();
     pageLoader.classList.add('hidden');
     setTimeout(() => pageLoader.remove(), 400);
   }

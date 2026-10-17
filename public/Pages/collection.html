@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>DroBoard — Collection</title>
+<title>DroBoard · Collection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -141,6 +141,8 @@ a{color:inherit;text-decoration:none}
 }
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
 <div class="phone">
@@ -153,6 +155,7 @@ a{color:inherit;text-decoration:none}
       <div class="icon-btn" id="menuDots"><i class="fas fa-ellipsis"></i></div>
       <div class="dropdown-menu" id="dropdownMenu">
         <button class="dropdown-item" id="addStoryBtn"><i class="fas fa-plus"></i> Add Story</button>
+        <button class="dropdown-item" id="collStatsBtn"><i class="fas fa-chart-simple"></i> Stats</button>
         <button class="dropdown-item" id="reportBtn"><i class="fas fa-flag"></i> Report Collection</button>
       </div>
     </div>
@@ -170,6 +173,9 @@ a{color:inherit;text-decoration:none}
       <button class="btn-share" id="bottomShareBtn"><i class="fas fa-share-nodes"></i> Share</button>
       <button class="btn-follow" id="followBtn"><i class="fas fa-plus"></i> Follow Collection</button>
     </div>
+
+    <!-- AD SLOT ── filled by ad-slot.js (drop-in component) -->
+    <div data-ad-slot="collection:top" style="padding:0 16px 6px"></div>
 
     <!-- TABS -->
     <div class="tabs" id="tabs">
@@ -227,6 +233,7 @@ a{color:inherit;text-decoration:none}
     </div>
     <div class="report-body">
       <div class="report-label">Tap stories to add to this collection</div>
+      <input id="addStorySearch" placeholder="🔍 Search title or author…" autocomplete="off" style="width:100%;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;margin-bottom:8px"/>
       <div id="addStoryGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:38vh;overflow-y:auto;padding-bottom:8px"></div>
       <button class="report-submit" id="addStoryConfirm" style="margin-top:12px">Add Selected</button>
     </div>
@@ -251,6 +258,12 @@ a{color:inherit;text-decoration:none}
 <script src="../services/collection-service.js?v=2"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../component/share-modal.js"></script>
+<script src="../shared/insights-tracker.js"></script>
 <script src="../services/collection-page-service.js"></script>
+
+<!-- AD SLOT COMPONENT ── order: ad-service → ad-card → ad-slot -->
+<script src="../services/ad-service.js"></script>
+<script src="../component/ad-card.js?v=2"></script>
+<script src="../component/ad-slot.js"></script>
 </body>
 </html>

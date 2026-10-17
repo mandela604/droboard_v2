@@ -30,9 +30,21 @@
   function demoInventory() {
     const d = window.DemoData || {};
     const ov = readOverrides();
+    let pools;
+    if (ov.pools && Object.keys(ov.pools).length) {
+      pools = {};
+      const base = d.AD_POOLS || {};
+      const keys = new Set([...Object.keys(base), ...Object.keys(ov.pools)]);
+      keys.forEach(k => {
+        const baseAds = (base[k] || []).filter(a => !(ov.pools[k] || []).some(b => b.id === a.id));
+        pools[k] = [...(ov.pools[k] || []), ...baseAds];
+      });
+    } else {
+      pools = d.AD_POOLS || {};
+    }
     return {
-      placement: null, // resolved per page below
-      pools: (ov.pools && Object.keys(ov.pools).length ? ov.pools : null) || d.AD_POOLS || {},
+      placement: null,
+      pools,
       placements: ov.placements || d.AD_PLACEMENTS || {},
     };
   }
@@ -87,6 +99,17 @@
   var _placements = null, _placementsAt = 0, _ent = null;
   function backendPlacements() {
     if (_placements && Date.now() - _placementsAt < 10 * 60 * 1000) return Promise.resolve(_placements);
+    /* Demo (no backend): read the same localStorage-backed placements the
+       ad-manager writes via MarketingData, so manager on/off + slot
+       programming actually reach client pages. Live: GET /api/ads/placements
+       (identical shape — flip USE_API and nothing else changes). */
+    if (!USE_API && window.MarketingData && typeof MarketingData.getAdInventory === 'function') {
+      return MarketingData.getAdInventory().then(function (inv) {
+        _placements = (inv && inv.placements) || {};
+        _placementsAt = Date.now();
+        return _placements;
+      }).catch(function () { return _placements || {}; });
+    }
     try {
       return fetch(`${API_BASE}/ads/placements`, { credentials: 'include' }).then(function (r) {
         if (!r.ok) return {};
@@ -153,6 +176,8 @@
         const ent = await myEntitlements();
         if (ent && ent.adsFreeEverywhere && page !== 'discover') return emptyPools();
       } else if (page !== 'discover') return emptyPools();
+      /* League perk: weekly top-3 readers read ad-free for 7 days (zero cash). */
+      if (page !== 'discover' && window.ReaderLeague && typeof window.ReaderLeague.adFreeActive === 'function' && window.ReaderLeague.adFreeActive()) return emptyPools();
     } catch (e) {}
     const inv = await getInventory(page, slot);
     // backend kill switch (marketing toggle) empties pools in any mode
@@ -202,16 +227,43 @@
 
   /* Impression / click tracking. Demo: local counters the ad-manager reads.
      Live-first: also POSTs /api/ads/track (per-user trail); subscribers
-     (window.DroboardAdsFree) see no ads, so nothing is sent. */
-  function track(id, event) {
+     (window.DroboardAdsFree) see no ads, so nothing is sent.
+     ctx: { page, slot, postId, storyId } — userId is resolved server-side
+     from session (never trust client). Demo attaches a stable anonymous
+     viewerId (localStorage) so per-user counts work before login. */
+  function getViewerId() {
+    try {
+      if (window.DroboardUser && (window.DroboardUser.id || window.DroboardUser.uid)) {
+        return String(window.DroboardUser.id || window.DroboardUser.uid);
+      }
+      var k = 'dro_viewer_id', v = localStorage.getItem(k);
+      if (!v) {
+        v = 'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(k, v);
+      }
+      return v;
+    } catch (e) { return 'anon'; }
+  }
+  function track(id, event, ctx) {
     if (!id) return;
     if (window.DroboardAdsFree) return;
+    ctx = ctx || {};
+    var payload = {
+      id: id,
+      event: event || 'impression',
+      page: ctx.page || '',
+      slot: ctx.slot || '',
+      postId: ctx.postId || ctx.storyId || '',
+      storyId: ctx.storyId || ctx.postId || '',
+      viewerId: ctx.viewerId || getViewerId(),
+      ts: Date.now(),
+    };
     if (USE_API) {
       fetch(`${API_BASE}/ads/track`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, event: event || 'impression' }),
+        body: JSON.stringify(payload),
       }).catch(() => {});
       return;
     }
@@ -220,14 +272,17 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, event: event || 'impression' }),
+        body: JSON.stringify(payload),
       }).catch(() => {});
     } catch (e) {}
     try {
       const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}') || {};
-      const row = stats[id] || { impressions: 0, clicks: 0 };
+      const row = stats[id] || { impressions: 0, clicks: 0, viewers: {} };
+      if (!row.viewers) row.viewers = {};
       if (event === 'click') row.clicks += 1;
       else row.impressions += 1;
+      if (payload.viewerId) row.viewers[payload.viewerId] = (row.viewers[payload.viewerId] || 0) + 1;
+      row.last = { page: payload.page, slot: payload.slot, postId: payload.postId, ts: payload.ts };
       stats[id] = row;
       localStorage.setItem(STATS_KEY, JSON.stringify(stats));
     } catch (e) {}
@@ -249,5 +304,5 @@
     });
   }
 
-  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, readStats };
+  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, readStats, getViewerId };
 })();

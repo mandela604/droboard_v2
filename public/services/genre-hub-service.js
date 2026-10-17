@@ -89,7 +89,7 @@
     } catch (e) {}
   }
 
-  function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'genreHub', slot: 'genreHub:in-feed' }); } catch (e) {} }
   function toast(msg, dur) {
     const t = document.getElementById('toast');
     if (!t) return;
@@ -159,6 +159,15 @@
     }
     PROMO_SLIDES = [];
     attachDemoTropes();
+    loadHubPins();
+    // Rules override from the hub edit page (dro_hub_rules_<id>)
+    try {
+      const rulesOv = JSON.parse(localStorage.getItem('dro_hub_rules_' + GENRE_ID) || 'null');
+      if (Array.isArray(rulesOv) && rulesOv.length) {
+        const pinned = ALL_POSTS.find(p => p && p.pinned);
+        if (pinned) pinned.desc = rulesOv.join('  •  ');
+      }
+    } catch (e) {}
     return true;
   }
 
@@ -175,17 +184,74 @@
     document.getElementById('composerPh').textContent = 'Start a discussion in ' + GENRE.name + '…';
     document.title = GENRE.name + ' · Genre Hub · DroBoard';
     if (window.DroboardGenreCard) DroboardGenreCard.setGenreName(GENRE.name);
+    const eb = document.getElementById('hubEditBtn');
+    if (eb) {
+      if (isStaff()) eb.style.display = '';
+      eb.onclick = function () { location.href = 'genre-hub-edit.html?genre=' + encodeURIComponent(GENRE_ID); };
+    }
   }
 
   /* ── Feed ── */
-  function sortedDiscussions() {
+  /* Relative time strings ('45m', '2h', '3d', '1w') → minutes, for New sort. */
+  function timeMins(t) {
+    const m = String(t || '').match(/(\d+)\s*([mhdw])/i);
+    if (!m) return 1e9;
+    const n = parseInt(m[1], 10);
+    const u = m[2].toLowerCase();
+    return n * (u === 'm' ? 1 : u === 'h' ? 60 : u === 'd' ? 1440 : 10080);
+  }
+  function isControversial(p) {
+    return (p.controversy || 0) >= 50
+      || String(p.tagClass || '').toLowerCase() === 'controversial'
+      || String(p.tag || '').toLowerCase() === 'controversial';
+  }
+  function isStaff() {
+    try {
+      if (window.canModerate ? window.canModerate() : false) return true;
+      const mods = JSON.parse(localStorage.getItem(hubModsKey()) || '[]');
+      const me = demoMe();
+      return mods.some(m => (m.handle || '') === me.handle);
+    } catch (e) { return false; }
+  }
+  function hubModsKey() { return 'dro_hub_mods_' + (GENRE_ID || 'hub'); }
+  function demoMe() {
+    try {
+      if (localStorage.getItem('droboard_demo_as') === 'writer') return { handle: 'Ada_Writes', name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32' };
+    } catch (e) {}
+    return { handle: 'You_Reader', name: 'You (Reader)', av: 'https://i.pravatar.cc/100?img=68' };
+  }
+  function hubPinKey() { return 'dro_hub_pins_' + (GENRE_ID || 'hub'); }
+  /* Mod pins persist per hub; pinnable is stamped so only staff ever see
+     the Pin/Unpin menu entry (`pinned` stays reserved for hub rules). */
+  function loadHubPins() {
+    let ids = [];
+    try { ids = JSON.parse(localStorage.getItem(hubPinKey()) || '[]') || []; } catch (e) { ids = []; }
+    (ALL_POSTS || []).forEach(p => {
+      if (!p || p.pinned) return;
+      p.pinnable = isStaff();
+      if (ids.indexOf(String(p.id)) > -1) p.pinTop = true;
+    });
+  }
+  function saveHubPins() {
+    try {
+      localStorage.setItem(hubPinKey(), JSON.stringify((ALL_POSTS || []).filter(p => p && p.pinTop).map(p => String(p.id))));
+    } catch (e) {}
+  }
+  /* Every filter works like the Hot tab: a real subset in a real order
+     (not a silent re-sort of the same list). Mod-pinned threads lead. */
+  function visibleDiscussions() {
     let list = ALL_POSTS.filter(p => !p.pinned);
     if (tropeFilter) list = list.filter(p => (p.trope || '') === tropeFilter);
+    if (activeTab === 'hot' || sort === 'hot') list = list.filter(p => p.hot);
+    else if (sort === 'controversial') list = list.filter(isControversial);
+    else if (sort === 'unanswered') list = list.filter(p => !(p.comments > 0));
     list = list.slice();
-    if (sort === 'hot') return list.sort((a, b) => (b.score || 0) - (a.score || 0) || ((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0)));
-    if (sort === 'controversial') return list.sort((a, b) => (b.controversy || 0) - (a.controversy || 0) || (b.comments || 0) - (a.comments || 0));
-    if (sort === 'top') return list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-    if (sort === 'unanswered') return list.filter(p => !p.comments).concat(list.filter(p => p.comments));
+    if (sort === 'controversial') list.sort((a, b) => ((b.controversy || 0) - (a.controversy || 0)) || ((b.comments || 0) - (a.comments || 0)));
+    else if (sort === 'new') list.sort((a, b) => timeMins(a.time) - timeMins(b.time));
+    else if (sort === 'top') list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    else if (sort === 'hot' || activeTab === 'hot') list.sort((a, b) => (b.score || 0) - (a.score || 0));
+    const top = list.filter(p => p.pinTop);
+    if (top.length) list = top.concat(list.filter(p => !p.pinTop));
     return list;
   }
 
@@ -204,9 +270,17 @@
 
   function renderFeed() {
     const pinned = ALL_POSTS.filter(p => p.pinned);
-    const list = sortedDiscussions();
+    const list = visibleDiscussions();
     if (!window.DroboardGenreCard) {
       document.getElementById('feed').innerHTML = '<div style="padding:20px;color:var(--tx-muted)">genre-card.js missing</div>';
+      return;
+    }
+    if (!list.length) {
+      let html = '';
+      pinned.forEach(p => { html += DroboardGenreCard.renderCard(p); });
+      html += '<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">Nothing here under this filter yet.</div>';
+      document.getElementById('feed').innerHTML = html;
+      DroboardGenreCard.setPosts(pinned.concat(list));
       return;
     }
     DroboardGenreCard.setSort(sort);
@@ -236,7 +310,7 @@
       slides: PROMO_SLIDES,
       interval: 3200,
       eyebrow: GENRE.name + ' picks',
-      onSelect: (s) => toast('📖 ' + (s.title || '')),
+      // No onSelect: the component default navigates slide/CTA → bridge.
     });
   }
   function setActiveTab(tab) {
@@ -259,7 +333,7 @@
   function renderAbout() {
     const feed = document.getElementById('feed');
     feed.innerHTML = '<div style="padding:14px"><div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:14px">About '+GENRE.name+'</b><button id="aboutEditBtn" style="font-size:11px;font-weight:700;color:var(--acc);background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);padding:6px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div><div style="font-size:12px;line-height:1.6;color:var(--tx-body)" id="aboutBlurbView">'+(GENRE.blurb||'')+'</div><div id="aboutForm" style="display:none;margin-top:10px"><input id="aboutName" value="'+(GENRE.name||'').replace(/"/g,'&quot;')+'" placeholder="Genre name" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><input id="aboutTagline" value="'+(GENRE.tagline||'').replace(/"/g,'&quot;')+'" placeholder="Tagline" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><textarea id="aboutBlurb" rows="3" placeholder="About this hub" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:8px">'+(GENRE.blurb||'')+'</textarea><input id="aboutCover" value="'+(GENRE.cover||'').replace(/"/g,'&quot;')+'" placeholder="Cover image URL" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px"/><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--acc);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutDelete" style="flex:1;background:var(--l2);border:1px solid var(--bd);padding:10px;border-radius:10px;font-weight:700">Reset</button><button id="aboutCancel" style="flex:1;background:transparent;border:1px solid var(--bd);padding:10px;border-radius:10px">Cancel</button></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.members||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Members</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.stories||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Stories</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.discussions||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Threads</div></div></div></div>';
-    document.getElementById('aboutEditBtn').onclick = () => { document.getElementById('aboutForm').style.display='block'; document.getElementById('aboutBlurbView').style.display='none'; };
+    document.getElementById('aboutEditBtn').onclick = () => { location.href = 'genre-hub-edit.html?genre=' + encodeURIComponent(GENRE_ID) + '#details'; };
     document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutBlurbView').style.display='block'; };
     document.getElementById('aboutSave').onclick = () => {
       const patch = { name: document.getElementById('aboutName').value.trim()||GENRE.name, tagline: document.getElementById('aboutTagline').value.trim(), blurb: document.getElementById('aboutBlurb').value.trim(), cover: document.getElementById('aboutCover').value.trim() };
@@ -454,7 +528,7 @@
     clearMemberPager();
   }
   function renderHot() {
-    const hot = ALL_POSTS.filter(p=>p.hot).slice(0,12);
+    const hot = visibleDiscussions().slice(0,12);
     if (!hot.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No hot topics right now.</div>'; return; }
     let html=''; hot.forEach(p=>{ html += window.DroboardGenreCard ? DroboardGenreCard.renderCard(p) : '<div style="padding:12px;border-bottom:1px solid var(--bd)">'+p.title+'</div>'; });
     document.getElementById('feed').innerHTML = html;
@@ -526,6 +600,10 @@
           return DroboardReactionPicker.renderTrigger(String(post.id), { liked: !!post.liked, likeCount: post.likes || 0 });
         },
         onLike: (post) => { post.liked = !post.liked; post.likes = (post.likes || 0) + (post.liked ? 1 : -1); DroboardGenreCard.update(post); },
+        onPollVote: (post, i) => { if (!post.poll) return; if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; } post.poll.opts[i].v = (post.poll.opts[i].v || 0) + 1; post.poll.voted = i; post.poll.total = (post.poll.total || 0) + 1; DroboardGenreCard.update(post); toast('✅ Vote cast!'); },
+        onPredVote: (post, i) => { if (!post.prediction) return; if (post.prediction.voted >= 0) { toast('✅ Already predicted!'); return; } post.prediction.opts[i].v = (post.prediction.opts[i].v || 0) + 1; post.prediction.voted = i; post.prediction.total = (post.prediction.total || 0) + 1; DroboardGenreCard.update(post); toast('🔮 Prediction locked!'); },
+        onDebateVote: (post, side) => { if (!post.debateData) return; if (post.debateData.userVote) { toast('✅ Already voted!'); return; } post.debateData.userVote = side; if (side === 'for') post.debateData.forV = (post.debateData.forV || 0) + 1; else post.debateData.agV = (post.debateData.agV || 0) + 1; DroboardGenreCard.update(post); toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!'); },
+        onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onThread: (post) => { location.href = 'discussion.html?genre=' + encodeURIComponent(GENRE_ID) + '&id=' + encodeURIComponent(post.id); },
         onShare: (post) => {
           if (window.openShareModal) {
@@ -537,7 +615,14 @@
           } else toast('Share · ' + (post.title || ''));
         },
         onDots: (post, el) => { if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, el); else toast('More…'); },
-        onStory: (post) => toast('📖 ' + ((post.story && post.story.title) || 'Story')),
+        onStory: (post) => {
+          const s = (post && (post.story || post.storyRef)) || null;
+          const sid = s && (s.id || '');
+          const ttl = (s && (s.title || '')) || 'Story';
+          if (sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
+          if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
+          toast('📖 ' + ttl);
+        },
         onAvatar: (post) => { location.href = 'profile.html?u=' + encodeURIComponent(post.name || ''); },
         onNameClick: (post, name) => { location.href = 'profile.html?u=' + encodeURIComponent(name || (post && post.name) || ''); },
         onPinned: () => toast('Hub rules…'),
@@ -560,6 +645,18 @@
         },
         onEdit: () => toast('✏️ Edit'),
         onDelete: () => toast('🗑️ Delete'),
+        onPin: (post) => {
+          if (!isStaff()) { toast('Only moderators can pin.'); return; }
+          post.pinTop = true; saveHubPins();
+          setActiveTab(activeTab);
+          toast('📌 Pinned to top');
+        },
+        onUnpin: (post) => {
+          if (!isStaff()) { toast('Only moderators can unpin.'); return; }
+          post.pinTop = false; saveHubPins();
+          setActiveTab(activeTab);
+          toast('Unpinned');
+        },
       });
     }
     if (window.DroboardAdCard) {
@@ -601,6 +698,7 @@
       tropeFilter = sel.value;
       paint();
       if (activeTab === 'discussions' || activeTab === 'hot') renderFeed();
+      scrollToFirstCard();
     });
     row.appendChild(sel);
     sel._repaint = paint;
@@ -619,7 +717,7 @@
         sort = c.dataset.sort;
         if (activeTab==='discussions' || activeTab==='hot') renderFeed();
         else if (activeTab==='stories') renderStories();
-        window.scrollTo({top:0, behavior:'smooth'});
+        scrollToFirstCard();
       });
     });
     document.querySelectorAll('#hubTabs .tab').forEach(t => {
@@ -638,12 +736,18 @@
     if (document.getElementById('ghcOv')) return;
     const css = '.ghc-ov{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);display:flex;justify-content:center;align-items:stretch;opacity:0;pointer-events:none;transition:opacity .22s} .ghc-ov.open{opacity:1;pointer-events:auto} .ghc-sheet{width:100%;max-width:420px;height:100dvh;background:#fff;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:0 0 50px rgba(0,0,0,.3)} .ghc-ov.open .ghc-sheet{transform:translateY(0)} .ghc-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--bd,rgba(0,0,0,.08));background:#fff;flex-shrink:0} .ghc-body{flex:1;overflow-y:auto;padding:16px;background:#fff} .ghc-label{font-size:11px;font-weight:700;color:var(--tx-muted,#666);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px;display:block} .ghc-label:first-child{margin-top:0} .ghc-input,.ghc-textarea{width:100%;border:1.5px solid var(--bd,rgba(0,0,0,.08));border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;background:var(--l2,#f1f1f1);color:var(--tx-high,#161616);outline:none} .ghc-input:focus,.ghc-textarea:focus{border-color:var(--acc,#ff0050);background:#fff} .ghc-textarea{min-height:100px;resize:none} .ghc-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px} .ghc-tag{padding:7px 12px;border-radius:20px;font-size:11.5px;font-weight:700;border:1.5px solid var(--bd,rgba(0,0,0,.08));background:var(--l2,#f1f1f1);color:var(--tx-muted,#666);cursor:pointer} .ghc-tag.on{background:rgba(255,0,80,.08);border-color:var(--bd-acc,rgba(255,0,80,.2));color:var(--acc,#ff0050)}';
     const st=document.createElement('style'); st.id='ghc-style'; st.textContent=css; document.head.appendChild(st);
-    const html = `<div class="ghc-ov" id="ghcOv"><div class="ghc-sheet"><div class="ghc-head"><button id="ghcCancel" style="background:none;border:none;font-size:14px;color:var(--tx-muted);font-family:inherit;cursor:pointer">Cancel</button><div style="font-size:15px;font-weight:700">New in ${GENRE.name}</div><button id="ghcPost" style="background:var(--acc);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:.45;pointer-events:none">Post</button></div><div class="ghc-body"><label class="ghc-label">Title *</label><input id="ghcTitle" class="ghc-input" placeholder="What's the discussion about?"/><label class="ghc-label">Body *</label><textarea id="ghcBody" class="ghc-textarea" placeholder="Share details, ask a question, post a theory…"></textarea><label class="ghc-label">Tag</label><div class="ghc-tags" id="ghcTags"><button class="ghc-tag on" data-tag="Discussion" data-cls="discussion">Discussion</button><button class="ghc-tag" data-tag="Theory" data-cls="theory">Theory</button><button class="ghc-tag" data-tag="Recommendation" data-cls="recommendation">Recommendation</button><button class="ghc-tag" data-tag="Question" data-cls="question">Question</button><button class="ghc-tag" data-tag="Controversial" data-cls="controversial">Controversial</button></div><label class="ghc-label">Trope (optional)</label><select id="ghcTrope" class="ghc-input"><option value="">No trope</option></select><label class="ghc-label">Photo (optional)</label><input type="file" id="ghcMediaFile" accept="image/*" class="ghc-input"/><div id="ghcMediaPrev" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;max-height:180px"><img id="ghcMediaPrevImg" style="width:100%;max-height:180px;object-fit:cover;display:block"/></div><label class="ghc-label">Image URL (optional)</label><input id="ghcMedia" class="ghc-input" placeholder="https://..."/><label class="ghc-label">Story (optional)</label><input id="ghcStory" class="ghc-input" placeholder="Story title you are discussing"/></div></div></div>`;
+    const st2=document.createElement('style'); st2.id='ghc-story-style';
+    st2.textContent='.ghc-story-hits{display:flex;flex-direction:column;gap:6px;margin-top:8px}.ghc-story-hit{display:flex;gap:10px;align-items:center;border:1px solid var(--bd,rgba(0,0,0,.08));border-radius:10px;padding:8px;cursor:pointer;text-align:left;width:100%;font-family:inherit;background:#fff;color:var(--tx-high,#161616)}.ghc-story-hit img{width:34px;height:46px;border-radius:6px;object-fit:cover;flex-shrink:0}.ghc-story-hit-t{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ghc-story-hit-a{font-size:10.5px;color:var(--tx-muted,#666);margin-top:1px}';
+    document.head.appendChild(st2);
+    const html = `<div class="ghc-ov" id="ghcOv"><div class="ghc-sheet"><div class="ghc-head"><button id="ghcCancel" style="background:none;border:none;font-size:14px;color:var(--tx-muted);font-family:inherit;cursor:pointer">Cancel</button><div style="font-size:15px;font-weight:700">New in ${GENRE.name}</div><button id="ghcPost" style="background:var(--acc);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:.45;pointer-events:none">Post</button></div><div class="ghc-body"><label class="ghc-label">Title *</label><input id="ghcTitle" class="ghc-input" placeholder="What's the discussion about?"/><label class="ghc-label">Body *</label><textarea id="ghcBody" class="ghc-textarea" placeholder="Share details, ask a question, post a theory…"></textarea><label class="ghc-label">Tag</label><div class="ghc-tags" id="ghcTags"><button class="ghc-tag on" data-tag="Discussion" data-cls="discussion">Discussion</button><button class="ghc-tag" data-tag="Theory" data-cls="theory">Theory</button><button class="ghc-tag" data-tag="Recommendation" data-cls="recommendation">Recommendation</button><button class="ghc-tag" data-tag="Question" data-cls="question">Question</button><button class="ghc-tag" data-tag="Controversial" data-cls="controversial">Controversial</button></div><label class="ghc-label">Trope (optional)</label><select id="ghcTrope" class="ghc-input"><option value="">No trope</option></select><label class="ghc-label">Photo (optional)</label><input type="file" id="ghcMediaFile" accept="image/*" class="ghc-input"/><div id="ghcMediaPrev" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;max-height:180px"><img id="ghcMediaPrevImg" style="width:100%;max-height:180px;object-fit:cover;display:block"/></div><label class="ghc-label">Image URL (optional)</label><input id="ghcMedia" class="ghc-input" placeholder="https://..."/><label class="ghc-label">Story (optional)</label><input id="ghcStory" class="ghc-input" placeholder="Story title you are discussing"/><div id="ghcStoryHits"></div></div></div></div>`;
     const wrap=document.createElement('div'); wrap.innerHTML=html; while(wrap.firstChild) document.body.appendChild(wrap.firstChild);
     document.getElementById('ghcCancel').addEventListener('click', closeHubComposer);
     document.getElementById('ghcOv').addEventListener('click', e=>{ if(e.target.id==='ghcOv') closeHubComposer(); });
-    document.getElementById('ghcTitle').addEventListener('input', validateHubComposer);
-    document.getElementById('ghcBody').addEventListener('input', validateHubComposer);
+    document.getElementById('ghcTitle').addEventListener('input', function(){ validateHubComposer(); saveGhcDraft(); });
+    document.getElementById('ghcBody').addEventListener('input', function(){ validateHubComposer(); saveGhcDraft(); });
+    document.getElementById('ghcStory').addEventListener('input', function () { renderGhcStoryHits(document.getElementById('ghcStory').value); saveGhcDraft(); });
+    document.getElementById('ghcStory').addEventListener('focus', function () { renderGhcStoryHits(document.getElementById('ghcStory').value); });
+    document.getElementById('ghcStory').addEventListener('click', function () { const box=document.getElementById('ghcStoryHits'); if(box && !box.innerHTML) renderGhcStoryHits(document.getElementById('ghcStory').value); });
     document.querySelectorAll('#ghcTags .ghc-tag').forEach(el=> el.addEventListener('click', ()=>{ document.querySelectorAll('#ghcTags .ghc-tag').forEach(x=>x.classList.remove('on')); el.classList.add('on'); }));
     document.getElementById('ghcPost').addEventListener('click', submitHubPost);
     const fileEl=document.getElementById('ghcMediaFile'), prev=document.getElementById('ghcMediaPrev'), prevImg=document.getElementById('ghcMediaPrevImg'), urlEl=document.getElementById('ghcMedia');
@@ -659,6 +763,84 @@
       });
     }
   }
+  function ghcDraftKey() { return 'dro_genre_composer_draft_' + (GENRE_ID || 'hub'); }
+  function saveGhcDraft() {
+    try {
+      const t = document.getElementById('ghcTitle'), b = document.getElementById('ghcBody'), s = document.getElementById('ghcStory');
+      if(!t && !b && !s) return;
+      const d = {
+        title: t ? t.value : '', body: b ? b.value : '',
+        story: s ? s.value : '', storyId: s ? (s.dataset.storyId || '') : '',
+        storyCover: s ? (s.dataset.storyCover || '') : '',
+        storyAuthor: s ? (s.dataset.storyAuthor || '') : '',
+        storyCat: s ? (s.dataset.storyCat || '') : '',
+      };
+      if((d.title||'').trim() || (d.body||'').trim() || (d.story||'').trim()) localStorage.setItem(ghcDraftKey(), JSON.stringify(d));
+      else localStorage.removeItem(ghcDraftKey());
+    } catch(e){}
+  }
+  function restoreGhcDraft() {
+    try {
+      const raw = localStorage.getItem(ghcDraftKey());
+      if(!raw) return;
+      const d = JSON.parse(raw);
+      if(d.title) document.getElementById('ghcTitle').value = d.title;
+      if(d.body) document.getElementById('ghcBody').value = d.body;
+      if(d.story) {
+        const inp = document.getElementById('ghcStory');
+        inp.value = d.story;
+        if(d.storyId) inp.dataset.storyId = d.storyId;
+        if(d.storyCover) inp.dataset.storyCover = d.storyCover;
+        if(d.storyAuthor) inp.dataset.storyAuthor = d.storyAuthor;
+        if(d.storyCat) inp.dataset.storyCat = d.storyCat;
+      }
+    } catch(e){}
+  }
+  function hubStoryLibrary() {
+    const out = [];
+    const seen = new Set();
+    const push = (s) => {
+      if(!s) return;
+      const key = String(s.id || s.title || '').toLowerCase();
+      if(!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(s);
+    };
+    try { ((window.DemoData && DemoData.STORIES) || []).forEach(push); } catch(e){}
+    try {
+      const seed = window.GenreDemoSeed;
+      if(seed && seed.DEMO_STORIES) Object.keys(seed.DEMO_STORIES).forEach(gid => { (seed.DEMO_STORIES[gid] || []).forEach(push); });
+    } catch(e){}
+    return out;
+  }
+  function renderGhcStoryHits(q) {
+    const box = document.getElementById('ghcStoryHits');
+    if (!box) return;
+    q = (q || '').trim().toLowerCase();
+    const pool = hubStoryLibrary();
+    const hits = (!q ? pool.slice(0, 6) : pool.filter(s =>
+      ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.author || '').toLowerCase().indexOf(q) !== -1)
+    ).slice(0, 6));
+    box.innerHTML = hits.length ? hits.map((s, i) =>
+      `<button type="button" class="ghc-story-hit" data-hit="${i}">` +
+      (s.cover ? `<img src="${s.cover}" loading="lazy" alt=""/>` : '') +
+      `<div style="flex:1;min-width:0"><div class="ghc-story-hit-t">${s.title}</div><div class="ghc-story-hit-a">${s.author || ''}</div></div></button>`
+    ).join('') : `<div style="font-size:11.5px;color:var(--tx-muted,#666);padding:6px 2px">No stories match.</div>`;
+    box._hits = hits;
+    box.querySelectorAll('[data-hit]').forEach(btn => btn.addEventListener('click', () => {
+      const s = (box._hits || [])[+btn.dataset.hit];
+      if (!s) return;
+      // Recommending bar: 3+ chapters and 12+ minutes on the story.
+      if (window.ReadingHistory && !ReadingHistory.guardRecommend(s.id, s.title)) return;
+      const inp = document.getElementById('ghcStory');
+      inp.value = s.title;
+      inp.dataset.storyId = s.id || '';
+      inp.dataset.storyCover = s.cover || '';
+      inp.dataset.storyAuthor = s.author || '';
+      inp.dataset.storyCat = s.cat || s.genre || GENRE.name || '';
+      box.innerHTML = '';
+    }));
+  }
   function refreshTropeOptions(){
     const sel=document.getElementById('ghcTrope');
     if(!sel) return;
@@ -671,7 +853,7 @@
     const ok = t && b && t.value.trim().length>=4 && b.value.trim().length>=6;
     if(btn){ btn.style.opacity = ok? '1':'.45'; btn.style.pointerEvents = ok? 'auto':'none'; }
   }
-  function closeHubComposer(){ const ov=document.getElementById('ghcOv'); if(ov) ov.classList.remove('open'); document.body.style.overflow=''; }
+  function closeHubComposer(){ saveGhcDraft(); const ov=document.getElementById('ghcOv'); if(ov) ov.classList.remove('open'); document.body.style.overflow=''; }
   function submitHubPost(){
     const title=document.getElementById('ghcTitle').value.trim();
     const body=document.getElementById('ghcBody').value.trim();
@@ -681,32 +863,50 @@
     const tagCls=tagEl ? tagEl.dataset.cls : 'discussion';
     let media=''; const prevImgEl=document.getElementById('ghcMediaPrevImg'); if(prevImgEl && prevImgEl.src && prevImgEl.src.startsWith('data:')) media=prevImgEl.src; else media=document.getElementById('ghcMedia').value.trim() || '';
     const storyTitle=document.getElementById('ghcStory').value.trim();
+    const storyEl=document.getElementById('ghcStory');
+    const storyId=storyEl.dataset.storyId || '';
+    const storyCover=storyEl.dataset.storyCover || '';
+    const storyAuthor=storyEl.dataset.storyAuthor || '';
+    const storyCat=storyEl.dataset.storyCat || GENRE.name || '';
     const tropeSel=document.getElementById('ghcTrope');
     const trope=tropeSel ? tropeSel.value : '';
+    // Recommending a story requires real reading: 3+ chapters, 12+ minutes.
+    if ((tag === 'Recommendation' || tagCls === 'recommendation') && storyId && window.ReadingHistory) {
+      if (!ReadingHistory.guardRecommend(storyId, storyTitle)) return;
+    }
     const post={
       id:'gh_'+Date.now(), name: (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] ? 'You_Reader' : 'You'), avatar: (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] ? DemoData.USERS['You_Reader'].avatar : 'https://i.pravatar.cc/100?img=12'),
       time:'Just now', title, body, tag, tagClass:tagCls, likes:0, comments:0, liked:false, score:Date.now()
     };
     if(trope) post.trope=trope;
     if(media) post.media=media;
-    if(storyTitle) post.story={ title:storyTitle, writer:'', cover:'' };
+    if(storyTitle) post.story={ id:storyId, title:storyTitle, writer:storyAuthor, author:storyAuthor, cover:storyCover, cat:storyCat, genre:storyCat };
     ALL_POSTS.unshift(post);
     closeHubComposer();
     if (activeTab !== 'discussions') setActiveTab('discussions'); else renderFeed();
     toast('Posted to '+GENRE.name+'!');
     window.scrollTo({top:0, behavior:'smooth'});
     // clear form
-    document.getElementById('ghcTitle').value=''; document.getElementById('ghcBody').value=''; document.getElementById('ghcMedia').value=''; const fe=document.getElementById('ghcMediaFile'); if(fe) fe.value=''; const pv=document.getElementById('ghcMediaPrev'); if(pv) pv.style.display='none'; const pi=document.getElementById('ghcMediaPrevImg'); if(pi) pi.src=''; document.getElementById('ghcStory').value=''; const ts=document.getElementById('ghcTrope'); if(ts) ts.value=''; validateHubComposer();
+    document.getElementById('ghcTitle').value=''; document.getElementById('ghcBody').value=''; document.getElementById('ghcMedia').value=''; const fe=document.getElementById('ghcMediaFile'); if(fe) fe.value=''; const pv=document.getElementById('ghcMediaPrev'); if(pv) pv.style.display='none'; const pi=document.getElementById('ghcMediaPrevImg'); if(pi) pi.src='';     const gsEl=document.getElementById('ghcStory'); gsEl.value=''; gsEl.dataset.storyId=''; gsEl.dataset.storyCover=''; gsEl.dataset.storyAuthor=''; gsEl.dataset.storyCat=''; const ts=document.getElementById('ghcTrope'); if(ts) ts.value=''; validateHubComposer();
+    try { localStorage.removeItem(ghcDraftKey()); } catch(e){}
   }
   function openComposer() {
     ensureHubComposer();
     refreshTropeOptions();
     const h=document.querySelector('#ghcOv .ghc-head div'); if(h) h.textContent='New in '+GENRE.name;
+    restoreGhcDraft();
     document.getElementById('ghcOv').classList.add('open'); document.body.style.overflow='hidden'; validateHubComposer();
   }
   function initComposer() {
     document.getElementById('composerStrip').addEventListener('click', openComposer);
     document.getElementById('fabNew').addEventListener('click', openComposer);
+  }
+  /* After a filter change, land on the first card — not page top. */
+  function scrollToFirstCard() {
+    const feed = document.getElementById('feed');
+    if (!feed) return;
+    const top = feed.getBoundingClientRect().top + window.scrollY - 110;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   }
   function initToTop() {
     const toTop = document.getElementById('toTop');
@@ -734,7 +934,7 @@
         sort=s; syncActive(s);
         if (activeTab==='discussions' || activeTab==='hot') renderFeed();
         else if (activeTab==='stories') renderStories();
-        window.scrollTo({top:0, behavior:'smooth'});
+        scrollToFirstCard();
         floating.classList.remove('show');
       });
     });
@@ -768,6 +968,7 @@
 
   /* ── Boot ── */
   async function init() {
+    if (window.ScrollKeep) ScrollKeep.arm();
     try {
       initTheme();
       window.toast = toast;
@@ -783,10 +984,12 @@
     initToTop();
     initFilterFab();
     applyGenre();
+    if (window.InsightsTracker) InsightsTracker.hit('hub', GENRE_ID);
     ensureNewDrops();
     updateStoryTabBadge();
     setActiveTab('discussions');
     mountPromo();
+    if (window.ScrollKeep) ScrollKeep.restore();
     if (window.DroboardSearch) {
       let searchData;
       if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }

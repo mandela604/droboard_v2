@@ -20,17 +20,17 @@
 }
 body.theme-sepia{--bg:#1a1510;--bg2:#201a12;--bg3:#26201a;--surface:#26201a;--bd:rgba(232,213,176,.08);--muted:#806050;--tx:#e8d5b0;--tx2:#a89070;}
 body.theme-grey{--bg:#0f1117;--bg2:#151820;--bg3:#1c2028;--surface:#1c2028;--bd:rgba(216,220,232,.07);--tx:#d8dce8;--tx2:#888da0;}
-body.theme-white{--bg:#ffffff;--bg2:#f5f5f5;--bg3:#ececec;--surface:#efefef;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);--muted:#999;--tx:#111;--tx2:#555;}
+body.theme-white{--bg:#f5f5f5;--bg2:#f5f5f5;--bg3:#ececec;--surface:#efefef;--bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.04);--muted:#999;--tx:#111;--tx2:#555;}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font-ui);transition:background .3s,color .3s}
 @media(min-width:421px){body{background:#111}}
 img{display:block;user-select:none}
 button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 
-/* ══ PHONE FRAME (420px app container, like every reader surface) ══ */
+/* â•â• PHONE FRAME (420px app container, like every reader surface) â•â• */
 .phone{width:100%;max-width:420px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;box-shadow:0 0 50px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow-x:clip}
 
-/* ══ FLOATING CONTROLS ══ */
+/* â•â• FLOATING CONTROLS â•â• */
 .floating-controls{position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-8px);width:100%;max-width:420px;z-index:150;display:flex;align-items:center;justify-content:space-between;padding:calc(var(--safe-t) + 8px) 14px 10px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
 .floating-controls.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
 .fc-left,.fc-right{display:flex;gap:8px;align-items:center}
@@ -45,7 +45,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .read-progress{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;height:2.5px;background:transparent;z-index:151;}
 .read-progress-fill{height:100%;background:var(--acc);width:0%;transition:width .15s linear}
 
-/* ══ SCROLL BODY ══ */
+/* â•â• SCROLL BODY â•â• */
 .scroll-body{height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .scroll-body::-webkit-scrollbar{display:none}
 .reader-col{max-width:640px;margin:0 auto;padding:0 22px}
@@ -65,7 +65,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .story-text p{margin-bottom:1.5em}
 .story-text p:last-child{margin-bottom:0}
 
-/* ══ LOCKED / PAYWALL FADE ══ */
+/* â•â• LOCKED / PAYWALL FADE â•â• */
 .locked-wrap{position:relative;}
 .locked-fade{max-height:280px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(to bottom, black 30%, transparent 92%);mask-image:linear-gradient(to bottom, black 30%, transparent 92%);opacity:.5;pointer-events:none;user-select:none;}
 .unlock-card{margin:-46px auto 20px;position:relative;z-index:5;max-width:400px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:18px;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6);text-align:center;}
@@ -82,7 +82,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .unlock-opt-price{font-size:11.5px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px;white-space:nowrap}
 .unlock-opt.reco .unlock-opt-price{color:var(--acc)}
 
-/* ══ ENGAGE BAR ══ */
+/* â•â• ENGAGE BAR â•â• */
 .engage-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:26px 0 4px;}
 .eb-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--bd);cursor:pointer;transition:.15s;min-width:74px;}
 .eb-btn:active{transform:scale(.95)}
@@ -91,16 +91,16 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .eb-icon{font-size:16px;color:var(--tx2)}
 .eb-lbl{font-size:9px;font-weight:700;color:var(--muted)}
 
-/* ══ COMMENT LINE ══ */
-.comment-line-wrap{padding:14px 0 4px;margin:0 -8px}
+/* â•â• COMMENT LINE â•â• */
+.comment-line-wrap{padding:0 0 4px;margin:0}
 .comm-chapter-mount{padding:14px 0 4px;margin:0 -8px}
 
-/* ══ AD SLOT ══ */
+/* â•â• AD SLOT â•â• */
 .ad-slot{padding:30px 0 4px}
 .ch-edge-ad{padding:16px 0 4px}
 .ad-slot-lbl{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px;text-align:center}
 
-/* ══ CHAPTERS PANEL ══ */
+/* â•â• CHAPTERS PANEL â•â• */
 .ch-panel{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;background:var(--bg);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
 .ch-panel.open{transform:translateX(0)}
 .ch-panel-hdr{flex-shrink:0;height:52px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--bd);background:rgba(0,0,0,.85);backdrop-filter:blur(16px);}
@@ -118,7 +118,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .ch-row-title{font-size:12px;font-weight:700;color:var(--tx);line-height:1.3;margin-bottom:2px}
 .ch-row-meta{font-size:9px;color:var(--muted)}
 
-/* ══ SETTINGS PANEL ══ */
+/* â•â• SETTINGS PANEL â•â• */
 .settings-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:420px;z-index:300;background:var(--bg3,#0a0a0d);border-radius:22px 22px 0 0;border-top:1px solid var(--bd);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:0 0 calc(20px + var(--safe-b));}
 .settings-panel.open{transform:translateX(-50%) translateY(0)}
 .sp-handle{width:36px;height:4px;background:var(--bd);border-radius:4px;margin:12px auto 16px}
@@ -148,7 +148,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .overlay-bg{position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .28s;}
 .overlay-bg.show{opacity:1;pointer-events:auto}
 
-/* ══ EXIT-INTENT AD ══ */
+/* â•â• EXIT-INTENT AD â•â• */
 .exit-ov{position:fixed;inset:0;z-index:400;background:#000;display:none;flex-direction:column;}
 .exit-ov.show{display:flex}
 .exit-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.5)}
@@ -167,8 +167,40 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,26,46,.95);color:#fff;padding:9px 18px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body class="theme-dark">
+<script>/* early theme: match stored reader/site theme before first paint (no dark flash) */
+try{var _t=localStorage.getItem('dro_reader_theme');if(!_t||_t==='theme-dark'){var _s=localStorage.getItem('droboardTheme');_t=(_s==='light')?'theme-white':(_t||'theme-dark');}document.body.className=_t;}catch(e){}</script>
+<style>
+#pageSkeleton{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;background:#fff;transition:opacity .3s;padding:18px 22px 0}
+#pageSkeleton[data-theme="dark"]{background:#0a0a0d}
+#pageSkeleton .sk{border-radius:10px;background:linear-gradient(90deg,#ececee 25%,#f7f7f9 50%,#ececee 75%);background-size:200% 100%;animation:skShim 1.2s infinite}
+#pageSkeleton[data-theme="dark"] .sk{background:linear-gradient(90deg,#1c1c22 25%,#26262e 50%,#1c1c22 75%);background-size:200% 100%}
+@keyframes skShim{from{background-position:200% 0}to{background-position:-200% 0}}
+</style>
+<div id="pageSkeleton" aria-hidden="true">
+  <div class="sk" style="width:100%;max-width:420px;height:44px;border-radius:22px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:22px;margin-top:22px"></div>
+  <div class="sk" style="width:72%;max-width:300px;height:14px;margin-top:10px;align-self:center"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:12px;margin-top:26px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:12px;margin-top:10px"></div>
+  <div class="sk" style="width:88%;max-width:370px;height:12px;margin-top:10px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:56px;border-radius:14px;margin-top:26px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:56px;border-radius:14px;margin-top:10px"></div>
+  <div class="sk" style="width:100%;max-width:420px;height:56px;border-radius:14px;margin-top:10px"></div>
+</div>
+<script>
+try{
+  var _sk=document.getElementById('pageSkeleton');
+  var _th=localStorage.getItem('dro_reader_theme')||'';
+  var _st=localStorage.getItem('droboardTheme')||'';
+  if(_sk&&(_th==='theme-dark'||(!_th&&_st!=='light')||_th==='theme-sepia'||_th==='theme-grey')){_sk.setAttribute('data-theme','dark');}
+  setTimeout(function(){if(_sk&&!window.__pageReady){_sk.style.opacity='0';_sk.style.pointerEvents='none';setTimeout(function(){if(_sk.parentNode)_sk.parentNode.removeChild(_sk);},400);}},6000);
+}catch(e){}
+/* Change log: page skeleton + early theme (revert = delete this block + hidePageSkeleton call). */
+</script>
 
 <!-- Top progress hairline -->
 <div class="read-progress"><div class="read-progress-fill" id="readProgressFill"></div></div>
@@ -269,7 +301,7 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 
 <div class="toast" id="toastEl"></div>
 
-<!-- ═══ Components ═══ -->
+<!-- â•â•â• Components â•â•â• -->
 <script src="../services/currency-service.js"></script>
 <script src="../component/reader.js"></script>
 <script src="../component/rewarded-ad.js"></script>
@@ -278,17 +310,22 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
-<script src="../component/ad-card.js"></script>
+<script src="../component/ad-card.js?v=2"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/comment-section.js?v=3"></script>
+<script src="../component/status-viewer.js?v=2"></script>
+<script src="../component/comment-section.js?v=5"></script>
 <script src="../component/community-cards.js?v=3"></script>
 
-<!-- ═══ Data ═══ -->
+<!-- â•â•â• Data â•â•â• -->
 <script src="../data/comments-data.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/ad-service.js"></script>
-<script src="../services/reader-engagement-service.js"></script>
+<script src="../component/ad-slot.js"></script>
+<script src="../services/auth-session.js"></script>
+<script src="../services/league-service.js"></script>
+<script src="../services/reader-engagement-service.js?v=2"></script>
 <script src="../services/reader-track.js"></script>
+<script src="../services/reading-history.js"></script>
 <script src="../services/scroll-reader-service.js?v=3"></script>
 </body>
 </html>

@@ -6,33 +6,26 @@
 <meta name="theme-color" content="#d8d8d8"/>
 <title>Droboard · Profile</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
 <style>
 :root{
-  --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
-  --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
-  --bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--l3:#ffffff;--l4:#e2e2e2;
-  --bd:rgba(0,0,0,.12);--bd2:rgba(0,0,0,.06);--bd-acc:rgba(255,0,80,.25);
-  --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
-  --blue:#38bdf8;--green:#34d399;--gold:#f0a800;--gold-soft:rgba(240,168,0,.12);--purple:#a78bfa;--orange:#fb923c;
+  --gold-soft:rgba(240,168,0,.12);
   --nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px);
 }
 [data-theme="dark"]{
-  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
-  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
-  --tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
   --gold-soft:rgba(240,168,0,.14);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg)}
-body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tx-body);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s ease,color .25s ease}
+body{font-family:var(--font-ui);color:var(--tx-body);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .25s ease,color .25s ease}
 button{font-family:inherit;cursor:pointer}
 ::-webkit-scrollbar{display:none}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:clip;padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 @media (min-width:421px){ .phone{ box-shadow:0 0 50px rgba(0,0,0,.14) } }
 .top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
 [data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
-.top-logo{font-size:20px;font-weight:900;color:var(--acc);letter-spacing:-1px;cursor:pointer}
-.top-right{display:flex;align-items:center;gap:8px}
+.top-logo{font-size:20px;font-weight:900;color:var(--acc);letter-spacing:-1px;cursor:pointer;flex:1}
+.top-right{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end}
 .top-icon-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;color:var(--tx-muted);transition:.15s;position:relative;flex-shrink:0}
 .top-icon-btn:active{transform:scale(.9)}
 .notif-count{position:absolute;top:4px;right:4px;background:var(--acc);color:#fff;font-size:7px;font-weight:800;min-width:14px;height:14px;border-radius:7px;padding:0 3px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--l1)}
@@ -57,6 +50,11 @@ button{font-family:inherit;cursor:pointer}
 .av-ring{width:82px;height:82px;border-radius:50%;padding:3px;box-shadow:0 0 24px var(--glow)}
 .av-ring.role-writer{background:linear-gradient(135deg,var(--acc),var(--acc2))}
 .av-ring.role-reader{background:linear-gradient(135deg,var(--blue),var(--acc))}
+.av-ring.champ{background:linear-gradient(135deg,#f59e0b,#fbbf24,#f59e0b);box-shadow:0 0 28px rgba(245,158,11,.55)}
+.av-ring.no-story{background:var(--bd);box-shadow:none}
+.av-ring.has-story{background:conic-gradient(from 0deg,#ff0050,#ff7a9a,#f59e0b,#ff0050);box-shadow:0 0 24px var(--glow);cursor:pointer}
+.av-plus{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--acc);border:2.5px solid var(--l1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer;z-index:2}
+.av-plus:active{transform:scale(.9)}
 .av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#000}
 .av-inner img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 .verified-badge-av{position:absolute;bottom:2px;right:2px;width:22px;height:22px;border-radius:50%;background:var(--blue);border:2.5px solid var(--l1);display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;font-weight:800}
@@ -83,7 +81,7 @@ button{font-family:inherit;cursor:pointer}
 .stat-item:last-child{border-right:none}
 .stat-item:active{background:rgba(0,0,0,.03)}
 .stat-num{font-size:16px;font-weight:800;color:var(--tx-high);line-height:1}
-.stat-num.r{color:var(--acc)}.stat-num.b{color:var(--blue)}.stat-num.g{color:var(--green)}
+.stat-num.r{color:var(--acc)}.stat-num.b{color:var(--blue)}.stat-num.g{color:var(--green)}.stat-num.gold{color:var(--gold,#f59e0b)}
 .stat-label{font-size:8px;color:var(--tx-muted);margin-top:2px;font-weight:600}
 .ach-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none}
 .ach-chip{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:9px;font-weight:700;white-space:nowrap;border:1px solid;flex-shrink:0}
@@ -98,7 +96,7 @@ button{font-family:inherit;cursor:pointer}
 .upgrade-strip-title{font-size:12.5px;font-weight:800;color:var(--tx-high)}
 .upgrade-strip-sub{font-size:10.5px;color:var(--tx-muted);margin-top:1px}
 .upgrade-strip-btn{background:var(--acc);color:#fff;border:none;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 0 12px var(--glow-sm)}
-.profile-tabs{display:flex;border-bottom:1px solid var(--bd);position:sticky;top:57px;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);overflow-x:auto;scrollbar-width:none}
+.profile-tabs{display:flex;border-bottom:1px solid var(--bd);background:rgba(255,255,255,.97);overflow-x:auto;scrollbar-width:none}
 [data-theme="dark"] .profile-tabs{background:rgba(0,0,0,.97)}
 .ptab{flex-shrink:0;padding:10px 12px;font-size:11px;font-weight:700;color:var(--tx-faint);cursor:pointer;border-bottom:2.5px solid transparent;transition:.2s;white-space:nowrap}
 .ptab.active{color:var(--tx-high);border-bottom-color:var(--acc)}
@@ -201,6 +199,8 @@ button{font-family:inherit;cursor:pointer}
 .story-pick.on .story-pick-check{opacity:1;background:var(--acc)}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/app-nav.js"></script>
 </head>
 <body>
 
@@ -208,7 +208,7 @@ button{font-family:inherit;cursor:pointer}
 
   <div class="top-bar">
     <div class="top-logo" onclick="location.href='index.html'">D</div>
-    <a href="store.html" id="coinPill" title="Coin balance" style="position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top, 0px) + 14px);z-index:201;text-decoration:none;background:var(--gold-soft);border:1px solid rgba(240,168,0,.2);color:#8a6200;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:800"><i class="fas fa-coins" style="font-size:12px"></i><span id="coinBalance">0</span></a>
+    <a href="store.html" id="coinPill" title="Coin balance" style="text-decoration:none;background:var(--gold-soft);border:1px solid rgba(240,168,0,.2);color:#8a6200;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:800;margin:0 auto;flex-shrink:0"><i class="fas fa-coins" style="font-size:12px"></i><span id="coinBalance">0</span></a>
     <div class="top-right">
       <div class="top-icon-btn" data-search-trigger title="Search"><i class="fas fa-magnifying-glass"></i></div>
       <div class="top-icon-btn" onclick="location.href='notifications.html'" title="Notifications">
@@ -241,12 +241,14 @@ button{font-family:inherit;cursor:pointer}
       <div class="hero-bg" id="heroBg"></div>
       <div class="hero-grad"></div>
       <a class="hero-edit-btn" id="heroEditBtn" href="edit-profile.html" style="display:none"><i class="fas fa-camera"></i> Edit Cover</a>
+      <a class="hero-edit-btn" id="heroStatsBtn" href="insights.html?surface=profile" style="display:none;right:auto;left:12px;background:rgba(0,0,0,.55)"><i class="fas fa-chart-simple"></i> Stats</a>
     </div>
 
     <div class="profile-info">
       <div class="av-row">
         <div class="av-outer">
           <div class="av-ring" id="avRing"><div class="av-inner"><img id="avImg" src="" alt=""/></div></div>
+          <div class="av-plus" id="avPlus" style="display:none" title="Post a status"><i class="fas fa-plus"></i></div>
           <div class="verified-badge-av" id="verifiedBadge" style="display:none"><i class="fas fa-check" style="font-size:7px"></i></div>
         </div>
         <div class="action-row" id="actionRow"></div>
@@ -257,14 +259,7 @@ button{font-family:inherit;cursor:pointer}
       <div class="profile-genres" id="genrePillsDisplay"></div>
       <div class="stats-row" id="statsRow"></div>
       <div class="ach-row" id="achRow"></div>
-      <div class="upgrade-strip" id="upgradeStrip">
-        <i class="fas fa-feather-pointed"></i>
-        <div class="upgrade-strip-text">
-          <div class="upgrade-strip-title">Ready to publish?</div>
-          <div class="upgrade-strip-sub">Turn on writer tools — your reading history stays exactly as it is.</div>
-        </div>
-        <button class="upgrade-strip-btn" onclick="ProfilePage.openUpgradeWizard()">Become a Writer</button>
-      </div>
+      <div class="upgrade-strip" id="upgradeStrip"></div>
     </div>
 
     <div class="profile-tabs" id="profileTabs"></div>
@@ -312,23 +307,6 @@ button{font-family:inherit;cursor:pointer}
 
 <div class="toast" id="toast"></div>
 
-<div class="overlay-bg" id="upgradeOv">
-  <div class="overlay-sheet">
-    <div class="overlay-handle"></div>
-    <div class="overlay-hdr">
-      <h3><i class="fas fa-feather-pointed" style="color:var(--acc);font-size:13px"></i> Become a Writer</h3>
-      <button class="overlay-close" id="upgradeCloseBtn">✕</button>
-    </div>
-    <div class="uw-body">
-      <div class="uw-step-label">Title of your first book</div>
-      <input class="uw-input" id="uwTitle" placeholder="e.g. The letter I never sent…"/>
-      <div class="uw-step-label">Main genre</div>
-      <div class="uw-genre-grid" id="uwGenreGrid"></div>
-      <button class="uw-submit" id="uwSubmitBtn">Publish &amp; Unlock Writer Tools ✓</button>
-    </div>
-  </div>
-</div>
-
 <div class="overlay-bg" id="genreEditOv">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
@@ -341,7 +319,7 @@ button{font-family:inherit;cursor:pointer}
   </div>
 </div>
 
-<!-- ════ NEW COLLECTION — renders via ProfileData.createCollection ════ -->
+<!-- ── NEW COLLECTION … renders via ProfileData.createCollection ── -->
 <div class="overlay-bg" id="newCollOv">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
@@ -359,13 +337,14 @@ button{font-family:inherit;cursor:pointer}
         <div class="uw-genre" data-priv="Private">🔒 Private</div>
       </div>
       <div class="uw-step-label">Stories (optional — covers come from these)</div>
+      <input class="uw-input" id="ncStorySearch" placeholder="🔍 Search title or author…" autocomplete="off"/>
       <div class="story-pick-grid" id="ncStoryGrid"></div>
       <button class="uw-submit" id="ncCreateBtn">Create Collection ✓</button>
     </div>
   </div>
 </div>
 
-<!-- ════ MANAGE COLLECTION STORIES — renders via ProfileData.updateCollection ════ -->
+<!-- ── MANAGE COLLECTION STORIES … renders via ProfileData.updateCollection ── -->
 <div class="overlay-bg" id="manageCollOv">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
@@ -383,6 +362,7 @@ button{font-family:inherit;cursor:pointer}
         <div class="uw-genre" data-priv="Private">🔒 Private</div>
       </div>
       <div class="uw-step-label" id="mcCount">Tap stories to add or remove.</div>
+      <input class="uw-input" id="mcStorySearch" placeholder="🔍 Search title or author…" autocomplete="off"/>
       <div class="story-pick-grid" id="mcStoryGrid"></div>
       <button class="uw-submit" id="mcSaveBtn">Save Changes ✓</button>
     </div>
@@ -416,10 +396,13 @@ button{font-family:inherit;cursor:pointer}
   <script src="../component/follow-list.js?v=3"></script>
   <script src="../component/library.js"></script>
   <script src="../component/post-composer.js"></script>
+<script src="../services/reading-history.js"></script>
   <script src="../component/boards-overlay.js"></script>
   <script src="../component/browse-overlay.js"></script>
-  <script src="../component/ad-card.js"></script>
+  <script src="../component/ad-card.js?v=2"></script>
   <script src="../services/ad-service.js"></script>
+<script src="../component/status-viewer.js?v=2"></script>
+<script src="../services/status-service.js"></script>
   <script src="../services/store-service.js"></script>
   <script src="../component/reaction-picker.js"></script>
 <script src="../component/post-card.js"></script>
@@ -427,7 +410,9 @@ button{font-family:inherit;cursor:pointer}
 <script src="../component/save-modal.js"></script>
 <script src="../component/share-modal.js"></script>
 <script src="../component/book-card.js"></script>
+<script src="../services/league-service.js"></script>
+<script src="../shared/insights-tracker.js"></script>
 <script src="../services/profile-service.js?v=5"></script>
-<script>ProfilePage.init();</script>
+<script>ProfilePage.init(); InsightsTracker.hit('profile');</script>
 </body>
 </html>

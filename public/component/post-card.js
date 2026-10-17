@@ -27,8 +27,9 @@
  *     onDots:         (post) => toast('More options…'),
  *     onJoinAma:      (post) => toast('🎙️ Joining AMA…'),
  *     onOpenLink:     (post) => toast('📖 Opening story…'),   // chapter-drop / repost / review / recommendation tap
- *     onPollVote:     (post, i) => { post.poll.opts[i].v++; post.poll.voted = i; DroboardPostCard.update(post); },
- *     onDebateVote:   (post, side) => { ...; DroboardPostCard.update(post); },
+  *     onPollVote:     (post, i) => { post.poll.opts[i].v++; post.poll.voted = i; DroboardPostCard.update(post); },
+  *     onPredVote:     (post, i) => { post.prediction.opts[i].v++; post.prediction.voted = i; DroboardPostCard.update(post); },
+  *     onDebateVote:   (post, side) => { ...; DroboardPostCard.update(post); },
  *   });
  *
  *   DroboardPostCard.setPosts(FEED_POSTS);   // full render
@@ -78,6 +79,7 @@
     .pcc-pill-quote{background:rgba(251,191,36,.08);color:#b57e00;border-color:rgba(251,191,36,.25)}
     .pcc-pill-repost{background:rgba(56,189,248,.08);color:#0284c7;border-color:rgba(56,189,248,.25)}
     .pcc-pill-poll{background:rgba(52,211,153,.08);color:#0d9668;border-color:rgba(52,211,153,.25)}
+    .pcc-pill-prediction{background:rgba(167,139,250,.08);color:var(--purple);border-color:rgba(167,139,250,.25)}
     .pcc-pill-debate{background:rgba(251,146,60,.08);color:#c2610a;border-color:rgba(251,146,60,.25)}
     .pcc-pill-post{background:rgba(255,0,80,.08);color:var(--acc);border-color:var(--bd-acc)}
     .pcc-pill-review{background:rgba(251,191,36,.08);color:#b57e00;border-color:rgba(251,191,36,.25)}
@@ -98,6 +100,14 @@
     .pcc-story-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
     .pcc-story-badge{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
     .pcc-story-badge.rec{color:#0d9668}
+    /* Recommendation card — compact story promo (cover + genre + hook + author) */
+    .pcc-rec-card{display:flex;gap:12px;background:#eef2f6;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:12px;margin-bottom:4px;cursor:pointer}
+    [data-theme="dark"] .pcc-rec-card{background:#121318;border-color:rgba(255,255,255,.08)}
+    .pcc-rec-cover{width:56px;height:80px;border-radius:8px;flex-shrink:0;object-fit:cover}
+    .pcc-rec-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
+    .pcc-rec-cat{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#0d9668}
+    .pcc-rec-text{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;line-height:1.35;color:var(--tx-high);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .pcc-rec-by{font-size:12px;color:var(--tx-muted);font-weight:600}
     .pcc-story-badge.ch{color:var(--purple)}
     .pcc-story-badge.rp{color:#0284c7}
     .pcc-story-title{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;line-height:1.3;color:var(--tx-high);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -121,30 +131,54 @@
     .pcc-ama-join{background:var(--acc);color:#fff;border:none;padding:9px 16px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 14px var(--glow-sm);font-family:inherit}
     @keyframes pccPulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-    /* Poll */
-    .pcc-poll-q{font-size:14.5px;font-weight:700;margin-bottom:13px;line-height:1.4;color:var(--tx-high)}
-    .pcc-poll-row{margin-bottom:9px;cursor:pointer}
-    .pcc-poll-label{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;margin-bottom:5px;color:var(--tx-body)}
-    .pcc-poll-track{height:8px;border-radius:6px;background:var(--l2);overflow:hidden}
-    .pcc-poll-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
-    .pcc-poll-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11.5px;color:var(--tx-muted)}
-    .pcc-poll-voted{color:var(--acc);font-weight:700}
+    /* ── Engagement widgets (poll / prediction / debate) — mirrors the
+       reader page's ReaderEngagement UI, but always expanded (no accordion).
+       Uses the host page's CSS variables so it auto-themes light/dark. ── */
+    .pcc-eng{border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:11px;background:var(--l2)}
+    .pcc-eng-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px}
+    .pcc-eng-hdr-ico{font-size:14px;line-height:1}
+    .pcc-eng-hdr-body{flex:1;min-width:0}
+    .pcc-eng-hdr-title{font-size:12px;font-weight:800;color:var(--tx-high)}
+    .pcc-eng-hdr-sub{font-size:10px;color:var(--tx-muted);margin-top:1px}
+    .pcc-eng-panel{display:block;border-top:1px solid var(--bd)}
+    .pcc-eng-q{padding:10px 14px 8px;font-size:13px;font-weight:700;color:var(--tx-high)}
+    .pcc-eng-opts{padding:0 14px 6px}
 
-    /* Debate */
-    .pcc-debate-q{font-family:'Playfair Display',serif;font-size:16.5px;font-weight:800;margin-bottom:4px;color:var(--tx-high)}
-    .pcc-debate-prompt{font-size:12.5px;color:var(--tx-muted);margin-bottom:13px}
-    .pcc-debate-opts{display:flex;gap:9px;margin-bottom:13px}
-    .pcc-debate-opt{flex:1;border-radius:12px;padding:14px 10px;text-align:center;border:1.5px solid;cursor:pointer;transition:.15s}
-    .pcc-debate-opt.for{background:rgba(52,211,153,.06);border-color:rgba(52,211,153,.25)}
-    .pcc-debate-opt.against{background:rgba(255,0,80,.06);border-color:var(--bd-acc)}
-    .pcc-debate-opt.picked{outline:2px solid currentColor}
-    .pcc-debate-opt-text{font-size:12px;font-weight:700;line-height:1.3;margin-bottom:9px}
-    .pcc-debate-opt.for .pcc-debate-opt-text{color:#0d9668}
-    .pcc-debate-opt.against .pcc-debate-opt-text{color:var(--acc)}
-    .pcc-debate-icon{margin-bottom:8px;font-size:18px}
-    .pcc-debate-opt.for .pcc-debate-icon{color:var(--green)}
-    .pcc-debate-opt.against .pcc-debate-icon{color:var(--acc)}
-    .pcc-debate-footer{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--tx-muted)}
+    /* Poll */
+    .pcc-eng-opt{position:relative;border-radius:10px;padding:10px 12px;overflow:hidden;border:1.5px solid var(--bd);margin-bottom:7px;cursor:pointer;transition:border-color .2s;user-select:none}
+    .pcc-eng-opt:last-child{margin-bottom:0}
+    .pcc-eng-opt.voted{border-color:#ff0050}
+    .pcc-eng-opt-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,0,80,.09);transition:width .6s cubic-bezier(.4,0,.2,1);z-index:0}
+    .pcc-eng-opt-row{position:relative;z-index:1;display:flex;justify-content:space-between;gap:8px}
+    .pcc-eng-opt-txt{font-size:12px;font-weight:600;color:var(--tx-body)}
+    .pcc-eng-opt-pct{font-size:11px;font-weight:800;color:var(--acc)}
+    .pcc-eng-opt-mine{color:var(--acc);font-weight:700}
+
+    /* Prediction — purple accent */
+    .pcc-eng.pred .pcc-eng-opt.voted{border-color:var(--purple)}
+    .pcc-eng.pred .pcc-eng-opt-bar{background:rgba(167,139,250,.12)}
+    .pcc-eng.pred .pcc-eng-opt-pct,.pcc-eng.pred .pcc-eng-opt-mine{color:var(--purple)}
+
+    .pcc-eng-foot{padding:8px 14px;font-size:10px;color:var(--tx-muted);display:flex;justify-content:space-between;align-items:center}
+    .pcc-eng-foot-link{color:var(--acc);font-weight:800;cursor:pointer}
+
+    /* Debate — two side cards with bars + checkmark */
+    .pcc-eng-deb-sides{display:flex;gap:8px;padding:0 14px 6px}
+    .pcc-eng-deb-side{flex:1;position:relative;border-radius:12px;padding:10px 8px;text-align:center;border:2px solid var(--bd);cursor:pointer;overflow:hidden;transition:all .2s;user-select:none;display:flex;flex-direction:column}
+    .pcc-eng-deb-side.for.chosen{border-color:#0d9668;background:rgba(52,211,153,.06)}
+    .pcc-eng-deb-side.against.chosen{border-color:var(--acc);background:rgba(255,0,80,.06)}
+    .pcc-eng-deb-check{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;background:#0d9668;color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center}
+    .pcc-eng-deb-side.against .pcc-eng-deb-check{background:var(--acc)}
+    .pcc-eng-deb-em{font-size:20px;margin-bottom:4px;flex-shrink:0}
+    .pcc-eng-deb-lbl{font-size:11px;font-weight:800;line-height:1.35;min-height:30px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;flex:1}
+    .pcc-eng-deb-side.for .pcc-eng-deb-lbl{color:#0d9668}
+    .pcc-eng-deb-side.against .pcc-eng-deb-lbl{color:var(--acc)}
+    .pcc-eng-deb-barwrap{height:4px;background:var(--bd);border-radius:4px;overflow:hidden;margin-bottom:5px}
+    .pcc-eng-deb-bar{height:100%;border-radius:4px;transition:width .6s ease}
+    .pcc-eng-deb-side.for .pcc-eng-deb-bar{background:#0d9668}
+    .pcc-eng-deb-side.against .pcc-eng-deb-bar{background:var(--acc)}
+    .pcc-eng-deb-pct{font-size:14px;font-weight:900;color:var(--tx-high)}
+    .pcc-eng-deb-cnt{font-size:10px;color:var(--tx-muted);margin-top:2px}
 
     /* Review */
     .pcc-review{border:1px solid var(--bd);border-radius:13px;padding:12px;margin-bottom:11px;background:var(--l2)}
@@ -247,11 +281,29 @@
       case 'quote': return `<span class="pcc-pill pcc-pill-quote"><i class="fas fa-quote-right"></i>Quote</span>`;
       case 'repost': return `<span class="pcc-pill pcc-pill-repost"><i class="fas fa-retweet"></i>Repost</span>`;
       case 'poll': return `<span class="pcc-pill pcc-pill-poll"><i class="fas fa-chart-bar"></i>Poll</span>`;
+      case 'prediction': return `<span class="pcc-pill pcc-pill-prediction"><i class="fas fa-crystal-ball"></i>Prediction</span>`;
       case 'debate': return `<span class="pcc-pill pcc-pill-debate"><i class="fas fa-gavel"></i>Debate</span>`;
       case 'review': return `<span class="pcc-pill pcc-pill-review"><i class="fas fa-star"></i>Review</span>`;
       case 'recommendation': return `<span class="pcc-pill pcc-pill-recommend"><i class="fas fa-thumbs-up"></i>Recommendation</span>`;
       default: return ''; // no pill for plain author posts
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Engagement widgets (poll / prediction / debate) — mirrors the
+  // reader page's ReaderEngagement UI, always expanded (no accordion).
+  // ══════════════════════════════════════════════════════════════════════
+  function _engShell(icon, title, sub, bodyHtml) {
+    return `<div class="pcc-eng" data-pcc-eng>
+      <div class="pcc-eng-hdr">
+        <span class="pcc-eng-hdr-ico">${icon}</span>
+        <div class="pcc-eng-hdr-body">
+          <div class="pcc-eng-hdr-title">${esc(title)}</div>
+          <div class="pcc-eng-hdr-sub">${sub}</div>
+        </div>
+      </div>
+      <div class="pcc-eng-panel">${bodyHtml}</div>
+    </div>`;
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -323,12 +375,12 @@
       const s = post.storyRef || {};
       return `${_pill('recommendation')}
         ${post.note ? `<div class="pcc-text" data-pcc-openpost>${esc(post.note)}</div>` : ''}
-        <div class="pcc-story-card" data-pcc-open>
-          <img class="pcc-story-cover" src="${s.cover || ''}" alt="">
-          <div class="pcc-story-body">
-            <div class="pcc-story-badge rec">${esc(s.cat || 'Recommended read')}</div>
-            <div class="pcc-story-title">${esc(s.title)}</div>
-            <div class="pcc-story-author">by @${esc(s.author)}</div>
+        <div class="pcc-rec-card" data-pcc-open title="${escAttr(s.title || '')}">
+          ${s.cover ? `<img class="pcc-rec-cover" src="${s.cover}" alt="">` : ''}
+          <div class="pcc-rec-body">
+            <div class="pcc-rec-cat">${esc(s.cat || 'Recommended read')}</div>
+            <div class="pcc-rec-text">${esc(s.title || '')}</div>
+            <div class="pcc-rec-by">by @${esc(s.author || s.writer || '')}</div>
           </div>
         </div>`;
     },
@@ -352,38 +404,60 @@
     'poll': (post) => {
       const pl = post.poll || { opts: [], total: 0, voted: -1 };
       const total = pl.total || pl.opts.reduce((a, o) => a + o.v, 0) || 1;
-      const rows = pl.opts.map((o, i) => {
+      const opts = pl.opts.map((o, i) => {
         const pct = Math.round((o.v / total) * 100) || 0;
+        const voted = pl.voted === i;
         return `
-          <div class="pcc-poll-row" data-pcc-poll-opt="${i}">
-            <div class="pcc-poll-label"><span>${esc(o.label)}${pl.voted === i ? ' <span class="pcc-poll-voted">· your vote</span>' : ''}</span><span>${pct}%</span></div>
-            <div class="pcc-poll-track"><div class="pcc-poll-fill" style="width:${pct}%"></div></div>
+          <div class="pcc-eng-opt${voted ? ' voted' : ''}" data-pcc-poll-opt="${i}">
+            <div class="pcc-eng-opt-bar" style="width:${pct}%"></div>
+            <div class="pcc-eng-opt-row"><span class="pcc-eng-opt-txt">${esc(o.label || o.t)}${voted ? ' <span class="pcc-eng-opt-mine">· your vote</span>' : ''}</span><span class="pcc-eng-opt-pct">${pct}%</span></div>
           </div>`;
       }).join('');
-      return `${_pill('poll')}
-        ${post.image ? `<img class="pcc-image" src="${esc(post.image)}" alt="" data-pcc-open style="margin-bottom:11px">` : ''}
-        <div class="pcc-poll-q">${esc(pl.question)}</div>
-        ${rows}
-        <div class="pcc-poll-footer"><span>${pl.voted >= 0 ? 'Tap results to see more' : 'Tap an option to vote'}</span><span>${total} votes</span></div>`;
+      const body = `${post.image ? `<img class="pcc-image" src="${esc(post.image)}" alt="" data-pcc-open style="margin:10px 14px 0">` : ''}
+        <div class="pcc-eng-q">${esc(pl.question || pl.q)}</div>
+        <div class="pcc-eng-opts">${opts}</div>
+        <div class="pcc-eng-foot"><span>${pl.voted >= 0 ? 'Thanks for voting' : 'Tap an option to vote'}</span><span>${fmtN(total)} votes</span></div>`;
+      return `${_pill('poll')}${_engShell('📊', 'Poll', `${fmtN(total)} votes`, body)}`;
+    },
+
+    'prediction': (post) => {
+      const pr = post.prediction || { opts: [], total: 0, voted: -1 };
+      const total = pr.total || pr.opts.reduce((a, o) => a + (o.v || 0), 0) || 1;
+      const opts = (pr.opts || []).map((o, i) => {
+        const pct = Math.round(((o.v || 0) / total) * 100) || 0;
+        const voted = pr.voted === i;
+        return `
+          <div class="pcc-eng-opt${voted ? ' voted' : ''}" data-pcc-pred-opt="${i}">
+            <div class="pcc-eng-opt-bar" style="width:${pct}%"></div>
+            <div class="pcc-eng-opt-row"><span class="pcc-eng-opt-txt">${esc(o.label || o.t || o.text)}${voted ? ' <span class="pcc-eng-opt-mine">· your pick</span>' : ''}</span><span class="pcc-eng-opt-pct">${pct}%</span></div>
+          </div>`;
+      }).join('');
+      const body = `<div class="pcc-eng-q">${esc(pr.question || pr.q)}</div>
+        <div class="pcc-eng-opts">${opts}</div>
+        <div class="pcc-eng-foot"><span>${pr.voted >= 0 ? 'Prediction locked in' : 'Tap an option to predict'}</span><span>${fmtN(total)} predicts</span></div>`;
+      return `${_pill('prediction')}${_engShell('🔮', 'Prediction', `${fmtN(total)} predicts`, body)}`;
     },
 
     'debate': (post) => {
       const d = post.debateData || {};
-      const voted = d.userVote;
-      return `${_pill('debate')}
-        <div class="pcc-debate-q">${esc(d.question)}</div>
-        ${d.prompt ? `<div class="pcc-debate-prompt">${esc(d.prompt)}</div>` : ''}
-        <div class="pcc-debate-opts">
-          <div class="pcc-debate-opt for${voted === 'for' ? ' picked' : ''}" data-pcc-debate="for">
-            <div class="pcc-debate-opt-text">${esc(d.forText || 'For')}</div>
-            <div class="pcc-debate-icon"><i class="fas fa-thumbs-up"></i></div>
-          </div>
-          <div class="pcc-debate-opt against${voted === 'against' ? ' picked' : ''}" data-pcc-debate="against">
-            <div class="pcc-debate-opt-text">${esc(d.againstText || 'Against')}</div>
-            <div class="pcc-debate-icon"><i class="fas fa-thumbs-down"></i></div>
-          </div>
-        </div>
-        <div class="pcc-debate-footer"><span>${(d.forV || 0) + (d.agV || 0)} joined the discussion</span><span>View Discussion <i class="fas fa-chevron-right"></i></span></div>`;
+      const f = d.forV || 0, a = d.agV || 0, tot = (f + a) || 1;
+      const fp = Math.round(f / tot * 100), ap = 100 - fp;
+      const voted = d.userVote || null;
+      const side = (s, lbl, cnt, em, cls, pct) => `
+        <div class="pcc-eng-deb-side ${cls}${voted === s ? ' chosen' : ''}" data-pcc-debate="${s}">
+          ${voted === s ? `<div class="pcc-eng-deb-check"><i class="fas fa-check"></i></div>` : ''}
+          <div class="pcc-eng-deb-em">${em}</div>
+          <div class="pcc-eng-deb-lbl">${esc(lbl)}</div>
+          <div class="pcc-eng-deb-barwrap"><div class="pcc-eng-deb-bar" style="width:${pct}%"></div></div>
+          <div class="pcc-eng-deb-pct">${pct}%</div>
+          <div class="pcc-eng-deb-cnt">${fmtN(cnt)} votes</div>
+        </div>`;
+      const body = `${d.prompt ? `<div class="pcc-eng-q" style="padding-bottom:0;font-weight:600;color:var(--tx-muted);font-size:12px">${esc(d.prompt)}</div>` : ''}
+        <div class="pcc-eng-q">${esc(d.motion || d.question)}</div>
+        ${post.text ? `<div class="pcc-text" style="margin-top:6px" data-pcc-openpost>${esc(post.text)}</div>` : ''}
+        <div class="pcc-eng-deb-sides">${side('for', d.forText || 'For', f, '✅', 'for', fp)}${side('against', d.againstText || 'Against', a, '❌', 'against', ap)}</div>
+        <div class="pcc-eng-foot"><span>${fmtN(f + a)} joined the discussion</span><span class="pcc-eng-foot-link" data-pcc-debate-open>View full debate <i class="fas fa-chevron-right"></i></span></div>`;
+      return `${_pill('debate')}${_engShell('⚖️', 'Debate', `${fmtN(f + a)} takes`, body)}`;
     },
 
     /* Plain author post — no type pill, optional heading, 3-line clamp + Read more, shorter image */
@@ -396,6 +470,9 @@
         ${post.image ? `<img class="pcc-image" src="${post.image}" alt="" data-pcc-open>` : ''}`;
     },
   };
+
+  // Alias: droboard-page seed uses type 'forum-poll' — same poll UI.
+  RENDERERS['forum-poll'] = RENDERERS['poll'];
 
   // ══════════════════════════════════════════════════════════════════════
   // Card render
@@ -480,8 +557,14 @@
       const pollRow = e.target.closest('[data-pcc-poll-opt]');
       if (pollRow) { _hooks.onPollVote && _hooks.onPollVote(post, parseInt(pollRow.dataset.pccPollOpt, 10)); return; }
 
+      const predRow = e.target.closest('[data-pcc-pred-opt]');
+      if (predRow) { _hooks.onPredVote && _hooks.onPredVote(post, parseInt(predRow.dataset.pccPredOpt, 10)); return; }
+
       const debateOpt = e.target.closest('[data-pcc-debate]');
       if (debateOpt) { _hooks.onDebateVote && _hooks.onDebateVote(post, debateOpt.dataset.pccDebate); return; }
+
+      const debateOpen = e.target.closest('[data-pcc-debate-open]');
+      if (debateOpen) { _hooks.onOpenDebate && _hooks.onOpenDebate(post); return; }
 
       // Text tap → open the post reader (deliberate reading action only —
       // empty padding taps do nothing, links/inputs are never hijacked)

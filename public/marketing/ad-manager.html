@@ -42,6 +42,11 @@ body{font-family:'Inter',system-ui,sans-serif}
 .pl-inp{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:9px}
 .pl-check{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text-muted)}
 .pl-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pl-fmt-row{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:9px}
+.pl-fmt-chk{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--text-muted);cursor:pointer}
+.pl-fmt-chk input{accent-color:var(--accent)}
+.pl-adids{min-height:60px;resize:vertical}
+.pl-hint{font-size:10.5px;color:var(--text-faint);line-height:1.45;margin:2px 0 9px}
 
 .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
 .search-box{display:flex;align-items:center;gap:7px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;flex:1;min-width:180px}
@@ -175,10 +180,45 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label class="pl-check"><input type="checkbox" id="plSlotEveryNth" checked/> Every-Nth slot</label>
         <label class="pl-check"><input type="checkbox" id="plSlotThreadTop" checked/> Thread-top slot</label>
       </div>
+      <div class="pl-card" id="plProgCard" style="grid-column:1/-1">
+        <div class="pl-name"><i class="fas fa-crosshairs" style="color:var(--amber)"></i> Slot programming <span style="font-weight:600;color:var(--text-faint);font-size:10px">— pin ad types or specific ads to a slot</span></div>
+        <div class="pl-hint">Pin a slot to only serve certain ad formats, or list ad ids to force specific ads to the front of that slot. Leave both empty to serve any eligible ad.</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+          <div style="flex:1;min-width:220px">
+            <label class="pl-lbl">Slot</label>
+            <select class="pl-inp" id="plProgSlot"></select>
+          </div>
+          <div style="flex:2;min-width:300px">
+            <label class="pl-lbl">Allowed ad types (empty = all)</label>
+            <div class="pl-fmt-row" id="plProgFmts"></div>
+          </div>
+        </div>
+        <label class="pl-lbl">Pinned ad ids (comma separated, top = first)</label>
+        <textarea class="pl-inp pl-adids" id="plProgAdIds" rows="2" placeholder="e.g. plat_premium, book_betrayal"></textarea>
+        <button class="btn-ghost" id="plProgClear">Clear programming for this slot</button>
+      </div>
     </div>
     <div class="pl-actions">
       <button class="btn-primary" id="plSaveBtn">Save frequency</button>
       <button class="btn-ghost" id="resetAdsBtn">Reset all to defaults</button>
+    </div>
+    </div>
+  </div>
+
+  <div class="panel collapsed" id="lgPanel">
+    <div class="panel-head accordion-head" id="lgHead" role="button" tabindex="0"><h2><i class="fas fa-trophy" style="color:var(--amber);font-size:13px"></i> Reader League</h2><i class="fas fa-chevron-down accordion-chev"></i></div>
+    <div class="pl-body">
+    <div class="panel-sub">Weekly reader competition (profile <b>#Rank</b> → leaderboard). Scoring weights, prizes and kill switch. Applies on client pages at next load.</div>
+    <label class="pl-check" style="margin-bottom:12px"><input type="checkbox" id="lgOn" checked/> League live (off restores the Saved stat)</label>
+    <div class="pl-name" style="margin-bottom:8px"><i class="fas fa-bolt" style="color:var(--accent)"></i> Points per action</div>
+    <div class="pl-grid" id="lgWeights" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div class="pl-name" style="margin:6px 0 8px"><i class="fas fa-gift" style="color:var(--amber)"></i> Weekly prizes · top 3 Monday</div>
+    <div class="pl-grid" id="lgPrizes" style="grid-template-columns:repeat(3,1fr)"></div>
+    <div class="pl-actions" style="margin-top:12px">
+      <button class="btn-primary" id="lgSaveBtn">Save league</button>
+      <button class="btn-ghost" id="lgResetBtn">Reset to defaults</button>
+      <button class="btn-ghost" id="lgPreviewBtn" title="Put the winner badge + gold frame on YOUR profile to see how it renders">👑 Preview champion</button>
+      <button class="btn-ghost" id="lgPreviewClearBtn">Clear preview</button>
     </div>
     </div>
   </div>
@@ -216,6 +256,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
+<script src="../services/league-service.js"></script>
 <script src="shared/ad-manager.js"></script>
 <script>AdManagerPage.init();</script>
 </body>

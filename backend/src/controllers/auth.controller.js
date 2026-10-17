@@ -49,7 +49,9 @@ async function login(req, res) {
   return base.wrap(res, async () => {
     const out = await auth.login({ emailOrUsername, password, ip: req.ip });
     if (!out.mfaRequired) { base.setRefreshCookie(res, out.refresh); base.setAccessCookie(res, out.access); }
-    return out.mfaRequired ? { mfaRequired: true, ticket: out.ticket } : { access: out.access, mfaSetupRequired: !!out.mfaSetupRequired };
+    return out.mfaRequired
+      ? { mfaRequired: true, ticket: out.ticket }
+      : { access: out.access, token: out.token || out.access, mfaSetupRequired: !!out.mfaSetupRequired, user: out.user };
   });
 }
 
@@ -59,7 +61,7 @@ async function mfaVerify(req, res) {
     const out = await auth.verifyMfa({ ticket, code, ip: req.ip });
     base.setRefreshCookie(res, out.refresh);
     base.setAccessCookie(res, out.access);
-    return { access: out.access, usedBackup: out.usedBackup };
+    return { access: out.access, token: out.access, usedBackup: out.usedBackup, user: out.user };
   });
 }
 
@@ -144,7 +146,11 @@ async function googleCallback(req, res) {
     return {
       access: session.access, refresh: session.refresh, token: session.access,
       isNew, mfaSetupRequired: !!session.mfaSetupRequired,
-      user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName, avatar: user.avatar },
+      user: {
+        id: user.id, username: user.username, handle: user.username,
+        email: user.email, fullName: user.fullName, name: user.fullName,
+        avatar: user.avatar || '', roles: user.roles || ['reader'], primaryRole: user.primaryRole || 'reader',
+      },
     };
   });
 }

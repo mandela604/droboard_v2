@@ -46,6 +46,10 @@
     library: [{ id: 'library:slider', label: 'Slider' }],
     droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
     discussion: [{ id: 'discussion:inline', label: 'Inline' }],
+    debate: [
+      { id: 'debate:top', label: 'Top (above question)' },
+      { id: 'debate:inline', label: 'Inline (between arguments)' },
+    ],
     home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
     series: [{ id: 'series:main', label: 'Main' }],
   }; /* profile has page-level targeting only — no ad slot renders there */

@@ -86,10 +86,13 @@ function nl(s){return (s||'').replace(/\n/g,'<br>')}
 function fmtN(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n||0)}
 const DROBOARD_LOGO='../assets/droboard-icon.png';
 
-function getWriterPool(){
-  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_USERS) return global.DroboardPageSeed.DROBOARD_COMPOSER_USERS.slice(); }catch(e){}
-  return (typeof WRITER_STATUSES!=='undefined') ? WRITER_STATUSES.filter(function(w){return !w.isYou}) : [];
-}
+  function getWriterPool(){
+    var pool=[];
+    try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_USERS) pool=global.DroboardPageSeed.DROBOARD_COMPOSER_USERS.slice(); }catch(e){}
+    if(!pool.length) pool=(typeof WRITER_STATUSES!=='undefined') ? WRITER_STATUSES.filter(function(w){return !w.isYou}) : [];
+    try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_READERS) pool=pool.concat(global.DroboardPageSeed.DROBOARD_COMPOSER_READERS.slice()); }catch(e){}
+    return pool;
+  }
 function writerById(id){
   const pool=getWriterPool();
   return pool.find(function(w){return w.id===id || w.handle===id})||null;
@@ -323,7 +326,7 @@ function attachPostCard(){
     let box=card.querySelector('.drb-inline-comments');
     if(!box){ box=document.createElement('div'); box.className='drb-inline-comments'; const acts=card.querySelector('.pcc-actions'); if(acts) acts.after(box); else card.appendChild(box); }
     if(inlineCS[post.id] && inlineCS[post.id].destroy){ try{ inlineCS[post.id].destroy(); }catch(e){} }
-    inlineCS[post.id]=DroboardComments.attach(box, { storyId:post.id, title:'', comments:seedCommentsFor(post.id), currentUser:{name:'You', avatar:null}, collapsible:false, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(){bumpComments(post)}, onReply:function(){bumpComments(post)} });
+    inlineCS[post.id]=DroboardComments.attach(box, { storyId:post.id, title:'', comments:seedCommentsFor(post.id), currentUser:{name:'You', avatar:null}, collapsible:false, threadSheet:true, fullCommentsUrl:function(){ return 'discussion.html?id='+encodeURIComponent(post.id); }, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(){bumpComments(post)}, onReply:function(){bumpComments(post)} });
   }
   function toggleInline(post){
     if(inlineOpen[post.id]){
@@ -349,11 +352,17 @@ function attachPostCard(){
     DroboardPostCard.registerType('shoutout', function(post){
       const s=post.shoutout||{};
       const w=s._writer||writerById(s.id);
-      const reads=w&&w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '';
-      const followers=w&&w.stats&&w.stats.followers!=null? w.stats.followers : '';
-      const books=w&&w.books? w.books.length : '';
-      const hasStats = reads!=='' || followers!=='' || books!=='';
-      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Writer Shoutout</div>'+(post.text?'<div class="dpc-text trunc-5" id="dpc-txt-'+post.id+'">'+nl(esc(post.text))+'</div><span class="dpc-more" data-pid="'+post.id+'">See more <i class="fas fa-chevron-down" style="font-size:8px"></i></span>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+(s.avatar||(w&&w.avatar)||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||(w&&w.name)||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(hasStats?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)"><span><b style="color:var(--tx-high)">'+esc(String(reads))+'</b> reads</span><span><b style="color:var(--tx-high)">'+esc(String(followers))+'</b> followers</span><span><b style="color:var(--tx-high)">'+esc(String(books))+'</b> books</span></div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
+      const role=s.role||(w&&w.role)||'Writer';
+      let statBits='';
+      if(role==='Reader'){
+        statBits='<span><b style="color:var(--tx-high)">'+esc(String(s.readingHours||0))+'</b>h read</span><span><b style="color:var(--tx-high)">'+esc(String(s.chaptersRead||0))+'</b> chapters</span><span><b style="color:var(--tx-high)">'+esc(String(s.streak||0))+'</b> day streak</span>';
+      } else {
+        const reads=w&&w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '';
+        const followers=w&&w.stats&&w.stats.followers!=null? w.stats.followers : '';
+        const books=w&&w.books? w.books.length : '';
+        if(reads!=='' || followers!=='' || books!=='') statBits='<span><b style="color:var(--tx-high)">'+esc(String(reads))+'</b> reads</span><span><b style="color:var(--tx-high)">'+esc(String(followers))+'</b> followers</span><span><b style="color:var(--tx-high)">'+esc(String(books))+'</b> books</span>';
+      }
+      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="dpc-text trunc-5" id="dpc-txt-'+post.id+'">'+nl(esc(post.text))+'</div><span class="dpc-more" data-pid="'+post.id+'">See more <i class="fas fa-chevron-down" style="font-size:8px"></i></span>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+(s.avatar||(w&&w.avatar)||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||(w&&w.name)||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
     });
   }catch(e){}
 
@@ -377,7 +386,9 @@ function attachPostCard(){
       if(action==='save'){ window.openSaveModal({ title:post.title||post.quote||'Droboard post', sub:'@droboard', img:post.image||DROBOARD_LOGO, storyId:post.id, type:'post' }); return; }
     },
     onPollVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.poll) return; if(orig.poll.voted>=0) return toast('✅ Already voted!'); orig.poll.opts[oi].v++; orig.poll.voted=oi; orig.poll.total++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('✅ Vote cast!'); },
+    onPredVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.prediction) return; if(orig.prediction.voted>=0) return toast('✅ Already predicted!'); orig.prediction.opts[oi].v=(orig.prediction.opts[oi].v||0)+1; orig.prediction.voted=oi; orig.prediction.total=(orig.prediction.total||0)+1; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('🔮 Prediction locked!'); },
     onDebateVote:function(post, side){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.debateData) return; if(orig.debateData.userVote) return toast('✅ Already voted!'); orig.debateData.userVote=side; if(side==='for') orig.debateData.forV++; else orig.debateData.agV++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast(side==='for'?'✅ Voted FOR!':'❌ Voted AGAINST!'); },
+    onOpenDebate:function(post){ goDiscussion(post.id); },
     onAvatarClick:function(){ window.scrollTo({top:0,behavior:'smooth'}); },
     onDots:function(post, anchor){ if(window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); },
     onReplySend:function(post){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig) return; orig.comments++; DroboardPostCard.update(mapPost(orig)); toast('💬 Reply posted!'); }
@@ -406,12 +417,22 @@ function attachPostCard(){
 }
 
 let cs=null; const postCommentsCache={};
-function prepareCommentSeed(list){
-  return (list||[]).map(function(c){
-    const ws=c.wid ? writerById(c.wid) : null;
-    return Object.assign({}, c, { rx:c.reactions||null, statuses: ws? ws.statuses : null, replies: prepareCommentSeed(c.replies) });
-  });
-}
+  function normStatusRing(r) {
+    const s = String(r || '').replace(/^ring-/, '');
+    return (s === 'has' || s === 'viewed') ? s : 'none';
+  }
+  function prepareCommentSeed(list){
+    return (list||[]).map(function(c){
+      const ws=c.wid ? writerById(c.wid) : null;
+      // Keep the seed's own statuses when present; supplement from the
+      // writer record only as fallback. Rings use component values so they
+      // actually render (raw 'ring-*' strings would show no ring).
+      const st = (c.statuses && c.statuses.length) ? c.statuses : (ws ? ws.statuses : null);
+      return Object.assign({}, c, { rx:c.reactions||null, statuses: st,
+        statusRing: (st && st.length) ? normStatusRing((c.statusRing && c.statusRing !== 'none') ? c.statusRing : (ws && ws.ring)) : 'none',
+        replies: prepareCommentSeed(c.replies) });
+    });
+  }
 function seedCommentsFor(postId){
   if(!postCommentsCache[postId]){
     const raw=typeof COMMENTS_DATA!=='undefined' ? JSON.parse(JSON.stringify(COMMENTS_DATA)) : [];
@@ -424,7 +445,7 @@ function openComments(post){
   const mount=document.getElementById('commentMount'); if(!overlay||!mount) return;
   if(cs && cs.destroy){ try{cs.destroy();}catch(e){} cs=null; }
   mount.innerHTML='';
-  cs = DroboardComments.attach(mount, { storyId:post.id, title:'Comments', comments: seedCommentsFor(post.id), currentUser:{name:'You', avatar:null}, collapsible:false, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(){ const o=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(o){o.comments++; DroboardPostCard.update(mapPost(o));}}, onReply:function(){ const o=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(o){o.comments++; DroboardPostCard.update(mapPost(o));}} });
+  cs = DroboardComments.attach(mount, { storyId:post.id, title:'Comments', comments: seedCommentsFor(post.id), currentUser:{name:'You', avatar:null}, collapsible:false, threadSheet:true, fullCommentsUrl:function(){ return 'discussion.html?id='+encodeURIComponent(post.id); }, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(){ const o=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(o){o.comments++; DroboardPostCard.update(mapPost(o));}}, onReply:function(){ const o=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(o){o.comments++; DroboardPostCard.update(mapPost(o));}} });
   overlay.classList.add('open'); document.body.style.overflow='hidden';
 }
 function closeComments(){ const o=document.getElementById('commentOverlay'); if(o) o.classList.remove('open'); document.body.style.overflow=''; }
@@ -715,6 +736,7 @@ async function init(){
     }
     if(ls) ls.style.display='none'; if(rs) rs.style.display='block';
     renderFollowUI();
+    try{ const sb=document.getElementById('droboardStatsBtn'); if(sb) sb.style.display=(window.canModerate&&canModerate())?'flex':'none'; }catch(e){}
     initTabs();
     configureDotsMenu();
     renderAbout();

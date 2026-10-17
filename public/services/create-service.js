@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    CREATE SERVICE — call-and-render for public/Pages/create.html
    create.html is markup only; ALL page logic lives here, moved VERBATIM.
-   Backend-ready pattern only: USE_API=false, API_BASE='/api' (no fetch
-   calls implemented yet). When going live: set USE_API=true, update
-   API_BASE, add fetch calls.
+   Backend-ready pattern: USE_API=false, API_BASE='/api'. Demo shapes load
+   through the DATA LAYER functions (loadBooks/loadStocks/loadAccountStatus/
+   recordSubmission); live paths already POST via postJSON. Going live: flip
+   USE_API=true and swap the data-layer function bodies for fetch calls.
    Wiring: <script src="../services/create-service.js"></script> placed
    synchronously (no defer/async) exactly where the inline block was, so
    parse-time execution order/timing is unchanged. Self-boots on load;
@@ -18,26 +19,104 @@ const SHORT_MAX = 25; // must match backend books.service SHORT_MAX
 
 /* ══════════════════════════════════════════════════════
    CONFIG
+   Category / genre / trope taxonomy comes from the editors'
+   Categories & Genres page (window.EditorDemo, active entries
+   only). Legacy emoji lists stay as fallback if the data file
+   isn't loaded.
 ══════════════════════════════════════════════════════ */
-const CATEGORIES = ['💔 Betrayal','👑 Family','🎓 Campus','🔥 Revenge','🏙️ Urban Love','💍 Marriage','🌙 Elegy','😱 Thriller'];
+const EDITOR_TAX = (function () {
+  const D = window.EditorDemo || {};
+  const active = list => (Array.isArray(list) ? list : []).filter(x => x && x.status !== 'inactive');
+  return { categories: active(D.CATEGORIES), genres: active(D.GENRES), tropes: active(D.TROPES) };
+})();
+const LEGACY_CATEGORIES = ['💔 Betrayal','👑 Family','🎓 Campus','🔥 Revenge','🏙️ Urban Love','💍 Marriage','🌙 Elegy','😱 Thriller'];
+const CATEGORIES = EDITOR_TAX.categories.length ? EDITOR_TAX.categories.map(c => c.name) : LEGACY_CATEGORIES;
 const GENRES = ['💔 Betrayal','👑 Family','✨ Twist','🏙️ Urban','💍 Marriage','🎓 Campus','🔥 Revenge','💔 Heartbreak','😂 Comedy','😱 Thriller','🤝 Friendship','🔍 Mystery','✨ Inspirational','🙏 Faith','🌙 Elegy'];
-const MAX_GENRES = 5, MAX_TAGS = 5;
+const MAX_GENRES = 5, MAX_TAGS = 5, MAX_TROPES = 3;
 
-const DEMO_MY_BOOKS = [
-  {id:'s1',title:'His Secret and Her Shadow',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',category:'💔 Betrayal',lastChapter:7},
-  {id:'s2',title:'The Lagos Wives',cover:'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',category:'💍 Marriage',lastChapter:14},
-  {id:'s3',title:'Campus Confessions',cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',category:'🎓 Campus',lastChapter:4},
-  {id:'s4',title:'Midnight Revenge',cover:'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',category:'🔥 Revenge',lastChapter:12},
-];
+/* Genres & tropes are tailored to the picked category. A category with no
+   specific entries falls back to the full active lists so the step can
+   never dead-end. */
+function genresFor(cat) {
+  if (!cat) return [];
+  const own = EDITOR_TAX.genres.filter(g => g.cat === cat).map(g => g.name);
+  if (own.length) return own;
+  if (EDITOR_TAX.genres.length) return EDITOR_TAX.genres.map(g => g.name);
+  return GENRES; // legacy fallback (editor data file not loaded)
+}
+function tropesFor(cat) {
+  if (!cat || !EDITOR_TAX.tropes.length) return [];
+  const ownGenres = EDITOR_TAX.genres.filter(g => g.cat === cat).map(g => g.name);
+  const own = EDITOR_TAX.tropes.filter(t => ownGenres.indexOf(t.genre) > -1).map(t => t.name);
+  if (own.length) return own;
+  return EDITOR_TAX.tropes.map(t => t.name);
+}
 
-const STOCKS = [
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',
-  'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',
-  'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',
-  'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=400&q=75',
-  'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=400&q=75',
-];
+/* ══════════════════════════════════════════════════════
+   DATA LAYER — every demo shape is loaded through a function.
+   At cutover: change the function bodies to fetch(...), touch
+   nothing else. Call sites stay synchronous on the caches.
+══════════════════════════════════════════════════════ */
+let MY_BOOKS = [];   // author's books — continue-existing-book list
+let STOCKS = [];     // stock cover images
+let accountStatus = { demoAs:null, flow:null };
+
+function loadBooks(){
+  // Live swap:
+  //   return fetch(API_BASE+'/author/books',{credentials:'include'})
+  //     .then(r=>r.json()).then(list=>{ MY_BOOKS=list; });
+  MY_BOOKS = [
+    {id:'s1',title:'His Secret and Her Shadow',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',category:'💔 Betrayal',lastChapter:7},
+    {id:'s2',title:'The Lagos Wives',cover:'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',category:'💍 Marriage',lastChapter:14},
+    {id:'s3',title:'Campus Confessions',cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',category:'🎓 Campus',lastChapter:4},
+    {id:'s4',title:'Midnight Revenge',cover:'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',category:'🔥 Revenge',lastChapter:12},
+  ];
+  return Promise.resolve();
+}
+function loadStocks(){
+  // Live swap: fetch covers library, or keep static CDN list.
+  STOCKS = [
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',
+    'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',
+    'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',
+    'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',
+    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=400&q=75',
+    'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=400&q=75',
+  ];
+  return Promise.resolve();
+}
+function loadAccountStatus(){
+  // Live swap:
+  //   return fetch(API_BASE+'/account/status',{credentials:'include'})
+  //     .then(r=>r.json()).then(s=>{ accountStatus=s; });
+  try {
+    accountStatus = {
+      demoAs: localStorage.getItem('droboard_demo_as'),
+      flow: JSON.parse(localStorage.getItem('dro_writer_flow') || 'null'),
+    };
+  } catch (e) { accountStatus = { demoAs:null, flow:null }; }
+  return Promise.resolve();
+}
+function recordSubmission(){
+  // Writer-flow flag — demo handoff to the senior-editor review queue.
+  // Live swap: POST /api/submissions; the backend review queue owns the
+  // flag, so this whole function body gets deleted.
+  if (isNewChapterMode()) return;
+  try {
+    // Approval is sticky: once approved, never downgrade to pending.
+    const prev = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
+    if (!prev || prev.status !== 'approved') {
+      localStorage.setItem('dro_writer_flow', JSON.stringify({
+        status: 'pending',
+        title: getActiveTitle() || 'Untitled Story',
+        genre: state.category || (state.genres && state.genres[0]) || '',
+        chapters: (state.chapters || []).length,
+        at: Date.now(),
+      }));
+    }
+  } catch (e) {}
+  loadAccountStatus();
+}
 
 /* ══════════════════════════════════════════════════════
    STATE
@@ -46,12 +125,19 @@ let state = {
   type: null, uploadedText: '',
   isContinuing: false, chosenBookId: null,
   chapterNum: 1,
-  category: null, genres: [], tags: [],
+  category: null, genres: [], tropes: [], tags: [],
   coverData: '', title: '', synopsis: '', plot: '',
+  plotActs: [
+    { name:'Act 1 — Setup', from:1, to:16, hint:'Introduce your world, main characters, and the problem that kicks everything off.', summary:'', open:true },
+    { name:'Act 2 — Escalation', from:17, to:50, hint:'Conflicts deepen, stakes rise, twists land. Most of your chapters live here.', summary:'', open:true },
+    { name:'Act 3 — Resolution', from:51, to:60, hint:'Final confrontation, loose ends tied, and how it ends for your characters.', summary:'', open:true },
+  ],
   chapters: [], // {id, title, content, eng:{poll,pred,debate}}
+  cast: [], // {id, name, role:'Lead'|'Antagonist'|'Support'|'Minor', arc}
   pubMode: 'now', schedAt: '',
 };
 let chIdCounter = 0;
+let castIdCounter = 0;
 let dropdownOpen = false;
 
 function mkEngState(){ return {
@@ -93,6 +179,7 @@ function toast(msg, dur=2200){
 }
 function wordCount(str){ return (str||'').trim().match(/\S+/g)?.length || 0; }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function markUnsaved(){ /* hook for future autosave indicator */ }
 
 /* ══════════════════════════════════════════════════════
@@ -136,6 +223,12 @@ function nextStage(){
   const key = order[currentIdx];
   if (!stageIsValid(key)){ flagInvalid(key); return; }
   if (key === 'review'){ submitStory(); return; }
+  // Continuing an existing book: same locked flow as the author center's
+  // "+ New Chapter" — jump straight into chapters, everything else read-only.
+  if (key === 'link' && state.isContinuing && state.chosenBookId){
+    location.href = 'create.html?book=' + encodeURIComponent(state.chosenBookId) + '&newChapter=1';
+    return;
+  }
   goToStage(currentIdx+1);
 }
 function prevStage(){ if (currentIdx>0) goToStage(currentIdx-1); }
@@ -163,7 +256,7 @@ function stageIsValid(key){
     return document.getElementById('bookTitleInp').value.trim().length>1;
   }
   if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4;
-  if (key==='plot') return wordCount(document.getElementById('plotInput').value)>=15;
+  if (key==='plot') return plotWords()>=15;
   if (key==='chapters') return state.chapters.length>0 && state.chapters.every(c=>{
     const wa = document.getElementById('wa'+c.id);
     const text = (wa ? wa.innerText : (c.content||'').replace(/<[^>]+>/g,' ')) || '';
@@ -177,7 +270,7 @@ function flagInvalid(key){
     type:'⚠️ Choose a story type to continue',
     link:'⚠️ Pick a book to continue, or name your new story',
     details:'⚠️ Add a title, category, at least one genre, and a synopsis',
-    plot:'⚠️ Add a full plot (15+ words)',
+    plot:'⚠️ Summarise your plot across the acts (15+ words)',
     chapters:'⚠️ Every chapter needs a title and some content (20+ characters)',
     review:'⚠️ Please confirm the agreement checkbox',
   };
@@ -186,7 +279,7 @@ function flagInvalid(key){
 function getActiveTitle(){
   if (state.type === 'long'){
     if (state.isContinuing && state.chosenBookId){
-      const s = DEMO_MY_BOOKS.find(x=>x.id===state.chosenBookId);
+      const s = MY_BOOKS.find(x=>x.id===state.chosenBookId);
       return s ? s.title : '';
     }
     return document.getElementById('bookTitleInp').value.trim();
@@ -233,7 +326,7 @@ function removeUpload(){
    (demo list; live: GET /api/author/books — same shape minus season)
    ══════════════════════════════════════════════════════ */
 function buildDropdownMenu(){
-  document.getElementById('sddMenu').innerHTML = DEMO_MY_BOOKS.map(s=>{
+  document.getElementById('sddMenu').innerHTML = MY_BOOKS.map(s=>{
     const nextCh = s.lastChapter+1;
     return `<div class="sdd-item" data-id="${s.id}" onclick="chooseBook('${s.id}')">
       <img class="sdd-item-img" src="${s.cover}" loading="lazy"/>
@@ -257,7 +350,7 @@ function applyToggleState(isOn){
 }
 function toggleDropdown(){ dropdownOpen = !dropdownOpen; document.getElementById('sddMenu').classList.toggle('show', dropdownOpen); document.getElementById('sddTrigger').classList.toggle('open', dropdownOpen); }
 function chooseBook(id){
-  const s = DEMO_MY_BOOKS.find(x=>x.id===id); if (!s) return;
+  const s = MY_BOOKS.find(x=>x.id===id); if (!s) return;
   state.chosenBookId = id;
   const nextCh = s.lastChapter+1;
   state.chapterNum = nextCh;
@@ -290,14 +383,50 @@ function renderCategoryGrid(){
   document.getElementById('categoryGrid').innerHTML = CATEGORIES.map(c=>
     `<div class="sel-pill${state.category===c?' on':''}" onclick="pickCategory('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('');
 }
-function pickCategory(c){ state.category = c; renderCategoryGrid(); updateNavButtons(); }
+function pickCategory(c){
+  const changed = state.category !== c;
+  state.category = c;
+  if (changed) { state.genres = []; state.tropes = []; }
+  renderCategoryGrid();
+  revealTaxonomy();
+  updateNavButtons();
+}
+/* Genre + trope groups stay hidden until a category is picked. */
+function revealTaxonomy(){
+  const cat = state.category;
+  const gfg = document.getElementById('genreFg');
+  const tf = document.getElementById('tropeFg');
+  const hint = document.getElementById('catHint');
+  if (hint) hint.style.display = cat ? 'none' : '';
+  if (gfg) gfg.style.display = cat ? '' : 'none';
+  if (cat) renderGenreGrid();
+  const tropes = cat ? tropesFor(cat) : [];
+  if (tf) tf.style.display = (cat && tropes.length) ? '' : 'none';
+  if (cat && tropes.length) renderTropeGrid();
+}
 function renderGenreGrid(){
-  document.getElementById('genreGrid').innerHTML = GENRES.map(g=>{
+  const list = genresFor(state.category);
+  document.getElementById('genreGrid').innerHTML = list.map(g=>{
     const on = state.genres.includes(g);
     const disabled = !on && state.genres.length>=MAX_GENRES;
     return `<div class="sel-pill${on?' on':''}${disabled?' disabled':''}" onclick="toggleGenre('${g.replace(/'/g,"\\'")}')">${g}</div>`;
   }).join('');
   document.getElementById('genreCounter').textContent = `${state.genres.length} / ${MAX_GENRES} selected`;
+}
+function renderTropeGrid(){
+  const list = tropesFor(state.category);
+  document.getElementById('tropeGrid').innerHTML = list.map(t=>{
+    const on = state.tropes.includes(t);
+    const disabled = !on && state.tropes.length>=MAX_TROPES;
+    return `<div class="sel-pill${on?' on':''}${disabled?' disabled':''}" onclick="toggleTrope('${t.replace(/'/g,"\\'")}')">${t}</div>`;
+  }).join('');
+  document.getElementById('tropeCounter').textContent = `${state.tropes.length} / ${MAX_TROPES} selected`;
+}
+function toggleTrope(t){
+  const i = state.tropes.indexOf(t);
+  if (i>-1) state.tropes.splice(i,1);
+  else { if (state.tropes.length>=MAX_TROPES){ toast(`Max ${MAX_TROPES} tropes`); return; } state.tropes.push(t); }
+  renderTropeGrid();
 }
 function toggleGenre(g){
   const i = state.genres.indexOf(g);
@@ -340,11 +469,6 @@ function handleCoverFile(e){
   reader.onload = ev => setCover(ev.target.result);
   reader.readAsDataURL(file);
 }
-function applyCoverUrl(){
-  const url = document.getElementById('coverUrlInput').value.trim();
-  if (!url) { toast('Paste an image URL first'); return; }
-  setCover(url);
-}
 function setCover(src){
   state.coverData = src;
   const drop = document.getElementById('coverDrop');
@@ -364,13 +488,150 @@ function pickStock(url,idx){
 }
 
 /* ══════════════════════════════════════════════════════
-   STAGE: PLOT
+   STAGE: PLOT — three acts, each with a chapter-range chip,
+   a plain-English explanation, and a summary textarea.
 ══════════════════════════════════════════════════════ */
-document.getElementById('plotInput').addEventListener('input', function(){
-  state.plot = this.value;
-  document.getElementById('plotCount').textContent = `${wordCount(this.value)} words`;
-  updateNavButtons();
-});
+function plotText(){ return state.plotActs.map(a=>a.summary||'').join(' '); }
+function plotWords(){ return wordCount(plotText()); }
+function renderPlotActs(){
+  const el = document.getElementById('plotActs');
+  if (!el) return;
+  el.innerHTML = state.plotActs.map((a,ai)=>`
+    <div class="plot-act">
+      <div class="plot-act-top">
+        <input class="plot-act-name-inp" value="${escAttr(a.name)}" oninput="renameAct(${ai},this.value)" placeholder="Act name"/>
+        <div class="plot-act-actions">
+          ${state.plotActs.length>1?`<div class="plot-act-btn danger" onclick="removeAct(${ai})" title="Remove act"><i class="fas fa-trash"></i></div>`:''}
+          <div class="plot-act-btn" onclick="toggleAct(${ai})" title="${a.open?'Collapse':'Expand'}"><i class="fas fa-chevron-down plot-act-arrow ${a.open?'open':''}"></i></div>
+        </div>
+      </div>
+      <div class="plot-act-body ${a.open?'open':''}">
+        <div class="plot-act-range-row"><span class="plot-act-count">Ch.&nbsp;<input type="number" min="1" class="plot-range-inp" value="${a.from}" oninput="updatePlotRange(${ai},'from',this.value)"/>&nbsp;–&nbsp;<input type="number" min="1" class="plot-range-inp" value="${a.to}" oninput="updatePlotRange(${ai},'to',this.value)"/></span></div>
+        ${a.hint?`<div class="plot-act-hint">${esc(a.hint)}</div>`:''}
+        <textarea class="plot-act-summary" rows="3" placeholder="Summarise what happens in this act…" oninput="updatePlotAct(${ai},this.value)">${esc(a.summary)}</textarea>
+      </div>
+    </div>`).join('')
+    + `<button type="button" class="plot-acts-add" onclick="addAct()"><i class="fas fa-plus"></i> Add another act</button>`;
+  updatePlotCount();
+}
+function toggleAct(ai){ state.plotActs[ai].open = !state.plotActs[ai].open; renderPlotActs(); }
+function renameAct(ai,v){ state.plotActs[ai].name=v; }
+function removeAct(ai){
+  if (state.plotActs.length<=1){ toast('Keep at least one act'); return; }
+  state.plotActs.splice(ai,1);
+  renderPlotActs();
+}
+function addAct(){
+  const last=state.plotActs[state.plotActs.length-1];
+  const from=(last?Number(last.to)||1:0)+1;
+  state.plotActs.push({ name:`Act ${state.plotActs.length+1} — New act`, from, to:from+9, hint:'', summary:'', open:true });
+  renderPlotActs();
+}
+
+/* Optional cast — mirrors the author center's Characters card (avatar,
+   age · archetype, arc, trait tags). Photo/stats live in the author center
+   after approval; create flow keeps the planning shape. Never blocks Next. */
+const CAST_ROLES = ['Protagonist','Lead','Antagonist','Love Interest','Mentor','Support','Minor','Other'];
+const MAX_CAST_TRAITS = 4;
+function displayRole(c){ return c.role==='Other' ? ((c.roleOther||'').trim() || 'Other') : c.role; }
+const CAST_TRAIT_PRESETS = ['Ruthless','Guarded','Business Heir','Anti-hero','Loyal','Proud','Shy','Sassy','Clever','Revengeful','Naive','Hot-tempered'];
+const CAST_GRADS = ['linear-gradient(135deg,#f43f5e,#fb7185)','linear-gradient(135deg,#8b5cf6,#a78bfa)','linear-gradient(135deg,#0ea5e9,#38bdf8)','linear-gradient(135deg,#f59e0b,#fbbf24)','linear-gradient(135deg,#10b981,#34d399)','linear-gradient(135deg,#6366f1,#818cf8)'];
+function initialsOf(name){
+  const parts=(name||'').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+}
+function renderCast(){
+  const el = document.getElementById('castList'); if (!el) return;
+  el.innerHTML = state.cast.length ? state.cast.map((c,ci)=>`
+    <div class="cast-row">
+      <div class="cast-top">
+        <div class="cast-av" style="background:${CAST_GRADS[ci%CAST_GRADS.length]}" onclick="document.getElementById('castFile-${c.id}').click()" title="Tap to add photo">
+          ${c.img?`<img class="cast-av-img" src="${c.img}" alt=""/>`:`<span id="cav-${c.id}">${initialsOf(c.name)}</span>`}
+          <input type="file" accept="image/*" id="castFile-${c.id}" style="display:none" onchange="handleCastFile(${c.id},this)"/>
+        </div>
+        <div class="cast-top-main">
+          <div class="cast-name-line">
+            <input class="cast-name-inp" value="${escAttr(c.name)}" placeholder="Character name" oninput="updateCastMember(${c.id},'name',this.value)"/>
+            <select class="cast-role-sel" onchange="setCastRole(${c.id},this.value)">
+              ${CAST_ROLES.map(r=>`<option${c.role===r?' selected':''}>${r}</option>`).join('')}
+            </select>
+            <div class="plot-act-btn" onclick="toggleCast(${c.id})" title="${c.open?'Collapse':'Expand'}"><i class="fas fa-chevron-down cast-arrow ${c.open?'open':''}"></i></div>
+            <div class="cast-del" onclick="removeCastMember(${c.id})" title="Remove"><i class="fas fa-times"></i></div>
+          </div>
+          <div class="cast-meta-line">
+            ${c.role==='Other'?`<input class="cast-role-other-inp" value="${escAttr(c.roleOther||'')}" placeholder="Role name" oninput="updateCastMember(${c.id},'roleOther',this.value)"/><span class="cast-meta-dot">·</span>`:''}
+            <input class="cast-age-inp" type="number" min="1" value="${escAttr(c.age)}" placeholder="Age" oninput="updateCastMember(${c.id},'age',this.value)"/>
+            <span class="cast-meta-dot">·</span>
+            <input class="cast-arch-inp" value="${escAttr(c.archetype)}" placeholder="Anti-hero, shy girl, mama's boy…" oninput="updateCastMember(${c.id},'archetype',this.value)"/>
+          </div>
+        </div>
+      </div>
+      <div class="cast-body ${c.open?'open':''}">
+        <input class="cast-arc-inp" value="${escAttr(c.arc)}" placeholder="One-line arc — e.g. Starts cold; ends choosing trust." oninput="updateCastMember(${c.id},'arc',this.value)"/>
+        <div class="cast-presets">
+          ${CAST_TRAIT_PRESETS.map(t=>`<div class="cast-preset${c.traits.indexOf(t)>-1?' on':''}" onclick="toggleCastTrait(${c.id},'${t}')">${t}</div>`).join('')}
+        </div>
+        <div class="cast-tags">
+          ${c.traits.map(t=>`<span class="cast-tag">${esc(t)}<i class="fas fa-times" onclick="removeCastTraitOf(${c.id},'${t.replace(/'/g,"\\'")}')"></i></span>`).join('')}
+          <input class="cast-tag-inp" placeholder="+ trait" maxlength="20" onkeydown="if(event.key==='Enter'){event.preventDefault();addCastTrait(${c.id},this.value,this)}"/>
+        </div>
+      </div>
+    </div>`).join('')
+    : `<div class="cast-empty">Optional — add the faces of your story so editors see your leads at a glance.</div>`;
+}
+function addCastMember(){
+  if (state.cast.length>=5){ toast('Max 5 characters for now'); return; }
+  castIdCounter++;
+  state.cast.push({ id:castIdCounter, name:'', role:'Lead', roleOther:'', age:'', archetype:'', arc:'', traits:[], img:'', open:true });
+  renderCast();
+}
+function removeCastMember(id){ state.cast = state.cast.filter(c=>c.id!==id); renderCast(); }
+function updateCastMember(id,field,val){
+  const c=state.cast.find(x=>x.id===id); if (!c) return;
+  c[field]=val;
+  // Live initials — only when there's no photo covering the avatar
+  if (field==='name' && !c.img){
+    const av=document.getElementById('cav-'+id);
+    if (av) av.textContent=initialsOf(val);
+  }
+}
+function setCastRole(id,role){ const c=state.cast.find(x=>x.id===id); if (c) c.role=role; renderCast(); }
+function toggleCast(id){ const c=state.cast.find(x=>x.id===id); if (c) c.open=!c.open; renderCast(); }
+function handleCastFile(id, input){
+  const f = input.files && input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => { const c=state.cast.find(x=>x.id===id); if (c){ c.img=e.target.result; renderCast(); } };
+  r.readAsDataURL(f);
+}
+function toggleCastTrait(id,t){
+  const c=state.cast.find(x=>x.id===id); if (!c) return;
+  const i=c.traits.indexOf(t);
+  if (i>-1) c.traits.splice(i,1);
+  else { if (c.traits.length>=MAX_CAST_TRAITS){ toast(`Max ${MAX_CAST_TRAITS} traits`); return; } c.traits.push(t); }
+  renderCast();
+}
+function addCastTrait(id,val){
+  const c=state.cast.find(x=>x.id===id); if (!c) return;
+  const t=(val||'').trim(); if (!t) return;
+  if (c.traits.indexOf(t)>-1){ toast('Already added'); return; }
+  if (c.traits.length>=MAX_CAST_TRAITS){ toast(`Max ${MAX_CAST_TRAITS} traits`); return; }
+  c.traits.push(t); renderCast();
+}
+function removeCastTraitOf(id,t){ const c=state.cast.find(x=>x.id===id); if (!c) return; const i=c.traits.indexOf(t); if (i>-1) c.traits.splice(i,1); renderCast(); }
+function updatePlotRange(ai,field,val){
+  let n = parseInt(val,10); if (!Number.isFinite(n) || n<1) n=1;
+  state.plotActs[ai][field]=n;
+}
+function updatePlotAct(ai,v){
+  state.plotActs[ai].summary=v;
+  state.plot = plotText();
+  updatePlotCount(); updateNavButtons();
+}
+function updatePlotCount(){
+  const el = document.getElementById('plotCount');
+  if (el) el.textContent = `${plotWords()} words`;
+}
 
 /* ══════════════════════════════════════════════════════
    STAGE: CHAPTERS
@@ -460,15 +721,34 @@ function updateChWordCount(id){
   updateNavButtons();
 }
 function fmtCh(id, cmd){
-  const wa = document.getElementById('wa'+id); wa.focus();
-  if (cmd==='h1') document.execCommand('formatBlock', false, 'h1');
-  else if (cmd==='h2') document.execCommand('formatBlock', false, 'h2');
-  else if (cmd==='blockquote') document.execCommand('formatBlock', false, 'blockquote');
-  else document.execCommand(cmd);
+  const wa = document.getElementById('wa'+id); if (!wa) return;
+  let sel = document.getSelection();
+  // Only steal focus if the caret/selection isn't already inside the editor
+  if (!sel || !sel.anchorNode || !wa.contains(sel.anchorNode)){ wa.focus(); sel = document.getSelection(); }
+  if (cmd==='bold' || cmd==='italic'){ document.execCommand(cmd); updateChWordCount(id); return; }
+  const tag = { h5:'h5', blockquote:'blockquote' }[cmd];
+  if (!tag) return;
+  let node = sel && sel.anchorNode;
+  if (node && node.nodeType===3) node = node.parentElement;
+  const inside = node && node.closest ? node.closest(tag) : null;
+  if (inside){
+    // Toggle OFF: pull the content back out into a plain paragraph
+    const p = document.createElement('p');
+    p.innerHTML = inside.innerHTML;
+    inside.replaceWith(p);
+    const r = document.createRange();
+    r.selectNodeContents(p); r.collapse(false);
+    sel.removeAllRanges(); sel.addRange(r);
+  } else {
+    // Toggle ON: same call the original toolbar used (keeps the red-line look)
+    document.execCommand('formatBlock', false, tag);
+  }
   updateChWordCount(id);
 }
 function insertSceneBreak(id){
-  const wa = document.getElementById('wa'+id); wa.focus();
+  const wa = document.getElementById('wa'+id); if (!wa) return;
+  const sel = document.getSelection();
+  if (!sel || !sel.anchorNode || !wa.contains(sel.anchorNode)) wa.focus();
   document.execCommand('insertHTML', false, '<p style="text-align:center;color:#555;letter-spacing:.3em">✦ ✦ ✦</p><p><br></p>');
   updateChWordCount(id);
 }
@@ -565,9 +845,9 @@ function renderChapters(){
           <div class="ch-card-sub" id="chSub-disp-${ch.id}">0 words</div>
         </div>
         <div class="ch-card-actions" onclick="event.stopPropagation()">
-          ${!isShort && idx>0?`<div class="ch-mini-btn" onclick="moveChapter(${ch.id},-1)"><i class="fas fa-chevron-up"></i></div>`:''}
-          ${!isShort && idx<state.chapters.length-1?`<div class="ch-mini-btn" onclick="moveChapter(${ch.id},1)"><i class="fas fa-chevron-down"></i></div>`:''}
-          ${!isShort?`<div class="ch-mini-btn danger" onclick="removeChapter(${ch.id})"><i class="fas fa-trash"></i></div>`:''}
+          ${!isShort && !isNewChapterMode() && idx>0?`<div class="ch-mini-btn" onclick="moveChapter(${ch.id},-1)"><i class="fas fa-chevron-up"></i></div>`:''}
+          ${!isShort && !isNewChapterMode() && idx<state.chapters.length-1?`<div class="ch-mini-btn" onclick="moveChapter(${ch.id},1)"><i class="fas fa-chevron-down"></i></div>`:''}
+          ${!isShort && !isNewChapterMode()?`<div class="ch-mini-btn danger" onclick="removeChapter(${ch.id})"><i class="fas fa-trash"></i></div>`:''}
         </div>
         <i class="fas fa-chevron-down ch-arrow ${ch.open?'open':''}"></i>
       </div>
@@ -579,14 +859,13 @@ function renderChapters(){
         <div class="ch-field">
           <label class="ch-field-lbl">${isShort ? 'Full story text' : 'Chapter text'}</label>
           <div class="mini-toolbar">
-            <div class="mt-btn" onclick="fmtCh(${ch.id},'bold')"><i class="fas fa-bold"></i></div>
-            <div class="mt-btn" onclick="fmtCh(${ch.id},'italic')"><i class="fas fa-italic"></i></div>
+            <div class="mt-btn" onmousedown="event.preventDefault()" onclick="fmtCh(${ch.id},'bold')"><i class="fas fa-bold"></i></div>
+            <div class="mt-btn" onmousedown="event.preventDefault()" onclick="fmtCh(${ch.id},'italic')"><i class="fas fa-italic"></i></div>
             <div class="mt-div"></div>
-            <div class="mt-lbl" onclick="fmtCh(${ch.id},'h1')">H1</div>
-            <div class="mt-lbl" onclick="fmtCh(${ch.id},'h2')">H2</div>
+            <div class="mt-lbl" onmousedown="event.preventDefault()" onclick="fmtCh(${ch.id},'h5')">H5</div>
             <div class="mt-div"></div>
-            <div class="mt-btn" onclick="fmtCh(${ch.id},'blockquote')"><i class="fas fa-quote-left"></i></div>
-            <div class="mt-btn" onclick="insertSceneBreak(${ch.id})"><i class="fas fa-minus"></i></div>
+            <div class="mt-btn" onmousedown="event.preventDefault()" onclick="fmtCh(${ch.id},'blockquote')"><i class="fas fa-quote-left"></i></div>
+            <div class="mt-btn" onmousedown="event.preventDefault()" onclick="insertSceneBreak(${ch.id})"><i class="fas fa-minus"></i></div>
           </div>
           <div class="ch-writing-area" id="wa${ch.id}" contenteditable="true" data-placeholder="Write here…" oninput="updateChWordCount(${ch.id})">${ch.content||''}</div>
           <div class="ch-word-count" id="wc-disp-${ch.id}">0 words</div>
@@ -633,16 +912,61 @@ function setPubMode(mode){
   document.getElementById('pubSchedOpt').classList.toggle('sel', mode==='schedule');
   document.getElementById('schedRow').classList.toggle('show', mode==='schedule');
 }
+/* First-book submissions go straight to review — no scheduling.
+   Demo session/reader state: writer session or an already-approved
+   account counts as NOT first book (schedule allowed). */
+function isFirstBookSubmission(){
+  if (accountStatus.demoAs === 'writer') return false;
+  return !(accountStatus.flow && accountStatus.flow.status === 'approved');
+}
+function applyFirstBookRules(){
+  if (!isFirstBookSubmission()) return;
+  const opt = document.getElementById('pubSchedOpt');
+  const row = document.getElementById('schedRow');
+  if (opt) opt.style.display = 'none';
+  if (row) row.classList.remove('show');
+  state.pubMode = 'now'; state.schedAt = '';
+  const now = document.getElementById('pubNowOpt');
+  if (now) now.classList.add('sel');
+  if (opt) opt.classList.remove('sel');
+}
+function plotReviewHtml(){
+  return state.plotActs.map(a=>{
+    const s = (a.summary||'').trim();
+    if (!s) return '';
+    return `<div style="margin-bottom:8px"><b style="color:var(--tx-high)">${esc(a.name)}</b> <span style="color:var(--tx-faint);font-size:11px">(Ch. ${a.from} – ${a.to})</span><div style="margin-top:2px">${esc(s)}</div></div>`;
+  }).join('');
+}
 function renderReview(){
+  applyFirstBookRules();
+  // Continuing an existing book: no publish options — the chapter just appends.
+  if (isNewChapterMode()){
+    state.pubMode = 'now'; state.schedAt = '';
+    document.querySelectorAll('.pub-opts').forEach(el=>el.style.display='none');
+    const sr = document.getElementById('schedRow'); if (sr) sr.classList.remove('show');
+  }
   state.chapters.forEach(ch=>syncChapterContent(ch.id));
   document.getElementById('reviewCover').style.backgroundImage = state.coverData ? `url('${state.coverData}')` : 'none';
   document.getElementById('reviewTitle').textContent = getActiveTitle() || 'Untitled Story';
   document.getElementById('reviewBadges').innerHTML = [
     state.type === 'short' ? '📄 Short Story' : '📖 Long Story',
-    state.category || '', ...state.genres
+    state.category || '', ...state.genres, ...state.tropes
   ].filter(Boolean).map(b=>`<span class="review-badge">${b}</span>`).join('');
   document.getElementById('reviewSynopsis').textContent = document.getElementById('synopsisInput').value.trim() || '—';
-  document.getElementById('reviewPlot').textContent = document.getElementById('plotInput').value.trim() || '—';
+  document.getElementById('reviewPlot').innerHTML = plotReviewHtml() || '—';
+  const castRow = document.getElementById('castReviewRow');
+  const castEl = document.getElementById('reviewCast');
+  if (castEl){
+    const list = state.cast.filter(c=>(c.name||'').trim());
+    castEl.innerHTML = list.length
+      ? list.map(c=>{
+          const meta=[c.age?esc(c.age):'', c.archetype?esc(c.archetype):''].filter(Boolean).join(' · ');
+          const traits=(c.traits||[]).length?` <span style="color:var(--tx-faint);font-size:10px">${c.traits.map(t=>esc(t)).join(' · ')}</span>`:'';
+          return `<div style="margin-bottom:6px"><b style="color:var(--tx-high)">${esc(c.name.trim())}</b> <span style="color:var(--acc3);font-size:9px;font-weight:800;text-transform:uppercase">${esc(displayRole(c))}</span>${meta?` <span style="color:var(--tx-faint);font-size:11px">— ${meta}</span>`:''}${traits}${(c.arc||'').trim()?`<div style="font-size:11px;color:var(--tx-muted);margin-top:1px">${esc(c.arc.trim())}</div>`:''}</div>`;
+        }).join('')
+      : '';
+    if (castRow) castRow.style.display = list.length ? '' : 'none';
+  }
   document.getElementById('reviewChCount').textContent = state.chapters.length;
   document.getElementById('reviewChList').innerHTML = state.chapters.map((c,i)=>{
     const tmp = document.createElement('div'); tmp.innerHTML = c.content || '';
@@ -722,6 +1046,17 @@ function showSuccess(){
   document.getElementById('successWrap').classList.add('show');
   document.getElementById('wizardNav').style.display = 'none';
   document.getElementById('stepRail').style.display = 'none';
+  const primary = document.getElementById('successPrimaryBtn');
+  const ghost = document.getElementById('successGhostBtn');
+  if (isNewChapterMode()){
+    const bid = getNewChapterBookId();
+    document.getElementById('successTitle').textContent = 'Chapter added!';
+    document.getElementById('successSub').textContent = `Chapter ${state.chapterNum} has been added to your book. It's live with the rest of the story.`;
+    document.getElementById('tbSub').textContent = 'Chapter added ✓';
+    if (primary){ primary.textContent = 'Back to book workspace'; primary.onclick = ()=>{ location.href = '../author/book-workspace.html?book=' + encodeURIComponent(bid); }; }
+    if (ghost){ ghost.textContent = 'Write another chapter'; ghost.onclick = ()=>{ location.reload(); }; }
+    return;
+  }
   const label = state.pubMode==='schedule' ? 'Scheduled!' : 'Submitted for review!';
   document.getElementById('successTitle').textContent = label;
   document.getElementById('successSub').textContent = `"${getActiveTitle() || 'Your story'}" has been ${state.pubMode==='schedule'?'scheduled and sent to our editors':'sent to our editors'}. We'll notify you once it's live.`;
@@ -744,7 +1079,10 @@ async function submitStory(){
   if (!stageIsValid('review')){ flagInvalid('review'); return; }
   saveDraft(false);
   syncReviewControls();
-  if (!USE_API){ showSuccess(); localStorage.removeItem('droboard_create_story_draft'); return; }
+  if (!USE_API){
+    recordSubmission();
+    showSuccess(); localStorage.removeItem('droboard_create_story_draft'); return;
+  }
   const btn = document.getElementById('wnavNext');
   if (btn) { btn.classList.add('disabled'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
   try {
@@ -781,19 +1119,26 @@ setInterval(()=>saveDraft(false), 15000);
 /* ══════════════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════════════ */
+loadBooks();
+loadStocks();
+loadAccountStatus().then(applyFirstBookRules);
 buildDropdownMenu();
 renderCategoryGrid();
-renderGenreGrid();
+revealTaxonomy();
 renderTags();
+renderPlotActs();
+renderCast();
 buildStockRow();
 if (isNewChapterMode()) {
   const bid = getNewChapterBookId();
   state.type = 'long';
   state.isContinuing = true;
   state.chosenBookId = bid;
-  state.chapterNum = 57; // demo fallback; replaced by live count below
+  // Demo number = that book's last chapter + 1; live replaces it with the real count below.
+  const demoBook = MY_BOOKS.find(x=>x.id===bid);
+  state.chapterNum = demoBook ? demoBook.lastChapter+1 : 1;
   document.querySelector('.tb-h').textContent = 'Add New Chapter';
-  document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Chapters';
+  document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Ch.' + state.chapterNum;
   goToStage(0); // chapters (order is [chapters, review] in this mode)
   if (state.chapters.length === 0) addChapter();
   if (USE_API) {
@@ -845,15 +1190,37 @@ window.chooseBook = chooseBook;
 window.clearBookChoice = clearBookChoice;
 window.renderCategoryGrid = renderCategoryGrid;
 window.pickCategory = pickCategory;
+window.revealTaxonomy = revealTaxonomy;
 window.renderGenreGrid = renderGenreGrid;
 window.toggleGenre = toggleGenre;
+window.renderTropeGrid = renderTropeGrid;
+window.toggleTrope = toggleTrope;
+window.plotText = plotText;
+window.plotWords = plotWords;
+window.renderPlotActs = renderPlotActs;
+window.updatePlotAct = updatePlotAct;
+window.updatePlotRange = updatePlotRange;
+window.renameAct = renameAct;
+window.removeAct = removeAct;
+window.addAct = addAct;
+window.toggleAct = toggleAct;
+window.renderCast = renderCast;
+window.addCastMember = addCastMember;
+window.removeCastMember = removeCastMember;
+window.updateCastMember = updateCastMember;
+window.setCastRole = setCastRole;
+window.toggleCast = toggleCast;
+window.handleCastFile = handleCastFile;
+window.toggleCastTrait = toggleCastTrait;
+window.addCastTrait = addCastTrait;
+window.removeCastTraitOf = removeCastTraitOf;
+window.updatePlotCount = updatePlotCount;
 window.renderTags = renderTags;
 window.handleTagKey = handleTagKey;
 window.removeTag = removeTag;
 window.onTitleInput = onTitleInput;
 window.updateCharCount = updateCharCount;
 window.handleCoverFile = handleCoverFile;
-window.applyCoverUrl = applyCoverUrl;
 window.setCover = setCover;
 window.buildStockRow = buildStockRow;
 window.pickStock = pickStock;
