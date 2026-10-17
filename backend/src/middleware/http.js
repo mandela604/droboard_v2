@@ -11,6 +11,14 @@ function validate(schema) {
   };
 }
 
+// Staff roles (most-privileged first) — audit rows carry the actor's
+// console role so the admin audit view can filter staff without joins.
+const STAFF_ROLES = ['admin', 'chief_editor', 'senior_editor', 'editor', 'finance', 'marketing'];
+function actorRoleOf(user) {
+  const roles = (user && user.roles) || [];
+  return STAFF_ROLES.find(r => roles.includes(r)) || roles[0] || '';
+}
+
 // Fire-and-forget audit writer (never blocks the response).
 function audit(action) {
   return function (req, res, next) {
@@ -20,6 +28,7 @@ function audit(action) {
         const { AuditLog } = require('../models/user.model');
         AuditLog.create({
           actorId: (req.user && req.user.id) || 'anonymous',
+          actorRole: actorRoleOf(req.user),
           action,
           entity: req.baseUrl + req.path,
           entityId: (req.params && req.params.id) || '',
@@ -37,4 +46,4 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeade
 const moneyLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 const writeLimiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false });
 
-module.exports = { validate, audit, generalLimiter, authLimiter, moneyLimiter, writeLimiter };
+module.exports = { validate, audit, actorRoleOf, STAFF_ROLES, generalLimiter, authLimiter, moneyLimiter, writeLimiter };

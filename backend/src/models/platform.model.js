@@ -83,6 +83,17 @@ const adViewSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 adViewSchema.index({ userId: 1, adId: 1, day: 1 }, { unique: true });
 
+// Search queries (what readers look for — trending terms + zero-result hunts).
+// Written fire-and-forget from the search route; anonymous searches log too
+// (userId '' marks them) so trending works before login.
+const searchLogSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', default: '', index: true },
+  q: { type: String, required: true, index: true },
+  type: { type: String, default: '' },
+  results: { type: Number, default: 0 },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+searchLogSchema.index({ createdAt: -1 });
+
 const activityLogSchema = new mongoose.Schema({
   userLabel: { type: String, default: '' },
   avatar: { type: String, default: '' },
@@ -102,5 +113,6 @@ module.exports = {
   AdStat: mongoose.model('AdStat', adStatSchema),
   AdClick: mongoose.model('AdClick', adClickSchema),
   AdView: mongoose.model('AdView', adViewSchema),
+  SearchLog: mongoose.model('SearchLog', searchLogSchema),
   ActivityLog: mongoose.model('ActivityLog', activityLogSchema),
 };

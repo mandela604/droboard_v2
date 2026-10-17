@@ -6,7 +6,7 @@
  * frontend contract fixes another shape (insights overview, system-pages,
  * revenue-splits — see inline notes).
  */
-const { User } = require('../models/user.model');
+const { User, AuditLog } = require('../models/user.model');
 const { Book } = require('../models/content.model');
 const { Post, Follow, ReadingProgress, Referral, Notification } = require('../models/social.model');
 const { Wallet, LedgerEntry, CoinTransaction, AuthorTransaction, Withdrawal, Subscription } = require('../models/money.model');
@@ -794,6 +794,34 @@ async function analyticsTopReaders(limit) {
   };
 }
 
+/* ── audit trail (staff-scope by default to keep the view readable) ── */
+async function auditLogs(q) {
+  const { STAFF_ROLES } = require('../middleware/http');
+  const { page, limit, skip } = pageOf(q);
+  const filter = {};
+  // scope 'staff' (default): only console-role actors — readers' like/save
+  // noise stays in the collection but out of this view. scope 'all' = raw.
+  if ((q.scope || 'staff') !== 'all') filter.actorRole = { $in: STAFF_ROLES };
+  if (q.actorId) filter.actorId = String(q.actorId);
+  if (q.role) filter.actorRole = String(q.role);
+  if (q.action) filter.action = { $regex: String(q.action).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+  if (q.entity) filter.entity = { $regex: String(q.entity).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+  const [items, total] = await Promise.all([
+    AuditLog.find(filter).sort({ at: -1 }).skip(skip).limit(limit).lean(),
+    AuditLog.countDocuments(filter),
+  ]);
+  const actors = await usersByStoredIds([...new Set(items.map(i => String(i.actorId)))], 'username fullName avatar');
+  const findActor = userLookup(actors);
+  return wrapList(items.map(r => {
+    const u = findActor(r.actorId);
+    return {
+      id: r.id || String(r._id), actorId: r.actorId, actorRole: r.actorRole || '',
+      actor: u ? { handle: u.username, name: u.fullName, avatar: u.avatar } : null,
+      action: r.action, entity: r.entity, entityId: r.entityId, ip: r.ip, at: r.at,
+    };
+  }), total, page, limit);
+}
+
 /* ── settings + sender fields + email templates ── */
 async function getSettings() {
   const rows = await PlatformSetting.find({}).lean();
@@ -896,6 +924,7 @@ module.exports = {
   collectionsAdmin, collectionDelete,
   postsAdmin, getPost, setPostStatus, deletePost,
   analyticsSummary, analyticsRevenue, analyticsAcquisition, analyticsTopReaders,
+  auditLogs,
   getSettings, putSettings, getSenderFields, putSenderFields,
   listEmailTemplates, getEmailTemplate, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate,
   listSystemPages, createSystemPage, getSystemPage, previewSystemPage,

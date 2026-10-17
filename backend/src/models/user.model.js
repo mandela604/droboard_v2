@@ -80,6 +80,7 @@ const refreshFamilySchema = new mongoose.Schema({
 // Admin audit log (every admin action; fire-and-forget from middleware)
 const auditLogSchema = new mongoose.Schema({
   actorId: { type: String, ref: 'User', required: true, index: true },
+  actorRole: { type: String, default: '', index: true }, // primaryRole at write time — staff-scope filter without joins
   action: { type: String, required: true, index: true }, // e.g. withdrawal.approved
   entity: { type: String, default: '' },
   entityId: { type: String, default: '', index: true },
@@ -89,6 +90,7 @@ const auditLogSchema = new mongoose.Schema({
   at: { type: Date, default: Date.now, index: true },
 }, { timestamps: false });
 auditLogSchema.index({ at: -1 });
+auditLogSchema.index({ actorRole: 1, at: -1 });
 
 module.exports = {
   User: mongoose.model('User', userSchema),

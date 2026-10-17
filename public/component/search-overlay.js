@@ -713,6 +713,17 @@
     renderWriters();
     renderDebates();
     renderAd();
+    // Opportunistic: swap demo trending for live 7d SearchLog terms when
+    // the API is up; any failure keeps the demo list untouched.
+    fetch('/api/search/trending?limit=8', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && Array.isArray(d.items) && d.items.length) {
+          _data.trending = d.items;
+          renderTrending();
+        }
+      })
+      .catch(() => {});
   }
 
   // ══════════════════════════════════════════════════════════════════

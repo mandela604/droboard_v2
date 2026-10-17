@@ -59,6 +59,7 @@ async function main() {
   app.use('/api/statuses', require('./routes/statuses.routes'));
   app.use('/api/discussions', require('./routes/discussions.routes'));
   app.use('/api/messages', require('./routes/messages.routes'));
+  app.use('/api/track', require('./routes/tracking.routes'));
   app.use('/api/saves', require('./routes/saves.routes'));
   app.use('/api/referrals', require('./routes/referrals.routes'));
   app.use('/api/notifications', require('./routes/notifications.routes'));

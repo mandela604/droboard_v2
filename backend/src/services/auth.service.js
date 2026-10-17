@@ -5,8 +5,18 @@ const crypto = require('crypto');
 const { authenticator } = require('otplib');
 const env = require('../config/env');
 const { signAccess } = require('../middleware/auth');
-const { User, RefreshFamily } = require('../models/user.model');
+const { User, RefreshFamily, AuditLog } = require('../models/user.model');
 const referrals = require('./referrals.service');
+
+// Lean auth audit: success + lockout only — failed attempts are NOT logged
+// individually (the account lock + IP limiter already absorb brute force;
+// one lockout row marks the incident without flooding the trail).
+function auditAuth(actorId, action, ip, actorRole) {
+  AuditLog.create({
+    actorId: String(actorId || 'anonymous'), actorRole: actorRole || '',
+    action, entity: '/api/auth', ip: String(ip || ''),
+  }).catch(() => {});
+}
 
 function newId(prefix) {
   return prefix + '-' + crypto.randomBytes(9).toString('hex');
@@ -162,7 +172,11 @@ async function login({ emailOrUsername, password, ip }) {
   if (!ok) {
     if (user) {
       user.failedLoginCount = (user.failedLoginCount || 0) + 1;
-      if (user.failedLoginCount >= 5) { user.lockedUntil = new Date(Date.now() + 15 * 60000); user.failedLoginCount = 0; }
+      if (user.failedLoginCount >= 5) {
+        user.lockedUntil = new Date(Date.now() + 15 * 60000);
+        user.failedLoginCount = 0;
+        auditAuth(user.id, 'auth.lockout', ip, user.primaryRole || '');
+      }
       await user.save();
     }
     const e = new Error('invalid'); e.status = 401; throw e;
@@ -171,6 +185,7 @@ async function login({ emailOrUsername, password, ip }) {
   user.lastLoginAt = new Date();
   user.lastLoginIp = ip || '';
   await user.save();
+  auditAuth(user.id, 'auth.login', ip, user.primaryRole || '');
   // Banned/suspended accounts authenticate fine but get no session.
   if (user.status === 'banned') { const e = new Error('banned'); e.status = 403; throw e; }
   if (user.status === 'suspended') { const e = new Error('suspended'); e.status = 403; throw e; }

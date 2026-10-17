@@ -209,6 +209,19 @@ const shareEventSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 shareEventSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
 
+// Per-user content impressions ("which posts did this reader see").
+// One row per user+target+day with a repeat count — deduped daily so a
+// scroll-past and a re-open both count once per view event.
+const contentImpressionSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  targetType: { type: String, enum: ['post', 'discussion', 'story'], required: true, index: true },
+  targetId: { type: String, required: true, index: true },
+  day: { type: String, required: true }, // YYYY-MM-DD UTC
+  count: { type: Number, default: 1 },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+contentImpressionSchema.index({ userId: 1, targetType: 1, targetId: 1, day: 1 }, { unique: true });
+contentImpressionSchema.index({ userId: 1, createdAt: -1 });
+
 module.exports = {
   Post: mongoose.model('Post', postSchema),
   Comment: mongoose.model('Comment', commentSchema),
@@ -227,4 +240,5 @@ module.exports = {
   ReadingProgress: mongoose.model('ReadingProgress', readingProgressSchema),
   Reaction: mongoose.model('Reaction', reactionSchema),
   ShareEvent: mongoose.model('ShareEvent', shareEventSchema),
+  ContentImpression: mongoose.model('ContentImpression', contentImpressionSchema),
 };

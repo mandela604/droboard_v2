@@ -3,6 +3,7 @@
 const base = require('./base.controller');
 const sa = require('../services/superadmin.service');
 const revenue = require('../services/revenue.service');
+const track = require('../services/tracking.service');
 
 const wrap = (fn) => async (req, res) => base.wrap(res, () => fn(req));
 const created = (fn) => async (req, res) => {
@@ -50,6 +51,8 @@ module.exports = {
   analyticsRevenue: wrap(async (req) => sa.analyticsRevenue(req.valid.query)),
   analyticsAcquisition: wrap(async () => sa.analyticsAcquisition()),
   analyticsTopReaders: wrap(async (req) => sa.analyticsTopReaders(req.valid.query.limit)),
+  auditList: wrap(async (req) => sa.auditLogs(req.valid.query)),
+  trendingSearches: wrap(async (req) => track.trendingSearches({ limit: req.valid.query.limit })),
 
   settingsGet: wrap(async () => sa.getSettings()),
   settingsPut: wrap(async (req) => sa.putSettings(req.valid.body.settings || req.valid.body, req.user.id)),

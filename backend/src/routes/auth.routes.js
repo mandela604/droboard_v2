@@ -1,5 +1,6 @@
 'use strict';
 const { z } = require('zod');
+const rateLimit = require('express-rate-limit');
 const ctrl = require('../controllers/auth.controller');
 const { requireAuth } = require('../middleware/auth');
 const { authLimiter, generalLimiter } = require('../middleware/http');
@@ -8,10 +9,22 @@ const { validate, audit } = require('../middleware/http');
 function Router() { return require('express').Router(); }
 const router = Router();
 
+// Caps signups per IP. 30/hour default (env SIGNUP_RATE_MAX): tight enough
+// to kill bot farms, loose enough for a campus/cafe/carrier NAT where many
+// real people share one exit IP. Over-limit → 429 until the window rolls;
+// it never "locks" the network — logins and everything else keep working.
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: Math.max(5, parseInt(process.env.SIGNUP_RATE_MAX, 10) || 30),
+  standardHeaders: true, legacyHeaders: false,
+});
+
 const email = z.string().email().max(160);
 const password = z.string().min(8).max(128);
 
 // Accepts both API ({fullName}) and web ({name, country}) signup payloads.
+// Honeypot: real users never send `website` — bots filling hidden fields
+// fail validation (length 0) before touching the service.
 const registerBody = z.object({
   fullName: z.string().min(2).max(80).optional(),
   name: z.string().min(2).max(80).optional(),
@@ -19,12 +32,13 @@ const registerBody = z.object({
   email, password,
   country: z.string().max(56).optional(),
   referralCode: z.string().max(16).optional(),
+  website: z.string().length(0).optional(),
 }).refine(v => v.fullName || v.name, { message: 'fullName or name required' });
 
-router.post('/register', authLimiter, validate(z.object({ body: registerBody })), ctrl.register);
+router.post('/register', signupLimiter, validate(z.object({ body: registerBody })), ctrl.register);
 
 // frontend signup-service calls /api/auth/signup
-router.post('/signup', authLimiter, validate(z.object({ body: registerBody })), ctrl.register);
+router.post('/signup', signupLimiter, validate(z.object({ body: registerBody })), ctrl.register);
 
 router.get('/verify-email', validate(z.object({ query: z.object({ token: z.string().min(10) }) })), ctrl.verifyEmail);
 

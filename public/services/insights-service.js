@@ -366,8 +366,6 @@
       chartNote: peakNote(devSeries, act),
       series: devSeries.map(function (v, i) { return v + act[i]; }),
       cards: [
-        { label: 'Reads', v: fmtK(reads), s: cardNote(deltaPct(reads, readsPrev)) },
-        { label: 'Saves', v: fmtK(saves), s: cardNote(deltaPct(saves, savesPrev)) },
         { label: 'Followers', v: '340', s: { t: 'total', cls: 'flat' } },
         { label: 'Stories', v: '12', s: { t: 'in collection', cls: 'flat' } },
       ],

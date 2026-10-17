@@ -146,6 +146,18 @@ router.get('/analytics/acquisition', ...A, sa.analyticsAcquisition);
 router.get('/analytics/top-readers', ...A, validate(z.object({ query: z.object({
   limit: z.string().max(6).optional(),
 }).strict() })), sa.analyticsTopReaders);
+// what readers searched (7d) + which terms found nothing (content gaps)
+router.get('/analytics/trending-searches', ...A, validate(z.object({ query: z.object({
+  limit: z.string().max(6).optional(),
+}).strict() })), sa.trendingSearches);
+
+// audit trail — staff-scope by default (readers' like/save noise excluded);
+// scope=all returns the raw log. Filters: actorId, role, action, entity.
+router.get('/audit', ...A, validate(z.object({ query: z.object({
+  ...PG, scope: z.enum(['staff', 'all']).optional(),
+  actorId: z.string().max(120).optional(), role: z.string().max(30).optional(),
+  action: z.string().max(80).optional(), entity: z.string().max(120).optional(),
+}).strict() })), sa.auditList);
 
 // platform settings + sender fields + email templates
 router.get('/settings', ...A, sa.settingsGet);

@@ -404,30 +404,20 @@
         yoursEl.classList.add('show');
         hint.textContent = 'Tap to see details';
       } else {
-        label.textContent = 'Tap a star to rate';
-        yoursEl.classList.remove('show');
-        hint.textContent = 'Tap to rate this story';
+        label.textContent = myRating ? '' : 'Tap a star to rate';
+          yoursEl.classList.remove('show');
+          hint.textContent = 'Tap to rate this story';
       }
     }
     paint(myRating);
     syncText();
     updateAvg();
 
-    stars.forEach(s => {
-      s.addEventListener('mouseenter', () => { if (!myRating) paint(+s.dataset.r); });
-      s.addEventListener('mouseleave', () => { if (!myRating) paint(0); });
-      s.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const box = document.getElementById('rateBox');
-        if (box) box.classList.add('open');
-        myRating = +s.dataset.r;
-        paint(myRating);
-        syncText();
-        updateAvg();
-        toast('⭐ Rated ' + myRating + ' star' + (myRating > 1 ? 's' : '') + '!');
-      });
-    });
-  }
+      // Display-only summary — tapping the box opens the rate modal
+      // (see openRateModal). No inline star handlers.
+      const hintTxt = document.getElementById('rateHint');
+      if (hintTxt) hintTxt.textContent = myRating ? 'Tap to edit your review' : 'Tap to rate this story';
+    }
 
   function renderHero() {
     const d = DATA;
@@ -815,6 +805,30 @@
     renderAll();
   }
 
+  /* Rate modal — 12-chapter gate mirrors the recommendation rule.
+     presetStar: the star tapped on the inline box, pre-lit in the modal. */
+  function openRateModal(presetStar) {
+    if (!window.openRateModal) { toast('Rate modal not loaded'); return; }
+    const chRead = DATA.continue ? (DATA.continue.chapterId || 1) : 1;
+    window.openRateModal({
+      storyId: STORY_ID,
+      title: DATA.title,
+      img: DATA.cover || '',
+      chaptersRead: chRead,
+      presetStars: typeof presetStar === 'number' ? presetStar : 0,
+      onDone: (r) => {
+        myRating = r.stars;
+        renderRating();
+      }
+    });
+  }
+  /* Inline star tap → open accordion first, then the modal with that star pre-lit */
+  function rateStar(n) {
+    const box = document.getElementById('rateBox');
+    if (box) box.classList.add('open');
+    openRateModal(n);
+  }
+
   window.BridgePage = {
     init,
     toast,
@@ -832,6 +846,8 @@
     openSave,
     openShare,
     toggleRate,
+    openRateModal,
+    rateStar,
     goToDebate,
   };
 })();

@@ -345,6 +345,15 @@
     [data-theme="light"] .dsm-prev-s,
     [data-theme="light"] .dsc-card-s { color: #8a8a8a; }
 
+    [data-theme="light"] .dsm-sp.profile-sp {
+      background: #ff0050;
+      border: 1px solid #e60048;
+      color: #fff;
+    }
+    [data-theme="light"] .dsm-copy-btn {
+      background: #ff0050;
+      color: #fff;
+    }
     [data-theme="light"] .dsm-close { background: rgba(0,0,0,.05); color: #8a8a8a; }
     [data-theme="light"] .dsm-close:hover { background: rgba(255,0,80,.12); color: #ff2d55; }
 
@@ -368,9 +377,10 @@
 
     [data-theme="light"] .dsc-chip { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.08); color: #8a8a8a; }
 
-    [data-theme="light"] .dsc-aud-lbl { color: #8a8a8a; }
-    [data-theme="light"] .dsc-aud-tabs { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.06); }
-    [data-theme="light"] .dsc-aud-tab { color: #8a8a8a; }
+    [data-theme="light"] .dsc-aud-lbl { color: #555; }
+    [data-theme="light"] .dsc-aud-tabs { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.07); }
+    [data-theme="light"] .dsc-aud-tab { color: #444; }
+    [data-theme="light"] .dsc-aud-tab.on { background: #ff0050; color: #fff; }
 
     [data-theme="light"] .dsc-back { background: rgba(0,0,0,.05); color: #8a8a8a; }
     [data-theme="light"] .dsc-back:hover { background: rgba(0,0,0,.09); }
@@ -422,8 +432,16 @@
             <span>Telegram</span>
           </div>
           <div class="dsm-ico" data-platform="facebook">
-            <div class="dsm-ico-bg" style="background:#1877f2"><i class="fab fa-facebook-f" style="color:#fff;font-size:17px"></i></div>
+            <div class="dsm-ico-bg" style="background:#1877f2"><i class="fab fa-facebook-f" style="color:#fff;font-size:19px"></i></div>
             <span>Facebook</span>
+          </div>
+          <div class="dsm-ico" data-platform="threads">
+            <div class="dsm-ico-bg" style="background:#000"><i class="fab fa-threads" style="color:#fff;font-size:19px"></i></div>
+            <span>Threads</span>
+          </div>
+          <div class="dsm-ico" data-platform="reddit">
+            <div class="dsm-ico-bg" style="background:#ff4500"><i class="fab fa-reddit-alien" style="color:#fff;font-size:19px"></i></div>
+            <span>Reddit</span>
           </div>
           <div class="dsm-ico" data-platform="copy">
             <div class="dsm-ico-bg" style="background:rgba(255,255,255,.06)"><i class="fas fa-link" style="color:#fff;font-size:16px"></i></div>
@@ -729,6 +747,8 @@
       twitter:  `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
       telegram: `https://t.me/share/url?url=${url}&text=${text}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      threads:  `https://www.threads.net/intent/post?text=${text}%20${url}`,
+      reddit:   `https://www.reddit.com/submit?url=${url}&title=${text}`,
     };
 
     if (platform === 'copy' || platform === 'instagram') {
