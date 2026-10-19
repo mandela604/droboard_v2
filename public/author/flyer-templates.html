@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Flyer Templates · DroBoard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f7f7f8;--card:#fff;--pink:#ff2d55;--text:#1a1a1a;--muted:#8e8e93;--border:#ebebed;--green:#22c55e;--blue:#3b82f6;--purple:#9333ea;--input-bg:#f4f4f6;--input-border:#e4e4ea;--text-muted:#8e8e93;--text-faint:#b8b8c0;--hover:#f1f1f4;--accent:#ff2d55;--accent-soft:rgba(255,45,85,.08)}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);display:flex;justify-content:center;padding:20px}
+.phone{width:375px;min-height:700px;background:var(--bg);border-radius:32px;border:8px solid #1a1730;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative;display:flex;flex-direction:column}
+.phone-notch{height:28px;background:#1a1730;display:flex;align-items:center;justify-content:center}
+.phone-notch::after{content:'';width:80px;height:6px;border-radius:3px;background:#333}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,247,248,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.tb-logo{width:32px;height:32px;border-radius:9px;background:rgba(255,45,85,.08);color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tb-title{font-size:15.5px;font-weight:800;flex:1}
+.icon-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:#555;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:14px 16px 40px}
+img{display:block;object-fit:cover}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+.intro{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+.tpl-list{display:flex;flex-direction:column;gap:10px}
+.tpl-card{display:flex;gap:12px;align-items:center;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:.15s;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.tpl-card:hover{border-color:var(--pink)}
+.tpl-thumb{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;flex-shrink:0}
+.tpl-info{flex:1;min-width:0}
+.tpl-name{font-size:12.5px;font-weight:700}
+.tpl-meta{font-size:10px;color:var(--text-faint);margin-top:2px}
+.tpl-desc{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpl-badges{display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0}
+.tpl-badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--table-head,#f0f0f3);color:var(--muted)}
+.tpl-badge.saved{background:rgba(34,197,94,.12);color:var(--green)}
+.tpl-badge.edited{background:rgba(255,45,85,.08);color:var(--pink)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-state i{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:13px;font-weight:600;margin-bottom:4px}
+.empty-state small{font-size:11px}
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:600;z-index:2000;pointer-events:none;animation:toastIn .3s ease,toastOut .3s ease 1.2s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+/* drawer (shared author chrome) */
+.drawer-overlay{position:fixed;inset:0;background:rgba(10,6,25,.5);z-index:100;opacity:0;pointer-events:none;transition:.2s}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:270px;background:var(--card);z-index:101;transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border)}
+.drawer-head-title{font-size:14px;font-weight:800;flex:1}
+.drawer-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
+.drawer-body{flex:1;overflow-y:auto;padding:8px 10px 24px}
+.drawer-section{margin-bottom:14px}
+.drawer-section-title{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 12px 6px}
+.drawer-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--text)}
+.drawer-item:hover{background:var(--hover)}
+.drawer-item.active{background:rgba(255,45,85,.08);color:var(--pink)}
+.drawer-item i{width:16px;text-align:center;font-size:13px}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="topbar">
+    <div class="icon-btn" id="menuBtn"><i class="fas fa-bars"></i></div>
+    <div class="tb-logo"><i class="fas fa-images"></i></div>
+    <div class="tb-title">Flyer Templates</div>
+    <button class="icon-btn" id="backBtn" title="Back"><i class="fas fa-chevron-left"></i></button>
+  </div>
+  <div class="content">
+    <div class="intro">Pick a template, fill it with your story, then Share or Download. Anything you type is saved to this device — search a story to autofill title, cover, hook and link.</div>
+    <div class="tpl-list" id="tplList"></div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="tb-logo"><i class="fas fa-feather-pointed"></i></div>
+    <div class="drawer-head-title">DroBoard</div>
+    <div class="drawer-close" id="drawerClose"><i class="fas fa-xmark"></i></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="../data/central-demo-data.js"></script>
+<script src="../marketing/shared/flyer-templates-data.js?v=5"></script>
+<script src="../component/flyer-preview.js?v=5"></script>
+<script src="../services/auth-session.js"></script>
+<script src="services/api-config.js"></script>
+<script src="services/drawer-service.js"></script>
+<script>
+(function(){
+'use strict';
+var COPY_KEY='droboard_author_flyer_copy_v1';
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(msg){var h=document.getElementById('toastHost');var el=document.createElement('div');el.className='toast';el.textContent=msg;h.appendChild(el);setTimeout(function(){el.remove()},1400);}
+function readCopies(){try{return JSON.parse(localStorage.getItem(COPY_KEY)||'{}')||{}}catch(e){return{}}}
+function writeCopy(id,vars){var all=readCopies();all[id]=vars;try{localStorage.setItem(COPY_KEY,JSON.stringify(all))}catch(e){}}
+function myProfile(){
+  // Demo session only carries a writer when the writer account is active;
+  // otherwise fall back to the Author Center identity shown on the dashboard.
+  var mode=null; try{ mode=localStorage.getItem('droboard_demo_as'); }catch(e){}
+  var s=(mode==='writer'&&window.AuthSession&&AuthSession.getSync)?AuthSession.getSync():{};
+  return { authorName:s.name||'Luna Vale', handle:s.handle?('@'+String(s.handle).replace(/^@/,'')):'@luna_vale', userPhoto:s.avatar||'' };
+}
+function savedCount(){var all=readCopies();return Object.keys(all).length;}
+function render(){
+  var list=(window.FlyerTemplates||[]);
+  var el=document.getElementById('tplList');
+  if(!list.length){
+    el.innerHTML='<div class="empty-state"><i class="fas fa-images"></i><p>No templates yet</p><small>Marketing has not published any flyer templates.</small></div>';
+    return;
+  }
+  var copies=readCopies();
+  el.innerHTML=list.map(function(t){
+    var has=!!copies[t.id];
+    return '<div class="tpl-card" data-id="'+esc(t.id)+'">'
+      +'<div class="tpl-thumb" style="background:'+esc(t.accent||'#ff0050')+'"><i class="fas '+esc(t.icon||'fa-image')+'"></i></div>'
+      +'<div class="tpl-info"><div class="tpl-name">'+esc(t.name)+'</div><div class="tpl-meta">'+esc(t.size||'')+' · '+esc((t.vars||[]).length+' fields')+'</div><div class="tpl-desc">'+esc(t.desc||'')+'</div></div>'
+      +'<div class="tpl-badges"><span class="tpl-badge">'+esc(t.size||'')+'</span>'+(has?'<span class="tpl-badge edited">Edited</span>':'')+'</div>'
+      +'</div>';
+  }).join('');
+  el.querySelectorAll('.tpl-card').forEach(function(card){
+    card.addEventListener('click',function(){ openTemplate(card.getAttribute('data-id')); });
+  });
+}
+function openTemplate(id){
+  var list=(window.FlyerTemplates||[]);
+  var t=list.find(function(x){return x.id===id;});
+  if(!t||!window.FlyerPreview) return;
+  window.FlyerTemplates=list.slice();
+  var profile=myProfile();
+  var base={
+    title:'', authorName:profile.authorName, handle:profile.handle, userPhoto:profile.userPhoto,
+    authorPhoto:profile.userPhoto, link:'', cover:'', hook:'', genre:'', bio:'', ctaText:'', accent:'',
+    stats:{reads:12800,followers:420,books:7}
+  };
+  // Marketing's saved template body first, then this writer's own saved copy.
+  var vars=Object.assign({}, base, t.defaults||{}, readCopies()[id]||{});
+  FlyerPreview.open({
+    templateId:t.id,
+    vars:vars,
+    onSave:function(tpl, savedVars){
+      writeCopy(tpl.id||id, savedVars);
+      render();
+      toast('Flyer saved — reopen any time');
+    }
+  });
+}
+document.getElementById('backBtn').addEventListener('click',function(){
+  if(window.history.length>1) window.history.back(); else location.href='author-center.html';
+});
+render();
+if(window.AuthorDrawer){ AuthorDrawer.render('flyer-templates.html'); AuthorDrawer.bind(); }
+})();
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@
     { id: 'embed', label: 'Network embed', icon: 'fa-code' },
     { id: 'follow', label: 'Follow', icon: 'fa-user-plus' },
     { id: 'banner', label: 'Banner', icon: 'fa-flag' },
+    { id: 'minibanner', label: 'Mini banner', icon: 'fa-rectangle-ad' },
     { id: 'promo', label: 'Promo slide', icon: 'fa-images' },
   ];
 
@@ -164,7 +165,7 @@
   }
 
   /* ── Slot programming (per-slot formats / pinned ad ids) ── */
-  const PROG_FMTS = ['platform', 'book', 'native', 'embed', 'follow', 'banner']; // promo excluded (slider only)
+  const PROG_FMTS = ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'minibanner']; // promo excluded (slider only)
   function allSlots() {
     return (window.AdSetupData && AdSetupData.allSlots) ? AdSetupData.allSlots() : [];
   }

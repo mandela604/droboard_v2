@@ -82,7 +82,7 @@
           window.DroboardAdsFree = true;
           try {
             var st = document.createElement('style');
-            st.textContent = '.ad-slot,.dac-banner,.ad-slot-label,.ad-slot-lbl{display:none!important}';
+            st.textContent = '.ad-slot,.dac-banner,.dac-minibanner,.ad-slot-label,.ad-slot-lbl{display:none!important}';
             document.head.appendChild(st);
           } catch (e) {}
         }

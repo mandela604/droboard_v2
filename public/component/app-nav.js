@@ -13,7 +13,9 @@
       scrollable strips. Opt out: window.__noEdgeSwipe = true.
    4) PULL TO REFRESH — pull down from the very top (window scroll or
       the page's own scroller, e.g. bridge .scroll-body) shows a slim
-      spinner; release past threshold reloads. Opt out:
+      spinner; release past threshold reloads. Deliberate pulls only:
+      needs 100px + 400ms — fast flicks are ignored so ordinary
+      scrolling never reloads the page. Opt out:
       window.__noPullRefresh = true.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
@@ -114,43 +116,56 @@
      icons (native only, web no-op) ──
      The WebView is inset below the status bar, so page headers can
      never slide under the clock/battery — on any page, on scroll.
-     Light page → bar painted warm cream (#F9EDE3, never white) with
-     dark icons. Dark page → bar painted the page's own background
-     color with white icons. */
+     The strip follows the page theme: light page → cream strip
+     (#F9EDE3) with dark icons; dark page → the page's own background
+     color with white icons (strip melts into the page). The icon
+     style follows the STRIP, not the page: Capacitor's 'LIGHT' style
+     means "dark text for light backgrounds".
+     On Android 15+ the status-bar color API is blocked, so the strip
+     color is pushed to the native window background via the DroWindow
+     plugin (same look on every Android version). The plugin is
+     app-shell only — website files untouched, web mode no-op. */
   var DRO_LIGHT_STRIP = '#F9EDE3';
   var droOverlayMode = false; // never draw under the status bar
-  function pageLum() {
+  function pageBg() {
     var bg = '#ffffff';
     try {
-      bg = getComputedStyle(document.body).backgroundColor || bg;
+      bg = (document.body && getComputedStyle(document.body).backgroundColor) || bg;
       if (/rgba\(0,\s*0,\s*0,\s*0\)|transparent/.test(String(bg))) {
         bg = getComputedStyle(document.documentElement).backgroundColor || bg;
       }
     } catch (e) {}
     var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(String(bg));
-    return m ? { lum: (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255, rgb: [+m[1], +m[2], +m[3]] } : { lum: 1, rgb: [255, 255, 255] };
+    if (!m) return { lum: 1, hex: '#ffffff' };
+    var r = +m[1], g = +m[2], b = +m[3];
+    return {
+      lum: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
+      hex: '#' + [r, g, b].map(function (v) {
+        var h = v.toString(16);
+        return h.length < 2 ? '0' + h : h;
+      }).join('')
+    };
   }
-  function toHex(rgb) {
+  function setWindowStrip(color) {
     try {
-      return '#' + rgb.map(function (v) {
-        var h = Math.max(0, Math.min(255, Math.round(v))).toString(16);
-        return h.length === 1 ? '0' + h : h;
-      }).join('');
-    } catch (e) { return '#000000'; }
+      var W = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.DroWindow;
+      if (W && W.setBackgroundColor) W.setBackgroundColor({ color: color });
+    } catch (e) {}
   }
   function applyChrome() {
     try {
       var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
       if (!SB || !SB.setOverlaysWebView) return false;
       droOverlayMode = false;
-      var info = pageLum();
+      var info = pageBg();
+      var dark = info.lum <= 0.6;
+      var strip = dark ? info.hex : DRO_LIGHT_STRIP;
       SB.setOverlaysWebView({ overlay: false });
       try {
-        if (SB.setBackgroundColor) {
-          SB.setBackgroundColor({ color: info.lum > 0.6 ? DRO_LIGHT_STRIP : toHex(info.rgb) });
-        }
+        if (SB.setBackgroundColor) SB.setBackgroundColor({ color: strip });
       } catch (e) {}
-      try { if (SB.setStyle) SB.setStyle({ style: info.lum > 0.6 ? 'DARK' : 'LIGHT' }); } catch (e) {}
+      try { if (SB.setStyle) SB.setStyle({ style: dark ? 'DARK' : 'LIGHT' }); } catch (e) {}
+      setWindowStrip(strip);
       try { scheduleSat(); } catch (e) {}
       return true;
     } catch (e) { return false; }
@@ -202,16 +217,13 @@
     } catch (e) { return 0; }
   }
 
-  /* Dark icons on light pages, white icons on dark pages. */
+  /* Icons must match the strip: cream/light strip → dark icons,
+     dark strip → white icons. */
   function tuneStatusIcons() {
     try {
       var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
       if (!SB || !SB.setStyle) return;
-      var bg = '#ffffff';
-      try { bg = getComputedStyle(document.body).backgroundColor || bg; } catch (e) {}
-      var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(String(bg));
-      var lum = m ? (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255 : 1;
-      SB.setStyle({ style: lum > 0.6 ? 'DARK' : 'LIGHT' });
+      SB.setStyle({ style: pageBg().lum <= 0.6 ? 'DARK' : 'LIGHT' });
     } catch (e) {}
   }
 
@@ -422,6 +434,9 @@
     if (document.body) watchTheme();
     else document.addEventListener('DOMContentLoaded', watchTheme);
     document.addEventListener('droboard-theme', function () { try { applyChrome(); } catch (e) {} });
+    // Config changes (rotation, dark-mode toggle) can reset the native
+    // strip to the theme default — re-assert the page's color.
+    window.addEventListener('resize', function () { try { applyChrome(); } catch (e) {} });
   } catch (e) {}
   // First pass as early as possible (script runs in <head>).
   try {
@@ -482,7 +497,9 @@
     } catch (e) {}
     return (window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0) <= 4;
   }
-  var ptrEl = null, py = 0, ptrOn = false, pullDy = 0;
+  var ptrEl = null, py = 0, pt = 0, ptrOn = false, pullDy = 0;
+  var PTR_MIN_DY = 100;   // deliberate pull distance
+  var PTR_MIN_MS = 400;   // deliberate pull duration (flicks are faster)
   function ptrBar() {
     if (!ptrEl) {
       ptrEl = document.createElement('div');
@@ -493,32 +510,40 @@
     }
     return ptrEl;
   }
+  function ptrHide() { if (ptrEl) ptrEl.style.opacity = '0'; }
   document.addEventListener('touchstart', function (e) {
     if (window.__noPullRefresh || e.touches.length !== 1) { ptrOn = false; return; }
     py = e.touches[0].clientY;
+    pt = Date.now();
     pullDy = 0;
     ptrOn = scrollerAtTop(e.target);
   }, { passive: true });
   document.addEventListener('touchmove', function (e) {
     if (!ptrOn || window.__noPullRefresh || e.touches.length !== 1) return;
     pullDy = e.touches[0].clientY - py;
-    if (pullDy > 12 && scrollerAtTop(e.target)) {
+    if (pullDy > 40) {
+      // Fast flick = ordinary scrolling, not a pull — cancel so it can
+      // never refresh (and never shows the hint).
+      var speed = pullDy / Math.max(1, Date.now() - pt);
+      if (speed > 0.5) { ptrOn = false; ptrHide(); return; }
+    }
+    if (pullDy > 16 && scrollerAtTop(e.target)) {
       var bar = ptrBar();
-      bar.style.opacity = pullDy > 70 ? '1' : String(Math.min(0.9, pullDy / 90));
+      bar.style.opacity = pullDy >= PTR_MIN_DY ? '1' : String(Math.min(0.9, pullDy / 120));
     } else if (pullDy <= 0) {
       ptrOn = false;
-      if (ptrEl) ptrEl.style.opacity = '0';
+      ptrHide();
     }
   }, { passive: true });
   document.addEventListener('touchend', function () {
-    if (!ptrOn) { if (ptrEl) ptrEl.style.opacity = '0'; return; }
+    if (!ptrOn) { ptrHide(); return; }
     ptrOn = false;
-    if (window.__noPullRefresh || pullDy < 70) { if (ptrEl) ptrEl.style.opacity = '0'; return; }
+    if (window.__noPullRefresh || pullDy < PTR_MIN_DY || Date.now() - pt < PTR_MIN_MS) { ptrHide(); return; }
     if (typeof window.__appRefresh === 'function') {
       try { window.__appRefresh(); } catch (e) { location.reload(); }
     } else {
       location.reload();
     }
-    setTimeout(function () { if (ptrEl) ptrEl.style.opacity = '0'; }, 600);
+    setTimeout(function () { ptrHide(); }, 600);
   }, { passive: true });
 })();

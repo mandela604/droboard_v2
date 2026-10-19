@@ -1,5 +1,5 @@
 'use strict';
-const { RevenueConfig, PoolBalance } = require('../models/revenue.model');
+const { RevenueConfig, PoolBalance, CoinRate } = require('../models/revenue.model');
 const { User } = require('../models/user.model');
 const { Wallet, Withdrawal, Subscription, SubscriptionRead } = require('../models/money.model');
 const { Book } = require('../models/content.model');
@@ -217,9 +217,28 @@ async function distributeSubscriptions(period) {
   };
 }
 
+/* ── Coin rate (single 'live' CoinRate doc — Super Admin console, no code
+   changes). Unlock/tip read coinFaceNGN from here; admin PUT updates it. ── */
+async function coinRateGet() {
+  const doc = await CoinRate.findOne({ key: 'live' }).lean();
+  if (doc) return doc;
+  return new CoinRate({ key: 'live' }).toObject(); // unsaved defaults for first render
+}
+async function coinRateSave(updates) {
+  const allowed = ['coinFaceNGN', 'minChapterCoins', 'minWithdrawal', 'bonusExpiryDays', 'dormancyBreakageMonths'];
+  const set = {};
+  allowed.forEach(k => { if (updates[k] !== undefined) set[k] = updates[k]; });
+  if (!Object.keys(set).length) { const e = new Error('nothing_to_save'); e.status = 400; throw e; }
+  return CoinRate.findOneAndUpdate(
+    { key: 'live' },
+    { $set: set },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  ).lean();
+}
+
 module.exports = {
   activeConfig, splitGross, splitGift, saveConfig,
   toFlat, checkFlat, configHistory, authorOverrides,
   saveFlatConfig, deleteAuthorOverride, authorDirectory, poolsShape,
-  distributeSubscriptions,
+  distributeSubscriptions, coinRateGet, coinRateSave,
 };

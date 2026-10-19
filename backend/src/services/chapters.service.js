@@ -4,6 +4,17 @@ const books = require('./books.service');
 
 const SHORT_MAX = 25;
 
+// poll/prediction arrive as { q, opts: [string] } from the API — normalize
+// to the model's { t, v } subdocs (objects pass through untouched).
+function normOpts(opts) {
+  if (!Array.isArray(opts)) return undefined;
+  return opts.map(o => (o && typeof o === 'object') ? o : { t: String(o == null ? '' : o), v: 0 });
+}
+function normPollLike(p) {
+  if (p === undefined || p === null) return p;
+  return p.opts !== undefined ? Object.assign({}, p, { opts: normOpts(p.opts) }) : Object.assign({}, p);
+}
+
 // Chapter content fields that need editor approval on live chapters.
 // (status-only transitions, e.g. submit for review, always apply directly.)
 const CHAPTER_CONTENT_FIELDS = ['title', 'content', 'words', 'authorNote', 'poll', 'prediction', 'debate', 'n'];
@@ -43,9 +54,11 @@ async function applyChapterProposal({ proposal, reviewerId }) {
   const data = proposal.proposed || {};
   const oldWords = ch.words || 0;
   const oldN = ch.n;
-  ['title', 'content', 'words', 'authorNote', 'poll', 'prediction', 'debate'].forEach(k => {
+  ['title', 'content', 'words', 'authorNote', 'debate'].forEach(k => {
     if (data[k] !== undefined) ch[k] = data[k];
   });
+  if (data.poll !== undefined) ch.poll = normPollLike(data.poll);
+  if (data.prediction !== undefined) ch.prediction = normPollLike(data.prediction);
   // Editor-approved publish/schedule (the only path onto the platform).
   if (data.status !== undefined && PUBLISH_CHAPTER_STATUS.includes(data.status)) ch.status = data.status;
   if (data.scheduledAt !== undefined) {
@@ -115,7 +128,8 @@ async function createChapter({ bookId, data }) {
     status: data.status || 'draft',
     scheduledAt,
     authorNote: data.authorNote || '',
-    poll: data.poll, prediction: data.prediction, debate: data.debate,
+    price: Number.isFinite(Number(data.price)) && Number(data.price) >= 0 ? Math.floor(Number(data.price)) : 0,
+    poll: normPollLike(data.poll), prediction: normPollLike(data.prediction), debate: data.debate,
   });
   await Book.updateOne({ id: bookId }, { $inc: { chapterCount: 1, wordCount: ch.words || 0 } });
   return ch.toJSON();
@@ -138,9 +152,15 @@ async function getChapter({ bookId, key, onlyLive }) {
 async function updateChapter({ ch, data }) {
   const oldWords = ch.words || 0;
   const oldN = ch.n;
-  ['title', 'content', 'words', 'status', 'authorNote', 'poll', 'prediction', 'debate'].forEach(k => {
+  ['title', 'content', 'words', 'status', 'authorNote', 'debate'].forEach(k => {
     if (data[k] !== undefined) ch[k] = data[k];
   });
+  if (data.poll !== undefined) ch.poll = normPollLike(data.poll);
+  if (data.prediction !== undefined) ch.prediction = normPollLike(data.prediction);
+  if (data.price !== undefined) {
+    const p = Math.floor(Number(data.price));
+    if (Number.isFinite(p) && p >= 0) ch.price = p;
+  }
   if (data.scheduledAt !== undefined) {
     if (data.scheduledAt === null) ch.scheduledAt = null;
     else {

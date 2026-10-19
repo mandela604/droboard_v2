@@ -9,8 +9,58 @@ function canWrite(post, user) {
   return String(post.authorId) === String(user.id);
 }
 
+// Composer payload → stored shape. Both dialects converge: poll opts strings
+// or {label|t} objects → [{t,v}], q||question → q; debate headline (motion or
+// question) → motion+question (post-card reads either); storyRef.author →
+// writer; shoutout.id → userId. Client counters/votes are server-owned.
+function normContent(data) {
+  if (data.poll) {
+    const p = data.poll;
+    const opts = (Array.isArray(p.opts) ? p.opts : [])
+      .map(o => (typeof o === 'string' ? { t: o, v: 0 } : { t: String((o && (o.t || o.label || o.text)) || ''), v: 0 }))
+      .filter(o => o.t).slice(0, 4);
+    data.poll = { q: String(p.q || p.question || ''), opts, total: 0 };
+  }
+  if (data.debateData) {
+    const d = data.debateData;
+    const head = String(d.motion || d.question || '').trim().slice(0, 500);
+    data.debateData = {
+      motion: head, question: head,
+      prompt: String(d.prompt || '').slice(0, 300),
+      forText: String(d.forText || '').slice(0, 60),
+      againstText: String(d.againstText || '').slice(0, 60),
+      forV: 0, agV: 0,
+    };
+  }
+  if (data.storyRef && data.storyRef.author && !data.storyRef.writer) data.storyRef.writer = data.storyRef.author;
+  if (data.shoutout) {
+    const s = data.shoutout;
+    data.shoutout = {
+      userId: s.userId || s.id || null, id: s.id || s.userId || null,
+      name: s.name || '', avatar: s.avatar || '', handle: s.handle || '',
+      tagline: s.tagline || '', role: s.role || '', stats: s.stats || null,
+      readingHours: s.readingHours, chaptersRead: s.chaptersRead, streak: s.streak,
+      following: s.following === undefined ? undefined : !!s.following,
+    };
+  }
+  return data;
+}
+
+// Frontend rule: a story must have at least 3 chapters of reading history
+// before it can be recommended (public/services/reading-history.js).
+const RECOMMEND_MIN_CHAPTERS = 3;
+
 async function createPost({ authorId, data }) {
-  const post = await Post.create(Object.assign({}, data, { authorId }));
+  if (data.type === 'recommendation' && data.storyRef && data.storyRef.id) {
+    const { ReadingProgress } = require('./social.model');
+    const read = await ReadingProgress.countDocuments({ userId: String(authorId), storyId: String(data.storyRef.id) });
+    if (read < RECOMMEND_MIN_CHAPTERS) {
+      const e = new Error('not_enough_reading'); e.status = 403; throw e;
+    }
+  }
+  const payload = normContent(Object.assign({}, data));
+  delete payload.id; // server assigns uuid — composers send demo p_<ts> ids
+  const post = await Post.create(Object.assign({}, payload, { authorId }));
   return post.toJSON();
 }
 
@@ -46,9 +96,19 @@ async function getPost(id) {
 }
 
 async function updatePost({ post, data }) {
-  ['title', 'text', 'note', 'image', 'pinned'].forEach(k => {
+  ['title', 'text', 'note', 'image', 'pinned', 'heading', 'quote', 'caption', 'quoteBg', 'quoteBgCss'].forEach(k => {
     if (data[k] !== undefined) post[k] = data[k];
   });
+  // Engagement rewrites reset server-owned counts (votes were for the old content).
+  if (data.poll !== undefined) {
+    normContent(data);
+    post.poll = data.poll;
+    post.poll.votedBy = [];
+  }
+  if (data.debateData !== undefined) {
+    normContent(data);
+    post.debateData = data.debateData;
+  }
   await post.save();
   return post.toJSON();
 }

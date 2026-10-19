@@ -23,7 +23,10 @@
       { label: 'Plotting', icon: 'fa-diagram-project', href: 'plotting.html' }
     ];
     var sections = [
-      { title: 'Author Center', items: [{ label: 'Dashboard', icon: 'fa-gauge', href: 'author-center.html' }] },
+      { title: 'Author Center', items: [
+        { label: 'Dashboard', icon: 'fa-gauge', href: 'author-center.html' },
+        { label: 'Flyer Templates', icon: 'fa-images', href: 'flyer-templates.html' }
+      ] },
       { title: 'Applications', items: [
         { label: 'Contracts', icon: 'fa-file-signature', href: 'apply-contract.html' },
         { label: 'Completion', icon: 'fa-flag-checkered', href: 'apply-completion.html' },

@@ -142,15 +142,21 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
     <div class="hero-dots" id="heroDots"></div>
 
     <section class="section"><div class="sec-head"><h2 class="sec-title">Continue Reading</h2><button class="view-all" data-browse-trigger data-browse-mode="continueReading" data-browse-title="Continue Reading">View All ›</button></div><div class="h-row" id="continueRow"></div></section>
+    <!-- MINI BANNER slot 1 of 3 ── right after Continue Reading (format pinned to minibanner) -->
+    <div data-ad-slot="discover:banner-top" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Top Romance</h2><button class="view-all" data-browse-trigger data-browse-title="Top Romance" data-browse-filter="romance" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="romanceRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Trending Today</h2><button class="view-all" data-browse-trigger data-browse-title="Trending Today" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="trendingRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Collections</h2><button class="view-all" data-browse-trigger data-browse-mode="collections" data-browse-title="All Collections">View All ›</button></div><div class="coll-row" id="collRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">New Releases</h2><button class="view-all" data-browse-trigger data-browse-title="New Releases" data-browse-sort="new">View All ›</button></div><div class="h-row" id="newRow"></div></section>
+    <!-- MINI BANNER slot 2 of 3 ── after New Releases (format pinned to minibanner) -->
+    <div data-ad-slot="discover:inline-banner" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Editor's Picks</h2><button class="view-all" data-browse-trigger data-browse-title="Editor's Picks" data-browse-sort="rating">View All ›</button></div><div class="h-row" id="editorRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Popular Genres</h2></div><div class="genre-grid" id="genreGrid"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Recommended For You</h2><button class="view-all" data-browse-trigger data-browse-title="Recommended For You" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="recRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Complete Stories</h2><button class="view-all" data-browse-trigger data-browse-title="Complete Stories" data-browse-filter="completed">View All ›</button></div><div class="h-row" id="completeRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Recently Updated</h2><button class="view-all" data-browse-trigger data-browse-title="Recently Updated" data-browse-sort="updated">View All ›</button></div><div class="h-row" id="updatedRow"></div></section>
+    <!-- MINI BANNER slot 3 of 3 ── above the infinite More Stories list (format pinned to minibanner) -->
+    <div data-ad-slot="discover:banner-bottom" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
     <section class="more-section"><h2 class="more-title">More Stories</h2><div class="bro-list" id="moreList"></div><div class="more-loader" id="moreLoader"><div class="spinner"></div> Loading more…</div><div id="scrollSentinel"></div></section>
   </div>
 </div>
@@ -161,6 +167,8 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
     <script src="../marketing/shared/marketing-data.js"></script>
     <script src="../services/collection-service.js"></script>
     <script src="../services/ad-service.js"></script>
+    <script src="../component/ad-card.js?v=2"></script>
+    <script src="../component/ad-slot.js"></script>
     <script src="../services/search-service.js"></script>
     <script src="../shared/ui-helpers.js"></script>
 <script src="../services/discover-service.js"></script>

@@ -58,6 +58,7 @@ function toCard(d, viewerId) {
   return {
     id: d.id, genreId: d.genreId,
     title: d.title, body: d.body || '', tag: d.tag, media: d.media || '',
+    trope: d.trope || '', story: d.story || null,
     likes: d.likes || 0, liked: uid ? (d.likedBy || []).map(String).includes(uid) : false,
     hot: !!d.hot, commentsCount: d.commentsCount || 0, score: d.score || 0,
     createdAt: d.createdAt, author: d.author,
@@ -83,12 +84,20 @@ async function listThreads({ genre, tag, sort, page, limit, viewerId }) {
   return { items: items.map(d => toCard(d, viewerId)), total, page: pg, limit: lim };
 }
 
-async function createThread({ userId, genre, title, body, tag, media }) {
+const TAGS = ['discussion', 'recommendation', 'theory', 'question', 'controversial'];
+function normTag(tag) {
+  const t = String(tag || 'discussion').toLowerCase().trim();
+  if (!TAGS.includes(t)) err('bad_tag', 400);
+  return t;
+}
+
+async function createThread({ userId, genre, title, body, tag, media, trope, story }) {
   const g = await resolveOneGenre(genre);
   const doc = await Discussion.create({
     genreId: g.id, authorId: userId,
     title: String(title).slice(0, 200), body: String(body || '').slice(0, 8000),
-    tag: tag || 'discussion', media: validateMediaUrl(media, 'media'),
+    tag: normTag(tag), media: validateMediaUrl(media, 'media'),
+    trope: String(trope || '').slice(0, 60), story: story || null,
   });
   const out = doc.toJSON();
   await withAuthors([out]);
@@ -112,13 +121,15 @@ function canWrite(d, userId, isAdmin) {
   return isAdmin || String(d.authorId) === String(userId);
 }
 
-async function updateThread({ id, userId, isAdmin, title, body, tag, media }) {
+async function updateThread({ id, userId, isAdmin, title, body, tag, media, trope, story }) {
   const d = await loadOr404(id);
   if (!canWrite(d, userId, isAdmin)) err('forbidden', 403);
   if (title != null) d.title = String(title).slice(0, 200);
-  if (body != null) d.body = String(body).slice(0, 8000);
-  if (tag != null) d.tag = tag;
+  if (body != null) d.body = String(body || '').slice(0, 8000);
+  if (tag != null) d.tag = normTag(tag);
   if (media !== undefined) d.media = validateMediaUrl(media, 'media');
+  if (trope !== undefined) d.trope = String(trope || '').slice(0, 60);
+  if (story !== undefined) d.story = story || null;
   await d.save();
   const out = d.toJSON();
   await withAuthors([out]);

@@ -36,11 +36,12 @@
     platform: 'platform',
     native: 'native',
     banner: 'banner',
+    minibanner: 'minibanner',
     follow: 'follow',
     embed: 'embed',
   };
   /* default preference when data-ad-format is omitted */
-  var AUTO_ORDER = ['book', 'native', 'platform', 'banner', 'follow', 'embed'];
+  var AUTO_ORDER = ['book', 'native', 'platform', 'banner', 'minibanner', 'follow', 'embed'];
   var CLICK_SEL = 'a, button, .ad-cta, .dac-native-cta, .dac-banner-cta, .dac-follow-btn, .dac-story-promo-cta';
 
   var _used = {};      // ad id → true (page-load scope: stops repeats across slots)

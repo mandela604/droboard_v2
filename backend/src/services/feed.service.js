@@ -3,7 +3,7 @@
 // Shapes match what the frontend services already consume.
 const { Book, Chapter, Genre } = require('../models/content.model');
 const { User } = require('../models/user.model');
-const { LibraryItem, ReadingProgress } = require('../models/social.model');
+const { LibraryItem, ReadingProgress, Comment, ShareEvent } = require('../models/social.model');
 const { AdInventory, AdPlacement } = require('../models/platform.model');
 
 async function authorMap(ids) {
@@ -165,11 +165,18 @@ async function storyDetail(id, viewerId) {
   }
   const chapters = await Chapter.find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 }).lean();
   const author = book.authorId ? await User.findOne({ id: book.authorId }).select('username fullName avatar').lean() : null;
+  // bridge story page contract: stats block (story-wide structured engagement
+  // deliberately absent — chapter-wise only; story-wide debate = /api/posts)
+  const [comments, shares] = await Promise.all([
+    Comment.countDocuments({ scope: 'story', storyId: book.id }).catch(() => 0),
+    ShareEvent.countDocuments({ targetType: 'story', targetId: book.id }).catch(() => 0),
+  ]);
   return Object.assign({}, book, {
     authorName: author ? author.fullName : '',
     authorHandle: author ? '@' + author.username : '',
     authorAv: author ? author.avatar : '',
     chapters,
+    stats: { comments, reads: book.reads || 0, shares, rating: book.rating || 0, ratingCount: book.ratingCount || 0 },
   });
 }
 

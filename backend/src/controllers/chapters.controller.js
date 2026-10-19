@@ -9,9 +9,17 @@ async function loadBook(req) {
   return book;
 }
 
+function denyPriceForNonStaff(req) {
+  // Pricing is platform territory (admin/editor module) — authors can't set it.
+  if (req.valid.body && req.valid.body.price !== undefined && !chapters.books.isStaff(req.user)) {
+    const e = new Error('price_staff_only'); e.status = 403; throw e;
+  }
+}
+
 async function create(req, res) {
   return base.wrap(res, async () => {
     const book = await loadBook(req);
+    denyPriceForNonStaff(req);
     const out = await chapters.createChapter({ bookId: book.id, data: req.valid.body });
     res.status(201);
     return out;
@@ -36,6 +44,7 @@ async function get(req, res) {
 async function update(req, res) {
   return base.wrap(res, async () => {
     const book = await loadBook(req);
+    denyPriceForNonStaff(req);
     const ch = await chapters.loadChapterOr404(book.id, req.valid.params.key);
     const body = req.valid.body || {};
     const wantsContent = chapters.CHAPTER_CONTENT_FIELDS.some(k => body[k] !== undefined);

@@ -69,6 +69,17 @@
     .dac-banner-sub{font-size:11px;opacity:.8;margin-bottom:12px}
     .dac-banner-cta{background:#fff;color:#d6165a;font-size:11px;font-weight:800;padding:8px 18px;border-radius:20px;border:none;cursor:pointer}
     .dac-banner-cta:active{transform:scale(.95)}
+
+    /* ── Mini banner (compact horizontal image ad, ~74px — leaderboard) ── */
+    .dac-minibanner{position:relative;height:74px;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#221027,#3b0f22);background-size:cover;background-position:center;margin:8px 0}
+    .dac-minibanner-scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,4,12,.88) 0%,rgba(8,4,12,.55) 55%,rgba(8,4,12,.12) 100%)}
+    .dac-minibanner-tag{position:absolute;top:7px;right:9px;font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.22);color:#fff;padding:2px 7px;border-radius:6px;z-index:2}
+    .dac-minibanner-body{position:relative;z-index:2;display:flex;align-items:center;gap:10px;height:100%;padding:0 12px}
+    .dac-minibanner-text{flex:1;min-width:0;color:#fff}
+    .dac-minibanner-brand{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.8;margin-bottom:2px}
+    .dac-minibanner-headline{font-size:13px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dac-minibanner-sub{font-size:9.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+    .dac-minibanner-cta{flex-shrink:0}
     .dac-fs{position:relative;height:100%;min-height:420px;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#1a0a12,#3b0f22);background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end}
     .dac-fs-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.12) 100%)}
     .dac-fs-top{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;z-index:2}
@@ -275,6 +286,28 @@
     </div>`;
   }
 
+  /* Compact horizontal image banner (~74px leaderboard) — the small strip
+     between content sections (NovelHub/AliExpress style). Creative fields:
+     img (wide image), brand, headline, sub, cta. CTA reuses dac-banner-cta
+     so existing click handlers keep working. */
+  function renderMiniBanner(ad) {
+    injectStyles();
+    ad = ad || {};
+    const img = ad.img || ad.image || '';
+    return `<div class="dac-minibanner"${img ? ` style="background-image:url('${esc(img)}')"` : ''}>
+      <div class="dac-minibanner-scrim"></div>
+      <span class="dac-minibanner-tag">Ad</span>
+      <div class="dac-minibanner-body">
+        <div class="dac-minibanner-text">
+          ${ad.brand ? `<div class="dac-minibanner-brand">${esc(ad.brand)}</div>` : ''}
+          <div class="dac-minibanner-headline">${esc(ad.headline || ad.title || '')}</div>
+          ${ad.sub ? `<div class="dac-minibanner-sub">${esc(ad.sub)}</div>` : ''}
+        </div>
+        <button class="dac-banner-cta dac-minibanner-cta">${esc(ad.cta || 'Learn More')}</button>
+      </div>
+    </div>`;
+  }
+
   function renderFullscreen(ad) {
     injectStyles();
     return `<div class="dac-banner" style="text-align:center;padding:24px">
@@ -441,6 +474,7 @@
     if (fmt === 'platform') return renderPlatform(post.ad);
     if (fmt === 'follow') return renderFollowPromo(post.ad);
     if (fmt === 'banner') return renderBanner(post.ad);
+    if (fmt === 'minibanner') return renderMiniBanner(post.ad);
     if (fmt === 'fullscreen') return renderFullscreen(post.ad);
     if (fmt === 'native') return renderNative(post.ad);
     if (fmt === 'embed') return renderEmbed(post.ad);
@@ -494,7 +528,7 @@
   window.DroboardAdCard = {
     platformAd, bookAd, render, renderAll, esc, storyHref, profileHref,
     renderPlatform, renderListPlatform, renderStoryPromo, renderListBook,
-    renderFollowPromo, renderBanner, renderFullscreen, renderFullscreenStory, renderFullscreenBrand, renderNative,
+    renderFollowPromo, renderBanner, renderMiniBanner, renderFullscreen, renderFullscreenStory, renderFullscreenBrand, renderNative,
     renderEmbed, hydrateEmbeds,
     renderSponsored, attach, update,
   };

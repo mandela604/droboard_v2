@@ -53,13 +53,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-side{
   border-radius:14px;padding:16px 12px;cursor:pointer;border:2px solid var(--bd);
   background:var(--l2);text-align:center;transition:all .2s;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
 }
 .deb-side.for.chosen{border-color:var(--green-bd);background:var(--green-s)}
 .deb-side.against.chosen{border-color:var(--red-bd);background:var(--red-s)}
 .deb-side.for:hover{border-color:var(--green-bd)}
 .deb-side.against:hover{border-color:var(--red-bd)}
-.deb-side-emoji{font-size:26px;margin-bottom:6px}
-.deb-side-label{font-size:12px;font-weight:800;margin-bottom:8px}
+.deb-side-emoji{font-size:26px;margin-bottom:6px;flex-shrink:0}
+.deb-side-label{font-size:12px;font-weight:800;margin-bottom:8px;flex:1;min-height:36px;display:flex;align-items:center;justify-content:center}
 .deb-side.for .deb-side-label{color:#0d9668}
 .deb-side.against .deb-side-label{color:#dc2626}
 .deb-side-bar{height:4px;background:var(--bd);border-radius:4px;overflow:hidden;margin-bottom:6px}
@@ -154,7 +155,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .toast{
   position:fixed;bottom:calc(var(--safe-b) + 70px);left:50%;transform:translateX(-50%) translateY(12px);
   background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:9px 16px;border-radius:24px;
-  font-size:12px;font-weight:600;z-index:900;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;
+  font-size:12px;font-weight:600;z-index:2400;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .deb-top-ad{padding:12px 14px 4px}

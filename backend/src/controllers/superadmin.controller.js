@@ -14,6 +14,10 @@ const created = (fn) => async (req, res) => {
 module.exports = {
   dashboardSummary: wrap(async () => sa.dashboardSummary()),
 
+  // coin rate (unlock/tip face value lives in the single CoinRate doc)
+  coinRateGet: wrap(async () => revenue.coinRateGet()),
+  coinRateSave: wrap(async (req) => revenue.coinRateSave(req.valid.body)),
+
   listUsers: wrap(async (req) => sa.listUsers(req.valid.query)),
   getUser: wrap(async (req) => sa.getUser(req.valid.params.id)),
   createUser: created(async (req) => sa.createUser(req.valid.body)),

@@ -13,7 +13,9 @@ router.get('/store', requireAuth, ctrl.storeData);
 router.post('/unlock', requireAuth, moneyLimiter,
   validate(z.object({ body: z.object({
     bookId: z.string().min(1).max(40), chapterId: z.string().min(1).max(40),
-    priceCoins: z.number().int().min(1).max(10000),
+    // deprecated: price is read server-side from Chapter.price (admin/editor
+    // module). Accepted for frontend compat but IGNORED.
+    priceCoins: z.number().int().min(0).max(10000).optional(),
   }).strict() })), ctrl.unlock);
 router.post('/tip', requireAuth, moneyLimiter,
   validate(z.object({ body: z.object({

@@ -27,27 +27,36 @@
   function generateQR(text){return '<div class="lk-qr" data-lkqr="'+esc(text)+'" style="width:80px;height:80px;background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0"><i class="fas fa-qrcode" style="color:#1a1730;font-size:22px"></i></div>';}
   function hydrateLaunchQR(){try{if(window.FlyerPreview&&FlyerPreview.qr){FlyerPreview.qr.draw(document.getElementById('pageContent'));}}catch(e){}}
 
+  var searchSeq=0;
   function searchStory(q){
-    if(!q){document.getElementById('storyDropdown').style.display='none';return;}
-    var lower=q.toLowerCase();
-    var matches=window.StoryLibrary.filter(function(s){return s.title.toLowerCase().includes(lower)||s.genre.toLowerCase().includes(lower)||s.author.toLowerCase().includes(lower);}).slice(0,5);
-    if(!matches.length){document.getElementById('storyDropdown').style.display='none';return;}
-    document.getElementById('storyDropdown').innerHTML=matches.map(function(s){
-      return '<div class="story-option" onclick="pickStory(\''+s.id+'\')"><img src="'+esc(s.cover)+'" alt=""/><div><div class="title">'+esc(s.title)+'</div><div class="genre">'+esc(s.genre)+' | '+esc(s.author)+'</div></div></div>';
-    }).join('');
-    document.getElementById('storyDropdown').style.display='block';
+    var dd=document.getElementById('storyDropdown');
+    if(!q || !window.FlyerPreview || !FlyerPreview.searchStories){ if(dd) dd.style.display='none'; return; }
+    var seq=++searchSeq;
+    FlyerPreview.searchStories(q,'').then(function(hits){
+      if(seq!==searchSeq || !dd || document.getElementById('storySearch').value.trim()!==q.trim() || !hits.length){ if(dd) dd.style.display='none'; return; }
+      dd._hits=hits;
+      dd.innerHTML=hits.map(function(s,i){
+        return '<div class="story-option" data-i="'+i+'"><img src="'+esc(s.cover||'')+'" alt=""/><div><div class="title">'+esc(s.title||'')+'</div><div class="genre">'+esc(s.genre||'')+' | '+esc(s.author||'')+'</div></div></div>';
+      }).join('');
+      dd.style.display='block';
+      dd.querySelectorAll('.story-option').forEach(function(row){
+        row.addEventListener('click', function(){ pickStory(dd._hits[parseInt(this.getAttribute('data-i'),10)]); });
+      });
+    });
   }
 
-  function pickStory(id){
-    var s=window.StoryLibrary.find(function(x){return x.id===id;});if(!s)return;
-    selectedStory=s;
+  function pickStory(s){
+    if(!s) return;
+    selectedStory = Object.assign({}, s, {
+      link: s.link || (s.id ? 'https://droboard.com/full-reader.html?story='+encodeURIComponent(s.id) : '')
+    });
     document.getElementById('storySearch').value='';
     document.getElementById('storyDropdown').style.display='none';
     var prev=document.getElementById('storyPreview');
     prev.style.display='flex';
-    prev.querySelector('img').src=s.cover;
-    prev.querySelector('h4').textContent=s.title;
-    prev.querySelector('p').textContent=s.genre+' | '+s.author;
+    prev.querySelector('img').src=s.cover||'';
+    prev.querySelector('h4').textContent=s.title||'';
+    prev.querySelector('p').textContent=(s.genre||'')+' | '+(s.author||'');
   }
 
   function clearStory(){selectedStory=null;document.getElementById('storyPreview').style.display='none';}

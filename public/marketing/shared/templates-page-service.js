@@ -65,6 +65,13 @@ function render(){
   });
 }
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toast(m){ const el=document.createElement('div'); el.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:600;z-index:3000'; el.textContent=m; document.body.appendChild(el); setTimeout(function(){el.remove();},1500); }
+// Write the current list back to the shared data module + storage so the
+// Author Center (same data file) sees marketing's edits after a reload.
+function persist(){
+  window.FlyerTemplates=store.slice();
+  if(window.FlyerTemplateData&&FlyerTemplateData.save) FlyerTemplateData.save(store);
+}
 function renderIconGrid(){ const g=document.getElementById('teIconGrid'); if(!g) return; g.innerHTML=ICONS.map(function(ic){return '<button type="button" class="tmpl-icon-opt'+(ic===pickedIcon?' on':'')+'" data-ic="'+ic+'"><i class="fas '+ic+'"></i></button>';}).join(''); g.querySelectorAll('.tmpl-icon-opt').forEach(function(b){ b.addEventListener('click', function(){ pickedIcon=b.getAttribute('data-ic'); renderIconGrid(); }); }); }
 function renderVarChips(selected){
   const el=document.getElementById('teVars'); if(!el) return;
@@ -91,7 +98,14 @@ function previewTpl(id){
     stats: isReaderTpl ? { hoursRead:48, booksRead:12, streak:7 } : { reads:12800, followers:420, books:7 }
   };
   if(t.category==='platform' && t.id.indexOf('countdown')!==-1){ demo.title='Season Drop'; demo.hook='Something big is coming to DroBoard.'; }
-  FlyerPreview.open({ templateId:t.id, vars: demo });
+  // Saved content wins over the sample copy — this is the template's real body.
+  var vars=Object.assign({}, demo, t.defaults||{});
+  FlyerPreview.open({ templateId:t.id, vars: vars, onSave:function(tpl, savedVars){
+    tpl.defaults = savedVars;
+    persist();
+    render();
+    toast('Template content saved');
+  }});
 }
 function closeTmplModal(){ document.getElementById('tmplModalBg').classList.remove('open'); }
 window.closeTmplModal=closeTmplModal;
@@ -137,14 +151,14 @@ function onSave(){
     const idx=store.findIndex(function(x){return x.id===editingId;});
     if(idx>=0){ payload.category=store[idx].category; payload.published=store[idx].published; Object.assign(store[idx], payload); }
   } else { payload.id='tmpl_'+Date.now().toString(36); payload.category='writer'; store.push(payload); }
-  window.FlyerTemplates=store.slice();
+  persist();
   closeTmplModal(); render(); toast(editingId?'Template updated':'Template created');
 }
 function onDelete(id){
   const t=store.find(function(x){return x.id===id;}); if(!t) return;
   if(!confirm('Delete "'+t.name+'"?')) return;
   store=store.filter(function(x){return x.id!==id;});
-  window.FlyerTemplates=store.slice(); render(); toast('Template deleted');
+  persist(); render(); toast('Template deleted');
 }
 function init(){
 // Re-sync from data module: document.write-injected data script executes after
@@ -153,9 +167,8 @@ if(window.FlyerTemplates) store = window.FlyerTemplates.slice();
 document.getElementById('tmplQ').addEventListener('input', render);
 document.getElementById('tmplSize').addEventListener('change', render);
 document.getElementById('tmplNew').addEventListener('click', openNew);
-document.getElementById('teSave').addEventListener('click', onSave);
-function toast(m){ const el=document.createElement('div'); el.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:600;z-index:3000'; el.textContent=m; document.body.appendChild(el); setTimeout(function(){el.remove();},1500); }
-render();
+  document.getElementById('teSave').addEventListener('click', onSave);
+  render();
 }
 window.TemplatesService={init:init,__ready:true};
 })();

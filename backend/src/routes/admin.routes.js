@@ -31,6 +31,19 @@ router.post('/revenue/config', requireAuth, requireRole('admin'), audit('revenue
 
 router.get('/revenue/pools', requireAuth, requireRole('admin', 'finance'), ctrl.revenuePools);
 
+// coin rate — single 'live' CoinRate doc (unlock/tip face value + minimums).
+// Frontend finance console reads this; PUT updates without code changes.
+router.get('/revenue/coin-rate', requireAuth, requireRole('admin'), ctrl.coinRateGet);
+router.put('/revenue/coin-rate', requireAuth, requireRole('admin'),
+  require('../middleware/http').writeLimiter, audit('admin.revenue.coin-rate.save'),
+  validate(z.object({ body: z.object({
+    coinFaceNGN: z.number().min(0.01).max(10000).optional(),
+    minChapterCoins: z.number().int().min(0).max(10000).optional(),
+    minWithdrawal: z.number().int().min(0).max(1000000).optional(),
+    bonusExpiryDays: z.number().int().min(1).max(3650).optional(),
+    dormancyBreakageMonths: z.number().int().min(1).max(120).optional(),
+  }).strict().refine(v => Object.keys(v).length > 0, { message: 'nothing_to_save' }) })), ctrl.coinRateSave);
+
 /* ── Super Admin console (frontend service-level contracts) ── */
 const sa = require('../controllers/superadmin.controller');
 const A = [requireAuth, requireRole('admin')];

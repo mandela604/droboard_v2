@@ -58,8 +58,11 @@ async function saveBookChapter({ userId, bookId, num, data }) {
   if (!Number.isInteger(n) || n < 1) { const e = new Error('bad_num'); e.status = 400; throw e; }
   const ch = await Chapter.findOne({ bookId: book.id, n });
   if (!ch) { const e = new Error('not_found'); e.status = 404; throw e; }
+  // Pricing never changes through the author namespace (admin/editor module only).
+  const payload = Object.assign({}, data);
+  delete payload.price;
   const chapters = require('./chapters.service');
-  return chapters.updateChapter({ ch, data });
+  return chapters.updateChapter({ ch, data: payload });
 }
 
 /* book change request: persists a pending BookEdit proposal for editors */

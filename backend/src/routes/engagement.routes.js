@@ -10,19 +10,51 @@ const router = Router({ mergeParams: true });
 const id = z.string().min(1).max(120);
 const key = z.string().min(1).max(40);
 
+// Optional auth (house pattern): viewer id unlocks myVote/mine/mutes-blocks
+// on public reads; anonymous reads still work.
+function attachViewer(req, _res, next) {
+  try {
+    const hdr = req.headers.authorization || '';
+    const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.cookies && req.cookies.dro_access) || null;
+    if (token) {
+      const jwt = require('jsonwebtoken');
+      const env = require('../config/env');
+      const p = jwt.verify(token, env.jwtAccessSecret);
+      req.user = { id: p.sub, roles: p.roles || [] };
+    }
+  } catch (e) { /* anonymous */ }
+  next();
+}
+
 // reader-engagement-service contract: results include totals + my votes
 router.get('/:bookId/chapters/:key/engagement', generalLimiter,
   validate(z.object({ params: z.object({ bookId: id, key }) })), ctrl.results);
 
 // bridge + collection-story contract: GET /api/stories/:id (single segment, no clash)
-router.get('/:id', generalLimiter,
+router.get('/:id', attachViewer, generalLimiter,
   validate(z.object({ params: z.object({ id }) })),
   async (req, res) => {
     const base = require('../controllers/base.controller');
     const feed = require('../services/feed.service');
-    return base.wrap(res, async () => feed.storyDetail(req.valid.params.id));
+    return base.wrap(res, async () => feed.storyDetail(req.valid.params.id, req.user ? req.user.id : null));
   });
 
+// rate-modal contract: { ok, mine, avg, count } — anonymous reads see avg/count only
+router.get('/:id/rating', attachViewer, generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), ctrl.ratingGet);
+router.post('/:id/rating', requireAuth, writeLimiter,
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({
+      stars: z.number().int().min(1).max(5),
+      text: z.string().max(600).optional(),
+      spoiler: z.boolean().optional(),
+    }).strict(),
+  })), ctrl.ratingPost);
+
+// chapter-level engagement only (story-wide engagement deliberately not offered:
+// structured polls/predictions/debates are chapter-wise; story-wide debate lives
+// as community posts via /api/posts)
 router.post('/:bookId/chapters/:key/poll/vote', requireAuth, writeLimiter, audit('engagement.pollVote'),
   validate(z.object({
     params: z.object({ bookId: id, key }),

@@ -10,6 +10,7 @@ const postSchema = new mongoose.Schema({
   title: { type: String, default: '' },
   text: { type: String, default: '' },
   note: { type: String, default: '' },
+  heading: { type: String, default: '' }, // text posts: optional bold heading (post-card)
   image: { type: String, default: '' }, // upload or URL (post + announcement)
   pinned: { type: Boolean, default: false, index: true },
   likesCount: { type: Number, default: 0 },
@@ -20,9 +21,26 @@ const postSchema = new mongoose.Schema({
   sharesCount: { type: Number, default: 0 },
   sharesByChannel: { type: Map, of: Number, default: {} }, // channel -> count
   poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], total: { type: Number, default: 0 }, votedBy: [{ type: String }] },
-  debateData: { motion: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 } },
-  shoutout: { userId: { type: String, ref: 'User' }, tagline: String },
-  storyRef: { title: String, cat: String, writer: String, cover: String },
+  // debate posts (feed/profile/droboard composers): droboard sends {motion},
+  // feed sends {question,prompt,forText,againstText} — both stored; renderer
+  // reads motion||question and forText/againstText defaults in post-card.
+  debateData: { motion: String, question: String, prompt: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 } },
+  shoutout: {
+    userId: { type: String, ref: 'User' }, id: String, name: String, avatar: String,
+    handle: String, tagline: String, role: String, stats: { type: mongoose.Schema.Types.Mixed, default: null },
+    readingHours: Number, chaptersRead: Number, streak: Number, following: Boolean,
+  },
+  // quote posts (feed composer): quote + caption + bg hints (post-card styles)
+  quote: { type: String, default: '' },
+  caption: { type: String, default: '' },
+  quoteBg: { type: String, default: '' },
+  quoteBgCss: { type: String, default: '' },
+  // chapter-drop posts (feed composer): dropped-chapter story card
+  chapterRef: { id: String, title: String, author: String, cover: String, ch: String, cat: String },
+  storyRef: { id: String, title: String, cat: String, writer: String, cover: String },
+  // review posts: star score + review body (post-card renders both)
+  score: { type: Number, default: 0 },
+  reviewText: { type: String, default: '' },
   amaData: { isLive: Boolean, viewers: Number, title: String, meta: String },
   // moderation (super-admin all-posts console; default keeps reader API unchanged)
   status: { type: String, enum: ['published', 'flagged', 'under-review', 'removed'], default: 'published', index: true },
@@ -57,6 +75,8 @@ const discussionSchema = new mongoose.Schema({
   body: { type: String, default: '' },
   tag: { type: String, enum: ['discussion', 'recommendation', 'theory', 'question', 'controversial'], default: 'discussion', index: true },
   media: { type: String, default: '' },
+  trope: { type: String, default: '' }, // genre-hub composer: optional trope
+  story: { type: mongoose.Schema.Types.Mixed, default: null }, // genre-hub composer: optional linked story {id,title,writer,cover,cat}
   score: { type: Number, default: 0 },
   hot: { type: Boolean, default: false, index: true },
   likes: { type: Number, default: 0 },
@@ -222,6 +242,17 @@ const contentImpressionSchema = new mongoose.Schema({
 contentImpressionSchema.index({ userId: 1, targetType: 1, targetId: 1, day: 1 }, { unique: true });
 contentImpressionSchema.index({ userId: 1, createdAt: -1 });
 
+// Per-book star rating (rate-modal: stars + optional text + spoiler flag).
+// One row per user per book; Book.rating/ratingCount are the denormalized avg.
+const bookRatingSchema = new mongoose.Schema({
+  bookId: { type: String, ref: 'Book', required: true, index: true },
+  userId: { type: String, ref: 'User', required: true },
+  stars: { type: Number, min: 1, max: 5, required: true },
+  text: { type: String, default: '' },
+  spoiler: { type: Boolean, default: false },
+}, { timestamps: true });
+bookRatingSchema.index({ bookId: 1, userId: 1 }, { unique: true });
+
 module.exports = {
   Post: mongoose.model('Post', postSchema),
   Comment: mongoose.model('Comment', commentSchema),
@@ -241,4 +272,5 @@ module.exports = {
   Reaction: mongoose.model('Reaction', reactionSchema),
   ShareEvent: mongoose.model('ShareEvent', shareEventSchema),
   ContentImpression: mongoose.model('ContentImpression', contentImpressionSchema),
+  BookRating: mongoose.model('BookRating', bookRatingSchema),
 };

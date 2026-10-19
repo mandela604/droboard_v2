@@ -25,11 +25,23 @@ async function storeData(req, res) {
 
 async function unlock(req, res) {
   return base.wrap(res, async () => {
-    const { bookId, chapterId, priceCoins } = req.valid.body;
+    const { bookId, chapterId } = req.valid.body;
     const { CoinRate } = require('../models/revenue.model');
+    const engagement = require('../services/engagement.service');
     const fx = await CoinRate.findOne({ key: 'live' }).lean();
     const face = (fx && fx.coinFaceNGN) || 15;
-    return wallet.unlockChapter({ userId: req.user.id, bookId, chapterId, priceCoins, coinFaceNGN: face });
+    // Price is SERVER-SIDE truth: Chapter.price (set via admin/editor module).
+    // The client-sent priceCoins is accepted but ignored.
+    const ch = await engagement.loadChapter(bookId, chapterId);
+    const price = Math.max(0, Math.floor(ch.price || 0));
+    if (price === 0) {
+      const w = await wallet.getOrCreateWallet(req.user.id, 'reader');
+      return { ok: true, free: true, price: 0, balance: w.coinBalance };
+    }
+    const out = await wallet.unlockChapter({
+      userId: req.user.id, bookId, chapterId: ch.id, priceCoins: price, coinFaceNGN: face,
+    });
+    return { ok: true, price, balance: out.balance };
   });
 }
 

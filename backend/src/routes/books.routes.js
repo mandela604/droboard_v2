@@ -27,6 +27,9 @@ const chBody = z.object({
   words: z.number().int().min(0).optional(),
   status: z.enum(['draft', 'pending_review', 'revision_needed', 'scheduled', 'live', 'published']).optional(),
   authorNote: z.string().max(2000).optional(),
+  // coin price (0 = free). Server-side pricing truth for /wallet/unlock —
+  // staff-only (enforced in controllers; admin/editor module sets prices).
+  price: z.number().int().min(0).max(10000).optional(),
   scheduledAt: z.string().max(40).refine(v => !isNaN(new Date(v).getTime()), { message: 'bad_scheduledAt' }).optional(),
   poll: z.object({ q: z.string().max(300).optional(), opts: z.array(z.string().max(120)).max(4).optional() }).optional(),
   prediction: z.object({ q: z.string().max(300).optional(), opts: z.array(z.string().max(120)).max(4).optional() }).optional(),

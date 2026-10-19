@@ -14,6 +14,7 @@
     { id: 'embed', label: 'Network embed', icon: 'fa-code', desc: 'AdSense / Adsterra / Monetag tag' },
     { id: 'follow', label: 'Follow', icon: 'fa-user-plus', desc: 'Rich author follow card' },
     { id: 'banner', label: 'Banner', icon: 'fa-flag', desc: 'Brand headline strip' },
+    { id: 'minibanner', label: 'Mini banner', icon: 'fa-rectangle-ad', desc: 'Small horizontal image banner (leaderboard)' },
     { id: 'promo', label: 'Promo slide', icon: 'fa-images', desc: 'Library / hub slider slide' },
   ];
 
@@ -55,7 +56,12 @@
       { id: 'comments:thread-top', label: 'Thread top' },
     ],
     feed: [{ id: 'feed:in-feed', label: 'In-feed' }],
-    discover: [{ id: 'discover:strip', label: 'Strip' }],
+    discover: [
+      { id: 'discover:strip', label: 'Strip' },
+      { id: 'discover:banner-top', label: 'Inline banner (after Continue Reading)' },
+      { id: 'discover:inline-banner', label: 'Inline banner (after New Releases)' },
+      { id: 'discover:banner-bottom', label: 'Inline banner (above More Stories)' },
+    ],
     genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
     library: [{ id: 'library:slider', label: 'Slider' }],
     droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
@@ -64,6 +70,7 @@
     debate: [
       { id: 'debate:top', label: 'Top (above question)' },
       { id: 'debate:inline', label: 'Inline (between arguments)' },
+      { id: 'debate:thread-top', label: 'Thread top (view all replies)' },
     ],
     home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
     series: [{ id: 'series:main', label: 'Main' }],
@@ -93,6 +100,7 @@
     embed: [['brand', 'Network / label', 'text'], ['title', 'Internal label', 'text'], ['code', 'Ad network code (script / HTML)', 'area']],
     follow: [['name', 'Display name', 'text'], ['handle', 'Handle', 'text'], ['tagline', 'Tagline', 'text'], ['headline', 'Headline', 'text'], ['body', 'Body', 'area'], ['cta', 'Follow button', 'text'], ['avatar', 'Avatar', 'img'], ['cover', 'Cover image', 'img']],
     banner: [['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
+    minibanner: [['img', 'Banner image (wide, ~800×180)', 'img'], ['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
     promo: [['title', 'Title', 'text'], ['sub', 'Sub line', 'text'], ['author', 'Author', 'text'], ['cta', 'CTA button', 'text'], ['genre', 'Hub genre (blank = all hubs)', 'text'], ['img', 'Slide image', 'img']],
   };
 
@@ -222,6 +230,7 @@
     { id: 'offer', label: 'Sell coins or subscriptions', icon: 'fa-coins', desc: 'Platform card linked to a Finance offer', format: 'platform' },
     { id: 'sponsored', label: 'Sponsored content', icon: 'fa-newspaper', desc: 'Native in-feed post from a brand', format: 'native' },
     { id: 'brand', label: 'Brand awareness', icon: 'fa-flag', desc: 'Bold banner strip across surfaces', format: 'banner' },
+    { id: 'miniBanner', label: 'Compact image banner', icon: 'fa-rectangle-ad', desc: 'Small horizontal banner between content sections', format: 'minibanner' },
     { id: 'slider', label: 'Feature in sliders', icon: 'fa-images', desc: 'Library and hub slider slide', format: 'promo' },
     { id: 'network', label: 'Run a network tag', icon: 'fa-code', desc: 'Paste an AdSense / Adsterra / Monetag tag', format: 'embed' },
   ];

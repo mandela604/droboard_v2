@@ -49,6 +49,7 @@
     debate: [
       { id: 'debate:top', label: 'Top (above question)' },
       { id: 'debate:inline', label: 'Inline (between arguments)' },
+      { id: 'debate:thread-top', label: 'Thread top (view all replies)' },
     ],
     home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
     series: [{ id: 'series:main', label: 'Main' }],
@@ -330,6 +331,19 @@
         (ad.sub ? '<div style="font-size:11px;opacity:.8;margin-bottom:12px">' + esc2(ad.sub) + '</div>' : '') +
         '<div><span style="display:inline-block;background:#fff;color:#d6165a;font-size:11px;font-weight:800;padding:8px 18px;border-radius:20px">' + esc2(ad.cta || 'Learn More') + '</span></div></div>';
     }
+    if (format === 'minibanner') {
+      return '<div style="position:relative;height:74px;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#221027,#3b0f22)' + (img ? ';background-image:url(' + img + ');background-size:cover;background-position:center' : '') + ';margin:8px 0">' +
+        '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,4,12,.88) 0%,rgba(8,4,12,.55) 55%,rgba(8,4,12,.12) 100%)"></div>' +
+        '<div style="position:absolute;top:7px;right:9px;font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.22);color:#fff;padding:2px 7px;border-radius:6px">Ad</div>' +
+        '<div style="position:relative;display:flex;align-items:center;gap:10px;height:100%;padding:0 12px;color:#fff">' +
+        '<div style="flex:1;min-width:0">' +
+          (ad.brand ? '<div style="font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.8;margin-bottom:2px">' + esc2(ad.brand) + '</div>' : '') +
+          '<div style="font-size:13px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc2(ad.headline || ad.title || 'Untitled') + '</div>' +
+          (ad.sub ? '<div style="font-size:9.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">' + esc2(ad.sub) + '</div>' : '') +
+        '</div>' +
+        '<span style="flex-shrink:0;display:inline-block;background:#fff;color:#d6165a;font-size:11px;font-weight:800;padding:8px 18px;border-radius:20px">' + esc2(ad.cta || 'Learn More') + '</span>' +
+        '</div></div>';
+    }
     if (format === 'follow') {
       var avHtml = '<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#eee">' + (ad.avatar ? '<img src="' + esc2(ad.avatar) + '" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover"/>' : '') + '</div>';
       var infoHtml = '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:#1a1a1a">' + esc2(ad.name || 'Untitled') + '</div>' +
@@ -373,6 +387,7 @@
         else if (_draft.format === 'book') html = C.renderListBook(ad) || '';
         else if (_draft.format === 'native') html = C.renderNative(ad) || '';
         else if (_draft.format === 'banner') html = C.renderBanner(ad) || '';
+        else if (_draft.format === 'minibanner') html = C.renderMiniBanner(ad) || '';
         else if (_draft.format === 'follow') html = C.renderFollowPromo(ad) || '';
         else if (_draft.format === 'embed') html = C.renderEmbed(ad) || '';
       } catch (e) { html = ''; }

@@ -9,8 +9,8 @@
 
    API contract (backend):
      GET  /api/ads?placement=discover|feed|genreHub
-       → { placement: { interval, cycle?, topPromo? },
-           pools: { platform: [], book: [], native: [], follow: [], banner: [] } }
+        → { placement: { interval, cycle?, topPromo? },
+            pools: { platform: [], book: [], native: [], follow: [], banner: [], minibanner: [] } }
      POST /api/ads/track  { id, event: 'impression' | 'click' }
      (admin CRUD lives under /api/marketing/ads — see ad-manager page)
 ═══════════════════════════════════════════════════════════════ */
@@ -135,7 +135,7 @@
     } catch (e) { return Promise.resolve(false); }
   }
   function emptyPools() {
-    return { platform: [], book: [], native: [], embed: [], follow: [], banner: [], promo: [] };
+    return { platform: [], book: [], native: [], embed: [], follow: [], banner: [], minibanner: [], promo: [] };
   }
 
   /* Placement config for a page: { interval, cycle?, topPromo? } */
@@ -206,7 +206,7 @@
     } catch (e) {}
     const now = dayStart(new Date());
     const out = {};
-    ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'promo'].forEach(k => {
+    ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'minibanner', 'promo'].forEach(k => {
       out[k] = (Array.isArray(pools[k]) ? pools[k] : []).filter(ad => {
         if (ad.active === false) return false;
         if (!inSchedule(ad, now)) return false;

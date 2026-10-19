@@ -53,4 +53,23 @@ async function readState(req, res) {
   }));
 }
 
-module.exports = { votePoll, votePrediction, voteDebate, retract, results, progress, readState };
+/* ── ratings (rate-modal contract) ── */
+
+async function ratingGet(req, res) {
+  return base.wrap(res, async () => {
+    const ratings = require('../services/ratings.service');
+    return ratings.getRating(req.valid.params.id, req.user ? req.user.id : null);
+  });
+}
+
+async function ratingPost(req, res) {
+  return base.wrap(res, async () => {
+    const ratings = require('../services/ratings.service');
+    return ratings.submitRating(req.valid.params.id, req.user.id, req.valid.body);
+  });
+}
+
+module.exports = {
+  votePoll, votePrediction, voteDebate, retract, results, progress, readState,
+  ratingGet, ratingPost,
+};

@@ -79,29 +79,29 @@
   const CSS = `
     .bn-root{
       /* ---- Light theme tokens (default) — from feed.html :root ---- */
-      --bn-bg:rgba(255,255,255,.98);
-      --bn-border:#EDEDF2;
+      --bn-bg:rgba(242,242,247,.75);
+      --bn-border:rgba(255,255,255,.55);
       --bn-active:#E91E63;
       --bn-inactive:#9793a8;
       --bn-shadow:rgba(0,0,0,.06);
 
-      position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-      width:100%;max-width:420px;z-index:100;
+      position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);left:50%;transform:translateX(-50%);
+      width:calc(100% - 24px);max-width:420px;z-index:100;
       background:var(--bn-bg);backdrop-filter:blur(16px);
-      border-top:1px solid var(--bn-border);
+      border:1px solid var(--bn-border);border-radius:28px;
       display:flex;justify-content:space-around;
-      padding:9px 0 calc(env(safe-area-inset-bottom,0px) + 10px);
-      box-shadow:0 -2px 14px var(--bn-shadow);
+      padding:9px 6px;
+      box-shadow:0 4px 20px var(--bn-shadow);
       font-family:'DM Sans','Inter',system-ui,sans-serif;
       transition:background .2s ease,border-color .2s ease;
     }
     .bn-root[data-bn-theme="dark"]{
-      /* ---- Dark theme tokens — from index.html's dark nav ---- */
-      --bn-bg:rgba(0,0,0,.97);
-      --bn-border:rgba(255,255,255,.08);
+      /* ---- Dark theme tokens — same tinted glass in both themes ---- */
+      --bn-bg:rgba(242,242,247,.75);
+      --bn-border:rgba(255,255,255,.55);
       --bn-active:#ff0050;
-      --bn-inactive:#666;
-      --bn-shadow:rgba(0,0,0,.5);
+      --bn-inactive:#9793a8;
+      --bn-shadow:rgba(0,0,0,.2);
     }
     .bn-root *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     .bn-item{
@@ -177,8 +177,8 @@
   // ══════════════════════════════════════════════════════════════════
   const NAV_ITEMS = [
     { key: 'home',     label: 'Home',     href: 'index.html',    icon: 'fa-house' },
-    { key: 'discover', label: 'Discover', href: 'discover.html', icon: 'fa-compass' },
     { key: 'library',  label: 'Library',  href: 'library.html',  icon: 'fa-book' },
+    { key: 'discover', label: 'Discover', href: 'discover.html', icon: 'fa-compass' },
     { key: 'feed',     label: 'Feed',     href: 'feed.html',     icon: 'fa-rss' },
     { key: 'profile',  label: 'Profile',  href: 'profile.html',  icon: 'fa-circle-user' },
   ];

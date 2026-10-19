@@ -74,14 +74,14 @@
 
     /* Body */
     .da-body{flex:1;min-width:0}
-    .da-chead{display:flex;align-items:center;gap:5px;margin-bottom:3px;min-width:0}
-    .da-name{font-size:12px;font-weight:800;color:var(--tx-high,#161616);cursor:pointer;text-decoration:none}
+    .da-chead{display:flex;align-items:center;gap:5px;margin-bottom:3px;min-width:0;overflow:hidden}
+    .da-name{font-size:12px;font-weight:800;color:var(--tx-high,#161616);cursor:pointer;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
     .da-name:hover{text-decoration:underline}
     .da-side-tag{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;flex-shrink:0}
     .da-side-tag.for{background:rgba(52,211,153,.1);color:#0d9668}
     .da-side-tag.against{background:rgba(248,113,113,.1);color:#dc2626}
-    .da-time{font-size:10px;color:var(--tx-muted,#888);margin-left:auto}
-    .da-dots{font-size:11px;color:var(--tx-muted,#888);cursor:pointer;padding:2px 5px;border-radius:6px;flex-shrink:0;background:none;border:none;font-family:inherit}
+    .da-time{font-size:10px;color:var(--tx-muted,#888);margin-left:auto;flex-shrink:0;white-space:nowrap}
+    .da-dots{font-size:13px;color:var(--tx-muted,#888);cursor:pointer;padding:2px 4px;border-radius:6px;flex-shrink:0;background:none;border:none;font-family:inherit;line-height:1;display:flex;align-items:center}
     .da-dots:active{background:rgba(0,0,0,.06)}
     .da-text{font-size:15px;color:var(--tx-body,#3a3a3a);line-height:1.55;word-break:break-word}
     .da-mention{color:#ff0050;font-weight:700}
@@ -106,6 +106,8 @@
     .da-reply-inp:focus{border-color:rgba(255,0,80,.35)}
     .da-reply-send{background:#ff0050;border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#fff;flex-shrink:0}
     .da-reply-send:disabled{background:var(--l2,#f1f1f1);cursor:default}
+    .da-reply-av-sm{width:24px;height:24px;border-radius:50%;background:#ff0050;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
+    .da-reply-av-sm img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 
     /* View all replies */
     .da-view-replies{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#ff0050;cursor:pointer;padding:8px 0 10px 16px;margin-left:18px;user-select:none;background:none;border:none;font-family:inherit}
@@ -251,11 +253,20 @@
       var list = viewerAuthorsFor().slice(0, 50);
       if (!list.length) return;
       var vid = 'da_' + argId;
-      if (list[0].id !== vid) {
-        var at = -1;
-        for (var i = 0; i < list.length; i++) { if (list[i].id === vid) { at = i; break; } }
-        if (at > 0) list.push.apply(list, list.splice(0, at));
+      var at = -1, i;
+      for (i = 0; i < list.length; i++) { if (list[i].id === vid) { at = i; break; } }
+      // Deduped author: this arg's id was collapsed into the first card
+      // with the same name+avatar — match by author identity instead.
+      if (at < 0) {
+        var tapped = findArg(argId);
+        if (tapped) {
+          var key = String(tapped.name) + '|' + String(tapped.avatar || '');
+          for (i = 0; i < list.length; i++) {
+            if (String(list[i].name) + '|' + String(list[i].avatar || '') === key) { at = i; vid = list[i].id; break; }
+          }
+        }
       }
+      if (at > 0) list.push.apply(list, list.splice(0, at));
       window.openStatusViewer(list, vid);
     }
 
@@ -274,8 +285,16 @@
       '</div>';
     }
 
+    /* ── small avatar chip shown beside the reply input (same as story comments) ── */
+    function myAvSm() {
+      var u = O.currentUser || {};
+      return '<div class="da-reply-av-sm">' + (u.avatar
+        ? '<img src="' + esc(u.avatar) + '" alt=""/>'
+        : esc((u.name || 'Y').charAt(0).toUpperCase())) + '</div>';
+    }
+
     /* ── arg card HTML ── */
-    function argHTML(a, isReply) {
+    function argHTML(a, isReply, skipInline) {
       var sideCls = a.side === 'for' ? 'for' : 'against';
       var sideLabel = a.side === 'for' ? '\u2705 ' + O.sides.for : '\u274C ' + O.sides.against;
       var totalR = countReplies(a);
@@ -287,7 +306,7 @@
               '<a class="da-name" data-profile="' + esc(a.name) + '" href="profile.html?u=' + encodeURIComponent(a.name || '') + '">' + esc(a.name) + '</a>' +
               '<span class="da-side-tag ' + sideCls + '">' + sideLabel + '</span>' +
               '<span class="da-time">' + esc(a.time) + '</span>' +
-              '<button class="da-dots" data-dots="' + esc(a.id) + '" aria-label="More options"><i class="fas fa-ellipsis"></i></button>' +
+              '<button class="da-dots" data-dots="' + esc(a.id) + '" aria-label="More options"><i class="fas fa-ellipsis-vertical"></i></button>' +
             '</div>' +
             '<div class="da-text">' + mentions(a.text) + '</div>' +
             '<div class="da-actions">' +
@@ -299,13 +318,14 @@
           '</div>' +
         '</div>' +
         '<div class="da-reply-area" id="ra-' + esc(a.id) + '">' +
-          '<input class="da-reply-inp" placeholder="Replying to @' + esc(a.name) + '\u2026" data-reply-input="' + esc(a.id) + '"/>' +
+          myAvSm() +
+          '<input class="da-reply-inp" placeholder="Replying to @' + esc(a.name) + '…" data-reply-input="' + esc(a.id) + '"/>' +
           '<button class="da-reply-send" data-reply-send="' + esc(a.id) + '" disabled><i class="fas fa-paper-plane"></i></button>' +
         '</div>' +
       '</div>';
 
-      // inline replies (max 2)
-      if (!isReply) {
+      // inline replies (max 2) — skipped in the thread view (it lists them all)
+      if (!isReply && !skipInline) {
         var flat = flattenReplies(a.replies, 1);
         if (flat.length > 0) {
           var inline = flat.slice(0, 2);
@@ -395,8 +415,8 @@
       if (!root) return;
       var flat = flattenReplies(root.replies, 1);
 
-      // root arg without the "view all" button
-      var rootH = argHTML(root, false).replace(/<button class="da-view-replies"[^>]*>[\s\S]*?<\/button>/, '');
+      // root arg only — no inline replies (they're all listed below)
+      var rootH = argHTML(root, false, true);
 
       // flat reply cards
       var repliesH = flat.map(function (f) {
@@ -407,6 +427,7 @@
                 '<a class="da-name" data-profile="' + esc(f.arg.name) + '" href="profile.html?u=' + encodeURIComponent(f.arg.name || '') + '">' + esc(f.arg.name) + '</a>' +
                 '<span class="da-side-tag ' + (f.arg.side === 'for' ? 'for' : 'against') + '">' + (f.arg.side === 'for' ? '\u2705 ' + esc(O.sides.for) : '\u274C ' + esc(O.sides.against)) + '</span>' +
                 '<span class="da-time">' + esc(f.arg.time) + '</span>' +
+                '<button class="da-dots" data-dots="' + esc(f.arg.id) + '" aria-label="More options"><i class="fas fa-ellipsis-vertical"></i></button>' +
               '</div>' +
               '<div class="da-text">' + mentions(f.arg.text) + '</div>' +
               '<div class="da-actions">' +
@@ -417,7 +438,8 @@
             '</div>' +
           '</div>' +
           '<div class="da-reply-area" id="ra-' + esc(f.arg.id) + '">' +
-            '<input class="da-reply-inp" placeholder="Replying to @' + esc(f.arg.name) + '\u2026" data-reply-input="' + esc(f.arg.id) + '"/>' +
+            myAvSm() +
+            '<input class="da-reply-inp" placeholder="Replying to @' + esc(f.arg.name) + '…" data-reply-input="' + esc(f.arg.id) + '"/>' +
             '<button class="da-reply-send" data-reply-send="' + esc(f.arg.id) + '" disabled><i class="fas fa-paper-plane"></i></button>' +
           '</div>' +
         '</div>';
@@ -431,13 +453,28 @@
           '<button class="da-thread-back" id="daThreadBack"><i class="fas fa-arrow-left"></i></button>' +
           '<div><div class="da-thread-title">Replies</div><div class="da-thread-count">' + flat.length + ' replies</div></div>' +
         '</div>' +
-        '<div class="da-thread-body">' + rootH + repliesH + '</div>' +
+        '<div class="da-thread-body">' +
+          (O.ads ? '<div class="da-ad-slot" id="daThreadAdSlot" data-ad-slot="debate:thread-top" style="display:none;margin:0 0 4px"><div class="da-ad-slot-lbl" style="font-size:9px;font-weight:800;color:var(--tx-muted,#888);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Sponsored</div></div>' : '') +
+          rootH + repliesH +
+        '</div>' +
         '<div class="da-thread-composer">' +
           '<input class="da-thread-input" id="daThreadInput" placeholder="Write a reply\u2026"/>' +
           '<button class="da-thread-send" id="daThreadSend"><i class="fas fa-paper-plane"></i></button>' +
         '</div>';
       document.body.appendChild(ov);
       document.body.style.overflow = 'hidden';
+
+      // thread-top ad — owned by DroboardAdSlot
+      var thAd = ov.querySelector('#daThreadAdSlot');
+      if (thAd) {
+        if (window.DroboardAdSlot) {
+          DroboardAdSlot.mount(thAd, { slot: 'debate:thread-top', postId: O.debateId || '' }).then(function (filled) {
+            thAd.style.display = filled ? '' : 'none';
+          }).catch(function () { thAd.style.display = 'none'; });
+        } else {
+          thAd.style.display = 'none';
+        }
+      }
 
       // wire events inside the thread overlay
       ov.querySelectorAll('[data-av-id]').forEach(function (av) {
@@ -492,8 +529,6 @@
           ov.querySelectorAll('.da-reply-area').forEach(function (ra) { ra.classList.remove('open'); });
           if (!wasOpen && parent) {
             parent.classList.add('open');
-            var a = findArg(rid);
-            if (a && !target.value) target.value = '@' + a.name + ' ';
             target.focus();
           }
         });
@@ -516,6 +551,7 @@
             parent.replies.push(reply);
             if (O.onReply) O.onReply(parent.id, reply);
             inp.value = '';
+            toast('Reply posted!');
             closeThread(); openThread(id);
           }
         });
@@ -533,11 +569,29 @@
           parent.replies = parent.replies || [];
           parent.replies.push(reply);
           if (O.onReply) O.onReply(parent.id, reply);
+          toast('Reply posted!');
           closeThread(); openThread(id);
         });
       });
 
       ov.querySelector('#daThreadBack').addEventListener('click', closeThread);
+      // dots menu (same wiring as the main list)
+      ov.querySelectorAll('[data-dots]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var a = findArg(btn.getAttribute('data-dots'));
+          if (!a) return;
+          if (window.DroboardDotsMenu) {
+            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true }, btn);
+          }
+        });
+      });
+      // profile links (same wiring as the main list)
+      ov.querySelectorAll('[data-profile]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          if (O.onProfileClick) { e.preventDefault(); O.onProfileClick(a.getAttribute('data-profile')); }
+        });
+      });
       ov.querySelector('#daThreadSend').addEventListener('click', function () {
         var inp = ov.querySelector('#daThreadInput');
         var text = inp.value.trim();
@@ -547,6 +601,7 @@
         root.replies.push(reply);
         if (O.onReply) O.onReply(root.id, reply);
         inp.value = '';
+        toast('Reply posted!');
         closeThread();
         render();
         openThread(id);
@@ -650,11 +705,7 @@
           rootEl.querySelectorAll('.da-reply-area').forEach(function (ra) { ra.classList.remove('open'); });
           if (!wasOpen && parent) {
             parent.classList.add('open');
-            var a = findArg(id);
-            if (a && !target.value) target.value = '@' + a.name + ' ';
             target.focus();
-            var len = target.value.length;
-            target.setSelectionRange(len, len);
           }
         });
       });
@@ -780,16 +831,32 @@
     };
 
     // status-viewer sync — same pattern as people-to-follow.js:
-    // chain onto window.onStatusViewerChange, update the ring class directly
+    // chain onto window.onStatusViewerChange, update the ring class directly.
+    // An author can appear on several cards (top arg + inline replies), and
+    // the viewer dedupes by name+avatar — so update ALL of that author's
+    // cards, not just the one whose id happened to be sent back.
     var prevStatusHandler = window.onStatusViewerChange;
     window.onStatusViewerChange = function (wid, ring) {
       if (typeof prevStatusHandler === 'function') { try { prevStatusHandler(wid, ring); } catch (e) {} }
       if (!wid || wid.indexOf('da_') !== 0) return;
       var a = findArg(wid.slice(3));
       if (!a) return;
-      a.statusRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
-      var wrapEl = rootEl.querySelector('[data-av-id="' + a.id + '"] .da-av-ring');
-      if (wrapEl) wrapEl.className = 'da-av-ring ring-' + a.statusRing;
+      var newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+      var key = String(a.name) + '|' + String(a.avatar || '');
+      (function walk(list) {
+        (list || []).forEach(function (x) {
+          if (String(x.name) + '|' + String(x.avatar || '') === key) {
+            x.statusRing = newRing;
+            [rootEl, document.getElementById('daThreadOv')].forEach(function (scopeEl) {
+              if (!scopeEl) return;
+              scopeEl.querySelectorAll('[data-av-id="' + x.id + '"] .da-av-ring').forEach(function (ringEl) {
+                ringEl.className = 'da-av-ring ring-' + newRing;
+              });
+            });
+          }
+          walk(x.replies || []);
+        });
+      })(_args);
     };
 
     render();

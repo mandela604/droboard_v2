@@ -46,9 +46,9 @@
   window.__droboardDotsMenu = true;
 
   const CSS = `
-    .ddm-overlay{position:fixed;inset:0;z-index:850;display:none}
+    .ddm-overlay{position:fixed;inset:0;z-index:1898;display:none}
     .ddm-overlay.on{display:block}
-    .ddm-menu{position:fixed;z-index:860;background:var(--l3,#13141a);border:1px solid var(--bd,rgba(255,255,255,.07));border-radius:14px;padding:6px;min-width:210px;box-shadow:0 12px 40px rgba(0,0,0,.35);opacity:0;transform:translateY(-4px) scale(.97);pointer-events:none;transition:opacity .15s ease,transform .15s ease}
+    .ddm-menu{position:fixed;z-index:1900;background:var(--l3,#13141a);border:1px solid var(--bd,rgba(255,255,255,.07));border-radius:14px;padding:6px;min-width:210px;box-shadow:0 12px 40px rgba(0,0,0,.35);opacity:0;transform:translateY(-4px) scale(.97);pointer-events:none;transition:opacity .15s ease,transform .15s ease}
     .ddm-menu.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
     .ddm-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--tx-body,#c0c0c0);cursor:pointer;font-family:inherit;background:none;border:none;width:100%;text-align:left}
     .ddm-item:hover{background:rgba(127,127,127,.1);color:var(--tx-high,#e0e0e0)}

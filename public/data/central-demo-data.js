@@ -1111,7 +1111,7 @@
     ],
     native: [
       { id: 'nat_status_1', brand: 'DroBoard Premium', heading: 'Read ad-free, anywhere', body: 'Unlimited coins, zero interruptions across stories and statuses.', cta: 'Go Premium', image: c(2), pages: ['status'], slots: ['status:every-3rd'] },
-      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion'] },
+      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['discover', 'feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion'] },
       { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'comments'] },
       { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments', 'status'] },
     ],
@@ -1123,6 +1123,13 @@
     embed: [],
     banner: [
       { id: 'demo_ban_1', brand: 'DroBoard Coins', headline: 'Top up coins — unlock bonus chapters', sub: 'Support writers instantly', cta: 'Get Coins', pages: ['feed', 'fullReader', 'scrollReader', 'store'] },
+    ],
+    /* Compact horizontal image banners (~74px leaderboards between sections).
+        Slots dedupe by ad id, so each creative fills one slot per page load. */
+    minibanner: [
+      { id: 'mb_novapay_1', brand: 'NovaPay', headline: 'Transfer with CONFIDENCE', sub: 'Fast, secure money transfers', cta: 'Try Free', img: 'https://picsum.photos/seed/drombnova/800/180', pages: ['discover', 'feed', 'genreHub', 'comments', 'discussion', 'debate', 'droboardPage'], campaign: 'CMP-021' },
+      { id: 'mb_sale_1', brand: 'Super Sale', headline: 'Bonus coins on every top-up', sub: 'Limited time — this week only', cta: 'Shop Now', img: 'https://picsum.photos/seed/drombsale/800/180', pages: ['discover', 'feed', 'store', 'fullReader', 'scrollReader'], campaign: 'CMP-022' },
+      { id: 'mb_studio_1', brand: 'DroBoard Studio', headline: 'Write your own story today', sub: 'Publish chapter 1 in minutes', cta: 'Start Writing', img: 'https://picsum.photos/seed/drombstudio/800/180', pages: ['discover', 'feed', 'genreHub', 'library'], campaign: 'CMP-023' },
     ],
     /* Promo slider slides (library / genre-hub top sliders). `pages`
        decides where a slide shows; `genre` narrows hub slides. */
@@ -1159,7 +1166,7 @@
     scrollReader: { interval: 4, format: 'book' },
     library: { promoSlider: true },
     store: { interval: 3, topBanner: true },
-    debate: { interval: 2, slots: { 'debate:top': true, 'debate:inline': true } },
+    debate: { interval: 2, slots: { 'debate:top': true, 'debate:inline': true, 'debate:thread-top': true } },
   };
 
   /* ── EVENT & ANNOUNCEMENT ── */

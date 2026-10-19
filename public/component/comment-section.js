@@ -266,7 +266,8 @@
 
     .dcs-reply-area{display:none;padding:6px 0 0 16px;border-left:2px solid rgba(255,0,80,.12);margin-left:18px;margin-top:3px}
     .dcs-reply-area.open{display:flex;gap:7px;align-items:center}
-    .dcs-reply-av-sm{width:24px;height:24px;border-radius:50%;background:var(--dcs-acc);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
+    .dcs-reply-av-sm{width:24px;height:24px;border-radius:50%;background:var(--dcs-acc);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+    .dcs-reply-av-sm img{width:100%;height:100%;object-fit:cover}
     .dcs-reply-inp{flex:1;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:18px;padding:6px 11px;color:var(--dcs-tx);font-family:inherit;font-size:11px;outline:none;transition:border-color .2s}
     .dcs-reply-inp:focus{border-color:rgba(255,0,80,.35)}
     .dcs-reply-send{background:var(--dcs-acc);border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#fff;flex-shrink:0}
@@ -915,7 +916,7 @@
             </div>
           </div>
           <div class="dcs-reply-area" id="${ns}-cra-${c.id}">
-            <div class="dcs-reply-av-sm">${(currentUser.name || 'Y')[0].toUpperCase()}</div>
+            <div class="dcs-reply-av-sm">${currentUser.avatar ? `<img src="${_esc(currentUser.avatar)}"/>` : (currentUser.name || 'Y')[0].toUpperCase()}</div>
             <input class="dcs-reply-inp" id="${ns}-cri-${c.id}" placeholder="Replying to @${_esc(c.name)}…"/>
             <button class="dcs-reply-send" id="${ns}-crs-${c.id}" disabled data-dcs-replysend="${c.id}"><i class="fas fa-paper-plane"></i></button>
           </div>
@@ -1355,11 +1356,16 @@
       if (!c.statuses || !c.statuses.length || typeof window.openStatusViewer !== 'function') return;
       const authors = viewerAuthorsFor(c).slice(0, 50);
       if (!authors.length) return;
-      const vid = 'dcs_' + instId + '_' + c.id;
-      if (authors[0].id !== vid) {
-        const at = authors.findIndex(w => w.id === vid);
-        if (at > 0) authors.push(...authors.splice(0, at));
+      let vid = 'dcs_' + instId + '_' + c.id;
+      let at = authors.findIndex(w => w.id === vid);
+      // Deduped author: this comment's id was collapsed into the first
+      // comment with the same name+avatar — match by author identity.
+      if (at < 0) {
+        const key = String(c.name) + '|' + String(c.avatar || '');
+        at = authors.findIndex(w => String(w.name) + '|' + String(w.avatar || '') === key);
+        if (at >= 0) vid = authors[at].id;
       }
+      if (at > 0) authors.push(...authors.splice(0, at));
       window.openStatusViewer(authors, vid);
       // No statuses on this comment's author → intentionally do nothing.
     }
@@ -1387,13 +1393,25 @@
         if (!wid || String(wid).indexOf(prefix) !== 0) return;
         const c = findByAnyId(comments, String(wid).slice(prefix.length));
         if (!c) return;
-        c.statusRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+        // An author can post several comments — the viewer dedupes by
+        // name+avatar, so gray EVERY comment from that author, not just
+        // the one whose id happened to come back.
+        const key = String(c.name) + '|' + String(c.avatar || '');
+        const sameAuthor = [];
+        (function walk(arr) {
+          (arr || []).forEach(m => {
+            if (String(m.name) + '|' + String(m.avatar || '') === key) { m.statusRing = newRing; sameAuthor.push(String(m.id)); }
+            walk(m.replies || []);
+          });
+        })(comments);
+        const idSet = new Set(sameAuthor);
         [root, threadOv].forEach(scopeEl => {
           if (!scopeEl) return;
           scopeEl.querySelectorAll('[data-dcs-avatar]').forEach(av => {
-            if (String(av.getAttribute('data-dcs-avatar')) === String(c.id)) {
+            if (idSet.has(String(av.getAttribute('data-dcs-avatar')))) {
               const ringEl = av.querySelector('.dcs-av-ring');
-              if (ringEl) ringEl.className = 'dcs-av-ring ring-' + c.statusRing;
+              if (ringEl) ringEl.className = 'dcs-av-ring ring-' + newRing;
             }
           });
         });

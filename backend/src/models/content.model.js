@@ -23,6 +23,10 @@ const bookSchema = new mongoose.Schema({
   reads: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
   rating: { type: Number, default: 0 },
+  ratingCount: { type: Number, default: 0 },
+  // Structured engagement (poll/prediction/debate) is chapter-wise only — lives
+  // on Chapter below. Story-wide debate/polls are community Post 'debate'/'poll'
+  // via /api/posts (feed/droboard composers).
 }, { timestamps: true });
 
 const chapterSchema = new mongoose.Schema({
@@ -35,6 +39,9 @@ const chapterSchema = new mongoose.Schema({
   status: { type: String, enum: ['draft', 'pending_review', 'revision_needed', 'scheduled', 'live', 'published'], default: 'draft', index: true },
   scheduledAt: { type: Date, default: null },
   version: { type: Number, default: 1 },
+  // coin price to unlock (0 = free). Server-side truth for POST /wallet/unlock;
+  // set via the author/editor module (chapters create/patch, staff-gated).
+  price: { type: Number, default: 0, min: 0 },
   // author's note (reader-facing, below content) + engagement (polls/predictions)
   authorNote: { type: String, default: '' },
   poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }] },

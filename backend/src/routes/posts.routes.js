@@ -8,23 +8,67 @@ function Router() { return require('express').Router(); }
 const router = Router();
 
 const id = z.string().min(1).max(120);
+// Composers (feed/profile post-composer + droboard composer) attach client-only
+// meta (id, name, avatar, time, likes, liked, comments, saved, mine, userVote,
+// voted…). .passthrough() lets them through; the service normalizes content
+// and mongoose drops unknown fields on save. Both debate/poll payload dialects
+// are accepted: droboard {motion}/{q,opts:{t}} and feed {question,forText…}/{question,opts:{label}}.
 const postBody = z.object({
   type: z.enum(['announcement', 'post', 'debate', 'shoutout', 'repost', 'poll', 'forum-poll', 'ama', 'review', 'recommendation', 'quote', 'chapter-drop']),
   title: z.string().max(160).optional(),
   text: z.string().max(10000).optional(),
   note: z.string().max(2000).optional(),
   image: z.string().max(1000).optional(),
+  heading: z.string().max(160).optional(),
+  quote: z.string().max(2000).optional(),
+  caption: z.string().max(300).optional(),
+  quoteBg: z.string().max(40).optional(),
+  quoteBgCss: z.string().max(300).optional(),
   poll: z.object({
-    q: z.string().min(1).max(300),
-    opts: z.array(z.string().min(1).max(120)).min(2).max(4),
-  }).optional(),
-  debateData: z.object({ motion: z.string().min(1).max(500) }).optional(),
-  shoutout: z.object({ userId: z.string().min(1).max(40), tagline: z.string().max(300).optional() }).optional(),
+    q: z.string().max(300).optional(),
+    question: z.string().max(300).optional(), // feed-composer alias
+    opts: z.array(z.union([z.string().min(1).max(120), z.record(z.any())])).min(2).max(4).optional(),
+    total: z.number().optional(), voted: z.any().optional(), // client state — ignored
+  }).refine(p => p.q || p.question, { message: 'poll_question_required' }).optional(),
+  debateData: z.object({
+    motion: z.string().max(500).optional(),
+    question: z.string().max(500).optional(), // feed-composer alias
+    prompt: z.string().max(300).optional(),
+    forText: z.string().max(60).optional(),
+    againstText: z.string().max(60).optional(),
+    forV: z.number().optional(), agV: z.number().optional(), userVote: z.any().optional(), // server counts — ignored
+  }).refine(d => d.motion || d.question, { message: 'debate_motion_required' }).optional(),
+  amaData: z.object({
+    isLive: z.boolean().optional(), viewers: z.number().int().min(0).optional(),
+    title: z.string().max(160).optional(), meta: z.string().max(300).optional(),
+  }).passthrough().optional(),
+  shoutout: z.object({
+    id: z.string().max(40).optional(), userId: z.string().max(40).optional(),
+    name: z.string().max(80).optional(), avatar: z.string().max(2000).optional(),
+    handle: z.string().max(40).optional(), tagline: z.string().max(300).optional(),
+    role: z.string().max(30).optional(), stats: z.any().optional(),
+    readingHours: z.number().optional(), chaptersRead: z.number().optional(),
+    streak: z.number().optional(), following: z.boolean().optional(),
+  }).passthrough().optional(),
   storyRef: z.object({
+    id: z.string().max(40).optional(),
     title: z.string().min(1).max(160), cat: z.string().max(40).optional(),
-    writer: z.string().max(80).optional(), cover: z.string().max(500).optional(),
+    writer: z.string().max(80).optional(), author: z.string().max(80).optional(),
+    cover: z.string().max(500).optional(),
   }).optional(),
-}).strict().refine(d => d.title || d.text || d.image || d.poll || d.shoutout || d.storyRef, { message: 'empty_post' });
+  chapterRef: z.object({
+    id: z.string().max(40).optional(), title: z.string().max(160).optional(),
+    author: z.string().max(80).optional(), cover: z.string().max(500).optional(),
+    ch: z.string().max(40).optional(), cat: z.string().max(40).optional(),
+  }).passthrough().optional(),
+  // review posts: stars + review body (post-card renders both)
+  score: z.number().min(1).max(5).optional(),
+  reviewText: z.string().max(600).optional(),
+}).passthrough().refine(
+  d => d.title || d.text || d.note || d.image || d.poll || d.shoutout || d.storyRef
+    || d.debateData || d.quote || d.amaData || d.chapterRef || d.reviewText,
+  { message: 'empty_post' },
+);
 
 router.get('/', generalLimiter, (req, _res, next) => {
   try {
@@ -50,10 +94,14 @@ router.get('/:id', generalLimiter, validate(z.object({ params: z.object({ id }) 
 router.patch('/:id', requireAuth, writeLimiter, audit('posts.update'),
   validate(z.object({
     params: z.object({ id }),
+    // passthrough: composer edit payloads carry the whole post; service picks fields
     body: z.object({
       title: z.string().max(160).optional(), text: z.string().max(10000).optional(),
-      image: z.string().max(1000).optional(), pinned: z.boolean().optional(),
-    }).strict(),
+      note: z.string().max(2000).optional(), image: z.string().max(1000).optional(),
+      pinned: z.boolean().optional(), heading: z.string().max(160).optional(),
+      quote: z.string().max(2000).optional(), caption: z.string().max(300).optional(),
+      quoteBg: z.string().max(40).optional(), quoteBgCss: z.string().max(300).optional(),
+    }).passthrough(),
   })), ctrl.update);
 router.delete('/:id', requireAuth, writeLimiter, audit('posts.delete'),
   validate(z.object({ params: z.object({ id }) })), ctrl.remove);

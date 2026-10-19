@@ -15,6 +15,7 @@ async function create(req, res) {
     const out = await svc.createThread({
       userId: req.user.id, genre: req.valid.body.genre, title: req.valid.body.title,
       body: req.valid.body.body, tag: req.valid.body.tag, media: req.valid.body.media,
+      trope: req.valid.body.trope, story: req.valid.body.story,
     });
     res.status(201);
     return out;
@@ -33,6 +34,7 @@ async function update(req, res) {
     isAdmin: (req.user.roles || []).includes('admin'),
     title: req.valid.body.title, body: req.valid.body.body,
     tag: req.valid.body.tag, media: req.valid.body.media,
+    trope: req.valid.body.trope, story: req.valid.body.story,
   }));
 }
 

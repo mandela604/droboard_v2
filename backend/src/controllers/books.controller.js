@@ -12,6 +12,11 @@ async function create(req, res) {
 
 async function createBatch(req, res) {
   return base.wrap(res, async () => {
+    // Chapter pricing is staff territory (admin/editor module) — not the wizard.
+    const list = req.valid.body.chapters || [];
+    if (!books.isStaff(req.user) && list.some(c => c && c.price !== undefined)) {
+      const e = new Error('price_staff_only'); e.status = 403; throw e;
+    }
     const out = await books.createBookWithChapters({
       authorId: req.user.id,
       book: req.valid.body.book,
