@@ -329,11 +329,15 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
     },
 
     /* ── Ad Manager: inventory ── */
+    _invDownAt: 0,
     async getAdInventory() {
+      if (this._invDownAt && Date.now() - this._invDownAt < 60000) return currentAdInventory();
       try {
-        return await callBackend('/ads/inventory');
+        const inv = await callBackend('/ads/inventory');
+        this._invDownAt = 0;
+        return inv;
       } catch (e) {
-        await delay();
+        this._invDownAt = Date.now();
         return currentAdInventory();
       }
     },

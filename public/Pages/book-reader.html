@@ -65,7 +65,12 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .hb-contest{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);color:var(--gold)}
 .hero-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;line-height:1.2;color:#fff;text-shadow:0 2px 20px rgba(0,0,0,.9);margin-bottom:8px}
 .hero-writer-row{display:flex;align-items:center;gap:8px}
-.hw-av{width:28px;height:28px;border-radius:50%;border:2px solid var(--acc);object-fit:cover}
+.hw-av-wrap{position:relative;width:28px;height:28px;flex-shrink:0;cursor:pointer}
+.hw-av-ring{width:28px;height:28px;border-radius:50%;padding:0;background:transparent}
+.hw-av-ring.ring-has{background:conic-gradient(var(--acc),#ff4d7a,#ff7a9a,var(--acc));padding:2px}
+.hw-av-ring.ring-viewed{background:rgba(102,102,102,.75);padding:2px}
+.hw-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--l2,#1a1a24)}
+.hw-av-inner img{width:100%;height:100%;object-fit:cover;display:block}
 .hw-name{font-size:12px;font-weight:700;color:#ccc;flex:1}
 .hw-follow{background:var(--acc);color:#fff;border:none;padding:5px 13px;border-radius:20px;font-size:10px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif}
 .hw-follow.ing{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);color:#ccc}
@@ -267,7 +272,10 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .deb-cm-label{font-size:9px;font-weight:800;color:var(--tx-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 .deb-cm-item{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd2)}
 .deb-cm-item:last-child{border-bottom:none}
-.deb-cm-av{width:26px;height:26px;border-radius:50%;background:rgba(255,0,80,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.deb-cm-av-wrap{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:block}
+.deb-cm-av-wrap.ring-has{background:conic-gradient(var(--acc),#ff4d7a,#ff7a9a,var(--acc));padding:2px;cursor:pointer}
+.deb-cm-av-wrap.ring-viewed{background:rgba(102,102,102,.75);padding:2px;cursor:pointer}
+.deb-cm-av{width:100%;height:100%;border-radius:50%;background:rgba(255,0,80,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;overflow:hidden}
 .deb-cm-av img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 .deb-cm-body{flex:1}
 .deb-cm-name{font-size:11px;font-weight:700;color:var(--tx-high);display:flex;align-items:center;gap:5px}
@@ -321,10 +329,14 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rev-card{background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
 .rev-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.rev-av{width:34px;height:34px;border-radius:50%;background:rgba(255,0,80,.15);display:flex;align-items:center;
-  justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.rev-av-wrap{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:block}
+.rev-av-wrap.ring-has{background:conic-gradient(var(--acc),#ff4d7a,#ff7a9a,var(--acc));padding:2px;cursor:pointer}
+.rev-av-wrap.ring-viewed{background:rgba(102,102,102,.75);padding:2px;cursor:pointer}
+.rev-av{width:100%;height:100%;border-radius:50%;background:rgba(255,0,80,.15);display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:800;color:#fff;overflow:hidden}
 .rev-av img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 .rev-name{font-size:12.5px;font-weight:800;color:var(--tx-high)}
+.deb-cm-uname{font-weight:700}
 .rev-meta{font-size:9px;color:var(--tx-faint);margin-top:1px}
 .rev-text{font-size:12.5px;line-height:1.55;color:var(--tx-body);margin-bottom:8px}
 .rev-foot{font-size:10.5px;font-weight:700;color:var(--tx-muted);display:flex;align-items:center;gap:5px}
@@ -332,6 +344,17 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .rev-helpful:active{transform:scale(.97)}
 .rev-stars{margin-left:auto;color:var(--gold);font-size:10px;display:flex;align-items:center;gap:1px;flex-shrink:0}
 .rev-star-num{font-size:9px;font-weight:800;color:var(--tx-muted);margin-left:4px}
+.rev-sort{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.rev-chip{font-size:10px;font-weight:700;padding:5px 11px;border-radius:999px;border:1px solid var(--bd);
+  background:var(--l1);color:var(--tx-muted);cursor:pointer;transition:.15s;font-family:inherit}
+.rev-chip.on{background:rgba(255,0,80,.1);border-color:var(--bd-acc);color:var(--acc)}
+.rev-chip:active{transform:scale(.96)}
+.rev-pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:2px}
+.rev-pg{font-size:11px;font-weight:700;padding:7px 14px;border-radius:999px;border:1px solid var(--bd);
+  background:var(--l1);color:var(--tx-body);cursor:pointer;font-family:inherit;transition:.15s}
+.rev-pg:not(:disabled):active{transform:scale(.96)}
+.rev-pg:disabled{opacity:.4;cursor:default}
+.rev-pg-info{font-size:10.5px;font-weight:700;color:var(--tx-muted)}
 .hw-name{cursor:pointer}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);try{document.body.classList.toggle('theme-white',t==='light');}catch(e){}})();</script>
@@ -364,7 +387,9 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
     <div class="hero-badges" id="heroBadges"></div>
     <div class="hero-title" id="heroTitle"></div>
     <div class="hero-writer-row">
-      <img class="hw-av" id="hwAv" src="" alt=""/>
+      <div class="hw-av-wrap" onclick="SeriesReaderPage.onWriterAvatar()">
+        <div class="hw-av-ring" id="hwAvRing"><div class="hw-av-inner"><img id="hwAv" src="" alt=""/></div></div>
+      </div>
       <span class="hw-name" id="hwName"></span>
       <button class="hw-follow" id="hwFollow" onclick="SeriesReaderPage.toggleFollow()">+ Follow</button>
     </div>
@@ -418,11 +443,10 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
     <div id="statsDeep"></div>
   </div>
 
-  <div class="sh" style="margin:4px 0 10px"><div class="sh-title">Top reviews</div></div>
+  <div class="sh" style="margin:4px 0 10px;scroll-margin-top:104px" id="reviewsHead"><div class="sh-title">Top reviews</div></div>
   <div id="reviewsContent"></div>
 
-  <div class="sh" style="margin:14px 0 10px"><div class="sh-title">More like this</div></div>
-  <div class="more-row" id="moreRow"></div>
+  <div id="moreRow" style="margin:14px 0 10px"></div>
 </div>
 
 <!-- ═══ TEAMS PANEL ═══ -->
@@ -452,8 +476,11 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <script src="../component/ad-card.js?v=2"></script>
 <script src="../services/ad-service.js"></script>
 <script src="../component/ad-slot.js"></script>
+<script src="../component/discover-card.js"></script>
+<script src="../component/more-like-this.js"></script>
+<script src="../component/status-viewer.js?v=2"></script>
 <script src="../services/reader-engagement-service.js?v=2"></script>
-<script src="../services/series-reader-service.js?v=2"></script>
+<script src="../services/book-reader-service.js?v=3"></script>
 <script>SeriesReaderPage.init();</script>
 
 </body>

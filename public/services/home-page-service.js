@@ -61,9 +61,10 @@
   function renderStatusRow(statuses) {
     var STATUSES = statuses || [];
     document.getElementById('statusRow').innerHTML = STATUSES.map(function (s) {
-      if (s.isYou) return '<div class="s-item" onclick="toast(\'✏️ Add to your story\')">' +
+      var live = s.isLive ? '<div class="s-live-dot"><i class="fas fa-signal"></i></div>' : '';
+      if (s.isYou) return '<div class="s-item" onclick="openStatusComposer()">' +
         '<div class="s-ring ring-own" style="position:relative">' +
-        '<div class="s-inner"><i class="fas fa-plus s-add-icon"></i></div>' +
+        '<div class="s-inner"><i class="fas fa-plus s-add-icon"></i></div>' + live +
         '</div>' +
         '<div class="s-name">You</div>' +
         '</div>';
@@ -71,7 +72,6 @@
       var isMulti = !s.isYou && n > 1;
       var ringClass = s.isYou ? 'ring-none' : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
       var style = isMulti ? buildRingStyle(s)+'position:relative' : 'position:relative';
-      var live = s.isLive ? '<div class="s-live-dot"><i class="fas fa-signal"></i></div>' : '';
       return '<div class="s-item" data-status-id="' + s.id + '">' +
         '<div class="s-ring ' + ringClass + '" style="'+style+'">' +
         '<div class="s-inner"><img src="' + s.avatar + '" loading="lazy" alt=""/></div>' + live +
@@ -98,6 +98,45 @@
     if (w) w.ring = ring;
     renderStatusRow(cur);
   };
+
+  /* ── My statuses (status-service localStorage) merged over the row ── */
+  function mergeMyStatuses(list) {
+    var out = (list || []).slice();
+    var i = -1;
+    for (var k = 0; k < out.length; k++) { if (out[k] && (out[k].isYou || out[k].you)) { i = k; break; } }
+    var mine = null;
+    if (window.DroboardStatus && typeof window.DroboardStatus.myEntry === 'function') {
+      try { mine = window.DroboardStatus.myEntry(); } catch (e) {}
+    }
+    if (!mine) return out;
+    var base = i >= 0 ? out[i] : { id: 'you', name: 'Your Story', isYou: true };
+    var merged = Object.assign({}, base, {
+      isYou: true, name: 'You',
+      avatar: mine.avatar || base.avatar,
+      statuses: mine.statuses || [],
+      isLive: !!(mine.statuses && mine.statuses.length),
+      ring: mine.ring || ''
+    });
+    if (i >= 0) out[i] = merged; else out.unshift(merged);
+    return out;
+  }
+
+  /* Plus circle on the status row → our status composer (status type) */
+  function openStatusComposer() {
+    if (typeof window.openPostComposer !== 'function') { toast('✏️ Add to your story'); return; }
+    openPostComposer({
+      type: 'status',
+      onStatusSlide: function (slide) {
+        if (window.DroboardStatus && typeof window.DroboardStatus.post === 'function') {
+          try { window.DroboardStatus.post(slide); } catch (e) {}
+        }
+        window.__homeStatuses = mergeMyStatuses(window.__homeStatuses || []);
+        renderStatusRow(window.__homeStatuses);
+        toast('🟢 Status posted to your story!');
+      }
+    });
+  }
+  window.openStatusComposer = openStatusComposer;
 
   /* ── Hero slides — stories + FULLSCREEN swipe ads via ad-card ── */
   function heroSlideHTML(s) {
@@ -132,6 +171,11 @@
         '</div></div>';
     }
     var saved = isItemSaved(s.id);
+    /* Inline-onclick safe JSON: apostrophes in titles (e.g. "Uncle's Will")
+       must not terminate the single-quoted onclick attribute. */
+    var escAttrJson = function (o) {
+      return JSON.stringify(o).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;');
+    };
     var readerHref = 'full-reader.html?story=' + encodeURIComponent(s.id);
     var profileHref = 'profile.html?u=' + encodeURIComponent((s.author || '').replace('@', ''));
     return '<div class="hero-slide" style="background-image:url(\'' + s.cover + '\')" onclick="location.href=\'' + readerHref + '\'">' +
@@ -151,7 +195,7 @@
       '<div class="hero-synopsis">' + s.synopsis + '</div>' +
       '<div class="hero-cta-row">' +
       '<button class="btn-start" onclick="event.stopPropagation();location.href=\'' + readerHref + '\'"><i class="fas fa-play" style="font-size:12px"></i> Start Reading</button>' +
-      '<button class="btn-icon-only' + (saved ? ' saved' : '') + '" onclick=\'handleSaveClick(this,' + JSON.stringify({ id: s.id, title: s.title, cover: s.cover, author: s.author }) + ')\'><i class="' + (saved ? 'fas' : 'far') + ' fa-bookmark"></i></button>' +
+      '<button class="btn-icon-only' + (saved ? ' saved' : '') + '" onclick=\'handleSaveClick(this,' + escAttrJson({ id: s.id, title: s.title, cover: s.cover, author: s.author }) + ')\'><i class="' + (saved ? 'fas' : 'far') + ' fa-bookmark"></i></button>' +
       '</div>' +
       '</div>' +
       '</div>';
@@ -187,7 +231,7 @@
   async function init() {
     if (window.DroboardNav) DroboardNav.configure({ active: 'home', localTheme: 'dark' });
     var data = await HomeData.getHomeData();
-    window.__homeStatuses = data.statuses || [];
+    window.__homeStatuses = mergeMyStatuses(data.statuses || []);
     window.__homeHero = data.heroStories || [];
     renderStatusRow(window.__homeStatuses);
     renderHero(window.__homeHero);

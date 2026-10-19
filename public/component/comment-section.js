@@ -286,7 +286,7 @@
     @keyframes dcsShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 
     /* "View all N replies" control */
-    .dcs-view-replies{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--dcs-acc2);cursor:pointer;padding:8px 0 10px 16px;margin-left:18px;user-select:none}
+    .dcs-view-replies{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--dcs-acc,#ff0050);cursor:pointer;padding:8px 0 10px 16px;margin-left:18px;user-select:none}
     .dcs-view-replies:active{opacity:.7}
     .dcs-view-replies i{font-size:10px}
 

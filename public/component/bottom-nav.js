@@ -86,7 +86,7 @@
       --bn-shadow:rgba(0,0,0,.06);
 
       position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);left:50%;transform:translateX(-50%);
-      width:calc(100% - 24px);max-width:420px;z-index:100;
+      width:calc(100% - 40px);max-width:420px;z-index:100;
       background:var(--bn-bg);backdrop-filter:blur(16px);
       border:1px solid var(--bn-border);border-radius:28px;
       display:flex;justify-content:space-around;
@@ -96,12 +96,12 @@
       transition:background .2s ease,border-color .2s ease;
     }
     .bn-root[data-bn-theme="dark"]{
-      /* ---- Dark theme tokens — same tinted glass in both themes ---- */
-      --bn-bg:rgba(242,242,247,.75);
-      --bn-border:rgba(255,255,255,.55);
+      /* ---- Dark theme tokens — dark glass for dark pages ---- */
+      --bn-bg:rgba(10,10,14,.65);
+      --bn-border:rgba(255,255,255,.12);
       --bn-active:#ff0050;
-      --bn-inactive:#9793a8;
-      --bn-shadow:rgba(0,0,0,.2);
+      --bn-inactive:rgba(255,255,255,.55);
+      --bn-shadow:rgba(0,0,0,.5);
     }
     .bn-root *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     .bn-item{

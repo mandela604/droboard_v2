@@ -105,6 +105,13 @@ button{font-family:inherit}
 /* book dropdown */
 .continue-block{display:none;margin-top:12px}
 .continue-block.open{display:block}
+.rating-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rating-opt{background:var(--l1);border:1.5px solid var(--bd);border-radius:13px;padding:11px 6px;text-align:center;cursor:pointer;transition:.18s;font-family:inherit;user-select:none}
+.rating-opt:active{transform:scale(.97)}
+.rating-opt.sel{background:rgba(255,0,80,.06);border-color:rgba(255,0,80,.4)}
+.rating-age{display:block;font-size:14px;font-weight:800;color:var(--tx-high)}
+.rating-opt.sel .rating-age{color:var(--acc)}
+.rating-desc{display:block;font-size:9px;font-weight:600;color:var(--tx-muted);margin-top:2px}
 .sdd-wrap{position:relative}
 .sdd-trigger{width:100%;min-height:56px;background:var(--l1);border:1.5px solid var(--bd);border-radius:14px;display:flex;align-items:center;cursor:pointer;transition:.18s}
 .sdd-trigger.open{border-color:var(--acc)}
@@ -570,6 +577,34 @@ button{font-family:inherit}
       <textarea class="tf-textarea" id="synopsisInput" maxlength="280" placeholder="One or two sentences that hook a reader scrolling past…" oninput="updateCharCount('synopsisInput','synopsisCount',280)"></textarea>
       <div class="char-count" id="synopsisCount">0 / 280</div>
     </div>
+
+    <div class="field-group">
+      <div class="field-label">Age rating <span class="field-hint">pick 1</span></div>
+      <div class="rating-seg" id="ratingSeg">
+        <button type="button" class="rating-opt sel" data-r="13" onclick="setAgeRating('13')"><span class="rating-age">13+</span><span class="rating-desc">Teens</span></button>
+        <button type="button" class="rating-opt" data-r="16" onclick="setAgeRating('16')"><span class="rating-age">16+</span><span class="rating-desc">Mature themes</span></button>
+        <button type="button" class="rating-opt" data-r="18" onclick="setAgeRating('18')"><span class="rating-age">18+</span><span class="rating-desc">Adults only</span></button>
+      </div>
+      <div class="field-subhint">Sets the content label readers see on your story card.</div>
+    </div>
+
+    <div class="field-group">
+      <div class="tog-row" id="extTogRow" onclick="handleExtToggle(event)">
+        <div>
+          <div class="tog-label">📚 Published on another platform before?</div>
+          <div class="tog-sub">e.g. Wattpad, Royal Road, Inkitt — paste the link below</div>
+        </div>
+        <label class="tog2" onclick="event.stopPropagation()">
+          <input type="checkbox" id="extChk" onchange="handleExtChange()"/>
+          <div class="tog2-tr"><div class="tog2-th"></div></div>
+        </label>
+      </div>
+      <div class="continue-block" id="extUrlBlock">
+        <div class="field-label" style="margin-bottom:8px">Book URL <span class="field-hint">where readers can find it</span></div>
+        <input class="tf-input" id="extUrlInp" type="url" inputmode="url" placeholder="https://www.wattpad.com/story/…" oninput="onExtUrlInput()"/>
+        <div class="field-subhint">We'll add a "Read elsewhere" link to your book page.</div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ STAGE: FULL PLOT ═══ -->
@@ -630,6 +665,7 @@ button{font-family:inherit}
       </div>
       <div class="review-row"><span class="review-row-lbl">Synopsis</span></div>
       <div class="review-plot" id="reviewSynopsis" style="margin-bottom:10px"></div>
+      <div class="review-row" id="extReviewRow" style="display:none"><span class="review-row-lbl">Also on</span><a class="review-row-val" id="extReviewUrl" target="_blank" rel="noopener" style="color:var(--acc3);font-weight:700;max-width:65%;text-align:right;word-break:break-all"></a></div>
       <div class="review-row"><span class="review-row-lbl">Full plot</span></div>
       <div class="review-plot" id="reviewPlot"></div>
       <div class="review-row" id="castReviewRow" style="display:none"><span class="review-row-lbl">Main cast</span></div>

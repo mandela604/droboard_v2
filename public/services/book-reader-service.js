@@ -1,6 +1,6 @@
 /* ===============================================================
-   SERIES READER SERVICE
-   Series hub orchestration. HTML calls SeriesReaderPage.init().
+   BOOK READER SERVICE
+   Book hub orchestration. HTML calls SeriesReaderPage.init().
    Data: data/series-demo-seed.js (+ profile books). Ads: ad-service.
    Share/save via shared components. No hardcoded content.
    When going live: swap seed reads for API calls.
@@ -109,6 +109,143 @@ function switchTab(tab) {
   document.getElementById('panel-' + tab).classList.add('active');
 }
 
+/* ══ WRITER PROFILE + STATUS RING (bridge parity) ══
+   Red ring ONLY when the writer actually has statuses; gray after the
+   status has been viewed; no border at all for a statusless avatar. */
+function writer() { return (SERIES && SERIES.writer) || {}; }
+function attachWriterStatus() {
+  const w = writer();
+  if (!w || w._stWired) return;
+  w._stWired = true;
+  try {
+    const pool = (window.DemoData && window.DemoData.STATUSES) || [];
+    const name = String(w.name || '').replace(/^@/, '');
+    const hit = pool.find(p => !p.isYou && (
+      (w.id != null && String(p.id) === String(w.id)) ||
+      String(p.name || '').replace(/^@/, '') === name));
+    if (hit && hit.statuses && hit.statuses.length) {
+      w.statuses = hit.statuses;
+      w.statusId = hit.id;
+      w.statusRing = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
+    }
+  } catch (e) {}
+}
+function applyWriterRing() {
+  const el = document.getElementById('hwAvRing');
+  if (!el) return;
+  const w = writer();
+  el.classList.remove('ring-has', 'ring-viewed');
+  if (!(w.statuses && w.statuses.length) || w.statusRing === 'none') return;
+  el.classList.add(w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has');
+}
+function goProfile() {
+  const w = writer();
+  goProfileFor(w.handle || w.name);
+}
+function openWriterStatus() {
+  const w = writer();
+  if (!(w.statuses && w.statuses.length) || typeof window.openStatusViewer !== 'function') return false;
+  window.openStatusViewer([{
+    id: w.statusId || 'br_writer', name: w.name, avatar: w.avatar,
+    ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
+    likes: 0, threads: 0, statuses: w.statuses,
+  }], w.statusId || 'br_writer');
+  return true;
+}
+function onWriterAvatar() {
+  if (openWriterStatus()) return;
+  goProfile();
+}
+function goProfileFor(name) {
+  const u = String(name || '').replace(/^@/, '');
+  if (!u || u === 'You') return;
+  location.href = 'profile.html?u=' + encodeURIComponent(u);
+}
+function wireStatusRing() {
+  const prev = window.onStatusViewerChange;
+  window.onStatusViewerChange = function (wid, ring) {
+    // Viewer reports full class names ('ring-viewed' | 'ring-has')
+    const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+    let changed = false;
+    Object.keys(userStatus).forEach(k => {
+      const rec = userStatus[k];
+      if (String(rec.id) === String(wid) && newRing !== 'none' && rec.ring !== newRing) {
+        rec.ring = newRing; changed = true;
+      }
+    });
+    const w = writer();
+    if (w && String(w.statusId || '') === String(wid) && newRing !== 'none') {
+      w.statusRing = newRing; changed = true;
+    }
+    if (changed) paintStatusRings();
+    if (typeof prev === 'function') prev(wid, ring);
+  };
+}
+
+/* ══ ANY USER AVATAR / NAME (reviews, debate comments, …) ══
+   Same contract as the bridge: red ring ONLY when that author actually has
+   statuses (resolved from DemoData.STATUSES by name/avatar), gray after
+   viewing, no border otherwise; names open the profile. */
+const userStatus = {};   // 'name|avatar' → { id, name, avatar, statuses, ring }
+function uKey(name, avatar) { return String(name || '') + '|' + String(avatar || ''); }
+function uAttr(s) { return esc0(s).replace(/"/g, '&quot;'); }
+function userStatusFor(name, avatar) {
+  const key = uKey(name, avatar);
+  if (userStatus[key]) return userStatus[key];
+  const rec = {
+    id: 'br_u_' + key.replace(/[^a-z0-9]+/gi, '_').slice(0, 48),
+    name: String(name || '').replace(/^@/, ''), avatar: avatar || '',
+    statuses: null, ring: 'none',
+  };
+  try {
+    const pool = (window.DemoData && window.DemoData.STATUSES) || [];
+    const hit = pool.find(p => !p.isYou && (
+      String(p.name || '').replace(/^@/, '') === rec.name ||
+      (rec.avatar && p.avatar === rec.avatar)));
+    if (hit && hit.statuses && hit.statuses.length) {
+      rec.statuses = hit.statuses;
+      rec.id = hit.id;
+      rec.ring = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
+    }
+  } catch (e) {}
+  userStatus[key] = rec;
+  return rec;
+}
+function userAvHtml(name, avatar, innerCls) {
+  const rec = userStatusFor(name, avatar);
+  const ring = !(rec.statuses && rec.statuses.length) || rec.ring === 'none'
+    ? '' : (rec.ring === 'viewed' ? ' ring-viewed' : ' ring-has');
+  const body = avatar
+    ? `<img src="${uAttr(avatar)}" alt="" loading="lazy"/>`
+    : esc0((name || '?').charAt(0).toUpperCase());
+  return `<span class="${innerCls}-wrap${ring}" data-av-user="${uAttr(uKey(name, avatar))}"><span class="${innerCls}">${body}</span></span>`;
+}
+function userNameHtml(name, cls) {
+  return `<span class="${cls}" data-user-name="${uAttr(String(name || '').replace(/^@/, ''))}" style="cursor:pointer">${esc0(name)}</span>`;
+}
+function onUserAvatar(el) {
+  const rec = userStatus[el.getAttribute('data-av-user')];
+  if (rec && rec.statuses && rec.statuses.length && typeof window.openStatusViewer === 'function') {
+    window.openStatusViewer([{
+      id: rec.id, name: rec.name, avatar: rec.avatar,
+      ring: rec.ring === 'viewed' ? 'ring-viewed' : 'ring-has',
+      likes: 0, threads: 0, statuses: rec.statuses,
+    }], rec.id);
+    return;
+  }
+  goProfileFor(rec ? rec.name : el.getAttribute('data-av-user'));
+}
+function paintStatusRings() {
+  document.querySelectorAll('[data-av-user]').forEach(el => {
+    const rec = userStatus[el.getAttribute('data-av-user')];
+    el.classList.remove('ring-has', 'ring-viewed');
+    if (rec && rec.statuses && rec.statuses.length && rec.ring !== 'none') {
+      el.classList.add(rec.ring === 'viewed' ? 'ring-viewed' : 'ring-has');
+    }
+  });
+  applyWriterRing();
+}
+
 /* ══ INIT ══ */
 async function init() {
   try { CATALOG = await fetchCatalog(); } catch (e) { CATALOG = {}; }
@@ -170,9 +307,21 @@ async function init() {
     document.getElementById('teamsTab').style.display = '';
   }
 
-  // Writer → profile
-  document.getElementById('hwName').addEventListener('click', () => {
-    location.href = 'profile.html?u=' + encodeURIComponent((SERIES.writer.handle || SERIES.writer.name || '').replace(/^@/, ''));
+  // Writer → profile (name) + status ring (avatar) — same contract as the
+  // bridge page: red ring only when the writer actually has statuses.
+  attachWriterStatus();
+  applyWriterRing();
+  wireStatusRing();
+  document.getElementById('hwName').addEventListener('click', goProfile);
+  // One delegated handler covers every user avatar/name rendered later
+  // (reviews, debate comments, re-renders) without rebinding.
+  document.addEventListener('click', function (e) {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    const av = t.closest('[data-av-user]');
+    if (av) { onUserAvatar(av); return; }
+    const nm = t.closest('[data-user-name]');
+    if (nm) goProfileFor(nm.getAttribute('data-user-name'));
   });
 
   // Render panels
@@ -190,6 +339,16 @@ async function init() {
     }
   };
   mountAdStrip();
+
+  /* Deep link: book-reader.html?id=…&view=reviews → open Overview and
+     scroll to the reviews block (used by the bridge's "View all reviews"). */
+  if (params.get('view') === 'reviews') {
+    switchTab('overview');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const rv = document.getElementById('reviewsHead') || document.getElementById('reviewsContent');
+      if (rv) rv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  }
 }
 
 function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'series', slot: 'series:top' }); } catch (e) {} }
@@ -203,35 +362,94 @@ async function mountAdStrip() {
   } catch (e) { el.style.display = "none"; }
 }
 
-window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, moreEng: moreEng, helpfulTake: helpfulTake };
+window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
 
-/* ══ REVIEWS (top-liked debate takes) + MORE LIKE THIS (book-details merge) ══ */
+/* ══ REVIEWS — sorted + paginated (12 per page) ══ */
+const REV_PER_PAGE = 12;
+const helpfulPicks = {};   // review id → marked helpful
+let revSort = 'helpful';   // helpful | newest | rating
+let revPage = 0;
+
+function reviewList() {
+  const takes = [];
+  (SERIES.debates || []).forEach(d => (d.comments || []).forEach((c, i) =>
+    takes.push({
+      id: c.id || ('rv_' + takes.length + '_' + i),
+      motion: d.motion, side: c.side, name: c.name, avatar: c.avatar,
+      text: c.text, time: c.time, likes: c.likes || 0,
+    })
+  ));
+  return takes;
+}
+/* '2h' | '3h' | '1d' | '2w' → hours, so relative times can be ordered */
+function timeToH(t) {
+  const m = /^(\d+)\s*([hdwm])$/i.exec(String(t || '').trim());
+  if (!m) return 1e9;
+  return +m[1] * ({ h: 1, d: 24, w: 168, m: 1 / 60 }[m[2].toLowerCase()]);
+}
+function sortedReviews() {
+  const list = reviewList();
+  if (revSort === 'newest') list.sort((a, b) => timeToH(a.time) - timeToH(b.time));
+  else if (revSort === 'rating') list.sort((a, b) => takeRating(b) - takeRating(a) || b.likes - a.likes);
+  else list.sort((a, b) => b.likes - a.likes); // Most helpful (default)
+  return list;
+}
+function setRevSort(s) {
+  if (revSort === s) return;
+  revSort = s; revPage = 0;
+  renderReviews();
+}
+function revGoPage(p) {
+  const pages = Math.max(1, Math.ceil(sortedReviews().length / REV_PER_PAGE));
+  revPage = Math.min(Math.max(0, p), pages - 1);
+  renderReviews();
+  const head = document.getElementById('reviewsHead');
+  if (head) head.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 function renderReviews() {
   const el = document.getElementById('reviewsContent');
   if (!el) return;
-  const takes = [];
-  (SERIES.debates || []).forEach(d => (d.comments || []).forEach(c =>
-    takes.push({ motion: d.motion, side: c.side, name: c.name, avatar: c.avatar, text: c.text, time: c.time, likes: c.likes || 0 })
-  ));
-  takes.sort((a, b) => b.likes - a.likes);
-  const top = takes.slice(0, 3);
-  top.forEach((t, i) => { t.helpful = !!helpfulPicks[i]; });
-  if (!top.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-star"></i><p>No reviews yet — debates are where takes live.</p></div>`; return; }
-  el.innerHTML = top.map(t => `
+  const list = sortedReviews();
+  if (!list.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-star"></i><p>No reviews yet — debates are where takes live.</p></div>`; return; }
+  const pages = Math.max(1, Math.ceil(list.length / REV_PER_PAGE));
+  if (revPage > pages - 1) revPage = pages - 1;
+  const page = list.slice(revPage * REV_PER_PAGE, (revPage + 1) * REV_PER_PAGE);
+
+  const sortOpts = [['helpful', 'Most helpful'], ['newest', 'Newest'], ['rating', 'Top rated']];
+  let html = '<div class="rev-sort">' + sortOpts.map(([k, l]) =>
+    `<button type="button" class="rev-chip${revSort === k ? ' on' : ''}" data-revsort="${k}">${l}</button>`).join('') + '</div>';
+
+  html += page.map(t => {
+    const h = !!helpfulPicks[t.id];
+    return `
     <div class="rev-card">
       <div class="rev-head">
-        <div class="rev-av">${t.avatar ? `<img src="${t.avatar}" alt=""/>` : esc0((t.name || '?')[0])}</div>
-        <div><div class="rev-name">${t.name}</div><div class="rev-meta">${t.time} · ${t.side === 'for' ? 'For' : 'Against'} the motion</div></div>
+        ${userAvHtml(t.name, t.avatar, 'rev-av')}
+        <div>${userNameHtml(t.name, 'rev-name')}<div class="rev-meta">${esc0(t.time)} · ${t.side === 'for' ? 'For' : 'Against'} the motion</div></div>
         <div class="rev-stars">${starHtml(t)}</div>
       </div>
-      <div class="rev-text">${t.text}</div>
-      <div class="rev-foot rev-helpful" data-idx="${top.indexOf(t)}" onclick="SeriesReaderPage.helpfulTake(${top.indexOf(t)})"><i class="${t.helpful ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.likes + (t.helpful ? 1 : 0))})</div>
-    </div>`).join('');
+      <div class="rev-text">${esc0(t.text)}</div>
+      <div class="rev-foot rev-helpful" data-rev="${esc0(t.id)}"><i class="${h ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.likes + (h ? 1 : 0))})</div>
+    </div>`;
+  }).join('');
+
+  if (pages > 1) {
+    html += `<div class="rev-pager">
+      <button type="button" class="rev-pg" data-revpg="${revPage - 1}" ${revPage === 0 ? 'disabled' : ''}>‹ Prev</button>
+      <span class="rev-pg-info">Page ${revPage + 1} of ${pages}</span>
+      <button type="button" class="rev-pg" data-revpg="${revPage + 1}" ${revPage >= pages - 1 ? 'disabled' : ''}>Next ›</button>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+  el.querySelectorAll('[data-revsort]').forEach(b => b.addEventListener('click', () => setRevSort(b.dataset.revsort)));
+  el.querySelectorAll('[data-revpg]').forEach(b => b.addEventListener('click', () => { if (!b.disabled) revGoPage(+b.dataset.revpg); }));
+  el.querySelectorAll('[data-rev]').forEach(b => b.addEventListener('click', () => helpfulTake(b.dataset.rev)));
 }
-const helpfulPicks = {};
-function helpfulTake(idx) {
-  if (helpfulPicks[idx]) { toast('Already marked helpful'); return; }
-  helpfulPicks[idx] = true;
+function helpfulTake(id) {
+  id = String(id);
+  if (helpfulPicks[id]) { toast('Already marked helpful'); return; }
+  helpfulPicks[id] = true;
   renderReviews();
   toast('👍 Marked helpful');
 }
@@ -256,18 +474,47 @@ function starHtml(t) {
   return `<span class="rev-stars" title="${r} out of 5">${out}<span class="rev-star-num">${r.toFixed(1)}</span></span>`;
 }
 function esc0(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+function moreLikeItems() {
+  const items = [], seen = {};
+  function push(id, cover, title, author) {
+    if (id == null || String(id) === String(SERIES.id) || seen[id]) return;
+    seen[id] = 1;
+    items.push({ id: id, img: cover, title: title, author: author || '' });
+  }
+  Object.values(CATALOG).forEach(s =>
+    push(s.id, s.cover, s.title,
+      (s.writer && String(s.writer.name || '').replace(/^@/, '')) || s.author || ''));
+  // Top up with profile books (same 4-card row the bridge/discover show)
+  try {
+    const seed = window.ProfileDemoSeed;
+    if (seed && seed.DEMO_PROFILES) {
+      Object.values(seed.DEMO_PROFILES).forEach(p =>
+        (p.books || []).forEach(b => push(b.id, b.cover, b.title, String(p.name || '').replace(/^@/, ''))));
+    }
+  } catch (e) {}
+  return items.slice(0, 8);
+}
 function renderMoreLike() {
   const el = document.getElementById('moreRow');
   if (!el) return;
-  const items = Object.values(CATALOG).filter(s => s.id !== SERIES.id).slice(0, 6);
+  const items = moreLikeItems();
   if (!items.length) { el.innerHTML = ''; return; }
+  // Shared component (more-like-this.js): header + DiscoverCard card row.
+  if (window.DroboardMoreLikeThis) {
+    DroboardMoreLikeThis.mount(el, items, {
+      title: 'More Like This',
+      icon: '✨',
+      href: it => 'book-reader.html?id=' + encodeURIComponent(it.id),
+    });
+    return;
+  }
   el.innerHTML = items.map(s => `
     <div class="more-card" data-id="${s.id}">
       <div class="more-cover"><img src="${s.cover}" loading="lazy" alt=""/></div>
       <div class="more-title">${s.title}</div>
     </div>`).join('');
   el.querySelectorAll('.more-card').forEach(c => c.addEventListener('click', () => {
-    location.href = 'series-reader.html?id=' + encodeURIComponent(c.dataset.id);
+    location.href = 'book-reader.html?id=' + encodeURIComponent(c.dataset.id);
   }));
 }
 
@@ -661,15 +908,13 @@ function renderDebates() {
 }
 
 function renderDebCm(c) {
-  const av = c.avatar
-    ? `<div class="deb-cm-av"><img src="${c.avatar}" loading="lazy"/></div>`
-    : `<div class="deb-cm-av">${(c.name||'?')[0]}</div>`;
+  const av = userAvHtml(c.name, c.avatar, 'deb-cm-av');
   return `
     <div class="deb-cm-item" id="debcm-${c.id}">
       ${av}
       <div class="deb-cm-body">
         <div class="deb-cm-name">
-          ${c.name}
+          ${userNameHtml(c.name, 'deb-cm-uname')}
           <span class="deb-side-tag dst-${c.side}">${c.side === 'for' ? '✅ FOR' : '❌ AGAINST'}</span>
         </div>
         <div class="deb-cm-txt">${c.text}</div>

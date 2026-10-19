@@ -376,7 +376,7 @@
     const el = document.getElementById('booksList');
     if (!p.books || !p.books.length) { el.innerHTML = `<div class="panel-empty"><i class="fas fa-book"></i>No books published yet.</div>`; return; }
     const books = p.books.map((b, i) => ({ id: b.id, title: b.title, genre: b.cat, cover: b.cover, reads: b.reads, likes: b.likes, chapters: b.chapters, status: bookStatus(b, i) }));
-    DroboardBookCard.renderList(el, books, { onOpen: (book) => { location.href = `series-reader.html?id=${encodeURIComponent(book.id)}`; } });
+    DroboardBookCard.renderList(el, books, { onOpen: (book) => { location.href = `book-reader.html?id=${encodeURIComponent(book.id)}`; } });
   }
 
   /* ── Library ── */

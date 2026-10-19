@@ -393,7 +393,7 @@
             <img class="pcc-review-cover" src="${s.cover || ''}" alt="">
             <div class="pcc-review-storyinfo">
               <div class="pcc-review-storytitle">${esc(s.title)}</div>
-              <div class="pcc-review-author">by @${esc(s.author)}</div>
+              <div class="pcc-review-author">by @${esc(s.author || s.writer || '')}</div>
               <div class="pcc-review-stars">${starsHTML(post.score)}<span class="pcc-review-score">${esc(post.score)}.0</span></div>
             </div>
           </div>

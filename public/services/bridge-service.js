@@ -396,6 +396,8 @@
     }
     function updateAvg() {
       avgEl.innerHTML = `<b>${base.toFixed(1)}★</b> · ${fmtN(1247)} ratings`;
+      const rc = document.getElementById('rateRevCount');
+      if (rc) rc.textContent = fmtN(1247);
     }
     function syncText() {
       if (myRating) {
@@ -419,6 +421,50 @@
       if (hintTxt) hintTxt.textContent = myRating ? 'Tap to edit your review' : 'Tap to rate this story';
     }
 
+  /* ── PROFILE NAV + STATUS RING ──
+     Same contract as comments/debate: the avatar gets a red ring ONLY when
+     the writer actually has statuses, gray after the status has been viewed,
+     and no ring/border at all for a statusless avatar. */
+  function writerRing(w) {
+    if (!w || !(w.statuses && w.statuses.length)) return '';
+    return w.statusRing === 'viewed' ? ' ring-viewed' : ' ring-has';
+  }
+  function goProfile() {
+    const w = DATA.writer || {};
+    location.href = 'profile.html?u=' + encodeURIComponent(String(w.handle || w.name || '').replace(/^@/, ''));
+  }
+  function openWriterStatus() {
+    const w = DATA.writer || {};
+    if (!(w.statuses && w.statuses.length) || typeof window.openStatusViewer !== 'function') return false;
+    window.openStatusViewer([{
+      id: 'bridge_writer', name: w.name, avatar: w.avatar,
+      ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
+      likes: 0, threads: 0, statuses: w.statuses,
+    }], 'bridge_writer');
+    return true;
+  }
+  function onWriterAvatar() {
+    if (openWriterStatus()) return;
+    const w = DATA.writer || {};
+    toast('👤 @' + String(w.handle || w.name || '').replace(/^@/, ''));
+  }
+  /* Status viewed → gray the ring (chained so any other handler still runs) */
+  function wireStatusRing() {
+    const prev = window.onStatusViewerChange;
+    window.onStatusViewerChange = function (wid, ring) {
+      if (wid === 'bridge_writer' && DATA && DATA.writer) {
+        // Viewer reports full class names ('ring-viewed' | 'ring-has')
+        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+        DATA.writer.statusRing = newRing;
+        document.querySelectorAll('.hw-av-ring, .wc-av-ring').forEach(el => {
+          el.classList.remove('ring-has', 'ring-viewed');
+          if (newRing === 'has' || newRing === 'viewed') el.classList.add('ring-' + newRing);
+        });
+      }
+      if (typeof prev === 'function') prev(wid, ring);
+    };
+  }
+
   function renderHero() {
     const d = DATA;
     document.getElementById('heroSec').innerHTML = `
@@ -433,9 +479,9 @@
       <div class="hero-body">
         <div class="hero-title">${esc(d.title)}</div>
         <div class="hero-writer">
-          <div class="hw-av-ring" onclick="BridgePage.toast('👤 @${esc(d.writer.handle.replace('@', ''))}')"><div class="hw-av-inner"><img src="${d.writer.avatar}" loading="lazy" alt=""/></div></div>
+          <div class="hw-av-ring${writerRing(d.writer)}" onclick="BridgePage.onWriterAvatar()"><div class="hw-av-inner"><img src="${d.writer.avatar}" loading="lazy" alt=""/></div></div>
           <div class="hw-info">
-            <div class="hw-name">${esc(d.writer.name)}</div>
+            <div class="hw-name" onclick="BridgePage.goProfile()">${esc(d.writer.name)}</div>
             <div class="hw-handle">${esc(d.writer.handle)} · ${fmtN(d.writer.followers)} followers</div>
           </div>
           <button class="hw-follow" id="heroFollow" onclick="BridgePage.toggleHeroFollow()">+ Follow</button>
@@ -566,10 +612,10 @@
     const w = DATA.writer;
     document.getElementById('writerBody').innerHTML = `
       <div class="wc-av-row">
-        <div class="wc-av-ring" onclick="BridgePage.toast('👤 @${esc(w.handle.replace('@', ''))}')"><div class="wc-av-inner"><img src="${w.avatar}" alt=""/></div></div>
+        <div class="wc-av-ring${writerRing(w)}" onclick="BridgePage.onWriterAvatar()"><div class="wc-av-inner"><img src="${w.avatar}" alt=""/></div></div>
         <button class="wc-follow${w.following ? ' ing' : ''}" id="wcFollow" onclick="BridgePage.toggleWcFollow()">${w.following ? '✓ Following' : '+ Follow'}</button>
       </div>
-      <div class="wc-name">${esc(w.name)}</div>
+      <div class="wc-name" style="cursor:pointer" onclick="BridgePage.goProfile()">${esc(w.name)}</div>
       <div class="wc-handle">${esc(w.handle)} ${w.verified ? '<span class="wc-vbadge">✓ Verified</span>' : ''}</div>
       <div class="wc-bio">${esc(w.bio)}</div>
       <div class="wc-stats">
@@ -578,7 +624,7 @@
         <div class="ws"><div class="ws-n">${w.rating}★</div><div class="ws-l">Rating</div></div>
         <div class="ws"><div class="ws-n">${fmtN(w.followers)}</div><div class="ws-l">Followers</div></div>
       </div>
-      <div class="wc-view-btn" onclick="BridgePage.toast('Opening profile...')"><i class="fas fa-arrow-right" style="font-size:11px"></i> View Full Profile</div>`;
+      <div class="wc-view-btn" onclick="BridgePage.goProfile()"><i class="fas fa-arrow-right" style="font-size:11px"></i> View Full Profile</div>`;
   }
 
   function renderComments() {
@@ -615,26 +661,23 @@
   }
 
   function renderSimilar() {
-    // Universal 4-card row — reuses discover-card `scard` (cover 110/148, title, @author, Chapter + progress)
-    // so bridge + discover + any page share one component.
+    // Shared component (more-like-this.js) renders the header + card row —
+    // cards come from DiscoverCard, same as discover + book reader.
     const el = document.getElementById('simScroll');
     if (!el) return;
-    if (!window.DiscoverCard) {
-      el.innerHTML = DATA.similar.slice(0,4).map(s =>
-        `<div class="sim-card" onclick="location.href='bridge.html?id=${encodeURIComponent(s.title)}'">
-          <div class="sim-thumb" style="background-image:url('${s.cover}')"><div class="sim-scrim"></div></div>
-          <div class="sim-body"><div class="sim-cat">${esc(s.cat)}</div><div class="sim-title">${esc(s.title)}</div><div class="sim-author">${esc(s.author)}</div></div>
-        </div>`
-      ).join('');
-      return;
-    }
-    const items = DATA.similar.slice(0,4).map((s) => ({
+    const items = DATA.similar.slice(0, 8).map(s => ({
       id: s.title, img: s.cover, title: s.title, author: s.author,
     }));
-    el.innerHTML = items.map(it => DiscoverCard.scard(it)).join('');
-    el.style.display = 'flex';
-    el.style.gap = '10px';
-    el.style.overflowX = 'auto';
+    if (window.DroboardMoreLikeThis) {
+      DroboardMoreLikeThis.mount(el, items, { title: 'More Like This', icon: '✨' });
+      return;
+    }
+    el.innerHTML = items.slice(0, 4).map(s =>
+      `<div class="sim-card" onclick="location.href='bridge.html?id=${encodeURIComponent(s.id)}'">
+        <div class="sim-thumb" style="background-image:url('${s.img}')"><div class="sim-scrim"></div></div>
+        <div class="sim-body"><div class="sim-title">${esc(s.title)}</div><div class="sim-author">${esc(s.author)}</div></div>
+      </div>`
+    ).join('');
   }
 
   function renderTipLine() {
@@ -803,6 +846,7 @@
     DATA = normalizeStory(data) || getDefaultStory(STORY_ID);
     document.getElementById('tbTitle').textContent = DATA.title;
     renderAll();
+    wireStatusRing();
   }
 
   /* Rate modal — 12-chapter gate mirrors the recommendation rule.
@@ -829,6 +873,11 @@
     openRateModal(n);
   }
 
+  /* "View all reviews" → book reader, Overview tab, scrolled to reviews */
+  function openAllReviews() {
+    location.href = 'book-reader.html?id=b1&view=reviews';
+  }
+
   window.BridgePage = {
     init,
     toast,
@@ -848,6 +897,9 @@
     toggleRate,
     openRateModal,
     rateStar,
+    openAllReviews,
+    goProfile,
+    onWriterAvatar,
     goToDebate,
   };
 })();

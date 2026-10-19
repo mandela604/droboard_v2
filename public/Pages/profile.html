@@ -161,7 +161,7 @@ button{font-family:inherit;cursor:pointer}
 .uw-genre-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
 .uw-genre{font-size:10px;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;border:1.5px solid var(--bd);background:rgba(0,0,0,.02);color:var(--tx-faint)}
 .uw-genre.on{background:rgba(255,0,80,.1);border-color:var(--bd-acc);color:var(--acc)}
-.uw-submit{width:100%;background:linear-gradient(135deg,var(--acc),var(--purple));color:#fff;border:none;padding:13px;border-radius:14px;font-size:13.5px;font-weight:800;cursor:pointer}
+.uw-submit{width:100%;background:var(--acc);color:#fff;border:none;padding:13px;border-radius:14px;font-size:13.5px;font-weight:800;cursor:pointer}
 .genre-tog-grid{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 14px}
 .genre-tog{font-size:10px;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;border:1.5px solid var(--bd);background:rgba(0,0,0,.02);color:var(--tx-faint)}
 .genre-tog.on{background:rgba(255,0,80,.1);border-color:var(--bd-acc);color:var(--acc)}
@@ -207,7 +207,7 @@ button{font-family:inherit;cursor:pointer}
 <div class="phone">
 
   <div class="top-bar">
-    <div class="top-logo" onclick="location.href='index.html'">D</div>
+    <div class="top-logo" onclick="location.href='index.html'"><img src="../assets/droboard-icon.png" alt="Droboard" style="height:28px;width:auto;display:block;border-radius:8px"/></div>
     <a href="store.html" id="coinPill" title="Coin balance" style="text-decoration:none;background:var(--gold-soft);border:1px solid rgba(240,168,0,.2);color:#8a6200;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:800;margin:0 auto;flex-shrink:0"><i class="fas fa-coins" style="font-size:12px"></i><span id="coinBalance">0</span></a>
     <div class="top-right">
       <div class="top-icon-btn" data-search-trigger title="Search"><i class="fas fa-magnifying-glass"></i></div>
@@ -336,7 +336,7 @@ button{font-family:inherit;cursor:pointer}
         <div class="uw-genre" data-priv="Followers">👥 Followers</div>
         <div class="uw-genre" data-priv="Private">🔒 Private</div>
       </div>
-      <div class="uw-step-label">Stories (optional — covers come from these)</div>
+      <div class="uw-step-label">Stories (covers come from these)</div>
       <input class="uw-input" id="ncStorySearch" placeholder="🔍 Search title or author…" autocomplete="off"/>
       <div class="story-pick-grid" id="ncStoryGrid"></div>
       <button class="uw-submit" id="ncCreateBtn">Create Collection ✓</button>

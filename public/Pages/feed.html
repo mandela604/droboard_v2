@@ -105,6 +105,19 @@
     /* ── Toast ── */
     .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 1000; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; }
     .toast.show { opacity: 1; }
+
+    /* ── Skeleton loader (profile style) ── */
+    #loadingState{display:block;padding:16px 14px}
+    .sk{background:linear-gradient(90deg,var(--l2) 25%,var(--l4) 37%,var(--l2) 63%);background-size:400% 100%;animation:skShimmer 1.4s ease infinite;border-radius:10px}
+    @keyframes skShimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+    .sk-stories{display:flex;gap:10px;margin-bottom:14px}
+    .sk-story{width:74px;height:100px;border-radius:12px;flex:none}
+    .sk-composer{height:88px;margin-bottom:16px}
+    .sk-post{display:flex;gap:12px;align-items:flex-start;margin-bottom:20px}
+    .sk-av{width:42px;height:42px;border-radius:50%;flex:none}
+    .sk-lines{flex:1}
+    .sk-line{height:12px;border-radius:6px;margin-bottom:9px}
+    .sk-img{height:150px;border-radius:12px;margin-top:6px}
   </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
@@ -142,7 +155,12 @@
     </section>
 
     <div class="feed">
-      <div class="loading-state" id="loadingState"><div class="spinner"></div><div style="font-size:13px;color:var(--tx-muted)">Loading feed…</div></div>
+      <div class="loading-state" id="loadingState">
+        <div class="sk-stories"><div class="sk sk-story"></div><div class="sk sk-story"></div><div class="sk sk-story"></div><div class="sk sk-story"></div></div>
+        <div class="sk sk-composer"></div>
+        <div class="sk-post"><div class="sk sk-av"></div><div class="sk-lines"><div class="sk sk-line" style="width:60%"></div><div class="sk sk-line" style="width:35%"></div><div class="sk sk-line"></div><div class="sk sk-line"></div><div class="sk sk-img"></div></div></div>
+        <div class="sk-post"><div class="sk sk-av"></div><div class="sk-lines"><div class="sk sk-line" style="width:50%"></div><div class="sk sk-line" style="width:30%"></div><div class="sk sk-line"></div><div class="sk sk-line" style="width:85%"></div></div></div>
+      </div>
       <div class="empty-state" id="emptyState"><div class="icon">📭</div><h3 id="emptyTitle">Your feed is empty</h3><p id="emptySub">Follow some writers or join communities to see posts here.</p></div>
       <div id="promoMount"></div>
       <div data-ad-slot="feed:top" style="padding:0 16px 8px"></div>

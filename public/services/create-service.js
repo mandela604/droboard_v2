@@ -127,6 +127,7 @@ let state = {
   chapterNum: 1,
   category: null, genres: [], tropes: [], tags: [],
   coverData: '', title: '', synopsis: '', plot: '',
+  ageRating: '13', extPlatform: false, extUrl: '',
   plotActs: [
     { name:'Act 1 — Setup', from:1, to:16, hint:'Introduce your world, main characters, and the problem that kicks everything off.', summary:'', open:true },
     { name:'Act 2 — Escalation', from:17, to:50, hint:'Conflicts deepen, stakes rise, twists land. Most of your chapters live here.', summary:'', open:true },
@@ -255,7 +256,7 @@ function stageIsValid(key){
     if (state.isContinuing) return !!state.chosenBookId;
     return document.getElementById('bookTitleInp').value.trim().length>1;
   }
-  if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4;
+  if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4 && (!state.extPlatform || validExtUrl(document.getElementById('extUrlInp').value.trim()));
   if (key==='plot') return plotWords()>=15;
   if (key==='chapters') return state.chapters.length>0 && state.chapters.every(c=>{
     const wa = document.getElementById('wa'+c.id);
@@ -269,7 +270,9 @@ function flagInvalid(key){
   const msgs = {
     type:'⚠️ Choose a story type to continue',
     link:'⚠️ Pick a book to continue, or name your new story',
-    details:'⚠️ Add a title, category, at least one genre, and a synopsis',
+    details: state.extPlatform && !validExtUrl((document.getElementById('extUrlInp')||{}).value)
+      ? '⚠️ Add a valid URL for your book on the other platform'
+      : '⚠️ Add a title, category, at least one genre, and a synopsis',
     plot:'⚠️ Summarise your plot across the acts (15+ words)',
     chapters:'⚠️ Every chapter needs a title and some content (20+ characters)',
     review:'⚠️ Please confirm the agreement checkbox',
@@ -348,6 +351,33 @@ function applyToggleState(isOn){
   if (!isOn){ clearBookChoice(); }
   updateNavButtons();
 }
+/* Age rating pills — 13 / 16 / 18 */
+function setAgeRating(r){
+  state.ageRating = r;
+  document.querySelectorAll('#ratingSeg .rating-opt').forEach(b=>b.classList.toggle('sel', b.dataset.r===r));
+  markUnsaved();
+}
+/* Published on another platform? toggle + URL field */
+function handleExtToggle(e){ if (e.target.closest('.tog2')) return; const chk=document.getElementById('extChk'); chk.checked=!chk.checked; applyExtToggleState(chk.checked); }
+function handleExtChange(){ applyExtToggleState(document.getElementById('extChk').checked); }
+function applyExtToggleState(isOn){
+  state.extPlatform = isOn;
+  document.getElementById('extTogRow').classList.toggle('on', isOn);
+  document.getElementById('extUrlBlock').classList.toggle('open', isOn);
+  if (!isOn){
+    state.extUrl = '';
+    const inp = document.getElementById('extUrlInp');
+    if (inp) inp.value = '';
+  }
+  markUnsaved();
+  updateNavButtons();
+}
+function onExtUrlInput(){
+  state.extUrl = document.getElementById('extUrlInp').value.trim();
+  markUnsaved();
+  updateNavButtons();
+}
+function validExtUrl(u){ return /^https?:\/\/[^\s]+\.[^\s]+/i.test(String(u||'').trim()); }
 function toggleDropdown(){ dropdownOpen = !dropdownOpen; document.getElementById('sddMenu').classList.toggle('show', dropdownOpen); document.getElementById('sddTrigger').classList.toggle('open', dropdownOpen); }
 function chooseBook(id){
   const s = MY_BOOKS.find(x=>x.id===id); if (!s) return;
@@ -948,10 +978,19 @@ function renderReview(){
   state.chapters.forEach(ch=>syncChapterContent(ch.id));
   document.getElementById('reviewCover').style.backgroundImage = state.coverData ? `url('${state.coverData}')` : 'none';
   document.getElementById('reviewTitle').textContent = getActiveTitle() || 'Untitled Story';
+  state.extUrl = (document.getElementById('extUrlInp').value||'').trim();
   document.getElementById('reviewBadges').innerHTML = [
     state.type === 'short' ? '📄 Short Story' : '📖 Long Story',
+    state.ageRating ? state.ageRating + '+' : '',
     state.category || '', ...state.genres, ...state.tropes
   ].filter(Boolean).map(b=>`<span class="review-badge">${b}</span>`).join('');
+  const extRow = document.getElementById('extReviewRow');
+  if (extRow){
+    const showExt = state.extPlatform && validExtUrl(state.extUrl);
+    extRow.style.display = showExt ? '' : 'none';
+    const a = document.getElementById('extReviewUrl');
+    if (showExt && a){ a.textContent = state.extUrl; a.href = state.extUrl; }
+  }
   document.getElementById('reviewSynopsis').textContent = document.getElementById('synopsisInput').value.trim() || '—';
   document.getElementById('reviewPlot').innerHTML = plotReviewHtml() || '—';
   const castRow = document.getElementById('castReviewRow');
@@ -1007,7 +1046,9 @@ function buildBookPayload(){
     cover: state.coverData || '',
     tags: state.tags.slice(0, 5),
     kind,
+    ageRating: state.ageRating || '13',
   };
+  if (state.extPlatform && validExtUrl(state.extUrl)) book.externalUrl = state.extUrl;
   return book;
 }
 function buildChapterPayload(ch, idx){
@@ -1185,6 +1226,12 @@ window.buildDropdownMenu = buildDropdownMenu;
 window.handleToggleClick = handleToggleClick;
 window.handleToggleChange = handleToggleChange;
 window.applyToggleState = applyToggleState;
+window.setAgeRating = setAgeRating;
+window.handleExtToggle = handleExtToggle;
+window.handleExtChange = handleExtChange;
+window.applyExtToggleState = applyExtToggleState;
+window.onExtUrlInput = onExtUrlInput;
+window.validExtUrl = validExtUrl;
 window.toggleDropdown = toggleDropdown;
 window.chooseBook = chooseBook;
 window.clearBookChoice = clearBookChoice;

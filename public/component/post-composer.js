@@ -977,6 +977,7 @@
         else if(_draftKey && !typeOrOpts.defaultType && !typeOrOpts.type) { /* keep restored type below */ }
         if(typeOrOpts.author) _hooks.getUser = () => typeOrOpts.author;
         if(typeOrOpts.onSubmit) _hooks.onSubmit = typeOrOpts.onSubmit;
+        if(typeOrOpts.onStatusSlide) _hooks.onStatusSlide = typeOrOpts.onStatusSlide;
         if(typeOrOpts.stories) _hooks.stories = typeOrOpts.stories;
         if(_draftKey && !typeOrOpts.defaultType && !typeOrOpts.type) restoreDraft();
       }

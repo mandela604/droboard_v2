@@ -203,7 +203,7 @@
 
   function _item(opts) {
     const {
-      act, tab, href, icon, iconBg, iconColor, border, title, sub, badge, rightIcon, danger, titleColor,
+      act, tab, href, icon, iconImg, iconBg, iconColor, border, title, sub, badge, rightIcon, danger, titleColor,
     } = opts;
     const actAttr = act === 'href'
       ? `data-dpm-act="href" data-dpm-href="${_esc(href)}"`
@@ -214,9 +214,12 @@
     let right = '';
     if (badge != null) right = `<div class="dpm-item-right"><span class="dpm-badge-sm">${_esc(String(badge))}</span></div>`;
     else if (rightIcon) right = `<div class="dpm-item-right"><i class="fas ${_esc(rightIcon)}" style="font-size:10px"></i></div>`;
+    const iconHtml = iconImg
+      ? `<img src="${_esc(iconImg)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"/>`
+      : `<i class="fas ${_esc(icon)}" style="color:${iconColor}"></i>`;
     return `
       <button type="button" class="dpm-item${danger ? ' danger' : ''}" ${actAttr}>
-        <div class="dpm-item-icon" style="background:${iconBg};border:1px solid ${border}"><i class="fas ${_esc(icon)}" style="color:${iconColor}"></i></div>
+        <div class="dpm-item-icon" style="background:${iconBg};border:1px solid ${border}">${iconHtml}</div>
         <div style="flex:1;min-width:0"><div class="dpm-item-title"${titleStyle}>${_esc(title)}</div>${sub ? `<div class="dpm-item-sub">${_esc(sub)}</div>` : ''}</div>
         ${right}
       </button>`;
@@ -228,7 +231,14 @@
     const collN = (p.collections || []).length;
     const followingN = (p.stats && p.stats.following) || 0;
 
-    let html = `<div class="dpm-section"><div class="dpm-section-title">Create</div>`;
+    let html = `<div class="dpm-section">`
+      + _item({
+        act: 'href', href: 'droboard-page.html', iconImg: '../assets/droboard-icon.png',
+        iconBg: 'rgba(0,0,0,.04)', border: 'var(--bd,rgba(0,0,0,.12))',
+        title: 'DroBoard', sub: 'Official DroBoard page', rightIcon: 'fa-chevron-right',
+      })
+      + `</div><div class="dpm-divider"></div>`;
+    html += `<div class="dpm-section"><div class="dpm-section-title">Create</div>`;
     html += _item({
       act: 'new-post', icon: 'fa-pen',
       iconBg: 'rgba(255,0,80,.08)', border: 'var(--bd-acc,rgba(255,0,80,.25))', iconColor: 'var(--acc,#ff0050)',

@@ -237,6 +237,20 @@
   @media (min-width:421px){
     .phone{border-radius:0;}
   }
+
+  /* ── Skeleton loader (profile style) ── */
+  #loadingState{padding:16px 14px}
+  #loadingState.hidden{display:none}
+  #loadingState:not(.hidden) ~ .panel{display:none}
+  .sk{background:linear-gradient(90deg,var(--line) 25%,var(--divider) 37%,var(--line) 63%);background-size:400% 100%;animation:skShimmer 1.4s ease infinite;border-radius:10px}
+  [data-theme="dark"] .sk{background:linear-gradient(90deg,#16161d 25%,#1e1f28 37%,#16161d 63%);background-size:400% 100%}
+  @keyframes skShimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  .sk-stats{display:flex;gap:10px;margin-bottom:14px}
+  .sk-stat{flex:1;height:68px;border-radius:14px}
+  .sk-promo{height:130px;border-radius:16px;margin-bottom:16px}
+  .sk-hd{height:16px;width:40%;border-radius:8px;margin-bottom:12px}
+  .sk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .sk-book{height:150px;border-radius:12px}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
@@ -262,6 +276,14 @@
   </div>
 
   <div class="content" id="content">
+
+    <!-- ========== SKELETON LOADER ========== -->
+    <div id="loadingState">
+      <div class="sk-stats"><div class="sk sk-stat"></div><div class="sk sk-stat"></div><div class="sk sk-stat"></div></div>
+      <div class="sk sk-promo"></div>
+      <div class="sk sk-hd"></div>
+      <div class="sk-grid"><div class="sk sk-book"></div><div class="sk sk-book"></div><div class="sk sk-book"></div><div class="sk sk-book"></div><div class="sk sk-book"></div><div class="sk sk-book"></div></div>
+    </div>
 
     <!-- ========== READING PANEL ========== -->
     <div class="panel active" id="panel-reading">
@@ -368,6 +390,6 @@
 <script src="../services/search-service.js"></script>
 <script src="../services/library-service.js"></script>
 <script src="../component/library-card.js"></script>
-<script>LibraryPage.init();</script>
+<script>(function(){var sk=document.getElementById('loadingState');function hideSk(){if(sk)sk.classList.add('hidden');}LibraryPage.init().then(hideSk,hideSk);})();</script>
 </body>
 </html>

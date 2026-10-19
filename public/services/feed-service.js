@@ -423,9 +423,18 @@
           return;
         }
         const ref = storyRefFor(post);
-        if (ref && window.openSaveModal) openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: post.id });
-        else if (window.openSaveModal) { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved!' : 'Removed from saved'); }
-        else toast('Save unavailable');
+        if (window.openSaveModal) {
+          if (ref) { openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: post.id }); return; }
+          /* plain posts (text/poll/photo/debate/…) — same save modal as everything else */
+          openSaveModal({
+            title: (post.heading || (post.text ? String(post.text).slice(0, 60) : '')) || (post.name + "'s post"),
+            sub: '@' + post.name,
+            img: post.image || (post.storyRef && post.storyRef.cover) || (post.chapterRef && post.chapterRef.cover) || post.avatar || '',
+            storyId: post.id, type: 'post',
+          });
+          return;
+        }
+        post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved!' : 'Removed from saved');
       },
       onDots: (post, anchor) => { try { window._lastDotsAnchor = anchor || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
@@ -810,6 +819,9 @@
     DroboardMenu.configure({
       title: 'Feed', subtitle: 'Filters & options', user, footer: 'Droboard',
       sections: [
+        { items: [
+          { id: 'droboard', iconImg: '../assets/droboard-icon.png', label: 'DroBoard', sub: 'Official DroBoard page', href: 'droboard-page.html' },
+        ]},
         { label: 'Create', items: [{ id: 'new-post', icon: 'fa-pen', label: 'New Post', sub: 'Share an update with readers' }] },
         { label: 'Sort feed', items: [
           { id: 'latest', icon: 'fa-clock', label: 'Latest', sub: 'Newest first', active: FEED_SORT === 'latest' },

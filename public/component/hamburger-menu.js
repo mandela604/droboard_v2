@@ -262,6 +262,11 @@
     return null;
   }
 
+  function _iconHtml(it) {
+    if (it && it.iconImg) return `<img src="${_esc(it.iconImg)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"/>`;
+    return `<i class="fas ${_esc((it && it.icon) || 'fa-circle')}"></i>`;
+  }
+
   function _setActive(id) {
     (_cfg.sections || []).forEach(sec => {
       (sec.items || []).forEach(it => {
@@ -317,7 +322,7 @@
           const isOpen = it.expanded ? ' open' : '';
           html += `<div class="dhm-accordion${isOpen}" data-accordion="${_esc(it.id)}">
             <button type="button" class="dhm-accordion-head" data-accordion-toggle="${_esc(it.id)}">
-              <div class="dhm-item-icon"><i class="fas ${ _esc(it.icon || 'fa-circle') }"></i></div>
+              <div class="dhm-item-icon">${_iconHtml(it)}</div>
               <div class="dhm-item-body">
                 <div class="dhm-item-label">${_esc(it.label || '')}</div>
                 ${it.sub ? `<div class="dhm-item-sub">${_esc(it.sub)}</div>` : ''}
@@ -332,7 +337,7 @@
               html += `<button type="button" class="dhm-item" data-dhm-id="${_esc(ch.id)}" style="color:var(--acc,#ff0050)"><div class="dhm-item-icon" style="color:var(--acc,#ff0050);background:rgba(255,0,80,.08);border-color:rgba(255,0,80,.15)"><i class="fas fa-arrow-right"></i></div><div class="dhm-item-body"><div class="dhm-item-label" style="color:var(--acc,#ff0050)">${_esc(ch.label)}</div></div><div class="dhm-item-right"><i class="fas fa-chevron-right"></i></div></button>`;
             } else {
               html += `<button type="button" class="dhm-item" data-dhm-id="${_esc(ch.id)}"${ch.href?` data-dhm-href="${_esc(ch.href)}"`:''}>
-                <div class="dhm-item-icon"><i class="fas ${ _esc(ch.icon || 'fa-circle') }"></i></div>
+                <div class="dhm-item-icon">${_iconHtml(ch)}</div>
                 <div class="dhm-item-body">
                   <div class="dhm-item-label">${_esc(ch.label||'')}</div>
                   ${ch.sub ? `<div class="dhm-item-sub">${_esc(ch.sub)}</div>` : ''}
@@ -347,7 +352,7 @@
           const hrefAttr = it.href ? ` data-dhm-href="${_esc(it.href)}"` : '';
           html += `
             <button type="button" class="dhm-item${active}" data-dhm-id="${_esc(it.id)}"${hrefAttr}>
-              <div class="dhm-item-icon"><i class="fas ${ _esc(it.icon || 'fa-circle') }"></i></div>
+              <div class="dhm-item-icon">${_iconHtml(it)}</div>
               <div class="dhm-item-body">
                 <div class="dhm-item-label">${_esc(it.label || '')}</div>
                 ${it.sub ? `<div class="dhm-item-sub">${_esc(it.sub)}</div>` : ''}
