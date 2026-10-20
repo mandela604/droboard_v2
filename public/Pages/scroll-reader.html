@@ -36,6 +36,12 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .fc-left,.fc-right{display:flex;gap:8px;align-items:center}
 .fc-btn{width:36px;height:36px;border-radius:50%;background:rgba(20,20,24,.85);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:14px;color:#eee;cursor:pointer;flex-shrink:0;transition:.15s;}
 .fc-btn:active{transform:scale(.9)}
+.fc-logo{padding:0;overflow:hidden}
+.fc-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+/* back-to-top arrow - visible only while floating controls are shown */
+.to-top{position:fixed;bottom:26px;right:max(16px,calc(50vw - 196px));width:44px;height:44px;border-radius:50%;background:rgba(20,20,24,.9);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:#eee;font-size:15px;cursor:pointer;z-index:160;opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .25s,transform .25s;}
+.to-top.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+.to-top.show:active{transform:scale(.92)}
 .fc-progress-pill{background:rgba(20,20,24,.85);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);border-radius:999px;padding:7px 13px;font-size:10px;font-weight:700;color:#ccc;white-space:nowrap;}
 .fc-coin-pill{display:flex;align-items:center;gap:6px;background:rgba(217,119,6,.2);border:1px solid rgba(217,119,6,.4);backdrop-filter:blur(10px);border-radius:999px;padding:7px 12px;font-size:11px;font-weight:800;color:#fbbf24;cursor:pointer;white-space:nowrap;transition:.15s;}
 .fc-coin-pill:active{transform:scale(.93)}
@@ -208,6 +214,7 @@ try{
 <!-- Floating controls -->
 <div class="floating-controls" id="floatingControls">
   <div class="fc-left">
+    <div class="fc-btn fc-logo" id="fcLogo" title="Discover"><img src="../assets/droboard-icon.png" alt="Droboard"/></div>
     <div class="fc-btn" id="fcBack" title="Exit"><i class="fas fa-chevron-left"></i></div>
   </div>
   <div class="fc-progress-pill" id="fcProgressPill">Ch 1</div>
@@ -217,6 +224,9 @@ try{
     <div class="fc-btn" id="fcSettings" title="Aa"><i class="fas fa-text-height"></i></div>
   </div>
 </div>
+
+<!-- Back-to-top arrow (shown only while floating controls are visible) -->
+<div class="to-top" id="toTopArrow" title="Back to top"><i class="fas fa-arrow-up"></i></div>
 
 <!-- SCROLL BODY -->
 <div class="phone">
@@ -320,6 +330,8 @@ try{
 <script src="../data/comments-data.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/ad-service.js"></script>
+<script src="../services/ad-revenue-service.js"></script>
+<script src="../services/acquisition-service.js"></script>
 <script src="../component/ad-slot.js"></script>
 <script src="../services/auth-session.js"></script>
 <script src="../services/league-service.js"></script>

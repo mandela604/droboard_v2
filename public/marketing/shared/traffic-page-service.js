@@ -9,13 +9,16 @@
 
   const USE_API = false, API_BASE = '/api';
 
+  let pageQuery = '';
+
   MarketingSidebar.attach('#trafficRoot', {
     activeItem: 'traffic',
     title: 'Traffic & Activity',
     subtitle: 'App-wide visits, live users & busiest periods',
     user: { name: 'Tari Benson', role: 'Marketing Lead', avatar: 'https://i.pravatar.cc/100?img=32' },
     notifCount: 5,
-    searchPlaceholder: 'Search…',
+    searchPlaceholder: 'Search pages…',
+    onSearch: function (v) { pageQuery = (v || '').trim().toLowerCase(); renderPages(); },
   });
 
   /* ── DEMO DATA ────────────────────────────────────────── */
@@ -51,6 +54,11 @@
   const VISITS_TODAY_DELTA = 8.4; // % vs yesterday
 
   /* ── HELPERS ──────────────────────────────────────────── */
+  // 12-hour labels: 0 → 12am, 12 → 12pm, 13 → 1pm, 23 → 11pm
+  function fmtHour(h) {
+    h = ((h % 24) + 24) % 24;
+    return (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? 'am' : 'pm');
+  }
   function fmtNum(n) {
     n = Number(n) || 0;
     if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
@@ -69,7 +77,7 @@
 
   /* ── STAT CARDS ───────────────────────────────────────── */
   function renderStatCards() {
-    const peakLabel = String(peakHour).padStart(2, '0') + ':00–' + String((peakHour + 1) % 24).padStart(2, '0') + ':00';
+    const peakLabel = fmtHour(peakHour) + '–' + fmtHour(peakHour + 1);
     const cards = [
       { n: String(ONLINE.total), l: 'Online Now', ico: 'fa-signal', cls: 'green', sub: '<span class="live-dot"></span> live' },
       { n: fmtNum(VISITS_TODAY), l: 'Visits Today', ico: 'fa-eye', cls: 'blue', sub: (VISITS_TODAY_DELTA >= 0 ? '+' : '') + VISITS_TODAY_DELTA + '% vs yesterday' },
@@ -106,17 +114,78 @@
   }
 
   /* ── VISITS BY PAGE ───────────────────────────────────── */
+  /* ── VISITS BY PAGE — current week (Mon → Sun) ──────────
+     Panel stats run Monday 00:00 → Sunday 23:59:59 and reset
+     every Sunday at 11:59 PM. Values are derived from the
+     30-day baselines deterministically: week seed (varies week
+     over week) × days-elapsed-in-week (accumulates Mon→Sun,
+     restarts Monday). Same numbers for the whole day/week. */
+  function weekInfo() {
+    const now = new Date();
+    const dow = now.getDay();                        // 0 = Sun
+    const dayIdx = dow === 0 ? 6 : dow - 1;          // Mon = 0 … Sun = 6
+    const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(now.getDate() - dayIdx);
+    const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
+    return { start: start, end: end, elapsed: dayIdx + 1, key: start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate() };
+  }
+  function seedFrom(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100003;
+    return h;
+  }
+  function weeklyView(p) {
+    const wk = weekInfo();
+    const base = (p.visits / 30) * 7;                                   // average week from 30-day baseline
+    const weekJit = 0.88 + (seedFrom(wk.key + p.path) % 25) / 100;      // 0.88–1.12, same all week
+    const f = weekJit * (wk.elapsed / 7);                               // × days elapsed so far
+    const visits = Math.max(1, Math.round(base * f));
+    const uniques = Math.max(1, Math.round(p.uniques * (visits / p.visits)));
+    return { page: p.page, path: p.path, section: p.section, icon: p.icon, visits: visits, uniques: uniques, avgMin: p.avgMin, bounce: p.bounce };
+  }
+
   function topPages() {
-    if (window.PageAnalyticsOverlay && PageAnalyticsOverlay.PAGES) {
-      return PageAnalyticsOverlay.PAGES.slice()
-        .sort(function (a, b) { return b.visits - a.visits; })
-        .slice(0, 10);
+    var list = (window.PageAnalyticsOverlay && PageAnalyticsOverlay.PAGES)
+      ? PageAnalyticsOverlay.PAGES.slice()
+      : PAGES.slice();
+    if (pageQuery) {
+      list = list.filter(function (p) {
+        return (p.page + ' ' + p.path).toLowerCase().indexOf(pageQuery) !== -1;
+      });
     }
-    return PAGES;
+    return list.map(weeklyView)
+      .sort(function (a, b) { return b.visits - a.visits; })
+      .slice(0, 10);
   }
   function renderPages() {
     const list = topPages();
+    const pill = document.getElementById('weekPill');
+    if (pill) {
+      const wk = weekInfo();
+      const fd = function (d) { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
+      pill.innerHTML = '<i class="fas fa-rotate"></i> ' + fd(wk.start) + ' – ' + fd(wk.end) + ' · resets Sun 11:59 PM';
+    }
+    if (!list.length) {
+      document.getElementById('pageList').innerHTML = '<div style="padding:18px 2px;color:var(--text-faint);font-size:12px">No pages match your search.</div>';
+      return;
+    }
     const max = Math.max.apply(null, list.map(function (p) { return p.visits; }));
+    let sumVisits = 0, sumUniques = 0, wMin = 0, wBounce = 0;
+    list.forEach(function (p) {
+      sumVisits += p.visits;
+      sumUniques += p.uniques;
+      wMin += p.avgMin * p.visits;
+      wBounce += p.bounce * p.visits;
+    });
+    const totalRow = list.length
+      ? '<div class="pv-row pv-total">'
+        + '<div class="pv-page"><div class="pv-ico"><i class="fas fa-sigma"></i></div>'
+        + '<div style="min-width:0;flex:1"><div class="pv-name">Total</div></div></div>'
+        + '<div class="pv-num">' + fmtNum(sumVisits) + '</div>'
+        + '<div class="pv-num faint">' + fmtNum(sumUniques) + '</div>'
+        + '<div class="pv-num faint">' + (sumVisits ? (Math.round(wMin / sumVisits * 10) / 10) : 0) + 'm</div>'
+        + '<div class="pv-num faint">' + (sumVisits ? Math.round(wBounce / sumVisits) : 0) + '%</div>'
+        + '</div>'
+      : '';
     document.getElementById('pageList').innerHTML =
       '<div class="pv-cols"><span>Page</span><span class="num">Visits</span><span class="num">Unique</span><span class="num">Avg Time</span><span class="num">Bounce</span></div>'
       + list.map(function (p) {
@@ -130,7 +199,7 @@
           + '<div class="pv-num faint">' + p.avgMin + 'm</div>'
           + '<div class="pv-num faint">' + p.bounce + '%</div>'
           + '</div>';
-      }).join('');
+      }).join('') + totalRow;
   }
 
   /* ── CHARTS ───────────────────────────────────────────── */
@@ -141,7 +210,7 @@
     if (!wrap) return;
     // Every 3rd hour keeps the fallback readable
     const rows = [];
-    for (let i = 0; i < HOURLY.length; i += 3) rows.push({ l: String(i).padStart(2, '0') + ':00', v: HOURLY[i] });
+    for (let i = 0; i < HOURLY.length; i += 3) rows.push({ l: fmtHour(i), v: HOURLY[i] });
 
     function showFallback() {
       const max = Math.max.apply(null, HOURLY);
@@ -162,7 +231,7 @@
       let el = document.getElementById('trendChart');
       if (!el) { wrap.innerHTML = '<canvas id="trendChart"></canvas>'; el = document.getElementById('trendChart'); }
       const ctx = el.getContext('2d');
-      const labels = HOURLY.map(function (_, i) { return String(i).padStart(2, '0') + ':00'; });
+      const labels = HOURLY.map(function (_, i) { return fmtHour(i); });
       if (trendChart) trendChart.destroy();
       trendChart = new Chart(ctx, {
       type: 'line',
@@ -196,28 +265,53 @@
   }
 
   function renderHourChart() {
+    const wrap = document.getElementById('hourWrap');
+    if (!wrap) return;
+    // Every 3rd hour keeps the fallback readable (matches chart tick labels)
+    const rows = [];
+    for (let i = 0; i < HOURLY.length; i += 3) rows.push({ l: fmtHour(i), v: HOURLY[i] });
+
+    // Chart.js unavailable (CDN blocked/offline) or constructor throwing must
+    // never leave this panel blank — show raw values instead.
+    function showFallback() {
+      const max = Math.max.apply(null, HOURLY);
+      wrap.innerHTML = '<div class="chart-fallback">'
+        + '<div class="chart-fallback-note"><i class="fas fa-triangle-exclamation"></i> Chart library unavailable — showing raw values instead.</div>'
+        + rows.map(function (r) {
+            const isPeak = r.v === HOURLY[peakHour];
+            return '<div class="cf-row"><div class="cf-lbl">' + r.l + '</div><div class="cf-track"><div class="cf-fill" style="width:' + Math.round((r.v / max) * 100) + '%;background:' + (isPeak ? accent() : 'rgba(255,0,80,.45)') + '"></div></div><div class="cf-val">' + fmtNum(r.v) + '</div></div>';
+          }).join('')
+        + '</div>';
+    }
+
     const el = document.getElementById('hourChart');
-    if (!el || typeof Chart === 'undefined') return;
-    const labels = HOURLY.map(function (_, i) { return i % 3 === 0 ? String(i).padStart(2, '0') : ''; });
-    const colors = HOURLY.map(function (_, i) {
-      return i === peakHour ? accent() : (i >= 18 && i <= 21 ? 'rgba(255,0,80,.55)' : 'rgba(255,0,80,.25)');
-    });
-    if (hourChart) hourChart.destroy();
-    hourChart = new Chart(el, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{ data: HOURLY, backgroundColor: colors, borderRadius: 4, barPercentage: .85 }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (it) { return String(it[0].dataIndex).padStart(2, '0') + ':00'; }, label: function (it) { return fmtNum(it.raw) + ' sessions'; } } } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: textFaint(), font: { size: 9 } }, border: { color: border() } },
-          y: { grid: { color: border() }, ticks: { color: textFaint(), font: { size: 9 }, callback: function (v) { return fmtNum(v); } }, border: { display: false }, beginAtZero: true },
+    if (!el || typeof window.Chart === 'undefined') { showFallback(); return; }
+
+    try {
+      const labels = HOURLY.map(function (_, i) { return i % 3 === 0 ? fmtHour(i) : ''; });
+      const colors = HOURLY.map(function (_, i) {
+        return i === peakHour ? accent() : (i >= 18 && i <= 21 ? 'rgba(255,0,80,.55)' : 'rgba(255,0,80,.25)');
+      });
+      if (hourChart) hourChart.destroy();
+      hourChart = new Chart(el, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ data: HOURLY, backgroundColor: colors, borderRadius: 4, barPercentage: .85 }],
         },
-      },
-    });
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (it) { return fmtHour(it[0].dataIndex); }, label: function (it) { return fmtNum(it.raw) + ' sessions'; } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: textFaint(), font: { size: 9 } }, border: { color: border() } },
+            y: { grid: { color: border() }, ticks: { color: textFaint(), font: { size: 9 }, callback: function (v) { return fmtNum(v); } }, border: { display: false }, beginAtZero: true },
+          },
+        },
+      });
+    } catch (e) {
+      console.error('[Traffic] hour chart failed:', e);
+      showFallback();
+    }
   }
 
   /* ── DAY-OF-WEEK HEATMAP ──────────────────────────────── */
@@ -250,10 +344,9 @@
 
     const viewAll = document.getElementById('viewAllPages');
     if (viewAll && window.PageAnalyticsOverlay) {
-      viewAll.addEventListener('click', function () { PageAnalyticsOverlay.open(); });
+      viewAll.addEventListener('click', function (e) { e.preventDefault(); PageAnalyticsOverlay.open(); });
     }
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  window.TrafficPage = { init: init };
 })();

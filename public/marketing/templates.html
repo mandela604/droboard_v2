@@ -12,7 +12,7 @@
 
 <div class="tmpl-modal-bg" id="tmplModalBg">
   <div class="tmpl-modal" role="dialog" aria-modal="true">
-    <div class="tmpl-modal-head"><b id="tmplModalTitle">New Template</b><button onclick="closeTmplModal()" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="fas fa-xmark"></i></button></div>
+    <div class="tmpl-modal-head"><b id="tmplModalTitle">New Template</b><button id="tmplModalClose" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="fas fa-xmark"></i></button></div>
     <div class="tmpl-modal-body" style="padding:16px 18px;overflow-y:auto;max-height:72vh">
       <div class="tmpl-field"><label>Name</label><input id="teName" placeholder="e.g. WhatsApp Status — 9:16"/></div>
       <div class="tmpl-field"><label>Description</label><textarea id="teDesc" rows="2" placeholder="Where this flyer is used"></textarea></div>
@@ -26,7 +26,7 @@
       <div class="tmpl-field" id="teVariantsWrap" style="display:none"><label>Variants (comma separated)</label><input id="teVariants" placeholder="e.g. 3 days to go, 2 days to go, Tomorrow, Out Now"/><div style="font-size:10.5px;color:var(--text-faint);margin-top:4px">Only for countdown-style templates. Leave blank otherwise.</div></div>
     </div>
     <div class="tmpl-modal-foot" style="display:flex;gap:10px;padding:12px 18px;border-top:1px solid var(--border);justify-content:flex-end">
-      <button class="tmpl-btn" onclick="closeTmplModal()">Cancel</button><button class="tmpl-btn primary" id="teSave">Save</button>
+      <button class="tmpl-btn" id="tmplModalCancel">Cancel</button><button class="tmpl-btn primary" id="teSave">Save</button>
     </div>
   </div>
 </div>

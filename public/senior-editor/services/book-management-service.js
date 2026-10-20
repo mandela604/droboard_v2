@@ -6,7 +6,6 @@
  *   GET    /api/senior-editor/books/:id        read one
  *   PUT    /api/senior-editor/books/:id        update meta
  *   DELETE /api/senior-editor/books/:id        delete
- *   PUT    /api/senior-editor/books/:id/rating set rating   { rating }
  *   POST   /api/senior-editor/books/:id/flag   flag         { reason, note, password }
  *   POST   /api/senior-editor/books/:id/unflag unflag       { password }
  */
@@ -83,16 +82,6 @@ var Crud = {
       return mapped;
     }
     return books.find(function (b) { return b.id === id; }) || null;
-  },
-
-  /* UPDATE — rating (0.5 steps, 0–5) */
-  rate: async function (id, rating) {
-    var remote = await callBackend('/books/' + encodeURIComponent(id) + '/rating', {
-      method: 'PUT', headers: authHeaders(), body: JSON.stringify({ rating: rating }),
-    });
-    var b = books.find(function (x) { return x.id === id; });
-    if (b) b.rating = rating;
-    return remote || b;
   },
 
   /* UPDATE — flag (reason required, password required) */
@@ -188,7 +177,6 @@ var PER_PAGE = 12;
 var openRowId = null;
 var modalBookId = null;   /* flag/unflag modal target */
 var modalMode = 'flag';   /* 'flag' | 'unflag' */
-var pendingRating = 0;    /* rate modal selection */
 
 var GENRE_COLORS = {};
 (D.CATEGORIES || []).forEach(function (c) { GENRE_COLORS[c.name] = { bg: c.bg, fg: c.color }; });
@@ -303,7 +291,6 @@ function renderTable(list) {
           '<div class="actions-cell">' +
             '<button class="act-btn" title="View" onclick="event.stopPropagation();viewBook(\'' + esc(b.id) + '\')"><i class="fas fa-eye"></i></button>' +
             '<button class="act-btn" title="Edit" style="display:none" onclick="event.stopPropagation();editBook(\'' + esc(b.id) + '\')"><i class="fas fa-pen"></i></button>' +
-            '<button class="act-btn" title="Rate" onclick="event.stopPropagation();rateBook(\'' + esc(b.id) + '\')"><i class="fas fa-star" style="color:#f5b301"></i></button>' +
             '<button class="act-btn ' + (isFlagged ? '' : 'danger') + '" title="' + (isFlagged ? 'Unflag' : 'Flag') + '" onclick="event.stopPropagation();' + (isFlagged ? 'unflagBook' : 'flagBook') + '(\'' + esc(b.id) + '\')"><i class="fas fa-flag' + (isFlagged ? '-circle-check' : '') + '"></i></button>' +
           '</div>' +
         '</div>' +
@@ -345,7 +332,6 @@ function renderDetailPanel(id) {
   html += '<div class="detail-foot">';
   html += '<button class="mini-btn primary" onclick="viewBook(\'' + esc(b.id) + '\')"><i class="fas fa-eye"></i> View Book</button>';
   html += '<button class="mini-btn" style="display:none" onclick="editBook(\'' + esc(b.id) + '\')"><i class="fas fa-pen"></i> Edit</button>';
-  html += '<button class="mini-btn" onclick="rateBook(\'' + esc(b.id) + '\')"><i class="fas fa-star" style="color:#f5b301"></i> Rate</button>';
   html += '<button class="mini-btn ' + (isFlagged ? '' : 'danger') + '" onclick="' + (isFlagged ? 'unflagBook' : 'flagBook') + '(\'' + esc(b.id) + '\')"><i class="fas fa-flag"></i> ' + (isFlagged ? 'Unflag' : 'Flag') + '</button>';
   html += '</div></div>';
   panel.innerHTML = html;
@@ -371,50 +357,6 @@ function goPage(p) { currentPage = p; refresh(); window.scrollTo({ top: 0, behav
 /* ── Actions ── */
 function viewBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id); }
 function editBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id) + '&mode=edit'; }
-
-/* Rate modal */
-function rateBook(id) {
-  var b = books.find(function (x) { return x.id === id; }); if (!b) return;
-  modalBookId = id;
-  pendingRating = b.rating || 0;
-  document.getElementById('bmRateTitle').textContent = b.title;
-  paintRateStars();
-  openOverlay('bmRateOv');
-}
-function paintRateStars() {
-  var wrap = document.getElementById('bmRateStars');
-  var html = '';
-  for (var i = 1; i <= 5; i++) {
-    var full = pendingRating >= i;
-    var half = !full && pendingRating >= i - 0.5;
-    html += '<span class="bm-star' + (full || half ? ' on' : '') + (half ? ' half' : '') + '" data-v="' + i + '">' +
-      '<i class="fas fa-star bm-star-bg"></i>' +
-      '<i class="fas fa-star bm-star-fg"></i>' +
-      '</span>';
-  }
-  wrap.innerHTML = html;
-  document.getElementById('bmRateVal').textContent = pendingRating
-    ? '★ ' + pendingRating.toFixed(1).replace(/\.0$/, '') + ' / 5'
-    : 'Tap a star to rate';
-  wrap.querySelectorAll('.bm-star').forEach(function (el) {
-    var v = parseFloat(el.dataset.v);
-    el.addEventListener('click', function (e) {
-      var r = el.getBoundingClientRect();
-      pendingRating = (e.clientX - r.left) < r.width / 2 ? v - 0.5 : v;
-      paintRateStars();
-    });
-  });
-}
-async function saveRating() {
-  if (!pendingRating) { toast('Pick a star value first'); return; }
-  try {
-    await Crud.rate(modalBookId, pendingRating);
-    closeOverlay('bmRateOv');
-    toast('Rating saved');
-    openRowId = null;
-    refresh();
-  } catch (e) { toast('Could not save rating: ' + (e.message || 'error')); }
-}
 
 /* Flag / unflag modal */
 function flagBook(id) {
@@ -490,14 +432,6 @@ function ensureModals() {
     '.bm-err{font-size:11.5px;color:var(--red);font-weight:600;min-height:16px;margin-bottom:8px}' +
     '.bm-actions{display:flex;gap:8px;justify-content:flex-end}' +
     '.bm-btn{font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:.12s}.bm-btn:hover{border-color:var(--accent);color:var(--accent)}.bm-btn.primary{background:var(--accent);border-color:transparent;color:#fff}.bm-btn.danger{background:var(--red);border-color:transparent;color:#fff}.bm-btn:disabled{opacity:.5;cursor:default}' +
-    '.bm-stars{display:flex;justify-content:center;gap:6px;margin:10px 0 6px}' +
-    '.bm-star{position:relative;width:36px;height:36px;cursor:pointer;font-size:28px;line-height:1}' +
-    '.bm-star-bg{color:var(--text-faint,#ccc);position:absolute;inset:0}' +
-    '.bm-star-fg{color:#f5b301;position:absolute;inset:0;clip-path:inset(0 100% 0 0);transition:.12s}' +
-    '.bm-star.on .bm-star-fg,.bm-star.half .bm-star-fg{clip-path:inset(0 50% 0 0)}' +
-    '.bm-star.on .bm-star-fg{clip-path:inset(0 0 0 0)}' +
-    '.bm-star:hover .bm-star-fg{clip-path:inset(0 0 0 0)}' +
-    '.bm-rate-val{text-align:center;font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px}' +
     '';
   var style = document.createElement('style');
   style.id = 'bmModalCss';
@@ -533,34 +467,16 @@ function ensureModals() {
           '<button class="bm-btn danger" id="bmFlagSubmit" onclick="submitBmFlag()"><i class="fas fa-flag"></i> Flag Book</button>' +
         '</div>' +
       '</div>' +
-    '</div>' +
-    '<div class="bm-ov" id="bmRateOv">' +
-      '<div class="bm-modal">' +
-        '<div class="bm-modal-head">' +
-          '<div class="bm-modal-ico amber"><i class="fas fa-star"></i></div>' +
-          '<div><div class="bm-modal-title">Rate Book</div><div class="bm-modal-sub" id="bmRateTitle"></div></div>' +
-          '<div class="bm-x" onclick="closeBmRate()"><i class="fas fa-xmark"></i></div>' +
-        '</div>' +
-        '<div class="bm-stars" id="bmRateStars"></div>' +
-        '<div class="bm-rate-val" id="bmRateVal"></div>' +
-        '<div class="bm-actions">' +
-          '<button class="bm-btn" onclick="closeBmRate()">Cancel</button>' +
-          '<button class="bm-btn primary" onclick="saveBmRating()"><i class="fas fa-check"></i> Save Rating</button>' +
-        '</div>' +
-      '</div>' +
     '</div>';
   while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
 
   document.getElementById('bmFlagOv').addEventListener('click', function (e) { if (e.target === this) closeOverlay('bmFlagOv'); });
-  document.getElementById('bmRateOv').addEventListener('click', function (e) { if (e.target === this) closeOverlay('bmRateOv'); });
   document.getElementById('bmFlagPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitFlag(); });
 }
 function openOverlay(id) { document.getElementById(id).classList.add('open'); }
 function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
 function closeBmFlag() { closeOverlay('bmFlagOv'); }
-function closeBmRate() { closeOverlay('bmRateOv'); }
 function submitBmFlag() { submitFlag(); }
-function saveBmRating() { saveRating(); }
 
 function toast(m) {
   var t = document.getElementById('toast');
@@ -615,19 +531,16 @@ function bindEvents() {
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    closeOverlay('bmFlagOv'); closeOverlay('bmRateOv');
+    closeOverlay('bmFlagOv');
   });
 
   window.goPage = goPage;
   window.viewBook = viewBook;
   window.editBook = editBook;          /* kept — button hidden, not removed */
-  window.rateBook = rateBook;
   window.flagBook = flagBook;
   window.unflagBook = unflagBook;
   window.closeBmFlag = closeBmFlag;
-  window.closeBmRate = closeBmRate;
   window.submitBmFlag = submitBmFlag;
-  window.saveBmRating = saveBmRating;
 }
 
 function init() {

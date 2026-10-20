@@ -11,7 +11,7 @@ if(window.ContractsPaymentsService) return;
 
 /* ── Backend-ready header ── */
 const USE_API = false;
-const API_BASE = '/api/chief-editor';
+const API_BASE = '/api/chief';
 async function callBackend(path, opts){
   if(!USE_API) return null;
   const res = await fetch(API_BASE + path, opts);
@@ -39,29 +39,37 @@ const shell = ChiefEditorSidebar.attach('#dashRoot', {
 
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
-const TYPE_ICO = {
-  'Non-Exclusive':'fa-file-pen', 'Exclusive':'fa-file-shield', 'Renewal':'fa-rotate',
-  'Amendment':'fa-file-circle-plus', 'Work-for-Hire':'fa-file-invoice',
-  'Royalty Share':'fa-chart-pie', 'Option':'fa-handshake', 'Serial Rights':'fa-book-open'
-};
-
-const TYPE_CLS = {
-  'Non-Exclusive': 'green',
-  'Exclusive': 'purple',
-  'Renewal': 'green',
-  'Amendment': 'amber',
-  'Work-for-Hire': 'red',
-  'Royalty Share': 'green',
-  'Option': 'blue',
-  'Serial Rights': 'purple'
-};
+const TYPE_COLORS = ['green','purple','amber','red','blue','accent'];
+const TYPE_ICONS  = ['fa-file-pen','fa-file-shield','fa-rotate','fa-file-circle-plus','fa-file-invoice','fa-chart-pie','fa-handshake','fa-book-open','fa-scroll','fa-stamp','fa-gavel','fa-file-contract'];
+const DEFAULT_TYPES = [
+  { name:'Non-Exclusive', icon:'fa-file-pen',       color:'green'  },
+  { name:'Exclusive',     icon:'fa-file-shield',    color:'purple' },
+  { name:'Royalty Share', icon:'fa-chart-pie',      color:'green'  },
+  { name:'Work-for-Hire', icon:'fa-file-invoice',   color:'red'    },
+  { name:'Option',        icon:'fa-handshake',      color:'blue'   },
+  { name:'Serial Rights', icon:'fa-book-open',      color:'purple' },
+  { name:'Renewal',       icon:'fa-rotate',         color:'green'  },
+  { name:'Amendment',     icon:'fa-file-circle-plus',color:'amber' },
+];
+const CT_TYPES_KEY = 'droboard_ce_contract_types';
+let CT_TYPES = [];
+function loadCtTypes(){
+  try{
+    const raw = localStorage.getItem(CT_TYPES_KEY);
+    if(raw){ const p = JSON.parse(raw); if(Array.isArray(p) && p.length) return p; }
+  }catch(e){}
+  return DEFAULT_TYPES.slice();
+}
+function saveCtTypes(){ try{ localStorage.setItem(CT_TYPES_KEY, JSON.stringify(CT_TYPES)); }catch(e){} }
+function ctTypeOf(name){ return CT_TYPES.find(t => t.name === name); }
+function typeIcon(name){ const t = ctTypeOf(name); return (t && t.icon) || 'fa-file'; }
+function typeCls(name){ const t = ctTypeOf(name); return (t && t.color) || 'blue'; }
 
 let CONTRACTS = [];
 const PAGE_SIZE = 6;
 let filtered = [];
 let currentPage = 1;
 let editingId = null;
-let pendingDeleteId = null;
 
 function fmtNum(n){
   n = n || 0;
@@ -100,10 +108,19 @@ document.addEventListener('keydown', e => {
 });
 
 async function init(){
+  CT_TYPES = loadCtTypes();
   CONTRACTS = await loadContractTemplates();
+  populateTypeSelect();
   populateTypeFilter();
   renderStatCards();
   applyFilters();
+}
+
+function populateTypeSelect(keep){
+  const sel = document.getElementById('fType');
+  const cur = keep || sel.value;
+  sel.innerHTML = CT_TYPES.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+  if (CT_TYPES.some(t => t.name === cur)) sel.value = cur;
 }
 
 function populateTypeFilter(){
@@ -113,6 +130,110 @@ function populateTypeFilter(){
   sel.innerHTML = '<option value="all">All types</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
   if (types.includes(current)) sel.value = current;
 }
+
+/* ── Contract-type CRUD (manage modal) ── */
+const TM_COLORS = ['green','purple','amber','red','blue','accent'];
+
+function renderTypesModal(){
+  const list = document.getElementById('tmList');
+  if (!CT_TYPES.length){
+    list.innerHTML = '<div class="tm-empty"><i class="fas fa-tags" style="font-size:18px;display:block;margin-bottom:6px"></i>No contract types yet. Add your first one above.</div>';
+    return;
+  }
+  list.innerHTML = CT_TYPES.map((t, i) => `
+    <div class="tm-row" data-i="${i}">
+      <div class="tm-top">
+        <div class="tm-ico" style="background:${BG_MAP[t.color] || BG_MAP.blue};color:${ICO_MAP[t.color] || ICO_MAP.blue}"><i class="fas ${t.icon}"></i></div>
+        <input class="tm-name" value="${(t.name || '').replace(/"/g, '&quot;')}" data-name="${i}"/>
+        <button class="tm-act del" data-del="${i}" title="Delete type"><i class="fas fa-trash"></i></button>
+      </div>
+      <div class="tm-bot">
+        <span class="tm-lbl">Color</span>
+        <div class="tm-swatches">
+          ${TM_COLORS.map(c => `<span class="tm-sw ${c === t.color ? 'on' : ''}" data-color="${c}" data-i="${i}" style="background:${ICO_MAP[c]}"></span>`).join('')}
+        </div>
+        <button class="tm-act" data-icon="${i}" title="Change icon" style="margin-left:auto"><i class="fas ${t.icon}"></i></button>
+      </div>
+    </div>`).join('');
+}
+
+function openTypesModal(){ renderTypesModal(); openModal('typesModal'); }
+
+function commitTypes(reselect){
+  saveCtTypes();
+  populateTypeSelect(reselect);
+  renderTypesModal();
+}
+
+document.getElementById('manageTypesBtn2').addEventListener('click', openTypesModal);
+
+document.getElementById('tmAddBtn').addEventListener('click', () => {
+  const input = document.getElementById('tmNewName');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  if (CT_TYPES.some(t => t.name.toLowerCase() === name.toLowerCase())) { toast('That type already exists.', 'fa-triangle-exclamation'); return; }
+  CT_TYPES.push({
+    name,
+    icon: TYPE_ICONS[CT_TYPES.length % TYPE_ICONS.length],
+    color: TM_COLORS[CT_TYPES.length % TM_COLORS.length],
+  });
+  input.value = '';
+  commitTypes(name);
+  toast(`Added “${name}” type`, 'fa-circle-plus');
+});
+document.getElementById('tmNewName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('tmAddBtn').click(); }
+});
+
+document.getElementById('tmList').addEventListener('input', e => {
+  const inp = e.target.closest('[data-name]');
+  if (!inp) return;
+  const i = +inp.dataset.name;
+  const name = inp.value.trim();
+  if (!name) return;
+  const prev = CT_TYPES[i].name;
+  CT_TYPES[i].name = name;
+  if (prev !== name){
+    CONTRACTS.forEach(c => { if (c.type === prev) c.type = name; });
+    saveCtTypes();
+    populateTypeSelect();
+    populateTypeFilter();
+  }
+});
+
+document.getElementById('tmList').addEventListener('click', e => {
+  const sw = e.target.closest('[data-color]');
+  if (sw){ CT_TYPES[+sw.dataset.i].color = sw.dataset.color; commitTypes(); return; }
+
+  const ico = e.target.closest('[data-icon]');
+  if (ico){
+    const i = +ico.dataset.icon;
+    const cur = TYPE_ICONS.indexOf(CT_TYPES[i].icon);
+    CT_TYPES[i].icon = TYPE_ICONS[(cur + 1 + TYPE_ICONS.length) % TYPE_ICONS.length] || TYPE_ICONS[0];
+    commitTypes();
+    return;
+  }
+
+  const del = e.target.closest('[data-del]');
+  if (del){
+    const i = +del.dataset.del;
+    const type = CT_TYPES[i];
+    const inUse = CONTRACTS.filter(c => c.type === type.name).length;
+    if (inUse){ toast(`“${type.name}” is used by ${inUse} contract${inUse === 1 ? '' : 's'} — rename or reassign those first.`, 'fa-triangle-exclamation'); return; }
+    openConfirm({
+      title: 'Delete Contract Type',
+      icon: 'fa-tags',
+      text: `Delete the <b>${type.name}</b> type? Existing contracts are unaffected, but you can't send new ones under this type.`,
+      btnLabel: 'Delete Type',
+      btnIcon: 'fa-trash',
+      onConfirm(){
+        CT_TYPES.splice(i, 1);
+        commitTypes();
+        toast(`Deleted “${type.name}” type`, 'fa-trash');
+      }
+    });
+  }
+});
 
 function renderStatCards(){
   const active = CONTRACTS.filter(c => c.status === 'active').length;
@@ -172,7 +293,7 @@ function renderList(){
   const pageItems = filtered.slice(start, start + PAGE_SIZE);
 
   box.innerHTML = pageItems.map(c => {
-    const cls = TYPE_CLS[c.type] || 'blue';
+    const cls = typeCls(c.type);
     const bonus = fmtBonusRange(c.signupBonusMin, c.signupBonusMax);
     const paused = c.status === 'paused';
     const archived = c.status === 'archived';
@@ -184,7 +305,7 @@ function renderList(){
           <span class="ctr-id">${c.id}</span>
          <div class="ctr-name" style="color:${ICO_MAP[cls]}">${c.name}</div>
           <div class="ctr-type-badge" style="background:${BG_MAP[cls]};color:${ICO_MAP[cls]}">
-            <i class="fas ${TYPE_ICO[c.type] || 'fa-file'}"></i> ${c.type}
+            <i class="fas ${typeIcon(c.type)}"></i> ${c.type}
           </div>
           <span class="ctr-status ${c.status}">${c.status}</span>
           <i class="fas fa-chevron-down ctr-chevron"></i>
@@ -193,19 +314,19 @@ function renderList(){
         <div class="ctr-desc">${c.description || 'No description.'}</div>
 
         <div class="ctr-terms">
-          ${c.royaltyRate != null ? `<span class="ctr-chip royalty"><strong>${c.royaltyRate}%</strong> royalty</span>` : ''}
+          ${c.royaltyRate != null ? `<span class="ctr-chip royalty"><strong>${c.royaltyRate}%</strong> ${cfLabelFor(c, 'royalty').replace(/\s*\(%\)$/, '').toLowerCase()}</span>` : ''}
           <span class="ctr-chip"><strong>${c.termLength}</strong> term</span>
-          ${bonus ? `<span class="ctr-chip bonus"><strong>${bonus}</strong> signup bonus</span>` : ''}
+          ${bonus ? `<span class="ctr-chip bonus"><strong>${bonus}</strong> ${cfLabelFor(c, 'bonusMax').replace(/\s*\(\$\)$/, '').toLowerCase()}</span>` : ''}
           ${c.completionTarget ? `<span class="ctr-chip bonus"><strong>${fmtNum(c.completionTarget)}</strong> reads / ${c.completionWindowMonths || '?'} mo</span>` : ''}
           ${c.profitShareThreshold != null ? `<span class="ctr-chip bonus">Bonus at <strong>$${c.profitShareThreshold}</strong> profit</span>` : ''}
-          ${c.autoRenew ? `<span class="ctr-chip">Auto-renew</span>` : ''}
+          ${c.autoRenew ? `<span class="ctr-chip">${cfLabelFor(c, 'autoRenew')}</span>` : ''}
         </div>
       </div>
 
       <div class="ctr-body">
         <div class="ctr-meta-row">
-          <div class="ctr-meta-item"><span>Royalty</span><b>${c.royaltyRate != null ? c.royaltyRate + '%' : '—'}</b></div>
-          <div class="ctr-meta-item"><span>Signup Bonus</span><b>${bonus || '—'}</b></div>
+          <div class="ctr-meta-item"><span>${cfLabelFor(c, 'royalty').replace(/\s*\(%\)$/, '')}</span><b>${c.royaltyRate != null ? c.royaltyRate + '%' : '—'}</b></div>
+          <div class="ctr-meta-item"><span>${cfLabelFor(c, 'bonusMin').replace(/\s*min\s*\(\$\)$/i, '').trim()}</span><b>${bonus || '—'}</b></div>
           <div class="ctr-meta-item"><span>Term</span><b>${c.termLength}</b></div>
           <div class="ctr-meta-item"><span>Times Sent</span><b>${c.usageCount || 0}</b></div>
           <div class="ctr-meta-item"><span>Last Edited</span><b>${c.lastEdited || '—'}</b></div>
@@ -272,10 +393,94 @@ document.getElementById('fAuto').addEventListener('change', e => {
   document.getElementById('fAutoLabel').textContent = e.target.checked ? 'On' : 'Off';
 });
 
+/* ── Customizable fields: hide / rename per contract ── */
+const CF_FIELDS = {
+  royalty:      { input: 'fRoyalty',    def: 'Royalty rate (%)' },
+  bonusMin:     { input: 'fBonusMin',   def: 'Signup bonus min ($)' },
+  bonusMax:     { input: 'fBonusMax',   def: 'Signup bonus max ($)' },
+  compTarget:   { input: 'fCompTarget', def: 'Completion target (reads)' },
+  compMonths:   { input: 'fCompMonths', def: 'Window (months)' },
+  profitThresh: { input: 'fProfitThresh', def: 'Profit-share threshold ($)' },
+  profitBonus:  { input: 'fProfitBonus', def: 'Profit-share bonus ($)' },
+  autoRenew:    { input: 'fAuto',       def: 'Auto-renew' },
+};
+let cfHidden = new Set();
+let cfLabels = {};
+
+function cfLabelFor(c, key) {
+  if (c && c.cfLabels && c.cfLabels[key]) return c.cfLabels[key];
+  return (cfLabels[key] || CF_FIELDS[key].def);
+}
+function cfApplyDom() {
+  Object.keys(CF_FIELDS).forEach(key => {
+    const wrap = document.querySelector(`.cf-field[data-cf="${key}"]`);
+    if (!wrap) return;
+    wrap.classList.toggle('cf-row-hidden', cfHidden.has(key));
+    const lbl = wrap.querySelector('.cf-label');
+    if (lbl && document.activeElement !== lbl) lbl.textContent = cfLabels[key] || CF_FIELDS[key].def;
+    const btn = wrap.querySelector('.cf-btn');
+    if (btn) btn.innerHTML = cfHidden.has(key) ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+  });
+  const tray = document.getElementById('cfTray');
+  const chips = document.getElementById('cfTrayChips');
+  const hiddenKeys = Object.keys(CF_FIELDS).filter(k => cfHidden.has(k));
+  tray.classList.toggle('show', hiddenKeys.length > 0);
+  chips.innerHTML = hiddenKeys.map(k => `<span class="cf-chip" data-cf-show="${k}" title="Show field"><i class="fas fa-plus"></i> ${CF_FIELDS[k].def}</span>`).join('');
+}
+function cfReset() {
+  cfHidden = new Set();
+  cfLabels = {};
+  cfApplyDom();
+}
+function cfWire() {
+  document.querySelectorAll('.cf-btn[data-cf-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.cfToggle;
+      if (cfHidden.has(key)) cfHidden.delete(key); else cfHidden.add(key);
+      cfApplyDom();
+    });
+  });
+  document.getElementById('cfTrayChips').addEventListener('click', e => {
+    const chip = e.target.closest('[data-cf-show]');
+    if (!chip) return;
+    cfHidden.delete(chip.dataset.cfShow);
+    cfApplyDom();
+  });
+  document.querySelectorAll('.cf-label').forEach(lbl => {
+    lbl.addEventListener('dblclick', () => {
+      const key = lbl.dataset.cfLabel;
+      lbl.textContent = cfLabels[key] || CF_FIELDS[key].def;
+      lbl.contentEditable = 'true';
+      lbl.focus();
+      const range = document.createRange();
+      range.selectNodeContents(lbl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+    lbl.addEventListener('blur', () => {
+      const key = lbl.dataset.cfLabel;
+      lbl.contentEditable = 'false';
+      const val = lbl.textContent.trim();
+      if (val) cfLabels[key] = val; else delete cfLabels[key];
+      cfApplyDom();
+    });
+    lbl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); lbl.blur(); }
+      if (e.key === 'Escape') {
+        const key = lbl.dataset.cfLabel;
+        lbl.textContent = cfLabels[key] || CF_FIELDS[key].def;
+        lbl.contentEditable = 'false';
+      }
+    });
+  });
+}
+cfWire();
+
 function resetForm(){
   document.getElementById('fId').value = '';
   document.getElementById('fName').value = '';
-  document.getElementById('fType').value = 'Non-Exclusive';
+  document.getElementById('fType').value = CT_TYPES.length ? CT_TYPES[0].name : '';
   document.getElementById('fTerm').value = '1 Year';
   document.getElementById('fRoyalty').value = '15';
   document.getElementById('fBonusMin').value = '20';
@@ -291,6 +496,7 @@ function resetForm(){
   document.getElementById('fClauses').value = '';
   document.getElementById('fNameErr').style.display = 'none';
   document.getElementById('fName').classList.remove('invalid');
+  cfReset();
 }
 
 function openAddModal(){
@@ -320,6 +526,9 @@ function openEditModal(id){
   document.getElementById('fStatus').value = c.status || 'active';
   document.getElementById('fDesc').value = c.description || '';
   document.getElementById('fClauses').value = c.clauses || '';
+  cfHidden = new Set(Array.isArray(c.cfHidden) ? c.cfHidden : []);
+  cfLabels = Object.assign({}, c.cfLabels || {});
+  cfApplyDom();
   document.getElementById('formModalTitle').innerHTML = '<i class="fas fa-pen" style="color:var(--accent)"></i> Edit Contract';
   openModal('formModal');
 }
@@ -336,22 +545,25 @@ document.getElementById('fSaveBtn').addEventListener('click', () => {
   document.getElementById('fNameErr').style.display = 'none';
   document.getElementById('fName').classList.remove('invalid');
 
+  const hid = k => cfHidden.has(k);
   const payload = {
     name,
     type: document.getElementById('fType').value,
     termLength: document.getElementById('fTerm').value,
-    royaltyRate: document.getElementById('fRoyalty').value === '' ? null : parseFloat(document.getElementById('fRoyalty').value),
-    signupBonusMin: parseFloat(document.getElementById('fBonusMin').value) || 0,
-    signupBonusMax: parseFloat(document.getElementById('fBonusMax').value) || 0,
-    completionTarget: document.getElementById('fCompTarget').value === '' ? null : parseFloat(document.getElementById('fCompTarget').value),
-    completionWindowMonths: document.getElementById('fCompMonths').value === '' ? null : parseFloat(document.getElementById('fCompMonths').value),
-    profitShareThreshold: document.getElementById('fProfitThresh').value === '' ? null : parseFloat(document.getElementById('fProfitThresh').value),
-    profitShareBonus: parseFloat(document.getElementById('fProfitBonus').value) || 0,
-    autoRenew: document.getElementById('fAuto').checked,
+    royaltyRate: (hid('royalty') || document.getElementById('fRoyalty').value === '') ? null : parseFloat(document.getElementById('fRoyalty').value),
+    signupBonusMin: hid('bonusMin') ? 0 : parseFloat(document.getElementById('fBonusMin').value) || 0,
+    signupBonusMax: hid('bonusMax') ? 0 : parseFloat(document.getElementById('fBonusMax').value) || 0,
+    completionTarget: (hid('compTarget') || document.getElementById('fCompTarget').value === '') ? null : parseFloat(document.getElementById('fCompTarget').value),
+    completionWindowMonths: (hid('compMonths') || document.getElementById('fCompMonths').value === '') ? null : parseFloat(document.getElementById('fCompMonths').value),
+    profitShareThreshold: (hid('profitThresh') || document.getElementById('fProfitThresh').value === '') ? null : parseFloat(document.getElementById('fProfitThresh').value),
+    profitShareBonus: hid('profitBonus') ? 0 : parseFloat(document.getElementById('fProfitBonus').value) || 0,
+    autoRenew: hid('autoRenew') ? false : document.getElementById('fAuto').checked,
     status: document.getElementById('fStatus').value,
     description: document.getElementById('fDesc').value.trim(),
     clauses: document.getElementById('fClauses').value.trim(),
     currency: 'USD',
+    cfHidden: [...cfHidden],
+    cfLabels: Object.assign({}, cfLabels),
   };
 
   if (editingId) {
@@ -376,16 +588,16 @@ document.getElementById('fSaveBtn').addEventListener('click', () => {
 
 function openDetailsModal(id){
   const c = CONTRACTS.find(x => x.id === id); if (!c) return;
-  const cls = TYPE_CLS[c.type] || 'blue';
+  const cls = typeCls(c.type);
   const bonus = fmtBonusRange(c.signupBonusMin, c.signupBonusMax);
 
-  document.getElementById('dModalTitle').innerHTML = `<i class="fas ${TYPE_ICO[c.type] || 'fa-file'}" style="color:var(--accent)"></i> ${c.id}`;
+  document.getElementById('dModalTitle').innerHTML = `<i class="fas ${typeIcon(c.type)}" style="color:var(--accent)"></i> ${c.id}`;
 
   document.getElementById('detailsBody').innerHTML = `
     <div class="dt-status-row">
       <span class="ctr-status ${c.status}">${c.status}</span>
       <span class="ctr-type-badge" style="background:${BG_MAP[cls]};color:${ICO_MAP[cls]}">
-        <i class="fas ${TYPE_ICO[c.type] || 'fa-file'}"></i> ${c.type}
+        <i class="fas ${typeIcon(c.type)}"></i> ${c.type}
       </span>
       <span style="font-size:11px;color:var(--text-faint);font-weight:600">Edited ${c.lastEdited || '—'}</span>
     </div>
@@ -394,10 +606,10 @@ function openDetailsModal(id){
     <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;margin-bottom:18px">${c.description || ''}</p>
 
     <div class="dt-grid">
-      <div class="dt-item"><span>Royalty rate</span><b>${c.royaltyRate != null ? c.royaltyRate + '%' : '—'}</b></div>
-      <div class="dt-item"><span>Signup bonus</span><b>${bonus || '—'}</b></div>
+      <div class="dt-item"><span>${cfLabelFor(c, 'royalty')}</span><b>${c.royaltyRate != null ? c.royaltyRate + '%' : '—'}</b></div>
+      <div class="dt-item"><span>${cfLabelFor(c, 'bonusMin').replace(' min', '')} / ${cfLabelFor(c, 'bonusMax').replace(' max', '')}</span><b>${bonus || '—'}</b></div>
       <div class="dt-item"><span>Term</span><b>${c.termLength}</b></div>
-      <div class="dt-item"><span>Auto-renew</span><b>${c.autoRenew ? 'Yes' : 'No'}</b></div>
+      <div class="dt-item"><span>${cfLabelFor(c, 'autoRenew')}</span><b>${c.autoRenew ? 'Yes' : 'No'}</b></div>
       <div class="dt-item"><span>Times sent</span><b>${c.usageCount || 0}</b></div>
       <div class="dt-item"><span>Created</span><b>${c.created || '—'}</b></div>
     </div>
@@ -406,10 +618,10 @@ function openDetailsModal(id){
     <div class="dt-section">
       <h4><i class="fas fa-gift" style="font-size:10px;color:var(--accent)"></i> Bonus structure</h4>
       <div class="dt-grid">
-        ${c.completionTarget ? `<div class="dt-item"><span>Completion target</span><b>${fmtNum(c.completionTarget)} reads</b></div>` : ''}
-        ${c.completionWindowMonths ? `<div class="dt-item"><span>Window</span><b>${c.completionWindowMonths} months</b></div>` : ''}
-        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>Profit threshold</span><b>$${c.profitShareThreshold}</b></div>` : ''}
-        ${c.profitShareBonus ? `<div class="dt-item"><span>Profit bonus</span><b>$${c.profitShareBonus}</b></div>` : ''}
+        ${c.completionTarget ? `<div class="dt-item"><span>${cfLabelFor(c, 'compTarget')}</span><b>${fmtNum(c.completionTarget)} reads</b></div>` : ''}
+        ${c.completionWindowMonths ? `<div class="dt-item"><span>${cfLabelFor(c, 'compMonths')}</span><b>${c.completionWindowMonths} months</b></div>` : ''}
+        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitThresh')}</span><b>$${c.profitShareThreshold}</b></div>` : ''}
+        ${c.profitShareBonus ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitBonus')}</span><b>$${c.profitShareBonus}</b></div>` : ''}
       </div>
     </div>` : ''}
 
@@ -459,24 +671,39 @@ function applyFiltersKeepPage(){
   renderList();
 }
 
-function openConfirmDelete(id){
-  const c = CONTRACTS.find(x => x.id === id); if (!c) return;
-  pendingDeleteId = id;
-  document.getElementById('confirmName').textContent = c.name;
+let pendingConfirmFn = null;
+function openConfirm(opts){
+  document.getElementById('confirmTitle').innerHTML = `<i class="fas ${opts.icon || 'fa-triangle-exclamation'}" style="color:var(--red)"></i> ${opts.title || 'Are you sure?'}`;
+  document.getElementById('confirmText').innerHTML = opts.text || '';
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.innerHTML = `<i class="fas ${opts.btnIcon || 'fa-trash'}"></i> ${opts.btnLabel || 'Remove'}`;
+  pendingConfirmFn = typeof opts.onConfirm === 'function' ? opts.onConfirm : null;
   openModal('confirmModal');
 }
 
 document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
-  if (!pendingDeleteId) return;
-  const c = CONTRACTS.find(x => x.id === pendingDeleteId);
-  CONTRACTS = CONTRACTS.filter(x => x.id !== pendingDeleteId);
+  const fn = pendingConfirmFn;
+  pendingConfirmFn = null;
   closeModal('confirmModal');
-  toast(`Removed “${c ? c.name : 'contract'}”`, 'fa-trash');
-  pendingDeleteId = null;
-  populateTypeFilter();
-  renderStatCards();
-  applyFilters();
+  if (fn) fn();
 });
+
+function openConfirmDelete(id){
+  const c = CONTRACTS.find(x => x.id === id); if (!c) return;
+  openConfirm({
+    title: 'Remove Contract',
+    text: `Remove <b>${c.name}</b>? This can't be undone. Existing signed copies are unaffected.`,
+    btnLabel: 'Remove',
+    btnIcon: 'fa-trash',
+    onConfirm(){
+      CONTRACTS = CONTRACTS.filter(x => x.id !== id);
+      toast(`Removed “${c.name}”`, 'fa-trash');
+      populateTypeFilter();
+      renderStatCards();
+      applyFilters();
+    }
+  });
+}
 
 document.getElementById('ctrList').addEventListener('click', e => {
   // Action buttons inside the expanded body

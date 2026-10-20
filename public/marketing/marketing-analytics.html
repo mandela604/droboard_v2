@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="../vendor/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Inter',system-ui,sans-serif}
@@ -104,6 +104,22 @@ body{font-family:'Inter',system-ui,sans-serif}
 </head>
 <body>
 <div id="anRoot">
+  <div class="welcome-banner">
+    <div>
+      <div class="welcome-eyebrow">Marketing Analytics</div>
+      <div class="welcome-title">Performance Report</div>
+      <div class="welcome-sub">Impressions, clicks and conversions across every ad surface — pick a range and export the raw numbers whenever you need them.</div>
+    </div>
+    <div class="wb-right">
+      <select class="range-select" id="rangeSel">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+      <button class="wb-export-btn" id="exportBtn"><i class="fas fa-download"></i> Export report</button>
+    </div>
+  </div>
+
   <div class="grid-4" id="statCards"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
 
   <div class="dash-grid">
@@ -151,12 +167,22 @@ body{font-family:'Inter',system-ui,sans-serif}
         <div class="panel-sub">Ranked by click-through rate in the selected range.</div>
         <div id="topCampaigns"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
       </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fas fa-hand-holding-dollar" style="color:var(--green)"></i> Ad Revenue Share</h2>
+          <a class="panel-link" href="../super-admin/ad-earnings.html">Payout detail <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="panel-sub">Read-only: story-owned ad slots split 70% platform / 30% author. Other surfaces stay 100% platform.</div>
+        <div id="adRevenuePanel"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
+      </div>
     </div>
   </div>
 </div>
 
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../services/currency-service.js"></script>
+<script src="../services/ad-revenue-service.js"></script>
 <script src="shared/marketing-analytics-page-service.js"></script>
 <script>MarketingAnalytics.init();</script>
 </body>

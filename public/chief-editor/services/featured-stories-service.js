@@ -8,7 +8,7 @@
 if(window.__featuredStoriesService) return;
 window.__featuredStoriesService = true;
 
-var API_BASE = window.DROBOARD_API_BASE || '/api/chief-editor';
+var API_BASE = window.DROBOARD_API_BASE || '/api/chief';
 var TIMEOUT_MS = 2500;
 
 /* ── Backend-ready header (USE_API/callBackend added; existing API_BASE kept byte-identical) ── */

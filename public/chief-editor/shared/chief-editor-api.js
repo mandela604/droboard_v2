@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const API_BASE = window.DROBOARD_API_BASE || '/api/chief-editor';
+  const API_BASE = window.DROBOARD_API_BASE || '/api/chief';
   const TIMEOUT_MS = 2500;
 
   async function callBackend(path, opts) {

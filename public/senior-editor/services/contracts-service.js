@@ -15,6 +15,7 @@ if(typeof window.ContractsDemo === 'undefined' && typeof document !== 'undefined
   document.write('<script src="data/contracts-demo-data.js"><\/script>');
 }
 
+var USE_API = false;
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/contracts';
 var TIMEOUT_MS = 2500;
 
@@ -36,7 +37,8 @@ window.ContractsService = {
   /* ── Contracts ── */
   async getContracts(){
     try {
-      var res = await fetch(API_BASE + '/contracts', {signal:AbortSignal.timeout(TIMEOUT_MS)});
+      if(!USE_API) throw new Error('demo');
+      var res = await fetch(API_BASE, {signal:AbortSignal.timeout(TIMEOUT_MS)});
       if(!res.ok) throw new Error(res.status);
       return await res.json();
     } catch(e){

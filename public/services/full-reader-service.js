@@ -522,7 +522,7 @@
               const ad = item && item.ad ? item.ad : item;
               const type = item && item.type ? item.type : "";
               if (ad) {
-                try { if (window.AdService) AdService.track(ad.id, "impression"); } catch (e) {}
+                try { if (window.AdService) AdService.track(ad.id, "impression", { page: "full-reader", slot: "fullReader:per-300-words", storyId: storyIdNow() }); } catch (e) {}
                 let inner = "";
                 if (type === "embed" && DroboardAdCard.renderEmbed) inner = DroboardAdCard.renderEmbed(ad);
                 else if (type === "native") inner = DroboardAdCard.renderNative(ad);
@@ -834,7 +834,7 @@
     return el;
   }
   function initAdSlot() {
-    function track(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+    function track(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx); } catch (e) {} }
     async function managedPool(slot) {
       const out = [];
       const p = await AdService.getAds({ page: "fullReader", slot: slot || "fullReader:per-300-words" });
@@ -871,6 +871,21 @@
       fillTopSlot();
       fillBottomSlot();
     });
+    // In-chapter clicks: delegate once on #storyText (creatives are rendered
+    // as innerHTML, so DroboardAdCard.attach never runs for them). storyPromo
+    // tracks via its inline onclick — skip it here to avoid double-counting.
+    try {
+      const stEl = document.getElementById('storyText');
+      if (stEl && !stEl.__adClickBound) {
+        stEl.__adClickBound = true;
+        stEl.addEventListener('click', function (e) {
+          const item = e.target.closest('[data-adid]');
+          if (!item || e.target.closest('.dac-story-promo')) return;
+          const adid = item.getAttribute('data-adid');
+          if (adid) track(adid, 'click', { page: 'full-reader', slot: 'fullReader:per-300-words', storyId: storyIdNow() });
+        });
+      }
+    } catch (e) {}
   }
   function currentChNum() {
     const chs = (SEASONS_DATA[curSeasonIdx] || {}).chs || [];
@@ -887,7 +902,7 @@
     const allowed = ADST.adsEnabled !== false && slotOn('fullReader:top')
       && !chapterAdFree(curSeasonIdx, curChIdx);
     if (!allowed || !window.DroboardAdSlot) { wrap.style.display = "none"; return; }
-    DroboardAdSlot.mount(slot, { slot: 'fullReader:top', max: 1 }).then(function (filled) {
+    DroboardAdSlot.mount(slot, { slot: 'fullReader:top', page: 'full-reader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
       wrap.style.display = filled ? "" : "none";
     });
   }
@@ -900,7 +915,7 @@
     const allowed = ADST.adsEnabled !== false && slotOn('fullReader:bottom')
       && !chapterAdFree(curSeasonIdx, curChIdx);
     if (!allowed || !window.DroboardAdSlot) { host.style.display = 'none'; return; }
-    DroboardAdSlot.mount(host, { slot: 'fullReader:bottom', max: 1 }).then(function (filled) {
+    DroboardAdSlot.mount(host, { slot: 'fullReader:bottom', page: 'full-reader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
       host.style.display = filled ? '' : 'none';
       if (filled) host.dataset.filled = '1';
     });
@@ -947,21 +962,39 @@
     sb.addEventListener("scroll", paintProgress, { passive: true });
 
     let hideTimer = null;
+    const toTop = document.getElementById("toTopArrow");
+    let topScrolling = false;
     function showTopbar() {
       topbar.classList.remove("hidden");
+      if (toTop) toTop.classList.add("show");
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => topbar.classList.add("hidden"), 3000);
+      hideTimer = setTimeout(() => { topbar.classList.add("hidden"); if (toTop) toTop.classList.remove("show"); }, 3000);
     }
     function hideTopbarNow() {
       topbar.classList.add("hidden");
+      if (toTop) toTop.classList.remove("show");
       clearTimeout(hideTimer);
     }
     sb.addEventListener("click", (e) => {
       if (e.target.closest(".eb-btn, .unlock-opt, .team-btn, .ch-row, .dcs-wrap, .dac-banner, a, button, input, textarea, select")) return;
       topbar.classList.contains("hidden") ? showTopbar() : hideTopbarNow();
     });
-    sb.addEventListener("scroll", hideTopbarNow, { passive: true });
-    window.addEventListener("scroll", () => { paintProgress(); hideTopbarNow(); }, { passive: true });
+    sb.addEventListener("scroll", () => { if (!topScrolling) hideTopbarNow(); }, { passive: true });
+    window.addEventListener("scroll", () => { paintProgress(); if (!topScrolling) hideTopbarNow(); }, { passive: true });
+    if (toTop) {
+      if (topbar.classList.contains("hidden")) toTop.classList.remove("show");
+      else toTop.classList.add("show");
+      toTop.addEventListener("click", function () {
+        topScrolling = true;
+        showTopbar();
+        try { sb.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { sb.scrollTop = 0; }
+        try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {}
+        const end = function () { topScrolling = false; };
+        sb.addEventListener("scrollend", end, { once: true });
+        window.addEventListener("scrollend", end, { once: true });
+        setTimeout(end, 900);
+      });
+    }
   }
 
   /* ══ PUBLIC API (called by service-rendered templates) ══ */
@@ -987,6 +1020,8 @@
   function wireStaticChrome() {
     const qa = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
     qa('[data-act="go-back"]').forEach(function (b) { b.addEventListener("click", goBack); });    qa('[data-act="open-settings"]').forEach(function (b) { b.addEventListener("click", openSettings); });
+    var tbLogo = document.getElementById("tbLogo");
+    if (tbLogo) tbLogo.addEventListener("click", function () { window.location.href = "discover.html"; });
     qa('[data-act="open-chapters"]').forEach(function (b) { b.addEventListener("click", openChPanel); });
     qa('[data-act="close-panels"]').forEach(function (b) { b.addEventListener("click", closeAllSheets); });
     qa('[data-act="ch-prev"]').forEach(function (b) { b.addEventListener("click", function () { goChapter(-1); }); });

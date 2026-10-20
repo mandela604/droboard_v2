@@ -3,10 +3,12 @@
   if (window.__superAdminData) return;
   window.__superAdminData = true;
 
+  const USE_API = false;
   const API_BASE = window.DROBOARD_API_BASE || '/api/super-admin';
   const TIMEOUT_MS = 2500;
 
   async function callBackend(path, opts) {
+    if (!USE_API) throw new Error('demo');
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -235,7 +237,7 @@
 
   window.SuperAdminData = {
     async getDashboard() {
-      try { return await callBackend('/dashboard'); }
+      try { return await callBackend('/dashboard/summary'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.dashboard)); }
     },
     async getUsers() {
@@ -243,7 +245,7 @@
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.users)); }
     },
     async updateUser(id, data) {
-      try { return await callBackend('/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
+      try { return await callBackend('/users/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
       catch (e) { await delay(200); const u = DEMO.users.find(x => x.id === id); if (u) Object.assign(u, data); return { ok: true }; }
     },
     async deleteUser(id) {
@@ -259,11 +261,11 @@
       catch (e) { await delay(200); const r = DEMO.roles.find(x => x.id === id); if (r) Object.assign(r, data); return { ok: true }; }
     },
     async getPlatformSettings() {
-      try { return await callBackend('/platform-settings'); }
+      try { return await callBackend('/settings'); }
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.platformSettings)); }
     },
     async updatePlatformSettings(data) {
-      try { return await callBackend('/platform-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
+      try { return await callBackend('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
       catch (e) { await delay(200); Object.assign(DEMO.platformSettings, data); return { ok: true }; }
     },
     async getFinance() {
@@ -305,7 +307,7 @@
       catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.books)); }
     },
     async approveBook(id) {
-      try { return await callBackend('/books/' + id + '/approve', { method: 'POST' }); }
+      try { return await callBackend('/books/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) }); }
       catch (e) { await delay(200); const b = findBook(id); if (b) { b.status = 'published'; } return { ok: true }; }
     },
     async featureBook(id, featured) {
@@ -313,11 +315,11 @@
       catch (e) { await delay(200); const b = findBook(id); if (b) { b.featured = !!featured; } return { ok: true }; }
     },
     async flagBook(id, note) {
-      try { return await callBackend('/books/' + id + '/flag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }) }); }
+      try { return await callBackend('/books/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'flagged', note: note }) }); }
       catch (e) { await delay(200); const b = findBook(id); if (b) { b.status = 'flagged'; b.moderationNote = note || 'Flagged for review.'; b.flagCount = (b.flagCount || 0) + 1; } return { ok: true }; }
     },
     async removeBook(id, note) {
-      try { return await callBackend('/books/' + id + '/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }) }); }
+      try { return await callBackend('/books/' + id, { method: 'DELETE' }); }
       catch (e) { await delay(200); const b = findBook(id); if (b) { b.status = 'removed'; b.moderationNote = note || 'Removed by Super Admin.'; b.featured = false; } return { ok: true }; }
     },
   };

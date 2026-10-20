@@ -258,6 +258,7 @@
       viewerId: ctx.viewerId || getViewerId(),
       ts: Date.now(),
     };
+    try { if (window.AdRevenue && AdRevenue.record) AdRevenue.record(payload); } catch (e) {}
     if (USE_API) {
       fetch(`${API_BASE}/ads/track`, {
         method: 'POST',

@@ -43,10 +43,10 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
       upcomingEventsCount: 2,
 
       quickActions: [
-        { label: 'Launch New Promotion',      icon: 'fa-bullhorn', cls: 'accent', href: 'promotions.html' },
-        { label: 'Schedule Homepage Banner',  icon: 'fa-image',    cls: 'blue',   href: 'homepage-banners.html' },
-        { label: 'Create Email Campaign',     icon: 'fa-envelope', cls: 'purple', href: 'email-campaigns.html' },
-        { label: 'Set Up New Contest',        icon: 'fa-gift',     cls: 'green',  href: 'events-contests.html' },
+        { label: 'Launch New Campaign',   icon: 'fa-bullhorn',    cls: 'accent', href: 'campaigns.html?new=1' },
+        { label: 'Create New Ad',         icon: 'fa-ad',          cls: 'blue',   href: 'ad-setup.html' },
+        { label: 'Manage Ad Placements',  icon: 'fa-table-cells', cls: 'purple', href: 'ad-manager.html' },
+        { label: 'Design Flyer Template', icon: 'fa-pen-ruler',   cls: 'green',  href: 'templates.html' },
       ],
 
       upcomingEvents: [

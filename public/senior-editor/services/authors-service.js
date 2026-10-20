@@ -34,17 +34,37 @@ function attachShell(){
 }
 
 /* ─────────────────────────────────────────
-   LOAD DATA — via SeniorEditorData
+   LOAD DATA — backend first (scoped to THIS editor's assigned authors),
+   demo fallback.
 ───────────────────────────────────────── */
+// Backend returns plain users; the page expects the richer demo author shape.
+function mapBackendAuthor(u){
+  return {
+    id: u.id, name: u.fullName || u.username || '', username: u.username || '',
+    email: u.email || '', avatar: u.avatar || '',
+    genre: (u.genres && u.genres[0]) || u.authorGenre || '—',
+    stories: u.books || 0,
+    rating: u.rating != null ? u.rating : '—',
+    earnings: u.earnings || '—',
+    status: u.status || 'active',
+    warnings: u.warnings || 0,
+    joined: u.createdAt
+      ? new Date(u.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      : '—',
+  };
+}
+
 async function loadAuthors(){
   try{
-    // Future backend path (disabled by default; demo path keeps working):
-    // const remote = await callBackend('/authors');
-    // if (remote) { AUTHORS = Array.isArray(remote) ? remote : (remote.authors || []); }
-    // else { const data = await SeniorEditorData.getAuthors(); AUTHORS = Array.isArray(data) ? data : (data.authors || []); }
-    const data = await SeniorEditorData.getAuthors();
-    AUTHORS = Array.isArray(data) ? data : (data.authors || []);
-    usingDemoData = false;
+    const remote = await callBackend('/authors?limit=100');
+    if (remote && remote.items) {
+      AUTHORS = remote.items.map(mapBackendAuthor);
+      usingDemoData = false;
+    } else {
+      const data = await SeniorEditorData.getAuthors();
+      AUTHORS = Array.isArray(data) ? data : (data.authors || []);
+      usingDemoData = false;
+    }
   }catch(err){
     console.warn('Authors data unavailable:', err.message);
     AUTHORS = [];

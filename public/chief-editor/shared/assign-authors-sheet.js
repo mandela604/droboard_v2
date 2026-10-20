@@ -5,7 +5,7 @@
   const CSS = `
     .aas-overlay{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.45);opacity:0;transition:opacity .25s;pointer-events:none}
     .aas-overlay.open{opacity:1;pointer-events:auto}
-    .aas-sheet{position:fixed;left:50%;bottom:0;transform:translateX(-50%) translateY(100%);width:100%;max-width:480px;max-height:85vh;background:var(--card,#fff);border-radius:18px 18px 0 0;z-index:9999;display:flex;flex-direction:column;transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+    .aas-sheet{position:fixed;left:50%;bottom:0;transform:translateX(-50%) translateY(100%);width:100%;max-width:480px;max-height:85vh;margin-bottom:16px;background:var(--card,#fff);border-radius:18px;z-index:9999;display:flex;flex-direction:column;transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 30px rgba(0,0,0,.18)}
     .aas-sheet.open{transform:translateX(-50%) translateY(0)}
     .aas-handle{width:36px;height:4px;border-radius:4px;background:var(--border,#ddd);margin:10px auto 0;flex-shrink:0}
     .aas-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;flex-shrink:0}

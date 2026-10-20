@@ -81,8 +81,23 @@ async function register({ fullName, name, username, email, password, referralCod
     referralCode: await referrals.mintUserCode(username),
   });
   // Referral is best-effort: invalid/self codes never fail signup.
+  // Two distinct code families share the single `referralCode` signup field:
+  //   SE-XXXXXX  → an editor's invite code → writer role + assigned to them
+  //   any other  → reader/coin referral   → referredByUserId only (existing path)
   let referral = { inviterId: null };
-  try { referral = await referrals.applyReferral(user, referralCode); } catch (e) { /* log in caller */ }
+  try { referral = await referrals.applyEditorInvite(user, referralCode) || { inviterId: null }; } catch (e) { /* log in caller */ }
+  if (!referral || !referral.inviterId) {
+    try { referral = await referrals.applyReferral(user, referralCode); } catch (e) { /* log in caller */ }
+  }
+  // Editor-invite signup: the invitee is an author from the start.
+  // Only ADDS roles — the first-account admin case keeps its admin role.
+  if (referral && referral.editor) {
+    const next = new Set(user.roles || []);
+    next.add('reader');
+    next.add('writer');
+    user.roles = Array.from(next);
+    user.primaryRole = 'writer';
+  }
   // Token is generated + hashed here so register() never returns an undefined binding.
   const verifyToken = crypto.randomBytes(24).toString('hex');
   user.emailVerifyTokenHash = hashToken(verifyToken);
@@ -415,7 +430,17 @@ async function findOrCreateGoogleUser(googleInfo, { referralCode } = {}) {
       referralCode: await referrals.mintUserCode(username),
     });
     isNew = true;
-    try { await referrals.applyReferral(user, referralCode); } catch (e) { /* best-effort */ }
+    try {
+      let r = await referrals.applyEditorInvite(user, referralCode) || { inviterId: null };
+      if (!r.inviterId) r = await referrals.applyReferral(user, referralCode);
+      if (r && r.editor) {
+        const next = new Set(user.roles || []);
+        next.add('reader'); next.add('writer');
+        user.roles = Array.from(next);
+        user.primaryRole = 'writer';
+        await user.save();
+      }
+    } catch (e) { /* best-effort */ }
   }
   return { user, isNew };
 }

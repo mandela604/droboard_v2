@@ -7,14 +7,26 @@
 (function(){
 'use strict';
 
+let _days = 30;
+let _q = '';
+
 const shell = MarketingSidebar.attach('#anRoot', {
   activeItem: 'marketing-analytics',
   title: 'Marketing Analytics',
   subtitle: 'Full performance report',
   user: { name: 'Tari Benson', role: 'Marketing Lead', avatar: 'https://i.pravatar.cc/100?img=32' },
   notifCount: 5,
-  searchPlaceholder: 'Search analytics…',
+  searchPlaceholder: 'Search placements & campaigns…',
+  onSearch: (v) => {
+    _q = (v || '').trim().toLowerCase();
+    safeRun('placement performance', () => renderPlacementPerformance(computeTotals(buildRangeData(_days))));
+    safeRun('top campaigns', () => renderTopCampaigns());
+  },
 });
+
+function matches(text) {
+  return !_q || String(text == null ? '' : text).toLowerCase().indexOf(_q) !== -1;
+}
 
 /* ─────────────────────────────────────────
    COLOR TOKENS — hard hex values matching the CSS custom
@@ -140,6 +152,56 @@ function render(days) {
   safeRun('reader funnel', () => renderFunnel(totals));
   safeRun('campaign mix chart', () => renderMixChart(totals));
   safeRun('top campaigns', () => renderTopCampaigns());
+  safeRun('ad revenue share', () => renderAdRevenue(days));
+}
+
+function fmtUSD(n) {
+  n = Math.round((Number(n) || 0) * 100) / 100;
+  return (window.DroboardCurrency && DroboardCurrency.usdToMoney) ? DroboardCurrency.usdToMoney(n) : '$' + n.toFixed(2);
+}
+
+/* Read-only Ad Revenue Share — story slots split 70/30; payouts are
+   managed in super-admin/ad-earnings.html. */
+function renderAdRevenue(days) {
+  const el = document.getElementById('adRevenuePanel');
+  if (!el) return;
+  if (!window.AdRevenue || !AdRevenue.getSummary) {
+    el.innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">Ad revenue service unavailable.</div>';
+    return;
+  }
+  AdRevenue.getSummary(days).then((s) => {
+    const t = s.totals || {};
+    const revenue = Number(t.revenue) || 0;
+    const plat = Number(t.platformShare) || 0;
+    const auth = Number(t.authorShare) || 0;
+    const platPct = revenue ? Math.round((plat / revenue) * 100) : 100;
+    const topStories = (s.byStory || []).slice(0, 3);
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div><div style="font-size:10px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">Gross</div>
+          <div style="font-size:18px;font-weight:800">${fmtUSD(revenue)}</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">${fmtNum(t.impressions || 0)} impressions</div></div>
+        <div><div style="font-size:10px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">Authors payable</div>
+          <div style="font-size:18px;font-weight:800;color:var(--accent)">${fmtUSD(t.authorShareUnpaid != null ? t.authorShareUnpaid : auth)}</div>
+          <div style="font-size:10.5px;color:var(--text-faint)">of ${fmtUSD(auth)} author share</div></div>
+      </div>
+      <div style="display:flex;height:10px;border-radius:8px;overflow:hidden;background:var(--border);margin-bottom:4px">
+        <div style="width:${platPct}%;background:${COLORS.blue}"></div>
+        <div style="width:${100 - platPct}%;background:${COLORS.accent}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-muted);font-weight:600;margin-bottom:10px">
+        <span>Platform ${fmtUSD(plat)}</span><span>Author 30% · ${fmtUSD(auth)}</span>
+      </div>
+      ${topStories.length ? topStories.map(st => `
+        <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--border);font-size:11.5px">
+          <span style="font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(st.storyTitle || st.storyId)}</span>
+          <span style="color:var(--text-faint);white-space:nowrap">${esc(st.authorName || '')} · ${fmtUSD(st.authorShare)}</span>
+        </div>`).join('') : '<div style="font-size:11.5px;color:var(--text-faint)">No story-ad revenue in this range.</div>'}
+    `;
+  }).catch((e) => {
+    console.error('[Marketing Analytics] ad revenue share failed:', e);
+    el.innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">Could not load ad revenue.</div>';
+  });
 }
 
 function renderStats(totals, days) {
@@ -239,9 +301,14 @@ function renderTrendChart(data) {
 
 function renderPlacementPerformance(totals) {
   const rnd = seeded(totals.impressions % 100000 + 7);
-  const weights = PLACEMENTS.map(() => 0.4 + rnd());
+  const src = PLACEMENTS.filter(p => matches(p.label));
+  if (!src.length) {
+    document.getElementById('placementList').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No placements match your search.</div>';
+    return;
+  }
+  const weights = src.map(() => 0.4 + rnd());
   const weightSum = weights.reduce((a, b) => a + b, 0);
-  const rows = PLACEMENTS.map((p, i) => {
+  const rows = src.map((p, i) => {
     const impressions = Math.round(totals.impressions * (weights[i] / weightSum));
     const ctr = 3 + rnd() * 6;
     return Object.assign({}, p, { impressions, ctr });
@@ -332,7 +399,11 @@ function renderMixChart(totals) {
 }
 
 function renderTopCampaigns() {
-  const sorted = TOP_CAMPAIGNS_BASE.slice().sort((a, b) => b.ctr - a.ctr);
+  const sorted = TOP_CAMPAIGNS_BASE.filter(c => matches(c.name)).sort((a, b) => b.ctr - a.ctr);
+  if (!sorted.length) {
+    document.getElementById('topCampaigns').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No campaigns match your search.</div>';
+    return;
+  }
   document.getElementById('topCampaigns').innerHTML = sorted.map((c, i) => `
     <div class="tc-row">
       <div class="tc-rank">${i + 1}</div>
@@ -347,8 +418,46 @@ function renderTopCampaigns() {
     </div>`).join('');
 }
 
-var _rs = document.getElementById('rangeSel'); if (_rs) _rs.addEventListener('change', (e) => render(parseInt(e.target.value, 10)));
-var _eb = document.getElementById('exportBtn'); if (_eb) _eb.addEventListener('click', () => toast('📄 Report export started — check your downloads shortly'));
+/* ─────────────────────────────────────────
+   EXPORT — real CSV download of the current range (no third-party lib).
+─────────────────────────────────────────────────────────────── */
+function exportCsv(days) {
+  const data = buildRangeData(days);
+  const rows = [['Date', 'Impressions', 'Clicks', 'CTR']];
+  for (let i = 0; i < data.labels.length; i++) {
+    const ctr = data.impressions[i] ? (data.clicks[i] / data.impressions[i] * 100).toFixed(2) + '%' : '0%';
+    rows.push([data.labels[i], data.impressions[i], data.clicks[i], ctr]);
+  }
+  const csv = rows.map(r => r.join(',')).join('\n');
+  try {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'marketing-analytics-' + days + 'd.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    console.error('[Marketing Analytics] CSV export failed:', e);
+  }
+}
 
-window.MarketingAnalytics={init:function(){ render(30); },render:render};
+/* ─────────────────────────────────────────
+   INIT — all wiring happens here (call-and-render contract).
+─────────────────────────────────────────────────────────────── */
+window.MarketingAnalytics = {
+  init: function () {
+    const rs = document.getElementById('rangeSel');
+    if (rs) {
+      rs.value = String(_days);
+      rs.addEventListener('change', (e) => { _days = parseInt(e.target.value, 10) || 30; render(_days); });
+    }
+    const eb = document.getElementById('exportBtn');
+    if (eb) eb.addEventListener('click', () => exportCsv(_days));
+    render(_days);
+  },
+  render: render,
+};
 })();

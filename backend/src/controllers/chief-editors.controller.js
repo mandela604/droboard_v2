@@ -52,10 +52,14 @@ async function assignments(req, res) {
 async function saveAssignments(req, res) {
   return base.wrap(res, async () => svc.saveAssignments(req.valid.params.id, req.valid.body, req.user.id));
 }
+// Option B queue: writers with no editor (chief picks who takes them).
+async function unassigned(req, res) {
+  return base.wrap(res, async () => svc.listUnassignedAuthors(req.valid.query));
+}
 
 module.exports = {
   list, quotas, get, patch,
   createInvite, listInvites, patchInvite, resendInvite, cancelInvite,
   inviteByToken, acceptInvite,
-  authors, assignments, saveAssignments,
+  authors, assignments, saveAssignments, unassigned,
 };

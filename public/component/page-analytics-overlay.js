@@ -50,6 +50,11 @@
     .paov-bar-fill{height:100%;border-radius:4px;background:var(--acc,#ff0050)}
     .paov-num{font-size:12px;font-weight:700;text-align:right;color:var(--tx,#1a1a2e)}
     .paov-num.faint{color:var(--tx-muted,#6b7280);font-weight:600;font-size:11.5px}
+    .paov-total{border-top:2px solid var(--border,#e5e7eb);background:var(--hover,#f7f6fd);cursor:default}
+    .paov-total:hover{background:var(--hover,#f7f6fd)}
+    .paov-total .paov-name{font-weight:800}
+    .paov-total .paov-num{font-weight:800}
+    .paov-total .paov-ico{background:rgba(255,0,80,.12);color:var(--acc,#ff0050)}
     .paov-empty{padding:34px 12px;text-align:center;color:var(--tx-faint,#9ca3af);font-size:12.5px}
 
     .sec-chip{font-size:8.5px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;display:inline-block}
@@ -168,6 +173,11 @@
     if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
     return String(n);
   }
+  // 12-hour labels: 0 → 12am, 12 → 12pm, 13 → 1pm, 23 → 11pm
+  function fmtHour(h){
+    h = ((h % 24) + 24) % 24;
+    return (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? 'am' : 'pm');
+  }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   /* Deterministic seed from page path — re-renders never jitter. */
@@ -198,6 +208,73 @@
       { name:'Shares',   ico:'fa-share-nodes', v: share },
       { name:'External', ico:'fa-arrow-up-right-from-square', v: ext },
     ];
+  }
+
+  /* ── DATE RANGE FILTER ─────────────────────────────────
+     PAGES figures are 30-day baselines; every other range is
+     derived deterministically (identical numbers each render).
+     'week' follows the CURRENT Mon→Sun window — it naturally
+     resets when Sunday 23:59:59 rolls over into Monday.
+  ───────────────────────────────────────────────────────── */
+  const RANGES = [
+    { v:'d1',   label:'Today' },
+    { v:'week', label:'This Week (Mon–Sun)' },
+    { v:'d7',   label:'Last 7 Days' },
+    { v:'d30',  label:'Last 30 Days' },
+    { v:'d90',  label:'Last 90 Days' },
+    { v:'all',  label:'All Time' },
+  ];
+  let _range = 'd30';
+
+  function weekInfo(now){
+    now = now || new Date();
+    const dow = now.getDay();                       // 0 = Sun
+    const dayIdx = dow === 0 ? 6 : dow - 1;         // Mon = 0 … Sun = 6
+    const start = new Date(now); start.setHours(0,0,0,0); start.setDate(now.getDate() - dayIdx);
+    const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23,59,59,999);
+    return { start:start, end:end, elapsed: dayIdx + 1 };  // elapsed = 1…7 days into the week
+  }
+  function rangeDays(key){
+    if(key === 'week') return weekInfo().elapsed;
+    if(key === 'd1') return 1;
+    if(key === 'd7') return 7;
+    if(key === 'd90') return 90;
+    if(key === 'all') return 365;
+    return 30;
+  }
+  function rangeFactor(key){
+    const d = rangeDays(key);
+    if(d <= 30) return d / 30;
+    return Math.pow(d / 30, 0.92);                 // long windows taper (uniques don't grow linearly)
+  }
+  function rangeJit(p, key, salt){
+    if(key === 'd30') return 1;
+    return 0.92 + (seedFrom(p.path + key + salt) % 17) / 100;   // 0.92–1.08, stable per page+range
+  }
+  function viewPages(){
+    const f = rangeFactor(_range);
+    return PAGES.map(function(p){
+      const visits = Math.max(1, Math.round(p.visits * f * rangeJit(p, _range, 'v')));
+      const uniques = Math.min(visits, Math.max(1, Math.round(p.uniques * Math.pow(f, 0.97) * rangeJit(p, _range, 'u'))));
+      return Object.assign({}, p, {
+        visits: visits,
+        uniques: uniques,
+        imp: p.imp ? Math.max(1, Math.round(p.imp * f * rangeJit(p, _range, 'i'))) : 0,
+        clicks: p.clicks ? Math.max(1, Math.round(p.clicks * f * rangeJit(p, _range, 'c'))) : 0,
+      });
+    });
+  }
+  function rangeLabel(){
+    for(let i=0;i<RANGES.length;i++) if(RANGES[i].v === _range) return RANGES[i].label;
+    return 'Last 30 Days';
+  }
+  function fmtDay(d){ return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }); }
+  function rangeNote(){
+    if(_range === 'week'){
+      const w = weekInfo();
+      return fmtDay(w.start) + ' – ' + fmtDay(w.end) + ' · resets Sun 11:59 PM';
+    }
+    return rangeLabel();
   }
 
   let _built = false, _root = null;
@@ -244,6 +321,9 @@
     scroll.innerHTML = `
       <div class="paov-toolbar">
         <div class="paov-search"><i class="fas fa-magnifying-glass"></i><input id="paovSearch" placeholder="Search page or path…"/></div>
+        <select class="paov-select" id="paovRange">
+          ${RANGES.map(function(o){ return '<option value="' + o.v + '"' + (o.v === _range ? ' selected' : '') + '>' + o.label + '</option>'; }).join('')}
+        </select>
         <select class="paov-select" id="paovSec">
           <option value="">All Sections</option>
           <option value="Reader">Reader</option>
@@ -270,6 +350,7 @@
       <div id="paovList"></div>`;
 
     document.getElementById('paovSearch').addEventListener('input', applyFilters);
+    document.getElementById('paovRange').addEventListener('change', function(){ _range = this.value; applyFilters(); });
     document.getElementById('paovSec').addEventListener('change', applyFilters);
     document.getElementById('paovSort').addEventListener('change', applyFilters);
     document.getElementById('paovList').addEventListener('click', function(e){
@@ -283,8 +364,9 @@
     const q = (document.getElementById('paovSearch').value || '').trim().toLowerCase();
     const sec = document.getElementById('paovSec').value;
     const sort = document.getElementById('paovSort').value;
+    const pages = viewPages();
 
-    _filtered = PAGES.filter(function(p){
+    _filtered = pages.filter(function(p){
       if(sec && p.section !== sec) return false;
       if(q && p.page.toLowerCase().indexOf(q) === -1 && p.path.toLowerCase().indexOf(q) === -1) return false;
       return true;
@@ -299,8 +381,26 @@
     else if(sort === 'bounce') _filtered.sort(function(a,b){ return a.bounce - b.bounce; });
     else if(sort === 'name') _filtered.sort(function(a,b){ return a.page.localeCompare(b.page); });
 
-    const max = Math.max.apply(null, PAGES.map(function(p){ return p.visits; }));
-    document.getElementById('paovCount').textContent = _filtered.length + ' of ' + PAGES.length + ' pages';
+    const max = Math.max.apply(null, pages.map(function(p){ return p.visits; }));
+    document.getElementById('paovCount').textContent = _filtered.length + ' of ' + PAGES.length + ' pages · ' + rangeNote();
+    let sumV = 0, sumI = 0, sumC = 0, sumU = 0, wMin = 0;
+    _filtered.forEach(function(p){
+      sumV += p.visits; sumI += p.imp || 0; sumC += p.clicks || 0; sumU += p.uniques; wMin += p.avgMin * p.visits;
+    });
+    const totalRow = _filtered.length
+      ? '<div class="paov-row paov-total">'
+        + '<div class="paov-page"><div class="paov-ico"><i class="fas fa-sigma"></i></div>'
+        + '<div style="min-width:0;flex:1"><div class="paov-name">Total</div>'
+        + '<div class="paov-path">' + _filtered.length + ' pages · ' + rangeNote() + '</div></div></div>'
+        + '<div></div>'
+        + '<div class="paov-num">' + fmtNum(sumV) + '</div>'
+        + '<div class="paov-num faint">' + (sumI ? fmtNum(sumI) : '—') + '</div>'
+        + '<div class="paov-num faint col-hide">' + (sumC ? fmtNum(sumC) : '—') + '</div>'
+        + '<div class="paov-num faint col-hide">' + (sumI && sumC ? (Math.round(sumC / sumI * 1000) / 10) + '%' : '—') + '</div>'
+        + '<div class="paov-num faint col-hide">' + fmtNum(sumU) + '</div>'
+        + '<div class="paov-num faint col-hide">' + (sumV ? (Math.round(wMin / sumV * 10) / 10) : 0) + 'm</div>'
+        + '</div>'
+      : '';
     document.getElementById('paovList').innerHTML = _filtered.length ? _filtered.map(function(p){
       const pct = Math.round((p.visits / max) * 100);
       return '<div class="paov-row" data-page="' + esc(p.id) + '">'
@@ -316,12 +416,12 @@
         + '<div class="paov-num faint col-hide">' + fmtNum(p.uniques) + '</div>'
         + '<div class="paov-num faint col-hide">' + p.avgMin + 'm</div>'
         + '</div>';
-    }).join('') : '<div class="paov-empty"><i class="fas fa-inbox" style="display:block;font-size:22px;opacity:.5;margin-bottom:8px"></i>No pages match your filters.</div>';
+    }).join('') + totalRow : '<div class="paov-empty"><i class="fas fa-inbox" style="display:block;font-size:22px;opacity:.5;margin-bottom:8px"></i>No pages match your filters.</div>';
   }
 
   /* ── DETAIL VIEW (per-page analysis) ───────────────────── */
   function renderDetail(id){
-    const p = PAGES.find(function(x){ return x.id === id; });
+    const p = viewPages().find(function(x){ return x.id === id; });
     if(!p) return;
     _backToList = true;
     document.getElementById('paovTitle').childNodes[0].nodeValue = p.page;
@@ -331,11 +431,11 @@
     const hourly = pageHourly(p);
     const max = Math.max.apply(null, hourly);
     const peakIdx = hourly.indexOf(max);
-    const peakLabel = String(peakIdx).padStart(2,'0') + ':00';
+    const peakLabel = fmtHour(peakIdx);
     const sources = pageSources(p);
     const hourBars = hourly.map(function(v,i){
       const h = Math.max(3, Math.round((v / max) * 100));
-      return '<div class="paov-hb' + (i === peakIdx ? ' peak' : '') + '" style="height:' + h + '%" title="' + String(i).padStart(2,'0') + ':00 · ' + fmtNum(v) + ' visits"></div>';
+      return '<div class="paov-hb' + (i === peakIdx ? ' peak' : '') + '" style="height:' + h + '%" title="' + fmtHour(i) + ' · ' + fmtNum(v) + ' visits"></div>';
     }).join('');
 
     document.getElementById('paovScroll').innerHTML = `
@@ -349,7 +449,7 @@
       </div>
 
       <div class="paov-tiles">
-        <div class="paov-tile"><div class="paov-tile-lbl">Visits</div><div class="paov-tile-val">${fmtNum(p.visits)}</div><div class="paov-tile-sub">selected range</div></div>
+        <div class="paov-tile"><div class="paov-tile-lbl">Visits</div><div class="paov-tile-val">${fmtNum(p.visits)}</div><div class="paov-tile-sub">${esc(rangeLabel())}</div></div>
         <div class="paov-tile"><div class="paov-tile-lbl">Ad Impressions</div><div class="paov-tile-val">${p.imp ? fmtNum(p.imp) : '—'}</div><div class="paov-tile-sub">${p.imp ? fmtNum(Math.round(p.imp / Math.max(1, p.visits) * 10) / 10) + ' per visit' : 'no ad slots on this page'}</div></div>
         <div class="paov-tile"><div class="paov-tile-lbl">Ad Clicks</div><div class="paov-tile-val">${p.clicks ? fmtNum(p.clicks) : '—'}</div><div class="paov-tile-sub">${p.imp ? ctrText(p) + ' CTR' : 'no ad slots on this page'}</div></div>
         <div class="paov-tile"><div class="paov-tile-lbl">Unique Users</div><div class="paov-tile-val">${fmtNum(p.uniques)}</div><div class="paov-tile-sub">${Math.round(p.uniques / p.visits * 100)}% of visits</div></div>
@@ -359,7 +459,7 @@
 
       <div class="paov-sec-label">24h Activity — peak ${peakLabel}</div>
       <div class="paov-hourbars">${hourBars}</div>
-      <div class="paov-hourlbls"><span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span></div>
+      <div class="paov-hourlbls"><span>12am</span><span>3am</span><span>6am</span><span>9am</span><span>12pm</span><span>3pm</span><span>6pm</span><span>9pm</span></div>
 
       <div class="paov-sec-label">Traffic Sources</div>
       <div>

@@ -149,6 +149,11 @@ router.post('/book-edits/:id/reject', writeLimiter, audit('senior.bookEdits.reje
 
 // authors + invites
 router.get('/authors', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.res('authors').list);
+// This editor's own authors (scoped by EditorAssignment) + invite provenance.
+router.get('/my-authors', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.myAuthors);
+// Editor-invite code: signup with it ⇒ writer role + auto-assignment.
+router.get('/referral-code', generalLimiter, ctrl.referralCode);
+router.post('/referral-code/regenerate', writeLimiter, audit('senior.referral.rotate'), ctrl.rotateReferralCode);
 router.get('/invites', generalLimiter, ctrl.res('invites').list);
 router.post('/invites', writeLimiter, audit('senior.invites.create'),
   validate(z.object({ body: anyBody })), ctrl.res('invites').create);

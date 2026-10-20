@@ -108,19 +108,25 @@
       { id:'RPT-212', targetType:'author', target:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', reason:'Reader reported impersonation — a fan account was posting chapter previews before official release.', reportedBy:'Reader', reporterType:'Reader', severity:'medium', filed:'1w ago', status:'removed', resolvedBy:'Adaeze Bello', resolvedAt:'6d ago', resolutionNote:'Confirmed the fan account was unauthorized and unrelated to the author. Content taken down by the platform team.' },
     ],
 
+    // `pending` = submissions parked awaiting review (drives the needs-an-editor queue).
+    // AW-13..AW-15 are in NO seniorEditorAssignments row → they show up unassigned,
+    // exactly like an organic reader→writer in the backend.
     authorPool: [
-      { id:'AW-01', handle:'Ada_Writes',      name:'Ada Writes',       avatar:'https://i.pravatar.cc/100?img=32', genres:['romance','betrayal','mafia'],   books:3, reads:'1.28M', verified:true },
-      { id:'AW-02', handle:'Sarah_Odum',       name:'Sarah Odum',       avatar:'https://i.pravatar.cc/100?img=48', genres:['billionaire','romance'],        books:2, reads:'2.1M',  verified:true },
-      { id:'AW-03', handle:'Luna_Grey',        name:'Luna Grey',        avatar:'https://i.pravatar.cc/100?img=15', genres:['fantasy','werewolf'],           books:2, reads:'890K',  verified:true },
-      { id:'AW-04', handle:'Ifeanyi_Story',    name:'Ifeanyi Story',    avatar:'https://i.pravatar.cc/100?img=53', genres:['twist','drama','romance'],      books:1, reads:'620K',  verified:true },
-      { id:'AW-05', handle:'Chiamaka_N',       name:'Chiamaka Nwosu',   avatar:'https://i.pravatar.cc/100?img=47', genres:['family','drama','betrayal'],    books:1, reads:'420K',  verified:false },
-      { id:'AW-06', handle:'Zara_M',           name:'Zara Mohammed',    avatar:'https://i.pravatar.cc/100?img=16', genres:['revenge','betrayal','romance'], books:1, reads:'340K',  verified:true },
-      { id:'AW-07', handle:'Efe_O',            name:'Efe Okoro',        avatar:'https://i.pravatar.cc/100?img=22', genres:['elegy','romance','drama'],      books:1, reads:'510K',  verified:true },
-      { id:'AW-08', handle:'Kemi_A',           name:'Kemi Adeyemi',     avatar:'https://i.pravatar.cc/100?img=28', genres:['campus','romance','drama'],     books:1, reads:'180K',  verified:false },
-      { id:'AW-09', handle:'Bode_Ilo',         name:'Bode Ilo',         avatar:'https://i.pravatar.cc/100?img=12', genres:['campus','comedy'],              books:1, reads:'260K',  verified:false },
-      { id:'AW-10', handle:'Marcus_Webb',      name:'Marcus Webb Jr.',   avatar:'https://i.pravatar.cc/100?img=12', genres:['drama','fantasy'],              books:1, reads:'150K',  verified:false },
-      { id:'AW-11', handle:'Wren_O',           name:'Wren Okonkwo',     avatar:'https://i.pravatar.cc/100?img=41', genres:['romance','drama'],              books:1, reads:'210K',  verified:true },
-      { id:'AW-12', handle:'Elena_V',          name:'Elena Vasquez',    avatar:'https://i.pravatar.cc/100?img=31', genres:['romance','betrayal'],           books:1, reads:'180K',  verified:true },
+      { id:'AW-01', handle:'Ada_Writes',      name:'Ada Writes',       avatar:'https://i.pravatar.cc/100?img=32', genres:['romance','betrayal','mafia'],   books:3, reads:'1.28M', verified:true,  pending:2 },
+      { id:'AW-02', handle:'Sarah_Odum',       name:'Sarah Odum',       avatar:'https://i.pravatar.cc/100?img=48', genres:['billionaire','romance'],        books:2, reads:'2.1M',  verified:true,  pending:1 },
+      { id:'AW-03', handle:'Luna_Grey',        name:'Luna Grey',        avatar:'https://i.pravatar.cc/100?img=15', genres:['fantasy','werewolf'],           books:2, reads:'890K',  verified:true,  pending:0 },
+      { id:'AW-04', handle:'Ifeanyi_Story',    name:'Ifeanyi Story',    avatar:'https://i.pravatar.cc/100?img=53', genres:['twist','drama','romance'],      books:1, reads:'620K',  verified:true,  pending:3 },
+      { id:'AW-05', handle:'Chiamaka_N',       name:'Chiamaka Nwosu',   avatar:'https://i.pravatar.cc/100?img=47', genres:['family','drama','betrayal'],    books:1, reads:'420K',  verified:false, pending:1 },
+      { id:'AW-06', handle:'Zara_M',           name:'Zara Mohammed',    avatar:'https://i.pravatar.cc/100?img=16', genres:['revenge','betrayal','romance'], books:1, reads:'340K',  verified:true,  pending:0 },
+      { id:'AW-07', handle:'Efe_O',            name:'Efe Okoro',        avatar:'https://i.pravatar.cc/100?img=22', genres:['elegy','romance','drama'],      books:1, reads:'510K',  verified:true,  pending:2 },
+      { id:'AW-08', handle:'Kemi_A',           name:'Kemi Adeyemi',     avatar:'https://i.pravatar.cc/100?img=28', genres:['campus','romance','drama'],     books:1, reads:'180K',  verified:false, pending:1 },
+      { id:'AW-09', handle:'Bode_Ilo',         name:'Bode Ilo',         avatar:'https://i.pravatar.cc/100?img=12', genres:['campus','comedy'],              books:1, reads:'260K',  verified:false, pending:0 },
+      { id:'AW-10', handle:'Marcus_Webb',      name:'Marcus Webb Jr.',  avatar:'https://i.pravatar.cc/100?img=12', genres:['drama','fantasy'],              books:1, reads:'150K',  verified:false, pending:1 },
+      { id:'AW-11', handle:'Wren_O',           name:'Wren Okonkwo',     avatar:'https://i.pravatar.cc/100?img=41', genres:['romance','drama'],              books:1, reads:'210K',  verified:true,  pending:0 },
+      { id:'AW-12', handle:'Elena_V',          name:'Elena Vasquez',    avatar:'https://i.pravatar.cc/100?img=31', genres:['romance','betrayal'],           books:1, reads:'180K',  verified:true,  pending:2 },
+      { id:'AW-13', handle:'Tomi_Ads',         name:'Tomi Adesanya',    avatar:'https://i.pravatar.cc/100?img=68', genres:['thriller','crime'],             books:1, reads:'94K',   verified:false, pending:3 },
+      { id:'AW-14', handle:'Nneka_R',          name:'Nneka Richards',   avatar:'https://i.pravatar.cc/100?img=44', genres:['romance','slice-of-life'],      books:1, reads:'61K',   verified:false, pending:2 },
+      { id:'AW-15', handle:'Femi_T',           name:'Femi Thomas',      avatar:'https://i.pravatar.cc/100?img=59', genres:['sci-fi','adventure'],          books:1, reads:'27K',   verified:false, pending:0 },
     ],
 
     seniorEditorAssignments: {
@@ -203,6 +209,34 @@
     async getAuthorPool() { return clone(DEMO.authorPool); },
     async getAssignments() { return clone(DEMO.seniorEditorAssignments); },
     async saveAssignments(a) { Object.assign(DEMO.seniorEditorAssignments, a); return { ok: true }; },
+
+    // "Needs an editor" queue — pool members in NO assignment row, i.e. a writer
+    // nobody owns yet. Mirrors GET /api/chief/unassigned-authors.
+    async getUnassignedAuthors(opts) {
+      const pool = clone(DEMO.authorPool);
+      const taken = new Set();
+      Object.keys(DEMO.seniorEditorAssignments).forEach(function (ed) {
+        (DEMO.seniorEditorAssignments[ed] || []).forEach(function (id) { taken.add(id); });
+      });
+      let list = pool.filter(function (a) { return !taken.has(a.id); }).map(function (a) {
+        const pending = a.pending || 0;
+        return {
+          id: a.id, name: a.name, username: a.handle, handle: a.handle,
+          email: a.handle + '@droboard.io', avatar: a.avatar,
+          pendingSubmissions: pending,
+          reason: pending > 0 ? 'submitted' : 'unassigned',
+          status: 'active', genres: a.genres || [],
+        };
+      });
+      if (opts && (opts.waiting === '1' || opts.waiting === 1)) {
+        list = list.filter(function (x) { return x.pendingSubmissions > 0; });
+      }
+      list.sort(function (a, b) { return b.pendingSubmissions - a.pendingSubmissions || a.name.localeCompare(b.name); });
+      return {
+        items: list, total: list.length,
+        waiting: list.filter(function (x) { return x.pendingSubmissions > 0; }).length,
+      };
+    },
 
     async addPendingEditor(data) {
       var id = 'SE-' + String(DEMO.seniorEditors.length + 1).padStart(2, '0');

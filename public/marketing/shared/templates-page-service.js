@@ -108,8 +108,6 @@ function previewTpl(id){
   }});
 }
 function closeTmplModal(){ document.getElementById('tmplModalBg').classList.remove('open'); }
-window.closeTmplModal=closeTmplModal;
-document.getElementById('tmplModalBg').addEventListener('click', function(e){ if(e.target===this) closeTmplModal(); });
 function openNew(){
   editingId=null; document.getElementById('tmplModalTitle').textContent='New Template';
   document.getElementById('teName').value=''; document.getElementById('teDesc').value='';
@@ -132,9 +130,6 @@ function openEdit(id){
   renderIconGrid(); renderVarChips(t.vars||[]);
   document.getElementById('tmplModalBg').classList.add('open');
 }
-document.getElementById('teSize').addEventListener('change', function(){ const isC=this.value==='9:16' || document.getElementById('teName').value.toLowerCase().indexOf('countdown')!==-1; document.getElementById('teVariantsWrap').style.display=isC?'':'none'; });
-document.getElementById('teName').addEventListener('input', function(){ if(this.value.toLowerCase().indexOf('countdown')!==-1) document.getElementById('teVariantsWrap').style.display=''; });
-document.getElementById('teAccent').addEventListener('input', function(){ document.getElementById('teAccentHex').textContent=this.value; });
 function onSave(){
   const name=document.getElementById('teName').value.trim(); if(!name){ toast('Name is required'); return; }
   const size=document.getElementById('teSize').value||'1:1';
@@ -168,6 +163,12 @@ document.getElementById('tmplQ').addEventListener('input', render);
 document.getElementById('tmplSize').addEventListener('change', render);
 document.getElementById('tmplNew').addEventListener('click', openNew);
   document.getElementById('teSave').addEventListener('click', onSave);
+  document.getElementById('tmplModalClose').addEventListener('click', closeTmplModal);
+  document.getElementById('tmplModalCancel').addEventListener('click', closeTmplModal);
+  document.getElementById('tmplModalBg').addEventListener('click', function(e){ if(e.target===this) closeTmplModal(); });
+  document.getElementById('teSize').addEventListener('change', function(){ const isC=this.value==='9:16' || document.getElementById('teName').value.toLowerCase().indexOf('countdown')!==-1; document.getElementById('teVariantsWrap').style.display=isC?'':'none'; });
+  document.getElementById('teName').addEventListener('input', function(){ if(this.value.toLowerCase().indexOf('countdown')!==-1) document.getElementById('teVariantsWrap').style.display=''; });
+  document.getElementById('teAccent').addEventListener('input', function(){ document.getElementById('teAccentHex').textContent=this.value; });
   render();
 }
 window.TemplatesService={init:init,__ready:true};

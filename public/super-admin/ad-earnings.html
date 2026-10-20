@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Ad Earnings · Platform Dashboard</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.ae-pools{display:grid;gap:16px;margin-bottom:18px;grid-template-columns:repeat(4,1fr)}.ae-2col{display:grid;gap:16px;margin-bottom:18px;grid-template-columns:1.15fr .85fr}
+@media(max-width:1000px){.ae-pools{grid-template-columns:repeat(2,1fr)}.ae-2col{grid-template-columns:1fr}}
+@media(max-width:560px){.ae-pools{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}.panel-head h2{font-size:14px;font-weight:800}.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px}
+.ae-pool{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.ae-pool-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}.ae-pool-ico{width:34px;height:34px;border-radius:10px;background:var(--accent-soft,#ffe1eb);color:var(--accent,#ff0050);display:flex;align-items:center;justify-content:center;font-size:14px}.ae-pool-lbl{font-size:12px;font-weight:700;color:var(--text-muted)}.ae-pool-val{font-size:22px;font-weight:800}.ae-pool-sub{font-size:10.5px;color:var(--text-faint);margin-top:4px}
+table.ae-tbl{width:100%;border-collapse:collapse;font-size:12px}table.ae-tbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);padding:8px 10px;border-bottom:1px solid var(--border)}table.ae-tbl td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.ae-chip{display:inline-block;font-size:9.5px;font-weight:800;border-radius:20px;padding:2px 8px;background:var(--green-bg,#e2f8ea);color:var(--green,#16a34a)}.ae-chip.unpaid{background:#fef3d8;color:#d97706}.ae-chip.plat{background:var(--blue-bg,#e3ecfd);color:var(--blue,#2f7de1)}
+.ae-splitbar{display:flex;height:10px;border-radius:8px;overflow:hidden;background:var(--border);margin:8px 0 4px}.ae-splitbar .plat{background:var(--blue,#2f7de1)}.ae-splitbar .auth{background:var(--accent,#ff0050)}.ae-splitleg{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-muted);font-weight:600}
+.ae-row-lbl{font-size:11px;font-weight:800;margin:10px 0 2px;display:flex;justify-content:space-between}.ae-row-lbl span{color:var(--text-faint);font-weight:700}
+.ae-filter{width:100%;background:var(--input-bg,#fafaff);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--text);font-family:inherit;margin-bottom:10px;cursor:pointer}
+.btn-ae{padding:8px 16px;border-radius:10px;border:none;background:var(--accent,#ff0050);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}.btn-ae:disabled{opacity:.45;cursor:not-allowed}.btn-ae.ghost{background:var(--input-bg,#fafaff);color:var(--text);border:1px solid var(--input-border)}
+.ae-av{width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px}.ae-who{display:flex;align-items:center;gap:0;font-weight:700}
+.ae-empty{padding:22px;text-align:center;color:var(--text-faint);font-size:12.5px}.ae-note{font-size:11.5px;color:var(--text-muted);margin-top:10px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--input-bg,#fafaff)}
+.ae-storylink{color:var(--text);font-weight:700;text-decoration:none}.ae-storylink:hover{color:var(--accent,#ff0050);text-decoration:underline}
+</style></head>
+<body><div id="dashboardRoot">
+<div class="ae-pools" id="poolRow"></div>
+<div class="panel" style="margin-bottom:18px">
+  <div class="panel-head">
+    <h2>Authors Payable</h2>
+    <select class="ae-filter" id="periodSel" style="width:auto;margin:0;">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+    </select>
+  </div>
+  <div class="panel-sub">Story-owned ad slots (in-chapter, end-of-story, story comments) split 70% platform / 30% author. All other surfaces are 100% platform.</div>
+  <div style="overflow-x:auto;"><table class="ae-tbl"><thead><tr><th>Author</th><th>Stories</th><th>Impressions</th><th>Clicks</th><th>Author share</th><th>Status</th><th></th></tr></thead><tbody id="authorBody"></tbody></table></div>
+  <div class="ae-note">Payouts stamp paid-at on the author's ledger rows; already-paid periods are excluded from the payable balance. Backend replaces localStorage at go-live (see ad-revenue-service.js contract).</div>
+</div>
+<div class="ae-2col">
+  <div class="panel">
+    <div class="panel-head"><h2>Revenue by Surface</h2></div>
+    <div class="panel-sub">Story surfaces feed the author split; platform surfaces keep 100%.</div>
+    <div id="surfaceList"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Split Overview</h2></div>
+    <div class="panel-sub">Platform vs author share for the selected period.</div>
+    <div id="splitOverview"></div>
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Story Earnings</h2></div>
+  <div class="panel-sub">Per-story leaderboard for story-owned ad inventory.</div>
+  <div style="overflow-x:auto;"><table class="ae-tbl"><thead><tr><th>Story</th><th>Author</th><th>Impressions</th><th>Clicks</th><th>Gross</th><th>Platform</th><th>Author</th></tr></thead><tbody id="storyBody"></tbody></table></div>
+</div>
+</div>
+<script src="shared/super-admin-sidebar.js"></script>
+<script src="../services/ad-revenue-service.js"></script>
+<script src="ad-earnings-service.js"></script>
+<script>AdEarningsService.init();</script></body></html>

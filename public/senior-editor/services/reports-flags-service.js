@@ -11,6 +11,14 @@
 (function(){
 'use strict';
 
+var USE_API = false, API_BASE = '/api/senior-editor';
+async function callBackend(path, options){
+  if (!USE_API) return null;
+  var res = await fetch(API_BASE + path, options);
+  if (!res.ok) throw new Error('backend error: ' + res.status);
+  return res.json();
+}
+
 // Viewing SE — matches the sidebar user. Only this SE's rows ever render.
 const MY_SE_ID = 'SE-01';
 const VIEWER_NAME = 'Chioma Reddy';

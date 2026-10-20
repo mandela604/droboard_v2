@@ -143,12 +143,13 @@
     if (!pick) { el.style.display = "none"; return; }
     el.innerHTML = pick.html;
     el.style.display = "";
-    trackAd(pick.ad.id, "impression");
+    const sl = (el.id && el.id.indexOf("Top") > -1) ? "scrollReader:top" : "scrollReader:bottom";
+    trackAd(pick.ad.id, "impression", sl);
     try {
       DroboardAdCard.attach(el, {
         getAds: () => [pick.ad],
-        onOpen: (ad) => { if (ad) trackAd(ad.id, "click"); },
-        onCta: (ad) => { if (ad) trackAd(ad.id, "click"); toast("Opening story…"); },
+        onOpen: (ad) => { if (ad) trackAd(ad.id, "click", sl); },
+        onCta: (ad) => { if (ad) trackAd(ad.id, "click", sl); toast("Opening story…"); },
         onLike: () => {},
         onComment: () => {},
         onShare: () => {},
@@ -177,7 +178,7 @@
   let READER_SERVED = [];
   let READER_WORDS = 300;
   function readerWords() { return Math.min(2000, Math.max(50, parseInt(READER_WORDS, 10) || 300)); }
-  function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function trackAd(id, ev, slot) { try { if (id && window.AdService) AdService.track(id, ev, { page: "scroll-reader", slot: slot || "scrollReader:per-300-words", storyId: STORY_ID }); } catch (e) {} }
   // placement scrollReader.format: auto|embed|native|book|platform|banner
   function slotFormatAllows(type) {
     const f = (READER_SLOT_FORMAT || 'auto');
@@ -512,7 +513,10 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       });
     }
     document.querySelectorAll(".ad-slot[data-adid]").forEach(el => {
-      el.addEventListener("click", () => trackAd(el.dataset.adid, "click"));
+      const sl = (el.id && el.id.indexOf("Top") > -1) ? "scrollReader:top"
+        : (el.id && el.id.indexOf("Bottom") > -1) ? "scrollReader:bottom"
+        : "scrollReader:per-300-words";
+      el.addEventListener("click", () => trackAd(el.dataset.adid, "click", sl));
     });
     paintChapterCommunities();
 
@@ -606,14 +610,16 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   function wireFloatingControls() {
     const sb = document.getElementById("scrollBody");
     const fc = document.getElementById("floatingControls");
+    const toTop = document.getElementById("toTopArrow");
     let hideTimer = null;
-    function showControls() { fc.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => fc.classList.remove("show"), 3000); }
-    function hideControlsNow() { fc.classList.remove("show"); clearTimeout(hideTimer); }
+    let topScrolling = false;
+    function showControls() { fc.classList.add("show"); if (toTop) toTop.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => { fc.classList.remove("show"); if (toTop) toTop.classList.remove("show"); }, 3000); }
+    function hideControlsNow() { fc.classList.remove("show"); if (toTop) toTop.classList.remove("show"); clearTimeout(hideTimer); }
     sb.addEventListener("click", e => {
       if (e.target.closest(".eb-btn, .dac-banner, .unlock-opt, .dcs-wrap, a, button")) return;
       fc.classList.contains("show") ? hideControlsNow() : showControls();
     });
-    sb.addEventListener("scroll", hideControlsNow, { passive: true });
+    sb.addEventListener("scroll", () => { if (!topScrolling) hideControlsNow(); }, { passive: true });
     document.getElementById("fcChapters").addEventListener("click", openChPanel);
     document.getElementById("fcSettings").addEventListener("click", openSettings);
     document.getElementById("fcBack").addEventListener("click", function () {
@@ -621,6 +627,17 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     });
     document.getElementById("fcCoinPill").addEventListener("click", function () {
       window.location.href = "store.html";
+    });
+    document.getElementById("fcLogo").addEventListener("click", function () {
+      window.location.href = "discover.html";
+    });
+    if (toTop) toTop.addEventListener("click", function () {
+      topScrolling = true;
+      showControls();
+      try { sb.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { sb.scrollTop = 0; }
+      const end = function () { topScrolling = false; };
+      sb.addEventListener("scrollend", end, { once: true });
+      setTimeout(end, 900);
     });
   }
 
@@ -753,7 +770,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     updateCoinDisplays();
     buildReaderColumn();
     fillChapterEdges();
-    READER_SERVED.forEach(id => trackAd(id, "impression"));
+    // Impressions already tracked per-render in renderAdSlot — no batch re-track here.
     buildChaptersPanel();
     wireComponents();
     initCommunities();

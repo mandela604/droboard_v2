@@ -35,6 +35,7 @@
     { key: 'templates',            label: 'Flyer Templates',        icon: 'fa-layer-group',      href: 'templates.html' },
     { key: 'ad-manager',           label: 'Ad Manager',             icon: 'fa-rectangle-ad',     href: 'ad-manager.html' },
     { key: 'traffic',              label: 'Traffic & Activity',     icon: 'fa-chart-simple',     href: 'traffic.html' },
+    { key: 'acquisition',          label: 'Acquisition',            icon: 'fa-people-arrows',    href: 'acquisition.html' },
     { key: 'marketing-analytics',  label: 'Marketing Analytics',    icon: 'fa-chart-line',       href: 'marketing-analytics.html' },
   ];
 
@@ -232,7 +233,7 @@
         <div class="mkg-sb-overlay" id="${instId}-overlay"></div>
         <aside class="mkg-sidebar" id="${instId}-sidebar">
           <div class="mkg-sb-logo">
-            <div class="mkg-sb-logo-ico"><i class="fas fa-rocket"></i></div>
+            <div class="mkg-sb-logo-ico" style="overflow:hidden;padding:0"><img src="../assets/droboard-icon.png" alt="DroBoard" style="width:100%;height:100%;object-fit:cover;border-radius:11px;display:block"/></div>
             <div class="mkg-sb-logo-txt"><b>DROBOARD</b><b>MARKETING & GROWTH</b></div>
             <button class="mkg-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>

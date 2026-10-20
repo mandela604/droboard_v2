@@ -10,6 +10,8 @@
   if (window.ReferService) return;
 
   var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api' };
+  // Referrals are mounted at the API root (/api/referrals/*), not under /api/author.
+  var REFERRALS_BASE = '/api';
   var REWARD_COINS = 5;
 
   function lsGet(k, fb) { try { var v = localStorage.getItem(k); return v == null ? fb : JSON.parse(v); } catch (e) { return fb; } }
@@ -37,7 +39,7 @@
     var c = new AbortController();
     var t = setTimeout(function () { c.abort(); }, 3000);
     try {
-      var res = await fetch(CFG.API_BASE + path, Object.assign({ signal: c.signal }, opts || {}));
+      var res = await fetch(REFERRALS_BASE + path, Object.assign({ signal: c.signal }, opts || {}));
       clearTimeout(t);
       if (!res.ok) throw new Error(res.status);
       return await res.json();

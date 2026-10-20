@@ -35,11 +35,11 @@ router.get('/reports/story/stats', requireAuth, requireRole('chief_editor', 'adm
 router.get('/reports/story/:id', requireAuth, requireRole('chief_editor', 'admin'),
   validate(z.object({ params: z.object({ id }) })), ctrl.get);
 
-router.post('/:id/resolve', requireAuth, requireRole('chief_editor', 'admin'), audit('chief.reports.resolve'),
+router.post('/reports/story/:id/resolve', requireAuth, requireRole('chief_editor', 'admin'), audit('chief.reports.resolve'),
   validate(z.object({ params: z.object({ id }), body: noteBody })), ctrl.resolve);
-router.post('/:id/dismiss', requireAuth, requireRole('chief_editor', 'admin'), audit('chief.reports.dismiss'),
+router.post('/reports/story/:id/dismiss', requireAuth, requireRole('chief_editor', 'admin'), audit('chief.reports.dismiss'),
   validate(z.object({ params: z.object({ id }), body: noteBody })), ctrl.dismiss);
-router.post('/:id/reopen', requireAuth, requireRole('chief_editor', 'admin'), audit('chief.reports.reopen'),
+router.post('/reports/story/:id/reopen', requireAuth, requireRole('chief_editor', 'admin'), audit('chief.reports.reopen'),
   validate(z.object({ params: z.object({ id }), body: noteBody })), ctrl.reopen);
 
 module.exports = router;

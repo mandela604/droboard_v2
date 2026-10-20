@@ -33,7 +33,28 @@ var PER_PAGE = 8;
 function statusPill(s) {
   var m = { awaiting: 'awaiting', signed: 'signed', active: 'active', rejected: 'rejected', expired: 'expired' };
   var l = { awaiting: 'Awaiting Signature', signed: 'Signed', active: 'Active', rejected: 'Rejected', expired: 'Expired' };
-  return '<span class="status-pill ' + (m[s] || '') + '"><span class="dot"></span>' + (l[s] || s) + '</span>';
+  return '<span class="status-pill ' + (m[s] || '') + '"><span class="dot"></span> ' + (l[s] || s) + '</span>';
+}
+
+/* Identity (KYC) badge — three paths: self NIN verified, under-18 guardian consent,
+   adult pending NIN (alternate ID submitted). Backend rows carry c.kyc.type; demo
+   fallback below only for the seeded contracts. */
+var KYC_DEMO = { 'Layla Haddad': 'pending', 'Mia Carter': 'guardian' };
+function kycTypeOf(c) {
+  if (c && c.kyc && c.kyc.type) return c.kyc.type;
+  return KYC_DEMO[c && c.author] || 'self';
+}
+function kycBadge(c) {
+  var t = kycTypeOf(c);
+  if (t === 'guardian') return '<span class="kyc-badge guardian"><i class="fas fa-user-shield"></i> Guardian consented</span>';
+  if (t === 'pending') return '<span class="kyc-badge pending"><i class="fas fa-hourglass-half"></i> Pending NIN</span>';
+  return '<span class="kyc-badge ok"><i class="fas fa-shield-halved"></i> KYC verified</span>';
+}
+function kycDetail(c) {
+  var t = kycTypeOf(c);
+  if (t === 'guardian') return 'Guardian consented';
+  if (t === 'pending') return 'Pending NIN — alternate ID submitted, verify before payment';
+  return 'KYC verified';
 }
 
 function money(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n || 0).toLocaleString('en-US'); }
@@ -116,7 +137,7 @@ function renderContracts() {
     acts += '<button class="act-btn" title="View" data-action="view" data-idx="' + idx + '"><i class="fas fa-eye"></i></button>';
     return '<tr data-idx="' + idx + '">' +
       '<td><div class="contract-cell"><div class="contract-icon" style="background:' + ibg + ';color:' + ic + '"><i class="fas fa-file-contract"></i></div><div><div class="contract-id">' + c.id + '</div><div class="contract-type">' + c.type + '</div></div></div></td>' +
-      '<td><div class="author-cell"><img src="' + c.authorAv + '" alt=""/><span class="author-name">' + c.author + '</span></div></td>' +
+      '<td><div class="author-cell"><img src="' + c.authorAv + '" alt=""/><span><span class="author-name">' + c.author + '</span><br/>' + kycBadge(c) + '</span></div></td>' +
       '<td><div class="book-title">' + c.book + '</div></td>' +
       '<td>' + statusPill(c.status) + '</td>' +
       '<td class="date-cell">' + c.dateSent + '</td>' +
@@ -139,7 +160,11 @@ function renderPageBtns(tp) {
 }
 
 function doApproveContract(idx) {
-  var c = allContracts[idx]; c.status = 'signed'; c.signedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  var c = allContracts[idx];
+  var t = kycTypeOf(c);
+  if (t === 'pending') { toast('Identity pending — verify ' + c.author + '\u2019s NIN before signing this contract.'); return; }
+  if (c.kyc && (!c.kyc.idPhotos || !c.kyc.idPhotos.front || !c.kyc.idPhotos.back)) { toast('ID photos (front + back) required before signing.'); return; }
+  c.status = 'signed'; c.signedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   toast('Contract approved — author notified'); renderStats(); renderContracts();
 }
 function doRejectContract(idx) {
@@ -185,6 +210,7 @@ function openViewModal(c) {
     '<div class="view-detail"><div><div class="view-label">Contract ID</div><div class="view-value">' + c.id + '</div></div><div><div class="view-label">Status</div>' + statusPill(c.status) + '</div></div>' +
     '<div class="view-detail"><div><div class="view-label">Author</div><div class="view-value">' + c.author + '</div></div><div><div class="view-label">Book</div><div class="view-value">' + c.book + '</div></div></div>' +
     '<div class="view-detail"><div><div class="view-label">Type</div><div class="view-value">' + c.type + '</div></div><div><div class="view-label">Duration</div><div class="view-value">' + c.duration + '</div></div></div>' +
+    '<div class="view-detail"><div><div class="view-label">Identity</div><div class="view-value">' + kycBadge(c) + ' <span style="font-size:11px;color:var(--text-muted)">' + kycDetail(c) + '</span></div></div><div></div></div>' +
     '<div class="view-detail"><div><div class="view-label">Revenue Split</div><div class="view-value">' + c.revenue + '%</div></div><div><div class="view-label">Advance</div><div class="view-value">' + money(c.advance) + '</div></div></div>' +
     '<div class="view-detail"><div><div class="view-label">Date Sent</div><div class="view-value">' + c.dateSent + '</div></div><div><div class="view-label">Signed Date</div><div class="view-value">' + c.signedDate + '</div></div></div>' +
     (c.notes ? '<div class="view-detail"><div><div class="view-label">Notes</div><div class="view-value">' + c.notes + '</div></div></div>' : '') +
@@ -309,7 +335,7 @@ function renderSignedList() {
     var sel = c.id === signedSelectedId ? 'selected' : '';
     return '<tr class="' + sel + '" data-sid="' + c.id + '">' +
       '<td><div class="contract-cell"><div class="contract-icon" style="background:var(--green-bg);color:var(--green)"><i class="fas fa-file-signature"></i></div><div><div class="contract-id">' + c.id + '</div><div class="contract-type">' + c.type + '</div></div></div></td>' +
-      '<td><div class="author-cell"><img src="' + c.authorAv + '" alt=""/><span class="author-name">' + c.author + '</span></div></td>' +
+      '<td><div class="author-cell"><img src="' + c.authorAv + '" alt=""/><span><span class="author-name">' + c.author + '</span><br/>' + kycBadge(c) + '</span></div></td>' +
       '<td><div class="book-title">' + c.title + '</div></td>' +
       '<td class="date-cell">' + c.duration + '</td>' +
       '<td class="date-cell">' + c.signedAt + '</td>' +

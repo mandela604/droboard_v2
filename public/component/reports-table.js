@@ -28,7 +28,9 @@ if (window.__droboardReportsTable) return;
 window.__droboardReportsTable = true;
 
 const USE_API = false;
-const API_BASE = '/api/reports/story';
+// Chief serves this at /api/chief/reports/story; senior serves its own queue at
+// /api/senior-editor/reports. Pages can override before this file loads.
+const API_BASE = window.DROBOARD_REPORTS_API_BASE || '/api/chief/reports/story';
 const LS_KEY = 'dro_reports_table';
 async function callBackend(path, options){
   if (!USE_API) return null;

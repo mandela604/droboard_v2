@@ -3,27 +3,30 @@ const senior = require('../services/senior.service');
 const base = require('./base.controller');
 
 function res(name) {
+  // Every access is scoped to the caller: senior editors only see their own
+  // assigned authors' work (see senior.service.scopedResources).
+  const scoped = async (req) => (await senior.scopedResources(req.user))[name]();
   return {
-    list: async (req, res) => base.wrap(res, async () => senior.R[name]().list(req.valid.query)),
-    get: async (req, res) => base.wrap(res, async () => senior.R[name]().get(req.valid.params.id)),
+    list: async (req, res) => base.wrap(res, async () => (await scoped(req)).list(req.valid.query)),
+    get: async (req, res) => base.wrap(res, async () => (await scoped(req)).get(req.valid.params.id)),
     create: async (req, res) => base.wrap(res, async () => {
-      const out = await senior.R[name]().create(req.valid.body);
+      const out = await (await scoped(req)).create(req.valid.body);
       res.status(201);
       return out;
     }),
     update: async (req, res) => base.wrap(res, async () =>
-      senior.R[name]().update(req.valid.params.id, req.valid.body)),
+      (await scoped(req)).update(req.valid.params.id, req.valid.body)),
     remove: async (req, res) => base.wrap(res, async () =>
-      senior.R[name]().remove(req.valid.params.id)),
+      (await scoped(req)).remove(req.valid.params.id)),
     approve: async (req, res) => base.wrap(res, async () =>
-      senior.R[name]().setStatus(req.valid.params.id, 'approved')),
+      (await scoped(req)).setStatus(req.valid.params.id, 'approved')),
     reject: async (req, res) => base.wrap(res, async () =>
-      senior.R[name]().setStatus(req.valid.params.id, 'rejected')),
+      (await scoped(req)).setStatus(req.valid.params.id, 'rejected')),
   };
 }
 
 async function dashboard(req, res) {
-  return base.wrap(res, async () => senior.dashboard());
+  return base.wrap(res, async () => senior.dashboard(req.user));
 }
 
 async function activity(req, res) {
@@ -32,22 +35,23 @@ async function activity(req, res) {
 
 // Edit proposals: approve APPLIES content to the live book/chapter (the only
 // time an author edit takes effect). Reject leaves live untouched + note.
+// req.user rides along so the service can enforce author ownership.
 async function approveChapterEdit(req, res) {
-  return base.wrap(res, async () => senior.approveChapterEdit(req.valid.params.id, req.user.id));
+  return base.wrap(res, async () => senior.approveChapterEdit(req.valid.params.id, req.user.id, req.user));
 }
 
 async function rejectChapterEdit(req, res) {
   const note = req.valid.body && req.valid.body.note;
-  return base.wrap(res, async () => senior.rejectChapterEdit(req.valid.params.id, req.user.id, note));
+  return base.wrap(res, async () => senior.rejectChapterEdit(req.valid.params.id, req.user.id, note, req.user));
 }
 
 async function approveBookEdit(req, res) {
-  return base.wrap(res, async () => senior.approveBookEdit(req.valid.params.id, req.user.id));
+  return base.wrap(res, async () => senior.approveBookEdit(req.valid.params.id, req.user.id, req.user));
 }
 
 async function rejectBookEdit(req, res) {
   const note = req.valid.body && req.valid.body.note;
-  return base.wrap(res, async () => senior.rejectBookEdit(req.valid.params.id, req.user.id, note));
+  return base.wrap(res, async () => senior.rejectBookEdit(req.valid.params.id, req.user.id, note, req.user));
 }
 
 // Contract sign: capture monetization pricing + lock terms.
@@ -86,12 +90,27 @@ async function reviewDecide(req, res) {
     const { ReviewSubmission } = require('../models/application.model');
     const s = await ReviewSubmission.findOne({ id: req.valid.params.id });
     if (!s) { const e = new Error('not_found'); e.status = 404; throw e; }
+    await senior.assertOwned(req.user, s.authorId);
     if (!['approved', 'rejected'].includes(req.valid.body.action)) {
       const e = new Error('bad_action'); e.status = 400; throw e;
     }
     s.status = req.valid.body.action;
     if (req.valid.body.feedback !== undefined) s.feedback = req.valid.body.feedback;
+    // Records who decided + (re)routes to the acting editor if it was unassigned.
+    s.assignedSeId = req.user.id;
     await s.save();
+    // Product rule: a reader becomes a WRITER only when a submission of theirs
+    // is approved. Editor-code signups already hold the role, so this is a no-op
+    // for them; organic readers get the upgrade exactly once, here.
+    if (s.status === 'approved') {
+      try {
+        const { User } = require('../models/user.model');
+        await User.updateOne(
+          { id: String(s.authorId), roles: { $ne: 'writer' } },
+          { $addToSet: { roles: 'writer' }, $set: { primaryRole: 'writer' } }
+        );
+      } catch (e) {}
+    }
     return s.toJSON();
   });
 }
@@ -231,10 +250,31 @@ async function unflagBook(req, res) {
   });
 }
 
+// Invite-authors page: this editor's authors + their shared code provenance.
+async function myAuthors(req, res) {
+  return base.wrap(res, async () => senior.myAuthors(req.user, req.valid.query));
+}
+
+// The editor's own invite code (lazily minted) + rotation.
+// Signup with this code ⇒ writer role + auto-assigned to this editor.
+async function referralCode(req, res) {
+  return base.wrap(res, async () => {
+    const referrals = require('../services/referrals.service');
+    return { code: await referrals.ensureEditorCode(req.user.id) };
+  });
+}
+
+async function rotateReferralCode(req, res) {
+  return base.wrap(res, async () => {
+    const referrals = require('../services/referrals.service');
+    return { code: await referrals.rotateEditorCode(req.user.id) };
+  });
+}
+
 module.exports = {
   res, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
   approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
-  rateBook, flagBook, unflagBook,
+  rateBook, flagBook, unflagBook, myAuthors, referralCode, rotateReferralCode,
   verificationRequests: (req, res) => verificationList(req, res, 'requests'),
   verificationRecent: (req, res) => verificationList(req, res, 'recent'),
   verificationHistory: (req, res) => verificationList(req, res, 'history'),

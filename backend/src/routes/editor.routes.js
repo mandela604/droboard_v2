@@ -62,11 +62,11 @@ router.post('/withdrawals/:id/approve', requireRole('finance', 'admin'), audit('
 router.post('/withdrawals/:id/reject', requireRole('finance', 'admin'), audit('editor.withdrawals.reject'),
   validate(z.object({ params: z.object({ id }) })), ctrl.res('withdrawals').reject);
 
-// notifications (editor scope)
+// notifications (editor scope — only the requesting editor's own rows)
 router.get('/notifications', generalLimiter, async (req, res) => {
   const base = require('../controllers/base.controller');
   const { Notification } = require('../models/social.model');
-  return base.wrap(res, async () => Notification.find({}).sort({ createdAt: -1 }).limit(50).lean());
+  return base.wrap(res, async () => Notification.find({ recipientId: String(req.user.id) }).sort({ createdAt: -1 }).limit(50).lean());
 });
 router.post('/notifications/mark-read', writeLimiter, ctrl.markNotificationsRead);
 

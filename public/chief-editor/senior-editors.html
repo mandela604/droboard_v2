@@ -136,49 +136,66 @@ body{font-family:'Inter',system-ui,sans-serif}
   </div>
 </div>
 
-<!-- Quota Modal -->
+<!-- Quota Modal (3-step wizard: Target → Payment → Review) -->
 <div class="modal-overlay" id="quotaModal">
-  <div class="modal-box">
+  <div class="modal-box epw-box">
     <div class="modal-head">
       <h3><i class="fas fa-bullseye" style="color:var(--accent)"></i> Manage Quota</h3>
       <button class="modal-close" id="quotaModalClose"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="modal-body">
-      <div class="quota-editor-info" id="quotaEditorInfo"></div>
-      <div class="form-row" style="margin-top:16px">
-        <label class="form-label">Monthly invite target</label>
-        <input class="form-input" id="quotaTarget" type="number" min="1" max="500"/>
+    <div class="epw-steps" id="quotaSteps">
+      <div class="epw-step on" data-step="1"><span class="epw-num">1</span> Target</div>
+      <div class="epw-step" data-step="2"><span class="epw-num">2</span> Payment</div>
+      <div class="epw-step" data-step="3"><span class="epw-num">3</span> Review</div>
+    </div>
+    <div class="modal-body epw-body">
+      <div class="epw-panel on" id="quotaP1">
+        <div class="quota-editor-info" id="quotaEditorInfo"></div>
+        <div class="form-row" style="margin-top:16px;margin-bottom:12px">
+          <label class="form-label">Monthly invite target</label>
+          <input class="form-input" id="quotaTarget" type="number" min="1" max="500"/>
+        </div>
+        <div class="form-row two-col" style="margin-bottom:12px">
+          <div><label class="form-label">Invited so far</label><input class="form-input" id="quotaInvited" type="number" min="0" disabled style="opacity:.6"/></div>
+          <div><label class="form-label">Remaining</label><input class="form-input" id="quotaRemaining" type="number" disabled style="opacity:.6"/></div>
+        </div>
+        <div class="form-row" style="margin-bottom:0"><label class="form-label">Deadline</label><input class="form-input" id="quotaDeadline" type="date"/></div>
       </div>
-      <div class="form-row two-col">
-        <div><label class="form-label">Invited so far</label><input class="form-input" id="quotaInvited" type="number" min="0" disabled style="opacity:.6"/></div>
-        <div><label class="form-label">Remaining</label><input class="form-input" id="quotaRemaining" type="number" disabled style="opacity:.6"/></div>
+      <div class="epw-panel" id="quotaP2">
+        <div class="form-row">
+          <label class="form-label">Payment type</label>
+          <select class="form-select" id="quotaPayType"><option value="fixed">Fixed Monthly Pay</option><option value="revenue-share">Revenue Share</option></select>
+        </div>
+        <div class="form-row" id="quotaFixedRow">
+          <label class="form-label">Monthly pay amount</label>
+          <input class="form-input" id="quotaPay" type="text"/>
+        </div>
+        <div class="form-row" id="quotaRevenueRow" style="display:none">
+          <label class="form-label">Revenue share percentage</label>
+          <input class="form-input" id="quotaRevenueShare" type="text" placeholder="e.g. 10%"/>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label class="form-label">Status override</label>
+          <select class="form-select" id="quotaStatus">
+            <option value="on-track">On Track</option>
+            <option value="behind">Behind</option>
+            <option value="ahead">Ahead</option>
+          </select>
+        </div>
       </div>
-      <div class="form-row two-col">
-        <div><label class="form-label">Deadline</label><input class="form-input" id="quotaDeadline" type="date"/></div>
-        <div><label class="form-label">Payment type</label><select class="form-select" id="quotaPayType"><option value="fixed">Fixed Monthly Pay</option><option value="revenue-share">Revenue Share</option></select></div>
-      </div>
-      <div class="form-row" id="quotaFixedRow">
-        <label class="form-label">Monthly pay amount</label><input class="form-input" id="quotaPay" type="text"/>
-      </div>
-      <div class="form-row" id="quotaRevenueRow" style="display:none">
-        <label class="form-label">Revenue share percentage</label><input class="form-input" id="quotaRevenueShare" type="text" placeholder="e.g. 10%"/>
-      </div>
-      <div class="form-row">
-        <label class="form-label">Status override</label>
-        <select class="form-select" id="quotaStatus">
-          <option value="on-track">On Track</option>
-          <option value="behind">Behind</option>
-          <option value="ahead">Ahead</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">Note (optional)</label>
-        <textarea class="form-textarea" id="quotaNote" rows="2" placeholder="Add a note for this editor..."></textarea>
+      <div class="epw-panel" id="quotaP3">
+        <div class="inv-summary" id="quotaSummary"></div>
+        <div class="form-row" style="margin-top:14px;margin-bottom:0">
+          <label class="form-label">Note (optional)</label>
+          <textarea class="form-textarea" id="quotaNote" rows="2" placeholder="Add a note for this editor..."></textarea>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="mini-btn ghost" id="quotaCancelBtn">Cancel</button>
-      <button class="mini-btn primary" id="quotaSaveBtn"><i class="fas fa-check"></i> Save Changes</button>
+      <button class="mini-btn ghost" id="quotaCancelBtn" style="margin-right:auto">Cancel</button>
+      <button class="mini-btn" id="qtBack" style="display:none"><i class="fas fa-arrow-left"></i> Back</button>
+      <button class="mini-btn primary" id="qtNext">Next <i class="fas fa-arrow-right"></i></button>
+      <button class="mini-btn primary" id="quotaSaveBtn" style="display:none"><i class="fas fa-check"></i> Save Changes</button>
     </div>
   </div>
 </div>

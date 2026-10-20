@@ -12,6 +12,8 @@
   const USE_API = false;
   const API_BASE = '/api/author/finance';
   const TIMEOUT_MS = 2500;
+  /* Demo author identity — matches AdRevenue.STORIES book authors. */
+  const CURRENT_AUTHOR_ID = 'au_luna_vale';
 
   /* ── helpers ── */
   function delay(ms) { return new Promise(r => setTimeout(r, ms || 150 + Math.random() * 150)); }
@@ -72,7 +74,33 @@
     async getEarnings() {
       if (USE_API) { try { return await callBackend('/earnings'); } catch (e) { /* fallthrough */ } }
       await delay();
-      return getDemo().earnings;
+      var earnings = getDemo().earnings;
+      /* Ad share (30% of story-owned ad revenue) accumulates into the same
+         by-book totals as every other income source. */
+      try {
+        if (window.AdRevenue && AdRevenue.getSummary) {
+          var s = await AdRevenue.getSummary(30);
+          var total = 0;
+          (s.byStory || []).forEach(function (r) {
+            if (r.authorId !== CURRENT_AUTHOR_ID) return;
+            var share = Number(r.authorShare) || 0;
+            if (!share) return;
+            total += share;
+            var b = null;
+            for (var i = 0; i < earnings.byBook.length; i++) {
+              if (String(earnings.byBook[i].id) === String(r.storyId)) { b = earnings.byBook[i]; break; }
+            }
+            if (b) b.earnings = Math.round((b.earnings + share) * 100) / 100;
+          });
+          if (total > 0) {
+            total = Math.round(total * 100) / 100;
+            earnings.balance = Math.round((earnings.balance + total) * 100) / 100;
+            earnings.lifetime = Math.round((earnings.lifetime + total) * 100) / 100;
+            earnings.thisMonth = Math.round((earnings.thisMonth + total) * 100) / 100;
+          }
+        }
+      } catch (e) {}
+      return earnings;
     },
 
     /* ── Transactions ── */

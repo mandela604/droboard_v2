@@ -7,7 +7,7 @@ var CT=[
 var items=[
   {id:'CTR-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',bookTitle:'The Last Horizon',bookGenre:'Sci-Fi',chapters:14,ct:'',term:'12 months',rev:'70/30',submitted:'2h ago',status:'pending',notes:'Hi! I would love an exclusive deal for The Last Horizon — I believe in this book and I want us to build it together.',sent:false},
   {id:'CTR-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',bookTitle:'Wolf Kings Vow',bookGenre:'Fantasy',chapters:22,ct:'',term:'6 months',rev:'60/40',submitted:'5h ago',status:'pending',notes:'Requesting a non-exclusive deal for Wolf Kings Vow — I would like to keep my rights while we work together.',sent:false},
-  {id:'CTR-003',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',bookTitle:'Midnight Ember',bookGenre:'Romance',chapters:18,ct:'exclusive',term:'18 months',rev:'75/25',submitted:'1d ago',status:'approved',notes:'Thank you for the premium exclusive offer on Midnight Ember — I have signed from my side and I am excited for us to begin!',sent:true},
+  {id:'CTR-003',author:'Isabelle Moreau',kyc:{type:'pending',dob:'2006-09-02',age:20,nin:'',altId:{type:'Voter\'s Card',no:'55667788901'},idPhotos:{front:'voters-front.jpg',back:'voters-back.jpg'}},avatar:'https://i.pravatar.cc/100?img=25',bookTitle:'Midnight Ember',bookGenre:'Romance',chapters:18,ct:'exclusive',term:'18 months',rev:'75/25',submitted:'1d ago',status:'approved',notes:'Thank you for the premium exclusive offer on Midnight Ember — I have signed from my side and I am excited for us to begin!',sent:true},
   {id:'CTR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'Streetlight Dreams',bookGenre:'Urban Fiction',chapters:30,ct:'revenue-share',term:'12 months',rev:'65/35',submitted:'2d ago',status:'signed',notes:'Happy with the revenue share terms for Streetlight Dreams, plus the milestone bonuses. All signed!',sent:true},
   {id:'CTR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',bookTitle:'Kingdom of Ashes',bookGenre:'Epic Fantasy',chapters:24,ct:'exclusive',term:'24 months',rev:'80/20',submitted:'3d ago',status:'signed',notes:'The 24-month exclusive works for me — Kingdom of Ashes is my heart book and I am glad to commit long-term.',sent:true},
   {id:'CTR-006',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',bookTitle:'Lagos After Dark',bookGenre:'Thriller',chapters:9,ct:'',term:'3 months',rev:'55/45',submitted:'4d ago',status:'pending',notes:'I would like to start with the short 3-month trial for Lagos After Dark so we can test the waters together.',sent:false},
@@ -22,6 +22,22 @@ var curPage=1,PP=5,openId=null,selCT={};
 function ctLabel(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].label;}return '--';}
 function ctTerm(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].term;}return '12 months';}
 function ctRev(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].rev;}return '70/30';}
+/* Identity (KYC): rows created before the KYC system carry no kyc field and count as
+   verified; rows WITH kyc must have a verified type + front/back ID photos to sign. */
+function idBadge(a){
+  var k=a.kyc;
+  if(!k) return '<span style="color:var(--green);font-weight:700">KYC verified</span>';
+  if(k.type==='guardian') return '<span style="color:#2563eb;font-weight:700">Guardian consented</span>';
+  if(k.type==='pending') return '<span style="color:#b7791f;font-weight:700">Pending NIN</span>';
+  return '<span style="color:var(--green);font-weight:700">KYC verified</span>';
+}
+function signBlockReason(a){
+  var k=a.kyc;
+  if(!k) return null;
+  if(k.type==='pending') return a.author+' \u2014 identity pending (NIN not verified). Signature blocked until the NIN is verified.';
+  if(!k.idPhotos||!k.idPhotos.front||!k.idPhotos.back) return 'ID photos required (front + back) before signing '+a.author+'\u2019s contract.';
+  return null;
+}
 function filtered(){
   var q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
   var st=document.getElementById('statusFilter').value;
@@ -98,6 +114,7 @@ function renderDetail(id){
   grid+='<div class="detail-card"><label>Book Title</label><b>'+a.bookTitle+'</b></div>';
   grid+='<div class="detail-card"><label>Genre</label><b>'+a.bookGenre+'</b></div>';
   grid+='<div class="detail-card"><label>Author</label><b>'+a.author+'</b></div>';
+  grid+='<div class="detail-card"><label>Identity</label><b>'+idBadge(a)+'</b></div>';
   grid+='<div class="detail-card"><label>Submitted</label><b>'+a.submitted+'</b></div></div>';
   var terms='';
   if(selType){
@@ -180,6 +197,8 @@ window._doSend=function(id){
 window._doSign=function(id){
   var a=null;for(var i=0;i<items.length;i++){if(items[i].id===id){a=items[i];break;}}
   if(!a)return;
+  var blocked=signBlockReason(a);
+  if(blocked){toast(blocked);return;}
   var row=document.querySelector('.item-row[data-id="'+id+'"]');
   if(row){var btn=row.querySelector('.btn-green');if(btn){btn.classList.add('loading');btn.innerHTML='<span class="btn-text"><i class="fas fa-pen-fancy"></i> Signing</span>';}}
   var det=document.getElementById('d-'+id);

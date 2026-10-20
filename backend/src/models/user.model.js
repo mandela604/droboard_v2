@@ -49,6 +49,9 @@ const userSchema = new mongoose.Schema({
   // referrals
   referralCode: { type: String, unique: true, sparse: true, index: true },
   referredByUserId: { type: String, ref: 'User', default: null },
+  // Editor-invite code (senior_editor only). Signup with it ⇒ writer role +
+  // auto-assigned to that editor. Separate from referralCode (reader/coin program).
+  editorInviteCode: { type: String, unique: true, sparse: true, index: true },
   settings: {
     theme: { type: String, default: 'dark' },
     notifications: { type: Boolean, default: true },

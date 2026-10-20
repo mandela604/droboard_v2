@@ -35,8 +35,8 @@ async function logs(req, res) {
 async function markNotificationsRead(req, res) {
   return base.wrap(res, async () => {
     const { Notification } = require('../models/social.model');
-    await Notification.updateMany({ unread: true }, { unread: false });
-    return { ok: true };
+    const r = await Notification.updateMany({ recipientId: String(req.user.id), unread: true }, { unread: false });
+    return { ok: true, modified: r.modifiedCount || 0 };
   });
 }
 

@@ -14,6 +14,7 @@ const env = require('../config/env');
 const { User } = require('../models/user.model');
 const { Referral, ReadingProgress } = require('../models/social.model');
 const { Wallet } = require('../models/money.model');
+const { EditorAssignment } = require('../models/chief.model');
 const ledger = require('./ledger.service');
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
@@ -56,6 +57,82 @@ async function ensureCode(userId) {
     throw e;
   }
   return code;
+}
+
+// ── Editor-invite codes (senior_editor only) ──────────────────────────────
+// Deliberately a DIFFERENT field from User.referralCode: that one is the
+// reader/coin program (anyone can hold one); this one is author recruitment
+// by a senior editor and grants the writer role on signup.
+// No Referral doc + no coins here — the reward is the author, not wallet coins.
+
+async function mintEditorCode() {
+  for (let i = 0; i < 6; i++) {
+    const code = 'SE-' + randomSuffix(6);
+    const clash = await User.exists({ editorInviteCode: code });
+    if (!clash) return code;
+  }
+  return 'SE-' + randomSuffix(8);
+}
+
+// Lazily mint (and persist) the code for a senior_editor. Idempotent.
+async function ensureEditorCode(userId) {
+  const u = await User.findOne({ id: String(userId) }).select('id username roles editorInviteCode');
+  if (!u) { const e = new Error('no_user'); e.status = 404; throw e; }
+  if (!(u.roles || []).includes('senior_editor')) {
+    const e = new Error('forbidden'); e.status = 403; throw e;
+  }
+  if (u.editorInviteCode) return u.editorInviteCode;
+  const code = await mintEditorCode();
+  try {
+    u.editorInviteCode = code;
+    await u.save();
+  } catch (e) {
+    if (e.code === 11000) {
+      const fresh = await User.findOne({ id: String(userId) }).select('editorInviteCode').lean();
+      return fresh.editorInviteCode;
+    }
+    throw e;
+  }
+  return code;
+}
+
+async function rotateEditorCode(userId) {
+  const u = await User.findOne({ id: String(userId) }).select('id roles');
+  if (!u) { const e = new Error('no_user'); e.status = 404; throw e; }
+  if (!(u.roles || []).includes('senior_editor')) {
+    const e = new Error('forbidden'); e.status = 403; throw e;
+  }
+  const code = await mintEditorCode();
+  await User.updateOne({ id: String(userId) }, { $set: { editorInviteCode: code } });
+  return code;
+}
+
+// Called from register() when the signup carries a referral code. Returns
+// { inviterId, editor: true } only when the code resolves to a senior_editor's
+// editorInviteCode. Invalid/reader codes fall through to applyReferral().
+async function applyEditorInvite(newUser, rawCode) {
+  const code = normalizeCode(rawCode);
+  if (!code) return { inviterId: null };
+  const inviter = await User.findOne({ editorInviteCode: code })
+    .select('id _id roles').lean();
+  if (!inviter) return { inviterId: null };
+  if (!(inviter.roles || []).includes('senior_editor')) return { inviterId: null };
+  if (String(inviter.id) === String(newUser.id)) return { inviterId: null, self: true };
+  // Provenance (same field/shape the reader referral uses — no coin path runs
+  // for editor invites, so checkReadReward stays inert on these accounts).
+  try {
+    await User.updateOne({ _id: newUser._id }, { $set: { referredByUserId: String(inviter._id) } });
+  } catch (e) { /* non-fatal: never fail signup */ }
+  // Ownership. authorIds hold the custom `id` (uuidv7) — same space as
+  // EditorAssignment written by chief-editors.saveAssignments + Book.authorId.
+  try {
+    await EditorAssignment.updateOne(
+      { editorId: String(inviter.id) },
+      { $addToSet: { authorIds: String(newUser.id) }, $setOnInsert: { quota: {} } },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  } catch (e) { /* non-fatal: chief can still assign manually */ }
+  return { inviterId: String(inviter.id), editor: true };
 }
 
 // Credit inviter wallet. Idempotent via ledger duplicate detection.
@@ -176,4 +253,7 @@ async function listReferred(ownerId, { limit } = {}) {
   });
 }
 
-module.exports = { mintUserCode, ensureCode, normalizeCode, applyReferral, checkReadReward, getStats, listReferred, creditInviter };
+module.exports = {
+  mintUserCode, ensureCode, normalizeCode, applyReferral, checkReadReward, getStats, listReferred, creditInviter,
+  mintEditorCode, ensureEditorCode, rotateEditorCode, applyEditorInvite,
+};

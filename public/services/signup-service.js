@@ -133,6 +133,7 @@ document.getElementById('signupBtn').addEventListener('click',function(){
   setLoading(btn, true);
   const payload = { name, username, email, country: country||null, password: pass, referralCode: refCode||null };
   function finishDemo(serverUser){
+    try{ if(window.Acquisition && Acquisition.record) Acquisition.record('sign_up'); }catch(e){}
     const seCode=getReferralCode();
     const isReferred = refCode && seCode && refCode===seCode;
     let assignedSE=null;

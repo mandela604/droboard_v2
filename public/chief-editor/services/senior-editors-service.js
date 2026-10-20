@@ -5,7 +5,7 @@
 
 /* ── Backend-ready header ── */
 const USE_API = false;
-const API_BASE = '/api/chief-editor';
+const API_BASE = '/api/chief';   // backend mounts the chief routers here
 async function callBackend(path, opts){
   if(!USE_API) return null;
   try{
@@ -14,6 +14,37 @@ async function callBackend(path, opts){
     return await res.json();
   }catch(e){ return null; }
 }
+// Unlike callBackend, this THROWS on failure — used for writes that must not
+// silently appear to succeed.
+async function apiFetch(path, opts){
+  if(!USE_API) return { demo: true };
+  const res = await fetch(API_BASE + path, opts);
+  if(!res.ok) throw new Error('backend error: ' + res.status);
+  return res.json();
+}
+function authHeaders(){
+  var t = null;
+  try{ t = localStorage.getItem('dro_access_token'); }catch(e){}
+  return Object.assign({ 'Content-Type': 'application/json' }, t ? { Authorization: 'Bearer ' + t } : {});
+}
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+
+/* EditorAssignment.authorIds is the ownership record on the backend. */
+const Crud = {
+  listAssignments: function(){ return apiFetch('/assignments'); },
+  saveAssignment: function(editorId, authorIds){
+    return apiFetch('/senior-editors/' + encodeURIComponent(editorId) + '/assignments', {
+      method: 'PUT', headers: authHeaders(), body: JSON.stringify({ authorIds: authorIds }),
+    });
+  },
+  // Option B queue: writers in no assignment.
+  listUnassigned: function(waiting){ return apiFetch('/unassigned-authors' + (waiting ? '?waiting=1' : '')); },
+  listAuthors: function(){ return apiFetch('/authors?limit=100'); },
+};
 
 let _initDone = false;
 
@@ -22,17 +53,63 @@ var BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple
 var PAGE=6,ALL=[],filtered=[],curPage=1,authorPool=[],assignments={};
 var _gridBound=false;
 
+// Assign sheet pool: real writers from the backend when live, else the demo pool.
+function loadAuthorPool(){
+  return Crud.listAuthors().then(function(remote){
+    if(remote && remote.items && remote.items.length){
+      return remote.items.map(function(u){
+        return { id:u.id, handle:u.username || u.name, name:u.fullName || u.name, avatar:u.avatar,
+                 genres:u.genres || [], reads:(u.followers || 0) + '', verified:false, books:u.books || 0 };
+      });
+    }
+    return ChiefEditorData.getAuthorPool();
+  }).catch(function(){ return ChiefEditorData.getAuthorPool(); });
+}
+
 function loadData(){
   ChiefEditorData.getSeniorEditors().then(function(d){
-    ALL=d;return ChiefEditorData.getAuthorPool();
+    ALL=d;return loadAuthorPool();
   }).then(function(d){
-    authorPool=d;return ChiefEditorData.getAssignments();
-  }).then(function(d){
-    assignments=d;renderStats();applyFilters();bindToolbar();
+    authorPool=d;return reloadAssignments();
+  }).then(function(){
+    renderStats();applyFilters();bindToolbar();renderQueue();
   }).catch(function(e){
     console.error(e);
     document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load.</div>';
   });
+}
+
+// Always re-read assignments before opening the sheet / saving — a writer can
+// sign up with an editor's invite code while this page sits open, and a stale
+// save would silently drop them.
+function reloadAssignments(){
+  return Crud.listAssignments().then(function(rows){
+    if(rows && rows.length !== undefined && !rows.demo){
+      assignments = mapAssignments(rows);
+      return assignments;
+    }
+    return ChiefEditorData.getAssignments().then(function(a){ assignments = a; return assignments; });
+  }).catch(function(){
+    return ChiefEditorData.getAssignments().then(function(a){ assignments = a; return assignments; });
+  });
+}
+
+function openAssignSheet(editorId, ed){
+  reloadAssignments().then(function(){
+    AssignAuthorsSheet.open({
+      editorId: editorId, editorName: ed.name, editorAvatar: ed.avatar,
+      authorPool: authorPool, assignedIds: (assignments[editorId] || []).slice(),
+      onSave: function(id, ids){ persistAssignment(id, ids, ed); }
+    });
+    renderGrid();
+  });
+}
+
+// Backend rows are {editorId, authorIds} — the demo map is {editorId: [ids]}.
+function mapAssignments(rows){
+  var m = {};
+  rows.forEach(function(r){ m[String(r.editorId)] = (r.authorIds || []).slice(); });
+  return m;
 }
 
 function renderStats(){
@@ -234,10 +311,7 @@ function bindGridEvents(){
       if(!ed2) return;
       var act=eaction.dataset.eaction;
       if(act==='assign'){
-        AssignAuthorsSheet.open({editorId:eid,editorName:ed2.name,editorAvatar:ed2.avatar,
-          authorPool:authorPool,assignedIds:assignments[eid]||[],
-          onSave:function(id,ids){assignments[id]=ids;renderGrid();toast('Authors updated for '+ed2.name)}
-        });
+        openAssignSheet(eid, ed2);
       } else if(act==='resend-invite'){
         toast('Invite resent to '+ed2.name,'fa-paper-plane');
       } else if(act==='copy-link'){
@@ -265,6 +339,347 @@ function bindGridEvents(){
   });
 }
 
+/* ═══ Option B — "Needs an editor" queue ═══════════════════════════════════
+   Writers holding the writer role who are in NO EditorAssignment. Their first
+   submission parks here until the chief picks who takes them. */
+var _queueStyleDone = false;
+function ensureQueuePanel(){
+  if(document.getElementById('unassignedPanel')) return;
+  if(!_queueStyleDone){
+    _queueStyleDone = true;
+    var st = document.createElement('style');
+    st.textContent =
+      '.un-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border,#eceaf5);border-radius:12px;margin-bottom:8px;background:var(--card,#fff);flex-wrap:wrap}' +
+      '.un-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0}' +
+      '.un-info{flex:1;min-width:140px}' +
+      '.un-name{font-size:13px;font-weight:700}' +
+      '.un-meta{font-size:10.5px;color:var(--text-faint,#9694ac);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.un-pager{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0 2px}' +
+      '.un-page-lbl{font-size:11px;font-weight:700;color:var(--text-faint,#9694ac);white-space:nowrap}' +
+      '.ep-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:.15s}' +
+      '.ep-row:hover{background:var(--table-head,#f8f9fb);border-color:var(--border,#e2e4e9)}' +
+      '.ep-row img{width:36px;height:36px;border-radius:50%;object-fit:cover}' +
+      '.ep-name{font-size:13px;font-weight:700}' +
+      '.ep-meta{font-size:10.5px;color:var(--text-muted,#6b7280)}' +
+      '.ep-count{margin-left:auto;font-size:11px;font-weight:700;color:var(--text-muted,#6b7280);white-space:nowrap}' +
+      /* ── Assign wizard (cwiz-* pattern from senior-editor/review-queue.html) ── */
+      '.epw-box{max-height:calc(100vh - 48px);display:flex;flex-direction:column;margin:auto}' +
+      '.epw-body{flex:1;overflow-y:auto}' +
+      '.epw-steps{display:flex;gap:4px;padding:14px 22px 0}' +
+      '.epw-step{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 0;border-radius:8px;font-size:11px;font-weight:700;color:var(--text-faint,#9694ac);background:var(--hover,#f6f7fb);transition:.15s;cursor:default}' +
+      '.epw-step.on{background:var(--accent);color:#fff}' +
+      '.epw-step.done{background:var(--green-bg,#e9f9ef);color:var(--green,#2f9e5f);cursor:pointer}' +
+      '.epw-num{width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}' +
+      '.epw-step.on .epw-num{background:rgba(255,255,255,.25)}' +
+      '.epw-panel{display:none}.epw-panel.on{display:block}' +
+      '.epw-search-wrap{display:flex;align-items:center;gap:8px;background:var(--input-bg,#f6f7fb);border:1px solid var(--input-border,#e2e4e9);border-radius:10px;padding:8px 12px;margin-bottom:10px}' +
+      '.epw-search-wrap i{color:var(--text-faint,#9694ac);font-size:12px}' +
+      '.epw-search-wrap input{flex:1;border:none;background:none;outline:none;font-size:12.5px;font-family:inherit;color:var(--text,#26233a);min-width:0}' +
+      '.epw-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;border:1.5px solid transparent;transition:.15s}' +
+      '.epw-row:hover{background:var(--table-head,#f8f9fb);border-color:var(--border,#e2e4e9)}' +
+      '.epw-row.on{background:rgba(255,0,80,.06);border-color:var(--accent)}' +
+      '.epw-row img{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0}' +
+      '.epw-row-info{flex:1;min-width:0}' +
+      '.epw-check{margin-left:10px;font-size:15px;color:var(--border,#d6d8e0);flex-shrink:0}' +
+      '.epw-row.on .epw-check{color:var(--accent)}' +
+      '.epw-pair{display:flex;flex-direction:column;gap:6px}' +
+      '.epw-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border,#eceaf5);border-radius:12px;background:var(--card,#fff)}' +
+      '.epw-card img{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0}' +
+      '.epw-card-name{font-size:13px;font-weight:700}' +
+      '.epw-card-meta{font-size:10.5px;color:var(--text-muted,#6b7280);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.epw-tag{margin-left:auto;font-size:10px;font-weight:800;padding:4px 10px;border-radius:20px;background:var(--table-head,#faf9ff);color:var(--text-muted,#71708a);white-space:nowrap;flex-shrink:0}' +
+      '.epw-tag.writer{background:var(--red-bg,#fff0f0);color:var(--red,#e53e3e)}' +
+      '.epw-arrow{display:flex;justify-content:center;color:var(--text-faint,#9694ac);font-size:12px}' +
+      '.epw-note{margin-top:12px;font-size:11.5px;color:var(--text-faint,#9694ac);line-height:1.65;text-align:center;padding:0 6px}' +
+      /* invite-wizard review summary (same tokens as review-queue cwiz-summary) */
+      '.inv-summary{background:var(--hover,#f6f7fb);border:1px solid var(--border,#eceaf5);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7}' +
+      '.inv-summary .cs-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--border,#eceaf5)}' +
+      '.inv-summary .cs-row:last-child{border-bottom:none}' +
+      '.inv-summary .cs-label{color:var(--text-muted,#6b7280);font-weight:600}' +
+      '.inv-summary .cs-val{font-weight:700;color:var(--text,#26233a);text-align:right}';
+    document.head.appendChild(st);
+  }
+  var panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'unassignedPanel';
+  panel.innerHTML =
+    '<div class="panel-head">' +
+      '<h2><i class="fas fa-user-clock" style="color:var(--red)"></i> Needs an editor <span class="count-chip" id="unassignedCount">0</span></h2>' +
+      '<button class="mini-btn" id="unassignedRefresh"><i class="fas fa-rotate"></i> Refresh</button>' +
+    '</div>' +
+    '<div class="panel-sub">Readers who submitted a book — nobody invited them, so no senior editor owns their submission. Assign one to review it; they become writers once that book is approved.</div>' +
+    '<div id="unassignedList"></div>';
+  var anchor = document.getElementById('statCards');
+  if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+  document.getElementById('unassignedRefresh').addEventListener('click', function(){ renderQueue(); toast('Queue refreshed','fa-rotate'); });
+  panel.addEventListener('click', function(e){
+    var pg = e.target.closest('[data-queue-page]');
+    if(pg){
+      if(pg.disabled) return;
+      _queuePage += pg.getAttribute('data-queue-page') === 'next' ? 1 : -1;
+      renderQueue();
+      return;
+    }
+    var btn = e.target.closest('[data-pick-uid]');
+    if(!btn) return;
+    var row = btn.closest('.un-row');
+    var nameEl = row && row.querySelector('.un-name');
+    openEditorPicker(btn.getAttribute('data-pick-uid'), nameEl ? nameEl.textContent : '');
+  });
+}
+
+function getUnassigned(){
+  // waiting=1 → only writers with pending submissions. A reader without an
+  // editor code never appears here; they only enter this queue once they
+  // actually submit a book (editor-code signups are auto-assigned instead).
+  return Crud.listUnassigned('1').then(function(remote){
+    if(remote && remote.items) return remote;      // live backend shape
+    return ChiefEditorData.getUnassignedAuthors({ waiting: '1' }); // demo fallback
+  }).catch(function(){ return ChiefEditorData.getUnassignedAuthors({ waiting: '1' }); });
+}
+
+var _queueItems = []; // last fetched queue rows — full author objects for the wizard
+var _queuePage = 1;
+var QUEUE_PER_PAGE = 3;
+
+function renderQueue(){
+  ensureQueuePanel();
+  var countEl = document.getElementById('unassignedCount');
+  var box = document.getElementById('unassignedList');
+  box.innerHTML = '<div class="empty-msg" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></div>';
+  return getUnassigned().then(function(data){
+    var items = (data && data.items) || [];
+    _queueItems = items;
+    if(countEl) countEl.textContent = items.length;
+    if(!items.length){
+      box.innerHTML = '<div class="empty-msg" style="text-align:center;padding:24px 10px;color:var(--text-faint,#9694ac);font-size:12.5px">' +
+        '<i class="fas fa-circle-check" style="font-size:20px;display:block;margin-bottom:8px;opacity:.4"></i>No books waiting — every submitted book has an editor to review it.</div>';
+      return items;
+    }
+    var pages = Math.max(1, Math.ceil(items.length / QUEUE_PER_PAGE));
+    if(_queuePage > pages) _queuePage = pages;
+    if(_queuePage < 1) _queuePage = 1;
+    var start = (_queuePage - 1) * QUEUE_PER_PAGE;
+    var pageItems = items.slice(start, start + QUEUE_PER_PAGE);
+    var rowsHtml = pageItems.map(function(a){
+      var n = a.pendingSubmissions || 0;
+      var badge = n > 0
+        ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--red-bg,#fff0f0);color:var(--red,#e53e3e);white-space:nowrap">' + n + ' submission' + (n===1?'':'s') + ' waiting</span>'
+        : '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--table-head,#faf9ff);color:var(--text-muted,#71708a);white-space:nowrap">No submissions yet</span>';
+      return '<div class="un-row">' +
+        '<img class="un-avatar" src="' + esc(a.avatar || '') + '" alt=""/>' +
+        '<div class="un-info"><div class="un-name">' + esc(a.name || '') + '</div>' +
+        '<div class="un-meta">' + esc(a.email || '') + (a.genres && a.genres.length ? ' · ' + esc(a.genres.slice(0,2).join(', ')) : '') + '</div></div>' +
+        badge +
+        '<button class="mini-btn primary" data-pick-uid="' + esc(a.id) + '"><i class="fas fa-user-plus"></i> Assign</button>' +
+      '</div>';
+    }).join('');
+    var pager = pages > 1
+      ? '<div class="un-pager">' +
+          '<button class="mini-btn" data-queue-page="prev"' + (_queuePage <= 1 ? ' disabled' : '') + '><i class="fas fa-arrow-left"></i> Prev</button>' +
+          '<span class="un-page-lbl">Page ' + _queuePage + ' of ' + pages + '</span>' +
+          '<button class="mini-btn" data-queue-page="next"' + (_queuePage >= pages ? ' disabled' : '') + '>Next <i class="fas fa-arrow-right"></i></button>' +
+        '</div>'
+      : '';
+    box.innerHTML = rowsHtml + pager;
+    return items;
+  });
+}
+
+/* ── Assign wizard — 3 steps: Select editor → Review → Confirm.
+   Follows the cwiz-* modal-wizard pattern from senior-editor/review-queue.html.
+   The box is a flex column with max-height calc so it always keeps top/bottom
+   breathing room (overlay padding 20px + auto margins); only the body scrolls. */
+var _pendingAuthor = null;
+var _epwSel = null;
+var _epwStep = 1;
+
+function epwActiveEditors(){ return ALL.filter(function(e){ return e.status !== 'pending'; }); }
+
+function openEditorPicker(authorId, authorName){
+  // Prefer the full queue row (avatar/email/pending count) over just id+name.
+  var full = null;
+  for(var i=0;i<_queueItems.length;i++){ if(_queueItems[i].id===authorId){ full=_queueItems[i]; break; } }
+  _pendingAuthor = full || { id: authorId, name: authorName };
+  if(!_pendingAuthor.name) _pendingAuthor.name = authorName || '';
+  _epwSel = null;
+
+  var modal = document.getElementById('editorPickerModal');
+  if(!modal){ ensurePickerModal(); modal = document.getElementById('editorPickerModal'); }
+  document.getElementById('editorPickerTitle').textContent = 'Assign ' + (_pendingAuthor.name || 'writer');
+
+  var list = document.getElementById('epwList');
+  var search = document.getElementById('epwSearch');
+  if(search) search.value = '';
+  var editors = epwActiveEditors();
+  if(!editors.length){
+    document.getElementById('epwSearchWrap').style.display = 'none';
+    list.innerHTML = '<div class="empty-msg" style="text-align:center;padding:26px 12px;color:var(--text-faint,#9694ac);font-size:12.5px">No senior editors yet — invite one first.</div>';
+  } else {
+    document.getElementById('epwSearchWrap').style.display = '';
+    list.innerHTML = editors.map(function(e){
+      var n = (assignments[e.id] || []).length;
+      return '<div class="epw-row" data-epw-eid="' + esc(e.id) + '">' +
+        '<img src="' + esc(e.avatar || '') + '" alt=""/>' +
+        '<div class="epw-row-info"><div class="ep-name">' + esc(e.name) + '</div><div class="ep-meta">' + esc(e.email || '') + '</div></div>' +
+        '<span class="ep-count">' + n + ' assigned</span>' +
+        '<i class="fas fa-circle epw-check"></i></div>';
+    }).join('');
+  }
+  epwGoto(1);
+  modal.classList.add('show');
+}
+
+function epwGoto(step){
+  if(step < 1) step = 1;
+  if(step > 3) step = 3;
+  _epwStep = step;
+  var modal = document.getElementById('editorPickerModal');
+  modal.querySelectorAll('.epw-panel').forEach(function(p){ p.classList.remove('on'); });
+  var panel = document.getElementById('epwP' + step);
+  if(panel) panel.classList.add('on');
+  modal.querySelectorAll('.epw-step').forEach(function(s){
+    var sn = parseInt(s.getAttribute('data-step'), 10);
+    s.classList.toggle('on', sn === step);
+    s.classList.toggle('done', sn < step);
+  });
+  document.getElementById('epwBack').style.display = step > 1 ? '' : 'none';
+  document.getElementById('epwNext').style.display = step < 3 ? '' : 'none';
+  document.getElementById('epwAssign').style.display = step === 3 ? '' : 'none';
+  document.getElementById('epwNext').disabled = !_epwSel;
+  if(step === 2 || step === 3) epwRenderReview();
+}
+
+function epwRenderReview(){
+  var ed = _epwSel ? ALL.find(function(x){ return x.id === _epwSel; }) : null;
+  var a = _pendingAuthor || {};
+  var cur = ed ? (assignments[ed.id] || []).length : 0;
+  var writerHtml =
+    '<div class="epw-card">' +
+      '<img src="' + esc(a.avatar || '') + '" alt=""/>' +
+      '<div style="flex:1;min-width:0"><div class="epw-card-name">' + esc(a.name || 'Writer') + '</div>' +
+      '<div class="epw-card-meta">' + esc(a.email || '') + '</div></div>' +
+      '<span class="epw-tag writer">' + (a.pendingSubmissions || 0) + ' waiting</span>' +
+    '</div>';
+  var arrow = '<div class="epw-arrow"><i class="fas fa-arrow-down"></i></div>';
+  var editorHtml =
+    '<div class="epw-card">' +
+      '<img src="' + esc(ed ? ed.avatar : '') + '" alt=""/>' +
+      '<div style="flex:1;min-width:0"><div class="epw-card-name">' + esc(ed ? ed.name : '—') + '</div>' +
+      '<div class="epw-card-meta">' + esc(ed ? (ed.email || '') : '') + '</div></div>' +
+      '<span class="epw-tag">' + cur + ' → ' + (cur + 1) + ' assigned</span>' +
+    '</div>';
+  var html = writerHtml + arrow + editorHtml;
+  document.getElementById('epwPair').innerHTML = html;
+  document.getElementById('epwConfirmBox').innerHTML = html +
+    '<div class="epw-note">' + esc(a.name || 'This reader') + '&rsquo;s book will move into ' +
+    esc(ed ? ed.name : 'this editor') + '&rsquo;s review queue. They become a writer once it is approved.</div>';
+}
+
+function ensurePickerModal(){
+  var m = document.createElement('div');
+  m.className = 'modal-overlay';
+  m.id = 'editorPickerModal';
+  m.innerHTML =
+    '<div class="modal-box epw-box">' +
+      '<div class="modal-head">' +
+        '<h3><i class="fas fa-user-plus" style="color:var(--accent)"></i> <span id="editorPickerTitle">Assign writer</span></h3>' +
+        '<button class="modal-close" id="editorPickerClose"><i class="fas fa-xmark"></i></button>' +
+      '</div>' +
+      '<div class="epw-steps">' +
+        '<div class="epw-step on" data-step="1"><span class="epw-num">1</span> Select editor</div>' +
+        '<div class="epw-step" data-step="2"><span class="epw-num">2</span> Review</div>' +
+        '<div class="epw-step" data-step="3"><span class="epw-num">3</span> Confirm</div>' +
+      '</div>' +
+      '<div class="modal-body epw-body">' +
+        '<div class="epw-panel on" id="epwP1">' +
+          '<div class="epw-search-wrap" id="epwSearchWrap"><i class="fas fa-magnifying-glass"></i><input id="epwSearch" type="text" placeholder="Search editors by name or email…"/></div>' +
+          '<div id="epwList"></div>' +
+        '</div>' +
+        '<div class="epw-panel" id="epwP2"><div class="epw-pair" id="epwPair"></div></div>' +
+        '<div class="epw-panel" id="epwP3"><div class="epw-pair" id="epwConfirmBox"></div></div>' +
+      '</div>' +
+      '<div class="modal-foot">' +
+        '<button class="mini-btn" id="epwBack"><i class="fas fa-arrow-left"></i> Back</button>' +
+        '<button class="mini-btn primary" id="epwNext" disabled>Next <i class="fas fa-arrow-right"></i></button>' +
+        '<button class="mini-btn primary" id="epwAssign" style="display:none"><i class="fas fa-user-check"></i> Assign now</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(m);
+  document.getElementById('editorPickerClose').addEventListener('click', function(){ m.classList.remove('show'); });
+  m.addEventListener('click', function(e){ if(e.target === m) m.classList.remove('show'); });
+
+  // Select an editor row (step 1)
+  m.addEventListener('click', function(e){
+    var row = e.target.closest('[data-epw-eid]');
+    if(!row) return;
+    _epwSel = row.getAttribute('data-epw-eid');
+    m.querySelectorAll('.epw-row').forEach(function(r){ r.classList.toggle('on', r === row); });
+    document.getElementById('epwNext').disabled = false;
+  });
+
+  // Step-pill click jumps back to a completed step
+  m.querySelectorAll('.epw-step').forEach(function(s){
+    s.addEventListener('click', function(){
+      var sn = parseInt(s.getAttribute('data-step'), 10);
+      if(sn < _epwStep) epwGoto(sn);
+    });
+  });
+
+  // Search filter (step 1)
+  document.getElementById('epwSearch').addEventListener('input', function(){
+    var q = this.value.toLowerCase();
+    m.querySelectorAll('.epw-row').forEach(function(r){
+      r.style.display = r.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+
+  document.getElementById('epwBack').addEventListener('click', function(){ epwGoto(_epwStep - 1); });
+  document.getElementById('epwNext').addEventListener('click', function(){ if(_epwSel && _epwStep < 3) epwGoto(_epwStep + 1); });
+  document.getElementById('epwAssign').addEventListener('click', function(){
+    if(!_epwSel || !_pendingAuthor) return;
+    var ed = ALL.find(function(x){ return x.id === _epwSel; });
+    if(!ed) return;
+    m.classList.remove('show');
+    assignToEditor(ed, _pendingAuthor.id);
+  });
+}
+
+/* Add this writer to the editor's assignment. Backend replaces authorIds, so we
+   send the full merged list (never clobber existing authors). */
+function assignToEditor(ed, authorId){
+  var current = (assignments[ed.id] || []).slice();
+  if(current.indexOf(authorId) !== -1){
+    toast(ed.name + ' already has this writer','fa-circle-info');
+    return;
+  }
+  persistAssignment(ed.id, current.concat([authorId]), ed);
+}
+
+function persistAssignment(editorId, ids, ed){
+  assignments[editorId] = ids;
+  var label = (ed && ed.name) ? ed.name : 'editor';
+  return Crud.saveAssignment(editorId, ids).then(function(res){
+    // Demo path: write through to the demo store so the unassigned queue
+    // recomputes correctly on the next render (mirrors the backend's
+    // EditorAssignment upsert).
+    if(res && res.demo && window.ChiefEditorData && ChiefEditorData.saveAssignments){
+      var patch = {}; patch[editorId] = ids;
+      ChiefEditorData.saveAssignments(patch);
+    }
+    toast('Authors updated for ' + label);
+    renderGrid();
+    return renderQueue().then(function(){ return true; });
+  }).catch(function(err){
+    console.error('assignment save failed', err);
+    // roll the optimistic local write back
+    delete assignments[editorId];
+    toast('Could not reach the server — assignment not saved','fa-triangle-exclamation');
+    renderGrid();
+    return renderQueue().then(function(){ return false; });
+  });
+}
+
 function toast(msg,icon){
   var t=document.getElementById('toastHost');
   if(!t){t=document.createElement('div');t.id='toastHost';t.style.cssText='position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:8px';document.body.appendChild(t);}
@@ -275,7 +690,7 @@ function toast(msg,icon){
   setTimeout(function(){el.style.opacity='0';el.style.transition='.25s';setTimeout(function(){el.remove();},250);},2600);
 }
 
-/* Quota Modal */
+/* Quota Modal (3-step wizard: Target → Payment → Review) */
 var quotaEd=null;
 function openQuotaModal(ed){
   quotaEd=ed;
@@ -283,18 +698,71 @@ function openQuotaModal(ed){
   document.getElementById('quotaTarget').value=ed.target;
   document.getElementById('quotaInvited').value=ed.invited;
   document.getElementById('quotaRemaining').value=Math.max(0,ed.target-ed.invited);
+  document.getElementById('quotaDeadline').value=ed.deadline||'';
   document.getElementById('quotaPay').value=ed.monthlyPay;
   document.getElementById('quotaPayType').value=ed.paymentType||'fixed';
   document.getElementById('quotaRevenueShare').value=ed.revenueShare||'';
   document.getElementById('quotaStatus').value=ed.status;
   document.getElementById('quotaNote').value='';
   toggleQuotaPayFields();
+  qtGoto(1);
   document.getElementById('quotaModal').classList.add('show');
 }
 function toggleQuotaPayFields(){
   var t=document.getElementById('quotaPayType').value;
   document.getElementById('quotaFixedRow').style.display=t==='fixed'?'':'none';
   document.getElementById('quotaRevenueRow').style.display=t==='revenue-share'?'':'none';
+}
+
+var _qtStep = 1;
+
+function qtGoto(step){
+  if(step < 1) step = 1;
+  if(step > 3) step = 3;
+  _qtStep = step;
+  var modal = document.getElementById('quotaModal');
+  modal.querySelectorAll('.epw-panel').forEach(function(p){ p.classList.remove('on'); });
+  var panel = document.getElementById('quotaP' + step);
+  if(panel) panel.classList.add('on');
+  modal.querySelectorAll('#quotaSteps .epw-step').forEach(function(s){
+    var sn = parseInt(s.getAttribute('data-step'), 10);
+    s.classList.toggle('on', sn === step);
+    s.classList.toggle('done', sn < step);
+  });
+  document.getElementById('qtBack').style.display = step > 1 ? '' : 'none';
+  document.getElementById('qtNext').style.display = step < 3 ? '' : 'none';
+  document.getElementById('quotaSaveBtn').style.display = step === 3 ? '' : 'none';
+  if(step === 3) qtRenderSummary();
+}
+
+function qtRenderSummary(){
+  var statusLbl = { 'on-track': 'On Track', 'behind': 'Behind', 'ahead': 'Ahead' };
+  var target = document.getElementById('quotaTarget').value || '0';
+  var invited = document.getElementById('quotaInvited').value || '0';
+  var remaining = document.getElementById('quotaRemaining').value || '0';
+  var pt = document.getElementById('quotaPayType').value;
+  var pay;
+  if(pt === 'fixed'){
+    pay = document.getElementById('quotaPay').value.trim() || '—';
+  } else {
+    var rs = document.getElementById('quotaRevenueShare').value.trim();
+    pay = rs ? rs + ' revenue share' : '—';
+  }
+  var deadline = document.getElementById('quotaDeadline').value;
+  if(deadline){
+    var dd = new Date(deadline + 'T00:00:00');
+    deadline = isNaN(dd) ? deadline : dd.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  }
+  var status = document.getElementById('quotaStatus').value;
+  document.getElementById('quotaSummary').innerHTML =
+    '<div class="cs-row"><span class="cs-label">Editor</span><span class="cs-val">' + esc(quotaEd ? quotaEd.name : '—') + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Monthly target</span><span class="cs-val">' + esc(target) + ' invites</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Invited so far</span><span class="cs-val">' + esc(invited) + ' of ' + esc(target) + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Remaining</span><span class="cs-val">' + esc(remaining) + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Deadline</span><span class="cs-val">' + esc(deadline || '—') + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Payment</span><span class="cs-val">' + (pt === 'fixed' ? 'Fixed monthly' : 'Revenue share') + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Pay</span><span class="cs-val">' + esc(pay) + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Status</span><span class="cs-val">' + (statusLbl[status] || status) + '</span></div>';
 }
 
 /* Invite Modal (new invite + edit existing) */
@@ -344,11 +812,32 @@ function init(){
   document.getElementById('quotaCancelBtn').addEventListener('click',function(){document.getElementById('quotaModal').classList.remove('show');quotaEd=null});
   document.getElementById('quotaModal').addEventListener('click',function(e){if(e.target.id==='quotaModal'){document.getElementById('quotaModal').classList.remove('show');quotaEd=null;}});
   document.getElementById('quotaTarget').addEventListener('input',function(){if(quotaEd){var t=parseInt(this.value)||0;document.getElementById('quotaRemaining').value=Math.max(0,t-quotaEd.invited);}});
+  // Quota wizard nav: Next from Target requires a valid target; pills jump back.
+  document.getElementById('qtNext').addEventListener('click',function(){
+    if(_qtStep === 1){
+      var t = parseInt(document.getElementById('quotaTarget').value) || 0;
+      if(t < 1){ toast('Monthly invite target must be at least 1','fa-triangle-exclamation'); return; }
+    }
+    qtGoto(_qtStep + 1);
+  });
+  document.getElementById('qtBack').addEventListener('click',function(){ qtGoto(_qtStep - 1); });
+  document.getElementById('quotaSteps').addEventListener('click',function(e){
+    var s = e.target.closest('.epw-step');
+    if(!s) return;
+    var sn = parseInt(s.getAttribute('data-step'), 10);
+    if(sn < _qtStep) qtGoto(sn);
+  });
   document.getElementById('quotaSaveBtn').addEventListener('click',function(){
     if(!quotaEd) return;
-    quotaEd.target=parseInt(document.getElementById('quotaTarget').value)||0;
+    var t = parseInt(document.getElementById('quotaTarget').value) || 0;
+    if(t < 1){ qtGoto(1); toast('Monthly invite target must be at least 1','fa-triangle-exclamation'); return; }
+    quotaEd.target=t;
     quotaEd.status=document.getElementById('quotaStatus').value;
     quotaEd.paymentType=document.getElementById('quotaPayType').value;
+    var deadline=document.getElementById('quotaDeadline').value;
+    if(deadline) quotaEd.deadline=deadline;
+    var note=document.getElementById('quotaNote').value.trim();
+    if(note) quotaEd.quotaNote=note;
     if(quotaEd.paymentType==='fixed'){
       var p=document.getElementById('quotaPay').value.trim();
       if(p) quotaEd.monthlyPay=p;

@@ -25,6 +25,15 @@
  * onSaveChange callback (optional):
  *   window.onDroboardSaveChange = (storyId, isSaved) => { ... }
  *   Called whenever save state changes — use it to update your bookmark icon.
+ *
+ * THEMING — same pattern as share-modal.js / post-card.js: reads the
+ * `data-theme` attribute on <html>. Base CSS stays dark (the original
+ * look, used whenever the host page never sets data-theme); the
+ * `[data-theme="light"]` block at the bottom flips the sheet, rows,
+ * skeleton and toast to the white palette. The backdrop scrim stays dark
+ * in both themes — dimming the page behind a bottom sheet is a scrim
+ * convention, not page chrome. Accent colors (pink save, green library,
+ * blue pin) are brand colors and stay untouched in both themes.
  */
 
 (function () {
@@ -54,6 +63,7 @@
       animation: dsv-up .28s cubic-bezier(.4,0,.2,1);
       max-height: 88vh; overflow-y: auto; scrollbar-width: none;
       padding-bottom: max(20px, env(safe-area-inset-bottom));
+      transition: background .25s ease, border-top-color .25s ease;
     }
     .dsv-sheet::-webkit-scrollbar { display: none; }
 
@@ -181,6 +191,62 @@
       white-space: nowrap; font-family: inherit;
     }
     .dsv-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ════════════════════════════════════════════════════════════════════
+       LIGHT MODE — activated when the host page sets
+       <html data-theme="light">. Mirrors share-modal.js token choices
+       (white surfaces, soft gray borders, #171717 text, #8a8a8a subs).
+       Backdrop scrim and accent/brand colors stay as-is (see note above).
+    ════════════════════════════════════════════════════════════════════ */
+    [data-theme="light"] .dsv-sheet { background: #ffffff; border-top-color: rgba(0,0,0,.08); }
+
+    [data-theme="light"] .dsv-handle { background: rgba(0,0,0,.12); }
+
+    [data-theme="light"] .dsv-hdr h3 { color: #171717; }
+
+    [data-theme="light"] .dsv-close { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.08); color: #8a8a8a; }
+    [data-theme="light"] .dsv-close:hover { background: rgba(255,0,80,.12); color: #ff2d55; }
+
+    [data-theme="light"] .dsv-section-lbl { color: #8a8a8a; }
+
+    [data-theme="light"] .dsv-opt,
+    [data-theme="light"] .dsv-coll { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.07); }
+
+    /* Saved-state accents must be re-asserted: they share specificity with
+       the generic light row rules above, and later rules win. */
+    [data-theme="light"] .dsv-opt.saved { border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.07); }
+    [data-theme="light"] .dsv-coll.saved { border-color: rgba(255,0,80,.3); background: rgba(255,0,80,.06); }
+    [data-theme="light"] .dsv-coll.saved .dsv-coll-name,
+    [data-theme="light"] .dsv-coll.saved .dsv-coll-check { color: #ff4d7a; }
+
+    [data-theme="light"] .dsv-opt-title,
+    [data-theme="light"] .dsv-coll-name { color: #171717; }
+
+    [data-theme="light"] .dsv-opt-sub,
+    [data-theme="light"] .dsv-coll-count { color: #8a8a8a; }
+
+    [data-theme="light"] .dsv-opt-check,
+    [data-theme="light"] .dsv-coll-check { color: #b0b0b0; }
+    /* Pale green #4ade80 fails contrast on white — swap to a solid green. */
+    [data-theme="light"] .dsv-opt.saved .dsv-opt-check { color: #16a34a; }
+
+    [data-theme="light"] .dsv-coll-thumb { background: rgba(0,0,0,.05); }
+
+    [data-theme="light"] .dsv-new-coll { border-color: rgba(0,0,0,.18); color: #8a8a8a; }
+    [data-theme="light"] .dsv-new-coll:hover { border-color: rgba(255,0,80,.35); color: #ff0050; }
+
+    /* White-alpha shimmer is invisible on a white sheet — flip to black alpha. */
+    [data-theme="light"] .dsv-skeleton {
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.04) 25%,
+        rgba(0,0,0,.07) 50%,
+        rgba(0,0,0,.04) 75%);
+      background-size: 200% 100%;
+    }
+
+    [data-theme="light"] .dsv-empty { color: #8a8a8a; }
+
+    [data-theme="light"] .dsv-toast { background: #f4f4f5; border-color: rgba(0,0,0,.08); color: #3a3a3a; }
   `;
 
   // ════════════════════════════════════════════════════════════════════════
@@ -338,7 +404,7 @@
     }
 
     if (!_collections.length) {
-      wrap.innerHTML = `<div style="text-align:center;padding:16px;font-size:11px;color:#444">No collections yet — create one below!</div>`;
+      wrap.innerHTML = `<div class="dsv-empty" style="text-align:center;padding:16px;font-size:11px">No collections yet — create one below!</div>`;
       return;
     }
 

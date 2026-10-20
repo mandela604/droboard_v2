@@ -356,12 +356,82 @@ async function getAssignments() {
   return rows.map(r => Object.assign({}, r, { id: r.id }));
 }
 
+// Pending review items per author (submitted books + BookEdit + ChapterEdit +
+// ReviewSubmission). A reader's first submission is a Book at status
+// 'under_review' — that's what puts them in the "Needs an editor" queue.
+async function pendingByAuthor(ids) {
+  const out = {};
+  if (!ids.length) return out;
+  const { BookEdit, ChapterEdit, ReviewSubmission } = require('../models/application.model');
+  const { Book } = require('../models/content.model');
+  const match = { status: 'pending', authorId: { $in: ids } };
+  const grp = [{ $match: match }, { $group: { _id: '$authorId', n: { $sum: 1 } } }];
+  const [b, c, r, bk] = await Promise.all([
+    BookEdit.aggregate(grp), ChapterEdit.aggregate(grp), ReviewSubmission.aggregate(grp),
+    Book.aggregate([{ $match: { status: 'under_review', authorId: { $in: ids } } }, { $group: { _id: '$authorId', n: { $sum: 1 } } }]),
+  ]);
+  const add = rows => rows.forEach(x => { const k = String(x._id); out[k] = (out[k] || 0) + x.n; });
+  add(b); add(c); add(r); add(bk);
+  return out;
+}
+
+// ── "Needs an editor" queue ────────────────────────────────────────────────
+// Users with NO EditorAssignment who have actually submitted work. Per the
+// product rule they are still READERS (writer role is granted only when an
+// editor approves their first book — see senior.controller reviewDecide);
+// already-approved writers whose editor was removed also stay visible.
+// ?waiting=1 narrows the list to only those with something actually pending.
+async function listUnassignedAuthors({ q, waiting, page, pageSize, limit }) {
+  const rows = await EditorAssignment.find({}).select('authorIds').lean();
+  const assigned = new Set();
+  rows.forEach(r => (r.authorIds || []).forEach(id => assigned.add(String(id))));
+
+  const filter = { roles: { $in: ['reader', 'writer'] } };
+  if (assigned.size) filter.id = { $nin: Array.from(assigned) };
+  if (q) {
+    const rx = { $regex: escRx(q), $options: 'i' };
+    filter.$or = [{ fullName: rx }, { email: rx }, { username: rx }];
+  }
+
+  const ids = await User.distinct('id', filter);
+  const pending = await pendingByAuthor(ids);
+
+  let ordered = ids.map(String);
+  // waiting=1 → only writers with a submission actually parked awaiting review
+  if (waiting === '1' || waiting === 1 || waiting === true) {
+    ordered = ordered.filter(id => (pending[id] || 0) > 0);
+  }
+  ordered.sort((a, b) => (pending[b] || 0) - (pending[a] || 0) || a.localeCompare(b));
+
+  const { pg, lim } = pgOf({ page, pageSize, limit });
+  const total = ordered.length;
+  const pageIds = ordered.slice((pg - 1) * lim, pg * lim);
+  const docs = pageIds.length
+    ? await User.find({ id: { $in: pageIds } }).lean()
+    : [];
+  const byId = {};
+  docs.forEach(d => { byId[String(d.id)] = d; });
+
+  const items = pageIds.map(id => {
+    const u = byId[id] || {};
+    return {
+      id, fullName: u.fullName || '', name: u.fullName || '',
+      username: u.username || '', email: u.email || '', avatar: u.avatar || '',
+      status: u.status || 'active', createdAt: u.createdAt,
+      pendingSubmissions: pending[id] || 0,
+      assigned: false, reason: (pending[id] || 0) > 0 ? 'submitted' : 'unassigned',
+    };
+  });
+  return { items, total, page: pg, limit: lim, unassigned: total, waiting: ordered.filter(id => (pending[id] || 0) > 0).length };
+}
+
 async function saveAssignments(editorId, { authorIds }, updatedBy) {
   await loadSeniorOr404(editorId); // editor must be a senior_editor
   const list = Array.from(new Set((authorIds || []).map(String)));
   if (list.length > 100) throw err('too_many', 400);
   if (list.length) {
-    const n = await User.countDocuments({ id: { $in: list }, roles: 'writer' });
+    // Assignees are usually still readers (writers only exist after approval).
+    const n = await User.countDocuments({ id: { $in: list }, roles: { $in: ['reader', 'writer'] } });
     if (n !== list.length) throw err('bad_author', 400);
   }
   const doc = await EditorAssignment.findOneAndUpdate(
@@ -376,4 +446,5 @@ module.exports = {
   listSeniorEditors, quotas, getSeniorEditor, patchSeniorEditor,
   createInvite, listInvites, patchInvite, resendInvite, cancelInvite,
   getByToken, acceptInvite, listAuthors, getAssignments, saveAssignments,
+  listUnassignedAuthors, pendingByAuthor,
 };

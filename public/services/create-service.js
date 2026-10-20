@@ -1131,9 +1131,9 @@ async function submitStory(){
     if (isNewChapterMode()) {
       const bid = getNewChapterBookId();
       const ch = state.chapters[0] || { title:'', content:'' };
-      await postJSON(`/api/books/${encodeURIComponent(bid)}/chapters`, buildChapterPayload(ch, state.chapterNum - 1));
+      await postJSON(`/books/${encodeURIComponent(bid)}/chapters`, buildChapterPayload(ch, state.chapterNum - 1));
     } else {
-      await postJSON('/api/books/batch', {
+      await postJSON('/books/batch', {
         book: buildBookPayload(),
         chapters: state.chapters.map((c, i) => buildChapterPayload(c, i)),
       });
@@ -1185,7 +1185,7 @@ if (isNewChapterMode()) {
   if (state.chapters.length === 0) addChapter();
   if (USE_API) {
     // Live: next number = current chapter count + 1.
-    fetch(API_BASE + '/api/books/' + encodeURIComponent(bid) + '/chapters', { credentials: 'include' })
+    fetch(API_BASE + '/books/' + encodeURIComponent(bid) + '/chapters', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null).then(list => {
         const n = Array.isArray(list) ? list.length : (list && list.length);
         if (Number.isInteger(n)) { state.chapterNum = n + 1; document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Chapter ' + state.chapterNum; }

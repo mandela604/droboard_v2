@@ -5,7 +5,7 @@
 
 /* ── Backend-ready header ── */
 const USE_API = false;
-const API_BASE = '/api/chief-editor';
+const API_BASE = '/api/chief';
 async function callBackend(path, opts){
   if(!USE_API) return null;
   try{

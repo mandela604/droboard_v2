@@ -56,7 +56,9 @@
       if (words) body.wordsRead = words;
       acc = 0;
       post(storyId, key, body);
+      try { if (window.Acquisition && Acquisition.record) Acquisition.record('chapter_read', { storyId: storyId }); } catch (e) {}
     }
+    try { if (window.Acquisition && Acquisition.record) Acquisition.record('story_open', { storyId: storyId }); } catch (e) {}
     post(storyId, key, { secondsSpent: 0 });
     if (typeof document !== 'undefined' && document.addEventListener) {
       document.addEventListener('visibilitychange', function () { last = Date.now(); });

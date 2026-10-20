@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Acquisition — Droboard</title>
+<link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+@media(max-width:1000px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-num{font-size:19px;font-weight:800;line-height:1.1}
+.stat-lbl{font-size:10.5px;color:var(--text-muted);font-weight:600;margin-top:2px}
+.stat-sub{font-size:10px;color:var(--text-faint);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}
+.panel-head h2{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px;line-height:1.5}
+
+.aq-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.aq-sel,.aq-in{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--text);font-family:inherit}
+.aq-sel{cursor:pointer}
+.aq-in{width:100%}
+.aq-in:focus,.aq-sel:focus{outline:none;border-color:var(--accent)}
+
+table.aq-tbl{width:100%;border-collapse:collapse;font-size:12px}
+table.aq-tbl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);padding:8px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+table.aq-tbl td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+table.aq-tbl tr:last-child td{border-bottom:none}
+.num{text-align:right}
+.dest-chip{font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+.dest-chip.story{background:var(--purple-bg,#ece9fb);color:var(--purple,#5b4bcf)}
+.dest-chip.discover{background:var(--blue-bg,#e3ecfd);color:var(--blue,#2f7de1)}
+.dest-chip.home,.dest-chip.bridge{background:var(--amber-bg,#fef3d8);color:var(--amber,#d97706)}
+.dest-chip.feed,.dest-chip.droboard{background:var(--green-bg,#e2f8ea);color:var(--green,#16a34a)}
+.dest-chip.genreHub,.dest-chip.library{background:#f3e8ff;color:#7c3aed}
+.dest-chip.other,.dest-chip.custom{background:var(--table-head);color:var(--text-muted)}
+.win{color:var(--green,#16a34a);font-weight:800}
+.lose{color:var(--red,#e0384d)}
+.pill{display:inline-block;font-size:9.5px;font-weight:800;border-radius:20px;padding:2px 8px;background:var(--green-bg,#e2f8ea);color:var(--green,#16a34a)}
+.pill.neg{background:#fde3e3;color:#e0384d}
+
+.spend-form{display:grid;grid-template-columns:140px 1fr 110px 1fr auto;gap:8px;align-items:end}
+@media(max-width:760px){.spend-form{grid-template-columns:1fr 1fr}}
+.spend-form label{font-size:10px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
+.btn-aq{padding:9px 16px;border-radius:10px;border:none;background:var(--accent,#ff0050);color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-aq:hover{opacity:.92}
+.aq-note{font-size:11.5px;color:var(--text-muted);margin-top:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--input-bg)}
+.aq-empty{padding:20px;text-align:center;color:var(--text-faint);font-size:12.5px}
+.aq-lbl{font-size:10px;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
+.aq-camp{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--input-bg);display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.aq-camp-main{flex:1;min-width:220px}
+.aq-camp-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aq-camp-url{font-family:ui-monospace,monospace;font-size:10px;color:var(--text-muted);margin-top:6px;word-break:break-all;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 9px}
+.aq-camp-acts{display:flex;gap:6px;align-items:center}
+.btn-aq-mini{padding:6px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--card);color:var(--text);font-size:11px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn-aq-mini:hover{border-color:var(--accent);color:var(--accent)}
+.btn-aq-mini.danger:hover{border-color:var(--red,#e0384d);color:var(--red,#e0384d)}
+.aq-spend-row{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border);font-size:12px}
+.aq-spend-row:last-child{border-bottom:none}
+.aq-spend-row span.mut{color:var(--text-faint);font-size:11px}
+</style>
+</head>
+<body>
+<div id="acqRoot">
+  <div class="grid-4" id="statCards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-scale-balanced" style="color:var(--accent)"></i> Campaign Comparison</h2>
+      <div class="aq-controls">
+        <select class="aq-sel" id="periodSel">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel-sub">Story-page vs Discover vs Bridge — judged by readers acquired, retention and platform contribution, never by impressions alone.</div>
+    <div style="overflow-x:auto"><table class="aq-tbl">
+      <thead><tr>
+        <th>Campaign</th><th>Dest</th>
+        <th class="num">Spend</th><th class="num">Visitors</th><th class="num">Regs</th><th class="num">Cost/Reg</th>
+        <th class="num">First Readers</th><th class="num">Cost/Reader</th><th class="num">D7 Ret.</th>
+        <th class="num">Coin Rev.</th><th class="num">Ad Est.</th><th class="num">Contribution</th>
+      </tr></thead>
+      <tbody id="campaignBody"></tbody>
+    </table></div>
+    <div id="comparePager" style="margin-top:12px"></div>
+    <div class="aq-note">Contribution = coin revenue net of writer share &amp; PSP fees + estimated ad earnings − ad spend. Coin purchases count only after payment confirmation.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2><i class="fas fa-bullhorn" style="color:var(--purple)"></i> Your Campaigns</h2>
+    </div>
+    <div class="panel-sub">Copy the tagged URL into Meta or TikTok Ads Manager as the ad destination. Every visitor arriving through that link is attributed automatically. Use a different <code>utm_content</code> per creative/ad variant within the same campaign.</div>
+    <div id="campaignList"></div>
+    <div id="campaignPager" style="margin-top:12px"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:18px;align-items:start" class="aq-2col">
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-plus-circle" style="color:var(--accent)"></i> <span id="cFormTitle">New Campaign</span></h2></div>
+      <div class="panel-sub">Name it, pick where the ad lands (any page — Discover, Feed, Genre Hub, a story, or a custom path), generate the URL.</div>
+      <form id="campaignForm" style="display:grid;gap:10px">
+        <div><label class="aq-lbl">Campaign name</label><input type="text" class="aq-in" id="cName" placeholder="e.g. Werewolf Week Push" required/></div>
+        <div><label class="aq-lbl">Ad lands on</label>
+          <select class="aq-in aq-sel" id="cDest"></select>
+        </div>
+        <div id="cStoryWrap" style="display:none"><label class="aq-lbl">Story ID</label><input type="text" class="aq-in" id="cStoryId" placeholder="e.g. ST-001 or b1"/></div>
+        <div id="cCustomWrap" style="display:none"><label class="aq-lbl">Custom landing path</label><input type="text" class="aq-in" id="cCustom" placeholder="e.g. Pages/genre-hub.html?genre=Werewolf"/></div>
+        <div><label class="aq-lbl">Ad platform</label>
+          <select class="aq-in aq-sel" id="cSource">
+            <option value="facebook">Facebook / Meta</option>
+            <option value="tiktok">TikTok</option>
+            <option value="instagram">Instagram</option>
+            <option value="x">X / Twitter</option>
+            <option value="google">Google</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div><label class="aq-lbl">UTM campaign tag</label><input type="text" class="aq-in" id="cUtm" placeholder="auto from name — editable"/></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="submit" class="btn-aq" id="cSubmit"><i class="fas fa-wand-magic-sparkles"></i> Create &amp; get URL</button>
+          <button type="button" class="btn-aq-mini" id="cCancelEdit" style="display:none"><i class="fas fa-xmark"></i> Cancel edit</button>
+        </div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2><i class="fas fa-coins" style="color:var(--amber)"></i> Record Ad Spend</h2></div>
+      <div class="panel-sub">Enter daily spend from Ads Manager — no API needed yet.</div>
+      <form class="spend-form" id="spendForm">
+        <div><label>Date</label><input type="date" class="aq-in" id="spendDate" required/></div>
+        <div><label>Campaign</label><select class="aq-in aq-sel" id="spendCampaign" required></select></div>
+        <div><label>Amount (USD)</label><input type="number" class="aq-in" id="spendAmount" min="0.01" step="0.01" placeholder="8.00" required/></div>
+        <div><label>Note</label><input type="text" class="aq-in" id="spendNote" placeholder="optional"/></div>
+        <div><button type="submit" class="btn-aq"><i class="fas fa-plus"></i> Add</button></div>
+      </form>
+      <div id="spendLog" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/marketing-sidebar.js"></script>
+<script src="../services/acquisition-service.js"></script>
+<script src="shared/acquisition-page-service.js"></script>
+<script>AcquisitionPage.init();</script>
+</body>
+</html>

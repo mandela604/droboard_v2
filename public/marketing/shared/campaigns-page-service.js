@@ -88,6 +88,10 @@ async function init() {
   document.getElementById('detailOv').addEventListener('click', closeDetail);
   document.getElementById('detailClose').addEventListener('click', closeDetail);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDetail(); closeDel(); } });
+  attachDelegation();
+
+  // Deep link: campaigns.html?new=1 (dashboard quick action) opens the create wizard.
+  if (/(?:^|[?&])new=1(?:&|$)/.test(location.search)) openCreateWizard();
 }
 
 /* ─────────────────────────────────────────
@@ -490,15 +494,18 @@ async function submitDel() {
 
 /* ─────────────────────────────────────────
    SHARED EVENT DELEGATION (delete modal only — wizard handles its own)
-───────────────────────────────────────── */
-document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-action]');
-  if (!el) return;
-  const action = el.dataset.action;
-  if (action === 'close-del') closeDel();
-  else if (action === 'submit-del') submitDel();
-});
-document.getElementById('delOv').addEventListener('click', (e) => { if (e.target.id === 'delOv') closeDel(); });
+   — attached inside init() per the call-and-render contract.
+─────────────────────────────────────────────────────────────── */
+function attachDelegation() {
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    if (action === 'close-del') closeDel();
+    else if (action === 'submit-del') submitDel();
+  });
+  document.getElementById('delOv').addEventListener('click', (e) => { if (e.target.id === 'delOv') closeDel(); });
+}
 
 window.CampaignsPage={init:init};
 })();

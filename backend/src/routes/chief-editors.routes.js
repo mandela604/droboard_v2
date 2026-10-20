@@ -96,6 +96,13 @@ router.post('/invites/accept', authLimiter,
 router.get('/authors', ...guard,
   validate(z.object({ query: pageQuery }).strict()), ctrl.authors);
 
+// "Needs an editor" queue — writers in no EditorAssignment (option B).
+// ?waiting=1 → only those with a submission actually parked awaiting review.
+router.get('/unassigned-authors', ...guard,
+  validate(z.object({
+    query: pageQuery.extend({ waiting: z.string().max(4).optional() }),
+  }).strict()), ctrl.unassigned);
+
 router.get('/assignments', ...guard, ctrl.assignments);
 
 router.put('/senior-editors/:id/assignments', ...guard, audit('chief.editors.assignments'),

@@ -9,7 +9,7 @@ window.__disputesAppealsService = true;
 
 /* ── Backend-ready header ── */
 var USE_API = false;
-var API_BASE = window.DROBOARD_API_BASE || '/api/chief-editor';
+var API_BASE = window.DROBOARD_API_BASE || '/api/chief';
 var TIMEOUT_MS = 2500;
 async function callBackend(path, opts){
   if(!USE_API) return null;

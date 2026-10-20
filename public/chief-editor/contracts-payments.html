@@ -118,6 +118,46 @@ body{font-family:'Inter',system-ui,sans-serif}
 .field-error{color:var(--red);font-size:10.5px;margin-top:5px;display:none}
 .form-input.invalid{border-color:var(--red)}
 
+/* ── Customizable fields (hide/rename per contract) ── */
+.cf-hint{font-size:10.5px;color:var(--text-faint);background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px 11px;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.cf-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;min-height:22px}
+.cf-head .form-label{margin-bottom:0}
+.cf-label{cursor:default;border-radius:4px;padding:1px 4px;margin-left:-4px}
+.cf-label[contenteditable="true"]{outline:1px dashed var(--accent);cursor:text;background:var(--input-bg)}
+.cf-btn{width:22px;height:22px;border-radius:6px;border:none;background:var(--input-bg);color:var(--text-faint);cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cf-btn:hover{color:var(--accent)}
+.cf-row-hidden{display:none!important}
+.cf-tray{display:none;align-items:center;gap:7px;flex-wrap:wrap;background:var(--amber-bg);border:1px dashed var(--amber);border-radius:9px;padding:9px 12px;margin-bottom:16px}
+.cf-tray.show{display:flex}
+.cf-tray-lbl{font-size:10.5px;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:5px}
+.cf-chip{font-size:10.5px;font-weight:700;background:var(--input-bg);border:1px solid var(--border);border-radius:20px;padding:4px 9px;cursor:pointer;color:var(--text-muted)}
+.cf-chip:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Contract type CRUD ── */
+.type-add-wrap{display:flex;gap:8px;align-items:center}
+.type-add-wrap .form-select{flex:1}
+.type-plus{width:38px;height:38px;border-radius:9px;font-size:13px;background:var(--accent);color:#fff;border:none}
+.type-plus:hover{opacity:.85}
+.tb-plus{width:34px;height:34px;border-radius:9px;font-size:12px;background:var(--accent);color:#fff;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.tb-plus:hover{opacity:.85}
+.tm-row{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--input-bg)}
+.tm-top{display:flex;align-items:center;gap:9px}
+.tm-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tm-name{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text);background:transparent;border:1px solid transparent;border-radius:7px;padding:6px 8px;outline:none;font-family:inherit}
+.tm-name:focus{border-color:var(--accent);background:var(--card)}
+.tm-act{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tm-act:hover{color:var(--accent);border-color:var(--accent)}
+.tm-act.del{margin-left:auto}
+.tm-act.del:hover{color:var(--red);border-color:var(--red)}
+.tm-bot{display:flex;align-items:center;gap:7px}
+.tm-lbl{font-size:10px;color:var(--text-faint);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.tm-swatches{display:flex;gap:6px}
+.tm-sw{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0}
+.tm-sw.on{border-color:var(--text)}
+.tm-add-row{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+.tm-add-row .form-input{flex:1}
+.tm-empty{font-size:12px;color:var(--text-faint);text-align:center;padding:14px}
+
 .dt-status-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .dt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px}
 .dt-item{background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
@@ -337,6 +377,7 @@ body{font-family:'Inter',system-ui,sans-serif}
     <div class="toolbar">
       <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name, type, or terms…"/></div>
       <select class="tb-select" id="typeFilter"><option value="all">All types</option></select>
+      <button type="button" class="tb-plus" id="manageTypesBtn2" title="Add / manage contract types"><i class="fas fa-plus"></i></button>
       <select class="tb-select" id="statusFilter">
         <option value="all">All statuses</option>
         <option value="active">Active</option>
@@ -368,6 +409,10 @@ body{font-family:'Inter',system-ui,sans-serif}
     <div class="modal-body">
       <input type="hidden" id="fId"/>
 
+      <div class="cf-hint"><i class="fas fa-pen" style="color:var(--accent)"></i> Double-click any field label to rename it · <i class="fas fa-eye" style="color:var(--accent)"></i> hide fields this contract type doesn't need</div>
+
+      <div class="cf-tray" id="cfTray"><span class="cf-tray-lbl"><i class="fas fa-eye-slash"></i> Hidden</span><span id="cfTrayChips"></span></div>
+
       <div class="form-row">
         <label class="form-label">Contract name</label>
         <input class="form-input" id="fName" placeholder="e.g. Starter Non-Exclusive Agreement"/>
@@ -377,16 +422,7 @@ body{font-family:'Inter',system-ui,sans-serif}
       <div class="form-row two-col">
         <div>
           <label class="form-label">Contract type</label>
-          <select class="form-select" id="fType">
-            <option>Non-Exclusive</option>
-            <option>Exclusive</option>
-            <option>Royalty Share</option>
-            <option>Work-for-Hire</option>
-            <option>Option</option>
-            <option>Serial Rights</option>
-            <option>Renewal</option>
-            <option>Amendment</option>
-          </select>
+          <select class="form-select" id="fType"></select>
         </div>
         <div>
           <label class="form-label">Term length</label>
@@ -400,47 +436,71 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
 
       <div class="form-row three-col">
-        <div>
-          <label class="form-label">Royalty rate (%)</label>
+        <div class="cf-field" data-cf="royalty">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="royalty">Royalty rate (%)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="royalty" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fRoyalty" type="number" min="0" max="100" step="1" placeholder="15"/>
           <div class="form-hint">0 for flat-fee / work-for-hire</div>
         </div>
-        <div>
-          <label class="form-label">Signup bonus min ($)</label>
+        <div class="cf-field" data-cf="bonusMin">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="bonusMin">Signup bonus min ($)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="bonusMin" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fBonusMin" type="number" min="0" step="5" placeholder="20"/>
         </div>
-        <div>
-          <label class="form-label">Signup bonus max ($)</label>
+        <div class="cf-field" data-cf="bonusMax">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="bonusMax">Signup bonus max ($)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="bonusMax" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fBonusMax" type="number" min="0" step="5" placeholder="50"/>
           <div class="form-hint">Typical non-exclusive: $20–$50</div>
         </div>
       </div>
 
       <div class="form-row three-col">
-        <div>
-          <label class="form-label">Completion target (reads)</label>
+        <div class="cf-field" data-cf="compTarget">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="compTarget">Completion target (reads)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="compTarget" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fCompTarget" type="number" min="0" step="1000" placeholder="150000"/>
           <div class="form-hint">e.g. 150,000 completed reads</div>
         </div>
-        <div>
-          <label class="form-label">Window (months)</label>
+        <div class="cf-field" data-cf="compMonths">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="compMonths">Window (months)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="compMonths" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fCompMonths" type="number" min="1" placeholder="6"/>
           <div class="form-hint">Must hit target within this window</div>
         </div>
-        <div>
-          <label class="form-label">Profit-share threshold ($)</label>
+        <div class="cf-field" data-cf="profitThresh">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="profitThresh">Profit-share threshold ($)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="profitThresh" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fProfitThresh" type="number" min="0" step="5" placeholder="20"/>
           <div class="form-hint">Bonus payable once story hits this</div>
         </div>
       </div>
 
       <div class="form-row two-col">
-        <div>
-          <label class="form-label">Profit-share bonus ($)</label>
+        <div class="cf-field" data-cf="profitBonus">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="profitBonus">Profit-share bonus ($)</label>
+            <button type="button" class="cf-btn" data-cf-toggle="profitBonus" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <input class="form-input" id="fProfitBonus" type="number" min="0" step="5" placeholder="50"/>
         </div>
-        <div>
-          <label class="form-label">Auto-renew</label>
+        <div class="cf-field" data-cf="autoRenew">
+          <div class="cf-head">
+            <label class="form-label cf-label" data-cf-label="autoRenew">Auto-renew</label>
+            <button type="button" class="cf-btn" data-cf-toggle="autoRenew" title="Hide field"><i class="fas fa-eye"></i></button>
+          </div>
           <div class="form-toggle-row">
             <span id="fAutoLabel">Off</span>
             <label class="switch">
@@ -478,6 +538,26 @@ body{font-family:'Inter',system-ui,sans-serif}
   </div>
 </div>
 
+<!-- Manage contract types -->
+<div class="modal-overlay" id="typesModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3><i class="fas fa-tags" style="color:var(--accent)"></i> Contract Types</h3>
+      <button class="modal-close" data-close="typesModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="tm-add-row">
+        <input class="form-input" id="tmNewName" placeholder="e.g. First-Look Option"/>
+        <button class="mini-btn primary" id="tmAddBtn"><i class="fas fa-plus"></i> Add</button>
+      </div>
+      <div id="tmList"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="typesModal">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Details modal -->
 <div class="modal-overlay" id="detailsModal">
   <div class="modal-box">
@@ -494,12 +574,12 @@ body{font-family:'Inter',system-ui,sans-serif}
 <div class="modal-overlay" id="confirmModal">
   <div class="modal-box small">
     <div class="modal-head">
-      <h3><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Remove Contract</h3>
+      <h3 id="confirmTitle"><i class="fas fa-triangle-exclamation" style="color:var(--red)"></i> Remove Contract</h3>
       <button class="modal-close" data-close="confirmModal"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="modal-body">
       <div class="confirm-icon"><i class="fas fa-trash"></i></div>
-      <div class="confirm-text">Remove <b id="confirmName"></b>? This can't be undone. Existing signed copies are unaffected.</div>
+      <div class="confirm-text" id="confirmText"></div>
     </div>
     <div class="modal-foot">
       <button class="mini-btn ghost" data-close="confirmModal">Cancel</button>

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
-<title>Apply for Contract · Droboard</title>
+<title>Apply for Contract Â· Droboard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -106,6 +106,32 @@ button{font-family:inherit;cursor:pointer}
 .apply-btn:disabled{opacity:.4;cursor:default;transform:none}
 .apply-btn.pending{background:var(--amber);cursor:default}
 .apply-btn.sign{background:var(--green)}
+
+/* ── KYC / identity step ── */
+.kyc-card{background:var(--l1);border:1px solid var(--border,#e7e7ee);border-radius:14px;padding:16px;margin-top:4px}
+.kyc-label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--tx-muted,#8e8e93);margin:14px 0 6px}
+.kyc-card .kyc-label:first-child{margin-top:0}
+.kyc-input{width:100%;padding:11px 12px;border:1.5px solid var(--border,#e2e2ea);border-radius:10px;background:var(--bg,#fff);font:inherit;font-size:13.5px;color:inherit;box-sizing:border-box}
+.kyc-input:focus{outline:none;border-color:var(--acc)}
+.kyc-hint{font-size:11.5px;color:var(--tx-muted,#8e8e93);margin-top:6px}
+.kyc-check{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;font-weight:600;margin-top:12px;cursor:pointer}
+.kyc-check input{margin-top:2px;accent-color:var(--acc)}
+.kyc-note{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;background:rgba(255,0,80,.06);border:1px solid rgba(255,0,80,.15);border-radius:10px;padding:10px 12px;margin-top:12px;color:inherit}
+.kyc-note i{margin-top:2px;color:var(--acc);flex:none}
+.kyc-note span{flex:1}
+.kyc-uploads{display:flex;gap:10px;margin-top:10px}
+.kyc-upload{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border:1.5px dashed var(--border,#c9c9d4);border-radius:12px;background:var(--bg,#fafafc);cursor:pointer;text-align:center;transition:.15s}
+.kyc-upload:hover{border-color:var(--acc)}
+.kyc-upload i{font-size:18px;color:var(--acc)}
+.kyc-upload span{font-size:11.5px;font-weight:800}
+.kyc-upload em{font-size:10px;font-style:normal;color:var(--tx-muted,#8e8e93);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.kyc-up-img{width:100%;height:96px;object-fit:cover;border-radius:8px;background:#0002}
+.kyc-upload.filled{border-style:solid;border-color:var(--green,#0f9d58);background:rgba(15,157,88,.06)}
+.kyc-upload.filled i{display:none}
+.kyc-upload.filled em{color:var(--green,#0f9d58);font-weight:700}
+.kyc-err{display:none;font-size:12.5px;font-weight:700;color:#e5484d;margin-top:12px}
+.kyc-err.show{display:block}
+.kyc-back{display:block;width:100%;margin-top:10px;padding:10px;border:1px solid var(--border,#e2e2ea);border-radius:10px;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--tx-muted,#8e8e93);cursor:pointer}
 
 /* ──────── Status Detail ──────── */
 .status-detail{
@@ -232,6 +258,74 @@ button{font-family:inherit;cursor:pointer}
     <div class="book-list" id="bookList"></div>
   </div>
 
+  <!-- Identity / KYC step (3-path: adult NIN, under-18 guardian, no-NIN alt ID) -->
+  <div class="content" id="kycView" style="display:none">
+    <div class="page-header">
+      <h1>Identity for Contract</h1>
+      <p id="kycSub">Contracts need identity verification. Pick the path that fits you.</p>
+    </div>
+    <div class="kyc-card">
+      <label class="kyc-label">Your date of birth *</label>
+      <input class="kyc-input" type="date" id="kycDob" max=""/>
+      <div class="kyc-hint" id="kycAgeNote">We use this to choose the right signing path.</div>
+
+      <!-- ID photos (front + back) — required by editorial for every path -->
+      <div id="photoBox" style="display:none">
+        <label class="kyc-label" id="photoLbl">ID photos *</label>
+        <div class="kyc-hint" style="margin-top:0">Clear photos of your ID, <b>front and back</b> — required by our editors before a contract can be signed.</div>
+        <div class="kyc-uploads">
+          <label class="kyc-upload" id="upFrontBox">
+            <input type="file" accept="image/*" capture="environment" id="kycFront" hidden/>
+            <img class="kyc-up-img" id="frontImg" alt="" hidden/>
+            <i class="fas fa-camera"></i><span>Front of ID</span><em id="frontName">Tap to capture</em>
+          </label>
+          <label class="kyc-upload" id="upBackBox">
+            <input type="file" accept="image/*" capture="environment" id="kycBack" hidden/>
+            <img class="kyc-up-img" id="backImg" alt="" hidden/>
+            <i class="fas fa-camera"></i><span>Back of ID</span><em id="backName">Tap to capture</em>
+          </label>
+        </div>
+      </div>
+
+      <div id="selfBox">
+        <label class="kyc-label">Your NIN (11 digits) *</label>
+        <input class="kyc-input" id="kycNin" inputmode="numeric" maxlength="11" placeholder="e.g. 12345678901"/>
+        <label class="kyc-check"><input type="checkbox" id="kycNoNin"/> I don't have my NIN yet — continue with an alternate ID</label>
+        <div id="altBox" style="display:none">
+          <label class="kyc-label">Alternate ID type *</label>
+          <select class="kyc-input" id="kycAltType">
+            <option value="">Select ID…</option>
+            <option>Voter's Card</option>
+            <option>International Passport</option>
+            <option>Driver's Licence</option>
+            <option>National Health ID</option>
+          </select>
+          <label class="kyc-label">ID number *</label>
+          <input class="kyc-input" id="kycAltNo" placeholder="ID number"/>
+          <div class="kyc-note"><i class="fas fa-circle-info"></i><span>Your application stays <b>Pending identity</b>. You keep writing and your earnings accrue in your wallet — signing and withdrawals unlock once your NIN is verified.</span></div>
+        </div>
+      </div>
+
+      <div id="guardianBox" style="display:none">
+        <div class="kyc-note"><i class="fas fa-user-shield"></i><span>Under-18 writers are welcome — a parent or guardian co-signs your contract.</span></div>
+        <label class="kyc-label">Guardian full name *</label>
+        <input class="kyc-input" id="kycGName" placeholder="Parent/guardian full name"/>
+        <label class="kyc-label">Relationship *</label>
+        <select class="kyc-input" id="kycGRel">
+          <option value="">Select…</option>
+          <option>Parent</option><option>Legal Guardian</option><option>Older Sibling (18+)</option><option>Other</option>
+        </select>
+        <label class="kyc-label">Guardian NIN or ID number *</label>
+        <input class="kyc-input" id="kycGId" placeholder="Guardian's NIN / ID number"/>
+        <label class="kyc-check"><input type="checkbox" id="kycGConsent"/> I confirm my guardian has agreed to co-sign this contract.</label>
+      </div>
+
+      <div class="kyc-err" id="kycErr"></div>
+      <button class="apply-btn" id="kycSubmitBtn"><i class="fas fa-paper-plane"></i> Submit application</button>
+      <button class="kyc-back" id="kycBackBtn"><i class="fas fa-arrow-left"></i> Back to books</button>
+    </div>
+  </div>
+
   <div class="success-view" id="successView">
     <div class="success-icon"><i class="fas fa-check"></i></div>
     <h2>Application Submitted!</h2>
@@ -283,7 +377,7 @@ button{font-family:inherit;cursor:pointer}
 
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js"></script>
-<script src="services/apply-contract-service.js"></script>
+<script src="services/apply-contract-service.js?v=4"></script>
 <script>ApplyContractService.init();</script>
 </body>
 </html>

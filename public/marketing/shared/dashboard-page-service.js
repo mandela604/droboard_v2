@@ -6,11 +6,26 @@
  */
 (function(){
 'use strict';
+let _d = null, _q = '';
 const shell = MarketingSidebar.attach('#dashRoot',{
   activeItem:'dashboard', title:'Dashboard', subtitle:'Growth & marketing overview',
   user:{name:'Tari Benson',role:'Marketing Lead',avatar:'https://i.pravatar.cc/100?img=32'}, notifCount:5,
   searchPlaceholder:'Search anything…',
+  onSearch:(v)=>{
+    _q = (v||'').trim().toLowerCase();
+    if(_d){ renderEvents(_d); renderActivity(_d); }
+    filterCampaignCards();
+  },
 });
+
+function matchText(s){
+  return !_q || String(s==null?'':s).toLowerCase().indexOf(_q)!==-1;
+}
+function filterCampaignCards(){
+  document.querySelectorAll('#campaignsList .cmp-card').forEach(c=>{
+    c.style.display = matchText(c.textContent) ? '' : 'none';
+  });
+}
 
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
@@ -106,6 +121,7 @@ async function renderActiveCampaigns(){
   document.querySelectorAll('#campaignsList .cmp-card').forEach(card => {
     card.addEventListener('click', () => { location.href = 'campaigns.html'; });
   });
+  filterCampaignCards();
 }
 
 function renderQuickActions(d){
@@ -123,11 +139,12 @@ function renderQuickActions(d){
 }
 
 function renderEvents(d){
-  if(!d.upcomingEvents || !d.upcomingEvents.length){
-    document.getElementById('eventsList').innerHTML = `<div class="empty-note">No upcoming events or contests scheduled.</div>`;
+  const items = (d.upcomingEvents||[]).filter(e=>matchText((e.name||'')+' '+(e.type||'')+' '+(e.detail||'')));
+  if(!items.length){
+    document.getElementById('eventsList').innerHTML = `<div class="empty-note">${_q?'No matching events or contests.':'No upcoming events or contests scheduled.'}</div>`;
     return;
   }
-  document.getElementById('eventsList').innerHTML = d.upcomingEvents.map(e=>`
+  document.getElementById('eventsList').innerHTML = items.map(e=>`
     <div class="evt-row">
       <div class="evt-ico"><i class="fas ${e.type==='Contest'?'fa-trophy':'fa-calendar-star'}"></i></div>
       <div class="evt-body">
@@ -153,7 +170,12 @@ function renderAnalytics(d){
 }
 
 function renderActivity(d){
-  document.getElementById('activityList').innerHTML = d.recentActivity.map(a=>`
+  const items = (d.recentActivity||[]).filter(a=>matchText(String(a.text||'').replace(/<[^>]*>/g,'')));
+  if(!items.length){
+    document.getElementById('activityList').innerHTML = `<div class="empty-note">${_q?'No matching activity.':'No recent activity yet.'}</div>`;
+    return;
+  }
+  document.getElementById('activityList').innerHTML = items.map(a=>`
     <div class="act-row">
       <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
       <div class="act-body">
@@ -181,6 +203,7 @@ async function init(){
   safeRun('upcoming events', () => renderEvents(d));
   safeRun('analytics snapshot', () => renderAnalytics(d));
   safeRun('recent activity', () => renderActivity(d));
+  _d = d;
 
   // Runs independently of the block above since it awaits its own
   // fetch — its failure (or slowness) shouldn't hold up anything else.

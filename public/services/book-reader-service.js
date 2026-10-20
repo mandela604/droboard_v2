@@ -390,7 +390,7 @@ async function init() {
   }
 }
 
-function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'series', slot: 'series:top' }); } catch (e) {} }
+function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'series', slot: 'series:top', storyId: seriesId }); } catch (e) {} }
 async function mountAdStrip() {
   var el = document.getElementById("adStripWrap");
   if (!el) return;
