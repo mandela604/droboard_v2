@@ -179,7 +179,6 @@
   function _esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   function _toast(msg) {
-    if (typeof window.toast === 'function') { window.toast(msg); return; }
     let el = document.getElementById('fin-toast');
     if (!el) {
       el = document.createElement('div');

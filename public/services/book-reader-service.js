@@ -142,14 +142,52 @@ function goProfile() {
   const w = writer();
   goProfileFor(w.handle || w.name);
 }
+/* Viewer queue for THIS page only — the writer plus any comment/review
+   avatar that has statuses. People not shown on the page are never queued,
+   so a lone profile opens with no next/back between people. Within one
+   author their own multiple statuses still play in order. */
+function statusViewQueue(fallback) {
+  const viewable = [];
+  const seen = {};
+  const push = (rec) => {
+    if (!rec || !rec.statuses || !rec.statuses.length || seen[String(rec.id)]) return;
+    seen[String(rec.id)] = 1;
+    viewable.push(rec);
+  };
+  const w = writer();
+  if (w && w.statuses && w.statuses.length) {
+    push({
+      id: w.statusId || 'br_writer', name: w.name, avatar: w.avatar,
+      ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
+      likes: 0, threads: 0, statuses: w.statuses,
+    });
+  }
+  Object.keys(userStatus).forEach(k => {
+    const r = userStatus[k];
+    if (r && r.statuses && r.statuses.length) {
+      push({
+        id: r.id, name: r.name, avatar: r.avatar,
+        ring: r.ring === 'viewed' ? 'ring-viewed' : 'ring-has',
+        likes: 0, threads: 0, statuses: r.statuses,
+      });
+    }
+  });
+  if (fallback && fallback.statuses && fallback.statuses.length) {
+    const i = viewable.findIndex(v => String(v.id) === String(fallback.id));
+    if (i > 0) viewable.unshift(viewable.splice(i, 1)[0]);
+    else if (i === -1) viewable.unshift(fallback);
+  }
+  return viewable;
+}
 function openWriterStatus() {
   const w = writer();
   if (!(w.statuses && w.statuses.length) || typeof window.openStatusViewer !== 'function') return false;
-  window.openStatusViewer([{
+  const q = statusViewQueue({
     id: w.statusId || 'br_writer', name: w.name, avatar: w.avatar,
     ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
     likes: 0, threads: 0, statuses: w.statuses,
-  }], w.statusId || 'br_writer');
+  });
+  window.openStatusViewer(q, q[0].id);
   return true;
 }
 function onWriterAvatar() {
@@ -226,11 +264,12 @@ function userNameHtml(name, cls) {
 function onUserAvatar(el) {
   const rec = userStatus[el.getAttribute('data-av-user')];
   if (rec && rec.statuses && rec.statuses.length && typeof window.openStatusViewer === 'function') {
-    window.openStatusViewer([{
+    const q = statusViewQueue({
       id: rec.id, name: rec.name, avatar: rec.avatar,
       ring: rec.ring === 'viewed' ? 'ring-viewed' : 'ring-has',
       likes: 0, threads: 0, statuses: rec.statuses,
-    }], rec.id);
+    });
+    window.openStatusViewer(q, q[0].id);
     return;
   }
   goProfileFor(rec ? rec.name : el.getAttribute('data-av-user'));
@@ -362,7 +401,7 @@ async function mountAdStrip() {
   } catch (e) { el.style.display = "none"; }
 }
 
-window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
+window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
 
 /* ══ REVIEWS — sorted + paginated (12 per page) ══ */
 const REV_PER_PAGE = 12;
@@ -546,6 +585,11 @@ function engChipHtml(season, chapter, label) {
 function openChapter(n) {
   location.href = 'full-reader.html?story=' + encodeURIComponent(SERIES && (SERIES._bookId || SERIES.id) || seriesId) + '&ch=' + n;
 }
+/* Continue banner → jump straight into the full reader at saved progress. */
+function continueReading() {
+  const cp = SERIES && SERIES.currentProgress;
+  openChapter(cp ? (cp.chapter || 1) : 1);
+}
 function renderChapters() {
   const container = document.getElementById('chaptersContent');
   const chapters = allChaptersFlat();
@@ -576,7 +620,7 @@ function renderChapterList(chapters, si) {
         : `<i class="fas fa-lock ch-lock-ico"></i>`;
 
     return `
-      <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="${ch.state !== 'locked' ? `SeriesReaderPage.openChapter(${ch.n})` : "toast('🔒 Not yet available')"}">
+      <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="SeriesReaderPage.openChapter(${ch.n})">
         <div class="ch-num-badge ${numCls}">${numIcon}</div>
         <div class="ch-info">
           <div class="ch-title">Ch.${ch.n} — ${ch.title}</div>
@@ -606,8 +650,8 @@ function renderOverview() {
     { icon: '✍️', label: 'Author', val: `@${SERIES.writer.name} · ${SERIES.writer.followers} followers` },
     { icon: '📅', label: 'Started', val: SERIES.startDate },
     { icon: '🔄', label: 'Last updated', val: SERIES.lastUpdated },
-    { icon: '📖', label: 'Type', val: _isLong ? `Long story · ${SERIES.totalChapters} chapters` : 'Short story · 1 chapter' },
-    { icon: '📖', label: 'Chapters', val: `${SERIES.totalChapters} total · ${allChaptersFlat().filter(c => c.state !== 'locked').length} published` },
+    { icon: '📖', label: 'Type', val: _isLong ? 'Long story' : 'Short story' },
+    { icon: '📖', label: 'Chapters', val: `${allChaptersFlat().length} published` },
     { icon: '⏱', label: 'Read time', val: SERIES.avgReadTime },
     { icon: '📝', label: 'Word count', val: SERIES.wordCount },
     { icon: '🏷️', label: 'Genres', val: null, pills: SERIES.genres },
@@ -634,7 +678,7 @@ function renderOverview() {
       ].map(s => `<div style="background:var(--l2);border:1px solid var(--bd);border-radius:11px;padding:10px;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${s.c}">${s.n}</div><div style="font-size:8px;color:var(--tx-muted);margin-top:2px">${s.l}</div></div>`).join('')}
     </div>
     ${topReads.length ? `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🏆 Most-read chapters</div>
-    ${topReads.map((c,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2)"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${i===0?'#fbbf24':i===1?'#a0a0b0':'#a07040'};width:20px">${i+1}</div><div style="flex:1;font-size:11px;color:var(--tx-high);font-weight:600">${c.title}</div><div style="font-size:11px;font-weight:800;color:var(--acc)">${c.reads}</div></div>`).join('')}` : ''}`;
+    ${topReads.map((c,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);cursor:pointer" onclick="SeriesReaderPage.openChapter(${c.n})"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${i===0?'#fbbf24':i===1?'#a0a0b0':'#a07040'};width:20px">${i+1}</div><div style="flex:1;font-size:11px;color:var(--tx-high);font-weight:600"><span style="display:inline-block;font-size:8.5px;font-weight:800;color:var(--acc3);background:rgba(255,0,80,.09);border:1px solid var(--bd-acc);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:middle">CH.${c.n}</span>${c.title}</div><div style="font-size:11px;font-weight:800;color:var(--acc)">${c.reads}</div><i class="fas fa-chevron-right" style="font-size:9px;color:var(--tx-faint)"></i></div>`).join('')}` : ''}`;
 }
 
 function toggleSynopsis() {

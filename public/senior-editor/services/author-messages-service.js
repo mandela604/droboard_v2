@@ -21,6 +21,28 @@ async function callBackend(path, options) {
   }
 }
 
+/* All CRUD writes go through these helpers: try the API first, fall back to
+   the in-memory demo list when USE_API=false or the endpoint is down. */
+async function writeConv(id, patch, demoFn) {
+  var r = null;
+  try {
+    r = await callBackend('/author-messages/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+  } catch (e) { r = null; }
+  if (!r) {
+    var conv = CONVERSATIONS.find(function (c) { return c.id === id; });
+    if (conv && demoFn) demoFn(conv);
+  }
+  return r || { ok: true, demo: true };
+}
+async function persistMessage(conv, msg) {
+  var r = null;
+  try {
+    r = await callBackend('/author-messages/' + conv.id + '/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(msg) });
+  } catch (e) { r = null; }
+  if (!r) { conv.messages.push(msg); conv.time = 'Just now'; }
+  return r || { ok: true, demo: true };
+}
+
 var PERSPECTIVE='admin';
 var AVATAR_ME='https://i.pravatar.cc/100?img=5';
 
@@ -98,7 +120,7 @@ function renderConvList(){
   wrap.innerHTML=list.map(function(c){
     var lastMsg=c.messages[c.messages.length-1];
     var preview=(lastMsg.from===PERSPECTIVE?'You: ':(lastMsg.file?'📎 File: '+lastMsg.file.name:''))+((lastMsg.text||'').substring(0,60));
-    return '<div class="conv-item'+(c.unread>0?' unread':'')+(c.id===activeConvId?' active':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
+    return '<div class="conv-item'+(c.unread>0?' unread':'')+(c.id===activeConvId?' active':'')+(c.status==='closed'?' is-closed':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+(c.status==='closed'?'<span class="closed-chip">Closed</span>':'')+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
   }).join('');
   wrap.querySelectorAll('.conv-item').forEach(function(el){
     el.addEventListener('click',function(){
@@ -142,7 +164,8 @@ function renderThread(){
     return '<div class="msg-row '+(isOut?'out':'in')+'" data-mid="'+m.mid+'"><img src="'+(isOut?AVATAR_ME:conv.avatar)+'" alt=""/><div>'+bodyHtml+'</div></div>';
   }).join('');
 
-  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><button class="th-act-btn" title="Flag" onclick="toggleFlag('+conv.id+')"><i class="fas fa-flag"></i></button></div></div><div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="Type a reply to '+conv.name+'..."/><button class="compose-icon-btn" id="attachBtn" title="Attach file"><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/></div><div id="fileBadge"></div></div><button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button></div>';
+  var isClosed=conv.status==='closed';
+  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+(isClosed?'<span class="closed-chip">Closed</span>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><div class="thread-menu-wrap"><button class="th-act-btn" id="threadMenuBtn" title="More options"><i class="fas fa-ellipsis-v"></i></button><div class="thread-menu" id="threadMenu"><button class="thread-menu-item" id="tmFlag"><i class="fas fa-flag"></i> <span>'+(conv.flagged?'Remove flag':'Flag conversation')+'</span></button><button class="thread-menu-item'+(isClosed?'':' is-close')+'" id="tmClose"><i class="fas fa-'+(isClosed?'rotate-right':'lock')+'"></i> <span>'+(isClosed?'Restart conversation':'Close conversation')+'</span></button></div></div></div></div>'+(isClosed?'<div class="closed-banner"><span><i class="fas fa-lock" style="margin-right:6px"></i>This conversation is closed.</span><button id="tmRestartBanner">Restart conversation</button></div>':'')+'<div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="'+(isClosed?'Conversation closed \u2014 restart to reply':'Type a reply to '+conv.name+'...')+'"'+(isClosed?' disabled':'')+'/><button class="compose-icon-btn" id="attachBtn" title="Attach file"'+(isClosed?' disabled':'')+'><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/></div><div id="fileBadge"></div></div><button class="send-btn" id="sendBtn"'+(isClosed?' disabled':'')+'><i class="fas fa-paper-plane"></i></button></div>';
 
   var body=document.getElementById('threadBody');
   body.scrollTop=body.scrollHeight;
@@ -159,10 +182,10 @@ function renderThread(){
     if(text)msg.text=text;
     if(pendingFile){msg.file=pendingFile;pendingFile=null;}
     if(replyTarget){msg.replyTo=replyTarget.mid;replyTarget=null;}
-    conv.messages.push(msg);
-    conv.time='Just now';
-    renderThread();bindLongPress();renderConvList();renderStats();
-    toast('Message sent');
+    persistMessage(conv,msg).then(function(){
+      renderThread();bindLongPress();renderConvList();renderStats();
+      toast('Message sent');
+    });
   };
   document.getElementById('sendBtn').addEventListener('click',send);
   input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
@@ -197,14 +220,30 @@ function renderThread(){
   }
   document.getElementById('replyClose').addEventListener('click',function(){replyTarget=null;document.getElementById('replyPreview').classList.remove('show');});
 
+  var menuBtn=document.getElementById('threadMenuBtn'),menu=document.getElementById('threadMenu');
+  menuBtn.addEventListener('click',function(e){e.stopPropagation();menu.classList.toggle('open');});
+  document.getElementById('tmFlag').addEventListener('click',function(e){e.stopPropagation();menu.classList.remove('open');toggleFlag(conv.id);});
+  document.getElementById('tmClose').addEventListener('click',function(e){e.stopPropagation();menu.classList.remove('open');setConvStatus(conv.id,conv.status==='closed'?'open':'closed');});
+  var bannerBtn=document.getElementById('tmRestartBanner');
+  if(bannerBtn)bannerBtn.addEventListener('click',function(){setConvStatus(conv.id,'open');});
+
   bindLongPress();
 }
 
 function toggleFlag(id){
   var conv=CONVERSATIONS.find(function(c){return c.id===id});if(!conv)return;
-  conv.flagged=!conv.flagged;
-  toast(conv.flagged?'Conversation flagged':'Flag removed');
-  renderConvList();renderThread();
+  var next=!conv.flagged;
+  writeConv(id,{flagged:next},function(c){c.flagged=next;}).then(function(){
+    toast(next?'Conversation flagged':'Flag removed');
+    renderConvList();renderThread();
+  });
+}
+
+function setConvStatus(id,status){
+  writeConv(id,{status:status},function(c){c.status=status;}).then(function(){
+    toast(status==='closed'?'Conversation closed':'Conversation restarted');
+    renderConvList();renderThread();
+  });
 }
 
 var longPressTimer=null,ctxMsgId=null,ctxConvId=null;
@@ -243,15 +282,16 @@ function startEdit(mid,cid){
   var originalText=msg.text||'';var saved=false;
   bub.innerHTML='<div class="edit-banner"><i class="fas fa-pen"></i> Editing</div><textarea class="edit-input" rows="1">'+originalText.replace(/</g,'&lt;')+'</textarea>';
   var ta=bub.querySelector('.edit-input');ta.focus();ta.style.height=ta.scrollHeight+'px';
-  function save(){if(saved)return;saved=true;var val=ta.value.trim();if(!val){doDelete(mid,cid);return;}msg.text=val;msg.edited=true;renderThread();bindLongPress();toast('Message edited');}
+  function save(){if(saved)return;saved=true;var val=ta.value.trim();if(!val){doDelete(mid,cid);return;}writeConv(cid,{editMessage:{mid:mid,text:val}},function(c){var m=c.messages.find(function(x){return x.mid===mid});if(m){m.text=val;m.edited=true;}}).then(function(){renderThread();bindLongPress();toast('Message edited');});}
   ta.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();save();}if(e.key==='Escape'){saved=true;renderThread();bindLongPress();}});
   ta.addEventListener('blur',function(){setTimeout(save,100);});
 }
 
 function doDelete(mid,cid){
-  var conv=CONVERSATIONS.find(function(c){return c.id===cid});if(!conv)return;
-  var idx=conv.messages.findIndex(function(m){return m.mid===mid});if(idx===-1)return;
-  conv.messages.splice(idx,1);renderThread();bindLongPress();renderConvList();toast('Message deleted');
+  writeConv(cid,{deleteMessage:mid},function(c){
+    var idx=c.messages.findIndex(function(m){return m.mid===mid});if(idx===-1)return;
+    c.messages.splice(idx,1);
+  }).then(function(){renderThread();bindLongPress();renderConvList();toast('Message deleted');});
 }
 
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
@@ -273,19 +313,30 @@ function bindEvents(){
   document.getElementById('ctxEdit').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)startEdit(mid,cid);});
   document.getElementById('ctxDelete').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)doDelete(mid,cid);});
   document.querySelectorAll('.top-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.top-tab').forEach(function(t){t.classList.remove('active')});tab.classList.add('active');currentView=tab.dataset.view;renderConvList();});});
-  document.getElementById('markAllBtn').addEventListener('click',function(){CONVERSATIONS.forEach(function(c){c.unread=0});renderStats();renderConvList();toast('All messages marked as read');});
+  document.getElementById('markAllBtn').addEventListener('click',function(){
+    callBackend('/author-messages/read-all',{method:'POST'}).then(function(r){
+      if(!r)CONVERSATIONS.forEach(function(c){c.unread=0});
+      renderStats();renderConvList();toast('All messages marked as read');
+    });
+  });
   document.getElementById('convSearch').addEventListener('input',function(){renderConvList();});
 }
 
 function init(){
   SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
-  // onclick="toggleFlag(...)" inside rendered thread HTML needs a global:
-  window.toggleFlag=toggleFlag;
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/author-messages').then(function (data) { if (data && data.conversations) { CONVERSATIONS = data.conversations; renderConvList(); renderStats(); renderThread(); } });
+  // Dismiss the thread kebab menu on any outside click:
+  document.addEventListener('click',function(){var m=document.getElementById('threadMenu');if(m)m.classList.remove('open');});
   callBackend('/author-messages');
   bindEvents();
-  activeConvId=CONVERSATIONS[0].id;renderConvList();renderStats();renderThread();bindLongPress();
+  // Deep link from Authors page (?u=Author Name) — open that conversation if it exists:
+  try{
+    var u=(new URLSearchParams(window.location.search)).get('u');
+    if(u){
+      var hit=CONVERSATIONS.find(function(c){return c.name.toLowerCase()===u.trim().toLowerCase();});
+      if(hit)activeConvId=hit.id;
+    }
+  }catch(e){}
+  activeConvId=activeConvId||CONVERSATIONS[0].id;renderConvList();renderStats();renderThread();bindLongPress();
 }
 
 window.AuthorMessagesService={init:init};

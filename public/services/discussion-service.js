@@ -156,6 +156,27 @@
 
   /* ── OP render ── */
   function profileHref(name) { return 'profile.html?u=' + encodeURIComponent(name || ''); }
+
+  /* Resolve the OP author's status ring ('has' | 'viewed' | 'none') from
+     the same status pool the avatar-click handler uses, so the ring is
+     drawn at mount time, not only after a click. */
+  async function resolveOpStatusRing(name) {
+    try {
+      if (window.FeedData && FeedData.getStories) {
+        const stories = await FeedData.getStories();
+        const viewable = (stories || []).filter(s => s && s.statuses && s.statuses.length);
+        const hit = viewable.find(s => s.name === name);
+        if (hit) return hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
+      }
+    } catch (e) {}
+    try {
+      const pool = (window.COMMENTS_DATA || []).filter(c => c && c.statuses && c.statuses.length);
+      const hit = pool.find(c => c.name === name);
+      if (hit) return hit.statusRing === 'viewed' ? 'viewed' : (hit.statusRing === 'none' ? 'none' : 'has');
+    } catch (e) {}
+    return 'none';
+  }
+
   function renderOp() {
     const mount = document.getElementById('opMount');
     if (!POST) {
@@ -193,7 +214,11 @@
       <button type="button" class="op-act" id="opShareBtn"><i class="fas fa-share-nodes"></i> Share</button>`;
     mount.innerHTML = `<div class="op">
       <div class="op-head">
-        <img class="op-av" id="opAv" src="${esc(POST.avatar || '')}" alt=""/>
+        <div class="op-av-wrap" id="opAvWrap">
+          <div class="op-av-ring ring-none" id="opAvRing">
+            <div class="op-av-ring-inner"><img class="op-av" id="opAv" src="${esc(POST.avatar || '')}" alt=""/></div>
+          </div>
+        </div>
         <div class="op-meta">
           <div><span class="op-name" id="opName">${esc(POST.name || '')}</span>${badge}</div>
           <div class="op-time">${esc(POST.time || '')}${GENRE ? ' · ' + esc(GENRE.name) : ''}</div>
@@ -206,7 +231,30 @@
       <div class="op-actions" id="opActions">${actions}</div>
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';
-    document.getElementById('opAv')?.addEventListener('click', async () => {
+
+    // Draw the status ring now that the avatar is mounted
+    (async () => {
+      const ring = await resolveOpStatusRing(POST.name);
+      const ringEl = document.getElementById('opAvRing');
+      if (ringEl) ringEl.className = 'op-av-ring ring-' + ring;
+    })();
+
+    // Gray the ring after the status is viewed — same contract as
+    // comment-section/debate-args so every host page stays in sync.
+    (function bindOpStatusSync() {
+      const prev = window.onStatusViewerChange;
+      window.onStatusViewerChange = function (wid, ring) {
+        if (typeof prev === 'function') { try { prev(wid, ring); } catch (e) {} }
+        const ringEl = document.getElementById('opAvRing');
+        if (!ringEl || !POST) return;
+        // The viewer dedupes by name; match loosely on the author's name
+        // appearing in the viewer id, or fall back to any viewed event.
+        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+        ringEl.className = 'op-av-ring ring-' + newRing;
+      };
+    })();
+
+    document.getElementById('opAvWrap')?.addEventListener('click', async () => {
       const name = POST.name;
       if (window.FeedData && FeedData.getStories && window.openStatusViewer) {
         try {
@@ -361,25 +409,27 @@
       } else toast(url);
     });
     if (window.DroboardReactionPicker) {
-      const opRx = { userRx: POST && POST.liked ? 'love' : null };
-      if (POST) { opRx.love = POST.likes || 0; }
-      DroboardReactionPicker.attach(document.getElementById('opMount'), {
-        getState: (id) => {
+      // attachCounters — picker owns all toggle math (love/switch/deselect,
+      // total-preserving). Host only seeds initial counts + persists.
+      DroboardReactionPicker.attachCounters(document.getElementById('opMount'), {
+        getCounts: (id) => {
           if (!POST || String(id) !== String(POST.id)) return null;
-          return opRx;
+          const likes = POST.likes || 0;
+          const buckets = ['crying', 'shocked', 'emotional'];
+          let h = 0; String(POST.id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
+          const secondId = buckets[h];
+          const second = Math.min(5, Math.max(0, likes));
+          const counts = { love: Math.max(0, likes - second) };
+          counts[secondId] = second;
+          return { userRx: (POST.userRx || (POST.liked ? 'love' : null)) || null, ...counts };
         },
-        onReact: (id, rid) => {
+        save: (id, state) => {
           if (!POST || String(id) !== String(POST.id)) return;
-          if (opRx.userRx === rid) {
-            if (rid === 'love') opRx.love = Math.max(0, (opRx.love || 0) - 1);
-            opRx.userRx = null;
-          } else {
-            if (opRx.userRx === 'love') opRx.love = Math.max(0, (opRx.love || 0) - 1);
-            if (rid === 'love') opRx.love = (opRx.love || 0) + 1;
-            opRx.userRx = rid;
-          }
-          POST.likes = opRx.love || 0;
-          POST.liked = opRx.userRx === 'love';
+          POST.userRx = state.userRx;
+          POST.liked = state.userRx === 'love';
+          let total = 0;
+          Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
+          POST.likes = total;
         },
       });
     }

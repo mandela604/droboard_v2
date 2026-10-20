@@ -540,51 +540,30 @@
     const feedEl = document.getElementById('feed');
     if (window.DroboardReactionPicker) {
       const findPost = (id) => ALL_POSTS.find(p => String(p.id) === String(id));
-      var _rx = {};
-      const _rxInit = (id, post) => {
-        if (_rx[id]) return _rx[id];
-        const likes = (post && post.likes) || 0;
-        const buckets = ['crying', 'shocked', 'emotional'];
-        let h = 0; String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-        const secondId = buckets[h];
-        const second = Math.min(5, Math.max(0, likes));
-        _rx[id] = { userRx: (post && (post.userRx || (post.liked ? 'love' : null))) || null, love: Math.max(0, likes - second), secondId, second, extraId: null, extra: 0 };
-        return _rx[id];
-      };
-      const _rxTotal = (st) => (st.love || 0) + (st.second || 0) + (st.extra || 0);
-      DroboardReactionPicker.attach(feedEl, {
+      // attachCounters hooks — picker owns all toggle math; host supplies
+      // initial counts + persists result back onto the post.
+      DroboardReactionPicker.attachCounters(feedEl, {
         topRow: 'external',
-        getState: (id) => {
+        getCounts: (id) => {
           const post = findPost(id);
-          if (!post) return null; // unknown id: let other picker bindings claim it
-          const st = _rxInit(id, post);
-          const out = { userRx: st.userRx, love: st.love };
-          out[st.secondId] = st.second;
-          if (st.extraId) out[st.extraId] = st.extra;
-          return out;
+          if (!post) return null; // unknown id → picker stays inert
+          const likes = post.likes || 0;
+          const buckets = ['crying', 'shocked', 'emotional'];
+          let h = 0; String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
+          const secondId = buckets[h];
+          const second = Math.min(5, Math.max(0, likes));
+          const counts = { love: Math.max(0, likes - second) };
+          counts[secondId] = second;
+          return { userRx: (post.userRx || (post.liked ? 'love' : null)) || null, ...counts };
         },
-        onReact: (id, rid) => {
+        save: (id, state) => {
           const post = findPost(id);
           if (!post) return;
-          const st = _rxInit(id, post);
-          rid = rid || 'love';
-          if (st.userRx === rid) {
-            if (rid === 'love') st.love = Math.max(0, st.love - 1);
-            else if (rid === st.secondId) st.second = Math.max(0, st.second - 1);
-            else if (rid === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
-            st.userRx = null;
-          } else {
-            if (st.userRx === 'love') st.love = Math.max(0, st.love - 1);
-            else if (st.userRx === st.secondId) st.second = Math.max(0, st.second - 1);
-            else if (st.userRx === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
-            if (rid === 'love') st.love += 1;
-            else if (rid === st.secondId) st.second += 1;
-            else { st.extraId = rid; st.extra = (st.extra || 0) + 1; }
-            st.userRx = rid;
-          }
-          post.userRx = st.userRx;
-          post.liked = st.userRx === 'love';
-          post.likes = _rxTotal(st);
+          post.userRx = state.userRx;
+          post.liked = state.userRx === 'love';
+          let total = 0;
+          Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
+          post.likes = total;
           if (window.DroboardGenreCard) DroboardGenreCard.update(post);
         },
       });

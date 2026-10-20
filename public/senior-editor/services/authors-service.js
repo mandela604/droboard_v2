@@ -134,7 +134,7 @@ function renderAuthors(){
         </div>
         <div class="lib-config-actions">
           <div class="action-btns">
-            <button class="mini-btn" data-action="message" data-email="${a.email}" data-id="${a.id}"><i class="fas fa-envelope"></i> Send Message</button>
+            <button class="mini-btn" data-action="message" data-name="${a.name}" data-email="${a.email}" data-id="${a.id}"><i class="fas fa-envelope"></i> Send Message</button>
           </div>
           <a class="profile-link" href="profile.html?id=${a.id}">View full profile <i class="fas fa-arrow-right"></i></a>
         </div>
@@ -179,7 +179,7 @@ function onDocClick(e){
   const id = el.dataset.id;
 
   if(action==='toggle-row'){ expandedId = expandedId===id ? null : id; renderAuthors(); }
-  else if(action==='message'){ const email=el.dataset.email; if(email) window.location.href='mailto:'+email; }
+  else if(action==='message'){ window.location.href='author-messages.html'+(el.dataset.name?'?u='+encodeURIComponent(el.dataset.name):''); }
   else if(action==='goto-page'){ currentPage = parseInt(el.dataset.page,10); renderAuthors(); window.scrollTo({top:0,behavior:'smooth'}); }
   else if(action==='prev-page'){ if(currentPage>1){ currentPage--; renderAuthors(); } }
   else if(action==='next-page'){ currentPage++; renderAuthors(); }

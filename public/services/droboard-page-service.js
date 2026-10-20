@@ -263,52 +263,35 @@ function sharePage(){ if(global.openShareModal) window.openShareModal({ title:'D
 
 function attachPostCard(){
   const area=document.getElementById('feedArea'); if(!area || typeof DroboardPostCard==='undefined') return;
-  // ── Shared reaction-picker state (total-preserving, like feed-service) ──
-  const RP = window.DroboardReactionPicker || null;
-  const RP_IDS = RP ? RP.REACTIONS.map(function(r){return r.id}) : ['love','crying','angry','shocked'];
-  const rxState={};
+  // ── attachCounters hooks — picker owns all toggle math; host supplies
+  //    initial counts + persists result back onto the post. ──
   function findReactPost(id){ return allCache.find(function(p){return String(p.id)===String(id)}) || POSTS.find(function(p){return String(p.id)===String(id)}) || (MORE_POSTS||[]).find(function(p){return String(p.id)===String(id)}) || null; }
-  function getReactionFor(post){
-    if(!rxState[post.id]){
-      const o={userRx:null};
-      RP_IDS.forEach(function(r){o[r]=0});
-      const likes=post.likes||0;
-      let secondId = RP_IDS.indexOf('crying')!==-1 ? 'crying' : RP_IDS[1] || RP_IDS[0];
-      if(secondId==='love') secondId = RP_IDS[1] || 'crying';
-      const second=Math.min(5,Math.max(0,likes));
-      o.love=Math.max(0,likes-second);
-      o[secondId]=second;
-      o._secondId=secondId; o._extraId=null; o._extra=0;
-      rxState[post.id]=o;
-    }
-    return rxState[post.id];
-  }
-  function rxPublic(id){
-    const post=findReactPost(id);
-    if(!post) return null; // unknown id: let other picker bindings claim it
-    const st=getReactionFor(post);
-    const out={userRx:st.userRx, love:st.love||0};
-    if(st._secondId) out[st._secondId]=st[st._secondId]||0;
-    if(st._extraId) out[st._extraId]=st._extra||0;
-    return out;
-  }
-  function rxSum(st){ let s=0; RP_IDS.forEach(function(r){ s += st[r]||0; }); return s; }
-  function onPickReact(id, rid){
-    const post=findReactPost(id); if(!post) return;
-    const st=getReactionFor(post);
-    rid = rid || 'love';
-    function decr(r){ if(r==='love') st.love=Math.max(0,(st.love||0)-1); else if(r===st._secondId) st[st._secondId]=Math.max(0,(st[st._secondId]||0)-1); else if(r===st._extraId){ st._extra=Math.max(0,(st._extra||0)-1); if(!st._extra) st._extraId=null; } }
-    if(st.userRx===rid){ decr(rid); st.userRx=null; }
-    else{
-      if(st.userRx) decr(st.userRx);
-      if(rid==='love') st.love=(st.love||0)+1;
-      else if(rid===st._secondId) st[st._secondId]=(st[st._secondId]||0)+1;
-      else{ st._extraId=rid; st._extra=(st._extra||0)+1; }
-      st.userRx=rid;
-    }
-    post.userRx=st.userRx; post.liked=(st.userRx==='love'); post.likes=rxSum(st);
-    DroboardPostCard.update(mapPost(post));
-    if(inlineOpen[post.id]) mountInline(post);
+  function counterHooks(){
+    return {
+      getCounts: function(id){
+        const post = findReactPost(id);
+        if (!post) return null; // unknown id → picker stays inert
+        const likes = post.likes || 0;
+        const buckets = ['crying', 'shocked', 'emotional'];
+        let h = 0; String(id).split('').forEach(function(ch){ h = (h + ch.charCodeAt(0)) % buckets.length; });
+        const secondId = buckets[h];
+        const second = Math.min(5, Math.max(0, likes));
+        const counts = { love: Math.max(0, likes - second) };
+        counts[secondId] = second;
+        return { userRx: (post.userRx || (post.liked ? 'love' : null)) || null, ...counts };
+      },
+      save: function(id, state){
+        const post = findReactPost(id);
+        if (!post) return;
+        post.userRx = state.userRx;
+        post.liked = state.userRx === 'love';
+        let total = 0;
+        Object.keys(state).forEach(function(k){ if (k !== 'userRx') total += state[k] || 0; });
+        post.likes = total;
+        DroboardPostCard.update(mapPost(post));
+        if (inlineOpen[post.id]) mountInline(post);
+      },
+    };
   }
   // ── Inline comments (comment-section component, mounted per-card) ──
   function bumpComments(post){
@@ -394,7 +377,7 @@ function attachPostCard(){
     onReplySend:function(post){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig) return; orig.comments++; DroboardPostCard.update(mapPost(orig)); toast('💬 Reply posted!'); }
   });
 
-  if(RP){ RP.attach(area, { getState:function(id){ return rxPublic(id); }, onReact:function(id, rid){ onPickReact(id, rid); } }); }
+  if(RP){ RP.attachCounters(area, counterHooks()); }
 
   // Every See more / text tap / debate footer → discussion page for that post
   area.addEventListener('click', function(e){

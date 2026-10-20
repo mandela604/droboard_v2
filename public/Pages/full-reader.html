@@ -15,7 +15,7 @@
   --tx:#f0f0f0;--tx2:#a1a1aa;--muted:#71717a;
   --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);
   --font-story:'Lora',serif;--font-ui:'DM Sans',sans-serif;
-  --fs:13px;--lh:1.85;
+  --fs:14px;--lh:1.85;
   --safe-b:env(safe-area-inset-bottom,14px);
   --topbar-h:50px;--bottombar-h:62px;
   --bg3:#0a0a0d;
@@ -287,7 +287,6 @@ body.theme-white .bottombar{background:rgba(255,255,255,.95);}
 .drp-popup{background:var(--bg3,#0a0a0d)!important;border-color:var(--bd)!important}
 .drp-count{color:var(--tx2)!important}
 .drp-btn.reacted .drp-count{color:var(--acc)!important}
-.drp-top3-emoji,.drp-top-emoji{background:var(--surface)!important;border-color:var(--bd)!important}
 </style>
 <script src="../component/img-guard.js"></script>
 <script src="../component/app-nav.js"></script>
@@ -447,7 +446,7 @@ try{
     <div class="font-ctrl">
       <div class="font-ctrl-btn" data-act="fs-dec">A−</div>
       <div style="flex:1;text-align:center">
-        <div class="font-size-display" id="fontSizeDisplay">13px</div>
+        <div class="font-size-display" id="fontSizeDisplay">14px</div>
         <div class="font-preview" id="fontPreview" style="font-family:var(--font-story)">The quick brown fox…</div>
       </div>
       <div class="font-ctrl-btn" data-act="fs-inc">A+</div>
@@ -491,7 +490,7 @@ try{
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/tip-picker.js"></script>
-<script src="../component/ad-card.js?v=2"></script>
+<script src="../component/ad-card.js?v=3"></script>
 <script src="../component/report-sheet.js"></script>
 <script src="../component/status-viewer.js?v=2"></script>
 <script src="../component/comment-section.js?v=5"></script>

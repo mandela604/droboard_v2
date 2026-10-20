@@ -1455,7 +1455,7 @@ const SERIES_CATALOG = {
     writer: { id: 'w1', name: 'Ada_Writes', handle: '@ada_writes', avatar: 'https://i.pravatar.cc/100?img=32', followers: '12.4k', isFollowed: false },
     stats: { reads: '1.1M', likes: '24.3k', comments: '4.1k', saves: '6.2k', shares: '18.9k' },
     seasons: 2,
-    totalChapters: 14,
+    totalChapters: 13,
     currentProgress: { season: 2, chapter: 4, chapterTitle: 'What she found in the wardrobe', percent: 60 },
     genres: ['💔 Betrayal', '👑 Family', '✨ Twist', '🏙️ Urban'],
     startDate: 'March 2024',
@@ -1557,7 +1557,6 @@ const SERIES_CATALOG = {
           { n:4, title:'What she found in the wardrobe', reads:'49k', time:'4 min', state:'current', badges:['new'] },
           { n:5, title:'Season finale — coming Friday', reads:'–', time:'–', state:'locked', badges:['new'] },
           { n:6, title:'Season 3 teaser', reads:'–', time:'–', state:'locked', badges:[] },
-          { n:7, title:'[Unannounced]', reads:'–', time:'–', state:'locked', badges:[] },
         ]
       }
     ]

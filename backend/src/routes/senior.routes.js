@@ -51,10 +51,34 @@ router.put('/review-queue/:id', writeLimiter, audit('senior.reviews.decide'),
     body: z.object({ action: z.enum(['approved', 'rejected']), feedback: z.string().max(2000).optional() }).strict(),
   })), ctrl.reviewDecide);
 
-// book management
+// book management (full CRUD + rate/flag/unflag used by book-management-service.js)
 router.get('/books', generalLimiter, validate(z.object({ query: z.object({
   tab: z.string().max(20).optional(), q: q.q, page: q.page, limit: q.limit,
 }).strict() })), ctrl.res('stories').list);
+router.get('/books/:id', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.res('stories').get);
+router.put('/books/:id', writeLimiter, audit('senior.books.update'),
+  validate(z.object({ params: z.object({ id }), body: anyBody })), ctrl.res('stories').update);
+router.delete('/books/:id', writeLimiter, audit('senior.books.delete'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.res('stories').remove);
+router.put('/books/:id/rating', writeLimiter, audit('senior.books.rate'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ rating: z.number().min(0).max(5) }).strict(),
+  })), ctrl.rateBook);
+router.post('/books/:id/flag', writeLimiter, audit('senior.books.flag'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({
+      reason: z.string().min(1).max(200),
+      note: z.string().max(2000).optional(),
+      password: z.string().min(1).max(200),
+    }).strict(),
+  })), ctrl.flagBook);
+router.post('/books/:id/unflag', writeLimiter, audit('senior.books.unflag'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ password: z.string().min(1).max(200) }).strict(),
+  })), ctrl.unflagBook);
 
 // reports + settings
 router.get('/reports', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.res('reports').list);

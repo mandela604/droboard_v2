@@ -200,7 +200,7 @@
       }
       h += '</div>';
       if (state.allowAdUnlock) {
-        h += '<div class="cm-note"><i class="fas fa-circle-info"></i><span>Ad count set above. Override per chapter when saving (backend: rows[].ads).</span></div>';
+        h += '<div class="cm-note"><i class="fas fa-circle-info"></i><span>Ad count set above. Override per chapter when saving.</span></div>';
       }
       h += summaryHTML(t);
       h += '</div>';

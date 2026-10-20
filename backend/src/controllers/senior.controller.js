@@ -167,9 +167,74 @@ async function sendMessage(req, res) {
   });
 }
 
+// Book management: rate / flag / unflag (password-gated actions).
+async function verifyActorPassword(req, password) {
+  const argon2 = require('argon2');
+  const { User } = require('../models/user.model');
+  const u = await User.findOne({ id: req.user.id }).select('+passwordHash');
+  if (!u || !u.passwordHash) { const e = new Error('oauth_only'); e.status = 400; throw e; }
+  const ok = await argon2.verify(u.passwordHash, String(password || '')).catch(() => false);
+  if (!ok) { const e = new Error('invalid_password'); e.status = 401; throw e; }
+  return u;
+}
+
+async function rateBook(req, res) {
+  return base.wrap(res, async () => {
+    const { Book } = require('../models/content.model');
+    const b = await Book.findOne({ id: req.valid.params.id });
+    if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
+    const r = Number(req.valid.body.rating);
+    if (!(r >= 0 && r <= 5)) { const e = new Error('bad_rating'); e.status = 400; throw e; }
+    b.rating = r;
+    await b.save();
+    return { id: b.id, rating: b.rating };
+  });
+}
+
+async function flagBook(req, res) {
+  return base.wrap(res, async () => {
+    const { Book } = require('../models/content.model');
+    const { reason, note, password } = req.valid.body;
+    if (!reason) { const e = new Error('reason_required'); e.status = 400; throw e; }
+    const actor = await verifyActorPassword(req, password);
+    const b = await Book.findOne({ id: req.valid.params.id });
+    if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
+    b.flagPrevStatus = b.status;
+    b.status = 'flagged';
+    b.flagReason = String(reason).slice(0, 200);
+    b.flagNote = String(note || '').slice(0, 2000);
+    b.flaggedBy = actor.id;
+    b.flaggedAt = new Date();
+    await b.save();
+    try {
+      const { notify } = require('../services/notifications.service');
+      await notify({ recipientId: b.authorId, type: 'moderation', title: 'Book flagged', desc: 'Your book "' + b.title + '" was flagged for review.' });
+    } catch (e) {}
+    return { id: b.id, status: b.status, flagReason: b.flagReason };
+  });
+}
+
+async function unflagBook(req, res) {
+  return base.wrap(res, async () => {
+    const { Book } = require('../models/content.model');
+    await verifyActorPassword(req, req.valid.body && req.valid.body.password);
+    const b = await Book.findOne({ id: req.valid.params.id });
+    if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
+    b.status = b.flagPrevStatus && b.flagPrevStatus !== 'flagged' ? b.flagPrevStatus : 'published';
+    b.flagReason = '';
+    b.flagNote = '';
+    b.flaggedBy = null;
+    b.flaggedAt = null;
+    b.flagPrevStatus = null;
+    await b.save();
+    return { id: b.id, status: b.status };
+  });
+}
+
 module.exports = {
   res, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
   approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
+  rateBook, flagBook, unflagBook,
   verificationRequests: (req, res) => verificationList(req, res, 'requests'),
   verificationRecent: (req, res) => verificationList(req, res, 'recent'),
   verificationHistory: (req, res) => verificationList(req, res, 'history'),

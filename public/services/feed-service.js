@@ -290,7 +290,7 @@
     const sec = document.getElementById(secId);
     if (!row || !sec || !window.DroboardGenreCard || !posts.length) return;
     DroboardGenreCard.attach(row, genreCardHooks());
-    if (window.DroboardReactionPicker) DroboardReactionPicker.attach(row, pickerHooks());
+    if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(row, counterHooks());
     row.innerHTML = renderCommSlides(posts);
     DroboardGenreCard.setPosts(posts);
     row.innerHTML = renderCommSlides(posts);
@@ -309,7 +309,7 @@
     if (kids[midIdx]) list.insertBefore(sec, kids[midIdx]); else list.appendChild(sec);
     const row = document.getElementById('commRowMid');
     DroboardGenreCard.attach(row, genreCardHooks());
-    if (window.DroboardReactionPicker) DroboardReactionPicker.attach(row, pickerHooks());
+    if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(row, counterHooks());
     row.innerHTML = renderCommSlides(posts);
     DroboardGenreCard.setPosts(posts);
     row.innerHTML = renderCommSlides(posts);
@@ -325,7 +325,7 @@
       const row2 = document.getElementById('commRow2');
       const sec2 = document.getElementById('commSec2');
       DroboardGenreCard.attach(row2, genreCardHooks());
-      if (window.DroboardReactionPicker) DroboardReactionPicker.attach(row2, pickerHooks());
+      if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(row2, counterHooks());
       row2.innerHTML = renderCommSlides(COMM_POSTS_B);
       DroboardGenreCard.setPosts(COMM_POSTS_B);
       row2.innerHTML = renderCommSlides(COMM_POSTS_B);
@@ -451,7 +451,7 @@
     DroboardAdCard.attach(document.getElementById('feedList'), {
       getAds: () => FEED_POSTS.filter(p => p.type === 'sponsored').map(p => p.ad),
       onOpen: (ad) => { if (ad) trackAd(ad.id, 'click'); toast('📖 Opening sponsored story…'); },
-      onLike: (ad) => { ad.liked = !ad.liked; ad.likes += ad.liked ? 1 : -1; const card = document.querySelector(`.dac-native[data-adid="${ad.id}"]`); if (card) { const btn = card.querySelector('.dac-like'); btn.classList.toggle('dac-liked', ad.liked); btn.querySelector('i').className = (ad.liked ? 'fas' : 'far') + ' fa-heart'; btn.querySelector('.dac-like-ct').textContent = fmtN(ad.likes); } },
+      onLike: (ad) => { if (ad && ad.id) trackAd(ad.id, 'like'); },
       onComment: () => toast('💬 Opening comments…'),
       onShare: (ad) => { if (!window.openShareModal) return; openShareModal({ title: ad.heading || ad.title || ad.brand, sub: ad.brand, img: ad.image || ad.cover || '', url: 'https://droboard.app/ad/' + ad.id }); },
       onCta: (ad) => { if (ad) trackAd(ad.id, 'click'); toast('🔗 Opening ' + (ad.brand || ad.cta || 'link') + '…'); },
@@ -484,53 +484,33 @@
     }
     return null;
   }
-  var _pickerRx = {}; // per-id { userRx, love, secondId, second, extraId, extra }
-  function _pickerInit(id, p) {
-    if (_pickerRx[id]) return _pickerRx[id];
-    var likes = (p && p.likes) || 0;
-    var buckets = ['crying', 'shocked', 'emotional'];
-    var h = 0;
-    String(id).split('').forEach(function (ch) { h = (h + ch.charCodeAt(0)) % buckets.length; });
-    var secondId = buckets[h];
-    var second = Math.min(5, Math.max(0, likes));
-    var st = { userRx: (p && (p.userRx || (p.liked ? 'love' : null))) || null, love: Math.max(0, likes - second), secondId: secondId, second: second, extraId: null, extra: 0 };
-    _pickerRx[id] = st;
-    return st;
-  }
-  function _pickerTotal(st) { return (st.love || 0) + (st.second || 0) + (st.extra || 0); }
-  function pickerHooks() {
+  /* attachCounters hooks — the picker owns all toggle math (love/switch/
+     deselect + total-preserving bucket moves). This host only supplies
+     the initial counts and persists the result back onto the post. */
+  function counterHooks() {
     return {
-      getState: (id) => {
+      getCounts: (id) => {
         const p = findReactPost(id);
-        if (!p) return null; // unknown id: let other picker bindings claim it
-        const st = _pickerInit(id, p);
-        const out = { userRx: st.userRx, love: st.love };
-        out[st.secondId] = st.second;
-        if (st.extraId) out[st.extraId] = st.extra;
-        return out;
+        if (!p) return null; // unknown id → picker stays inert
+        const likes = p.likes || 0;
+        const buckets = ['crying', 'shocked', 'emotional'];
+        let h = 0;
+        String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
+        const secondId = buckets[h];
+        const second = Math.min(5, Math.max(0, likes));
+        // seed: love carries most of the total, one secondary bucket for variety
+        const counts = { love: Math.max(0, likes - second) };
+        counts[secondId] = second;
+        return { userRx: (p.userRx || (p.liked ? 'love' : null)) || null, ...counts };
       },
-      onReact: (id, rid) => {
+      save: (id, state) => {
         const p = findReactPost(id);
         if (!p) return;
-        const st = _pickerInit(id, p);
-        rid = rid || 'love';
-        if (st.userRx === rid) {
-          if (rid === 'love') st.love = Math.max(0, st.love - 1);
-          else if (rid === st.secondId) st.second = Math.max(0, st.second - 1);
-          else if (rid === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
-          st.userRx = null;
-        } else {
-          if (st.userRx === 'love') st.love = Math.max(0, st.love - 1);
-          else if (st.userRx === st.secondId) st.second = Math.max(0, st.second - 1);
-          else if (st.userRx === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
-          if (rid === 'love') st.love += 1;
-          else if (rid === st.secondId) st.second += 1;
-          else { if (st.extraId && st.extraId !== rid) { st.extra = 0; } st.extraId = rid; st.extra = (st.extra || 0) + 1; }
-          st.userRx = rid;
-        }
-        p.userRx = st.userRx;
-        p.liked = st.userRx === 'love';
-        p.likes = _pickerTotal(st);
+        p.userRx = state.userRx;
+        p.liked = state.userRx === 'love';
+        let total = 0;
+        Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
+        p.likes = total;
         if (FEED_POSTS.includes(p)) { if (window.DroboardPostCard) DroboardPostCard.update(p); }
         else if (window.DroboardGenreCard) DroboardGenreCard.update(p);
       },
@@ -538,7 +518,7 @@
   }
   function bindReactionPicker() {
     if (!window.DroboardReactionPicker) return;
-    DroboardReactionPicker.attach(document.getElementById('feedList'), pickerHooks());
+    DroboardReactionPicker.attachCounters(document.getElementById('feedList'), counterHooks());
   }
 
   window.onDroboardSaveChange = function (storyId, saved) {

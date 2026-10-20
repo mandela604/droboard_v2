@@ -75,9 +75,10 @@
       overflow:hidden;margin-bottom:4px;
     }
     .dgc-more{
-      display:inline-block;font-size:12.5px;font-weight:800;color:var(--acc,#ff0050);
+      display:block;height:17px;line-height:17px;font-size:12.5px;font-weight:800;color:var(--acc,#ff0050);
       margin-bottom:10px;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;
     }
+    .dgc-more.dgc-more-void{cursor:default;pointer-events:none}
     .dgc-more:active{opacity:.7}
 
     .dgc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
@@ -164,10 +165,11 @@
     .dgc-topslot{display:inline-flex;align-items:center;margin-left:2px}
     .dgc-act{
       display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:20px;
-      font-size:12px;font-weight:700;color:var(--tx-muted,#666);background:none;border:none;
+      font-size:12px;font-weight:700;color:var(--tx-muted,#666);background:var(--l2,#f1f1f1);border:none;
       cursor:pointer;font-family:inherit;
     }
-    .dgc-act:active{background:var(--l2,#f1f1f1)}
+    .dgc-act:active{background:var(--l4,#e8e8e8)}
+    [data-theme="dark"] .dgc-act:active{background:#1a1b22}
       .dgc-act.liked,.dgc-act.liked i{color:var(--acc,#ff0050)}
     .dgc-parts{display:flex;align-items:center}
     .dgc-part{width:22px;height:22px;border-radius:50%;object-fit:cover;border:2px solid var(--l1,#fff);margin-left:-6px;background:var(--l2,#f1f1f1)}
@@ -186,9 +188,11 @@
     .dgc-pinned-stats{display:flex;gap:12px;font-size:12px;font-weight:700;color:var(--tx-muted,#666)}
     .dgc-pinned-stats i{color:var(--acc,#ff0050)}
     .dgc-pinned-more{font-size:12px;font-weight:800;color:var(--acc,#ff0050);background:none;border:none;cursor:pointer;font-family:inherit}
-    .dgc-actions .drp-trigger{color:var(--tx-muted,#666)}
-    .dgc-actions .drp-trigger.liked{color:var(--acc,#ff0050)}
-    [data-theme="light"] .dgc-actions .drp-top3-emoji{background:#f1f1f1;border-color:#fff}
+    .dgc-actions .drp-trigger{color:var(--tx-muted,#666);background:none;padding:0}
+    .dgc-actions .drp-trigger.liked,.dgc-actions .drp-trigger.liked .drp-like{color:var(--acc,#ff0050)}
+    .dgc-actions .drp-trigger:active{background:none}
+    .dgc-actions .drp-like{display:inline-flex;align-items:center;gap:5px;background:var(--l2,#f1f1f1);padding:6px 11px;border-radius:20px}
+    .dgc-actions .drp-like:active{background:var(--l4,#e8e8e8)}
     [data-theme="light"] .dgc-actions .drp-popup{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 8px 28px rgba(0,0,0,.12)}
     [data-theme="light"] .dgc-actions .drp-count{color:#888}
     [data-theme="dark"]{
@@ -211,7 +215,7 @@
 
     /* ── Feed trending equal height (comm-slide only) ── */
     .comm-slide .dgc-post{
-      display:flex;flex-direction:column;
+      display:flex;flex-direction:column;flex:1;
     }
     .comm-slide .dgc-title{
       display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
@@ -229,7 +233,13 @@
       height:22px;min-height:22px;align-items:center;margin-bottom:0;
     }
     .comm-slide .dgc-tags .dgc-tag{flex-shrink:0}
-    .comm-slide .dgc-foot{margin-top:8px;padding-top:8px}
+    .comm-slide .dgc-foot{margin-top:auto;padding-top:8px;flex-wrap:nowrap;align-items:center}
+    .comm-slide .dgc-actions{flex-wrap:nowrap;min-width:0;overflow:hidden}
+    .comm-slide .dgc-act{padding:6px 8px;gap:4px;flex-shrink:1;min-width:0;white-space:nowrap}
+    .comm-slide .dgc-act-lbl{display:none}
+    .comm-slide .dgc-actions .drp-trigger{padding:0;flex-shrink:1;min-width:0;white-space:nowrap}
+    .comm-slide .dgc-actions .drp-like{padding:6px 8px;gap:4px;flex-shrink:0;white-space:nowrap}
+    .comm-slide .dgc-parts{flex-shrink:0}
     .comm-slide .dgc-media{flex-shrink:0}
     .comm-slide .dgc-story{flex-shrink:0}
   `;
@@ -408,12 +418,14 @@
       ${(() => {
         const full = p.body || '';
         const needsMore = full.length > 120 || (full.match(/\n/g) || []).length >= 2;
-        if (!needsMore) return full ? `<div class="dgc-body">${_esc(full)}</div>` : '';
-        return `<div class="dgc-body clamp">${_esc(full)}</div>
-          <button type="button" class="dgc-more" data-dgc-thread="${_esc(p.id)}">… See more</button>`;
+        const bodyHtml = full ? `<div class="dgc-body${needsMore ? ' clamp' : ''}">${_esc(full)}</div>` : '';
+        const moreHtml = needsMore
+          ? `<button type="button" class="dgc-more" data-dgc-thread="${_esc(p.id)}">… See more</button>`
+          : `<span class="dgc-more dgc-more-void" aria-hidden="true"></span>`;
+        return bodyHtml + moreHtml;
       })()}
-      ${tags ? `<div class="dgc-tags">${tags}</div>` : ''}
       ${media}${story}${_engHtml(p)}
+      ${tags ? `<div class="dgc-tags">${tags}</div>` : ''}
       <div class="dgc-foot">
         <div class="dgc-actions">
           ${typeof _hooks.getReactionHTML === 'function'
@@ -422,7 +434,7 @@
             <i class="${p.liked ? 'fas' : 'far'} fa-heart"></i> ${p.likes || 0}
           </button>`}
           <button type="button" class="dgc-act" data-dgc-thread="${_esc(p.id)}">
-            <i class="far fa-comment"></i> ${p.comments || 0} · Thread
+            <i class="far fa-comment"></i> ${p.comments || 0}<span class="dgc-act-lbl"> · Thread</span>
           </button>
           <button type="button" class="dgc-act" data-dgc-share="${_esc(p.id)}"><i class="fas fa-share-nodes"></i></button>
           <span class="dgc-topslot">${(window.DroboardReactionPicker && typeof DroboardReactionPicker.renderTop === 'function' && typeof DroboardReactionPicker.topRowMode === 'function' && DroboardReactionPicker.topRowMode() === 'external') ? DroboardReactionPicker.renderTop(String(p.id), 2) : ''}</span>

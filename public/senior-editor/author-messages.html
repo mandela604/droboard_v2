@@ -63,6 +63,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .thread-head-right{margin-left:auto;display:flex;gap:8px}
 .th-act-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
 .th-act-btn:hover{color:var(--accent);border-color:var(--accent)}
+.thread-menu-wrap{position:relative}
+.thread-menu{display:none;position:absolute;top:38px;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);min-width:200px;z-index:30;overflow:hidden}
+.thread-menu.open{display:block}
+.thread-menu-item{display:flex;align-items:center;gap:9px;width:100%;padding:11px 14px;background:none;border:none;font:inherit;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;text-align:left}
+.thread-menu-item:hover{background:var(--input-bg)}
+.thread-menu-item i{width:14px;color:var(--text-muted);text-align:center}
+.thread-menu-item.is-close{color:var(--red)}
+.thread-menu-item.is-close i{color:var(--red)}
+.closed-chip{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#b45309;background:#fef3c7;border-radius:999px;padding:2px 8px}
+.conv-name .closed-chip{font-size:8px;padding:1px 6px}
+.conv-item.is-closed .conv-name,.conv-item.is-closed .conv-preview{opacity:.65}
+.closed-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0;padding:10px 20px;background:#fffbeb;border-bottom:1px solid #fde68a;font-size:12px;font-weight:600;color:#92400e}
+.closed-banner button{background:none;border:none;font:inherit;font-size:12px;font-weight:800;color:var(--accent);cursor:pointer}
 .thread-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
 .msg-row{display:flex;gap:9px;max-width:70%}
 .msg-row.out{align-self:flex-end;flex-direction:row-reverse}
@@ -163,6 +176,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 <div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:11px 24px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:.3s;pointer-events:none;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.3)}"></div>
 <style>#toast.show{opacity:1}</style>
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="services/author-messages-service.js"></script><script>AuthorMessagesService.init();</script>
+<script src="services/author-messages-service.js?v=3"></script><script>AuthorMessagesService.init();</script>
 </body>
 </html>

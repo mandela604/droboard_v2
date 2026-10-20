@@ -231,12 +231,8 @@
        cross-person browsing as comment threads and feed rows. */
     function viewerAuthorsFor() {
       var out = [];
-      var seen = {};
       function pushA(a) {
         if (!a || !a.statuses || !a.statuses.length || !a.name) return;
-        var key = String(a.name) + '|' + String(a.avatar || '');
-        if (seen[key]) return;
-        seen[key] = true;
         out.push({
           id: 'da_' + a.id, name: a.name, avatar: a.avatar,
           ring: a.statusRing === 'has' ? 'ring-has' : a.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none',
@@ -250,23 +246,23 @@
     }
     function openAuthorsFor(argId) {
       if (typeof window.openStatusViewer !== 'function') return;
-      var list = viewerAuthorsFor().slice(0, 50);
-      if (!list.length) return;
+      var full = viewerAuthorsFor();
+      if (!full.length) return;
       var vid = 'da_' + argId;
       var at = -1, i;
-      for (i = 0; i < list.length; i++) { if (list[i].id === vid) { at = i; break; } }
-      // Deduped author: this arg's id was collapsed into the first card
-      // with the same name+avatar — match by author identity instead.
+      for (i = 0; i < full.length; i++) { if (full[i].id === vid) { at = i; break; } }
+      // Fallback: match by author identity (tapped arg filtered out).
       if (at < 0) {
         var tapped = findArg(argId);
         if (tapped) {
           var key = String(tapped.name) + '|' + String(tapped.avatar || '');
-          for (i = 0; i < list.length; i++) {
-            if (String(list[i].name) + '|' + String(list[i].avatar || '') === key) { at = i; vid = list[i].id; break; }
+          for (i = 0; i < full.length; i++) {
+            if (String(full[i].name) + '|' + String(full[i].avatar || '') === key) { at = i; vid = full[i].id; break; }
           }
         }
       }
-      if (at > 0) list.push.apply(list, list.splice(0, at));
+      /* Cap the list, but never cut off the tapped arg. */
+      var list = at >= 50 ? full.slice(at - 49, at + 50) : full.slice(0, 50);
       window.openStatusViewer(list, vid);
     }
 

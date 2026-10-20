@@ -20,7 +20,7 @@
   function pal() {
     if (darkTheme()) return {
       body: '#232329', hair: 'rgba(255,255,255,.12)',
-      card: '#16161c', cardBd: 'rgba(255,255,255,.08)',
+      card: 'var(--surface, #16161c)', cardBd: 'rgba(255,255,255,.08)',
       title: '#f2f2f5', chevron: 'rgba(255,255,255,.6)',
       optPoll: '#2e2e38', optPollVoted: '#4a2333',
       optPred: '#2c2a3c', optPredVoted: '#3d2f5e',
@@ -29,7 +29,7 @@
     };
     return {
       body: '#FAF7F3', hair: 'rgba(0,0,0,.08)',
-      card: '#ffffff', cardBd: 'rgba(0,0,0,.10)',
+      card: 'var(--surface, #ffffff)', cardBd: 'rgba(0,0,0,.10)',
       title: '#161616', chevron: 'rgba(0,0,0,.45)',
       optPoll: '#FCE9F0', optPollVoted: '#ffe0e9',
       optPred: '#E7DCFA', optPredVoted: '#e9e2fb',
@@ -213,10 +213,10 @@
       var bg = mine ? (darkTheme() ? washDark : washLight) : P.deb;
       var bd = mine ? accent : 'var(--bd,rgba(255,255,255,.1))';
       var dim = (locked && !mine) ? 'opacity:.55;' : '';
-      return '<div onclick="event.stopPropagation();ReaderEngagement.voteDebate(\'' + key + '\',\'' + side + '\')" style="flex:1;position:relative;background:' + bg + ';border-radius:12px;padding:10px 8px;text-align:center;cursor:' + (locked ? 'default' : 'pointer') + ';overflow:hidden;border:2px solid ' + bd + ';' + dim + '">'
+      return '<div onclick="event.stopPropagation();ReaderEngagement.voteDebate(\'' + key + '\',\'' + side + '\')" style="flex:1;position:relative;background:' + bg + ';border-radius:12px;padding:10px 8px;text-align:center;cursor:' + (locked ? 'default' : 'pointer') + ';overflow:hidden;border:2px solid ' + bd + ';display:flex;flex-direction:column;' + dim + '">'
         + (mine ? '<div style="position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;background:' + accent + ';color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-check"></i></div>' : '')
         + '<div style="font-size:20px;margin-bottom:4px">' + emoji + '</div>'
-        + '<div style="font-size:11px;font-weight:800;color:' + accent + ';margin-bottom:6px;line-height:1.35;min-height:30px;display:flex;align-items:center;justify-content:center">' + esc(label) + '</div>'
+        + '<div style="font-size:11px;font-weight:800;color:' + accent + ';margin-bottom:6px;line-height:1.35;min-height:30px;flex:1;display:flex;align-items:center;justify-content:center">' + esc(label) + '</div>'
         + '<div style="height:4px;background:var(--bd,rgba(0,0,0,.08));border-radius:4px;overflow:hidden;margin-bottom:5px"><div style="height:100%;border-radius:4px;background:' + accent + ';width:' + pct + '%"></div></div>'
         + '<div style="font-size:14px;font-weight:900;color:' + P.ink + '">' + pct + '%</div>'
         + '<div style="font-size:10px;color:' + P.sub + ';margin-top:2px">' + fmtN(count) + ' votes</div></div>';

@@ -84,13 +84,14 @@
     .drp-trigger:active{background:rgba(255,255,255,.04)}
     .drp-trigger.liked{color:#ff0050}
     .drp-trigger i{font-size:13px}
+    .drp-like{display:contents}
     .drp-like-count{font-size:11px;font-weight:600}
 
     .drp-top3{display:flex;align-items:center;margin-right:1px}
-    .drp-top3-emoji{display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1c1d24;border:1.5px solid #0b0b0f;font-size:9px;line-height:1;margin-left:-6px;box-shadow:0 0 0 0 rgba(0,0,0,0)}
+    .drp-top3-emoji{display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:transparent;border:1.5px solid transparent;font-size:9px;line-height:1;margin-left:-6px;box-shadow:0 0 0 0 rgba(0,0,0,0)}
     .drp-top3-emoji:first-child{margin-left:0}
     .drp-top{display:inline-flex;align-items:center}
-    .drp-top-emoji{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1c1d24;border:1.5px solid #0b0b0f;font-size:9px;line-height:1;margin-left:-6px}
+    .drp-top-emoji{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:transparent;border:1.5px solid transparent;font-size:9px;line-height:1;margin-left:-6px}
     .drp-top-emoji:first-child{margin-left:0}
 
      .drp-popup{position:absolute;bottom:40px;left:0;z-index:500;background:#13141a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:8px 8px;display:none;flex-wrap:wrap;gap:2px;width:268px;box-shadow:0 8px 32px rgba(0,0,0,.95);animation:drp-popIn .2s cubic-bezier(.34,1.56,.64,1)}
@@ -209,7 +210,9 @@
       rx.love = opts.liked ? Math.max(1, opts.likeCount || 1) : (opts.likeCount || 0);
     }
     const total = _totalCount(rx);
-    const liked = !!rx.userRx; // trigger reads "active" whenever ANY reaction is picked
+    // Heart fills ONLY when Love itself is picked — other reactions show
+    // via the emoji badges + count, not a filled heart.
+    const liked = rx.userRx === 'love';
 
     return `<div class="drp-trigger${liked ? ' liked' : ''}" data-drp-id="${id}" data-drp-trigger="1">
       <div class="drp-popup" id="drp-pop-${id}">
@@ -220,8 +223,7 @@
           </div>`).join('')}
       </div>
       ${_topRowModeFor(id) === 'external' ? '' : _renderTop3Html(rx)}
-      <i class="${liked ? 'fas' : 'far'} fa-${icon}" data-drp-icon="${icon}"></i>
-      <span class="drp-like-count">${_fmtN(total)}</span>
+      <span class="drp-like"><i class="${liked ? 'fas' : 'far'} fa-${icon}" data-drp-icon="${icon}"></i><span class="drp-like-count">${_fmtN(total)}</span></span>
     </div>`;
   }
 
@@ -260,7 +262,7 @@
     const rx = _getState(id);
     if (!rx) return;
     const total = _totalCount(rx);
-    const liked = !!rx.userRx;
+    const liked = rx.userRx === 'love';
 
     trigger.classList.toggle('liked', liked);
     const ico = trigger.querySelector('i');
@@ -291,7 +293,12 @@
         existingTop3.remove();
       }
     } else if (newTop3Html && ico) {
-      ico.insertAdjacentHTML('beforebegin', newTop3Html);
+      // Anchor before .drp-like when present so badges land OUTSIDE the
+      // pill wrapper — matching renderTrigger's initial placement (badges
+      // are emitted before the wrapper there). Falls back to <i> for
+      // legacy markup without the wrapper.
+      const anchor = trigger.querySelector('.drp-like') || ico;
+      anchor.insertAdjacentHTML('beforebegin', newTop3Html);
     }
   }
 
@@ -365,14 +372,18 @@
         hideAllPopups();
         return;
       }
-      // Plain tap on the trigger toggles Love. Long-press releases land
-      // here too but are ignored (popup already open for picking).
+      // Plain tap on the trigger: if a non-love reaction is already picked,
+      // deselect it (so one tap removes the custom reaction instead of
+      // silently switching to Love and keeping the count unchanged). If
+      // nothing is picked or Love itself is picked, toggle Love as before.
       if (e.target.closest('.drp-popup')) return;
       const trigger = e.target.closest('[data-drp-trigger]');
       if (!trigger || heldOpen) return;
       e.stopPropagation();
       const id = trigger.dataset.drpId;
-      _toggleReaction(id, 'love');
+      const st = _getState(id);
+      const rid = (st && st.userRx && st.userRx !== 'love') ? st.userRx : 'love';
+      _toggleReaction(id, rid);
       _refresh(id);
       hideAllPopups();
     });
@@ -386,6 +397,88 @@
         }
       });
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // attachCounters — high-level binding for hosts that just want
+  // "counts in, counts out" without reimplementing the toggle math.
+  //
+  // The picker owns the state shape and the love/switch/deselect logic.
+  // The host only supplies:
+  //   getCounts(id) -> { userRx, love, crying, ... } | null
+  //                   Initial state for this id (null = unknown id, picker
+  //                   stays inert). Called once per id, then cached.
+  //   save(id, state)  Called after every toggle with the new state so the
+  //                   host can persist (localStorage/API) and refresh any
+  //                   other UI (e.g. card total). state = same shape as
+  //                   getCounts' return.
+  //
+  // This replaces the per-page copy-paste of the love/second/extra dance
+  // that previously lived in feed/genre-hub/droboard-page/discussion/...
+  // and was the source of "picking a non-love reaction does nothing" bugs.
+  // ══════════════════════════════════════════════════════════════════════
+  function attachCounters(rootEl, hooks) {
+    hooks = hooks || {};
+    const cache = {}; // id -> { userRx, counts: {love, crying, ...} }
+
+    function ensure(id) {
+      if (cache[id]) return cache[id];
+      if (typeof hooks.getCounts !== 'function') return null;
+      let init = null;
+      try { init = hooks.getCounts(id); } catch (e) { init = null; }
+      if (!init || typeof init !== 'object') return null; // unknown id → inert
+      const counts = {};
+      Object.keys(init).forEach(k => {
+        if (k === 'userRx') return;
+        const v = +init[k] || 0;
+        if (v > 0) counts[k] = v; // drop zero/negative buckets so top-2 stays clean
+      });
+      cache[id] = { userRx: init.userRx || null, counts };
+      return cache[id];
+    }
+
+    function toState(st) {
+      const out = { userRx: st.userRx };
+      Object.keys(st.counts).forEach(k => { out[k] = st.counts[k]; });
+      return out;
+    }
+
+    // Forward the whole hooks object (e.g. topRow:'external') so host-level
+    // options still reach the low-level binding; override the two we own.
+    attach(rootEl, Object.assign({}, hooks, {
+      getState(id) {
+        const st = ensure(id);
+        return st ? toState(st) : null;
+      },
+      onReact(id, rid) {
+        const st = ensure(id);
+        if (!st) return;
+        rid = rid || 'love';
+        const c = st.counts;
+        if (st.userRx === rid) {
+          // deselect current reaction
+          c[rid] = Math.max(0, (c[rid] || 0) - 1);
+          if (!c[rid]) delete c[rid];
+          st.userRx = null;
+        } else {
+          // switch: decrement old, increment new, keep total stable
+          if (st.userRx) {
+            c[st.userRx] = Math.max(0, (c[st.userRx] || 0) - 1);
+            if (!c[st.userRx]) delete c[st.userRx];
+          }
+          c[rid] = (c[rid] || 0) + 1;
+          st.userRx = rid;
+        }
+        const state = toState(st);
+        if (typeof hooks.save === 'function') {
+          try { hooks.save(id, state); } catch (e) {}
+        }
+      },
+    }));
+
+    return {
+      clear() { Object.keys(cache).forEach(k => delete cache[k]); },
+    };
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -411,6 +504,7 @@
   function topRowMode() { return (_bindings.length && _bindings[0].hooks.topRow) || 'inline'; }
   window.DroboardReactionPicker = {
     attach,
+    attachCounters,
     renderTrigger,
     render: renderTrigger,   // alias, matches DroboardPostCard.render naming
     renderTop,

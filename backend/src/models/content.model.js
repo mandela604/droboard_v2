@@ -24,6 +24,12 @@ const bookSchema = new mongoose.Schema({
   likes: { type: Number, default: 0 },
   rating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
+  // Senior-editor flagging (book-management page)
+  flagReason: { type: String, default: '' },
+  flagNote: { type: String, default: '' },
+  flaggedBy: { type: String, default: null },
+  flaggedAt: { type: Date, default: null },
+  flagPrevStatus: { type: String, default: null },
   // Structured engagement (poll/prediction/debate) is chapter-wise only — lives
   // on Chapter below. Story-wide debate/polls are community Post 'debate'/'poll'
   // via /api/posts (feed/droboard composers).

@@ -624,27 +624,55 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     });
   }
 
-  /* ══ SCROLL PROGRESS ══ */
+  /* ══ SCROLL PROGRESS ══
+     Top pill ("Ch N") tracks the chapter under the reading line (~1/3 down
+     the viewport) — computed on scroll, so it updates between observer
+     callbacks and never gets stuck on Ch 1. DOM text only: no re-render,
+     no page reload. The observer only handles enter/leave (tracking), since
+     a 0.5 threshold can never fire for chapter blocks taller than the
+     viewport — that was why the pill never changed. */
   function wireScrollProgress() {
     const sb = document.getElementById("scrollBody");
+
+    function syncCurrentChapter() {
+      const list = document.querySelectorAll(".chapter-block");
+      if (!list.length) return;
+      const rr = sb.getBoundingClientRect();
+      const marker = rr.top + rr.height * 0.32;
+      let cur = null, above = null;
+      for (let i = 0; i < list.length; i++) {
+        const r = list[i].getBoundingClientRect();
+        if (r.top <= marker && r.bottom > marker) { cur = list[i]; break; }
+        if (r.top <= marker) above = list[i];
+      }
+      cur = cur || above || list[0];
+      const n = +cur.dataset.ch;
+      const pill = document.getElementById("fcProgressPill");
+      const label = "Ch " + n;
+      if (pill && pill.textContent !== label) pill.textContent = label;
+      if (n !== ST.currentCh) {
+        TrackLeave(); ST.currentCh = n; TrackStart(cur);
+        try { if (window.ReadingHistory) ReadingHistory.touch(STORY_ID, n); } catch (e) {}
+      }
+    }
+
     sb.addEventListener("scroll", () => {
       const max = sb.scrollHeight - sb.clientHeight;
       const pct = max > 0 ? Math.min(100, Math.round(sb.scrollTop / max * 100)) : 0;
       document.getElementById("readProgressFill").style.width = pct + "%";
+      syncCurrentChapter();
     }, { passive: true });
 
     const observer = new IntersectionObserver(entries => {
       entries.forEach(en => {
-        if (en.isIntersecting) {
-          const n = +en.target.dataset.ch;
-          if (n !== ST.currentCh) { TrackLeave(); ST.currentCh = n; TrackStart(en.target); try { if (window.ReadingHistory) ReadingHistory.touch(STORY_ID, n); } catch (e) {} }
-          document.getElementById("fcProgressPill").textContent = "Ch " + n;
-        } else if (en.boundingClientRect && en.boundingClientRect.top < 0) {
+        if (!en.isIntersecting && en.boundingClientRect && en.boundingClientRect.top < 0) {
           TrackFinishIf(en.target); // fully scrolled past = read
         }
       });
-    }, { root: sb, threshold: 0.5 });
+      syncCurrentChapter();
+    }, { root: sb, threshold: 0 });
     document.querySelectorAll(".chapter-block").forEach(sec => observer.observe(sec));
+    syncCurrentChapter();
   }
 
   /* ══ EXIT-INTENT ══ */

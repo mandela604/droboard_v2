@@ -371,6 +371,21 @@
     .dso-dc-side.for .dso-dc-side-pct{color:var(--dso-green-text)}
     .dso-dc-side.ag .dso-dc-side-pct{color:var(--dso-accent-text)}
     .dso-dc-total{font-size:9px;color:var(--dso-text-faint);padding:0 12px 10px;font-weight:600}
+    /* Feed-style debate boxes (same structure as post-card pcc-eng-deb) */
+    .dso-dc-sides{display:flex;gap:8px;padding:8px 12px 2px}
+    .dso-dc-side2{flex:1;position:relative;border-radius:12px;padding:10px 8px;text-align:center;
+      border:2px solid var(--dso-border);overflow:hidden;display:flex;flex-direction:column}
+    .dso-dc-em{font-size:20px;margin-bottom:4px;flex-shrink:0}
+    .dso-dc-lbl{font-size:11px;font-weight:800;line-height:1.35;min-height:30px;margin-bottom:6px;flex:1;
+      display:flex;align-items:center;justify-content:center}
+    .dso-dc-side2.for .dso-dc-lbl{color:#0d9668}
+    .dso-dc-side2.against .dso-dc-lbl{color:#dc2626}
+    .dso-dc-barwrap{height:4px;background:var(--dso-border);border-radius:4px;overflow:hidden;margin-bottom:5px}
+    .dso-dc-bar{height:100%;border-radius:4px}
+    .dso-dc-side2.for .dso-dc-bar{background:#0d9668}
+    .dso-dc-side2.against .dso-dc-bar{background:#dc2626}
+    .dso-dc-pct{font-size:14px;font-weight:900;color:var(--dso-text)}
+    .dso-dc-cnt{font-size:10px;color:var(--dso-text-faint);margin-top:2px}
 
     .dso-bottom-nav{position:sticky;bottom:0;z-index:20;background:var(--dso-bg-topbar);
       backdrop-filter:blur(20px);border-top:1px solid var(--dso-border);
@@ -527,11 +542,7 @@
       { name: 'Efe_O', handle: '@efe_o', genre: '🌙 Elegy', av: 'https://i.pravatar.cc/100?img=22', followers: '22.3k', verified: true, following: false },
       { name: 'Zara_M', handle: '@zara_m', genre: '🔥 Revenge', av: 'https://i.pravatar.cc/100?img=16', followers: '14.8k', verified: false, following: false },
     ],
-    debates: [
-      { thumb: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', motion: 'Ada should stay and fight for her marriage, not leave.', forV: 2341, agV: 3819, live: true },
-      { thumb: 'https://i.postimg.cc/tY7KnJyr/images.jpg', motion: 'Walking out publicly at the altar was brave, not dramatic.', forV: 9800, agV: 2100, live: true },
-      { thumb: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', motion: 'Legal action was the only appropriate response to theft.', forV: 5800, agV: 900, live: false },
-    ],
+    debates: [],
     poolStories: [
       { type: 'story', img: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', cat: '💔 Betrayal', title: "I came home early and caught my husband kissing my late sister's photograph", author: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', views: '171k', likes: '24.3k', badge: 'hot', keywords: ['betrayal', 'husband', 'sister', 'photograph', 'ada'] },
       { type: 'story', img: 'https://i.postimg.cc/tY7KnJyr/images.jpg', cat: '✨ Twist', title: 'The runaway bride — I left at the altar in my socked feet', author: 'Ifeanyi_Story', av: 'https://i.pravatar.cc/100?img=53', views: '312k', likes: '45k', badge: 'hot', keywords: ['twist', 'bride', 'altar', 'runaway', 'ifeanyi'] },
@@ -552,12 +563,7 @@
       { type: 'writer', name: 'Kemi_A', handle: '@kemi_a', genre: '💔 Heartbreak', av: 'https://i.pravatar.cc/100?img=28', followers: '6.5k', verified: false, following: false, keywords: ['kemi', 'heartbreak', 'writer'] },
       { type: 'writer', name: 'Dami_Cole', handle: '@dami_cole', genre: '🏙️ Urban Love', av: 'https://i.pravatar.cc/100?img=64', followers: '9.4k', verified: false, following: false, keywords: ['dami', 'urban', 'love', 'writer'] },
     ],
-    poolDebates: [
-      { type: 'debate', thumb: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', motion: 'Ada should stay and fight for her marriage, not leave.', forV: 2341, agV: 3819, live: true, keywords: ['debate', 'ada', 'marriage', 'stay', 'leave', 'betrayal'] },
-      { type: 'debate', thumb: 'https://i.postimg.cc/tY7KnJyr/images.jpg', motion: 'Walking out publicly at the altar was brave, not dramatic.', forV: 9800, agV: 2100, live: true, keywords: ['debate', 'bride', 'altar', 'brave', 'dramatic', 'twist'] },
-      { type: 'debate', thumb: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', motion: 'Legal action was the only appropriate response to theft.', forV: 5800, agV: 900, live: false, keywords: ['debate', 'legal', 'theft', 'revenge', 'stepmother'] },
-    ],
-    ad: { logo: 'https://i.pravatar.cc/100?img=23', brand: 'PiggyVest', headline: 'Save smarter, build your future.', sub: '4M+ Nigerians already saving.', cta: 'Start' },
+    poolDebates: [],
   };
 
   // ══════════════════════════════════════════════════════════════════
@@ -670,7 +676,7 @@
           </div>
           <div style="padding:0 14px" class="dso-fu dso-d6" data-dso-debateslist></div>
 
-          <div class="dso-ad-banner dso-fu dso-d6" data-dso-ad></div>
+          <div class="dso-ad-banner dso-fu dso-d6" data-ad-slot="search:banner" data-ad-format="minibanner"></div>
         </div>
 
         <div class="dso-view" data-view="results">
@@ -706,6 +712,14 @@
     _emptyView = _root.querySelector('[data-view="empty"]');
 
     bindStaticEvents();
+    // Debates come from the central demo store (same records the series
+    // reader uses) — not hardcoded here. Built lazily so this component
+    // can load before central-demo-data.js parses.
+    try {
+      const deb = debatesFromCentral();
+      _data.debates = deb;
+      _data.poolDebates = deb.map(d => Object.assign({ type: 'debate' }, d));
+    } catch (e) {}
     renderRecent();
     renderTrending();
     renderCategories();
@@ -806,36 +820,57 @@
     _root.querySelector('[data-dso-debateslist]').innerHTML = list.join('');
   }
 
+  function debatesFromCentral() {
+    const out = [];
+    const cat = (window.DemoData && window.DemoData.SERIES_CATALOG) || {};
+    Object.keys(cat).forEach(k => {
+      const s = cat[k];
+      (s.debates || []).forEach(d => {
+        out.push({
+          id: d.id, seriesId: s.id, title: s.title, cover: s.cover,
+          motion: d.motion, forText: d.forText || 'For', againstText: d.againstText || 'Against',
+          forV: d.forV || 0, agV: d.agV || 0,
+          keywords: ['debate', String(d.motion || '').toLowerCase(), String(s.title || '').toLowerCase()],
+        });
+      });
+    });
+    return out;
+  }
+
   function debateCardHtml(d) {
     const tot = (d.forV + d.agV) || 1;
     const fp = Math.round(d.forV / tot * 100), ap = 100 - fp;
+    const side = (cls, emoji, label, votes, pct) => `
+      <div class="dso-dc-side2 ${cls}">
+        <div class="dso-dc-em">${emoji}</div>
+        <div class="dso-dc-lbl">${_esc(label)}</div>
+        <div class="dso-dc-barwrap"><div class="dso-dc-bar" style="width:${pct}%"></div></div>
+        <div class="dso-dc-pct">${pct}%</div>
+        <div class="dso-dc-cnt">${_fmtN(votes)} votes</div>
+      </div>`;
     return `<div class="dso-debate-card" data-dso-opendebate='${_esc(JSON.stringify(d))}'>
       <div class="dso-dc-header">
-        <div class="dso-dc-thumb" style="background-image:url('${d.thumb}')"></div>
+        ${d.cover ? `<div class="dso-dc-thumb" style="background-image:url('${d.cover}')"></div>` : ''}
         <div class="dso-dc-body">
-          <div class="dso-dc-badge">${d.live ? `<span class="dso-dc-live-dot"></span>LIVE` : 'Debate'}</div>
+          <div class="dso-dc-badge">Debate${d.title ? ' &middot; ' + _esc(d.title) : ''}</div>
           <div class="dso-dc-motion">"${_esc(d.motion)}"</div>
         </div>
       </div>
-      <div class="dso-dc-bars">
-        <div class="dso-dc-side for"><div class="dso-dc-side-bar" style="width:${fp}%"></div><div class="dso-dc-side-inner"><span class="dso-dc-side-lbl">✅ FOR</span><span class="dso-dc-side-pct">${fp}%</span></div></div>
-        <div class="dso-dc-side ag"><div class="dso-dc-side-bar" style="width:${ap}%"></div><div class="dso-dc-side-inner"><span class="dso-dc-side-lbl">❌ AGAINST</span><span class="dso-dc-side-pct">${ap}%</span></div></div>
-      </div>
+      <div class="dso-dc-sides">${side('for', '&#9989;', d.forText || 'For', d.forV, fp)}${side('against', '&#10060;', d.againstText || 'Against', d.agV, ap)}</div>
       <div class="dso-dc-total">${_fmtN(d.forV + d.agV)} voices</div>
     </div>`;
   }
 
   function renderAd() {
-    const ad = _data.ad;
-    if (!ad) { _root.querySelector('[data-dso-ad]').style.display = 'none'; return; }
-    _root.querySelector('[data-dso-ad]').innerHTML = `
-      <img class="dso-ad-logo" src="${ad.logo}" loading="lazy" alt="${_esc(ad.brand)}"/>
-      <div class="dso-ad-body">
-        <div class="dso-ad-brand">${_esc(ad.brand)}</div>
-        <div class="dso-ad-headline">${_esc(ad.headline)}</div>
-        <div class="dso-ad-sub">${_esc(ad.sub)}</div>
-      </div>
-      <button class="dso-ad-cta">${_esc(ad.cta)}</button>`;
+    /* Same banner slot as discover's 3 minibanner slots — filled by the
+       shared ad-slot component (loads it on demand if the page lacks it). */
+    const el = _root.querySelector('[data-ad-slot]');
+    if (!el) return;
+    if (window.DroboardAdSlot) { try { DroboardAdSlot.scan(el); } catch (e) {} return; }
+    const s = document.createElement('script');
+    s.src = '../component/ad-slot.js';
+    s.onload = () => { try { DroboardAdSlot.scan(el); } catch (e) {} };
+    document.head.appendChild(s);
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -1038,9 +1073,6 @@
 
       const debateEl = e.target.closest('[data-dso-opendebate]');
       if (debateEl) { _hooks.onOpenDebate(JSON.parse(debateEl.dataset.dsoOpendebate)); return; }
-
-      const adEl = e.target.closest('[data-dso-ad]');
-      if (adEl) { _hooks.onAdClick(_data.ad); return; }
     });
   }
 

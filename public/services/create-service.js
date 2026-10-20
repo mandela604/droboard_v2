@@ -110,6 +110,7 @@ function recordSubmission(){
         status: 'pending',
         title: getActiveTitle() || 'Untitled Story',
         genre: state.category || (state.genres && state.genres[0]) || '',
+        synopsis: (document.getElementById('synopsisInput') && document.getElementById('synopsisInput').value.trim()) || '',
         chapters: (state.chapters || []).length,
         at: Date.now(),
       }));

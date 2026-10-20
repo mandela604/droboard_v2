@@ -173,26 +173,16 @@
     const phoneEl = document.querySelector(".phone");
     if (!phoneEl) return;
 
-    // Story-level reaction state (single story per page). Seeded from
-    // shares + tips; the picker reads it via getState and writes via onReact.
+    // Story-level reaction state (single story per page). attachCounters
+    // handles all toggle math; this host just seeds counts + persists.
     const sid = "story-" + currentStoryId;
-    const rx = { userRx: null };
-    DroboardReactionPicker.REACTIONS.forEach(r => (rx[r.id] = 0));
-    rx.love = totalReactions;
 
-    DroboardReactionPicker.attach(phoneEl, {
-      getState: (id) => (String(id) === sid ? rx : null),
-      onReact: (id, rid) => {
-        if (String(id) !== sid) return;
-        if (rx.userRx === rid) {
-          rx[rid] = Math.max(0, (rx[rid] || 0) - 1);
-          rx.userRx = null;
-        } else {
-          if (rx.userRx) rx[rx.userRx] = Math.max(0, (rx[rx.userRx] || 0) - 1);
-          rx[rid] = (rx[rid] || 0) + 1;
-          rx.userRx = rid;
-        }
+    DroboardReactionPicker.attachCounters(phoneEl, {
+      getCounts: (id) => {
+        if (String(id) !== sid) return null;
+        return { userRx: null, love: totalReactions };
       },
+      save: () => {}, // story-level reactions are ephemeral demo state
     });
 
     // Replace bottom bar Like button with reaction-picker trigger
@@ -206,7 +196,7 @@
   }
 
   /* ══ SETTINGS ══ */
-  let fsVal = 13; const FS_MIN = 11, FS_MAX = 24;
+  let fsVal = 14; const FS_MIN = 11, FS_MAX = 24;
   function changeFontSize(d) {
     fsVal = Math.min(FS_MAX, Math.max(FS_MIN, fsVal + d));
     document.documentElement.style.setProperty("--fs", fsVal + "px");

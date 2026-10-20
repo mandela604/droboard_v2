@@ -268,7 +268,6 @@
   function _esc(s) { return (s || '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>'); }
 
   function _toast(msg) {
-    if (typeof window.toast === 'function') { window.toast(msg); return; }
     let el = document.getElementById('rsh-toast');
     if (!el) {
       el = document.createElement('div');

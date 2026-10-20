@@ -41,7 +41,7 @@ function ownPendingSubmission(){
       submitted: 'just now', words: Math.max(MIN_WORDS, Number(flow.words) || 0),
       status: 'pending', priority: 'high', feedback: '',
       chapters: 1, cover: coverFor(title, 0), avatar: null,
-      synopsis: 'Just submitted from the app — first book awaiting approval.',
+      synopsis: flow.synopsis || flow.plot || 'No synopsis provided by the author.',
       editor: CURRENT_EDITOR,
     };
   } catch (e) { return null; }
@@ -82,18 +82,6 @@ const AVATARS = {
   'Isabelle Moreau': 'https://i.pravatar.cc/60?img=44',
   'Wren Okonkwo':    'https://i.pravatar.cc/60?img=41',
   'Amara Chen':      'https://i.pravatar.cc/60?img=16',
-};
-
-/* Plot synopses — keyed by the cleaned book title */
-const SYNOPSIS = {
-  "The CEO's Hidden Son": "When ruthless CEO Damian Cole finds an orphaned toddler on his penthouse doorstep, a DNA test confirms his worst fear — the son he never knew existed. Now he must choose between protecting his empire and claiming the family he's ashamed to admit he wants.",
-  "Wolf King's Vow": "Wolf King Lucian swore an oath in the old tongue to protect the last daughter of a rival pack. When she turns out to be his fated mate, the vow that once bound him becomes the very thing threatening to tear his kingdom apart.",
-  'Betrayed by the Mafia Prince': "Aria never planned to fall for the son of the family that destroyed hers. When the truth comes out on their wedding night, she's forced to decide whether revenge or love will define what happens next.",
-  'Bound by the Ruthless Alpha': "Alpha Kade banished his mate five years ago to save her life. She's back — pregnant, powerful, and done being ruled by a pact written in blood.",
-  "The Billionaire's Bargain": "Broke and desperate, Mia agrees to a fake marriage with billionaire recluse Adrian Cross. The contract has one rule: never fall in love. Neither of them reads the fine print in time.",
-  "The Duke's Secret": "Lady Elara suspects the Duke of Ashford is hiding something the moment she catches him burning letters at midnight. What she uncovers will unravel two families and rewrite her own history.",
-  'Revenge at the Ivy League': "Scholarship student Noa arrives at an elite university with one goal: expose the legacy family that ruined her father. Getting close to their golden son wasn't part of the plan.",
-  "Mafia Prince's Vengeance": "Vincent Ricci inherits his father's empire and a list of enemies to eliminate. First on the list is the woman he can't stop thinking about — and the one person who might get him killed.",
 };
 
 /* Manuscripts are submitted whole (min. 5,000 words), split into a handful of
@@ -152,7 +140,7 @@ async function init(){
       chapters: ov.chapters || (i % 2 === 0 ? 5 : 4),
       cover: coverFor(title, i),
       avatar: AVATARS[it.author] || null,
-      synopsis: SYNOPSIS[title] || 'Synopsis not yet provided by the author.',
+      synopsis: it.synopsis || 'No synopsis provided by the author.',
       editor: CURRENT_EDITOR,
     };
   });
@@ -347,7 +335,7 @@ function openSheet(id){
     <div class="sheet-meta-item"><b style="text-transform:capitalize">${s.priority}</b><span>Priority</span></div>
     <div class="sheet-meta-item"><b><span class="status-pill ${s.status}" style="font-size:9px">${s.status}</span></b><span>Status</span></div>
   </div>`;
-  html += `<div class="sheet-section-lbl">Plot Synopsis</div><div class="sheet-synopsis">${s.synopsis}</div>`;
+  html += `<div class="sheet-section-lbl">Synopsis</div><div class="sheet-synopsis">${s.synopsis}</div>`;
   html += `<div style="font-size:11px;color:var(--text-faint);margin-top:8px">Submitted ${s.submitted} · Manuscript meets the 5,000-word minimum for review.</div>`;
 
   if (s.feedback) {

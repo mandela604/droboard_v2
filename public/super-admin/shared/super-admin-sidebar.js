@@ -55,6 +55,7 @@
     { key: 'authors-content',      label: 'Authors & Content',      icon: 'fa-book',                href: 'authors-content.html',     section: 'Content' },
     { key: 'all-books',             label: 'All Books',               icon: 'fa-book-open',            href: 'all-books.html',            section: 'Content' },
     { key: 'all-posts',             label: 'All Posts',               icon: 'fa-rss',                  href: 'all-posts.html',            section: 'Content' },
+    { key: 'genre-boards',          label: 'Genre Boards',            icon: 'fa-th-large',             href: 'genre-boards.html',         section: 'Content' },
     { key: 'awards',                label: 'Awards',                  icon: 'fa-award',                href: 'awards.html',               section: 'Content' },
 
     { key: 'platform-analytics',   label: 'Platform Analytics',     icon: 'fa-chart-line',           href: 'platform-analytics.html',  section: 'Platform' },
@@ -247,7 +248,6 @@
   function _esc(s) { return (s || '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>'); }
 
   function _toast(msg) {
-    if (typeof window.toast === 'function') { window.toast(msg); return; }
     let el = document.getElementById('sa-toast');
     if (!el) {
       el = document.createElement('div');

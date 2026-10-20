@@ -478,59 +478,37 @@
     return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER });
   }
   /* Shared picker hooks (component contract): getState reads the profile
-     post, onReact mutates it. Mirrors feed-service's pickerHooks so the
+     post, onReact mutates it. Mirrors feed-service's counterHooks so the
      multi-emoji buckets + top-3 badges behave identically here. */
   var _FEED_POSTS = []; // adapted posts handed to DroboardPostCard (picker reads these)
   function findReactPost(id) {
     return _FEED_POSTS.find(x => String(x.id) === String(id)) || null;
   }
-  var _pickerRx = {}; // per-id { userRx, love, secondId, second, extraId, extra }
-  function _pickerInit(id, p) {
-    if (_pickerRx[id]) return _pickerRx[id];
-    var likes = (p && p.likes) || 0;
-    var buckets = ['crying', 'shocked', 'emotional'];
-    var h = 0;
-    String(id).split('').forEach(function (ch) { h = (h + ch.charCodeAt(0)) % buckets.length; });
-    var secondId = buckets[h];
-    var second = Math.min(5, Math.max(0, likes));
-    var st = { userRx: (p && (p.userRx || (p.liked ? 'love' : null))) || null, love: Math.max(0, likes - second), secondId: secondId, second: second, extraId: null, extra: 0 };
-    _pickerRx[id] = st;
-    return st;
-  }
-  function _pickerTotal(st) { return (st.love || 0) + (st.second || 0) + (st.extra || 0); }
-  function pickerHooks() {
+  /* attachCounters hooks — picker owns all toggle math; host supplies
+     initial counts + persists result back onto the post. */
+  function counterHooks() {
     return {
-      getState: (id) => {
+      getCounts: (id) => {
         const p = findReactPost(id);
-        if (!p) return null; // unknown id: let other picker bindings claim it
-        const st = _pickerInit(id, p);
-        const out = { userRx: st.userRx, love: st.love };
-        out[st.secondId] = st.second;
-        if (st.extraId) out[st.extraId] = st.extra;
-        return out;
+        if (!p) return null; // unknown id → picker stays inert
+        const likes = p.likes || 0;
+        const buckets = ['crying', 'shocked', 'emotional'];
+        let h = 0;
+        String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
+        const secondId = buckets[h];
+        const second = Math.min(5, Math.max(0, likes));
+        const counts = { love: Math.max(0, likes - second) };
+        counts[secondId] = second;
+        return { userRx: (p.userRx || (p.liked ? 'love' : null)) || null, ...counts };
       },
-      onReact: (id, rid) => {
+      save: (id, state) => {
         const p = findReactPost(id);
         if (!p) return;
-        const st = _pickerInit(id, p);
-        rid = rid || 'love';
-        if (st.userRx === rid) {
-          if (rid === 'love') st.love = Math.max(0, st.love - 1);
-          else if (rid === st.secondId) st.second = Math.max(0, st.second - 1);
-          else if (rid === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
-          st.userRx = null;
-        } else {
-          if (st.userRx === 'love') st.love = Math.max(0, st.love - 1);
-          else if (st.userRx === st.secondId) st.second = Math.max(0, st.second - 1);
-          else if (st.userRx === st.extraId) { st.extra = Math.max(0, st.extra - 1); if (!st.extra) st.extraId = null; }
-          if (rid === 'love') st.love += 1;
-          else if (rid === st.secondId) st.second += 1;
-          else { if (st.extraId && st.extraId !== rid) { st.extra = 0; } st.extraId = rid; st.extra = (st.extra || 0) + 1; }
-          st.userRx = rid;
-        }
-        p.userRx = st.userRx;
-        p.liked = st.userRx === 'love';
-        p.likes = _pickerTotal(st);
+        p.userRx = state.userRx;
+        p.liked = state.userRx === 'love';
+        let total = 0;
+        Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
+        p.likes = total;
         if (window.DroboardPostCard) DroboardPostCard.update(p);
       },
     };
@@ -539,7 +517,7 @@
     if (FEED_HOOKED) return;
     FEED_HOOKED = true;
     const feedList = document.getElementById('feedList');
-    if (window.DroboardReactionPicker) DroboardReactionPicker.attach(feedList, pickerHooks());
+    if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(feedList, counterHooks());
     if (window.DroboardDotsMenu) {
       DroboardDotsMenu.configure({
         onEdit: (post) => {

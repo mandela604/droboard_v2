@@ -194,7 +194,7 @@
     const seed = window.GenreDemoSeed;
     const list = (seed && seed.DEMO_DISCUSSIONS && seed.DEMO_DISCUSSIONS[genre]) || [];
     return list.map(function (p) {
-      return { n: p.title || 'Untitled', s: 'by ' + (p.author || p.by || 'someone'), v: (p.likes || 0) + ' likes' };
+      return { n: p.title || 'Untitled', s: 'by ' + (p.name || p.author || p.by || 'someone'), v: (p.likes || 0) + ' likes', href: 'discussion.html?genre=' + encodeURIComponent(genre) + '&id=' + encodeURIComponent(p.id || '') };
     }).sort(function (a, b) { return parseInt(b.v) - parseInt(a.v); }).slice(0, 5);
   }
   function topDroboardPosts() {
@@ -204,7 +204,7 @@
       { n: 'Announcement — Season of Betrayal finale', s: 'Announcement · 6d ago', v: '2.8K likes' },
       { n: 'Friday pick: 5 slow-burn romances', s: 'Pick · 1w ago', v: '1.9K likes' },
       { n: 'Community poll: next live debate topic', s: 'Poll · 1w ago', v: '1.4K likes' },
-    ];
+    ].map(function (it) { it.href = 'droboard-page.html'; return it; });
   }
   function topProfileBooks() {
     return [
@@ -429,7 +429,8 @@
     if (data.list && data.list.items && data.list.items.length) {
       html += '<div class="list-card"><div class="list-t"><i class="fas ' + data.list.icon + '"></i> ' + data.list.title + '</div>' +
         data.list.items.map(function (it, i) {
-          return '<div class="li"><div class="li-rank' + (i === 0 ? ' gold' : '') + '">' + (i + 1) + '</div>' +
+          const attrs = it.href ? ' style="cursor:pointer" onclick="location.href=\'' + String(it.href).replace(/'/g, '') + '\'"' : '';
+          return '<div class="li"' + attrs + '><div class="li-rank' + (i === 0 ? ' gold' : '') + '">' + (i + 1) + '</div>' +
             '<div class="li-txt"><div class="li-n">' + it.n + '</div><div class="li-s">' + it.s + '</div></div>' +
             '<div class="li-v">' + it.v + '</div></div>';
         }).join('') + '</div>';

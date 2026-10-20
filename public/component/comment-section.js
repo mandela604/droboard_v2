@@ -219,7 +219,8 @@
     .dcs-time{font-size:10px;color:var(--dcs-muted2)}
     .dcs-edited-tag{font-size:10px;color:var(--dcs-muted2);font-style:italic}
     .dcs-text{font-size:15.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
-    .dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700}
+    .dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700;cursor:pointer}
+    .dcs-text .dcs-mention:active{opacity:.7}
 
     /* Inline edit form */
     .dcs-edit-row{display:flex;gap:7px;align-items:center;padding:2px 0 6px}
@@ -350,7 +351,7 @@
   // ══════════════════════════════════════════════════════════════════════
   function _esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function _escAttr(s) { return _esc(s).replace(/"/g, '&quot;'); }
-  function _mentions(s) { return _esc(s).replace(/@([\w_]+)/g, '<span class="dcs-mention">@$1</span>'); }
+  function _mentions(s) { return _esc(s).replace(/@([\w_]+)/g, '<span class="dcs-mention" data-dcs-mention="$1">@$1</span>'); }
   function _fmtN(n) { n = +n || 0; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
   function _hexToRgba(hex, a) {
     hex = (hex || '#ff0050').replace('#', '');
@@ -1330,17 +1331,15 @@
     }
 
     // ── Status viewer hookup (avatar) + profile navigation (username) ──
-    // Viewer list: thread order (top comment → its replies → next top
-    // comment), deduped by author, rotated to start at the tapped author —
-    // same cross-person browsing as index/feed rows.
-    function viewerAuthorsFor(tapped) {
+    // Viewer list: one entry PER comment in thread order (top comment →
+    // its replies → next top comment). No author dedupe, no rotation:
+    // tapping comment #7 opens at #7, plays #8, #9, #10, then closes;
+    // comments before #7 stay unviewed until tapped or reached with the
+    // left (backward) zone.
+    function viewerAuthorsFor() {
       const out = [];
-      const seen = {};
       const pushAuthor = (m) => {
         if (!m || !m.statuses || !m.statuses.length || !m.name) return;
-        const key = String(m.name) + '|' + String(m.avatar || '');
-        if (seen[key]) return;
-        seen[key] = true;
         out.push({
           id: 'dcs_' + instId + '_' + m.id, name: m.name, avatar: m.avatar,
           ring: m.statusRing === 'has' ? 'ring-has' : m.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none',
@@ -1354,19 +1353,19 @@
       const c = findByAnyId(comments, cid) || findById(comments, cid);
       if (!c) return;
       if (!c.statuses || !c.statuses.length || typeof window.openStatusViewer !== 'function') return;
-      const authors = viewerAuthorsFor(c).slice(0, 50);
+      const authors = viewerAuthorsFor();
       if (!authors.length) return;
       let vid = 'dcs_' + instId + '_' + c.id;
       let at = authors.findIndex(w => w.id === vid);
-      // Deduped author: this comment's id was collapsed into the first
-      // comment with the same name+avatar — match by author identity.
+      // Fallback: match by author identity (tapped comment filtered out).
       if (at < 0) {
         const key = String(c.name) + '|' + String(c.avatar || '');
         at = authors.findIndex(w => String(w.name) + '|' + String(w.avatar || '') === key);
         if (at >= 0) vid = authors[at].id;
       }
-      if (at > 0) authors.push(...authors.splice(0, at));
-      window.openStatusViewer(authors, vid);
+      // Cap the list, but never cut off the tapped comment.
+      const list = at >= 50 ? authors.slice(at - 49, at + 50) : authors.slice(0, 50);
+      window.openStatusViewer(list, vid);
       // No statuses on this comment's author → intentionally do nothing.
     }
     // ── Status-viewer sync: gray the ring after viewing — same contract
@@ -1440,6 +1439,15 @@
 
         const nm = e.target.closest('[data-dcs-nameclick]');
         if (nm) { goToProfile(+nm.dataset.dcsNameclick); return; }
+
+        const mention = e.target.closest('[data-dcs-mention]');
+        if (mention) {
+          e.stopPropagation();
+          const uname = mention.dataset.dcsMention || '';
+          if (typeof options.onMentionClick === 'function') { options.onMentionClick(uname); return; }
+          location.href = 'profile.html?u=' + encodeURIComponent(uname);
+          return;
+        }
 
         const rxb = e.target.closest('[data-dcs-rxbubble]');
         if (rxb) { toggleRxPopup(+rxb.dataset.dcsRxbubble, ns); return; }

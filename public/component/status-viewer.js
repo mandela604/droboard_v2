@@ -332,8 +332,11 @@
   let _paused       = false;
   let _pauseStart   = 0;
   let _elapsed      = 0;    // ms already elapsed on this slide before any pause
-  let _likeState    = {};   // { [wid]: { liked: bool, count: number } }
+  let _likeState    = {};   // { [wid + ':' + slideIdx]: { liked: bool, count: number } } — per STATUS, not per author
   let _animFrame    = null;
+
+  // A like belongs to each individual status — key by author + slide index.
+  function _likeKey(w, si) { return (w && w.id) + ':' + si; }
 
   /* ── Status ads: a full-page ad slide after every Nth status ──
      Slot id `status:every-3rd` is marketing-targetable (page `status`):
@@ -550,8 +553,8 @@
       });
     });
 
-    // ── Engagement ──
-    const ls = _likeState[w.id];
+    // ── Engagement (per-status like) ──
+    const ls = _likeState[_likeKey(w, _slideIdx)] || { liked: false, count: 0 };
     const likeBtn    = document.getElementById('dsv2LikeBtn');
     const likeCount  = document.getElementById('dsv2LikeCount');
     const threadCount = document.getElementById('dsv2ThreadCount');
@@ -695,11 +698,17 @@
     _paused    = false;
     _elapsed   = 0;
 
-    // Init like state (per-session)
+    // Init like state (per-session, one entry per individual status)
     _writers.forEach(w => {
-      if (!_likeState[w.id]) {
-        _likeState[w.id] = { liked: false, count: w.likes || 0 };
-      }
+      (w.statuses || []).forEach((st, si) => {
+        const k = _likeKey(w, si);
+        if (!_likeState[k]) {
+          _likeState[k] = {
+            liked: !!(st && st.liked),
+            count: (st && st.likes != null) ? st.likes : (w.likes || 0),
+          };
+        }
+      });
     });
 
     // Reset reply input
@@ -764,12 +773,14 @@
     ov.addEventListener('pointerup',     () => _resumeTimer());
     ov.addEventListener('pointercancel', () => _resumeTimer());
 
-    // ── Like (love) ──
+    // ── Like (love) — per individual status ──
     document.getElementById('dsv2LikeBtn').addEventListener('click', e => {
       e.stopPropagation();
       const w = _currentWriter();
       if (!w) return;
-      const ls = _likeState[w.id];
+      const k = _likeKey(w, _slideIdx);
+      if (!_likeState[k]) _likeState[k] = { liked: false, count: 0 };
+      const ls = _likeState[k];
       ls.liked  = !ls.liked;
       ls.count += ls.liked ? 1 : -1;
       const btn = document.getElementById('dsv2LikeBtn');

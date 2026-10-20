@@ -53,7 +53,10 @@
     .dac-native-foot{display:flex;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid #e5e5ea}
     .dac-like{display:flex;align-items:center;gap:5px;font-size:11px;color:#888;cursor:pointer;background:none;border:none;font-weight:600}
     .dac-like.dac-liked{color:#ff2d55}
-    .dac-like i{font-size:14px}
+    .dac-like i{font-size:14px;transition:transform .2s}
+    .dac-like.dac-liked i{animation:dacHeartPop .28s ease}
+    @keyframes dacHeartPop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+    .dac-comment{display:none;align-items:center;gap:5px;font-size:11px;color:#888;font-weight:600;text-decoration:none;cursor:pointer}
 
     /* ── Native BOOK ad — golden background ══ */
     .dac-native.dac-book{border:1.5px solid #c9a227;background:#fdf7e6}
@@ -446,9 +449,38 @@
     } catch (e) {}
   }
 
+  /* ── Native-ad like state (plain heart toggle — no reaction picker).
+     Persisted per ad id in localStorage; count = seed likes + liked. ── */
+  function _likeStore() { try { return JSON.parse(localStorage.getItem('dro_ad_likes') || '{}'); } catch (e) { return {}; } }
+  function _saveLikeStore(s) { try { localStorage.setItem('dro_ad_likes', JSON.stringify(s)); } catch (e) {} }
+  function _num(v) { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+  function toggleLike(btn) {
+    if (!btn) return;
+    const card = btn.closest('.dac-native');
+    if (!card) return;
+    const id = card.getAttribute('data-adid') || '';
+    const base = _num(card.getAttribute('data-base-likes'));
+    const st = _likeStore();
+    const liked = st[id] !== 1;
+    st[id] = liked ? 1 : 0;
+    _saveLikeStore(st);
+    btn.classList.toggle('dac-liked', liked);
+    const ic = btn.querySelector('i');
+    if (ic) ic.className = (liked ? 'fas' : 'far') + ' fa-heart';
+    const ct = btn.querySelector('.dac-like-ct');
+    if (ct) ct.textContent = String(base + (liked ? 1 : 0));
+    if (window.AdService && id) { try { AdService.track(id, liked ? 'like' : 'unlike'); } catch (e) {} }
+  }
+
   function renderNative(ad) {
     injectStyles();
-    return `<div class="dac-native${ad.isBook ? ' dac-book' : ''}" data-adid="${esc(ad.id || '')}">
+    const id = esc(ad.id || '');
+    const baseLikes = _num(ad.likes);
+    const cmt = _num(ad.comments);
+    let liked = false;
+    try { liked = _likeStore()[ad.id || ''] === 1; } catch (e) {}
+    const shownLikes = baseLikes + (liked ? 1 : 0);
+    return `<div class="dac-native${ad.isBook ? ' dac-book' : ''}" data-adid="${id}" data-base-likes="${baseLikes}">
       <div class="dac-native-head">
         <img class="dac-native-avatar" src="${esc(ad.avatar || 'https://i.pravatar.cc/100?img=12')}" loading="lazy" alt=""/>
         <div class="dac-native-brand">${esc(ad.brand || 'Sponsored')}</div>
@@ -459,8 +491,8 @@
       <div class="dac-native-body">${esc(ad.body || ad.desc || '')}</div>
       <button class="dac-native-cta">${esc(ad.cta || 'Learn More')}</button>
       <div class="dac-native-foot">
-        <button class="dac-like"><i class="far fa-heart"></i> <span class="dac-like-ct">${ad.likes || 0}</span></button>
-        <span style="font-size:11px;color:#888"><i class="far fa-comment"></i> ${ad.comments || 0}</span>
+        <button class="dac-like${liked ? ' dac-liked' : ''}" data-adid="${id}" onclick="window.DroboardAdCard&&DroboardAdCard.toggleLike(this)"><i class="${liked ? 'fas' : 'far'} fa-heart"></i> <span class="dac-like-ct">${shownLikes}</span></button>
+        <a class="dac-comment" href="discussion.html" onclick="event.stopPropagation()"><i class="far fa-comment"></i> ${cmt}</a>
       </div>
     </div>`;
   }
@@ -530,6 +562,6 @@
     renderPlatform, renderListPlatform, renderStoryPromo, renderListBook,
     renderFollowPromo, renderBanner, renderMiniBanner, renderFullscreen, renderFullscreenStory, renderFullscreenBrand, renderNative,
     renderEmbed, hydrateEmbeds,
-    renderSponsored, attach, update,
+    renderSponsored, attach, update, toggleLike,
   };
 })();

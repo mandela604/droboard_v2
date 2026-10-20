@@ -1,7 +1,14 @@
 /**
  * services/book-management-service.js — Book Management page logic.
  * Pure call-and-render: book-management.html only loads this + init().
- * Backend-ready: set USE_API=true and implement endpoints below.
+ * Backend-ready: set USE_API=true; endpoints in senior.routes.js:
+ *   GET    /api/senior-editor/books            list
+ *   GET    /api/senior-editor/books/:id        read one
+ *   PUT    /api/senior-editor/books/:id        update meta
+ *   DELETE /api/senior-editor/books/:id        delete
+ *   PUT    /api/senior-editor/books/:id/rating set rating   { rating }
+ *   POST   /api/senior-editor/books/:id/flag   flag         { reason, note, password }
+ *   POST   /api/senior-editor/books/:id/unflag unflag       { password }
  */
 (function () {
 'use strict';
@@ -20,29 +27,168 @@ function resyncDemo(){
   (D.CATEGORIES || []).forEach(function (c) { gc[c.name] = { bg: c.bg, fg: c.color }; });
   (D.GENRES || []).forEach(function (g) { if (!gc[g.name]) gc[g.name] = { bg: g.bg, fg: g.color }; });
   Object.keys(gc).forEach(function (k) { GENRE_COLORS[k] = gc[k]; });
+  buildGenreOptions();
 }
 
-const USE_API = false;
-const API_BASE = '/api/senior-editor';
+var USE_API = false;
+var API_BASE = '/api/senior-editor';
+
+function authHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  var t = null;
+  try { t = localStorage.getItem('dro_access_token') || sessionStorage.getItem('dro_access_token'); } catch (e) {}
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
 
 async function callBackend(path, options) {
   if (!USE_API) return null;
   try {
-    const res = await fetch(API_BASE + path, options);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var res = await fetch(API_BASE + path, options);
+    if (!res.ok) {
+      var body = await res.json().catch(function () { return {}; });
+      var err = new Error(body.error || ('HTTP ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
     return await res.json();
   } catch (e) {
-    console.warn('[BookManagementService] backend unavailable, using demo data', e);
-    return null;
+    if (!USE_API) return null;
+    throw e;
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   CRUD layer — every operation the page performs lives here.
+   Demo mode mutates the local array; USE_API=true hits the backend.
+   ══════════════════════════════════════════════════════════════ */
+var Crud = {
+  /* READ — list (server-paged when live; client-paged in demo) */
+  list: async function (query) {
+    var qs = [];
+    if (query && query.tab && query.tab !== 'all') qs.push('status=' + encodeURIComponent(mapStatusToApi(query.tab)));
+    if (query && query.q) qs.push('q=' + encodeURIComponent(query.q));
+    var remote = await callBackend('/books' + (qs.length ? '?' + qs.join('&') : ''));
+    if (remote && remote.items) books = remote.items.map(fromApiBook);
+    return books;
+  },
+
+  /* READ — single */
+  get: async function (id) {
+    var remote = await callBackend('/books/' + encodeURIComponent(id));
+    if (remote && remote.id) {
+      var mapped = fromApiBook(remote);
+      var i = books.findIndex(function (b) { return b.id === id; });
+      if (i > -1) books[i] = mapped;
+      return mapped;
+    }
+    return books.find(function (b) { return b.id === id; }) || null;
+  },
+
+  /* UPDATE — rating (0.5 steps, 0–5) */
+  rate: async function (id, rating) {
+    var remote = await callBackend('/books/' + encodeURIComponent(id) + '/rating', {
+      method: 'PUT', headers: authHeaders(), body: JSON.stringify({ rating: rating }),
+    });
+    var b = books.find(function (x) { return x.id === id; });
+    if (b) b.rating = rating;
+    return remote || b;
+  },
+
+  /* UPDATE — flag (reason required, password required) */
+  flag: async function (id, payload) {
+    var remote = await callBackend('/books/' + encodeURIComponent(id) + '/flag', {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify(payload),
+    });
+    var b = books.find(function (x) { return x.id === id; });
+    if (b) {
+      b.flagPrevStatus = b.status;
+      b.status = 'Flagged';
+      b.flagReason = payload.reason;
+      b.flagNote = payload.note || '';
+    }
+    return remote || b;
+  },
+
+  /* UPDATE — unflag (password required; restores prior status) */
+  unflag: async function (id, payload) {
+    var remote = await callBackend('/books/' + encodeURIComponent(id) + '/unflag', {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify(payload || {}),
+    });
+    var b = books.find(function (x) { return x.id === id; });
+    if (b) {
+      b.status = b.flagPrevStatus && b.flagPrevStatus !== 'Flagged' ? b.flagPrevStatus : 'Published';
+      b.flagReason = '';
+      b.flagNote = '';
+    }
+    return remote || b;
+  },
+
+  /* UPDATE — generic meta (title/desc/status…); kept for go-live completeness */
+  update: async function (id, patch) {
+    var remote = await callBackend('/books/' + encodeURIComponent(id), {
+      method: 'PUT', headers: authHeaders(), body: JSON.stringify(patch),
+    });
+    var b = books.find(function (x) { return x.id === id; });
+    if (b) Object.assign(b, patch);
+    return remote || b;
+  },
+
+  /* DELETE — not wired to the UI today; ready for go-live */
+  remove: async function (id) {
+    var remote = await callBackend('/books/' + encodeURIComponent(id), {
+      method: 'DELETE', headers: authHeaders(),
+    });
+    books = books.filter(function (x) { return x.id !== id; });
+    return remote || { ok: true };
+  },
+};
+
+/* Backend Book doc → page row shape */
+function fromApiBook(b) {
+  return {
+    id: b.id,
+    title: b.title || 'Untitled',
+    author: b.authorName || b.author || '—',
+    avatar: b.avatar || 'https://i.pravatar.cc/100?img=0',
+    cat: b.category || b.cat || b.genre || '',
+    genre: b.genre || '—',
+    status: mapStatusFromApi(b.status),
+    views: typeof b.reads === 'number' ? fmtReads(b.reads) : (b.views || '—'),
+    added: b.createdAt ? fmtDate(b.createdAt) : (b.added || '—'),
+    img: b.cover || b.img || '',
+    desc: b.synopsis || b.desc || '',
+    chapters: b.chapterCount != null ? b.chapterCount : b.chapters,
+    rating: b.rating || 0,
+    flagReason: b.flagReason || '',
+  };
+}
+function mapStatusToApi(s) {
+  return { Published: 'published', Draft: 'draft', 'Under Review': 'under_review', Flagged: 'flagged' }[s] || s;
+}
+function mapStatusFromApi(s) {
+  return { published: 'Published', draft: 'Draft', under_review: 'Under Review', flagged: 'Flagged' }[s] || 'Published';
+}
+function fmtReads(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+  return String(n);
+}
+function fmtDate(d) {
+  try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  catch (e) { return '—'; }
+}
+
+/* ── State ── */
 var D = window.EditorDemo || {};
 var books = (D.BOOKS || []).slice();
 var activeTab = 'all';
 var currentPage = 1;
 var PER_PAGE = 12;
 var openRowId = null;
+var modalBookId = null;   /* flag/unflag modal target */
+var modalMode = 'flag';   /* 'flag' | 'unflag' */
+var pendingRating = 0;    /* rate modal selection */
 
 var GENRE_COLORS = {};
 (D.CATEGORIES || []).forEach(function (c) { GENRE_COLORS[c.name] = { bg: c.bg, fg: c.color }; });
@@ -60,9 +206,29 @@ GENRE_COLORS['Betrayal'] = { bg: '#ffe1eb', fg: '#ff0050' };
 GENRE_COLORS['Campus'] = { bg: '#e3ecfd', fg: '#2f7de1' };
 GENRE_COLORS['Elegy'] = { bg: '#fde3e3', fg: '#e0384d' };
 
+var FLAG_REASONS = [
+  'Plagiarism / stolen content',
+  'Copyright infringement',
+  'Adult / NSFW content',
+  'Violence or hate speech',
+  'Spam or scam',
+  'Misleading title or cover',
+  'Other (see details)',
+];
+
 function statusClass(s) { return { Published: 'published', Draft: 'draft', 'Under Review': 'review', Flagged: 'flagged' }[s] || 'draft'; }
 function statusPillHtml(s) { return '<span class="status-pill ' + statusClass(s) + '"><span class="dot"></span>' + s + '</span>'; }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function ratingHtml(r) {
+  if (!r) return '<span class="muted-cell">—</span>';
+  return '<span style="color:#f5b301;font-weight:800;font-size:12px">★ ' + Number(r).toFixed(1).replace(/\.0$/, '') + '</span>';
+}
 
+/* ── Render: stats / tabs / table ── */
 function renderStats() {
   var t = books.length;
   var p = books.filter(function (x) { return x.status === 'Published'; }).length;
@@ -89,8 +255,11 @@ function renderTabs() {
 }
 
 async function refresh() {
-  var backend = await callBackend('/books?tab=' + encodeURIComponent(activeTab));
-  if (backend && backend.items) books = backend.items;
+  try {
+    await Crud.list({ tab: activeTab });
+  } catch (e) {
+    toast('Could not load books: ' + (e.message || 'error'));
+  }
   var q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
   var genre = document.getElementById('fGenre').value;
   var stat = document.getElementById('fStatus').value;
@@ -122,21 +291,23 @@ function renderTable(list) {
     body.innerHTML = page.map(function (b) {
       var gc = GENRE_COLORS[b.genre] || GENRE_COLORS[b.cat] || { bg: 'var(--table-head)', fg: 'var(--text-muted)' };
       var isOpen = openRowId === b.id;
+      var isFlagged = b.status === 'Flagged';
       return '<div>' +
-        '<div class="book-row' + (isOpen ? ' is-open' : '') + '" data-id="' + b.id + '">' +
+        '<div class="book-row' + (isOpen ? ' is-open' : '') + '" data-id="' + esc(b.id) + '">' +
           '<i class="fas fa-chevron-right expand-ico"></i>' +
-          '<div class="book-cell"><div class="book-cover"><img src="' + b.img + '" alt=""/></div><div><div class="book-title">' + b.title + '</div><div class="book-id">ID: ' + b.id + '</div></div></div>' +
-          '<div class="col-genre"><span class="genre-chip" style="background:' + gc.bg + ';color:' + gc.fg + '">' + b.genre + '</span></div>' +
+          '<div class="book-cell"><div class="book-cover"><img src="' + esc(b.img) + '" alt=""/></div><div><div class="book-title">' + esc(b.title) + '</div><div class="book-id">ID: ' + esc(b.id) + '</div></div></div>' +
+          '<div class="col-genre"><span class="genre-chip" style="background:' + gc.bg + ';color:' + gc.fg + '">' + esc(b.genre) + '</span></div>' +
           '<div>' + statusPillHtml(b.status) + '</div>' +
-          '<div class="col-num">' + b.views + '</div>' +
-          '<div class="col-num muted-cell">' + (b.rating || '—') + '</div>' +
+          '<div class="col-num">' + esc(b.views) + '</div>' +
+          '<div class="col-num">' + ratingHtml(b.rating) + '</div>' +
           '<div class="actions-cell">' +
-            '<button class="act-btn" title="View" onclick="event.stopPropagation();viewBook(\'' + b.id + '\')"><i class="fas fa-eye"></i></button>' +
-            '<button class="act-btn" title="Edit" onclick="event.stopPropagation();editBook(\'' + b.id + '\')"><i class="fas fa-pen"></i></button>' +
-            '<button class="act-btn danger" title="Flag" onclick="event.stopPropagation();flagBook(\'' + b.id + '\')"><i class="fas fa-flag"></i></button>' +
+            '<button class="act-btn" title="View" onclick="event.stopPropagation();viewBook(\'' + esc(b.id) + '\')"><i class="fas fa-eye"></i></button>' +
+            '<button class="act-btn" title="Edit" style="display:none" onclick="event.stopPropagation();editBook(\'' + esc(b.id) + '\')"><i class="fas fa-pen"></i></button>' +
+            '<button class="act-btn" title="Rate" onclick="event.stopPropagation();rateBook(\'' + esc(b.id) + '\')"><i class="fas fa-star" style="color:#f5b301"></i></button>' +
+            '<button class="act-btn ' + (isFlagged ? '' : 'danger') + '" title="' + (isFlagged ? 'Unflag' : 'Flag') + '" onclick="event.stopPropagation();' + (isFlagged ? 'unflagBook' : 'flagBook') + '(\'' + esc(b.id) + '\')"><i class="fas fa-flag' + (isFlagged ? '-circle-check' : '') + '"></i></button>' +
           '</div>' +
         '</div>' +
-        '<div class="book-detail' + (isOpen ? ' show' : '') + '" id="detail-' + b.id + '"></div>' +
+        '<div class="book-detail' + (isOpen ? ' show' : '') + '" id="detail-' + esc(b.id) + '"></div>' +
       '</div>';
     }).join('');
     if (openRowId && page.some(function (b) { return b.id === openRowId; })) renderDetailPanel(openRowId);
@@ -153,23 +324,29 @@ function renderDetailPanel(id) {
   var b = books.find(function (x) { return x.id === id; }); if (!b) return;
   var panel = document.getElementById('detail-' + id); if (!panel) return;
   var gc = GENRE_COLORS[b.genre] || GENRE_COLORS[b.cat] || { bg: 'var(--table-head)', fg: 'var(--text-muted)' };
+  var isFlagged = b.status === 'Flagged';
 
   var html = '<div class="detail-inner">';
-  if (b.desc) html += '<div class="detail-desc">' + b.desc + '</div>';
+  if (b.desc) html += '<div class="detail-desc">' + esc(b.desc) + '</div>';
+  if (isFlagged && b.flagReason) {
+    html += '<div class="detail-desc" style="border-color:var(--red);background:var(--red-bg);color:var(--red)"><b><i class="fas fa-flag"></i> Flag reason:</b> ' + esc(b.flagReason) +
+      (b.flagNote ? ' — ' + esc(b.flagNote) : '') + '</div>';
+  }
   html += '<div class="detail-section"><div class="ds-label"><i class="fas fa-circle-info"></i> Overview</div><div class="detail-grid">';
-  html += '<div class="detail-item"><span>Category</span><b>' + b.cat + '</b></div>';
-  html += '<div class="detail-item"><span>Genre</span><b><span class="genre-chip" style="background:' + gc.bg + ';color:' + gc.fg + '">' + b.genre + '</span></b></div>';
-  html += '<div class="detail-item accent"><span>Reads</span><b>' + b.views + '</b></div>';
-  html += '<div class="detail-item"><span>Rating</span><b>' + (b.rating ? '★ ' + b.rating : '—') + '</b></div>';
+  html += '<div class="detail-item"><span>Category</span><b>' + esc(b.cat) + '</b></div>';
+  html += '<div class="detail-item"><span>Genre</span><b><span class="genre-chip" style="background:' + gc.bg + ';color:' + gc.fg + '">' + esc(b.genre) + '</span></b></div>';
+  html += '<div class="detail-item accent"><span>Reads</span><b>' + esc(b.views) + '</b></div>';
+  html += '<div class="detail-item"><span>Rating</span><b>' + (b.rating ? '★ ' + Number(b.rating).toFixed(1).replace(/\.0$/, '') : '—') + '</b></div>';
   html += '<div class="detail-item"><span>Status</span><b>' + statusPillHtml(b.status) + '</b></div>';
-  html += '<div class="detail-item"><span>Added</span><b>' + b.added + '</b></div>';
-  html += '<div class="detail-item"><span>Author</span><b>' + b.author + '</b></div>';
-  html += '<div class="detail-item"><span>Chapters</span><b>' + (b.chapters || '—') + '</b></div>';
+  html += '<div class="detail-item"><span>Added</span><b>' + esc(b.added) + '</b></div>';
+  html += '<div class="detail-item"><span>Author</span><b>' + esc(b.author) + '</b></div>';
+  html += '<div class="detail-item"><span>Chapters</span><b>' + (b.chapters != null ? esc(b.chapters) : '—') + '</b></div>';
   html += '</div></div>';
   html += '<div class="detail-foot">';
-  html += '<button class="mini-btn primary" onclick="viewBook(\'' + b.id + '\')"><i class="fas fa-eye"></i> View Book</button>';
-  html += '<button class="mini-btn" onclick="editBook(\'' + b.id + '\')"><i class="fas fa-pen"></i> Edit</button>';
-  html += '<button class="mini-btn danger" onclick="flagBook(\'' + b.id + '\')"><i class="fas fa-flag"></i> ' + (b.status === 'Flagged' ? 'Unflag' : 'Flag') + '</button>';
+  html += '<button class="mini-btn primary" onclick="viewBook(\'' + esc(b.id) + '\')"><i class="fas fa-eye"></i> View Book</button>';
+  html += '<button class="mini-btn" style="display:none" onclick="editBook(\'' + esc(b.id) + '\')"><i class="fas fa-pen"></i> Edit</button>';
+  html += '<button class="mini-btn" onclick="rateBook(\'' + esc(b.id) + '\')"><i class="fas fa-star" style="color:#f5b301"></i> Rate</button>';
+  html += '<button class="mini-btn ' + (isFlagged ? '' : 'danger') + '" onclick="' + (isFlagged ? 'unflagBook' : 'flagBook') + '(\'' + esc(b.id) + '\')"><i class="fas fa-flag"></i> ' + (isFlagged ? 'Unflag' : 'Flag') + '</button>';
   html += '</div></div>';
   panel.innerHTML = html;
 }
@@ -191,14 +368,227 @@ function renderPagination(tp) {
 
 function goPage(p) { currentPage = p; refresh(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
+/* ── Actions ── */
 function viewBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id); }
 function editBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id) + '&mode=edit'; }
-function flagBook(id) {
-  var b = books.find(function (x) { return x.id === id; });
-  if (b) { b.status = b.status === 'Flagged' ? 'Published' : 'Flagged'; openRowId = null; refresh(); toast(b.title + ' → ' + b.status); }
+
+/* Rate modal */
+function rateBook(id) {
+  var b = books.find(function (x) { return x.id === id; }); if (!b) return;
+  modalBookId = id;
+  pendingRating = b.rating || 0;
+  document.getElementById('bmRateTitle').textContent = b.title;
+  paintRateStars();
+  openOverlay('bmRateOv');
+}
+function paintRateStars() {
+  var wrap = document.getElementById('bmRateStars');
+  var html = '';
+  for (var i = 1; i <= 5; i++) {
+    var full = pendingRating >= i;
+    var half = !full && pendingRating >= i - 0.5;
+    html += '<span class="bm-star' + (full || half ? ' on' : '') + (half ? ' half' : '') + '" data-v="' + i + '">' +
+      '<i class="fas fa-star bm-star-bg"></i>' +
+      '<i class="fas fa-star bm-star-fg"></i>' +
+      '</span>';
+  }
+  wrap.innerHTML = html;
+  document.getElementById('bmRateVal').textContent = pendingRating
+    ? '★ ' + pendingRating.toFixed(1).replace(/\.0$/, '') + ' / 5'
+    : 'Tap a star to rate';
+  wrap.querySelectorAll('.bm-star').forEach(function (el) {
+    var v = parseFloat(el.dataset.v);
+    el.addEventListener('click', function (e) {
+      var r = el.getBoundingClientRect();
+      pendingRating = (e.clientX - r.left) < r.width / 2 ? v - 0.5 : v;
+      paintRateStars();
+    });
+  });
+}
+async function saveRating() {
+  if (!pendingRating) { toast('Pick a star value first'); return; }
+  try {
+    await Crud.rate(modalBookId, pendingRating);
+    closeOverlay('bmRateOv');
+    toast('Rating saved');
+    openRowId = null;
+    refresh();
+  } catch (e) { toast('Could not save rating: ' + (e.message || 'error')); }
 }
 
-function toast(m) { var t = document.getElementById('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2200); }
+/* Flag / unflag modal */
+function flagBook(id) {
+  var b = books.find(function (x) { return x.id === id; }); if (!b) return;
+  openFlagModal(id, 'flag', b);
+}
+function unflagBook(id) {
+  var b = books.find(function (x) { return x.id === id; }); if (!b) return;
+  openFlagModal(id, 'unflag', b);
+}
+function openFlagModal(id, mode, b) {
+  modalBookId = id;
+  modalMode = mode;
+  var isFlag = mode === 'flag';
+  document.getElementById('bmFlagIco').className = 'bm-modal-ico ' + (isFlag ? 'red' : 'green');
+  document.getElementById('bmFlagIco').innerHTML = '<i class="fas fa-flag' + (isFlag ? '' : '-circle-check') + '"></i>';
+  document.getElementById('bmFlagHeading').textContent = isFlag ? 'Flag Book' : 'Unflag Book';
+  document.getElementById('bmFlagBook').textContent = b.title;
+  document.getElementById('bmFlagReasonWrap').style.display = isFlag ? '' : 'none';
+  document.getElementById('bmFlagNoteWrap').style.display = isFlag ? '' : 'none';
+  document.getElementById('bmFlagHint').textContent = isFlag
+    ? 'A reason is required. Confirm with your account password — this action is logged.'
+    : 'Confirm with your account password to restore this book.';
+  document.getElementById('bmFlagReason').value = '';
+  document.getElementById('bmFlagNote').value = '';
+  document.getElementById('bmFlagPass').value = '';
+  document.getElementById('bmFlagErr').textContent = '';
+  var btn = document.getElementById('bmFlagSubmit');
+  btn.innerHTML = '<i class="fas fa-flag"></i> ' + (isFlag ? 'Flag Book' : 'Unflag Book');
+  btn.className = 'bm-btn ' + (isFlag ? 'danger' : 'primary');
+  openOverlay('bmFlagOv');
+}
+async function submitFlag() {
+  var b = books.find(function (x) { return x.id === modalBookId; }); if (!b) return;
+  var errEl = document.getElementById('bmFlagErr');
+  errEl.textContent = '';
+  var reason = modalMode === 'flag' ? document.getElementById('bmFlagReason').value : '';
+  var note = modalMode === 'flag' ? document.getElementById('bmFlagNote').value.trim() : '';
+  var pass = document.getElementById('bmFlagPass').value;
+  if (modalMode === 'flag' && !reason) { errEl.textContent = 'Select a reason for flagging.'; return; }
+  if (!pass) { errEl.textContent = 'Enter your password to confirm.'; return; }
+  if (!USE_API && pass.length < 4) { errEl.textContent = 'Demo mode: password must be at least 4 characters.'; return; }
+  var btn = document.getElementById('bmFlagSubmit');
+  btn.disabled = true;
+  try {
+    if (modalMode === 'flag') await Crud.flag(modalBookId, { reason: reason, note: note, password: pass });
+    else await Crud.unflag(modalBookId, { password: pass });
+    closeOverlay('bmFlagOv');
+    toast(b.title + (modalMode === 'flag' ? ' flagged' : ' unflagged'));
+    openRowId = null;
+    refresh();
+  } catch (e) {
+    errEl.textContent = e.status === 401 ? 'Incorrect password.' : (e.message || 'Action failed.');
+  } finally { btn.disabled = false; }
+}
+
+/* ── Modal plumbing (service-injected — page stays call-and-render) ── */
+function ensureModals() {
+  if (document.getElementById('bmFlagOv')) return;
+  var css = '' +
+    '.bm-ov{position:fixed;inset:0;background:rgba(15,10,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}.bm-ov.open{display:flex}' +
+    '.bm-modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:430px;box-shadow:0 24px 60px rgba(0,0,0,.3);padding:20px;animation:bmIn .18s ease}' +
+    '@keyframes bmIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}' +
+    '.bm-modal-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}' +
+    '.bm-modal-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}.bm-modal-ico.red{background:var(--red-bg);color:var(--red)}.bm-modal-ico.green{background:var(--green-bg);color:var(--green)}.bm-modal-ico.amber{background:var(--amber-bg);color:var(--amber)}' +
+    '.bm-modal-title{font-size:15px;font-weight:800}.bm-modal-sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}' +
+    '.bm-x{margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}.bm-x:hover{color:var(--red);border-color:var(--red)}' +
+    '.bm-label{font-size:11px;font-weight:700;display:block;margin-bottom:5px}.bm-label span{color:var(--red)}' +
+    '.bm-field{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;margin-bottom:12px}.bm-field:focus{border-color:var(--accent)}' +
+    'select.bm-field{appearance:none;cursor:pointer}' +
+    'textarea.bm-field{resize:vertical;min-height:64px}' +
+    '.bm-hint{font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px}' +
+    '.bm-err{font-size:11.5px;color:var(--red);font-weight:600;min-height:16px;margin-bottom:8px}' +
+    '.bm-actions{display:flex;gap:8px;justify-content:flex-end}' +
+    '.bm-btn{font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:.12s}.bm-btn:hover{border-color:var(--accent);color:var(--accent)}.bm-btn.primary{background:var(--accent);border-color:transparent;color:#fff}.bm-btn.danger{background:var(--red);border-color:transparent;color:#fff}.bm-btn:disabled{opacity:.5;cursor:default}' +
+    '.bm-stars{display:flex;justify-content:center;gap:6px;margin:10px 0 6px}' +
+    '.bm-star{position:relative;width:36px;height:36px;cursor:pointer;font-size:28px;line-height:1}' +
+    '.bm-star-bg{color:var(--text-faint,#ccc);position:absolute;inset:0}' +
+    '.bm-star-fg{color:#f5b301;position:absolute;inset:0;clip-path:inset(0 100% 0 0);transition:.12s}' +
+    '.bm-star.on .bm-star-fg,.bm-star.half .bm-star-fg{clip-path:inset(0 50% 0 0)}' +
+    '.bm-star.on .bm-star-fg{clip-path:inset(0 0 0 0)}' +
+    '.bm-star:hover .bm-star-fg{clip-path:inset(0 0 0 0)}' +
+    '.bm-rate-val{text-align:center;font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px}' +
+    '';
+  var style = document.createElement('style');
+  style.id = 'bmModalCss';
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  var wrap = document.createElement('div');
+  wrap.innerHTML = '' +
+    '<div class="bm-ov" id="bmFlagOv">' +
+      '<div class="bm-modal">' +
+        '<div class="bm-modal-head">' +
+          '<div class="bm-modal-ico red" id="bmFlagIco"><i class="fas fa-flag"></i></div>' +
+          '<div><div class="bm-modal-title" id="bmFlagHeading">Flag Book</div><div class="bm-modal-sub" id="bmFlagBook"></div></div>' +
+          '<div class="bm-x" onclick="closeBmFlag()"><i class="fas fa-xmark"></i></div>' +
+        '</div>' +
+        '<div class="bm-hint" id="bmFlagHint"></div>' +
+        '<div id="bmFlagReasonWrap">' +
+          '<label class="bm-label">Reason <span>*</span></label>' +
+          '<select class="bm-field" id="bmFlagReason">' +
+            '<option value="">Select a reason…</option>' +
+            FLAG_REASONS.map(function (r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('') +
+          '</select>' +
+        '</div>' +
+        '<div id="bmFlagNoteWrap">' +
+          '<label class="bm-label">Details <span style="color:var(--text-faint)">(optional)</span></label>' +
+          '<textarea class="bm-field" id="bmFlagNote" placeholder="Chapter links, screenshots described, context…"></textarea>' +
+        '</div>' +
+        '<label class="bm-label">Your password <span>*</span></label>' +
+        '<input type="password" class="bm-field" id="bmFlagPass" placeholder="Enter password to confirm" autocomplete="current-password"/>' +
+        '<div class="bm-err" id="bmFlagErr"></div>' +
+        '<div class="bm-actions">' +
+          '<button class="bm-btn" onclick="closeBmFlag()">Cancel</button>' +
+          '<button class="bm-btn danger" id="bmFlagSubmit" onclick="submitBmFlag()"><i class="fas fa-flag"></i> Flag Book</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="bm-ov" id="bmRateOv">' +
+      '<div class="bm-modal">' +
+        '<div class="bm-modal-head">' +
+          '<div class="bm-modal-ico amber"><i class="fas fa-star"></i></div>' +
+          '<div><div class="bm-modal-title">Rate Book</div><div class="bm-modal-sub" id="bmRateTitle"></div></div>' +
+          '<div class="bm-x" onclick="closeBmRate()"><i class="fas fa-xmark"></i></div>' +
+        '</div>' +
+        '<div class="bm-stars" id="bmRateStars"></div>' +
+        '<div class="bm-rate-val" id="bmRateVal"></div>' +
+        '<div class="bm-actions">' +
+          '<button class="bm-btn" onclick="closeBmRate()">Cancel</button>' +
+          '<button class="bm-btn primary" onclick="saveBmRating()"><i class="fas fa-check"></i> Save Rating</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
+
+  document.getElementById('bmFlagOv').addEventListener('click', function (e) { if (e.target === this) closeOverlay('bmFlagOv'); });
+  document.getElementById('bmRateOv').addEventListener('click', function (e) { if (e.target === this) closeOverlay('bmRateOv'); });
+  document.getElementById('bmFlagPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitFlag(); });
+}
+function openOverlay(id) { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function closeBmFlag() { closeOverlay('bmFlagOv'); }
+function closeBmRate() { closeOverlay('bmRateOv'); }
+function submitBmFlag() { submitFlag(); }
+function saveBmRating() { saveRating(); }
+
+function toast(m) {
+  var t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:9999';
+    document.body.appendChild(t);
+    var s = document.createElement('style');
+    s.textContent = '#toast.show{opacity:1}';
+    document.head.appendChild(s);
+  }
+  t.textContent = m; t.classList.add('show'); clearTimeout(t._t);
+  t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+}
+
+function buildGenreOptions() {
+  var sel = document.getElementById('fGenre');
+  if (!sel) return;
+  var keep = sel.value;
+  sel.innerHTML = '<option>All Genres</option>';
+  var genres = {};
+  books.forEach(function (b) { if (b.genre) genres[b.genre] = 1; });
+  Object.keys(genres).sort().forEach(function (g) {
+    var o = document.createElement('option'); o.textContent = g; o.value = g; sel.appendChild(o);
+  });
+  if (keep) sel.value = keep;
+}
 
 function bindEvents() {
   document.addEventListener('click', function (e) {
@@ -223,17 +613,21 @@ function bindEvents() {
   document.getElementById('fGenre').addEventListener('change', function () { currentPage = 1; refresh(); });
   document.getElementById('fStatus').addEventListener('change', function () { currentPage = 1; refresh(); });
 
-  (function () {
-    var genres = {};
-    books.forEach(function (b) { if (b.genre) genres[b.genre] = 1; });
-    var sel = document.getElementById('fGenre');
-    Object.keys(genres).sort().forEach(function (g) { var o = document.createElement('option'); o.textContent = g; o.value = g; sel.appendChild(o); });
-  })();
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    closeOverlay('bmFlagOv'); closeOverlay('bmRateOv');
+  });
 
   window.goPage = goPage;
   window.viewBook = viewBook;
-  window.editBook = editBook;
+  window.editBook = editBook;          /* kept — button hidden, not removed */
+  window.rateBook = rateBook;
   window.flagBook = flagBook;
+  window.unflagBook = unflagBook;
+  window.closeBmFlag = closeBmFlag;
+  window.closeBmRate = closeBmRate;
+  window.submitBmFlag = submitBmFlag;
+  window.saveBmRating = saveBmRating;
 }
 
 function init() {
@@ -246,6 +640,7 @@ function init() {
     searchPlaceholder: 'Search everything...',
   });
   if (!document.getElementById('tableBody')) return;
+  ensureModals();
   resyncDemo();
   bindEvents();
   refresh();

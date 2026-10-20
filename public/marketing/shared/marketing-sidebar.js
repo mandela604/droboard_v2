@@ -34,6 +34,7 @@
     { key: 'campaigns',            label: 'Campaigns',              icon: 'fa-bullseye',         href: 'campaigns.html' },
     { key: 'templates',            label: 'Flyer Templates',        icon: 'fa-layer-group',      href: 'templates.html' },
     { key: 'ad-manager',           label: 'Ad Manager',             icon: 'fa-rectangle-ad',     href: 'ad-manager.html' },
+    { key: 'traffic',              label: 'Traffic & Activity',     icon: 'fa-chart-simple',     href: 'traffic.html' },
     { key: 'marketing-analytics',  label: 'Marketing Analytics',    icon: 'fa-chart-line',       href: 'marketing-analytics.html' },
   ];
 
@@ -175,7 +176,6 @@
   function _esc(s) { return (s || '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>'); }
 
   function _toast(msg) {
-    if (typeof window.toast === 'function') { window.toast(msg); return; }
     let el = document.getElementById('mkg-toast');
     if (!el) {
       el = document.createElement('div');

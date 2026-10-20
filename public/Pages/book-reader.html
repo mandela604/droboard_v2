@@ -58,7 +58,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .hero-grad{position:absolute;inset:0;background:linear-gradient(0deg,#000 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,.2) 100%)}
 .hero-content{position:absolute;bottom:0;left:0;right:0;z-index:5;padding:18px 16px 20px}
 .hero-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
-.hbadge{font-size:8px;font-weight:800;padding:3px 9px;border-radius:8px;letter-spacing:.05em;text-transform:uppercase}
+.hbadge{font-size:9px;font-weight:800;padding:3px 9px;border-radius:8px;letter-spacing:.05em;text-transform:uppercase}
 .hb-cat{background:var(--acc);color:#fff}
 .hb-ongoing{background:rgba(255,0,80,.12);border:1px solid var(--bd-acc);color:var(--acc3)}
 .hb-complete{background:rgba(255,255,255,.07);border:1px solid var(--bd);color:#666}
@@ -71,7 +71,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .hw-av-ring.ring-viewed{background:rgba(102,102,102,.75);padding:2px}
 .hw-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--l2,#1a1a24)}
 .hw-av-inner img{width:100%;height:100%;object-fit:cover;display:block}
-.hw-name{font-size:12px;font-weight:700;color:#ccc;flex:1}
+.hw-name{font-size:13px;font-weight:700;color:#ccc;flex:1}
 .hw-follow{background:var(--acc);color:#fff;border:none;padding:5px 13px;border-radius:20px;font-size:10px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif}
 .hw-follow.ing{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);color:#ccc}
 
@@ -400,7 +400,7 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <div class="quick-stats" id="quickStats"></div>
 
 <!-- CONTINUE BANNER -->
-<div class="continue-banner" id="continueBanner" onclick="SeriesReaderPage.toast('Resuming from where you left off...')">
+<div class="continue-banner" id="continueBanner" onclick="SeriesReaderPage.continueReading()">
   <div class="cb-icon">📖</div>
   <div class="cb-body">
     <div class="cb-label">Continue Reading</div>
@@ -473,7 +473,7 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../data/central-demo-data.js"></script>
-<script src="../component/ad-card.js?v=2"></script>
+<script src="../component/ad-card.js?v=3"></script>
 <script src="../services/ad-service.js"></script>
 <script src="../component/ad-slot.js"></script>
 <script src="../component/discover-card.js"></script>
