@@ -92,6 +92,110 @@ router.get('/reports/settings', generalLimiter, async (req, res) => {
   return base.wrap(res, async () => PlatformSetting.findOne({ key: 'reports' }).lean());
 });
 
+/* ── Surface endpoints the dashboard pages name but the core review/contract
+      models don't cover. Response shapes match each senior-editor service. */
+const base = require('../controllers/base.controller');
+const S = require('../services/senior-surfaces.service');
+
+const read = (fn) => (req, res) => base.wrap(res, () => fn(req));
+const listQuery = validate(z.object({ query: z.object(q).strict() }));
+
+// author-content surfaces (scoped to this editor's assigned authors)
+router.get('/stories', generalLimiter, listQuery, read(r => S.stories(r.user, r.valid.query)));
+router.get('/story-analytics', generalLimiter, listQuery,
+  read(r => S.storyAnalytics(r.user, r.valid.query)));
+
+// merchandising (SE reads what CE places)
+router.get('/featured-stories', generalLimiter, read(() => S.featuredStories()));
+router.get('/editors-picks', generalLimiter, read(() => S.editorsPicks()));
+
+// announcements
+router.get('/announcements', generalLimiter, listQuery, read(() => S.announcements()));
+router.post('/announcements', writeLimiter, audit('senior.announcements.create'),
+  validate(z.object({ body: anyBody })), read(r => S.createAnnouncement(r.valid.body)));
+
+// book reviews
+router.get('/book-reviews', generalLimiter, validate(z.object({ query: z.object({
+  q: q.q, page: q.page, limit: q.limit,
+  tab: z.string().max(20).optional(), search: z.string().max(80).optional(),
+}).strict() })), read(r => S.bookReviews(r.user, r.valid.query)));
+router.get('/book-reviews/date-filter', generalLimiter, read(() => S.bookReviewsDateFilter()));
+
+// contract templates + the one-shot overview the contracts page reads.
+// NOTE: /contracts/overview is registered BEFORE crud('/contracts') below so
+// it is never swallowed by GET /contracts/:id.
+router.get('/contracts/overview', generalLimiter, read(() => S.contractsOverview()));
+router.get('/contract-templates', generalLimiter, listQuery,
+  read(r => S.contractTemplates(r.valid.query)));
+router.get('/contract-templates/usage', generalLimiter, read(() => S.contractTemplatesUsage()));
+
+// featured banners
+router.get('/featured-banners', generalLimiter, read(() => S.featuredBanners()));
+router.post('/featured-banners', writeLimiter, audit('senior.banners.create'),
+  validate(z.object({ body: anyBody })), read(r => S.createFeaturedBanner(r.valid.body)));
+router.get('/featured-banners/:id', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), read(r => S.featuredBanner(r.valid.params.id)));
+router.post('/featured-banners/:id/pause', writeLimiter, audit('senior.banners.pause'),
+  validate(z.object({ params: z.object({ id }) })),
+  read(r => S.pauseFeaturedBanner(r.valid.params.id)));
+router.get('/featured-banners/:id/analytics', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })),
+  read(r => S.featuredBannerAnalytics(r.valid.params.id)));
+
+// earnings / payments / transactions / withdrawals
+router.get('/earnings-overview', generalLimiter, read(() => S.earningsOverview()));
+router.get('/earnings/analytics', generalLimiter, read(() => S.earningsOverview()));
+router.get('/earnings/leaderboard', generalLimiter, read(() => S.earningsOverview()));
+router.post('/earnings/export', writeLimiter, audit('senior.earnings.export'),
+  async (req, res) => base.wrap(res, async () => ({ ok: true, export: 'csv' })));
+router.get('/payments', generalLimiter, listQuery, read(r => S.payments(r.valid.query)));
+router.get('/payments/:id', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), read(r => S.payment(r.valid.params.id)));
+router.post('/payments/export', writeLimiter, audit('senior.payments.export'),
+  async (req, res) => base.wrap(res, async () => ({ ok: true, export: 'csv' })));
+router.get('/transactions', generalLimiter, listQuery, read(r => S.transactions(r.valid.query)));
+router.post('/transactions/export', writeLimiter, audit('senior.transactions.export'),
+  async (req, res) => base.wrap(res, async () => ({ ok: true, export: 'csv' })));
+router.get('/withdrawal-requests', generalLimiter, listQuery,
+  read(r => S.withdrawalRequests(r.valid.query)));
+router.get('/withdrawal-settings', generalLimiter, read(() => S.withdrawalSettings()));
+router.get('/signed-contracts', generalLimiter, listQuery,
+  read(r => S.signedContracts(r.valid.query)));
+
+// system pages
+router.get('/system-pages', generalLimiter, read(() => S.systemPages()));
+router.post('/system-pages', writeLimiter, audit('senior.systemPages.create'),
+  validate(z.object({ body: anyBody })),
+  (req, res) => base.wrap(res, async () => S.createSystemPage(req.valid.body, req.user)));
+router.get('/system-pages/:id', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })), read(r => S.systemPage(r.valid.params.id)));
+router.get('/system-pages/:id/preview', generalLimiter,
+  validate(z.object({ params: z.object({ id }) })),
+  read(r => S.systemPagePreview(r.valid.params.id)));
+
+// notifications (this editor only) — read-all MUST return {items}
+router.get('/notifications', generalLimiter, listQuery,
+  read(r => S.notifications(r.user, r.valid.query)));
+router.post('/notifications', writeLimiter, audit('senior.notifications.create'),
+  validate(z.object({ body: anyBody })),
+  (req, res) => base.wrap(res, async () => S.createNotification(req.valid.body, req.user)));
+router.post('/notifications/read-all', writeLimiter, audit('senior.notifications.readAll'),
+  read(r => S.notificationsReadAll(r.user, {})));
+
+router.get('/platform-settings', generalLimiter, read(() => S.platformSettings()));
+router.get('/editor-bill-review', generalLimiter, listQuery,
+  read(r => S.editorBillReview(r.user, r.valid.query)));
+
+// author messages write paths (list/send already exist further down)
+router.put('/author-messages/:id', writeLimiter, audit('senior.authorMessages.update'),
+  validate(z.object({ params: z.object({ id }), body: anyBody })),
+  read(r => S.authorMessagesUpdate(r.valid.params.id, r.valid.body)));
+router.post('/author-messages/:id/messages', writeLimiter, audit('senior.authorMessages.send'),
+  validate(z.object({ params: z.object({ id }), body: anyBody })),
+  read(r => S.authorMessagesSend(r.valid.params.id, r.valid.body)));
+router.post('/author-messages/read-all', writeLimiter, audit('senior.authorMessages.readAll'),
+  read(r => S.authorMessagesReadAll(r.user)));
+
 // contract review (page is local-demo today; backend ready)
 crud('/contracts', 'contracts');
 router.post('/contracts/:id/send', writeLimiter, audit('senior.contracts.send'),

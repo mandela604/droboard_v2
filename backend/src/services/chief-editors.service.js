@@ -442,9 +442,29 @@ async function saveAssignments(editorId, { authorIds }, updatedBy) {
   return doc.toJSON();
 }
 
+// Live search of registered platform accounts for the invite wizard — you can
+// only assign a role to someone who already has an account. Returns plain
+// readers/writers (not staff) matching name/email/username.
+async function searchPlatformUsers({ q, limit }) {
+  const lim = Math.min(parseInt(limit, 10) || 8, 20);
+  if (!q || String(q).trim().length < 2) return { items: [] };
+  const rx = { $regex: escRx(q), $options: 'i' };
+  const docs = await User.find({
+    roles: { $nin: ['senior_editor', 'chief_editor', 'admin', 'finance', 'marketing'] },
+    $or: [{ fullName: rx }, { email: rx }, { username: rx }],
+  }).select('id fullName username email avatar roles').limit(lim).lean();
+  return {
+    items: docs.map(u => ({
+      id: u.id, name: u.fullName || u.username || '', username: u.username || '',
+      email: u.email || '', avatar: u.avatar || '',
+      role: (u.roles || []).includes('writer') ? 'writer' : 'reader',
+    })),
+  };
+}
+
 module.exports = {
   listSeniorEditors, quotas, getSeniorEditor, patchSeniorEditor,
   createInvite, listInvites, patchInvite, resendInvite, cancelInvite,
   getByToken, acceptInvite, listAuthors, getAssignments, saveAssignments,
-  listUnassignedAuthors, pendingByAuthor,
+  listUnassignedAuthors, pendingByAuthor, searchPlatformUsers,
 };

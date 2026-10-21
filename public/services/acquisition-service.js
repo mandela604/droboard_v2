@@ -57,9 +57,9 @@
   function landingFor(dest, storyId) {
     for (var i = 0; i < LANDING_PAGES.length; i++) {
       if (LANDING_PAGES[i].key === dest) {
-        var p = LANDING_PAGES[i].landing;
-        if (dest === 'story') p = 'Pages/full-reader.html' + (storyId ? '?story=' + encodeURIComponent(storyId) : '');
-        return p;
+        if (dest === 'story') return 'Pages/full-reader.html' + (storyId ? '?story=' + encodeURIComponent(storyId) : '');
+        if (dest === 'custom') return '';
+        return LANDING_PAGES[i].landing;
       }
     }
     return 'Pages/index.html';
@@ -91,8 +91,13 @@
       source: c.source || 'facebook',
       utmCampaign: c.utmCampaign || slugify(c.label),
     };
-    if (!row.landing) row.landing = landingFor(dest, row.storyId);
-    else if (dest === 'story' && row.storyId) row.landing = 'Pages/full-reader.html?story=' + encodeURIComponent(row.storyId);
+    if (dest === 'custom') {
+      if (!row.landing) row.landing = landingFor('home');
+    } else {
+      /* Named page destinations always derive landing from catalog — never
+         keep a stale path when the destination changes. */
+      row.landing = landingFor(dest, row.storyId);
+    }
     return row;
   }
   function addCampaign(c) {

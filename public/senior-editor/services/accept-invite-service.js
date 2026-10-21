@@ -90,9 +90,12 @@ function init(){
         body:JSON.stringify({ token:token, password:pw })
       }).then(function(result){
         try{
-          localStorage.setItem('droboard-user',JSON.stringify({
+          // Key + shape must match what profile-menu.js reads (droboard_user,
+          // roles[]) — the old 'droboard-user' hyphen key was invisible to the
+          // profile drawer, so invited editors never saw their dashboard link.
+          localStorage.setItem('droboard_user',JSON.stringify({
             id:result.id,name:name,email:result.email,avatar:'https://i.pravatar.cc/100?img=5',
-            role:'Senior Editor',dashboard:'senior-editor'
+            roles:['senior_editor','reader'],primaryRole:'senior_editor'
           }));
         }catch(se){}
         document.getElementById('setupForm').style.display='none';

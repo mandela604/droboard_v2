@@ -76,6 +76,7 @@ const rewardBody = z.object({
   blogCategory: z.string().max(40).optional(), blogUrl: z.string().max(500).optional(),
   channelId: z.string().max(80).optional(), channelUrl: z.string().max(500).optional(),
   videoId: z.string().max(80).optional(), minWatchSec: z.number().int().min(0).max(100000).optional(),
+  adUrl: z.string().max(500).optional(),
 }).strict();
 const bundleBody = z.object({
   id: z.string().min(1).max(120).optional(), code: z.string().min(1).max(40).optional(),

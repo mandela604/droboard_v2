@@ -257,7 +257,12 @@
             <div class="ses-sb-logo-txt"><b>DROBOARD</b><b>SENIOR EDITOR</b></div>
             <button class="ses-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>
-          <nav class="ses-sb-nav" id="${instId}-nav">${navHtml()}</nav>
+          <nav class="ses-sb-nav" id="${instId}-nav">${navHtml()}
+            <div class="ses-sb-section-lbl">Account</div>
+            <a class="ses-sb-item" href="../Pages/discover.html" data-item-key="back-to-app">
+              <i class="fas fa-arrow-left ses-item-ico"></i>Back to Droboard
+            </a>
+          </nav>
           <div class="ses-sb-footer">
             <i class="fas fa-headset"></i>
             <b>Quick Help</b>

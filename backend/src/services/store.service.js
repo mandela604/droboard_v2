@@ -48,10 +48,10 @@ const BUNDLE_FIELDS = ['code', 'name', 'coins', 'bonus', 'basePriceNGN', 'icon',
 function pick(data, fields) {
   const out = {};
   fields.forEach(k => { if (data[k] !== undefined) out[k] = data[k]; });
-  // fold loose UI extras (icon/color/badge/blog/channel) into meta so live
-  // round-trips keep what the demo shapes carry at top level
+  // fold loose UI extras (icon/color/badge/blog/channel/ad-url) into meta so
+  // live round-trips keep what the demo shapes carry at top level
   const extras = ['icon', 'color', 'badge', 'name', 'price', 'available',
-    'blogCategory', 'blogUrl', 'channelId', 'channelUrl', 'videoId', 'minWatchSec'];
+    'blogCategory', 'blogUrl', 'channelId', 'channelUrl', 'videoId', 'minWatchSec', 'adUrl'];
   const meta = Object.assign({}, data.meta && typeof data.meta === 'object' ? data.meta : null);
   extras.forEach(k => { if (data[k] !== undefined) meta[k] = data[k]; });
   if (Object.keys(meta).length) out.meta = meta;

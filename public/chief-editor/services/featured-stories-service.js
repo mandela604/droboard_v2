@@ -24,7 +24,11 @@ function timeoutFetch(url, opts){
   return fetch(url, Object.assign({signal:c.signal}, opts||{})).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error(r.status); return r.json(); }).catch(function(e){ clearTimeout(t); throw e; });
 }
 
-function getTags(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_TAGS || {})); }
+/* Only these tags are editable/displayed — the rest (hot/trending/new/staff-fav)
+   need backend analytics logic before they can mean anything, so they're out. */
+var ALLOWED_TAGS = ['featured','editors-pick'];
+function wlTags(obj){ var out={}; ALLOWED_TAGS.forEach(function(k){ if(obj && obj[k]) out[k]=obj[k]; }); return out; }
+function getTags(){ return wlTags((window.EditorDemo||{}).FEATURED_TAGS || {}); }
 function getSections(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_SECTIONS || [])); }
 function getLibrary(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_LIBRARY || [])); }
 function getPlacements(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_PLACEMENTS || [])); }
@@ -32,12 +36,30 @@ function getHistory(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).
 
 /* ── State stored in closure ── */
 var _tags, _sections, _library, _placements, _history;
+var PLACEMENTS_KEY = 'droboard_ce_featured_placements';
+function savePlacements(){
+  try{
+    localStorage.setItem(PLACEMENTS_KEY, JSON.stringify(_placements.map(function(f){
+      return {
+        id: f.id, placement: f.placement, tags: f.tags, note: f.note || '',
+        start: (f.start instanceof Date) ? f.start.toISOString().slice(0,10) : f.start,
+        end:   (f.end   instanceof Date) ? f.end.toISOString().slice(0,10)   : f.end,
+      };
+    })));
+  }catch(e){}
+}
 function loadFromDemo(){
   _tags = getTags();
   _sections = getSections();
   _library = getLibrary();
   _placements = getPlacements();
   _history = getHistory();
+  /* Saved placements (this session's feature/unfeature actions) win over seed —
+     the discover hero slider reads the same localStorage key. */
+  try{
+    var raw = localStorage.getItem(PLACEMENTS_KEY);
+    if(raw){ var p = JSON.parse(raw); if(Array.isArray(p)) _placements = p; }
+  }catch(e){}
   _placements.forEach(function(f){
     if(typeof f.start === 'string') f.start = new Date(f.start);
     if(typeof f.end === 'string') f.end = new Date(f.end);
@@ -49,7 +71,7 @@ function loadAll(){
   return Promise.resolve().then(function(){
     return timeoutFetch(API_BASE);
   }).then(function(data){
-    _tags = data.tags || {};
+    _tags = wlTags(data.tags || {});
     _sections = data.sections || [];
     _library = data.library || [];
     _placements = data.placements || [];
@@ -127,6 +149,7 @@ function addFeature(storyId, section, sub, start, end, tagsArr, note){
   var e = typeof end === 'string' ? new Date(end) : end;
   var entry = { id: storyId, placement: { section: section, sub: sub }, tags: tagsArr, start: s, end: e, note: note||'' };
   _placements.push(entry);
+  savePlacements();
   return entry;
 }
 
@@ -143,6 +166,7 @@ function removeFeature(storyId){
       period: fmtDate(new Date(removed.start)) + ' – ' + fmtDate(new Date())
     });
   }
+  savePlacements();
   return removed;
 }
 
@@ -155,6 +179,7 @@ function updatePlacement(storyId, changes){
   if(changes.start) f.start = changes.start;
   if(changes.end) f.end = changes.end;
   if(changes.note !== undefined) f.note = changes.note;
+  savePlacements();
   return f;
 }
 
@@ -344,7 +369,7 @@ function renderTagTabs(){
 ───────────────────────────────────────── */
 function featuredRow(f){
   const s = byIdUI(f.id); if(!s) return '';
-  const visibleTags = f.tags.filter(t=>t!=='featured').slice(0,2);
+  const visibleTags = f.tags.filter(t=>t!=='featured' && TAGS[t]).slice(0,2);
   return `
   <div class="row-item" data-action="open-detail" data-id="${s.id}">
     <img class="row-cover" src="${s.cover}" alt="${s.title} cover"/>
@@ -477,7 +502,7 @@ function openSheetForHistory(idx){
   sheetHistIdx = idx;
   sheetMode = 'add';
   sheetTagPickerOpen = false; sheetDurationEditOpen = false; sheetAddConfigOpen = false;
-  sheetAddTags = ['featured', ...(h.tags||[])];
+  sheetAddTags = ['featured', ...(h.tags||[]).filter(t=>ALLOWED_TAGS.indexOf(t)>=0 && t!=='featured')];
   sheetCfgPlacement = { section:h.placement.section, sub:h.placement.sub };
   openSheetCommon();
 }
@@ -517,7 +542,7 @@ function historyBlockHtml(){
           <div class="hist-place">${placementLabel(e.placement)}</div>
           <div class="hist-period">📅 ${e.period}</div>
         </div>
-        <span class="placement-badge">${(e.tags||[]).map(t=>TAGS[t]?TAGS[t].label:t).join(' · ')||'—'}</span>
+        <span class="placement-badge">${(e.tags||[]).filter(t=>TAGS[t]).map(t=>TAGS[t].label).join(' · ')||'—'}</span>
       </div>`).join('');
   }
   return html;

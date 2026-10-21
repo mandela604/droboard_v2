@@ -37,12 +37,41 @@
 
   function buildHeroes() {
     const d = window.DemoData, covers = d.COVERS;
-    return [
+    const staticHeroes = [
       { id: 'st1', img: covers[0], title: 'HIS <em>Sweet</em><br>REVENGE', author: 'By Luna Grey', tags: ['Mafia', 'Romance'] },
       { id: 'st2', img: covers[1], title: 'UNTIL YOU<br>REGRET', author: 'By Ada Writes', tags: ['Revenge', 'Romance'] },
       { id: 'st3', img: covers[2], title: 'CLAIMING HIS<br>LUNA', author: 'By Ifeanyi Story', tags: ['Werewolf', 'Romance'] },
       { id: 'st4', img: covers[3], title: 'BOUND<br>BY HER', author: 'By Efe O', tags: ['Romance', 'Drama'] },
     ];
+    /* Featured placements set in the chief editor module — up to five stories
+       in the slider. Saved placements (localStorage) keep feature/unfeature
+       actions working across pages without a backend. */
+    try {
+      const ed = window.EditorDemo;
+      if (ed && Array.isArray(ed.FEATURED_PLACEMENTS)) {
+        const lib = ed.FEATURED_LIBRARY || [];
+        let placements = ed.FEATURED_PLACEMENTS;
+        try {
+          const raw = localStorage.getItem('droboard_ce_featured_placements');
+          if (raw) { const saved = JSON.parse(raw); if (Array.isArray(saved)) placements = saved; }
+        } catch (e) {}
+        const heroes = placements.slice()
+          .sort((a, b) => String(b.start || '').localeCompare(String(a.start || '')))
+          .filter(p => (p.tags || []).includes('featured'))
+          .map(p => lib.find(s => s.id === p.id))
+          .filter(Boolean)
+          .slice(0, 5)
+          .map(s => ({
+            id: s.id,
+            img: s.cover,
+            title: s.title,
+            author: 'By ' + s.author,
+            tags: String(s.genre || '').split(' & ').filter(Boolean),
+          }));
+        if (heroes.length) return heroes;
+      }
+    } catch (e) {}
+    return staticHeroes;
   }
 
   function buildContinueReading() {
@@ -134,7 +163,14 @@
     ];
   }
 
-  function buildRecommended() {
+  /* Taste preferences from the first-visit picker (localStorage).
+     Live swap: dro_tastes synced via POST /api/profile/tastes. */
+  function readTastes() {
+    try { return JSON.parse(localStorage.getItem('dro_tastes') || 'null') || null; }
+    catch (e) { return null; }
+  }
+
+  function staticRecommended() {
     const d = window.DemoData, c = d.c;
     return [
       { img: c(4), title: "His Choice Wasn't Me", author: '@Kemi_A' },
@@ -148,6 +184,118 @@
       { img: c(9), title: 'Never Look Back', author: '@Ada_Writes' },
       { img: c(3), title: 'The Softest Rejection', author: '@Kemi_A' },
     ];
+  }
+
+  /* Personalized picks: STORIES matching selected genres first (cat may
+     carry a mojibake emoji prefix - lowercase include still matches),
+     then the rest of the pool, padded with the static list. */
+  function buildRecommended() {
+    const t = readTastes();
+    const d = window.DemoData;
+    if (!t || !Array.isArray(t.genres) || !t.genres.length || !d || !Array.isArray(d.STORIES)) return staticRecommended();
+    const want = t.genres.map(g => String(g).toLowerCase());
+    const scored = (d.STORIES || []).map(s => {
+      const cat = String(s.cat || '').toLowerCase();
+      let score = 0;
+      want.forEach(g => { if (cat.indexOf(g) !== -1) score += 1; });
+      return { id: s.id, img: s.cover, title: s.title, author: '@' + s.author, score };
+    });
+    const matched = scored.filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+    const rest = scored.filter(x => x.score === 0);
+    const out = matched.concat(rest).slice(0, 10);
+    const seen = {};
+    out.forEach(s => { seen[String(s.title).toLowerCase()] = 1; });
+    staticRecommended().forEach(s => {
+      if (out.length >= 10) return;
+      if (seen[String(s.title).toLowerCase()]) return;
+      out.push(s);
+    });
+    return out;
+  }
+
+  function renderRecRow() {
+    DiscoverCard.renderRow('recRow', buildRecommended(), 'No recommendations yet.');
+    renderTuneChip();
+  }
+
+  function renderTuneChip() {
+    const row = document.getElementById('recRow');
+    if (!row) return;
+    const head = row.closest('.section') && row.closest('.section').querySelector('.sec-head');
+    if (!head || document.getElementById('recTuneBtn')) return;
+    const chip = document.createElement('button');
+    chip.id = 'recTuneBtn';
+    chip.className = 'view-all';
+    chip.style.cssText = 'margin-right:8px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);font-size:10px;padding:4px 10px;border-radius:999px;cursor:pointer;font-weight:600';
+    chip.innerHTML = '<i class="fas fa-sliders" style="font-size:9px"></i> Tune your feed';
+    const viewAll = head.querySelector('.view-all');
+    if (viewAll) head.insertBefore(chip, viewAll);
+    else head.appendChild(chip);
+    chip.addEventListener('click', function () {
+      if (window.DroboardTastePicker) DroboardTastePicker.open({ onDone: renderRecRow });
+    });
+  }
+
+  /* Full-screen spotlight: once per visit, every N visits, Discover only.
+     Config comes from the ad-manager "Spotlight" placement card. */
+  async function maybeShowSpotlight() {
+    if (!window.DroboardSpotlight || typeof AdService === 'undefined') return;
+    try { if (sessionStorage.getItem('dro_spotlight_v')) return; } catch (e) {}
+    let cfg = {};
+    try { cfg = (await AdService.getPlacement('spotlight')) || {}; } catch (e) { return; }
+    if (cfg.enabled === false) return;
+    const hasCfg = ['enabled', 'seconds', 'everyN', 'allowSkip'].some(k => k in cfg);
+    if (!hasCfg) return; // surface not configured yet
+    const every = Math.max(1, parseInt(cfg.everyN, 10) || 1);
+    try {
+      const vis = (parseInt(localStorage.getItem('dro_spotlight_vis'), 10) || 0) + 1;
+      localStorage.setItem('dro_spotlight_vis', vis);
+      if (vis % every !== 0) return;
+    } catch (e) { /* show anyway */ }
+    let ad = null;
+    try {
+      const pools = await AdService.getAds({ page: 'discover', slot: 'discover:spotlight' });
+      ad = (pools.spotlight && pools.spotlight[0]) || null;
+    } catch (e) {}
+    const tastes = readTastes();
+    let story = null, href = null;
+    if (ad) {
+      story = { id: ad.id, title: ad.title, author: ad.author || ad.authorName, genre: ad.genre, chapters: ad.chapters, reads: ad.reads, preview: ad.preview, img: ad.img || ad.cover, cta: ad.cta || 'Read now' };
+      href = ad.url || (window.DiscoverCard ? DiscoverCard.storyHref({ id: ad.id, title: ad.title }) : null);
+    } else {
+      const pool = (window.DemoData && DemoData.STORIES) || [];
+      let pick = null;
+      if (tastes && Array.isArray(tastes.genres) && tastes.genres.length) {
+        const want = tastes.genres.map(g => String(g).toLowerCase());
+        pick = pool.find(s => want.some(g => String(s.cat || '').toLowerCase().indexOf(g) !== -1));
+      }
+      if (!pick) pick = pool[0];
+      if (!pick) return;
+      story = { id: pick.id, title: pick.title, author: '@' + pick.author, genre: String(pick.cat || '').replace(/[^A-Za-z ]/g, '').trim(), chapters: pick.chapters, reads: pick.reads, preview: pick.desc, img: pick.cover, cta: 'Read now' };
+      href = window.DiscoverCard ? DiscoverCard.storyHref(story) : null;
+    }
+    try { sessionStorage.setItem('dro_spotlight_v', '1'); } catch (e) {}
+    DroboardSpotlight.show({
+      story: story,
+      seconds: parseInt(cfg.seconds, 10) || 5,
+      allowSkip: cfg.allowSkip !== false,
+      sponsored: !!ad,
+      trackId: ad ? ad.id : null,
+      href: href,
+    });
+  }
+
+  /* First-visit flow: taste picker, then spotlight once the picker settles. */
+  function startFirstVisitFlow() {
+    const after = function () {
+      renderRecRow();
+      setTimeout(maybeShowSpotlight, 1200);
+    };
+    if (window.DroboardTastePicker && typeof DroboardTastePicker.maybeShow === 'function') {
+      DroboardTastePicker.maybeShow({ onDone: after });
+    } else {
+      setTimeout(after, 100);
+    }
   }
 
   function buildComplete() {
@@ -504,11 +652,13 @@
     new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMoreBatch(); }, { root: null, rootMargin: '0px 0px 24px 0px', threshold: 0 }).observe(document.getElementById('scrollSentinel'));
     initToTop();
     initContentProtection();
+    renderTuneChip();
+    startFirstVisitFlow();
 
     if (window.ScrollKeep) ScrollKeep.restore();
     pageLoader.classList.add('hidden');
     setTimeout(() => pageLoader.remove(), 400);
   }
 
-  window.DiscoverPage = { init, toggleTheme };
+  window.DiscoverPage = { init, toggleTheme, renderRecRow, maybeShowSpotlight, renderTuneChip };
 })();

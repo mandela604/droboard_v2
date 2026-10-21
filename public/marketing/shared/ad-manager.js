@@ -16,6 +16,7 @@
     { id: 'follow', label: 'Follow', icon: 'fa-user-plus' },
     { id: 'banner', label: 'Banner', icon: 'fa-flag' },
     { id: 'minibanner', label: 'Mini banner', icon: 'fa-rectangle-ad' },
+    { id: 'spotlight', label: 'Spotlight', icon: 'fa-bolt' },
     { id: 'promo', label: 'Promo slide', icon: 'fa-images' },
   ];
 
@@ -134,6 +135,11 @@
     if (tp) tp.checked = (p.genreHub || {}).topPromo !== false;
     set('plHomeInt', (p.home || {}).interval || 5);
     on('plHomeOn', (p.home || {}).enabled);
+    const sl = p.spotlight || {};
+    on('plSlOn', sl.enabled);
+    set('plSlSec', sl.seconds || 5);
+    set('plSlEvery', sl.everyN || 1);
+    on('plSlSkip', sl.allowSkip);
     on('plFullOn', (p.fullReader || {}).enabled);
     set('plFullWords', (p.fullReader || {}).wordsPerSlot || 300);
     const fslots = (p.fullReader || {}).slots || {};
@@ -165,7 +171,7 @@
   }
 
   /* ── Slot programming (per-slot formats / pinned ad ids) ── */
-  const PROG_FMTS = ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'minibanner']; // promo excluded (slider only)
+  const PROG_FMTS = ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'minibanner', 'spotlight']; // promo excluded (slider only)
   function allSlots() {
     return (window.AdSetupData && AdSetupData.allSlots) ? AdSetupData.allSlots() : [];
   }
@@ -251,6 +257,7 @@
       feed: { enabled: chk('plFeedOn'), interval: num(get('plFeedInt'), 4) },
       genreHub: { enabled: chk('plHubOn'), interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
       home: { enabled: chk('plHomeOn'), interval: num(get('plHomeInt'), 5) },
+      spotlight: { enabled: chk('plSlOn'), seconds: Math.min(30, Math.max(3, num(get('plSlSec'), 5))), everyN: num(get('plSlEvery'), 1), allowSkip: chk('plSlSkip') },
       fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), paidUnlockAds: chk('plFullPaidAds'), slots: { 'fullReader:top': slotVal('fullReader:top', chk('plFullTop')), 'fullReader:per-300-words': slotVal('fullReader:per-300-words', chk('plFullInline')), 'fullReader:bottom': slotVal('fullReader:bottom', chk('plFullBottom')) } },
       scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), paidUnlockAds: chk('plScrollPaidAds'), slots: { 'scrollReader:top': slotVal('scrollReader:top', chk('plScrollTop')), 'scrollReader:per-300-words': slotVal('scrollReader:per-300-words', chk('plScrollInline')), 'scrollReader:bottom': slotVal('scrollReader:bottom', chk('plScrollBottom')) } },
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },

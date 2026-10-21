@@ -145,8 +145,15 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label class="pl-check"><input type="checkbox" id="plHomeOn" checked/> Ads on this page</label>
         <label class="pl-lbl">Full-screen ad card after every N story cards</label><input class="pl-inp" id="plHomeInt" type="number" min="1" value="5"/>
       </div>
-      <div class="pl-card">
-        <div class="pl-name"><i class="fas fa-book-open" style="color:var(--blue)"></i> Full Reader</div>
+<div class="pl-card">
+<div class="pl-name"><i class="fas fa-bolt" style="color:var(--amber)"></i> Spotlight <span style="font-weight:600;color:var(--text-faint);font-size:10px">Full-screen story on Discover</span></div>
+<label class="pl-check"><input type="checkbox" id="plSlOn"/> Spotlight on Discover</label>
+<label class="pl-lbl">Countdown (seconds)</label><input class="pl-inp" id="plSlSec" type="number" min="3" max="30" value="5"/>
+<label class="pl-lbl">Show once every N visits</label><input class="pl-inp" id="plSlEvery" type="number" min="1" value="1"/>
+<label class="pl-check"><input type="checkbox" id="plSlSkip" checked/> Allow early close (uncheck for paid ads)</label>
+</div>
+<div class="pl-card">
+<div class="pl-name"><i class="fas fa-book-open" style="color:var(--blue)"></i> Full Reader</div>
         <label class="pl-check"><input type="checkbox" id="plFullOn" checked/> Ads on this page</label>
         <label class="pl-lbl">Words between in-text ads</label><input class="pl-inp" id="plFullWords" type="number" min="50" max="5000" step="50" value="300"/>
         <label class="pl-check"><input type="checkbox" id="plFullTop" checked/> Top slot</label>
@@ -252,12 +259,12 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <div class="adm-toast" id="admToast"></div>
 
-<script src="shared/ad-setup-data.js"></script>
+<script src="shared/ad-setup-data.js?v=2"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
 <script src="../services/league-service.js"></script>
-<script src="shared/ad-manager.js"></script>
+<script src="shared/ad-manager.js?v=2"></script>
 <script>AdManagerPage.init();</script>
 </body>
 </html>

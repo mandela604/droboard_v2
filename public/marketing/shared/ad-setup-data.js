@@ -15,6 +15,7 @@
     { id: 'follow', label: 'Follow', icon: 'fa-user-plus', desc: 'Rich author follow card' },
     { id: 'banner', label: 'Banner', icon: 'fa-flag', desc: 'Brand headline strip' },
     { id: 'minibanner', label: 'Mini banner', icon: 'fa-rectangle-ad', desc: 'Small horizontal image banner (leaderboard)' },
+    { id: 'spotlight', label: 'Spotlight', icon: 'fa-bolt', desc: 'Full-screen story takeover with countdown' },
     { id: 'promo', label: 'Promo slide', icon: 'fa-images', desc: 'Library / hub slider slide' },
   ];
 
@@ -61,6 +62,7 @@
       { id: 'discover:banner-top', label: 'Inline banner (after Continue Reading)' },
       { id: 'discover:inline-banner', label: 'Inline banner (after New Releases)' },
       { id: 'discover:banner-bottom', label: 'Inline banner (above More Stories)' },
+      { id: 'discover:spotlight', label: 'Full-screen spotlight' },
     ],
     genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
     library: [{ id: 'library:slider', label: 'Slider' }],
@@ -102,6 +104,7 @@
     banner: [['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
     minibanner: [['img', 'Banner image (wide, ~800×180)', 'img'], ['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
     promo: [['title', 'Title', 'text'], ['sub', 'Sub line', 'text'], ['author', 'Author', 'text'], ['cta', 'CTA button', 'text'], ['genre', 'Hub genre (blank = all hubs)', 'text'], ['img', 'Slide image', 'img']],
+    spotlight: [['title', 'Story title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['chapters', 'Chapters', 'text'], ['reads', 'Reads', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image (portrait)', 'img']],
   };
 
   var TOTAL_READERS = 2400000;
@@ -232,6 +235,7 @@
     { id: 'brand', label: 'Brand awareness', icon: 'fa-flag', desc: 'Bold banner strip across surfaces', format: 'banner' },
     { id: 'miniBanner', label: 'Compact image banner', icon: 'fa-rectangle-ad', desc: 'Small horizontal banner between content sections', format: 'minibanner' },
     { id: 'slider', label: 'Feature in sliders', icon: 'fa-images', desc: 'Library and hub slider slide', format: 'promo' },
+    { id: 'spotlight', label: 'Full-screen spotlight', icon: 'fa-bolt', desc: 'Story takeover with a countdown timer', format: 'spotlight' },
     { id: 'network', label: 'Run a network tag', icon: 'fa-code', desc: 'Paste an AdSense / Adsterra / Monetag tag', format: 'embed' },
   ];
 

@@ -514,6 +514,7 @@ function openCreateModal(kind){
   document.getElementById('earnCooldown').value = '';
   document.getElementById('earnIcon').value = '';
   document.getElementById('earnAvailable').value = 'true';
+  document.getElementById('earnAdUrl').value = '';
   document.getElementById('earnBlogUrl').value = 'Pages/blog.html?cat=tech';
   document.getElementById('earnPages').value = '3';
   document.getElementById('earnBlogCat').value = 'tech';
@@ -559,6 +560,7 @@ function openEditModal(kind, id){
     document.getElementById('earnCooldown').value = item.cooldown;
     document.getElementById('earnIcon').value = item.icon;
     document.getElementById('earnAvailable').value = String(item.available!==false && item.status==='active');
+    document.getElementById('earnAdUrl').value = item.adUrl || (item.meta && item.meta.adUrl) || '';
     document.getElementById('earnBlogUrl').value = item.blogUrl || 'Pages/blog.html?cat=tech';
     document.getElementById('earnPages').value = item.pagesRequired || 3;
     document.getElementById('earnBlogCat').value = item.blogCategory || 'tech';
@@ -588,6 +590,7 @@ function updateEarnExtras(){
   document.getElementById('earnExtraBlog').style.display = t==='blog_read' ? 'block':'none';
   document.getElementById('earnExtraYTSub').style.display = t==='youtube_sub' ? 'block':'none';
   document.getElementById('earnExtraYTWatch').style.display = t==='youtube_watch' ? 'block':'none';
+  document.getElementById('earnExtraAd').style.display = t==='watch_ad' ? 'block':'none';
 }
 
 document.querySelectorAll('#kindRow .radio-opt').forEach(el=>{
@@ -647,7 +650,13 @@ async function submitForm(){
     if(!action){ errBox.textContent='Please enter action label.'; errBox.classList.add('show'); return; }
     if(coins<=0){ errBox.textContent='Please enter coins.'; errBox.classList.add('show'); return; }
     payload = { action, type, coins, cooldown, icon, available, status: available?'active':'inactive' };
-    if(type==='blog_read'){
+    if(type==='watch_ad'){
+      // Production: the reader must open a real ad/offerwall — no URL means
+      // the claim is a fake local credit. Required so packages ship ready.
+      const adUrl = document.getElementById('earnAdUrl').value.trim();
+      if(!adUrl){ errBox.textContent='Ad / Offer URL is required for Watch Ad — the reader opens this link to watch the ad.'; errBox.classList.add('show'); return; }
+      payload.adUrl = adUrl;
+    } else if(type==='blog_read'){
       payload.blogUrl = document.getElementById('earnBlogUrl').value.trim() || 'Pages/blog.html?cat=tech';
       payload.pagesRequired = parseInt(document.getElementById('earnPages').value,10) || 3;
       payload.blogCategory = document.getElementById('earnBlogCat').value.trim() || 'tech';

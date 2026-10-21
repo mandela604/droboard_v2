@@ -96,6 +96,16 @@ router.post('/invites/accept', authLimiter,
 router.get('/authors', ...guard,
   validate(z.object({ query: pageQuery }).strict()), ctrl.authors);
 
+// Invite wizard step 1 — live search of registered accounts (role can only be
+// granted to someone who already has a platform account).
+router.get('/users/search', ...guard,
+  validate(z.object({
+    query: z.object({
+      q: z.string().min(2).max(120).optional(),
+      limit: z.coerce.number().int().min(1).max(20).optional(),
+    }).strict(),
+  }).strict()), ctrl.searchUsers);
+
 // "Needs an editor" queue — writers in no EditorAssignment (option B).
 // ?waiting=1 → only those with a submission actually parked awaiting review.
 router.get('/unassigned-authors', ...guard,

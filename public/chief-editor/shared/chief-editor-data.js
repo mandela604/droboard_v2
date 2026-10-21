@@ -145,6 +145,22 @@
       'SE-13': [],
       'SE-14': [],
     },
+
+    // Registered platform accounts for the invite wizard's live search —
+    // a role can only be granted to someone who already has an account.
+    // Mirrors GET /api/chief/users/search (readers + unassigned writers).
+    platformUsers: [
+      { id:'PU-01', name:'Ada Obi',        username:'ada_obi',      email:'ada.obi@droboard.io',        avatar:'https://i.pravatar.cc/100?img=5',  role:'reader' },
+      { id:'PU-02', name:'Tomi Adesanya',  username:'tomi_ads',     email:'tomi.ads@droboard.io',       avatar:'https://i.pravatar.cc/100?img=68', role:'reader' },
+      { id:'PU-03', name:'Nneka Richards', username:'nneka_r',      email:'nneka.r@droboard.io',        avatar:'https://i.pravatar.cc/100?img=44', role:'reader' },
+      { id:'PU-04', name:'Femi Thomas',    username:'femi_t',       email:'femi.t@droboard.io',         avatar:'https://i.pravatar.cc/100?img=59', role:'reader' },
+      { id:'PU-05', name:'Chidi Okonkwo',  username:'chidi_ok',     email:'chidi.okonkwo@droboard.io',  avatar:'https://i.pravatar.cc/100?img=11', role:'reader' },
+      { id:'PU-06', name:'Bisi Alabi',     username:'bisi_alabi',   email:'bisi.alabi@droboard.io',     avatar:'https://i.pravatar.cc/100?img=25', role:'reader' },
+      { id:'PU-07', name:'Yusuf Bello',    username:'yusuf_b',      email:'yusuf.bello@droboard.io',    avatar:'https://i.pravatar.cc/100?img=51', role:'reader' },
+      { id:'PU-08', name:'Amaka Eze',      username:'amaka_eze',    email:'amaka.eze@droboard.io',      avatar:'https://i.pravatar.cc/100?img=36', role:'reader' },
+      { id:'PU-09', name:'Luna Grey',      username:'luna_grey',    email:'luna.grey@droboard.io',      avatar:'https://i.pravatar.cc/100?img=15', role:'writer' },
+      { id:'PU-10', name:'Efe Okoro',      username:'efe_okoro',    email:'efe.okoro@droboard.io',      avatar:'https://i.pravatar.cc/100?img=22', role:'writer' },
+    ],
   };
 
   window.ChiefEditorData = {
@@ -236,6 +252,19 @@
         items: list, total: list.length,
         waiting: list.filter(function (x) { return x.pendingSubmissions > 0; }).length,
       };
+    },
+
+    // Invite wizard live search — registered accounts only (mirrors
+    // GET /api/chief/users/search). Min 2 chars, max 8 results.
+    async searchPlatformUsers(q) {
+      q = String(q || '').trim().toLowerCase();
+      if (q.length < 2) return { items: [] };
+      const items = DEMO.platformUsers.filter(function (u) {
+        return u.name.toLowerCase().indexOf(q) !== -1
+          || u.email.toLowerCase().indexOf(q) !== -1
+          || u.username.toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 8);
+      return { items: clone(items) };
     },
 
     async addPendingEditor(data) {

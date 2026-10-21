@@ -56,7 +56,7 @@ GENRE_COLORS['Betrayal']={bg:'#ffe1eb',fg:'#ff0050'};
 GENRE_COLORS['Campus']={bg:'#e3ecfd',fg:'#2f7de1'};
 GENRE_COLORS['Elegy']={bg:'#fde3e3',fg:'#e0384d'};
 
-function statusClass(s){return{Published:'published',Draft:'draft','Under Review':'review',Flagged:'flagged'}[s]||'draft';}
+function statusClass(s){return{Published:'published',Draft:'draft',Paused:'paused','Under Review':'review',Flagged:'flagged'}[s]||'draft';}
 function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><span class="dot"></span>'+s+'</span>';}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
@@ -208,7 +208,7 @@ function renderStats(){
 
 function renderTabs(){
   var counts={all:books.length};
-  ['Published','Draft','Under Review','Flagged'].forEach(function(s){counts[s]=books.filter(function(b){return b.status===s;}).length;});
+  ['Published','Paused','Under Review','Flagged'].forEach(function(s){counts[s]=books.filter(function(b){return b.status===s;}).length;});
   document.getElementById('countAll').textContent=counts.all;
   document.querySelectorAll('.tab-item').forEach(function(t){
     var k=t.dataset.tab;

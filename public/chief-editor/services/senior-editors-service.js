@@ -44,6 +44,8 @@ const Crud = {
   // Option B queue: writers in no assignment.
   listUnassigned: function(waiting){ return apiFetch('/unassigned-authors' + (waiting ? '?waiting=1' : '')); },
   listAuthors: function(){ return apiFetch('/authors?limit=100'); },
+  // Invite wizard step 1 — live search of registered accounts.
+  searchUsers: function(q){ return apiFetch('/users/search?q=' + encodeURIComponent(q) + '&limit=8'); },
 };
 
 let _initDone = false;
@@ -765,35 +767,196 @@ function qtRenderSummary(){
     '<div class="cs-row"><span class="cs-label">Status</span><span class="cs-val">' + (statusLbl[status] || status) + '</span></div>';
 }
 
-/* Invite Modal (new invite + edit existing) */
-var editingInviteId=null;
+/* Invite Modal (3-step wizard: Find account → Terms → Review).
+   Step 1 live-searches REGISTERED platform accounts — you can only grant a
+   role to someone who already has a Droboard account. Selecting a result
+   locks name+email from that account (hidden inputs feed the send handler).
+   Edit mode: search disabled, the invitee is shown as a locked card. */
+var editingInviteId = null;
+var _invUser = null;
+var _invStep = 1;
+var _invSearchTimer = null;
+
 function openInviteModal(editId){
-  var ed=editId?ALL.find(function(x){return x.id===editId;}):null;
-  editingInviteId=ed?ed.id:null;
-  document.getElementById('invName').value=ed?ed.name:'';
-  document.getElementById('invEmail').value=ed?ed.email:'';
-  document.getElementById('invTarget').value=ed?(ed.target||50):'50';
-  var pt=ed?(ed.paymentType||'fixed'):'fixed';
-  document.getElementById('invPayType').value=pt;
-  document.getElementById('invPay').value=(ed&&pt==='fixed')?(ed.monthlyPay||''):'';
-  document.getElementById('invRevenueShare').value=(ed&&pt==='revenue-share')?(ed.revenueShare||''):'';
-  document.getElementById('invDeadline').value=ed?(ed.deadline||defaultDeadline()):defaultDeadline();
-  document.getElementById('invNote').value='';
-  document.getElementById('invNameErr').style.display='none';
-  document.getElementById('invEmailErr').style.display='none';
+  var ed = editId ? ALL.find(function(x){ return x.id === editId; }) : null;
+  editingInviteId = ed ? ed.id : null;
+  _invUser = ed ? { id: ed.id, name: ed.name, email: ed.email, avatar: ed.avatar || '', username: '', role: 'reader', locked: true } : null;
+  document.getElementById('invName').value = ed ? ed.name : '';
+  document.getElementById('invEmail').value = ed ? ed.email : '';
+  document.getElementById('invTarget').value = ed ? (ed.target || 50) : '50';
+  var pt = ed ? (ed.paymentType || 'fixed') : 'fixed';
+  document.getElementById('invPayType').value = pt;
+  document.getElementById('invPay').value = (ed && pt === 'fixed') ? (ed.monthlyPay || '') : '';
+  document.getElementById('invRevenueShare').value = (ed && pt === 'revenue-share') ? (ed.revenueShare || '') : '';
+  document.getElementById('invDeadline').value = ed ? (ed.deadline || defaultDeadline()) : defaultDeadline();
+  document.getElementById('invNote').value = '';
   toggleInvPayFields();
-  document.querySelector('#inviteModal .modal-head h3').innerHTML=ed?'<i class="fas fa-pen" style="color:var(--accent)"></i> Edit Senior Editor':'<i class="fas fa-user-plus" style="color:var(--accent)"></i> Invite Senior Editor';
-  document.getElementById('inviteSendBtn').innerHTML=ed?'<i class="fas fa-check"></i> Save Changes':'<i class="fas fa-paper-plane"></i> Send Invite';
+
+  var search = document.getElementById('invUserSearch');
+  search.value = '';
+  search.disabled = !!ed;
+  search.placeholder = ed ? 'Invitee locked — editing existing invite' : 'Search by name, email or username... (min 2 chars)';
+  document.getElementById('invUserResults').innerHTML = '';
+  invRenderPicked();
+  document.querySelector('#inviteModal .modal-head h3').innerHTML = ed
+    ? '<i class="fas fa-pen" style="color:var(--accent)"></i> Edit Senior Editor'
+    : '<i class="fas fa-user-plus" style="color:var(--accent)"></i> Invite Senior Editor';
+  document.getElementById('inviteSendBtn').innerHTML = ed
+    ? '<i class="fas fa-check"></i> Save Changes'
+    : '<i class="fas fa-paper-plane"></i> Send Invite';
+  invGoto(1);
   document.getElementById('inviteModal').classList.add('show');
 }
+
 function defaultDeadline(){
-  var now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);
+  var now = new Date(), next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   return next.toISOString().split('T')[0];
 }
+
 function toggleInvPayFields(){
-  var t=document.getElementById('invPayType').value;
-  document.getElementById('invFixedRow').style.display=t==='fixed'?'':'none';
-  document.getElementById('invRevenueRow').style.display=t==='revenue-share'?'':'none';
+  var t = document.getElementById('invPayType').value;
+  document.getElementById('invFixedRow').style.display = t === 'fixed' ? '' : 'none';
+  document.getElementById('invRevenueRow').style.display = t === 'revenue-share' ? '' : 'none';
+}
+
+/* ── Step 1: live user search ── */
+
+function invSearchUsers(q){
+  if(!q || q.length < 2){
+    document.getElementById('invUserResults').innerHTML = '';
+    return;
+  }
+  Crud.searchUsers(q).then(function(remote){
+    // Live backend shape: { items:[...] }. Demo mode: apiFetch resolves
+    // { demo:true } with no items — fall through to the demo store.
+    if(remote && remote.items) { invRenderResults(remote.items, q); return; }
+    if(window.ChiefEditorData && ChiefEditorData.searchPlatformUsers){
+      return ChiefEditorData.searchPlatformUsers(q).then(function(demo){
+        invRenderResults((demo && demo.items) || [], q);
+      });
+    }
+    invRenderResults([], q);
+  }).catch(function(){
+    if(!window.ChiefEditorData || !ChiefEditorData.searchPlatformUsers){ invRenderResults([], q); return; }
+    ChiefEditorData.searchPlatformUsers(q).then(function(demo){
+      invRenderResults((demo && demo.items) || [], q);
+    });
+  });
+}
+
+function invRenderResults(items, q){
+  var box = document.getElementById('invUserResults');
+  if(!items.length){
+    box.innerHTML = '<div class="empty-msg" style="text-align:center;padding:20px 10px;color:var(--text-faint,#9694ac);font-size:12px">' +
+      'No registered account matches “' + esc(q) + '”. They need to create a Droboard account before they can be invited.</div>';
+    return;
+  }
+  box.innerHTML = items.map(function(u){
+    return '<div class="epw-row inv-user-row" data-inv-uid="' + esc(u.id) + '">' +
+      '<img src="' + esc(u.avatar || '') + '" alt=""/>' +
+      '<div class="epw-row-info"><div class="ep-name">' + esc(u.name || '') + '</div>' +
+      '<div class="ep-meta">' + esc(u.email || '') + (u.username ? ' · @' + esc(u.username) : '') + '</div></div>' +
+      '<span class="epw-tag ' + (u.role === 'writer' ? 'writer' : '') + '">' + (u.role === 'writer' ? 'Writer' : 'Reader') + '</span>' +
+      '<i class="fas fa-circle epw-check"></i></div>';
+  }).join('');
+}
+
+function invSelectUser(uid, rowEl){
+  // Pull from the last result set rendered (keeps name/email/avatar exact).
+  var picked = null;
+  var rows = document.querySelectorAll('#invUserResults .inv-user-row');
+  for(var i = 0; i < rows.length; i++){
+    if(rows[i].getAttribute('data-inv-uid') === uid){
+      rows[i].classList.add('on');
+      var nameEl = rows[i].querySelector('.ep-name');
+      var metaEl = rows[i].querySelector('.ep-meta');
+      var imgEl = rows[i].querySelector('img');
+      var tagEl = rows[i].querySelector('.epw-tag');
+      picked = {
+        id: uid,
+        name: nameEl ? nameEl.textContent : '',
+        email: metaEl ? (metaEl.textContent.split(' · ')[0]) : '',
+        avatar: imgEl ? imgEl.getAttribute('src') : '',
+        role: tagEl && tagEl.classList.contains('writer') ? 'writer' : 'reader',
+      };
+      break;
+    }
+  }
+  if(!picked) return;
+  _invUser = picked;
+  document.getElementById('invName').value = picked.name;
+  document.getElementById('invEmail').value = picked.email;
+  invRenderPicked();
+  document.getElementById('invUserResults').innerHTML = '';
+  document.getElementById('invUserSearch').value = '';
+}
+
+function invRenderPicked(){
+  var box = document.getElementById('invUserPicked');
+  if(!_invUser){
+    box.innerHTML = '';
+    if(document.getElementById('invNext')) document.getElementById('invNext').disabled = true;
+    return;
+  }
+  box.innerHTML = '<div class="epw-card" style="margin-top:4px">' +
+    '<img src="' + esc(_invUser.avatar || '') + '" alt=""/>' +
+    '<div style="min-width:0">' +
+      '<div class="epw-card-name">' + esc(_invUser.name) + (_invUser.locked ? '' : '') + '</div>' +
+      '<div class="epw-card-meta">' + esc(_invUser.email) + '</div>' +
+    '</div>' +
+    '<span class="epw-tag ' + (_invUser.role === 'writer' ? 'writer' : '') + '">' +
+      (_invUser.locked ? 'Invited' : (_invUser.role === 'writer' ? 'Writer' : 'Reader')) + '</span>' +
+    (_invUser.locked ? '' : '<i class="fas fa-circle-check" style="color:var(--accent);margin-left:10px;font-size:15px;flex-shrink:0"></i>') +
+  '</div>';
+  document.getElementById('invNext').disabled = false;
+}
+
+/* ── Wizard navigation + review ── */
+
+function invGoto(step){
+  if(step < 1) step = 1;
+  if(step > 3) step = 3;
+  _invStep = step;
+  var modal = document.getElementById('inviteModal');
+  modal.querySelectorAll('.epw-panel').forEach(function(p){ p.classList.remove('on'); });
+  var panel = document.getElementById('invP' + step);
+  if(panel) panel.classList.add('on');
+  modal.querySelectorAll('#invSteps .epw-step').forEach(function(s){
+    var sn = parseInt(s.getAttribute('data-step'), 10);
+    s.classList.toggle('on', sn === step);
+    s.classList.toggle('done', sn < step);
+  });
+  document.getElementById('invBack').style.display = step > 1 ? '' : 'none';
+  document.getElementById('invNext').style.display = step < 3 ? '' : 'none';
+  document.getElementById('inviteSendBtn').style.display = step === 3 ? '' : 'none';
+  document.getElementById('invNext').disabled = !_invUser;
+  if(step === 3) invRenderSummary();
+  if(step === 1 && !_invUser) document.getElementById('invUserSearch').focus();
+}
+
+function invRenderSummary(){
+  var target = document.getElementById('invTarget').value || '50';
+  var pt = document.getElementById('invPayType').value;
+  var pay;
+  if(pt === 'fixed'){
+    pay = document.getElementById('invPay').value.trim() || '—';
+  } else {
+    var rs = document.getElementById('invRevenueShare').value.trim();
+    pay = rs ? rs + ' revenue share' : '—';
+  }
+  var deadline = document.getElementById('invDeadline').value;
+  if(deadline){
+    var dd = new Date(deadline + 'T00:00:00');
+    deadline = isNaN(dd) ? deadline : dd.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  var u = _invUser || { name: '—', email: '—' };
+  document.getElementById('invSummary').innerHTML =
+    '<div class="cs-row"><span class="cs-label">Account</span><span class="cs-val">' + esc(u.name) + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Email</span><span class="cs-val">' + esc(u.email) + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Quota target</span><span class="cs-val">' + esc(target) + ' invites/mo</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Payment</span><span class="cs-val">' + (pt === 'fixed' ? 'Fixed monthly' : 'Revenue share') + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Pay</span><span class="cs-val">' + esc(pay) + '</span></div>' +
+    '<div class="cs-row"><span class="cs-label">Deadline</span><span class="cs-val">' + esc(deadline || '—') + '</span></div>';
 }
 
 /* ═══ INIT — runs everything the inline script did on load ═══ */
@@ -855,17 +1018,35 @@ function init(){
   document.getElementById('inviteModalClose').addEventListener('click',function(){document.getElementById('inviteModal').classList.remove('show')});
   document.getElementById('inviteCancelBtn').addEventListener('click',function(){document.getElementById('inviteModal').classList.remove('show')});
   document.getElementById('inviteModal').addEventListener('click',function(e){if(e.target.id==='inviteModal') document.getElementById('inviteModal').classList.remove('show')});
+
+  // ── Invite wizard: live user search (debounced) + step nav ──
+  document.getElementById('invUserSearch').addEventListener('input',function(){
+    var q=this.value.trim();
+    if(_invSearchTimer) clearTimeout(_invSearchTimer);
+    _invSearchTimer=setTimeout(function(){ invSearchUsers(q); },250);
+  });
+  document.getElementById('invUserResults').addEventListener('click',function(e){
+    var row=e.target.closest('.inv-user-row');
+    if(!row) return;
+    invSelectUser(row.getAttribute('data-inv-uid'),row);
+  });
+  document.getElementById('invBack').addEventListener('click',function(){ if(_invStep>1) invGoto(_invStep-1); });
+  document.getElementById('invNext').addEventListener('click',function(){
+    if(_invStep===1&&!_invUser){ toast('Search and select a registered account first','fa-circle-info'); return; }
+    if(_invStep===2){
+      var t=parseInt(document.getElementById('invTarget').value)||0;
+      if(t<1){ toast('Monthly invite target must be at least 1','fa-triangle-exclamation'); return; }
+    }
+    invGoto(_invStep+1);
+  });
+
   document.getElementById('inviteSendBtn').addEventListener('click',function(){
     var name=document.getElementById('invName').value.trim();
     var email=document.getElementById('invEmail').value.trim();
+    if(!name||!email){ toast('Pick a registered account first','fa-circle-info'); invGoto(1); return; }
     var target=parseInt(document.getElementById('invTarget').value)||50;
-    var pay=document.getElementById('invPay').value.trim()||'$0';
     var deadline=document.getElementById('invDeadline').value;
     var note=document.getElementById('invNote').value.trim();
-    var valid=true;
-    if(!name){document.getElementById('invNameErr').style.display='block';valid=false;}else{document.getElementById('invNameErr').style.display='none';}
-    if(!email||!/[^\s@]+@[^\s@]+\.[^\s@]+/.test(email)){document.getElementById('invEmailErr').style.display='block';valid=false;}else{document.getElementById('invEmailErr').style.display='none';}
-    if(!valid) return;
     var pt=document.getElementById('invPayType').value;
     var payVal='$0';
     var revShare='';

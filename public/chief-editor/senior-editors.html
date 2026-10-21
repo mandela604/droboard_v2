@@ -200,42 +200,62 @@ body{font-family:'Inter',system-ui,sans-serif}
   </div>
 </div>
 
-<!-- Invite Modal -->
+<!-- Invite Modal (3-step wizard: Find account → Terms → Review) -->
 <div class="modal-overlay" id="inviteModal">
-  <div class="modal-box">
+  <div class="modal-box epw-box">
     <div class="modal-head">
       <h3><i class="fas fa-user-plus" style="color:var(--accent)"></i> Invite Senior Editor</h3>
       <button class="modal-close" id="inviteModalClose"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <label class="form-label">Full name</label>
-        <input class="form-input" id="invName" placeholder="e.g. Chioma Reddy"/>
-        <div style="display:none;color:var(--red);font-size:10.5px;margin-top:5px" id="invNameErr">Name is required.</div>
+    <div class="epw-steps" id="invSteps">
+      <div class="epw-step on" data-step="1"><span class="epw-num">1</span> Account</div>
+      <div class="epw-step" data-step="2"><span class="epw-num">2</span> Terms</div>
+      <div class="epw-step" data-step="3"><span class="epw-num">3</span> Review</div>
+    </div>
+    <div class="modal-body epw-body">
+      <!-- Step 1 — live search of registered platform accounts -->
+      <div class="epw-panel on" id="invP1">
+        <div class="form-row" style="margin-bottom:10px">
+          <label class="form-label">Find registered user</label>
+          <input class="form-input" id="invUserSearch" placeholder="Search by name, email or username... (min 2 chars)"/>
+        </div>
+        <div id="invUserResults" class="inv-user-results"></div>
+        <div id="invUserPicked" class="inv-user-picked"></div>
+        <div class="epw-note">Roles can only be granted to accounts that already exist on Droboard — search above to find the person you want to promote.</div>
       </div>
-      <div class="form-row">
-        <label class="form-label">Email address</label>
-        <input class="form-input" id="invEmail" type="email" placeholder="e.g. chioma@example.com"/>
-        <div style="display:none;color:var(--red);font-size:10.5px;margin-top:5px" id="invEmailErr">Enter a valid email.</div>
+      <!-- Step 2 — quota + payment terms -->
+      <div class="epw-panel" id="invP2">
+        <div class="form-row two-col" style="margin-bottom:12px">
+          <div><label class="form-label">Default quota target</label><input class="form-input" id="invTarget" type="number" min="1" max="500" value="50"/></div>
+          <div><label class="form-label">Payment type</label><select class="form-select" id="invPayType"><option value="fixed">Fixed Monthly Pay</option><option value="revenue-share">Revenue Share</option></select></div>
+        </div>
+        <div class="form-row" id="invFixedRow">
+          <label class="form-label">Monthly pay amount</label>
+          <input class="form-input" id="invPay" type="text" placeholder="e.g. $3,200"/>
+        </div>
+        <div class="form-row" id="invRevenueRow" style="display:none">
+          <label class="form-label">Revenue share percentage</label>
+          <input class="form-input" id="invRevenueShare" type="text" placeholder="e.g. 10%"/>
+        </div>
+        <div class="form-row" style="margin-bottom:0"><label class="form-label">Deadline</label><input class="form-input" id="invDeadline" type="date"/></div>
       </div>
-      <div class="form-row two-col">
-        <div><label class="form-label">Default quota target</label><input class="form-input" id="invTarget" type="number" min="1" max="500" value="50"/></div>
-        <div><label class="form-label">Payment type</label><select class="form-select" id="invPayType"><option value="fixed">Fixed Monthly Pay</option><option value="revenue-share">Revenue Share</option></select></div>
+      <!-- Step 3 — review + welcome note -->
+      <div class="epw-panel" id="invP3">
+        <div class="inv-summary" id="invSummary"></div>
+        <div class="form-row" style="margin-top:14px;margin-bottom:0">
+          <label class="form-label">Note (optional)</label>
+          <textarea class="form-textarea" id="invNote" rows="2" placeholder="A short welcome message..."></textarea>
+        </div>
       </div>
-      <div class="form-row" id="invFixedRow">
-        <label class="form-label">Monthly pay amount</label>
-        <input class="form-input" id="invPay" type="text" placeholder="e.g. $3,200"/>
-      </div>
-      <div class="form-row" id="invRevenueRow" style="display:none">
-        <label class="form-label">Revenue share percentage</label>
-        <input class="form-input" id="invRevenueShare" type="text" placeholder="e.g. 10%"/>
-      </div>
-      <div class="form-row"><label class="form-label">Deadline</label><input class="form-input" id="invDeadline" type="date"/></div>
-      <div class="form-row"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="invNote" rows="2" placeholder="A short welcome message..."></textarea></div>
+      <!-- value carriers filled by the search selection (send handler reads them) -->
+      <input type="hidden" id="invName"/>
+      <input type="hidden" id="invEmail"/>
     </div>
     <div class="modal-foot">
-      <button class="mini-btn ghost" id="inviteCancelBtn">Cancel</button>
-      <button class="mini-btn primary" id="inviteSendBtn"><i class="fas fa-paper-plane"></i> Send Invite</button>
+      <button class="mini-btn ghost" id="inviteCancelBtn" style="margin-right:auto">Cancel</button>
+      <button class="mini-btn" id="invBack" style="display:none"><i class="fas fa-arrow-left"></i> Back</button>
+      <button class="mini-btn primary" id="invNext">Next <i class="fas fa-arrow-right"></i></button>
+      <button class="mini-btn primary" id="inviteSendBtn" style="display:none"><i class="fas fa-paper-plane"></i> Send Invite</button>
     </div>
   </div>
 </div>

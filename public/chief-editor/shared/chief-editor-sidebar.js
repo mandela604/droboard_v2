@@ -193,7 +193,11 @@
           <div class="ces-overlay" id="${instId}-overlay"></div>
           <aside class="ces-sidebar" id="${instId}-sidebar">
             <div class="ces-logo"><span>Chief Editor</span></div>
-            <nav class="ces-nav" id="${instId}-nav">${navHtml()}</nav>
+            <nav class="ces-nav" id="${instId}-nav">${navHtml()}
+              <a class="ces-item" href="../Pages/discover.html" data-ces-key="back-to-app">
+                <i class="fas fa-arrow-left"></i><span>Back to Droboard</span>
+              </a>
+            </nav>
             <div class="ces-bottom">
               <i class="fas fa-headset ces-support-ico"></i>
               <b>Quick Support</b>

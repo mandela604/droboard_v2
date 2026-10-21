@@ -1150,10 +1150,20 @@
       { id: 'promo_hub_wp1', title: 'Werewolf King, Human Queen', author: 'Luna_Grey', cta: 'Read', img: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', eyebrow: 'Werewolf picks', pages: ['genreHub'], genre: 'werewolf' },
       { id: 'promo_hub_wp2', title: 'Fangs & Fortune', author: 'Ese_Uyi', cta: 'Open', img: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', eyebrow: 'Werewolf picks', pages: ['genreHub'], genre: 'werewolf' },
     ],
+    /* Full-screen spotlight promos (countdown interstitial on Discover).
+        Admin-created spotlight creatives land here too (ad-setup wizard).
+        `pages` targets the surface; countdown/frequency live in placements. */
+    spotlight: [
+      { id: 'spot_betrayal', title: 'Season of Betrayal', author: 'Ada_Writes', genre: 'Romance', rating: '4.9', chapters: 62, reads: '820k', preview: 'She signed the divorce papers. He signed a plan to win her back.', img: c(1), cta: 'Read Now', pages: ['discover'] },
+      { id: 'spot_wolf', title: 'Werewolf King, Human Queen', author: 'Luna_Grey', genre: 'Werewolf', rating: '4.7', chapters: 52, reads: '410k', preview: 'One throne. Two worlds. The moon chose the one match the kingdom fears.', img: c(2), cta: 'Start Reading', pages: ['discover'] },
+    ],
   };
 
   const AD_PLACEMENTS = {
     discover: { interval: 6, cycle: ['book', 'book', 'book', 'book', 'platform'] },
+    /* Full-screen story spotlight on Discover (ad-manager "Spotlight" card).
+        seconds: countdown 3-30; everyN: once every N visits; allowSkip: quit btn. */
+    spotlight: { enabled: true, seconds: 5, everyN: 1, allowSkip: true },
     feed: { interval: 4 },
     genreHub: { interval: 3, topPromo: true },
     discussion: { slot: 'single' },

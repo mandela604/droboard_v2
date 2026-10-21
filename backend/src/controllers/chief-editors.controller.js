@@ -56,10 +56,14 @@ async function saveAssignments(req, res) {
 async function unassigned(req, res) {
   return base.wrap(res, async () => svc.listUnassignedAuthors(req.valid.query));
 }
+// Invite wizard step 1: live search of registered accounts.
+async function searchUsers(req, res) {
+  return base.wrap(res, async () => svc.searchPlatformUsers(req.valid.query));
+}
 
 module.exports = {
   list, quotas, get, patch,
   createInvite, listInvites, patchInvite, resendInvite, cancelInvite,
   inviteByToken, acceptInvite,
-  authors, assignments, saveAssignments, unassigned,
+  authors, assignments, saveAssignments, unassigned, searchUsers,
 };

@@ -139,7 +139,7 @@
     // Search boxes are tied to format: stories on book, offers on
     // platform, users on follow. Nothing else shows a search.
     var html = '';
-    if (fmt === 'book') {
+    if (fmt === 'book' || fmt === 'spotlight') {
       html += '<label class="f-lbl">Promote a platform story (fills the form)' +
         '<input class="f-inp" id="suStorySearch" placeholder="Search title or author…" value=""/></label>' +
         '<div class="story-hits" id="suStoryHits"></div>';
@@ -303,7 +303,7 @@
     var img = esc2(ad.img || ad.cover || ad.image || ad.avatar);
     var imgHtml = img ? '<img src="' + img + '" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover"/>' : '';
     var open = '<div style="display:flex;gap:12px;background:#fff;border:1px solid #e5e5ea;border-radius:12px;padding:12px;margin:8px 0">';
-    if (format === 'book') {
+    if (format === 'book' || format === 'spotlight') {
       return '<div style="display:flex;gap:12px;background:#fdf7e6;border:1.5px solid #c9a227;border-radius:12px;padding:12px;margin:8px 0">' +
         '<div style="width:80px;height:110px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1.5px solid #c9a227;background:#eee">' + imgHtml + '</div>' +
         '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0">' +
@@ -384,7 +384,7 @@
     if (C && typeof C.renderBanner === 'function') {
       try {
         if (_draft.format === 'platform') html = C.renderPlatform(ad) || '';
-        else if (_draft.format === 'book') html = C.renderListBook(ad) || '';
+        else if (_draft.format === 'book' || _draft.format === 'spotlight') html = C.renderListBook(ad) || '';
         else if (_draft.format === 'native') html = C.renderNative(ad) || '';
         else if (_draft.format === 'banner') html = C.renderBanner(ad) || '';
         else if (_draft.format === 'minibanner') html = C.renderMiniBanner(ad) || '';

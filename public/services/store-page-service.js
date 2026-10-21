@@ -111,7 +111,18 @@
       window.location.href='youtube-earn.html?vid='+encodeURIComponent(vid)+'&coins='+r.coins+'&sec='+(r.minWatchSec||60);
       return;
     }
-    // default watch_ad etc
+    // default (watch_ad etc): production opens the configured ad/offerwall
+    // URL, then credits after a 2s grace (same pattern as youtube_sub).
+    // Rewards saved without a URL (older demo data) keep the local credit.
+    const adUrl = r.adUrl || (r.meta && r.meta.adUrl) || '';
+    if (adUrl) {
+      window.open(adUrl, '_blank');
+      setTimeout(()=>{
+        if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
+        toast('Ad opened — +'+r.coins+' coins');
+      }, 2000);
+      return;
+    }
     if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
     toast('Claiming +'+r.coins+' coins…');
   }

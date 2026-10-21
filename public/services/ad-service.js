@@ -135,7 +135,7 @@
     } catch (e) { return Promise.resolve(false); }
   }
   function emptyPools() {
-    return { platform: [], book: [], native: [], embed: [], follow: [], banner: [], minibanner: [], promo: [] };
+    return { platform: [], book: [], native: [], embed: [], follow: [], banner: [], minibanner: [], promo: [], spotlight: [] };
   }
 
   /* Placement config for a page: { interval, cycle?, topPromo? } */
@@ -206,7 +206,7 @@
     } catch (e) {}
     const now = dayStart(new Date());
     const out = {};
-    ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'minibanner', 'promo'].forEach(k => {
+    ['platform', 'book', 'native', 'embed', 'follow', 'banner', 'minibanner', 'promo', 'spotlight'].forEach(k => {
       out[k] = (Array.isArray(pools[k]) ? pools[k] : []).filter(ad => {
         if (ad.active === false) return false;
         if (!inSchedule(ad, now)) return false;
