@@ -48,4 +48,27 @@ router.get('/v1/notifications/unread-count', require('../middleware/auth').requi
     return base.wrap(res, async () => notifications.unreadCount(req.user.id));
   });
 
+// senior-editor review-queue-service.js:133 (ungated fetch) — contract type
+// picker for the review queue modal. Client keeps its demo trio on a non-200,
+// so an empty DB must still answer 200 with a renderable catalog.
+const DEFAULT_CONTRACTS = [
+  { id: 'standard', label: 'Standard Royalty Contract', detail: '60/40 author-platform split · non-exclusive' },
+  { id: 'premium', label: 'Premium Exclusive Contract', detail: '70/30 author-platform split · exclusive, 12-month term' },
+  { id: 'flex', label: 'Flex Starter Contract', detail: '50/50 split · month-to-month, for new authors' },
+];
+router.get('/contracts', generalLimiter, async (req, res) => {
+  return base.wrap(res, async () => {
+    const { ContractTemplate } = require('../models/contract.model');
+    const rows = await ContractTemplate.find({}).sort({ updatedAt: -1 }).limit(50).lean().catch(() => []);
+    const mapped = rows.map((t) => ({
+      id: t.id,
+      label: t.name || t.type || 'Contract',
+      detail: [t.desc || t.description || '',
+        t.royaltyRate != null ? t.royaltyRate + '% royalty' : '',
+        t.termLength || ''].filter(Boolean).join(' · ') || 'Standard terms',
+    }));
+    return mapped.length ? mapped : DEFAULT_CONTRACTS;
+  });
+});
+
 module.exports = router;

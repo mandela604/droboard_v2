@@ -31,7 +31,6 @@
     '<stop offset="1" stop-color="#0d0020"/></linearGradient></defs>' +
     '<rect width="400" height="300" fill="url(#g)"/>' +
     '<text x="200" y="140" font-size="52" text-anchor="middle">📖</text>' +
-    '<text x="200" y="180" font-size="20" fill="#f5f5f7" text-anchor="middle" font-family="sans-serif" font-weight="bold">Droboard</text>' +
     '</svg>');
 
   function isAvatar(img) {

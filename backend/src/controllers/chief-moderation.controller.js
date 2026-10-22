@@ -1,9 +1,14 @@
 'use strict';
 const svc = require('../services/chief-moderation.service');
+const surfaces = require('../services/chief-surfaces.service');
 const base = require('./base.controller');
 
+// Console read contract: {authorAppeals, copyrightDisputes, plagiarismCases,
+// escalatedReports, resolutionHistory} (disputes-appeals-service.js:36-45).
+// The canonical {disputes, appeals, escalatedReports} envelope is still served
+// by the per-section routes below.
 async function disputesAppeals(req, res) {
-  return base.wrap(res, async () => svc.disputesAppeals(req.valid.query));
+  return base.wrap(res, async () => surfaces.disputesAppealsComposite(req.valid.query));
 }
 async function listAppeals(req, res) {
   return base.wrap(res, async () => svc.listAppeals(req.valid.query));

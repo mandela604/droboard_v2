@@ -16,6 +16,9 @@ const walletSchema = new mongoose.Schema({
   lifetimeEarned: { type: Number, default: 0 }, // fiat credited as writer, base currency
   currency: { type: String, default: 'NGN' },
   level: { type: String, default: 'Starter' },
+  // ADDITIVE (finance console): operator-scheduled next payout for an author.
+  nextPayoutAt: { type: Date, default: null },
+  nextPayoutAmount: { type: Number, default: 0 },
 }, { timestamps: true });
 walletSchema.index({ userId: 1, kind: 1 }, { unique: true });
 
@@ -41,7 +44,10 @@ const coinPackSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true },
   coins: { type: Number, required: true },
   bonusPct: { type: Number, default: 0 },
-  prices: { type: Map, of: Number, default: {} }, // countryCode -> local price
+  // Display legs (e.g. { NGN: '₦15,000', USD: '$9.99', GBP: '£7.99' }) — the
+  // store/currency UI renders these verbatim, so values are Mixed, not Number.
+  // payments-verify.legFor() parses them before amount comparison.
+  prices: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} }, // ISO currency -> display leg
   basePriceNGN: { type: Number, required: true }, // 100 coins = 1500
   status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
   meta: { type: mongoose.Schema.Types.Mixed, default: null }, // UI extras (badge/color/icon)
@@ -53,7 +59,7 @@ const coinBundleSchema = new mongoose.Schema({
   coins: { type: Number, required: true },
   bonus: { type: Number, default: 0 },
   basePriceNGN: { type: Number, required: true },
-  prices: { type: Map, of: Number, default: {} }, // countryCode|ISO currency -> local price
+  prices: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} }, // ISO currency -> display leg (Mixed: see CoinPack)
   icon: { type: String, default: '' },
   color: { type: String, default: '' },
   status: { type: String, default: 'active' },
@@ -66,9 +72,13 @@ const subscriptionPlanSchema = new mongoose.Schema({
   period: { type: String, enum: ['day', 'week', 'month', 'year'], required: true },
   durationDays: { type: Number, required: true },
   basePriceNGN: { type: Number, required: true },
-  prices: { type: Map, of: Number, default: {} }, // countryCode|ISO currency -> local price
+  prices: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} }, // ISO currency -> display leg (Mixed: see CoinPack)
   features: { type: [String], default: [] },
   badge: { type: String, default: '' },
+  // ADDITIVE (finance console): daily coin grant + bonus % the
+  // coin-transactions subscriptions tab renders (coinsPerDay, bonusPercent).
+  coinsPerDay: { type: Number, default: 0 },
+  bonusPercent: { type: Number, default: 0 },
   status: { type: String, default: 'active' },
 }, { timestamps: true });
 
@@ -197,6 +207,20 @@ const bonusSchema = new mongoose.Schema({
   createdBy: { type: String, ref: 'User' },
 }, { timestamps: true });
 
+// Store catalog audit trail (finance console: coin packages / bundles /
+// gifts / earn / subscriptions). Separate from ActivityLog so the console can
+// list catalog edits without scanning platform-wide activity.
+const storeConfigLogSchema = new mongoose.Schema({
+  action: { type: String, enum: ['created', 'updated', 'deleted', 'activated', 'deactivated'], required: true, index: true },
+  itemType: { type: String, enum: ['package', 'bundle', 'gift', 'earn', 'subscription'], required: true, index: true },
+  itemName: { type: String, default: '' },
+  actor: { type: String, default: '' },
+  actorId: { type: String, ref: 'User', default: '' },
+  details: { type: String, default: '' },
+  at: { type: Date, default: Date.now, index: true },
+}, { timestamps: false });
+storeConfigLogSchema.index({ at: -1 });
+
 module.exports = {
   Wallet: mongoose.model('Wallet', walletSchema),
   LedgerEntry: mongoose.model('LedgerEntry', ledgerEntrySchema),
@@ -214,4 +238,5 @@ module.exports = {
   PaymentMethod: mongoose.model('PaymentMethod', paymentMethodSchema),
   PaymentDispute: mongoose.model('PaymentDispute', paymentDisputeSchema),
   Bonus: mongoose.model('Bonus', bonusSchema),
+  StoreConfigLog: mongoose.model('StoreConfigLog', storeConfigLogSchema),
 };

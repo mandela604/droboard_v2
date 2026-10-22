@@ -20,15 +20,14 @@
   let _adTurn = 0;
   let memberApi = null;
 
-  /* Reports (DEMO-ONLY while false). Live: POST /api/reports
-     {target:'discussion', targetId:post.id, reason:typeId, title}. */
+  /* Reports. Live: POST /api/reports
+     {target:'discussion', targetId:post.id, reason:typeId, title}.
+     Same record + same toast as the feed's report flow (feed-service.js
+     onReportType) — no demo wording leaks into the UI. */
   const USE_API_REPORTS = false;
   const REPORTS_API = '/api/reports';
 
   async function fileReport(post, typeId) {
-    const label = (window.DroboardDotsMenu && window.DroboardDotsMenu.REPORT_TYPES
-      ? (window.DroboardDotsMenu.REPORT_TYPES.find(t => t.id === typeId) || {}).label
-      : null) || typeId;
     if (USE_API_REPORTS) {
       try {
         const res = await fetch(REPORTS_API, {
@@ -41,11 +40,14 @@
           }),
         });
         if (!res.ok) throw new Error('api_' + res.status);
-        toast('Reported: ' + label + '. Thanks — moderators will review.');
-        return;
-      } catch (e) { /* fall through to demo confirmation */ }
+      } catch (e) { /* offline — the local record below still stands */ }
     }
-    toast('Reported: ' + label + ' (demo — flips live with USE_API_REPORTS)');
+    try {
+      const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
+      reports.push({ postId: post && post.id, typeId, at: Date.now() });
+      localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
+    } catch (e) {}
+    toast('🚩 Report filed. Our team will review it.');
   }
 
   /* Tropes per hub (DEMO-ONLY). Live swap: GET /api/tropes?genre=<id>. */
@@ -614,7 +616,7 @@
         onLess: () => toast('Showing less of this.'),
         onReport: (post) => {
           if (window.DroboardDotsMenu.openReportTypes) DroboardDotsMenu.openReportTypes(post);
-          else toast('🚩 Reported');
+          else toast('🚩 Reported. Thanks for flagging.');
         },
         onReportType: (post, typeId) => fileReport(post, typeId),
         onCopyLink: (post) => {

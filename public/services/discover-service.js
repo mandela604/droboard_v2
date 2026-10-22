@@ -423,22 +423,93 @@
      CONTROLLER LAYER — hero, scroll, ads, wiring, protection
   ═══════════════════════════════════════════════════════════ */
 
-  function goHero(i) {
+  /* ── Hero slider ──────────────────────────────────────────────────
+     Two stacked image layers alternate so the next slide CROSSFADES over
+     the current one (with a slow zoom) instead of swapping abruptly.
+     The text fades out, swaps, then fades back in line by line. */
+  let _heroLayers = null;
+  let _heroPainted = false;
+
+  function _heroLayerPair() {
+    if (_heroLayers) return _heroLayers;
+    const a = document.getElementById('heroImg');
+    const b = document.getElementById('heroImg2');
+    if (!a || !b) return null;
+    _heroLayers = { a: a, b: b };
+    return _heroLayers;
+  }
+
+  /* Warm the cache for the slide that's coming next so the crossfade
+     never reveals an empty layer. */
+  function _preloadHero(src) {
+    if (!src) return;
+    try { const im = new Image(); im.src = src; } catch (e) {}
+  }
+
+  function goHero(i, instant) {
     if (!heroes.length) return;
     hi = i;
     const h = heroes[i];
-    document.getElementById('heroImg').style.backgroundImage = `url('${h.img}')`;
-    document.getElementById('heroTitle').innerHTML = h.title;
-    document.getElementById('heroAuthor').innerHTML = h.author + ' <i class="fas fa-circle-check"></i>';
-    document.getElementById('heroTags').innerHTML = (h.tags || []).map(t => `<span class="hero-tag">${t}</span>`).join('');
+    const layers = _heroLayerPair();
+    const body = document.querySelector('.hero-body');
+    const wrap = document.querySelector('.hero-wrap');
+    const heroEl = document.querySelector('.hero');
+
+    /* ── image: crossfade immediately ── */
+    if (layers) {
+      const top = layers.b, under = layers.a;
+      // First paint: put the image on the visible layer too, so the hero
+      // never flashes empty while the incoming layer fades in.
+      if (!_heroPainted) under.style.backgroundImage = `url('${h.img}')`;
+      _heroPainted = true;
+      top.style.backgroundImage = `url('${h.img}')`;
+      top.classList.remove('is-on');
+      void top.offsetWidth;          // restart the fade + zoom
+      top.classList.add('is-on');
+      under.classList.remove('is-on');
+      layers.a = top;                // roles swap for the next slide
+      layers.b = under;
+    } else {
+      const img = document.getElementById('heroImg');
+      if (img) img.style.backgroundImage = `url('${h.img}')`;
+    }
+
+    /* ── text: fade out → swap → fade in (staggered) ── */
+    const paintText = () => {
+      const t = document.getElementById('heroTitle');
+      const a = document.getElementById('heroAuthor');
+      const g = document.getElementById('heroTags');
+      if (t) t.innerHTML = h.title;
+      if (a) a.innerHTML = h.author + ' <i class="fas fa-circle-check"></i>';
+      if (g) g.innerHTML = (h.tags || []).map(t => `<span class="hero-tag">${t}</span>`).join('');
+      if (body) body.classList.add('in');
+    };
+
     document.querySelectorAll('#heroDots .dot').forEach((d, j) => d.classList.toggle('on', j === i));
-    document.querySelector('.hero').onclick = () => { window.location.href = `bridge.html?id=${encodeURIComponent(h.id)}`; };
+    if (heroEl) heroEl.onclick = () => { window.location.href = `bridge.html?id=${encodeURIComponent(h.id)}`; };
+
+    if (instant || !body) { paintText(); }
+    else {
+      if (wrap) wrap.classList.add('hero-anim');
+      body.classList.remove('in');
+      setTimeout(paintText, 260);
+    }
+
+    // warm the next slide
+    if (heroes.length > 1) _preloadHero(heroes[(i + 1) % heroes.length].img);
   }
 
   function startHero() {
     clearInterval(heroTimer);
     heroTimer = setInterval(() => goHero((hi + 1) % heroes.length), 4500);
   }
+
+  /* Pause the carousel while the tab is hidden so it doesn't burn
+     through slides in the background. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(heroTimer);
+    else if (heroes.length) startHero();
+  });
 
   function buildTopWriters(stories) {
     const seen = new Set(), out = [];

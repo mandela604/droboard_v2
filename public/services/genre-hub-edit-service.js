@@ -214,14 +214,50 @@
   };
   window.updateRule = function (i, v) { RULES[i] = v; };
   window.removeRule = function (i) { RULES.splice(i, 1); renderRules(); };
+  /* ── Custom confirm modal (replaces instant removal / browser confirm) ── */
+  function confirmDialog(opts) {
+    var ov = document.getElementById('geConfirmOv');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'geConfirmOv';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,6,10,.66);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .15s';
+      ov.innerHTML = '<div style="background:#17181d;border:1px solid rgba(255,255,255,.09);border-radius:16px;max-width:340px;width:100%;padding:22px 20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.5)">' +
+        '<h3 id="geConfirmTitle" style="font-size:15.5px;font-weight:800;color:#fff;margin:0 0 8px"></h3>' +
+        '<p id="geConfirmBody" style="font-size:13px;line-height:1.6;color:#9aa0ab;margin:0 0 18px"></p>' +
+        '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+        '<button id="geConfirmNo" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:transparent;color:#c7ccd6;font-size:12.5px;font-weight:700;cursor:pointer">Cancel</button>' +
+        '<button id="geConfirmYes" style="padding:9px 16px;border-radius:10px;border:none;background:#ff0050;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">Confirm</button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+    }
+    var resolveFn;
+    var promise = new Promise(function (res) { resolveFn = res; });
+    function close(v) { ov.style.opacity = '0'; setTimeout(function () { ov.style.display = 'none'; }, 150); resolveFn(v); }
+    document.getElementById('geConfirmTitle').textContent = opts.title || 'Are you sure?';
+    document.getElementById('geConfirmBody').innerHTML = opts.body || '';
+    document.getElementById('geConfirmYes').textContent = opts.confirmText || 'Confirm';
+    ov.style.display = 'flex';
+    requestAnimationFrame(function () { ov.style.opacity = '1'; });
+    ov.onclick = function (e) { if (e.target === ov) close(false); };
+    document.getElementById('geConfirmNo').onclick = function () { close(false); };
+    document.getElementById('geConfirmYes').onclick = function () { close(true); };
+    return promise;
+  }
   window.removeMod = function (i) {
     const m = MODS[i];
-    MODS.splice(i, 1);
-    saveMods();
-    renderMods();
-    const q = document.getElementById('modSearch').value;
-    if (q) renderPicker(q);
-    toast((m.name || m.handle) + ' is no longer a moderator');
+    confirmDialog({
+      title: 'Remove moderator?',
+      body: '<b>' + (m.name || m.handle) + '</b> will lose moderator access to this hub.',
+      confirmText: 'Remove',
+    }).then(function (ok) {
+      if (!ok) return;
+      MODS.splice(i, 1);
+      saveMods();
+      renderMods();
+      const q = document.getElementById('modSearch').value;
+      if (q) renderPicker(q);
+      toast((m.name || m.handle) + ' is no longer a moderator');
+    });
   };
   window.searchMods = function (q) { renderPicker(q); };
   window.addModByHandle = function (handle) {

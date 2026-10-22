@@ -1131,7 +1131,7 @@
       { id: 'mb_sale_1', brand: 'Super Sale', headline: 'Bonus coins on every top-up', sub: 'Limited time — this week only', cta: 'Shop Now', img: 'https://picsum.photos/seed/drombsale/800/180', pages: ['discover', 'feed', 'store', 'fullReader', 'scrollReader'], campaign: 'CMP-022' },
       { id: 'mb_studio_1', brand: 'DroBoard Studio', headline: 'Write your own story today', sub: 'Publish chapter 1 in minutes', cta: 'Start Writing', img: 'https://picsum.photos/seed/drombstudio/800/180', pages: ['discover', 'feed', 'genreHub', 'library'], campaign: 'CMP-023' },
     ],
-    /* Promo slider slides (library / genre-hub top sliders). `pages`
+    /* Promo slider slides (library / genre-hub / feed top sliders). `pages`
        decides where a slide shows; `genre` narrows hub slides. */
     promo: [
       { id: 'promo_lib_1', title: 'Bound to the Ruthless CEO', author: 'Ava Winters', cta: 'Read Now', img: c(3), pages: ['library'] },
@@ -1149,6 +1149,10 @@
       { id: 'promo_hub_rp2', title: 'The Billionaire Never Forgets', author: 'Sarah_Odum', cta: 'Read', img: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', eyebrow: 'Romance picks', pages: ['genreHub'], genre: 'romance' },
       { id: 'promo_hub_wp1', title: 'Werewolf King, Human Queen', author: 'Luna_Grey', cta: 'Read', img: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', eyebrow: 'Werewolf picks', pages: ['genreHub'], genre: 'werewolf' },
       { id: 'promo_hub_wp2', title: 'Fangs & Fortune', author: 'Ese_Uyi', cta: 'Open', img: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', eyebrow: 'Werewolf picks', pages: ['genreHub'], genre: 'werewolf' },
+      { id: 'promo_feed_1', title: 'His Sweet Revenge', author: 'Luna Grey', cta: 'Read Now', img: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=800&h=200&fit=crop', eyebrow: 'Promoted', pages: ['feed'] },
+      { id: 'promo_feed_2', title: 'Season of Betrayal · Ch. 63', author: 'Ada_Writes', cta: 'Open', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', eyebrow: 'Promoted', pages: ['feed'] },
+      { id: 'promo_feed_3', title: 'The letter folded inside his jacket', author: 'Efe_O', cta: 'Read Now', img: 'https://i.postimg.cc/N9jY0w4m/5.jpg', eyebrow: 'Promoted', pages: ['feed'] },
+      { id: 'promo_feed_4', title: 'Go Premium — unlock every chapter', author: 'DroBoard', cta: 'Go Premium', img: 'https://picsum.photos/seed/dropremium/800/200', eyebrow: 'DroBoard', pages: ['feed'] },
     ],
     /* Full-screen spotlight promos (countdown interstitial on Discover).
         Admin-created spotlight creatives land here too (ad-setup wizard).
@@ -1163,7 +1167,7 @@
     discover: { interval: 6, cycle: ['book', 'book', 'book', 'book', 'platform'] },
     /* Full-screen story spotlight on Discover (ad-manager "Spotlight" card).
         seconds: countdown 3-30; everyN: once every N visits; allowSkip: quit btn. */
-    spotlight: { enabled: true, seconds: 5, everyN: 1, allowSkip: true },
+    spotlight: { enabled: true, seconds: 7, everyN: 1, allowSkip: true },
     feed: { interval: 4 },
     genreHub: { interval: 3, topPromo: true },
     discussion: { slot: 'single' },
@@ -1798,6 +1802,42 @@ const SERIES_CATALOG = {
     { id: 'DSP-002', transactionId: 'TXN-5005', type: 'bonus',      amount: 200,  reason: 'Bonus amount does not match the announced Top Performer Bonus of $300.', status: 'investigating', filed: '2026-07-27T14:30:00', resolutionNote: '', adminReply: 'Reviewing bonus calculation with finance team.' },
   ];
 
+  /* ── DEBATE POSTS (composer-shaped) ───────────────────────────────
+     Exactly the shape the debate composer produces, so the feed, the
+     search overlay and the debate page all show the same records:
+       debateData = { motion, question, prompt, forText, againstText, forV, agV, userVote }
+     `motion` and `question` hold the same string (the backend normaliser
+     writes both) so every renderer finds the headline it looks for. */
+  const DEBATE_POSTS = [
+    {
+      id: 'p9', type: 'debate', name: 'Droboard', avatar: '../assets/droboard-icon.png',
+      time: '3h ago',
+      debateData: { motion: 'Should villains get redemption?', question: 'Should villains get redemption?',
+        prompt: 'Share your thoughts and join the debate!',
+        forText: 'Yes, everyone deserves a second chance.', againstText: 'No, some actions are unforgivable.',
+        forV: 264, agV: 164, userVote: null },
+      likes: 0, liked: false, comments: 0,
+    },
+    {
+      id: 'p15', type: 'debate', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48',
+      time: '12h ago',
+      debateData: { motion: 'Should love triangles be banned from romance fiction?', question: 'Should love triangles be banned from romance fiction?',
+        prompt: 'This one has been heating up the comments all week.',
+        forText: 'Yes, they are overused', againstText: 'No, done well they work',
+        forV: 612, agV: 745, userVote: null },
+      likes: 140, liked: false, comments: 210,
+    },
+    {
+      id: 'p26', type: 'debate', name: 'Chidi_Omega', avatar: 'https://i.pravatar.cc/100?img=55',
+      time: '23h ago',
+      debateData: { motion: 'Do enemies-to-lovers arcs need a redemption scene?', question: 'Do enemies-to-lovers arcs need a redemption scene?',
+        prompt: 'Weigh in below.',
+        forText: 'Yes, it earns the ending', againstText: 'No, chemistry is enough',
+        forV: 388, agV: 271, userVote: null },
+      likes: 95, liked: false, comments: 118,
+    },
+  ];
+
   const WITHDRAWAL_MIN = 100;
 
   /* ── EXPOSE GLOBAL ── */
@@ -1818,6 +1858,7 @@ const SERIES_CATALOG = {
     TRENDING_GENRES,
     WRITERS_TO_FOLLOW,
     STATUSES,
+    DEBATE_POSTS,
     SERIES,
     SERIES_CATALOG,
     COMMENTS,

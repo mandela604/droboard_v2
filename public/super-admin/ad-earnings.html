@@ -14,6 +14,7 @@ table.ae-tbl{width:100%;border-collapse:collapse;font-size:12px}table.ae-tbl th{
 .ae-av{width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px}.ae-who{display:flex;align-items:center;gap:0;font-weight:700}
 .ae-empty{padding:22px;text-align:center;color:var(--text-faint);font-size:12.5px}.ae-note{font-size:11.5px;color:var(--text-muted);margin-top:10px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--input-bg,#fafaff)}
 .ae-storylink{color:var(--text);font-weight:700;text-decoration:none}.ae-storylink:hover{color:var(--accent,#ff0050);text-decoration:underline}
+.ae-authorlink{color:inherit;text-decoration:none}.ae-authorlink:hover{color:var(--accent,#ff0050);text-decoration:underline}
 </style></head>
 <body><div id="dashboardRoot">
 <div class="ae-pools" id="poolRow"></div>
@@ -27,7 +28,7 @@ table.ae-tbl{width:100%;border-collapse:collapse;font-size:12px}table.ae-tbl th{
     </select>
   </div>
   <div class="panel-sub">Story-owned ad slots (in-chapter, end-of-story, story comments) split 70% platform / 30% author. All other surfaces are 100% platform.</div>
-  <div style="overflow-x:auto;"><table class="ae-tbl"><thead><tr><th>Author</th><th>Stories</th><th>Impressions</th><th>Clicks</th><th>Author share</th><th>Status</th><th></th></tr></thead><tbody id="authorBody"></tbody></table></div>
+  <div style="overflow-x:auto;"><table class="ae-tbl"><thead><tr><th>Author</th><th>Stories</th><th>Impressions</th><th>Clicks</th><th>Author share</th><th>Status</th></tr></thead><tbody id="authorBody"></tbody></table></div>
   <div class="ae-note">Payouts stamp paid-at on the author's ledger rows; already-paid periods are excluded from the payable balance. Backend replaces localStorage at go-live (see ad-revenue-service.js contract).</div>
 </div>
 <div class="ae-2col">

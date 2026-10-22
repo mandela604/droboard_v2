@@ -25,8 +25,13 @@ const emailTemplateSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ad inventory (marketing ad-manager). Embed = network code for slots.
+// `strict:false` — the creative fields are per-format (sponsor, author, rating,
+// chapters, preview, name, handle, tagline, headline, sub, img, avatar, cover,
+// reads, isBook, …) and the console round-trips them as-is; they must survive
+// the read back or the edit wizard starts empty. Known fields below are the
+// ones serving logic reads.
 const adInventorySchema = new mongoose.Schema({
-  format: { type: String, enum: ['platform', 'book', 'native', 'follow', 'banner', 'embed', 'promo'], required: true, index: true },
+  format: { type: String, enum: ['platform', 'book', 'native', 'follow', 'banner', 'embed', 'promo', 'minibanner', 'spotlight'], required: true, index: true },
   brand: { type: String, default: '' },
   title: { type: String, default: '' }, // internal label for embed
   heading: { type: String, default: '' },
@@ -41,7 +46,16 @@ const adInventorySchema = new mongoose.Schema({
   active: { type: Boolean, default: true, index: true },
   startAt: { type: Date, default: null },
   endAt: { type: Date, default: null },
-}, { timestamps: true });
+  // ADDITIVE (marketing console): campaign link + campaign-driven pause, the
+  // audience/offer targeting the ad-setup wizard collects, and the raw
+  // 'YYYY-MM-DD' legs the wizard reads back when editing.
+  campaign: { type: String, default: '', index: true },
+  autoPaused: { type: Boolean, default: false },
+  audience: { type: mongoose.Schema.Types.Mixed, default: null },
+  offerRef: { type: mongoose.Schema.Types.Mixed, default: null },
+  startDate: { type: String, default: '' },
+  endDate: { type: String, default: '' },
+}, { timestamps: true, strict: false });
 
 const adPlacementSchema = new mongoose.Schema({
   page: { type: String, required: true, unique: true }, // discover|feed|genreHub|fullReader|scrollReader|library|store|comments|profile|discussion

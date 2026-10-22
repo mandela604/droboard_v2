@@ -28,6 +28,8 @@ const vipApplicationSchema = new mongoose.Schema({
   authorId: { type: String, ref: 'User', required: true, index: true },
   scope: { type: String, enum: ['book_lock', 'chapter_lock'], default: 'book_lock' },
   lockChapters: [{ type: String, ref: 'Chapter' }],
+  reason: { type: String, default: '' },
+  notes: { type: String, default: '' }, // reviewer notes shown on the review page
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
   reviewerId: { type: String, ref: 'User' },
 }, { timestamps: true });

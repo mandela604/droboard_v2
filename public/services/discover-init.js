@@ -41,7 +41,7 @@
 
   function startHero() {
     clearInterval(heroTimer);
-    heroTimer = setInterval(() => goHero((hi + 1) % heroes.length), 4500);
+    heroTimer = setInterval(() => goHero((hi + 1) % heroes.length), 3500);
   }
 
   /* ── Top Writers ── */

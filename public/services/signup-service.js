@@ -35,18 +35,52 @@ const COUNTRIES=['Nigeria','Ghana','Kenya','South Africa','United States','Unite
 })();
 
 function getReferralCode(){ return localStorage.getItem(LS_CODE)||''; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},2200); }
+// Two distinct code families share this one field:
+//   SE-XXXXXX → a Senior Editor's invite code → the signup is auto-assigned to that editor.
+//   anything else → a friend's Refer-a-Friend code → the code owner earns their coins.
+function isEditorCode(code){
+  const c=String(code||'').trim().toUpperCase();
+  if(!/^SE-/.test(c)) return false;
+  const demo=String(getReferralCode()||'').toUpperCase();
+  if(demo && c===demo) return true;          // the local Senior Editor's own code
+  return /^SE-[A-Z0-9]{5,}$/.test(c);        // minted editor codes are SE- + 6 chars
+}
+// Banner copy follows the code family. "Auto-assigned" is only true for editor codes.
+function applyReferralBanner(code){
+  const b=document.getElementById('referralBanner'); if(!b) return;
+  const title=document.getElementById('refBannerTitle');
+  const nameEl=document.getElementById('referralByName');
+  const codeEl=document.getElementById('referralByCode');
+  const textEl=document.getElementById('refBannerText');
+  const tailEl=document.getElementById('refBannerTail');
+  code=String(code||'').trim().toUpperCase();
+  if(!code){ b.classList.remove('show'); return; }
+  if(codeEl) codeEl.textContent=code;
+  if(textEl) textEl.textContent='Code';
+  if(isEditorCode(code)){
+    if(title) title.textContent='Referred by Senior Editor';
+    if(nameEl) nameEl.textContent=SE_NAME;
+    if(tailEl) tailEl.textContent="detected — you'll be auto-assigned to them.";
+  } else {
+    if(title) title.textContent='Referral code applied';
+    if(nameEl) nameEl.textContent='';
+    if(tailEl) tailEl.textContent='detected — your friend earns 5 coins when you join.';
+  }
+  b.classList.add('show');
+}
 function prefillFromUrl(){
   const p=new URLSearchParams(location.search);
   let code=(p.get('ref')||p.get('code')||'').trim().toUpperCase();
   if(code) try{ localStorage.setItem('dro_pending_ref',code);}catch(e){}
   else try{ code=localStorage.getItem('dro_pending_ref')||'';}catch(e){}
-  if(code){ const inp=document.getElementById('refInput'); if(inp){ inp.value=code; inp.classList.add('prefilled'); } const b=document.getElementById('referralBanner'); if(b){ document.getElementById('referralByCode').textContent=code; b.classList.add('show'); } }
+  if(code){ const inp=document.getElementById('refInput'); if(inp){ inp.value=code; inp.classList.add('prefilled'); } }
+  applyReferralBanner(code);
 }
 prefillFromUrl();
 document.getElementById('refInput').addEventListener('input',function(){
-  const v=this.value.trim().toUpperCase(), b=document.getElementById('referralBanner');
-  if(v && v.startsWith('SE-') && v.length>=6){ document.getElementById('referralByCode').textContent=v; b.classList.add('show'); } else if(!v){ b.classList.remove('show'); }
+  applyReferralBanner(this.value.trim().toUpperCase());
 });
 // username live validation
 (function(){
@@ -135,10 +169,22 @@ document.getElementById('signupBtn').addEventListener('click',function(){
   function finishDemo(serverUser){
     try{ if(window.Acquisition && Acquisition.record) Acquisition.record('sign_up'); }catch(e){}
     const seCode=getReferralCode();
-    const isReferred = refCode && seCode && refCode===seCode;
+    // referral mode: none | editor | friend | invalid
+    //  editor  → SE- code → signup is auto-assigned to that Senior Editor
+    //  friend  → Refer-a-Friend code → the code owner is credited their coins
+    const serverRef=(serverUser && serverUser.referral) || null;
+    let mode='none';
+    if(serverRef){
+      if(serverRef.editor) mode='editor';
+      else if(serverRef.inviterId) mode='friend';
+      else if(serverRef.invalid) mode='invalid';
+    } else if(refCode){
+      if(seCode && refCode===seCode) mode='editor';
+      else mode='friend';
+    }
     let assignedSE=null;
-    if(isReferred) assignedSE={id:'SE-01', name:SE_NAME, code:seCode};
-    else if(refCode && seCode && refCode!==seCode) toast('Code not found — signing up without referral');
+    if(mode==='editor') assignedSE={id:'SE-01', name:SE_NAME, code:seCode||refCode};
+    else if(mode==='invalid') toast('Code not found — signing up without referral');
 
     const newWriter={ id:(serverUser && serverUser.id) || ('WR-'+Date.now()), name:name, username:username, email:email, country:country||null, avatar:(serverUser && serverUser.avatar) || ('https://i.pravatar.cc/100?img='+(Math.floor(Math.random()*70)+1)), code:refCode||'', signedUp:new Date().toISOString(), status:'active', seniorEditorId:assignedSE?assignedSE.id:null, seniorEditorName:assignedSE?assignedSE.name:null, viaGoogle:false };
     if(serverUser && serverUser.token){ try{ localStorage.setItem('droboard_session', serverUser.token); }catch(e){} }
@@ -146,14 +192,17 @@ document.getElementById('signupBtn').addEventListener('click',function(){
       let list=[]; try{ list=JSON.parse(localStorage.getItem(LS_AUTHORS)||'[]');}catch(e){}
       list.unshift(newWriter); try{ localStorage.setItem(LS_AUTHORS, JSON.stringify(list)); }catch(e){}
       try{ localStorage.removeItem('dro_pending_ref');}catch(e){}
-      document.getElementById('successMsg').innerHTML='Assigned to Senior Editor <b>'+assignedSE.name+'</b> via <b>'+assignedSE.code+'</b> and <span style="color:#16a34a;font-weight:800">Active</span> — no approval needed.';
+      document.getElementById('successMsg').innerHTML='Assigned to Senior Editor <b>'+esc(assignedSE.name)+'</b> via <b>'+esc(assignedSE.code)+'</b> and <span style="color:#16a34a;font-weight:800">Active</span> — no approval needed.';
+    } else if(mode==='friend'){
+      try{ localStorage.removeItem('dro_pending_ref');}catch(e){}
+      document.getElementById('successMsg').innerHTML='Referral applied via <b>'+esc(refCode)+'</b> — your friend earned <b>5 coins</b> for inviting you.';
     } else {
       document.getElementById('successMsg').textContent='Account created — no referral, you can be assigned later.';
     }
     if(country) try{ localStorage.setItem('droboard_signup_country', country);}catch(e){}
     document.getElementById('signupCard').style.display='none';
     document.getElementById('successCard').style.display='block';
-    toast(assignedSE ? 'Referred — auto-assigned!' : 'Account created');
+    toast(mode==='editor' ? 'Referred — auto-assigned!' : (mode==='friend' ? 'Referral applied — your friend earned 5 coins' : 'Account created'));
     setLoading(btn, false);
   }
   fetch(apiUrl(AUTH_CONFIG.ENDPOINTS.SIGNUP), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
@@ -172,6 +221,8 @@ window.apiUrl = apiUrl;
 window.setLoading = setLoading;
 window.COUNTRIES = COUNTRIES;
 window.getReferralCode = getReferralCode;
+window.isEditorCode = isEditorCode;
+window.applyReferralBanner = applyReferralBanner;
 window.toast = toast;
 window.prefillFromUrl = prefillFromUrl;
 

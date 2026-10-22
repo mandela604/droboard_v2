@@ -25,9 +25,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 .top-bar{
   flex-shrink:0;display:flex;align-items:center;gap:10px;
-  padding:11px 12px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);
+  padding:11px 12px;background:var(--card);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);
 }
-[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
 .top-icon-btn{
   width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);
   display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--tx-muted);flex-shrink:0;
@@ -87,5 +86,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="../component/comment-section.js?v=5"></script>
 <script src="../services/comments-service.js?v=1"></script>
 <script>CommentsPage.init();</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

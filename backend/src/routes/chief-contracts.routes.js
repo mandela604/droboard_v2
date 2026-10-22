@@ -17,14 +17,24 @@ const pageQuery = z.object({
 // ---- Contract templates ----
 const templateBody = z.object({
   name: z.string().min(1).max(120), desc: z.string().max(1000).optional(),
-  type: z.enum(['Publishing', 'Financial', 'Legal', 'Rights']).optional(),
-  status: z.enum(['active', 'draft', 'archived']).optional(),
+  type: z.enum(['Publishing', 'Financial', 'Legal', 'Rights', 'Non-Exclusive', 'Exclusive', 'Renewal', 'Amendment', 'Work-for-Hire']).optional(),
+  status: z.enum(['active', 'draft', 'paused', 'archived']).optional(),
   clauses: z.number().int().min(0).optional(), body: z.string().max(50000).optional(),
+  clauseText: z.string().max(20000).optional(),
+  royaltyRate: z.number().min(0).max(100).nullable().optional(),
+  termLength: z.string().max(60).optional(),
+  signupBonusMin: z.number().min(0).optional(), signupBonusMax: z.number().min(0).optional(),
+  completionTarget: z.number().min(0).optional(), completionWindowMonths: z.number().min(0).optional(),
+  profitShareThreshold: z.number().min(0).optional(), profitShareBonus: z.number().min(0).optional(),
+  autoRenew: z.boolean().optional(), usageCount: z.number().min(0).optional(),
+  defaultChapterPrice: z.number().min(0).optional(),
+  cfHidden: z.array(z.string().max(60)).max(50).optional(),
+  cfLabels: z.record(z.string().max(120)).optional(),
   preview: z.object({ title: z.string().max(200).optional(), body: z.string().max(5000).optional() }).optional(),
 }).strict();
 
 router.get('/contract-templates', ...guard,
-  validate(z.object({ query: pageQuery })), ctrl.listTemplates);
+  validate(z.object({ query: pageQuery })), ctrl.consoleTemplates);
 
 router.post('/contract-templates', ...guard, audit('chief.templates.create'),
   validate(z.object({ body: templateBody })), ctrl.createTemplate);

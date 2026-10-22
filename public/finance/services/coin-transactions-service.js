@@ -15,9 +15,22 @@ const PER_PAGE = 8, PKG_PER_PAGE = 4, HIST_PER_PAGE = 6;
 
 const API_BASE = window.DROBOARD_API_BASE || '/api/finance';
 async function apiFetch(path, options){
-  const res = await fetch(API_BASE + path, { headers:{'Content-Type':'application/json'}, ...options });
-  if(!res.ok) throw new Error('Request failed: ' + res.status);
-  return res.status===204 ? null : res.json();
+  // Session cookie required (staff-gated endpoints); 2.5s timeout so an
+  // unreachable backend falls back to demo data instead of hanging the page.
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 2500);
+  try {
+    const res = await fetch(API_BASE + path, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctl.signal,
+      ...options,
+    });
+    if (!res.ok) throw new Error('Request failed: ' + res.status);
+    return res.status === 204 ? null : res.json();
+  } finally {
+    clearTimeout(t);
+  }
 }
 let usingDemoConfig = false;
 
@@ -188,7 +201,18 @@ function syncPacksToStore(){
 }
 function syncEarnToStore(){
   try{
-    const storeRewards = EARN.map(r=>({ id:r.id, action:r.action, coins:r.coins, cooldown:r.cooldown, icon:r.icon, available:r.available!==false && r.status==='active' }));
+    // type + adUrl MUST ride along — the reader store filters on type==='watch_ad'
+    // and opens adUrl when the reader claims the reward.
+    const storeRewards = EARN.map(r=>({
+      id:r.id, action:r.action, type:r.type, coins:r.coins, cooldown:r.cooldown,
+      icon:r.icon, available:r.available!==false && r.status==='active',
+      adUrl:r.adUrl || (r.meta && r.meta.adUrl) || undefined,
+      blogUrl:r.blogUrl || (r.meta && r.meta.blogUrl) || undefined,
+      channelId:r.channelId || (r.meta && r.meta.channelId) || undefined,
+      channelUrl:r.channelUrl || (r.meta && r.meta.channelUrl) || undefined,
+      videoId:r.videoId || (r.meta && r.meta.videoId) || undefined,
+      pagesRequired:r.pagesRequired, minWatchSec:r.minWatchSec,
+    }));
     localStorage.setItem('dro_finance_rewards', JSON.stringify(storeRewards));
   }catch(e){}
 }

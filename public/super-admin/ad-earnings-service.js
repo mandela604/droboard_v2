@@ -16,8 +16,9 @@
   function toast(m) { if (typeof window.toast === 'function') { try { window.toast(m); return; } catch (e) {} } }
 
   function avatarFor(name) {
-    var seed = encodeURIComponent(String(name || 'author'));
-    return 'https://api.dicebear.com/7.x/initials/svg?seed=' + seed;
+    var s = String(name || 'author'), h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return 'https://i.pravatar.cc/100?img=' + ((h % 70) + 1);
   }
 
   /* ── Render: stat pools ── */
@@ -80,34 +81,23 @@
     var el = document.getElementById('authorBody');
     if (!el || !summary) return;
     var rows = (summary.byAuthor || []).slice().sort(function (a, b) { return b.authorShare - a.authorShare; });
-    if (!rows.length) { el.innerHTML = '<tr><td colspan="7" class="ae-empty">No story-ad revenue for this period.</td></tr>'; return; }
+    if (!rows.length) { el.innerHTML = '<tr><td colspan="6" class="ae-empty">No story-ad revenue for this period.</td></tr>'; return; }
     el.innerHTML = rows.map(function (a) {
       var stories = (summary.byStory || []).filter(function (s) { return s.authorId === a.authorId; }).length;
       var paid = a.paid || a.unpaid === 0;
+      var meta = (window.AdRevenue && AdRevenue.authorMeta) ? AdRevenue.authorMeta(a.authorId, a.authorName) : {};
+      var av = a.authorAv || meta.avatar || avatarFor(a.authorName);
+      var handle = a.authorHandle || meta.handle || a.authorName;
+      var href = '../Pages/profile.html?u=' + encodeURIComponent(handle);
       return '<tr>'
-        + '<td><span class="ae-who"><img class="ae-av" src="' + esc(avatarFor(a.authorName)) + '" alt=""/>' + esc(a.authorName) + '</span></td>'
+        + '<td><span class="ae-who"><img class="ae-av" src="' + esc(av) + '" alt=""/><a class="ae-authorlink" href="' + esc(href) + '">' + esc(a.authorName) + '</a></span></td>'
         + '<td>' + stories + '</td>'
         + '<td>' + fmtN(a.impressions) + '</td>'
         + '<td>' + fmtN(a.clicks) + '</td>'
         + '<td><b>' + fmtUSD(a.authorShare) + '</b></td>'
         + '<td><span class="ae-chip' + (paid ? '' : ' unpaid') + '">' + (paid ? 'Paid' : 'Unpaid') + '</span></td>'
-        + '<td style="text-align:right">' + (paid ? '<span class="ae-chip">✓</span>' : '<button class="btn-ae" data-pay-author="' + esc(a.authorId) + '">Mark paid</button>') + '</td>'
         + '</tr>';
     }).join('');
-    el.querySelectorAll('[data-pay-author]').forEach(function (btn) {
-      btn.addEventListener('click', async function () {
-        var id = btn.getAttribute('data-pay-author');
-        btn.disabled = true;
-        try {
-          await AdRevenue.markAuthorPaid(id);
-          toast('Author marked paid');
-          await load();
-        } catch (e) {
-          btn.disabled = false;
-          toast('Could not mark paid');
-        }
-      });
-    });
   }
 
   /* ── Render: story leaderboard ── */

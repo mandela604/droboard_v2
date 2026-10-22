@@ -27,10 +27,10 @@ async function pagedContracts(filter, pg, lim) {
   return { items: await withAuthors(items), total, page: pg, limit: lim };
 }
 
-// ---- Templates (status enum: active|draft|archived) ----
-// Frontend pause/activate mapping (documented): pause -> draft (hidden from
-// offer picker which lists active only), activate -> active. `archived` is
-// reserved for soft-delete-by-admin and is never set by pause.
+// ---- Templates (status enum: active|draft|paused|archived) ----
+// Frontend pause/activate mapping: pause -> paused (a distinct console state,
+// still hidden from the offer picker which lists active only), activate ->
+// active. `draft` is the pre-publish state, `archived` is soft-delete-by-admin.
 async function listTemplates({ page, limit }) {
   const { pg, lim } = paging({ page, limit });
   const [items, total] = await Promise.all([
@@ -54,7 +54,10 @@ async function getTemplate(id) {
 async function updateTemplate(id, data, userId) {
   const doc = await ContractTemplate.findOne({id: id});
   if (!doc) err('not_found', 404);
-  ['name', 'desc', 'type', 'status', 'clauses', 'body', 'preview'].forEach(k => {
+  ['name', 'desc', 'type', 'status', 'clauses', 'clauseText', 'body', 'preview',
+    'royaltyRate', 'termLength', 'signupBonusMin', 'signupBonusMax',
+    'completionTarget', 'completionWindowMonths', 'profitShareThreshold', 'profitShareBonus',
+    'autoRenew', 'usageCount', 'defaultChapterPrice', 'cfHidden', 'cfLabels'].forEach(k => {
     if (data[k] !== undefined) doc[k] = data[k];
   });
   doc.updatedBy = userId;
@@ -72,7 +75,7 @@ async function deleteTemplate(id) {
 async function pauseTemplate(id, userId) {
   const doc = await ContractTemplate.findOne({id: id});
   if (!doc) err('not_found', 404);
-  doc.status = 'draft'; // pause mapping: see header comment
+  doc.status = 'paused'; // pause mapping: see header comment
   doc.updatedBy = userId;
   await doc.save();
   return doc.toJSON();

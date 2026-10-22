@@ -18,6 +18,7 @@ const {
   Withdrawal, AuthorTransaction, Payout,
 } = require('../models/money.model');
 const { SystemPage } = require('../models/admin.model');
+const { VipApplication } = require('../models/application.model');
 const { ActivityLog, PlatformSetting } = require('../models/platform.model');
 const { User } = require('../models/user.model');
 const senior = require('./senior.service');
@@ -760,6 +761,36 @@ async function authorMessagesReadAll(user) {
   return { ok: true };
 }
 
+/* VIP registration reviews (vip-registration-review-service.js reads {items}) */
+async function vipRegistrations(query) {
+  const filter = {};
+  if (query && query.status) filter.status = query.status;
+  if (query && query.q) {
+    const rx = { $regex: String(query.q).slice(0, 80), $options: 'i' };
+    filter.$or = [{ id: rx }];
+  }
+  const { items } = await paged(VipApplication, filter, { createdAt: -1 }, query || {});
+  const users = await usersById(items.map(r => r.authorId));
+  const books = await booksById(items.map(r => r.bookId));
+  return {
+    items: items.map(r => {
+      const u = users[String(r.authorId)] || {};
+      const b = books[String(r.bookId)] || {};
+      return {
+        id: r.id,
+        author: u.name || r.authorId || '',
+        avatar: u.avatar || '',
+        book: b.title || r.bookId || '',
+        action: 'lock', // VipApplication only models lock requests (book_lock | chapter_lock)
+        reason: r.reason || '',
+        submitted: iso(r.createdAt),
+        status: r.status,
+        notes: r.notes || '',
+      };
+    }),
+  };
+}
+
 module.exports = {
   stories, featuredStories, editorsPicks, announcements, createAnnouncement,
   storyAnalytics, bookReviews, bookReviewsDateFilter,
@@ -772,4 +803,5 @@ module.exports = {
   notifications, createNotification, notificationsReadAll,
   platformSettings, editorBillReview,
   authorMessagesUpdate, authorMessagesSend, authorMessagesReadAll,
+  vipRegistrations,
 };

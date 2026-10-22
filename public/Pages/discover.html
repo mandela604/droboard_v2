@@ -13,7 +13,8 @@
   --nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px);
 }
 [data-theme="dark"] .topbar{background:rgba(0,0,0,.95)}
-[data-theme="dark"] .search,[data-theme="dark"] .icon-btn,[data-theme="dark"] .to-top-btn{background:#0b0b10;color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .phone{background:#000}
+[data-theme="dark"] .search,[data-theme="dark"] .icon-btn,[data-theme="dark"] .topbar .logo,[data-theme="dark"] .to-top-btn{background:#0b0b10;color:var(--text);border-color:var(--border)}
 [data-theme="dark"] .icon-btn .dot{border-color:#0b0b10}
 [data-theme="dark"] .dot{background:#3a3a44}
 [data-theme="dark"] .genre-item{box-shadow:0 1px 4px rgba(0,0,0,.4)}
@@ -23,31 +24,50 @@ img{display:block;object-fit:cover}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 a{color:inherit;text-decoration:none}
 
-.phone{width:100%;max-width:420px;min-height:100vh;background:var(--card);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--card);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:clip}
 
-.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px}
+.topbar{background:var(--card);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px}
+.topbar .logo{width:38px;height:38px;border-radius:50%;background:#FFFFFF;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
 .search{flex:1;display:flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid var(--border);border-radius:22px;padding:9px 14px;font-size:13px;color:var(--muted);cursor:pointer}
 .search i{font-size:13px;opacity:.7}
 .icon-btn{width:38px;height:38px;border-radius:50%;background:#FFFFFF;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;position:relative;flex-shrink:0}
 .icon-btn .dot{position:absolute;top:8px;right:8px;width:7px;height:7px;background:var(--pink);border-radius:50%;border:1.5px solid #fff}
 .icon-btn.gift{color:var(--pink)}
 
-.tabs-wrap{padding:4px 16px 0;background:var(--card);border-bottom:8px solid var(--bg)}
-.tabs{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.tabs-wrap{position:sticky;top:0;z-index:50;margin:0 12px 8px;padding:0 16px;background:var(--card);border-radius:16px}
+.tabs{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);justify-content:center;justify-content:safe center}
 .tabs::-webkit-scrollbar{display:none}
-.tab{font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;padding-bottom:8px;position:relative;cursor:pointer}
-.tab.active{color:var(--pink)}
-.tab.active::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.5px;background:var(--pink);border-radius:2px}
-.tab.grid-icon{margin-left:auto;color:var(--muted);font-size:14px}
+.tab{font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;padding:11px 0;position:relative;cursor:pointer}
+.tab.active{color:var(--pink);font-weight:700}
+.tab.active::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.5px;background:var(--pink);border-radius:3px}
+.tab.grid-icon{color:var(--muted);font-size:14px}
 
 .content{flex:1;padding:0 0 20px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
 
-.hero-wrap{padding:12px 16px 0;margin-bottom:0;background:var(--card)}
+.hero-wrap{padding:12px 0 0;margin-bottom:0;background:transparent}
 .hero-wrap + .hero-dots{margin-top:-8px}
-.hero{position:relative;border-radius:16px;overflow:hidden;height:220px;background:#1a0a12}
-.hero-img{position:absolute;inset:0;background-size:cover;background-position:center 20%}
-.hero-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.15) 100%)}
-.hero-body{position:absolute;left:16px;right:16px;bottom:16px;z-index:2}
+.hero{position:relative;border-radius:0;overflow:hidden;height:220px;background:transparent}
+/* Two stacked image layers alternate so the next slide CROSSFADES over the
+   current one (with a slow zoom) instead of swapping abruptly. */
+.hero-img{position:absolute;inset:0;background-size:cover;background-position:center 20%;
+  opacity:0;transform:scale(1.05);z-index:1;will-change:opacity,transform;
+  transition:opacity .8s cubic-bezier(.4,0,.2,1),transform 1.4s cubic-bezier(.4,0,.2,1)}
+.hero-img.is-on{opacity:1;transform:scale(1);z-index:2}
+.hero-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.15) 100%);z-index:3}
+.hero-body{position:absolute;left:16px;right:16px;bottom:16px;z-index:4}
+/* Text slides up + fades in, staggered per line. */
+.hero-wrap.hero-anim .hero-body>*{opacity:0;transform:translateY(14px);
+  transition:opacity .5s ease,transform .5s cubic-bezier(.2,.7,.3,1)}
+.hero-wrap.hero-anim .hero-body.in>*{opacity:1;transform:none}
+.hero-wrap.hero-anim .hero-body.in>.hero-badge{transition-delay:.06s}
+.hero-wrap.hero-anim .hero-body.in>.hero-title{transition-delay:.13s}
+.hero-wrap.hero-anim .hero-body.in>.hero-author{transition-delay:.19s}
+.hero-wrap.hero-anim .hero-body.in>.hero-tags{transition-delay:.25s}
+/* Respect reduced-motion: fade only, no zoom/slide. */
+@media (prefers-reduced-motion:reduce){
+  .hero-img{transform:none!important;transition:opacity .3s linear}
+  .hero-wrap.hero-anim .hero-body>*{transform:none!important}
+}
 .hero-badge{display:inline-flex;align-items:center;gap:4px;background:var(--pink);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;margin-bottom:8px;letter-spacing:.3px}
 .hero-title{font-size:26px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;text-shadow:0 2px 12px rgba(0,0,0,.4)}
 .hero-title em{font-style:italic;color:#ff8fab;font-weight:700}
@@ -55,28 +75,30 @@ a{color:inherit;text-decoration:none}
 .hero-author i{color:#3b82f6;font-size:11px;margin-left:3px}
 .hero-tags{display:flex;gap:6px;margin-bottom:12px}
 .hero-tag{font-size:10px;font-weight:600;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(4px)}
-.hero-dots{display:flex;justify-content:center;gap:5px;margin:0;padding:10px 0 12px;background:var(--card);border-bottom:1px solid var(--border)}
-.dot{width:6px;height:6px;border-radius:50%;background:#d1d1d6}
+.hero-dots{display:flex;justify-content:center;gap:5px;margin:0;padding:10px 0 12px;background:transparent;border-bottom:none}
+.dot{width:6px;height:6px;border-radius:50%;background:#d1d1d6;transition:width .4s cubic-bezier(.4,0,.2,1),background .3s ease,border-radius .4s ease}
 .dot.on{width:16px;border-radius:3px;background:var(--pink)}
 
-.section{margin-bottom:0;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 0 16px}
-.sec-head{display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px}
+.section{margin:0 12px;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:16px;overflow:hidden;padding:14px 0 16px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:0 8px 10px}
 .sec-title{font-size:16px;font-weight:700}
 .view-all{font-size:12px;font-weight:600;color:var(--muted)}
 
-.h-row{display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px}
+.h-row{display:flex;gap:6px;overflow-x:auto;padding:0 8px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px;scroll-snap-type:x mandatory;scroll-padding-left:8px}
+.h-row > .dc-scard{flex:0 0 calc((100% - 18px) / 4);width:calc((100% - 18px) / 4);scroll-snap-align:start;scroll-snap-stop:always}
 .h-row::-webkit-scrollbar{display:none}
 
-.coll-row{display:flex;gap:12px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px}
+.coll-row{display:flex;gap:12px;overflow-x:auto;padding:0 8px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px}
 .coll-row::-webkit-scrollbar{display:none}
 
-.genre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 16px}
+.genre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 8px}
 .genre-item{background:var(--card);border-radius:14px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,.04);border:1px solid var(--border);cursor:pointer}
 .genre-item:active{transform:scale(.96)}
 .genre-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .genre-name{font-size:11px;font-weight:600}
 
-.more-section{padding:14px 16px 8px;background:var(--card);border-top:1px solid var(--border)}
+.more-section{margin:0 12px;padding:14px 16px 8px;background:var(--card);border-top:1px solid var(--border);border-radius:16px;overflow:hidden}
+[data-ad-slot]{margin:0 12px;border-radius:16px;overflow:hidden}
 .more-title{font-size:16px;font-weight:700;margin-bottom:12px}
 
 .bro-list{display:flex;flex-direction:column}
@@ -120,6 +142,7 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 
 <div class="phone">
   <div class="topbar">
+    <div class="logo" onclick="location.href='index.html'"><img src="../assets/droboard-icon.png" alt="Droboard" style="height:28px;width:auto;display:block;border-radius:8px"/></div>
     <div class="search" data-search-trigger><i class="fas fa-search"></i><span>Search stories, genres...</span></div>
     <a href="notifications.html" class="icon-btn" style="text-decoration:none;color:inherit"><i class="fas fa-bell"></i><span class="notif-dot" style="display:none;position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;border-radius:8px;background:#ff2d55;color:#fff;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff"></span></a>
     <a href="store.html" class="icon-btn gift" style="text-decoration:none;color:inherit"><i class="fas fa-gift"></i></a>
@@ -138,7 +161,7 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
   </div>
 
   <div class="content">
-    <div class="hero-wrap"><div class="hero"><div class="hero-img" id="heroImg"></div><div class="hero-scrim"></div><div class="hero-body"><div class="hero-badge"><i class="fas fa-fire" style="font-size:9px"></i> TRENDING</div><div class="hero-title" id="heroTitle"></div><div class="hero-author" id="heroAuthor"></div><div class="hero-tags" id="heroTags"></div></div></div></div>
+    <div class="hero-wrap"><div class="hero"><div class="hero-img is-on" id="heroImg"></div><div class="hero-img" id="heroImg2"></div><div class="hero-scrim"></div><div class="hero-body"><div class="hero-badge"><i class="fas fa-fire" style="font-size:9px"></i> TRENDING</div><div class="hero-title" id="heroTitle"></div><div class="hero-author" id="heroAuthor"></div><div class="hero-tags" id="heroTags"></div></div></div></div>
     <div class="hero-dots" id="heroDots"></div>
 
     <section class="section"><div class="sec-head"><h2 class="sec-title">Continue Reading</h2><button class="view-all" data-browse-trigger data-browse-mode="continueReading" data-browse-title="Continue Reading">View All ›</button></div><div class="h-row" id="continueRow"></div></section>
@@ -152,7 +175,7 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
     <div data-ad-slot="discover:inline-banner" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Editor's Picks</h2><button class="view-all" data-browse-trigger data-browse-title="Editor's Picks" data-browse-sort="rating">View All ›</button></div><div class="h-row" id="editorRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Popular Genres</h2></div><div class="genre-grid" id="genreGrid"></div></section>
-    <section class="section"><div class="sec-head"><h2 class="sec-title">Recommended For You</h2><button class="view-all" data-browse-trigger data-browse-title="Recommended For You" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="recRow"></div></section>
+    <section class="section"><div class="sec-head"><h2 class="sec-title">Recommended For You</h2><button class="view-all" data-browse-trigger data-browse-title="Recommended For You" data-browse-tune data-browse-sort="popular">View All ›</button></div><div class="h-row" id="recRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Complete Stories</h2><button class="view-all" data-browse-trigger data-browse-title="Complete Stories" data-browse-filter="completed">View All ›</button></div><div class="h-row" id="completeRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Recently Updated</h2><button class="view-all" data-browse-trigger data-browse-title="Recently Updated" data-browse-sort="updated">View All ›</button></div><div class="h-row" id="updatedRow"></div></section>
     <!-- MINI BANNER slot 3 of 3 ── above the infinite More Stories list (format pinned to minibanner) -->
@@ -174,14 +197,15 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
     <script src="../component/ad-slot.js"></script>
     <script src="../services/search-service.js"></script>
     <script src="../shared/ui-helpers.js"></script>
-    <script src="../component/taste-picker.js?v=1"></script>
-    <script src="../component/spotlight-ad.js?v=1"></script>
+    <script src="../component/taste-picker.js?v=2"></script>
+    <script src="../component/spotlight-ad.js?v=2"></script>
     <script src="../services/discover-service.js?v=1"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../component/search-overlay.js"></script>
-<script src="../component/browse-overlay.js?v=2"></script>
+<script src="../component/browse-overlay.js?v=6"></script>
 <script src="../component/discover-card.js"></script>
 <script src="../services/notification-service.js"></script>
 <script>DiscoverPage.init(); NotifService.start();</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

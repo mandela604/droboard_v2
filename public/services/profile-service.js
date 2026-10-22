@@ -10,6 +10,7 @@
   let VIEW_HANDLE = null;
   let ME_HANDLE = null;
   let IS_OWNER = false;
+  let IS_GUEST = false;
   let RENDERED = {};
   let FEED_HOOKED = false;
   let LIB_INSTANCE = null;
@@ -851,13 +852,68 @@
       onNewBook: function () { location.href = 'create.html'; },
       onTab: function (tab) { switchTab(tab); },
       onRefer: function () { location.href = 'refer.html'; },
-      onSignOut: async function () { if (window.AuthSession) await AuthSession.logout(); toast('👋 Signed out!'); setTimeout(function () { location.href = 'index.html'; }, 600); },
+      onSignOut: function () { var ov = document.getElementById('logoutOverlay'); if (ov) ov.classList.add('open'); },
     });
   }
 
+  /* ── Logout confirm modal (custom — no browser confirm) ── */
+  (function wireLogoutModal() {
+    var ov = document.getElementById('logoutOverlay');
+    if (!ov) return;
+    function close() { ov.classList.remove('open'); }
+    var cl = document.getElementById('logoutClose');
+    var ca = document.getElementById('logoutCancel');
+    var ok = document.getElementById('logoutConfirm');
+    if (cl) cl.addEventListener('click', close);
+    if (ca) ca.addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    if (ok) ok.addEventListener('click', async function () {
+      try { if (window.AuthSession) await AuthSession.logout(); } catch (e) {}
+      close();
+      toast('👋 Signed out!');
+      setTimeout(function () { location.href = 'index.html'; }, 600);
+    });
+  })();
+
   /* ── Top-level render + boot ── */
+  /* A visitor with no account has no profile of their own. Show the guest
+     gate (create-account CTA + story recommendations) instead of an empty
+     profile shell — see component/guest-gate.js. */
+  function renderGuest() {
+    const empty = document.getElementById('emptyState');
+    const root = document.getElementById('profileRoot');
+    if (empty) empty.style.display = 'none';
+    if (root) root.style.display = 'none';
+    if (!window.DroboardGuestGate) return;
+    DroboardGuestGate.mount({
+      anchor: '#profileRoot',
+      variant: 'profile',
+      cta: [
+        { label: 'Create account', href: 'signup.html', primary: true, icon: 'fa-user-plus' },
+        { label: 'Log in', href: (window.AuthSession && AuthSession.loginUrl) ? AuthSession.loginUrl('profile.html') : 'login.html', icon: 'fa-right-to-bracket' },
+      ],
+    });
+  }
+
+  /* Signed in, but this profile doesn't exist → plain "not found". */
+  function renderNotFound() {
+    if (window.DroboardGuestGate) DroboardGuestGate.unmount();
+    const empty = document.getElementById('emptyState');
+    const root = document.getElementById('profileRoot');
+    if (empty) empty.style.display = 'block';
+    if (root) root.style.display = 'none';
+  }
+
   function renderProfile(p) {
+    if (!p) {
+      if (IS_GUEST) renderGuest();
+      else renderNotFound();
+      return;
+    }
+    if (window.DroboardGuestGate) DroboardGuestGate.unmount();
     IS_OWNER = (p.handle === ME_HANDLE);
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('profileRoot').style.display = 'block';
     renderHeader(p);
     renderActionRow();
     renderStats(p);
@@ -917,24 +973,36 @@
     if (mcSearch) mcSearch.addEventListener('input', () => paintStoryGrid('mcStoryGrid'));
     const params = new URLSearchParams(location.search);
     ME_HANDLE = await ProfileData.getCurrentUserHandle();
-    VIEW_HANDLE = params.get('u') || ME_HANDLE;
-    let data = await ProfileData.getProfile(VIEW_HANDLE);
-    if (!data) { data = await ProfileData.getProfile('You_Reader'); } // hardcode reader fallback (remove after testing)
+    const requested = params.get('u');
+    VIEW_HANDLE = requested || ME_HANDLE;
+
+    /* Browsing someone else's profile (?u=handle) stays public — anyone
+       can look. Only "my profile" (no ?u=) needs an account: without one
+       there's no profile to show, so the guest gate takes over. */
+    const signedIn = !!(window.AuthSession && AuthSession.isSignedIn && AuthSession.isSignedIn());
+    IS_GUEST = !signedIn && !requested;
+
+    let data = null;
+    if (!IS_GUEST) {
+      data = await ProfileData.getProfile(VIEW_HANDLE);
+      if (!data) { data = await ProfileData.getProfile('You_Reader'); } // hardcode reader fallback (remove after testing)
+    }
     document.getElementById('loadingState').style.display = 'none';
-    if (!data) { document.getElementById('emptyState').style.display = 'block'; return; }
     PROFILE = data;
-    document.getElementById('profileRoot').style.display = 'block';
     renderProfile(PROFILE);
     // Deep links: ?tab=collections opens the tab, ?create=1 opens the
     // new-collection sheet (all collection creation flows through here).
-    try {
-      const tab = params.get('tab');
-      if (tab && ['feed', 'books', 'library', 'collections', 'following', 'about'].indexOf(tab) !== -1) switchTab(tab);
-      if (params.get('create') === '1') {
-        if (tab === 'collections' || !tab) switchTab('collections');
-        setTimeout(function () { openNewCollection(); }, 350);
-      }
-    } catch (e) {}
+    // Guests get no owner-only tabs/sheets — the gate owns their screen.
+    if (!IS_GUEST) {
+      try {
+        const tab = params.get('tab');
+        if (tab && ['feed', 'books', 'library', 'collections', 'following', 'about'].indexOf(tab) !== -1) switchTab(tab);
+        if (params.get('create') === '1') {
+          if (tab === 'collections' || !tab) switchTab('collections');
+          setTimeout(function () { openNewCollection(); }, 350);
+        }
+      } catch (e) {}
+    }
     if (window.DroboardSearch) {
       let searchData;
       if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }

@@ -11,7 +11,7 @@
 :root{
   --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
   --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
-  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bg:#000000;--card:#08090c;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
   --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
   --tx-high:#e8e8e8;--tx-body:#c8c8c8;--tx-muted:#71717a;--tx-faint:#3f3f46;
   --tx-title:#dedede;
@@ -244,6 +244,7 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 <div class="top-bar">
   <div class="top-back" onclick="history.back()"><i class="fas fa-arrow-left"></i></div>
   <div class="top-title" id="topTitle">Series Manager</div>
+  <div class="top-icon-btn" data-search-trigger title="Search" role="button" aria-label="Search"><i class="fas fa-magnifying-glass"></i></div>
   <div class="top-icon-btn" onclick="openSeriesSettings()" title="Series Settings"><i class="fas fa-ellipsis-vertical"></i></div>
 </div>
 
@@ -253,11 +254,10 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 <!-- MAIN CONTENT -->
 <div class="content" id="mainContent"></div>
 
-<!-- BOTTOM NAV -->
+<!-- BOTTOM NAV (search lives in the top bar, not in the nav) -->
 <div class="bottom-nav">
   <a class="bn-item" href="index.html"><i class="fas fa-house"></i>Home</a>
   <a class="bn-item" href="discover.html"><i class="fas fa-compass"></i>Discover</a>
-  <a class="bn-item" href="search.html" data-search-trigger><i class="fas fa-magnifying-glass"></i>Search</a>
   <a class="bn-item" href="feed.html"><i class="fas fa-rss"></i>Feed</a>
   <a class="bn-item active" href="profile.html"><i class="fas fa-circle-user"></i>Profile</a>
 </div>
@@ -440,5 +440,6 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 <script src="../component/search-overlay.js"></script>
 <script src="../services/story-management-service.js"></script>
 </div>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

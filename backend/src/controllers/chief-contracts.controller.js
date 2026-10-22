@@ -1,9 +1,16 @@
 'use strict';
 const svc = require('../services/chief-contracts.service');
+const surfaces = require('../services/chief-surfaces.service');
 const base = require('./base.controller');
 
 async function listTemplates(req, res) {
   return base.wrap(res, async () => svc.listTemplates(req.valid.query));
+}
+
+// Console read contract: bare array (contracts-payments-service.js:23-25).
+// `/author-contracts/templates` keeps the canonical {items,total,page,limit}.
+async function consoleTemplates(req, res) {
+  return base.wrap(res, async () => surfaces.contractTemplates(req.valid.query));
 }
 
 async function createTemplate(req, res) {
@@ -34,8 +41,11 @@ async function activateTemplate(req, res) {
   return base.wrap(res, async () => svc.activateTemplate(req.valid.params.id, req.user.id));
 }
 
+// Console read contract: {templates, activeContracts, pendingOffers}
+// (author-contracts-service.js:36,38,40). The canonical paged list stays
+// available via GET /author-contracts/{templates,active,pending-offers}.
 async function listContracts(req, res) {
-  return base.wrap(res, async () => svc.listContracts(req.valid.query));
+  return base.wrap(res, async () => surfaces.authorContractsComposite(req.valid.query));
 }
 
 async function activeContracts(req, res) {
@@ -67,6 +77,6 @@ async function rejectContract(req, res) {
 }
 
 module.exports = {
-  listTemplates, createTemplate, getTemplate, updateTemplate, deleteTemplate, pauseTemplate, activateTemplate,
+  listTemplates, consoleTemplates, createTemplate, getTemplate, updateTemplate, deleteTemplate, pauseTemplate, activateTemplate,
   listContracts, activeContracts, pendingOffers, createOffer, signContract, approveContract, rejectContract,
 };

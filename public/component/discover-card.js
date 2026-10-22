@@ -26,6 +26,9 @@
     .dc-scard-title{font-size:10.5px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
     .dc-scard-author{font-size:9.5px;color:#8e8e93;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;display:inline-block;cursor:pointer}
     .dc-scard-meta{font-size:9.5px;color:#8e8e93;font-weight:500}
+    /* Category under the card — plain text, platform red, no emoji. */
+    .dc-scard-cat{font-size:9.5px;color:var(--acc,var(--pink,#ff0050));font-weight:700;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dc-scard-rating{font-size:9.5px;color:#f59e0b;font-weight:600}
     .dc-cont-ch{font-size:9.5px;color:#8e8e93;margin-bottom:4px}
     .dc-prog-track{height:3px;background:#e5e5ea;border-radius:2px;overflow:hidden}
@@ -105,9 +108,10 @@
     else if (s.badge === 'hot') badge = '<span class="dc-badge hot">HOT</span>';
     else if (s.badge === 'update') badge = '<span class="dc-badge update">Update</span>';
     else if (s.rank) badge = `<span class="dc-rank">${s.rank}</span>`;
-    let extra = '';
-    if (s.rating) extra = `<div class="dc-scard-rating">\u2605 ${esc(s.rating)}</div>`;
+let extra = '';
+    if (s.rating) extra = `<div class="dc-scard-rating">★ ${esc(s.rating)}</div>`;
     else if (s.ch) extra = `<div class="dc-cont-ch">${esc(s.ch)}</div>${s.pct != null ? `<div class="dc-prog-track"><div class="dc-prog-fill" style="width:${s.pct}%"></div></div>` : ''}`;
+    else if (s.cat) extra = `<div class="dc-scard-cat">${esc(s.cat)}</div>`;
     else if (s.meta) extra = `<div class="dc-scard-meta">${esc(s.meta)}</div>`;
     const author = s.author
       ? `<a class="dc-scard-author" href="${profileHref(s.author)}" onclick="event.stopPropagation()">${esc(s.author)}</a>`

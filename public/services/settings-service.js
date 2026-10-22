@@ -106,10 +106,43 @@ async function initDrawer(profile){
   document.getElementById('menuBtn').addEventListener('click', function(){ DroboardProfileMenu.open(); });
 }
 
+// ── Demo mode switcher (DEMO ONLY — remove with the backend) ──
+// Lets you flip between the demo Reader, the demo Writer and a full
+// Guest (signed out) so the guest views can be tested without a
+// backend. Changing it reloads the page.
+var DEMO_LABELS={
+  reader:'Reader (Jordan Blake)',
+  writer:'Writer (Ada Writes)',
+  guest:'Guest (signed out)'
+};
+function initDemoMode(){
+  var wrap=document.getElementById('demoModeSwitch');
+  var desc=document.getElementById('demoModeDesc');
+  if(!wrap&&!desc) return;
+  function paint(){
+    var mode=(global.AuthSession && AuthSession.getMode) ? AuthSession.getMode() : 'reader';
+    if(desc) desc.textContent=DEMO_LABELS[mode]||DEMO_LABELS.reader;
+    wrap.querySelectorAll('.demo-mode-opt').forEach(function(el){
+      el.classList.toggle('on', el.getAttribute('data-mode')===mode);
+    });
+  }
+  paint();
+  wrap.querySelectorAll('.demo-mode-opt').forEach(function(el){
+    el.addEventListener('click', function(){
+      var mode=el.getAttribute('data-mode');
+      if(global.AuthSession && AuthSession.setMode) AuthSession.setMode(mode);
+      toast('Switched to '+(DEMO_LABELS[mode]||mode));
+      setTimeout(function(){ location.reload(); },350);
+    });
+  });
+}
+
 async function init(){
   setTheme(getTheme());
   window.setTheme=setTheme;
   window.toast=toast;
+
+  initDemoMode();
 
   // theme options (markup carries no inline handlers)
   document.querySelectorAll('.theme-option').forEach(function(opt){

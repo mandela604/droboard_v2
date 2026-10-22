@@ -94,6 +94,52 @@ function resource(Model, opts) {
   };
 }
 
+// categories-genres-service.js — one read for the whole catalog page.
+async function categoriesGenres(query) {
+  const [cats, genres] = await Promise.all([
+    Category.find({}).sort({ updatedAt: -1 }).lean(),
+    Genre.find({}).sort({ updatedAt: -1 }).lean(),
+  ]);
+  const catName = new Map(cats.map(c => [c.id, c.name]));
+  const genreCount = {};
+  for (const g of genres) genreCount[g.categoryId] = (genreCount[g.categoryId] || 0) + 1;
+  return {
+    categories: cats.map(c => ({
+      id: c.id, name: c.name, icon: c.icon || '', bg: c.bg || '', color: c.color || '',
+      desc: c.desc || '', genres: genreCount[c.id] || 0, books: c.booksCount || 0,
+      status: c.status,
+    })),
+    genres: genres.map(g => ({
+      id: g.id, name: g.name, cat: catName.get(g.categoryId) || '', icon: g.icon || '',
+      bg: g.bg || '', color: g.color || '', books: g.booksCount || 0, status: g.status,
+    })),
+  };
+}
+
+// contract-templates-service.js — same shape as senior /contract-templates.
+async function contractTemplates(query) {
+  const { items, total, page, limit } =
+    await paged(ContractTemplate, {}, { updatedAt: -1 }, query || {});
+  const { User: UserM } = require('../models/user.model');
+  const users = await UserM.find({ id: { $in: items.map(t => t.updatedBy).filter(Boolean) } })
+    .select('id fullName username avatar').lean();
+  const byId = new Map(users.map(u => [String(u.id), u.fullName || u.username || '']));
+  return {
+    items: items.map(t => ({
+      id: t.id,
+      name: t.name,
+      desc: t.desc || '',
+      type: t.type,
+      status: t.status,
+      clauses: t.clauses || 0,
+      preview: t.preview || { title: '', body: '' },
+      updated: t.updatedAt ? new Date(t.updatedAt).toISOString() : null,
+      by: byId.get(String(t.updatedBy)) || t.updatedBy || '',
+    })),
+    total, page, limit,
+  };
+}
+
 const R = {
   announcements: () => resource(Announcement, { searchFields: ['title', 'content'] }),
   messages: () => resource(Conversation, {}),
@@ -113,4 +159,5 @@ const R = {
   withdrawals: () => resource(Withdrawal, {}),
 };
 
-module.exports = { pg, paged, searchFilter, stats, activity, logs, resource, R };
+module.exports = { pg, paged, searchFilter, stats, activity, logs, resource, R,
+  categoriesGenres, contractTemplates };

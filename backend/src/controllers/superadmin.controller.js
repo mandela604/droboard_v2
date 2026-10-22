@@ -4,6 +4,7 @@ const base = require('./base.controller');
 const sa = require('../services/superadmin.service');
 const revenue = require('../services/revenue.service');
 const track = require('../services/tracking.service');
+const adRev = require('../services/ad-revenue.service');
 
 const wrap = (fn) => async (req, res) => base.wrap(res, () => fn(req));
 const created = (fn) => async (req, res) => {
@@ -72,6 +73,24 @@ module.exports = {
   pageCreate: created(async (req) => sa.createSystemPage(req.valid.body, req.user.id)),
   pageGet: wrap(async (req) => sa.getSystemPage(req.valid.params.id)),
   pagePreview: wrap(async (req) => sa.previewSystemPage(req.valid.params.id)),
+
+  // system-pages console alias (system-pages-service.js posts '{}' on create,
+  // so title/url default here instead of failing validation).
+  systemPagesCreate: created(async (req) => {
+    const b = req.valid.body || {};
+    const title = b.title || 'Untitled Page';
+    const slug = String(b.url || title).toLowerCase()
+      .replace(/^https?:\/\/[^/]+/, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
+    return sa.createSystemPage(Object.assign({}, b, {
+      title, url: b.url || ('/' + slug),
+    }), req.user.id);
+  }),
+
+  // ad earnings console (services/ad-revenue-service.js)
+  adRevenueLedger: wrap(async (req) => adRev.ledger(req.valid.query)),
+  adRevenueSummary: wrap(async (req) => adRev.summary(req.valid.query)),
+  adRevenuePay: wrap(async (req) => adRev.pay({ authorId: req.valid.body.authorId, by: req.user.id })),
 
   // revenue (legacy + flat console shapes; single home)
   revenueConfigGet: wrap(async (req) => {

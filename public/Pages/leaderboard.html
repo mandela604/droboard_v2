@@ -14,6 +14,8 @@ body{display:flex;justify-content:center}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);padding-bottom:110px}
 .top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 11px) 14px 11px;background:var(--l1);border-bottom:1px solid var(--bd)}
 .tb-back{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx-muted);cursor:pointer;flex-shrink:0}
+.tb-share{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx-muted);cursor:pointer;flex-shrink:0;transition:border-color .15s,color .15s}
+.tb-share:hover,.tb-share:active{border-color:var(--bd-acc);color:var(--acc)}
 .tb-title{flex:1;min-width:0}
 .tb-name{font-size:15px;font-weight:800;color:var(--tx-high)}
 .tb-sub{font-size:10px;color:var(--tx-muted);margin-top:1px}
@@ -78,6 +80,7 @@ body{display:flex;justify-content:center}
     <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
     <div class="tb-title"><div class="tb-name">🏆 Reader League</div><div class="tb-sub" id="seasonSub">Weekly season</div></div>
     <div class="season-pill" id="seasonPill">—</div>
+    <button type="button" class="tb-share" id="lbShareBtn" aria-label="Share leaderboard" title="Share"><i class="fas fa-share-nodes"></i></button>
   </div>
 
   <div class="hero">
@@ -122,6 +125,7 @@ body{display:flex;justify-content:center}
 <script src="../services/auth-session.js"></script>
 <script src="../services/store-service.js"></script>
 <script src="../services/league-service.js"></script>
+<script src="../component/share-modal.js"></script>
 <script>
 (function () {
   'use strict';
@@ -221,6 +225,16 @@ body{display:flex;justify-content:center}
     this.classList.add('on'); document.getElementById('tabWeekly').classList.remove('on');
     render();
   });
+  document.getElementById('lbShareBtn').addEventListener('click', function () {
+    if (typeof window.openShareModal !== 'function') { toast('Share unavailable'); return; }
+    var pill = document.getElementById('seasonPill');
+    openShareModal({
+      title: '🏆 Reader League — ' + (scope === 'weekly' ? 'This week' : 'All-time'),
+      sub: (scope === 'weekly' && pill ? 'Season ends in ' + pill.textContent + ' — beat your rank' : 'All-time legends on Droboard'),
+      url: location.origin + location.pathname,
+      img: '',
+    });
+  });
   renderStatic();
   render();
   try {
@@ -229,5 +243,6 @@ body{display:flex;justify-content:center}
   } catch (e) {}
 })();
 </script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

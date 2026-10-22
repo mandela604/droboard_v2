@@ -61,16 +61,27 @@
   if (window.__droboardBrowseOverlay) return;
   window.__droboardBrowseOverlay = true;
 
-  /* ═══════════════════════ STYLES (light theme only) ═══════════════════ */
+  /* ═══════════════════════ STYLES ═══════════════════════
+     All colours come from shared/theme.css tokens (--l2, --card, --text…)
+     with light literals as fallback only. No local palette, no [data-theme]
+     block — the settings theme switcher flips the tokens, overlay follows. */
   const CSS = `
     .bro-root{
-      --bro-bg:#f7f7f8; --bro-card:#fff; --bro-topbar:rgba(247,247,248,.97);
-      --bro-border:#ebebed; --bro-text:#1a1a1a; --bro-muted:#8e8e93;
-      --bro-faint:#c7c7cc; --bro-acc:#ff2d55; --bro-acc-soft:rgba(255,45,85,.08);
-      --bro-acc-border:rgba(255,45,85,.2); --bro-surface:#f0f0f2;
-      --bro-shadow:rgba(0,0,0,.08); --bro-gold:#c9a227; --bro-gold-soft:#fdf7e6;
+      --bro-bg:var(--l2,#f7f7f8); --bro-card:var(--card,#fff); --bro-topbar:var(--card,#fff);
+      --bro-border:var(--border,#ebebed); --bro-text:var(--text,#1a1a1a); --bro-muted:var(--muted,#8e8e93);
+      --bro-faint:var(--tx-faint,#c7c7cc); --bro-acc:var(--acc,#ff2d55); --bro-acc-soft:var(--acc-light,rgba(255,45,85,.08));
+      --bro-acc-border:var(--bd-acc,rgba(255,45,85,.2)); --bro-surface:var(--l4,#f0f0f2);
+      --bro-shadow:rgba(0,0,0,.08); --bro-gold:var(--gold,#c9a227); --bro-gold-soft:rgba(251,191,36,.10);
       position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;height:100dvh;z-index:4000;background:var(--bro-bg);color:var(--bro-text);
       font-family:'Inter','DM Sans',system-ui,sans-serif;display:none;flex-direction:column;overflow:hidden;box-shadow:0 0 50px rgba(0,0,0,.10);
+    }
+    /* Dark scheme: deeper bg, lifted cards (theme.css layers go UP: l1→l4).
+       Re-points only — every value is a shared/theme.css token, no literals. */
+    html[data-theme="dark"] .bro-root{
+      --bro-bg:var(--bg);
+      --bro-card:var(--card);
+      --bro-topbar:var(--l1);
+      --bro-surface:var(--l3);
     }
     .bro-root.open{display:flex}
     .bro-root *,.bro-root *::before,.bro-root *::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -88,6 +99,10 @@
     .bro-back:active{transform:scale(.9);background:var(--bro-acc-soft);color:var(--bro-acc)}
     .bro-title{flex:1;font-size:17px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;
       overflow:hidden;text-overflow:ellipsis}
+    .bro-tune{flex-shrink:0;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;
+      color:var(--bro-acc);background:var(--bro-acc-soft);border:1.5px solid var(--bro-acc-border);
+      border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+    .bro-tune:active{transform:scale(.95)}
 
     .bro-genre-bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:10px 16px 4px}
     .bro-genre-pill{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:700;
@@ -127,9 +142,11 @@
       -webkit-box-orient:vertical;overflow:hidden;margin-bottom:2px}
     .bro-card-author{font-size:10px;color:var(--bro-muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    /* ── list (always used) ── */
-    .bro-list{display:flex;flex-direction:column;padding:4px 16px}
-    .bro-list-item{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--bro-border);cursor:pointer}
+    /* ── list (always used): each row is a card so it separates from the page
+       in both themes (light: white on gray, dark: l3 layer on black) ── */
+    .bro-list{display:flex;flex-direction:column;gap:10px;padding:8px 12px}
+    .bro-list-item{display:flex;gap:12px;padding:12px;background:var(--bro-card);
+      border:1px solid var(--bro-border);border-radius:14px;cursor:pointer}
     .bro-list-item:active{opacity:.85}
     .bro-list-cover{width:76px;height:102px;border-radius:9px;overflow:hidden;flex-shrink:0;
       background:var(--bro-surface);box-shadow:0 2px 8px var(--bro-shadow)}
@@ -148,8 +165,6 @@
     .bro-list-author{color:var(--bro-acc);font-weight:800}
 
     /* ── platform ad — DroBoard house ad, neutral styling ── */
-    .bro-list-item.bro-ad{border:1px solid var(--bro-border);border-radius:12px;background:var(--bro-card);
-      padding:12px;margin:6px 0}
     .bro-ad-tag{position:absolute;top:6px;left:6px;z-index:2;font-size:7px;font-weight:800;letter-spacing:.3px;
       text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#999;color:#fff}
     .bro-ad .bro-list-cover{position:relative;border:1px solid var(--bro-border)}
@@ -157,14 +172,15 @@
       background:var(--bro-acc);padding:5px 12px;border-radius:14px}
 
     /* ── book ad — writer's promoted book, golden background ── */
-    .bro-list-item.bro-book-ad{border:1.5px solid var(--bro-gold);border-radius:12px;background:var(--bro-gold-soft);padding:10px;margin:4px 0;border-bottom:1.5px solid var(--bro-gold)}
+    .bro-list-item.bro-book-ad{border:1.5px solid var(--bro-gold);border-radius:14px;background:var(--bro-gold-soft);padding:12px;margin:0}
     .bro-list-item.bro-book-ad .bro-list-cover{position:relative}
     .bro-card.bro-gold-border{position:relative;background:var(--bro-gold-soft);border:1.5px solid var(--bro-gold);border-radius:12px;padding:10px}
     .bro-card.bro-gold-border .bro-card-cover{border:2px solid var(--bro-gold)}
     .bro-card-badge.bro-badge-gold{background:var(--bro-gold)}
 
-    /* ── top writers row (no card frame, just avatars) ── */
-    .bro-writers-row{padding:14px 0 8px;border-bottom:1px solid var(--bro-border);margin-bottom:4px}
+    /* ── top writers row (card like the list rows, avatars inside) ── */
+    .bro-writers-row{padding:14px 12px;border:1px solid var(--bro-border);background:var(--bro-card);
+      border-radius:14px;margin:0}
     .bro-writers-head{font-size:12.5px;font-weight:800;margin-bottom:10px}
     .bro-writers-scroll{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
     .bro-writers-scroll::-webkit-scrollbar{display:none}
@@ -272,13 +288,14 @@
 
   /* ═══════════════════════ STATE ═══════════════════════ */
   let _built = false, _isOpen = false;
-  let _root, _scrollEl, _listEl, _genreBarEl, _titleEl, _loaderEl, _sentinelEl, _emptyEl;
+  let _root, _scrollEl, _listEl, _genreBarEl, _titleEl, _tuneEl, _loaderEl, _sentinelEl, _emptyEl;
   let _observer = null;
   let _promoIndex = 0, _promoTimer = null;
 
   let _mode = 'section';   // 'genre' | 'section' | 'collections'
   let _title = 'Browse';
   let _filter = 'all';
+  let _tune = false;        // true only when opened from the Recommended "View All"
   let _pool = [];
   let _page = 1, _hasMore = true, _loading = false;
 
@@ -295,7 +312,7 @@
     if (typeof opts.onAdClick === 'function') _hooks.onAdClick = opts.onAdClick;
   }
 
-  function _esc(s) { return (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function _esc(s) { return (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); }
 
   function _injectStyles() {
     if (document.getElementById('bro-styles')) return;
@@ -346,7 +363,30 @@
       expanded.push(Object.assign({ type: 'story' }, base, { id: base.id + '-' + i, img: c(i) }));
     }
     if (_mode === 'genre' && _filter !== 'all') {
-      expanded = expanded.filter(s => s.genre === _filter);
+      if (_filter === 'completed') {
+        // "completed" is a status, not a genre. Prefer explicit status fields;
+        // demo pools carry none, so a finished run (20+ chapters) reads as done.
+        let done = expanded.filter(s => s.status === 'completed' || s.completed === true || s.complete === true);
+        if (!done.length) done = expanded.filter(s => (parseInt(s.chapters, 10) || 0) >= 20);
+        expanded = done;
+      } else {
+        expanded = expanded.filter(s => s.genre === _filter);
+      }
+    }
+    /* Taste-picker personalization (Recommended view only): stories matching
+       the reader's selected genres float to the top, original order kept
+       within each group. Same dro_tastes key the Discover page writes. */
+    if (_mode === 'section' && _tune) {
+      var tastes = null;
+      try { tastes = JSON.parse(localStorage.getItem('dro_tastes') || 'null'); } catch (e) {}
+      if (tastes && Array.isArray(tastes.genres) && tastes.genres.length) {
+        var want = tastes.genres.map(function (g) { return String(g).toLowerCase(); });
+        var scoreOf = function (it) { return want.indexOf(String(it.genre || '').toLowerCase()) !== -1 ? 1 : 0; };
+        expanded = expanded
+          .map(function (s, i) { return { s: s, i: i }; })
+          .sort(function (a, b) { return (scoreOf(b.s) - scoreOf(a.s)) || (a.i - b.i); })
+          .map(function (x) { return x.s; });
+      }
     }
 
     const withExtras = [];
@@ -544,6 +584,7 @@
         <div class="bro-toprow">
           <button class="bro-back" aria-label="Close"><i class="fas fa-arrow-left"></i></button>
           <div class="bro-title" id="broTitle">Browse</div>
+          <button class="bro-tune" id="broTune" style="display:none"><i class="fas fa-sliders" style="font-size:9px"></i> Tune</button>
         </div>
       </div>
       <div class="bro-scroll" id="broScroll">
@@ -572,6 +613,7 @@
     _listEl = _root.querySelector('#broContent');
     _genreBarEl = _root.querySelector('#broGenreBar');
     _titleEl = _root.querySelector('#broTitle');
+    _tuneEl = _root.querySelector('#broTune');
     _loaderEl = _root.querySelector('#broLoader');
     _sentinelEl = _root.querySelector('#broSentinel');
     _emptyEl = _root.querySelector('#broEmpty');
@@ -582,6 +624,16 @@
 
   function _bindEvents() {
     _root.querySelector('.bro-back').addEventListener('click', close);
+
+    _tuneEl.addEventListener('click', function () {
+      if (!window.DroboardTastePicker) return;
+      DroboardTastePicker.open({
+        onDone: function () {
+          // Rebuild the section list so taste-matched stories move to the top.
+          if (_mode === 'section') _reset();
+        },
+      });
+    });
 
     _genreBarEl.addEventListener('click', e => {
       const pill = e.target.closest('[data-bro-genre]');
@@ -631,13 +683,27 @@
   }
 
   /* ═══════════════════════ PAGINATION / INFINITE SCROLL ═══════════════════════ */
+  /* Pool empty → show the empty state directly. (_loadNext short-circuits
+     on _hasMore=false, so its own empty branch would never run — that was
+     the "blank overlay" bug on Complete Stories.) */
+  function _afterPool() {
+    _hasMore = _pool.length > 0;
+    if (!_hasMore) {
+      _emptyEl.classList.add('show');
+      _loaderEl.classList.add('hidden');
+      _loading = false;
+      return;
+    }
+    _loadNext();
+  }
+
   function _reset() {
     _page = 1; _loading = false;
     _listEl.className = _mode === 'collections' ? 'dcc-grid' : 'bro-list';
     // inject collection grid CSS once when needed
     if (_mode === 'collections' && !document.getElementById('dcc-style')) {
       var s = document.createElement('style'); s.id='dcc-style';
-      s.textContent='.dcc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}.dcc-card{background:#fff;border:1px solid #ebebed;border-radius:14px;overflow:hidden;cursor:pointer}.dcc-covers{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;height:110px;padding:8px 8px 0}.dcc-cov{border-radius:6px;overflow:hidden;background:#f3f1f5}.dcc-cov img{width:100%;height:100%;object-fit:cover}.dcc-cov.single{grid-column:1/-1;grid-row:1/-1}.dcc-cov.empty{background:#f3f1f5}.dcc-info{padding:10px 12px 12px}.dcc-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dcc-meta{font-size:10px;color:#8e8e93;display:flex;gap:6px}.dcc-priv{font-size:8px;font-weight:700;padding:2px 6px;border-radius:6px;text-transform:uppercase}.dcc-priv.public{background:rgba(52,211,153,.1);color:#0d9668}.dcc-priv.private{background:rgba(255,0,80,.08);color:#ff2d55}';
+      s.textContent='.dcc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}.dcc-card{background:var(--bro-card);border:1px solid var(--bro-border);border-radius:14px;overflow:hidden;cursor:pointer}.dcc-covers{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;height:110px;padding:8px 8px 0}.dcc-cov{border-radius:6px;overflow:hidden;background:var(--bro-surface)}.dcc-cov img{width:100%;height:100%;object-fit:cover}.dcc-cov.single{grid-column:1/-1;grid-row:1/-1}.dcc-cov.empty{background:var(--bro-surface)}.dcc-info{padding:10px 12px 12px}.dcc-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dcc-meta{font-size:10px;color:var(--bro-muted);display:flex;gap:6px}.dcc-priv{font-size:8px;font-weight:700;padding:2px 6px;border-radius:6px;text-transform:uppercase}.dcc-priv.public{background:rgba(52,211,153,.1);color:#0d9668}.dcc-priv.private{background:rgba(255,0,80,.08);color:#ff2d55}';
       document.head.appendChild(s);
     }
     _listEl.innerHTML = '';
@@ -656,14 +722,15 @@
         if(inFollowing) out.push({type:'sectionHeader', label:'Explore more collections'});
         if(!hasFollowing) out.splice(0,1);
         _pool=out;
-        _hasMore = _pool.length > 0;
-        _loadNext();
+        _afterPool();
       });
-      _pool = []; _hasMore = false; return;
+      _pool = []; _hasMore = false;
+      _loaderEl.classList.remove('hidden');
+      _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading more…';
+      return;
     }
     _pool = _buildPool();
-    _hasMore = _pool.length > 0;
-    _loadNext();
+    _afterPool();
   }
 
   async function _loadNext() {
@@ -708,8 +775,10 @@
     else _mode = opts.mode === 'genre' ? 'genre' : (opts.mode === 'section' ? 'section' : (opts.filter ? 'genre' : 'section'));
     _title = opts.title || (_mode === 'genre' ? 'Browse Stories' : 'Browse');
     _filter = _mode === 'genre' ? (opts.filter || 'all') : 'all';
+    _tune = opts.tune === true;
 
     _titleEl.textContent = _title;
+    _tuneEl.style.display = _tune ? '' : 'none';
     _genreBarEl.style.display = 'none';
     _genreBarEl.querySelectorAll('[data-bro-genre]').forEach(p => p.classList.toggle('on', p.dataset.broGenre === _filter));
 
@@ -744,6 +813,7 @@
       title: trigger.dataset.browseTitle || '',
       mode,
       filter: trigger.dataset.browseFilter || 'all',
+      tune: trigger.hasAttribute('data-browse-tune'),
     });
   });
 })();
@@ -756,6 +826,9 @@
   "View All ›" link on a feed section (Trending, Romance, Continue Reading…):
     data-browse-trigger data-browse-mode="section"
     data-browse-title="Trending Today"
+
+  Recommended For You "View All ›" (shows the Tune chip + taste ordering):
+    data-browse-trigger data-browse-title="Recommended For You" data-browse-tune
 
   NOTE: All views now render as a list (not grid) for consistent browsing.
 ─────────────────────────────────────────────────────────────────────────── */

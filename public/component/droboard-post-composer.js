@@ -331,7 +331,10 @@ async function doPost(){
       const motion=document.getElementById('drbExtra')?.value.trim();
       const text=document.getElementById('drbText')?.value.trim();
       base.type='debate'; base.title=title||undefined; base.text=text||undefined;
-      base.debateData={ motion: motion || '"This platform is better because of its readers."', forV:0, agV:0, userVote:null };
+      const _motion = motion || '"This platform is better because of its readers."';
+      // motion + question hold the same string (backend normaliser writes both)
+      // so every renderer — feed card, discussion, search — finds the headline.
+      base.debateData={ motion:_motion, question:_motion, prompt: text||'', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null };
     } else if(_cur==='shoutout'){
       if(!_pickedUser) throw new Error('Search and select a writer or reader');
       const text=document.getElementById('drbText')?.value.trim();

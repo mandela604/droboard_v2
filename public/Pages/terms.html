@@ -12,8 +12,7 @@ html,body{background:var(--bg);height:100%}
 body{font-family:var(--font-ui);color:var(--tx-body);display:flex;justify-content:center;min-height:100vh}
 button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
-.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
-[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--card);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
 .back-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-body);font-size:15px;flex-shrink:0;border:none}
 .top-title{flex:1;font-size:16px;font-weight:800;color:var(--tx-high)}
 .content{flex:1;overflow-y:auto;padding:18px 14px 30px}
@@ -69,5 +68,6 @@ li{font-size:12.5px;line-height:1.6;color:var(--tx-body);margin-bottom:4px}
 </div>
 <script src="../services/terms-service.js"></script>
 <script>TermsService.init();</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

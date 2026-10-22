@@ -79,6 +79,11 @@ const disputeSchema = new mongoose.Schema({
   category: { type: String, default: 'general', index: true },
   status: { type: String, enum: ['open', 'in_review', 'resolved', 'dismissed'], default: 'open', index: true },
   resolution: { type: String, default: '' },
+  // ADDITIVE (chief console): triage fields the Disputes & Appeals page reads.
+  // All optional with honest defaults — no migration, existing docs unaffected.
+  priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+  confidence: { type: Number, default: 0 }, // operator-assessed match confidence %; 0 = not yet assessed
+  resolvedBy: { type: String, ref: 'User', default: '' },
 }, { timestamps: true });
 
 const appealSchema = new mongoose.Schema({

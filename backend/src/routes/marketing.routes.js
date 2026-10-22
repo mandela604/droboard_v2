@@ -1,16 +1,24 @@
 'use strict';
 /* Marketing console: live audience catalog + estimates (any logged-in
-   marketer), ad placement kill-switches (admin only). */
+   marketer), ad placement kill-switches (admin only).
+
+   The `marketing` role is enumerated in user.model for exactly this console,
+   so console guards accept admin|marketing (audience reads stay open to any
+   logged-in user). */
 const { z } = require('zod');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/guards');
 const { validate, generalLimiter, writeLimiter, audit } = require('../middleware/http');
 const audience = require('../services/audience.service');
 const ads = require('../services/ads.service');
+const surfaces = require('../services/marketing-surfaces.service');
 const base = require('../controllers/base.controller');
 
 function Router() { return require('express').Router(); }
 const router = Router();
+
+// console guard: admin OR marketing
+const C = [requireRole('admin', 'marketing')];
 
 router.get('/audience-catalog', requireAuth, generalLimiter,
   async (req, res) => base.wrap(res, async () => audience.catalog()));
@@ -24,10 +32,77 @@ router.post('/audience-estimate', requireAuth, generalLimiter,
     }).strict(),
   })), async (req, res) => base.wrap(res, async () => audience.estimate(req.valid.body)));
 
+/* ── Dashboard + campaigns (marketing-data.js:240-304) ── */
+router.get('/dashboard', requireAuth, ...C, generalLimiter,
+  async (req, res) => base.wrap(res, async () => surfaces.dashboard()));
+
+const campaignBody = z.object({
+  name: z.string().min(1).max(200),
+  status: z.enum(['live', 'scheduled', 'draft', 'paused', 'ended']).optional(),
+  type: z.string().max(40).optional(),
+  objective: z.string().max(60).optional(),
+  storyId: z.string().max(60).optional(),
+  storyTitle: z.string().max(300).optional(),
+  storyAuthor: z.string().max(200).optional(),
+  storyCover: z.string().max(2000).optional(),
+  storyGenre: z.string().max(80).optional(),
+  placements: z.array(z.string().max(40)).max(20).optional(),
+  startDate: z.string().max(30).optional(),
+  endDate: z.string().max(30).optional(),
+  hasBudget: z.boolean().optional(),
+  budget: z.number().min(0).max(1e9).optional(),
+  spent: z.number().min(0).max(1e9).optional(),
+  owner: z.string().max(120).optional(),
+  description: z.string().max(2000).optional(),
+  reach: z.number().min(0).max(1e12).optional(),
+  impressions: z.number().min(0).max(1e12).optional(),
+  clicks: z.number().min(0).max(1e12).optional(),
+  ctr: z.number().min(0).max(100).optional(),
+  conversions: z.number().min(0).max(1e12).optional(),
+}).strict();
+
+router.get('/campaigns', requireAuth, ...C, generalLimiter,
+  async (req, res) => base.wrap(res, async () => surfaces.campaigns()));
+router.post('/campaigns', requireAuth, ...C, writeLimiter, audit('marketing.campaigns.create'),
+  validate(z.object({ body: campaignBody })), async (req, res) => base.wrap(res, async () => {
+    const out = await surfaces.createCampaign(req.valid.body);
+    res.status(201);
+    return out;
+  }));
+router.put('/campaigns/:id', requireAuth, ...C, writeLimiter, audit('marketing.campaigns.update'),
+  validate(z.object({ params: z.object({ id: z.string().min(1).max(120) }), body: campaignBody.partial() })),
+  async (req, res) => base.wrap(res, async () => surfaces.updateCampaign(req.valid.params.id, req.valid.body)));
+router.delete('/campaigns/:id', requireAuth, ...C, writeLimiter, audit('marketing.campaigns.delete'),
+  validate(z.object({ params: z.object({ id: z.string().min(1).max(120) }) })),
+  async (req, res) => base.wrap(res, async () => surfaces.deleteCampaign(req.valid.params.id)));
+
+/* ── Creatives by campaign + stats + reset (marketing-data.js:309,404,455) ── */
+router.get('/ads/campaign', requireAuth, ...C, generalLimiter,
+  validate(z.object({ query: z.object({ campaign: z.string().min(1).max(120) }).strict() })),
+  async (req, res) => base.wrap(res, async () => surfaces.adsByCampaign(req.valid.query.campaign)));
+// legacy alias: marketing-data.js calls GET /ads?campaign=…
+router.get('/ads/', requireAuth, ...C, generalLimiter,
+  validate(z.object({ query: z.object({ campaign: z.string().max(120).optional() }).strict() })),
+  async (req, res) => base.wrap(res, async () => (
+    req.valid.query.campaign ? surfaces.adsByCampaign(req.valid.query.campaign) : ads.inventoryAll())));
+router.get('/ads/stats', requireAuth, ...C, generalLimiter,
+  async (req, res) => base.wrap(res, async () => surfaces.adStats()));
+router.post('/ads/reset', requireAuth, ...C, writeLimiter, audit('marketing.ads.reset'),
+  async (req, res) => base.wrap(res, async () => surfaces.resetAds()));
+
+/* ── Reader league (marketing-data.js:415,424,443) ── */
+router.get('/league/config', requireAuth, ...C, generalLimiter,
+  async (req, res) => base.wrap(res, async () => surfaces.leagueConfig()));
+router.put('/league/config', requireAuth, ...C, writeLimiter, audit('marketing.league.config'),
+  validate(z.object({ body: z.record(z.any()).optional() })),
+  async (req, res) => base.wrap(res, async () => surfaces.saveLeagueConfig(req.valid.body || {})));
+router.post('/league/reset', requireAuth, ...C, writeLimiter, audit('marketing.league.reset'),
+  async (req, res) => base.wrap(res, async () => surfaces.resetLeague()));
+
 // page/slot programming: {page, enabled?, slots?, interval?, ...}
 // slots: { slotId: false } to kill one slot, or
 // { slotId: {enabled, formats[], adIds[]} } to program it (pinned ids first).
-router.patch('/ads/placement', requireAuth, requireRole('admin'), writeLimiter, audit('marketing.ads.placement'),
+router.patch('/ads/placement', requireAuth, ...C, writeLimiter, audit('marketing.ads.placement'),
   validate(z.object({
     body: z.object({
       page: z.string().min(1).max(40),
@@ -55,7 +130,7 @@ router.patch('/ads/placement', requireAuth, requireRole('admin'), writeLimiter, 
 
 // bulk placements save — matches the ad-manager console call
 // (PUT /api/marketing/ads/placements with the full placements map).
-router.put('/ads/placements', requireAuth, requireRole('admin'), writeLimiter, audit('marketing.ads.placements'),  validate(z.object({
+router.put('/ads/placements', requireAuth, ...C, writeLimiter, audit('marketing.ads.placements'),  validate(z.object({
       body: z.record(z.string().max(40), z.object({
         enabled: z.boolean().optional(),
         repeat: z.boolean().optional(),
@@ -82,9 +157,14 @@ router.put('/ads/placements', requireAuth, requireRole('admin'), writeLimiter, a
     return ads.placements();
   }));
 
-// ad inventory CRUD (ad-manager console; MarketingData shape in/out)
+// ad inventory CRUD (ad-manager console; MarketingData shape in/out).
+// `passthrough()`: the wizard sends per-format creative fields (sponsor,
+// author, rating, chapters, preview, name, handle, tagline, headline, sub,
+// img, avatar, cover, reads, isBook, …) plus audience/offerRef — a strict
+// object would reject every save (marketing-data.js:345-348).
 const adBody = z.object({
-  format: z.enum(['platform', 'book', 'native', 'follow', 'banner', 'embed', 'promo']).optional(),
+  id: z.string().max(120).optional(),
+  format: z.enum(['platform', 'book', 'native', 'follow', 'banner', 'embed', 'promo', 'minibanner', 'spotlight']).optional(),
   brand: z.string().max(500).optional(), title: z.string().max(500).optional(),
   heading: z.string().max(500).optional(), body: z.string().max(5000).optional(),
   text: z.string().max(5000).optional(), image: z.string().max(2000).optional(),
@@ -95,23 +175,34 @@ const adBody = z.object({
   genre: z.string().max(40).optional(),
   active: z.boolean().optional(),
   startDate: z.string().max(30).optional(), endDate: z.string().max(30).optional(),
-}).strict();
+  campaign: z.string().max(120).optional(),
+  audience: z.object({
+    segments: z.array(z.string().max(40)).max(30).optional(),
+    genres: z.array(z.string().max(40)).max(30).optional(),
+    countries: z.array(z.string().max(8)).max(30).optional(),
+  }).strict().optional(),
+  offerRef: z.object({
+    kind: z.string().max(40).optional(),
+    id: z.string().max(120).optional(),
+    name: z.string().max(200).optional(),
+  }).strict().optional(),
+}).passthrough();
 
-router.get('/ads/inventory', requireAuth, requireRole('admin'), generalLimiter,
+router.get('/ads/inventory', requireAuth, ...C, generalLimiter,
   async (req, res) => base.wrap(res, async () => ads.inventoryAll()));
 
-router.post('/ads', requireAuth, requireRole('admin'), writeLimiter, audit('marketing.ads.create'),
+router.post('/ads', requireAuth, ...C, writeLimiter, audit('marketing.ads.create'),
   validate(z.object({ body: adBody })), async (req, res) => base.wrap(res, async () => {
     const out = await ads.createAd(req.valid.body);
     res.status(201);
     return out;
   }));
 
-router.put('/ads/:id', requireAuth, requireRole('admin'), writeLimiter, audit('marketing.ads.update'),
+router.put('/ads/:id', requireAuth, ...C, writeLimiter, audit('marketing.ads.update'),
   validate(z.object({ params: z.object({ id: z.string().min(1).max(120) }), body: adBody })),
   async (req, res) => base.wrap(res, async () => ads.updateAd({ id: req.valid.params.id, data: req.valid.body })));
 
-router.delete('/ads/:id', requireAuth, requireRole('admin'), writeLimiter, audit('marketing.ads.delete'),
+router.delete('/ads/:id', requireAuth, ...C, writeLimiter, audit('marketing.ads.delete'),
   validate(z.object({ params: z.object({ id: z.string().min(1).max(120) }) })),
   async (req, res) => base.wrap(res, async () => ads.deleteAd(req.valid.params.id)));
 

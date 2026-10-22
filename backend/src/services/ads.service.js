@@ -9,12 +9,21 @@ async function placement(page) {
 }
 
 /* console inventory: all creatives grouped by format + placement map */
+// Every format the ad-setup wizard can create must have a pool key here or
+// the creative silently disappears from the console after save.
+const AD_FORMATS = ['platform', 'book', 'native', 'follow', 'banner', 'embed', 'promo', 'minibanner', 'spotlight'];
+function blankPools() {
+  const o = {};
+  AD_FORMATS.forEach(f => { o[f] = []; });
+  return o;
+}
+
 async function inventoryAll() {
   const [ads, map] = await Promise.all([
     AdInventory.find({}).sort({ updatedAt: -1 }).limit(500).lean(),
     placements(),
   ]);
-  const pools = { platform: [], book: [], native: [], follow: [], banner: [], embed: [], promo: [] };
+  const pools = blankPools();
   ads.forEach(a => {
     const row = a.toJSON ? a.toJSON() : a;
     if (pools[row.format]) pools[row.format].push(row);
@@ -23,7 +32,6 @@ async function inventoryAll() {
   return { pools, placements: map };
 }
 
-const AD_FORMATS = ['platform', 'book', 'native', 'follow', 'banner', 'embed', 'promo'];
 function cleanAd(data) {
   const out = {};
   ['format', 'brand', 'title', 'heading', 'text', 'body', 'image', 'code', 'cta', 'url', 'genre'].forEach(k => {
@@ -35,9 +43,32 @@ function cleanAd(data) {
   if (data.pages !== undefined) out.pages = Array.isArray(data.pages) ? data.pages.map(String).slice(0, 20) : [];
   if (data.slots !== undefined) out.slots = Array.isArray(data.slots) ? data.slots.map(String).slice(0, 40) : [];
   if (data.active !== undefined) out.active = !!data.active;
-  if (data.startDate !== undefined) out.startAt = data.startDate ? new Date(data.startDate) : null;
-  if (data.endDate !== undefined) out.endAt = data.endDate ? new Date(data.endDate) : null;
+  // The console round-trips 'YYYY-MM-DD' strings (it reads startDate back when
+  // editing); serving filters on the parsed startAt/endAt — keep both in sync.
+  if (data.startDate !== undefined) { out.startDate = String(data.startDate).slice(0, 30); out.startAt = out.startDate ? new Date(out.startDate) : null; }
+  if (data.endDate !== undefined) { out.endDate = String(data.endDate).slice(0, 30); out.endAt = out.endDate ? new Date(out.endDate) : null; }
+  // campaign link + targeting (ad-setup-service.js:642-655 payload)
+  if (data.campaign !== undefined) out.campaign = String(data.campaign || '').slice(0, 120);
+  if (data.audience !== undefined) out.audience = cleanAudience(data.audience);
+  if (data.offerRef !== undefined && data.offerRef && data.offerRef.id) {
+    out.offerRef = {
+      kind: String(data.offerRef.kind || 'offer').slice(0, 40),
+      id: String(data.offerRef.id).slice(0, 120),
+      name: String(data.offerRef.name || data.offerRef.id).slice(0, 200),
+    };
+  } else if (data.offerRef !== undefined) out.offerRef = null;
+  // never let a body overwrite the generated public id / internals
+  if (data.id !== undefined) delete out.id;
+  delete out._id; delete out.__v;
   return out;
+}
+function cleanAudience(a) {
+  if (!a || typeof a !== 'object') return null;
+  return {
+    segments: Array.isArray(a.segments) ? a.segments.map(String).slice(0, 30) : [],
+    genres: Array.isArray(a.genres) ? a.genres.map(String).slice(0, 30) : [],
+    countries: Array.isArray(a.countries) ? a.countries.map(String).slice(0, 30) : [],
+  };
 }
 
 async function createAd(data) {
@@ -49,7 +80,9 @@ async function createAd(data) {
 async function updateAd({ id, data }) {
   const doc = await AdInventory.findOne({ id: String(id) });
   if (!doc) { const e = new Error('not_found'); e.status = 404; throw e; }
-  Object.assign(doc, cleanAd(data));
+  const patch = cleanAd(data);
+  delete patch.id; delete patch._id; delete patch.__v;
+  Object.assign(doc, patch);
   if (data.format !== undefined) doc.format = data.format;
   await doc.save();
   return doc.toJSON();
@@ -117,7 +150,7 @@ function slotCfg(placement, slot) {
 
 async function pools(page, slot) {
   const place = page ? await AdPlacement.findOne({ page }).lean().catch(() => null) : null;
-  const empty = { platform: [], book: [], native: [], follow: [], banner: [], embed: [], promo: [] };
+  const empty = blankPools();
   if (place && place.enabled === false) return empty; // page kill switch
   const cfg = slotCfg(place, slot);
   if (cfg && cfg.enabled === false) return empty; // slot kill switch
@@ -133,7 +166,7 @@ async function pools(page, slot) {
     if (formats && !formats.includes(a.format)) return false;
     return true;
   });
-  const out = { platform: [], book: [], native: [], follow: [], banner: [], embed: [], promo: [] };
+  const out = blankPools();
   live.forEach(a => { if (out[a.format]) out[a.format].push(a); });
   if (pinned.length) {
     const rank = {};
@@ -161,14 +194,18 @@ async function promos(page, genre) {
   return slides.map(s => ({ title: s.title, author: '', cta: s.cta, img: s.image }));
 }
 
-// POST /api/ads/track {id, event} — daily counters for earnings + CTR.
-async function track({ id, event, userId }) {
+// POST /api/ads/track {id, event, page?, slot?, storyId?} — daily counters for
+// earnings + CTR, plus the ad-revenue ledger split (platform/author 70/30).
+async function track({ id, event, userId, page, slot, storyId }) {
   if (!id) { const e = new Error('no_id'); e.status = 400; throw e; }
   if (!['impression', 'click'].includes(event)) { const e = new Error('bad_event'); e.status = 400; throw e; }
   const day = new Date();
   day.setHours(0, 0, 0, 0);
   const inc = event === 'impression' ? { impressions: 1 } : { clicks: 1 };
   await AdStat.updateOne({ adId: id, day }, { $inc: inc }, { upsert: true });
+  try {
+    await require('./ad-revenue.service').record({ id, event, page, slot, storyId, ts: Date.now() });
+  } catch (e) { /* revenue ledger never breaks tracking */ }
   if (userId) {
     try {
       const { AdClick, AdView } = require('../models/platform.model');

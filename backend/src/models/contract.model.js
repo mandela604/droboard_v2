@@ -29,11 +29,30 @@ contractSchema.index({ authorId: 1, status: 1 });
 const contractTemplateSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   desc: { type: String, default: '' },
-  type: { type: String, enum: ['Publishing', 'Financial', 'Legal', 'Rights'], default: 'Publishing' },
-  status: { type: String, enum: ['active', 'draft', 'archived'], default: 'draft', index: true },
-  clauses: { type: Number, default: 0 },
+  // `type` widened additively: original four platform kinds plus the
+  // label set the Contracts & Payments console filters on. Old values valid.
+  type: { type: String, enum: ['Publishing', 'Financial', 'Legal', 'Rights', 'Non-Exclusive', 'Exclusive', 'Renewal', 'Amendment', 'Work-for-Hire'], default: 'Publishing' },
+  // `paused` is a console workflow state (distinct from `draft`): the console
+  // shows paused vs draft separately and re-activates from either.
+  status: { type: String, enum: ['active', 'draft', 'paused', 'archived'], default: 'draft', index: true },
+  clauses: { type: Number, default: 0 },        // clause count (existing)
+  clauseText: { type: String, default: '' },     // additive: prose the console renders/searches
   body: { type: String, default: '' },
   preview: { title: String, body: String },
+  // Additive console economics (all optional; no migration).
+  royaltyRate: { type: Number, default: null },
+  termLength: { type: String, default: '' },
+  signupBonusMin: { type: Number, default: 0 },
+  signupBonusMax: { type: Number, default: 0 },
+  completionTarget: { type: Number, default: 0 },
+  completionWindowMonths: { type: Number, default: 0 },
+  profitShareThreshold: { type: Number, default: 0 },
+  profitShareBonus: { type: Number, default: 0 },
+  autoRenew: { type: Boolean, default: false },
+  usageCount: { type: Number, default: 0 },
+  defaultChapterPrice: { type: Number, default: 0 },
+  cfHidden: { type: [String], default: [] },
+  cfLabels: { type: mongoose.Schema.Types.Mixed, default: {} },
   updatedBy: { type: String, ref: 'User' },
 }, { timestamps: true });
 

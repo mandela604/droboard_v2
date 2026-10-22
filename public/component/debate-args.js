@@ -51,6 +51,16 @@
     .da-side-chip.on.against{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.08);color:#dc2626}
     .da-side-hint{font-size:10px;color:var(--tx-muted,#888);margin-bottom:8px;text-align:center}
 
+    /* Edit form (own argument: text + side) */
+    .da-edit{margin-top:2px}
+    .da-edit-ta{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;padding:8px 10px;border-radius:10px;border:1.5px solid var(--bd,rgba(0,0,0,.1));background:#fff;color:inherit;font:inherit;font-size:13px;line-height:1.5;outline:none}
+    .da-edit-ta:focus{border-color:rgba(255,0,80,.5)}
+    .da-edit-sides{display:flex;gap:6px;margin-top:8px}
+    .da-edit-acts{display:flex;gap:8px;margin-top:10px;justify-content:flex-end;align-items:center}
+    .da-edit-cancel{padding:6px 14px;border-radius:8px;border:1.5px solid var(--bd,rgba(0,0,0,.1));background:transparent;color:var(--tx-muted,#666);font-weight:700;font-size:12px;cursor:pointer;font-family:inherit}
+    .da-edit-save{padding:6px 14px;border-radius:8px;border:none;background:#ff0050;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit}
+    .da-edit-save:active{transform:scale(.97)}
+
     /* Argument card */
     .da-list{display:flex;flex-direction:column;gap:8px;padding-bottom:8px}
     .da-item{background:#f7f7f8;border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:10px;overflow:visible}
@@ -161,6 +171,8 @@
     [data-theme="dark"] .da-composer-input,[data-theme="dark"] .da-reply-inp,[data-theme="dark"] .da-thread-input{background:#0e0f13;border-color:rgba(255,255,255,.08);color:#e0e0e0}
     [data-theme="dark"] .da-gate{background:#0e0f13;border-color:rgba(255,255,255,.1)}
     [data-theme="dark"] .da-ad-slot{background:#0e0f13;border-color:rgba(255,255,255,.06)}
+    [data-theme="dark"] .da-edit-ta{background:#0e0f13;border-color:rgba(255,255,255,.08);color:#e0e0e0}
+    [data-theme="dark"] .da-edit-cancel{border-color:rgba(255,255,255,.12);color:#999}
     [data-theme="dark"] .da-composer{background:#08090c;border-color:rgba(255,255,255,.08)}
   `;
 
@@ -200,6 +212,7 @@
     let _filter = 'all';
     let _replyTo = null;
     let _threadId = null;
+    let _editingId = null;
 
     /* ── helpers ── */
     function countReplies(a) {
@@ -289,6 +302,21 @@
         : esc((u.name || 'Y').charAt(0).toUpperCase())) + '</div>';
     }
 
+    /* ── edit form (own arg: rewrite text + move side) ── */
+    function editFormHTML(a) {
+      return '<div class="da-edit" data-edit-form="' + esc(a.id) + '">' +
+        '<textarea class="da-edit-ta" data-edit-text="' + esc(a.id) + '" rows="3" placeholder="Edit your argument\u2026">' + esc(a.text) + '</textarea>' +
+        '<div class="da-edit-sides">' +
+          '<button type="button" class="da-side-chip for' + (a.side === 'for' ? ' on' : '') + '" data-edit-side="for">\u2705 ' + esc(O.sides.for) + '</button>' +
+          '<button type="button" class="da-side-chip against' + (a.side === 'against' ? ' on' : '') + '" data-edit-side="against">\u274C ' + esc(O.sides.against) + '</button>' +
+        '</div>' +
+        '<div class="da-edit-acts">' +
+          '<button type="button" class="da-edit-cancel" data-edit-cancel="' + esc(a.id) + '">Cancel</button>' +
+          '<button type="button" class="da-edit-save" data-edit-save="' + esc(a.id) + '"><i class="fas fa-check"></i> Save</button>' +
+        '</div>' +
+      '</div>';
+    }
+
     /* ── arg card HTML ── */
     function argHTML(a, isReply, skipInline) {
       var sideCls = a.side === 'for' ? 'for' : 'against';
@@ -301,10 +329,12 @@
             '<div class="da-chead">' +
               '<a class="da-name" data-profile="' + esc(a.name) + '" href="profile.html?u=' + encodeURIComponent(a.name || '') + '">' + esc(a.name) + '</a>' +
               '<span class="da-side-tag ' + sideCls + '">' + sideLabel + '</span>' +
-              '<span class="da-time">' + esc(a.time) + '</span>' +
+              '<span class="da-time">' + esc(a.time) + (a.edited ? ' \u00B7 edited' : '') + '</span>' +
               '<button class="da-dots" data-dots="' + esc(a.id) + '" aria-label="More options"><i class="fas fa-ellipsis-vertical"></i></button>' +
             '</div>' +
-            '<div class="da-text">' + mentions(a.text) + '</div>' +
+            (a.id === _editingId
+              ? editFormHTML(a)
+              : '<div class="da-text">' + mentions(a.text) + '</div>') +
             '<div class="da-actions">' +
               '<button class="da-vote-btn up' + (a.myVote === 1 ? ' on' : '') + '" data-vote-up="' + esc(a.id) + '"><i class="' + (a.myVote === 1 ? 'fas' : 'far') + ' fa-thumbs-up"></i> <span>' + fmtN(a.up) + '</span></button>' +
               '<button class="da-vote-btn down' + (a.myVote === -1 ? ' on' : '') + '" data-vote-down="' + esc(a.id) + '"><i class="' + (a.myVote === -1 ? 'fas' : 'far') + ' fa-thumbs-down"></i> <span>' + fmtN(a.down) + '</span></button>' +
@@ -422,10 +452,12 @@
               '<div class="da-chead">' +
                 '<a class="da-name" data-profile="' + esc(f.arg.name) + '" href="profile.html?u=' + encodeURIComponent(f.arg.name || '') + '">' + esc(f.arg.name) + '</a>' +
                 '<span class="da-side-tag ' + (f.arg.side === 'for' ? 'for' : 'against') + '">' + (f.arg.side === 'for' ? '\u2705 ' + esc(O.sides.for) : '\u274C ' + esc(O.sides.against)) + '</span>' +
-                '<span class="da-time">' + esc(f.arg.time) + '</span>' +
+                '<span class="da-time">' + esc(f.arg.time) + (f.arg.edited ? ' \u00B7 edited' : '') + '</span>' +
                 '<button class="da-dots" data-dots="' + esc(f.arg.id) + '" aria-label="More options"><i class="fas fa-ellipsis-vertical"></i></button>' +
               '</div>' +
-              '<div class="da-text">' + mentions(f.arg.text) + '</div>' +
+              (f.arg.id === _editingId
+                ? editFormHTML(f.arg)
+                : '<div class="da-text">' + mentions(f.arg.text) + '</div>') +
               '<div class="da-actions">' +
                 '<button class="da-vote-btn up' + (f.arg.myVote === 1 ? ' on' : '') + '" data-vote-up="' + esc(f.arg.id) + '"><i class="' + (f.arg.myVote === 1 ? 'fas' : 'far') + ' fa-thumbs-up"></i> <span>' + fmtN(f.arg.up) + '</span></button>' +
                 '<button class="da-vote-btn down' + (f.arg.myVote === -1 ? ' on' : '') + '" data-vote-down="' + esc(f.arg.id) + '"><i class="' + (f.arg.myVote === -1 ? 'fas' : 'far') + ' fa-thumbs-down"></i> <span>' + fmtN(f.arg.down) + '</span></button>' +
@@ -571,6 +603,7 @@
       });
 
       ov.querySelector('#daThreadBack').addEventListener('click', closeThread);
+      wireEditEvents(ov);
       // dots menu (same wiring as the main list)
       ov.querySelectorAll('[data-dots]').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
@@ -578,7 +611,7 @@
           var a = findArg(btn.getAttribute('data-dots'));
           if (!a) return;
           if (window.DroboardDotsMenu) {
-            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true }, btn);
+            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true, mine: !!(a.name && O.currentUser && a.name === O.currentUser.name), inThread: true }, btn);
           }
         });
       });
@@ -625,8 +658,102 @@
       };
     }
 
+    /* ── edit (own arg: text + side) ── */
+    function editScopes() {
+      return [rootEl, document.getElementById('daThreadOv')];
+    }
+    function rerender() {
+      var tid = _threadId;
+      render();
+      if (tid && document.getElementById('daThreadOv')) { closeThread(); openThread(tid); }
+    }
+    function startEdit(id, inThread) {
+      var a = findArg(id);
+      if (!a) { toast('Argument not found'); return; }
+      _editingId = id;
+      rerender();
+      var ta = null;
+      editScopes().forEach(function (s) {
+        if (!s) return;
+        var el = s.querySelector('[data-edit-text="' + id + '"]');
+        if (el) ta = el;
+      });
+      if (ta) {
+        ta.focus();
+        try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) {}
+      } else {
+        var card = rootEl.querySelector('[data-arg-id="' + id + '"]');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (!inThread && !ta) toast('Argument not found');
+    }
+    function editFormVals(id) {
+      var text = null, side = null;
+      editScopes().forEach(function (s) {
+        if (!s) return;
+        var ta = s.querySelector('[data-edit-text="' + id + '"]');
+        if (ta) text = ta.value;
+        var form = s.querySelector('[data-edit-form="' + id + '"]');
+        if (form) {
+          var on = form.querySelector('[data-edit-side].on');
+          if (on) side = on.getAttribute('data-edit-side');
+        }
+      });
+      return { text: text, side: side };
+    }
+    function saveEdit(id) {
+      var a = findArg(id);
+      if (!a) return;
+      var v = editFormVals(id);
+      var text = (v.text || '').trim();
+      if (!text) { toast('Argument can\u2019t be empty'); return; }
+      var sideChanged = v.side && v.side !== a.side;
+      a.text = text;
+      if (v.side) a.side = v.side;
+      a.edited = true;
+      _editingId = null;
+      rerender();
+      toast('Argument updated!' + (sideChanged ? ' Moved to ' + (a.side === 'for' ? O.sides.for : O.sides.against) : ''));
+    }
+    function cancelEdit() {
+      _editingId = null;
+      rerender();
+    }
+    function removeArg(id) {
+      function rm(list) {
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].id === id) { list.splice(i, 1); return true; }
+          if (rm(list[i].replies || [])) return true;
+        }
+        return false;
+      }
+      if (!rm(_args)) return;
+      if (_editingId === id) _editingId = null;
+      render();
+      if (document.getElementById('daThreadOv')) closeThread();
+      toast('Deleted your argument');
+    }
+    function wireEditEvents(scope) {
+      if (!scope) return;
+      scope.querySelectorAll('[data-edit-side]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var form = btn.closest('[data-edit-form]');
+          if (!form) return;
+          form.querySelectorAll('[data-edit-side]').forEach(function (c) { c.classList.remove('on'); });
+          btn.classList.add('on');
+        });
+      });
+      scope.querySelectorAll('[data-edit-save]').forEach(function (btn) {
+        btn.addEventListener('click', function () { saveEdit(btn.getAttribute('data-edit-save')); });
+      });
+      scope.querySelectorAll('[data-edit-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', cancelEdit);
+      });
+    }
+
     /* ── events ── */
     function bindEvents() {
+      wireEditEvents(rootEl);
       // filter
       rootEl.querySelectorAll('[data-filter]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -746,7 +873,7 @@
           var a = findArg(btn.getAttribute('data-dots'));
           if (!a) return;
           if (window.DroboardDotsMenu) {
-            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true }, btn);
+            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true, mine: !!(a.name && O.currentUser && a.name === O.currentUser.name), inThread: false }, btn);
           }
         });
       });
@@ -776,6 +903,11 @@
       toast('Reply posted!');
     }
 
+    function scrollToArg(id) {
+      var card = rootEl.querySelector('[data-arg-id="' + id + '"]');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     function doPost() {
       var ci = rootEl.querySelector('#daComposerInput');
       var text = ci ? ci.value.trim() : '';
@@ -797,6 +929,7 @@
       if (O.onPost) O.onPost(arg);
       if (ci) ci.value = '';
       render();
+      scrollToArg(arg.id);
       toast('Argument posted!');
     }
 
@@ -818,11 +951,15 @@
       addArg: function (text) {
         if (!text) return;
         var arg = { id: 'a' + Date.now(), name: O.currentUser.name || 'You', avatar: O.currentUser.avatar, side: O.userSide || 'for', time: 'Just now', text: text, up: 0, down: 0, myVote: null, replies: [] };
-        _args.push(arg); render(); return arg;
+        _args.push(arg); render(); scrollToArg(arg.id); return arg;
       },
       getArgs: function () { return _args; },
       setUserSide: function (side) { O.userSide = side; render(); },
       getUserSide: function () { return O.userSide; },
+      startEdit: function (id, inThread) { startEdit(id, !!inThread); },
+      cancelEdit: function () { cancelEdit(); },
+      saveEdit: function (id) { saveEdit(id); },
+      removeArg: function (id) { removeArg(id); },
       destroy: function () { rootEl.innerHTML = ''; },
     };
 
@@ -854,6 +991,16 @@
         });
       })(_args);
     };
+
+    // dots menu Edit/Delete → this component's own handlers
+    // (configure merges, so page-level hooks like Follow/Report survive;
+    // feed.html only loads this script for countFor, never attaches)
+    if (window.DroboardDotsMenu) {
+      DroboardDotsMenu.configure({
+        onEdit: function (post) { startEdit(post.id, !!post.inThread); },
+        onDelete: function (post) { removeArg(post.id); },
+      });
+    }
 
     render();
     return api;

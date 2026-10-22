@@ -128,36 +128,13 @@
   }
 
   /* ── Stories ── */
-  function buildRingStyle(s){
-    const n = s.statuses ? s.statuses.length : 0;
-    if(s.you || n <= 1) return '';
-    const gap = 4; // degrees gap between segments
-    const segAngle = 360 / n;
-    const seg = segAngle - gap;
-    const isViewed = s.ring === 'ring-viewed';
-    const segColor = isViewed ? '#9ca3af' : '#ff0050';
-    const gapColor = 'var(--bg)';
-    let stops = [];
-    for(let i=0;i<n;i++){
-      const start = i * segAngle;
-      const segEnd = start + seg;
-      const gapEnd = start + segAngle;
-      const viewedSeg = s.statuses[i] && s.statuses[i].viewed;
-      const c = (viewedSeg || isViewed) ? '#9ca3af' : segColor;
-      stops.push(`${c} ${start}deg ${segEnd}deg`);
-      stops.push(`${gapColor} ${segEnd}deg ${gapEnd}deg`);
-    }
-    return `background: conic-gradient(from 0deg, ${stops.join(', ')});`;
-  }
   function renderStories(stories) {
     document.getElementById('storiesRow').innerHTML = stories.map(s => {
       const n = s.statuses ? s.statuses.length : 0;
-      const isMulti = !s.you && n > 1;
-      const ringClass = s.you ? (n ? 'ring-live' : 'own') : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
-      const style = isMulti ? ` style="${buildRingStyle(s)}"` : '';
+      const ringClass = s.you ? (n ? 'ring-live' : 'own') : (s.ring || (n ? 'ring-has' : 'ring-none'));
       return `
       <div class="story-item" data-story-id="${s.id}" data-you="${!!s.you}">
-        <div class="story-ring ${ringClass}"${style}><div class="inner">
+        <div class="story-ring ${ringClass}"><div class="inner">
           ${s.you ? (n ? `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">` : `<div class="story-add">+</div>`) : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`}
         </div></div>
         ${s.you ? `<div class="story-post-plus" data-act="post-status" title="Post a status">+</div>` : ``}
@@ -190,18 +167,15 @@
     if (item) {
       item.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
       if (ring) item.classList.add(ring);
-      if(s && s.statuses && s.statuses.length > 1){
-        item.setAttribute('style', buildRingStyle(s));
-      } else {
-        item.removeAttribute('style');
-      }
     }
   };
 
-  /* ── Promo (mirrors library slider: slide/CTA → bridge) ── */
+  /* ── Promo (ad-marketing module: AdService promo pool, page 'feed') ── */
   async function mountPromo() {
-    if (!window.DroboardPromoSlider || !window.FeedData || !FeedData.getPromoSlides) return;
-    const slides = await FeedData.getPromoSlides();
+    if (!window.DroboardPromoSlider || !window.AdService) return;
+    let slides = [];
+    try { slides = await AdService.getPromoSlides({ page: 'feed' }); }
+    catch (e) { slides = []; }
     if (!slides.length) return;
     DroboardPromoSlider.mount('#promoMount', {
       slides, interval: 3200,
@@ -649,7 +623,7 @@
     } else if(ct === 'poll'){
       newPost = { id: 'p_' + Date.now(), type: 'poll', name: 'You', avatar: av, time: 'Just now', poll: { question: text, opts: [{label:'Yes', v:0},{label:'No', v:0}], total:0, voted:-1 }, likes:0, liked:false, comments:0 };
     } else if(ct === 'debate'){
-      newPost = { id: 'p_' + Date.now(), type: 'debate', name: 'You', avatar: av, time: 'Just now', debateData: { question: text, prompt:'Share your thoughts', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null }, likes:0, liked:false, comments:0 };
+      newPost = { id: 'p_' + Date.now(), type: 'debate', name: 'You', avatar: av, time: 'Just now', debateData: { motion: text, question: text, prompt:'Share your thoughts', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null }, likes:0, liked:false, comments:0 };
     } else if(ct === 'image'){
       newPost = { id: 'p_' + Date.now(), type: 'post', name: 'You', avatar: av, time: 'Just now', text, image: 'https://picsum.photos/seed/'+Date.now()+'/900/500', likes: 0, liked: false, comments: 0 };
     } else {
@@ -955,7 +929,7 @@
           if(toDroboardPage(h)) location.href='droboard-page.html';
           else location.href='profile.html?u=' + encodeURIComponent(h.replace('@',''));
         },
-        onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },
+        onOpenDebate: (d) => { location.href = 'debate.html?id=' + encodeURIComponent((d && d.id) || ''); },
       });
     }
     if (window.ScrollKeep) ScrollKeep.restore();

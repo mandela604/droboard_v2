@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
@@ -10,14 +10,14 @@
 :root{
   --acc:#ff0050;--acc2:#ff4d7a;
   --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
-  --bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--l3:#ffffff;--l4:#e2e2e4;
+  --bg:#d8d8d8;--l1:#ffffff;--l2:#eeeeee;--l3:#ffffff;--l4:#e2e2e4;--card:#ffffff;
   --bd:rgba(0,0,0,.12);--bd2:rgba(0,0,0,.06);--bd-acc:rgba(255,0,80,.25);
   --tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
   --green:#16a34a;--green-bg:#e2f8ea;--gold:#d4a017;--gold-bg:rgba(212,160,23,.12);
   --red:#e0384d;--red-bg:#fde3e3;
 }
 [data-theme="dark"]{
-  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
+  --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;--card:#08090c;
   --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
   --tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
 }
@@ -39,10 +39,9 @@ button{font-family:inherit;cursor:pointer}
   position:sticky;top:0;z-index:200;
   display:flex;align-items:center;gap:12px;
   padding:11px 14px;
-  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);
+  background:var(--card);backdrop-filter:blur(20px);
   border-bottom:1px solid var(--bd);flex-shrink:0;
 }
-[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
 .back-btn{
   width:36px;height:36px;border-radius:50%;background:var(--l2);
   display:flex;align-items:center;justify-content:center;color:var(--tx-body);
@@ -379,5 +378,6 @@ button{font-family:inherit;cursor:pointer}
 <script src="services/drawer-service.js"></script>
 <script src="services/apply-contract-service.js?v=4"></script>
 <script>ApplyContractService.init();</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

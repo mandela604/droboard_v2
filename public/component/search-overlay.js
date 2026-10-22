@@ -11,15 +11,19 @@
  * one attribute:
  *
  *   <div class="icon-btn" data-search-trigger><i class="fas fa-search"></i></div>
- *   <a class="bn-item" href="search.html" data-search-trigger>...</a>
+ *   <button class="icon-btn" data-search-trigger><i class="fas fa-search"></i></button>
  *
  * A single page-wide delegated click listener (bound the moment this
  * script loads) watches for that attribute. If the element is a link
  * (has an href), the default navigation is prevented and the overlay
- * opens in-place instead — so you can leave existing
- * href="search.html" fallbacks on bottom-nav items exactly as they are
- * (they still work fine for no-JS contexts) and just add the attribute
- * to upgrade them.
+ * opens in-place instead.
+ *
+ * ── BOTTOM NAV ──────────────────────────────────────────────────────────
+ * Search is an overlay, not a destination: it is NOT a bottom-nav item.
+ * This component ships no nav of its own — the platform bottom nav
+ * (component/bottom-nav.js) stays on screen while the overlay is open
+ * (this component lifts it above the overlay layer on open and puts it
+ * back on close). Never add a "Search" tab to a bottom nav.
  *
  * ── PROGRAMMATIC API ──────────────────────────────────────────────────
  *   DroboardSearch.open()             // open, empty
@@ -118,6 +122,9 @@
       font-family:'DM Sans',system-ui,sans-serif;display:none;flex-direction:column;
       overflow:hidden;transition:background .2s ease,color .2s ease;
     }
+    /* The app is a phone column — the overlay lives in the same frame. */
+    .dso-phone{width:100%;max-width:420px;height:100%;min-height:0;margin:0 auto;
+      display:flex;flex-direction:column;overflow:hidden;background:var(--dso-bg)}
     .dso-root[data-dso-theme="dark"]{
       /* ---- Dark theme tokens (opt-in via toggle or configure) ---- */
       --dso-bg:#000000;
@@ -151,12 +158,12 @@
       --dso-toast-bg:#13141a;
       --dso-toast-text:#c0c0c0;
     }
-    .dso-root.open{display:flex}
+    .dso-root.open{display:flex;justify-content:center}
     .dso-root *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     .dso-root ::-webkit-scrollbar{width:2px}
     .dso-root ::-webkit-scrollbar-thumb{background:var(--dso-scrollbar);border-radius:2px}
     .dso-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
-      padding-bottom:24px;}
+      padding-bottom:96px;}
 
     .dso-topbar{position:sticky;top:0;z-index:20;background:var(--dso-bg-topbar);
       backdrop-filter:blur(20px);border-bottom:1px solid var(--dso-border);
@@ -268,10 +275,14 @@
     .dso-wc-av-wrap{position:relative;flex-shrink:0}
     .dso-wc-av-ring{width:44px;height:44px;border-radius:50%;padding:2.5px;
       background:linear-gradient(135deg,#ff0050,#ff4d7a)}
-    .dso-wc-av-ring.blue-ring{background:linear-gradient(135deg,#38bdf8,#0ea5e9)}
+    .dso-wc-av-ring.viewed{background:#9ca3af}
     .dso-wc-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;
       background:var(--dso-bg)}
     .dso-wc-av-inner img{width:100%;height:100%;object-fit:cover;display:block}
+    /* No status → no ring at all, just the round avatar. */
+    .dso-wc-av-plain{width:44px;height:44px;border-radius:50%;overflow:hidden;
+      background:var(--dso-bg)}
+    .dso-wc-av-plain img{width:100%;height:100%;object-fit:cover;display:block}
     .dso-wc-verified{position:absolute;bottom:-1px;right:-1px;width:16px;height:16px;
       border-radius:50%;background:var(--dso-blue-text);border:2px solid var(--dso-bg);display:flex;
       align-items:center;justify-content:center;font-size:6px;color:#fff}
@@ -346,6 +357,7 @@
     .dso-dc-header{display:flex;gap:9px;padding:11px 12px 9px}
     .dso-dc-thumb{width:44px;height:52px;border-radius:7px;background-size:cover;
       background-position:center;flex-shrink:0}
+    .dso-dc-av{width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:2px}
     .dso-dc-body{flex:1;min-width:0}
     .dso-dc-badge{font-size:7.5px;font-weight:800;padding:2px 7px;border-radius:6px;
       background:var(--dso-accent-soft);color:var(--dso-accent);border:1px solid var(--dso-accent-soft-border);
@@ -354,6 +366,8 @@
       animation:dsoLive 1.3s ease-in-out infinite}
     @keyframes dsoLive{0%,100%{opacity:1}50%{opacity:.3}}
     .dso-dc-motion{font-size:11px;font-weight:700;color:var(--dso-text);line-height:1.35;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .dso-dc-prompt{font-size:9.5px;color:var(--dso-text-dim);line-height:1.4;margin-top:4px;
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .dso-dc-bars{display:flex;gap:5px;padding:0 12px 10px}
     .dso-dc-side{flex:1;border-radius:8px;padding:6px 8px;position:relative;overflow:hidden}
@@ -384,18 +398,13 @@
     .dso-dc-bar{height:100%;border-radius:4px}
     .dso-dc-side2.for .dso-dc-bar{background:#0d9668}
     .dso-dc-side2.against .dso-dc-bar{background:#dc2626}
+    .dso-dc-side2.for.chosen{border-color:#0d9668;background:rgba(52,211,153,.06)}
+    .dso-dc-side2.against.chosen{border-color:var(--dso-accent);background:var(--dso-accent-soft)}
+    .dso-dc-check{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;
+      background:#0d9668;color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center}
+    .dso-dc-side2.against .dso-dc-check{background:var(--dso-accent)}
     .dso-dc-pct{font-size:14px;font-weight:900;color:var(--dso-text)}
     .dso-dc-cnt{font-size:10px;color:var(--dso-text-faint);margin-top:2px}
-
-    .dso-bottom-nav{position:sticky;bottom:0;z-index:20;background:var(--dso-bg-topbar);
-      backdrop-filter:blur(20px);border-top:1px solid var(--dso-border);
-      display:flex;justify-content:space-around;padding:8px 0 calc(env(safe-area-inset-bottom,0px) + 8px);
-      flex-shrink:0}
-    .dso-bn-item{text-align:center;font-size:9px;font-weight:600;color:var(--dso-text-faint);
-      cursor:pointer;transition:.2s;padding:2px 8px;text-decoration:none;
-      display:flex;flex-direction:column;align-items:center;gap:2px}
-    .dso-bn-item i{font-size:20px;display:block}
-    .dso-bn-item.active{color:var(--dso-accent)}
 
     .dso-sdiv{height:1px;background:var(--dso-border);margin:6px 0}
 
@@ -573,7 +582,7 @@
   let _hooks = {
     onOpenStory: () => { location.href = 'bridge.html'; },
     onOpenWriter: () => { location.href = 'profile.html'; },
-    onOpenDebate: () => { _toast('⚔️ Opening debate…'); },
+    onOpenDebate: (d) => { location.href = 'debate.html?id=' + encodeURIComponent((d && d.id) || ''); },
     onFollowToggle: null,
     onAdClick: (ad) => { _toast('Opening ' + (ad.brand || 'ad') + '…'); },
   };
@@ -609,6 +618,7 @@
     _root.className = 'dso-root';
     _root.setAttribute('data-dso-theme', _theme); // light unless already switched/remembered
     _root.innerHTML = `
+      <div class="dso-phone">
       <div class="dso-topbar">
         <div class="dso-toprow">
           <button class="dso-back" data-dso-close aria-label="Close search"><i class="fas fa-arrow-left"></i></button>
@@ -670,7 +680,7 @@
 
           <div class="dso-sdiv" style="margin:14px 0 0"></div>
 
-          <div class="dso-sh dso-fu dso-d6">
+          <div class="dso-sh dso-fu dso-d6" data-dso-debateshead>
             <div class="dso-sh-title"><i class="fas fa-gavel" style="font-size:10px;color:var(--dso-accent)"></i> Hot Debates</div>
             <a class="dso-sh-more" href="debate.html">All debates</a>
           </div>
@@ -692,13 +702,6 @@
           </div>
         </div>
       </div>
-
-      <div class="dso-bottom-nav">
-        <a class="dso-bn-item" href="index.html"><i class="fas fa-house"></i>Home</a>
-        <a class="dso-bn-item" href="discover.html"><i class="fas fa-compass"></i>Discover</a>
-        <a class="dso-bn-item active" href="search.html"><i class="fas fa-magnifying-glass"></i>Search</a>
-        <a class="dso-bn-item" href="feed.html"><i class="fas fa-rss"></i>Feed</a>
-        <a class="dso-bn-item" href="profile.html"><i class="fas fa-circle-user"></i>Profile</a>
       </div>
     `;
     document.body.appendChild(_root);
@@ -712,11 +715,12 @@
     _emptyView = _root.querySelector('[data-view="empty"]');
 
     bindStaticEvents();
-    // Debates come from the central demo store (same records the series
-    // reader uses) — not hardcoded here. Built lazily so this component
-    // can load before central-demo-data.js parses.
+    // Debates come from the shared demo store (central-demo-data.js →
+    // DemoData.DEBATE_POSTS) — the same composer-shaped posts the feed
+    // shows. Built lazily so this component can load before the demo
+    // store parses.
     try {
-      const deb = debatesFromCentral();
+      const deb = debatesFromShared();
       _data.debates = deb;
       _data.poolDebates = deb.map(d => Object.assign({ type: 'debate' }, d));
     } catch (e) {}
@@ -727,6 +731,30 @@
     renderWriters();
     renderDebates();
     renderAd();
+    // No shared store on this page → pull the feed's debates instead.
+    if (!_data.debates.length && window.FeedData && typeof FeedData.getFeedPosts === 'function') {
+      FeedData.getFeedPosts()
+        .then(posts => {
+          const list = (posts || []).filter(p => p && p.type === 'debate');
+          if (!list.length) return;
+          const mapped = list.map(p => {
+            const d = p.debateData || {};
+            const question = d.motion || d.question || '';
+            return {
+              id: p.id, type: 'debate', name: p.name || '', avatar: p.avatar || '', time: p.time || '',
+              question: question, motion: question, prompt: d.prompt || '',
+              forText: d.forText || 'For', againstText: d.againstText || 'Against',
+              forV: d.forV || 0, agV: d.agV || 0, userVote: d.userVote || null,
+              likes: p.likes || 0, comments: p.comments || 0,
+              keywords: ['debate', question.toLowerCase(), String(p.name || '').toLowerCase()].filter(Boolean),
+            };
+          });
+          _data.debates = mapped;
+          _data.poolDebates = mapped.map(d => Object.assign({ type: 'debate' }, d));
+          renderDebates();
+        })
+        .catch(() => {});
+    }
     // Opportunistic: swap demo trending for live 7d SearchLog terms when
     // the API is up; any failure keeps the demo list untouched.
     fetch('/api/search/trending?limit=8', { credentials: 'include' })
@@ -797,13 +825,40 @@
     }).join('');
   }
 
+  // ── Author avatar ────────────────────────────────────────────────────────
+  // An author only gets the gradient ring when they actually have a status.
+  // Same rule the feed / home status rows use. No status → plain round avatar.
+  function _statusEntry(w) {
+    if (!w) return null;
+    if (w.statuses && w.statuses.length) return w;
+    try {
+      const list = (window.DemoData && window.DemoData.STATUSES) || [];
+      const name = String(w.name || '').replace(/^@/, '').toLowerCase();
+      for (let i = 0; i < list.length; i++) {
+        const s = list[i];
+        if (!s || s.isYou) continue;
+        if (!s.statuses || !s.statuses.length) continue;
+        if (String(s.name || '').replace(/^@/, '').toLowerCase() === name) return s;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function _writerAvatar(w) {
+    const av = _esc(w.av || w.avatar || '');
+    const st = _statusEntry(w);
+    if (!st) {
+      return `<div class="dso-wc-av-plain"><img src="${av}" loading="lazy" alt=""/></div>`;
+    }
+    const viewed = st.ring === 'ring-viewed';
+    return `<div class="dso-wc-av-ring${viewed ? ' viewed' : ''}"><div class="dso-wc-av-inner"><img src="${av}" loading="lazy" alt=""/></div></div>`;
+  }
+
   function renderWriters() {
     _root.querySelector('[data-dso-writerslist]').innerHTML = (_data.writers || []).map((w, i) => `
       <div class="dso-writer-card" data-dso-openwriter='${_esc(JSON.stringify(w))}'>
         <div class="dso-wc-av-wrap">
-          <div class="dso-wc-av-ring${i % 2 === 0 ? '' : ' blue-ring'}">
-            <div class="dso-wc-av-inner"><img src="${w.av}" loading="lazy" alt=""/></div>
-          </div>
+          ${_writerAvatar(w)}
           ${w.verified ? `<div class="dso-wc-verified"><i class="fas fa-check" style="font-size:5px"></i></div>` : ''}
         </div>
         <div class="dso-wc-body">
@@ -815,33 +870,44 @@
       </div>`).join('');
   }
 
-  function renderDebates() {
+function renderDebates() {
     const list = (_data.debates || []).map(d => debateCardHtml(d));
-    _root.querySelector('[data-dso-debateslist]').innerHTML = list.join('');
+    const host = _root.querySelector('[data-dso-debateslist]');
+    if (host) host.innerHTML = list.join('');
+    // No debates on this page → don't leave an empty "Hot Debates" heading.
+    const head = _root.querySelector('[data-dso-debateshead]');
+    if (head) head.style.display = list.length ? '' : 'none';
   }
 
-  function debatesFromCentral() {
-    const out = [];
-    const cat = (window.DemoData && window.DemoData.SERIES_CATALOG) || {};
-    Object.keys(cat).forEach(k => {
-      const s = cat[k];
-      (s.debates || []).forEach(d => {
-        out.push({
-          id: d.id, seriesId: s.id, title: s.title, cover: s.cover,
-          motion: d.motion, forText: d.forText || 'For', againstText: d.againstText || 'Against',
-          forV: d.forV || 0, agV: d.agV || 0,
-          keywords: ['debate', String(d.motion || '').toLowerCase(), String(s.title || '').toLowerCase()],
-        });
-      });
+  // Debates are the same composer-shaped posts the feed shows — they live in
+  // the shared demo store (central-demo-data.js → DemoData.DEBATE_POSTS).
+  // The series reader debates (SERIES_CATALOG[*].debates) are NOT used here:
+  // nothing in the composer can produce them.
+  function debatesFromShared() {
+    const src = (window.DemoData && window.DemoData.DEBATE_POSTS) || [];
+    return src.map(p => {
+      const d = p.debateData || {};
+      const question = d.motion || d.question || '';
+      return {
+        id: p.id, type: 'debate',
+        name: p.name || '', avatar: p.avatar || '', time: p.time || '',
+        question: question, motion: question, prompt: d.prompt || '',
+        forText: d.forText || 'For', againstText: d.againstText || 'Against',
+        forV: d.forV || 0, agV: d.agV || 0, userVote: d.userVote || null,
+        likes: p.likes || 0, comments: p.comments || 0,
+        keywords: ['debate', question.toLowerCase(), String(p.name || '').toLowerCase()].filter(Boolean),
+      };
     });
-    return out;
   }
 
   function debateCardHtml(d) {
+    const q = d.motion || d.question || '';
     const tot = (d.forV + d.agV) || 1;
     const fp = Math.round(d.forV / tot * 100), ap = 100 - fp;
-    const side = (cls, emoji, label, votes, pct) => `
-      <div class="dso-dc-side2 ${cls}">
+    const voted = d.userVote || null;
+    const side = (cls, emoji, label, votes, pct, key) => `
+      <div class="dso-dc-side2 ${cls}${voted === key ? ' chosen' : ''}">
+        ${voted === key ? '<div class="dso-dc-check"><i class="fas fa-check"></i></div>' : ''}
         <div class="dso-dc-em">${emoji}</div>
         <div class="dso-dc-lbl">${_esc(label)}</div>
         <div class="dso-dc-barwrap"><div class="dso-dc-bar" style="width:${pct}%"></div></div>
@@ -850,14 +916,15 @@
       </div>`;
     return `<div class="dso-debate-card" data-dso-opendebate='${_esc(JSON.stringify(d))}'>
       <div class="dso-dc-header">
-        ${d.cover ? `<div class="dso-dc-thumb" style="background-image:url('${d.cover}')"></div>` : ''}
+        ${d.avatar ? `<img class="dso-dc-av" src="${_esc(d.avatar)}" loading="lazy" alt=""/>` : ''}
         <div class="dso-dc-body">
-          <div class="dso-dc-badge">Debate${d.title ? ' &middot; ' + _esc(d.title) : ''}</div>
-          <div class="dso-dc-motion">"${_esc(d.motion)}"</div>
+          <div class="dso-dc-badge">Debate${d.name ? ' &middot; ' + _esc(d.name) : ''}${d.time ? ' &middot; ' + _esc(d.time) : ''}</div>
+          <div class="dso-dc-motion">${_esc(q)}</div>
+          ${d.prompt ? `<div class="dso-dc-prompt">${_esc(d.prompt)}</div>` : ''}
         </div>
       </div>
-      <div class="dso-dc-sides">${side('for', '&#9989;', d.forText || 'For', d.forV, fp)}${side('against', '&#10060;', d.againstText || 'Against', d.agV, ap)}</div>
-      <div class="dso-dc-total">${_fmtN(d.forV + d.agV)} voices</div>
+      <div class="dso-dc-sides">${side('for', '&#9989;', d.forText || 'For', d.forV, fp, 'for')}${side('against', '&#10060;', d.againstText || 'Against', d.agV, ap, 'against')}</div>
+      <div class="dso-dc-total">${_fmtN(d.forV + d.agV)} joined the discussion</div>
     </div>`;
   }
 
@@ -946,7 +1013,7 @@
       html += writersHits.map(w => `
         <div class="dso-writer-card" style="margin-bottom:4px" data-dso-openwriter='${_esc(JSON.stringify(w))}'>
           <div class="dso-wc-av-wrap">
-            <div class="dso-wc-av-ring"><div class="dso-wc-av-inner"><img src="${w.av}" loading="lazy" alt=""/></div></div>
+            ${_writerAvatar(w)}
             ${w.verified ? `<div class="dso-wc-verified"><i class="fas fa-check" style="font-size:5px"></i></div>` : ''}
           </div>
           <div class="dso-wc-body">
@@ -1079,11 +1146,30 @@
   // ══════════════════════════════════════════════════════════════════
   // Public API
   // ══════════════════════════════════════════════════════════════════
+  // The platform bottom nav (component/bottom-nav.js) is THE app nav — the
+  // overlay must never ship its own. Search is not a nav item, so nothing
+  // gets highlighted as "Search". The nav is lifted above the overlay while
+  // it is open so it stays visible (and tappable) underneath.
+  function _syncPlatformNav(raise) {
+    try {
+      document.querySelectorAll('.bn-root, .bottom-nav').forEach(function (n) {
+        if (raise) {
+          if (n.dataset.dsoPrevZ === undefined) n.dataset.dsoPrevZ = n.style.zIndex || '';
+          n.style.zIndex = '5200';
+        } else {
+          n.style.zIndex = n.dataset.dsoPrevZ || '';
+          delete n.dataset.dsoPrevZ;
+        }
+      });
+    } catch (e) {}
+  }
+
   function open(prefillQuery) {
     build();
     _root.classList.add('open');
     document.body.style.overflow = 'hidden';
     _isOpen = true;
+    _syncPlatformNav(true);
     if (prefillQuery) {
       runSearch(prefillQuery);
     } else if (!_searchInp.value) {
@@ -1097,6 +1183,7 @@
     _root.classList.remove('open');
     document.body.style.overflow = '';
     _isOpen = false;
+    _syncPlatformNav(false);
   }
 
   function isOpen() { return _isOpen; }
@@ -1124,23 +1211,24 @@
 
      <script src="component/search-overlay.js"></script>
 
-  2) Upgrade any existing search icon/link to open the overlay instead
-     of navigating — just add the attribute, no other change needed:
+2) Upgrade any existing search icon/link to open the overlay instead
+      of navigating — just add the attribute, no other change needed:
 
-     <!-- Discover's search bar -->
-     <div class="search" data-search-trigger>
-       <i class="fas fa-search"></i><span>Search stories, genres...</span>
-     </div>
+      <!-- Discover's search bar -->
+      <div class="search" data-search-trigger>
+        <i class="fas fa-search"></i><span>Search stories, genres...</span>
+      </div>
 
-     <!-- Bottom-nav Search tab, on every page -->
-     <a class="bn-item" href="search.html" data-search-trigger>
-       <i class="fas fa-magnifying-glass"></i><span>Search</span>
-     </a>
+      <!-- Any icon button -->
+      <button class="icon-btn" data-search-trigger aria-label="Search">
+        <i class="fas fa-search"></i>
+      </button>
 
-     The href stays as a working fallback; the attribute upgrades the
-     click to open in-place instead (e.preventDefault() runs only when
-     the attribute is present, so nothing else on the page needs to
-     change to adopt this everywhere at once).
+      There is NO search tab in the bottom nav — search is an overlay, not
+      a destination. The platform bottom nav (component/bottom-nav.js) stays
+      visible underneath the overlay while it is open; this component lifts
+      it above the overlay layer for you (open() raises it, close() puts it
+      back). Don't add a "Search" item to any bottom nav.
 
   3) Optional — point it at real data/navigation once, anywhere
      (e.g. your app's shared bootstrap script):

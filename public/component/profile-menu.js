@@ -15,7 +15,10 @@
  *     onTab: (tabId) => switchTab(tabId),  // books|library|collections|following
  *     onBecomeWriter: () => openUpgradeWizard(),
  *     onRefer: () => toast('…'),
- *     onSignOut: async () => { await AuthSession.logout(); location.href = 'index.html'; },
+ *     onSignOut: function () {
+      var ov = document.getElementById('logoutOverlay');
+      if (ov) ov.classList.add('open');
+    },
  *   });
  *
  *   DroboardProfileMenu.open();
@@ -150,7 +153,19 @@
       else if (act === 'tab' && h.onTab) h.onTab(tab);
       else if (act === 'become-writer' && h.onBecomeWriter) h.onBecomeWriter();
       else if (act === 'refer' && h.onRefer) h.onRefer();
-      else if (act === 'sign-out' && h.onSignOut) h.onSignOut();
+      else if (act === 'sign-out') {
+        if (h.onSignOut) { h.onSignOut(); }
+        else {
+          // No handler configured: use the page's custom confirm modal
+          // (#logoutOverlay) if it has one, otherwise sign out directly.
+          var ov = document.getElementById('logoutOverlay');
+          if (ov) ov.classList.add('open');
+          else {
+            if (window.AuthSession) AuthSession.logout();
+            location.href = 'index.html';
+          }
+        }
+      }
       else if (act === 'board') {
         const id = btn.dataset.dpmId;
         if (id) location.href = 'genre-hub.html?genre=' + encodeURIComponent(id);

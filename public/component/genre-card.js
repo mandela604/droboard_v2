@@ -165,11 +165,11 @@
     .dgc-topslot{display:inline-flex;align-items:center;margin-left:2px}
     .dgc-act{
       display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:20px;
-      font-size:12px;font-weight:700;color:var(--tx-muted,#666);background:var(--l2,#f1f1f1);border:none;
+      font-size:12px;font-weight:700;color:var(--tx-muted,#666);background:var(--bg);border:none;
       cursor:pointer;font-family:inherit;
     }
     .dgc-act:active{background:var(--l4,#e8e8e8)}
-    [data-theme="dark"] .dgc-act:active{background:#1a1b22}
+    [data-theme="dark"] .dgc-act:active{background:var(--l2)}
       .dgc-act.liked,.dgc-act.liked i{color:var(--acc,#ff0050)}
     .dgc-parts{display:flex;align-items:center}
     .dgc-part{width:22px;height:22px;border-radius:50%;object-fit:cover;border:2px solid var(--l1,#fff);margin-left:-6px;background:var(--l2,#f1f1f1)}
@@ -188,10 +188,12 @@
     .dgc-pinned-stats{display:flex;gap:12px;font-size:12px;font-weight:700;color:var(--tx-muted,#666)}
     .dgc-pinned-stats i{color:var(--acc,#ff0050)}
     .dgc-pinned-more{font-size:12px;font-weight:800;color:var(--acc,#ff0050);background:none;border:none;cursor:pointer;font-family:inherit}
-    .dgc-actions .drp-trigger{color:var(--tx-muted,#666);background:none;padding:0}
+    .dgc-actions .drp-trigger{color:var(--tx-muted,#666);background:none;padding:0;font-size:12px;font-weight:700}
+    .dgc-actions .drp-trigger i{font-size:12px}
+    .dgc-actions .drp-like-count{font-size:12px;font-weight:700}
     .dgc-actions .drp-trigger.liked,.dgc-actions .drp-trigger.liked .drp-like{color:var(--acc,#ff0050)}
     .dgc-actions .drp-trigger:active{background:none}
-    .dgc-actions .drp-like{display:inline-flex;align-items:center;gap:5px;background:var(--l2,#f1f1f1);padding:6px 11px;border-radius:20px}
+    .dgc-actions .drp-like{display:inline-flex;align-items:center;gap:5px;background:var(--bg);padding:6px 11px;border-radius:20px}
     .dgc-actions .drp-like:active{background:var(--l4,#e8e8e8)}
     [data-theme="light"] .dgc-actions .drp-popup{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 8px 28px rgba(0,0,0,.12)}
     [data-theme="light"] .dgc-actions .drp-count{color:#888}
@@ -234,12 +236,17 @@
     }
     .comm-slide .dgc-tags .dgc-tag{flex-shrink:0}
     .comm-slide .dgc-foot{margin-top:auto;padding-top:8px;flex-wrap:nowrap;align-items:center}
-    .comm-slide .dgc-actions{flex-wrap:nowrap;min-width:0;overflow:hidden}
+    .comm-slide .dgc-actions{flex-wrap:nowrap;min-width:0;overflow:visible}
     .comm-slide .dgc-act{padding:6px 8px;gap:4px;flex-shrink:1;min-width:0;white-space:nowrap}
     .comm-slide .dgc-act-lbl{display:none}
-    .comm-slide .dgc-actions .drp-trigger{padding:0;flex-shrink:1;min-width:0;white-space:nowrap}
+    .comm-slide .dgc-actions .drp-trigger{padding:0;flex-shrink:1;min-width:0;white-space:nowrap;position:static}
     .comm-slide .dgc-actions .drp-like{padding:6px 8px;gap:4px;flex-shrink:0;white-space:nowrap}
     .comm-slide .dgc-parts{flex-shrink:0}
+    /* Long-press popup must escape the actions bar: anchor it to the card
+       (trigger goes static) so it fits inside the 260px slide and can't be
+       clipped by overflow or overflow the row's horizontal scroll. */
+    .comm-slide .dgc-post{position:relative}
+    .comm-slide .drp-popup{left:8px;right:8px;width:auto;bottom:48px}
     .comm-slide .dgc-media{flex-shrink:0}
     .comm-slide .dgc-story{flex-shrink:0}
   `;

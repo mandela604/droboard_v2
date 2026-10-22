@@ -480,12 +480,39 @@
     if (window.DroboardSearch) DroboardSearch.setTheme(next);
     if (window.DroboardNav) DroboardNav.setTheme(next);
   }
+  /* ── Guest gate: a visitor with no account has no library ──────
+     Show the sign-in CTA + story recommendations instead of an empty
+     shelf (component/guest-gate.js). */
+  function renderGuestGate() {
+    const tabs = document.getElementById('main-tabs');
+    if (tabs) tabs.style.display = 'none';
+    const sk = document.getElementById('loadingState');
+    if (sk) sk.style.display = 'none';
+    document.querySelectorAll('#content .panel').forEach(p => { p.style.display = 'none'; });
+    if (!window.DroboardGuestGate) return;
+    DroboardGuestGate.mount({
+      anchor: '#loadingState',
+      variant: 'library',
+      cta: [
+        { label: 'Log in', href: (window.AuthSession && AuthSession.loginUrl) ? AuthSession.loginUrl('library.html') : 'login.html', primary: true, icon: 'fa-right-to-bracket' },
+        { label: 'Create account', href: 'signup.html', icon: 'fa-user-plus' },
+      ],
+    });
+  }
+
   async function init() {
     initTheme();
     if (window.DroboardNav) DroboardNav.configure({ active: 'library' });
     renderHeader();
     renderQuickIcons();
     renderViewToggleIcons();
+
+    // No account → no library. Show the gate and stop here.
+    if (window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
+      renderGuestGate();
+      return;
+    }
+
     try {
       const d = window.LibraryData;
       if (!d) throw new Error('LibraryData is not defined — check services/library-service.js');

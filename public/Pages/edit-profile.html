@@ -31,7 +31,7 @@ button,input,textarea,select{font-family:inherit}
 /* top bar */
 .top-bar{
   position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;
-  padding:12px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);
+  padding:12px 14px;background:var(--card);backdrop-filter:blur(16px);
   border-bottom:1px solid var(--bd);
 }
 .back-btn,.icon-btn{
@@ -132,7 +132,7 @@ button,input,textarea,select{font-family:inherit}
 .save-bar{
   position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:420px;
   padding:12px 16px calc(12px + var(--safe-b));
-  background:rgba(255,255,255,.96);backdrop-filter:blur(14px);
+  background:var(--card);backdrop-filter:blur(14px);
   border-top:1px solid var(--bd);display:flex;gap:8px;z-index:100;
 }
 .btn{
@@ -237,7 +237,11 @@ button,input,textarea,select{font-family:inherit}
   </div>
 </div>
 
+<script src="../services/auth-session.js"></script>
+<script src="../data/profile-demo-seed.js"></script>
+<script src="../data/central-demo-data.js"></script>
 <script src="../services/profile-data.js"></script>
 <script src="../services/edit-profile-service.js"></script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

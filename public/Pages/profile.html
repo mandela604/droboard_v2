@@ -22,8 +22,7 @@ button{font-family:inherit;cursor:pointer}
 ::-webkit-scrollbar{display:none}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:clip;padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 @media (min-width:421px){ .phone{ box-shadow:0 0 50px rgba(0,0,0,.14) } }
-.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
-[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--card);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
 .top-logo{font-size:20px;font-weight:900;color:var(--acc);letter-spacing:-1px;cursor:pointer;flex:1}
 .top-right{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end}
 .top-icon-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;color:var(--tx-muted);transition:.15s;position:relative;flex-shrink:0}
@@ -146,6 +145,19 @@ button{font-family:inherit;cursor:pointer}
 .about-val{font-size:12px;font-weight:600;color:var(--tx-high);margin-top:1px;line-height:1.4}
 .toast{position:fixed;bottom:calc(var(--safe-b) + var(--nav-h) + 14px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:8px 18px;border-radius:28px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:92vw;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.1)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.modal-overlay{position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:0 24px}
+.modal-overlay.open{display:flex}
+.modal-card{width:100%;max-width:340px;background:var(--l1);border:1px solid var(--bd);border-radius:18px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.28);animation:logoutModalIn .18s ease}
+@keyframes logoutModalIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.modal-card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--bd)}
+.modal-card-title{font-size:15px;font-weight:800;color:var(--tx-high)}
+.modal-card-close{width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.05);border:none;color:var(--tx-muted);font-size:12px;display:flex;align-items:center;justify-content:center}
+[data-theme="dark"] .modal-card-close{background:rgba(255,255,255,.08)}
+.modal-card-foot{display:flex;gap:10px;padding:12px 16px 16px}
+.btn-ghost{flex:1;background:rgba(0,0,0,.05);border:none;color:var(--tx-body);font-size:13px;font-weight:700;padding:11px 0;border-radius:12px}
+[data-theme="dark"] .btn-ghost{background:rgba(255,255,255,.08)}
+.btn-primary{flex:1;background:#e32636;border:none;color:#fff;font-size:13px;font-weight:700;padding:11px 0;border-radius:12px}
+.btn-primary:active{opacity:.85}
 .overlay-bg{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.55);backdrop-filter:blur(12px);display:none;align-items:flex-end;justify-content:center}
 .overlay-bg.open{display:flex}
 .overlay-sheet{width:100%;max-width:420px;background:var(--l1);border-radius:20px 20px 0 0;animation:slideUp .28s ease;max-height:88vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,20px)}
@@ -369,6 +381,25 @@ button{font-family:inherit;cursor:pointer}
   </div>
 </div>
 
+<!-- Logout confirm modal -->
+<div class="modal-overlay" id="logoutOverlay">
+  <div class="modal-card">
+    <div class="modal-card-head">
+      <div class="modal-card-title">Log Out</div>
+      <button class="modal-card-close" id="logoutClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-card-body" style="text-align:center;padding:20px 16px">
+      <div style="width:44px;height:44px;border-radius:50%;background:rgba(227,38,54,.1);display:inline-flex;align-items:center;justify-content:center;color:#e32636;font-size:16px;margin-bottom:10px"><i class="fas fa-right-from-bracket"></i></div>
+      <div style="font-size:14px;font-weight:700;color:var(--tx-high)">Log out of Droboard?</div>
+      <div style="font-size:11px;color:var(--tx-muted);margin-top:6px">You'll need to sign in again to continue.</div>
+    </div>
+    <div class="modal-card-foot">
+      <button class="btn-ghost" id="logoutCancel">Cancel</button>
+      <button class="btn-primary" id="logoutConfirm">Log Out</button>
+    </div>
+  </div>
+</div>
+
 <link rel="stylesheet" href="../component/search-overlay.css">
 <link rel="stylesheet" href="../component/bottom-nav.css">
 <link rel="stylesheet" href="../component/dots-menu.css">
@@ -396,6 +427,9 @@ button{font-family:inherit;cursor:pointer}
   <script src="../component/follow-list.js?v=3"></script>
   <script src="../component/library.js"></script>
   <script src="../component/post-composer.js"></script>
+  <script src="../component/discover-card.js"></script>
+  <script src="../component/more-like-this.js"></script>
+  <script src="../component/guest-gate.js"></script>
 <script src="../services/reading-history.js"></script>
   <script src="../component/boards-overlay.js"></script>
   <script src="../component/browse-overlay.js"></script>
@@ -406,7 +440,7 @@ button{font-family:inherit;cursor:pointer}
 <script src="../services/status-service.js"></script>
   <script src="../services/store-service.js"></script>
   <script src="../component/reaction-picker.js"></script>
-<script src="../component/post-card.js"></script>
+<script src="../component/post-card.js?v=1"></script>
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
 <script src="../component/share-modal.js"></script>
@@ -415,5 +449,6 @@ button{font-family:inherit;cursor:pointer}
 <script src="../shared/insights-tracker.js"></script>
 <script src="../services/profile-service.js?v=5"></script>
 <script>ProfilePage.init(); InsightsTracker.hit('profile');</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

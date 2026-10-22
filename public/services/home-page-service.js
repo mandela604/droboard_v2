@@ -41,23 +41,9 @@
     return !!(window.DroboardSave && typeof DroboardSave.isSaved === 'function' && DroboardSave.isSaved(id));
   }
 
-  /* ── Status Row — segmented like feed (feed-service.js:58 buildRingStyle) ── */
-  function buildRingStyle(s){
-    const n = s.statuses ? s.statuses.length : 0;
-    if(s.isYou || n <= 1) return '';
-    const gap = 6; const segAngle = 360 / n; const seg = segAngle - gap;
-    const isViewed = s.ring === 'ring-viewed';
-    const segColor = isViewed ? '#9ca3af' : '#ff0050';
-    const gapColor = 'rgba(255,255,255,.12)';
-    let stops = [];
-    for(let i=0;i<n;i++){
-      const start = i * segAngle; const segEnd = start + seg; const gapEnd = start + segAngle;
-      const viewedSeg = s.statuses[i] && s.statuses[i].viewed;
-      const c = (viewedSeg || isViewed) ? '#9ca3af' : segColor;
-      stops.push(c+' '+start+'deg '+segEnd+'deg'); stops.push(gapColor+' '+segEnd+'deg '+gapEnd+'deg');
-    }
-    return 'background: conic-gradient(from 0deg, '+stops.join(', ')+');';
-  }
+  /* ── Status Row — one solid round ring per author ────────────────────
+     The ring is NOT split into segments to show how many statuses an
+     author has; every border here stays a plain round ring. */
   function renderStatusRow(statuses) {
     var STATUSES = statuses || [];
     document.getElementById('statusRow').innerHTML = STATUSES.map(function (s) {
@@ -69,11 +55,9 @@
         '<div class="s-name">You</div>' +
         '</div>';
       var n = s.statuses ? s.statuses.length : 0;
-      var isMulti = !s.isYou && n > 1;
-      var ringClass = s.isYou ? 'ring-none' : (isMulti ? (s.ring || 'ring-has') + ' ring-multi' : (s.ring || ''));
-      var style = isMulti ? buildRingStyle(s)+'position:relative' : 'position:relative';
+      var ringClass = s.isYou ? 'ring-none' : (s.ring || (n ? 'ring-has' : 'ring-none'));
       return '<div class="s-item" data-status-id="' + s.id + '">' +
-        '<div class="s-ring ' + ringClass + '" style="'+style+'">' +
+        '<div class="s-ring ' + ringClass + '" style="position:relative">' +
         '<div class="s-inner"><img src="' + s.avatar + '" loading="lazy" alt=""/></div>' + live +
         '</div>' +
         '<div class="s-name">@' + s.name.split('_')[0] + '</div>' +

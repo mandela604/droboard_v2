@@ -16,6 +16,7 @@ const q = { q: z.string().max(80).optional(), status: z.string().max(30).optiona
 const anyBody = z.object({}).catchall(z.unknown());
 
 router.get('/stats', generalLimiter, ctrl.stats);
+router.get('/profile', generalLimiter, ctrl.profile); // chief-editor settings-service.js
 router.get('/activity', generalLimiter, ctrl.activity);
 router.get('/logs', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.logs);
 
@@ -38,6 +39,11 @@ crud('/books', 'books');
 crud('/categories', 'categories');
 crud('/genres', 'genres');
 crud('/templates', 'templates');
+// combined reads called by categories-genres-service.js / contract-templates-service.js
+router.get('/categories-genres', generalLimiter,
+  validate(z.object({ query: z.object(q).strict() })), ctrl.categoriesGenres);
+router.get('/contract-templates', generalLimiter,
+  validate(z.object({ query: z.object(q).strict() })), ctrl.contractTemplates);
 crud('/contracts', 'contracts');
 crud('/banners', 'banners');
 crud('/payments', 'payments');

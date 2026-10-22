@@ -856,7 +856,7 @@
       const prompt=document.getElementById('dpcDebatePrompt').value.trim();
       const f=document.getElementById('dpcFor').value.trim();
       const a=document.getElementById('dpcAgainst').value.trim();
-      return {...base, type:'debate', debateData:{ question:q, prompt, forText:f, againstText:a, forV:0, agV:0, userVote:null }};
+      return {...base, type:'debate', debateData:{ motion:q, question:q, prompt, forText:f, againstText:a, forV:0, agV:0, userVote:null }};
     }
     if(_currentType==='ama'){
       const title=document.getElementById('dpcAmaTitle').value.trim();

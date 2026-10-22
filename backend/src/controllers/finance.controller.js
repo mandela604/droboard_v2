@@ -86,6 +86,12 @@ async function defaultMethod(req, res) {
 
 async function withdrawals(req, res) {
   return base.wrap(res, async () => {
+    const isStaff = (req.user.roles || []).some(r => ['admin', 'finance'].includes(r));
+    // The finance console (finance-data.js) reads the platform-wide queue off
+    // this same path; authors and staff scoping with ?authorId keep own rows.
+    if (isStaff && !req.valid.query.authorId) {
+      return require('../services/finance-surfaces.service').withdrawals();
+    }
     const authorId = mine(req);
     return Withdrawal.find({ authorId }).sort({ requestedAt: -1 }).lean();
   });

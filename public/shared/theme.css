@@ -24,17 +24,13 @@
   --card:#ffffff;--text:#161616;--muted:#666666;--pink:#ff0050;
 }
 [data-theme="dark"]{
-  /* ── REVERT HERE: previous pure-black scheme (saved 2026-10-20)
-     --border:rgba(255,255,255,.07);
-     --bg:#000000;--l1:#08090c;--l2:#0e0f13;--l3:#13141a;--l4:#1a1b22;
-     --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);--bd-acc:rgba(255,0,80,.20);
-     --tx:#e0e0e0;--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
-     --card:#08090c;--text:#e0e0e0;--muted:#71717a;--pink:#ff0050;
-     ─────────────────────────────────────────────────────────────── */
-  /* Chief-editor dark scheme (purple-tinted near-black) */
-  --border:#262633;
-  --bg:#101018;--l1:#181822;--l2:#1d1d29;--l3:#1f1f2c;--l4:#20202c;
-  --bd:#262633;--bd2:#20202c;--bd-acc:rgba(255,0,80,.20);
-  --tx:#f2f2f7;--tx-high:#f2f2f7;--tx-body:#d4d3e4;--tx-muted:#a8a7bd;--tx-faint:#726f8c;
-  --card:#181822;--text:#f2f2f7;--muted:#a8a7bd;--pink:#ff0050;
+  /* Pure-black scheme (OLED) — canonical dark. Do not tint the page bg. */
+  --border:rgba(255,255,255,.12);
+  --bg:#000000;--l1:#0e0f13;--l2:#15161d;--l3:#1c1d26;--l4:#242530;
+  --bd:rgba(255,255,255,.12);--bd2:rgba(255,255,255,.08);--bd-acc:rgba(255,0,80,.20);
+  --tx:#e0e0e0;--tx-high:#e0e0e0;--tx-body:#c0c0c0;--tx-muted:#71717a;--tx-faint:#3f3f46;
+  --card:#15161d;--text:#e0e0e0;--muted:#71717a;--pink:#ff0050;
+  /* 2026-10-21: dark SURFACES lifted one step (card #08090c→#15161d, l1..l4 up,
+     borders .07→.12) so cards differentiate from the pure-black bg. bg stays #000. */
+  /* REVERT NOTE: briefly tested chief-editor tint (#101018/#181822) 2026-10-20, reverted same day. */
 }

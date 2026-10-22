@@ -37,6 +37,10 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
 .link{font-size:11px;color:#ff0050;font-weight:700;text-decoration:none}
 .btn:disabled{opacity:.7;cursor:wait}
 .btn .fa-spinner{font-size:14px}
+.demo-note{display:flex;align-items:flex-start;gap:9px;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.3);border-radius:11px;padding:10px 11px;margin-bottom:14px;font-size:11px;line-height:1.5;color:#8a5a00}
+.demo-note i{color:#d97706;font-size:12px;margin-top:1px;flex-shrink:0}
+.demo-note b{color:#8a5a00}
+.demo-note a{color:#b45309;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(180,83,9,.35)}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light'}document.documentElement.setAttribute('data-theme',t)})()</script>
 <script src="../component/img-guard.js"></script>
@@ -47,6 +51,11 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
   <div class="logo"><div class="logo-ico"><img src="../assets/droboard-icon.png" alt="Droboard"/></div><div class="logo-txt"><b>DROBOARD</b><span>Read · Write · Earn</span></div></div>
   <h1>Welcome back</h1>
   <div class="sub">Sign in to continue reading and publishing.</div>
+
+  <div class="demo-note">
+    <i class="fas fa-flask"></i>
+    <span><b>Demo mode</b> — no backend is connected yet, so any email &amp; password works. Prefer to browse without an account? <a href="#" id="guestLink">Continue as guest</a>.</span>
+  </div>
 
   <button class="btn google" id="googleBtn" type="button"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px" alt=""/> Continue with Google</button>
   <div class="divider"><span>or</span></div>
@@ -65,5 +74,6 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
 <style>#toast.show{opacity:1}</style>
 
 <script src="../services/login-service.js"></script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

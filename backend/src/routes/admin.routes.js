@@ -205,6 +205,36 @@ router.post('/pages', ...A, require('../middleware/http').writeLimiter, audit('a
 router.get('/pages/:id', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.pageGet);
 router.get('/pages/:id/preview', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.pagePreview);
 
+// system-pages console alias — FE: super-admin/system-pages-service.js
+// (API_BASE '/api/super-admin/system-pages', same rows as /pages above).
+const spBody = z.object({
+  title: z.string().min(1).max(120).optional(),
+  url: z.string().min(1).max(200).optional(),
+  icon: z.string().max(40).optional(),
+  tone: z.string().max(20).optional(),
+  status: z.enum(['active', 'draft', 'hidden']).optional(),
+}).strict();
+router.get('/system-pages', ...A, sa.pagesList);
+router.post('/system-pages', ...A, require('../middleware/http').writeLimiter, audit('admin.pages.create'),
+  validate(z.object({ body: spBody })), sa.systemPagesCreate);
+router.get('/system-pages/:id', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.pageGet);
+router.get('/system-pages/:id/preview', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.pagePreview);
+
+// ad earnings console — FE: services/ad-revenue-service.js (loaded by
+// super-admin/ad-earnings.html + marketing/marketing-analytics.html):
+//   GET  /ad-revenue/ledger?days=N|from&to  -> {rows,total}
+//   GET  /ad-revenue/summary?days=N         -> {totals,bySurface,byStory,byAuthor,days}
+//   POST /ad-revenue/pay {authorId}         -> {ok,modified}
+router.get('/ad-revenue/ledger', ...A, validate(z.object({ query: z.object({
+  days: z.string().max(6).optional(), from: z.string().max(10).optional(),
+  to: z.string().max(10).optional(), page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
+}).strict() })), sa.adRevenueLedger);
+router.get('/ad-revenue/summary', ...A, validate(z.object({ query: z.object({
+  days: z.string().max(6).optional(),
+}).strict() })), sa.adRevenueSummary);
+router.post('/ad-revenue/pay', ...A, require('../middleware/http').writeLimiter, audit('admin.ad-revenue.pay'),
+  validate(z.object({ body: z.object({ authorId: ID }).strict() })), sa.adRevenuePay);
+
 // revenue-splits console (flat shape; legacy /revenue/config* above untouched)
 const flatCuts = {
   google: z.number().min(0).max(100), marketing: z.number().min(0).max(100),

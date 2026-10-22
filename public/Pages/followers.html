@@ -16,8 +16,7 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--card);position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;overflow-x:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 img{display:block;object-fit:cover}
-.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);padding:12px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-[data-theme="dark"] .topbar{background:rgba(11,11,16,.96)}
+.topbar{position:sticky;top:0;z-index:50;background:var(--card);backdrop-filter:blur(14px);padding:12px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .back-btn{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--tx);font-size:15px;flex-shrink:0}
 .title-wrap{flex:1;min-width:0}
 .page-title{font-size:18px;font-weight:800;letter-spacing:-.02em}
@@ -35,7 +34,7 @@ img{display:block;object-fit:cover}
 .filter-scroll::-webkit-scrollbar{display:none}
 .f-filter-chip{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;background:var(--bg);color:var(--muted);border:1.5px solid transparent;cursor:pointer}
 .f-filter-chip.active{background:var(--pink-soft);color:var(--pink);border-color:var(--pink-line)}
-.content{flex:1;background:var(--card);padding-bottom:20px}
+.content{flex:1;background:var(--card);padding-bottom:calc(var(--nav-h) + 24px)}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
@@ -78,6 +77,9 @@ img{display:block;object-fit:cover}
 <script src="../component/search-overlay.js"></script>
 <script src="../services/search-service.js"></script>
 <script src="../services/followers-service.js"></script>
+<script src="../component/bottom-nav.js"></script>
+<script>if(window.DroboardNav) DroboardNav.configure({ active: 'profile' });</script>
 <script>FollowersPage.init();</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

@@ -104,8 +104,17 @@ document.getElementById('loginBtn').addEventListener('click',function(){
 });
 document.getElementById('forgotLink').addEventListener('click',function(e){
   e.preventDefault();
-  const email=document.getElementById('emailInput').value.trim();
+  var email=document.getElementById('emailInput').value.trim();
   location.href = 'forgot-password.html' + (email ? '?email=' + encodeURIComponent(email) : '');
+});
+// "Continue as guest" (demo): drop any session and land on the app as a
+// guest — profile + library show their "create an account" gates.
+var guestLink=document.getElementById('guestLink');
+if(guestLink) guestLink.addEventListener('click',function(e){
+  e.preventDefault();
+  try{ localStorage.removeItem('droboard_session'); localStorage.removeItem('droboard_user'); localStorage.setItem('droboard_demo_as','guest'); }catch(e){}
+  toast('Browsing as a guest');
+  setTimeout(function(){ location.href = landingUrl(); },400);
 });
 
 // Expose identical window globals (prior top-level names)

@@ -251,6 +251,10 @@ router.post('/book-edits/:id/reject', writeLimiter, audit('senior.bookEdits.reje
     body: z.object({ note: z.string().max(2000).optional() }).strict(),
   })), ctrl.rejectBookEdit);
 
+// VIP registration reviews (vip-registration-review-service.js reads {items})
+router.get('/vip-registrations', generalLimiter, listQuery,
+  read(r => S.vipRegistrations(r.valid.query)));
+
 // authors + invites
 router.get('/authors', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.res('authors').list);
 // This editor's own authors (scoped by EditorAssignment) + invite provenance.

@@ -35,8 +35,8 @@
   ];
 
   var CSS = [
-    '.tp-ov{position:fixed;inset:0;z-index:11500;display:none;align-items:center;justify-content:center;padding:18px;',
-    'background:linear-gradient(160deg,rgba(12,6,20,.92) 0%,rgba(40,8,32,.94) 55%,rgba(120,10,60,.92) 100%);backdrop-filter:blur(6px)}',
+    '.tp-ov{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;height:100vh;height:100dvh;',
+    'z-index:11500;display:none;align-items:center;justify-content:center;padding:18px;background:#000}',
     '.tp-ov.show{display:flex}',
     '.tp-card{width:100%;max-width:470px;background:#16121f;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:24px 22px 20px;box-shadow:0 30px 70px rgba(0,0,0,.5);animation:tpIn .22s ease;color:#f2f2f7;font-family:Inter,system-ui,sans-serif}',
     '@keyframes tpIn{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}',

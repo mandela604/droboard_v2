@@ -210,12 +210,7 @@
       likes: 44, liked: false, comments: 19,
     },
     {
-      id: 'p9', type: 'debate', name: 'Droboard', avatar: '../assets/droboard-icon.png',
-      time: '3h ago',
-      debateData: { question: 'Should villains get redemption?', prompt: 'Share your thoughts and join the debate!',
-        forText: 'Yes, everyone deserves a second chance.', againstText: 'No, some actions are unforgivable.',
-        forV: 264, agV: 164, userVote: null },
-      likes: 0, liked: false, comments: 0,
+      id: 'p9', type: 'debate', _debateSlot: 0,
     },
     {
       id: 'p10', type: 'review', name: 'BookAddict', avatar: 'https://i.pravatar.cc/100?img=25',
@@ -250,11 +245,8 @@
       storyRef: { title: 'Contract Without Love', author: 'Dami_Cole', cat: 'Billionaire', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg' },
       likes: 356, liked: false, comments: 19,
     },
-    {
-      id: 'p15', type: 'debate', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48',
-      time: '12h ago',
-      debateData: { question: 'Should love triangles be banned from romance fiction?', prompt: 'This one\u2019s been heating up the comments all week.', forText: 'Yes, they\u2019re overused', againstText: 'No, done well they work', forV: 612, agV: 745, userVote: null },
-      likes: 140, liked: false, comments: 210,
+{
+      id: 'p15', type: 'debate', _debateSlot: 1,
     },
     {
       id: 'p16', type: 'quote', name: 'Efe_O', avatar: 'https://i.pravatar.cc/100?img=22',
@@ -324,11 +316,7 @@
       likes: 214, liked: false, comments: 37,
     },
     {
-      id: 'p26', type: 'debate', name: 'Chidi_Omega', avatar: 'https://i.pravatar.cc/100?img=55',
-      time: '23h ago',
-      debateData: { question: 'Do enemies-to-lovers arcs need a redemption scene?', prompt: 'Weigh in below.',
-        forText: 'Yes, it earns the ending', againstText: 'No, chemistry is enough', forV: 388, agV: 271, userVote: null },
-      likes: 95, liked: false, comments: 118,
+      id: 'p26', type: 'debate', _debateSlot: 2,
     },
     {
       id: 'p27', type: 'chapter-drop', name: 'Chiamaka_N', avatar: 'https://i.pravatar.cc/100?img=47',
@@ -352,6 +340,18 @@
      Public service functions — same shape whether it came from the
      API or the demo fallback.
   ══════════════════════════════════════════════════════════════════ */
+  // The debate posts live in the shared demo store
+  // (central-demo-data.js → DemoData.DEBATE_POSTS) so the feed, the search
+  // overlay and the debate page always show the SAME composer-shaped
+  // debates. The placeholders in DEMO_FEED_POSTS keep the feed order.
+  function withSharedDebates(posts) {
+    const shared = (window.DemoData && window.DemoData.DEBATE_POSTS) || [];
+    if (!shared.length) return posts;
+    return posts.map(p => (
+      p && p._debateSlot != null && shared[p._debateSlot] ? shared[p._debateSlot] : p
+    ));
+  }
+
   async function getStories() {
     try { return await apiFetch('/v1/feed/stories'); }
     catch (e) { return DEMO_STORIES; }
@@ -359,7 +359,7 @@
 
   async function getFeedPosts() {
     try { return await apiFetch('/v1/feed'); }
-    catch (e) { return DEMO_FEED_POSTS; }
+    catch (e) { return withSharedDebates(DEMO_FEED_POSTS); }
   }
 
   async function getPromoSlides() {

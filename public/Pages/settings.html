@@ -16,8 +16,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 @media(min-width:421px){.phone{box-shadow:0 0 50px rgba(0,0,0,.14)}}
 
 /* ── Top Bar ── */
-.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
-[data-theme="dark"] .top-bar{background:rgba(0,0,0,.97)}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--card);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
 .back-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-body);font-size:15px;flex-shrink:0;border:none}
 .top-title{flex:1;font-size:16px;font-weight:800;color:var(--tx-high)}
 
@@ -66,6 +65,11 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 
 /* ── Version ── */
 .version{text-align:center;padding:20px 0 10px;font-size:11px;color:var(--tx-faint)}
+ .demo-mode-opt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 6px;border-radius:11px;font-size:10.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:rgba(0,0,0,.02);color:var(--tx-muted);transition:.15s;white-space:nowrap}
+ .demo-mode-opt:active{transform:scale(.96)}
+ .demo-mode-opt.on{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35);color:#b45309}
+ [data-theme="dark"] .demo-mode-opt{background:rgba(255,255,255,.04)}
+ [data-theme="dark"] .demo-mode-opt.on{color:#fbbf24}
 
 /* ── Modals use same z as drawer component — keep below it ── */
 /* ── Centered modals (constrained to phone width) ── */
@@ -171,6 +175,27 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
           <div class="setting-desc">Show on profile</div>
         </div>
         <div class="toggle on" id="readingToggle"></div>
+      </div>
+    </div>
+
+    <!-- Demo mode (DEMO ONLY — delete this section when going live) -->
+    <div class="section">
+      <div class="section-title">Demo Mode</div>
+      <div style="padding:2px 14px 12px;font-size:11px;color:var(--tx-muted);line-height:1.5">
+        No backend is connected yet. Switch the account you're testing with,
+        or sign out completely to preview the guest experience.
+      </div>
+      <div class="setting-row" style="cursor:default">
+        <div class="setting-icon" style="background:rgba(245,158,11,.08);color:#d97706"><i class="fas fa-flask"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Active Account</div>
+          <div class="setting-desc" id="demoModeDesc">Reader (Jordan Blake)</div>
+        </div>
+      </div>
+      <div id="demoModeSwitch" style="display:flex;gap:7px;padding:2px 14px 6px">
+        <div class="demo-mode-opt" data-mode="reader"><i class="fas fa-book-open"></i> Reader</div>
+        <div class="demo-mode-opt" data-mode="writer"><i class="fas fa-feather-pointed"></i> Writer</div>
+        <div class="demo-mode-opt" data-mode="guest"><i class="fas fa-user-slash"></i> Guest</div>
       </div>
     </div>
 
@@ -293,5 +318,6 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 <script src="../component/profile-menu.js"></script>
 <script src="../services/settings-service.js"></script>
 <script>SettingsPage.init();</script>
+<script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

@@ -50,6 +50,29 @@ const adImpressionSchema = new mongoose.Schema({
 }, { timestamps: false });
 adImpressionSchema.index({ bookId: 1, kind: 1, completedAt: -1 });
 
+// Ad revenue ledger (super-admin ad-earnings + marketing analytics console).
+// One row per (date, storyId, adId, slot, page) — POST /api/ads/track upserts.
+// Shape mirrors public/services/ad-revenue-service.js so the console reads
+// rows, totals and per-story/per-author splits verbatim.
+const adRevenueLedgerSchema = new mongoose.Schema({
+  date: { type: String, required: true, index: true }, // YYYY-MM-DD
+  storyId: { type: String, default: '', index: true },
+  storyTitle: { type: String, default: '' },
+  authorId: { type: String, default: '', index: true },
+  authorName: { type: String, default: '' },
+  adId: { type: String, default: '', index: true },
+  slot: { type: String, default: '' },
+  page: { type: String, default: '' },
+  impressions: { type: Number, default: 0 },
+  clicks: { type: Number, default: 0 },
+  revenue: { type: Number, default: 0 },
+  platformShare: { type: Number, default: 0 },
+  authorShare: { type: Number, default: 0 },
+  paidAt: { type: Date, default: null },
+}, { timestamps: false });
+adRevenueLedgerSchema.index({ date: 1, storyId: 1, adId: 1, slot: 1, page: 1 }, { unique: true });
+adRevenueLedgerSchema.index({ authorId: 1, paidAt: 1 });
+
 // Per-contract chapter pricing (from contract-monetization component)
 const contractPricingSchema = new mongoose.Schema({
   contractId: { type: String, required: true, unique: true },
@@ -72,6 +95,11 @@ const coinRateSchema = new mongoose.Schema({
   dormancyBreakageMonths: { type: Number, default: 12 },
   minChapterCoins: { type: Number, default: 10 },
   minWithdrawal: { type: Number, default: 100 },
+  // Global currency switch (Super Admin → Coin Economy). base = settlement
+  // currency for finance legs; locked = null → automatic per-location ladders,
+  // or one ISO code forced on every page (currency-service.js config).
+  base: { type: String, default: 'NGN' },
+  locked: { type: String, default: null },
 }, { timestamps: true });
 
 // Daily financial rollup (reports)
@@ -89,6 +117,7 @@ module.exports = {
   RevenueConfig: mongoose.model('RevenueConfig', revenueConfigSchema),
   PoolBalance: mongoose.model('PoolBalance', poolBalanceSchema),
   AdImpression: mongoose.model('AdImpression', adImpressionSchema),
+  AdRevenueLedger: mongoose.model('AdRevenueLedger', adRevenueLedgerSchema),
   ContractPricing: mongoose.model('ContractPricing', contractPricingSchema),
   CoinRate: mongoose.model('CoinRate', coinRateSchema),
   FinancialDaily: mongoose.model('FinancialDaily', financialDailySchema),

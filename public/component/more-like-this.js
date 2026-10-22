@@ -16,7 +16,9 @@
        href:  (item) => 'book-reader.html?id=' + encodeURIComponent(item.id),
      });
 
-   item: { id, img | cover, title, author, badge?, meta?, rating?, ch?, pct? }
+   item: { id, img | cover, title, author, badge?, meta?, cat?, rating?, ch?, pct? }
+    `cat` is the story category — rendered as plain text in the platform
+    red under each card (no emoji).
 
    Header + row CSS is self-contained (mlt- prefixed) so it matches on
    every host page and never collides with page styles.
@@ -47,6 +49,8 @@
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .mlt-card-author{font-size:10px;color:#8e8e93;margin-top:2px;
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mlt-card-cat{font-size:10px;font-weight:700;color:var(--acc,var(--pink,#ff0050));margin-top:2px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   `;
 
   let _injected = false;
@@ -73,7 +77,7 @@
     if (window.DiscoverCard && typeof DiscoverCard.scard === 'function') {
       return DiscoverCard.scard({
         id: item.id, img: img, title: item.title, author: item.author,
-        badge: item.badge, meta: item.meta, rating: item.rating,
+        badge: item.badge, meta: item.meta, cat: item.cat, rating: item.rating,
         ch: item.ch, pct: item.pct,
       });
     }
@@ -81,6 +85,7 @@
       <div class="mlt-cover"><img src="${esc(img)}" loading="lazy" alt=""/></div>
       <div class="mlt-card-title">${esc(item.title)}</div>
       ${item.author ? `<div class="mlt-card-author">${esc(item.author)}</div>` : ''}
+      ${item.cat ? `<div class="mlt-card-cat">${esc(item.cat)}</div>` : ''}
     </a>`;
   }
 

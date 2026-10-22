@@ -53,6 +53,7 @@ async function main() {
   app.use('/api/super-admin', require('./routes/admin.routes'));
   app.use('/api', require('./routes/compat.routes'));
   app.use('/api', require('./routes/feed.routes'));
+  app.use('/api', require('./routes/pricing.routes'));
   app.use('/api/ads', require('./routes/ads.routes'));
   app.use('/api/users', require('./routes/users.routes'));
   app.use('/api/uploads', require('./routes/uploads.routes'));
@@ -66,6 +67,8 @@ async function main() {
   app.use('/api/reports', require('./routes/reports.routes'));
   app.use('/api/search', require('./routes/search.routes'));
   app.use('/api/marketing', require('./routes/marketing.routes'));
+  app.use('/api/acquisition', require('./routes/acquisition.routes'));
+  app.use('/api/league', require('./routes/league.routes'));
   app.use('/api/tropes', require('./routes/tropes.routes'));
   app.use('/api/stories', require('./routes/engagement.routes'));
   app.use('/api/awards', require('./routes/awards.routes'));

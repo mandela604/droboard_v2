@@ -17,13 +17,19 @@ router.get('/', generalLimiter,
 router.get('/placements', generalLimiter,
   async (req, res) => base.wrap(res, async () => ads.placements()));
 
-// ad-service contract: POST /api/ads/track {id, event}
+// ad-service contract: POST /api/ads/track {id, event, page, slot, storyId, …}
+// The client always sends page/slot/storyId/viewerId/ts — they must be
+// accepted (strict() made every live impression/click fail with 400) and the
+// slot/story context feeds the ad-revenue ledger split.
 router.post('/track', requireAuth, writeLimiter,
   validate(z.object({ body: z.object({
     id: z.string().min(1).max(120), event: z.enum(['impression', 'click']),
-  }).strict() })),
+    page: z.string().max(80).optional(), slot: z.string().max(120).optional(),
+    storyId: z.string().max(120).optional(),
+  }).passthrough() })),
   async (req, res) => base.wrap(res, async () => ads.track({
     id: req.valid.body.id, event: req.valid.body.event, userId: req.user.id,
+    page: req.valid.body.page, slot: req.valid.body.slot, storyId: req.valid.body.storyId,
   })));
 
 module.exports = router;

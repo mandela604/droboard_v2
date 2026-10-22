@@ -73,6 +73,29 @@
     'b3': { title: 'Until You Regret',   authorId: 'au_luna_vale', authorName: 'Luna Vale' },
   };
 
+  /* Author identity: real avatar + profile handle (avatars mirror the
+     senior-editor AVATARS maps; Ifeanyi_Story / Efe_O are DemoData central
+     profile keys, so their links resolve to real profiles). */
+  var AUTHORS = {
+    'au_1024':     { handle: 'chioma_okafor',  avatar: 'https://i.pravatar.cc/60?img=5' },
+    'au_2041':     { handle: 'luna_skye',      avatar: 'https://i.pravatar.cc/60?img=24' },
+    'au_3099':     { handle: 'elena_vasquez',  avatar: 'https://i.pravatar.cc/60?img=31' },
+    'au_4177':     { handle: 'marcus_webb_jr', avatar: 'https://i.pravatar.cc/60?img=33' },
+    'au_5210':     { handle: 'isabelle_moreau', avatar: 'https://i.pravatar.cc/60?img=44' },
+    'au_6321':     { handle: 'wren_okonkwo',   avatar: 'https://i.pravatar.cc/60?img=41' },
+    'au_7432':     { handle: 'Ifeanyi_Story',  avatar: 'https://i.pravatar.cc/100?img=53' },
+    'au_8543':     { handle: 'Efe_O',          avatar: 'https://i.pravatar.cc/100?img=22' },
+    'au_luna_vale': { handle: 'luna_vale',     avatar: 'https://i.pravatar.cc/100?img=26' },
+  };
+  function authorMeta(authorId, authorName) {
+    var m = AUTHORS[authorId];
+    if (m) return m;
+    return {
+      handle: String(authorName || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+      avatar: '',
+    };
+  }
+
   var LEDGER_KEY = 'dro_ad_revenue_ledger_v2';
   var PAID_KEY = 'dro_ad_revenue_paid_v1';
 
@@ -399,6 +422,7 @@
     markAuthorPaid: markAuthorPaid,
     isAuthorPaid: isAuthorPaid,
     surfaceLabel: surfaceLabel,
+    authorMeta: authorMeta,
     STORIES: STORIES,
   };
 })();

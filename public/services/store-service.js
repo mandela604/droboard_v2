@@ -59,6 +59,7 @@
       blogCategory: m.blogCategory, blogUrl: m.blogUrl,
       channelId: m.channelId, channelUrl: m.channelUrl,
       videoId: m.videoId, minWatchSec: m.minWatchSec,
+      adUrl: m.adUrl || r.adUrl,
     };
   }
   async function liveRewards() {

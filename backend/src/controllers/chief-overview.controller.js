@@ -1,9 +1,12 @@
 'use strict';
 const svc = require('../services/chief-overview.service');
+const surfaces = require('../services/chief-surfaces.service');
 const base = require('./base.controller');
 
+// The console's dashboard read contract (aggregate, presentation-shaped) lives
+// in chief-surfaces; chief-overview keeps the canonical counts/queues/performance.
 async function dashboard(req, res) {
-  return base.wrap(res, async () => svc.dashboard());
+  return base.wrap(res, async () => surfaces.dashboard());
 }
 
 async function stats(req, res) {
