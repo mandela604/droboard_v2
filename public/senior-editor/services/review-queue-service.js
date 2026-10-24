@@ -105,21 +105,6 @@ const CURRENT_EDITOR = { name: 'Chioma Reddy', avatar: 'https://i.pravatar.cc/10
 
 function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
 
-/* Identity (KYC) — three paths: self NIN, guardian co-sign (under-18),
-   pending NIN (alternate ID). Data comes from the submission item (kyc field). */
-function maskId(n){ n=String(n||''); if(n.length<5) return n||'\u2014'; return n.slice(0,3)+'\u2022\u2022\u2022\u2022\u2022\u2022'+n.slice(-2); }
-function idPhotosLine(k){
-  if(!k || !k.idPhotos || !k.idPhotos.front || !k.idPhotos.back) return ' <b style="color:#dc2626">\u00b7 Photos missing (front + back required)</b>';
-  return ' \u00b7 Photos: Front &#10003; Back &#10003;';
-}
-function identityLine(s){
-  var k=s.kyc;
-  if(!k) return '<b style="color:#dc2626">Not provided</b> &mdash; author must submit NIN or guardian details before a contract.';
-  if(k.type==='guardian') return 'Guardian co-sign &middot; writer age '+k.age+' &middot; Guardian: '+k.guardian.name+' ('+k.guardian.relationship+') &middot; ID '+maskId(k.guardian.idNo)+idPhotosLine(k);
-  if(k.type==='pending') return 'Pending NIN &middot; writer age '+k.age+' &middot; Alternate ID: '+k.altId.type+' '+maskId(k.altId.no)+idPhotosLine(k);
-  return 'Verified (self) &middot; writer age '+k.age+' &middot; NIN '+maskId(k.nin)+idPhotosLine(k);
-}
-
 /* "Backend" contract types — tries a real endpoint first, falls back to demo
    data since there's no live contracts API yet. */
 const DEMO_CONTRACTS = [
@@ -353,7 +338,6 @@ function openSheet(id){
   </div>`;
   html += `<div class="sheet-section-lbl">Synopsis</div><div class="sheet-synopsis">${s.synopsis}</div>`;
   html += `<div style="font-size:11px;color:var(--text-faint);margin-top:8px">Submitted ${s.submitted} · Manuscript meets the 5,000-word minimum for review.</div>`;
-  html += `<div class="sheet-section-lbl">Identity</div><div class="sheet-synopsis">${identityLine(s)}</div>`;
 
   if (s.feedback) {
     html += `<div class="feedback-box"><i class="fas fa-comment-dots"></i><span><strong>Editorial feedback:</strong> ${s.feedback}</span></div>`;
@@ -504,9 +488,6 @@ function buildSummary(){
 
   let html = '';
   html += '<div class="cs-row"><span class="cs-label">Contract</span><span class="cs-val">' + (contract ? contract.label : '—') + '</span></div>';
-  const idOwner = allSubs.find(x => x.id === acceptTargetId);
-  const idType = idOwner && idOwner.kyc ? (idOwner.kyc.type === 'guardian' ? 'Guardian co-sign' : idOwner.kyc.type === 'pending' ? 'Pending NIN' : 'Verified (self)') : 'Not provided';
-  html += '<div class="cs-row"><span class="cs-label">Identity</span><span class="cs-val">' + idType + '</span></div>';
   html += '<div class="cs-row"><span class="cs-label">Free chapters</span><span class="cs-val">' + (t.freeChapters > 0 ? '1 – ' + t.freeChapters : 'None') + '</span></div>';
   html += '<div class="cs-row"><span class="cs-label">Ad unlock</span><span class="cs-val">' + (t.allowAdUnlock ? t.adsPerChapter + ' ads/chapter (' + t.adChapters + ' chapters)' : 'OFF') + '</span></div>';
   paid.forEach(ch => {
@@ -550,13 +531,13 @@ async function submitAccept(){
   const errBox = document.getElementById('contractModalError');
 
   if (!s.kyc || !s.kyc.type) {
-    errBox.textContent = 'Identity required — the author must submit NIN (or guardian co-sign) before a contract can be accepted.';
+    errBox.textContent = 'Identity missing — verify the author\u2019s KYC record in Contract Review before accepting for a contract.';
     errBox.classList.add('show');
     return;
   }
 
   if (!s.kyc.idPhotos || !s.kyc.idPhotos.front || !s.kyc.idPhotos.back) {
-    errBox.textContent = 'ID photos required — clear front and back images must be submitted before a contract can be accepted.';
+    errBox.textContent = 'ID photos missing — check the author\u2019s documents in Contract Review before accepting for a contract.';
     errBox.classList.add('show');
     return;
   }
@@ -571,8 +552,7 @@ async function submitAccept(){
   const btn = document.getElementById('contractConfirmBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming\u2026';
   try {
-    const kycType = s.kyc ? (s.kyc.type === 'guardian' ? 'Guardian co-sign' : s.kyc.type === 'pending' ? 'Pending NIN' : 'Verified (self)') : 'Not provided';
-    const feedback = 'Accepted under ' + contract.label + '. Free chapters: ' + freeChapters + '. Ad unlock: ' + (allowAdUnlock ? 'ON (' + adsPerChapter + ' ads/chapter, ' + adCount + ' chapters)' : 'OFF') + '. Pricing: ' + (pricingSummary || 'all free') + '. Identity: ' + kycType + '.';
+    const feedback = 'Accepted under ' + contract.label + '. Free chapters: ' + freeChapters + '. Ad unlock: ' + (allowAdUnlock ? 'ON (' + adsPerChapter + ' ads/chapter, ' + adCount + ' chapters)' : 'OFF') + '. Pricing: ' + (pricingSummary || 'all free') + '.';
     await SeniorEditorData.updateReviewItem(s.id, 'approved', feedback);
     s.status = 'approved';
     s.feedback = feedback;

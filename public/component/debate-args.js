@@ -283,6 +283,12 @@
     function avHTML(a) {
       var hasSt = a.statuses && a.statuses.length;
       var ringCls = !hasSt ? 'ring-none' : a.statusRing === 'has' ? 'ring-has' : a.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none';
+      try {
+        if (window.StatusStore && StatusStore.ringOf) {
+          var sr = StatusStore.ringOf(a.name);
+          if (sr) ringCls = sr;
+        }
+      } catch (e) {}
       var inner = a.avatar
         ? '<img src="' + esc(a.avatar) + '" alt="" loading="lazy"/>'
         : '<div class="da-av-initial" style="background:' + (a.avatarBg || '#ff0050') + '">' + esc((a.name || '?').charAt(0).toUpperCase()) + '</div>';
@@ -290,7 +296,7 @@
         ? '<div class="da-av-badge' + (a.verified === 'writer' ? ' writer' : '') + '"><i class="fas fa-check"></i></div>'
         : '';
       return '<div class="da-av-wrap' + (hasSt ? ' has-status' : '') + '" data-av-id="' + esc(a.id) + '">' +
-        '<div class="da-av-ring ' + ringCls + '"><div class="da-av-ring-inner">' + inner + '</div></div>' + badge +
+        '<div class="da-av-ring ' + ringCls + '" data-status-ring="' + esc(a.name || '') + '"><div class="da-av-ring-inner">' + inner + '</div></div>' + badge +
       '</div>';
     }
 

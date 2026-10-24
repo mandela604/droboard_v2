@@ -797,8 +797,9 @@
       requireTeam: false,
       collapsible: true,
       startOpen: false,
-      adsRepeat: false, // top ad slot only, same as scroll reader
-      scrollBox: 420, // bounded inner-scroll list (ad + ~2 comments) + pinned composer
+        adsRepeat: false, // no repeating slots, same as scroll reader
+        adsFirst: false, // reading comments never start with an ad
+        scrollBox: 420, // bounded inner-scroll list + pinned composer
       fullCommentsUrl: function () {
         return 'comments.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + currentChNum();
       },

@@ -74,6 +74,102 @@
     });
     return out;
   }
+  function spotlightPool() {
+    return ((INV.pools || {}).spotlight || []);
+  }
+  function isUserSpot(ad) { return ad && (ad.kind === 'user' || ad.promoKind === 'user'); }
+  function isBoardSpot(ad) { return ad && (ad.kind === 'board' || ad.promoKind === 'board' || ad.boardType); }
+  function isPromoSpot(ad) { return ad && (ad.kind === 'promo' || ad.promoKind === 'promo'); }
+  function spotOptionLabel(ad) {
+    const who = isBoardSpot(ad)
+      ? '🏆 ' + (ad.title || (ad.boardType === 'writers' ? 'Top writers' : 'Top readers'))
+      : isPromoSpot(ad)
+        ? '🎁 ' + (ad.title || ad.brand || ad.id)
+        : isUserSpot(ad)
+          ? '👤 ' + (ad.name || ad.handle || ad.id)
+          : '📖 ' + (ad.title || ad.id);
+    return who + (ad.active === false ? ' (off)' : '');
+  }
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function timeStr(h) {
+    if (h == null || h === '') return '';
+    const n = +h;
+    if (isNaN(n)) return '';
+    const hh = Math.floor(n), mm = Math.round((n - hh) * 60);
+    return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+  }
+  function timeVal(id) {
+    const raw = (document.getElementById(id) || {}).value;
+    if (!raw) return null;
+    const bits = raw.split(':');
+    const h = parseInt(bits[0], 10), m = parseInt(bits[1], 10) || 0;
+    return isNaN(h) ? null : h + m / 60;
+  }
+  function renderSlDays(days) {
+    const host = document.getElementById('plSlDays');
+    if (!host) return;
+    const on = (days || []).map(Number);
+    host.innerHTML = DAY_NAMES.map((d, i) =>
+      `<label class="pl-check" style="padding:5px 8px;border:1px solid var(--input-border);border-radius:7px;background:var(--input-bg);font-size:10.5px"><input type="checkbox" data-sl-day="${i}"${on.indexOf(i) !== -1 ? ' checked' : ''}/> ${d}</label>`
+    ).join('');
+  }
+  function renderSlSegs(sel) {
+    const host = document.getElementById('plSlSegs');
+    if (!host) return;
+    const segs = (window.AdSetupData && AdSetupData.SEGMENTS) || [];
+    const on = sel || [];
+    host.innerHTML = segs.map(s =>
+      `<label class="pl-check" style="font-size:11px;align-items:flex-start"><input type="checkbox" data-sl-seg="${esc(s.id)}"${on.indexOf(s.id) !== -1 ? ' checked' : ''} style="margin-top:2px"/> <span>${esc(s.label)} <span style="color:var(--text-faint);font-weight:600">~${fmtN(s.reach)}</span></span></label>`
+    ).join('');
+  }
+  function syncSlAud() {
+    const mode = (document.getElementById('plSlAudMode') || {}).value || 'all';
+    const wrap = document.getElementById('plSlSegWrap');
+    if (wrap) wrap.style.display = mode === 'targeted' ? 'block' : 'none';
+  }
+  function renderSpotPicker() {
+    const sel = document.getElementById('plSlAd');
+    if (!sel) return;
+    const pool = spotlightPool();
+    const cur = String(((INV.placements || {}).spotlight || {}).adId || '');
+    sel.innerHTML = '<option value="">Rotate all active creatives</option>' +
+      pool.map(ad => `<option value="${esc(ad.id)}">${esc(spotOptionLabel(ad))}</option>`).join('');
+    sel.value = pool.some(ad => String(ad.id) === cur) ? cur : '';
+  }
+  function selectedSpot() {
+    const sel = document.getElementById('plSlAd');
+    const id = sel ? sel.value : '';
+    const pool = spotlightPool();
+    return pool.find(ad => String(ad.id) === String(id)) || pool[0] || null;
+  }
+  function fmtCompact(n) {
+    n = +n || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  }
+  function renderSpotlightPerf() {
+    const tiles = document.getElementById('plSlTiles');
+    const rowsHost = document.getElementById('plSlRows');
+    if (!tiles || !rowsHost) return;
+    const rows = spotlightPool().map(ad => {
+      const st = STATS.find(s => String(s.id) === String(ad.id)) || {};
+      return { ad, impressions: +st.impressions || 0, clicks: +st.clicks || 0 };
+    }).sort((a, b) => b.impressions - a.impressions);
+    const imp = rows.reduce((a, r) => a + r.impressions, 0);
+    const clk = rows.reduce((a, r) => a + r.clicks, 0);
+    const ctr = imp ? ((clk / imp) * 100).toFixed(1) + '%' : '—';
+    tiles.innerHTML =
+      '<div class="pl-sp-tile"><b>' + fmtCompact(imp) + '</b><span>Impressions</span></div>' +
+      '<div class="pl-sp-tile"><b>' + fmtCompact(clk) + '</b><span>Conversions</span></div>' +
+      '<div class="pl-sp-tile"><b>' + ctr + '</b><span>CTR</span></div>';
+    rowsHost.innerHTML = rows.length ? rows.map(r => {
+      const who = isUserSpot(r.ad) ? (r.ad.name || r.ad.handle || r.ad.id) : (r.ad.title || r.ad.id);
+      const rctr = r.impressions ? ((r.clicks / r.impressions) * 100).toFixed(1) + '%' : '—';
+      return '<div class="pl-sp-row"><b title="' + esc(who) + '">' + (isUserSpot(r.ad) ? '👤 ' : '📖 ') + esc(who) + '</b>' +
+        '<span>' + fmtCompact(r.impressions) + ' imp · ' + fmtCompact(r.clicks) + ' cvt · <em>' + rctr + '</em></span></div>';
+    }).join('') : '<div style="font-size:10px;color:var(--text-faint);padding:4px 0">No spotlight creatives yet.</div>';
+  }
 
   /* ── Stats ── */
   function renderStats() {
@@ -137,9 +233,20 @@
     on('plHomeOn', (p.home || {}).enabled);
     const sl = p.spotlight || {};
     on('plSlOn', sl.enabled);
-    set('plSlSec', sl.seconds || 7);
+    set('plSlSec', sl.seconds || 6);
     set('plSlEvery', sl.everyN || 1);
     on('plSlSkip', sl.allowSkip);
+    set('plSlDelay', sl.delaySeconds || 0);
+    set('plSlCool', sl.cooldownHours || 0);
+    set('plSlStart', timeStr(sl.startHour));
+    set('plSlEnd', timeStr(sl.endHour));
+    set('plSlAudMode', sl.audienceMode || 'all');
+    set('plSlMatch', sl.match || 'any');
+    renderSlDays(sl.days || []);
+    renderSlSegs(sl.segments || []);
+    syncSlAud();
+    renderSpotPicker();
+    renderSpotlightPerf();
     on('plFullOn', (p.fullReader || {}).enabled);
     set('plFullWords', (p.fullReader || {}).wordsPerSlot || 300);
     const fslots = (p.fullReader || {}).slots || {};
@@ -252,12 +359,28 @@
       if (p && (p.formats.length || p.adIds.length)) return { enabled: !!enabled, formats: p.formats, adIds: p.adIds };
       return !!enabled;
     };
+    const slDays = Array.from(document.querySelectorAll('#plSlDays [data-sl-day]:checked')).map(el => +el.dataset.slDay);
+    const slSegs = Array.from(document.querySelectorAll('#plSlSegs [data-sl-seg]:checked')).map(el => el.dataset.slSeg);
     const patch = {
       discover: { enabled: chk('plDisOn'), interval: num(get('plDisInt'), 6), cycle: get('plDisCycle').split(',').map(s => s.trim()).filter(Boolean) },
       feed: { enabled: chk('plFeedOn'), interval: num(get('plFeedInt'), 4) },
       genreHub: { enabled: chk('plHubOn'), interval: num(get('plHubInt'), 3), topPromo: !!document.getElementById('plHubTop').checked },
       home: { enabled: chk('plHomeOn'), interval: num(get('plHomeInt'), 5) },
-      spotlight: { enabled: chk('plSlOn'), seconds: Math.min(30, Math.max(3, num(get('plSlSec'), 7))), everyN: num(get('plSlEvery'), 1), allowSkip: chk('plSlSkip') },
+      spotlight: {
+        enabled: chk('plSlOn'),
+        seconds: Math.min(30, Math.max(3, num(get('plSlSec'), 6))),
+        everyN: num(get('plSlEvery'), 1),
+        allowSkip: chk('plSlSkip'),
+        adId: get('plSlAd'),
+        delaySeconds: Math.max(0, Math.min(30, parseInt(get('plSlDelay'), 10) || 0)),
+        cooldownHours: Math.max(0, Math.min(168, parseInt(get('plSlCool'), 10) || 0)),
+        startHour: timeVal('plSlStart'),
+        endHour: timeVal('plSlEnd'),
+        days: slDays,
+        audienceMode: get('plSlAudMode') || 'all',
+        match: get('plSlMatch') || 'any',
+        segments: slSegs,
+      },
       fullReader: { enabled: chk('plFullOn'), wordsPerSlot: words('plFullWords'), paidUnlockAds: chk('plFullPaidAds'), slots: { 'fullReader:top': slotVal('fullReader:top', chk('plFullTop')), 'fullReader:per-300-words': slotVal('fullReader:per-300-words', chk('plFullInline')), 'fullReader:bottom': slotVal('fullReader:bottom', chk('plFullBottom')) } },
       scrollReader: { enabled: chk('plScrollOn'), wordsPerSlot: words('plScrollWords'), paidUnlockAds: chk('plScrollPaidAds'), slots: { 'scrollReader:top': slotVal('scrollReader:top', chk('plScrollTop')), 'scrollReader:per-300-words': slotVal('scrollReader:per-300-words', chk('plScrollInline')), 'scrollReader:bottom': slotVal('scrollReader:bottom', chk('plScrollBottom')) } },
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },
@@ -673,6 +796,30 @@
     await reload();
     document.getElementById('newAdBtn').addEventListener('click', () => openWizard('platform'));
     document.getElementById('plSaveBtn').addEventListener('click', savePlacements);
+    const spotNew = document.getElementById('plSlNew');
+    if (spotNew) spotNew.addEventListener('click', () => { window.location.href = 'ad-setup.html?format=spotlight'; });
+    const spotEdit = document.getElementById('plSlEdit');
+    if (spotEdit) spotEdit.addEventListener('click', () => {
+      const ad = selectedSpot();
+      if (!ad) { toast('No spotlight creative yet — create one first'); return; }
+      window.location.href = 'ad-setup.html?edit=spotlight:' + encodeURIComponent(ad.id);
+    });
+    const slAud = document.getElementById('plSlAudMode');
+    if (slAud) slAud.addEventListener('change', syncSlAud);
+    const spotPrev = document.getElementById('plSlPreview');
+    if (spotPrev) spotPrev.addEventListener('click', () => {
+      const ad = selectedSpot();
+      if (!ad) { toast('No spotlight creative yet — create one first'); return; }
+      if (!window.DroboardSpotlight) { toast('Preview unavailable'); return; }
+      DroboardSpotlight.show({
+        story: DroboardSpotlight.fromAd(ad),
+        seconds: 6,
+        allowSkip: true,
+        sponsored: true,
+        preview: true,
+        onCta: () => toast('Preview only — readers would open ' + (ad.url || 'its destination')),
+      });
+    });
     const _lgSave = document.getElementById('lgSaveBtn');
     if (_lgSave) _lgSave.addEventListener('click', saveLeague);
     const _lgReset = document.getElementById('lgResetBtn');

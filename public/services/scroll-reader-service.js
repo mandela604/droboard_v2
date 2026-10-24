@@ -492,8 +492,9 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           requireTeam: false,
           collapsible: true,
           startOpen: false,
-          adsRepeat: false, // top ad slot only in reader chapters
-          scrollBox: 420, // bounded inner-scroll list (ad + ~2 comments) + pinned composer
+            adsRepeat: false, // no repeating slots in reader chapters
+            adsFirst: false, // reading comments never start with an ad
+            scrollBox: 420, // bounded inner-scroll list + pinned composer
           fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n,
           ads: (ST.adsEnabled === false || chapterAdFree(ch.n)) ? false : undefined, // paid unlock / page-off = ad-free thread
         });

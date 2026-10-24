@@ -7,7 +7,7 @@
 const multer = require('multer');
 const { z } = require('zod');
 const ctrl = require('../controllers/statuses.controller');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -44,12 +44,16 @@ function multerMw(req, res, next) {
   });
 }
 
-router.get('/home', generalLimiter, ctrl.home);
+router.get('/home', generalLimiter, optionalAuth, ctrl.home);
 // Frontend contract: my active story slides (24h) for the story ring.
 router.get('/me', requireAuth, ctrl.me);
+// Cross-surface seen-state for a set of handles (rings on feed/profile/etc).
+router.get('/state', generalLimiter, optionalAuth,
+  validate(z.object({ query: z.object({ handles: z.string().max(2400).optional() }).strict() })),
+  ctrl.state);
 router.post('/', requireAuth, writeLimiter, audit('statuses.create'), multerMw,
   validate(z.object({ body: statusFormBody })), ctrl.create);
-router.post('/:id/view', generalLimiter,
+router.post('/:id/view', generalLimiter, optionalAuth,
   validate(z.object({ params: z.object({ id }) })), ctrl.view);
 router.post('/:id/like', requireAuth, writeLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.like);

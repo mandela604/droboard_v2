@@ -479,9 +479,10 @@ function _renderRxSlot(story) {
       comments: seed,
       teams: cOpts.teams,
       currentUser: cOpts.currentUser || { name: 'You', avatar: null },
-      requireTeam: cOpts.requireTeam || false,
-      collapsible: false,
-      startOpen: true,
+        requireTeam: cOpts.requireTeam || false,
+        collapsible: false,
+        startOpen: true,
+        adsFirst: false, // reading comments never start with an ad
       onPost: () => _bumpCommentCount(story, 1),
       onReply: () => _bumpCommentCount(story, 1),
       onDotsAction: (action) => { if (action === 'delete') _bumpCommentCount(story, -1); },

@@ -280,6 +280,8 @@ function renderFinancialSummary(){
 }
 
 function renderMarketingPerf(){
+  var sl=null;
+  try{ if(window.AdService && typeof AdService.spotlightStats==='function') sl=AdService.spotlightStats(); }catch(e){}
   var items=[
     {l:'Live Campaigns',v:DATA.liveCampaigns+' / '+DATA.totalCampaigns,color:'var(--accent)'},
     {l:'Impressions',v:fmtNum(DATA.totalImpressions),color:'var(--blue)'},
@@ -288,6 +290,10 @@ function renderMarketingPerf(){
     {l:'Conversions',v:fmtNum(DATA.conversions),color:'var(--gold)'},
     {l:'Revenue Lift',v:'+14%',color:'var(--green)'}
   ];
+  if(sl){
+    items.push({l:'Spotlight Conversions',v:fmtNum(sl.clicks),color:'var(--green)'});
+    items.push({l:'Spotlight CTR',v:(+sl.ctr||0).toFixed(1)+'%',color:'var(--accent)'});
+  }
   document.getElementById('marketingPerf').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+items.map(function(it){
     return '<div style="text-align:center;padding:10px;background:var(--input-bg);border-radius:10px"><div style="font-size:18px;font-weight:800;color:'+it.color+'">'+it.v+'</div><div style="font-size:10px;color:var(--text-faint);font-weight:700;margin-top:2px">'+it.l+'</div></div>';
   }).join('')+'</div>';

@@ -678,17 +678,8 @@ function addNewChapter() {
 
 function openStoryEditor(chNum) {
   closeChEdit();
-  const params = new URLSearchParams({
-    sid: activeSeries.id,
-    chapterNum: chNum,
-    seriesTitle: activeSeries.title,
-    cat: activeSeries.cat,
-  });
-  /* Navigate to story-editor.html (the full editor). Fall back to story-editor.html first, then create.html */
   toast(`📝 Opening Story Editor · Chapter ${chNum}…`);
-  setTimeout(() => {
-    window.location.href = 'story-editor.html?' + params.toString();
-  }, 700);
+  window.location.href = 'create.html?book=' + encodeURIComponent(activeSeries.id) + '&newChapter=1';
 }
 
 /* ── DELETE CHAPTER ── */

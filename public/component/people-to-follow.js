@@ -121,10 +121,11 @@
     const inner = av
       ? `<img class="ptf-av" src="${av}" loading="lazy" alt="${p.name}"/>`
       : `<div class="ptf-av-initial">${(p.name || '?')[0].toUpperCase()}</div>`;
+    const ringKey = p.id || p.handle || p.name;
 
     return `
       <div class="ptf-av-wrap" data-ptf-avatar="${i}">
-        <div class="ptf-ring ${ring}">
+        <div class="ptf-ring ${ring}" data-status-ring="${ringKey}">
           <div class="ptf-ring-inner">${inner}</div>
         </div>
         ${p.isLive ? '<div class="ptf-live-dot"><i class="fas fa-signal" style="font-size:5px"></i></div>' : ''}
@@ -277,7 +278,27 @@
       return null;
     }
 
-    const people = (options.people || DEFAULT_PEOPLE).map(p => Object.assign({}, p));
+    let people = (options.people || DEFAULT_PEOPLE).map(p => Object.assign({}, p));
+
+    // Decorate with the shared writer identity + per-status seen state so a
+    // person viewed anywhere on the platform shows the same ring here.
+    try {
+      if (window.DroboardStatus && DroboardStatus.decorateWriters) {
+        const decorated = DroboardStatus.decorateWriters(people.map(p => ({
+          handle: p.handle || p.name, name: p.name, avatar: _avatarUrl(p), isLive: p.isLive,
+        })));
+        people = people.map((p, i) => {
+          const d = decorated[i] || {};
+          const own = Array.isArray(p.statuses) && p.statuses.length;
+          return Object.assign({}, p, {
+            id: p.id || d.id,
+            handle: p.handle || d.handle,
+            statuses: own ? p.statuses : d.statuses,
+            ring: own ? (p.ring || d.ring) : d.ring,
+          });
+        });
+      }
+    } catch (e) {}
 
     // Write HTML
     container.innerHTML = _buildHTML(people, options);

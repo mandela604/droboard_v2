@@ -19,40 +19,17 @@
   var SEGMENTS = D.SEGMENTS || [];
   var GENRES = D.GENRES || [];
   var COUNTRIES = D.TRACKED_COUNTRIES || [];
+  var SPOT_KINDS = D.SPOT_KINDS || [];
+  var BOARD_TYPES = D.SPOT_BOARD_TYPES || [];
+  var BOARD_PERIODS = D.SPOT_PERIODS || [];
   var SEG_MAP = {};
   SEGMENTS.forEach(function (s) { SEG_MAP[s.id] = s; });
 
-  /* Slot registry per surface (mirrors the backend slot ids). An ad with an
-     empty slots list serves on every slot of its checked pages. */
-  var PAGE_SLOTS = {
-    fullReader: [
-      { id: 'fullReader:top', label: 'Top (above chapter)' },
-      { id: 'fullReader:per-300-words', label: 'In-text (every N words)' },
-      { id: 'fullReader:bottom', label: 'Bottom (after chapter)' },
-    ],
-    scrollReader: [
-      { id: 'scrollReader:top', label: 'Top' },
-      { id: 'scrollReader:per-300-words', label: 'In-text (every N words)' },
-      { id: 'scrollReader:bottom', label: 'Bottom (end of page)' },
-    ],
-    comments: [
-      { id: 'comments:list-top', label: 'List top' },
-      { id: 'comments:every-nth', label: 'Every Nth' },
-      { id: 'comments:thread-top', label: 'Thread top' },
-    ],
+  /* Slot registry per surface — shared with the ad manager (ad-setup-data).
+     An ad with an empty slots list serves on every slot of its pages. */
+  var PAGE_SLOTS = D.PAGE_SLOTS || {
     feed: [{ id: 'feed:in-feed', label: 'In-feed' }],
     discover: [{ id: 'discover:strip', label: 'Strip' }],
-    genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
-    library: [{ id: 'library:slider', label: 'Slider' }],
-    droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
-    discussion: [{ id: 'discussion:inline', label: 'Inline' }],
-    debate: [
-      { id: 'debate:top', label: 'Top (above question)' },
-      { id: 'debate:inline', label: 'Inline (between arguments)' },
-      { id: 'debate:thread-top', label: 'Thread top (view all replies)' },
-    ],
-    home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
-    series: [{ id: 'series:main', label: 'Main' }],
   }; /* profile has page-level targeting only — no ad slot renders there */
   function pageSlots(pageId) { return PAGE_SLOTS[pageId] || []; }
   function pageLabel(pageId) {
@@ -89,6 +66,7 @@
     _slotsDirty = false;
     return {
       format: format || 'platform', fields: {}, campaign: '',
+      kind: format === 'spotlight' ? 'story' : '',
       pages: PAGES.map(function (p) { return p.id; }),
       slots: [],
       segments: [], genres: [], countries: [], offerRef: null,
@@ -102,6 +80,13 @@
       if (ad[f[0]] != null) d.fields[f[0]] = String(ad[f[0]]);
     });
     if (ad.url != null) d.fields.url = String(ad.url);
+    if (d.format === 'spotlight') {
+      d.kind = (ad.kind === 'user' || ad.promoKind === 'user') ? 'user'
+        : (ad.kind === 'board' || ad.boardType) ? 'board'
+          : ad.kind === 'promo' ? 'promo' : 'story';
+      if (ad.boardType != null) d.fields.boardType = String(ad.boardType);
+      if (ad.period != null) d.fields.period = String(ad.period);
+    }
     d.campaign = ad.campaign || '';
     d.pages = Array.isArray(ad.pages) && ad.pages.length ? ad.pages.slice() : PAGES.map(function (p) { return p.id; });
     d.slots = Array.isArray(ad.slots) ? ad.slots.slice() : [];
@@ -119,10 +104,14 @@
 
   /* ── Step bodies ── */
   function goalForFormat(fmt) {
+    var kind = fmt === 'spotlight' ? (_draft.kind || 'story') : '';
+    var fallback = '';
     for (var i = 0; i < GOALS.length; i++) {
-      if (GOALS[i].format === fmt) return GOALS[i].id;
+      if (GOALS[i].format !== fmt) continue;
+      if (!GOALS[i].spotKind) { if (!fallback) fallback = GOALS[i].id; continue; }
+      if (kind && GOALS[i].spotKind === kind) return GOALS[i].id;
     }
-    return '';
+    return fallback;
   }
   function bodyGoal() {
     var sel = goalForFormat(_draft.format);
@@ -136,10 +125,19 @@
   }
   function bodyCreative() {
     var fmt = _draft.format;
+    var kind = _draft.kind || 'story';
     // Search boxes are tied to format: stories on book, offers on
-    // platform, users on follow. Nothing else shows a search.
+    // platform, users on follow. Spotlight can promote either.
     var html = '';
-    if (fmt === 'book' || fmt === 'spotlight') {
+    if (fmt === 'spotlight') {
+      html += '<label class="f-lbl">What are you promoting?' +
+        '<div class="fmt-grid" style="grid-template-columns:1fr 1fr;margin-top:6px">' +
+          SPOT_KINDS.map(function (k) {
+            return '<button type="button" class="fmt-card' + (kind === k.id ? ' on' : '') + '" data-spot-kind="' + k.id + '"><i class="fas ' + k.icon + '"></i><div><div class="fmt-t">' + esc(k.label) + '</div><div class="fmt-d">' + esc(k.desc) + '</div></div></button>';
+          }).join('') +
+        '</div></label>';
+    }
+    if (fmt === 'book' || (fmt === 'spotlight' && kind === 'story')) {
       html += '<label class="f-lbl">Promote a platform story (fills the form)' +
         '<input class="f-inp" id="suStorySearch" placeholder="Search title or author…" value=""/></label>' +
         '<div class="story-hits" id="suStoryHits"></div>';
@@ -149,12 +147,35 @@
         '<input class="f-inp" id="suOfferPickSearch" placeholder="Search offers…" value=""/></label>' +
         '<div class="story-hits" id="suOfferPickHits"></div>';
     }
-    if (fmt === 'follow') {
+    if (fmt === 'follow' || (fmt === 'spotlight' && kind === 'user')) {
       html += '<label class="f-lbl">Promote a user (fills the form)' +
         '<input class="f-inp" id="suUserSearch" placeholder="Search name or handle…" value=""/></label>' +
         '<div class="story-hits" id="suUserHits"></div>';
     }
-    html += (FIELDS[fmt] || []).map(function (f) {
+    if (fmt === 'spotlight' && kind === 'board') {
+      html += '<div style="display:flex;gap:10px">' +
+        '<label class="f-lbl" style="flex:1">Board<select class="f-inp" data-k="boardType" style="margin-top:5px">' +
+          BOARD_TYPES.map(function (t) { return '<option value="' + t.id + '"' + ((_draft.fields.boardType || 'writers') === t.id ? ' selected' : '') + '>' + esc(t.label) + '</option>'; }).join('') +
+        '</select></label>' +
+        '<label class="f-lbl" style="flex:1">Period<select class="f-inp" data-k="period" style="margin-top:5px">' +
+          BOARD_PERIODS.map(function (p) { return '<option value="' + p.id + '"' + ((_draft.fields.period || 'last_week') === p.id ? ' selected' : '') + '>' + esc(p.label) + '</option>'; }).join('') +
+        '</select></label>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text-faint);margin:-2px 0 10px">Runs like a status: one top-3 spot at a time, auto-advancing with Next and a podium picker.</div>';
+    }
+    if (fmt === 'spotlight' && kind === 'promo') {
+      html += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
+        '<button type="button" class="btn-ghost" id="suReferPreset" style="padding:8px 12px;font-size:11px"><i class="fas fa-user-plus"></i> Refer a friend preset</button>' +
+        '<button type="button" class="btn-ghost" id="suCoinsPreset" style="padding:8px 12px;font-size:11px"><i class="fas fa-coins"></i> Coin offer preset</button>' +
+      '</div>';
+    }
+    var defs = fmt === 'spotlight'
+      ? (kind === 'user' ? (FIELDS.spotlightUser || [])
+        : kind === 'board' ? (FIELDS.spotlightBoard || [])
+          : kind === 'promo' ? (FIELDS.spotlightPromo || [])
+            : (FIELDS.spotlightStory || []))
+      : (FIELDS[fmt] || []);
+    html += defs.map(function (f) {
       var key = f[0], label = f[1], type = f[2];
       var val = _draft.fields[key] || '';
       if (type === 'area') return '<label class="f-lbl">' + esc(label) + '<textarea class="f-inp" data-k="' + key + '" rows="2">' + esc(val) + '</textarea></label>';
@@ -166,8 +187,14 @@
       }
       return '<label class="f-lbl">' + esc(label) + '<input class="f-inp" data-k="' + key + '" value="' + esc(val) + '"/></label>';
     }).join('');
+    var urlPlaceholder = fmt === 'spotlight'
+      ? (kind === 'user' ? 'profile.html?u=handle'
+        : kind === 'board' ? 'leaderboard.html (default)'
+          : kind === 'promo' ? 'refer.html — or any link / https://…'
+            : 'bridge.html?id=story-id')
+      : 'https://…';
     html += '<label class="f-lbl">Destination URL — where readers go when they tap the card or CTA' +
-      '<input class="f-inp" data-k="url" value="' + esc(_draft.fields.url || '') + '" placeholder="https://…"/></label>';
+      '<input class="f-inp" data-k="url" value="' + esc(_draft.fields.url || '') + '" placeholder="' + esc(urlPlaceholder) + '"/></label>';
     if (fmt === 'embed') {
       html += '<div style="font-size:11px;line-height:1.5;color:#b45309;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 10px;margin-top:8px">Only paste from ad networks you trust. Async tags work; legacy document.write tags do not.</div>' +
         '<div style="margin-top:10px"><div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:6px">Live preview (sandboxed)</div>' +
@@ -275,6 +302,11 @@
     var f = { label: _draft.format };
     FORMATS.forEach(function (x) { if (x.id === _draft.format) f = x; });
     var title = adTitleOf(_draft.fields);
+    if (!title && _draft.format === 'spotlight' && _draft.kind === 'board') {
+      var bt = _draft.fields.boardType || 'writers';
+      title = 'Auto — top 3 ' + bt + ' (' + (_draft.fields.period || 'last_week').replace(/_/g, ' ') + ')';
+    }
+    if (_draft.format === 'spotlight') title = title || '(untitled)';
     var camp = '';
     _campaigns.forEach(function (c) { if (String(c.id) === String(_draft.campaign)) camp = c.name || c.id; });
     var est = D.estimateAudience({ segments: _draft.segments, genres: _draft.genres, countries: _draft.countries });
@@ -377,13 +409,51 @@
     }
     return '';
   }
+  function boardPreviewHtml(ad) {
+    var data = null;
+    try {
+      if (window.DroboardSpotlightBoard) {
+        data = DroboardSpotlightBoard.get({ type: ad.boardType, period: ad.period, title: ad.title, sub: ad.sub });
+      }
+    } catch (e) {}
+    var entries = (data && data.entries) || [];
+    var rows = entries.map(function (e, i) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.08)">' +
+        (e.avatar ? '<img src="' + esc(e.avatar) + '" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover"/>' : '') +
+        '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800">' + esc(e.name) + '</div>' +
+        '<div style="font-size:10px;color:rgba(255,255,255,.55)">@' + esc(String(e.handle || '').replace(/^@/, '')) + '</div></div>' +
+        '<span style="font-size:11px;font-weight:800;color:#fbbf24">#' + (i + 1) + '</span></div>';
+    }).join('');
+    return '<div style="background:linear-gradient(160deg,#23102b,#0d0812);border-radius:14px;padding:14px;color:#fff">' +
+      '<div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#f0a800">' + esc((data && data.label) || 'Top 3') + '</div>' +
+      '<div style="font-size:14px;font-weight:800;margin:5px 0 8px;line-height:1.25">' + esc((data && data.lead) || ad.title || 'Meet the top three') + '</div>' +
+      (rows || '<div style="font-size:11px;color:rgba(255,255,255,.6)">Top-three data loads on the client page.</div>') +
+      '<div style="margin-top:10px"><span style="display:inline-block;background:#ff2d55;color:#fff;font-size:10px;font-weight:800;padding:7px 14px;border-radius:16px">' + esc(ad.cta || 'View leaderboard') + '</span></div>' +
+      '<div style="font-size:9.5px;color:rgba(255,255,255,.45);margin-top:8px">Status-style: auto-advances through #1 → #3, tappable podium + Next.</div>' +
+    '</div>';
+  }
+  function promoPreviewHtml(ad) {
+    return '<div style="border-radius:14px;overflow:hidden;background:linear-gradient(150deg,#2b0f1c,#120811);color:#fff;padding:14px;text-align:center">' +
+      (ad.img
+        ? '<div style="height:96px;border-radius:10px;overflow:hidden;margin-bottom:10px;background:#1a0a14"><img src="' + esc(ad.img) + '" alt="" style="width:100%;height:100%;object-fit:cover"/></div>'
+        : '<div style="font-size:30px;color:#ff9db8;margin-bottom:6px"><i class="fas fa-gift"></i></div>') +
+      '<div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55)">' + esc(ad.brand || 'Promotion') + '</div>' +
+      '<div style="font-size:15px;font-weight:800;line-height:1.25;margin:5px 0">' + esc(ad.title || 'Untitled') + '</div>' +
+      (ad.badge ? '<div style="display:inline-block;background:rgba(240,168,0,.16);border:1px solid rgba(240,168,0,.4);color:#fbbf24;font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;margin-bottom:6px">' + esc(ad.badge) + '</div>' : '') +
+      (ad.sub ? '<div style="font-size:11px;color:rgba(255,255,255,.7);line-height:1.5">' + esc(ad.sub) + '</div>' : '') +
+      '<div style="margin-top:11px"><span style="display:inline-block;background:#ff2d55;color:#fff;font-size:10.5px;font-weight:800;padding:8px 18px;border-radius:16px">' + esc(ad.cta || 'Learn more') + '</span></div>' +
+    '</div>';
+  }
   function previewCardHtml() {
     var ad = Object.assign({ id: 'su-preview' }, _draft.fields);
+    if (_draft.format === 'spotlight' && _draft.kind === 'board') return boardPreviewHtml(ad);
+    if (_draft.format === 'spotlight' && _draft.kind === 'promo') return promoPreviewHtml(ad);
     var C = window.DroboardAdCard;
     var html = '';
     if (C && typeof C.renderBanner === 'function') {
       try {
         if (_draft.format === 'platform') html = C.renderPlatform(ad) || '';
+        else if (_draft.format === 'spotlight' && _draft.kind === 'user') html = (C.renderFollowPromo && C.renderFollowPromo(ad)) || '';
         else if (_draft.format === 'book' || _draft.format === 'spotlight') html = C.renderListBook(ad) || '';
         else if (_draft.format === 'native') html = C.renderNative(ad) || '';
         else if (_draft.format === 'banner') html = C.renderBanner(ad) || '';
@@ -409,6 +479,8 @@
       if (_promoHandle && _promoHandle.stop) { try { _promoHandle.stop(); } catch (e) {} _promoHandle = null; }
       var forEl = $('pvFor');
       if (forEl) forEl.innerHTML = forPillsHtml();
+      var spotBtn = $('suSpotPreview');
+      if (spotBtn) spotBtn.style.display = _draft.format === 'spotlight' ? 'flex' : 'none';
       var card = $('pvCard');
       if (!card) return;
       card.innerHTML = previewCardHtml();
@@ -476,19 +548,42 @@
     set('title', s.title);
     set('author', s.author);
     set('genre', (s.cat || s.genre || '').replace(/^[^\s]+\s/, ''));
+    set('rating', s.rating);
+    set('reads', s.reads);
     set('preview', s.desc || s.preview);
     set('chapters', s.chapters);
     set('img', s.cover);
+    set('authorAvatar', s.authorAv || (window.DroboardPeople && DroboardPeople.avatarFor ? DroboardPeople.avatarFor(s.author) : ''));
+    if (_draft.format === 'spotlight') _draft.kind = 'story';
+    if (_draft.format === 'spotlight' || _draft.format === 'book') {
+      _draft.fields.url = 'bridge.html?id=' + encodeURIComponent(s.id || '');
+      set('url', _draft.fields.url);
+    }
     _imgDataUrl = '';
     collect();
     render();
+  }
+  function compactN(n) {
+    n = Number(n) || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'k';
+    return String(n);
   }
   function userSource() {
     var d = window.DemoData || {};
     var users = d.USERS || {};
     return Object.keys(users).map(function (k) {
       var u = users[k] || {};
-      return { name: u.name || u.handle || k, handle: u.handle || ('@' + k), avatar: u.avatar || '', tagline: u.bio || '' };
+      var st = u.stats || {};
+      return {
+        name: u.name || u.handle || k,
+        handle: u.handle || k,
+        avatar: u.avatar || '',
+        tagline: u.bio || '',
+        followers: st.followers ? compactN(st.followers) : '',
+        books: st.books || (Array.isArray(u.books) ? u.books.length : ''),
+        reads: st.reads ? compactN(st.reads) : '',
+      };
     });
   }
   function fillFromUser(u) {
@@ -497,12 +592,43 @@
       if (el && val != null) el.value = val;
     };
     set('name', u.name);
-    set('handle', u.handle);
-    set('tagline', (u.tagline || '').slice(0, 90));
+    set('handle', String(u.handle || '').replace(/^@/, ''));
+    set('tagline', (u.tagline || '').slice(0, 160));
     set('avatar', u.avatar);
+    if (_draft.format === 'spotlight') {
+      _draft.kind = 'user';
+      set('followers', u.followers);
+      set('books', u.books);
+      set('reads', u.reads);
+      set('cta', 'Follow ' + String(u.name || 'creator').split(' ')[0]);
+    }
+    var handle = String(u.handle || '').replace(/^@/, '');
+    if (handle && (_draft.format === 'spotlight' || _draft.format === 'follow')) {
+      _draft.fields.url = 'profile.html?u=' + encodeURIComponent(handle);
+      set('url', _draft.fields.url);
+    }
     _imgDataUrl = '';
     collect();
     render();
+  }
+  /* One-tap promo creatives for the spotlight "promotion / link" kind. */
+  function applySpotPreset(which) {
+    collect();
+    _draft.kind = 'promo';
+    var fill = which === 'coins'
+      ? {
+        brand: 'DroBoard', title: 'Get 1,000 coins + 200 bonus',
+        sub: 'Top up your wallet and unlock chapters instantly.',
+        badge: 'Limited offer', cta: 'Get coins', url: 'store.html',
+      }
+      : {
+        brand: 'DroBoard', title: 'Refer a friend, earn 250 coins',
+        sub: 'Share your invite link — you both get coins when they finish their first chapter.',
+        badge: '250 coins each', cta: 'Invite a friend', url: 'refer.html',
+      };
+    Object.keys(fill).forEach(function (k) { _draft.fields[k] = fill[k]; });
+    render();
+    toast(which === 'coins' ? 'Coin offer filled — tweak anything' : 'Referral preset filled — tweak anything');
   }
   function firstFieldKey(candidates) {
     var keys = (FIELDS[_draft.format] || []).map(function (f) { return f[0]; });
@@ -622,7 +748,8 @@
     // steps 0/3/5 mutate the draft live; nothing to collect.
   }
   function validate() {
-    if (_step === 1 && !adTitleOf(_draft.fields)) { setErr('Give the ad a title first.'); return false; }
+    var autoTitle = _draft.format === 'spotlight' && _draft.kind === 'board';
+    if (_step === 1 && !adTitleOf(_draft.fields) && !autoTitle) { setErr('Give the ad a title first.'); return false; }
     if (_step === 2 && !_draft.pages.length) { setErr('Pick at least one surface.'); return false; }
     if (_step === 2 && _slotsDirty && !_draft.slots.length) { setErr('Pick at least one slot.'); return false; }
     return true;
@@ -656,6 +783,10 @@
     var imgField = (FIELDS[_draft.format] || []).filter(function (f) { return f[2] === 'img'; })[0];
     if (imgField && _imgDataUrl) payload[imgField[0]] = _imgDataUrl;
     if (_draft.format === 'book') payload.isBook = true;
+    if (_draft.format === 'spotlight') {
+      payload.kind = _draft.kind || 'story';
+      if (payload.kind !== 'board') { delete payload.boardType; delete payload.period; }
+    }
     if (_editId) payload.id = _editId;
     var reset = function () { _saving = false; btn.textContent = 'Save ad'; btn.disabled = false; };
     MarketingData.saveAd(payload.format, payload).then(function () {
@@ -676,12 +807,27 @@
           GOALS.forEach(function (x) { if (x.id === b.dataset.goal) g = x; });
           if (!g) return;
           _draft.format = g.format;
+          if (g.spotKind) {
+            _draft.kind = g.spotKind;
+            if (g.spotKind === 'board') {
+              if (!_draft.fields.boardType) _draft.fields.boardType = 'writers';
+              if (!_draft.fields.period) _draft.fields.period = 'last_week';
+            }
+          }
           body.querySelectorAll('[data-goal]').forEach(function (x) { x.classList.toggle('on', x === b); });
           updatePreview();
         });
       });
     }
     if (_step === 1) {
+      body.querySelectorAll('[data-spot-kind]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (_draft.kind === b.dataset.spotKind) return;
+          collect();
+          _draft.kind = b.dataset.spotKind;
+          render();
+        });
+      });
       body.querySelectorAll('[data-k]').forEach(function (el) {
         el.addEventListener('input', function () {
           _draft.fields[el.dataset.k] = el.value.trim();
@@ -705,6 +851,10 @@
           return o.name.toLowerCase().indexOf(q) !== -1 || o.id.toLowerCase().indexOf(q) !== -1;
         }).slice(0, 6), 'offer');
       });
+      var refBtn = $('suReferPreset');
+      if (refBtn) refBtn.addEventListener('click', function () { applySpotPreset('refer'); });
+      var coinBtn = $('suCoinsPreset');
+      if (coinBtn) coinBtn.addEventListener('click', function () { applySpotPreset('coins'); });
       var usSi = $('suUserSearch');
       if (usSi) usSi.addEventListener('input', function () {
         var q = usSi.value.trim().toLowerCase();
@@ -845,6 +995,22 @@
     $('suNextBtn').addEventListener('click', next);
     var veil = $('pvVeil');
     if (veil) veil.addEventListener('click', openPreviewUrl);
+    var spotPrev = $('suSpotPreview');
+    if (spotPrev) spotPrev.addEventListener('click', function () {
+      if (!window.DroboardSpotlight) { toast('Preview unavailable'); return; }
+      collect();
+      var ad = Object.assign({ id: 'ad-preview', kind: _draft.kind || 'story' }, _draft.fields);
+      DroboardSpotlight.show({
+        story: DroboardSpotlight.fromAd(ad),
+        seconds: 6,
+        allowSkip: true,
+        sponsored: true,
+        preview: true,
+        onCta: function () {
+          toast(_draft.fields.url ? 'Preview only — readers would open ' + _draft.fields.url : 'Preview only — add a destination URL');
+        },
+      });
+    });
   }
 
   window.AdSetupPage = { init: init };

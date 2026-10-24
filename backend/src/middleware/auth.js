@@ -39,4 +39,19 @@ async function requireAuth(req, res, next) {
   return next();
 }
 
-module.exports = { signAccess, requireAuth };
+// Optional identity for public reads (feed/status rows/profile): a valid
+// token attaches req.user; anything else stays anonymous. Never rejects.
+async function optionalAuth(req, _res, next) {
+  const hdr = req.headers.authorization || '';
+  const token = hdr.startsWith('Bearer ')
+    ? hdr.slice(7)
+    : (req.cookies && req.cookies.dro_access) || null;
+  if (!token) { req.user = null; return next(); }
+  try {
+    const p = jwt.verify(token, env.jwtAccessSecret);
+    req.user = { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null };
+  } catch (e) { req.user = null; }
+  return next();
+}
+
+module.exports = { signAccess, requireAuth, optionalAuth };

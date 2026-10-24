@@ -8,15 +8,27 @@ const { User } = require('../models/user.model');
 
 const DEFAULT_TTL_HOURS = 24;
 
-function toStatus(s, viewerId) {
+function toStatus(s, viewerId, opts) {
   const o = s.toJSON ? s.toJSON() : s;
-  const seen = ((o.viewedBy || []).map(String).includes(String(viewerId || ''))) || !!o.viewed;
-  return {
+  const ownerId = String(o.userId);
+  const viewers = (o.viewedBy || []).map(String);
+  const uid = viewerId ? String(viewerId) : '';
+  const isOwner = !!(uid && uid === ownerId);
+  // Owner previews never inflate their own counter.
+  const views = viewers.filter(v => v !== ownerId).length;
+  const out = {
     id: o.id || o._id, userId: o.userId, bg: o.bg, quote: o.quote || '',
     caption: o.caption || '', likes: o.likes || 0,
-    liked: viewerId ? ((o.likedBy || []).map(String).includes(String(viewerId))) : false,
-    isLive: !!o.isLive, viewed: seen, expiresAt: o.expiresAt, createdAt: o.createdAt,
+    liked: uid ? ((o.likedBy || []).map(String).includes(uid)) : false,
+    isLive: !!o.isLive,
+    // Per-viewer truth. The legacy author-level `viewed` bool never drives
+    // anybody else's ring.
+    viewed: uid ? viewers.includes(uid) : false,
+    isMine: isOwner,
+    expiresAt: o.expiresAt, createdAt: o.createdAt,
   };
+  if (isOwner) out.views = views;
+  return out;
 }
 
 async function homeStatuses({ userId }) {
@@ -48,11 +60,11 @@ async function myStatuses({ userId }) {
     .sort({ createdAt: -1 }).limit(20).lean();
   return {
     statuses: rows.map(s => {
-      const o = toStatus(s, userId);
+      const o = toStatus(s, userId, { owner: true });
       return {
         id: o.id, bg: o.bg, quote: o.quote, caption: o.caption,
         time: relTimeLabel(o.createdAt), ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
-        likes: o.likes, viewed: o.viewed, isLive: o.isLive, expiresAt: o.expiresAt,
+        likes: o.likes, views: o.views || 0, viewed: o.viewed, isLive: o.isLive, expiresAt: o.expiresAt,
       };
     }),
   };
@@ -107,11 +119,59 @@ function canWrite(status, user) {
 }
 
 async function viewStatus({ status, userId }) {
-  if (userId && !(status.viewedBy || []).map(String).includes(String(userId))) {
-    status.viewedBy.push(String(userId));
+  const ownerId = String(status.userId);
+  const uid = userId ? String(userId) : '';
+  const viewers = (status.viewedBy || []).map(String);
+  // The author viewing their own story is a preview, not a counted view.
+  if (uid && uid !== ownerId && !viewers.includes(uid)) {
+    status.viewedBy.push(uid);
     await status.save();
   }
-  return toStatus(status, userId);
+  return toStatus(status, userId, { owner: uid === ownerId });
+}
+
+/* Cross-surface ring state for a set of handles.
+   GET /api/statuses/state?handles=a,b,c
+   → { states: { a: {has,total,unseen,seen,ring,lastAt} } } */
+async function stateStatuses({ viewerId, handles }) {
+  const wanted = [...new Set((handles || [])
+    .map(h => String(h || '').replace(/^@/, '').trim().toLowerCase())
+    .filter(Boolean))].slice(0, 80);
+  const states = {};
+  wanted.forEach(h => {
+    states[h] = { handle: h, has: false, total: 0, unseen: 0, seen: 0, ring: 'ring-none', lastAt: null };
+  });
+  if (!wanted.length) return { states };
+
+  const users = await User.find({ username: { $in: wanted } })
+    .collation({ locale: 'en', strength: 2 })
+    .select('id username').lean();
+  if (!users.length) return { states };
+  const byId = {};
+  users.forEach(u => { byId[String(u.id)] = String(u.username).toLowerCase(); });
+
+  const rows = await Status.find({
+    userId: { $in: Object.keys(byId) },
+    expiresAt: { $gt: new Date() },
+  }).select('userId viewedBy createdAt').sort({ createdAt: 1 }).lean();
+
+  const uid = viewerId ? String(viewerId) : '';
+  rows.forEach(r => {
+    const handle = byId[String(r.userId)];
+    const st = handle && states[handle];
+    if (!st) return;
+    st.has = true;
+    st.total += 1;
+    const seen = uid && (r.viewedBy || []).map(String).includes(uid);
+    if (seen) st.seen += 1; else st.unseen += 1;
+    const at = r.createdAt ? new Date(r.createdAt).toISOString() : null;
+    if (at && (!st.lastAt || at > st.lastAt)) st.lastAt = at;
+  });
+  Object.keys(states).forEach(k => {
+    const st = states[k];
+    st.ring = !st.total ? 'ring-none' : (st.unseen > 0 ? 'ring-has' : 'ring-viewed');
+  });
+  return { states };
 }
 
 async function toggleLike({ status, userId }) {
@@ -128,4 +188,4 @@ async function deleteStatus({ status }) {
   return { ok: true };
 }
 
-module.exports = { toStatus, homeStatuses, myStatuses, createStatus, loadOr404, canWrite, viewStatus, toggleLike, deleteStatus };
+module.exports = { toStatus, homeStatuses, myStatuses, createStatus, loadOr404, canWrite, viewStatus, toggleLike, deleteStatus, stateStatuses };

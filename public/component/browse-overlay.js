@@ -67,7 +67,7 @@
      block — the settings theme switcher flips the tokens, overlay follows. */
   const CSS = `
     .bro-root{
-      --bro-bg:var(--l2,#f7f7f8); --bro-card:var(--card,#fff); --bro-topbar:var(--card,#fff);
+      --bro-bg:var(--bg,#f2f1f6); --bro-card:var(--card,#fff); --bro-topbar:var(--card,#fff);
       --bro-border:var(--border,#ebebed); --bro-text:var(--text,#1a1a1a); --bro-muted:var(--muted,#8e8e93);
       --bro-faint:var(--tx-faint,#c7c7cc); --bro-acc:var(--acc,#ff2d55); --bro-acc-soft:var(--acc-light,rgba(255,45,85,.08));
       --bro-acc-border:var(--bd-acc,rgba(255,45,85,.2)); --bro-surface:var(--l4,#f0f0f2);
@@ -144,9 +144,9 @@
 
     /* ── list (always used): each row is a card so it separates from the page
        in both themes (light: white on gray, dark: l3 layer on black) ── */
-    .bro-list{display:flex;flex-direction:column;gap:10px;padding:8px 12px}
+    .bro-list{display:flex;flex-direction:column;gap:11px;padding:8px 12px}
     .bro-list-item{display:flex;gap:12px;padding:12px;background:var(--bro-card);
-      border:1px solid var(--bro-border);border-radius:14px;cursor:pointer}
+      border:none;border-radius:14px;cursor:pointer}
     .bro-list-item:active{opacity:.85}
     .bro-list-cover{width:76px;height:102px;border-radius:9px;overflow:hidden;flex-shrink:0;
       background:var(--bro-surface);box-shadow:0 2px 8px var(--bro-shadow)}
@@ -178,16 +178,12 @@
     .bro-card.bro-gold-border .bro-card-cover{border:2px solid var(--bro-gold)}
     .bro-card-badge.bro-badge-gold{background:var(--bro-gold)}
 
-    /* ── top writers row (card like the list rows, avatars inside) ── */
-    .bro-writers-row{padding:14px 12px;border:1px solid var(--bro-border);background:var(--bro-card);
-      border-radius:14px;margin:0}
-    .bro-writers-head{font-size:12.5px;font-weight:800;margin-bottom:10px}
-    .bro-writers-scroll{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-    .bro-writers-scroll::-webkit-scrollbar{display:none}
-    .bro-writer{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;width:64px;text-align:center}
-    .bro-writer-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover}
-    .bro-writer-name{font-size:10.5px;font-weight:600;color:var(--bro-text);white-space:nowrap;overflow:hidden;
-      text-overflow:ellipsis;width:100%}
+    /* ── top writers row (shared component, card variant) ── */
+    #broContent .dwr-row{--dwr-acc:var(--bro-acc,#ff2d55);--dwr-bg:var(--bro-card,#fff);
+      --dwr-bd:var(--bro-border,#e5e5ea);--dwr-tx:var(--bro-text,#1a1a1a);
+      --dwr-inner:var(--bro-card,#fff);--dwr-viewed:var(--bro-muted,#8e8e93)}
+    #broContent .dwr-row.dwr-card{padding:14px 0 !important;margin:0 !important;border:none !important;border-radius:0 !important}
+    #broContent .dwr-row.dwr-card .dwr-scroll{padding:0 12px}
 
     .bro-loader{display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 16px;
       font-size:12px;color:var(--bro-muted)}
@@ -262,16 +258,6 @@
     { title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'billionaire', rating: '4.7', chapters: 24, preview: 'Self-published and rising fast — a slow-burn billionaire romance readers can\u2019t put down.' },
     { title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.' },
     { title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author breaking into the charts.' },
-  ];
-
-  // Top writers — shown as one avatar row inserted near the top of the list.
-  const TOP_WRITERS = [
-    { name: 'Ifeanyi Story', handle: 'Ifeanyi_Story', avatar: 'https://i.pravatar.cc/100?img=53' },
-    { name: 'Ada Writes', handle: 'Ada_Writes', avatar: 'https://i.pravatar.cc/100?img=32' },
-    { name: 'Luna Grey', handle: 'Luna_Grey', avatar: 'https://i.pravatar.cc/100?img=25' },
-    { name: 'Zara M', handle: 'Zara_M', avatar: 'https://i.pravatar.cc/100?img=16' },
-    { name: 'Chiamaka N', handle: 'Chiamaka_N', avatar: 'https://i.pravatar.cc/100?img=47' },
-    { name: 'Kemi A', handle: 'Kemi_A', avatar: 'https://i.pravatar.cc/100?img=28' },
   ];
 
   // Promoted-story slider — same content shape as the Library page's promo slider.
@@ -455,15 +441,12 @@
   }
 
   function _writersRowHTML() {
-    return `<div class="bro-writers-row">
-      <div class="bro-writers-head">Top Writers</div>
-      <div class="bro-writers-scroll">
-        ${TOP_WRITERS.map(w => `<a class="bro-writer" href="profile.html?u=${_esc(w.handle)}">
-          <img class="bro-writer-avatar" src="${_esc(w.avatar)}" loading="lazy" alt=""/>
-          <div class="bro-writer-name">${_esc(w.name)}</div>
-        </a>`).join('')}
-      </div>
-    </div>`;
+    if (!window.DroboardWritersRow || typeof window.DroboardWritersRow.render !== 'function') return '';
+    return window.DroboardWritersRow.render({
+      key: _mode === 'genre' ? (_filter || 'all') : (_title || 'all'),
+      limit: 10,
+      variant: 'card',
+    });
   }
 
   function _collectionHTML(item) {

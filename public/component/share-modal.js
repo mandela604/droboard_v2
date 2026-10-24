@@ -166,6 +166,10 @@
       transition: background .25s ease;
     }
     .dsm-ico span { font-size: 9px; font-weight: 600; color: #555; transition: color .25s ease; }
+    /* Copy chip: white-on-translucent works on dark sheets only — both colors
+       live in CSS so the light-theme override below can actually win. */
+    .dsm-ico[data-platform="copy"] .dsm-ico-bg { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+    .dsm-ico[data-platform="copy"] .dsm-ico-bg i { color: #fff; font-size: 16px; }
 
     .dsm-copy-msg {
       text-align: center; font-size: 11px;
@@ -366,7 +370,7 @@
     [data-theme="light"] .dsm-ico span { color: #8a8a8a; }
     /* Only the "copy link" chip uses a translucent-white bg + white icon —
        that combo disappears on a white sheet, so it gets an explicit swap. */
-    [data-theme="light"] .dsm-ico[data-platform="copy"] .dsm-ico-bg { background: rgba(0,0,0,.06); }
+    [data-theme="light"] .dsm-ico[data-platform="copy"] .dsm-ico-bg { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.12); }
     [data-theme="light"] .dsm-ico[data-platform="copy"] .dsm-ico-bg i { color: #3a3a3a; }
 
     [data-theme="light"] .dsc-card-img { background-color: rgba(0,0,0,.04); }
@@ -444,7 +448,7 @@
             <span>Reddit</span>
           </div>
           <div class="dsm-ico" data-platform="copy">
-            <div class="dsm-ico-bg" style="background:rgba(255,255,255,.06)"><i class="fas fa-link" style="color:#fff;font-size:16px"></i></div>
+            <div class="dsm-ico-bg"><i class="fas fa-link"></i></div>
             <span>Copy link</span>
           </div>
         </div>

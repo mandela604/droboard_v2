@@ -193,14 +193,18 @@
   // Readers see nothing here — no dashboard is ever forced on anyone.
   function _staffDashboards() {
     var roles = [];
-    try {
-      var s = JSON.parse(localStorage.getItem('droboard_user') || 'null');
-      if (s) {
-        if (Array.isArray(s.roles)) roles = s.roles;
-        else if (s.role) roles = [s.role];
-      }
-    } catch (e) {}
-    roles = roles.map(function (r) { return String(r).toLowerCase().replace(/[\s-]+/g, '_'); });
+    if (window.AuthSession && typeof AuthSession.getRoles === 'function') {
+      roles = AuthSession.getRoles();
+    } else {
+      try {
+        var s = JSON.parse(localStorage.getItem('droboard_user') || 'null');
+        if (s) {
+          if (Array.isArray(s.roles)) roles = s.roles;
+          else if (s.role) roles = [s.role];
+        }
+      } catch (e) {}
+      roles = roles.map(function (r) { return String(r).toLowerCase().replace(/[\s-]+/g, '_'); });
+    }
     var has = function () {
       for (var i = 0; i < arguments.length; i++) {
         if (roles.indexOf(arguments[i]) !== -1) return true;
@@ -208,9 +212,10 @@
       return false;
     };
     var out = [];
-    if (has('senior_editor')) out.push({ label: 'Senior Editor Dashboard', sub: 'Reviews, authors & reports', href: '../senior-editor/dashboard.html' });
-    if (has('chief_editor')) out.push({ label: 'Chief Editor Dashboard', sub: 'Editors, contracts & flags', href: '../chief-editor/dashboard.html' });
     if (has('admin')) out.push({ label: 'Super Admin Dashboard', sub: 'Platform overview', href: '../super-admin/dashboard.html' });
+    if (has('chief_editor')) out.push({ label: 'Chief Editor Dashboard', sub: 'Editors, contracts & flags', href: '../chief-editor/dashboard.html' });
+    if (has('senior_editor')) out.push({ label: 'Senior Editor Dashboard', sub: 'Reviews, authors & reports', href: '../senior-editor/dashboard.html' });
+    if (has('editor')) out.push({ label: 'Editor Dashboard', sub: 'Books, authors & reviews', href: '../editor/dashboard.html' });
     if (has('finance')) out.push({ label: 'Finance Dashboard', sub: 'Payouts & revenue', href: '../finance/dashboard.html' });
     if (has('marketing')) out.push({ label: 'Marketing Dashboard', sub: 'Campaigns & growth', href: '../marketing/dashboard.html' });
     return out;
@@ -242,7 +247,6 @@
 
   function _renderBody(p, isOwner) {
     const booksN = (p.books || []).length;
-    const libN = (p.library || []).length;
     const collN = (p.collections || []).length;
     const followingN = (p.stats && p.stats.following) || 0;
 
@@ -281,12 +285,6 @@
           title: 'Author Center', sub: 'Dashboard, analytics & revenue',
         });
       }
-    } else {
-      html += _item({
-        act: 'tab', tab: 'library', icon: 'fa-bookmark',
-        iconBg: 'rgba(56,189,248,.07)', border: 'rgba(56,189,248,.12)', iconColor: 'var(--blue,#38bdf8)',
-        title: 'Library', sub: libN + ' saved stories',
-      });
     }
 
     html += _item({

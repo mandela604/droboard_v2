@@ -97,6 +97,55 @@
      login gate instead of account-only UI (profile, library, …). */
   function isGuest() { return !isSignedIn(); }
 
+  /* ── Roles ──────────────────────────────────────────────────────────
+     Canonical role names for menu/dashboard links. Reads the real session
+     user (droboard_user.roles/role/primaryRole), the legacy aurum_user,
+     the explicit dro_staff_role override, and a ?role= demo override.
+     Visibility only — dashboards must still authorize server-side. */
+  const ROLE_ALIASES = {
+    superadmin: 'admin', super_admin: 'admin', administrator: 'admin',
+    chief: 'chief_editor', chiefeditor: 'chief_editor',
+    senior: 'senior_editor', senior_editor: 'senior_editor', senior_editor_dashboard: 'senior_editor',
+    senioreditor: 'senior_editor',
+    editors: 'editor', content_editor: 'editor',
+    finance_manager: 'finance', marketing_manager: 'marketing',
+  };
+  function normalizeRole(r) {
+    const key = String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return ROLE_ALIASES[key] || key;
+  }
+  function readJson(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || 'null');
+      return (v && typeof v === 'object') ? v : null;
+    } catch (e) { return null; }
+  }
+  function getRoles() {
+    const roles = new Set();
+    const add = (r) => {
+      if (Array.isArray(r)) { r.forEach(add); return; }
+      String(r || '').split(',').forEach((part) => {
+        const n = normalizeRole(part);
+        if (n) roles.add(n);
+      });
+    };
+    [readJson(USER_KEY), readJson('aurum_user')].forEach((u) => {
+      if (!u) return;
+      add(u.roles); add(u.role); add(u.primaryRole);
+    });
+    try { add(localStorage.getItem('dro_staff_role')); } catch (e) {}
+    try {
+      const q = new URLSearchParams(location.search).get('role');
+      if (q) add(q);
+    } catch (e) {}
+    if (effectiveMode() === 'guest') return [];
+    return [...roles];
+  }
+  function hasRole() {
+    const roles = getRoles();
+    return [...arguments].some((r) => roles.indexOf(normalizeRole(r)) !== -1);
+  }
+
   /* Send a guest to the login page and back again afterwards. */
   function loginUrl(next) {
     const back = next || (location.pathname.split('/').pop() || 'index.html');
@@ -160,5 +209,7 @@
     loginUrl,
     getMode,
     setMode,
+    getRoles,
+    hasRole,
   };
 })(window);

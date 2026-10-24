@@ -832,6 +832,10 @@
     if (!w) return null;
     if (w.statuses && w.statuses.length) return w;
     try {
+      if (window.DroboardStatus && DroboardStatus.writerStatuses) {
+        const slides = DroboardStatus.writerStatuses(w.handle || w.name);
+        if (slides && slides.length) return { id: 'wr:' + String(w.handle || w.name).replace(/^@/, '').toLowerCase(), statuses: slides };
+      }
       const list = (window.DemoData && window.DemoData.STATUSES) || [];
       const name = String(w.name || '').replace(/^@/, '').toLowerCase();
       for (let i = 0; i < list.length; i++) {
@@ -850,8 +854,15 @@
     if (!st) {
       return `<div class="dso-wc-av-plain"><img src="${av}" loading="lazy" alt=""/></div>`;
     }
-    const viewed = st.ring === 'ring-viewed';
-    return `<div class="dso-wc-av-ring${viewed ? ' viewed' : ''}"><div class="dso-wc-av-inner"><img src="${av}" loading="lazy" alt=""/></div></div>`;
+    const key = w.handle || w.name || st.id;
+    let ring = st.ring || 'ring-has';
+    try {
+      if (window.StatusStore && StatusStore.register) {
+        ring = StatusStore.register(key, st.statuses || [], { isLive: !!st.isLive }) || ring;
+      }
+    } catch (e) {}
+    const viewed = ring === 'ring-viewed';
+    return `<div class="dso-wc-av-ring${viewed ? ' viewed' : ''}" data-status-ring="${_esc(key)}"><div class="dso-wc-av-inner"><img src="${av}" loading="lazy" alt=""/></div></div>`;
   }
 
   function renderWriters() {

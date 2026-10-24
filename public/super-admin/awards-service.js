@@ -201,6 +201,9 @@ so AdminDemo seeding can inject catalog if desired.
  * ═══════════════════════════════════════════════════════════════════ */
 (function(){
 'use strict';
+/* This controller only belongs on awards.html. profile.html loads this file
+   for AwardsEngine, where #dashRoot and SuperAdminSidebar do not exist. */
+if (!document.getElementById('dashRoot') || !window.SuperAdminSidebar) return;
 const shell = SuperAdminSidebar.attach('#dashRoot',{
   activeItem:'awards', title:'Awards', subtitle:'Define awards and criteria — backend auto-grants from here',
   user:{ name:'Tobi Adenuga', role:'Super Admin', avatar:'https://i.pravatar.cc/100?img=68' }, notifCount:9

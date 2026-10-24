@@ -4,10 +4,27 @@ var CT=[
   {value:'revenue-share',label:'Revenue Share',term:'12 months',rev:'65/35'},
   {value:'licensing',label:'Licensing Agreement',term:'9 months',rev:'55/45'}
 ];
+/* Identity (KYC) submitted by the author with the contract application.
+   `idPhotos` holds storage keys (file names) in production; full URLs
+   (https/data/blob/root-relative) are used as-is by the viewer. */
+var KYC={
+  'CTR-001':{type:'self',dob:'1994-03-18',age:32,nin:'12345678901',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-002':{type:'self',dob:'1997-11-05',age:28,nin:'23456789012',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-003':{type:'pending',dob:'2006-09-02',age:20,nin:'',altId:{type:'Voter\'s Card',no:'55667788901'},idPhotos:{front:'voters-front.jpg',back:'voters-back.jpg'}},
+  'CTR-004':{type:'self',dob:'1991-06-27',age:35,nin:'34567890123',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-005':{type:'self',dob:'1999-02-14',age:27,nin:'45678901234',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-006':{type:'self',dob:'2000-08-09',age:26,nin:'56789012345',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-007':{type:'guardian',dob:'2009-04-30',age:17,nin:'',guardian:{name:'Mrs Ngozi Eze',relationship:'Parent',idNo:'8765432109'},idPhotos:{front:'guardian-id-front.jpg',back:'guardian-id-back.jpg'}},
+  'CTR-008':{type:'self',dob:'1993-12-01',age:32,nin:'67890123456',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-009':{type:'self',dob:'1996-05-19',age:30,nin:'78901234567',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-010':{type:'self',dob:'1993-12-01',age:32,nin:'67890123456',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+  'CTR-011':{type:'pending',dob:'2005-10-12',age:21,nin:'',altId:{type:'Driver\'s License',no:'DL-99210457'},idPhotos:{front:'drivers-license-front.jpg',back:'drivers-license-back.jpg'}},
+  'CTR-012':{type:'self',dob:'1988-07-30',age:38,nin:'89012345678',idPhotos:{front:'nin-slip-front.jpg',back:'nin-slip-back.jpg'}},
+};
 var items=[
   {id:'CTR-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',bookTitle:'The Last Horizon',bookGenre:'Sci-Fi',chapters:14,ct:'',term:'12 months',rev:'70/30',submitted:'2h ago',status:'pending',notes:'Hi! I would love an exclusive deal for The Last Horizon — I believe in this book and I want us to build it together.',sent:false},
   {id:'CTR-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',bookTitle:'Wolf Kings Vow',bookGenre:'Fantasy',chapters:22,ct:'',term:'6 months',rev:'60/40',submitted:'5h ago',status:'pending',notes:'Requesting a non-exclusive deal for Wolf Kings Vow — I would like to keep my rights while we work together.',sent:false},
-  {id:'CTR-003',author:'Isabelle Moreau',kyc:{type:'pending',dob:'2006-09-02',age:20,nin:'',altId:{type:'Voter\'s Card',no:'55667788901'},idPhotos:{front:'voters-front.jpg',back:'voters-back.jpg'}},avatar:'https://i.pravatar.cc/100?img=25',bookTitle:'Midnight Ember',bookGenre:'Romance',chapters:18,ct:'exclusive',term:'18 months',rev:'75/25',submitted:'1d ago',status:'approved',notes:'Thank you for the premium exclusive offer on Midnight Ember — I have signed from my side and I am excited for us to begin!',sent:true},
+  {id:'CTR-003',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',bookTitle:'Midnight Ember',bookGenre:'Romance',chapters:18,ct:'exclusive',term:'18 months',rev:'75/25',submitted:'1d ago',status:'approved',notes:'Thank you for the premium exclusive offer on Midnight Ember — I have signed from my side and I am excited for us to begin!',sent:true},
   {id:'CTR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'Streetlight Dreams',bookGenre:'Urban Fiction',chapters:30,ct:'revenue-share',term:'12 months',rev:'65/35',submitted:'2d ago',status:'signed',notes:'Happy with the revenue share terms for Streetlight Dreams, plus the milestone bonuses. All signed!',sent:true},
   {id:'CTR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',bookTitle:'Kingdom of Ashes',bookGenre:'Epic Fantasy',chapters:24,ct:'exclusive',term:'24 months',rev:'80/20',submitted:'3d ago',status:'signed',notes:'The 24-month exclusive works for me — Kingdom of Ashes is my heart book and I am glad to commit long-term.',sent:true},
   {id:'CTR-006',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',bookTitle:'Lagos After Dark',bookGenre:'Thriller',chapters:9,ct:'',term:'3 months',rev:'55/45',submitted:'4d ago',status:'pending',notes:'I would like to start with the short 3-month trial for Lagos After Dark so we can test the waters together.',sent:false},
@@ -18,7 +35,8 @@ var items=[
   {id:'CTR-011',author:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',bookTitle:'Frozen Echoes',bookGenre:'Nordic Noir',chapters:10,ct:'',term:'',rev:'',submitted:'3h ago',status:'pending',notes:'Hello! I just applied for a contract for Frozen Echoes — please let me know which deal fits best.',sent:false},
   {id:'CTR-012',author:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',bookTitle:'The Silent Accord',bookGenre:'Mystery',chapters:15,ct:'',term:'',rev:'',submitted:'6h ago',status:'pending',notes:'New submission here — The Silent Accord needs a contract home. Awaiting your assignment!',sent:false}
 ];
-var curPage=1,PP=5,openId=null,selCT={};
+items.forEach(function(a){ if(KYC[a.id]) a.kyc=KYC[a.id]; });
+var curPage=1,PP=5,openId=null,selCT={},activeStatus='';
 function ctLabel(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].label;}return '--';}
 function ctTerm(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].term;}return '12 months';}
 function ctRev(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].rev;}return '70/30';}
@@ -38,11 +56,171 @@ function signBlockReason(a){
   if(!k.idPhotos||!k.idPhotos.front||!k.idPhotos.back) return 'ID photos required (front + back) before signing '+a.author+'\u2019s contract.';
   return null;
 }
+/* ── Identity viewer (personal details + front/back ID documents) ── */
+function kxDate(d){
+  if(!d) return '\u2014';
+  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var p=String(d).split('-');
+  if(p.length!==3) return d;
+  return parseInt(p[2],10)+' '+m[parseInt(p[1],10)-1]+' '+p[0];
+}
+function kxEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c];
+  });
+}
+function kxBadge(k){
+  if(!k) return '<span class="kyc-badge missing"><i class="fas fa-circle-exclamation"></i> Not submitted</span>';
+  if(!k.idPhotos||!k.idPhotos.front||!k.idPhotos.back) return '<span class="kyc-badge pending"><i class="fas fa-image"></i> Photos missing</span>';
+  if(k.type==='guardian') return '<span class="kyc-badge guardian"><i class="fas fa-user-shield"></i> Guardian co-sign</span>';
+  if(k.type==='pending') return '<span class="kyc-badge pending"><i class="fas fa-hourglass-half"></i> Pending NIN</span>';
+  return '<span class="kyc-badge verified"><i class="fas fa-shield-halved"></i> Verified \u00b7 self NIN</span>';
+}
+function kxFields(a){
+  var k=a.kyc,f=[
+    {l:'Full legal name',v:kxEsc(a.author)},
+    {l:'Date of birth',v:kxDate(k.dob)+' <small>age '+k.age+'</small>'},
+    {l:'Identity path',v:k.type==='guardian'?'Guardian co-sign':k.type==='pending'?'Pending NIN \u00b7 alternate ID':'NIN verified'}
+  ];
+  if(k.type==='guardian'&&k.guardian){
+    f.push({l:'Guardian',v:kxEsc(k.guardian.name)});
+    f.push({l:'Relationship',v:kxEsc(k.guardian.relationship)});
+    f.push({l:'Guardian ID no.',v:kxEsc(k.guardian.idNo),mono:true});
+  }else if(k.type==='pending'&&k.altId){
+    f.push({l:'Alternate ID type',v:kxEsc(k.altId.type)});
+    f.push({l:'Alternate ID no.',v:kxEsc(k.altId.no),mono:true});
+  }else{
+    f.push({l:'NIN',v:kxEsc(k.nin),mono:true});
+  }
+  return f;
+}
+/* Demo document preview: renders the submitted ID details as a document so
+   editors can actually inspect a face/ID pairing before signing. In live mode
+   `idPhotos` values are real image URLs and bypass this generator. */
+function kxDoc(a,k,side){
+  var guardian=k.type==='guardian'&&k.guardian;
+  var pending=k.type==='pending'&&k.altId;
+  var holder=guardian?k.guardian.name:a.author;
+  var idNo=guardian?k.guardian.idNo:(pending?k.altId.no:k.nin);
+  var issuer=guardian?'GUARDIAN IDENTIFICATION':pending?String(k.altId.type).toUpperCase():'FEDERAL REPUBLIC OF NIGERIA';
+  var docTitle=guardian?'Guardian identity document':pending?String(k.altId.type):'National Identification Number (NIN) Slip';
+  var idLabel=guardian?'GUARDIAN ID NUMBER':pending?'ID NUMBER':'NATIONAL IDENTIFICATION NUMBER';
+  var roleLine=guardian?('<text x="176" y="286" font-size="10" fill="#5c5c52" font-family="Arial">RELATIONSHIP: '+kxEsc(k.guardian.relationship).toUpperCase()+'</text>'):'';
+  var digits=String(idNo||'').replace(/\D/g,'')||'1234567';
+  var bars='',i;
+  for(i=0;i<46;i++){
+    var bh=18+(parseInt(digits.charAt(i%digits.length),10)||i%9)*6;
+    bars+='<rect x="'+(28+i*12)+'" y="'+(315-bh)+'" width="'+(i%4===0?5:2.5)+'" height="'+bh+'" fill="#17171a"/>';
+  }
+  var front=''
+    +'<rect width="600" height="380" fill="#fbfaf4"/>'
+    +'<rect width="600" height="72" fill="#0b6b3a"/>'
+    +'<circle cx="40" cy="36" r="18" fill="none" stroke="#f0cf6b" stroke-width="2"/>'
+    +'<text x="40" y="42" font-size="12" text-anchor="middle" fill="#f0cf6b" font-family="Georgia,serif" font-weight="700">NG</text>'
+    +'<text x="72" y="31" font-size="14" font-weight="700" fill="#fff" font-family="Arial">'+kxEsc(issuer)+'</text>'
+    +'<text x="72" y="50" font-size="9.5" fill="#cfe8d8" font-family="Arial" letter-spacing="1.6">IDENTITY DOCUMENT \u00b7 FRONT</text>'
+    +'<text x="30" y="102" font-size="10.5" font-weight="700" fill="#0b6b3a" font-family="Arial" letter-spacing="1.1">'+kxEsc(docTitle).toUpperCase()+'</text>'
+    +'<rect x="30" y="118" width="118" height="150" rx="4" fill="#e7e7de" stroke="#c9c9bd"/>'
+    +'<circle cx="89" cy="167" r="27" fill="#b9b9ac"/>'
+    +'<path d="M45 268c5-37 25-55 44-55s39 18 44 55z" fill="#b9b9ac"/>'
+    +'<text x="89" y="287" font-size="8" text-anchor="middle" fill="#8d8d80" font-family="Arial" letter-spacing="1">PHOTOGRAPH</text>'
+    +'<text x="176" y="136" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">FULL NAME</text>'
+    +'<text x="176" y="158" font-size="16" font-weight="700" fill="#17171a" font-family="Arial">'+kxEsc(holder)+'</text>'
+    +'<line x1="176" y1="168" x2="562" y2="168" stroke="#deded4"/>'
+    +'<text x="176" y="191" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">DATE OF BIRTH</text>'
+    +'<text x="176" y="211" font-size="13" font-weight="700" fill="#17171a" font-family="Arial">'+kxDate(k.dob)+'</text>'
+    +'<text x="380" y="191" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">AGE</text>'
+    +'<text x="380" y="211" font-size="13" font-weight="700" fill="#17171a" font-family="Arial">'+k.age+' years</text>'
+    +'<text x="176" y="242" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">'+idLabel+'</text>'
+    +'<text x="176" y="266" font-size="19" font-weight="700" fill="#0b6b3a" font-family="Courier New,monospace" letter-spacing="2">'+kxEsc(idNo)+'</text>'
+    +roleLine
+    +'<rect x="0" y="322" width="600" height="58" fill="#0b6b3a" opacity=".07"/>'
+    +'<text x="30" y="342" font-size="8" fill="#5c5c52" font-family="Arial" letter-spacing="1">THIS DOCUMENT REMAINS THE PROPERTY OF THE ISSUING AUTHORITY</text>';
+  var back=''
+    +'<rect width="600" height="380" fill="#fbfaf4"/>'
+    +'<rect width="600" height="72" fill="#0b6b3a"/>'
+    +'<circle cx="40" cy="36" r="18" fill="none" stroke="#f0cf6b" stroke-width="2"/>'
+    +'<text x="40" y="42" font-size="12" text-anchor="middle" fill="#f0cf6b" font-family="Georgia,serif" font-weight="700">NG</text>'
+    +'<text x="72" y="31" font-size="14" font-weight="700" fill="#fff" font-family="Arial">'+kxEsc(issuer)+'</text>'
+    +'<text x="72" y="50" font-size="9.5" fill="#cfe8d8" font-family="Arial" letter-spacing="1.6">IDENTITY DOCUMENT \u00b7 BACK</text>'
+    +'<rect x="0" y="118" width="600" height="200" fill="#f3f2ea"/>'
+    +bars
+    +'<text x="300" y="368" font-size="9" text-anchor="middle" fill="#7a7a6f" font-family="Arial" letter-spacing="1">DOCUMENT NO. '+kxEsc(idNo)+' \u00b7 '+kxEsc(holder).toUpperCase()+'</text>'
+    +'<text x="30" y="95" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">MACHINE READABLE ZONE</text>'
+    +'<text x="30" y="108" font-size="10" fill="#17171a" font-family="Courier New,monospace" letter-spacing="1.4">IDNGA'+kxEsc(idNo)+'&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</text>'
+    +'<text x="30" y="345" font-size="8" fill="#5c5c52" font-family="Arial" letter-spacing="1">IF FOUND, RETURN TO THE NEAREST ISSUING OFFICE</text>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380">'+(side==='back'?back:front)+'</svg>';
+}
+function kxPhotoSrc(a,side){
+  var k=a.kyc;if(!k||!k.idPhotos) return '';
+  var v=k.idPhotos[side];
+  if(!v) return '';
+  if(/^(https?:|data:|blob:|\/|\.{1,2}\/)/i.test(v)) return v;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(kxDoc(a,k,side));
+}
+function kxPhotoCard(a,side,src){
+  var label=side==='front'?'ID photo \u2014 front':'ID photo \u2014 back';
+  var file=(a.kyc.idPhotos&&a.kyc.idPhotos[side])||'';
+  if(!src) return '<div class="kyc-photo is-missing"><span class="kyc-photo-thumb"><i class="fas fa-image-slash"></i></span><span class="kyc-photo-meta"><b>'+label+'</b><small>Not uploaded</small></span></div>';
+  return '<button type="button" class="kyc-photo" onclick="window._viewId(\''+a.id+'\',\''+side+'\')" title="View full size">'
+    +'<span class="kyc-photo-thumb"><img src="'+src+'" alt="'+kxEsc(a.author)+' '+label+'"><span class="kyc-zoom"><i class="fas fa-magnifying-glass-plus"></i></span></span>'
+    +'<span class="kyc-photo-meta"><b>'+label+'</b><small>'+kxEsc(file)+'</small><em>Click to view full size</em></span>'
+    +'</button>';
+}
+function kxPanelHTML(a){
+  var k=a.kyc;
+  var h='<div class="kyc-panel"><div class="kyc-panel-head"><div class="kyc-panel-title"><i class="fas fa-id-card"></i> Author Identity &amp; Personal Details</div>'+kxBadge(k)+'</div>';
+  if(!k){
+    h+='<div class="kyc-empty"><i class="fas fa-circle-exclamation"></i><div><b>No identity details submitted</b><span>This application has no KYC record. Ask the author to submit identity in the Author Center before signing.</span></div></div></div>';
+    return h;
+  }
+  h+='<div class="kyc-grid">';
+  kxFields(a).forEach(function(f){h+='<div class="kyc-field"><label>'+f.l+'</label><b'+(f.mono?' class="mono"':'')+'>'+f.v+'</b></div>';});
+  h+='</div><div class="kyc-photos">'
+    +kxPhotoCard(a,'front',kxPhotoSrc(a,'front'))
+    +kxPhotoCard(a,'back',kxPhotoSrc(a,'back'))
+    +'</div><div class="kyc-note"><i class="fas fa-lock"></i><span>Submitted by the author with this contract application. ID documents are confidential and visible only to senior editors.</span></div></div>';
+  return h;
+}
+var _lbA=null;
+function kxEnsureLightbox(){
+  if(document.getElementById('kycLightbox')) return;
+  var d=document.createElement('div');
+  d.id='kycLightbox';d.className='kyc-lightbox';
+  d.innerHTML='<div class="kyc-lb-box" role="dialog" aria-modal="true" aria-label="ID document viewer">'
+    +'<div class="kyc-lb-head"><div><b id="kycLbTitle"></b><span id="kycLbSub"></span></div><button class="kyc-lb-x" id="kycLbClose" aria-label="Close"><i class="fas fa-xmark"></i></button></div>'
+    +'<div class="kyc-lb-imgwrap"><img id="kycLbImg" alt="ID document"></div>'
+    +'<div class="kyc-lb-foot"><span><i class="fas fa-lock"></i> Confidential \u2014 senior editors only</span><button class="btn btn-ghost" id="kycLbFront"><i class="fas fa-address-card"></i> Front</button><button class="btn btn-ghost" id="kycLbBack"><i class="fas fa-rotate"></i> Back</button></div></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click',function(e){if(e.target===d)kxCloseViewer();});
+  document.getElementById('kycLbClose').onclick=kxCloseViewer;
+  document.getElementById('kycLbFront').onclick=function(){kxRenderViewer('front');};
+  document.getElementById('kycLbBack').onclick=function(){kxRenderViewer('back');};
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&d.classList.contains('open'))kxCloseViewer();});
+}
+function kxRenderViewer(side){
+  if(!_lbA) return;
+  document.getElementById('kycLbImg').src=kxPhotoSrc(_lbA,side);
+  document.getElementById('kycLbImg').alt=_lbA.author+' ID '+side;
+  document.getElementById('kycLbTitle').textContent=_lbA.author+' \u2014 '+(side==='front'?'ID front':'ID back');
+  document.getElementById('kycLbSub').textContent=_lbA.bookTitle+' \u00b7 '+_lbA.id+' \u00b7 '+(side==='front'?'Front':'Back')+' of document';
+  var f=document.getElementById('kycLbFront'),b=document.getElementById('kycLbBack');
+  f.className='btn btn-ghost'+(side==='front'?' on':'');
+  b.className='btn btn-ghost'+(side==='back'?' on':'');
+  f.disabled=!kxPhotoSrc(_lbA,'front');
+  b.disabled=!kxPhotoSrc(_lbA,'back');
+}
+function kxCloseViewer(){var d=document.getElementById('kycLightbox');if(d)d.classList.remove('open');}
+window._viewId=function(id,side){
+  var a=null;for(var i=0;i<items.length;i++){if(items[i].id===id){a=items[i];break;}}
+  if(!a||!a.kyc)return;
+  _lbA=a;kxEnsureLightbox();kxRenderViewer(side||'front');
+  document.getElementById('kycLightbox').classList.add('open');
+};
 function filtered(){
   var q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
-  var st=document.getElementById('statusFilter').value;
   return items.filter(function(a){
-    if(st&&a.status!==st)return false;
+    if(activeStatus&&a.status!==activeStatus)return false;
     if(q&&a.author.toLowerCase().indexOf(q)===-1&&a.id.toLowerCase().indexOf(q)===-1&&a.bookTitle.toLowerCase().indexOf(q)===-1)return false;
     return true;
   });
@@ -59,8 +237,27 @@ function pill(s){
   var ic={pending:'fa-clock',approved:'fa-check-circle',signed:'fa-pen-fancy',rejected:'fa-ban'};
   return '<span class="status-pill '+s+'"><i class="fas '+ic[s]+'"></i> '+s.charAt(0).toUpperCase()+s.slice(1)+'</span>';
 }
+function buildTabs(){
+  var wrap=document.getElementById('statusTabs');if(!wrap)return;
+  var counts={all:items.length,pending:0,approved:0,signed:0,rejected:0};
+  items.forEach(function(a){counts[a.status]=(counts[a.status]||0)+1;});
+  var defs=[
+    {k:'',l:'All',c:'all'},
+    {k:'pending',l:'Pending',c:'pending'},
+    {k:'approved',l:'Approved',c:'approved'},
+    {k:'signed',l:'Signed',c:'signed'},
+    {k:'rejected',l:'Rejected',c:'rejected'}
+  ];
+  wrap.innerHTML=defs.map(function(d){
+    return '<button type="button" class="stab '+d.c+(activeStatus===d.k?' on':'')+'" data-status="'+d.k+'"><i class="dot"></i>'+d.l+'<span class="cnt">'+(counts[d.c]||0)+'</span></button>';
+  }).join('');
+  wrap.querySelectorAll('.stab').forEach(function(b){
+    b.onclick=function(){activeStatus=b.dataset.status;curPage=1;render();};
+  });
+}
 function render(){
   stats();
+  buildTabs();
   var list=filtered(),total=list.length,tp=Math.max(1,Math.ceil(total/PP));
   if(curPage>tp)curPage=tp;
   var start=(curPage-1)*PP,page=list.slice(start,start+PP);
@@ -125,7 +322,10 @@ function renderDetail(id){
     terms+='<div class="detail-card"><label>Status</label><b>'+a.status.charAt(0).toUpperCase()+a.status.slice(1)+'</b></div></div>';
   }
   var roNote='';
-  if(ro){roNote='<div style="background:var(--green-bg);border:1px solid rgba(22,163,74,.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11.5px;color:var(--green);font-weight:600"><i class="fas fa-lock" style="margin-right:6px"></i>This contract is '+a.status+' and read-only.</div>';}
+  if(ro){
+    var roMsg=isS?'This contract is signed — commercial terms are locked, but chapter pricing stays editable below.':'This contract was rejected and is read-only.';
+    roNote='<div style="background:var(--green-bg);border:1px solid rgba(22,163,74,.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11.5px;color:var(--green);font-weight:600"><i class="fas fa-lock" style="margin-right:6px"></i>'+roMsg+'</div>';
+  }
   var actsH='';
   if(isP&&!a.sent){
     actsH='<button class="btn btn-primary" id="sendBtn-'+id+'" onclick="window._doSend(\''+a.id+'\')" disabled><span class="btn-text"><i class="fas fa-paper-plane"></i> Send Contract to Author</span></button>';
@@ -143,16 +343,26 @@ function renderDetail(id){
   }
   var h='<div class="detail-inner">';
   h+='<div class="detail-header"><img class="detail-avatar" src="'+a.avatar+'" alt=""><div class="detail-title"><h3>'+a.author+'</h3><p>'+a.id+' | '+a.bookTitle+' | '+a.bookGenre+'</p></div>'+pill(a.status)+'</div>';
-  h+=roNote+grid+ctHtml+terms;
-  if(isA||isS){
-    h+='<div class="detail-contract-select"><div class="lbl"><i class="fas fa-coins"></i> Monetization Terms'+(isS?' (locked)':'')+'</div><div id="mzMount"></div></div>';
+  h+=roNote+grid+kxPanelHTML(a)+ctHtml+terms;
+  var canPrice=!isR;
+  if(canPrice){
+    var stateChip=isP?'<span class="mz-state draft">DRAFT</span>':'<span class="mz-state live">LIVE</span>';
+    var updatedTxt=a.pricingUpdated?'Updated '+a.pricingUpdated:(isP?'Not applied yet':'Default pricing');
+    h+='<div class="detail-contract-select mz-panel">'
+      +'<div class="mz-head"><div class="lbl"><i class="fas fa-coins"></i> Chapter Pricing &amp; Ads '+stateChip+'</div>'
+      +'<div class="mz-head-right"><span class="mz-updated" id="mzUpdated"><i class="fas fa-clock-rotate-left"></i> '+updatedTxt+'</span>'
+      +'<button class="btn btn-primary" id="mzSaveBtn"><i class="fas fa-floppy-disk"></i> Save pricing</button></div></div>'
+      +'<div class="mz-master" id="mzMaster"><div class="t"><b>Make all chapters free</b><span>Every chapter unlocks without coins or ads</span></div><label class="mz-switch"><input type="checkbox" id="mzFreeAll"><span class="sl"></span></label></div>'
+      +'<div id="mzMount"></div>'
+      +'<div class="mz-help"><i class="fas fa-circle-info"></i><span>'+(isP?'Pricing is applied when the contract is accepted.':'Changes go live as soon as you save — adjust anytime as readership demand shifts.')+'</span><span class="mz-dirty" id="mzDirty">Unsaved changes</span></div>'
+      +'</div>';
   }
   h+='<div class="detail-notes-box"><div class="lbl"><i class="fas fa-note-sticky"></i> Author\'s Note</div><p>'+a.notes+'</p></div>';
   h+='<div class="detail-actions">'+actsH+'</div></div>';
   el.innerHTML=h;
   if(isP&&!a.sent&&selCT[id]){var btn=document.getElementById('sendBtn-'+id);if(btn)btn.disabled=false;}
-  // monetization component: editable pre-sign, read-only once signed
-  if((isA||isS)&&window.ContractMonetization){
+  // pricing stays editable in every non-rejected state — signed contracts included
+  if(canPrice&&window.ContractMonetization){
     if(window._contractMz&&window._contractMzId&&window._contractMzId!==id){
       try{var _prev=null;for(var k=0;k<items.length;k++){if(items[k].id===window._contractMzId){_prev=items[k];break;}}
         if(_prev){var _dt=window._contractMz.getTerms();_prev.pricing={freeChapters:_dt.freeChapters,adsPerChapter:_dt.adsPerChapter,allowAdUnlock:_dt.allowAdUnlock,prices:{},ads:{}};_dt.rows.forEach(function(r){_prev.pricing.prices[r.num]=r.price;_prev.pricing.ads[r.num]=r.ads;});}}catch(e){}
@@ -162,8 +372,68 @@ function renderDetail(id){
     if(window._contractMz&&window._contractMzId===id){
       try{var _lv=window._contractMz.getTerms();init={freeChapters:_lv.freeChapters,adsPerChapter:_lv.adsPerChapter,allowAdUnlock:_lv.allowAdUnlock,prices:{},ads:{}};_lv.rows.forEach(function(r){init.prices[r.num]=r.price;init.ads[r.num]=r.ads;});}catch(e){}
     }
-    window._contractMz=ContractMonetization.mount('#mzMount',{totalChapters:a.chapters||12,initial:init,readOnly:isS});
+    var mz=ContractMonetization.mount('#mzMount',{
+      totalChapters:a.chapters||12,
+      initial:init,
+      readOnly:false,
+      onChange:function(){
+        var d=document.getElementById('mzDirty');
+        if(d){d.className='mz-dirty show';d.textContent='Unsaved changes';}
+        syncMaster();
+      },
+    });
+    window._contractMz=mz;
     window._contractMzId=id;
+    var saveBtn=document.getElementById('mzSaveBtn');
+    if(saveBtn){
+      saveBtn.onclick=function(){
+        var t=mz.getTerms();
+        a.pricing={freeChapters:t.freeChapters,adsPerChapter:t.adsPerChapter,allowAdUnlock:t.allowAdUnlock,prices:{},ads:{}};
+        t.rows.forEach(function(r){a.pricing.prices[r.num]=r.price;a.pricing.ads[r.num]=r.ads;});
+        a.pricingUpdated='just now';
+        // live API: PUT /api/contracts/:id/pricing with a.pricing
+        var u=document.getElementById('mzUpdated');
+        if(u){u.className='mz-updated fresh';u.innerHTML='<i class="fas fa-circle-check"></i> Updated just now';}
+        var d=document.getElementById('mzDirty');
+        if(d){d.className='mz-dirty saved';d.textContent='Saved';setTimeout(function(){if(d){d.className='mz-dirty';d.textContent='Unsaved changes';}},2400);}
+        saveBtn.innerHTML='<i class="fas fa-check"></i> Saved';
+        setTimeout(function(){saveBtn.innerHTML='<i class="fas fa-floppy-disk"></i> Save pricing';},1400);
+        var allFree=t.freeChapters>=t.rows.length;
+        toast((isP?'Draft pricing saved':'Pricing published')+' — "'+a.bookTitle+'" '+(allFree?'is free for all '+t.rows.length+' chapters':'opens with '+t.freeChapters+' free chapter'+(t.freeChapters===1?'':'s')));
+      };
+    }
+    var totalCh=a.chapters||12;
+    var freeAllEl=document.getElementById('mzFreeAll');
+    var masterEl=document.getElementById('mzMaster');
+    var prevTerms=null;
+    var syncMaster=function(){
+      if(!freeAllEl||!masterEl) return;
+      var terms=mz.getTerms();
+      var on=terms.freeChapters>=terms.rows.length;
+      freeAllEl.checked=on;
+      masterEl.classList.toggle('on',on);
+    };
+    if(freeAllEl){
+      freeAllEl.onchange=function(){
+        var terms=mz.getTerms();
+        var arr=[];for(var ci=1;ci<=totalCh;ci++)arr.push(ci);
+        if(freeAllEl.checked){
+          prevTerms={freeChapters:terms.freeChapters,adsPerChapter:terms.adsPerChapter,allowAdUnlock:terms.allowAdUnlock,prices:{},ads:{}};
+          terms.rows.forEach(function(r){prevTerms.prices[r.num]=r.price;prevTerms.ads[r.num]=r.ads;});
+          mz.setChapters(arr,{freeChapters:totalCh,adsPerChapter:0,allowAdUnlock:false});
+          toast('All '+totalCh+' chapters set to free — click Save pricing to publish');
+        }else{
+          var p=prevTerms;
+          if(!p||p.freeChapters>=totalCh){
+            p={freeChapters:Math.min(3,Math.max(0,totalCh-1)),adsPerChapter:2,allowAdUnlock:true};
+          }
+          mz.setChapters(arr,{freeChapters:p.freeChapters,adsPerChapter:p.adsPerChapter,allowAdUnlock:p.allowAdUnlock,prices:p.prices,ads:p.ads});
+          toast('Free-all off — paywall restored after Chapter '+p.freeChapters);
+        }
+        syncMaster();
+      };
+      syncMaster();
+    }
   }
 }
 function renderPag(tp){
@@ -267,5 +537,4 @@ document.addEventListener('click',function(e){
   if(row&&!e.target.closest('.actions-cell')){var id=row.dataset.id;openId=openId===id?null:id;render();}
 });
 document.getElementById('searchInput').addEventListener('input',function(){curPage=1;render();});
-document.getElementById('statusFilter').addEventListener('change',function(){curPage=1;render();});
 render();

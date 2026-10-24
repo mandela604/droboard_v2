@@ -156,8 +156,14 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
   function currentAdInventory() {
     const base = defaultAdInventory();
     const ov = readAdOverrides();
-    if (ov.pools && Object.keys(ov.pools).length) base.pools = ov.pools;
-    if (ov.placements && Object.keys(ov.placements).length) base.placements = ov.placements;
+    if (ov.pools && Object.keys(ov.pools).length) {
+      Object.keys(ov.pools).forEach(k => { base.pools[k] = ov.pools[k]; });
+    }
+    if (ov.placements && Object.keys(ov.placements).length) {
+      /* Merge per page so newly registered surfaces (spotlight, debate…)
+         keep their defaults instead of vanishing from older saves. */
+      base.placements = Object.assign({}, base.placements, ov.placements);
+    }
     return base;
   }
 
@@ -462,7 +468,8 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
         (inv.pools[format] || []).forEach(ad => {
           const t = tracked[ad.id] || { impressions: 0, clicks: 0 };
           const ctr = t.impressions ? ((t.clicks / t.impressions) * 100).toFixed(1) : '0.0';
-          rows.push({ id: ad.id, format, title: ad.title || ad.heading || ad.brand || ad.name || ad.id, active: ad.active !== false, impressions: t.impressions, clicks: t.clicks, ctr });
+          const viewers = t.viewers ? Object.keys(t.viewers).length : 0;
+          rows.push({ id: ad.id, format, title: ad.title || ad.heading || ad.brand || ad.name || ad.id, active: ad.active !== false, impressions: t.impressions, clicks: t.clicks, ctr, viewers });
         });
       });
       return rows;

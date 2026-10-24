@@ -3,8 +3,10 @@
 // Shapes match what the frontend services already consume.
 const { Book, Chapter, Genre } = require('../models/content.model');
 const { User } = require('../models/user.model');
-const { LibraryItem, ReadingProgress, Comment, ShareEvent } = require('../models/social.model');
+const { LibraryItem, ReadingProgress, Comment, ShareEvent, Status } = require('../models/social.model');
 const { AdInventory, AdPlacement } = require('../models/platform.model');
+const statusesSvc = require('./statuses.service');
+const { relTime } = require('./users.service');
 
 async function authorMap(ids) {
   const users = await User.find({ id: { $in: ids.filter(Boolean) } })
@@ -56,11 +58,42 @@ async function home(viewerId) {
   ]);
   const recentUsers = await User.find({}).sort({ updatedAt: -1 }).limit(8)
     .select('id username fullName avatar').lean();
+  // Real active statuses for the row — rings come from the viewer's own
+  // viewedBy state, so a seen author starts grey everywhere.
+  const uids = recentUsers.map(u => String(u.id));
+  const statusRows = uids.length
+    ? await Status.find({ userId: { $in: uids }, expiresAt: { $gt: new Date() } })
+      .sort({ createdAt: 1 }).lean()
+    : [];
+  const byAuthor = {};
+  statusRows.forEach(r => {
+    const k = String(r.userId);
+    (byAuthor[k] = byAuthor[k] || []).push(r);
+  });
+  const statuses = recentUsers.map(u => {
+    const rows = byAuthor[String(u.id)] || [];
+    if (!rows.length) return null;
+    const isMine = !!viewerId && String(u.id) === String(viewerId);
+    const slides = rows.map(r => {
+      const t = statusesSvc.toStatus(r, viewerId, { owner: isMine });
+      return {
+        id: t.id, bg: t.bg, quote: t.quote, caption: t.caption,
+        time: relTime(t.createdAt), ts: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
+        viewed: t.viewed, likes: t.likes, liked: t.liked, isLive: t.isLive,
+        views: t.views,
+      };
+    });
+    const unseen = slides.filter(s => !s.viewed).length;
+    return {
+      id: u.id, name: u.username, handle: u.username,
+      avatar: u.avatar || '', isLive: rows.some(r => r.isLive),
+      isMine, isYou: isMine,
+      ring: unseen > 0 ? 'ring-has' : 'ring-viewed',
+      likes: 0, threads: slides.length, statuses: slides,
+    };
+  }).filter(Boolean);
   return {
-    statuses: recentUsers.map(u => ({
-      id: u.id, name: u.username, avatar: u.avatar || '',
-      ring: 'ring-has', statuses: [{ viewed: false }],
-    })),
+    statuses,
     heroStories: top.slice(0, 5),
     promoSlides: promos.map(p => ({ title: p.title, author: '', cta: p.cta, img: p.image })),
     trending: top, topRated: rated,

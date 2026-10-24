@@ -60,14 +60,22 @@ function toCardPost(p, viewerId) {
 }
 
 // Status doc → story-slide shape ({bg, quote, caption, time}).
-function toSlide(s) {
+// viewed is per-viewer; views is returned to the owner only.
+function toSlide(s, viewerId, isOwner) {
   const o = s.toJSON ? s.toJSON() : s;
-  return {
+  const viewers = (o.viewedBy || []).map(String);
+  const uid = viewerId ? String(viewerId) : '';
+  const out = {
     id: o.id, bg: o.bg, quote: o.quote || '', caption: o.caption || '',
-    time: relTime(o.createdAt), likes: o.likes || 0, viewed: !!o.viewed,
+    time: relTime(o.createdAt), likes: o.likes || 0,
+    liked: uid ? (o.likedBy || []).map(String).includes(uid) : false,
+    viewed: uid ? viewers.includes(uid) : false,
+    isMine: !!isOwner,
     ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
     expiresAt: o.expiresAt,
   };
+  if (isOwner) out.views = viewers.filter(v => v !== String(o.userId)).length;
+  return out;
 }
 
 function publicShape(u) {
@@ -304,7 +312,7 @@ async function profile(handle, viewerId) {
     library: lib,
     following: followingRows,
     posts: postDocs.map(p => toCardPost(p, viewerId)),
-    statuses: statusDocs.map(toSlide),
+    statuses: statusDocs.map(s => toSlide(s, viewerId, !!isOwner)),
   });
 }
 
@@ -685,7 +693,7 @@ async function exportData(userId) {
 }
 
 module.exports = {
-  me, profile, searchUsers,
+  me, profile, searchUsers, relTime,
   updateMe, changePassword, requestEmailChange, confirmEmailChange, deleteMe,
   getSettings, updateSettings,
   followersOf, followingOf, follow, unfollow,

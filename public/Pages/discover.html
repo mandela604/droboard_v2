@@ -28,21 +28,22 @@ a{color:inherit;text-decoration:none}
 
 .topbar{background:var(--card);backdrop-filter:blur(12px);padding:10px 16px 8px;display:flex;align-items:center;gap:10px}
 .topbar .logo{width:38px;height:38px;border-radius:50%;background:#FFFFFF;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
-.search{flex:1;display:flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid var(--border);border-radius:22px;padding:9px 14px;font-size:13px;color:var(--muted);cursor:pointer}
-.search i{font-size:13px;opacity:.7}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid var(--border);border-radius:22px;padding:9px 14px;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.search i{font-size:13px;opacity:.7;flex-shrink:0}
+.search span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .icon-btn{width:38px;height:38px;border-radius:50%;background:#FFFFFF;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;color:#555;position:relative;flex-shrink:0}
 .icon-btn .dot{position:absolute;top:8px;right:8px;width:7px;height:7px;background:var(--pink);border-radius:50%;border:1.5px solid #fff}
 .icon-btn.gift{color:var(--pink)}
 
-.tabs-wrap{position:sticky;top:0;z-index:50;margin:0 12px 8px;padding:0 16px;background:var(--card);border-radius:16px}
+.tabs-wrap{position:sticky;top:0;z-index:50;margin-bottom:7px;padding:0 16px;background:var(--card)}
 .tabs{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);justify-content:center;justify-content:safe center}
 .tabs::-webkit-scrollbar{display:none}
 .tab{font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;padding:11px 0;position:relative;cursor:pointer}
 .tab.active{color:var(--pink);font-weight:700}
-.tab.active::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.5px;background:var(--pink);border-radius:3px}
+.tab.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2.5px;background:var(--pink);border-radius:3px}
 .tab.grid-icon{color:var(--muted);font-size:14px}
 
-.content{flex:1;padding:0 0 20px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.content{flex:1;padding:0 0 20px;background:var(--bg);display:flex;flex-direction:column;gap:7px}
 
 .hero-wrap{padding:12px 0 0;margin-bottom:0;background:transparent}
 .hero-wrap + .hero-dots{margin-top:-8px}
@@ -53,8 +54,11 @@ a{color:inherit;text-decoration:none}
   opacity:0;transform:scale(1.05);z-index:1;will-change:opacity,transform;
   transition:opacity .8s cubic-bezier(.4,0,.2,1),transform 1.4s cubic-bezier(.4,0,.2,1)}
 .hero-img.is-on{opacity:1;transform:scale(1);z-index:2}
-.hero-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.15) 100%);z-index:3}
-.hero-body{position:absolute;left:16px;right:16px;bottom:16px;z-index:4}
+/* The layer currently animating in must always sit ABOVE the opaque
+   backdrop, regardless of DOM order. */
+.hero-img.is-front{z-index:3}
+.hero-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.15) 100%);z-index:4}
+.hero-body{position:absolute;left:16px;right:16px;bottom:16px;z-index:5}
 /* Text slides up + fades in, staggered per line. */
 .hero-wrap.hero-anim .hero-body>*{opacity:0;transform:translateY(14px);
   transition:opacity .5s ease,transform .5s cubic-bezier(.2,.7,.3,1)}
@@ -71,21 +75,22 @@ a{color:inherit;text-decoration:none}
 .hero-badge{display:inline-flex;align-items:center;gap:4px;background:var(--pink);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;margin-bottom:8px;letter-spacing:.3px}
 .hero-title{font-size:26px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;text-shadow:0 2px 12px rgba(0,0,0,.4)}
 .hero-title em{font-style:italic;color:#ff8fab;font-weight:700}
-.hero-author{font-size:12px;color:rgba(255,255,255,.8);margin-bottom:8px}
+.hero-author{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.8);margin-bottom:8px}
 .hero-author i{color:#3b82f6;font-size:11px;margin-left:3px}
+.hero-author-av{width:18px;height:18px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.6);flex-shrink:0}
 .hero-tags{display:flex;gap:6px;margin-bottom:12px}
 .hero-tag{font-size:10px;font-weight:600;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(4px)}
 .hero-dots{display:flex;justify-content:center;gap:5px;margin:0;padding:10px 0 12px;background:transparent;border-bottom:none}
 .dot{width:6px;height:6px;border-radius:50%;background:#d1d1d6;transition:width .4s cubic-bezier(.4,0,.2,1),background .3s ease,border-radius .4s ease}
 .dot.on{width:16px;border-radius:3px;background:var(--pink)}
 
-.section{margin:0 12px;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:16px;overflow:hidden;padding:14px 0 16px}
+.section{background:var(--card);border-top:none;border-bottom:none;padding:14px 0 16px}
 .sec-head{display:flex;align-items:center;justify-content:space-between;padding:0 8px 10px}
 .sec-title{font-size:16px;font-weight:700}
 .view-all{font-size:12px;font-weight:600;color:var(--muted)}
 
-.h-row{display:flex;gap:6px;overflow-x:auto;padding:0 8px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px;scroll-snap-type:x mandatory;scroll-padding-left:8px}
-.h-row > .dc-scard{flex:0 0 calc((100% - 18px) / 4);width:calc((100% - 18px) / 4);scroll-snap-align:start;scroll-snap-stop:always}
+.h-row{display:flex;gap:6px;overflow-x:auto;padding:0 8px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px}
+.h-row > .dc-scard{flex:0 0 calc((100% - 16px) / 4);width:calc((100% - 16px) / 4)}
 .h-row::-webkit-scrollbar{display:none}
 
 .coll-row{display:flex;gap:12px;overflow-x:auto;padding:0 8px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-height:60px}
@@ -97,11 +102,14 @@ a{color:inherit;text-decoration:none}
 .genre-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .genre-name{font-size:11px;font-weight:600}
 
-.more-section{margin:0 12px;padding:14px 16px 8px;background:var(--card);border-top:1px solid var(--border);border-radius:16px;overflow:hidden}
-[data-ad-slot]{margin:0 12px;border-radius:16px;overflow:hidden}
+.more-section{padding:14px 16px 8px;background:var(--card);border-top:1px solid var(--border)}
+#moreList{gap:0}
+#moreList .dc-list-item:not(.dc-ad):not(.dc-book-ad){padding:12px 0;border-bottom:1px solid var(--border)}
+#moreList .dc-list-item:not(.dc-ad):not(.dc-book-ad):last-child{border-bottom:none}
+[data-ad-slot]{overflow:hidden}
 .more-title{font-size:16px;font-weight:700;margin-bottom:12px}
 
-.bro-list{display:flex;flex-direction:column}
+.bro-list{display:flex;flex-direction:column;gap:11px;padding:8px 12px}
 
 .more-loader{text-align:center;padding:20px;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px}
 .more-loader.hidden{display:none}
@@ -166,20 +174,20 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 
     <section class="section"><div class="sec-head"><h2 class="sec-title">Continue Reading</h2><button class="view-all" data-browse-trigger data-browse-mode="continueReading" data-browse-title="Continue Reading">View All ›</button></div><div class="h-row" id="continueRow"></div></section>
     <!-- MINI BANNER slot 1 of 3 ── right after Continue Reading (format pinned to minibanner) -->
-    <div data-ad-slot="discover:banner-top" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
+    <div data-ad-slot="discover:banner-top" data-ad-format="minibanner" style="background:var(--card);padding:2px 16px 4px"></div>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Top Romance</h2><button class="view-all" data-browse-trigger data-browse-title="Top Romance" data-browse-filter="romance" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="romanceRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Trending Today</h2><button class="view-all" data-browse-trigger data-browse-title="Trending Today" data-browse-sort="popular">View All ›</button></div><div class="h-row" id="trendingRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Collections</h2><button class="view-all" data-browse-trigger data-browse-mode="collections" data-browse-title="All Collections">View All ›</button></div><div class="coll-row" id="collRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">New Releases</h2><button class="view-all" data-browse-trigger data-browse-title="New Releases" data-browse-sort="new">View All ›</button></div><div class="h-row" id="newRow"></div></section>
     <!-- MINI BANNER slot 2 of 3 ── after New Releases (format pinned to minibanner) -->
-    <div data-ad-slot="discover:inline-banner" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
+    <div data-ad-slot="discover:inline-banner" data-ad-format="minibanner" style="background:var(--card);padding:2px 16px 4px"></div>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Editor's Picks</h2><button class="view-all" data-browse-trigger data-browse-title="Editor's Picks" data-browse-sort="rating">View All ›</button></div><div class="h-row" id="editorRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Popular Genres</h2></div><div class="genre-grid" id="genreGrid"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Recommended For You</h2><button class="view-all" data-browse-trigger data-browse-title="Recommended For You" data-browse-tune data-browse-sort="popular">View All ›</button></div><div class="h-row" id="recRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Complete Stories</h2><button class="view-all" data-browse-trigger data-browse-title="Complete Stories" data-browse-filter="completed">View All ›</button></div><div class="h-row" id="completeRow"></div></section>
     <section class="section"><div class="sec-head"><h2 class="sec-title">Recently Updated</h2><button class="view-all" data-browse-trigger data-browse-title="Recently Updated" data-browse-sort="updated">View All ›</button></div><div class="h-row" id="updatedRow"></div></section>
     <!-- MINI BANNER slot 3 of 3 ── above the infinite More Stories list (format pinned to minibanner) -->
-    <div data-ad-slot="discover:banner-bottom" data-ad-format="minibanner" style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 16px 4px"></div>
+    <div data-ad-slot="discover:banner-bottom" data-ad-format="minibanner" style="background:var(--card);padding:2px 16px 4px"></div>
     <section class="more-section"><h2 class="more-title">More Stories</h2><div class="bro-list" id="moreList"></div><div class="more-loader" id="moreLoader"><div class="spinner"></div> Loading more…</div><div id="scrollSentinel"></div></section>
   </div>
 </div>
@@ -190,6 +198,7 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 <script src="../data/editor-demo-data.js"></script>
     <script src="../marketing/shared/marketing-data.js"></script>
     <script src="../services/collection-service.js"></script>
+    <script src="../services/audience-service.js"></script>
     <script src="../services/ad-service.js"></script>
 <script src="../services/ad-revenue-service.js"></script>
 <script src="../services/acquisition-service.js"></script>
@@ -198,12 +207,17 @@ img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
     <script src="../services/search-service.js"></script>
     <script src="../shared/ui-helpers.js"></script>
     <script src="../component/taste-picker.js?v=2"></script>
-    <script src="../component/spotlight-ad.js?v=2"></script>
-    <script src="../services/discover-service.js?v=1"></script>
+    <script src="../services/spotlight-board-service.js"></script>
+    <script src="../component/spotlight-ad.js?v=8"></script>
+    <script src="../component/status-viewer.js?v=6"></script>
+    <script src="../services/people-service.js"></script>
+    <script src="../services/status-service.js?v=5"></script>
+    <script src="../component/writers-row.js"></script>
+    <script src="../services/discover-service.js?v=3"></script>
 <script src="../component/bottom-nav.js"></script>
-<script src="../component/search-overlay.js"></script>
-<script src="../component/browse-overlay.js?v=6"></script>
-<script src="../component/discover-card.js"></script>
+<script src="../component/search-overlay.js?v=2"></script>
+<script src="../component/browse-overlay.js?v=13"></script>
+<script src="../component/discover-card.js?v=4"></script>
 <script src="../services/notification-service.js"></script>
 <script>DiscoverPage.init(); NotifService.start();</script>
 <script src="../shared/theme-chrome.js"></script>

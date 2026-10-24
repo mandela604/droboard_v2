@@ -95,6 +95,30 @@
   }
 
   /* field: [key, label, type] — type: text | area | img */
+  var SPOT_STORY_FIELDS = [
+    ['title', 'Story title', 'text'], ['author', 'Author', 'text'], ['authorAvatar', 'Author avatar URL (byline)', 'text'],
+    ['genre', 'Genre', 'text'],
+    ['rating', 'Rating', 'text'], ['chapters', 'Chapters', 'text'], ['reads', 'Reads', 'text'],
+    ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image (portrait)', 'img'],
+  ];
+  var SPOT_USER_FIELDS = [
+    ['name', 'Creator name', 'text'], ['handle', 'Handle (without @)', 'text'],
+    ['tagline', 'Tagline', 'area'], ['followers', 'Followers', 'text'],
+    ['books', 'Books', 'text'], ['reads', 'Reads', 'text'],
+    ['cta', 'CTA button', 'text'], ['avatar', 'Avatar', 'img'],
+  ];
+  /* Status-style leaderboard takeover — one top-three board per slide. */
+  var SPOT_BOARD_FIELDS = [
+    ['title', 'Lead line (blank = auto)', 'text'],
+    ['sub', 'Sub line (optional)', 'area'],
+    ['cta', 'CTA button', 'text'],
+  ];
+  /* Any promotion with a destination URL — referral, offer, brand link. */
+  var SPOT_PROMO_FIELDS = [
+    ['brand', 'Brand / label', 'text'], ['title', 'Headline', 'text'],
+    ['sub', 'Body line', 'area'], ['badge', 'Badge (e.g. 250 coins)', 'text'],
+    ['cta', 'CTA button', 'text'], ['img', 'Artwork (square)', 'img'],
+  ];
   var FIELDS = {
     platform: [['sponsor', 'Sponsor', 'text'], ['title', 'Headline', 'text'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
     book: [['title', 'Book title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['rating', 'Rating', 'text'], ['chapters', 'Chapters', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
@@ -104,8 +128,30 @@
     banner: [['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
     minibanner: [['img', 'Banner image (wide, ~800×180)', 'img'], ['brand', 'Brand', 'text'], ['headline', 'Headline', 'text'], ['sub', 'Sub line', 'text'], ['cta', 'CTA button', 'text']],
     promo: [['title', 'Title', 'text'], ['sub', 'Sub line', 'text'], ['author', 'Author', 'text'], ['cta', 'CTA button', 'text'], ['genre', 'Hub genre (blank = all hubs)', 'text'], ['img', 'Slide image', 'img']],
-    spotlight: [['title', 'Story title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['chapters', 'Chapters', 'text'], ['reads', 'Reads', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image (portrait)', 'img']],
+    spotlight: SPOT_STORY_FIELDS.concat(SPOT_USER_FIELDS),
+    spotlightStory: SPOT_STORY_FIELDS,
+    spotlightUser: SPOT_USER_FIELDS,
+    spotlightBoard: SPOT_BOARD_FIELDS,
+    spotlightPromo: SPOT_PROMO_FIELDS,
   };
+
+  /* Spot creative types the setup wizard + ad manager understand. */
+  var SPOT_KINDS = [
+    { id: 'story', label: 'A story', icon: 'fa-book-open', desc: 'Poster takeover for a series' },
+    { id: 'user', label: 'A creator', icon: 'fa-user', desc: 'Grow an author\'s followers' },
+    { id: 'board', label: 'Top 3 leaderboard', icon: 'fa-trophy', desc: 'Writers or readers — status-style slides' },
+    { id: 'promo', label: 'Promotion / link', icon: 'fa-gift', desc: 'Any offer — e.g. refer a friend, earn coins' },
+  ];
+  var SPOT_BOARD_TYPES = [
+    { id: 'writers', label: 'Top writers' },
+    { id: 'readers', label: 'Top readers' },
+  ];
+  var SPOT_PERIODS = [
+    { id: 'last_week', label: 'Last week' },
+    { id: 'last_month', label: 'Last month' },
+    { id: 'week', label: 'This week' },
+    { id: 'month', label: 'This month' },
+  ];
 
   var TOTAL_READERS = 2400000;
   var SEGMENTS = [
@@ -235,7 +281,9 @@
     { id: 'brand', label: 'Brand awareness', icon: 'fa-flag', desc: 'Bold banner strip across surfaces', format: 'banner' },
     { id: 'miniBanner', label: 'Compact image banner', icon: 'fa-rectangle-ad', desc: 'Small horizontal banner between content sections', format: 'minibanner' },
     { id: 'slider', label: 'Feature in sliders', icon: 'fa-images', desc: 'Library and hub slider slide', format: 'promo' },
-    { id: 'spotlight', label: 'Full-screen spotlight', icon: 'fa-bolt', desc: 'Story takeover with a countdown timer', format: 'spotlight' },
+    { id: 'spotlight', label: 'Full-screen spotlight', icon: 'fa-bolt', desc: 'Story or creator takeover with a countdown timer', format: 'spotlight', spotKind: 'story' },
+    { id: 'leaderboard', label: 'Top 3 writers or readers', icon: 'fa-trophy', desc: 'Status-style leaderboard takeover that auto-advances', format: 'spotlight', spotKind: 'board' },
+    { id: 'referral', label: 'Promotion or referral link', icon: 'fa-gift', desc: 'Any link — e.g. refer a friend to earn coins', format: 'spotlight', spotKind: 'promo' },
     { id: 'network', label: 'Run a network tag', icon: 'fa-code', desc: 'Paste an AdSense / Adsterra / Monetag tag', format: 'embed' },
   ];
 
@@ -245,6 +293,9 @@
     PAGES: PAGES,
     PAGE_SLOTS: PAGE_SLOTS,
     FIELDS: FIELDS,
+    SPOT_KINDS: SPOT_KINDS,
+    SPOT_BOARD_TYPES: SPOT_BOARD_TYPES,
+    SPOT_PERIODS: SPOT_PERIODS,
     SEGMENTS: SEGMENTS,
     GENRES: GENRES,
     TRACKED_COUNTRIES: TRACKED_COUNTRIES,

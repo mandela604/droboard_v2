@@ -14,7 +14,7 @@
   /* Canonical light scheme (hub scheme: gray page, white surfaces) */
   --acc:#ff0050;--acc2:#ff4d7a;--acc3:#ff7a9a;
   --glow:rgba(255,0,80,.22);--glow-sm:rgba(255,0,80,.12);
-  --bg:#d8d8d8;--l1:#ffffff;--l2:#f1f1f1;--l3:#ffffff;--l4:#e8e8e8;
+  --bg:#f2f1f6;--l1:#ffffff;--l2:#f1f1f1;--l3:#ffffff;--l4:#e8e8e8;
   --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.05);--bd-acc:rgba(255,0,80,.25);
   --tx:#1a1a2e;--tx-high:#161616;--tx-body:#3a3a3a;--tx-muted:#666666;--tx-faint:#8a8a8a;
   --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;

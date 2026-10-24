@@ -114,6 +114,7 @@ body{font-family:'Inter',system-ui,sans-serif}
         <div class="pv-for" id="pvFor"></div>
         <div class="pv-box"><div id="pvCard"></div><div class="pv-veil" id="pvVeil" title="Preview only"></div></div>
         <div class="pv-note" id="pvNote">Tap the card to test the destination link.</div>
+        <button class="btn-primary" id="suSpotPreview" style="display:none;width:100%;margin-top:10px;gap:8px;align-items:center;justify-content:center"><i class="fas fa-expand"></i> Preview full-screen ad</button>
       </div>
     </div>
   </div>
@@ -122,12 +123,15 @@ body{font-family:'Inter',system-ui,sans-serif}
 <div class="su-toast" id="suToast"></div>
 
 <script src="../component/ad-card.js?v=3"></script>
+<script src="../services/spotlight-board-service.js"></script>
+<script src="../component/spotlight-ad.js?v=8"></script>
 <script src="../component/promo-slider.js"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
+<script src="../services/people-service.js"></script>
 <script src="shared/marketing-data.js"></script>
-<script src="shared/ad-setup-data.js?v=2"></script>
-<script src="shared/ad-setup-service.js?v=1"></script>
+<script src="shared/ad-setup-data.js?v=4"></script>
+<script src="shared/ad-setup-service.js?v=5"></script>
 <script>AdSetupPage.init();</script>
 </body>
 </html>

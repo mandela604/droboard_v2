@@ -13,6 +13,7 @@
  *     genreName: 'Fantasy',
  *     onLike:   (post) => { post.liked = !post.liked; post.likes += post.liked ? 1 : -1; DroboardGenreCard.update(post); },
  *     onThread: (post) => toast('Opening discussion…'),
+ *     onComment: (post) => { location.href = 'discussion.html?id=' + post.id; }, // falls back to onThread
  *     onShare:  (post) => openShareModal({ ... }),
  *     onDots:   (post, el) => DroboardDotsMenu.open(post, el),
  *     onStory:  (post) => toast('Opening story…'),
@@ -254,6 +255,7 @@
   let _root = null;
   let _hooks = {};
   let _posts = [];
+  const _bindings = [];
   let _genreName = '';
   let _sort = 'hot';
 
@@ -270,8 +272,21 @@
     document.head.appendChild(style);
   }
 
+  function _findIn(posts, id) {
+    return (posts || []).find(p => String(p.id) === String(id));
+  }
   function _find(id) {
-    return _posts.find(p => String(p.id) === String(id));
+    const local = _findIn(_posts, id);
+    if (local) return local;
+    for (let i = 0; i < _bindings.length; i++) {
+      const hit = _findIn(_bindings[i].posts, id);
+      if (hit) return hit;
+    }
+    return undefined;
+  }
+  function _findByName(name) {
+    const match = (arr) => (arr || []).find(x => String(x.name) === String(name));
+    return match(_posts) || _bindings.reduce((found, b) => found || match(b.posts), undefined);
   }
 
   // ── Engagement widgets (poll / prediction / debate) — reader-page UI, always expanded ──
@@ -440,7 +455,7 @@
             : `<button type="button" class="dgc-act ${p.liked ? 'liked' : ''}" data-dgc-like="${_esc(p.id)}">
             <i class="${p.liked ? 'fas' : 'far'} fa-heart"></i> ${p.likes || 0}
           </button>`}
-          <button type="button" class="dgc-act" data-dgc-thread="${_esc(p.id)}">
+          <button type="button" class="dgc-act" data-dgc-comment="${_esc(p.id)}">
             <i class="far fa-comment"></i> ${p.comments || 0}<span class="dgc-act-lbl"> · Thread</span>
           </button>
           <button type="button" class="dgc-act" data-dgc-share="${_esc(p.id)}"><i class="fas fa-share-nodes"></i></button>
@@ -458,23 +473,35 @@
 
   function setPosts(posts) {
     _posts = Array.isArray(posts) ? posts.slice() : [];
+    const b = _bindings.find(x => x.root === _root);
+    if (b) b.posts = _posts;
     _paint();
   }
 
   function update(post) {
     if (!post || post.id == null) return;
-    const i = _posts.findIndex(p => String(p.id) === String(post.id));
-    if (i >= 0) _posts[i] = post;
-    else _posts.push(post);
-    const el = _root && _root.querySelector(`[data-dgc-id="${CSS.escape ? CSS.escape(String(post.id)) : String(post.id)}"]`);
-    if (el) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = renderCard(post);
-      const next = tmp.firstElementChild;
-      if (next) el.replaceWith(next);
-    } else {
-      _paint();
-    }
+    const sid = String(post.id);
+    const apply = (arr) => {
+      if (!arr) return false;
+      const i = arr.findIndex(p => String(p.id) === sid);
+      if (i >= 0) { arr[i] = post; return true; }
+      return false;
+    };
+    if (!apply(_posts)) _posts.push(post);
+    _bindings.forEach(b => { if (!apply(b.posts)) { /* keep row lists independent */ } });
+    const sel = `[data-dgc-id="${CSS.escape ? CSS.escape(sid) : sid}"]`;
+    const roots = _bindings.map(b => b.root).concat(_root ? [_root] : []);
+    let replaced = false;
+    roots.forEach(root => {
+      if (!root) return;
+      root.querySelectorAll(sel).forEach(el => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = renderCard(post);
+        const next = tmp.firstElementChild;
+        if (next) { el.replaceWith(next); replaced = true; }
+      });
+    });
+    if (!replaced && _root) _paint();
   }
 
   function setGenreName(name) {
@@ -487,102 +514,137 @@
 
   function attach(rootEl, hooks) {
     _injectStyles();
+    if (!rootEl) return;
     _root = rootEl;
     _hooks = hooks || {};
     if (_hooks.genreName) _genreName = _hooks.genreName;
     if (_hooks.sort) _sort = _hooks.sort;
 
-    _root.addEventListener('click', (e) => {
-      // ── Engagement widgets (poll / prediction / debate) ──
-      const pollOpt = e.target.closest('[data-dgc-poll-opt]');
-      if (pollOpt) {
-        e.stopPropagation();
-        const [pid, idx] = pollOpt.dataset.dgcPollOpt.split(':');
-        const p = _find(pid);
-        if (p && typeof _hooks.onPollVote === 'function') _hooks.onPollVote(p, parseInt(idx, 10));
-        return;
-      }
-      const predOpt = e.target.closest('[data-dgc-pred-opt]');
-      if (predOpt) {
-        e.stopPropagation();
-        const [pid, idx] = predOpt.dataset.dgcPredOpt.split(':');
-        const p = _find(pid);
-        if (p && typeof _hooks.onPredVote === 'function') _hooks.onPredVote(p, parseInt(idx, 10));
-        return;
-      }
-      const debSide = e.target.closest('[data-dgc-debate]');
-      if (debSide) {
-        e.stopPropagation();
-        const [pid, side] = debSide.dataset.dgcDebate.split(':');
-        const p = _find(pid);
-        if (p && typeof _hooks.onDebateVote === 'function') _hooks.onDebateVote(p, side);
-        return;
-      }
-      const debOpen = e.target.closest('[data-dgc-debate-open]');
-      if (debOpen) {
-        e.stopPropagation();
-        const p = _find(debOpen.dataset.dgcDebateOpen);
-        if (p && typeof _hooks.onOpenDebate === 'function') _hooks.onOpenDebate(p);
-        return;
-      }
-
-      const like = e.target.closest('[data-dgc-like]');
-      if (like) {
-        e.stopPropagation();
-        const p = _find(like.dataset.dgcLike);
-        if (p && typeof _hooks.onLike === 'function') _hooks.onLike(p);
-        return;
-      }
-      const dots = e.target.closest('[data-dgc-dots]');
-      if (dots) {
-        e.stopPropagation();
-        const p = _find(dots.dataset.dgcDots);
-        if (p && typeof _hooks.onDots === 'function') _hooks.onDots(p, dots);
-        return;
-      }
-      const share = e.target.closest('[data-dgc-share]');
-      if (share) {
-        e.stopPropagation();
-        const p = _find(share.dataset.dgcShare);
-        if (p && typeof _hooks.onShare === 'function') _hooks.onShare(p);
-        return;
-      }
-      const story = e.target.closest('[data-dgc-story]');
-      if (story) {
-        e.stopPropagation();
-        const p = _find(story.dataset.dgcStory);
-        if (p && typeof _hooks.onStory === 'function') _hooks.onStory(p);
-        return;
-      }
-      const pinnedMore = e.target.closest('[data-dgc-pinned-more]');
-      if (pinnedMore) {
-        e.stopPropagation();
-        const p = _find(pinnedMore.dataset.dgcPinnedMore);
-        if (p && typeof _hooks.onPinned === 'function') _hooks.onPinned(p);
-        return;
-      }
-      const av = e.target.closest('[data-dgc-av]');
-      if (av) {
-        e.stopPropagation();
-        const p = _find(av.dataset.dgcAv);
-        if (p && typeof _hooks.onAvatar === 'function') _hooks.onAvatar(p);
-        return;
-      }
-      const nm = e.target.closest('[data-dgc-name]');
-      if (nm) {
-        e.stopPropagation();
-        const p = _posts.find(x => String(x.name) === String(nm.dataset.dgcName)) || _find(nm.dataset.dgcName);
-        if (typeof _hooks.onNameClick === 'function') _hooks.onNameClick(p, nm.dataset.dgcName);
-        else if (p && typeof _hooks.onAvatar === 'function') _hooks.onAvatar(p);
-        return;
-      }
-      const thread = e.target.closest('[data-dgc-thread]');
-      if (thread) {
-        e.stopPropagation();
-        const p = _find(thread.dataset.dgcThread);
-        if (p && typeof _hooks.onThread === 'function') _hooks.onThread(p);
-      }
-    });
+    let b = _bindings.find(x => x.root === rootEl);
+    if (!b) {
+      b = { root: rootEl, hooks: _hooks, posts: [] };
+      _bindings.push(b);
+      rootEl.addEventListener('click', (e) => {
+        const hooksNow = (b.hooks && Object.keys(b.hooks).length) ? b.hooks : _hooks;
+        const handled = (fn) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+          fn();
+        };
+        const pollOpt = e.target.closest('[data-dgc-poll-opt]');
+        if (pollOpt) {
+          handled(() => {
+            const [pid, idx] = pollOpt.dataset.dgcPollOpt.split(':');
+            const p = _find(pid);
+            if (p && typeof hooksNow.onPollVote === 'function') hooksNow.onPollVote(p, parseInt(idx, 10));
+          });
+          return;
+        }
+        const predOpt = e.target.closest('[data-dgc-pred-opt]');
+        if (predOpt) {
+          handled(() => {
+            const [pid, idx] = predOpt.dataset.dgcPredOpt.split(':');
+            const p = _find(pid);
+            if (p && typeof hooksNow.onPredVote === 'function') hooksNow.onPredVote(p, parseInt(idx, 10));
+          });
+          return;
+        }
+        const debSide = e.target.closest('[data-dgc-debate]');
+        if (debSide) {
+          handled(() => {
+            const [pid, side] = debSide.dataset.dgcDebate.split(':');
+            const p = _find(pid);
+            if (p && typeof hooksNow.onDebateVote === 'function') hooksNow.onDebateVote(p, side);
+          });
+          return;
+        }
+        const debOpen = e.target.closest('[data-dgc-debate-open]');
+        if (debOpen) {
+          handled(() => {
+            const p = _find(debOpen.dataset.dgcDebateOpen);
+            if (p && typeof hooksNow.onOpenDebate === 'function') hooksNow.onOpenDebate(p);
+          });
+          return;
+        }
+        const like = e.target.closest('[data-dgc-like]');
+        if (like) {
+          handled(() => {
+            const p = _find(like.dataset.dgcLike);
+            if (p && typeof hooksNow.onLike === 'function') hooksNow.onLike(p);
+          });
+          return;
+        }
+        const dots = e.target.closest('[data-dgc-dots]');
+        if (dots) {
+          handled(() => {
+            const p = _find(dots.dataset.dgcDots);
+            if (p && typeof hooksNow.onDots === 'function') hooksNow.onDots(p, dots);
+          });
+          return;
+        }
+        const share = e.target.closest('[data-dgc-share]');
+        if (share) {
+          handled(() => {
+            const p = _find(share.dataset.dgcShare);
+            if (p && typeof hooksNow.onShare === 'function') hooksNow.onShare(p);
+          });
+          return;
+        }
+        const story = e.target.closest('[data-dgc-story]');
+        if (story) {
+          handled(() => {
+            const p = _find(story.dataset.dgcStory);
+            if (p && typeof hooksNow.onStory === 'function') hooksNow.onStory(p);
+          });
+          return;
+        }
+        const pinnedMore = e.target.closest('[data-dgc-pinned-more]');
+        if (pinnedMore) {
+          handled(() => {
+            const p = _find(pinnedMore.dataset.dgcPinnedMore);
+            if (p && typeof hooksNow.onPinned === 'function') hooksNow.onPinned(p);
+          });
+          return;
+        }
+        const av = e.target.closest('[data-dgc-av]');
+        if (av) {
+          handled(() => {
+            const p = _find(av.dataset.dgcAv);
+            if (p && typeof hooksNow.onAvatar === 'function') hooksNow.onAvatar(p);
+          });
+          return;
+        }
+        const nm = e.target.closest('[data-dgc-name]');
+        if (nm) {
+          handled(() => {
+            const p = _findByName(nm.dataset.dgcName) || _find(nm.dataset.dgcName);
+            if (typeof hooksNow.onNameClick === 'function') hooksNow.onNameClick(p, nm.dataset.dgcName);
+            else if (p && typeof hooksNow.onAvatar === 'function') hooksNow.onAvatar(p);
+          });
+          return;
+        }
+        const comment = e.target.closest('[data-dgc-comment]');
+        if (comment) {
+          handled(() => {
+            const p = _find(comment.dataset.dgcComment);
+            if (!p) return;
+            if (typeof hooksNow.onComment === 'function') hooksNow.onComment(p);
+            else if (typeof hooksNow.onThread === 'function') hooksNow.onThread(p);
+          });
+          return;
+        }
+        const thread = e.target.closest('[data-dgc-thread]');
+        if (thread) {
+          handled(() => {
+            const p = _find(thread.dataset.dgcThread);
+            if (p && typeof hooksNow.onThread === 'function') hooksNow.onThread(p);
+          });
+        }
+      });
+    } else {
+      b.hooks = _hooks;
+    }
   }
 
   window.DroboardGenreCard = {

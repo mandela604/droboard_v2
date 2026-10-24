@@ -16,7 +16,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .welcome-title{font-size:21px;font-weight:800}
 .welcome-sub{font-size:13px;opacity:.85;margin-top:6px;line-height:1.55;max-width:620px}
 
-.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.grid-4{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
 .stat-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
 .stat-num{font-size:19px;font-weight:800;line-height:1.1}
@@ -48,6 +48,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .status-pill.active{background:var(--green-bg);color:var(--green)}
 .status-pill.suspended{background:var(--red-bg);color:var(--red)}
 .warn-badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:800;color:var(--amber);background:var(--amber-bg);padding:2px 8px;border-radius:20px}
+.via-pill{display:inline-flex;align-items:center;gap:4px;font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.02em}
+.via-pill.invited{background:var(--blue-bg);color:var(--blue)}
+.via-pill.assigned{background:var(--purple-bg);color:var(--purple)}
 
 .lib-config{display:none;flex-direction:column;gap:14px;padding:16px;background:var(--hover);border-top:1px solid var(--border)}
 .lib-config.open{display:flex}
@@ -112,12 +115,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 
   <div class="panel">
     <div class="panel-head">
-      <h2><i class="fas fa-users" style="color:var(--accent)"></i> Assigned Authors</h2>
+      <h2><i class="fas fa-users" style="color:var(--accent)"></i> Authors Under You</h2>
       <span class="count-chip" id="authorCount">—</span>
     </div>
-    <div class="panel-sub">Click an author to view full details and take action — or jump straight to their profile.</div>
+    <div class="panel-sub">Authors you invited plus authors assigned to you by the Chief Editor.</div>
     <div class="add-search">
       <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="authorSearch" placeholder="Search by name…"/></div>
+      <select id="sourceFilter">
+        <option value="">All Sources</option>
+        <option value="invited">Invited by me</option>
+        <option value="assigned">Assigned to me</option>
+      </select>
       <select id="genreFilter"><option value="">All Genres</option></select>
       <select id="statusFilter">
         <option value="">All Statuses</option>
@@ -132,7 +140,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 
 <script src="shared/senior-editor-sidebar.js"></script>
 <script src="shared/senior-editor-data.js"></script>
-<script src="services/authors-service.js?v=2"></script>
+<script src="services/invite-authors-service.js?v=2"></script>
+<script src="services/authors-service.js?v=4"></script>
 <script>AuthorsService.init();</script>
 </body>
 </html>

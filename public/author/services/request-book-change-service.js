@@ -111,6 +111,23 @@
     else btn.classList.remove('show');
   }
 
+  function resetCoverUI(book) {
+    var cur = document.getElementById('coverCurrent');
+    if (cur) cur.src = (book && book.cover) || '';
+    var wrap = document.getElementById('coverCurrentWrap');
+    if (wrap) wrap.classList.toggle('has-img', !!(book && book.cover));
+    var prev = document.getElementById('coverPreview');
+    if (prev) prev.src = '';
+    var newWrap = document.getElementById('coverNewWrap');
+    if (newWrap) { newWrap.classList.add('empty'); newWrap.classList.remove('has-img'); }
+    var input = document.getElementById('coverFileInput');
+    if (input) input.value = '';
+    var upLabel = document.querySelector('#coverUploadBtn span');
+    if (upLabel) upLabel.textContent = 'Upload new cover';
+    var m = document.getElementById('requestModal');
+    if (m) m._coverData = null;
+  }
+
   function openModal(sid, changes) {
     var book = BOOKS.find(function (s) { return s.id === sid; });
     if (!book) return;
@@ -124,6 +141,12 @@
       return '<span class="selected-tag">' + esc(c) + '</span>';
     }).join('');
     document.getElementById('requestDetails').value = '';
+    var hasCover = changes.indexOf('Change Cover') !== -1;
+    document.getElementById('modalBodyCover').style.display = hasCover ? '' : 'none';
+    if (hasCover) resetCoverUI(book);
+    document.getElementById('requestDetails').placeholder = hasCover
+      ? 'Describe the changes you need… (optional if you uploaded a new cover)'
+      : 'Describe the changes you need…';
     document.getElementById('modalBodyTextarea').style.display = '';
     document.getElementById('modalBodyReorder').style.display = 'none';
     document.getElementById('requestModal').classList.add('open');
@@ -142,7 +165,9 @@
       + '<div class="modal-series-meta">' + esc(book.genre || '') + ' · ' + book.chapters + ' chapters</div></div>';
     document.getElementById('selectedTags').innerHTML = '<span class="selected-tag">Reorder Chapters</span>';
     document.getElementById('modalBodyTextarea').style.display = 'none';
+    document.getElementById('modalBodyCover').style.display = 'none';
     document.getElementById('modalBodyReorder').style.display = '';
+    resetCoverUI(book);
     var list = document.getElementById('reorderList');
     list.innerHTML = book.chapterList.map(function (c, i) {
       return '<div class="reorder-item" data-cid="' + c.id + '">'
@@ -188,9 +213,12 @@
       payload.order = order;
     } else {
       var details = document.getElementById('requestDetails').value.trim();
-      if (!details) { document.getElementById('requestDetails').style.borderColor = 'var(--red)'; return; }
+      var coverData = modal._coverData || null;
+      var wantsCover = (modal._changes || []).indexOf('Change Cover') !== -1;
+      if (!details && !(wantsCover && coverData)) { document.getElementById('requestDetails').style.borderColor = 'var(--red)'; return; }
       document.getElementById('requestDetails').style.borderColor = '';
-      payload.details = details;
+      if (details) payload.details = details;
+      if (wantsCover && coverData) payload.coverImage = coverData; /* demo: base64 data URL — backend decodes or swap to multipart upload */
     }
     var btn = document.querySelector('.modal-btn.send');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
@@ -224,6 +252,30 @@
     }).catch(function () { renderList(); });
     document.getElementById('modalClose').onclick = closeModal;
     document.getElementById('requestModal').onclick = function (e) { if (e.target === this) closeModal(); };
+    var coverInput = document.getElementById('coverFileInput');
+    if (coverInput) coverInput.addEventListener('change', function () {
+      var f = coverInput.files && coverInput.files[0];
+      if (!f) return;
+      var okTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (okTypes.indexOf(f.type) === -1) { toast('Only JPG, PNG, WebP or GIF images are allowed'); coverInput.value = ''; return; }
+      var MAX = 8 * 1024 * 1024;
+      if (f.size > MAX) { toast('Image is too large — max 8MB'); coverInput.value = ''; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var m = document.getElementById('requestModal');
+        m._coverData = reader.result;
+        var prev = document.getElementById('coverPreview');
+        prev.src = reader.result;
+        var wrap = document.getElementById('coverNewWrap');
+        wrap.classList.remove('empty');
+        wrap.classList.add('has-img');
+        var cur = document.getElementById('coverCurrentWrap');
+        if (cur) cur.classList.add('has-img');
+        var label = document.querySelector('#coverUploadBtn span');
+        if (label) label.textContent = f.name + ' · ' + (f.size / 1024 / 1024).toFixed(1) + 'MB — tap to replace';
+      };
+      reader.readAsDataURL(f);
+    });
     document.getElementById('backBtn').addEventListener('click', function () { if (window.history.length > 1) window.history.back(); else window.location.href = 'author-center.html'; });
     if (window.AuthorDrawer) {
       try { window.AuthorDrawer.render('request-book-change.html'); } catch (e) {}

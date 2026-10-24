@@ -117,9 +117,10 @@
       comments: SEED,
       teams: TEAMS,
       currentUser: { name: 'You', avatar: null, team: null },
-      requireTeam: false,
-      collapsible: false,
-      startOpen: true,
+        requireTeam: false,
+        collapsible: false,
+        startOpen: true,
+        adsFirst: false, // full replies page never starts with an ad
       fillHeight: true, // body scrolls (header + teams scroll away), composer pinned
       headerHtml: headHtml,
       getCommentUrl: (c) => pageUrl() + '#comment-' + (c && c.id),

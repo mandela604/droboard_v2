@@ -1158,16 +1158,25 @@
         Admin-created spotlight creatives land here too (ad-setup wizard).
         `pages` targets the surface; countdown/frequency live in placements. */
     spotlight: [
-      { id: 'spot_betrayal', title: 'Season of Betrayal', author: 'Ada_Writes', genre: 'Romance', rating: '4.9', chapters: 62, reads: '820k', preview: 'She signed the divorce papers. He signed a plan to win her back.', img: c(1), cta: 'Read Now', pages: ['discover'] },
-      { id: 'spot_wolf', title: 'Werewolf King, Human Queen', author: 'Luna_Grey', genre: 'Werewolf', rating: '4.7', chapters: 52, reads: '410k', preview: 'One throne. Two worlds. The moon chose the one match the kingdom fears.', img: c(2), cta: 'Start Reading', pages: ['discover'] },
+      { id: 'spot_betrayal', kind: 'story', storyId: 'st1', title: 'Season of Betrayal', author: 'Ada_Writes', genre: 'Romance', rating: '4.9', chapters: 62, reads: '820k', preview: 'She signed the divorce papers. He signed a plan to win her back.', img: c(1), cta: 'Read Now', url: 'bridge.html?id=st1', pages: ['discover'] },
+      { id: 'spot_wolf', kind: 'story', storyId: 'st11', title: 'Werewolf King, Human Queen', author: 'Luna_Grey', genre: 'Werewolf', rating: '4.7', chapters: 52, reads: '410k', preview: 'One throne. Two worlds. The moon chose the one match the kingdom fears.', img: c(2), cta: 'Start Reading', url: 'bridge.html?id=st11', pages: ['discover'] },
+      { id: 'spot_ada', kind: 'user', name: 'Ada Writes', handle: 'Ada_Writes', avatar: 'https://i.pravatar.cc/200?img=32', tagline: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal series updates every Friday.', followers: '48.2k', books: 3, reads: '1.2M', cta: 'Follow Ada', verified: true, url: 'profile.html?u=Ada_Writes', pages: ['discover'] },
+      { id: 'spot_top_readers', kind: 'board', boardType: 'readers', period: 'last_week', title: 'Meet the top 3 readers of last week', cta: 'View leaderboard', url: 'leaderboard.html', pages: ['discover'] },
+      { id: 'spot_top_writers', kind: 'board', boardType: 'writers', period: 'last_month', title: 'Meet the top 3 writers of last month', cta: 'View leaderboard', url: 'leaderboard.html', pages: ['discover'] },
+      { id: 'spot_refer', kind: 'promo', brand: 'DroBoard', title: 'Refer a friend, earn 250 coins', sub: 'Share your invite link — you both get coins when they finish their first chapter.', badge: '250 coins each', cta: 'Invite a friend', img: c(8), url: 'refer.html', pages: ['discover'] },
     ],
   };
 
   const AD_PLACEMENTS = {
     discover: { interval: 6, cycle: ['book', 'book', 'book', 'book', 'platform'] },
     /* Full-screen story spotlight on Discover (ad-manager "Spotlight" card).
-        seconds: countdown 3-30; everyN: once every N visits; allowSkip: quit btn. */
-    spotlight: { enabled: true, seconds: 7, everyN: 1, allowSkip: true },
+        seconds: countdown 3-30; everyN: once every N visits; allowSkip: quit btn.
+        adId: pin one creative (blank = rotate every active spotlight). */
+    spotlight: {
+      enabled: true, seconds: 6, everyN: 1, allowSkip: true, adId: '',
+      delaySeconds: 0, cooldownHours: 0, startHour: null, endHour: null, days: [],
+      audienceMode: 'all', match: 'any', segments: [],
+    },
     feed: { interval: 4 },
     genreHub: { interval: 3, topPromo: true },
     discussion: { slot: 'single' },

@@ -45,7 +45,7 @@
     return {
       placement: null,
       pools,
-      placements: ov.placements || d.AD_PLACEMENTS || {},
+      placements: Object.assign({}, d.AD_PLACEMENTS || {}, ov.placements || {}),
     };
   }
 
@@ -212,6 +212,12 @@
         if (!inSchedule(ad, now)) return false;
         if (page && Array.isArray(ad.pages) && ad.pages.length && !ad.pages.includes(page)) return false;
         if (slot && ad.slots && ad.slots.length && ad.slots.indexOf(slot) === -1) return false;
+        /* Behavior targeting from the ad setup Audience step. Unknown
+           service (older page) serves the ad rather than hiding it. */
+        var aud = ad.audience || {};
+        if (window.DroboardAudience && Array.isArray(aud.segments) && aud.segments.length) {
+          if (!DroboardAudience.matches(aud.segments, aud.match || 'any')) return false;
+        }
         return true;
       });
     });
@@ -294,6 +300,42 @@
     catch (e) { return {}; }
   }
 
+  /* Rolled-up Discover spotlight performance for marketing + admin.
+     Demo reads the tracked counters; live dashboards should read the
+     backend aggregate instead. */
+  function spotlightStats() {
+    var pool = [];
+    try {
+      var inv = demoInventory();
+      pool = (inv.pools || {}).spotlight || [];
+    } catch (e) {}
+    var tracked = readStats();
+    var impressions = 0, clicks = 0, viewers = {};
+    var creatives = pool.map(function (ad) {
+      var t = tracked[ad.id] || {};
+      var imp = +t.impressions || 0;
+      var clk = +t.clicks || 0;
+      impressions += imp;
+      clicks += clk;
+      if (t.viewers) Object.keys(t.viewers).forEach(function (v) { viewers[v] = 1; });
+      return {
+        id: ad.id,
+        title: ad.title || ad.heading || ad.name || ad.handle || ad.id,
+        kind: (ad.kind === 'user' || ad.promoKind === 'user') ? 'user' : 'story',
+        impressions: imp,
+        clicks: clk,
+        ctr: imp ? (clk / imp) * 100 : 0,
+      };
+    }).sort(function (a, b) { return b.impressions - a.impressions; });
+    return {
+      impressions: impressions,
+      clicks: clicks,
+      ctr: impressions ? (clicks / impressions) * 100 : 0,
+      viewers: Object.keys(viewers).length,
+      creatives: creatives,
+    };
+  }
+
   /* Promo slider slides for a page (library / genreHub), narrowed by
      genre when the slides carry one. Powers library + hub sliders. */
   async function getPromoSlides(opts) {
@@ -305,5 +347,5 @@
     });
   }
 
-  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, readStats, getViewerId };
+  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, readStats, getViewerId, spotlightStats };
 })();

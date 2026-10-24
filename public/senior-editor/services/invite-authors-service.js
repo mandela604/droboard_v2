@@ -399,6 +399,6 @@ function syncFromBackend(){
   }).catch(function(){ /* stay on demo data */ });
 }
 
-window.InviteAuthorsService = { init: init };
+window.InviteAuthorsService = { init: init, getWriters: writers };
 
 })();

@@ -59,6 +59,7 @@
     var chapterParam=params.get('chapter')||'1';
     var isNew = chapterParam === 'new';
     var chapterNum=parseInt(chapterParam)||1;
+    var isViewer=(params.get('viewer')||'')==='editor';
 
     var book=BOOKS.find(function(b){return b.id===bookId;});
     if(!book)book=BOOKS[0];
@@ -95,6 +96,17 @@
 
     updateWordCount();
     document.getElementById('editor').addEventListener('input',updateWordCount);
+
+    if(isViewer){
+      var act=document.querySelector('.actions');
+      if(act)act.style.display='none';
+      var ed=document.getElementById('editor');
+      ed.setAttribute('contenteditable','false');
+      ed.style.caretColor='transparent';
+      document.querySelectorAll('.editor-toolbar button').forEach(function(b){b.disabled=true;b.style.opacity='.45';b.style.cursor='default';});
+      var ct=document.getElementById('chTitle');
+      if(ct){ct.readOnly=true;ct.style.background='var(--l2,#f5f5f8)';}
+    }
 
     document.getElementById('saveBtn').addEventListener('click',function(){
       chapter.title=document.getElementById('chTitle').value.trim()||chapter.title;

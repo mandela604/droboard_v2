@@ -236,32 +236,73 @@
     });
   }
 
+  /* Day / time-window / cooldown gate for the spotlight popup. */
+  function withinSpotlightWindow(cfg) {
+    const now = new Date();
+    const days = Array.isArray(cfg.days) ? cfg.days.map(Number) : [];
+    if (days.length && days.indexOf(now.getDay()) === -1) return false;
+    if (cfg.startHour != null && cfg.endHour != null && cfg.startHour !== '' && cfg.endHour !== '') {
+      const h = now.getHours() + now.getMinutes() / 60;
+      const s = +cfg.startHour, e = +cfg.endHour;
+      if (s !== e && (s < e ? !(h >= s && h < e) : !(h >= s || h < e))) return false;
+    }
+    const cool = +cfg.cooldownHours || 0;
+    if (cool > 0) {
+      try {
+        const last = +localStorage.getItem('dro_spotlight_last') || 0;
+        if (last && Date.now() - last < cool * 3600e3) return false;
+      } catch (e) {}
+    }
+    return true;
+  }
+
   /* Full-screen spotlight: once per visit, every N visits, Discover only.
-     Config comes from the ad-manager "Spotlight" placement card. */
+     Config comes from the ad-manager "Spotlight" card — on/off, seconds,
+     frequency, skip, delay/time window/cooldown, audience and creative. */
   async function maybeShowSpotlight() {
     if (!window.DroboardSpotlight || typeof AdService === 'undefined') return;
     try { if (sessionStorage.getItem('dro_spotlight_v')) return; } catch (e) {}
     let cfg = {};
     try { cfg = (await AdService.getPlacement('spotlight')) || {}; } catch (e) { return; }
     if (cfg.enabled === false) return;
-    const hasCfg = ['enabled', 'seconds', 'everyN', 'allowSkip'].some(k => k in cfg);
+    const hasCfg = ['enabled', 'seconds', 'everyN', 'allowSkip', 'adId', 'delaySeconds', 'days', 'audienceMode'].some(k => k in cfg);
     if (!hasCfg) return; // surface not configured yet
+    if (!withinSpotlightWindow(cfg)) return;
+    if (cfg.audienceMode === 'targeted' && window.DroboardAudience) {
+      if (!DroboardAudience.matches(cfg.segments || [], cfg.match || 'any')) return;
+    }
     const every = Math.max(1, parseInt(cfg.everyN, 10) || 1);
     try {
       const vis = (parseInt(localStorage.getItem('dro_spotlight_vis'), 10) || 0) + 1;
       localStorage.setItem('dro_spotlight_vis', vis);
       if (vis % every !== 0) return;
     } catch (e) { /* show anyway */ }
+    const delay = Math.max(0, Math.min(30, +cfg.delaySeconds || 0));
+    if (delay) await new Promise(r => setTimeout(r, delay * 1000));
     let ad = null;
     try {
       const pools = await AdService.getAds({ page: 'discover', slot: 'discover:spotlight' });
-      ad = (pools.spotlight && pools.spotlight[0]) || null;
+      const pool = pools.spotlight || [];
+      if (cfg.adId) ad = pool.find(a => String(a.id) === String(cfg.adId)) || null;
+      if (!ad && pool.length) {
+        /* No creative pinned in Marketing → rotate active ones per visit. */
+        let idx = 0;
+        try { idx = parseInt(localStorage.getItem('dro_spotlight_rot'), 10) || 0; } catch (e) {}
+        ad = pool[idx % pool.length];
+        try { localStorage.setItem('dro_spotlight_rot', String((idx + 1) % pool.length)); } catch (e) {}
+      }
     } catch (e) {}
     const tastes = readTastes();
     let story = null, href = null;
     if (ad) {
-      story = { id: ad.id, title: ad.title, author: ad.author || ad.authorName, genre: ad.genre, chapters: ad.chapters, reads: ad.reads, preview: ad.preview, img: ad.img || ad.cover, cta: ad.cta || 'Read now' };
-      href = ad.url || (window.DiscoverCard ? DiscoverCard.storyHref({ id: ad.id, title: ad.title }) : null);
+      story = window.DroboardSpotlight.fromAd
+        ? DroboardSpotlight.fromAd(ad)
+        : { kind: 'story', id: ad.id, title: ad.title, author: ad.author || ad.authorName, genre: ad.genre, chapters: ad.chapters, reads: ad.reads, preview: ad.preview, img: ad.img || ad.cover, cta: ad.cta || 'Read now' };
+      if (ad.url) href = ad.url;
+      else if (story.kind === 'user') href = 'profile.html?u=' + encodeURIComponent(story.handle || story.name || '');
+      else if (story.kind === 'board') href = 'leaderboard.html';
+      else if (story.kind === 'promo') href = 'refer.html';
+      else href = window.DiscoverCard ? DiscoverCard.storyHref({ id: ad.storyId || ad.id, title: ad.title }) : null;
     } else {
       const pool = (window.DemoData && DemoData.STORIES) || [];
       let pick = null;
@@ -271,13 +312,16 @@
       }
       if (!pick) pick = pool[0];
       if (!pick) return;
-      story = { id: pick.id, title: pick.title, author: '@' + pick.author, genre: String(pick.cat || '').replace(/[^A-Za-z ]/g, '').trim(), chapters: pick.chapters, reads: pick.reads, preview: pick.desc, img: pick.cover, cta: 'Read now' };
+      story = { kind: 'story', id: pick.id, title: pick.title, author: '@' + pick.author, genre: String(pick.cat || '').replace(/[^A-Za-z ]/g, '').trim(), chapters: pick.chapters, reads: pick.reads, preview: pick.desc, img: pick.cover, cta: 'Read now' };
       href = window.DiscoverCard ? DiscoverCard.storyHref(story) : null;
     }
-    try { sessionStorage.setItem('dro_spotlight_v', '1'); } catch (e) {}
+    try {
+      sessionStorage.setItem('dro_spotlight_v', '1');
+      localStorage.setItem('dro_spotlight_last', String(Date.now()));
+    } catch (e) {}
     DroboardSpotlight.show({
       story: story,
-      seconds: parseInt(cfg.seconds, 10) || 5,
+      seconds: parseInt(cfg.seconds, 10) || 6,
       allowSkip: cfg.allowSkip !== false,
       sponsored: !!ad,
       trackId: ad ? ad.id : null,
@@ -429,6 +473,7 @@
      The text fades out, swaps, then fades back in line by line. */
   let _heroLayers = null;
   let _heroPainted = false;
+  let _heroHideTimer = null;
 
   function _heroLayerPair() {
     if (_heroLayers) return _heroLayers;
@@ -455,20 +500,41 @@
     const wrap = document.querySelector('.hero-wrap');
     const heroEl = document.querySelector('.hero');
 
-    /* ── image: crossfade immediately ── */
+    /* ── image crossfade ──
+       The OLD slide stays fully opaque underneath for the whole fade; only
+       the NEW slide fades in above it (is-front). Fading both out/in at once
+       would drop the composite to ~75% alpha and let the page background
+       bleed through the hero mid-transition. */
     if (layers) {
-      const top = layers.b, under = layers.a;
-      // First paint: put the image on the visible layer too, so the hero
-      // never flashes empty while the incoming layer fades in.
-      if (!_heroPainted) under.style.backgroundImage = `url('${h.img}')`;
+      const front = layers.b, back = layers.a;
+      clearTimeout(_heroHideTimer);
+
+      // incoming layer → clean, fully transparent, zoomed start state
+      front.style.transition = 'none';
+      front.classList.remove('is-on', 'is-front');
+      if (!_heroPainted) back.style.backgroundImage = `url('${h.img}')`; // 1st paint: never flash empty
       _heroPainted = true;
-      top.style.backgroundImage = `url('${h.img}')`;
-      top.classList.remove('is-on');
-      void top.offsetWidth;          // restart the fade + zoom
-      top.classList.add('is-on');
-      under.classList.remove('is-on');
-      layers.a = top;                // roles swap for the next slide
-      layers.b = under;
+      front.style.backgroundImage = `url('${h.img}')`;
+      void front.offsetWidth;
+      front.style.transition = '';
+
+      // backdrop → opaque instantly, never above the incoming layer
+      back.style.transition = 'none';
+      back.classList.remove('is-front');
+      back.classList.add('is-on');
+      void back.offsetWidth;
+      back.style.transition = '';
+
+      // fade + zoom the new slide in over the backdrop
+      front.classList.add('is-on', 'is-front');
+
+      // Drop the old backdrop only after the crossfade completes. It sits
+      // behind an opaque layer so this is invisible; it just keeps the next
+      // transition from starting on a half-transparent base.
+      _heroHideTimer = setTimeout(() => back.classList.remove('is-on', 'is-front'), 820);
+
+      layers.a = front;                // roles swap for the next slide
+      layers.b = back;
     } else {
       const img = document.getElementById('heroImg');
       if (img) img.style.backgroundImage = `url('${h.img}')`;
@@ -480,7 +546,10 @@
       const a = document.getElementById('heroAuthor');
       const g = document.getElementById('heroTags');
       if (t) t.innerHTML = h.title;
-      if (a) a.innerHTML = h.author + ' <i class="fas fa-circle-check"></i>';
+      if (a) {
+        const av = (window.DroboardPeople && DroboardPeople.avatarFor) ? DroboardPeople.avatarFor(h.author) : '';
+        a.innerHTML = (av ? `<img class="hero-author-av" src="${av}" alt=""/>` : '') + h.author + ' <i class="fas fa-circle-check"></i>';
+      }
       if (g) g.innerHTML = (h.tags || []).map(t => `<span class="hero-tag">${t}</span>`).join('');
       if (body) body.classList.add('in');
     };

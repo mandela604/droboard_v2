@@ -11,6 +11,14 @@ async function me(req, res) {
   return base.wrap(res, async () => statuses.myStatuses({ userId: req.user.id }));
 }
 
+// GET /api/statuses/state?handles=a,b,c — per-author ring state across surfaces.
+async function state(req, res) {
+  return base.wrap(res, async () => statuses.stateStatuses({
+    viewerId: req.user && req.user.id,
+    handles: String((req.valid.query && req.valid.query.handles) || '').split(','),
+  }));
+}
+
 async function create(req, res) {
   return base.wrap(res, async () => {
     const out = await statuses.createStatus({ userId: req.user.id, file: req.file, data: req.valid.body });
@@ -41,4 +49,4 @@ async function remove(req, res) {
   });
 }
 
-module.exports = { home, me, create, view, like, remove };
+module.exports = { home, me, state, create, view, like, remove };

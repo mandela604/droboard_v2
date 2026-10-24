@@ -46,18 +46,24 @@
      author has; every border here stays a plain round ring. */
   function renderStatusRow(statuses) {
     var STATUSES = statuses || [];
+    try {
+      if (window.DroboardStatus && DroboardStatus.registerStories) {
+        STATUSES = DroboardStatus.registerStories(STATUSES);
+      }
+    } catch (e) {}
     document.getElementById('statusRow').innerHTML = STATUSES.map(function (s) {
       var live = s.isLive ? '<div class="s-live-dot"><i class="fas fa-signal"></i></div>' : '';
       if (s.isYou) return '<div class="s-item" onclick="openStatusComposer()">' +
-        '<div class="s-ring ring-own" style="position:relative">' +
+        '<div class="s-ring ring-own" data-status-ring="you" style="position:relative">' +
         '<div class="s-inner"><i class="fas fa-plus s-add-icon"></i></div>' + live +
         '</div>' +
         '<div class="s-name">You</div>' +
         '</div>';
       var n = s.statuses ? s.statuses.length : 0;
       var ringClass = s.isYou ? 'ring-none' : (s.ring || (n ? 'ring-has' : 'ring-none'));
+      var ringKey = s.name || s.handle || s.id;
       return '<div class="s-item" data-status-id="' + s.id + '">' +
-        '<div class="s-ring ' + ringClass + '" style="position:relative">' +
+        '<div class="s-ring ' + ringClass + '" data-status-ring="' + ringKey + '" style="position:relative">' +
         '<div class="s-inner"><img src="' + s.avatar + '" loading="lazy" alt=""/></div>' + live +
         '</div>' +
         '<div class="s-name">@' + s.name.split('_')[0] + '</div>' +
@@ -68,7 +74,7 @@
       el.addEventListener('click', function () {
         var wid = el.dataset.statusId;
         if (typeof window.openStatusViewer === 'function') {
-          openStatusViewer(statuses.filter(function (s) { return !s.isYou; }), wid);
+          openStatusViewer(STATUSES.filter(function (s) { return !s.isYou; }), wid);
         } else {
           toast('👁 Viewing status…');
         }

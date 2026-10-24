@@ -46,7 +46,7 @@
     .story-ring:active { transform: scale(0.96); }
     .story-ring.own { background: none; }
     .story-ring.ring-live { box-shadow: 0 0 12px rgba(255,0,80,.55); }
-    .story-ring.ring-viewed { background: var(--tx-muted); opacity: .75; }
+    .story-ring.ring-viewed { background: var(--tx-muted); }
     .story-ring.ring-none { background: var(--border); }
     .story-ring.ring-multi { padding: 3px; }
     .story-ring .inner { width: 100%; height: 100%; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--bg); }
@@ -65,10 +65,19 @@
 
     /* ── Feed ── */
     .feed { min-height: 200px; }
-    #feedList { display: flex; flex-direction: column; gap: 8px; background: #d8d8d8; }
-    [data-theme="dark"] #feedList { background: #000; }
+    #feedList { display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
     #feedList > * { background: var(--l1); }
-    #feedList > #commSecMid { background: transparent; margin-top: -8px; margin-bottom: -8px; }
+    #feedList > .pcc-post { border-bottom: none; }
+    #feedList > #commSecMid { background: transparent; }
+    .comment-overlay{position:fixed;inset:0;z-index:1700;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center}
+    .comment-overlay.open{display:flex}
+    .comment-sheet{width:100%;max-width:520px;background:var(--l1);border-radius:20px 20px 0 0;max-height:86vh;display:flex;flex-direction:column;animation:cmSlide .28s ease}
+    @keyframes cmSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .comment-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bd);flex-shrink:0}
+    .comment-hdr h3{font-size:13.5px;font-weight:800;color:var(--tx)}
+    .comment-close{width:28px;height:28px;border-radius:50%;background:var(--l2);border:none;color:var(--tx-muted);font-size:12px;cursor:pointer}
+    .comment-mount{flex:1;overflow-y:auto;padding:4px 16px 16px;scrollbar-width:none}
+    .comment-mount::-webkit-scrollbar{display:none}
     #promoMount { padding: 12px 16px; background: var(--card); margin: 0 12px; border-radius: 16px; overflow: hidden; }
 
     /* ── Community Sections ── */
@@ -145,9 +154,9 @@
     </div>
 
     <div class="tabs">
-      <div class="f-tab active">All</div>
-      <div class="f-tab" style="display:none">Following</div>
-      <div class="f-tab" style="display:none">Debates</div>
+      <div class="f-tab active" data-sort="latest">All</div>
+      <div class="f-tab" data-sort="following">Following</div>
+      <div class="f-tab" data-sort="debates">Debates</div>
     </div>
 
     <section class="comm-sec" id="commSec1" style="display:none">
@@ -201,18 +210,13 @@
 
   <div class="toast" id="toast"></div>
 
-  <link rel="stylesheet" href="../component/bottom-nav.css">
-  <link rel="stylesheet" href="../component/search-overlay.css">
-  <link rel="stylesheet" href="../component/hamburger-menu.css">
-  <link rel="stylesheet" href="../component/promo-slider.css">
-  <link rel="stylesheet" href="../component/genre-card.css">
-  <link rel="stylesheet" href="../component/dots-menu.css">
-  <link rel="stylesheet" href="../component/post-card.css">
-  <link rel="stylesheet" href="../component/reaction-picker.css">
-  <link rel="stylesheet" href="../component/share-modal.css">
-  <link rel="stylesheet" href="../component/save-modal.css">
-  <link rel="stylesheet" href="../component/ad-card.css">
-  <link rel="stylesheet" href="../component/status-viewer.css">
+  <div class="comment-overlay" id="commentOverlay" onclick="if(event.target===this)FeedPage.closeComments()">
+    <div class="comment-sheet">
+      <div class="comment-hdr"><h3><i class="fas fa-comment-dots" style="color:var(--acc);font-size:12px"></i> Comments</h3><button class="comment-close" onclick="FeedPage.closeComments()">✕</button></div>
+      <div class="comment-mount" id="commentMount"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script src="../data/feed-demo-seed.js"></script>
@@ -221,31 +225,36 @@
   <script src="../component/post-composer.js"></script>
 <script src="../services/reading-history.js"></script>
   <script src="../component/boards-overlay.js"></script>
-  <script src="../component/browse-overlay.js"></script>
-  <script src="../component/status-viewer.js?v=2"></script>
+  <script src="../component/browse-overlay.js?v=13"></script>
+  <script src="../component/status-viewer.js?v=6"></script>
   <script src="../component/promo-slider.js"></script>
   <script src="../component/report-sheet.js"></script>
   <script src="../component/dots-menu.js"></script>
-  <script src="../component/post-card.js?v=1"></script>
-  <script src="../component/debate-args.js"></script>
+  <script src="../component/post-card.js?v=2"></script>
+  <script src="../component/debate-args.js?v=2"></script>
   <script src="../component/reaction-picker.js"></script>
+  <script src="../data/comments-data.js"></script>
+  <script src="../component/comment-section.js?v=6"></script>
   <script src="../component/share-modal.js"></script>
   <script src="../services/saves-bridge.js"></script>
   <script src="../component/save-modal.js"></script>
-  <script src="../component/genre-card.js?v=5"></script>
+  <script src="../component/genre-card.js?v=6"></script>
   <script src="../component/ad-card.js?v=3"></script>
   <script src="../component/bottom-nav.js"></script>
   <script src="../component/hamburger-menu.js"></script>
-  <script src="../component/search-overlay.js"></script>
+  <script src="../component/search-overlay.js?v=2"></script>
   <script src="../data/central-demo-data.js"></script>
   <script src="../marketing/shared/marketing-data.js"></script>
+  <script src="../services/audience-service.js"></script>
   <script src="../services/ad-service.js"></script>
 <script src="../services/ad-revenue-service.js"></script>
   <script src="../component/ad-slot.js"></script>
-  <script src="../services/status-service.js"></script>
+  <script src="../services/people-service.js"></script>
+  <script src="../services/status-service.js?v=5"></script>
+  <script src="../component/writers-row.js"></script>
   <script src="../services/search-service.js"></script>
   <script src="../shared/ui-helpers.js"></script>
-  <script src="../services/feed-service.js?v=2"></script>
+  <script src="../services/feed-service.js?v=4"></script>
   <script>FeedPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

@@ -33,8 +33,10 @@
   *     fillHeight: false,            // true = fill available height (comments page)
   *     fullCommentsUrl: null,        // string or () => string — "View all ›" link
   *                                    // next to "Tag your side" jumps here
-  *     headerHtml: '',               // trusted host HTML pinned to the top of
-  *                                    // the scroll flow (scrolls away)
+ *     headerHtml: '',               // trusted host HTML pinned to the top of
+ *                                    // the scroll flow (scrolls away)
+ *     adsFirst: true,                // false = no leading ad as the first item
+ *                                    // in the list or the full replies view
  *
  *     onPost:        (comment) => { ... your API call ... },
  *     onReply:       (parentId, comment) => { ... },
@@ -64,7 +66,9 @@
  *     team,                    // one of your teams[].id, or null
  *     statusRing,              // 'has' | 'viewed' | 'none' — draws the ring
  *     statuses,                // [{bg,quote,caption,time}] — enables status-viewer.js on avatar tap
- *     time, text, edited,      // edited is set true automatically after a save
+ *     time, text, edited,      // text = trusted HTML (rendered as-is), clamped
+ *                              // to 4 lines with a "See more" until tapped;
+ *                              // edited is set true automatically after a save
  *     likes, liked,            // only read/written when reaction-picker.js is NOT loaded
  *     rx: { <reactionId>: n, userRx: null },  // reaction-picker's reaction ids when it's loaded
  *     replies: [ ...same shape..., can nest to any depth (reply-to-a-reply) ],
@@ -218,8 +222,12 @@
     .dcs-team-tag{font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.03em;white-space:nowrap;border:1px solid transparent}
     .dcs-time{font-size:10px;color:var(--dcs-muted2)}
     .dcs-edited-tag{font-size:10px;color:var(--dcs-muted2);font-style:italic}
-    .dcs-text{font-size:15.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
-    .dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700;cursor:pointer}
+.dcs-text{font-size:15.5px;color:var(--dcs-muted);line-height:1.55;word-break:break-word}
+.dcs-text.dcs-clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.dcs-see-more{display:none;font-size:11.5px;font-weight:700;color:var(--dcs-acc,#ff0050);cursor:pointer;padding:3px 0 0;user-select:none}
+.dcs-see-more.show{display:inline-block}
+.dcs-see-more:active{opacity:.7}
+.dcs-text .dcs-mention{color:var(--dcs-acc);font-weight:700;cursor:pointer}
     .dcs-text .dcs-mention:active{opacity:.7}
 
     /* Inline edit form */
@@ -351,7 +359,9 @@
   // ══════════════════════════════════════════════════════════════════════
   function _esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function _escAttr(s) { return _esc(s).replace(/"/g, '&quot;'); }
-  function _mentions(s) { return _esc(s).replace(/@([\w_]+)/g, '<span class="dcs-mention" data-dcs-mention="$1">@$1</span>'); }
+    // Comment text is trusted (host/data HTML rendered as-is); only @mentions
+  // get highlighted, without escaping the content first.
+  function _trusted(s) { return (s || '').replace(/@([\w_]+)/g, '<span class="dcs-mention" data-dcs-mention="$1">@$1</span>'); }
   function _fmtN(n) { n = +n || 0; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
   function _hexToRgba(hex, a) {
     hex = (hex || '#ff0050').replace('#', '');
@@ -402,7 +412,8 @@
   // Served from the central inventory (AdService page 'comments') through
   // the shared ad component, so impressions/clicks track like everywhere
   // else. Marketing toggles it via placements → comments → enabled, no
-  // page code involved. Per-attach escape hatch: { ads:false }.
+  // page code involved. Per-attach escape hatch: { ads:false } (all slots) or
+  // { adsFirst:false } (keeps mid-list ads but no ad as the first item).
   function _adsAvailable() { return typeof window.AdService !== 'undefined' && typeof window.DroboardAdCard !== 'undefined'; }
   function _trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
   function _pickSlotAd(pools) {
@@ -621,8 +632,9 @@
     let pickedTeam = currentUser.team || null;
     let activeRxPopupId = null;   // fallback-mode reaction popup, format "ns:cid"
     let openDotsId = null;
-    let editingId = null;
-    let threadOpenId = null;      // id of the top-level comment shown in the thread view, or null
+let editingId = null;
+let threadOpenId = null;      // id of the top-level comment shown in the thread view, or null
+const expandedIds = new Set(); // comment ids the reader expanded via "See more" (survives re-renders)
     let adInterval = 5;           // repeat slot every N rows; refreshed from placement (default 5)
     (async function _resolveAdInterval() {
       try {
@@ -809,12 +821,22 @@
       return `<div class="dcs-verified" title="${label}"><i class="fas fa-check"></i></div>`;
     }
     function ringClass(r) { return r === 'has' ? 'ring-has' : r === 'viewed' ? 'ring-viewed' : 'ring-none'; }
+    function ringClassFor(c) {
+      var r = c.statusRing;
+      try {
+        if (window.StatusStore && StatusStore.ringOf && c.name) {
+          var sr = StatusStore.ringOf(c.name);
+          if (sr) r = sr === 'ring-viewed' ? 'viewed' : 'has';
+        }
+      } catch (e) {}
+      return ringClass(r);
+    }
     function buildAvatar(c) {
-      const ring = ringClass(c.statusRing);
+      const ring = ringClassFor(c);
       const inner = c.avatar
         ? `<img src="${c.avatar}" loading="lazy"/>`
         : `<div class="dcs-av-initial" style="background:${c.avatarBg || 'rgba(255,0,80,.25)'}">${(c.name || '?')[0].toUpperCase()}</div>`;
-      return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}"><div class="dcs-av-ring ${ring}"><div class="dcs-av-ring-inner">${inner}</div></div>${verifiedBadge(c.verified)}</div>`;
+      return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}"><div class="dcs-av-ring ${ring}" data-status-ring="${_esc(c.name || '')}"><div class="dcs-av-ring-inner">${inner}</div></div>${verifiedBadge(c.verified)}</div>`;
     }
 
     // ── Find helpers ──
@@ -888,6 +910,7 @@
     //     rendered in more than one place without id collisions. ──
     function renderCommentCard(c, ns, isReply) {
       const isEditing = editingId === c.id;
+      const expanded = expandedIds.has(String(c.id));
       const nRep = countAll(c.replies || []);
       return `
         <div class="dcs-item${isReply ? ' is-reply' : ''}" id="${ns}-ci-${c.id}">
@@ -906,7 +929,8 @@
                 <button class="dcs-edit-btn dcs-edit-save" data-dcs-editsave="${c.id}"><i class="fas fa-check"></i></button>
                 <button class="dcs-edit-btn dcs-edit-cancel" data-dcs-editcancel="${c.id}"><i class="fas fa-xmark"></i></button>
               </div>` : `
-              <div class="dcs-text">${_mentions(c.text)}</div>
+              <div class="dcs-text${expanded ? '' : ' dcs-clamp'}">${_trusted(c.text)}</div>
+              ${expanded ? '' : `<span class="dcs-see-more" data-dcs-seemore="${c.id}">See more</span>`}
               ${renderReactionBubble(c)}
               <div class="dcs-actions" style="position:relative">
                 ${renderLikeTrigger(c, ns)}
@@ -940,6 +964,16 @@
       return html;
     }
 
+    // ── "See more": show the toggle only when a clamped comment actually
+    //     overflows; text stays collapsed until the reader taps it. ──
+    function applySeeMore(scopeEl) {
+      scopeEl.querySelectorAll('.dcs-text.dcs-clamp').forEach(t => {
+        const btn = t.nextElementSibling;
+        if (!btn || !btn.classList.contains('dcs-see-more')) return;
+        btn.classList.toggle('show', t.scrollHeight > t.clientHeight + 2);
+      });
+    }
+
     function render() {
       registerMainReactions();
       if (!comments.length) {
@@ -947,8 +981,10 @@
       } else {
         const n = adInterval > 0 ? adInterval : 5;
         const rep = options.adsRepeat !== false; // adsRepeat:false → first-item slot only
-        listEl.innerHTML = _adSlotHTML('list-top') + comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')).join('');
+        const leadAd = options.adsFirst !== false ? _adSlotHTML('list-top') : '';
+        listEl.innerHTML = leadAd + comments.map((c, i) => renderTopLevelBlock(c) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')).join('');
         listEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
+        applySeeMore(listEl);
       }
       refreshCount();
       attachReplyInputListeners(instId, listEl);
@@ -995,8 +1031,10 @@
       const n = adInterval > 0 ? adInterval : 5;
       const rep = options.adsRepeat !== false; // adsRepeat:false → top slot only
       const rows = [renderCommentCard(c, ns, false)].concat(flat.map((r, i) => renderCommentCard(r, ns, true) + ((rep && (i + 1) % n === 0) ? _adSlotHTML('every-nth') : '')));
-      threadBodyEl.innerHTML = '<div data-dcs-adslot data-slot="comments:thread-top" style="margin:8px 0;display:none"></div>' + rows.join('');
+      const leadAd = options.adsFirst !== false ? '<div data-dcs-adslot data-slot="comments:thread-top" style="margin:8px 0;display:none"></div>' : '';
+      threadBodyEl.innerHTML = leadAd + rows.join('');
       threadBodyEl.querySelectorAll('[data-dcs-adslot]').forEach(s => _mountAdSlot(s, options));
+      applySeeMore(threadBodyEl);
       attachReplyInputListeners(ns, threadBodyEl);
       attachEditInputListeners(ns);
     }
@@ -1460,6 +1498,15 @@
 
         const viewbtn = e.target.closest('[data-dcs-viewthread]');
         if (viewbtn) { openThread(+viewbtn.dataset.dcsViewthread); return; }
+
+        const seemore = e.target.closest('[data-dcs-seemore]');
+        if (seemore) {
+          const txt = seemore.previousElementSibling;
+          if (txt && txt.classList.contains('dcs-text')) txt.classList.remove('dcs-clamp');
+          expandedIds.add(String(seemore.dataset.dcsSeemore));
+          seemore.remove();
+          return;
+        }
 
         const replybtn = e.target.closest('[data-dcs-replybtn]');
         if (replybtn) {

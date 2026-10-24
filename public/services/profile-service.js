@@ -199,29 +199,86 @@
     try { return (window.DroboardStatus && window.DroboardStatus.slides()) || []; }
     catch (e) { return []; }
   }
+  function storySlidesFor(p) {
+    var handle = (p && (p.handle || p.username)) || VIEW_HANDLE || '';
+    if (IS_OWNER) {
+      return myLiveSlides().map(function (s, i) {
+        var viewed = !!s.viewed;
+        try {
+          if (window.StatusStore && StatusStore.isStatusSeen) viewed = StatusStore.isStatusSeen('you', s, i);
+        } catch (e) {}
+        return {
+          id: s.id, bg: s.bg, quote: s.quote, caption: s.caption,
+          storyRef: s.storyRef || null, viewed: viewed,
+          views: s.views != null ? s.views : 0,
+          time: s.time || 'Just now',
+        };
+      });
+    }
+    if (p && p.statuses && p.statuses.length) {
+      return p.statuses.map(function (s, i) {
+        var viewed = !!s.viewed;
+        try {
+          if (window.StatusStore && StatusStore.isStatusSeen) viewed = StatusStore.isStatusSeen(handle, s, i);
+        } catch (e) {}
+        return {
+          id: s.id, bg: s.bg, quote: s.quote, caption: s.caption,
+          storyRef: s.storyRef || null, viewed: viewed,
+          views: s.views, time: s.time || 'Just now',
+        };
+      });
+    }
+    try {
+      if (window.DroboardStatus && DroboardStatus.profileStatuses) {
+        return DroboardStatus.profileStatuses(handle);
+      }
+    } catch (e) {}
+    return [];
+  }
+  /* One viewer-ready entry for the profile's author. */
+  function storyEntryFor(p) {
+    if (!p) return null;
+    var slides = storySlidesFor(p);
+    if (!slides.length) return null;
+    var handle = String((p.handle || p.username || '').replace(/^@/, ''));
+    var wid = IS_OWNER ? 'you' : ('wr:' + handle.toLowerCase());
+    var ring = 'ring-has';
+    try {
+      if (window.StatusStore && StatusStore.register) {
+        ring = StatusStore.register(IS_OWNER ? 'you' : handle, slides, { isMine: IS_OWNER });
+      }
+    } catch (e) {}
+    return {
+      id: wid, handle: handle, name: IS_OWNER ? (p.name || 'You') : (p.name || handle),
+      avatar: p.avatar || '', statuses: slides,
+      ring: ring || 'ring-has', likes: 0, threads: slides.length,
+    };
+  }
   function refreshStoryRing(p) {
     var ring = document.getElementById('avRing');
     var plus = document.getElementById('avPlus');
     var img = document.getElementById('avImg');
     if (!ring) return;
     var isOwner = (typeof IS_OWNER !== 'undefined') ? IS_OWNER : true;
-    var slides = isOwner ? myLiveSlides() : ((p && p.statuses) || []);
-    var has = !!(slides && slides.length);
+    var entry = storyEntryFor(p);
+    var slides = entry ? entry.statuses : [];
+    var has = slides.length > 0;
+    var wid = entry ? entry.id : (isOwner ? 'you' : (VIEW_HANDLE || (p && p.handle) || ''));
+    var viewedAll = has && entry.ring === 'ring-viewed';
     var isChamp = false;
     try {
       var _rg = (window.ReaderLeague && ReaderLeague.reigning) ? ReaderLeague.reigning() : null;
       isChamp = !!(_rg && _rg.handle && (p.handle === _rg.handle || p.username === _rg.handle));
     } catch (e) {}
-    /* No story → neutral ring (never the red story ring). Story → conic.
+    /* No story → neutral ring. Story → red conic. Story viewed → grey.
        Champion keeps the gold frame. */
-    var base = 'av-ring' + (isChamp ? ' champ' : (has ? ' ' + (p.isWriter ? 'role-writer' : 'role-reader') + ' has-story' : ' no-story'));
+    var base = 'av-ring' + (isChamp ? ' champ' : (has ? (viewedAll ? ' viewed-story' : ' ' + (p.isWriter ? 'role-writer' : 'role-reader') + ' has-story') : ' no-story'));
     ring.className = base;
     if (img) { img.style.cursor = has ? 'pointer' : ''; img.onclick = null; ring.onclick = null;
       if (has) {
         var open = function () {
           if (!window.openStatusViewer) { toast('Story viewer missing'); return; }
-          var me = { id: 'you', name: (p && p.name) || 'You', avatar: img.src, ring: 'ring-live', likes: 0, statuses: slides.map(function (s) { return { bg: s.bg, quote: s.quote, caption: s.caption, time: s.time || 'Just now' }; }) };
-          window.openStatusViewer([me], 'you');
+          window.openStatusViewer([entry], wid);
         };
         img.onclick = open; ring.onclick = open;
       } else if (isOwner) {
@@ -238,6 +295,35 @@
       };
     }
   }
+
+  /* ── Status-viewer sync (component contract) ──
+     The viewer emits (wid, ring) via window.onStatusViewerChange. Chain
+     (never clobber); refresh BOTH ring surfaces: header avatar + post-card
+     avatar borders. Seen state lives in StatusStore (per status). */
+  var _prevStatusCb = window.onStatusViewerChange;
+  window.onStatusViewerChange = function (wid, ring) {
+    if (typeof _prevStatusCb === 'function') { try { _prevStatusCb(wid, ring); } catch (e) {} }
+    if (!PROFILE) return;
+    var entry = null;
+    try { entry = storyEntryFor(PROFILE); } catch (e) {}
+    if (!entry) return;
+    if (window.StatusStore && StatusStore.key) {
+      var mineKey = StatusStore.key(entry.id);
+      var gotKey = StatusStore.key(wid);
+      if (gotKey && mineKey !== gotKey) return;
+      ring = StatusStore.ringOf(mineKey) || ring;
+    }
+    try { refreshStoryRing(PROFILE); } catch (e) {}
+    try {
+      if (window.DroboardPostCard) {
+        var viewed = ring === 'ring-viewed';
+        _FEED_POSTS.forEach(function (post) {
+          var next = viewed ? 'viewed' : (entry ? true : false);
+          if (post.avatarRing !== next) { post.avatarRing = next; DroboardPostCard.update(post); }
+        });
+      }
+    } catch (e) {}
+  };
 
   function renderActionRow() {
     const el = document.getElementById('actionRow');
@@ -476,7 +562,12 @@
 
   /* ── Feed ── */
   function adaptPost(post) {
-    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER });
+    var ring = false;
+    try {
+      var entry = storyEntryFor(PROFILE);
+      if (entry) ring = entry.ring === 'ring-viewed' ? 'viewed' : true;
+    } catch (e) {}
+    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER, avatarRing: ring });
   }
   /* Shared picker hooks (component contract): getState reads the profile
      post, onReact mutates it. Mirrors feed-service's counterHooks so the
@@ -568,7 +659,15 @@
     if (window.DroboardPostCard) {
       DroboardPostCard.attach(feedList, {
         getReactionHTML: (post) => window.DroboardReactionPicker ? DroboardReactionPicker.renderTrigger(post.id, { liked: post.liked, likeCount: post.likes }) : undefined,
-        onAvatarClick: () => { location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle); },
+        onAvatarClick: () => {
+          var entry = null;
+          try { entry = storyEntryFor(PROFILE); } catch (e) {}
+          if (entry && window.openStatusViewer) {
+            openStatusViewer([entry], entry.id);
+            return;
+          }
+          location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle);
+        },
         onNameClick: () => { location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle); },
         onComment: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },

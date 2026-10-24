@@ -31,6 +31,13 @@
  *   • Thread count click navigates to thread.html
  *   • Reply input box preserved
  *   • onStatusViewerChange(wid, ring) callback optional
+ *
+ * Ring sync — the component owns it (status of the art):
+ *   • window.StatusStore        — persisted viewed-state (all pages/reloads)
+ *   • Stamp any element: <x data-status-ring="authorId"> with ring-* class;
+ *     the viewer auto-swaps its ring-* class the moment state changes,
+ *     no per-page wiring. Call StatusStore.applyAll() after dynamic renders.
+ *   • onStatusViewerChange(wid, ring) still fires for pages with custom UI.
  */
 
 (function () {
@@ -45,10 +52,13 @@
   const CSS = `
     /* ── Overlay ── */
     .dsv2-ov {
-      position: fixed; inset: 0; z-index: 2000;
+      position: fixed; inset: 0; z-index: 4500;
       background: #000;
       display: none; flex-direction: column;
       font-family: 'DM Sans', system-ui, sans-serif;
+      touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
     }
     .dsv2-ov.open { display: flex; }
 
@@ -148,22 +158,25 @@
       font-size: 12px; color: rgba(255,255,255,.52); margin-top: 10px;
     }
     .dsv2-slide-story {
-      display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
-      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.25);
-      border-radius: 999px; padding: 7px 14px 7px 8px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+      background: #fff; border: none;
+      border-radius: 999px; padding: 7px 15px 7px 8px; cursor: pointer;
       position: relative; z-index: 20; max-width: 100%;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      pointer-events: auto !important;
     }
-    .dsv2-slide-story img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
-    .dsv2-slide-story span { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dsv2-slide-story img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .dsv2-slide-story span { font-size: 13px; font-weight: 800; color: #161616; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dsv2-slide-story .dsv2-story-go { font-size: 11px; font-weight: 800; color: #ff0050; flex-shrink: 0; }
 
     /* Tap nav zones */
     .dsv2-nav-left {
       position: absolute; left: 0; top: 0; bottom: 0; width: 35%; z-index: 10;
-      cursor: pointer;
+      cursor: pointer; touch-action: manipulation;
     }
     .dsv2-nav-right {
       position: absolute; right: 0; top: 0; bottom: 0; width: 35%; z-index: 10;
-      cursor: pointer;
+      cursor: pointer; touch-action: manipulation;
     }
 
     /* ── Engagement bar (likes + threads) ── */
@@ -195,9 +208,20 @@
       color: #ff4d7a;
     }
     .dsv2-engage-like:active i { transform: scale(1.3); }
-    .dsv2-engage-div {
+    .dsv2-engage-div,
+    .dsv2-views-div {
       width: 1px; height: 14px; background: rgba(255,255,255,.2);
     }
+    /* Owner-only view count — sits beside the love count, never under a toast */
+    .dsv2-engage-views {
+      display: none; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 700; color: #fff;
+      user-select: none;
+    }
+    .dsv2-engage-views.show { display: flex; }
+    .dsv2-engage-views i { font-size: 13px; color: #38bdf8; }
+    .dsv2-views-div { display: none; }
+    .dsv2-views-div.show { display: block; }
     .dsv2-engage-threads {
       display: flex; align-items: center; gap: 4px;
       font-size: 12px; font-weight: 700; color: #fff;
@@ -235,16 +259,18 @@
     }
     .dsv2-reply-send:not(:disabled):active { transform: scale(.9); }
 
-    /* ── Toast ── */
+    /* ── Toast — anchored under the top bar so it can never cover the
+       engagement pill / love + view counts at the bottom. ── */
     .dsv2-toast {
       position: fixed;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
-      left: 50%; transform: translateX(-50%) translateY(16px);
+      top: calc(env(safe-area-inset-top, 0px) + 86px);
+      left: 50%; transform: translateX(-50%) translateY(-10px);
       background: #111; border: 1px solid rgba(255,255,255,.08);
       color: #e0e0e0; padding: 8px 18px; border-radius: 24px;
-      font-size: 12px; font-weight: 600; z-index: 2100;
+      font-size: 12px; font-weight: 600; z-index: 4600;
       opacity: 0; transition: .28s; pointer-events: none;
-      white-space: nowrap; font-family: inherit;
+      max-width: calc(100vw - 32px);
+      white-space: normal; text-align: center; font-family: inherit;
     }
     .dsv2-toast.show {
       opacity: 1; transform: translateX(-50%) translateY(0);
@@ -292,6 +318,11 @@
             <i class="fas fa-heart"></i>
             <span id="dsv2LikeCount">0</span>
           </div>
+          <div class="dsv2-views-div" id="dsv2ViewsDiv"></div>
+          <div class="dsv2-engage-views" id="dsv2Views" title="Status views">
+            <i class="fas fa-eye"></i>
+            <span id="dsv2ViewCount">0</span>
+          </div>
           <div class="dsv2-engage-div"></div>
           <div class="dsv2-engage-threads" id="dsv2ThreadsBtn">
             <i class="fas fa-comments"></i>
@@ -330,13 +361,270 @@
   let _slideIdx     = 0;    // which slide within that writer
   let _timer        = null;
   let _paused       = false;
-  let _pauseStart   = 0;
-  let _elapsed      = 0;    // ms already elapsed on this slide before any pause
+  let _elapsed      = 0;    // ms of *playing* time already used on this slide
+  let _lastTickAt   = 0;    // clock mark when the current play segment started
+  let _slideToken   = 0;    // invalidates pending rAF callbacks after navigation
+  let _pressAt      = 0;    // pointerdown time for tap-vs-hold detection
+  let _navSuppressUntil = 0; // ignore the click browsers fire after a long hold
   let _likeState    = {};   // { [wid + ':' + slideIdx]: { liked: bool, count: number } } — per STATUS, not per author
-  let _animFrame    = null;
+  const _reportedViews = {}; // live status ids already sent to POST /view
 
   // A like belongs to each individual status — key by author + slide index.
   function _likeKey(w, si) { return (w && w.id) + ':' + si; }
+
+  function _now() {
+    return (window.performance && performance.now) ? performance.now() : Date.now();
+  }
+
+  function _isMine(w) {
+    return !!(w && (w.isMine || w.you || String(w.id) === 'you'));
+  }
+
+  function _ringOfWriter(w) {
+    if (!w) return null;
+    var ring = StatusStore.ringOf(w.name || w.id);
+    if (!ring) {
+      var st = w.statuses || [];
+      ring = st.length ? (st.every(function (s) { return s && s.viewed; }) ? 'ring-viewed' : 'ring-has') : 'ring-none';
+    }
+    return ring;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // StatusStore — shared, persisted seen-state (per STATUS, not per author)
+  // ──────────────────────────────────────────────────────────────────────
+  // One author key per person across every surface (story id, wr:handle,
+  // profile handle, comment prefix…). A ring is grey only when EVERY current
+  // status is seen, so a new upload turns it red again automatically.
+  // ══════════════════════════════════════════════════════════════════════
+  const STATUS_STORE_KEY = 'dro_status_viewed_v2';
+  const LEGACY_STORE_KEY = 'dro_status_viewed_v1';
+
+  function _normAuthor(v) {
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    if (!s) return '';
+    if (s === 'you' || s === 'your story' || s === 'me') return 'you';
+    s = s.replace(/^@/, '').replace(/^wr:/, '');
+    s = s.replace(/^dcs_[^_]+_/, '');
+    s = s.replace(/^da_/, '').replace(/^ptf_/, '');
+    s = s.replace(/[\s\-]+/g, '_');
+    return s;
+  }
+
+  const StatusStore = {
+    _m: null,
+    _authors: {},   // key → { statuses, meta }
+    _load() {
+      if (this._m) return this._m;
+      try {
+        var raw = localStorage.getItem(STATUS_STORE_KEY);
+        if (raw) { this._m = JSON.parse(raw) || {}; return this._m; }
+        // One-time import: the old store was author-level, so treat those
+        // authors as fully seen until they post again.
+        var old = JSON.parse(localStorage.getItem(LEGACY_STORE_KEY) || '{}') || {};
+        this._m = {};
+        var self = this;
+        Object.keys(old).forEach(function (k) {
+          self._m[_normAuthor(k)] = { count: 1, at: Date.now(), ids: {} };
+        });
+      } catch (e) { this._m = {}; }
+      return this._m;
+    },
+    _save() { try { localStorage.setItem(STATUS_STORE_KEY, JSON.stringify(this._m)); } catch (e) {} },
+    key(idOrHandle) { return _normAuthor(idOrHandle); },
+    _statusKey(status, index) {
+      if (status && status.id) return String(status.id);
+      var t = (status && (status.ts || status.time)) || '';
+      return 'i' + index + ':' + t;
+    },
+    _rec(key) {
+      var m = this._load();
+      if (!m[key]) m[key] = { ids: {}, count: 0, at: 0 };
+      return m[key];
+    },
+    _markAllSeen(key, statuses) {
+      var rec = this._rec(key);
+      statuses.forEach(function (s, i) { rec.ids[StatusStore._statusKey(s, i)] = Date.now(); });
+      // `count` is how many slides we know this author had when we last saw
+      // them all — a later upload (more slides) flips the ring red again.
+      rec.count = statuses.length;
+      rec.total = statuses.length;
+      rec.unseen = 0;
+      rec.at = Date.now();
+      this._save();
+      return rec;
+    },
+    /* Register the author's CURRENT statuses; returns the ring to render. */
+    register(idOrHandle, statuses, meta) {
+      var key = this.key(idOrHandle);
+      statuses = statuses || [];
+      this._authors[key] = { statuses: statuses, meta: meta || {} };
+      var rec = this._rec(key);
+      if (!statuses.length) {
+        rec.total = 0; rec.unseen = 0;
+        this._save();
+        return 'ring-none';
+      }
+      var self = this;
+      var seen = statuses.filter(function (s, i) {
+        return !!s.viewed || !!rec.ids[self._statusKey(s, i)];
+      }).length;
+      var allSeen = seen === statuses.length;
+      if (allSeen) {
+        this._markAllSeen(key, statuses);
+        return 'ring-viewed';
+      }
+      // Cross-surface fallback: another surface may label the same demo
+      // slides differently. Only trust it while nothing is unseen and the
+      // author has not grown past the lineup we last finished.
+      if (!rec.unseen && statuses.length <= (rec.count || 0)) {
+        rec.total = statuses.length;
+        this._save();
+        return 'ring-viewed';
+      }
+      rec.total = statuses.length;
+      rec.unseen = Math.max(rec.unseen || 0, statuses.length - seen) > 0 ? 1 : 0;
+      this._save();
+      return (meta && meta.isLive) || (meta && meta.isMine) ? 'ring-live' : 'ring-has';
+    },
+    ringForPerson(idOrHandle, statuses, meta) {
+      return this.register(idOrHandle, statuses, meta);
+    },
+    ringOf(idOrHandle) {
+      var key = this.key(idOrHandle);
+      if (!key) return null;
+      var meta = this._authors[key];
+      if (meta && meta.statuses) return this.register(key, meta.statuses, meta.meta);
+      var rec = this._load()[key];
+      if (!rec) return null;
+      if (rec.unseen > 0) return 'ring-has';
+      if ((rec.total || 0) > 0 || (rec.count || 0) > 0) return 'ring-viewed';
+      return null;
+    },
+    isStatusSeen(idOrHandle, status, index) {
+      var key = this.key(idOrHandle);
+      var rec = this._load()[key] || {};
+      return !!status.viewed || !!((rec.ids || {})[this._statusKey(status, index)]);
+    },
+    /* Called for the slide currently on screen. Persists + returns new ring. */
+    markSeen(idOrHandle, status, index) {
+      var key = this.key(idOrHandle);
+      var rec = this._rec(key);
+      var meta = this._authors[key];
+      var slides = (meta && meta.statuses) || null;
+      if (slides && slides[index] && !slides[index].viewed) slides[index].viewed = true;
+      if (status) status.viewed = true;
+      rec.ids[this._statusKey(status, index)] = Date.now();
+      // Only gray the ring when EVERY current slide has actually been seen.
+      if (slides) {
+        var self = this;
+        var seen = slides.filter(function (s, i) {
+          return !!s.viewed || !!rec.ids[self._statusKey(s, i)];
+        }).length;
+        rec.total = slides.length;
+        rec.unseen = seen >= slides.length ? 0 : 1;
+        if (!rec.unseen) rec.count = slides.length;
+      } else {
+        rec.unseen = 1;
+      }
+      rec.at = Date.now();
+      this._save();
+      if (!rec.unseen && slides) return { changed: true, ring: 'ring-viewed' };
+      return { changed: true, ring: 'ring-has' };
+    },
+    /* Live backend state: { has, total, unseen, ring }. */
+    setState(idOrHandle, st) {
+      var key = this.key(idOrHandle);
+      if (!key || !st) return;
+      var rec = this._rec(key);
+      if (st.has === false || st.total === 0) { rec.total = 0; rec.unseen = 0; }
+      else {
+        rec.total = +st.total || 0;
+        rec.unseen = +st.unseen || 0;
+        if (!rec.unseen) rec.count = Math.max(rec.count || 0, rec.total);
+      }
+      rec.at = Date.now();
+      this._save();
+    },
+    /* Live DB truth: fetch seen-state for handles once per page load so a
+       fresh device/session still greys rings the server already counted. */
+    _liveAsked: {},
+    syncLive(handles) {
+      if (!_liveSession()) return Promise.resolve(null);
+      var self = this;
+      var keys = (handles || []).map(function (h) { return self.key(h); })
+        .filter(function (k) { return k && k !== 'you' && !self._liveAsked[k]; });
+      keys = keys.filter(function (k, i) { return keys.indexOf(k) === i; });
+      if (!keys.length) return Promise.resolve(null);
+      keys.forEach(function (k) { self._liveAsked[k] = 1; });
+      return fetch('/api/statuses/state?handles=' + encodeURIComponent(keys.join(',')), {
+        credentials: 'include',
+      }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var states = d && d.states;
+        if (!states) return null;
+        Object.keys(states).forEach(function (k) { self.setState(k, states[k]); });
+        try { self.applyAll(); } catch (e) {}
+        return states;
+      }).catch(function () { return null; });
+    },
+    setRing(idOrHandle, ring) {
+      var key = this.key(idOrHandle);
+      if (!key || !ring) return;
+      var rec = this._rec(key);
+      if (ring === 'ring-viewed') {
+        rec.unseen = 0;
+        rec.count = Math.max(rec.count || 0, rec.total || 0);
+      } else if (ring === 'ring-has' || ring === 'ring-live') {
+        rec.unseen = Math.max(1, rec.unseen || 0);
+      }
+      rec.at = Date.now();
+      this._save();
+    },
+    /* Start grey wherever the store already says viewed. Auto-runs once on
+       inject; call again after rendering dynamic content. */
+    applyAll(root) {
+      try {
+        (root || document).querySelectorAll('[data-status-ring]').forEach(function (el) {
+          var ring = StatusStore.ringOf(el.getAttribute('data-status-ring'));
+          if (ring) _syncDom(el.getAttribute('data-status-ring'), ring);
+        });
+      } catch (e) {}
+    },
+  };
+
+  const _RING_CLASSES = ['ring-has', 'ring-live', 'ring-viewed', 'ring-none'];
+  function _syncDom(wid, ring) {
+    var key = _normAuthor(wid);
+    if (!key) return;
+    try {
+      document.querySelectorAll('[data-status-ring]').forEach(function (el) {
+        if (_normAuthor(el.getAttribute('data-status-ring')) !== key) return;
+        if (el.classList.contains('pcc-avatar-wrap')) {
+          el.classList.toggle('live', ring === 'ring-has' || ring === 'ring-live');
+          el.classList.toggle('viewed', ring === 'ring-viewed');
+        } else if (el.classList.contains('dso-wc-av-ring')) {
+          el.classList.toggle('viewed', ring === 'ring-viewed');
+        } else {
+          el.classList.remove.apply(el.classList, _RING_CLASSES);
+          if (ring) el.classList.add(ring);
+        }
+      });
+    } catch (e) {}
+  }
+  /* Single emit point: persist → auto-swap stamped DOM → page callbacks. */
+  function _emit(wid, ring, name) {
+    var key = _normAuthor(name || wid);
+    if (key && ring) StatusStore.setRing(key, ring);
+    _syncDom(key || wid, ring);
+    try {
+      window.dispatchEvent(new CustomEvent('drostatus:change', {
+        detail: { key: key, wid: wid, ring: ring },
+      }));
+    } catch (e) {}
+    if (typeof window.onStatusViewerChange === 'function') {
+      try { window.onStatusViewerChange(wid, ring); } catch (e) {}
+    }
+  }
 
   /* ── Status ads: a full-page ad slide after every Nth status ──
      Slot id `status:every-3rd` is marketing-targetable (page `status`):
@@ -395,8 +683,8 @@
   // Toast
   // ══════════════════════════════════════════════════════════════════════
   function _toast(msg) {
-    // Prefer the host page's global toast if available
-    if (typeof window.toast === 'function') { window.toast(msg); return; }
+    // Viewer-owned toast: host toasts sit below this overlay (and near the
+    // engagement pill) so they either vanish or cover the counts.
     const el = document.getElementById('dsv2Toast');
     if (!el) return;
     el.textContent = msg;
@@ -421,15 +709,18 @@
   // ══════════════════════════════════════════════════════════════════════
   function _startTimer(remaining) {
     clearTimeout(_timer);
-    _timer = setTimeout(() => _navigate(1), remaining);
+    _lastTickAt = _now();
+    _timer = setTimeout(() => _navigate(1), Math.max(0, remaining));
   }
 
   function _pauseTimer() {
     if (_paused) return;
     _paused = true;
-    _pauseStart = Date.now();
+    const t = _now();
+    _elapsed += Math.max(0, t - _lastTickAt);
+    _lastTickAt = t;
     clearTimeout(_timer);
-    // Freeze the fill bar
+    // Freeze the fill bar where it visually is
     const fill = _fillEl();
     if (fill) {
       const computed = window.getComputedStyle(fill).width;
@@ -443,12 +734,12 @@
   function _resumeTimer() {
     if (!_paused) return;
     _paused  = false;
-    const held = Date.now() - _pauseStart;
-    _elapsed += held;
+    _lastTickAt = _now();
     const remaining = Math.max(0, STATUS_DUR - _elapsed);
 
     // Re-animate the bar for the remaining time
     const fill = _fillEl();
+    const token = _slideToken;
     if (fill) {
       const computed = window.getComputedStyle(fill).width;
       const parentW  = fill.parentElement.offsetWidth || 1;
@@ -458,22 +749,60 @@
       fill.style.width      = fromPct + '%';
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (token !== _slideToken || _paused) return;
           fill.style.transition = `width ${remaining}ms linear`;
           fill.style.width      = '100%';
         });
       });
     }
 
+    if (remaining <= 0) {
+      // Slide ran out while held — advance once, and swallow the click the
+      // browser fires on release so it can't skip a second slide.
+      _navSuppressUntil = _now() + 700;
+      _navigate(1);
+      return;
+    }
     _startTimer(remaining);
+  }
+
+  /* Taps advance; the synthetic click after a press-and-hold must not. */
+  function _tapNav(dir) {
+    if (_now() < _navSuppressUntil) return;
+    _navigate(dir);
   }
 
   // ══════════════════════════════════════════════════════════════════════
   // Render
   // ══════════════════════════════════════════════════════════════════════
+  function _isLiveStatusId(id) {
+    return /^[a-f0-9]{24}$/i.test(String(id || ''));
+  }
+  function _liveSession() {
+    try {
+      return !!(window.AuthSession && typeof AuthSession.getStoredUser === 'function' && AuthSession.getStoredUser());
+    } catch (e) { return false; }
+  }
+  /* Persist "I saw this" server-side once per status, live only. */
+  function _reportView(w, slide) {
+    var sid = slide && slide.id;
+    if (!sid || !_isLiveStatusId(sid) || _reportedViews[sid] || _isMine(w)) return;
+    if (!_liveSession()) return;
+    _reportedViews[sid] = 1;
+    fetch('/api/statuses/' + encodeURIComponent(sid) + '/view', {
+      method: 'POST', credentials: 'include',
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (d && d.views != null) slide.views = d.views;
+    }).catch(function () {});
+  }
+
   function _renderSlide() {
     clearTimeout(_timer);
+    _slideToken++;
     _elapsed  = 0;
     _paused   = false;
+    _pressAt  = 0;
+    _lastTickAt = _now();
     const entry = _seq[_seqIdx];
     if (!entry) return;
     if (entry.kind === 'ad' && entry.ad) { _renderAd(entry); return; }
@@ -488,19 +817,15 @@
     const slide   = slides[_slideIdx];
     if (!slide) return;
 
-    // ── Mark this slide as viewed (per-segment) ──
-    const vw = _currentWriter();
-    if(vw && vw.statuses[_slideIdx] && !vw.statuses[_slideIdx].viewed){
-      vw.statuses[_slideIdx].viewed = true;
-      const allViewed = vw.statuses.every(st=> st.viewed);
-      const newRing = allViewed ? 'ring-viewed' : 'ring-has';
-      if(vw.ring !== newRing){
-        vw.ring = newRing;
-        if(typeof window.onStatusViewerChange === 'function') window.onStatusViewerChange(vw.id, newRing);
-      } else if(typeof window.onStatusViewerChange === 'function'){
-        window.onStatusViewerChange(vw.id, newRing);
-      }
-    }
+    // ── Per-status seen state (never author-level) ──
+    const authorKey = w.name || w.id;
+    const priorRing = w.ring;
+    StatusStore.register(authorKey, slides, { isLive: w.isLive, isMine: _isMine(w) });
+    StatusStore.markSeen(authorKey, slide, _slideIdx);
+    const ring = StatusStore.ringForPerson(authorKey, slides, { isLive: w.isLive, isMine: _isMine(w) });
+    w.ring = ring;
+    if (priorRing !== ring) _emit(w.id, ring, authorKey);
+    _reportView(w, slide);
 
     // ── Progress bars ──
     const barsEl = document.getElementById('dsv2Bars');
@@ -534,16 +859,16 @@
         <div class="dsv2-slide-text">
           <div class="dsv2-slide-quote">${slide.quote || ''}</div>
           ${slide.caption ? `<div class="dsv2-slide-caption">${slide.caption}</div>` : ''}
-          ${slide.storyRef && slide.storyRef.id ? `<div><div class="dsv2-slide-story" data-story-open="${String(slide.storyRef.id).replace(/"/g, '&quot;')}">${slide.storyRef.cover ? `<img src="${slide.storyRef.cover}" alt=""/>` : ''}<span>📖 ${slide.storyRef.title || 'Open story'}</span></div></div>` : ''}
+          ${slide.storyRef && slide.storyRef.id ? `<div><div class="dsv2-slide-story" data-story-open="${String(slide.storyRef.id).replace(/"/g, '&quot;')}" title="Open ${String(slide.storyRef.title || 'story').replace(/"/g, '&quot;')} in reader">${slide.storyRef.cover ? `<img src="${slide.storyRef.cover}" alt=""/>` : ''}<span>${slide.storyRef.title || 'Open story'}</span><span class="dsv2-story-go">Read &rsaquo;</span></div></div>` : ''}
         </div>
       </div>
       <div class="dsv2-nav-left"  id="dsv2NavLeft"></div>
       <div class="dsv2-nav-right" id="dsv2NavRight"></div>
     `;
 
-    // Tap navigation
-    document.getElementById('dsv2NavLeft').addEventListener('click',  () => _navigate(-1));
-    document.getElementById('dsv2NavRight').addEventListener('click', () => _navigate(1));
+    // Tap navigation (long-press release clicks are swallowed)
+    document.getElementById('dsv2NavLeft').addEventListener('click',  () => _tapNav(-1));
+    document.getElementById('dsv2NavRight').addEventListener('click', () => _tapNav(1));
     // Linked story chip (status posted with a story attached)
     contentEl.querySelectorAll('[data-story-open]').forEach(function (chip) {
       chip.addEventListener('click', function (e) {
@@ -563,9 +888,22 @@
     likeCount.textContent  = _fmtN(ls.count);
     threadCount.textContent = _fmtN(w.threads || 0) + ' threads';
 
+    // ── Owner-only view count ──
+    const mine    = _isMine(w);
+    const viewsEl = document.getElementById('dsv2Views');
+    const viewsDiv = document.getElementById('dsv2ViewsDiv');
+    if (viewsEl && viewsDiv) {
+      viewsEl.classList.toggle('show', mine);
+      viewsDiv.classList.toggle('show', mine);
+      document.getElementById('dsv2ViewCount').textContent =
+        _fmtN(slide.views != null ? slide.views : (w.views || 0));
+    }
+
     // ── Animate fill bar for current slide ──
+    const token = _slideToken;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        if (token !== _slideToken) return;
         const fill = _fillEl();
         if (fill) {
           fill.style.transition = `width ${STATUS_DUR}ms linear`;
@@ -580,11 +918,18 @@
   function _renderAd(entry) {
     const ad = entry.ad || {};
     _onAd = true;
+    _slideToken++;
+    _elapsed = 0;
+    _paused  = false;
+    _pressAt = 0;
+    _lastTickAt = _now();
     if (typeof entry.wi === 'number') _writerIdx = entry.wi;
     const w = _writers[_writerIdx] || {};
     const slides = w.statuses || [];
     const ov = document.getElementById('dsv2Ov');
     ov.classList.add('showing-ad');
+    document.getElementById('dsv2Views').classList.remove('show');
+    document.getElementById('dsv2ViewsDiv').classList.remove('show');
 
     // Bars: writer's bars complete + one animating ad bar
     const barsEl = document.getElementById('dsv2Bars');
@@ -617,8 +962,8 @@
       <div class="dsv2-nav-left" id="dsv2NavLeft"></div>
       <div class="dsv2-nav-right" id="dsv2NavRight"></div>
     `;
-    document.getElementById('dsv2NavLeft').addEventListener('click', () => _navigate(-1));
-    document.getElementById('dsv2NavRight').addEventListener('click', () => _navigate(1));
+    document.getElementById('dsv2NavLeft').addEventListener('click', () => _tapNav(-1));
+    document.getElementById('dsv2NavRight').addEventListener('click', () => _tapNav(1));
     contentEl.querySelectorAll('[data-fs-story]').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
       _trackAd(ad.id, 'click');
@@ -633,8 +978,10 @@
     }));
 
     _trackAd(ad.id, 'impression');
+    const token = _slideToken;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        if (token !== _slideToken) return;
         const fill = document.getElementById('dsv2FillAd');
         if (fill) {
           fill.style.transition = `width ${STATUS_DUR}ms linear`;
@@ -650,29 +997,17 @@
   // ══════════════════════════════════════════════════════════════════════
   function _navigate(dir) {
     clearTimeout(_timer);
-    _paused  = false;
-    _elapsed = 0;
+    _paused   = false;
+    _elapsed  = 0;
+    _pressAt  = 0;
+    _slideToken++;
 
     const next = _seqIdx + dir;
     if (next < 0 || next >= _seq.length) {
       closeStatusViewer();
       return;
     }
-    const prevEntry = _seq[_seqIdx];
     _seqIdx = next;
-    const entry = _seq[_seqIdx];
-
-    // Keep writer-viewed semantics when crossing into another writer's status
-    if (entry.kind === 'status') {
-      const w = _writers[entry.wi];
-      if (w && (!prevEntry || prevEntry.wi !== entry.wi)) {
-        w.ring = 'ring-viewed';
-        if (typeof window.onStatusViewerChange === 'function') {
-          window.onStatusViewerChange(w.id, 'ring-viewed');
-        }
-      }
-    }
-
     _renderSlide();
   }
 
@@ -682,6 +1017,16 @@
   async function openStatusViewer(writerStatuses, wid) {
     _writers = (writerStatuses || []).filter(w => w.statuses && w.statuses.length);
     if (!_writers.length) { _toast('No statuses available'); return; }
+
+    // Resolve each author's ring from persisted per-status seen state before
+    // playback, so a fully-seen author starts grey even if the caller's data
+    // still says "new".
+    _writers.forEach(w => {
+      w.ring = StatusStore.register(w.name || w.id, w.statuses, {
+        isLive: w.isLive, isMine: _isMine(w),
+      });
+    });
+
     // Await the ad pool BEFORE building the timeline — otherwise the
     // first session always builds an ad-free timeline (pool not warm yet).
     try { await loadStatusAds(); } catch (e) {}
@@ -697,6 +1042,9 @@
     }
     _paused    = false;
     _elapsed   = 0;
+    _pressAt   = 0;
+    _navSuppressUntil = 0;
+    _slideToken++;
 
     // Init like state (per-session, one entry per individual status)
     _writers.forEach(w => {
@@ -725,19 +1073,14 @@
 
   function closeStatusViewer() {
     clearTimeout(_timer);
-    _paused = false;
-    // Mark current writer as viewed on close (covers single-status writers
-    // and early-close — the slide-advance path only fires on multi-slide).
-    // Never mark while sitting on an ad slide.
-    const vw = _currentWriter();
-    if (vw && !_onAd && vw.ring !== 'ring-viewed') {
-      vw.ring = 'ring-viewed';
-      (vw.statuses || []).forEach(function (st) { st.viewed = true; });
-      if (typeof window.onStatusViewerChange === 'function') {
-        window.onStatusViewerChange(vw.id, 'ring-viewed');
-      }
-    }
-    document.getElementById('dsv2Ov').classList.remove('open');
+    _paused   = false;
+    _pressAt  = 0;
+    _slideToken++;
+    // No author-level "mark everything viewed" on close: each slide is
+    // marked the moment it is shown, and a half-watched author stays red.
+    const ov = document.getElementById('dsv2Ov');
+    ov.classList.remove('open');
+    ov.classList.remove('showing-ad');
     document.body.style.overflow = '';
   }
 
@@ -754,6 +1097,7 @@
     while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
 
     _bindEvents();
+    try { StatusStore.applyAll(); } catch (e) {}
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -765,13 +1109,35 @@
 
     // ── Press-and-hold to pause ──
     const ov = document.getElementById('dsv2Ov');
+    const HOLD_MS = 320;
+
     ov.addEventListener('pointerdown', e => {
       // Don't pause on interactive controls
-      if (e.target.closest('.dsv2-close, .dsv2-engage, .dsv2-bottom, .dsv2-writer')) return;
+      if (e.target.closest('.dsv2-close, .dsv2-engage, .dsv2-bottom, .dsv2-top, .dsv2-slide-story')) return;
+      if (e.button != null && e.button > 0) return;
+      _pressAt = _now();
       _pauseTimer();
     });
-    ov.addEventListener('pointerup',     () => _resumeTimer());
-    ov.addEventListener('pointercancel', () => _resumeTimer());
+
+    // Release anywhere (finger may leave the stage) resumes playback once.
+    function release(e) {
+      if (!_paused) { _pressAt = 0; return; }
+      const held = _pressAt ? _now() - _pressAt : 0;
+      _pressAt = 0;
+      if (held >= HOLD_MS) {
+        // Swallow the synthetic click that follows a long press; otherwise
+        // releasing after a hold advances the slide a second time.
+        _navSuppressUntil = _now() + 600;
+      }
+      _resumeTimer();
+    }
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
+    window.addEventListener('blur', () => { if (_paused) release(); });
+
+    // iOS/Android long-press callout can cancel the gesture mid-hold.
+    ov.addEventListener('contextmenu', e => e.preventDefault());
+    ov.addEventListener('dragstart', e => e.preventDefault());
 
     // ── Like (love) — per individual status ──
     document.getElementById('dsv2LikeBtn').addEventListener('click', e => {
@@ -787,6 +1153,22 @@
       btn.classList.toggle('loved', ls.liked);
       document.getElementById('dsv2LikeCount').textContent = _fmtN(ls.count);
       _toast(ls.liked ? '❤️ Loved!' : 'Removed love');
+
+      const slide = (w.statuses || [])[_slideIdx];
+      const sid = slide && slide.id;
+      if (slide) { slide.liked = ls.liked; slide.likes = ls.count; }
+      if (sid && _isLiveStatusId(sid) && _liveSession()) {
+        fetch('/api/statuses/' + encodeURIComponent(sid) + '/like', {
+          method: 'POST', credentials: 'include',
+        }).then(r => r.ok ? r.json() : null).then(d => {
+          if (!d) return;
+          if (d.likes != null) ls.count = d.likes;
+          else if (d.count != null) ls.count = d.count;
+          if (d.liked != null) { ls.liked = !!d.liked; btn.classList.toggle('loved', ls.liked); }
+          if (slide) { slide.likes = ls.count; slide.liked = ls.liked; }
+          document.getElementById('dsv2LikeCount').textContent = _fmtN(ls.count);
+        }).catch(() => {});
+      }
     });
 
     // ── Threads → thread.html ──
@@ -827,6 +1209,7 @@
   // ══════════════════════════════════════════════════════════════════════
   window.openStatusViewer  = openStatusViewer;
   window.closeStatusViewer = closeStatusViewer;
+  window.StatusStore       = StatusStore;
   window.STATUS_VIEWED_RING = '#f1f1f1';
   document.documentElement.style.setProperty('--status-viewed-ring', '#f1f1f1');
 

@@ -191,7 +191,7 @@ function renderDetail(id){
   var isBusy=busyId===a.id;
   var bookSlug=String(a.book||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
   var chNum=String(a.chapter||'').replace(/[^0-9]/g,'')||'1';
-  var chHref='../author/edit-chapter.html?book='+encodeURIComponent(bookSlug)+'&chapter='+encodeURIComponent(chNum);
+  var chHref='../author/edit-chapter.html?book='+encodeURIComponent(bookSlug)+'&chapter='+encodeURIComponent(chNum)+'&viewer=editor';
   var actionsHtml='';
   if(isBusy){
     actionsHtml='<button class="btn btn-text btn-busy" disabled><i class="fas fa-spinner fa-spin"></i> Processing…</button>';

@@ -14,7 +14,7 @@
     .dc-scard:active{opacity:.85}
     .dc-scard-cover{
       position:relative;width:100%;aspect-ratio:110/148;
-      border-radius:9px;overflow:hidden;background:#e8e8ed;margin-bottom:6px;
+      border-radius:7px;overflow:hidden;background:#e8e8ed;margin-bottom:6px;
       box-shadow:0 2px 8px rgba(0,0,0,.08);
     }
     .dc-scard-cover img{width:100%;height:100%}
@@ -41,8 +41,8 @@
     .dc-coll-name{font-size:13px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dc-coll-meta{font-size:11px;color:#8e8e93}
 
-    .dc-list-item{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid #ebebed;position:relative}
-    .dc-list-cover{width:76px;height:102px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#e8e8ed;box-shadow:0 2px 8px rgba(0,0,0,.08);position:relative}
+    .dc-list-item{display:flex;gap:12px;padding:13px 0;position:relative}
+    .dc-list-cover{width:76px;height:102px;border-radius:7px;overflow:hidden;flex-shrink:0;background:#e8e8ed;box-shadow:0 2px 8px rgba(0,0,0,.08);position:relative}
     .dc-list-cover img{width:100%;height:100%}
     .dc-list-cover-link,.dc-list-title-link{display:block;cursor:pointer}
     .dc-list-cover-link:active .dc-list-cover,.dc-list-title-link:active .dc-list-title{opacity:.7}
@@ -64,21 +64,11 @@
 
     .dc-list-item.dc-book-ad{border:1.5px solid #c9a227;border-radius:12px;background:#fdf7e6;padding:10px;margin:4px 0;border-bottom:1.5px solid #c9a227}
 
-    .dc-writers-row{padding:14px 0 8px;border-bottom:1px solid #ebebed;margin-bottom:4px}
-    .dc-writers-head{font-size:12.5px;font-weight:800;margin-bottom:10px}
-    .dc-writers-scroll{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-    .dc-writers-scroll::-webkit-scrollbar{display:none}
-    .dc-writer{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;width:64px;text-align:center}
-    .dc-writer-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover}
-    .dc-writer-name{font-size:10.5px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-
     @keyframes dcIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .dc-list-item,.dc-writers-row{animation:dcIn .2s ease both}
+    .dc-list-item{animation:dcIn .2s ease both}
     [data-theme="dark"] .dc-coll-card{background:#0b0b10;border-color:rgba(255,255,255,.08)}
     [data-theme="dark"] .dc-list-item{border-bottom-color:rgba(255,255,255,.08)}
     [data-theme="dark"] .dc-list-item.dc-ad{background:#0b0b10;border-color:rgba(255,255,255,.1)}
-    [data-theme="dark"] .dc-writers-row{border-bottom-color:rgba(255,255,255,.08)}
-    [data-theme="dark"] .dc-writer-name{color:#f0f0f5}
     [data-theme="dark"] .dc-scard-cover,[data-theme="dark"] .dc-list-cover{background:#1a1a24}
   `;
 
@@ -180,7 +170,11 @@ let extra = '';
         <div class="dc-list-catrow"><span class="dc-list-cat">${esc(cat)}</span>${trope ? `<span class="dc-list-trope"><i class="fas fa-wand-magic-sparkles"></i> ${esc(trope)}</span>` : ''}</div>
         <a class="dc-list-title-link" href="${href}"><div class="dc-list-title">${esc(s.title)}</div></a>
         ${s.preview ? `<div class="dc-list-preview">${esc(s.preview)}</div>` : ''}
-        <div class="dc-list-foot"><a class="dc-list-stat dc-list-author" href="${profileHref(s.author)}" onclick="event.stopPropagation()">${esc(s.author || '')}</a></div>
+        <div class="dc-list-foot">
+          <a class="dc-list-stat dc-list-author" href="${profileHref(s.author)}" onclick="event.stopPropagation()">${esc(s.author || '')}</a>
+          ${s.rating ? `<div class="dc-list-stat"><i class="fas fa-star" style="color:#f59e0b"></i> ${esc(s.rating)}</div>` : ''}
+          ${s.chapters ? `<div class="dc-list-stat"><i class="fas fa-book-open"></i> ${s.chapters} ch</div>` : ''}
+        </div>
       </div>
     </div>`;
   }
@@ -217,15 +211,8 @@ let extra = '';
 
   function writersRow(writers) {
     injectStyles();
-    return `<div class="dc-writers-row">
-      <div class="dc-writers-head">Top Writers</div>
-      <div class="dc-writers-scroll">
-        ${writers.map(w => `<a class="dc-writer" href="profile.html?u=${esc(w.handle)}">
-          <img class="dc-writer-avatar" src="${esc(w.avatar)}" loading="lazy" alt=""/>
-          <div class="dc-writer-name">${esc(w.name)}</div>
-        </a>`).join('')}
-      </div>
-    </div>`;
+    if (!window.DroboardWritersRow || typeof window.DroboardWritersRow.render !== 'function') return '';
+    return window.DroboardWritersRow.render({ people: writers });
   }
 
   function renderRow(elId, items, emptyText) {

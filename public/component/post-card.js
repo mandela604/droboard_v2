@@ -57,6 +57,7 @@
     .pcc-avatar-wrap{position:relative;flex-shrink:0}
     .pcc-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;display:block;cursor:pointer}
     .pcc-avatar-wrap.live .pcc-avatar{padding:2px;border:2px solid var(--acc);box-sizing:border-box}
+    .pcc-avatar-wrap.viewed .pcc-avatar{padding:2px;border:2px solid var(--tx-faint,#9a9aa2);box-sizing:border-box}
     .pcc-pin-badge{position:absolute;top:-3px;left:-3px;width:16px;height:16px;border-radius:50%;background:var(--gold);color:#08090c;display:flex;align-items:center;justify-content:center;font-size:8px;border:2px solid var(--l1)}
     /* Verified badge — Twitter/X shape + color (#1d9bf0 scalloped seal), sitting
        in the avatar circle's bottom-right corner (not beside the name). The
@@ -249,10 +250,20 @@
   // Shared header / actions
   // ══════════════════════════════════════════════════════════════════════
   function _head(post) {
-    const ring = post.avatarRing ? ' live' : '';
+    let ring = post.avatarRing === 'viewed' ? ' viewed' : post.avatarRing ? ' live' : '';
+    const ringKey = post.handle || post.name || '';
+    // Seen-state is global (StatusStore) — a post avatar is "live" only when
+    // that author still has an unseen status, grey once every status is seen.
+    try {
+      if (window.StatusStore && ringKey && StatusStore.ringOf) {
+        const r = StatusStore.ringOf(ringKey);
+        if (r === 'ring-viewed') ring = ' viewed';
+        else if (r === 'ring-has' || r === 'ring-live') ring = ' live';
+      }
+    } catch (e) {}
     return `
       <div class="pcc-head">
-        <div class="pcc-avatar-wrap${ring}">
+        <div class="pcc-avatar-wrap${ring}" data-status-ring="${escAttr(ringKey)}">
           <img class="pcc-avatar" src="${post.avatar}" alt="${escAttr(post.name)}" data-pcc-avatar>
           ${post.pinned ? `<div class="pcc-pin-badge"><i class="fas fa-thumbtack"></i></div>` : ''}
           ${post.verified ? `<div class="pcc-verified-badge" title="Verified">${VERIFIED_BADGE_SVG}</div>` : ''}
@@ -514,6 +525,7 @@
     _posts = posts || [];
     if (!_root) return;
     _root.innerHTML = _posts.map(renderCard).join('');
+    try { if (window.StatusStore && StatusStore.applyAll) StatusStore.applyAll(_root); } catch (e) {}
   }
 
   function update(post) {
@@ -527,6 +539,7 @@
     tmp.innerHTML = html;
     const next = tmp.firstElementChild;
     if (next) el.replaceWith(next);
+    try { if (window.StatusStore && StatusStore.applyAll) StatusStore.applyAll(_root); } catch (e) {}
   }
 
   // ══════════════════════════════════════════════════════════════════════

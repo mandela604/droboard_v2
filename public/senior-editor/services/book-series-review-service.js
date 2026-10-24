@@ -96,31 +96,110 @@ function fromApiItem(d){
 
 var items=[
   {id:'BSR-001',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Duke\'s Secret',editType:'Title Change',submitted:'12h ago',status:'approved',changeFrom:'The Duke\'s Hidden Past',changeTo:'The Duke\'s Secret',notes:'Title changed for better clarity. Approved.'},
-  {id:'BSR-002',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',editType:'Cover Update',submitted:'1d ago',status:'pending',changeFrom:'https://placehold.co/120x160/1a1a2e/ffffff?text=Old',changeTo:'https://placehold.co/120x160/ff0050/ffffff?text=New',notes:'Author uploaded new cover art. Needs review for quality and guidelines compliance.'},
+  {id:'BSR-002',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',editType:'Cover Update',submitted:'1d ago',status:'pending',changeFrom:'https://picsum.photos/seed/ceo-cover-old/240/320',changeTo:'https://picsum.photos/seed/ceo-cover-new/240/320',notes:'Author uploaded new cover art. Needs review for quality and guidelines compliance.'},
   {id:'BSR-003',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',editType:'Description Edit',submitted:'2d ago',status:'pending',changeFrom:'A wolf shifter finds his fated mate in a human village.',changeTo:'When alpha warrior Kael discovers his fated mate is the one woman his pack has sworn to destroy, he must choose between duty and destiny.',notes:'Updated synopsis. Needs review for spoilers and accuracy.'},
   {id:'BSR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',editType:'Genre Change',submitted:'3d ago',status:'rejected',reviewNote:'Cannot change genre after publication without platform approval.',changeFrom:'Mafia Romance',changeTo:'Romantic Suspense',notes:'Cannot change genre after publication without platform approval. Rejected.'},
   {id:'BSR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',editType:'Series Name',submitted:'4d ago',status:'approved',changeFrom:'Standalone',changeTo:'Ivy League Revenge Series',notes:'Added to series. Approved.'},
   {id:'BSR-006',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'She Rejected Me 3 Times',editType:'Title Change',submitted:'5d ago',status:'pending',changeFrom:'She Rejected Me 3 Times',changeTo:'Three Times Rejected: A Love Story',notes:'Proposed new title under review.'},
-  {id:'BSR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',editType:'Cover Update',submitted:'6d ago',status:'approved',changeFrom:'https://placehold.co/120x160/2d1b69/ffffff?text=Old',changeTo:'https://placehold.co/120x160/e0384d/ffffff?text=New',notes:'New cover matches brand guidelines. Approved.'},
+  {id:'BSR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',editType:'Cover Update',submitted:'6d ago',status:'approved',changeFrom:'https://picsum.photos/seed/photo-cover-old/240/320',changeTo:'https://picsum.photos/seed/photo-cover-new/240/320',notes:'New cover matches brand guidelines. Approved.'},
   {id:'BSR-008',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'My Grandmother\'s Will',editType:'Description Edit',submitted:'1w ago',status:'rejected',reviewNote:'Description contains major spoilers — resubmit without plot reveals.',changeFrom:'A family drama about inheritance and secrets.',changeTo:'When Amara\'s grandmother dies, she leaves behind a will that will tear the family apart and reveal secrets buried for decades.',notes:'Description contains major spoilers. Rejected with feedback.'},
   {id:'BSR-009',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'The Billionaire\'s Guard',editType:'Title Change',submitted:'1w ago',status:'approved',changeFrom:'Bodyguard Romance',changeTo:'The Billionaire\'s Guard',notes:'Better title. More specific. Approved.'},
   {id:'BSR-010',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Shadow of the Alpha',editType:'Genre Change',submitted:'1w ago',status:'pending',changeFrom:'Paranormal Romance',changeTo:'Paranormal Romance · Urban Fantasy',notes:'Adding Urban Fantasy subgenre. Needs review.'},
   {id:'BSR-011',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',editType:'Series Name',submitted:'2w ago',status:'approved',changeFrom:'Standalone',changeTo:'Billionaire Hearts Series',notes:'Added to series. Approved.'},
-  {id:'BSR-012',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',editType:'Cover Update',submitted:'2w ago',status:'pending',changeFrom:'https://placehold.co/120x160/0d0b1a/ffffff?text=Old',changeTo:'https://placehold.co/120x160/16a34a/ffffff?text=New',notes:'New cover with improved typography. Under review.'},
+  {id:'BSR-012',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',editType:'Cover Update',submitted:'2w ago',status:'pending',changeFrom:'https://picsum.photos/seed/underground-cover-old/240/320',changeTo:'https://picsum.photos/seed/underground-cover-new/240/320',notes:'New cover with improved typography. Under review.'},
   {id:'BSR-013',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Princess Guard',editType:'Description Edit',submitted:'3w ago',status:'approved',changeFrom:'A princess falls for her guard.',changeTo:'Princess Elara has one rule: never fall for the guard. But when assassin shadows close in, the man sworn to protect her heart becomes the greatest danger of all.',notes:'Compelling description. Approved.'},
   {id:'BSR-014',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Campus Queen',editType:'Title Change',submitted:'3w ago',status:'rejected',reviewNote:'Original title is stronger and already ranking — keep it.',changeFrom:'Campus Queen',changeTo:'Queen of Campus',notes:'Original title is stronger. Rejected.'},
-  {id:'BSR-015',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',editType:'Title + Cover',submitted:'3d ago',status:'pending',changes:[{type:'Title',from:'Lagos Love Story',to:'Lagos Nights: A Love Story'},{type:'Cover',from:'https://placehold.co/120x160/1a1a2e/ffffff?text=Old',to:'https://placehold.co/120x160/ff6b35/ffffff?text=New'}],notes:'Author wants to rebrand the book with a new title and cover for the series launch.'},
-  {id:'BSR-016',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',editType:'Title + Cover + Description',submitted:'4d ago',status:'pending',changes:[{type:'Title',from:'The Teacher\'s Secret',to:'Behind Closed Doors: A Teacher\'s Story'},{type:'Cover',from:'https://placehold.co/120x160/2d1b69/ffffff?text=Old',to:'https://placehold.co/120x160/dc2626/ffffff?text=New'},{type:'Description',from:'A teacher hides a dangerous secret.',to:'When Elizabeth discovers her student\'s dark home life, she must choose between her career and doing what\'s right — even if it means losing everything.'}],notes:'Full rebrand request. Title, cover, and description all changed to match the new direction of the story.'},
+  {id:'BSR-015',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',editType:'Title + Cover',submitted:'3d ago',status:'pending',changes:[{type:'Title',from:'Lagos Love Story',to:'Lagos Nights: A Love Story'},{type:'Cover',from:'https://picsum.photos/seed/lagos-cover-old/240/320',to:'https://picsum.photos/seed/lagos-cover-new/240/320'}],notes:'Author wants to rebrand the book with a new title and cover for the series launch.'},
+  {id:'BSR-016',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',editType:'Title + Cover + Description',submitted:'4d ago',status:'pending',changes:[{type:'Title',from:'The Teacher\'s Secret',to:'Behind Closed Doors: A Teacher\'s Story'},{type:'Cover',from:'https://picsum.photos/seed/teacher-cover-old/240/320',to:'https://picsum.photos/seed/teacher-cover-new/240/320'},{type:'Description',from:'A teacher hides a dangerous secret.',to:'When Elizabeth discovers her student\'s dark home life, she must choose between her career and doing what\'s right — even if it means losing everything.'}],notes:'Full rebrand request. Title, cover, and description all changed to match the new direction of the story.'},
 ];
 
 var currentPage=1,PER_PAGE=5,openRowId=null,busyId=null;
 var rejectTargetId=null,submitting=false;
 var _bound=false;
+var _cvCtx=null;
+
+/* ── Cover viewer — phone-style lightbox, mirrors the KYC ID viewer ── */
+function ensureCoverViewer(){
+  if(document.getElementById('cvLightbox'))return;
+  var css=''
+    +'.cv-lb{position:fixed;inset:0;background:rgba(10,6,25,.78);z-index:5000;display:none;align-items:center;justify-content:center;padding:24px}'
+    +'.cv-lb.open{display:flex}'
+    +'.cv-lb-box{background:var(--card);border-radius:16px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.45)}'
+    +'.cv-lb-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border)}'
+    +'.cv-lb-head b{display:block;font-size:13.5px;font-weight:800}'
+    +'.cv-lb-head span{display:block;font-size:11px;color:var(--text-muted);margin-top:2px}'
+    +'.cv-lb-x{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-size:12px;flex-shrink:0}'
+    +'.cv-lb-x:hover{border-color:var(--accent);color:var(--accent)}'
+    +'.cv-lb-imgwrap{padding:18px;overflow:auto;background:var(--hover);display:flex;align-items:center;justify-content:center;min-height:220px}'
+    +'.cv-lb-imgwrap img{max-width:100%;max-height:64vh;border-radius:8px;box-shadow:0 12px 34px rgba(0,0,0,.18);display:block;background:#fff}'
+    +'.cv-lb-foot{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}'
+    +'.cv-lb-foot .cap{flex:1;display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-faint)}'
+    +'.cv-lb-foot .cap i{color:var(--accent)}'
+    +'.cv-lb-foot .btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}'
+    +'.cv-lb-foot .btn:disabled{opacity:.4;cursor:not-allowed}'
+    +'.change-img{cursor:zoom-in}';
+  var style=document.createElement('style');
+  style.id='cvLbCss';
+  style.textContent=css;
+  document.head.appendChild(style);
+
+  var wrap=document.createElement('div');
+  wrap.innerHTML=''
+    +'<div class="cv-lb" id="cvLightbox">'
+      +'<div class="cv-lb-box">'
+        +'<div class="cv-lb-head"><div><b id="cvLbTitle"></b><span id="cvLbSub"></span></div><button class="cv-lb-x" id="cvLbClose"><i class="fas fa-xmark"></i></button></div>'
+        +'<div class="cv-lb-imgwrap"><img id="cvLbImg" alt=""/></div>'
+        +'<div class="cv-lb-foot"><span class="cap"><i class="fas fa-book-open"></i><span id="cvLbCap"></span></span>'
+        +'<button class="btn btn-ghost" id="cvLbOld">Current</button>'
+        +'<button class="btn btn-ghost" id="cvLbNew">New</button></div>'
+      +'</div>'
+    +'</div>';
+  while(wrap.firstChild)document.body.appendChild(wrap.firstChild);
+
+  document.getElementById('cvLbClose').addEventListener('click',closeCoverViewer);
+  document.getElementById('cvLightbox').addEventListener('click',function(e){if(e.target===this)closeCoverViewer();});
+  document.getElementById('cvLbOld').addEventListener('click',function(){if(_cvCtx){_cvCtx.side='old';cvRender();}});
+  document.getElementById('cvLbNew').addEventListener('click',function(){if(_cvCtx){_cvCtx.side='new';cvRender();}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCoverViewer();});
+}
+function cvRender(){
+  if(!_cvCtx)return;
+  var side=_cvCtx.side;
+  var src=side==='old'?_cvCtx.old:_cvCtx.new;
+  document.getElementById('cvLbImg').src=src||'';
+  document.getElementById('cvLbTitle').textContent=_cvCtx.book+' — Cover';
+  document.getElementById('cvLbSub').textContent=side==='old'?'Current cover (before the change)':'Proposed new cover';
+  document.getElementById('cvLbCap').textContent=side==='old'?'Current':'New';
+  var oldBtn=document.getElementById('cvLbOld'),newBtn=document.getElementById('cvLbNew');
+  oldBtn.classList.toggle('on',side==='old');
+  newBtn.classList.toggle('on',side==='new');
+  oldBtn.disabled=!_cvCtx.old;
+  newBtn.disabled=!_cvCtx.new;
+}
+function openCoverViewer(book,oldSrc,newSrc,side){
+  _cvCtx={book:book,old:oldSrc||'',new:newSrc||'',side:side==='old'?'old':'new'};
+  if(!_cvCtx.old&&_cvCtx.new)_cvCtx.side='new';
+  ensureCoverViewer();
+  cvRender();
+  document.getElementById('cvLightbox').classList.add('open');
+}
+function closeCoverViewer(){var d=document.getElementById('cvLightbox');if(d)d.classList.remove('open');_cvCtx=null;}
 
 function esc(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* Cover images may arrive as full URLs, data URIs, root-relative paths, or
+   bare storage keys — normalize to something the <img> can always load. */
+var UPLOAD_BASE='/uploads/';
+function imgSrc(v){
+  v=String(v==null?'':v).trim();
+  if(!v)return'';
+  if(/^(https?:)?\/\//i.test(v)||/^data:/i.test(v)||/^blob:/i.test(v))return v;
+  if(v.charAt(0)==='/')return v;
+  return UPLOAD_BASE+v.replace(/^\/+/,'');
 }
 
 function filtered(){
@@ -202,13 +281,13 @@ function renderDetail(id){
   if(a.changes){
     var rows=a.changes.map(function(c){
       if(c.type==='Cover'){
-        return'<div class="change-box" style="margin-bottom:10px"><div class="lbl"><i class="fas fa-image"></i> '+esc(c.type)+'</div><div class="change-row"><div class="change-from"><label>Current</label><img class="change-img" src="'+esc(c.from)+'" alt="Old"/></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>New</label><img class="change-img" src="'+esc(c.to)+'" alt="New"/></div></div></div>';
+        return'<div class="change-box" style="margin-bottom:10px"><div class="lbl"><i class="fas fa-image"></i> '+esc(c.type)+'</div><div class="change-row"><div class="change-from"><label>Current</label><img class="change-img" src="'+esc(imgSrc(c.from))+'" alt="Old" data-book="'+esc(a.book)+'" data-old="'+esc(imgSrc(c.from))+'" data-new="'+esc(imgSrc(c.to))+'" data-side="old"/></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>New</label><img class="change-img" src="'+esc(imgSrc(c.to))+'" alt="New" data-book="'+esc(a.book)+'" data-old="'+esc(imgSrc(c.from))+'" data-new="'+esc(imgSrc(c.to))+'" data-side="new"/></div></div></div>';
       }
       return'<div class="change-box" style="margin-bottom:10px"><div class="lbl"><i class="fas fa-pen"></i> '+esc(c.type)+'</div><div class="change-row"><div class="change-from"><label>From</label><b>'+esc(c.from)+'</b></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>To</label><b>'+esc(c.to)+'</b></div></div></div>';
     });
     changeHtml=rows.join('');
   }else if(a.editType==='Cover Update'){
-    changeHtml='<div class="change-box"><div class="lbl"><i class="fas fa-image"></i> Cover Change</div><div class="change-row"><div class="change-from"><label>Current Cover</label><img class="change-img" src="'+esc(a.changeFrom)+'" alt="Old cover"/></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>New Cover</label><img class="change-img" src="'+esc(a.changeTo)+'" alt="New cover"/></div></div></div>';
+    changeHtml='<div class="change-box"><div class="lbl"><i class="fas fa-image"></i> Cover Change</div><div class="change-row"><div class="change-from"><label>Current Cover</label><img class="change-img" src="'+esc(imgSrc(a.changeFrom))+'" alt="Old cover" data-book="'+esc(a.book)+'" data-old="'+esc(imgSrc(a.changeFrom))+'" data-new="'+esc(imgSrc(a.changeTo))+'" data-side="old"/></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>New Cover</label><img class="change-img" src="'+esc(imgSrc(a.changeTo))+'" alt="New cover" data-book="'+esc(a.book)+'" data-old="'+esc(imgSrc(a.changeFrom))+'" data-new="'+esc(imgSrc(a.changeTo))+'" data-side="new"/></div></div></div>';
   }else{
     changeHtml='<div class="change-box"><div class="lbl"><i class="fas fa-pen"></i> Content Change</div><div class="change-row"><div class="change-from"><label>From</label><b>'+esc(a.changeFrom)+'</b></div><div class="change-arrow"><i class="fas fa-arrow-right"></i></div><div class="change-to"><label>To</label><b>'+esc(a.changeTo)+'</b></div></div></div>';
   }
@@ -396,7 +475,7 @@ function submitBsrReject(){submitReject();}
 
 function onRowToggle(e){
   var row=e.target.closest('.item-row');
-  if(row&&!e.target.closest('.actions-cell')){
+  if(row&&!e.target.closest('.actions-cell')&&!e.target.closest('.change-img')){
     var id=row.dataset.id;
     openRowId=openRowId===id?null:id;
     render();
@@ -415,6 +494,12 @@ function bind(){
   window.submitBsrReject=submitBsrReject;
   document.addEventListener('click',onRowToggle);
   document.addEventListener('click',onExpandToggle);
+  document.addEventListener('click',function(e){
+    var img=e.target.closest('.change-img');
+    if(!img)return;
+    e.stopPropagation();
+    openCoverViewer(img.dataset.book||'',img.dataset.old||'',img.dataset.new||'',img.dataset.side||'new');
+  });
   document.getElementById('searchInput').addEventListener('input',function(){currentPage=1;render();});
   document.getElementById('statusFilter').addEventListener('change',function(){currentPage=1;render();});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!submitting)closeOverlay('bsrRejectOv');});
@@ -422,6 +507,7 @@ function bind(){
 function init(){
   SeniorEditorSidebar.attach('#dashRoot',{activeItem:'book-series-review',title:'Book Series Review',subtitle:'Authors request edits to book details',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
   ensureModal();
+  ensureCoverViewer();
   bind();
   Crud.list({}).then(render).catch(function(e){
     toast('Could not load edits: '+(e.message||'error'),'error');

@@ -20,6 +20,8 @@
 .book-cell{display:flex;align-items:center;gap:10px;min-width:0}.book-cover{width:36px;height:48px;border-radius:6px;flex-shrink:0;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#1a1a2e}.book-cover img{width:100%;height:100%;object-fit:cover}.book-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.book-id{font-size:10px;color:var(--text-faint);margin-top:1px}
 .author-cell{display:flex;align-items:center;gap:7px;min-width:0}.author-cell img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0}.author-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .genre-chip{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap}
+.trope-chip{display:inline-block;padding:2px 7px;border-radius:6px;font-size:9.5px;font-weight:700;line-height:1.45;white-space:normal;overflow-wrap:anywhere;background:var(--purple-bg,#ece9fb);color:var(--purple,#5b4bcf)}
+.detail-item.tropes b{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-width:0;white-space:normal;overflow:visible}
 .status-pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;white-space:nowrap}.status-pill .dot{width:5px;height:5px;border-radius:50%}.status-pill.published{background:var(--green-bg);color:var(--green)}.status-pill.published .dot{background:var(--green)}.status-pill.draft{background:var(--blue-bg);color:var(--blue)}.status-pill.draft .dot{background:var(--blue)}.status-pill.review{background:var(--amber-bg);color:var(--amber)}.status-pill.review .dot{background:var(--amber)}.status-pill.flagged{background:var(--red-bg);color:var(--red)}.status-pill.flagged .dot{background:var(--red)}html[data-theme="dark"] .status-pill.published{background:rgba(22,163,74,.16)}html[data-theme="dark"] .status-pill.draft{background:rgba(37,99,235,.16)}html[data-theme="dark"] .status-pill.review{background:rgba(217,119,6,.16)}html[data-theme="dark"] .status-pill.flagged{background:rgba(220,38,38,.16)}
 .col-num{font-size:12px;font-weight:700}.muted-cell{color:var(--text-muted);font-size:12px}
 .actions-cell{display:flex;gap:5px}.act-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;transition:.15s}.act-btn:hover{border-color:var(--accent);color:var(--accent)}.act-btn.danger:hover{border-color:var(--red);color:var(--red)}
@@ -71,7 +73,7 @@
 <style>#toast.show{opacity:1}</style>
 
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="services/book-management-service.js"></script>
+<script src="services/book-management-service.js?v=3"></script>
 <script>BookManagementService.init();</script>
 </body>
 </html>

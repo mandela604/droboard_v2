@@ -161,6 +161,7 @@ const statusSchema = new mongoose.Schema({
   expiresAt: { type: Date, required: true, index: true },
 }, { timestamps: true });
 statusSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+statusSchema.index({ userId: 1, createdAt: -1 });
 
 const conversationSchema = new mongoose.Schema({
   participants: [{ type: String, ref: 'User', index: true }],

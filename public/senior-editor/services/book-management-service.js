@@ -16,7 +16,7 @@ if (window.BookManagementService) return;
 /* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
    Service pulls it during parse; delete these 3 lines at go-live. */
 if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="../data/editor-demo-data.js"><\/script>');
+  document.write('<script src="../data/editor-demo-data.js?v=3"><\/script>');
 }
 
 function resyncDemo(){
@@ -142,6 +142,7 @@ function fromApiBook(b) {
     avatar: b.avatar || 'https://i.pravatar.cc/100?img=0',
     cat: b.category || b.cat || b.genre || '',
     genre: b.genre || '—',
+    tropes: Array.isArray(b.tropes) ? b.tropes.filter(Boolean) : [],
     status: mapStatusFromApi(b.status),
     views: typeof b.reads === 'number' ? fmtReads(b.reads) : (b.views || '—'),
     added: b.createdAt ? fmtDate(b.createdAt) : (b.added || '—'),
@@ -214,6 +215,11 @@ function esc(s) {
 function ratingHtml(r) {
   if (!r) return '<span class="muted-cell">—</span>';
   return '<span style="color:#f5b301;font-weight:800;font-size:12px">★ ' + Number(r).toFixed(1).replace(/\.0$/, '') + '</span>';
+}
+function tropesHtml(b) {
+  var list = Array.isArray(b.tropes) ? b.tropes.filter(Boolean) : [];
+  if (!list.length) return '<span class="muted-cell">—</span>';
+  return list.map(function (t) { return '<span class="trope-chip">' + esc(t) + '</span>'; }).join('');
 }
 
 /* ── Render: stats / tabs / table ── */
@@ -322,8 +328,8 @@ function renderDetailPanel(id) {
   html += '<div class="detail-section"><div class="ds-label"><i class="fas fa-circle-info"></i> Overview</div><div class="detail-grid">';
   html += '<div class="detail-item"><span>Category</span><b>' + esc(b.cat) + '</b></div>';
   html += '<div class="detail-item"><span>Genre</span><b><span class="genre-chip" style="background:' + gc.bg + ';color:' + gc.fg + '">' + esc(b.genre) + '</span></b></div>';
+  html += '<div class="detail-item tropes"><span>Tropes</span><b>' + tropesHtml(b) + '</b></div>';
   html += '<div class="detail-item accent"><span>Reads</span><b>' + esc(b.views) + '</b></div>';
-  html += '<div class="detail-item"><span>Rating</span><b>' + (b.rating ? '★ ' + Number(b.rating).toFixed(1).replace(/\.0$/, '') : '—') + '</b></div>';
   html += '<div class="detail-item"><span>Status</span><b>' + statusPillHtml(b.status) + '</b></div>';
   html += '<div class="detail-item"><span>Added</span><b>' + esc(b.added) + '</b></div>';
   html += '<div class="detail-item"><span>Author</span><b>' + esc(b.author) + '</b></div>';

@@ -302,29 +302,44 @@ function renderTrendChart(data) {
 function renderPlacementPerformance(totals) {
   const rnd = seeded(totals.impressions % 100000 + 7);
   const src = PLACEMENTS.filter(p => matches(p.label));
-  if (!src.length) {
+  const live = spotlightPlacementRow();
+  const includeLive = !!(live && matches(live.label));
+  if (!src.length && !includeLive) {
     document.getElementById('placementList').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No placements match your search.</div>';
     return;
   }
   const weights = src.map(() => 0.4 + rnd());
-  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const weightSum = weights.reduce((a, b) => a + b, 0) || 1;
   const rows = src.map((p, i) => {
     const impressions = Math.round(totals.impressions * (weights[i] / weightSum));
     const ctr = 3 + rnd() * 6;
     return Object.assign({}, p, { impressions, ctr });
   }).sort((a, b) => b.impressions - a.impressions);
-  const maxImp = rows[0].impressions || 1;
+  if (includeLive) rows.unshift(live);
+  const maxImp = Math.max.apply(null, rows.map(r => r.impressions).concat(1));
 
   document.getElementById('placementList').innerHTML = rows.map(r => `
     <div class="ph-row">
       <div class="ph-ico"><i class="fas ${r.icon}"></i></div>
       <div class="ph-info">
-        <div class="ph-name">${esc(r.label)}</div>
-        <div class="ph-meta">${fmtNum(r.impressions)} impressions</div>
+        <div class="ph-name">${esc(r.label)}${r.live ? '<span style="font-size:8px;font-weight:800;letter-spacing:.06em;color:var(--green);background:var(--green-bg);border-radius:4px;padding:2px 5px;margin-left:5px;vertical-align:1px">LIVE</span>' : ''}</div>
+        <div class="ph-meta">${fmtNum(r.impressions)} impressions${r.live ? ' · ' + fmtNum(r.clicks) + ' CTA clicks' : ''}</div>
       </div>
       <div class="ph-bar-wrap"><div class="ph-bar-track"><div class="ph-bar-fill" style="width:${Math.round(r.impressions / maxImp * 100)}%"></div></div></div>
-      <div class="ph-ctr">${r.ctr.toFixed(1)}%</div>
+      <div class="ph-ctr">${(+r.ctr || 0).toFixed(1)}%</div>
     </div>`).join('');
+}
+
+/* Live Discover spotlight counters — CTA tap counts as a conversion. */
+function spotlightPlacementRow() {
+  try {
+    if (!window.AdService || typeof AdService.spotlightStats !== 'function') return null;
+    const s = AdService.spotlightStats();
+    return {
+      id: 'spotlight', label: 'Discover Spotlight', icon: 'fa-bolt',
+      impressions: +s.impressions || 0, clicks: +s.clicks || 0, ctr: +s.ctr || 0, live: true,
+    };
+  } catch (e) { return null; }
 }
 
 function renderFunnel(totals) {

@@ -26,7 +26,7 @@ let expandedId = null;
 
 function attachShell(){
   shell = SeniorEditorSidebar.attach('#authorsRoot',{
-    activeItem:'authors', title:'Authors', subtitle:'Manage assigned authors',
+    activeItem:'authors', title:'Authors', subtitle:'Manage invited and assigned authors',
     user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
     searchPlaceholder:'Search authors…',
     onSearch:(v)=>{ document.getElementById('authorSearch').value = v; currentPage = 1; renderAuthors(); }
@@ -44,8 +44,8 @@ function mapBackendAuthor(u){
     email: u.email || '', avatar: u.avatar || '',
     genre: (u.genres && u.genres[0]) || u.authorGenre || '—',
     stories: u.books || 0,
-    rating: u.rating != null ? u.rating : '—',
     earnings: u.earnings || '—',
+    source: u.via ? (u.via === 'assigned' ? 'assigned' : 'invited') : 'assigned',
     status: u.status || 'active',
     warnings: u.warnings || 0,
     joined: u.createdAt
@@ -54,22 +54,64 @@ function mapBackendAuthor(u){
   };
 }
 
+/* Referred writers live in the same localStorage store as Invite Authors;
+   that service exposes them even when its own page hasn't been opened. */
+function referredWriters(){
+  try{
+    const svc = window.InviteAuthorsService;
+    return svc && typeof svc.getWriters === 'function' ? (svc.getWriters() || []) : [];
+  }catch(e){ return []; }
+}
+function mapReferredWriter(w){
+  const via = w.via || 'invite';
+  return {
+    id: w.id, name: w.name || w.fullName || w.username || '', username: w.username || '',
+    email: w.email || '', avatar: w.avatar || 'https://i.pravatar.cc/100?img=0',
+    genre: '—', stories: 0, earnings: '—', warnings: 0,
+    status: w.status || 'active',
+    source: via === 'assigned' ? 'assigned' : 'invited',
+    joined: w.signedUp
+      ? new Date(w.signedUp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      : '—',
+  };
+}
+function authorKey(a){
+  return String(a.email || '').trim().toLowerCase() || ('id:' + a.id);
+}
+function mergeAuthors(assigned, referred){
+  const map = new Map();
+  assigned.forEach(a => map.set(authorKey(a), a));
+  referred.forEach(w => {
+    const key = authorKey(w);
+    const existing = map.get(key);
+    if(!existing){ map.set(key, w); return; }
+    map.set(key, Object.assign({}, existing, {
+      source: w.source,
+      joined: existing.joined && existing.joined !== '—' ? existing.joined : w.joined,
+      avatar: existing.avatar || w.avatar,
+    }));
+  });
+  return Array.from(map.values());
+}
+
 async function loadAuthors(){
+  let assigned = [];
   try{
     const remote = await callBackend('/authors?limit=100');
     if (remote && remote.items) {
-      AUTHORS = remote.items.map(mapBackendAuthor);
+      assigned = remote.items.map(mapBackendAuthor);
       usingDemoData = false;
     } else {
       const data = await SeniorEditorData.getAuthors();
-      AUTHORS = Array.isArray(data) ? data : (data.authors || []);
+      assigned = (Array.isArray(data) ? data : (data.authors || []))
+        .map(a => Object.assign({}, a, { source:'assigned' }));
       usingDemoData = false;
     }
   }catch(err){
     console.warn('Authors data unavailable:', err.message);
-    AUTHORS = [];
     usingDemoData = true;
   }
+  AUTHORS = mergeAuthors(assigned, referredWriters().map(mapReferredWriter));
   populateGenreFilter();
   renderStats();
   renderAuthors();
@@ -84,11 +126,15 @@ function populateGenreFilter(){
    STATS
 ───────────────────────────────────────── */
 function renderStats(){
+  const invited = AUTHORS.filter(a=>a.source==='invited').length;
+  const assigned = AUTHORS.filter(a=>a.source==='assigned').length;
   const active = AUTHORS.filter(a=>a.status==='active').length;
   const suspended = AUTHORS.filter(a=>a.status==='suspended').length;
   const totalWarnings = AUTHORS.reduce((s,a)=>s+a.warnings,0);
   const stats = [
-    { n:AUTHORS.length, l:'Assigned Authors', ico:'fa-users', cls:'accent' },
+    { n:AUTHORS.length, l:'Total Authors', ico:'fa-users', cls:'accent' },
+    { n:invited, l:'Invited Authors', ico:'fa-link', cls:'blue' },
+    { n:assigned, l:'Assigned Authors', ico:'fa-user-tie', cls:'purple' },
     { n:active, l:'Active', ico:'fa-circle-check', cls:'green' },
     { n:suspended, l:'Suspended', ico:'fa-ban', cls:'red' },
     { n:totalWarnings, l:'Warnings Issued', ico:'fa-triangle-exclamation', cls:'amber' },
@@ -105,13 +151,15 @@ function renderStats(){
 ───────────────────────────────────────── */
 function getFiltered(){
   const q = document.getElementById('authorSearch').value.trim().toLowerCase();
+  const src = document.getElementById('sourceFilter').value;
   const g = document.getElementById('genreFilter').value;
   const st = document.getElementById('statusFilter').value;
   return AUTHORS.filter(a=>{
     const matchesQ = !q || a.name.toLowerCase().includes(q);
+    const matchesSrc = !src || a.source===src;
     const matchesG = !g || a.genre===g;
     const matchesSt = !st || a.status===st;
-    return matchesQ && matchesG && matchesSt;
+    return matchesQ && matchesSrc && matchesG && matchesSt;
   });
 }
 
@@ -138,15 +186,17 @@ function renderAuthors(){
       <div class="lib-row-main" data-action="toggle-row" data-id="${a.id}">
         <img class="lib-cover" src="${a.avatar}" alt="${a.name}"/>
         <div class="lib-info">
-          <div class="lib-title">${a.name} <span class="status-pill ${a.status}">${a.status}</span> ${a.warnings>0?`<span class="warn-badge"><i class="fas fa-triangle-exclamation"></i>${a.warnings}</span>`:''}</div>
-          <div class="lib-meta">${a.genre} · ${a.stories} stories · <i class="fas fa-star" style="color:#ffd166"></i> ${a.rating} · 💰 ${a.earnings}</div>
+          <div class="lib-title">${a.name} <span class="status-pill ${a.status}">${a.status}</span> ${a.source==='invited'
+            ? '<span class="via-pill invited" title="Signed up with your referral code or link"><i class="fas fa-link"></i>Invited</span>'
+            : '<span class="via-pill assigned" title="Placed under you by the Chief Editor"><i class="fas fa-user-tie"></i>Assigned</span>'} ${a.warnings>0?`<span class="warn-badge"><i class="fas fa-triangle-exclamation"></i>${a.warnings}</span>`:''}</div>
+          <div class="lib-meta">${a.genre!=='—'?`${a.genre} · `:''}${a.stories} stories · ${a.earnings!=='—'?`💰 ${a.earnings}`:`Joined ${a.joined}`}</div>
         </div>
         <i class="fas fa-chevron-down chevron${open?' open':''}"></i>
       </div>
       <div class="lib-config${open?' open':''}">
         <div class="mm-grid">
           <div class="mm-item"><div class="mm-lbl">Status</div><div class="mm-val"><span class="status-pill ${a.status}" style="font-size:10px;padding:3px 10px">${a.status}</span></div></div>
-          <div class="mm-item"><div class="mm-lbl">Rating</div><div class="mm-val">⭐ ${a.rating}</div></div>
+          <div class="mm-item"><div class="mm-lbl">Source</div><div class="mm-val" style="font-size:12px">${a.source==='invited'?'Invited by you':'Assigned by Chief'}</div></div>
           <div class="mm-item"><div class="mm-lbl">Stories</div><div class="mm-val">${a.stories}</div></div>
           <div class="mm-item"><div class="mm-lbl">Earnings</div><div class="mm-val">${a.earnings}</div></div>
           <div class="mm-item"><div class="mm-lbl">Genre</div><div class="mm-val" style="font-size:12px">${a.genre}</div></div>
@@ -208,6 +258,7 @@ function onDocClick(e){
 function bindEvents(){
   document.addEventListener('click', onDocClick);
   document.getElementById('authorSearch').addEventListener('input', ()=>{ currentPage=1; renderAuthors(); });
+  document.getElementById('sourceFilter').addEventListener('change', ()=>{ currentPage=1; renderAuthors(); });
   document.getElementById('genreFilter').addEventListener('change', ()=>{ currentPage=1; renderAuthors(); });
   document.getElementById('statusFilter').addEventListener('change', ()=>{ currentPage=1; renderAuthors(); });
 }

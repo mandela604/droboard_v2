@@ -41,6 +41,16 @@ body{font-family:'Inter',system-ui,sans-serif}
 .pl-lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px}
 .pl-inp{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:9px}
 .pl-check{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text-muted)}
+.pl-sp{margin-top:11px;padding-top:10px;border-top:1px solid var(--input-border)}
+.pl-sp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:7px}
+.pl-sp-tile{background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:8px 4px;text-align:center}
+.pl-sp-tile b{display:block;font-size:14px;font-weight:800;line-height:1.2}
+.pl-sp-tile span{display:block;font-size:8px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);font-weight:800;margin-top:2px}
+.pl-sp-row{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:10px;color:var(--text-faint);border-top:1px dashed var(--input-border)}
+.pl-sp-row:first-child{border-top:0}
+.pl-sp-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:10.5px}
+.pl-sp-row span{flex-shrink:0;font-variant-numeric:tabular-nums}
+.pl-sp-row span em{font-style:normal;color:var(--text);font-weight:800}
 .pl-actions{display:flex;gap:8px;flex-wrap:wrap}
 .pl-fmt-row{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:9px}
 .pl-fmt-chk{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--text-muted);cursor:pointer}
@@ -146,11 +156,45 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label class="pl-lbl">Full-screen ad card after every N story cards</label><input class="pl-inp" id="plHomeInt" type="number" min="1" value="5"/>
       </div>
 <div class="pl-card">
-<div class="pl-name"><i class="fas fa-bolt" style="color:var(--amber)"></i> Spotlight <span style="font-weight:600;color:var(--text-faint);font-size:10px">Full-screen story on Discover</span></div>
+<div class="pl-name"><i class="fas fa-bolt" style="color:var(--amber)"></i> Spotlight <span style="font-weight:600;color:var(--text-faint);font-size:10px">Story, creator, top-3 board or promo on Discover</span></div>
 <label class="pl-check"><input type="checkbox" id="plSlOn"/> Spotlight on Discover</label>
-<label class="pl-lbl">Countdown (seconds)</label><input class="pl-inp" id="plSlSec" type="number" min="3" max="30" value="7"/>
+<label class="pl-lbl">Creative shown</label>
+<select class="pl-inp" id="plSlAd"><option value="">Rotate all active creatives</option></select>
+<div style="display:flex;gap:6px;margin:0 0 9px">
+<button class="btn-ghost" type="button" id="plSlNew" style="flex:1;padding:8px 10px;font-size:11px"><i class="fas fa-plus"></i> New</button>
+<button class="btn-ghost" type="button" id="plSlEdit" style="flex:1;padding:8px 10px;font-size:11px"><i class="fas fa-pen"></i> Edit</button>
+<button class="btn-ghost" type="button" id="plSlPreview" style="flex:1;padding:8px 10px;font-size:11px"><i class="fas fa-play"></i> Preview</button>
+</div>
+<label class="pl-lbl">Countdown (seconds)</label><input class="pl-inp" id="plSlSec" type="number" min="3" max="30" value="6"/>
 <label class="pl-lbl">Show once every N visits</label><input class="pl-inp" id="plSlEvery" type="number" min="1" value="1"/>
 <label class="pl-check"><input type="checkbox" id="plSlSkip" checked/> Allow early close (uncheck for paid ads)</label>
+<div style="border-top:1px solid var(--border);margin:12px 0 10px"></div>
+<div class="pl-name" style="font-size:11px;margin-bottom:8px"><i class="fas fa-clock" style="color:var(--text-faint)"></i> When it can pop up</div>
+<div style="display:flex;gap:8px">
+<label class="pl-lbl" style="flex:1">Delay after load (s)<input class="pl-inp" id="plSlDelay" type="number" min="0" max="30" value="0" style="margin-top:4px"/></label>
+<label class="pl-lbl" style="flex:1">Cooldown (hours)<input class="pl-inp" id="plSlCool" type="number" min="0" max="168" value="0" style="margin-top:4px"/></label>
+</div>
+<div style="display:flex;gap:8px">
+<label class="pl-lbl" style="flex:1">From<input class="pl-inp" id="plSlStart" type="time" style="margin-top:4px"/></label>
+<label class="pl-lbl" style="flex:1">To<input class="pl-inp" id="plSlEnd" type="time" style="margin-top:4px"/></label>
+</div>
+<label class="pl-lbl">Days (none checked = every day)</label>
+<div id="plSlDays" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px"></div>
+<label class="pl-lbl">Audience</label>
+<select class="pl-inp" id="plSlAudMode">
+<option value="all">Everyone</option>
+<option value="targeted">Behavior-targeted readers only</option>
+</select>
+<div id="plSlSegWrap" style="display:none;margin-bottom:9px">
+<div style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Segments</div>
+<div id="plSlSegs" style="max-height:130px;overflow:auto;border:1px solid var(--input-border);border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--input-bg)"></div>
+<label class="pl-lbl" style="margin-top:7px">Match<select class="pl-inp" id="plSlMatch" style="margin-top:4px"><option value="any">Any selected segment</option><option value="all">All selected segments</option></select></label>
+</div>
+<div class="pl-sp">
+<label class="pl-lbl" style="display:flex;justify-content:space-between;align-items:center;gap:6px">Spotlight conversions <a href="marketing-analytics.html" style="text-transform:none;letter-spacing:0;color:var(--accent);font-size:10px;text-decoration:none">Full report <i class="fas fa-arrow-right" style="font-size:8px"></i></a></label>
+<div class="pl-sp-grid" id="plSlTiles"></div>
+<div id="plSlRows"></div>
+</div>
 </div>
 <div class="pl-card">
 <div class="pl-name"><i class="fas fa-book-open" style="color:var(--blue)"></i> Full Reader</div>
@@ -259,12 +303,14 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <div class="adm-toast" id="admToast"></div>
 
-<script src="shared/ad-setup-data.js?v=2"></script>
+<script src="shared/ad-setup-data.js?v=4"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
+<script src="../services/spotlight-board-service.js"></script>
+<script src="../component/spotlight-ad.js?v=8"></script>
 <script src="../services/league-service.js"></script>
-<script src="shared/ad-manager.js?v=3"></script>
+<script src="shared/ad-manager.js?v=7"></script>
 <script>AdManagerPage.init();</script>
 </body>
 </html>

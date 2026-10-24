@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────
  * Free chapters + ads-to-unlock + searchable per-chapter pricing table.
  * Used by BOTH senior-editor/review-queue.html (Accept wizard) and
- * senior-editor/contract-review.html (pre-sign terms). Self-contained
+ * senior-editor/contract-review.html (live pricing, editable at any time). Self-contained
  * CSS (cm- prefix) + DOM. Backend: persist getTerms() to
  * PUT /api/contracts/:id/pricing.
  *
@@ -285,25 +285,25 @@
       setReadOnly: function (ro) { state.readOnly = !!ro; render(); },
       setChapters: function (chapters, initial) {
         var list = Array.isArray(chapters) ? chapters : [];
+        initial = initial || {};
+        // apply the new terms BEFORE building rows so paid/free defaults are correct
+        if (initial.freeChapters != null) state.freeChapters = Math.max(0, parseInt(initial.freeChapters, 10) || 0);
+        if (initial.adsPerChapter != null) state.adsPerChapter = Math.max(0, parseInt(initial.adsPerChapter, 10) || 0);
+        if (initial.allowAdUnlock != null) state.allowAdUnlock = !!initial.allowAdUnlock;
         state.rows = list.map(function (c, i) {
           var num = (typeof c === 'number') ? c : (c.num || (i + 1));
           var title = (typeof c === 'number') ? '' : (c.title || '');
           var free = num <= state.freeChapters;
           return { num: num, title: title, price: free ? 0 : 15, ads: free ? 0 : (state.allowAdUnlock ? state.adsPerChapter : 0) };
         });
-        if (initial) {
-          if (initial.freeChapters != null) state.freeChapters = Math.max(0, parseInt(initial.freeChapters, 10) || 0);
-          if (initial.adsPerChapter != null) state.adsPerChapter = Math.max(0, parseInt(initial.adsPerChapter, 10) || 0);
-          if (initial.allowAdUnlock != null) state.allowAdUnlock = !!initial.allowAdUnlock;
-          if (initial.prices) Object.keys(initial.prices).forEach(function (k) {
-            var row = state.rows.find(function (r) { return r.num === parseInt(k, 10); });
-            if (row) row.price = Math.max(0, parseInt(initial.prices[k], 10) || 0);
-          });
-          if (initial.ads) Object.keys(initial.ads).forEach(function (k) {
-            var row = state.rows.find(function (r) { return r.num === parseInt(k, 10); });
-            if (row) row.ads = Math.max(0, parseInt(initial.ads[k], 10) || 0);
-          });
-        }
+        if (initial.prices) Object.keys(initial.prices).forEach(function (k) {
+          var row = state.rows.find(function (r) { return r.num === parseInt(k, 10); });
+          if (row) row.price = Math.max(0, parseInt(initial.prices[k], 10) || 0);
+        });
+        if (initial.ads) Object.keys(initial.ads).forEach(function (k) {
+          var row = state.rows.find(function (r) { return r.num === parseInt(k, 10); });
+          if (row) row.ads = Math.max(0, parseInt(initial.ads[k], 10) || 0);
+        });
         render(); emit();
       },
     };

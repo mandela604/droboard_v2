@@ -78,6 +78,8 @@
       const keep = organic.filter(p => p.type !== 'sponsored' && FOLLOWING.has(p.name));
       if (!keep.length) toast('You are not following anyone yet — showing everything');
       else organic = keep;
+    } else if (FEED_SORT === 'debates') {
+      organic = organic.filter(p => p.type === 'debate');
     }
     FEED_POSTS = interleaveAds(organic, AD_POOLS, AD_GAP);
     if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
@@ -129,12 +131,18 @@
 
   /* ── Stories ── */
   function renderStories(stories) {
+    try {
+      if (window.DroboardStatus && DroboardStatus.registerStories) {
+        stories = DroboardStatus.registerStories(stories);
+      }
+    } catch (e) {}
     document.getElementById('storiesRow').innerHTML = stories.map(s => {
       const n = s.statuses ? s.statuses.length : 0;
       const ringClass = s.you ? (n ? 'ring-live' : 'own') : (s.ring || (n ? 'ring-has' : 'ring-none'));
+      const ringKey = s.you ? 'you' : (s.name || s.handle || s.id);
       return `
       <div class="story-item" data-story-id="${s.id}" data-you="${!!s.you}">
-        <div class="story-ring ${ringClass}"><div class="inner">
+        <div class="story-ring ${ringClass}" data-status-ring="${escAttr(ringKey)}"><div class="inner">
           ${s.you ? (n ? `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">` : `<div class="story-add">+</div>`) : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`}
         </div></div>
         ${s.you ? `<div class="story-post-plus" data-act="post-status" title="Post a status">+</div>` : ``}
@@ -168,6 +176,21 @@
       item.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
       if (ring) item.classList.add(ring);
     }
+    // Feed post avatars by the same person are state-aware too.
+    try {
+      const key = String((s && (s.name || s.handle)) || wid || '')
+        .replace(/^@/, '').replace(/^wr:/, '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
+      (FEED_POSTS || []).forEach(function (p) {
+        if (!p || p.type === 'sponsored') return;
+        const pk = String(p.handle || p.name || '').replace(/^@/, '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
+        if (!key || pk !== key) return;
+        const next = ring === 'ring-viewed' ? 'viewed' : (ring ? true : false);
+        if (p.avatarRing !== next) {
+          p.avatarRing = next;
+          if (window.DroboardPostCard) DroboardPostCard.update(p);
+        }
+      });
+    } catch (e) {}
   };
 
   /* ── Promo (ad-marketing module: AdService promo pool, page 'feed') ── */
@@ -217,6 +240,73 @@
     if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
     toast('📖 ' + ttl);
   }
+  const hubCommentSeeds = {};
+  let hubCommentsCS = null;
+  function seedHubComments(id) {
+    if (!hubCommentSeeds[id]) {
+      try {
+        hubCommentSeeds[id] = (window.COMMENTS_DATA && COMMENTS_DATA.length)
+          ? JSON.parse(JSON.stringify(COMMENTS_DATA))
+          : [{ id: 'demo1', name: 'MayaReads', time: '2h ago', text: 'This thread is so good — demo comments for now.', likes: 12, replies: [] }];
+      } catch (e) {
+        hubCommentSeeds[id] = [];
+      }
+    }
+    return hubCommentSeeds[id];
+  }
+  function closeComments() {
+    const o = document.getElementById('commentOverlay');
+    if (o) o.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function openHubComments(post) {
+    if (!post) return;
+    const overlay = document.getElementById('commentOverlay');
+    const mount = document.getElementById('commentMount');
+    if (!overlay || !mount || !window.DroboardComments) {
+      location.href = 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id);
+      return;
+    }
+    if (hubCommentsCS && hubCommentsCS.destroy) { try { hubCommentsCS.destroy(); } catch (e) {} hubCommentsCS = null; }
+    mount.innerHTML = '';
+    hubCommentsCS = DroboardComments.attach(mount, {
+      storyId: post.id,
+      title: 'Comments',
+      comments: seedHubComments(post.id),
+      currentUser: { name: 'You', avatar: null },
+      collapsible: false,
+      threadSheet: true,
+      placeholder: 'Add a comment…',
+      fullCommentsUrl: function () {
+        return 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id);
+      },
+      onPost: function () {
+        post.comments = (post.comments || 0) + 1;
+        if (window.DroboardGenreCard) DroboardGenreCard.update(post);
+      },
+      onReply: function () {
+        post.comments = (post.comments || 0) + 1;
+        if (window.DroboardGenreCard) DroboardGenreCard.update(post);
+      },
+    });
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function openHubDiscussion(post) {
+    if (!post) return;
+    location.href = 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id);
+  }
+  function shareHubPost(post) {
+    if (!post) return;
+    if (window.openShareModal) {
+      openShareModal({
+        title: post.title || 'Hub post',
+        sub: '@' + (post.name || '') + (post._genreName ? ' · ' + post._genreName : ''),
+        img: (post.story && post.story.cover) || post.avatar || '',
+        url: 'https://droboard.app/hub/' + (post._genreId || 'fantasy') + '/' + post.id,
+      });
+    } else toast('Share · ' + (post.title || ''));
+  }
   function genreCardHooks() {
     return {
       getReactionHTML: (post) => {
@@ -226,8 +316,9 @@
         return DroboardReactionPicker.renderTrigger(String(post.id), { liked: !!post.liked, likeCount: post.likes || 0 });
       },
       onLike: (post) => { post.liked = !post.liked; post.likes = (post.likes || 0) + (post.liked ? 1 : -1); if (window.DroboardGenreCard) DroboardGenreCard.update(post); },
-      onThread: (post) => { location.href = 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id); },
-      onShare: (post) => { if (window.openShareModal) openShareModal({ title: post.title, sub: '@' + (post.name || '') + (post._genreName ? ' · ' + post._genreName : ''), img: '', url: 'https://droboard.app/hub/' + (post._genreId || 'fantasy') + '/' + post.id }); else toast('Share · ' + (post.title || '')); },
+      onThread: (post) => openHubComments(post),
+      onComment: (post) => openHubDiscussion(post),
+      onShare: (post) => shareHubPost(post),
       onDots: (post, el) => { try { window._lastDotsAnchor = el || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, el); else toast('More…'); },
       onStory: (post) => openStoryGuarded(post && (post.story || post.storyRef)),
       onAvatar: (post) => openAuthorAvatar(post),
@@ -248,10 +339,12 @@
         if (card && window.DroboardGenreCard) { const tmp = document.createElement('div'); tmp.innerHTML = DroboardGenreCard.renderCard(p); if (tmp.firstElementChild) card.replaceWith(tmp.firstElementChild); }
         return;
       }
+      const comment = e.target.closest('[data-dgc-comment]');
+      if (comment) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(comment.dataset.dgcComment)); if (p) openHubDiscussion(p); return; }
       const thread = e.target.closest('[data-dgc-thread]');
-      if (thread) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(thread.dataset.dgcThread)); if (p) location.href = 'discussion.html?genre=' + encodeURIComponent(p._genreId || 'fantasy') + '&id=' + encodeURIComponent(p.id); return; }
+      if (thread) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(thread.dataset.dgcThread)); if (p) openHubComments(p); return; }
       const share = e.target.closest('[data-dgc-share]');
-      if (share) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(share.dataset.dgcShare)); if (p && window.openShareModal) openShareModal({ title: p.title, sub: '@' + (p.name || '') + (p._genreName ? ' · ' + p._genreName : ''), img: '', url: 'https://droboard.app/hub/' + (p._genreId || 'fantasy') + '/' + p.id }); return; }
+      if (share) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(share.dataset.dgcShare)); if (p) shareHubPost(p); return; }
       const av = e.target.closest('[data-dgc-av]');
       if (av) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(av.dataset.dgcAv)); if (p) openAuthorAvatar(p); return; }
       const nm = e.target.closest('[data-dgc-name]');
@@ -265,9 +358,9 @@
     if (!row || !sec || !window.DroboardGenreCard || !posts.length) return;
     DroboardGenreCard.attach(row, genreCardHooks());
     if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(row, counterHooks());
-    row.innerHTML = renderCommSlides(posts);
     DroboardGenreCard.setPosts(posts);
     row.innerHTML = renderCommSlides(posts);
+    bindCommunityRowFallback(row, posts);
     sec.style.display = 'block';
   }
 
@@ -284,7 +377,6 @@
     const row = document.getElementById('commRowMid');
     DroboardGenreCard.attach(row, genreCardHooks());
     if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(row, counterHooks());
-    row.innerHTML = renderCommSlides(posts);
     DroboardGenreCard.setPosts(posts);
     row.innerHTML = renderCommSlides(posts);
     bindCommunityRowFallback(row, posts);
@@ -300,7 +392,6 @@
       const sec2 = document.getElementById('commSec2');
       DroboardGenreCard.attach(row2, genreCardHooks());
       if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(row2, counterHooks());
-      row2.innerHTML = renderCommSlides(COMM_POSTS_B);
       DroboardGenreCard.setPosts(COMM_POSTS_B);
       row2.innerHTML = renderCommSlides(COMM_POSTS_B);
       sec2.style.display = 'block';
@@ -507,6 +598,8 @@
       t.addEventListener('click', () => {
         document.querySelectorAll('.f-tab').forEach(x => x.classList.remove('active'));
         t.classList.add('active');
+        FEED_SORT = t.dataset.sort || 'latest';
+        applySort(true);
         toast('📂 ' + t.textContent.trim());
       });
     });
@@ -937,5 +1030,5 @@
 
   function goToHubs() { location.href = 'genre-hub.html'; }
 
-  window.FeedPage = { init, toast, toggleTheme, openPostComposer, closePostComposer, submitPost, goToHubs };
+  window.FeedPage = { init, toast, toggleTheme, openPostComposer, closePostComposer, submitPost, goToHubs, closeComments };
 })();
