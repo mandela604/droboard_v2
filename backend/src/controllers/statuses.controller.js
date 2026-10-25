@@ -30,7 +30,20 @@ async function create(req, res) {
 async function view(req, res) {
   return base.wrap(res, async () => {
     const status = await statuses.loadOr404(req.valid.params.id);
-    return statuses.viewStatus({ status, userId: req.user && req.user.id });
+    const body = req.valid.body || {};
+    return statuses.viewStatus({
+      status,
+      userId: req.user && req.user.id,
+      anonId: body.anonId || body.viewerId,
+    });
+  });
+}
+
+// GET /api/statuses/:id/viewers — owner/admin only (named readers + guest total).
+async function viewers(req, res) {
+  return base.wrap(res, async () => {
+    const status = await statuses.loadOr404(req.valid.params.id);
+    return statuses.statusViewers({ status, user: req.user });
   });
 }
 
@@ -49,4 +62,4 @@ async function remove(req, res) {
   });
 }
 
-module.exports = { home, me, state, create, view, like, remove };
+module.exports = { home, me, state, create, view, viewers, like, remove };

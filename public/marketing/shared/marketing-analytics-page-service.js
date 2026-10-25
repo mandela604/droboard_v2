@@ -108,6 +108,105 @@ function computeTotals(data) {
   return { impressions, clicks, ctr, conversions, spend };
 }
 
+/* ── Backend numbers (GET /api/ads/performance via AdService) ──
+   The demo build has USE_API=false, so getPerformance() resolves null and
+   every panel keeps its seeded fallback. Flip ad-service.js once and the
+   same panels render real reach, completion, CTR and conversions. */
+const PAGE_TO_PLACEMENT = {
+  discover: 'discover', home: 'discover', search: 'search', feed: 'feed',
+  profile: 'profile', status: 'status', genreHub: 'genre-hub',
+  fullReader: 'end-of-story', scrollReader: 'end-of-story', series: 'end-of-story',
+  comments: 'comments',
+};
+let _lastData = null, _lastDays = 0;
+
+function perfTotals(t) {
+  return {
+    impressions: +t.impressions || 0,
+    viewables: +t.viewables || 0,
+    uniqueViewers: +t.uniqueViewers || 0,
+    clicks: +t.clicks || 0,
+    ctr: +t.ctr || 0,
+    viewabilityRate: +t.viewabilityRate || 0,
+    conversions: +t.conversions || 0,
+    completes: +t.completes || 0,
+    skips: +t.skips || 0,
+    spend: +t.value || 0,
+  };
+}
+function perfSeries(perf) {
+  if (!perf || !Array.isArray(perf.series) || !perf.series.length) return null;
+  return {
+    labels: perf.series.map(s => {
+      const d = new Date(s.date + 'T00:00:00');
+      return isNaN(d) ? s.date : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }),
+    impressions: perf.series.map(s => +s.impressions || 0),
+    viewables: perf.series.map(s => +s.viewables || 0),
+    clicks: perf.series.map(s => +s.clicks || 0),
+    conversions: perf.series.map(s => +s.conversions || 0),
+  };
+}
+function round1(n) { return Math.round((Number(n) || 0) * 10) / 10; }
+
+/* Ad creative label for "top campaigns" (demo inventory lookup; the backend
+   only returns ids, so unknown ids stay readable as the raw id). */
+function creativeMeta(adId) {
+  const pools = (window.DemoData && window.DemoData.AD_POOLS) || {};
+  for (const k of Object.keys(pools)) {
+    const hit = (pools[k] || []).find(a => a && a.id === adId);
+    if (hit) {
+      return {
+        name: hit.campaign || hit.headline || hit.heading || hit.title || hit.brand || adId,
+        type: (k === 'book' || hit.isBook) ? 'story' : 'business',
+      };
+    }
+  }
+  return { name: adId, type: 'business' };
+}
+
+function realPlacementRows(slots) {
+  const agg = {};
+  (slots || []).forEach(s => {
+    const pid = PAGE_TO_PLACEMENT[s.page] || s.page || 'other';
+    const meta = PLACEMENTS.find(p => p.id === pid) || { id: pid, label: pid || 'Other', icon: 'fa-rectangle-ad' };
+    const row = agg[pid] || (agg[pid] = Object.assign({}, meta, {
+      impressions: 0, viewables: 0, clicks: 0, completes: 0, skips: 0, conversions: 0, live: true,
+    }));
+    row.impressions += s.impressions || 0;
+    row.viewables += s.viewables || 0;
+    row.clicks += s.clicks || 0;
+    row.completes += s.completes || 0;
+    row.skips += s.skips || 0;
+    row.conversions += s.conversions || 0;
+  });
+  return Object.keys(agg).map(k => {
+    const r = agg[k];
+    r.ctr = r.impressions ? (r.clicks / r.impressions) * 100 : 0;
+    r.viewabilityRate = r.impressions ? Math.min(100, (r.viewables / r.impressions) * 100) : 0;
+    return r;
+  });
+}
+
+function realCampaignRows(slots) {
+  const agg = {};
+  (slots || []).forEach(s => {
+    const row = agg[s.adId] || (agg[s.adId] = { adId: s.adId, impressions: 0, clicks: 0, conversions: 0 });
+    row.impressions += s.impressions || 0;
+    row.clicks += s.clicks || 0;
+    row.conversions += s.conversions || 0;
+  });
+  return Object.keys(agg).map(id => {
+    const r = agg[id];
+    const meta = creativeMeta(id);
+    return {
+      name: meta.name, type: meta.type, reach: r.impressions,
+      ctr: r.impressions ? round1((r.clicks / r.impressions) * 100) : 0,
+      conversions: r.conversions,
+    };
+  });
+}
+
 function fmtNum(n) {
   n = n || 0;
   if (n >= 1000000) return (n / 1000000).toFixed(n >= 10000000 ? 0 : 1).replace(/\.0$/, '') + 'M';
@@ -140,18 +239,33 @@ function chartJsAvailable() {
    RENDER
 ───────────────────────────────────────── */
 function render(days) {
-  const data = buildRangeData(days);
-  const totals = computeTotals(data);
+  return renderAnalytics(days);
+}
+
+/* Backend-first: pull real per-slot numbers when available, otherwise the
+   deterministic demo dataset keeps every panel populated. */
+async function renderAnalytics(days) {
+  let perf = null;
+  try {
+    if (window.AdService && typeof AdService.getPerformance === 'function') {
+      perf = await AdService.getPerformance({ days });
+    }
+  } catch (e) { perf = null; }
+  const live = !!(perf && perf.totals && (perf.totals.impressions || perf.totals.clicks || perf.totals.conversions));
+  const data = (live && perfSeries(perf)) || buildRangeData(days);
+  _lastData = data;
+  _lastDays = days;
+  const totals = live ? perfTotals(perf.totals) : computeTotals(data);
 
   // Each section below is independent — a failure in one (e.g. the
   // Chart.js CDN being unreachable) no longer prevents the others
   // from rendering their real data.
-  safeRun('stat cards', () => renderStats(totals, days));
+  safeRun('stat cards', () => renderStats(totals, days, live));
   safeRun('trend chart', () => renderTrendChart(data));
-  safeRun('placement performance', () => renderPlacementPerformance(totals));
+  safeRun('placement performance', () => renderPlacementPerformance(totals, live ? perf : null));
   safeRun('reader funnel', () => renderFunnel(totals));
   safeRun('campaign mix chart', () => renderMixChart(totals));
-  safeRun('top campaigns', () => renderTopCampaigns());
+  safeRun('top campaigns', () => renderTopCampaigns(live ? perf : null));
   safeRun('ad revenue share', () => renderAdRevenue(days));
 }
 
@@ -204,12 +318,15 @@ function renderAdRevenue(days) {
   });
 }
 
-function renderStats(totals, days) {
+function renderStats(totals, days, live) {
+  const viewable = live
+    ? (+totals.viewabilityRate || 0).toFixed(1) + '% viewable' + (totals.uniqueViewers ? ' · ' + fmtNum(totals.uniqueViewers) + ' unique' : '')
+    : null;
   const stats = [
-    { n: fmtNum(totals.impressions), l: 'Impressions', ico: 'fa-eye', clr: COLORS.accent, bg: 'rgba(255,0,80,.1)', delta: '+12.4%', up: true },
-    { n: fmtNum(totals.clicks), l: 'Clicks', ico: 'fa-arrow-pointer', clr: COLORS.blue, bg: 'var(--blue-bg)', delta: '+8.1%', up: true },
-    { n: totals.ctr.toFixed(1) + '%', l: 'Avg. CTR', ico: 'fa-percent', clr: COLORS.green, bg: 'var(--green-bg)', delta: '+0.6pt', up: true },
-    { n: (window.DroboardCurrency && DroboardCurrency.usdToMoney ? DroboardCurrency.usdToMoney(totals.spend) : '$' + fmtNum(totals.spend)), l: 'Total Spend', ico: 'fa-sack-dollar', clr: COLORS.amber, bg: 'var(--amber-bg)', delta: days === 90 ? '+21.0%' : '+4.2%', up: true },
+    { n: fmtNum(totals.impressions), l: 'Impressions', ico: 'fa-eye', clr: COLORS.accent, bg: 'rgba(255,0,80,.1)', delta: live ? viewable : '+12.4%', up: true },
+    { n: fmtNum(totals.clicks), l: 'Clicks', ico: 'fa-arrow-pointer', clr: COLORS.blue, bg: 'var(--blue-bg)', delta: live ? 'Live backend' : '+8.1%', up: true },
+    { n: (+totals.ctr || 0).toFixed(1) + '%', l: 'Avg. CTR', ico: 'fa-percent', clr: COLORS.green, bg: 'var(--green-bg)', delta: live ? 'Live backend' : '+0.6pt', up: true },
+    { n: (window.DroboardCurrency && DroboardCurrency.usdToMoney ? DroboardCurrency.usdToMoney(totals.spend) : '$' + fmtNum(totals.spend)), l: live ? 'Attributed Value' : 'Total Spend', ico: 'fa-sack-dollar', clr: COLORS.amber, bg: 'var(--amber-bg)', delta: live ? 'Live backend' : (days === 90 ? '+21.0%' : '+4.2%'), up: true },
   ];
   document.getElementById('statCards').innerHTML = stats.map(s => `
     <div class="stat-card">
@@ -217,7 +334,7 @@ function renderStats(totals, days) {
       <div>
         <div class="stat-num">${s.n}</div>
         <div class="stat-lbl">${s.l}</div>
-        <div class="stat-delta ${s.up ? 'up' : 'down'}"><i class="fas fa-arrow-trend-${s.up ? 'up' : 'down'}"></i>${s.delta} vs previous period</div>
+        <div class="stat-delta ${s.up ? 'up' : 'down'}"><i class="fas fa-${live ? 'circle-check' : 'arrow-trend-' + (s.up ? 'up' : 'down')}"></i>${s.delta}${live ? '' : ' vs previous period'}</div>
       </div>
     </div>`).join('');
 }
@@ -299,23 +416,35 @@ function renderTrendChart(data) {
   });
 }
 
-function renderPlacementPerformance(totals) {
-  const rnd = seeded(totals.impressions % 100000 + 7);
-  const src = PLACEMENTS.filter(p => matches(p.label));
-  const live = spotlightPlacementRow();
-  const includeLive = !!(live && matches(live.label));
-  if (!src.length && !includeLive) {
-    document.getElementById('placementList').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No placements match your search.</div>';
-    return;
+function renderPlacementPerformance(totals, perf) {
+  let rows;
+  if (perf && Array.isArray(perf.slots) && perf.slots.length) {
+    // Real per-placement rows from the ad event stream.
+    rows = realPlacementRows(perf.slots).filter(r => matches(r.label)).sort((a, b) => b.impressions - a.impressions);
+    const live = spotlightPlacementRow();
+    if (live && live.impressions && matches(live.label)) rows.unshift(live);
+    if (!rows.length) {
+      document.getElementById('placementList').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No placements match your search.</div>';
+      return;
+    }
+  } else {
+    const rnd = seeded(totals.impressions % 100000 + 7);
+    const src = PLACEMENTS.filter(p => matches(p.label));
+    const live = spotlightPlacementRow();
+    const includeLive = !!(live && matches(live.label));
+    if (!src.length && !includeLive) {
+      document.getElementById('placementList').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No placements match your search.</div>';
+      return;
+    }
+    const weights = src.map(() => 0.4 + rnd());
+    const weightSum = weights.reduce((a, b) => a + b, 0) || 1;
+    rows = src.map((p, i) => {
+      const impressions = Math.round(totals.impressions * (weights[i] / weightSum));
+      const ctr = 3 + rnd() * 6;
+      return Object.assign({}, p, { impressions, ctr });
+    }).sort((a, b) => b.impressions - a.impressions);
+    if (includeLive) rows.unshift(live);
   }
-  const weights = src.map(() => 0.4 + rnd());
-  const weightSum = weights.reduce((a, b) => a + b, 0) || 1;
-  const rows = src.map((p, i) => {
-    const impressions = Math.round(totals.impressions * (weights[i] / weightSum));
-    const ctr = 3 + rnd() * 6;
-    return Object.assign({}, p, { impressions, ctr });
-  }).sort((a, b) => b.impressions - a.impressions);
-  if (includeLive) rows.unshift(live);
   const maxImp = Math.max.apply(null, rows.map(r => r.impressions).concat(1));
 
   document.getElementById('placementList').innerHTML = rows.map(r => `
@@ -323,7 +452,7 @@ function renderPlacementPerformance(totals) {
       <div class="ph-ico"><i class="fas ${r.icon}"></i></div>
       <div class="ph-info">
         <div class="ph-name">${esc(r.label)}${r.live ? '<span style="font-size:8px;font-weight:800;letter-spacing:.06em;color:var(--green);background:var(--green-bg);border-radius:4px;padding:2px 5px;margin-left:5px;vertical-align:1px">LIVE</span>' : ''}</div>
-        <div class="ph-meta">${fmtNum(r.impressions)} impressions${r.live ? ' · ' + fmtNum(r.clicks) + ' CTA clicks' : ''}</div>
+        <div class="ph-meta">${fmtNum(r.impressions)} impressions${r.live ? ' · ' + fmtNum(r.clicks) + ' clicks' : ''}${r.live && r.viewabilityRate ? ' · ' + r.viewabilityRate.toFixed(1) + '% viewable' : ''}${r.conversions ? ' · ' + fmtNum(r.conversions) + ' conv.' : ''}</div>
       </div>
       <div class="ph-bar-wrap"><div class="ph-bar-track"><div class="ph-bar-fill" style="width:${Math.round(r.impressions / maxImp * 100)}%"></div></div></div>
       <div class="ph-ctr">${(+r.ctr || 0).toFixed(1)}%</div>
@@ -413,8 +542,12 @@ function renderMixChart(totals) {
     <div class="legend-dot"><span style="background:${COLORS.blue}"></span>Business · ${Math.round(businessShare * 100)}%</div>`;
 }
 
-function renderTopCampaigns() {
-  const sorted = TOP_CAMPAIGNS_BASE.filter(c => matches(c.name)).sort((a, b) => b.ctr - a.ctr);
+function renderTopCampaigns(perf) {
+  const source = (perf && Array.isArray(perf.slots) && perf.slots.length)
+    ? realCampaignRows(perf.slots)
+    : TOP_CAMPAIGNS_BASE;
+  const sorted = source.filter(c => matches(c.name))
+    .sort((a, b) => (b.conversions || 0) - (a.conversions || 0) || (b.ctr || 0) - (a.ctr || 0));
   if (!sorted.length) {
     document.getElementById('topCampaigns').innerHTML = '<div style="padding:14px 2px;color:var(--text-faint);font-size:12px">No campaigns match your search.</div>';
     return;
@@ -427,7 +560,7 @@ function renderTopCampaigns() {
         <div class="tc-meta">${fmtNum(c.reach)} reach</div>
       </div>
       <div class="tc-stats">
-        <div class="tc-stat"><b>${c.ctr}%</b><span>CTR</span></div>
+        <div class="tc-stat"><b>${(+c.ctr || 0).toFixed(1)}%</b><span>CTR</span></div>
         <div class="tc-stat"><b>${fmtNum(c.conversions)}</b><span>Conv.</span></div>
       </div>
     </div>`).join('');
@@ -437,11 +570,13 @@ function renderTopCampaigns() {
    EXPORT — real CSV download of the current range (no third-party lib).
 ─────────────────────────────────────────────────────────────── */
 function exportCsv(days) {
-  const data = buildRangeData(days);
-  const rows = [['Date', 'Impressions', 'Clicks', 'CTR']];
+  const data = (_lastData && _lastDays === days) ? _lastData : buildRangeData(days);
+  const rows = [['Date', 'Impressions', 'Viewable', 'Clicks', 'CTR', 'Conversions']];
   for (let i = 0; i < data.labels.length; i++) {
     const ctr = data.impressions[i] ? (data.clicks[i] / data.impressions[i] * 100).toFixed(2) + '%' : '0%';
-    rows.push([data.labels[i], data.impressions[i], data.clicks[i], ctr]);
+    const conv = (data.conversions && data.conversions[i]) || 0;
+    const viewable = (data.viewables && data.viewables[i]) || 0;
+    rows.push([data.labels[i], data.impressions[i], viewable, data.clicks[i], ctr, conv]);
   }
   const csv = rows.map(r => r.join(',')).join('\n');
   try {

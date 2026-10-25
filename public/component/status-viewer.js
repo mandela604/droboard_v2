@@ -43,7 +43,7 @@
 (function () {
   'use strict';
 
-  if (window.__droboardStatusViewer) return;
+  if (window.__droboardStatusViewer && typeof window.openStatusViewer === 'function') return;
   window.__droboardStatusViewer = true;
 
   // ══════════════════════════════════════════════════════════════════════
@@ -229,6 +229,60 @@
     }
     .dsv2-engage-threads i { font-size: 13px; color: #38bdf8; }
     .dsv2-engage-threads:hover { opacity: .85; }
+    .dsv2-engage-views.show { cursor: pointer; }
+
+    /* ── Seen-by sheet (owner taps the eye count) ── */
+    .dsv2-seen {
+      position: absolute; inset: 0; z-index: 30;
+      display: none; background: rgba(0,0,0,.55);
+    }
+    .dsv2-seen.open { display: flex; align-items: flex-end; }
+    .dsv2-seen-sheet {
+      width: 100%; max-height: 72%;
+      background: #14141a; border-radius: 20px 20px 0 0;
+      display: flex; flex-direction: column;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      animation: dsv2SeenUp .22s ease;
+    }
+    @keyframes dsv2SeenUp {
+      from { transform: translateY(28px); opacity: .6; }
+      to   { transform: none; opacity: 1; }
+    }
+    .dsv2-seen-head {
+      display: flex; align-items: center; gap: 4px;
+      padding: 14px 14px 10px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .dsv2-seen-title { font-size: 14px; font-weight: 800; color: #fff; }
+    .dsv2-seen-count { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.5); }
+    .dsv2-seen-close {
+      margin-left: auto; width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,.1); border: none; color: #fff;
+      font-size: 12px; cursor: pointer; flex-shrink: 0;
+    }
+    .dsv2-seen-list { overflow-y: auto; padding: 6px 8px 12px; -webkit-overflow-scrolling: touch; }
+    .dsv2-seen-row { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 12px; }
+    .dsv2-seen-row:active { background: rgba(255,255,255,.05); }
+    .dsv2-seen-av {
+      width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
+      background: rgba(255,0,80,.18); color: #fff; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800;
+    }
+    .dsv2-seen-meta { flex: 1; min-width: 0; }
+    .dsv2-seen-name {
+      font-size: 13px; font-weight: 700; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dsv2-seen-handle { font-size: 11px; color: rgba(255,255,255,.45); }
+    .dsv2-seen-at { font-size: 11px; color: rgba(255,255,255,.4); flex-shrink: 0; }
+    .dsv2-seen-guest {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 8px; margin-top: 2px;
+      border-top: 1px dashed rgba(255,255,255,.12);
+      color: rgba(255,255,255,.65); font-size: 12px; font-weight: 600;
+    }
+    .dsv2-seen-empty { padding: 30px 16px; text-align: center; color: rgba(255,255,255,.45); font-size: 12px; }
 
     /* ── Bottom reply bar ── */
     .dsv2-bottom {
@@ -343,6 +397,20 @@
         </button>
       </div>
 
+      <!-- Owner: who saw this slide -->
+      <div class="dsv2-seen" id="dsv2Seen">
+        <div class="dsv2-seen-sheet" role="dialog" aria-label="Seen by">
+          <div class="dsv2-seen-head">
+            <span class="dsv2-seen-title">Seen by</span>
+            <span class="dsv2-seen-count" id="dsv2SeenCount"></span>
+            <button class="dsv2-seen-close" id="dsv2SeenClose" aria-label="Close">
+              <i class="fas fa-xmark"></i>
+            </button>
+          </div>
+          <div class="dsv2-seen-list" id="dsv2SeenList"></div>
+        </div>
+      </div>
+
     </div>
 
     <div class="dsv2-toast" id="dsv2Toast"></div>
@@ -368,6 +436,8 @@
   let _navSuppressUntil = 0; // ignore the click browsers fire after a long hold
   let _likeState    = {};   // { [wid + ':' + slideIdx]: { liked: bool, count: number } } — per STATUS, not per author
   const _reportedViews = {}; // live status ids already sent to POST /view
+  let _seenToken    = 0;    // invalidates a pending "Seen by" fetch
+  let _seenWasPlaying = false;
 
   // A like belongs to each individual status — key by author + slide index.
   function _likeKey(w, si) { return (w && w.id) + ':' + si; }
@@ -599,15 +669,8 @@
     try {
       document.querySelectorAll('[data-status-ring]').forEach(function (el) {
         if (_normAuthor(el.getAttribute('data-status-ring')) !== key) return;
-        if (el.classList.contains('pcc-avatar-wrap')) {
-          el.classList.toggle('live', ring === 'ring-has' || ring === 'ring-live');
-          el.classList.toggle('viewed', ring === 'ring-viewed');
-        } else if (el.classList.contains('dso-wc-av-ring')) {
-          el.classList.toggle('viewed', ring === 'ring-viewed');
-        } else {
-          el.classList.remove.apply(el.classList, _RING_CLASSES);
-          if (ring) el.classList.add(ring);
-        }
+        el.classList.remove.apply(el.classList, _RING_CLASSES);
+        if (ring) el.classList.add(ring);
       });
     } catch (e) {}
   }
@@ -638,8 +701,29 @@
   let _onAd       = false;
   let _statusAds  = [];
   let _adCursor   = 0;
+  let _currentAd  = null;   // ad on stage, waiting for complete/skip
+  let _adCompleted = false; // full duration played
+  let _lastStatusId = '';   // status the surrounding ad was served between
+  let _adShowing   = '';    // showingId shared by this ad's lifecycle events
 
-  function _trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function _trackAd(id, ev) {
+    try {
+      if (id && window.AdService) {
+        AdService.track(id, ev, {
+          page: 'status', slot: STATUS_AD_SLOT,
+          statusId: _lastStatusId, showingId: _adShowing,
+        });
+      }
+    } catch (e) {}
+  }
+  /* Leaving an ad: full play = complete, anything earlier = skip. */
+  function _finishAd() {
+    if (!_currentAd) return;
+    _trackAd(_currentAd.id, _adCompleted ? 'complete' : 'skip');
+    _currentAd = null;
+    _adCompleted = false;
+    _adShowing = '';
+  }
   async function loadStatusAds() {
     _statusAds = [];
     try {
@@ -664,15 +748,19 @@
   }
   function buildSeq() {
     _seq = []; _seqIdx = 0; _onAd = false;
-    let n = 0;
+    let sinceAd = 0;
     _writers.forEach((w, wi) => {
       (w.statuses || []).forEach((s, si) => {
-        _seq.push({ kind: 'status', wi: wi, si: si }); n++;
-        if (n % _statusEvery === 0) {
-          const ad = nextStatusAd();
-          if (ad) _seq.push({ kind: 'ad', ad: ad, wi: wi });
-        }
+        _seq.push({ kind: 'status', wi: wi, si: si });
+        sinceAd++;
       });
+      /* Ads land BETWEEN authors — never between two statuses of the same
+         author, which would cut one person's storyline in half. */
+      if (sinceAd >= _statusEvery) {
+        const ad = nextStatusAd();
+        if (ad) _seq.push({ kind: 'ad', ad: ad, wi: wi });
+        sinceAd = 0;
+      }
     });
   }
   function _fillEl() {
@@ -710,7 +798,10 @@
   function _startTimer(remaining) {
     clearTimeout(_timer);
     _lastTickAt = _now();
-    _timer = setTimeout(() => _navigate(1), Math.max(0, remaining));
+    _timer = setTimeout(() => {
+      if (_onAd) _adCompleted = true;
+      _navigate(1);
+    }, Math.max(0, remaining));
   }
 
   function _pauseTimer() {
@@ -760,6 +851,7 @@
       // Slide ran out while held — advance once, and swallow the click the
       // browser fires on release so it can't skip a second slide.
       _navSuppressUntil = _now() + 700;
+      if (_onAd) _adCompleted = true;
       _navigate(1);
       return;
     }
@@ -783,17 +875,115 @@
       return !!(window.AuthSession && typeof AuthSession.getStoredUser === 'function' && AuthSession.getStoredUser());
     } catch (e) { return false; }
   }
-  /* Persist "I saw this" server-side once per status, live only. */
+  /* Persist "I saw this" once per status. Signed-in readers and guests both
+     count (guests carry a stable client id); demo slides log locally. */
   function _reportView(w, slide) {
     var sid = slide && slide.id;
-    if (!sid || !_isLiveStatusId(sid) || _reportedViews[sid] || _isMine(w)) return;
-    if (!_liveSession()) return;
+    if (!sid || _reportedViews[sid] || _isMine(w)) return;
     _reportedViews[sid] = 1;
+    if (window.DroboardStatus && typeof DroboardStatus.recordView === 'function') {
+      try { DroboardStatus.recordView(slide, w); return; } catch (e) {}
+    }
+    if (!_isLiveStatusId(sid)) return;
+    // Pages that don't load status-service.js still count guests: same
+    // persistent client id the service uses.
+    let anon = '';
+    try {
+      anon = localStorage.getItem('dro_status_anon_id') || '';
+      if (!anon) {
+        anon = 'anon_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem('dro_status_anon_id', anon);
+      }
+    } catch (e) {}
     fetch('/api/statuses/' + encodeURIComponent(sid) + '/view', {
       method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ anonId: anon || undefined }),
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       if (d && d.views != null) slide.views = d.views;
     }).catch(function () {});
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Seen-by sheet (owner taps the eye count)
+  // ══════════════════════════════════════════════════════════════════════
+  function _esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function _ago(iso) {
+    if (!iso) return '';
+    const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+    if (s < 60) return 'now';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    if (s < 86400) return Math.floor(s / 3600) + 'h';
+    return Math.floor(s / 86400) + 'd';
+  }
+  function _seenOpen() {
+    const el = document.getElementById('dsv2Seen');
+    return !!(el && el.classList.contains('open'));
+  }
+  function _closeSeen() {
+    _seenToken++;
+    const el = document.getElementById('dsv2Seen');
+    if (el) el.classList.remove('open');
+    if (_seenWasPlaying) _resumeTimer();
+    _seenWasPlaying = false;
+  }
+  /* Per-slide viewers from the shared adapter (backend when live, seeded
+     demo audience otherwise). Owners only — never rendered for other people. */
+  function _openSeen() {
+    const w = _currentWriter();
+    const entry = _seq[_seqIdx];
+    const slide = (w && entry && entry.kind === 'status') ? (w.statuses || [])[entry.si] : null;
+    if (!w || !slide || !_isMine(w)) return;
+    const sheet  = document.getElementById('dsv2Seen');
+    const listEl = document.getElementById('dsv2SeenList');
+    const countEl = document.getElementById('dsv2SeenCount');
+    if (!sheet || !listEl) return;
+
+    _seenWasPlaying = !_paused;
+    _pauseTimer();
+    const token = ++_seenToken;
+    sheet.classList.add('open');
+    countEl.textContent = '';
+    listEl.innerHTML = '<div class="dsv2-seen-empty">Loading viewers…</div>';
+
+    const api = window.DroboardStatus;
+    const p = (api && typeof api.viewers === 'function')
+      ? api.viewers(slide.id)
+      : Promise.resolve({ views: slide.views || 0, named: [], guests: 0 });
+
+    p.then(function (d) {
+      if (token !== _seenToken) return;
+      d = d || {};
+      if (d.views != null) slide.views = d.views;
+      countEl.textContent = _fmtN(d.views || 0);
+      const named = (d.named || []).filter(Boolean);
+      const guests = d.guests || 0;
+      if (!named.length && !guests) {
+        listEl.innerHTML = '<div class="dsv2-seen-empty">No views yet — share your status to get eyes on it.</div>';
+        return;
+      }
+      listEl.innerHTML = named.map(function (v) {
+        const init = (v.name || '?')[0].toUpperCase();
+        const av = v.avatar
+          ? '<img class="dsv2-seen-av" src="' + _esc(v.avatar) + '" alt=""/>'
+          : '<div class="dsv2-seen-av">' + _esc(init) + '</div>';
+        const sub = v.handle ? '@' + v.handle : 'Reader';
+        return '<div class="dsv2-seen-row">' + av +
+          '<div class="dsv2-seen-meta"><div class="dsv2-seen-name">' + _esc(v.name || 'Reader') + '</div>' +
+          '<div class="dsv2-seen-handle">' + _esc(sub) + '</div></div>' +
+          '<div class="dsv2-seen-at">' + _esc(_ago(v.at)) + '</div></div>';
+      }).join('') + (guests
+        ? '<div class="dsv2-seen-guest"><i class="fas fa-user-secret"></i>' +
+          _fmtN(guests) + ' signed-out ' + (guests === 1 ? 'view' : 'views') + '</div>'
+        : '');
+    }).catch(function () {
+      if (token !== _seenToken) return;
+      listEl.innerHTML = '<div class="dsv2-seen-empty">Could not load viewers.</div>';
+    });
   }
 
   function _renderSlide() {
@@ -816,6 +1006,10 @@
     const slides  = w.statuses || [];
     const slide   = slides[_slideIdx];
     if (!slide) return;
+    _lastStatusId = slide.id || '';
+    _currentAd = null;
+    _adCompleted = false;
+    _adShowing = '';
 
     // ── Per-status seen state (never author-level) ──
     const authorKey = w.name || w.id;
@@ -895,8 +1089,11 @@
     if (viewsEl && viewsDiv) {
       viewsEl.classList.toggle('show', mine);
       viewsDiv.classList.toggle('show', mine);
-      document.getElementById('dsv2ViewCount').textContent =
-        _fmtN(slide.views != null ? slide.views : (w.views || 0));
+      let vn = slide.views != null ? slide.views : (w.views || 0);
+      if (mine && !_isLiveStatusId(slide.id) && window.DroboardStatus && DroboardStatus.viewsOf) {
+        try { vn = Math.max(vn, DroboardStatus.viewsOf(slide)); } catch (e) {}
+      }
+      document.getElementById('dsv2ViewCount').textContent = _fmtN(vn);
     }
 
     // ── Animate fill bar for current slide ──
@@ -924,18 +1121,15 @@
     _pressAt = 0;
     _lastTickAt = _now();
     if (typeof entry.wi === 'number') _writerIdx = entry.wi;
-    const w = _writers[_writerIdx] || {};
-    const slides = w.statuses || [];
     const ov = document.getElementById('dsv2Ov');
     ov.classList.add('showing-ad');
     document.getElementById('dsv2Views').classList.remove('show');
     document.getElementById('dsv2ViewsDiv').classList.remove('show');
 
-    // Bars: writer's bars complete + one animating ad bar
+    // Bars: the ad owns the stage — the previous author's status bars are
+    // not shown here, so an ad never looks like part of someone's profile.
     const barsEl = document.getElementById('dsv2Bars');
-    barsEl.innerHTML = slides.map((_, i) =>
-      `<div class="dsv2-bar"><div class="dsv2-bar-fill complete" id="dsv2Fill${i}"></div></div>`
-    ).join('') + `<div class="dsv2-bar"><div class="dsv2-bar-fill" id="dsv2FillAd"></div></div>`;
+    barsEl.innerHTML = `<div class="dsv2-bar"><div class="dsv2-bar-fill" id="dsv2FillAd"></div></div>`;
 
     // Header carries the sponsor
     document.getElementById('dsv2WriterName').textContent = 'Sponsored';
@@ -954,6 +1148,9 @@
       }
     } catch (e) { inner = ''; }
     if (!inner) { _navigate(1); return; }
+    _currentAd = ad;
+    _adCompleted = false;
+    _adShowing = (window.AdService && AdService.newShowing) ? AdService.newShowing() : '';
     const contentEl = document.getElementById('dsv2Content');
     contentEl.innerHTML = `
       <div data-slot="status:every-3rd"${ad.id ? ` data-adid="${ad.id}"` : ''} style="height:100%">
@@ -978,6 +1175,14 @@
     }));
 
     _trackAd(ad.id, 'impression');
+    try {
+      if (window.AdService && AdService.observe) {
+        AdService.observe(contentEl, ad.id, {
+          page: 'status', slot: STATUS_AD_SLOT,
+          statusId: _lastStatusId, showingId: _adShowing,
+        });
+      }
+    } catch (e) {}
     const token = _slideToken;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -1001,6 +1206,8 @@
     _elapsed  = 0;
     _pressAt  = 0;
     _slideToken++;
+
+    _finishAd();
 
     const next = _seqIdx + dir;
     if (next < 0 || next >= _seq.length) {
@@ -1073,6 +1280,7 @@
 
   function closeStatusViewer() {
     clearTimeout(_timer);
+    _finishAd(); // closing on an ad = skip (complete only after full play)
     _paused   = false;
     _pressAt  = 0;
     _slideToken++;
@@ -1081,6 +1289,10 @@
     const ov = document.getElementById('dsv2Ov');
     ov.classList.remove('open');
     ov.classList.remove('showing-ad');
+    const seen = document.getElementById('dsv2Seen');
+    if (seen) seen.classList.remove('open');
+    _seenToken++;
+    _seenWasPlaying = false;
     document.body.style.overflow = '';
   }
 
@@ -1107,13 +1319,26 @@
     // Close button
     document.getElementById('dsv2CloseBtn').addEventListener('click', closeStatusViewer);
 
+    // ── Owner: viewers of the current slide ──
+    document.getElementById('dsv2Views').addEventListener('click', e => {
+      e.stopPropagation();
+      _openSeen();
+    });
+    document.getElementById('dsv2SeenClose').addEventListener('click', e => {
+      e.stopPropagation();
+      _closeSeen();
+    });
+    document.getElementById('dsv2Seen').addEventListener('click', e => {
+      if (e.target && e.target.id === 'dsv2Seen') _closeSeen();
+    });
+
     // ── Press-and-hold to pause ──
     const ov = document.getElementById('dsv2Ov');
     const HOLD_MS = 320;
 
     ov.addEventListener('pointerdown', e => {
       // Don't pause on interactive controls
-      if (e.target.closest('.dsv2-close, .dsv2-engage, .dsv2-bottom, .dsv2-top, .dsv2-slide-story')) return;
+      if (e.target.closest('.dsv2-close, .dsv2-engage, .dsv2-bottom, .dsv2-top, .dsv2-slide-story, .dsv2-seen')) return;
       if (e.button != null && e.button > 0) return;
       _pressAt = _now();
       _pauseTimer();
@@ -1121,6 +1346,8 @@
 
     // Release anywhere (finger may leave the stage) resumes playback once.
     function release(e) {
+      // The Seen-by sheet owns playback state while it is open.
+      if (_seenOpen()) { _pressAt = 0; return; }
       if (!_paused) { _pressAt = 0; return; }
       const held = _pressAt ? _now() - _pressAt : 0;
       _pressAt = 0;

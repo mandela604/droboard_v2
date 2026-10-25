@@ -214,7 +214,7 @@
   function renderStoryPromo(ad) {
     injectStyles();
     const href = storyHref(ad);
-    return `<div class="dac-story-promo${ad.isBook ? ' dac-book' : ''}" data-adid="${esc(ad.id || '')}" data-href="${href}" style="cursor:pointer" onclick="if(window.AdService)AdService.track(this.dataset.adid,'click');window.location.href=this.dataset.href">
+    return `<div class="dac-story-promo${ad.isBook ? ' dac-book' : ''}" data-adid="${esc(ad.id || '')}" data-href="${href}" style="cursor:pointer" onclick="if(window.AdService)AdService.track(this.dataset.adid,'click',window.DroboardAdCard&&DroboardAdCard.ctx?DroboardAdCard.ctx():null);window.location.href=this.dataset.href">
       <div class="dac-story-promo-cover"><img src="${esc(ad.img || ad.cover)}" loading="lazy" alt=""/></div>
       <div class="dac-story-promo-body">
         <div class="dac-story-promo-cat">${esc(ad.cat || ad.genre || 'Story')}</div>
@@ -233,7 +233,7 @@
   function renderListBook(ad) {
     injectStyles();
     const href = storyHref(ad);
-    return `<div class="dac-story-promo dac-book" data-adid="${esc(ad.id || '')}" data-href="${href}" style="cursor:pointer" onclick="if(window.AdService)AdService.track(this.dataset.adid,'click');window.location.href=this.dataset.href">
+    return `<div class="dac-story-promo dac-book" data-adid="${esc(ad.id || '')}" data-href="${href}" style="cursor:pointer" onclick="if(window.AdService)AdService.track(this.dataset.adid,'click',window.DroboardAdCard&&DroboardAdCard.ctx?DroboardAdCard.ctx():null);window.location.href=this.dataset.href">
       <div class="dac-story-promo-cover"><img src="${esc(ad.img || ad.cover)}" loading="lazy" alt=""/></div>
       <div class="dac-story-promo-body">
         <div class="dac-story-promo-cat">${esc(ad.cat || ad.genre || 'Story')}</div>
@@ -555,6 +555,33 @@
      EXPORT
   ═══════════════════════════════════════════════════════════ */
 
+  /* Attribution for cards dropped straight into a page (no AdSlot wrapper):
+     derive page/slot from the current document so events never land under an
+     empty page. AdSlot callers still pass their own ctx through attach(). */
+  const _PAGE_CTX = {
+    index: ['home', 'home:swipe-card'],
+    home: ['home', 'home:swipe-card'],
+    feed: ['feed', 'feed:in-feed'],
+    discover: ['discover', 'discover:strip'],
+    library: ['library', 'library:slider'],
+    'genre-hub': ['genreHub', 'genreHub:strip'],
+    'droboard-page': ['droboardPage', 'droboardPage:feed'],
+    followers: ['followers', 'followers:in-feed'],
+    profile: ['profile', ''],
+    series: ['series', 'series:main'],
+    collection: ['collection', 'collection:top'],
+    search: ['search', ''],
+    discussion: ['discussion', 'discussion:inline'],
+    debate: ['debate', 'debate:inline'],
+    comments: ['comments', 'comments:inline'],
+  };
+  function ctx() {
+    let file = '';
+    try { file = (location.pathname.split('/').pop() || '').replace(/\.html?$/i, ''); } catch (e) {}
+    const m = _PAGE_CTX[file];
+    return m ? { page: m[0], slot: m[1] } : { page: file || 'other' };
+  }
+
   window.AdCard = { platformAd, bookAd, render, renderAll, esc, storyHref, profileHref };
 
   window.DroboardAdCard = {
@@ -562,6 +589,6 @@
     renderPlatform, renderListPlatform, renderStoryPromo, renderListBook,
     renderFollowPromo, renderBanner, renderMiniBanner, renderFullscreen, renderFullscreenStory, renderFullscreenBrand, renderNative,
     renderEmbed, hydrateEmbeds,
-    renderSponsored, attach, update, toggleLike,
+    renderSponsored, attach, update, toggleLike, ctx,
   };
 })();

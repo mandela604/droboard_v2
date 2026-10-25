@@ -168,7 +168,7 @@ function renderFeed(){
    Placement 'droboardPage' (enabled + interval) is marketing-controlled;
    ads target the page via their pages list. Cached per session. */
 let drbAdCfg = null, drbAdLoading = false;
-function trackAdSlot(id, ev){ try{ if(id && window.AdService) AdService.track(id, ev); }catch(e){} }
+function trackAdSlot(id, ev){ try{ if(id && window.AdService) AdService.track(id, ev, { page: 'droboardPage', slot: 'droboardPage:feed' }); }catch(e){} }
 async function loadDroboardAdCfg(){
   if(!window.AdService || !window.DroboardAdCard) return null;
   try{

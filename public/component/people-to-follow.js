@@ -50,12 +50,6 @@
 
 /* ── Avatar + status ring ── */
 .ptf-av-wrap{position:relative;width:52px;height:52px}
-.ptf-ring{width:100%;height:100%;border-radius:50%;padding:2.2px;box-sizing:border-box;transition:background .2s}
- .ptf-ring.ring-has{background:conic-gradient(var(--acc,#ff0050),var(--acc2,#ff4d7a),var(--acc3,#ff7a9a),var(--acc,#ff0050))}
-.ptf-ring.ring-live{background:conic-gradient(var(--acc,#ff0050),var(--acc2,#ff4d7a),var(--acc3,#ff7a9a),var(--acc,#ff0050))}
-.ptf-ring.ring-viewed{background:var(--tx-faint,#3f3f46)}
-.ptf-ring.ring-none{background:var(--l3,#13141a)}
-.ptf-ring-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg,#000)}
 .ptf-av{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;border-radius:50%}
 .ptf-av-initial{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--acc3,#ff7a9a);background:rgba(255,0,80,.1);cursor:pointer}
 .ptf-live-dot{position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;background:var(--acc,#ff0050);border:2.5px solid var(--bg,#000);display:flex;align-items:center;justify-content:center;font-size:6px;color:#fff;animation:ptfPulse 1.4s ease-in-out infinite;pointer-events:none}
@@ -109,15 +103,9 @@
     return Array.isArray(p.statuses) && p.statuses.length > 0;
   }
 
-  function _ringClass(p) {
-    if (p.ring) return p.ring;
-    return _hasStatuses(p) ? 'ring-has' : 'ring-none';
-  }
-
   /* ─── BUILD HTML ──────────────────────────────────────────── */
   function _buildAvatar(p, i) {
     const av = _avatarUrl(p);
-    const ring = _ringClass(p);
     const inner = av
       ? `<img class="ptf-av" src="${av}" loading="lazy" alt="${p.name}"/>`
       : `<div class="ptf-av-initial">${(p.name || '?')[0].toUpperCase()}</div>`;
@@ -125,9 +113,10 @@
 
     return `
       <div class="ptf-av-wrap" data-ptf-avatar="${i}">
-        <div class="ptf-ring ${ring}" data-status-ring="${ringKey}">
-          <div class="ptf-ring-inner">${inner}</div>
-        </div>
+        ${DroboardStatusRing.html(p, {
+          size: 52, key: ringKey, innerHtml: inner,
+          innerBg: 'var(--bg,#000)', gapColor: 'var(--bg,#000)',
+        })}
         ${p.isLive ? '<div class="ptf-live-dot"><i class="fas fa-signal" style="font-size:5px"></i></div>' : ''}
         ${p.verified ? '<div class="ptf-verified"><i class="fas fa-check"></i></div>' : ''}
       </div>`;
@@ -178,12 +167,12 @@
         const p = people[i];
         if (!p) return;
 
-        if (_hasStatuses(p) && typeof window.openStatusViewer === 'function') {
+        if (_hasStatuses(p)) {
           // Pass the full people list so the viewer can page between writers,
           // just like it does with WRITER_STATUSES on the feed.
-          window.openStatusViewer(people, p.id);
-          if (typeof options.onOpenStatus === 'function') options.onOpenStatus(p);
-          return;
+          DroboardStatusRing.open(people, p.id).then(function (ok) {
+            if (ok && typeof options.onOpenStatus === 'function') options.onOpenStatus(p);
+          });
         }
 
   
@@ -232,9 +221,10 @@
 
       people[idx].ring = ring;
 
-      const wrapEl = container.querySelector(`[data-ptf-avatar="${idx}"] .ptf-ring`);
+      const wrapEl = container.querySelector(`[data-ptf-avatar="${idx}"] .dring`);
       if (wrapEl) {
-        wrapEl.className = 'ptf-ring ' + _ringClass(people[idx]);
+        wrapEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
+        if (ring) wrapEl.classList.add(ring);
       }
     };
 

@@ -407,6 +407,7 @@
     genreHub: 'Genre Hub', library: 'Library', search: 'Search',
     droboardPage: 'DroBoard Page', overlayBrowse: 'Browse Overlay',
     comments: 'Comments', profile: 'Profile', debate: 'Debate',
+    status: 'Status Viewer',
   };
   function surfaceLabel(key) { return SURFACE_LABELS[key] || key; }
 

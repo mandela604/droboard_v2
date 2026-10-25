@@ -111,11 +111,6 @@ body.theme-white .hero-scrim{background:linear-gradient(0deg,rgba(255,255,255,.9
 .hero-body{position:absolute;bottom:0;left:0;right:0;z-index:4;padding:14px 14px 18px}
 .hero-title{font-family:var(--font-d);font-size:20px;font-weight:900;line-height:1.22;color:var(--tx);text-shadow:0 2px 14px rgba(0,0,0,.15);margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .hero-writer{display:flex;align-items:center;gap:9px}
-    .hw-av-ring{width:34px;height:34px;border-radius:50%;background:transparent;padding:0;flex-shrink:0;cursor:pointer;}
-    .hw-av-ring.ring-has{background:conic-gradient(var(--acc),#ff6b8a,var(--acc2),var(--acc));padding:2px;}
-    .hw-av-ring.ring-viewed{background:rgba(102,102,102,.75);padding:2px;}
-.hw-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#000}
-.hw-av-inner img{width:100%;height:100%;object-fit:cover}
 .hw-info{flex:1;min-width:0}
 .hw-name{font-size:12px;font-weight:700;color:var(--tx);cursor:pointer}
 .hw-handle{font-size:10px;color:var(--tx2)}
@@ -260,11 +255,6 @@ body.theme-white .hw-follow{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.
 body.theme-white .wc-banner{background:linear-gradient(120deg,#ffe1ec,#ffd0e0,#ffe8ef);}
 .wc-body{padding:0 14px 14px}
 .wc-av-row{display:flex;align-items:flex-end;justify-content:space-between;margin-top:-22px;margin-bottom:10px}
-    .wc-av-ring{width:48px;height:48px;border-radius:50%;background:transparent;padding:0;cursor:pointer;}
-    .wc-av-ring.ring-has{background:conic-gradient(var(--acc),#ff6b8a,var(--acc2),var(--acc));padding:2.5px;box-shadow:0 0 12px var(--glow);}
-    .wc-av-ring.ring-viewed{background:rgba(102,102,102,.75);padding:2.5px;}
-.wc-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#111118}
-.wc-av-inner img{width:100%;height:100%;object-fit:cover}
 .wc-follow{background:var(--bg2);color:var(--tx);padding:6px 15px;border-radius:var(--r-pill);font-size:10px;font-weight:800;cursor:pointer;transition:.2s;}
 .wc-follow.ing{background:var(--bg2);border:1.5px solid var(--bd);color:var(--muted);}
 .wc-follow:active{transform:scale(.95)}
@@ -565,8 +555,10 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
   <script src="../services/rate-api.js"></script>
   <script src="../component/tip-picker.js"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/status-viewer.js?v=6"></script>
-<script src="../component/comment-section.js?v=6"></script>
+<script src="../component/status-viewer.js?v=10"></script>
+<script src="../component/status-ring.js?v=1"></script>
+<script src="../shared/status-loader.js"></script>
+<script src="../component/comment-section.js?v=9"></script>
   <script src="../component/discover-card.js?v=3"></script>
 <script src="../component/more-like-this.js"></script>
 <script src="../component/community-cards.js"></script>
@@ -576,7 +568,7 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
 <script src="../data/comments-data.js"></script>
 
 <!-- ═══ Page service ═══ -->
-<script src="../services/bridge-service.js?v=2"></script>
+<script src="../services/bridge-service.js?v=3"></script>
 
 <script>
 BridgePage.init();

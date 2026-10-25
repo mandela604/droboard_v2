@@ -29,8 +29,8 @@
 
   /* ── Demo data ── */
   var BOOKS = [
-    { id: 'b1', title: 'The Midnight Protocol', genre: 'Romance', cover: 'https://picsum.photos/seed/book1/100/140', chapters: 5, desc: 'A sweeping romance of love, betrayal, and redemption.', chapterList: [{ id: 'b1c1', name: 'Ch 1 — The Letter' }, { id: 'b1c2', name: 'Ch 2 — First Meeting' }, { id: 'b1c3', name: 'Ch 3 — The Agreement' }, { id: 'b1c4', name: 'Ch 4 — Late Night Call' }, { id: 'b1c5', name: 'Ch 5 — Confession' }] },
-    { id: 'b2', title: 'Echoes of Yesterday', genre: 'Drama', cover: 'https://picsum.photos/seed/book2/100/140', chapters: 3, desc: 'Short stories exploring memory, loss, and the echoes we leave behind.', chapterList: [{ id: 'b2c1', name: 'Ch 1 — Return' }, { id: 'b2c2', name: 'Ch 2 — Old Friends' }, { id: 'b2c3', name: 'Ch 3 — The Truth' }] },
+    { id: 'b1', title: 'The Midnight Protocol', genre: 'Romance', status: 'ongoing', cover: 'https://picsum.photos/seed/book1/100/140', chapters: 5, desc: 'A sweeping romance of love, betrayal, and redemption.', chapterList: [{ id: 'b1c1', name: 'Ch 1 — The Letter' }, { id: 'b1c2', name: 'Ch 2 — First Meeting' }, { id: 'b1c3', name: 'Ch 3 — The Agreement' }, { id: 'b1c4', name: 'Ch 4 — Late Night Call' }, { id: 'b1c5', name: 'Ch 5 — Confession' }] },
+    { id: 'b2', title: 'Echoes of Yesterday', genre: 'Drama', status: 'published', cover: 'https://picsum.photos/seed/book2/100/140', chapters: 3, desc: 'Short stories exploring memory, loss, and the echoes we leave behind.', chapterList: [{ id: 'b2c1', name: 'Ch 1 — Return' }, { id: 'b2c2', name: 'Ch 2 — Old Friends' }, { id: 'b2c3', name: 'Ch 3 — The Truth' }] },
   ];
 
   var CHANGES = [
@@ -41,18 +41,53 @@
     { icon: 'fa-tag', label: 'Change Genre/Tags' }
   ];
 
+  /* Current → new comparison per change type (cover has its own UI). */
+  var FIELDS = {
+    'Change Title': { key: 'title', label: 'Title', type: 'text' },
+    'Change Synopsis': { key: 'synopsis', label: 'Synopsis', type: 'textarea' },
+    'Change Genre/Tags': { key: 'genre', label: 'Genre / Tags', type: 'text' }
+  };
+
+  function currentValue(book, key) {
+    if (key === 'title') return book.title || '';
+    if (key === 'synopsis') return book.desc || '';
+    if (key === 'genre') return book.genre || '';
+    return '';
+  }
+
+  function renderCompare(book, changes) {
+    var wrap = document.getElementById('modalBodyCompare');
+    var defs = changes.map(function (c) { return FIELDS[c]; }).filter(Boolean);
+    if (!book || !defs.length) { wrap.innerHTML = ''; wrap.style.display = 'none'; return false; }
+    wrap.innerHTML = defs.map(function (d) {
+      var cur = currentValue(book, d.key);
+      var ph = 'New ' + d.label.toLowerCase() + '…';
+      var input = d.type === 'textarea'
+        ? '<textarea class="compare-input" data-field="' + d.key + '" placeholder="' + ph + '"></textarea>'
+        : '<input class="compare-input" data-field="' + d.key + '" placeholder="' + ph + '"/>';
+      return '<div class="compare-field">'
+        + '<div class="compare-label">' + d.label + '</div>'
+        + '<div class="compare-pair">'
+        + '<div class="compare-cell"><label>Current</label><div class="compare-current">' + (cur ? esc(cur) : '<span class="dim">Not set</span>') + '</div></div>'
+        + '<div class="compare-arrow"><i class="fas fa-arrow-right"></i></div>'
+        + '<div class="compare-cell"><label>Change to</label>' + input + '</div>'
+        + '</div></div>';
+    }).join('');
+    wrap.style.display = '';
+    return true;
+  }
+
   function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2400); }
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
   function renderList() {
     document.getElementById('seriesList').innerHTML = BOOKS.map(function (s) {
       return '<div class="series-row" data-sid="' + s.id + '">'
-        + '<div class="series-header">'
-        + '<img class="series-cover" src="' + esc(s.cover) + '" alt=""/>'
-        + '<div class="series-info"><div class="series-title">' + esc(s.title) + '</div>'
-        + '<div class="series-meta">' + esc(s.genre || '') + ' · ' + s.chapters + ' chapters</div>'
-        + '<div class="series-desc">' + esc(s.desc || '') + '</div></div>'
-        + '<i class="fas fa-chevron-down series-chevron"></i></div>'
+        + DroboardBookCard.render({
+          id: s.id, cover: s.cover, title: s.title, genre: s.genre,
+          stats: [{ icon: 'fas fa-list-ul', text: s.chapters + ' chapters' }],
+          desc: s.desc, status: s.status || 'ongoing', chevron: 'down'
+        })
         + '<div class="series-accordion"><div class="accordion-inner">'
         + '<div class="change-options">'
         + CHANGES.map(function (c) {
@@ -65,13 +100,17 @@
         + '</div></div></div>';
     }).join('');
 
-    document.querySelectorAll('.series-header').forEach(function (h) {
+    document.querySelectorAll('.series-row .dbc-card').forEach(function (h) {
       h.addEventListener('click', function (e) {
         if (e.target.closest('.change-opt') || e.target.closest('.submit-selected')) return;
         var row = h.parentElement;
         var wasOpen = row.classList.contains('open');
-        document.querySelectorAll('.series-row').forEach(function (r) { r.classList.remove('open'); });
-        if (!wasOpen) row.classList.add('open');
+        document.querySelectorAll('.series-row').forEach(function (r) {
+          r.classList.remove('open');
+          var c = r.querySelector('.dbc-card');
+          if (c) c.classList.remove('dbc-open');
+        });
+        if (!wasOpen) { row.classList.add('open'); h.classList.add('dbc-open'); }
       });
     });
 
@@ -144,15 +183,17 @@
     var hasCover = changes.indexOf('Change Cover') !== -1;
     document.getElementById('modalBodyCover').style.display = hasCover ? '' : 'none';
     if (hasCover) resetCoverUI(book);
+    var hasFields = renderCompare(book, changes);
     document.getElementById('requestDetails').placeholder = hasCover
-      ? 'Describe the changes you need… (optional if you uploaded a new cover)'
-      : 'Describe the changes you need…';
+      ? 'Additional notes about the new cover (optional)…'
+      : (hasFields ? 'Additional notes (optional)…' : 'Describe the changes you need…');
     document.getElementById('modalBodyTextarea').style.display = '';
     document.getElementById('modalBodyReorder').style.display = 'none';
     document.getElementById('requestModal').classList.add('open');
     document.getElementById('requestModal')._sid = sid;
     document.getElementById('requestModal')._changes = changes;
     document.getElementById('requestModal')._order = null;
+    document.getElementById('requestModal')._coverData = null;
   }
 
   function openReorderModal(sid) {
@@ -166,6 +207,7 @@
     document.getElementById('selectedTags').innerHTML = '<span class="selected-tag">Reorder Chapters</span>';
     document.getElementById('modalBodyTextarea').style.display = 'none';
     document.getElementById('modalBodyCover').style.display = 'none';
+    renderCompare(null, []);
     document.getElementById('modalBodyReorder').style.display = '';
     resetCoverUI(book);
     var list = document.getElementById('reorderList');
@@ -213,12 +255,25 @@
       payload.order = order;
     } else {
       var details = document.getElementById('requestDetails').value.trim();
-      var coverData = modal._coverData || null;
-      var wantsCover = (modal._changes || []).indexOf('Change Cover') !== -1;
-      if (!details && !(wantsCover && coverData)) { document.getElementById('requestDetails').style.borderColor = 'var(--red)'; return; }
+      var wantsCover = changes.indexOf('Change Cover') !== -1;
+      var coverData = wantsCover ? (modal._coverData || null) : null;
+      var fields = {};
+      var empties = [];
+      document.querySelectorAll('#modalBodyCompare [data-field]').forEach(function (inp) {
+        var v = inp.value.trim();
+        inp.style.borderColor = '';
+        if (v) fields[inp.getAttribute('data-field')] = v;
+        else empties.push(inp);
+      });
       document.getElementById('requestDetails').style.borderColor = '';
+      var fieldKeys = Object.keys(fields);
+      if (!details && !coverData && !fieldKeys.length) {
+        (empties[0] || document.getElementById('requestDetails')).style.borderColor = 'var(--red)';
+        return;
+      }
       if (details) payload.details = details;
-      if (wantsCover && coverData) payload.coverImage = coverData; /* demo: base64 data URL — backend decodes or swap to multipart upload */
+      if (fieldKeys.length) payload.fields = fields;
+      if (coverData) payload.coverImage = coverData; /* demo: base64 data URL — backend decodes or swap to multipart upload */
     }
     var btn = document.querySelector('.modal-btn.send');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
@@ -229,6 +284,12 @@
       document.querySelectorAll('.change-opt.selected[data-sid="' + sid + '"]').forEach(function (o) { o.classList.remove('selected'); });
       updateSubmitBtn(sid);
       toast((book ? book.title : 'Book') + ' — ' + changes.length + ' change' + (changes.length > 1 ? 's' : '') + ' submitted!');
+      if (window.droNotify) window.droNotify({
+        type: 'book_change_result', key: 'bc:' + sid + ':' + changes.slice().sort().join('|'),
+        title: changes.length + ' change request' + (changes.length > 1 ? 's' : '') + ' sent',
+        desc: (book ? book.title : 'This book') + ' — editors will review ' + changes.join(', ').toLowerCase() + '.',
+        link: { label: 'Track requests' },
+      });
     } catch (e) {
       btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit';
       toast('Could not submit request');
@@ -241,7 +302,7 @@
       if (Array.isArray(books) && books.length) {
         BOOKS = books.map(function (b) {
           return {
-            id: b.id, title: b.title, genre: b.genre, cover: b.cover,
+            id: b.id, title: b.title, genre: b.genre, cover: b.cover, status: b.status,
             chapters: b.chapterCount || (b.chapters && b.chapters.length) || 0,
             desc: b.synopsis || '',
             chapterList: (b.chapters || []).map(function (c, i) { return { id: c.id || ('c' + i), name: 'Ch ' + (c.n || (i + 1)) + ' — ' + (c.title || '') }; }),

@@ -128,9 +128,10 @@
       if (ad.cover || ad.image) document.getElementById('rwdBg').style.backgroundImage = "url('" + (ad.cover || ad.image) + "')";
       else document.getElementById('rwdBg').style.backgroundImage = '';
     } catch (e) {}
-    try { if (window.AdService && ad.id) AdService.track(ad.id, 'impression'); } catch (e) {}
+    var adCtx = { page: 'rewarded', slot: 'rewarded:overlay' };
+    try { if (window.AdService && ad.id) AdService.track(ad.id, 'impression', adCtx); } catch (e) {}
     box.onclick = function () {
-      try { if (window.AdService && ad.id) AdService.track(ad.id, 'click'); } catch (e) {}
+      try { if (window.AdService && ad.id) AdService.track(ad.id, 'click', adCtx); } catch (e) {}
     };
   }
 

@@ -40,7 +40,7 @@
       ]},
       { title: 'Communication', items: [
         { label: 'Messages', icon: 'fa-comment-dots', href: '../Pages/chat.html' },
-        { label: 'Notifications', icon: 'fa-bell', href: '../Pages/notifications.html' }
+        { label: 'Notifications', icon: 'fa-bell', href: '../Pages/notifications.html?role=author' }
       ]},
       { title: 'Settings', items: [{ label: 'Settings', icon: 'fa-gear', href: '../Pages/settings.html' }] }
     ];

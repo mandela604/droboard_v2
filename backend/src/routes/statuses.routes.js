@@ -53,8 +53,15 @@ router.get('/state', generalLimiter, optionalAuth,
   ctrl.state);
 router.post('/', requireAuth, writeLimiter, audit('statuses.create'), multerMw,
   validate(z.object({ body: statusFormBody })), ctrl.create);
+// Views are logged for signed-in users AND guests (stable anonId from the
+// client). Owner-only "seen by" lives at /:id/viewers.
 router.post('/:id/view', generalLimiter, optionalAuth,
-  validate(z.object({ params: z.object({ id }) })), ctrl.view);
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ anonId: z.string().max(80).optional(), viewerId: z.string().max(80).optional() }).strict().optional(),
+  })), ctrl.view);
+router.get('/:id/viewers', generalLimiter, requireAuth,
+  validate(z.object({ params: z.object({ id }) })), ctrl.viewers);
 router.post('/:id/like', requireAuth, writeLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.like);
 router.delete('/:id', requireAuth, writeLimiter, audit('statuses.delete'),

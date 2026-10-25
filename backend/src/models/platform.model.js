@@ -77,10 +77,52 @@ const adPlacementSchema = new mongoose.Schema({
 const adStatSchema = new mongoose.Schema({
   adId: { type: String, required: true, index: true },
   day: { type: Date, required: true, index: true },
-  impressions: { type: Number, default: 0 },
+  impressions: { type: Number, default: 0 }, // one per rendered showing
+  viewables: { type: Number, default: 0 },   // IAB: >=50% visible for 1s
   clicks: { type: Number, default: 0 },
+  completes: { type: Number, default: 0 }, // creative played to the end
+  skips: { type: Number, default: 0 },     // closed / swiped before the end
+  conversions: { type: Number, default: 0 },
+  conversionValue: { type: Number, default: 0 },
 }, { timestamps: false });
 adStatSchema.index({ adId: 1, day: 1 }, { unique: true });
+
+// Raw lifecycle stream (impression → viewable → click → complete/skip/…).
+// Feeds the marketing console and debugging; TTL keeps 90 days.
+// `showingId` identifies one rendered ad instance, so the same creative can
+// legitimately produce many impressions. `eventKey` (impression/viewable only)
+// is unique per instance — retries and fetch/sendBeacon double-sends collapse.
+const adEventSchema = new mongoose.Schema({
+  adId: { type: String, required: true, index: true },
+  event: { type: String, required: true, index: true },
+  page: { type: String, default: '', index: true },
+  slot: { type: String, default: '' },
+  storyId: { type: String, default: '' },
+  showingId: { type: String, default: '' },
+  eventKey: { type: String }, // impression/viewable only — unique sparse
+  userId: { type: String, default: '', index: true },
+  anonId: { type: String, default: '' },
+  at: { type: Date, default: Date.now, index: true },
+}, { timestamps: false });
+adEventSchema.index({ at: 1 }, { expireAfterSeconds: 90 * 24 * 3600 });
+adEventSchema.index({ eventKey: 1 }, { unique: true, sparse: true });
+
+// One row per attributed conversion. `orderId` makes client + advertiser
+// postback idempotent (both carry the same id).
+const adConversionSchema = new mongoose.Schema({
+  adId: { type: String, required: true, index: true },
+  orderId: { type: String, index: true },
+  userId: { type: String, default: '' },
+  anonId: { type: String, default: '' },
+  value: { type: Number, default: 0 },
+  currency: { type: String, default: 'USD' },
+  page: { type: String, default: '' },
+  slot: { type: String, default: '' },
+  storyId: { type: String, default: '' },
+  source: { type: String, default: 'client' }, // client | postback
+}, { timestamps: { createdAt: true, updatedAt: false } });
+adConversionSchema.index({ orderId: 1 }, { unique: true, sparse: true });
+adConversionSchema.index({ adId: 1, createdAt: -1 });
 
 // Per-user ad clicks (powers Ad Responders segment; aggregates stay in AdStat).
 const adClickSchema = new mongoose.Schema({
@@ -125,6 +167,8 @@ module.exports = {
   AdInventory: mongoose.model('AdInventory', adInventorySchema),
   AdPlacement: mongoose.model('AdPlacement', adPlacementSchema),
   AdStat: mongoose.model('AdStat', adStatSchema),
+  AdEvent: mongoose.model('AdEvent', adEventSchema),
+  AdConversion: mongoose.model('AdConversion', adConversionSchema),
   AdClick: mongoose.model('AdClick', adClickSchema),
   AdView: mongoose.model('AdView', adViewSchema),
   SearchLog: mongoose.model('SearchLog', searchLogSchema),

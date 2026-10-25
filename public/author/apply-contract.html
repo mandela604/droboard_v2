@@ -274,14 +274,14 @@ button{font-family:inherit;cursor:pointer}
         <div class="kyc-hint" style="margin-top:0">Clear photos of your ID, <b>front and back</b> — required by our editors before a contract can be signed.</div>
         <div class="kyc-uploads">
           <label class="kyc-upload" id="upFrontBox">
-            <input type="file" accept="image/*" capture="environment" id="kycFront" hidden/>
+            <input type="file" accept="image/*" id="kycFront" hidden/>
             <img class="kyc-up-img" id="frontImg" alt="" hidden/>
-            <i class="fas fa-camera"></i><span>Front of ID</span><em id="frontName">Tap to capture</em>
+            <i class="fas fa-cloud-arrow-up"></i><span>Front of ID</span><em id="frontName">Tap to upload</em>
           </label>
           <label class="kyc-upload" id="upBackBox">
-            <input type="file" accept="image/*" capture="environment" id="kycBack" hidden/>
+            <input type="file" accept="image/*" id="kycBack" hidden/>
             <img class="kyc-up-img" id="backImg" alt="" hidden/>
-            <i class="fas fa-camera"></i><span>Back of ID</span><em id="backName">Tap to capture</em>
+            <i class="fas fa-cloud-arrow-up"></i><span>Back of ID</span><em id="backName">Tap to upload</em>
           </label>
         </div>
       </div>
@@ -376,7 +376,8 @@ button{font-family:inherit;cursor:pointer}
 
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js"></script>
-<script src="services/apply-contract-service.js?v=4"></script>
+<script src="../services/notification-store.js?v=5"></script>
+<script src="services/apply-contract-service.js?v=6"></script>
 <script>ApplyContractService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

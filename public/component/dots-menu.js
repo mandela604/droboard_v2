@@ -144,6 +144,7 @@
         : { action: 'Pin', icon: 'fa-thumbtack', label: 'Pin to top' });
     }
     items.push({ sep: true });
+    if (post.shareable) items.push({ action: 'Share', icon: 'fa-share-nodes', label: 'Share' });
     items.push({ action: 'CopyLink', icon: 'fa-link', label: 'Copy link' });
     return items;
   }

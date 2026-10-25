@@ -40,12 +40,18 @@
       if(!book.chapters.length)return '';
       hasAny=true;
       var isOpen=openBooks[book.id];
+      var chCount=book.chapters.length;
+      var totalWords=book.chapters.reduce(function(sum,ch){return sum+(ch.words||0);},0);
+      var needsRev=book.chapters.some(function(ch){return ch.status==='revision';});
       return '<div class="book-section'+(isOpen?' open':'')+'" data-bid="'+book.id+'">'
-        +'<div class="book-header" onclick="toggleBook(\''+book.id+'\')">'
-        +'<img class="book-cover" src="'+book.cover+'" alt=""/>'
-        +'<div class="book-info"><div class="book-title">'+book.title+'</div>'
-        +'<div class="book-meta">'+book.chapters.length+' chapter'+(book.chapters.length>1?'s':'')+' under review</div></div>'
-        +'<i class="fas fa-chevron-down book-chevron"></i></div>'
+        +DroboardBookCard.render({
+          id:book.id, cover:book.cover, title:book.title,
+          genre:chCount+' chapter'+(chCount>1?'s':'')+' under review',
+          stats:[{icon:'fas fa-list-ul',text:chCount+' chapters'},{icon:'fas fa-file-word',text:totalWords.toLocaleString()+' words'}],
+          statusLabel:needsRev?'Needs revision':'Under review',
+          statusClass:needsRev?'revision':'pending',
+          chevron:'down', open:!!isOpen
+        })
         +'<div class="chapter-list" style="display:'+(isOpen?'flex':'none')+'">'
         +book.chapters.map(function(ch){
           var statusClass=ch.status==='pending'?'pending':'revision';
@@ -57,6 +63,9 @@
             +'<span class="ch-status '+statusClass+'">'+statusLabel+'</span></div>';
         }).join('')+'</div></div>';
     }).join('');
+    el.querySelectorAll('.dbc-card').forEach(function(card){
+      card.addEventListener('click', function(){ toggleBook(card.getAttribute('data-book-id')); });
+    });
     if(!hasAny){
       el.innerHTML='<div class="empty"><i class="fas fa-clipboard-check"></i><p>No chapters under review.</p></div>';
     }
@@ -123,7 +132,6 @@
   Svc.renderBooks = renderBooks;
   window.ChapterReviewService = Svc;
   /* onclick refs in markup + generated HTML */
-  window.toggleBook = toggleBook;
   window.openDetail = openDetail;
   window.closeDetail = closeDetail;
   window.editChapter = editChapter;

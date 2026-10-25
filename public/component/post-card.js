@@ -50,20 +50,17 @@
   // CSS — pcc- prefixed, reuses the host page's own CSS custom properties
   // ══════════════════════════════════════════════════════════════════════
   const CSS = `
-    .pcc-post{width:100%;padding:14px 16px;border-bottom:8px solid var(--bg);background:var(--l1)}
+    .pcc-post{width:100%;padding:14px 16px;border-bottom:8px solid var(--bg);background:var(--card)}
     .pcc-post:last-child{border-bottom:none}
 
     .pcc-head{display:flex;align-items:center;gap:10px;margin-bottom:11px}
     .pcc-avatar-wrap{position:relative;flex-shrink:0}
-    .pcc-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;display:block;cursor:pointer}
-    .pcc-avatar-wrap.live .pcc-avatar{padding:2px;border:2px solid var(--acc);box-sizing:border-box}
-    .pcc-avatar-wrap.viewed .pcc-avatar{padding:2px;border:2px solid var(--tx-faint,#9a9aa2);box-sizing:border-box}
-    .pcc-pin-badge{position:absolute;top:-3px;left:-3px;width:16px;height:16px;border-radius:50%;background:var(--gold);color:#08090c;display:flex;align-items:center;justify-content:center;font-size:8px;border:2px solid var(--l1)}
+    .pcc-pin-badge{position:absolute;top:-3px;left:-3px;width:16px;height:16px;border-radius:50%;background:var(--gold);color:#08090c;display:flex;align-items:center;justify-content:center;font-size:8px;border:2px solid var(--card)}
     /* Verified badge — Twitter/X shape + color (#1d9bf0 scalloped seal), sitting
        in the avatar circle's bottom-right corner (not beside the name). The
        ring border matches the card background so it "cuts into" the avatar
        the same way platform verified badges do. */
-    .pcc-verified-badge{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--l1);display:flex;align-items:center;justify-content:center;padding:1px;box-sizing:border-box}
+    .pcc-verified-badge{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;padding:1px;box-sizing:border-box}
     .pcc-verified-badge svg{width:100%;height:100%;display:block}
     .pcc-meta{flex:1;min-width:0}
     .pcc-name-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -250,21 +247,18 @@
   // Shared header / actions
   // ══════════════════════════════════════════════════════════════════════
   function _head(post) {
-    let ring = post.avatarRing === 'viewed' ? ' viewed' : post.avatarRing ? ' live' : '';
     const ringKey = post.handle || post.name || '';
-    // Seen-state is global (StatusStore) — a post avatar is "live" only when
-    // that author still has an unseen status, grey once every status is seen.
-    try {
-      if (window.StatusStore && ringKey && StatusStore.ringOf) {
-        const r = StatusStore.ringOf(ringKey);
-        if (r === 'ring-viewed') ring = ' viewed';
-        else if (r === 'ring-has' || r === 'ring-live') ring = ' live';
-      }
-    } catch (e) {}
+    const ring = post.avatarRing === 'viewed' ? 'ring-viewed' : (post.avatarRing ? 'ring-has' : 'ring-none');
+    const avatar = window.DroboardStatusRing
+      ? DroboardStatusRing.html({ name: post.name, avatar: post.avatar, ring }, {
+          size: 42, key: ringKey, gapColor: 'var(--card)', innerBg: 'var(--card)',
+          attrs: 'data-pcc-avatar',
+        })
+      : `<img class="pcc-avatar" src="${post.avatar}" alt="${escAttr(post.name)}" data-pcc-avatar style="width:42px;height:42px;border-radius:50%;object-fit:cover;display:block;cursor:pointer">`;
     return `
       <div class="pcc-head">
-        <div class="pcc-avatar-wrap${ring}" data-status-ring="${escAttr(ringKey)}">
-          <img class="pcc-avatar" src="${post.avatar}" alt="${escAttr(post.name)}" data-pcc-avatar>
+        <div class="pcc-avatar-wrap">
+          ${avatar}
           ${post.pinned ? `<div class="pcc-pin-badge"><i class="fas fa-thumbtack"></i></div>` : ''}
           ${post.verified ? `<div class="pcc-verified-badge" title="Verified">${VERIFIED_BADGE_SVG}</div>` : ''}
         </div>
@@ -507,7 +501,7 @@
       const a = post.ad || {};
       const title = a.heading || a.title || a.brand || 'Sponsored';
       const body = a.body || a.desc || a.description || '';
-      return `<div class="pc-ad-wrap" data-adid="${escAttr(a.id || post.id)}" style="padding:14px 16px;background:var(--l1);border-bottom:8px solid var(--bg)">
+      return `<div class="pc-ad-wrap" data-adid="${escAttr(a.id || post.id)}" style="padding:14px 16px;background:var(--card);border-bottom:8px solid var(--bg)">
         <div style="font-size:10px;font-weight:800;color:var(--acc);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Sponsored</div>
         <div style="font-size:15px;font-weight:800;color:var(--tx-high);margin-bottom:6px">${esc(title)}</div>
         ${body ? `<div style="font-size:13px;color:var(--tx-body);line-height:1.5;margin-bottom:10px">${esc(body)}</div>` : ''}

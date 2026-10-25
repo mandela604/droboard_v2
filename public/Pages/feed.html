@@ -42,14 +42,6 @@
     .stories-row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; -ms-overflow-style: none; scrollbar-width: none; }
     .stories-row::-webkit-scrollbar { display: none; }
     .story-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; }
-    .story-ring { width: var(--story-size); height: var(--story-size); border-radius: 50%; padding: 3px; background: linear-gradient(135deg, #ff0050, #ff4d7a 55%, #ff7a9a); transition: transform 0.2s; }
-    .story-ring:active { transform: scale(0.96); }
-    .story-ring.own { background: none; }
-    .story-ring.ring-live { box-shadow: 0 0 12px rgba(255,0,80,.55); }
-    .story-ring.ring-viewed { background: var(--tx-muted); }
-    .story-ring.ring-none { background: var(--border); }
-    .story-ring.ring-multi { padding: 3px; }
-    .story-ring .inner { width: 100%; height: 100%; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--bg); }
     .story-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
     .story-add { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 300; color: var(--tx-muted); border: 2px dashed var(--tx-muted); border-radius: 50%; box-sizing: border-box; }
     .story-name { font-size: 10px; font-weight: 500; color: var(--tx-muted); max-width: var(--story-size); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -176,7 +168,6 @@
       </div>
       <div class="empty-state" id="emptyState"><div class="icon">📭</div><h3 id="emptyTitle">Your feed is empty</h3><p id="emptySub">Follow some writers or join communities to see posts here.</p></div>
       <div id="promoMount"></div>
-      <div data-ad-slot="feed:top" style="padding:0 16px 8px"></div>
       <div id="feedList"></div>
     </div>
 
@@ -226,35 +217,37 @@
 <script src="../services/reading-history.js"></script>
   <script src="../component/boards-overlay.js"></script>
   <script src="../component/browse-overlay.js?v=13"></script>
-  <script src="../component/status-viewer.js?v=6"></script>
+  <script src="../component/status-viewer.js?v=10"></script>
+  <script src="../component/status-ring.js?v=1"></script>
+  <script src="../shared/status-loader.js"></script>
   <script src="../component/promo-slider.js"></script>
   <script src="../component/report-sheet.js"></script>
   <script src="../component/dots-menu.js"></script>
-  <script src="../component/post-card.js?v=2"></script>
-  <script src="../component/debate-args.js?v=2"></script>
+  <script src="../component/post-card.js?v=3"></script>
+  <script src="../component/debate-args.js?v=4"></script>
   <script src="../component/reaction-picker.js"></script>
   <script src="../data/comments-data.js"></script>
-  <script src="../component/comment-section.js?v=6"></script>
+  <script src="../component/comment-section.js?v=9"></script>
   <script src="../component/share-modal.js"></script>
   <script src="../services/saves-bridge.js"></script>
   <script src="../component/save-modal.js"></script>
   <script src="../component/genre-card.js?v=6"></script>
-  <script src="../component/ad-card.js?v=3"></script>
+  <script src="../component/ad-card.js?v=4"></script>
   <script src="../component/bottom-nav.js"></script>
   <script src="../component/hamburger-menu.js"></script>
-  <script src="../component/search-overlay.js?v=2"></script>
+  <script src="../component/search-overlay.js?v=3"></script>
   <script src="../data/central-demo-data.js"></script>
   <script src="../marketing/shared/marketing-data.js"></script>
   <script src="../services/audience-service.js"></script>
-  <script src="../services/ad-service.js"></script>
-<script src="../services/ad-revenue-service.js"></script>
-  <script src="../component/ad-slot.js"></script>
+  <script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-revenue-service.js?v=2"></script>
+  <script src="../component/ad-slot.js?v=2"></script>
   <script src="../services/people-service.js"></script>
-  <script src="../services/status-service.js?v=5"></script>
-  <script src="../component/writers-row.js"></script>
+  <script src="../services/status-service.js?v=6"></script>
+  <script src="../component/writers-row.js?v=1"></script>
   <script src="../services/search-service.js"></script>
   <script src="../shared/ui-helpers.js"></script>
-  <script src="../services/feed-service.js?v=4"></script>
+  <script src="../services/feed-service.js?v=6"></script>
   <script>FeedPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

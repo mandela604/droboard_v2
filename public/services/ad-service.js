@@ -231,12 +231,28 @@
     return out;
   }
 
-  /* Impression / click tracking. Demo: local counters the ad-manager reads.
-     Live-first: also POSTs /api/ads/track (per-user trail); subscribers
-     (window.DroboardAdsFree) see no ads, so nothing is sent.
-     ctx: { page, slot, postId, storyId } — userId is resolved server-side
-     from session (never trust client). Demo attaches a stable anonymous
-     viewerId (localStorage) so per-user counts work before login. */
+  /* Lifecycle tracking. Demo: local counters the ad-manager reads (+ a
+     best-effort POST so a running backend fills too). Live: server is the
+     source of truth. Subscribers (window.DroboardAdsFree) see no ads, so
+     nothing is sent.
+     ctx: { page, slot, postId, storyId, statusId, showingId, value, currency,
+     orderId }.
+     Impression = one per rendered ad instance ("showing"), so the same
+     creative legitimately logs many impressions across page views, slides
+     and slots. Only the same showing retried twice is deduped (showingId;
+     the backend enforces it with a unique eventKey). Reach is deduped
+     separately by viewerId, never by hiding impressions.
+     viewable = IAB standard: >=50% of the creative visible for 1s.
+     Events: impression | viewable | click | complete | skip | conversion. */
+  const STAT_FIELDS = { impression: 'impressions', viewable: 'viewables', click: 'clicks', complete: 'completes', skip: 'skips', conversion: 'conversions' };
+  var _shown = {}; // showingId -> true (session scope: retry guard only)
+
+  /* One id per rendered ad instance. Call it when the creative is mounted
+     and pass it to every event for that instance. */
+  function newShowing() {
+    return 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+  }
+
   function getViewerId() {
     try {
       if (window.DroboardUser && (window.DroboardUser.id || window.DroboardUser.uid)) {
@@ -250,49 +266,171 @@
       return v;
     } catch (e) { return 'anon'; }
   }
+
+  /* Small retry queue: a network blip must not lose billable events. */
+  var _queue = [];
+  function _post(payload) {
+    var body = JSON.stringify(payload);
+    fetch(`${API_BASE}/ads/track`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+    }).then(function (r) {
+      if (!r.ok) throw new Error('track_failed');
+    }).catch(function () {
+      _queue.push(payload);
+      if (_queue.length > 40) _queue.shift();
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(API_BASE + '/ads/track', new Blob([body], { type: 'application/json' }));
+        }
+      } catch (e) {}
+    });
+  }
+  function _flushQueue() {
+    if (!_queue.length) return;
+    var batch = _queue;
+    _queue = [];
+    batch.forEach(_post);
+  }
+  try { window.addEventListener('online', _flushQueue); } catch (e) {}
+
   function track(id, event, ctx) {
     if (!id) return;
     if (window.DroboardAdsFree) return;
     ctx = ctx || {};
+    event = event || 'impression';
+    if (!STAT_FIELDS[event]) return;
+
+    var showingId = String(ctx.showingId || '');
+    if (event === 'impression' || event === 'viewable') {
+      if (!showingId) showingId = newShowing(); // each call = a fresh showing
+      var seenKey = event + ':' + showingId;
+      if (_shown[seenKey]) return;              // same event retried = ignore
+      _shown[seenKey] = 1;
+    }
+
     var payload = {
       id: id,
-      event: event || 'impression',
+      event: event,
       page: ctx.page || '',
       slot: ctx.slot || '',
       postId: ctx.postId || ctx.storyId || '',
       storyId: ctx.storyId || ctx.postId || '',
+      statusId: ctx.statusId || '',
+      showingId: showingId,
       viewerId: ctx.viewerId || getViewerId(),
       ts: Date.now(),
     };
-    try { if (window.AdRevenue && AdRevenue.record) AdRevenue.record(payload); } catch (e) {}
-    if (USE_API) {
-      fetch(`${API_BASE}/ads/track`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
-      return;
+    if (event === 'conversion') {
+      if (ctx.value != null) payload.value = Number(ctx.value) || 0;
+      if (ctx.currency) payload.currency = String(ctx.currency).slice(0, 8);
+      if (ctx.orderId) payload.orderId = String(ctx.orderId).slice(0, 120);
     }
-    try {
-      fetch(`${API_BASE}/ads/track`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
-    } catch (e) {}
+
+    try { if (window.AdRevenue && AdRevenue.record) AdRevenue.record(payload); } catch (e) {}
+
+    // Last-click attribution for later conversions (checkout success).
+    if (event === 'click') {
+      try {
+        localStorage.setItem(ATTR_KEY, JSON.stringify({
+          id: id, page: payload.page, slot: payload.slot,
+          storyId: payload.storyId, at: payload.ts,
+        }));
+      } catch (e) {}
+    }
+
+    if (USE_API) { _post(payload); return; }
+
+    // Demo: keep local counters AND best-effort post (backend may be running).
+    _post(payload);
     try {
       const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}') || {};
-      const row = stats[id] || { impressions: 0, clicks: 0, viewers: {} };
+      const row = stats[id] || {};
+      Object.keys(STAT_FIELDS).forEach(function (k) { if (!row[STAT_FIELDS[k]]) row[STAT_FIELDS[k]] = 0; });
       if (!row.viewers) row.viewers = {};
-      if (event === 'click') row.clicks += 1;
-      else row.impressions += 1;
-      if (payload.viewerId) row.viewers[payload.viewerId] = (row.viewers[payload.viewerId] || 0) + 1;
-      row.last = { page: payload.page, slot: payload.slot, postId: payload.postId, ts: payload.ts };
+      row[STAT_FIELDS[event]] += 1;
+      if (event === 'conversion' && payload.value) row.value = (row.value || 0) + payload.value;
+      if (event === 'impression' && payload.viewerId) {
+        row.viewers[payload.viewerId] = (row.viewers[payload.viewerId] || 0) + 1;
+      }
+      row.last = { event: event, page: payload.page, slot: payload.slot, postId: payload.postId, ts: payload.ts };
       stats[id] = row;
       localStorage.setItem(STATS_KEY, JSON.stringify(stats));
     } catch (e) {}
+  }
+
+  /* IAB viewability: send `viewable` once the creative has been >=50%
+     visible for 1s continuously. Pass the same showingId as the impression
+     so both events describe the same rendered instance. */
+  function observe(el, id, ctx) {
+    ctx = Object.assign({}, ctx || {});
+    if (!ctx.showingId) ctx.showingId = newShowing();
+    if (!el || !id || window.DroboardAdsFree) return ctx.showingId;
+    try {
+      if (!('IntersectionObserver' in window)) return ctx.showingId;
+      var timer = null, done = false;
+      var ob = new IntersectionObserver(function (entries) {
+        var en = entries[entries.length - 1];
+        if (!en || done) return;
+        if (en.isIntersecting && en.intersectionRatio >= 0.5) {
+          if (!timer) timer = setTimeout(function () {
+            if (done) return;
+            done = true;
+            try { ob.disconnect(); } catch (e) {}
+            track(id, 'viewable', ctx);
+          }, 1000);
+        } else if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      }, { threshold: [0, 0.5, 1] });
+      ob.observe(el);
+    } catch (e) {}
+    return ctx.showingId;
+  }
+
+  /* Attribute a conversion (checkout success, subscription, tip…). Uses the
+     last clicked ad when no id is passed; orderId keeps retries idempotent. */
+  const ATTR_KEY = 'dro_ad_attr';
+  const ATTR_TTL = 30 * 24 * 3600 * 1000;
+  function lastClick() {
+    try {
+      var a = JSON.parse(localStorage.getItem(ATTR_KEY) || 'null');
+      if (!a || !a.id) return null;
+      if (a.at && Date.now() - a.at > ATTR_TTL) return null;
+      return a;
+    } catch (e) { return null; }
+  }
+  function convert(opts) {
+    opts = opts || {};
+    var attr = null;
+    if (!opts.id && !opts.adId) attr = lastClick();
+    var id = opts.id || opts.adId || (attr && attr.id);
+    if (!id) return;
+    track(id, 'conversion', {
+      page: opts.page || (attr && attr.page),
+      slot: opts.slot || (attr && attr.slot),
+      storyId: opts.storyId || (attr && attr.storyId),
+      postId: opts.postId, statusId: opts.statusId,
+      value: opts.value, currency: opts.currency, orderId: opts.orderId,
+    });
+    // One attributed conversion per click.
+    if (!opts.id && !opts.adId) {
+      try { localStorage.removeItem(ATTR_KEY); } catch (e) {}
+    }
+  }
+
+  /* Real per-slot numbers from the backend (null when unavailable so
+     dashboards can fall back to demo data). */
+  function getPerformance(opts) {
+    opts = opts || {};
+    if (!USE_API) return Promise.resolve(null);
+    var qs = '?days=' + encodeURIComponent(opts.days || 30);
+    if (opts.page) qs += '&page=' + encodeURIComponent(opts.page);
+    return fetch(API_BASE + '/ads/performance' + qs, { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
   }
 
   function readStats() {
@@ -347,5 +485,5 @@
     });
   }
 
-  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, readStats, getViewerId, spotlightStats };
+  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, observe, newShowing, convert, getPerformance, readStats, getViewerId, spotlightStats };
 })();

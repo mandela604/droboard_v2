@@ -80,13 +80,7 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 .view-all{font-size:12px;font-weight:600;color:var(--pink);cursor:pointer}
 
 /* ──────── Book Earnings ──────── */
-.book-earn-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.book-earn-cover{width:48px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#e8e8ed}
-.book-earn-cover img{width:100%;height:100%}
-.book-earn-info{flex:1;min-width:0}
-.book-earn-title{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.book-earn-stats{font-size:11px;color:var(--muted);margin-top:2px}
-.book-earn-amount{font-size:16px;font-weight:800;color:var(--success);flex-shrink:0}
+#bookEarnings .dbc-card{margin-bottom:10px;cursor:default}
 
 /* ──────── Quick Actions ──────── */
 .actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -163,10 +157,11 @@ img{display:block;object-fit:cover}button{font-family:inherit;cursor:pointer;bor
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/currency-service.js"></script>
 <script src="../services/author-earnings-service.js"></script>
-<script src="../services/ad-revenue-service.js"></script>
+<script src="../services/ad-revenue-service.js?v=2"></script>
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js"></script>
-<script src="services/earnings-service.js"></script>
+<script src="../component/book-card.js"></script>
+<script src="services/earnings-service.js?v=3"></script>
 <script>AuthorEarningsService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

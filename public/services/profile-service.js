@@ -264,7 +264,8 @@
     var slides = entry ? entry.statuses : [];
     var has = slides.length > 0;
     var wid = entry ? entry.id : (isOwner ? 'you' : (VIEW_HANDLE || (p && p.handle) || ''));
-    var viewedAll = has && entry.ring === 'ring-viewed';
+    var storeRing = (window.StatusStore && StatusStore.ringOf) ? StatusStore.ringOf(wid) : null;
+    var viewedAll = has && (storeRing === 'ring-viewed' || entry.ring === 'ring-viewed');
     var isChamp = false;
     try {
       var _rg = (window.ReaderLeague && ReaderLeague.reigning) ? ReaderLeague.reigning() : null;
@@ -277,7 +278,17 @@
     if (img) { img.style.cursor = has ? 'pointer' : ''; img.onclick = null; ring.onclick = null;
       if (has) {
         var open = function () {
-          if (!window.openStatusViewer) { toast('Story viewer missing'); return; }
+          if (!window.openStatusViewer) {
+            if (window.ensureStatusViewer) {
+              window.ensureStatusViewer().then(function (ok) {
+                if (ok) window.openStatusViewer([entry], wid);
+                else toast('Story viewer missing');
+              });
+              return;
+            }
+            toast('Story viewer missing');
+            return;
+          }
           window.openStatusViewer([entry], wid);
         };
         img.onclick = open; ring.onclick = open;

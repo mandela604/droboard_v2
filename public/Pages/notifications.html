@@ -77,76 +77,34 @@ a{color:inherit;text-decoration:none}
 .content{padding:8px 16px 20px}
 .day-label{font-size:13px;font-weight:700;color:var(--text);padding:14px 0 10px;letter-spacing:-.01em}
 
-.n-card{
-  display:flex;gap:12px;background:var(--card);border-radius:16px;
-  padding:14px;margin-bottom:10px;border:1px solid var(--border);
-  box-shadow:0 1px 4px rgba(0,0,0,.03);position:relative;cursor:pointer;
-  overflow:visible;
+/* rows, milestones, digests and menus are owned by component/notification-item.js */
+.role-row{display:flex;gap:6px;padding:12px 16px 0}
+.role-tab{
+  flex:1;text-align:center;padding:9px 4px;border-radius:11px;background:var(--card);
+  border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:6px;
 }
-.n-card:active{opacity:.92}
-.n-card.unread::before{
-  content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;
-  border-radius:0 2px 2px 0;background:var(--accent, var(--pink));
-}
-.n-card[data-accent="pink"]{--accent:var(--pink)}
-.n-card[data-accent="blue"]{--accent:var(--blue)}
-.n-card[data-accent="purple"]{--accent:var(--purple)}
-.n-card[data-accent="green"]{--accent:var(--success)}
-.n-card[data-accent="orange"]{--accent:var(--orange)}
+.role-tab i{font-size:11px}
+.role-tab.active{background:var(--text);color:var(--card);border-color:var(--text)}
 
-.n-avatar-wrap{position:relative;flex-shrink:0}
-.n-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;background:var(--bg)}
-.n-avatar img{width:100%;height:100%}
-.n-avatar.cover{border-radius:10px}
-.n-avatar.icon-av{display:flex;align-items:center;justify-content:center;font-size:18px}
-.n-badge{
-  position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;
-  border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;
+.chan-group{display:flex;gap:5px;flex-shrink:0}
+.chan{
+  font-size:10.5px;font-weight:750;padding:6px 9px;border-radius:9px;
+  background:var(--bg);color:var(--muted);border:1px solid var(--border);
 }
-.n-badge.heart{background:var(--pink)}
-.n-badge.comment{background:var(--blue)}
-.n-badge.book{background:var(--purple)}
-.n-badge.coin{background:var(--success)}
-.n-badge.trophy{background:var(--orange)}
-.n-badge.follow{background:var(--purple)}
-.n-badge.gift{background:var(--pink)}
-.n-badge.check{background:var(--success)}
-.n-badge.mention{background:var(--blue)}
-
-.n-body{flex:1;min-width:0}
-.n-title{font-size:13.5px;font-weight:700;line-height:1.35;margin-bottom:3px}
-.n-title b{font-weight:800}
-.n-desc{font-size:12.5px;color:var(--muted);line-height:1.45;margin-bottom:4px}
-.n-link{font-size:12.5px;font-weight:600;color:var(--pink);margin-bottom:4px}
-.n-link.orange{color:var(--orange)}
-.n-time{font-size:11.5px;color:var(--muted);font-weight:500}
-
-.n-right{
-  display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;
-  flex-shrink:0;gap:8px;padding-top:2px;position:relative;
+.chan.on{background:var(--pink);color:#fff;border-color:var(--pink)}
+.quiet-row{display:flex;gap:8px;align-items:center;padding:10px 0 6px}
+.quiet-row input{
+  flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;
 }
-.n-thumb{width:48px;height:48px;border-radius:10px;overflow:hidden;background:var(--bg)}
-.n-thumb img{width:100%;height:100%}
-.n-dot{width:8px;height:8px;border-radius:50%;background:var(--pink);flex-shrink:0}
-.n-more{color:var(--muted);font-size:14px;padding:4px 6px;border-radius:8px}
-.n-more:active{background:var(--bg)}
-.n-meta-time{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
-
-.card-menu{
-  position:absolute;top:28px;right:0;z-index:40;
-  background:var(--card);border:1px solid var(--border);border-radius:14px;
-  box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:180px;padding:6px;
-  display:none;
+.quiet-row>span{font-size:12px;color:var(--muted)}
+.quiet-hint{font-size:11px;color:var(--pink);display:none;font-weight:700}
+.perm-btn{
+  font-size:12px;font-weight:750;padding:8px 14px;border-radius:10px;
+  background:var(--pink-soft);color:var(--pink);flex-shrink:0;
 }
-.card-menu.open{display:block}
-.card-menu-item{
-  display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;
-  font-size:13.5px;font-weight:600;color:var(--text);width:100%;text-align:left;
-}
-.card-menu-item i{width:16px;text-align:center;font-size:13px;color:var(--muted)}
-.card-menu-item:active{background:var(--bg)}
-.card-menu-item.danger{color:var(--pink)}
-.card-menu-item.danger i{color:var(--pink)}
+.perm-btn.danger{background:var(--card);border:1px solid var(--border);color:var(--muted)}
 
 .sheet-overlay{
   position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);
@@ -222,7 +180,7 @@ a{color:inherit;text-decoration:none}
       <button class="back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
       <div class="title-wrap">
         <div class="page-title">Notifications</div>
-        <div class="page-sub">Stay updated with what matters</div>
+        <div class="page-sub" id="pageSub">Stay updated with what matters</div>
       </div>
     </div>
     <div class="top-right">
@@ -232,25 +190,39 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
+<div class="role-row" id="roleRow">
+  <button class="role-tab active" data-r="all"><i class="fas fa-inbox"></i> Everything</button>
+  <button class="role-tab" data-r="reader"><i class="fas fa-book-open"></i> As reader</button>
+  <button class="role-tab" data-r="author"><i class="fas fa-feather"></i> As author</button>
+</div>
+
 <div class="filter-scroll" id="filterRow">
   <div class="filter-chip active" data-f="all">
     <div class="fi" style="background:var(--pink-soft);color:var(--pink)"><i class="fas fa-bell"></i><span class="badge" id="b-all">0</span></div>
     <span>All</span>
+  </div>
+  <div class="filter-chip" data-f="highlights">
+    <div class="fi" style="color:#b7690a"><i class="fas fa-trophy"></i><span class="badge" id="b-highlights">0</span></div>
+    <span>Highlights</span>
+  </div>
+  <div class="filter-chip" data-f="achievements">
+    <div class="fi" style="color:#9a6508"><i class="fas fa-award"></i><span class="badge" id="b-achievements">0</span></div>
+    <span>Achievements</span>
+  </div>
+  <div class="filter-chip" data-f="stats">
+    <div class="fi" style="color:#1d5fd6"><i class="fas fa-chart-line"></i><span class="badge" id="b-stats">0</span></div>
+    <span>Stats</span>
   </div>
   <div class="filter-chip" data-f="activity">
     <div class="fi"><i class="far fa-heart"></i><span class="badge" id="b-activity">0</span></div>
     <span>Activity</span>
   </div>
   <div class="filter-chip" data-f="stories">
-    <div class="fi"><i class="fas fa-book-open"></i><span class="badge" id="b-stories">0</span></div>
+    <div class="fi" style="color:#7c5cff"><i class="fas fa-book-open"></i><span class="badge" id="b-stories">0</span></div>
     <span>Stories</span>
   </div>
-  <div class="filter-chip" data-f="community">
-    <div class="fi"><i class="fas fa-users"></i><span class="badge" id="b-community">0</span></div>
-    <span>Community</span>
-  </div>
   <div class="filter-chip" data-f="revenue">
-    <div class="fi"><i class="fas fa-dollar-sign"></i><span class="badge" id="b-revenue">0</span></div>
+    <div class="fi" style="color:#158a48"><i class="fas fa-dollar-sign"></i><span class="badge" id="b-revenue">0</span></div>
     <span>Revenue</span>
   </div>
   <div class="filter-chip" data-f="system">
@@ -274,7 +246,11 @@ a{color:inherit;text-decoration:none}
 
 <script src="../data/central-demo-data.js"></script>
 <script src="../component/bottom-nav.js"></script>
-<script src="../services/notification-page-service.js?v=4"></script>
+<script src="../component/notification-item.js?v=1"></script>
+<script src="../services/league-service.js"></script>
+<script src="../services/status-service.js"></script>
+<script src="../services/notification-store.js?v=5"></script>
+<script src="../services/notification-page-service.js?v=8"></script>
 <script>NotifPageService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

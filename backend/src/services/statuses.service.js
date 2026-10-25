@@ -7,6 +7,8 @@ const { Status } = require('../models/social.model');
 const { User } = require('../models/user.model');
 
 const DEFAULT_TTL_HOURS = 24;
+// Ceiling on the per-status view log; past this the oldest reads drop off.
+const MAX_VIEW_RECORDS = 2000;
 
 function toStatus(s, viewerId, opts) {
   const o = s.toJSON ? s.toJSON() : s;
@@ -14,8 +16,10 @@ function toStatus(s, viewerId, opts) {
   const viewers = (o.viewedBy || []).map(String);
   const uid = viewerId ? String(viewerId) : '';
   const isOwner = !!(uid && uid === ownerId);
-  // Owner previews never inflate their own counter.
-  const views = viewers.filter(v => v !== ownerId).length;
+  // Owner previews never inflate their own counter. Records are the source
+  // of truth; docs written before the log existed fall back to viewedBy.
+  const records = (o.viewerRecords || []).filter(r => !(r.user && String(r.user) === ownerId));
+  const views = Math.max(records.length, viewers.filter(v => v !== ownerId).length);
   const out = {
     id: o.id || o._id, userId: o.userId, bg: o.bg, quote: o.quote || '',
     caption: o.caption || '', likes: o.likes || 0,
@@ -118,16 +122,83 @@ function canWrite(status, user) {
   return String(status.userId) === String(user.id);
 }
 
-async function viewStatus({ status, userId }) {
+async function viewStatus({ status, userId, anonId }) {
   const ownerId = String(status.userId);
   const uid = userId ? String(userId) : '';
-  const viewers = (status.viewedBy || []).map(String);
   // The author viewing their own story is a preview, not a counted view.
-  if (uid && uid !== ownerId && !viewers.includes(uid)) {
-    status.viewedBy.push(uid);
-    await status.save();
+  if (uid && uid === ownerId) return toStatus(status, userId, { owner: true });
+
+  // Signed-out viewers are identified by a persistent client id so repeat
+  // opens don't inflate the count. No id at all → count the open, no dedupe.
+  const guest = uid ? '' : String(anonId || '').trim().slice(0, 80);
+  const records = status.viewerRecords || [];
+  const seen = uid
+    ? records.some(r => String(r.user || '') === uid)
+    : (guest ? records.some(r => !r.user && String(r.anon || '') === guest) : false);
+
+  if (!seen && (uid || guest)) {
+    const rec = { user: uid, anon: guest, at: new Date() };
+    const upd = { $push: { viewerRecords: { $each: [rec], $slice: -MAX_VIEW_RECORDS } } };
+    if (uid) upd.$addToSet = { viewedBy: uid };
+    await Status.updateOne({ _id: status._id }, upd);
+    status.viewerRecords.push(rec);
+    if (uid) status.viewedBy.push(uid);
   }
-  return toStatus(status, userId, { owner: uid === ownerId });
+  return toStatus(status, userId);
+}
+
+/* Owner/admin "seen by" list: named viewers with timestamps + guest total.
+   Guest ids are never exposed — only how many signed-out reads there were. */
+async function statusViewers({ status, user }) {
+  if (!canWrite(status, user)) { const e = new Error('forbidden'); e.status = 403; throw e; }
+  const ownerId = String(status.userId);
+  let rows = (status.viewerRecords || [])
+    .filter(r => !(r.user && String(r.user) === ownerId))
+    .map(r => ({ user: String(r.user || ''), anon: String(r.anon || ''), at: r.at || null }))
+    .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  // Pre-log statuses still have names in viewedBy, just no timestamp.
+  if (!rows.length) {
+    rows = (status.viewedBy || [])
+      .map(String).filter(v => v !== ownerId)
+      .map(userId => ({ user: userId, anon: '', at: null }));
+  }
+
+  const guests = rows.filter(r => !r.user).length;
+  const ids = [...new Set(rows.map(r => r.user).filter(Boolean))];
+  const hex = ids.filter(v => /^[0-9a-fA-F]{24}$/.test(v));
+  const users = ids.length
+    ? await User.find(hex.length ? { $or: [{ id: { $in: ids } }, { _id: { $in: hex } }] } : { id: { $in: ids } })
+      .select('id username fullName penName avatar').lean()
+    : [];
+  const um = {};
+  users.forEach(u => {
+    const row = { id: String(u.id || u._id), name: u.fullName || u.penName || u.username || '', handle: u.username || '', avatar: u.avatar || '' };
+    um[String(u.id)] = row;
+    if (u._id) um[String(u._id)] = row;
+  });
+
+  const seen = new Set();
+  const named = [];
+  rows.forEach(r => {
+    if (!r.user || seen.has(r.user)) return;
+    seen.add(r.user);
+    const u = um[r.user];
+    named.push({
+      id: r.user,
+      name: (u && u.name) || '',
+      handle: (u && u.handle) || '',
+      avatar: (u && u.avatar) || '',
+      at: r.at ? new Date(r.at).toISOString() : null,
+    });
+  });
+
+  return {
+    id: String(status.id || status._id),
+    views: named.length + guests,
+    named,
+    guests,
+    lastAt: rows[0] && rows[0].at ? new Date(rows[0].at).toISOString() : null,
+  };
 }
 
 /* Cross-surface ring state for a set of handles.
@@ -188,4 +259,4 @@ async function deleteStatus({ status }) {
   return { ok: true };
 }
 
-module.exports = { toStatus, homeStatuses, myStatuses, createStatus, loadOr404, canWrite, viewStatus, toggleLike, deleteStatus, stateStatuses };
+module.exports = { toStatus, homeStatuses, myStatuses, createStatus, loadOr404, canWrite, viewStatus, statusViewers, toggleLike, deleteStatus, stateStatuses };

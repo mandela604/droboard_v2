@@ -206,12 +206,6 @@
 .dcs-item.is-reply .dcs-inner{padding-left:10px;border-left:2px solid rgba(255,0,80,.12);margin-left:0}
 
     .dcs-av-wrap{position:relative;width:32px;height:32px;flex-shrink:0;cursor:pointer}
-    .dcs-av-ring{width:32px;height:32px;border-radius:50%;padding:2px}
-    .dcs-av-ring.ring-has{background:conic-gradient(#ff0050,#ff4d7a,#ff7a9a,#ff0050)}
-    .dcs-av-ring.ring-viewed{background:var(--dcs-ring-viewed)}
-    .dcs-av-ring.ring-none{background:transparent}
-    .dcs-av-ring-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--dcs-card)}
-    .dcs-av-ring-inner img{width:100%;height:100%;object-fit:cover;border-radius:50%}
     .dcs-av-initial{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
 
     .dcs-cbody{flex:1;min-width:0}
@@ -415,7 +409,11 @@
   // page code involved. Per-attach escape hatch: { ads:false } (all slots) or
   // { adsFirst:false } (keeps mid-list ads but no ad as the first item).
   function _adsAvailable() { return typeof window.AdService !== 'undefined' && typeof window.DroboardAdCard !== 'undefined'; }
-  function _trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function _trackAd(id, ev, ctx) {
+    try {
+      if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'comments', slot: 'comments:inline' });
+    } catch (e) {}
+  }
   function _pickSlotAd(pools) {
     pools = pools || {};
     // Books first: compact horizontal card with the golden background —
@@ -820,23 +818,16 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       const label = v === 'writer' ? 'Verified Writer' : 'Verified';
       return `<div class="dcs-verified" title="${label}"><i class="fas fa-check"></i></div>`;
     }
-    function ringClass(r) { return r === 'has' ? 'ring-has' : r === 'viewed' ? 'ring-viewed' : 'ring-none'; }
-    function ringClassFor(c) {
-      var r = c.statusRing;
-      try {
-        if (window.StatusStore && StatusStore.ringOf && c.name) {
-          var sr = StatusStore.ringOf(c.name);
-          if (sr) r = sr === 'ring-viewed' ? 'viewed' : 'has';
-        }
-      } catch (e) {}
-      return ringClass(r);
-    }
     function buildAvatar(c) {
-      const ring = ringClassFor(c);
       const inner = c.avatar
         ? `<img src="${c.avatar}" loading="lazy"/>`
         : `<div class="dcs-av-initial" style="background:${c.avatarBg || 'rgba(255,0,80,.25)'}">${(c.name || '?')[0].toUpperCase()}</div>`;
-      return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}"><div class="dcs-av-ring ${ring}" data-status-ring="${_esc(c.name || '')}"><div class="dcs-av-ring-inner">${inner}</div></div>${verifiedBadge(c.verified)}</div>`;
+      return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}">` +
+        DroboardStatusRing.html(c, {
+          size: 32, key: c.name || '', innerHtml: inner,
+          innerBg: 'var(--dcs-card)', gapColor: 'var(--dcs-card)',
+        }) +
+        `${verifiedBadge(c.verified)}</div>`;
     }
 
     // ── Find helpers ──
@@ -1390,7 +1381,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     function openStatusFor(cid) {
       const c = findByAnyId(comments, cid) || findById(comments, cid);
       if (!c) return;
-      if (!c.statuses || !c.statuses.length || typeof window.openStatusViewer !== 'function') return;
+      if (!c.statuses || !c.statuses.length) return;
       const authors = viewerAuthorsFor();
       if (!authors.length) return;
       let vid = 'dcs_' + instId + '_' + c.id;
@@ -1403,7 +1394,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       }
       // Cap the list, but never cut off the tapped comment.
       const list = at >= 50 ? authors.slice(at - 49, at + 50) : authors.slice(0, 50);
-      window.openStatusViewer(list, vid);
+      DroboardStatusRing.open(list, vid);
       // No statuses on this comment's author → intentionally do nothing.
     }
     // ── Status-viewer sync: gray the ring after viewing — same contract
@@ -1447,8 +1438,11 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
           if (!scopeEl) return;
           scopeEl.querySelectorAll('[data-dcs-avatar]').forEach(av => {
             if (idSet.has(String(av.getAttribute('data-dcs-avatar')))) {
-              const ringEl = av.querySelector('.dcs-av-ring');
-              if (ringEl) ringEl.className = 'dcs-av-ring ring-' + newRing;
+              const ringEl = av.querySelector('.dring');
+              if (ringEl) {
+                ringEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
+                ringEl.classList.add('ring-' + newRing);
+              }
             }
           });
         });

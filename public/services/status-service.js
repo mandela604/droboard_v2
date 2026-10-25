@@ -16,7 +16,153 @@
   var USE_API = false;
   var API_BASE = '/api';
   var MY_KEY = 'dro_my_statuses_v1';
+  var ANON_KEY = 'dro_status_anon_id';
+  var VIEWS_KEY = 'dro_status_views_v1';
   var DAY = 864e5;
+
+  function _hash(str) {
+    var h = 0, s = String(str || '');
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function _isLiveStatusId(id) { return /^[a-f0-9]{24}$/i.test(String(id || '')); }
+
+  /* Stable guest id so a signed-out reader counts once per status, not once
+     per open. Survives reloads; scoped to this browser. */
+  function anonId() {
+    try {
+      var v = localStorage.getItem(ANON_KEY);
+      if (!v) {
+        v = 'anon_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(ANON_KEY, v);
+      }
+      return v;
+    } catch (e) { return ''; }
+  }
+  function viewerId() {
+    try {
+      var u = (window.AuthSession && typeof AuthSession.getStoredUser === 'function')
+        ? AuthSession.getStoredUser() : null;
+      if (u && (u.id || u.uid)) return String(u.id || u.uid);
+    } catch (e) {}
+    try {
+      if (window.DroboardUser && (window.DroboardUser.id || window.DroboardUser.uid)) {
+        return String(window.DroboardUser.id || window.DroboardUser.uid);
+      }
+    } catch (e) {}
+    return anonId();
+  }
+
+  /* ── Demo view log: who (per guest/device) opened which slide ── */
+  function _viewLog() {
+    try { return JSON.parse(localStorage.getItem(VIEWS_KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function _saveViewLog(log) {
+    try { localStorage.setItem(VIEWS_KEY, JSON.stringify(log)); } catch (e) {}
+  }
+
+  /* Deterministic demo audience for a slide, so the owner's "Seen by" sheet
+     has something believable to render before the backend is switched on. */
+  var DEMO_VIEWERS = [
+    { name: 'Amara Cole', handle: 'amara_cole', img: 5 },
+    { name: 'Tunde Bello', handle: 'tunde_writes', img: 12 },
+    { name: 'Lia Moreno', handle: 'lia_reads', img: 32 },
+    { name: 'Kofi Mensah', handle: 'kofi_m', img: 15 },
+    { name: 'Sana Iqbal', handle: 'sana_iqbal', img: 45 },
+    { name: 'Noah Reyes', handle: 'noah_reyes', img: 11 },
+    { name: 'Esi Danquah', handle: 'esi_d', img: 25 },
+    { name: 'Ravi Sharma', handle: 'ravi_s', img: 33 },
+    { name: 'Mina Park', handle: 'mina_park', img: 47 },
+    { name: 'Jonas Weber', handle: 'jonas_w', img: 52 },
+    { name: 'Faith Okoro', handle: 'faith_o', img: 26 },
+    { name: 'Deni Yusuf', handle: 'deni_y', img: 41 },
+  ];
+  function _demoRoster(statusId) {
+    var h = _hash(statusId);
+    var n = 2 + (h % 8);
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var p = DEMO_VIEWERS[(h + i * 5) % DEMO_VIEWERS.length];
+      var mins = 3 + ((h >> (i + 1)) % 240) + i * 11;
+      out.push({
+        id: 'demo_' + String(statusId) + '_' + i,
+        name: p.name, handle: p.handle,
+        avatar: 'https://i.pravatar.cc/80?img=' + p.img,
+        at: new Date(Date.now() - mins * 60000).toISOString(),
+      });
+    }
+    return out;
+  }
+
+  /* Total views for a demo slide: seeded audience + real local opens. */
+  function _viewsOf(slide) {
+    if (!slide) return 0;
+    var log = _viewLog()[String(slide.id)] || [];
+    return _demoRoster(slide.id).length + log.length;
+  }
+
+  /* Record one view. Live: POST /view (works signed in AND signed out via
+     anonId). Demo: append to the local log. Never counts the owner's own
+     preview. Resolves { views } where the backend exposes it. */
+  function recordView(slide, writer) {
+    var sid = slide && slide.id ? String(slide.id) : '';
+    if (!sid) return Promise.resolve(null);
+    if (writer && (writer.isMine || writer.you || String(writer.id) === 'you')) return Promise.resolve(null);
+
+    if (USE_API && _isLiveStatusId(sid)) {
+      return fetch(API_BASE + '/statuses/' + encodeURIComponent(sid) + '/view', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anonId: anonId() }),
+      }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (d && d.views != null) slide.views = d.views;
+        return d;
+      }).catch(function () { return null; });
+    }
+    if (_isLiveStatusId(sid)) return Promise.resolve(null);
+
+    var log = _viewLog();
+    var list = log[sid] || [];
+    var vid = viewerId();
+    if (!list.some(function (v) { return v.vid === vid; })) {
+      list.push({ vid: vid, at: new Date().toISOString() });
+      log[sid] = list.slice(-500);
+      _saveViewLog(log);
+    }
+    slide.views = _viewsOf(slide);
+    return Promise.resolve({ views: slide.views });
+  }
+
+  /* Owner "Seen by" list. Live: GET /:id/viewers (named readers + guest
+     total). Demo: seeded roster + local guest opens. */
+  function viewers(statusId) {
+    var sid = String(statusId || '');
+    var empty = { views: 0, named: [], guests: 0, lastAt: null };
+    if (!sid) return Promise.resolve(empty);
+
+    if (USE_API && _isLiveStatusId(sid)) {
+      return fetch(API_BASE + '/statuses/' + encodeURIComponent(sid) + '/viewers', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { return d || empty; })
+        .catch(function () { return empty; });
+    }
+
+    var named = _demoRoster(sid);
+    var guests = 0;
+    (_viewLog()[sid] || []).forEach(function (v) {
+      if (String(v.vid || '').indexOf('anon_') === 0) guests += 1;
+      else named.push({ id: v.vid, name: 'Reader', handle: '', avatar: '', at: v.at });
+    });
+    named.sort(function (a, b) { return new Date(b.at || 0) - new Date(a.at || 0); });
+    return Promise.resolve({
+      id: sid,
+      views: named.length + guests,
+      named: named,
+      guests: guests,
+      lastAt: (named[0] && named[0].at) || null,
+    });
+  }
 
   function loadMine() {
     try {
@@ -112,7 +258,7 @@
       return {
         id: s.id, bg: s.bg, quote: s.quote, caption: s.caption,
         storyRef: s.storyRef || null, viewed: viewed,
-        views: s.views != null ? s.views : 0,
+        views: Math.max(s.views || 0, _viewsOf(s)),
         time: s.time,
       };
     });
@@ -375,5 +521,7 @@
     writerStatuses: writerStatuses, decorateWriters: decorateWriters, openWriterStatus: openWriterStatus,
     profileStatuses: profileStatuses, profileEntry: profileEntry, ringOf: ringOf,
     registerStories: registerStories,
+    // Views: shared adapter for the viewer + any page (live vs demo is USE_API)
+    recordView: recordView, viewers: viewers, viewerId: viewerId, anonId: anonId, viewsOf: _viewsOf,
   };
 })();

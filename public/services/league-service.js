@@ -226,6 +226,13 @@
             ? '🏆 League Champion! Frame + ad-free week unlocked'
             : '🏅 League #' + meRow.rank + '! Badge + ad-free week unlocked';
         }
+        if (meRow && window.droNotify) window.droNotify({
+          type: 'league_finish', key: 'league:' + prev.season, rank: meRow.rank,
+          rankNote: 'of ' + prev.entries.length + ' readers', medal: 'rank',
+          title: 'You finished the week at #' + meRow.rank,
+          desc: 'Season ' + prev.season + ' is settled — your reading earned you this place.',
+          link: { label: 'Open leaderboard' },
+        });
       }
       meta.lastBoard = { season: curSeason, entries: curRows.map(function (e) { return { handle: e.handle, rank: e.rank, isMe: !!e.isMe }; }) };
       meta.settledSeason = curSeason;

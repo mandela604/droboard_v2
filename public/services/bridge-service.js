@@ -425,13 +425,32 @@
      Same contract as comments/debate: the avatar gets a red ring ONLY when
      the writer actually has statuses, gray after the status has been viewed,
      and no ring/border at all for a statusless avatar. */
-  function writerRing(w) {
-    if (!w || !(w.statuses && w.statuses.length)) return '';
-    return w.statusRing === 'viewed' ? ' ring-viewed' : ' ring-has';
+  function writerRing(w, size) {
+    return DroboardStatusRing.html(w || {}, {
+      size: size, key: (w && (w.name || w.handle || w.id)) || '',
+      innerHtml: '<img src="' + ((w && w.avatar) || '') + '" loading="lazy" alt=""/>',
+      innerBg: '#000', gapColor: 'var(--bg,#000)',
+      attrs: 'onclick="BridgePage.onWriterAvatar()"',
+    });
   }
   function goProfile() {
     const w = DATA.writer || {};
     location.href = 'profile.html?u=' + encodeURIComponent(String(w.handle || w.name || '').replace(/^@/, ''));
+  }
+  function attachWriterStatus() {
+    const w = DATA && DATA.writer;
+    if (!w || w._stWired) return;
+    w._stWired = true;
+    try {
+      const pool = (window.DemoData && window.DemoData.STATUSES) || [];
+      const name = String(w.name || '').replace(/^@/, '');
+      const hit = pool.find(p => !p.isYou && String(p.name || '').replace(/^@/, '') === name);
+      if (hit && hit.statuses && hit.statuses.length) {
+        w.statuses = hit.statuses;
+        w.statusId = hit.id;
+        w.statusRing = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
+      }
+    } catch (e) {}
   }
   function openWriterStatus() {
     const w = DATA.writer || {};
@@ -456,8 +475,8 @@
         // Viewer reports full class names ('ring-viewed' | 'ring-has')
         const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
         DATA.writer.statusRing = newRing;
-        document.querySelectorAll('.hw-av-ring, .wc-av-ring').forEach(el => {
-          el.classList.remove('ring-has', 'ring-viewed');
+        document.querySelectorAll('.dring').forEach(el => {
+          el.classList.remove('ring-has', 'ring-live', 'ring-viewed');
           if (newRing === 'has' || newRing === 'viewed') el.classList.add('ring-' + newRing);
         });
       }
@@ -479,7 +498,7 @@
       <div class="hero-body">
         <div class="hero-title">${esc(d.title)}</div>
         <div class="hero-writer">
-          <div class="hw-av-ring${writerRing(d.writer)}" onclick="BridgePage.onWriterAvatar()"><div class="hw-av-inner"><img src="${d.writer.avatar}" loading="lazy" alt=""/></div></div>
+          ${writerRing(d.writer, 34)}
           <div class="hw-info">
             <div class="hw-name" onclick="BridgePage.goProfile()">${esc(d.writer.name)}</div>
             <div class="hw-handle">${esc(d.writer.handle)} · ${fmtN(d.writer.followers)} followers</div>
@@ -612,7 +631,7 @@
     const w = DATA.writer;
     document.getElementById('writerBody').innerHTML = `
       <div class="wc-av-row">
-        <div class="wc-av-ring${writerRing(w)}" onclick="BridgePage.onWriterAvatar()"><div class="wc-av-inner"><img src="${w.avatar}" alt=""/></div></div>
+        ${writerRing(w, 48)}
         <button class="wc-follow${w.following ? ' ing' : ''}" id="wcFollow" onclick="BridgePage.toggleWcFollow()">${w.following ? '✓ Following' : '+ Follow'}</button>
       </div>
       <div class="wc-name" style="cursor:pointer" onclick="BridgePage.goProfile()">${esc(w.name)}</div>
@@ -845,6 +864,7 @@
     }
     DATA = normalizeStory(data) || getDefaultStory(STORY_ID);
     document.getElementById('tbTitle').textContent = DATA.title;
+    attachWriterStatus();
     renderAll();
     wireStatusRing();
   }

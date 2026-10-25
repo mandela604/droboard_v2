@@ -53,19 +53,17 @@
     } catch (e) {}
     document.getElementById('statusRow').innerHTML = STATUSES.map(function (s) {
       var live = s.isLive ? '<div class="s-live-dot"><i class="fas fa-signal"></i></div>' : '';
+      var R = window.DroboardStatusRing;
       if (s.isYou) return '<div class="s-item" onclick="openStatusComposer()">' +
-        '<div class="s-ring ring-own" data-status-ring="you" style="position:relative">' +
-        '<div class="s-inner"><i class="fas fa-plus s-add-icon"></i></div>' + live +
-        '</div>' +
+        R.html({ name: 'You', key: 'you' }, {
+          size: 62, own: true, extraHtml: live,
+          innerHtml: '<i class="fas fa-plus s-add-icon"></i>',
+        }) +
         '<div class="s-name">You</div>' +
         '</div>';
-      var n = s.statuses ? s.statuses.length : 0;
-      var ringClass = s.isYou ? 'ring-none' : (s.ring || (n ? 'ring-has' : 'ring-none'));
       var ringKey = s.name || s.handle || s.id;
       return '<div class="s-item" data-status-id="' + s.id + '">' +
-        '<div class="s-ring ' + ringClass + '" data-status-ring="' + ringKey + '" style="position:relative">' +
-        '<div class="s-inner"><img src="' + s.avatar + '" loading="lazy" alt=""/></div>' + live +
-        '</div>' +
+        R.html(s, { size: 62, key: ringKey, extraHtml: live }) +
         '<div class="s-name">@' + s.name.split('_')[0] + '</div>' +
         '</div>';
     }).join('');
@@ -73,11 +71,10 @@
     document.querySelectorAll('#statusRow [data-status-id]').forEach(function (el) {
       el.addEventListener('click', function () {
         var wid = el.dataset.statusId;
-        if (typeof window.openStatusViewer === 'function') {
-          openStatusViewer(STATUSES.filter(function (s) { return !s.isYou; }), wid);
-        } else {
-          toast('👁 Viewing status…');
-        }
+        var list = STATUSES.filter(function (s) { return !s.isYou; });
+        window.DroboardStatusRing.open(list, wid, {
+          onMissing: function () { toast('👁 Viewing status…'); },
+        });
       });
     });
   }
@@ -132,32 +129,32 @@
   function heroSlideHTML(s) {
     // ad-droboard → FULLSCREEN swipe slide (gradient + icon), not small banner card
     if (s.type === 'ad-droboard') {
-      if (window.AdService) AdService.track(s.id || s.headline, 'impression');
+      if (window.AdService) AdService.track(s.id || s.headline, 'impression', { page: 'home', slot: 'home:swipe-card' });
       // still use ad-card helper for esc consistency if needed, but layout is fullscreen hero-slide
       var esc = (window.AdCard && AdCard.esc) ? AdCard.esc : function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
-      return '<div class="hero-slide ad-drobrand-slide" onclick="if(window.AdService)AdService.track(\''+esc(s.id||'ad-droboard')+'\',\'click\');toast(\'🌟 Opening Droboard Premium…\')">' +
+      return '<div class="hero-slide ad-drobrand-slide" onclick="if(window.AdService)AdService.track(\''+esc(s.id||'ad-droboard')+'\',\'click\',{page:\'home\',slot:\'home:swipe-card\'});toast(\'🌟 Opening Droboard Premium…\')">' +
         '<div class="ad-drobrand-glow1"></div><div class="ad-drobrand-glow2"></div>' +
         '<div class="hero-badges-top"><span class="badge-ad">Ad · Droboard</span><span></span></div>' +
         '<div class="hero-content" style="display:flex;flex-direction:column;align-items:flex-start">' +
         '<div class="ad-drobrand-icon"><i class="fas ' + (s.icon||'fa-crown') + '"></i></div>' +
         '<div class="hero-title" style="font-size:25px">' + esc(s.headline) + '</div>' +
         '<div class="hero-synopsis" style="-webkit-line-clamp:3">' + esc(s.sub) + '</div>' +
-        '<div class="hero-cta-row"><button class="btn-start" onclick="event.stopPropagation();if(window.AdService)AdService.track(\''+esc(s.id||'ad-droboard')+'\',\'click\');toast(\'🌟 Here we go!\')"><i class="fas fa-arrow-right" style="font-size:12px"></i> ' + esc(s.cta) + '</button></div>' +
+        '<div class="hero-cta-row"><button class="btn-start" onclick="event.stopPropagation();if(window.AdService)AdService.track(\''+esc(s.id||'ad-droboard')+'\',\'click\',{page:\'home\',slot:\'home:swipe-card\'});toast(\'🌟 Here we go!\')"><i class="fas fa-arrow-right" style="font-size:12px"></i> ' + esc(s.cta) + '</button></div>' +
         '</div></div>';
     }
     // ad-story → FULLSCREEN swipe slide (cover + scrim + badges), book ad rendered fullscreen, not small dac-story-promo card
     if (s.type === 'ad-story') {
-      if (window.AdService) AdService.track(s.id || s.brand, 'impression');
+      if (window.AdService) AdService.track(s.id || s.brand, 'impression', { page: 'home', slot: 'home:swipe-card' });
       var esc2 = (window.AdCard && AdCard.esc) ? AdCard.esc : function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
       var href = (window.AdCard && AdCard.storyHref) ? AdCard.storyHref({id:s.brand,title:s.brand}) : 'bridge.html?id='+encodeURIComponent(s.brand||'');
-      return '<div class="hero-slide ad-frame" style="background-image:url(\'' + esc2(s.cover) + '\')" onclick="if(window.AdService)AdService.track(\''+esc2(s.id||s.brand)+'\',\'click\');location.href=\''+href+'\'">' +
+      return '<div class="hero-slide ad-frame" style="background-image:url(\'' + esc2(s.cover) + '\')" onclick="if(window.AdService)AdService.track(\''+esc2(s.id||s.brand)+'\',\'click\',{page:\'home\',slot:\'home:swipe-card\'});location.href=\''+href+'\'">' +
         '<div class="hero-scrim"></div>' +
         '<div class="hero-badges-top"><span class="badge-ad">Ad</span><span class="badge-genre">' + esc2(s.genre) + '</span></div>' +
         '<div class="hero-content">' +
         '<div class="hero-title">' + esc2(s.brand) + '</div>' +
         '<div class="hero-author-row"><span class="hero-author-name">By ' + esc2(s.author) + '</span></div>' +
         '<div class="hero-synopsis">' + esc2(s.sub) + '</div>' +
-        '<div class="hero-cta-row"><button class="btn-start" onclick="event.stopPropagation();if(window.AdService)AdService.track(\''+esc2(s.id||s.brand)+'\',\'click\');location.href=\''+href+'\'"><i class="fas fa-book-open" style="font-size:12px"></i> Read Now</button></div>' +
+        '<div class="hero-cta-row"><button class="btn-start" onclick="event.stopPropagation();if(window.AdService)AdService.track(\''+esc2(s.id||s.brand)+'\',\'click\',{page:\'home\',slot:\'home:swipe-card\'});location.href=\''+href+'\'"><i class="fas fa-book-open" style="font-size:12px"></i> Read Now</button></div>' +
         '</div></div>';
     }
     var saved = isItemSaved(s.id);

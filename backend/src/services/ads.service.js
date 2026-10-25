@@ -194,33 +194,202 @@ async function promos(page, genre) {
   return slides.map(s => ({ title: s.title, author: '', cta: s.cta, img: s.image }));
 }
 
-// POST /api/ads/track {id, event, page?, slot?, storyId?} — daily counters for
-// earnings + CTR, plus the ad-revenue ledger split (platform/author 70/30).
-async function track({ id, event, userId, page, slot, storyId }) {
+// POST /api/ads/track — lifecycle events from clients. Guests count too
+// (anonId); conversions are idempotent on orderId; only impression/click
+// reach the revenue ledger. An impression is one rendered ad instance
+// (showingId) — the same creative shown again is a new impression; only
+// retries of the same instance dedupe (eventKey unique index).
+const TRACK_EVENTS = ['impression', 'viewable', 'click', 'complete', 'skip', 'conversion'];
+const EVENT_INC = { impression: 'impressions', viewable: 'viewables', click: 'clicks', complete: 'completes', skip: 'skips', conversion: 'conversions' };
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+async function track({ id, event, userId, anonId, page, slot, storyId, showingId, value, currency, orderId, source }) {
   if (!id) { const e = new Error('no_id'); e.status = 400; throw e; }
-  if (!['impression', 'click'].includes(event)) { const e = new Error('bad_event'); e.status = 400; throw e; }
+  if (!TRACK_EVENTS.includes(event)) { const e = new Error('bad_event'); e.status = 400; throw e; }
+  const { AdEvent, AdConversion } = require('../models/platform.model');
+  const adId = String(id);
+  const who = userId ? String(userId) : '';
+  const guest = who ? '' : String(anonId || '').slice(0, 80);
+  const pageStr = String(page || '').slice(0, 80);
+  const slotStr = String(slot || '').slice(0, 120);
+  const storyStr = String(storyId || '').slice(0, 120);
+  const showStr = String(showingId || '').slice(0, 80);
+  const eventKey = (event === 'impression' || event === 'viewable') && showStr
+    ? event + ':' + adId + ':' + showStr
+    : null;
+
+  if (event === 'conversion') {
+    const oid = orderId ? String(orderId).slice(0, 120) : '';
+    if (oid) {
+      const exists = await AdConversion.findOne({ orderId: oid }).lean().catch(() => null);
+      if (exists) return { ok: true, deduped: true };
+    }
+    const row = {
+      adId, userId: who, anonId: guest,
+      value: Math.max(0, Number(value) || 0),
+      currency: String(currency || 'USD').slice(0, 8),
+      page: pageStr, slot: slotStr, storyId: storyStr,
+      source: source === 'postback' ? 'postback' : 'client',
+    };
+    if (oid) row.orderId = oid;
+    try { await AdConversion.create(row); }
+    catch (e) {
+      if (e && e.code === 11000) return { ok: true, deduped: true };
+      throw e;
+    }
+  }
+
   const day = new Date();
   day.setHours(0, 0, 0, 0);
-  const inc = event === 'impression' ? { impressions: 1 } : { clicks: 1 };
-  await AdStat.updateOne({ adId: id, day }, { $inc: inc }, { upsert: true });
-  try {
-    await require('./ad-revenue.service').record({ id, event, page, slot, storyId, ts: Date.now() });
-  } catch (e) { /* revenue ledger never breaks tracking */ }
-  if (userId) {
+
+  // Insert the raw row first for deduped events so a retry that races this
+  // request loses on the unique index instead of double-counting AdStat.
+  const eventRow = {
+    adId, event, page: pageStr, slot: slotStr, storyId: storyStr,
+    showingId: showStr, userId: who, anonId: guest,
+  };
+  if (eventKey) eventRow.eventKey = eventKey;
+  if (eventKey) {
+    try { await AdEvent.create(eventRow); }
+    catch (e) {
+      if (e && e.code === 11000) return { ok: true, deduped: true };
+      throw e;
+    }
+  }
+
+  const inc = {};
+  inc[EVENT_INC[event]] = 1;
+  if (event === 'conversion') {
+    const v = Math.max(0, Number(value) || 0);
+    if (v) inc.conversionValue = round2(v);
+  }
+  await AdStat.updateOne({ adId, day }, { $inc: inc }, { upsert: true });
+
+  // Raw stream, fire-and-forget (TTL'd 90 days).
+  if (!eventKey) {
+    try { AdEvent.create(eventRow).catch(() => {}); } catch (e) { /* lifecycle never breaks tracking */ }
+  }
+
+  if (event === 'impression' || event === 'click') {
     try {
-      const { AdClick, AdView } = require('../models/platform.model');
-      if (event === 'click') await AdClick.create({ userId: String(userId), adId: String(id) });
-      else {
-        const d = new Date().toISOString().slice(0, 10);
-        await AdView.updateOne(
-          { userId: String(userId), adId: String(id), day: d },
-          { $setOnInsert: { userId: String(userId), adId: String(id), day: d } },
-          { upsert: true }
-        );
-      }
+      await require('./ad-revenue.service').record({ id: adId, event, page: pageStr, slot: slotStr, storyId: storyStr, ts: Date.now() });
+    } catch (e) { /* revenue ledger never breaks tracking */ }
+  }
+  if (who && event === 'click') {
+    try { await AdClick.create({ userId: who, adId }); } catch (e) { /* analytics never break tracking */ }
+  } else if (who && event === 'impression') {
+    try {
+      const d = new Date().toISOString().slice(0, 10);
+      await AdView.updateOne(
+        { userId: who, adId, day: d },
+        { $setOnInsert: { userId: who, adId, day: d } },
+        { upsert: true }
+      );
     } catch (e) { /* analytics never break tracking */ }
   }
   return { ok: true };
 }
 
-module.exports = { placement, placements, savePlacement, pools, inventory, promos, track, inventoryAll, createAd, updateAd, deleteAd };
+/* Real per-slot performance for the marketing console: counts come from the
+   raw event stream (guests included), value from attributed conversions. */
+async function performance({ days, page }) {
+  const { AdEvent, AdConversion } = require('../models/platform.model');
+  const n = Math.min(Math.max(parseInt(days, 10) || 30, 1), 90);
+  const from = new Date();
+  from.setHours(0, 0, 0, 0);
+  from.setDate(from.getDate() - (n - 1));
+  const evMatch = { at: { $gte: from } };
+  if (page) evMatch.page = String(page);
+  const convMatch = { createdAt: { $gte: from } };
+  if (page) convMatch.page = String(page);
+  const viewerKey = { $cond: [{ $gt: ['$userId', ''] }, '$userId', '$anonId'] };
+  const [counts, convs, daily, uniques, reach] = await Promise.all([
+    AdEvent.aggregate([
+      { $match: evMatch },
+      { $group: { _id: { adId: '$adId', page: '$page', slot: '$slot', event: '$event' }, n: { $sum: 1 } } },
+    ]),
+    AdConversion.aggregate([
+      { $match: convMatch },
+      { $group: { _id: { adId: '$adId', page: '$page', slot: '$slot' }, n: { $sum: 1 }, value: { $sum: '$value' } } },
+    ]),
+    AdEvent.aggregate([
+      { $match: evMatch },
+      { $group: {
+        _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$at', timezone: 'UTC' } }, event: '$event' },
+        n: { $sum: 1 },
+      } },
+    ]),
+    // Unique reach per creative+slot: distinct logged-in users / guests.
+    AdEvent.aggregate([
+      { $match: Object.assign({}, evMatch, { event: 'impression' }) },
+      { $group: { _id: { adId: '$adId', page: '$page', slot: '$slot' }, viewers: { $addToSet: viewerKey } } },
+      { $project: { n: { $size: { $setDifference: ['$viewers', ['']] } } } },
+    ]),
+    // Unique reach overall: union of viewer ids, not a sum of per-slot sets.
+    AdEvent.aggregate([
+      { $match: Object.assign({}, evMatch, { event: 'impression' }) },
+      { $group: { _id: null, viewers: { $addToSet: viewerKey } } },
+      { $project: { n: { $size: { $setDifference: ['$viewers', ['']] } } } },
+    ]),
+  ]);
+  const rows = {};
+  const row = (p, s, a) => {
+    const k = String(p) + '\u0000' + String(s) + '\u0000' + String(a);
+    if (!rows[k]) {
+      rows[k] = {
+        adId: String(a), page: String(p), slot: String(s),
+        impressions: 0, viewables: 0, clicks: 0, completes: 0, skips: 0,
+        conversions: 0, value: 0, uniqueViewers: 0,
+      };
+    }
+    return rows[k];
+  };
+  counts.forEach(c => {
+    const r = row(c._id.page, c._id.slot, c._id.adId);
+    r[c._id.event] = (r[c._id.event] || 0) + c.n;
+  });
+  convs.forEach(c => {
+    const r = row(c._id.page, c._id.slot, c._id.adId);
+    r.conversions = c.n;
+    r.value = round2(c.value);
+  });
+  uniques.forEach(u => {
+    row(u._id.page, u._id.slot, u._id.adId).uniqueViewers = u.n || 0;
+  });
+  const pct = (n, d) => (d ? Math.min(100, round2((n / d) * 100)) : 0);
+  const slots = Object.keys(rows).map(k => {
+    const r = rows[k];
+    return Object.assign(r, {
+      ctr: pct(r.clicks, r.impressions),
+      viewabilityRate: pct(r.viewables, r.impressions),
+      completionRate: pct(r.completes, r.impressions),
+      conversionRate: pct(r.conversions, r.clicks),
+    });
+  }).sort((a, b) => b.impressions - a.impressions);
+  const totals = { impressions: 0, viewables: 0, clicks: 0, completes: 0, skips: 0, conversions: 0, value: 0 };
+  slots.forEach(r => Object.keys(totals).forEach(k => { totals[k] += r[k] || 0; }));
+  totals.value = round2(totals.value);
+  totals.uniqueViewers = (reach[0] && reach[0].n) || 0;
+  totals.ctr = pct(totals.clicks, totals.impressions);
+  totals.viewabilityRate = pct(totals.viewables, totals.impressions);
+  totals.completionRate = pct(totals.completes, totals.impressions);
+  totals.conversionRate = pct(totals.conversions, totals.clicks);
+
+  // Daily series for the trend chart + CSV (zero-filled so the axis is even).
+  const byDay = {};
+  daily.forEach(d => {
+    const day = d._id.day;
+    if (!byDay[day]) byDay[day] = { date: day, impressions: 0, viewables: 0, clicks: 0, completes: 0, skips: 0, conversions: 0 };
+    byDay[day][d._id.event] = d.n;
+  });
+  const series = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    series.push(byDay[key] || { date: key, impressions: 0, viewables: 0, clicks: 0, completes: 0, skips: 0, conversions: 0 });
+  }
+  return { days: n, from: from.toISOString().slice(0, 10), totals, slots, series };
+}
+
+module.exports = { placement, placements, savePlacement, pools, inventory, promos, track, performance, inventoryAll, createAd, updateAd, deleteAd };

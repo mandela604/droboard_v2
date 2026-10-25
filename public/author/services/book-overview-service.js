@@ -27,14 +27,6 @@
     { label: 'Schedule', icon: 'fa-calendar-days', bg: 'var(--warning-soft)', color: 'var(--warning)', href: '#' }
   ];
 
-  var ACTIVITY = [
-    { title: 'Chapter 56 published', sub: '\u201cThe Wedding That Closes the Wound\u201d went live', time: '2h ago', icon: 'fa-book-open', bg: 'var(--success-soft)', color: '#158a48' },
-    { title: 'New comments', sub: '48 new reader comments on Chapter 55', time: '5h ago', icon: 'fa-comment', bg: 'var(--blue-soft)', color: 'var(--blue)' },
-    { title: 'Earnings update', sub: '+$128.40 from paid chapter unlocks', time: '1d ago', icon: 'fa-sack-dollar', bg: 'var(--warning-soft)', color: 'var(--warning)' },
-    { title: 'Milestone reached', sub: '2.3M total reads — badge unlocked', time: '2d ago', icon: 'fa-trophy', bg: 'var(--purple-soft)', color: 'var(--purple)' },
-    { title: 'Contract signed', sub: 'Exclusive publishing agreement activated', time: '5d ago', icon: 'fa-file-signature', bg: '#F3E9DE', color: '#9A6A3A' }
-  ];
-
   function renderStats() {
     document.getElementById('statGrid').innerHTML = STATS.map(function (s) {
       return '<div class="stat-card fade"><div class="stat-icon" style="background:' + s.bg + ';color:' + s.color + '"><i class="fas ' + s.icon + '"></i></div>'
@@ -49,21 +41,12 @@
     }).join('');
   }
 
-  function renderActivity() {
-    document.getElementById('activityList').innerHTML = ACTIVITY.map(function (a) {
-      return '<div class="activity-item fade"><div class="act-icon" style="background:' + a.bg + ';color:' + a.color + '"><i class="fas ' + a.icon + '"></i></div>'
-        + '<div class="act-body"><div class="act-title">' + a.title + '</div><div class="act-sub">' + a.sub + '</div></div>'
-        + '<div class="act-time">' + a.time + '</div></div>';
-    }).join('');
-  }
-
   function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); }
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 
   function init() {
     renderStats();
     renderQA();
-    renderActivity();
     if (window.AuthorDrawer) { window.AuthorDrawer.render('book-overview.html'); window.AuthorDrawer.bind(); }
     else {
       document.getElementById('menuBtn').addEventListener('click', openDrawer);

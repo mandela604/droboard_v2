@@ -273,16 +273,6 @@
       border-bottom:1px solid var(--dso-border);cursor:pointer}
     .dso-writer-card:last-child{border-bottom:none}
     .dso-wc-av-wrap{position:relative;flex-shrink:0}
-    .dso-wc-av-ring{width:44px;height:44px;border-radius:50%;padding:2.5px;
-      background:linear-gradient(135deg,#ff0050,#ff4d7a)}
-    .dso-wc-av-ring.viewed{background:#9ca3af}
-    .dso-wc-av-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;
-      background:var(--dso-bg)}
-    .dso-wc-av-inner img{width:100%;height:100%;object-fit:cover;display:block}
-    /* No status → no ring at all, just the round avatar. */
-    .dso-wc-av-plain{width:44px;height:44px;border-radius:50%;overflow:hidden;
-      background:var(--dso-bg)}
-    .dso-wc-av-plain img{width:100%;height:100%;object-fit:cover;display:block}
     .dso-wc-verified{position:absolute;bottom:-1px;right:-1px;width:16px;height:16px;
       border-radius:50%;background:var(--dso-blue-text);border:2px solid var(--dso-bg);display:flex;
       align-items:center;justify-content:center;font-size:6px;color:#fff}
@@ -849,20 +839,21 @@
   }
 
   function _writerAvatar(w) {
-    const av = _esc(w.av || w.avatar || '');
+    const av = w.av || w.avatar || '';
     const st = _statusEntry(w);
-    if (!st) {
-      return `<div class="dso-wc-av-plain"><img src="${av}" loading="lazy" alt=""/></div>`;
+    const key = w.handle || w.name || (st && st.id);
+    if (window.DroboardStatusRing) {
+      return DroboardStatusRing.html({
+        id: key, name: w.name, avatar: av,
+        statuses: st ? st.statuses : null,
+        ring: st ? (st.ring || 'ring-has') : 'ring-none',
+      }, {
+        size: 44, key, pad: st ? 2.5 : 0, gap: 0,
+        innerBg: 'var(--dso-bg)',
+      });
     }
-    const key = w.handle || w.name || st.id;
-    let ring = st.ring || 'ring-has';
-    try {
-      if (window.StatusStore && StatusStore.register) {
-        ring = StatusStore.register(key, st.statuses || [], { isLive: !!st.isLive }) || ring;
-      }
-    } catch (e) {}
-    const viewed = ring === 'ring-viewed';
-    return `<div class="dso-wc-av-ring${viewed ? ' viewed' : ''}" data-status-ring="${_esc(key)}"><div class="dso-wc-av-inner"><img src="${av}" loading="lazy" alt=""/></div></div>`;
+    return `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--dso-bg)">` +
+      `<img src="${_esc(av)}" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover;display:block"/></div>`;
   }
 
   function renderWriters() {

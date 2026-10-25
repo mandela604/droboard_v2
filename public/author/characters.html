@@ -80,6 +80,8 @@ a{color:inherit;text-decoration:none}
   border-radius:var(--r-md);padding:11px 14px;color:var(--text-2);font-size:13px;
 }
 .search-bar i{font-size:13px}
+.search-bar input{flex:1;min-width:0;border:none;outline:none;background:none;font:inherit;font-size:13px;color:var(--text);padding:0}
+.search-bar input::placeholder{color:var(--text-2)}
 .filter-btn{
   width:42px;height:42px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--border);
   display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;flex-shrink:0;
@@ -314,7 +316,7 @@ a{color:inherit;text-decoration:none}
   </div>
 
   <div class="search-row">
-    <div class="search-bar"><i class="fas fa-magnifying-glass"></i> Search characters...</div>
+    <div class="search-bar"><i class="fas fa-magnifying-glass"></i><input id="charSearch" type="search" placeholder="Search characters..." autocomplete="off"/></div>
     <button class="filter-btn"><i class="fas fa-sliders"></i></button>
   </div>
 
@@ -328,7 +330,7 @@ a{color:inherit;text-decoration:none}
     </div>
   </section>
 
-  <section class="section" style="margin-bottom:6px">
+  <section class="section" style="display:none">
     <div class="section-head">
       <h2 class="section-title"><i class="fas fa-diagram-project"></i>Relationships</h2>
       <span class="section-note">4 mapped</span>
@@ -423,7 +425,7 @@ a{color:inherit;text-decoration:none}
 
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js"></script>
-<script src="services/characters-service.js"></script>
+<script src="services/characters-service.js?v=3"></script>
 <script>CharactersService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

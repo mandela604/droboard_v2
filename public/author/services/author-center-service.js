@@ -42,7 +42,6 @@
       cover: 'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=400&fit=crop' }
   ];
 
-  var STATUS_LABEL = { published: 'Published', ongoing: 'Ongoing', draft: 'Draft', scheduled: 'Scheduled', paused: 'Paused', rejected: 'Rejected' };
 
   function renderStats() {
     document.getElementById('statGrid').innerHTML = STATS.map(function (s) {
@@ -56,18 +55,10 @@
   }
 
   function renderBooks() {
-    document.getElementById('bookList').innerHTML = BOOKS.map(function (b) {
-      return '<div class="book-card" onclick="location.href=\'book-workspace.html?book=' + b.id + '\'">'
-        + '<div class="book-cover"><img src="' + b.cover + '" alt="' + b.title + '" loading="lazy"/></div>'
-        + '<div class="book-info">'
-        + '<div class="book-title-row"><div class="book-title">' + b.title + '</div><i class="fas fa-chevron-right book-chev"></i></div>'
-        + '<div class="book-genre">' + b.genre + '</div>'
-        + '<div class="book-stats"><div class="book-stat"><i class="far fa-eye"></i> ' + b.reads + '</div>'
-        + '<div class="book-stat"><i class="far fa-heart"></i> ' + b.likes + '</div>'
-        + '<div class="book-stat"><i class="fas fa-list-ul"></i> ' + b.chapters + ' ch</div></div>'
-        + '<div class="book-foot"><span class="status-badge ' + b.status + '">' + STATUS_LABEL[b.status] + '</span></div>'
-        + '</div></div>';
-    }).join('');
+    if (!window.DroboardBookCard) { document.getElementById('bookList').innerHTML = ''; return; }
+    DroboardBookCard.renderList('#bookList', BOOKS, {
+      onOpen: function (b) { location.href = 'book-workspace.html?book=' + b.id; }
+    });
   }
 
   function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); }

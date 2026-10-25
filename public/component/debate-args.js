@@ -71,12 +71,6 @@
     /* Avatar with ring + verified badge */
     .da-av-wrap{position:relative;width:32px;height:32px;flex-shrink:0;cursor:pointer}
     .da-av-wrap.has-status{cursor:pointer}
-    .da-av-ring{width:32px;height:32px;border-radius:50%;padding:2px}
-    .da-av-ring.ring-has{background:conic-gradient(#ff0050,#ff4d7a,#ff7a9a,#ff0050)}
-    .da-av-ring.ring-viewed{background:rgba(102,102,102,.75)}
-    .da-av-ring.ring-none{background:transparent}
-    .da-av-ring-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--l2,#f1f1f1)}
-    .da-av-ring-inner img{width:100%;height:100%;object-fit:cover;border-radius:50%}
     .da-av-initial{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
     .da-av-badge{position:absolute;bottom:-1px;right:-1px;width:13px;height:13px;border-radius:50%;background:#38bdf8;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--l1,#fff)}
     .da-av-badge i{font-size:5px;color:#fff}
@@ -258,7 +252,6 @@
       return out;
     }
     function openAuthorsFor(argId) {
-      if (typeof window.openStatusViewer !== 'function') return;
       var full = viewerAuthorsFor();
       if (!full.length) return;
       var vid = 'da_' + argId;
@@ -276,19 +269,12 @@
       }
       /* Cap the list, but never cut off the tapped arg. */
       var list = at >= 50 ? full.slice(at - 49, at + 50) : full.slice(0, 50);
-      window.openStatusViewer(list, vid);
+      DroboardStatusRing.open(list, vid);
     }
 
     /* ── avatar HTML ── */
     function avHTML(a) {
       var hasSt = a.statuses && a.statuses.length;
-      var ringCls = !hasSt ? 'ring-none' : a.statusRing === 'has' ? 'ring-has' : a.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none';
-      try {
-        if (window.StatusStore && StatusStore.ringOf) {
-          var sr = StatusStore.ringOf(a.name);
-          if (sr) ringCls = sr;
-        }
-      } catch (e) {}
       var inner = a.avatar
         ? '<img src="' + esc(a.avatar) + '" alt="" loading="lazy"/>'
         : '<div class="da-av-initial" style="background:' + (a.avatarBg || '#ff0050') + '">' + esc((a.name || '?').charAt(0).toUpperCase()) + '</div>';
@@ -296,7 +282,10 @@
         ? '<div class="da-av-badge' + (a.verified === 'writer' ? ' writer' : '') + '"><i class="fas fa-check"></i></div>'
         : '';
       return '<div class="da-av-wrap' + (hasSt ? ' has-status' : '') + '" data-av-id="' + esc(a.id) + '">' +
-        '<div class="da-av-ring ' + ringCls + '" data-status-ring="' + esc(a.name || '') + '"><div class="da-av-ring-inner">' + inner + '</div></div>' + badge +
+        DroboardStatusRing.html(a, {
+          size: 32, key: a.name || '', innerHtml: inner,
+          innerBg: 'var(--l2,#f1f1f1)', gapColor: 'var(--l2,#f1f1f1)',
+        }) + badge +
       '</div>';
     }
 
@@ -617,7 +606,7 @@
           var a = findArg(btn.getAttribute('data-dots'));
           if (!a) return;
           if (window.DroboardDotsMenu) {
-            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true, mine: !!(a.name && O.currentUser && a.name === O.currentUser.name), inThread: true }, btn);
+            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true, mine: !!(a.name && O.currentUser && a.name === O.currentUser.name), inThread: true, shareable: true }, btn);
           }
         });
       });
@@ -879,7 +868,7 @@
           var a = findArg(btn.getAttribute('data-dots'));
           if (!a) return;
           if (window.DroboardDotsMenu) {
-            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true, mine: !!(a.name && O.currentUser && a.name === O.currentUser.name), inThread: false }, btn);
+            DroboardDotsMenu.open({ id: a.id, name: a.name, noMute: true, mine: !!(a.name && O.currentUser && a.name === O.currentUser.name), inThread: false, shareable: true }, btn);
           }
         });
       });
@@ -988,8 +977,9 @@
             x.statusRing = newRing;
             [rootEl, document.getElementById('daThreadOv')].forEach(function (scopeEl) {
               if (!scopeEl) return;
-              scopeEl.querySelectorAll('[data-av-id="' + x.id + '"] .da-av-ring').forEach(function (ringEl) {
-                ringEl.className = 'da-av-ring ring-' + newRing;
+              scopeEl.querySelectorAll('[data-av-id="' + x.id + '"] .dring').forEach(function (ringEl) {
+                ringEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
+                ringEl.classList.add('ring-' + newRing);
               });
             });
           }
@@ -1005,6 +995,22 @@
       DroboardDotsMenu.configure({
         onEdit: function (post) { startEdit(post.id, !!post.inThread); },
         onDelete: function (post) { removeArg(post.id); },
+        onShare: function (post) {
+          var a = findArg(post.id);
+          if (!a) return;
+          var txt = a.text || '';
+          var url = location.href.split('#')[0] + '#argument-' + a.id;
+          if (typeof window.openShareModal === 'function') {
+            window.openShareModal({
+              title: a.name + "'s argument",
+              sub: txt.length > 90 ? txt.slice(0, 90) + '\u2026' : txt,
+              img: a.avatar || null,
+              url: url,
+            });
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).catch(function () {});
+          }
+        },
       });
     }
 

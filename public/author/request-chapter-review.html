@@ -30,15 +30,9 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .tab{padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;background:var(--l2);color:var(--tx-muted);white-space:nowrap;cursor:pointer;transition:.15s}
 .tab.active{background:var(--acc);color:#fff}
 
-/* ──────── Book Section ──────── */
+/* ──────── Book Section (card from component/book-card.js) ──────── */
 .book-section{margin-bottom:16px}
-.book-header{display:flex;align-items:center;gap:10px;padding:12px;background:var(--l2);border-radius:12px;cursor:pointer;margin-bottom:8px}
-.book-cover{width:36px;height:50px;border-radius:6px;object-fit:cover;flex-shrink:0}
-.book-info{flex:1;min-width:0}
-.book-title{font-size:13px;font-weight:700;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.book-meta{font-size:11px;color:var(--tx-muted);margin-top:2px}
-.book-chevron{color:var(--tx-muted);font-size:12px;transition:.2s}
-.book-section.open .book-chevron{transform:rotate(180deg)}
+.book-section .dbc-card{margin-bottom:8px}
 
 /* ──────── Chapter List ──────── */
 .chapter-list{display:flex;flex-direction:column;gap:6px;padding:0 0 8px}
@@ -150,9 +144,11 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
   <div class="drawer-body" id="drawerBody"></div>
 </div>
 
+<script src="../component/book-card.js"></script>
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js"></script>
-<script src="services/request-chapter-review-service.js"></script>
+<script src="../services/notification-store.js?v=5"></script>
+<script src="services/request-chapter-review-service.js?v=4"></script>
 <script>ChapterReviewService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

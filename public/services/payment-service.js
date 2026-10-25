@@ -97,6 +97,16 @@
           e.status = res.status;
           throw e;
         }
+        // Attributed conversion (uses the last ad clicked, if any).
+        try {
+          if (window.AdService && AdService.convert) {
+            AdService.convert({
+              orderId: body && (body.reference || body.transactionId || body.purchaseToken),
+              value: j && j.amount != null ? Number(j.amount) : undefined,
+              currency: (j && j.currency) || 'USD',
+            });
+          }
+        } catch (err) {}
         return j;
       });
     });

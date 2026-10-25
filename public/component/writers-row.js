@@ -25,11 +25,6 @@
       .dwr-scroll{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
       .dwr-scroll::-webkit-scrollbar{display:none}
       .dwr-writer{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;width:64px;text-align:center}
-      .dwr-ring{width:58px;height:58px;border-radius:50%;padding:3px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-      .dwr-ring.ring-has,.dwr-ring.ring-live{background:conic-gradient(var(--dwr-acc),var(--dwr-acc2),var(--dwr-acc3),var(--dwr-acc))}
-      .dwr-ring.ring-viewed{background:var(--dwr-viewed)}
-      .dwr-ring.ring-none{background:var(--dwr-none)}
-      .dwr-ring-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--dwr-inner);display:flex;align-items:center;justify-content:center}
       .dwr-avatar{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
       .dwr-name{display:block;font-size:10.5px;font-weight:600;color:var(--dwr-tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
       [data-theme="dark"] .dwr-row{--dwr-bd:rgba(255,255,255,.08);--dwr-tx:#f0f0f5;--dwr-inner:#0b0b10;
@@ -61,11 +56,15 @@
       '<div class="dwr-scroll">' +
       list.map(function (w) {
         var hasStatus = w.statuses && w.statuses.length;
+        var inner = '<img class="dwr-avatar" src="' + _esc(w.avatar) + '" loading="lazy" alt=""/>';
+        var attrs = hasStatus
+          ? 'data-writer-status="' + _esc(w.id) + '" data-writer-handle="' + _esc(w.handle) + '"'
+          : '';
         return '<div class="dwr-writer">' +
-          '<div class="dwr-ring ' + (hasStatus ? (w.ring || 'ring-has') : 'ring-none') + '"' +
-            (hasStatus ? ' data-writer-status="' + _esc(w.id) + '" data-status-ring="' + _esc(w.id) + '" data-writer-handle="' + _esc(w.handle) + '"' : '') + '>' +
-            '<div class="dwr-ring-inner"><img class="dwr-avatar" src="' + _esc(w.avatar) + '" loading="lazy" alt=""/></div>' +
-          '</div>' +
+          DroboardStatusRing.html(w, {
+            size: 58, key: w.id, innerHtml: inner, attrs: attrs,
+            innerBg: 'var(--dwr-inner)', gapColor: 'var(--dwr-inner)',
+          }) +
           '<a class="dwr-name" href="profile.html?u=' + _esc(w.handle) + '">' + _esc(w.name) + '</a>' +
         '</div>';
       }).join('') +

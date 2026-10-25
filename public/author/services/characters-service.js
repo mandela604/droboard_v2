@@ -63,6 +63,7 @@
   var activeRole = 'all';
   var selectedRole = 'lead';
   var charTags = [];
+  var searchQuery = '';
 
   function renderRoleFilter() {
     document.getElementById('roleFilter').innerHTML = ROLES.map(function (r) {
@@ -79,6 +80,12 @@
 
   function renderCharacters() {
     var filtered = activeRole === 'all' ? CHARACTERS : CHARACTERS.filter(function (c) { return c.role === activeRole; });
+    if (searchQuery) {
+      filtered = filtered.filter(function (c) {
+        var hay = (c.name + ' ' + (c.roleLabel || '')).toLowerCase();
+        return hay.indexOf(searchQuery) !== -1;
+      });
+    }
     document.getElementById('characterList').innerHTML = filtered.map(function (c, i) {
       return '<div class="character-card fade" style="animation-delay:' + (i * 0.03) + 's" onclick="location.href=\'character-profile.html\'">'
         + '<div class="cc-avatar"><img src="' + c.img + '" alt="' + c.name + '"/></div>'
@@ -219,6 +226,11 @@
   function init() {
     renderRoleFilter();
     renderCharacters();
+    var search = document.getElementById('charSearch');
+    if (search) search.addEventListener('input', function () {
+      searchQuery = this.value.trim().toLowerCase();
+      renderCharacters();
+    });
     renderRelationships();
     if (window.AuthorDrawer) { window.AuthorDrawer.render('characters.html'); window.AuthorDrawer.bind(); }
     bindModal();

@@ -138,13 +138,13 @@
     } catch (e) {}
     document.getElementById('storiesRow').innerHTML = stories.map(s => {
       const n = s.statuses ? s.statuses.length : 0;
-      const ringClass = s.you ? (n ? 'ring-live' : 'own') : (s.ring || (n ? 'ring-has' : 'ring-none'));
       const ringKey = s.you ? 'you' : (s.name || s.handle || s.id);
+      const innerHtml = s.you
+        ? (n ? `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">` : `<div class="story-add">+</div>`)
+        : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`;
       return `
       <div class="story-item" data-story-id="${s.id}" data-you="${!!s.you}">
-        <div class="story-ring ${ringClass}" data-status-ring="${escAttr(ringKey)}"><div class="inner">
-          ${s.you ? (n ? `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">` : `<div class="story-add">+</div>`) : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`}
-        </div></div>
+        ${DroboardStatusRing.html(s, { size: 62, key: ringKey, own: !!s.you && !n, isMine: !!s.you, innerHtml })}
         ${s.you ? `<div class="story-post-plus" data-act="post-status" title="Post a status">+</div>` : ``}
         <div class="story-name">${s.name}</div>
       </div>`;
@@ -156,22 +156,24 @@
       if (postBtn) { openPostComposer('status'); return; }
       const item = e.target.closest('.story-item');
       if (!item) return;
-      if (!window.openStatusViewer) { toast('Status viewer unavailable'); return; }
       if (item.dataset.you === 'true') {
         const mine = (STORIES_CACHE || []).find(s => s.you) || ((window.DroboardStatus && window.DroboardStatus.myEntry()) || null);
-        if (mine && mine.statuses && mine.statuses.length) { openStatusViewer([mine], mine.id || 'you'); return; }
+        if (mine && mine.statuses && mine.statuses.length) {
+          DroboardStatusRing.open([mine], mine.id || 'you', { onMissing: () => toast('Status viewer unavailable') });
+          return;
+        }
         openPostComposer('status');
         return;
       }
       const viewable = STORIES_CACHE.filter(s => !s.you && s.statuses && s.statuses.length);
       if (!viewable.length) { toast('No statuses available'); return; }
-      openStatusViewer(viewable, item.dataset.storyId);
+      DroboardStatusRing.open(viewable, item.dataset.storyId, { onMissing: () => toast('Status viewer unavailable') });
     });
   }
   window.onStatusViewerChange = function (wid, ring) {
     const s = STORIES_CACHE.find(x => x.id === wid);
     if (s) s.ring = ring;
-    const item = document.querySelector(`.story-item[data-story-id="${wid}"] .story-ring`);
+    const item = document.querySelector(`.story-item[data-story-id="${wid}"] .dring`);
     if (item) {
       item.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
       if (ring) item.classList.add(ring);
@@ -531,6 +533,13 @@
     const viewable = STORIES_CACHE.filter(s => !s.you && s.statuses && s.statuses.length);
     const hit = viewable.find(s => s.name === name);
     if (hit && window.openStatusViewer) { openStatusViewer(viewable, hit.id); return; }
+    if (hit && window.ensureStatusViewer) {
+      window.ensureStatusViewer().then(function (ok) {
+        if (ok) openStatusViewer(viewable, hit.id);
+        else location.href = 'profile.html?u=' + encodeURIComponent(name || '');
+      });
+      return;
+    }
     location.href = 'profile.html?u=' + encodeURIComponent(name || '');
   }
   function openAuthorName(post){

@@ -253,6 +253,12 @@
       renderList();
       var label = v.kyc.type === 'guardian' ? ' (guardian co-sign)' : v.kyc.type === 'pending' ? ' (pending identity)' : '';
       toast(book.title + ' — application submitted' + label + '!');
+      if (window.droNotify) window.droNotify({
+        type: 'contract_update', key: 'contract:' + book.id + ':applied',
+        title: 'Contract application submitted',
+        desc: book.title + ' is with our editors. Expect a decision within 5 working days.',
+        link: { label: 'Track application' },
+      });
     });
   }
 
@@ -278,7 +284,7 @@
       document.getElementById(t[0]).addEventListener('change', function () {
         var f = this.files && this.files[0];
         var img = document.getElementById(t[3]);
-        document.getElementById(t[1]).textContent = f ? f.name : 'Tap to capture';
+        document.getElementById(t[1]).textContent = f ? f.name : 'Tap to upload';
         document.getElementById(t[2]).classList.toggle('filled', !!f);
         if (img.dataset.url && URL.revokeObjectURL) { try { URL.revokeObjectURL(img.dataset.url); } catch (e) {} }
         delete img.dataset.url;

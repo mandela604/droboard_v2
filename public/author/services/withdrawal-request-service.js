@@ -94,6 +94,12 @@
         await window.AuthorFinance.requestWithdrawal(amt, selectedMethod);
         document.getElementById('successMsg').textContent = 'Your $'+amt+' withdrawal request has been submitted. Funds will arrive within 3-5 business days.';
         document.getElementById('successModal').classList.add('show');
+        if (window.droNotify) window.droNotify({
+          type: 'payout', key: 'wd:' + amt + ':' + new Date().toISOString().slice(0, 16),
+          title: 'Withdrawal requested',
+          desc: '$' + amt + ' is on its way — usually 3-5 business days.',
+          link: { label: 'Transaction history' },
+        });
       } catch (e) { toast(e.message); }
     });
     render();

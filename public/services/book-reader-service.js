@@ -130,13 +130,28 @@ function attachWriterStatus() {
     }
   } catch (e) {}
 }
-function applyWriterRing() {
-  const el = document.getElementById('hwAvRing');
-  if (!el) return;
+function writerPerson() {
   const w = writer();
-  el.classList.remove('ring-has', 'ring-viewed');
-  if (!(w.statuses && w.statuses.length) || w.statusRing === 'none') return;
-  el.classList.add(w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has');
+  return {
+    id: w.statusId || w.id, name: w.name, avatar: w.avatar,
+    statuses: w.statuses,
+    ring: w.statusRing === 'viewed' ? 'ring-viewed' : (w.statusRing === 'none' ? 'ring-none' : 'ring-has'),
+  };
+}
+function renderWriterRing() {
+  const host = document.getElementById('hwAvWrap');
+  if (!host) return;
+  const p = writerPerson();
+  if (window.DroboardStatusRing) {
+    host.innerHTML = DroboardStatusRing.html(p, {
+      size: 28, key: p.id || p.name, innerBg: 'var(--l2,#1a1a24)',
+    });
+  } else {
+    host.innerHTML = `<img src="${uAttr(p.avatar)}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;display:block"/>`;
+  }
+}
+function applyWriterRing() {
+  if (window.DroboardStatusRing) DroboardStatusRing.apply(document.getElementById('hwAvWrap'));
 }
 function goProfile() {
   const w = writer();
@@ -181,12 +196,17 @@ function statusViewQueue(fallback) {
 }
 function openWriterStatus() {
   const w = writer();
-  if (!(w.statuses && w.statuses.length) || typeof window.openStatusViewer !== 'function') return false;
+  if (!(w.statuses && w.statuses.length)) return false;
   const q = statusViewQueue({
     id: w.statusId || 'br_writer', name: w.name, avatar: w.avatar,
     ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
     likes: 0, threads: 0, statuses: w.statuses,
   });
+  if (window.DroboardStatusRing) {
+    DroboardStatusRing.open(q, q[0].id).then(ok => { if (!ok) goProfile(); });
+    return true;
+  }
+  if (typeof window.openStatusViewer !== 'function') return false;
   window.openStatusViewer(q, q[0].id);
   return true;
 }
@@ -249,40 +269,48 @@ function userStatusFor(name, avatar) {
   userStatus[key] = rec;
   return rec;
 }
-function userAvHtml(name, avatar, innerCls) {
+function userAvHtml(name, avatar, size) {
   const rec = userStatusFor(name, avatar);
-  const ring = !(rec.statuses && rec.statuses.length) || rec.ring === 'none'
-    ? '' : (rec.ring === 'viewed' ? ' ring-viewed' : ' ring-has');
+  const p = {
+    id: rec.id, name: rec.name, avatar: rec.avatar, statuses: rec.statuses,
+    ring: rec.ring === 'viewed' ? 'ring-viewed' : (rec.ring === 'none' ? 'ring-none' : 'ring-has'),
+  };
+  const attrs = `data-av-user="${uAttr(uKey(name, avatar))}"`;
+  if (window.DroboardStatusRing) {
+    return DroboardStatusRing.html(p, {
+      size: size || 34, key: rec.id, innerBg: 'rgba(255,0,80,.15)', gap: 0, attrs,
+    });
+  }
+  const s = size || 34;
   const body = avatar
-    ? `<img src="${uAttr(avatar)}" alt="" loading="lazy"/>`
-    : esc0((name || '?').charAt(0).toUpperCase());
-  return `<span class="${innerCls}-wrap${ring}" data-av-user="${uAttr(uKey(name, avatar))}"><span class="${innerCls}">${body}</span></span>`;
+    ? `<img src="${uAttr(avatar)}" alt="" loading="lazy" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block"/>`
+    : `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,0,80,.15);font-weight:800;color:#fff">${esc0((name || '?').charAt(0).toUpperCase())}</span>`;
+  return `<div data-av-user="${uAttr(uKey(name, avatar))}" style="width:${s}px;height:${s}px;border-radius:50%;overflow:hidden;flex-shrink:0">${body}</div>`;
 }
 function userNameHtml(name, cls) {
   return `<span class="${cls}" data-user-name="${uAttr(String(name || '').replace(/^@/, ''))}" style="cursor:pointer">${esc0(name)}</span>`;
 }
 function onUserAvatar(el) {
   const rec = userStatus[el.getAttribute('data-av-user')];
-  if (rec && rec.statuses && rec.statuses.length && typeof window.openStatusViewer === 'function') {
+  if (rec && rec.statuses && rec.statuses.length) {
     const q = statusViewQueue({
       id: rec.id, name: rec.name, avatar: rec.avatar,
       ring: rec.ring === 'viewed' ? 'ring-viewed' : 'ring-has',
       likes: 0, threads: 0, statuses: rec.statuses,
     });
-    window.openStatusViewer(q, q[0].id);
+    if (window.DroboardStatusRing) {
+      DroboardStatusRing.open(q, q[0].id).then(ok => { if (!ok) goProfileFor(rec.name); });
+    } else if (typeof window.openStatusViewer === 'function') {
+      window.openStatusViewer(q, q[0].id);
+    } else {
+      goProfileFor(rec.name);
+    }
     return;
   }
   goProfileFor(rec ? rec.name : el.getAttribute('data-av-user'));
 }
 function paintStatusRings() {
-  document.querySelectorAll('[data-av-user]').forEach(el => {
-    const rec = userStatus[el.getAttribute('data-av-user')];
-    el.classList.remove('ring-has', 'ring-viewed');
-    if (rec && rec.statuses && rec.statuses.length && rec.ring !== 'none') {
-      el.classList.add(rec.ring === 'viewed' ? 'ring-viewed' : 'ring-has');
-    }
-  });
-  applyWriterRing();
+  if (window.DroboardStatusRing) DroboardStatusRing.apply();
 }
 
 /* ══ INIT ══ */
@@ -305,7 +333,6 @@ async function init() {
   // Hero
   document.getElementById('heroCover').style.backgroundImage = `url('${SERIES.cover}')`;
   document.getElementById('heroTitle').textContent = SERIES.title;
-  document.getElementById('hwAv').src = SERIES.writer.avatar;
   document.getElementById('hwName').textContent = `@${SERIES.writer.name}`;
   const fBtn = document.getElementById('hwFollow');
   fBtn.textContent = isFollowing ? '✓ Following' : '+ Follow';
@@ -349,6 +376,7 @@ async function init() {
   // Writer → profile (name) + status ring (avatar) — same contract as the
   // bridge page: red ring only when the writer actually has statuses.
   attachWriterStatus();
+  renderWriterRing();
   applyWriterRing();
   wireStatusRing();
   document.getElementById('hwName').addEventListener('click', goProfile);
@@ -463,7 +491,7 @@ function renderReviews() {
     return `
     <div class="rev-card">
       <div class="rev-head">
-        ${userAvHtml(t.name, t.avatar, 'rev-av')}
+        ${userAvHtml(t.name, t.avatar, 34)}
         <div>${userNameHtml(t.name, 'rev-name')}<div class="rev-meta">${esc0(t.time)} · ${t.side === 'for' ? 'For' : 'Against'} the motion</div></div>
         <div class="rev-stars">${starHtml(t)}</div>
       </div>
@@ -952,7 +980,7 @@ function renderDebates() {
 }
 
 function renderDebCm(c) {
-  const av = userAvHtml(c.name, c.avatar, 'deb-cm-av');
+  const av = userAvHtml(c.name, c.avatar, 26);
   return `
     <div class="deb-cm-item" id="debcm-${c.id}">
       ${av}

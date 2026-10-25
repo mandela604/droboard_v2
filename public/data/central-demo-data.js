@@ -1776,9 +1776,9 @@ const SERIES_CATALOG = {
     lastMonth: 1620,
     currency: 'USD',
     byBook: [
-      { id: 'b1', title: 'Season of Betrayal', earnings: 12400, reads: '820k', likes: '94k', chapters: 62, cover: COVERS[1] },
-      { id: 'b2', title: 'Crowned in Sin', earnings: 8200, reads: '310k', likes: '41k', chapters: 48, cover: COVERS[2] },
-      { id: 'b3', title: 'Until You Regret', earnings: 4200, reads: '150k', likes: '22k', chapters: 35, cover: COVERS[4] },
+      { id: 'b1', title: 'Season of Betrayal', genre: 'Romance · Drama', status: 'ongoing', earnings: 12400, reads: '820k', likes: '94k', chapters: 62, cover: COVERS[1] },
+      { id: 'b2', title: 'Crowned in Sin', genre: 'Mafia', status: 'ongoing', earnings: 8200, reads: '310k', likes: '41k', chapters: 48, cover: COVERS[2] },
+      { id: 'b3', title: 'Until You Regret', genre: 'Revenge · Romance', status: 'completed', earnings: 4200, reads: '150k', likes: '22k', chapters: 35, cover: COVERS[4] },
     ],
     monthlyHistory: [
       { month: 'Feb', amount: 1120 }, { month: 'Mar', amount: 1380 }, { month: 'Apr', amount: 1250 },

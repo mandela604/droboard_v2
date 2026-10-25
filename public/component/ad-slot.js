@@ -10,9 +10,11 @@
       DroboardAdSlot.mount('#mySlot', { slot: 'debate:top', max: 1, postId: 'p123' });
 
     TRACKING (unified — same for all surfaces):
-      • impression fires on real view (IntersectionObserver 50%), once per ad
+      • impression fires on real view (IntersectionObserver 50%), once per
+        rendered instance — the same creative shown again counts again
+      • viewable fires after 1s at >=50% visible (IAB), same showingId
       • click binds centrally; storyPromo inline clicks excluded (no double)
-      • AdService.track(id, event, {page, slot, postId, storyId, viewerId, ts})
+      • AdService.track(id, event, {page, slot, postId, storyId, showingId, viewerId, ts})
       • viewerId = DroboardUser.id if logged in, else stable anon dro_viewer_id;
         live userId is resolved server-side from session, never trusted client
 
@@ -44,8 +46,7 @@
   var AUTO_ORDER = ['book', 'native', 'platform', 'banner', 'minibanner', 'follow', 'embed'];
   var CLICK_SEL = 'a, button, .ad-cta, .dac-native-cta, .dac-banner-cta, .dac-follow-btn, .dac-story-promo-cta';
 
-  var _used = {};      // ad id → true (page-load scope: stops repeats across slots)
-  var _seenImp = {};   // ad id → true (impression fired once per ad)
+  var _used = {};      // ad id → true (page-load scope: creative rotation only)
 
   function esc(s) {
     return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -65,25 +66,23 @@
     try { if (window.AdService) AdService.track(id, ev, ctx); } catch (e) {}
   }
 
-  /* Real-view impression: fires once the slot is >=50% visible.
-     Top slots fire instantly; in-feed/below-fold slots wait for scroll.
-     Unified with comment-section trackOnView behavior. */
+  /* One impression per rendered instance, fired once the slot is >=50%
+     visible; AdService.observe() then adds the IAB viewable event for the
+     same showingId after 1s. Re-showing the same creative is a new showing
+     and counts again — only this DOM node's re-entry is suppressed. */
   function trackOnView(el, adId, ctx) {
-    if (!adId || _seenImp[adId]) return;
+    if (!adId) return;
     try {
-      if (!('IntersectionObserver' in window)) { _seenImp[adId] = true; track(adId, 'impression', ctx); return; }
+      if (!('IntersectionObserver' in window)) { track(adId, 'impression', ctx); return; }
       var ob = new IntersectionObserver(function (entries) {
         entries.forEach(function (en) {
-          if (en.isIntersecting) {
-            try { ob.disconnect(); } catch (e) {}
-            if (_seenImp[adId]) return;
-            _seenImp[adId] = true;
-            track(adId, 'impression', ctx);
-          }
+          if (!en.isIntersecting) return;
+          try { ob.disconnect(); } catch (e) {}
+          track(adId, 'impression', ctx);
         });
       }, { threshold: 0.5 });
       ob.observe(el);
-    } catch (e) { _seenImp[adId] = true; track(adId, 'impression', ctx); }
+    } catch (e) { track(adId, 'impression', ctx); }
   }
 
   function readAttr(el, name) {
@@ -178,7 +177,13 @@
       if (!adid) return;
       /* storyPromo / listBook already track in their inline onclick */
       if (e.target.closest('.dac-story-promo')) return;
-      if (e.target.closest(CLICK_SEL)) track(adid, 'click', el.__adSlotCtx);
+      if (e.target.closest(CLICK_SEL)) {
+        var showingId = node.getAttribute('data-showing') || '';
+        var clickCtx = showingId
+          ? Object.assign({}, el.__adSlotCtx, { showingId: showingId })
+          : el.__adSlotCtx;
+        track(adid, 'click', clickCtx);
+      }
     });
   }
 
@@ -196,7 +201,9 @@
 
       var html = picks.map(function (p) {
         _used[p.ad.id] = true;
-        return '<div class="ad-slot-item" data-adid="' + esc(p.ad.id) + '">' +
+        p.showingId = AdService.newShowing ? AdService.newShowing() : '';
+        return '<div class="ad-slot-item" data-adid="' + esc(p.ad.id) + '"' +
+          (p.showingId ? ' data-showing="' + esc(p.showingId) + '"' : '') + '>' +
           DroboardAdCard.renderSponsored({ ad: p.ad, adFormat: fmtFor(p.pool, opts.compact) }) +
           '</div>';
       }).join('');
@@ -207,7 +214,9 @@
       bindClicks(el, ctx);
       picks.forEach(function (p) {
         var item = el.querySelector('[data-adid="' + p.ad.id + '"]') || el;
-        trackOnView(item, p.ad.id, ctx);
+        var showCtx = Object.assign({}, ctx, { showingId: p.showingId });
+        trackOnView(item, p.ad.id, showCtx);
+        if (AdService.observe) AdService.observe(item, p.ad.id, showCtx);
       });
       return true;
     } catch (e) {
@@ -253,7 +262,6 @@
   /* Public: forget which ads already ran, so the next scan can reuse them. */
   function reset() {
     _used = {};
-    _seenImp = {};
   }
 
   /* Auto-scan: static markers at load + any marker injected later. */

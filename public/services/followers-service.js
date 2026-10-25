@@ -139,14 +139,14 @@
         // insert after first page items (approx after 8 items)
         const after = listEl.querySelector('.fl-item:nth-child(8)');
         if (after) after.after(slot); else listEl.after(slot);
-        try{ if(window.AdService) AdService.track(ads[0].ad.id,'impression'); }catch(e){}
+        try{ if(window.AdService) AdService.track(ads[0].ad.id,'impression',{page:'followers',slot:'followers:in-feed'}); }catch(e){}
       }
       if (ads[1] && window.DroboardAdCard) {
         const slot2 = document.createElement('div'); slot2.className='follower-ad'; slot2.style.margin='10px 14px';
         slot2.innerHTML = ads[1].type==='storyPromo' ? DroboardAdCard.renderStoryPromo(ads[1].ad) : DroboardAdCard.renderNative(ads[1].ad);
         const pagerEl = document.getElementById('followersPager');
         if (pagerEl) pagerEl.before(slot2); else listEl.after(slot2);
-        try{ if(window.AdService) AdService.track(ads[1].ad.id,'impression'); }catch(e){}
+        try{ if(window.AdService) AdService.track(ads[1].ad.id,'impression',{page:'followers',slot:'followers:in-feed'}); }catch(e){}
       }
     }, 80);
   }

@@ -28,10 +28,12 @@
     var start = (bookPage - 1) * BOOKS_PER_PAGE;
     var page = allBooks.slice(start, start + BOOKS_PER_PAGE);
     document.getElementById('bookEarnings').innerHTML = page.map(function (b) {
-      return '<div class="book-earn-card">'
-        + '<div class="book-earn-cover"><img src="' + b.cover + '" alt="' + b.title + '" loading="lazy"/></div>'
-        + '<div class="book-earn-info"><div class="book-earn-title">' + b.title + '</div><div class="book-earn-stats">' + b.reads + ' reads · ' + b.chapters + ' chapters</div></div>'
-        + '<div class="book-earn-amount">' + fmt(b.earnings) + '</div></div>';
+      return DroboardBookCard.render({
+        id: b.id, cover: b.cover, title: b.title, genre: b.genre,
+        stats: [{ icon: 'fas fa-list-ul', text: b.chapters + ' chapters' }, { icon: 'far fa-eye', text: b.reads + ' reads' }],
+        status: b.status || 'ongoing', chevron: 'none',
+        trailing: '<div class="dbc-amount">' + fmt(b.earnings) + '</div>'
+      });
     }).join('');
     var totalPages = Math.ceil(allBooks.length / BOOKS_PER_PAGE);
     if (totalPages <= 1) { document.getElementById('bookPagination').innerHTML = ''; return; }

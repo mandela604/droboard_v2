@@ -215,9 +215,11 @@
     mount.innerHTML = `<div class="op">
       <div class="op-head">
         <div class="op-av-wrap" id="opAvWrap">
-          <div class="op-av-ring ring-none" id="opAvRing">
-            <div class="op-av-ring-inner"><img class="op-av" id="opAv" src="${esc(POST.avatar || '')}" alt=""/></div>
-          </div>
+          ${DroboardStatusRing.html({ name: POST.name, avatar: POST.avatar }, {
+            size: 44, key: POST.name, attrs: 'id="opAvRing"',
+            innerHtml: `<img class="op-av" id="opAv" src="${esc(POST.avatar || '')}" alt=""/>`,
+            innerBg: 'var(--l2)', gapColor: 'var(--l2)',
+          })}
         </div>
         <div class="op-meta">
           <div><span class="op-name" id="opName">${esc(POST.name || '')}</span>${badge}</div>
@@ -236,7 +238,10 @@
     (async () => {
       const ring = await resolveOpStatusRing(POST.name);
       const ringEl = document.getElementById('opAvRing');
-      if (ringEl) ringEl.className = 'op-av-ring ring-' + ring;
+      if (ringEl) {
+        ringEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
+        ringEl.classList.add('ring-' + ring);
+      }
     })();
 
     // Gray the ring after the status is viewed — same contract as
@@ -250,7 +255,8 @@
         // The viewer dedupes by name; match loosely on the author's name
         // appearing in the viewer id, or fall back to any viewed event.
         const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
-        ringEl.className = 'op-av-ring ring-' + newRing;
+        ringEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
+        ringEl.classList.add('ring-' + newRing);
       };
     })();
 

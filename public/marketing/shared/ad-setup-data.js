@@ -35,6 +35,7 @@
     { id: 'collection', label: 'Collection' },
     { id: 'followers', label: 'Followers' },
     { id: 'profile', label: 'Profile' },
+    { id: 'status', label: 'Status Viewer' },
   ];
 
   /* Slot registry per surface (mirrors the backend slot ids). An ad with an
@@ -76,6 +77,7 @@
     ],
     home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
     series: [{ id: 'series:main', label: 'Main' }],
+    status: [{ id: 'status:every-3rd', label: 'Between stories (every Nth)' }],
   }; /* profile has page-level targeting only — no ad slot renders there */
 
   function pageSlots(pageId) { return PAGE_SLOTS[pageId] || []; }

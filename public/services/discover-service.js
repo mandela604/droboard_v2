@@ -613,7 +613,7 @@
     return out;
   }
 
-  function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev); } catch (e) {} }
+  function trackAd(id, ev) { try { if (id && window.AdService) AdService.track(id, ev, { page: 'discover', slot: 'discover:strip' }); } catch (e) {} }
   function renderFeedEntry(entry) {
     if (entry.kind === 'writers') return DiscoverCard.writersRow(TOP_WRITERS);
     if (entry.kind === 'platformAd') { if (entry.data.id) trackAd(entry.data.id, 'impression'); return DiscoverCard.platformAdItem(entry.data); }

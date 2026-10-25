@@ -156,6 +156,14 @@ const statusSchema = new mongoose.Schema({
   likes: { type: Number, default: 0 },
   likedBy: [{ type: String, ref: 'User' }],
   viewedBy: [{ type: String, ref: 'User' }], // per-viewer read tracking (story ring)
+  // Append-only view log behind the owner's "seen by" list. `user` is the
+  // account id, `anon` the persistent guest id (localStorage) for signed-out
+  // viewers; one record per viewer, capped so a viral story stays small.
+  viewerRecords: [{
+    user: { type: String, default: '' },
+    anon: { type: String, default: '' },
+    at: { type: Date, default: Date.now },
+  }],
   isLive: { type: Boolean, default: false },
   viewed: { type: Boolean, default: false },
   expiresAt: { type: Date, required: true, index: true },
