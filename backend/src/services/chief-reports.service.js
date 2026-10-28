@@ -1,15 +1,8 @@
 'use strict';
 // Chief story-reports service: list + triage over editorial.model Report.
 // Pagination envelope mirrors posts.service ({ items, total, page, limit }).
-//
-// HONEST-SCHEMA LIMITATIONS (no migration in this slice — documented, not hidden):
-// - Report has NO seId field (and no authorId field). ?seId= team scoping is
-//   best-effort: matched against reporterId OR reporterLabel. Full per-SE
-//   scoping (reports on books in an SE's team) needs a schema migration adding
-//   seId (or a book->team mapping) to Report.
-// - Report has NO severity field. ?severity= is accepted by the route but
-//   IGNORED here.
 const { Report } = require('../models/editorial.model');
+const { hydrateReports } = require('./report-hydrate.service');
 
 function notFound() {
   const e = new Error('not_found');
@@ -27,9 +20,9 @@ function escRx(s) {
   return String(s || '').slice(0, 80).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function listReports({ q, type, status, seId, page, limit }) {
+async function listReports({ q, type, status, severity, seId, page, limit }) {
   const and = [];
-  if (seId) and.push({ $or: [{ reporterId: seId }, { reporterLabel: seId }] });
+  if (seId) and.push({ seId });
   if (q) {
     const rx = new RegExp(escRx(q), 'i');
     and.push({ $or: [{ title: rx }, { desc: rx }, { reporterLabel: rx }] });
@@ -37,6 +30,7 @@ async function listReports({ q, type, status, seId, page, limit }) {
   const filter = {};
   if (type) filter.type = type;
   if (status) filter.status = status;
+  if (severity) filter.severity = severity;
   if (and.length) filter.$and = and;
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
@@ -44,11 +38,11 @@ async function listReports({ q, type, status, seId, page, limit }) {
     Report.find(filter).sort({ filedAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Report.countDocuments(filter),
   ]);
-  return { items, total, page: pg, limit: lim };
+  return { items: await hydrateReports(items), total, page: pg, limit: lim };
 }
 
 function scopeFor(seId) {
-  return seId ? { $or: [{ reporterId: seId }, { reporterLabel: seId }] } : {};
+  return seId ? { seId } : {};
 }
 
 async function stats({ seId } = {}) {

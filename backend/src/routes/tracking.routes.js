@@ -57,4 +57,30 @@ router.get('/me/searches', requireAuthLite, generalLimiter,
     userId: req.user.id, page: req.valid.query.page, limit: req.valid.query.limit,
   })));
 
+// Page insights — shared/insights-tracker.js hit + insights-service.js read.
+router.post('/insight', optionalAuth, writeLimiter,
+  validate(z.object({ body: z.object({
+    surface: z.enum(['hub', 'droboard', 'profile', 'collection']),
+    targetId: z.string().max(120).optional(),
+    country: z.string().max(40).optional(),
+  }).strict() })),
+  async (req, res) => base.wrap(res, async () => track.insightHit({
+    userId: req.user && req.user.id,
+    surface: req.valid.body.surface,
+    targetId: req.valid.body.targetId,
+    country: req.valid.body.country,
+  })));
+
+router.get('/insight', generalLimiter,
+  validate(z.object({ query: z.object({
+    surface: z.enum(['hub', 'droboard', 'profile', 'collection']),
+    targetId: z.string().max(120).optional(),
+    period: z.enum(['today', '7d', 'month', 'all']).optional(),
+  }).strict() })),
+  async (req, res) => base.wrap(res, async () => track.insightStats({
+    surface: req.valid.query.surface,
+    targetId: req.valid.query.targetId,
+    period: req.valid.query.period || 'all',
+  })));
+
 module.exports = router;

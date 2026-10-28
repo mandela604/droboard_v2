@@ -100,21 +100,31 @@
   }
 
   function _hasStatuses(p) {
-    return Array.isArray(p.statuses) && p.statuses.length > 0;
+    // Same question the ring asks, so a border is never drawn for a person
+    // whose avatar then does nothing when tapped.
+    if (Array.isArray(p.statuses) && p.statuses.length) return true;
+    try {
+      return (((window.DroboardStatusRing || {}).lineupFor(p) || [])).length > 0;
+    } catch (e) { return false; }
   }
 
   /* ─── BUILD HTML ──────────────────────────────────────────── */
   function _buildAvatar(p, i) {
     const av = _avatarUrl(p);
+    // Hydrate from the status service once, so the ring, the tap and the
+    // viewer's page-through all use the SAME lineup for this person.
+    if (window.DroboardStatusRing && !_hasStatuses(p)) {
+      try { p.statuses = DroboardStatusRing.lineupFor(p) || []; } catch (e) {}
+    }
     const inner = av
       ? `<img class="ptf-av" src="${av}" loading="lazy" alt="${p.name}"/>`
       : `<div class="ptf-av-initial">${(p.name || '?')[0].toUpperCase()}</div>`;
-    const ringKey = p.id || p.handle || p.name;
+    const ringKey = p.name || p.handle || p.id;
 
     return `
       <div class="ptf-av-wrap" data-ptf-avatar="${i}">
         ${DroboardStatusRing.html(p, {
-          size: 52, key: ringKey, innerHtml: inner,
+          size: 52, key: ringKey, personKey: ringKey, innerHtml: inner,
           innerBg: 'var(--bg,#000)', gapColor: 'var(--bg,#000)',
         })}
         ${p.isLive ? '<div class="ptf-live-dot"><i class="fas fa-signal" style="font-size:5px"></i></div>' : ''}
@@ -213,10 +223,13 @@
   function _wireStatusSync(people, container) {
     const prevHandler = window.onStatusViewerChange;
 
-    window.onStatusViewerChange = function (wid, ring) {
-      if (typeof prevHandler === 'function') prevHandler(wid, ring);
+    window.onStatusViewerChange = function (wid, ring, name) {
+      if (typeof prevHandler === 'function') prevHandler(wid, ring, name);
 
-      const idx = people.findIndex(p => p.id === wid);
+      // The viewer keys its store on the author's name, so wid is the name,
+      // not our person id — match either way.
+      const key = String(name || wid || '').toLowerCase();
+      const idx = people.findIndex(p => p.id === wid || String(p.name || '').toLowerCase() === key || String(p.handle || '').toLowerCase() === key);
       if (idx === -1) return;
 
       people[idx].ring = ring;

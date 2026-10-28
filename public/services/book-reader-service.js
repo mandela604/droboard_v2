@@ -1,7 +1,7 @@
 /* ===============================================================
    BOOK READER SERVICE
-   Book hub orchestration. HTML calls SeriesReaderPage.init().
-   Data: data/series-demo-seed.js (+ profile books). Ads: ad-service.
+   Book hub orchestration. HTML calls StoryReaderPage.init().
+   Data: central-demo-data.js (+ profile books). Ads: ad-service.
    Share/save via shared components. No hardcoded content.
    When going live: swap seed reads for API calls.
 =============================================================== */
@@ -10,12 +10,12 @@
 
 
 /* ══════════════════════════════════════════════
-   DATA — Full series catalogue (6 series)
+   DATA — Full story catalogue
 ══════════════════════════════════════════════ */
 
 /* ══ PARAMS (+ profile-book lookup so writer books open here too) ══ */
 const params = new URLSearchParams(location.search);
-const seriesId = params.get('id') || 's1';
+const storyId = params.get('id') || 's1';
 function synthFromBook(p, b) {
   const n = Math.max(1, +b.chapters || 1);
   const chapters = [];
@@ -31,12 +31,12 @@ function synthFromBook(p, b) {
     synopsis: `${b.title} — ${b.cat}. Full synopsis coming soon from the author.`,
     writer: { id: p.handle, name: p.name, handle: '@' + p.handle, avatar: p.avatar, followers: fmtN(p.stats.followers), isFollowed: false },
     stats: { reads: b.reads, likes: b.likes, comments: '0', saves: '0', shares: '0' },
-    seasons: 1, totalChapters: n,
-    currentProgress: { season: 1, chapter: 1, chapterTitle: 'Chapter 1', percent: 5 },
+    totalChapters: n,
+    currentProgress: { chapter: 1, chapterTitle: 'Chapter 1', percent: 5 },
     genres: [b.cat], startDate: '', lastUpdated: 'Recently', completedDate: null,
     avgReadTime: '4 min/chapter', wordCount: '',
     hasTeams: false, teams: [], polls: [], predictions: [], debates: [],
-    seasonData: [{ season: 1, title: 'Season 1', status: 'ongoing', chapters }],
+    chapters,
   };
 }
 /* Catalogue: central demo data in demo, API live. Go-live = USE_API. */
@@ -45,18 +45,19 @@ const API_BASE = '/api';
 let CATALOG = {};
 async function fetchCatalog() {
   if (USE_API) {
-    const res = await fetch(`${API_BASE}/series`);
-    if (!res.ok) throw new Error('Series API failed');
-    const list = await res.json();
+    const res = await fetch(`${API_BASE}/books`);
+    if (!res.ok) throw new Error('Story API failed');
+    const payload = await res.json();
+    const list = Array.isArray(payload) ? payload : (payload.items || []);
     const map = {};
-    (Array.isArray(list) ? list : []).forEach(s => { map[s.id] = s; });
+    list.forEach(s => { map[s.id] = s; });
     return map;
   }
   await new Promise(r => setTimeout(r, 60));
   const d = window.DemoData || {};
   return d.SERIES_CATALOG || {};
 }
-function resolveSeries(id) {
+function resolveStory(id) {
   if (id && CATALOG[id]) return CATALOG[id];
   try {
     const seed = window.ProfileDemoSeed;
@@ -65,10 +66,10 @@ function resolveSeries(id) {
         const p = seed.DEMO_PROFILES[handle];
         const b = (p.books || []).find(x => String(x.id) === String(id));
         if (b) {
-          // Books tagged with a catalogue id open the rich series record
+          // Books tagged with a catalogue id open the rich story record
           // (polls, predictions, debates, teams) instead of a bare synth.
-          if (b.seriesId && CATALOG[b.seriesId]) {
-            const rec = CATALOG[b.seriesId];
+          if (b.catalogId && CATALOG[b.catalogId]) {
+            const rec = CATALOG[b.catalogId];
             rec._bookId = b.id; // keep original id for back-navigation
             return rec;
           }
@@ -81,15 +82,70 @@ function resolveSeries(id) {
   if (!id) return CATALOG['s1'] || null;
   return null;
 }
-let SERIES = null;
+/* Live: backend book detail (GET /api/books/:id) → rich record shape. */
+function normalizeLive(b) {
+  if (!b) return null;
+  const rows = (b.chapters || []).length ? b.chapters : [];
+  const totalCh = Math.max(1, rows.length || b.chapterCount || 1);
+  const chapters = rows.map((c, i) => ({
+    n: c.n, title: c.title,
+    reads: c.views != null && c.views > 0 ? fmtN(c.views) : '–',
+    time: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min' : '4 min',
+    state: c.price > 0 ? 'locked' : (i === 0 ? 'current' : 'done'),
+    badges: c.price > 0 ? [] : (i === 0 ? ['free'] : []),
+  }));
+  const w = b.writer || {};
+  return {
+    id: b.id, title: b.title, cover: b.cover || '',
+    cat: b.genre || '', status: b.status === 'completed' ? 'completed' : 'ongoing',
+    isContest: false, synopsis: b.synopsis || '',
+    writer: {
+      id: w.id, name: w.name || w.username || 'Unknown',
+      handle: '@' + (w.username || 'unknown'), avatar: w.avatar || '',
+      followers: '0', isFollowed: false,
+    },
+    stats: {
+      reads: fmtN(b.reads || 0), likes: fmtN(b.likes || 0),
+      comments: '0', saves: '0', shares: '0',
+    },
+    totalChapters: totalCh,
+    currentProgress: { chapter: 1, chapterTitle: (rows[0] && rows[0].title) || 'Chapter 1', percent: 5 },
+    genres: [b.genre].filter(Boolean),
+    startDate: '', lastUpdated: 'Recently', completedDate: null,
+    avgReadTime: '4 min/chapter', wordCount: b.wordCount ? fmtN(b.wordCount) + ' words' : '',
+    hasTeams: false, teams: [],
+    polls: ((b.engagement && b.engagement.polls) || []).map(p => ({
+      id: p.id, season: 1, chapter: p.chapter || 1,
+      question: p.q, options: (p.opts || []).map(o => ({ text: o.t, votes: o.v })),
+      voted: -1,
+    })),
+    predictions: ((b.engagement && b.engagement.predictions) || []).map(p => ({
+      id: p.id, season: 1, chapter: p.chapter || 1,
+      question: p.q, options: (p.opts || []).map(o => ({ em: '', text: o.t, votes: o.v, picked: false })),
+    })),
+    debates: ((b.engagement && b.engagement.debates) || []).map(d => ({
+      id: d.id, season: 1, chapter: d.chapter || 1,
+      motion: d.motion, forText: d.forText || 'For', againstText: d.againstText || 'Against',
+      forV: d.forV || 0, agV: d.agV || 0, userVote: null, comments: [],
+    })),
+    chapters,
+  };
+}
+async function fetchStoryDetail(id) {
+  if (!USE_API) return null;
+  const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`);
+  if (!res.ok) return null;
+  return normalizeLive(await res.json());
+}
+let STORY = null;
 
 /* ══ STATE ══ */
 let isSaved = false;
 let isFollowing = false;
 let synExpanded = false;
-const chPerPage = 25; // paginate when season has more than this many chapters
+const chPerPage = 25; // paginate when a story has more than this many chapters
 const debateUserVotes = {}; // debateId → 'for'|'against'
-const debateCms = {}; // built from SERIES.debates
+const debateCms = {}; // built from STORY.debates
 
 /* ══ UTILS ══ */
 function toast(msg, dur=2400) {
@@ -112,7 +168,7 @@ function switchTab(tab) {
 /* ══ WRITER PROFILE + STATUS RING (bridge parity) ══
    Red ring ONLY when the writer actually has statuses; gray after the
    status has been viewed; no border at all for a statusless avatar. */
-function writer() { return (SERIES && SERIES.writer) || {}; }
+function writer() { return (STORY && STORY.writer) || {}; }
 function attachWriterStatus() {
   const w = writer();
   if (!w || w._stWired) return;
@@ -144,7 +200,7 @@ function renderWriterRing() {
   const p = writerPerson();
   if (window.DroboardStatusRing) {
     host.innerHTML = DroboardStatusRing.html(p, {
-      size: 28, key: p.id || p.name, innerBg: 'var(--l2,#1a1a24)',
+      size: 28, key: p.name || p.id, personKey: p.name || '', innerBg: 'var(--l2,#1a1a24)',
     });
   } else {
     host.innerHTML = `<img src="${uAttr(p.avatar)}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;display:block"/>`;
@@ -221,22 +277,26 @@ function goProfileFor(name) {
 }
 function wireStatusRing() {
   const prev = window.onStatusViewerChange;
-  window.onStatusViewerChange = function (wid, ring) {
+  window.onStatusViewerChange = function (wid, ring, name) {
     // Viewer reports full class names ('ring-viewed' | 'ring-has')
-    const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+    const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : ring === 'ring-live' ? 'live' : 'none';
+    // The viewer keys on the author's NAME, not our per-surface ids.
+    const key = String(name || wid || '').replace(/^@/, '').toLowerCase();
+    const samePerson = (v) => v && (String(v.id) === String(wid) ||
+      String(v.name || v.handle || '').replace(/^@/, '').toLowerCase() === key);
     let changed = false;
     Object.keys(userStatus).forEach(k => {
       const rec = userStatus[k];
-      if (String(rec.id) === String(wid) && newRing !== 'none' && rec.ring !== newRing) {
+      if (samePerson(rec) && newRing !== 'none' && rec.ring !== newRing) {
         rec.ring = newRing; changed = true;
       }
     });
     const w = writer();
-    if (w && String(w.statusId || '') === String(wid) && newRing !== 'none') {
+    if (w && samePerson({ id: w.statusId, name: w.name || w.handle }) && newRing !== 'none') {
       w.statusRing = newRing; changed = true;
     }
     if (changed) paintStatusRings();
-    if (typeof prev === 'function') prev(wid, ring);
+    if (typeof prev === 'function') prev(wid, ring, name);
   };
 }
 
@@ -264,6 +324,14 @@ function userStatusFor(name, avatar) {
       rec.statuses = hit.statuses;
       rec.id = hit.id;
       rec.ring = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
+    } else {
+      // Feed-row authors have their lineup in the status service, not in the
+      // STATUSES pool. Ask it, or the ring would promise a status the tap
+      // can't deliver.
+      try {
+        const canon = (window.DroboardStatus && DroboardStatus.writerStatuses(rec.name)) || [];
+        if (canon.length) { rec.statuses = canon; rec.ring = 'has'; }
+      } catch (e) {}
     }
   } catch (e) {}
   userStatus[key] = rec;
@@ -277,8 +345,10 @@ function userAvHtml(name, avatar, size) {
   };
   const attrs = `data-av-user="${uAttr(uKey(name, avatar))}"`;
   if (window.DroboardStatusRing) {
+    // Key by the AUTHOR, never the record id — the viewer stores seen-state
+    // under the author's name.
     return DroboardStatusRing.html(p, {
-      size: size || 34, key: rec.id, innerBg: 'rgba(255,0,80,.15)', gap: 0, attrs,
+      size: size || 34, key: rec.name, personKey: rec.name, innerBg: 'rgba(255,0,80,.15)', gap: 0, attrs,
     });
   }
   const s = size || 34;
@@ -316,60 +386,61 @@ function paintStatusRings() {
 /* ══ INIT ══ */
 async function init() {
   try { CATALOG = await fetchCatalog(); } catch (e) { CATALOG = {}; }
-  SERIES = resolveSeries(seriesId);
-  isFollowing = SERIES && SERIES.writer ? !!SERIES.writer.isFollowed : false;
-  if (!SERIES || !SERIES.writer) {
-    document.getElementById('tbSeriesName').textContent = 'Story not found';
+  STORY = resolveStory(storyId);
+  if (USE_API && STORY && !STORY.writer) STORY = await fetchStoryDetail(storyId) || STORY;
+  isFollowing = STORY && STORY.writer ? !!STORY.writer.isFollowed : false;
+  if (!STORY || !STORY.writer) {
+    document.getElementById('tbStoryName').textContent = 'Story not found';
     document.getElementById('chaptersContent').innerHTML =
-      '<div class="empty-state"><i class="fas fa-book-open"></i><p>Series data failed to load. Check that data files are reachable.</p></div>';
+      '<div class="empty-state"><i class="fas fa-book-open"></i><p>Story data failed to load. Check that data files are reachable.</p></div>';
     return;
   }
   // Top bar — only short story / long story types (no seasons)
-  document.getElementById('tbSeriesName').textContent = SERIES.title;
-  var _chTotal = SERIES.totalChapters || 0;
+  document.getElementById('tbStoryName').textContent = STORY.title;
+  var _chTotal = STORY.totalChapters || 0;
   var _storyType = _chTotal > 1 ? 'Long story' : 'Short story';
-  document.getElementById('tbSeriesSub').textContent = `@${SERIES.writer.name} · ${_storyType} · ${_chTotal} chapter${_chTotal === 1 ? '' : 's'}`;
+  document.getElementById('tbStorySub').textContent = `@${STORY.writer.name} · ${_storyType} · ${_chTotal} chapter${_chTotal === 1 ? '' : 's'}`;
 
   // Hero
-  document.getElementById('heroCover').style.backgroundImage = `url('${SERIES.cover}')`;
-  document.getElementById('heroTitle').textContent = SERIES.title;
-  document.getElementById('hwName').textContent = `@${SERIES.writer.name}`;
+  document.getElementById('heroCover').style.backgroundImage = `url('${STORY.cover}')`;
+  document.getElementById('heroTitle').textContent = STORY.title;
+  document.getElementById('hwName').textContent = `@${STORY.writer.name}`;
   const fBtn = document.getElementById('hwFollow');
   fBtn.textContent = isFollowing ? '✓ Following' : '+ Follow';
   if (isFollowing) fBtn.classList.add('ing');
 
   // Badges
-  const statusBadge = SERIES.status === 'ongoing'
+  const statusBadge = STORY.status === 'ongoing'
     ? `<span class="hbadge hb-ongoing">🔥 Ongoing</span>`
     : `<span class="hbadge hb-complete">✓ Complete</span>`;
-  const contestBadge = SERIES.isContest ? `<span class="hbadge hb-contest">🏆 Contest</span>` : '';
+  const contestBadge = STORY.isContest ? `<span class="hbadge hb-contest">🏆 Contest</span>` : '';
   document.getElementById('heroBadges').innerHTML = `
-    <span class="hbadge hb-cat">${SERIES.cat}</span>
+    <span class="hbadge hb-cat">${STORY.cat}</span>
     ${statusBadge}
-    <span class="hbadge hb-complete">${_storyType} · ${SERIES.totalChapters} chapter${SERIES.totalChapters === 1 ? '' : 's'}</span>
+    <span class="hbadge hb-complete">${_storyType} · ${STORY.totalChapters} chapter${STORY.totalChapters === 1 ? '' : 's'}</span>
     ${contestBadge}
   `;
 
   // Quick stats
   const qs = [
-    { num: SERIES.stats.reads, label: 'Reads', cls: 'r' },
-    { num: SERIES.stats.likes, label: 'Likes', cls: 'r' },
-    { num: SERIES.stats.comments, label: 'Comments', cls: 'b' },
-    { num: SERIES.stats.saves, label: 'Saves', cls: 'g' },
-    { num: SERIES.stats.shares, label: 'Shares', cls: '' },
+    { num: STORY.stats.reads, label: 'Reads', cls: 'r' },
+    { num: STORY.stats.likes, label: 'Likes', cls: 'r' },
+    { num: STORY.stats.comments, label: 'Comments', cls: 'b' },
+    { num: STORY.stats.saves, label: 'Saves', cls: 'g' },
+    { num: STORY.stats.shares, label: 'Shares', cls: '' },
   ];
   document.getElementById('quickStats').innerHTML = qs.map(q =>
     `<div class="qs-item"><div class="qs-num ${q.cls}">${q.num}</div><div class="qs-label">${q.label}</div></div>`
   ).join('');
 
   // Continue banner (no seasons — chapter only)
-  const cp = SERIES.currentProgress;
+  const cp = STORY.currentProgress;
   document.getElementById('cbChName').textContent = `Ch${cp.chapter} — ${cp.chapterTitle}`;
   document.getElementById('cbChMeta').textContent = `${cp.percent}% through this chapter`;
   document.getElementById('cbProgress').style.width = cp.percent + '%';
 
   // Teams tab visibility
-  if (SERIES.hasTeams && SERIES.teams.length > 0) {
+  if (STORY.hasTeams && STORY.teams.length > 0) {
     document.getElementById('teamsTab').style.display = '';
   }
 
@@ -396,11 +467,11 @@ async function init() {
   renderOverview();
   renderReviews();
   renderMoreLike();
-  if (SERIES.hasTeams) renderTeams();
+  if (STORY.hasTeams) renderTeams();
   renderPolls();
   renderDebates();
-  window.onDroboardSaveChange = function (storyId, saved) {
-    if (String(storyId) === String(SERIES.id)) {
+  window.onDroboardSaveChange = function (sid, saved) {
+    if (String(sid) === String(STORY.id)) {
       syncSaveIcon(saved);
       toast(saved ? "Saved to library!" : "Removed from library");
     }
@@ -418,18 +489,18 @@ async function init() {
   }
 }
 
-function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'series', slot: 'series:top', storyId: seriesId }); } catch (e) {} }
+function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'bookReader', slot: 'bookReader:top', storyId: storyId }); } catch (e) {} }
 async function mountAdStrip() {
   var el = document.getElementById("adStripWrap");
   if (!el) return;
   if (!window.DroboardAdSlot) { el.style.display = "none"; return; }
   try {
-    var filled = await window.DroboardAdSlot.mount(el, { slot: "series:top", page: "series", postId: seriesId });
+    var filled = await window.DroboardAdSlot.mount(el, { slot: "bookReader:top", page: "bookReader", postId: storyId });
     el.style.display = filled ? "" : "none";
   } catch (e) { el.style.display = "none"; }
 }
 
-window.SeriesReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
+window.StoryReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
 
 /* ══ REVIEWS — sorted + paginated (12 per page) ══ */
 const REV_PER_PAGE = 12;
@@ -439,7 +510,7 @@ let revPage = 0;
 
 function reviewList() {
   const takes = [];
-  (SERIES.debates || []).forEach(d => (d.comments || []).forEach((c, i) =>
+  (STORY.debates || []).forEach(d => (d.comments || []).forEach((c, i) =>
     takes.push({
       id: c.id || ('rv_' + takes.length + '_' + i),
       motion: d.motion, side: c.side, name: c.name, avatar: c.avatar,
@@ -544,7 +615,7 @@ function esc0(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
 function moreLikeItems() {
   const items = [], seen = {};
   function push(id, cover, title, author) {
-    if (id == null || String(id) === String(SERIES.id) || seen[id]) return;
+    if (id == null || String(id) === String(STORY.id) || seen[id]) return;
     seen[id] = 1;
     items.push({ id: id, img: cover, title: title, author: author || '' });
   }
@@ -587,35 +658,35 @@ function renderMoreLike() {
 
 /* ══ CHAPTERS — flat list (no seasons: short story vs long story only) ══ */
 function allChaptersFlat() {
-  if (Array.isArray(SERIES.chapters) && SERIES.chapters.length) return SERIES.chapters;
+  if (Array.isArray(STORY.chapters) && STORY.chapters.length) return STORY.chapters;
   const out = [];
-  (SERIES.seasonData || []).forEach(s => (s.chapters || []).forEach(c => { c._s = s.season; out.push(c); }));
+  (STORY.seasonData || []).forEach(s => (s.chapters || []).forEach(c => { c._s = s.season; out.push(c); }));
   return out;
 }
 /* Chapter → engagement icons (poll 🔮📊 / debate ⚔️) from the
-   season+chapter refs on SERIES.polls / predictions / debates. */
+   chapter refs on STORY.polls / predictions / debates. */
 function engMap() {
   const m = {};
   const add = (item, key) => {
-    if (!item || item.season == null || item.chapter == null) return;
-    const k = item.season + ':' + item.chapter;
+    if (!item || item.chapter == null) return;
+    const k = item.chapter;
     (m[k] = m[k] || []).push(key);
   };
-  (SERIES.polls || []).forEach(p => add(p, '📊'));
-  (SERIES.predictions || []).forEach(p => add(p, '🔮'));
-  (SERIES.debates || []).forEach(d => add(d, '⚔️'));
+  (STORY.polls || []).forEach(p => add(p, '📊'));
+  (STORY.predictions || []).forEach(p => add(p, '🔮'));
+  (STORY.debates || []).forEach(d => add(d, '⚔️'));
   return m;
 }
 function engChipHtml(season, chapter, label) {
-  if (season == null || chapter == null) return '';
-  return `<span class="eng-chip" onclick="event.stopPropagation();SeriesReaderPage.openChapter(${chapter})" title="Opens Ch.${chapter}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;background:rgba(255,0,80,.1);border:1px solid var(--bd-acc);color:var(--acc3);border-radius:20px;padding:3px 9px;font-size:9.5px;font-weight:800;flex-shrink:0">📖 ${label || ('Ch. ' + chapter)}</span>`;
+  if (chapter == null) return '';
+  return `<span class="eng-chip" onclick="event.stopPropagation();StoryReaderPage.openChapter(${chapter})" title="Opens Ch.${chapter}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;background:rgba(255,0,80,.1);border:1px solid var(--bd-acc);color:var(--acc3);border-radius:20px;padding:3px 9px;font-size:9.5px;font-weight:800;flex-shrink:0">📖 ${label || ('Ch. ' + chapter)}</span>`;
 }
 function openChapter(n) {
-  location.href = 'full-reader.html?story=' + encodeURIComponent(SERIES && (SERIES._bookId || SERIES.id) || seriesId) + '&ch=' + n;
+  location.href = 'full-reader.html?story=' + encodeURIComponent(STORY && (STORY._bookId || STORY.id) || storyId) + '&ch=' + n;
 }
 /* Continue banner → jump straight into the full reader at saved progress. */
 function continueReading() {
-  const cp = SERIES && SERIES.currentProgress;
+  const cp = STORY && STORY.currentProgress;
   openChapter(cp ? (cp.chapter || 1) : 1);
 }
 function renderChapters() {
@@ -642,13 +713,13 @@ function renderChapterList(chapters, si) {
       `<span title="Engagement in this chapter" style="font-size:10px">${icon}</span>`
     ).join('');
     const rightEl = ch.state === 'current'
-      ? `<span class="ch-current-tag">Reading</span><button class="ch-read-btn" onclick="event.stopPropagation();SeriesReaderPage.openChapter(${ch.n})">Continue</button>`
+      ? `<span class="ch-current-tag">Reading</span><button class="ch-read-btn" onclick="event.stopPropagation();StoryReaderPage.openChapter(${ch.n})">Continue</button>`
       : ch.state === 'done'
         ? `<i class="fas fa-check-circle ch-done-ico"></i>`
         : `<i class="fas fa-lock ch-lock-ico"></i>`;
 
     return `
-      <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="SeriesReaderPage.openChapter(${ch.n})">
+      <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="StoryReaderPage.openChapter(${ch.n})">
         <div class="ch-num-badge ${numCls}">${numIcon}</div>
         <div class="ch-info">
           <div class="ch-title">Ch.${ch.n} — ${ch.title}</div>
@@ -671,18 +742,18 @@ function toggleSeason(si) {
 
 /* ══ OVERVIEW ══ */
 function renderOverview() {
-  document.getElementById('synopsisText').textContent = SERIES.synopsis;
+  document.getElementById('synopsisText').textContent = STORY.synopsis;
 
-  const _isLong = (SERIES.totalChapters || 0) > 1;
+  const _isLong = (STORY.totalChapters || 0) > 1;
   const infoRows = [
-    { icon: '✍️', label: 'Author', val: `@${SERIES.writer.name} · ${SERIES.writer.followers} followers` },
-    { icon: '📅', label: 'Started', val: SERIES.startDate },
-    { icon: '🔄', label: 'Last updated', val: SERIES.lastUpdated },
+    { icon: '✍️', label: 'Author', val: `@${STORY.writer.name} · ${STORY.writer.followers} followers` },
+    { icon: '📅', label: 'Started', val: STORY.startDate },
+    { icon: '🔄', label: 'Last updated', val: STORY.lastUpdated },
     { icon: '📖', label: 'Type', val: _isLong ? 'Long story' : 'Short story' },
     { icon: '📖', label: 'Chapters', val: `${allChaptersFlat().length} published` },
-    { icon: '⏱', label: 'Read time', val: SERIES.avgReadTime },
-    { icon: '📝', label: 'Word count', val: SERIES.wordCount },
-    { icon: '🏷️', label: 'Genres', val: null, pills: SERIES.genres },
+    { icon: '⏱', label: 'Read time', val: STORY.avgReadTime },
+    { icon: '📝', label: 'Word count', val: STORY.wordCount },
+    { icon: '🏷️', label: 'Genres', val: null, pills: STORY.genres },
   ];
 
   document.getElementById('infoRows').innerHTML = infoRows.map(r => `
@@ -700,13 +771,13 @@ function renderOverview() {
   document.getElementById('statsDeep').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
       ${[
-        { n: SERIES.stats.reads, l: 'Total Reads', c: '#ff0050' },
-        { n: SERIES.stats.likes, l: 'Total Likes', c: '#ff0050' },
-        { n: SERIES.stats.saves, l: 'Saves', c: '#38bdf8' },
+        { n: STORY.stats.reads, l: 'Total Reads', c: '#ff0050' },
+        { n: STORY.stats.likes, l: 'Total Likes', c: '#ff0050' },
+        { n: STORY.stats.saves, l: 'Saves', c: '#38bdf8' },
       ].map(s => `<div style="background:var(--l2);border:1px solid var(--bd);border-radius:11px;padding:10px;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${s.c}">${s.n}</div><div style="font-size:8px;color:var(--tx-muted);margin-top:2px">${s.l}</div></div>`).join('')}
     </div>
     ${topReads.length ? `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🏆 Most-read chapters</div>
-    ${topReads.map((c,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);cursor:pointer" onclick="SeriesReaderPage.openChapter(${c.n})"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${i===0?'#fbbf24':i===1?'#a0a0b0':'#a07040'};width:20px">${i+1}</div><div style="flex:1;font-size:11px;color:var(--tx-high);font-weight:600"><span style="display:inline-block;font-size:8.5px;font-weight:800;color:var(--acc3);background:rgba(255,0,80,.09);border:1px solid var(--bd-acc);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:middle">CH.${c.n}</span>${c.title}</div><div style="font-size:11px;font-weight:800;color:var(--acc)">${c.reads}</div><i class="fas fa-chevron-right" style="font-size:9px;color:var(--tx-faint)"></i></div>`).join('')}` : ''}`;
+    ${topReads.map((c,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);cursor:pointer" onclick="StoryReaderPage.openChapter(${c.n})"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${i===0?'#fbbf24':i===1?'#a0a0b0':'#a07040'};width:20px">${i+1}</div><div style="flex:1;font-size:11px;color:var(--tx-high);font-weight:600"><span style="display:inline-block;font-size:8.5px;font-weight:800;color:var(--acc3);background:rgba(255,0,80,.09);border:1px solid var(--bd-acc);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:middle">CH.${c.n}</span>${c.title}</div><div style="font-size:11px;font-weight:800;color:var(--acc)">${c.reads}</div><i class="fas fa-chevron-right" style="font-size:9px;color:var(--tx-faint)"></i></div>`).join('')}` : ''}`;
 }
 
 function toggleSynopsis() {
@@ -720,7 +791,7 @@ let teamPicked = null;
 
 function renderTeams() {
   const container = document.getElementById('teamsSection');
-  const teams = SERIES.teams;
+  const teams = STORY.teams;
   const tot = teams.reduce((a, t) => a + t.count, 0) || 1;
 
   const colsClass = teams.length === 2 ? 'grid-template-columns:1fr 1fr' :
@@ -728,7 +799,7 @@ function renderTeams() {
                     'grid-template-columns:1fr 1fr';
 
   const teamBtns = teams.map(t => `
-    <div class="team-btn${teamPicked === t.id ? ' selected' : ''}" data-team="${t.id}" onclick="SeriesReaderPage.pickTeam('${t.id}')">
+    <div class="team-btn${teamPicked === t.id ? ' selected' : ''}" data-team="${t.id}" onclick="StoryReaderPage.pickTeam('${t.id}')">
       <div class="team-icon">${t.icon}</div>
       <div class="team-info">
         <div class="team-name">${t.name}</div>
@@ -790,7 +861,7 @@ function renderTeams() {
 }
 
 function pickTeam(id) {
-  const teams = SERIES.teams;
+  const teams = STORY.teams;
   if (teamPicked === id) return;
   if (teamPicked) {
     const prev = teams.find(t => t.id === teamPicked);
@@ -823,43 +894,43 @@ function moreEng(kind) {
 function engMoreBtn(kind, total) {
   if (total <= engShown[kind]) return '';
   const left = total - engShown[kind];
-  return `<button onclick="SeriesReaderPage.moreEng('${kind}')" style="width:100%;margin-top:10px;padding:11px;border-radius:12px;background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);font-size:12px;font-weight:700;cursor:pointer">Show more (${left} remaining)</button>`;
+  return `<button onclick="StoryReaderPage.moreEng('${kind}')" style="width:100%;margin-top:10px;padding:11px;border-radius:12px;background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);font-size:12px;font-weight:700;cursor:pointer">Show more (${left} remaining)</button>`;
 }
 function renderPolls() {
   const container = document.getElementById('pollsContent');
   let html = '';
 
-  if (!SERIES.polls.length && !SERIES.predictions.length) {
+  if (!STORY.polls.length && !STORY.predictions.length) {
     html = `<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet for this story</p></div>`;
     container.innerHTML = html;
     return;
   }
 
-  const polls = SERIES.polls.slice(0, engShown.poll);
-  const preds = SERIES.predictions.slice(0, engShown.pred);
+  const polls = STORY.polls.slice(0, engShown.poll);
+  const preds = STORY.predictions.slice(0, engShown.pred);
 
   if (polls.length) {
     html += `<div class="sh" style="margin-bottom:10px"><div class="sh-title">📊 Reader Polls</div></div>`;
     polls.forEach(poll => {
-      html += `<div id="eng-${SERIES.id}-poll-${poll.id}"></div>`;
+      html += `<div id="eng-${STORY.id}-poll-${poll.id}"></div>`;
     });
-    html += engMoreBtn('poll', SERIES.polls.length);
+    html += engMoreBtn('poll', STORY.polls.length);
   }
   if (preds.length) {
     html += `<div class="sh" style="margin:14px 0 10px"><div class="sh-title">🔮 Predictions</div></div>`;
     preds.forEach(pred => {
-      html += `<div id="eng-${SERIES.id}-pred-${pred.id}"></div>`;
+      html += `<div id="eng-${STORY.id}-pred-${pred.id}"></div>`;
     });
-    html += engMoreBtn('pred', SERIES.predictions.length);
+    html += engMoreBtn('pred', STORY.predictions.length);
   }
   container.innerHTML = html;
 
   if (!window.ReaderEngagement) return;
   polls.forEach(poll => {
-    const mount = document.getElementById(`eng-${SERIES.id}-poll-${poll.id}`);
+    const mount = document.getElementById(`eng-${STORY.id}-poll-${poll.id}`);
     if (!mount) return;
     ReaderEngagement.renderInto(
-      `${SERIES.id}-poll-${poll.id}`,
+      `${STORY.id}-poll-${poll.id}`,
       poll.chapter || 1,
       mount,
       '',
@@ -875,10 +946,10 @@ function renderPolls() {
     );
   });
   preds.forEach(pred => {
-    const mount = document.getElementById(`eng-${SERIES.id}-pred-${pred.id}`);
+    const mount = document.getElementById(`eng-${STORY.id}-pred-${pred.id}`);
     if (!mount) return;
     ReaderEngagement.renderInto(
-      `${SERIES.id}-pred-${pred.id}`,
+      `${STORY.id}-pred-${pred.id}`,
       pred.chapter || 1,
       mount,
       '',
@@ -896,7 +967,7 @@ function renderPolls() {
 }
 
 function votePoll(pollId, oi) {
-  const poll = SERIES.polls.find(p => p.id === pollId);
+  const poll = STORY.polls.find(p => p.id === pollId);
   if (!poll || poll.voted >= 0) { toast('✅ Already voted!'); return; }
   poll.options[oi].votes++;
   poll.voted = oi;
@@ -906,7 +977,7 @@ function votePoll(pollId, oi) {
 
 let predPickedMap = {};
 function pickPrediction(predId, oi) {
-  const pred = SERIES.predictions.find(p => p.id === predId);
+  const pred = STORY.predictions.find(p => p.id === predId);
   if (!pred) return;
   if (predPickedMap[predId] === oi) {
     pred.options[oi].votes--;
@@ -931,13 +1002,13 @@ function pickPrediction(predId, oi) {
    debate.html (View full debate →). Paginated 10 per page. */
 function renderDebates() {
   const container = document.getElementById('debatesContent');
-  if (!SERIES.debates.length) {
+  if (!STORY.debates.length) {
     container.innerHTML = `<div class="empty-state"><i class="fas fa-comments"></i><p>No debates yet for this story</p></div>`;
     return;
   }
 
-  const userTeam = teamPicked ? SERIES.teams.find(t => t.id === teamPicked) : null;
-  const debits = SERIES.debates.slice(0, engShown.deb);
+  const userTeam = teamPicked ? STORY.teams.find(t => t.id === teamPicked) : null;
+  const debits = STORY.debates.slice(0, engShown.deb);
 
   let html = '';
   if (userTeam) {
@@ -947,18 +1018,18 @@ function renderDebates() {
     </div>`;
   }
   debits.forEach(deb => {
-    html += `<div id="eng-${SERIES.id}-deb-${deb.id}"></div>`;
+    html += `<div id="eng-${STORY.id}-deb-${deb.id}"></div>`;
   });
-  html += engMoreBtn('deb', SERIES.debates.length);
+  html += engMoreBtn('deb', STORY.debates.length);
   container.innerHTML = html;
 
   if (!window.ReaderEngagement) return;
   debits.forEach(deb => {
-    const mount = document.getElementById(`eng-${SERIES.id}-deb-${deb.id}`);
+    const mount = document.getElementById(`eng-${STORY.id}-deb-${deb.id}`);
     if (!mount) return;
     const uv = debateUserVotes[deb.id] || deb.userVote;
     ReaderEngagement.renderInto(
-      `${SERIES.id}-deb-${deb.id}`,
+      `${STORY.id}-deb-${deb.id}`,
       deb.chapter || 1,
       mount,
       '',
@@ -1002,7 +1073,7 @@ function renderDebCm(c) {
 
 function voteDebate(debId, side) {
   if (debateUserVotes[debId]) { toast('✅ Already voted!'); return; }
-  const deb = SERIES.debates.find(d => d.id === debId);
+  const deb = STORY.debates.find(d => d.id === debId);
   if (!deb) return;
   debateUserVotes[debId] = side;
   if (side === 'for') deb.forV++;
@@ -1060,10 +1131,10 @@ function attachDebateLikes() {
 function toggleSave() {
   if (!window.openSaveModal) { toast("Save unavailable"); return; }
   openSaveModal({
-    title: SERIES.title,
-    sub: "by @" + SERIES.writer.name,
-    img: SERIES.cover,
-    storyId: SERIES.id,
+    title: STORY.title,
+    sub: "by @" + STORY.writer.name,
+    img: STORY.cover,
+    storyId: STORY.id,
   });
 }
 function syncSaveIcon(saved) {
@@ -1078,17 +1149,17 @@ function toggleFollow() {
   const btn = document.getElementById('hwFollow');
   btn.textContent = isFollowing ? '✓ Following' : '+ Follow';
   btn.classList.toggle('ing', isFollowing);
-  toast(isFollowing ? `✅ Following @${SERIES.writer.name}` : `Unfollowed @${SERIES.writer.name}`);
+  toast(isFollowing ? `✅ Following @${STORY.writer.name}` : `Unfollowed @${STORY.writer.name}`);
 }
 
 /* ══ SHARE ══ */
 function openShare() {
   if (!window.openShareModal) { toast("Share unavailable"); return; }
   openShareModal({
-    title: SERIES.title,
-    sub: "by @" + SERIES.writer.name + " " + SERIES.stats.reads + " reads",
-    img: SERIES.cover,
-    url: "https://droboard.app/series/" + SERIES.id,
+    title: STORY.title,
+    sub: "by @" + STORY.writer.name + " " + STORY.stats.reads + " reads",
+    img: STORY.cover,
+    url: "https://droboard.app/story/" + STORY.id,
   });
 }
 

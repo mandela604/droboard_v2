@@ -160,6 +160,7 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
     <div class="modal-body">
       <div class="modal-author" id="approveAuthorInfo"></div>
+      <div id="approvePayee"></div>
       <div style="text-align:center;padding:16px 0">
         <div style="font-size:28px;font-weight:800;color:var(--green)" id="approveAmount"></div>
         <div style="font-size:11px;color:var(--text-faint);margin-top:4px;text-transform:uppercase;font-weight:700">Payout Amount</div>
@@ -195,6 +196,8 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <script src="shared/finance-sidebar.js"></script>
 <script src="../services/currency-service.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/author-earnings-service.js"></script>
 <script src="shared/finance-data.js"></script>
 <script src="services/withdrawals-service.js"></script>
 <div class="toast" id="toast"></div>

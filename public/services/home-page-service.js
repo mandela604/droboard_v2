@@ -78,10 +78,13 @@
       });
     });
   }
-  window.onStatusViewerChange = function (wid, ring) {
+  window.onStatusViewerChange = function (wid, ring, name) {
     // re-render on viewer change — keep statuses in closure via DOM re-read
     var cur = window.__homeStatuses || [];
-    var w = cur.find(function (s) { return s.id === wid; });
+    var k = String(name || wid || '').toLowerCase();
+    var w = cur.find(function (s) {
+      return s.id === wid || String(s.name || s.handle || '').toLowerCase() === k;
+    });
     if (w) w.ring = ring;
     renderStatusRow(cur);
   };

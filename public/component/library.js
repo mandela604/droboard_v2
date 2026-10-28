@@ -286,7 +286,7 @@
             title: it.title,
             sub: (it.author ? '@' + it.author : '') + ' · from your library',
             img: it.cover,
-            url: it.url || ('https://droboard.app/story/' + it.id),
+            url: it.url || ('/story/' + it.id),
           });
         } else {
           _toast('📤 Share link copied!');

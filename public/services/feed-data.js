@@ -2,17 +2,16 @@
  * feed-data.js — Droboard Feed Data Service
  * ─────────────────────────────────────────────
  * Single place feed.html asks for organic feed content. Every call
- * tries the real API first (when CFG.USE_DEMO is false and
- * CFG.API_BASE is set), and falls back to the demo arrays below on
- * any failure — same shape either way, so the page never has to
- * branch on where the data came from.
+ * tries the real API first (when CFG.USE_DEMO is false), and falls
+ * back to the demo arrays below on any failure — same shape either
+ * way, so the page never has to branch on where the data came from.
  *
  *   const stories = await FeedData.getStories();
  *   const posts   = await FeedData.getFeedPosts();
  *   const slides  = await FeedData.getPromoSlides();
  *   const count   = await FeedData.getNotifCount();
  *
- * To go live: FeedData.configure({ USE_DEMO: false, API_BASE: '...' }).
+ * To go live: FeedData.configure({ USE_DEMO: false, API_BASE: '/api' }).
  * Nothing in feed.html itself needs to change — this is the one place
  * that knows about demo vs. live.
  *
@@ -35,7 +34,7 @@
 (function () {
   'use strict';
 
-  const CFG = { API_BASE: 'https://api.droboard.app', API_KEY: '', USE_DEMO: true };
+  const CFG = { API_BASE: '/api', API_KEY: '', USE_DEMO: true };
 
   function configure(opts) { Object.assign(CFG, opts || {}); }
 
@@ -43,7 +42,7 @@
     if (CFG.USE_DEMO || !CFG.API_BASE) throw new Error('demo mode');
     const headers = { Accept: 'application/json' };
     if (CFG.API_KEY) headers.Authorization = `Bearer ${CFG.API_KEY}`;
-    const res = await fetch(CFG.API_BASE + endpoint, { headers });
+    const res = await fetch(CFG.API_BASE + endpoint, { headers, credentials: 'include' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   }
@@ -353,22 +352,22 @@
   }
 
   async function getStories() {
-    try { return await apiFetch('/v1/feed/stories'); }
+    try { return await apiFetch('/feed/discover/stories'); }
     catch (e) { return DEMO_STORIES; }
   }
 
   async function getFeedPosts() {
-    try { return await apiFetch('/v1/feed'); }
+    try { return await apiFetch('/feed/home'); }
     catch (e) { return withSharedDebates(DEMO_FEED_POSTS); }
   }
 
   async function getPromoSlides() {
-    try { return await apiFetch('/v1/feed/promo'); }
+    try { return await apiFetch('/feed/discover/ads'); }
     catch (e) { return DEMO_PROMO_SLIDES; }
   }
 
   async function getNotifCount() {
-    try { const d = await apiFetch('/v1/notifications/unread-count'); return d.count; }
+    try { const d = await apiFetch('/notifications/unread-count'); return d.count || 0; }
     catch (e) { return 6; }
   }
 

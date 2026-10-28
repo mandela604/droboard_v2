@@ -55,17 +55,19 @@
       ],
     },
 
+    /* Full payee fields mirror what the author saves in Author Center →
+       Payment Details; the withdrawals modal must show where to send money. */
     withdrawals: [
-      { id:'WD-501', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', amount:2140, method:'Bank Transfer', account:'GTBank •••• 4821', requested:'2026-07-29T09:10:00', status:'pending', note:'' },
-      { id:'WD-502', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', amount:980,  method:'PayPal',        account:'elena.v@paypal.com', requested:'2026-07-29T06:40:00', status:'pending', note:'' },
-      { id:'WD-503', author:'Luna Skye',       avatar:'https://i.pravatar.cc/60?img=24', amount:1510, method:'Bank Transfer', account:'Access Bank •••• 7793', requested:'2026-07-29T04:05:00', status:'pending', note:'' },
-      { id:'WD-504', author:'Wren Okonkwo',    avatar:'https://i.pravatar.cc/60?img=41', amount:640,  method:'PayPal',        account:'wren.o@paypal.com', requested:'2026-07-28T15:20:00', status:'pending', note:'' },
-      { id:'WD-505', author:'Ifeanyi_Story',   avatar:'https://i.pravatar.cc/60?img=8',  amount:2975, method:'Bank Transfer', account:'Zenith Bank •••• 3310', requested:'2026-07-28T11:00:00', status:'pending', note:'' },
-      { id:'WD-506', author:'Sophia Bennett',  avatar:'https://i.pravatar.cc/100?img=48',amount:3200, method:'Wire Transfer', account:'Chase •••• 9012', requested:'2026-07-27T18:30:00', status:'approved', note:'', processed:'2026-07-27T20:15:00' },
-      { id:'WD-507', author:'Daniel Carter',   avatar:'https://i.pravatar.cc/100?img=13',amount:1200, method:'Bank Transfer', account:'UBA •••• 5567', requested:'2026-07-27T09:45:00', status:'approved', note:'', processed:'2026-07-27T14:00:00' },
-      { id:'WD-508', author:'Marcus Webb Jr.', avatar:'https://i.pravatar.cc/60?img=12', amount:410,  method:'PayPal',        account:'marcuswebb@paypal.com', requested:'2026-07-26T13:10:00', status:'declined', note:'Account name mismatch with registered payee — please update payout details.', processed:'2026-07-26T16:40:00' },
-      { id:'WD-509', author:'Zara_M',          avatar:'https://i.pravatar.cc/60?img=36', amount:75,   method:'PayPal',        account:'zara.m@paypal.com', requested:'2026-07-25T10:05:00', status:'declined', note:'Below the $100 minimum withdrawal threshold.', processed:'2026-07-25T11:20:00' },
-      { id:'WD-510', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5', amount:3200, method:'Wire Transfer', account:'GTBank •••• 1189', requested:'2026-07-24T08:00:00', status:'approved', note:'', processed:'2026-07-24T12:30:00' },
+      { id:'WD-501', author:'Isabelle Moreau', avatar:'https://i.pravatar.cc/60?img=44', amount:2140, method:'Bank Transfer', account:'GTBank •••• 4821', accountName:'Isabelle Moreau', bankName:'GTBank', accountNumber:'02481794821', routingCode:'0580000124', requested:'2026-07-29T09:10:00', status:'pending', note:'' },
+      { id:'WD-502', author:'Elena Vasquez',   avatar:'https://i.pravatar.cc/60?img=31', amount:980,  method:'PayPal',        account:'elena.v@paypal.com', accountName:'Elena Vasquez', email:'elena.v@paypal.com', requested:'2026-07-29T06:40:00', status:'pending', note:'' },
+      { id:'WD-503', author:'Luna Skye',       avatar:'https://i.pravatar.cc/60?img=24', amount:1510, method:'Bank Transfer', account:'Access Bank •••• 7793', accountName:'Luna Skye', bankName:'Access Bank', accountNumber:'01234567890', routingCode:'0440000114', requested:'2026-07-29T04:05:00', status:'pending', note:'' },
+      { id:'WD-504', author:'Wren Okonkwo',    avatar:'https://i.pravatar.cc/60?img=41', amount:640,  method:'PayPal',        account:'wren.o@paypal.com', accountName:'Wren Okonkwo', email:'wren.o@paypal.com', requested:'2026-07-28T15:20:00', status:'pending', note:'' },
+      { id:'WD-505', author:'Ifeanyi_Story',   avatar:'https://i.pravatar.cc/60?img=8',  amount:2975, method:'Bank Transfer', account:'Zenith Bank •••• 3310', accountName:'Ifeanyi Obi', bankName:'Zenith Bank', accountNumber:'1013457890', routingCode:'0710000274', requested:'2026-07-28T11:00:00', status:'pending', note:'' },
+      { id:'WD-506', author:'Sophia Bennett',  avatar:'https://i.pravatar.cc/100?img=48',amount:3200, method:'Wire Transfer', account:'Chase •••• 9012', accountName:'Sophia Bennett', bankName:'Chase Bank', accountNumber:'7943029012', routingCode:'021000021', requested:'2026-07-27T18:30:00', status:'approved', note:'', processed:'2026-07-27T20:15:00' },
+      { id:'WD-507', author:'Daniel Carter',   avatar:'https://i.pravatar.cc/100?img=13',amount:1200, method:'Bank Transfer', account:'UBA •••• 5567', accountName:'Daniel Carter', bankName:'United Bank for Africa', accountNumber:'2056789012', routingCode:'033000062', requested:'2026-07-27T09:45:00', status:'approved', note:'', processed:'2026-07-27T14:00:00' },
+      { id:'WD-508', author:'Marcus Webb Jr.', avatar:'https://i.pravatar.cc/60?img=12', amount:410,  method:'PayPal',        account:'marcuswebb@paypal.com', accountName:'Marcus Webb', email:'marcuswebb@paypal.com', requested:'2026-07-26T13:10:00', status:'declined', note:'Account name mismatch with registered payee — please update payout details.', processed:'2026-07-26T16:40:00' },
+      { id:'WD-509', author:'Zara_M',          avatar:'https://i.pravatar.cc/60?img=36', amount:75,   method:'PayPal',        account:'zara.m@paypal.com', accountName:'Zara Mohammed', email:'zara.m@paypal.com', requested:'2026-07-25T10:05:00', status:'declined', note:'Below the $100 minimum withdrawal threshold.', processed:'2026-07-25T11:20:00' },
+      { id:'WD-510', author:'Chioma Reddy',    avatar:'https://i.pravatar.cc/100?img=5', amount:3200, method:'Wire Transfer', account:'GTBank •••• 1189', accountName:'Chioma Reddy', bankName:'GTBank', accountNumber:'1099887766', routingCode:'0580000124', requested:'2026-07-24T08:00:00', status:'approved', note:'', processed:'2026-07-24T12:30:00' },
     ],
 
     authorPayments: [
@@ -217,6 +219,31 @@
     return item;
   }
 
+  /* Reader (store purchases/tips) and author (transaction history) disputes
+     live in the shared dro_payment_disputes store; finance seeds stay in DEMO. */
+  function sharedDisputes() {
+    return window.DroboardDisputes ? DroboardDisputes.list() : [];
+  }
+  function mergedDisputes() {
+    const seed = JSON.parse(JSON.stringify(DEMO.paymentDisputes));
+    const extra = sharedDisputes().map(d => ({
+      id: d.id, author: d.who, avatar: d.avatar, amount: d.amount,
+      reason: d.reason + (d.item ? ' · ' + d.item : ''),
+      status: d.status, filed: d.filed,
+      resolutionNote: d.resolutionNote || '', replies: d.replies || [],
+      role: d.role || 'reader', txnId: d.txnId || '',
+    }));
+    const seen = {};
+    seed.forEach(d => { seen[d.id] = true; });
+    return extra.filter(d => !seen[d.id]).concat(seed);
+  }
+  function patchShared(id, p) {
+    if (!window.DroboardDisputes) return false;
+    if (!DroboardDisputes.list().some(d => d.id === id)) return false;
+    DroboardDisputes.patch(id, p);
+    return true;
+  }
+
   window.FinanceData = {
     async getDashboard() {
       try { return await callBackend('/dashboard'); }
@@ -310,20 +337,35 @@
 
     async getPaymentDisputes() {
       try { return await callBackend('/payment-disputes'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.paymentDisputes)); }
+      catch (e) { await delay(); return mergedDisputes(); }
     },
     async resolveDispute(id, note) {
       try { return await callBackend('/payment-disputes/' + id + '/resolve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ note }) }); }
-      catch (e) { await delay(150); const d = findIn(DEMO.paymentDisputes, id); d.status='resolved'; d.resolutionNote = note || 'Resolved by Finance.'; return JSON.parse(JSON.stringify(d)); }
+      catch (e) {
+        await delay(150);
+        const p = { status:'resolved', resolutionNote: note || 'Resolved by Finance.' };
+        if (patchShared(id, p)) return p;
+        const d = findIn(DEMO.paymentDisputes, id); d.status=p.status; d.resolutionNote=p.resolutionNote; return JSON.parse(JSON.stringify(d));
+      }
     },
     async rejectDispute(id, note) {
       try { return await callBackend('/payment-disputes/' + id + '/reject', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ note }) }); }
-      catch (e) { await delay(150); const d = findIn(DEMO.paymentDisputes, id); d.status='rejected'; d.resolutionNote = note || 'Rejected by Finance.'; return JSON.parse(JSON.stringify(d)); }
+      catch (e) {
+        await delay(150);
+        const p = { status:'rejected', resolutionNote: note || 'Rejected by Finance.' };
+        if (patchShared(id, p)) return p;
+        const d = findIn(DEMO.paymentDisputes, id); d.status=p.status; d.resolutionNote=p.resolutionNote; return JSON.parse(JSON.stringify(d));
+      }
     },
     async replyToDispute(id, message) {
       try { return await callBackend('/payment-disputes/' + id + '/reply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message }) }); }
       catch (e) {
         await delay(150);
+        const reply = { from:'Ngozi Falade', message: message, time: new Date().toISOString() };
+        if (window.DroboardDisputes) {
+          const shared = DroboardDisputes.list().find(x=>x.id===id);
+          if (shared) { DroboardDisputes.patch(id, { replies:(shared.replies||[]).concat(reply) }); return JSON.parse(JSON.stringify(shared)); }
+        }
         const d = findIn(DEMO.paymentDisputes, id);
         return JSON.parse(JSON.stringify(d));
       }

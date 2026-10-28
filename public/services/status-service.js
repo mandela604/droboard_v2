@@ -299,22 +299,7 @@
      Viewed state persists through status-viewer.js's StatusStore
      (shared key), so nothing else changes.
      ═══════════════════════════════════════════════════════════════ */
-  var WRITER_SLIDES = [
-    { bg: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=500&h=900&fit=crop', quote: '"Chapter 21 is finally live — the truth comes out tonight."', caption: 'New chapter · tonight' },
-    { bg: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', quote: '"I did not expect this ending. Neither will you."', caption: 'Behind the scenes' },
-    { bg: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=500&h=900&fit=crop', quote: '"Writing at 2am has a different energy."', caption: 'Late-night drafting' },
-    { bg: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', quote: '"Family secrets never stay buried."', caption: 'New series teaser' },
-    { bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'From the current WIP' },
-    { bg: 'https://i.postimg.cc/WF1j4Pnh/6.jpg', quote: '"Team him or team the other one?"', caption: 'Poll live now' },
-  ];
-  var STATUS_VIEWED_KEY = 'dro_status_viewed_v1';
   var _writerGroups = {};
-
-  function _wHash(s) {
-    var h = 0;
-    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return h;
-  }
   function _hKey(handle) { return 'wr:' + String(handle || '').toLowerCase(); }
   function _viewed(handle, slide, index) {
     var st = _store();
@@ -334,16 +319,30 @@
       { bg: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', quote: '"I did not expect this ending. Neither will you."', caption: 'Behind the scenes', time: '1h ago' },
     ],
     alex_pierce: [
-      { bg: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', quote: '"Family secrets never stay buried."', caption: 'New series teaser', time: '4h ago' },
+      { bg: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', quote: '"Family secrets never stay buried."', caption: 'New story teaser', time: '4h ago' },
     ],
     mia_clark: [
-      { bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy series', time: '6h ago' },
+      { bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' },
     ],
     sofia: [
       { bg: 'https://i.postimg.cc/WF1j4Pnh/6.jpg', quote: '"Team Alex or Team Jaxon?"', caption: 'Poll live now', time: '5h ago' },
     ],
     jaxon: [
       { bg: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', quote: '"This story ruined my whole week (in the best way)."', caption: 'Recommending a read', time: '2h ago' },
+    ],
+    /* Discussion-thread regulars — declared here so a thread avatar's ring and
+       the slides the viewer plays are the same lineup on every surface. */
+    questgiver: [
+      { bg: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=500&h=900&fit=crop', quote: '"Writing at 2am has a different energy."', caption: 'Late-night drafting', time: '3h ago' },
+    ],
+    runereader: [
+      { bg: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=500&h=900&fit=crop', quote: '"Map point still stands — book 2 is the map book."', caption: 'Theory thread', time: '5h ago' },
+    ],
+    mapnerd: [
+      { bg: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=500&h=900&fit=crop', quote: '"Geography should matter more often in this genre."', caption: 'Drafting a post', time: '2h ago' },
+    ],
+    bladetheory: [
+      { bg: 'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=500&h=900&fit=crop', quote: '"The mentor line early on is the whole engine."', caption: 'Rewatching chapter 1', time: '4h ago' },
     ],
   };
 
@@ -384,28 +383,14 @@
     return null;
   }
 
-  /* Deterministic per handle — same writer sees the same statuses on
-     every page until real data replaces this. */
+  /* A writer's REAL lineup, or none. Never invent slides: a made-up lineup
+     gives the avatar a ring that the viewer's lineup (or another surface's
+     seed) doesn't match, and "viewed" can never reconcile. Surfaces render
+     no border at all when this returns empty. */
   function writerStatuses(handle) {
-    var key = String(handle || 'writer').replace(/^@/, '').toLowerCase();
+    var key = String(handle || '').replace(/^@/, '').toLowerCase();
     var canonical = _demoStatuses(key);
-    if (canonical) return canonical;
-    var base = _wHash(key);
-    var wid = _hKey(key);
-    var count = 1 + (base % 2);
-    var out = [];
-    for (var i = 0; i < count; i++) {
-      var t = WRITER_SLIDES[(base + i * 3) % WRITER_SLIDES.length];
-      var slide = {
-        id: wid + '.' + i,
-        bg: t.bg, quote: t.quote, caption: t.caption,
-        time: ((base % 5) + i + 1) + 'h ago',
-        viewed: false,
-      };
-      slide.viewed = _viewed(key, slide, i);
-      out.push(slide);
-    }
-    return out;
+    return canonical || [];
   }
 
   /* Enrich writer rows with id/statuses/ring; also keeps the group so

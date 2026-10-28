@@ -169,7 +169,7 @@ a{color:inherit;text-decoration:none}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
@@ -196,6 +196,8 @@ a{color:inherit;text-decoration:none}
         <div class="packs-grid" id="packsGrid"></div>
       </div>
 
+      <div data-ad-slot="store:below-packs" data-ad-format="minibanner" style="margin:0 0 24px"></div>
+
       <div class="section">
         <div class="sec-head">
           <div class="sec-title">Bundles</div>
@@ -210,6 +212,13 @@ a{color:inherit;text-decoration:none}
           <div class="sec-badge">Free</div>
         </div>
         <div id="rewardsList"></div>
+      </div>
+
+      <div class="section" id="problemSection" style="display:none">
+        <div class="sec-head">
+          <div class="sec-title">Your Purchases</div>
+        </div>
+        <div id="purchaseList"></div>
       </div>
     </div>
 
@@ -239,11 +248,16 @@ a{color:inherit;text-decoration:none}
 
 <script src="../data/central-demo-data.js"></script>
 <script src="../services/currency-service.js"></script>
+<script src="../component/disputes-store.js"></script>
 <script src="../services/store-service.js"></script>
 <script src="../services/payment-service.js?v=2"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../component/payment-sheet.js"></script>
 <script src="../services/store-page-service.js"></script>
+<script src="../component/ad-card.js?v=6"></script>
+<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
+<script src="../component/ad-slot.js?v=2"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

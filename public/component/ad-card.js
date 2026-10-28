@@ -568,12 +568,18 @@
     'droboard-page': ['droboardPage', 'droboardPage:feed'],
     followers: ['followers', 'followers:in-feed'],
     profile: ['profile', ''],
-    series: ['series', 'series:main'],
+    story: ['story', 'story:main'],
+    'book-reader': ['bookReader', 'bookReader:top'],
     collection: ['collection', 'collection:top'],
     search: ['search', ''],
     discussion: ['discussion', 'discussion:inline'],
     debate: ['debate', 'debate:inline'],
     comments: ['comments', 'comments:inline'],
+    'genre-stories': ['genreStories', 'genreStories:in-feed'],
+    leaderboard: ['leaderboard', 'leaderboard:inline'],
+    blog: ['blog', 'blog:top'],
+    notifications: ['notifications', 'notifications:in-feed'],
+    store: ['store', 'store:below-packs'],
   };
   function ctx() {
     let file = '';

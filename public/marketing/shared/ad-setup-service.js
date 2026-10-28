@@ -10,20 +10,37 @@
 (function () {
   'use strict';
 
-  var STEPS = ['Goal', 'Creative', 'Placement', 'Audience', 'Schedule', 'Review'];
+  var STEPS = ['Campaign', 'Creative', 'Placement', 'Audience', 'Schedule', 'Review'];
   var D = window.AdSetupData || {};
   var GOALS = D.GOALS || [];
   var FORMATS = D.FORMATS || [];
   var PAGES = D.PAGES || [];
   var FIELDS = D.FIELDS || {};
-  var SEGMENTS = D.SEGMENTS || [];
+  /* Segments come from the shared audience-rules store (editable in Ad
+     Manager). Cached per page load — the picker and labels read the same
+     list the editor writes, so nothing here holds its own copy. */
+  var _segs = null;
+  function segments() {
+    if (!_segs) _segs = (typeof D.segments === 'function' && D.segments()) || [];
+    return _segs;
+  }
+  var _segMap = null;
+  /* Labels and validation see retired segments too: an ad saved before a
+     retirement keeps its targeting (and its wording) instead of silently
+     losing the segment when the wizard is reopened. */
+  function SEG_MAP() {
+    if (!_segMap) {
+      _segMap = {};
+      (window.DroboardAudienceRules ? DroboardAudienceRules.all({ includeRetired: true }) : segments())
+        .forEach(function (s) { _segMap[s.id] = s; });
+    }
+    return _segMap;
+  }
   var GENRES = D.GENRES || [];
   var COUNTRIES = D.TRACKED_COUNTRIES || [];
   var SPOT_KINDS = D.SPOT_KINDS || [];
   var BOARD_TYPES = D.SPOT_BOARD_TYPES || [];
   var BOARD_PERIODS = D.SPOT_PERIODS || [];
-  var SEG_MAP = {};
-  SEGMENTS.forEach(function (s) { SEG_MAP[s.id] = s; });
 
   /* Slot registry per surface — shared with the ad manager (ad-setup-data).
      An ad with an empty slots list serves on every slot of its pages. */
@@ -66,6 +83,10 @@
     _slotsDirty = false;
     return {
       format: format || 'platform', fields: {}, campaign: '',
+      /* One flow owns the buy too: the campaign is created here, from the
+         objective + surfaces + dates + budget this form already holds.
+         campNew=false is the Facebook "add to existing campaign" case. */
+      campNew: true, campName: '', campHasBudget: false, campBudget: 0,
       kind: format === 'spotlight' ? 'story' : '',
       pages: PAGES.map(function (p) { return p.id; }),
       slots: [],
@@ -88,11 +109,13 @@
       if (ad.period != null) d.fields.period = String(ad.period);
     }
     d.campaign = ad.campaign || '';
+    d.campNew = !d.campaign;
+    d.campName = (d.campaign && campOf(d.campaign) && campOf(d.campaign).name) || '';
     d.pages = Array.isArray(ad.pages) && ad.pages.length ? ad.pages.slice() : PAGES.map(function (p) { return p.id; });
     d.slots = Array.isArray(ad.slots) ? ad.slots.slice() : [];
     _slotsDirty = d.slots.length > 0;
     var aud = ad.audience || {};
-    d.segments = Array.isArray(aud.segments) ? aud.segments.filter(function (id) { return !!SEG_MAP[id]; }) : [];
+    d.segments = Array.isArray(aud.segments) ? aud.segments.filter(function (id) { return !!SEG_MAP()[id]; }) : [];
     d.genres = Array.isArray(aud.genres) ? aud.genres.slice() : [];
     d.countries = Array.isArray(aud.countries) ? aud.countries.slice() : [];
     d.offerRef = (ad.offerRef && ad.offerRef.id) ? { kind: ad.offerRef.kind || 'offer', id: String(ad.offerRef.id), name: ad.offerRef.name || ad.offerRef.id } : null;
@@ -113,6 +136,48 @@
     }
     return fallback;
   }
+  /* The goal picked below IS the campaign objective — the old Campaigns
+     wizard asked for it twice, which is why the two pages were confusing. */
+  var OBJ_FOR = {
+    story: 'story-reads', author: 'followers', offer: 'inner-circle',
+    sponsored: 'brand-awareness', brand: 'brand-awareness', miniBanner: 'brand-awareness',
+    slider: 'brand-awareness', spotlight: 'story-reads', leaderboard: 'engagement',
+    referral: 'engagement', network: 'brand-awareness',
+  };
+
+  function objectiveOf(goalId) { return OBJ_FOR[goalId] || 'brand-awareness'; }
+  function currentGoalId() { return goalForFormat(_draft.format) || ''; }
+  function objectiveLine() {
+    return 'Objective: <b>' + esc(objectiveOf(currentGoalId()).replace(/-/g, ' ')) + '</b> · the surfaces you tick in Placement and the dates in Schedule become this campaign\'s buy.';
+  }
+
+  function bodyCampaignBuy() {
+    var d = _draft;
+    var obj = objectiveOf(currentGoalId());
+    var html = '<div style="border-top:1px solid var(--input-border);margin:18px 0 0;padding-top:16px">' +
+      '<label class="f-lbl">Campaign' +
+      '<div class="fmt-grid" style="grid-template-columns:1fr 1fr;margin-top:6px">' +
+      '<button type="button" class="fmt-card' + (d.campNew ? ' on' : '') + '" data-campnew="1"><i class="fas fa-plus"></i><div><div class="fmt-t">New campaign</div><div class="fmt-d">This ad is its own buy</div></div></button>' +
+      '<button type="button" class="fmt-card' + (!d.campNew ? ' on' : '') + '" data-campnew="0"><i class="fas fa-link"></i><div><div class="fmt-t">Add to existing</div><div class="fmt-d">Share a buy already paid for</div></div></button>' +
+      '</div></label>';
+    if (d.campNew) {
+      html += '<label class="f-lbl">Campaign name<input class="f-inp" id="suCampName" placeholder="e.g. October story push" maxlength="80" value="' + esc(d.campName) + '"/></label>' +
+        '<div id="suObj" style="font-size:11px;color:var(--text-faint);margin:-4px 0 12px">' + objectiveLine() + '</div>' +
+        '<label class="pg-check" style="display:inline-flex;margin-bottom:12px"><input type="checkbox" id="suCampBudgetOn"' + (d.campHasBudget ? ' checked' : '') + '/> Set a budget</label>' +
+        (d.campHasBudget
+          ? '<label class="f-lbl">Budget<input class="f-inp" id="suCampBudget" type="number" min="0" step="500" value="' + (+d.campBudget || 0) + '"/></label>'
+          : '<div style="font-size:11px;color:var(--text-faint);margin:-4px 0 12px">No budget — nothing is charged for this campaign.</div>');
+    } else {
+      html += '<label class="f-lbl">Existing campaign' +
+        '<select class="f-inp" id="suCampaign"><option value="">Choose a campaign…</option>' +
+        _campaigns.map(function (c) {
+          return '<option value="' + esc(c.id) + '"' + (String(c.id) === String(d.campaign || '') ? ' selected' : '') + '>' + esc((c.name || c.id) + ' · ' + (c.status || 'draft')) + '</option>';
+        }).join('') + '</select></label>' +
+        '<div style="font-size:11px;color:var(--text-faint);margin:-4px 0 12px">Its bought surfaces and dates are enforced in the next steps — you cannot overspend someone else\'s buy.</div>';
+    }
+    return html + '</div>';
+  }
+
   function bodyGoal() {
     var sel = goalForFormat(_draft.format);
     return '<div class="fmt-grid">' + GOALS.map(function (g) {
@@ -121,7 +186,8 @@
         '<div><div class="fmt-t">' + esc(g.label) + '</div><div class="fmt-d">' + esc(g.desc) + '</div></div>' +
       '</button>';
     }).join('') + '</div>' +
-    '<div style="font-size:11px;color:var(--text-faint);margin-top:10px">Each goal picks the right card — you can still switch format here, creative adapts.</div>';
+    '<div style="font-size:11px;color:var(--text-faint);margin-top:10px">Each goal picks the right card — you can still switch format here, creative adapts.</div>' +
+    bodyCampaignBuy();
   }
   function bodyCreative() {
     var fmt = _draft.format;
@@ -202,19 +268,84 @@
     }
     return html;
   }
+  /* ── Campaign ↔ ad ──
+     The campaign is the buy (objective, surfaces, budget, window); this form
+     is the delivery. When one is attached, Placement and Schedule are
+     narrowed to what was bought — so the two can never disagree about a slot. */
+  function campOf(id) {
+    if (!id) return null;
+    for (var i = 0; i < _campaigns.length; i++) {
+      if (String(_campaigns[i].id) === String(id)) return _campaigns[i];
+    }
+    return null;
+  }
+  function campPages(c) {
+    if (!c || !c.placements || !c.placements.length) return null; // null = unconstrained
+    var out = [];
+    c.placements.forEach(function (raw) {
+      var pid = D.surfaceFromLegacy ? D.surfaceFromLegacy(raw) : raw;
+      if (String(raw).indexOf(':') !== -1) pid = String(raw).split(':')[0];
+      if (out.indexOf(pid) === -1) out.push(pid);
+    });
+    return out;
+  }
+  function campSlots(c) {
+    if (!c) return null;
+    if (c.slots && c.slots.length) return c.slots.slice();
+    if (c.placements && c.placements.length && D.campaignSlotIds) return D.campaignSlotIds(c.placements);
+    return null;
+  }
+  function campWindow(c) {
+    if (!c) return null;
+    if (!c.startDate && !c.endDate) return null;
+    return { start: c.startDate || '', end: c.endDate || '' };
+  }
+  function campStatusLine(c) {
+    if (!c) return '';
+    var bits = [c.status || 'draft'];
+    if (c.hasBudget || c.budget) bits.push((c.currency === 'NGN' ? '₦' : '$') + fmtN(c.budget || 0) + ' · spent ' + fmtN(c.spent || 0));
+    if (c.startDate || c.endDate) bits.push((c.startDate || '…') + ' → ' + (c.endDate || '…'));
+    return bits.join(' · ');
+  }
   function bodyPlacement() {
-    var html = '<label class="f-lbl">Campaign (optional)' +
-      '<select class="f-inp" id="suCampaign"><option value="">No campaign</option>' +
-      _campaigns.map(function (c) {
-        return '<option value="' + esc(c.id) + '"' + (String(c.id) === String(_draft.campaign || '') ? ' selected' : '') + '>' + esc(c.name || c.id) + '</option>';
-      }).join('') + '</select></label>';
+    var camp = campOf(_draft.campaign);
+    var allowed = campPages(camp);
+    /* The campaign is chosen back in step 1, so this step is only about
+       surfaces — and they mean different things depending on that choice:
+       a new campaign buys exactly what is ticked here, an existing one has
+       already bought its slots and cannot be overspent. */
+    var html = '';
+    if (!_draft.campNew && camp) {
+      var blocked = ['draft', 'pending', 'rejected', 'paused', 'ended'].indexOf(String(camp.status)) !== -1;
+      html += '<div style="font-size:11px;line-height:1.5;padding:8px 10px;border-radius:8px;margin:2px 0 10px;' +
+        (blocked ? 'color:#b45309;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)'
+          : 'color:var(--text-muted);background:var(--input-bg,rgba(0,0,0,.03));border:1px solid var(--input-border)') + '">' +
+        '<b>' + esc(camp.name || camp.id) + '</b> — ' + esc(campStatusLine(camp)) +
+        (allowed ? '<br>Buying ' + allowed.length + ' surface' + (allowed.length === 1 ? '' : 's') + '; slots below are its entitlement.'
+          : '<br>No surfaces recorded on this campaign — placement is unconstrained.') +
+        (blocked ? '<br><b>This campaign is ' + esc(camp.status) + '</b> — the ad can be saved, but it will not serve until the campaign is live.' : '') +
+        '</div>';
+    } else if (!_draft.campNew) {
+      html += '<div style="font-size:11px;color:#b45309;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 10px;margin:2px 0 10px">No campaign picked in step 1 yet — go back and choose one, or this saves as a house ad.</div>';
+    } else {
+      html += '<div style="font-size:11px;color:var(--text-faint);margin:2px 0 10px">These surfaces are what <b>' + esc(_draft.campName || 'the new campaign') + '</b> buys. Bounded by the Placements kill-switches.</div>';
+    }
     html += '<div class="f-lbl" style="margin-bottom:6px">Shows on</div><div class="pg-row">' +
       PAGES.map(function (p) {
-        return '<label class="pg-check"><input type="checkbox" data-pg="' + p.id + '"' + (_draft.pages.indexOf(p.id) !== -1 ? ' checked' : '') + '/> ' + esc(p.label) + '</label>';
+        var on = _draft.pages.indexOf(p.id) !== -1;
+        var offLimits = allowed && allowed.indexOf(p.id) === -1;
+        return '<label class="pg-check"' + (offLimits ? ' style="opacity:.38" title="not bought by ' + esc(camp ? camp.name || camp.id : '') + '"' : '') + '>' +
+          '<input type="checkbox" data-pg="' + p.id + '"' + (on ? ' checked' : '') + (offLimits ? ' disabled' : '') + '/> ' + esc(p.label) + '</label>';
       }).join('') + '</div>';
     html += '<div id="suSlots" style="margin-top:4px">' + slotRowsHtml() + '</div>';
     return html;
   }
+  function slotAllowed(sid) {
+    var camp = campOf(_draft.campaign);
+    var bought = campSlots(camp);
+    return !bought || bought.indexOf(sid) !== -1;
+  }
+  function camp() { return campOf(_draft.campaign); }
   function slotOn(sid) {
     if (!_draft.slots.length && !_slotsDirty) return true; // default: every slot
     return _draft.slots.indexOf(sid) !== -1;
@@ -228,7 +359,9 @@
       any = true;
       html += '<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:800;margin-bottom:4px">' + esc(pageLabel(pid)) + '</div><div class="pg-row">' +
         slots.map(function (s) {
-          return '<label class="pg-check"><input type="checkbox" data-slot="' + esc(s.id) + '"' + (slotOn(s.id) ? ' checked' : '') + '/> ' + esc(s.label) + '</label>';
+          var offLimits = !slotAllowed(s.id);
+          return '<label class="pg-check"' + (offLimits ? ' style="opacity:.38" title="slot not bought by the campaign"' : '') + '>' +
+            '<input type="checkbox" data-slot="' + esc(s.id) + '"' + (slotOn(s.id) && !offLimits ? ' checked' : '') + (offLimits ? ' disabled' : '') + '/> ' + esc(s.label) + '</label>';
         }).join('') + '</div></div>';
     });
     if (!any) html += '<div style="font-size:11px;color:var(--text-faint)">Check a surface above to pick its slots.</div>';
@@ -239,9 +372,27 @@
     _slotsDirty = true;
     var all = [];
     _draft.pages.forEach(function (pid) {
-      pageSlots(pid).forEach(function (s) { if (all.indexOf(s.id) === -1) all.push(s.id); });
+      pageSlots(pid).forEach(function (s) { if (all.indexOf(s.id) === -1 && slotAllowed(s.id)) all.push(s.id); });
     });
     _draft.slots = all;
+  }
+  /* Attach a campaign -> drop anything outside its entitlement, so what the
+     wizard shows and what the ad will actually do can't diverge. */
+  function pruneToCampaign() {
+    var pages = campPages(camp());
+    if (pages) _draft.pages = _draft.pages.filter(function (p) { return pages.indexOf(p) !== -1; });
+    var bought = campSlots(camp());
+    if (bought) {
+      _draft.slots = _draft.slots.filter(function (s) { return bought.indexOf(s) !== -1; });
+      if (_draft.slots.length) _slotsDirty = true;
+    }
+    /* Dates travel with the campaign: a stale window from the previous one
+       would fail the Schedule validator the moment it renders. */
+    var win = campWindow(camp());
+    if (win) {
+      if (!_draft.startDate || _draft.startDate < win.start || _draft.startDate > win.end) _draft.startDate = win.start;
+      if (!_draft.endDate || _draft.endDate > win.end || _draft.endDate < win.start) _draft.endDate = win.end;
+    }
   }
   function reachLabel(est) {
     var bits = [];
@@ -252,7 +403,7 @@
   function bodyAudience() {
     var est = D.estimateAudience({ segments: _draft.segments, genres: _draft.genres, countries: _draft.countries });
     var html = '<div class="f-lbl" style="margin-bottom:6px">Behavior segments (multi-select)</div>' +
-      '<div class="seg-grid">' + SEGMENTS.map(function (s) {
+      '<div class="seg-grid">' + segments().map(function (s) {
         var on = _draft.segments.indexOf(s.id) !== -1;
         return '<button type="button" class="seg-card' + (on ? ' on' : '') + '" data-seg="' + s.id + '">' +
           '<div class="seg-top"><i class="fas ' + s.icon + '" style="color:' + s.color + '"></i>' +
@@ -286,12 +437,20 @@
       ' <button type="button" data-offer-clear="1">Remove</button></span>';
   }
   function bodySchedule() {
-    return '<div style="display:flex;gap:10px">' +
-        '<label class="f-lbl" style="flex:1">Start date<input type="date" class="f-inp" id="suStart" value="' + esc(_draft.startDate) + '"/></label>' +
-        '<label class="f-lbl" style="flex:1">End date<input type="date" class="f-inp" id="suEnd" value="' + esc(_draft.endDate) + '"/></label>' +
-      '</div>' +
-      '<label class="pg-check" style="margin-top:4px"><input type="checkbox" id="suActive"' + (_draft.active ? ' checked' : '') + '/> Live immediately</label>' +
+    var win = campWindow(camp());
+    var html = '<div style="display:flex;gap:10px">' +
+        '<label class="f-lbl" style="flex:1">Start date<input type="date" class="f-inp" id="suStart" value="' + esc(_draft.startDate) + '"' +
+          (win ? ' min="' + esc(win.start || '') + '" max="' + esc(win.end || '') + '"' : '') + '/></label>' +
+        '<label class="f-lbl" style="flex:1">End date<input type="date" class="f-inp" id="suEnd" value="' + esc(_draft.endDate) + '"' +
+          (win ? ' min="' + esc(win.start || '') + '" max="' + esc(win.end || '') + '"' : '') + '/></label>' +
+      '</div>';
+    if (win) {
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Campaign window: ' +
+        esc((win.start || '…') + ' → ' + (win.end || '…')) + ' — legs outside it will not serve.</div>';
+    }
+    html += '<label class="pg-check" style="margin-top:4px"><input type="checkbox" id="suActive"' + (_draft.active ? ' checked' : '') + '/> Live immediately</label>' +
       '<div style="font-size:11px;color:var(--text-faint);margin-top:8px">A dated schedule means “not live right now” — Live gets unchecked automatically.</div>';
+    return html;
   }
   function offerText() {
     var r = _draft.offerRef;
@@ -307,12 +466,17 @@
       title = 'Auto — top 3 ' + bt + ' (' + (_draft.fields.period || 'last_week').replace(/_/g, ' ') + ')';
     }
     if (_draft.format === 'spotlight') title = title || '(untitled)';
-    var camp = '';
-    _campaigns.forEach(function (c) { if (String(c.id) === String(_draft.campaign)) camp = c.name || c.id; });
+    var c = camp();
+    var campName = _draft.campNew
+      ? (_draft.campName || 'New campaign') + ' — created by this save · objective ' + objectiveOf(currentGoalId()).replace(/-/g, ' ') +
+        (_draft.campHasBudget ? ' · budget ' + fmtN(_draft.campBudget) : ' · no budget')
+      : 'None';
+    if (c) campName = (c.name || c.id) + ' — ' + campStatusLine(c);
+    if (c && !c.budget) campName += ' · no budget set';
     var est = D.estimateAudience({ segments: _draft.segments, genres: _draft.genres, countries: _draft.countries });
     var audLine = !_draft.segments.length && !_draft.genres.length
       ? 'Everyone (no targeting)'
-      : _draft.segments.map(function (id) { return SEG_MAP[id] ? SEG_MAP[id].label : id; })
+      : _draft.segments.map(function (id) { return SEG_MAP()[id] ? SEG_MAP()[id].label : id; })
         .concat(_draft.genres.map(function (g) { return g + ' readers'; })).join(', ');
     if (_draft.countries.length) audLine += ' · ' + _draft.countries.join(', ');
     var sched = (_draft.startDate || _draft.endDate) ? ((_draft.startDate || '…') + ' → ' + (_draft.endDate || '…')) : 'Always on';
@@ -324,7 +488,7 @@
       '<div><b>Slots:</b> ' + esc(_draft.slots.length ? _draft.slots.join(', ') : 'All slots on checked surfaces') + '</div>' +
       '<div><b>Audience:</b> ' + esc(audLine) + ' (~' + fmtN(est.reach) + ')</div>' +
       '<div><b>Offer:</b> ' + esc(offerText()) + '</div>' +
-      '<div><b>Campaign:</b> ' + esc(camp || 'None') + '</div>' +
+      '<div><b>Campaign:</b> ' + esc(campName) + '</div>' +
       '<div><b>Schedule:</b> ' + esc(sched) + (_draft.active ? ' · Live' : ' · Off') + '</div>' +
     '</div>';
   }
@@ -468,7 +632,7 @@
     return html;
   }
   function forPillsHtml() {
-    var bits = _draft.segments.map(function (id) { return SEG_MAP[id] ? SEG_MAP[id].label : id; })
+    var bits = _draft.segments.map(function (id) { return SEG_MAP()[id] ? SEG_MAP()[id].label : id; })
       .concat((_draft.genres || []).map(function (g) { return g; }));
     var c = (_draft.countries || []).slice();
     return '<span class="pv-pill">For: ' + esc(bits.length ? bits.join(' · ') : 'Everyone') + '</span>' +
@@ -548,7 +712,11 @@
     set('title', s.title);
     set('author', s.author);
     set('genre', (s.cat || s.genre || '').replace(/^[^\s]+\s/, ''));
-    set('rating', s.rating);
+    /* Rating has no input by design — it belongs to the story, not the ad.
+       Written straight onto the draft so a re-pick replaces it (and a story
+       with no rating yet clears it) instead of leaving the last one behind.
+       Live, this arrives on the story row from the backend. */
+    _draft.fields.rating = s.rating == null ? '' : String(s.rating);
     set('reads', s.reads);
     set('preview', s.desc || s.preview);
     set('chapters', s.chapters);
@@ -666,7 +834,8 @@
       var img = o.cover || o.avatar || '';
       var t = (kind === 'story' || kind === 'user')
         ? '<div style="font-size:12px;font-weight:800">' + esc(kind === 'story' ? o.title : o.name) + '</div>' +
-          '<div style="font-size:10.5px;color:var(--text-faint)">' + esc(kind === 'story' ? (o.author || '') : (o.handle || '')) + '</div>'
+          '<div style="font-size:10.5px;color:var(--text-faint)">' + esc(kind === 'story' ? (o.author || '') : (o.handle || '')) +
+          (kind === 'story' && o.rating ? ' · ★ ' + esc(o.rating) : '') + '</div>'
         : '<div style="font-size:12px;font-weight:800">' + esc(o.name) + '</div>' +
           '<div style="font-size:10.5px;color:var(--text-faint)">' + esc(o.kind) + (o.detail ? ' · ' + esc(o.detail) : '') + '</div>';
       return '<button type="button" class="story-hit" data-hit="' + i + '">' +
@@ -725,12 +894,16 @@
   }
   function collect() {
     var body = $('suBody');
+    if (_step === 0) {
+      var cn = $('suCampName'); if (cn) _draft.campName = cn.value.trim();
+      var cbo = $('suCampBudgetOn'); if (cbo) _draft.campHasBudget = cbo.checked;
+      var cb = $('suCampBudget'); if (cb) _draft.campBudget = Math.max(0, +cb.value || 0);
+      var cs = $('suCampaign'); if (cs) _draft.campaign = cs.value;
+    }
     if (_step === 1) {
       body.querySelectorAll('[data-k]').forEach(function (el) { _draft.fields[el.dataset.k] = el.value.trim(); });
     }
     if (_step === 2) {
-      var camp = $('suCampaign');
-      _draft.campaign = camp ? camp.value : '';
       _draft.pages = Array.prototype.map.call(
         body.querySelectorAll('[data-pg]:checked'), function (el) { return el.dataset.pg; });
       if (_slotsDirty) {
@@ -749,9 +922,25 @@
   }
   function validate() {
     var autoTitle = _draft.format === 'spotlight' && _draft.kind === 'board';
+    if (_step === 0) {
+      if (_draft.campNew && _draft.campName.trim().length < 3) { setErr('Name the campaign — 3 characters or more.'); return false; }
+      if (!_draft.campNew && !_draft.campaign) { setErr('Pick the campaign this ad joins, or go back and make a new one.'); return false; }
+    }
     if (_step === 1 && !adTitleOf(_draft.fields) && !autoTitle) { setErr('Give the ad a title first.'); return false; }
     if (_step === 2 && !_draft.pages.length) { setErr('Pick at least one surface.'); return false; }
     if (_step === 2 && _slotsDirty && !_draft.slots.length) { setErr('Pick at least one slot.'); return false; }
+    if (_step === 2) {
+      var bought = campSlots(camp());
+      var outside = bought ? _draft.slots.filter(function (s) { return bought.indexOf(s) === -1; }) : [];
+      if (outside.length) { setErr('This campaign only bought: ' + bought.join(', ')); return false; }
+    }
+    if (_step === 4) {
+      var win = campWindow(camp());
+      if (win) {
+        if (_draft.startDate && win.start && _draft.startDate < win.start) { setErr('Start is before the campaign window (' + win.start + ').'); return false; }
+        if (_draft.endDate && win.end && _draft.endDate > win.end) { setErr('End is after the campaign window (' + win.end + ').'); return false; }
+      }
+    }
     return true;
   }
   function next() {
@@ -768,7 +957,7 @@
     btn.disabled = true;
     var payload = {
       format: _draft.format,
-      campaign: _draft.campaign || '',
+      campaign: '',
       pages: _draft.pages.slice(),
       slots: _draft.slots.slice(),
       startDate: _draft.startDate,
@@ -788,13 +977,55 @@
       if (payload.kind !== 'board') { delete payload.boardType; delete payload.period; }
     }
     if (_editId) payload.id = _editId;
+    /* The campaign gates the ad: not live yet -> saved paused and flagged
+       autoPaused, so setting the campaign live in Campaigns switches it on
+       for you (MarketingData.cascadeCampaignStatus). */
+    var attached = camp();
+    /* A campaign created in this same save starts live, so it must not
+       pause the ad it was made for. */
+    if (attached && attached.id !== _draft.campaign &&
+        ['live', 'scheduled'].indexOf(String(attached.status)) === -1) {
+      payload.active = false;
+      payload.autoPaused = true;
+    }
+    payload.campaign = _draft.campaign || '';
     var reset = function () { _saving = false; btn.textContent = 'Save ad'; btn.disabled = false; };
-    MarketingData.saveAd(payload.format, payload).then(function () {
-      toast('✅ Ad saved — serving on client pages');
-      setTimeout(function () { window.location.href = 'ad-manager.html'; }, 500);
-    }).catch(function () {
-      reset();
-      setErr('Could not save ad.');
+    var reset = function () { _saving = false; btn.textContent = 'Save ad'; btn.disabled = false; };
+    var attach = function (done) {
+      if (!_draft.campNew) { done(); return; }
+      /* One flow, one save: the campaign is built from what this form
+         already holds, so a bought surface and a delivered creative can
+         never disagree — they were ticked in the same place. */
+      MarketingData.createCampaign({
+        name: _draft.campName,
+        objective: objectiveOf(currentGoalId()),
+        type: _draft.format === 'book' || _draft.format === 'follow' ? 'story' : 'business',
+        placements: _draft.pages.slice(),
+        slots: _draft.slots.slice(),
+        startDate: _draft.startDate,
+        endDate: _draft.endDate,
+        hasBudget: !!_draft.campHasBudget,
+        budget: _draft.campHasBudget ? (+_draft.campBudget || 0) : 0,
+        status: _draft.active ? 'live' : 'draft',
+        audienceTargeting: payload.audience,
+      }).then(function (c) {
+        if (!c || c.id == null) { reset(); setErr('Campaign was not created — ad not saved.'); return; }
+        payload.campaign = c.id;
+        _draft.campaign = c.id;
+        _campaigns.push(c);
+        done();
+      }).catch(function () { reset(); setErr('Campaign was not created — ad not saved.'); });
+    };
+    attach(function () {
+      MarketingData.saveAd(payload.format, payload).then(function () {
+        toast(payload.active
+          ? '✅ Ad saved — serving on client pages'
+          : '✅ Ad saved — ' + (attached ? 'paused until campaign ' + (attached.name || attached.id) + ' goes live' : 'paused (Live was off)'));
+        setTimeout(function () { window.location.href = 'ad-manager.html'; }, 500);
+      }).catch(function () {
+        reset();
+        setErr('Could not save ad.');
+      });
     });
   }
 
@@ -815,8 +1046,25 @@
             }
           }
           body.querySelectorAll('[data-goal]').forEach(function (x) { x.classList.toggle('on', x === b); });
+          var o = $('suObj'); if (o) o.innerHTML = objectiveLine();
           updatePreview();
         });
+      });
+      body.querySelectorAll('[data-campnew]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          collect();
+          _draft.campNew = b.dataset.campnew === '1';
+          if (_draft.campNew) _draft.campaign = '';
+          render();
+        });
+      });
+      var cbo = $('suCampBudgetOn');
+      if (cbo) cbo.addEventListener('change', function () { collect(); render(); });
+      var cs = $('suCampaign');
+      if (cs) cs.addEventListener('change', function () {
+        _draft.campaign = cs.value || '';
+        pruneToCampaign();
+        setErr('');
       });
     }
     if (_step === 1) {
@@ -905,7 +1153,7 @@
           var ids = pageSlots(pid).map(function (s) { return s.id; });
           if (el.checked) {
             if (_draft.pages.indexOf(pid) === -1) _draft.pages.push(pid);
-            ids.forEach(function (sid) { if (_draft.slots.indexOf(sid) === -1) _draft.slots.push(sid); });
+            ids.forEach(function (sid) { if (_draft.slots.indexOf(sid) === -1 && slotAllowed(sid)) _draft.slots.push(sid); });
           } else {
             _draft.pages = _draft.pages.filter(function (x) { return x !== pid; });
             _draft.slots = _draft.slots.filter(function (sid) { return ids.indexOf(sid) === -1; });
@@ -985,6 +1233,17 @@
       _draft = blankDraft(fmt);
     }
     try { _campaigns = await MarketingData.getCampaigns(); } catch (e3) { _campaigns = []; }
+    /* /campaigns.html "Add creative" lands here with the campaign already
+       picked — the ad inherits its entitlement and window. */
+    try {
+      var fromCamp = new URLSearchParams(location.search).get('campaign') || '';
+      if (fromCamp && campOf(fromCamp)) {
+        _draft.campaign = fromCamp;
+        pruneToCampaign();
+        var w = campWindow(campOf(fromCamp));
+        if (w) { _draft.startDate = _draft.startDate || w.start; _draft.endDate = _draft.endDate || w.end; }
+      }
+    } catch (e4) {}
     render();
     $('suBackBtn').addEventListener('click', function () {
       collect();

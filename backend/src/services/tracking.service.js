@@ -1,9 +1,10 @@
 'use strict';
 // Reader activity tracking: content impressions ("which posts did this
-// reader see"), search queries, and per-user ad exposure rollups. All
+// reader see"), search queries, per-user ad exposure rollups, and page
+// insights (InsightHit — shared/insights-tracker.js hit streams). All
 // writes are fire-and-forget style — tracking never breaks the action
 // that triggered it.
-const { ContentImpression } = require('../models/social.model');
+const { ContentImpression, InsightHit } = require('../models/social.model');
 const { SearchLog, AdView, AdClick } = require('../models/platform.model');
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
@@ -102,4 +103,94 @@ async function publicTrending({ limit }) {
   };
 }
 
-module.exports = { impression, logSearch, myActivity, impressionsFor, searchesFor, trendingSearches, publicTrending };
+module.exports = { impression, logSearch, myActivity, impressionsFor, searchesFor, trendingSearches, publicTrending, insightHit, insightStats };
+
+/* ── Page insights (insights-service.js loadInsights contract) ──
+   POST /api/track/insight {surface, targetId?, country?} — one hit.
+   GET  /api/track/insight?surface=&targetId=&period=7d —
+     { visits, visitsPrev, series: [n per bucket], countries: [{country, n}] }
+   The frontend merges demo + live, so both shapes stay additive. */
+const SURFACES = ['hub', 'droboard', 'profile', 'collection'];
+
+async function insightHit({ userId, surface, targetId, country }) {
+  if (!SURFACES.includes(surface)) err('bad_surface', 400);
+  const tid = String(targetId || '');
+  await InsightHit.updateOne(
+    { surface, targetId: tid, day: today(), userId: userId ? String(userId) : null },
+    { $inc: { count: 1 }, $set: { country: String(country || '').slice(0, 40) } },
+    { upsert: true },
+  ).catch(() => {});
+  return { ok: true };
+}
+
+// Day-count buckets matching insights-service.js chartBuckets lengths.
+const PERIOD_DAYS = { today: 1, '7d': 7, month: 30, all: 0 };
+
+async function insightStats({ surface, targetId, period }) {
+  if (!SURFACES.includes(surface)) err('bad_surface', 400);
+  const tid = String(targetId || '');
+  const days = PERIOD_DAYS[period];
+  if (days == null) err('bad_period', 400);
+  const filter = { surface, targetId: tid };
+
+  const match = days ? { createdAt: { $gte: new Date(Date.now() - days * 864e5) } } : {};
+  const rows = await InsightHit.aggregate([
+    { $match: Object.assign({}, filter, match) },
+    {
+      $group: {
+        _id: '$day',
+        visits: { $sum: '$count' },
+        countries: { $push: '$country' },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+  const byDay = {};
+  let visits = 0;
+  const countryCounts = {};
+  rows.forEach(r => {
+    byDay[r._id] = r.visits;
+    visits += r.visits;
+    (r.countries || []).forEach(c => { if (c) countryCounts[c] = (countryCounts[c] || 0) + 1; });
+  });
+
+  // Previous window for the delta (same length immediately before).
+  const prevMatch = days ? { createdAt: {
+    $gte: new Date(Date.now() - 2 * days * 864e5),
+    $lt: new Date(Date.now() - days * 864e5),
+  } } : null;
+  let visitsPrev = -1; // -1 = unknown → frontend hides delta
+  if (prevMatch) {
+    const prev = await InsightHit.aggregate([
+      { $match: Object.assign({}, filter, prevMatch) },
+      { $group: { _id: null, v: { $sum: '$count' } } },
+    ]);
+    visitsPrev = prev[0] ? prev[0].v : 0;
+  }
+
+  // Buckets oldest→newest across the window (today → 1 bucket; 7d → 7; month → 30).
+  const series = [];
+  if (days) {
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+      series.push(byDay[d] || 0);
+    }
+  } else {
+    // all-time: compress to 30 weekly buckets
+    const allRows = await InsightHit.aggregate([
+      { $match: filter },
+      { $group: { _id: { $substr: ['$day', 0, 7] }, v: { $sum: '$count' } } },
+      { $sort: { _id: 1 } },
+    ]);
+    const weekly = {};
+    allRows.forEach(r => { weekly[r._id] = r.v; });
+    const keys = Object.keys(weekly).sort().slice(-30);
+    keys.forEach(k => series.push(weekly[k]));
+    if (!series.length) series.push(0);
+  }
+
+  const countries = Object.keys(countryCounts).map(c => ({ country: c, n: countryCounts[c] }))
+    .sort((a, b) => b.n - a.n).slice(0, 5);
+
+  return { surface, targetId: tid, period: period || 'all', visits, visitsPrev, series, countries };
+}

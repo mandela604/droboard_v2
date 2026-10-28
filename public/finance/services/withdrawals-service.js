@@ -12,6 +12,7 @@ const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue
 const PER_PAGE = 6;
 
 let ALL = [];
+let METHODS = [];
 let activeStatus = 'all';
 let searchTerm = '';
 let methodTerm = '';
@@ -51,6 +52,7 @@ async function init(){
   }
   if(typeof window.toast!=='function') window.toast=toast;
   ALL = await FinanceData.getWithdrawals();
+  try{ if(window.AuthorFinance) METHODS = await AuthorFinance.getPaymentMethods(); }catch(e){ METHODS = []; }
   renderStatCards();
   renderFilterPills();
   render();
@@ -169,6 +171,46 @@ document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm
 document.getElementById('methodFilter').addEventListener('change', e=>{ methodTerm=e.target.value; page=1; render(); });
 document.getElementById('sortSelect').addEventListener('change', e=>{ sortMode=e.target.value; render(); });
 
+/* ── Payee details ──
+   Authors set these in the Author Center (Payment Details page →
+   AuthorFinance, persisted in dro_author_payment_methods). Staff need the
+   FULL number to actually send money, so the modal renders the author's
+   saved method in plain text; seeded rows without a profile fall back to
+   the masked account label on the request itself. */
+function payeeFor(w){
+  const name = (w.author || '').trim().toLowerCase();
+  const byName = METHODS.find(m => (m.accountName || '').trim().toLowerCase() === name);
+  if(byName) return byName;
+  if(w.accountName){
+    const byLabel = METHODS.find(m => (m.accountName || '') === w.accountName);
+    if(byLabel) return byLabel;
+  }
+  return null;
+}
+function payeeRows(w){
+  const m = payeeFor(w);
+  if(m){
+    if(m.type === 'bank')  return [['Account Name', m.accountName], ['Bank', m.bankName], ['Account Number', m.accountNumber], ['Routing Number', m.routingCode]];
+    if(m.type === 'paypal') return [['Account Name', m.accountName], ['PayPal Email', m.email]];
+    return [['Account Name', m.accountName], ['Provider', m.provider], ['Phone Number', m.phoneNumber]];
+  }
+  // No saved author-center profile — use whatever the request itself carries.
+  if(w.accountNumber || w.email || w.phoneNumber){
+    if(w.method === 'PayPal') return [['Account Name', w.accountName], ['PayPal Email', w.email]];
+    if(w.method === 'Mobile Money') return [['Account Name', w.accountName], ['Provider', w.provider], ['Phone Number', w.phoneNumber]];
+    return [['Account Name', w.accountName], ['Bank', w.bankName], ['Account Number', w.accountNumber], ['Routing Number', w.routingCode]];
+  }
+  return [['Send To', w.account], ['Account Name', w.accountName || '— set in the author\'s Payment Details —']];
+}
+function payeeCardHtml(w){
+  const rows = payeeRows(w).filter(r => r[1] !== undefined && r[1] !== null && r[1] !== '');
+  return `
+      <div style="margin-top:14px;border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+        <div style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px"><i class="fas fa-paper-plane"></i> Send To</div>
+        ${rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:14px;padding:4px 0;border-top:${r===rows[0]?'none':'1px dashed var(--border)'}"><span style="font-size:11.5px;color:var(--text-faint);font-weight:600">${r[0]}</span><span style="font-size:12.5px;font-weight:700;text-align:right;word-break:break-all">${r[1]}</span></div>`).join('')}
+      </div>`;
+}
+
 /* ── Detail modal ── */
 const dtOverlay = document.getElementById('dtOverlay');
 const dtModal = document.getElementById('dtModal');
@@ -190,10 +232,9 @@ function openDetail(id){
       <div class="dt-amt-card"><div class="dt-amt-num">${money(w.amount)}</div><div class="dt-amt-lbl">Requested Withdrawal</div></div>
       <div class="dt-meta-grid">
         <div class="dt-meta-item"><div class="dt-meta-lbl">Method</div><div class="dt-meta-val">${w.method}</div></div>
-        <div class="dt-meta-item"><div class="dt-meta-lbl">Account</div><div class="dt-meta-val" style="font-size:11.5px">${w.account}</div></div>
         <div class="dt-meta-item"><div class="dt-meta-lbl">Requested</div><div class="dt-meta-val" style="font-size:11.5px">${fmtDate(w.requested)}</div></div>
         <div class="dt-meta-item"><div class="dt-meta-lbl">${w.status==='pending'?'Status':'Processed'}</div><div class="dt-meta-val" style="font-size:11.5px">${w.status==='pending' ? 'Awaiting review' : fmtDate(w.processed)}</div></div>
-      </div>
+      </div>${payeeCardHtml(w)}
       ${w.status==='declined' && w.note ? `<div class="dt-note"><i class="fas fa-circle-info"></i> ${w.note}</div>` : ''}
     </div>
     ${w.status==='pending' ? `
@@ -219,7 +260,10 @@ let approveTarget = null;
 
 function openApproveModal(w){
   approveTarget = w;
-  document.getElementById('approveAuthorInfo').innerHTML = `<img src="${w.avatar}" alt=""/><div><div class="modal-author-name">${w.author}</div><div class="modal-author-meta">${w.method} · ${w.account}</div></div>`;
+  const ap = payeeFor(w);
+  document.getElementById('approveAuthorInfo').innerHTML = `<img src="${w.avatar}" alt=""/><div><div class="modal-author-name">${w.author}</div><div class="modal-author-meta">${w.method} · ${(ap && ap.accountName) || w.accountName || w.account}${ap && ap.accountNumber ? ' · ' + ap.accountNumber : ''}</div></div>`;
+  const payeeBox = document.getElementById('approvePayee');
+  if(payeeBox) payeeBox.innerHTML = payeeCardHtml(w).replace('margin-top:14px;', 'margin:4px 0 0;');
   document.getElementById('approveAmount').textContent = money(w.amount);
   document.getElementById('approveOverlay').classList.add('open');
 }
@@ -245,7 +289,8 @@ let declineTarget = null;
 
 function openDeclineModal(w){
   declineTarget = w;
-  document.getElementById('declineAuthorInfo').innerHTML = `<img src="${w.avatar}" alt=""/><div><div class="modal-author-name">${w.author}</div><div class="modal-author-meta">${w.method} · ${w.account}</div></div>`;
+  const dp = payeeFor(w);
+  document.getElementById('declineAuthorInfo').innerHTML = `<img src="${w.avatar}" alt=""/><div><div class="modal-author-name">${w.author}</div><div class="modal-author-meta">${w.method} · ${(dp && dp.accountName) || w.accountName || w.account}</div></div>`;
   document.getElementById('declineReason').value = '';
   document.getElementById('declineOverlay').classList.add('open');
   document.getElementById('declineReason').focus();

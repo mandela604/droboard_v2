@@ -466,7 +466,7 @@
         onComment: function () {},
         onShare: function (ad) {
           if (window.openShareModal && ad) {
-            openShareModal({ title: ad.title || ad.heading || ad.brand, sub: ad.brand || 'Sponsored', img: ad.cover || ad.image || '', url: 'https://droboard.app/ad/' + (ad.id || '') });
+            openShareModal({ title: ad.title || ad.heading || ad.brand, sub: ad.brand || 'Sponsored', img: ad.cover || ad.image || '', url: '/ad/' + (ad.id || '') });
           }
         },
       });
@@ -588,6 +588,21 @@
     return out;
   }
 
+  /* One lineup per author everywhere. Comment seeds used to carry their own
+     slides, so the same person had different status ids on the feed vs the
+     thread and "viewed" could never reconcile between them. */
+  function _canonStatuses(c) {
+    if (!c) return c;
+    try {
+      if (c.name && window.DroboardStatus && typeof DroboardStatus.writerStatuses === 'function') {
+        const canon = DroboardStatus.writerStatuses(c.name);
+        if (canon && canon.length) c.statuses = canon;
+      }
+    } catch (e) {}
+    c.replies = (c.replies || []).map(_canonStatuses);
+    return c;
+  }
+
   function attach(target, options) {
     options = options || {};
     _injectStyles();
@@ -625,7 +640,7 @@
         if (du.statuses && !currentUser.statuses) currentUser.statuses = du.statuses;
       }
     } catch (e) {}
-    let comments = (options.comments || []).map(_normalize);
+    let comments = (options.comments || []).map(c => _normalize(_canonStatuses(c)));
     let open = !options.collapsible || !!options.startOpen;
     let pickedTeam = currentUser.team || null;
     let activeRxPopupId = null;   // fallback-mode reaction popup, format "ns:cid"
@@ -825,6 +840,10 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}">` +
         DroboardStatusRing.html(c, {
           size: 32, key: c.name || '', innerHtml: inner,
+          // ringFor() derives its own key (id before name) unless we hand it
+          // the author key — otherwise seen-state lands under "17" instead
+          // of "ada_writes" and the ring never reads back as viewed.
+          personKey: c.name || '',
           innerBg: 'var(--dcs-card)', gapColor: 'var(--dcs-card)',
         }) +
         `${verifiedBadge(c.verified)}</div>`;
@@ -1360,6 +1379,13 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     }
 
     // ── Status viewer hookup (avatar) + profile navigation (username) ──
+    // Seeds use 'has'/'viewed' and the store returns 'ring-has'/'ring-viewed' —
+    // accept both spellings everywhere a ring value is read.
+    function _ringClass(v) {
+      var s = String(v || '').replace(/^ring-/, '');
+      return s === 'has' || s === 'live' || s === 'viewed' ? 'ring-' + s : 'ring-none';
+    }
+
     // Viewer list: one entry PER comment in thread order (top comment →
     // its replies → next top comment). No author dedupe, no rotation:
     // tapping comment #7 opens at #7, plays #8, #9, #10, then closes;
@@ -1371,7 +1397,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
         if (!m || !m.statuses || !m.statuses.length || !m.name) return;
         out.push({
           id: 'dcs_' + instId + '_' + m.id, name: m.name, avatar: m.avatar,
-          ring: m.statusRing === 'has' ? 'ring-has' : m.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none',
+          ring: _ringClass(m.statusRing),
           likes: 0, threads: 0, statuses: m.statuses,
         });
       };
@@ -1416,24 +1442,28 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     (function bindStatusSync() {
       const prefix = 'dcs_' + instId + '_';
       const prev = window.onStatusViewerChange;
-      window.onStatusViewerChange = function (wid, ring) {
-        if (typeof prev === 'function') { try { prev(wid, ring); } catch (e) {} }
-        if (!wid || String(wid).indexOf(prefix) !== 0) return;
-        const c = findByAnyId(comments, String(wid).slice(prefix.length));
-        if (!c) return;
-        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
-        // An author can post several comments — the viewer dedupes by
-        // name+avatar, so gray EVERY comment from that author, not just
-        // the one whose id happened to come back.
-        const key = String(c.name) + '|' + String(c.avatar || '');
-        const sameAuthor = [];
+      window.onStatusViewerChange = function (wid, ring, name) {
+        // The viewer emits the author's name as `name`; `wid` is only the
+        // comment-prefixed id for our own surfaces. Match on identity so a
+        // status watched from ANY surface (feed, profile, another thread)
+        // grays every copy of that author's ring here too.
+        if (typeof prev === 'function') { try { prev(wid, ring, name); } catch (e) {} }
+        const isOurs = wid && String(wid).indexOf(prefix) === 0;
+        const byName = name && String(name).toLowerCase();
+        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : ring === 'ring-live' ? 'live' : 'none';
+        const idSet = new Set();
         (function walk(arr) {
           (arr || []).forEach(m => {
-            if (String(m.name) + '|' + String(m.avatar || '') === key) { m.statusRing = newRing; sameAuthor.push(String(m.id)); }
+            const mine = (isOurs && String(m.id) === String(wid).slice(prefix.length)) ||
+              (byName && String(m.name).toLowerCase() === byName);
+            if (mine) {
+              m.statusRing = newRing;
+              idSet.add(String(m.id));
+            }
             walk(m.replies || []);
           });
         })(comments);
-        const idSet = new Set(sameAuthor);
+        if (!idSet.size) return;
         [root, threadOv].forEach(scopeEl => {
           if (!scopeEl) return;
           scopeEl.querySelectorAll('[data-dcs-avatar]').forEach(av => {
@@ -1548,7 +1578,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
     // ── Public control object ──
     return {
-      setComments(list) { comments = (list || []).map(_normalize); syncAll(); },
+      setComments(list) { comments = (list || []).map(c => _normalize(_canonStatuses(c))); syncAll(); },
       addComment(text, opts) {
         const c = _normalize(Object.assign({
           name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
@@ -1616,7 +1646,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       teams: TEAMS,
       currentUser: { name:'You', avatar:null },
       collapsible: true,
-      getCommentUrl: (c) => `https://droboard.app/story/5#comment-${c.id}`,
+      getCommentUrl: (c) => `/story/5#comment-${c.id}`,
       onPost:  (c) => console.log('posted', c),
       onReply: (parentId, c) => console.log('replied to', parentId, c),
       onEdit:  (c, oldText, newText) => console.log('edited', c.id, oldText, '->', newText),

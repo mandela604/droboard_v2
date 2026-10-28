@@ -2,13 +2,12 @@
  * chapter-edit-review-service.js — Chapter Edit Review page logic (pure call-and-render)
  * Backend-ready: set USE_API=true; endpoints in senior.routes.js:
  *   GET  /api/senior-editor/chapter-edits           list
- *   GET  /api/senior-editor/chapter-edits/:id       read one
  *   POST /api/senior-editor/chapter-edits/:id/approve
  *   POST /api/senior-editor/chapter-edits/:id/reject   { note }
  */
 (function(){
 'use strict';
-var USE_API=false;
+var USE_API=true;
 var API_BASE='/api/senior-editor';
 
 function authHeaders(){
@@ -20,7 +19,7 @@ function authHeaders(){
 }
 async function callBackend(path,options){
   if(!USE_API)return null;
-  var res=await fetch(API_BASE+path,options);
+  var res=await fetch(API_BASE+path,Object.assign({credentials:'include'},options||{}));
   if(!res.ok){
     var body=await res.json().catch(function(){return {};});
     var err=new Error(body.error||('HTTP '+res.status));
@@ -30,6 +29,7 @@ async function callBackend(path,options){
   return res.json();
 }
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+var LIVE=false;
 
 /* ══════════════════════════════════════════════════════════════
    CRUD layer — every decision the page performs lives here.
@@ -42,22 +42,17 @@ var Crud={
     if(query&&query.status)qs.push('status='+encodeURIComponent(query.status));
     if(query&&query.q)qs.push('q='+encodeURIComponent(query.q));
     var remote=await callBackend('/chapter-edits'+(qs.length?'?'+qs.join('&'):''));
-    if(remote&&remote.items)items=remote.items.map(fromApiItem);
+    if(remote&&remote.items){LIVE=true;items=remote.items.map(fromApiItem);}
     return items;
-  },
-  get:async function(id){
-    var remote=await callBackend('/chapter-edits/'+encodeURIComponent(id));
-    if(remote&&remote.id){
-      var mapped=fromApiItem(remote);
-      var i=items.findIndex(function(x){return x.id===id;});
-      if(i>-1)items[i]=mapped;
-      return mapped;
-    }
-    return items.find(function(x){return x.id===id;})||null;
   },
   approve:async function(id){
     if(USE_API){
-      return callBackend('/chapter-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
+      try{
+        var res=await callBackend('/chapter-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
+        var a=items.find(function(x){return x.id===id;});
+        if(a)a.status='approved';
+        return res;
+      }catch(err){ if(LIVE) throw err; }
     }
     await sleep(700); /* demo: loader visible until "resolve" */
     var a=items.find(function(x){return x.id===id;});
@@ -66,9 +61,14 @@ var Crud={
   },
   reject:async function(id,reason){
     if(USE_API){
-      return callBackend('/chapter-edits/'+encodeURIComponent(id)+'/reject',{
-        method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
-      });
+      try{
+        var res=await callBackend('/chapter-edits/'+encodeURIComponent(id)+'/reject',{
+          method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
+        });
+        var a=items.find(function(x){return x.id===id;});
+        if(a){a.status='rejected';a.reviewNote=reason;}
+        return res;
+      }catch(err){ if(LIVE) throw err; }
     }
     await sleep(700); /* demo: loader visible until "resolve" */
     var a=items.find(function(x){return x.id===id;});
@@ -81,7 +81,7 @@ function fromApiItem(d){
   return{
     id:d.id,
     author:d.authorName||d.author||'—',
-    avatar:d.avatar||'https://i.pravatar.cc/100?img=0',
+    avatar:d.avatar||'../assets/droboard-icon.png',
     book:d.bookTitle||d.book||'—',
     chapter:d.chapterLabel||d.chapter||('Ch.'+(d.n||'')),
     words:typeof d.wordsChanged==='number'?d.wordsChanged.toLocaleString():(d.words||'—'),

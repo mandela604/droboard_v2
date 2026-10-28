@@ -212,7 +212,9 @@ if(typeof window.DemoData === 'undefined' && typeof document !== 'undefined' && 
   }
   function persistCamps() { writeStoredCamps(DEMO.campaigns); }
   function cascadeCampaignStatus(id, status) {
-    const off = (status === 'paused' || status === 'ended');
+    // A creative attached to a campaign that hasn't been approved/lived can't
+    // serve either — same one-way door as pause, and 'live' restores it.
+    const off = ['paused', 'ended', 'draft', 'pending', 'rejected'].indexOf(String(status)) !== -1;
     const on = (status === 'live' || status === 'scheduled');
     if (!off && !on) return;
     const inv = currentAdInventory();

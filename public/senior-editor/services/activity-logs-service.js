@@ -1,19 +1,24 @@
 (function(){
 'use strict';
 
-/* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+/* ── Backend header — live endpoints with demo fallbacks ── */
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
-  const res = await fetch(API_BASE + path, options);
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
   if (!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
 }
 
 let LOGS=[];
 function toast(m){ if(typeof window.toast==='function'){ try{ window.toast(m); return; }catch(e){} } }
-async function loadLogs(){const d=await SeniorEditorData.getActivityLogs();LOGS=d;refresh();renderPagination();}
+async function loadLogs(){
+  const d=await SeniorEditorData.getActivityLogs();
+  LOGS=Array.isArray(d)?d:(d&&Array.isArray(d.items)?d.items:[]);
+  refresh();
+  renderPagination();
+}
 function refresh(){const q=document.getElementById('tableSearch').value.toLowerCase();const a=document.getElementById('actionFilter').value;let l=LOGS;if(a)l=l.filter(r=>r.type===a);if(q)l=l.filter(r=>r.user.toLowerCase().includes(q)||r.action.toLowerCase().includes(q)||r.detail.toLowerCase().includes(q));renderTable(l);document.getElementById('pageInfo').innerHTML=`Showing <b>${l.length?1:0}</b> to <b>${Math.min(8,l.length)}</b> of <b>${LOGS.length}</b> activities`}
 function renderTable(l){const b=document.getElementById('tableBody');if(!l.length){b.innerHTML=`<tr class="empty-row"><td colspan="6"><i class="fas fa-list-check"></i>No activities match.</td></tr>`;return}
 b.innerHTML=l.slice(0,8).map(r=>`<tr><td data-label="User"><div class="act-user"><img src="${r.av}"/><span>${r.user}</span></div></td><td data-label="Action" class="act-action">${r.action}</td><td data-label="Type"><span class="act-type ${r.type}">${r.type.charAt(0).toUpperCase()+r.type.slice(1)}</span></td><td data-label="Details" class="detail-cell">${r.detail}</td><td data-label="IP Address" style="font-family:monospace;font-size:12px;color:var(--text-faint)">${r.ip}</td><td data-label="Timestamp" class="time-cell">${r.time}</td></tr>`).join('')}
@@ -25,7 +30,26 @@ function init(){
   return loadLogs();
 }
 
-function exportLogs(){ return callBackend('/activity-logs/export', { method:'POST' }).then(function(r){ if(!r) toast('Exporting activity logs…'); }); }
+// Real CSV download: POST → stream the file the backend returns as a download.
+function downloadCsv(path, filename, failMsg){
+  return fetch(API_BASE + path, { method:'POST', credentials:'include' })
+    .then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      var cd = res.headers.get('Content-Disposition') || '';
+      var m = /filename="?([^";]+)"?/.exec(cd);
+      return res.blob().then(function(blob){ return { blob: blob, name: (m && m[1]) || filename }; });
+    })
+    .then(function(x){
+      var url = URL.createObjectURL(x.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = x.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      toast('CSV downloaded');
+    })
+    .catch(function(e){ console.warn('[export] failed', e); toast(failMsg); });
+}
+function exportLogs(){ return downloadCsv('/activity-logs/export', 'activity-logs.csv', 'Export failed — is the backend reachable?'); }
 function openDatePicker(){ toast('Date picker'); }
 function openFilters(){ toast('Filters'); }
 

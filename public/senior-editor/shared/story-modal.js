@@ -76,10 +76,10 @@
           <label class="stm-lbl">Editorial Status Control</label>
           <div class="stm-status-change">
             <select id="stmStatusSelect" class="stm-select">
+              ${['Published', 'Under Review', 'Draft'].indexOf(book.status) === -1 ? `<option value="" disabled selected>${esc(book.status)} — change via Book Management</option>` : ''}
               <option value="Published" ${book.status === 'Published' ? 'selected' : ''}>Published</option>
               <option value="Under Review" ${book.status === 'Under Review' ? 'selected' : ''}>Under Review</option>
               <option value="Draft" ${book.status === 'Draft' ? 'selected' : ''}>Draft</option>
-              <option value="Flagged" ${book.status === 'Flagged' ? 'selected' : ''}>Flagged</option>
             </select>
             <button class="stm-save-btn" id="stmSaveStatusBtn">Update Status</button>
           </div>
@@ -101,7 +101,11 @@
 
     modal.querySelector('#stmSaveStatusBtn').addEventListener('click', async () => {
       const newStatus = modal.querySelector('#stmStatusSelect').value;
-      await window.DroboardAPI.updateBook(book.id, { status: newStatus });
+      const r = await window.DroboardAPI.updateBook(book.id, { status: newStatus });
+      if (r && r.success === false) {
+        if (typeof window.toast === 'function') window.toast('The server rejected that status change');
+        return;
+      }
       if (typeof window.toast === 'function') window.toast(`Story status updated to "${newStatus}"`);
       window.DroboardModal.close(modal);
       if (typeof window.refresh === 'function') window.refresh();

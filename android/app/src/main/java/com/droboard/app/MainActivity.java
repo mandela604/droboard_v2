@@ -12,9 +12,11 @@ public class MainActivity extends BridgeActivity {
         // is created there — later registration would be ignored.
         registerPlugin(DroWindowPlugin.class);
         super.onCreate(savedInstanceState);
-        // Default strip until the page reports its own theme: warm cream
-        // (also when the phone is in dark mode), so the dark status bar
-        // icons are always readable.
-        getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#F9EDE3")));
+        // Default strip until the page reports its own theme: white, the same
+        // as a light page (dark pages repaint it black within the first
+        // frames). The window background is what paints the status-bar row,
+        // because the WebView now starts below it (SystemBars insetsHandling
+        // = "native").
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#FFFFFF")));
     }
 }

@@ -7,16 +7,22 @@
    Read path:  GET /api/super-admin/ad-revenue/{ledger,summary}, POST /pay.
    Math mirrors the frontend service exactly:
      impression $0.005, click $0.35; story-owned slots (fullReader,
-     scrollReader, series, comments) split 70% platform / 30% author,
+     scrollReader, story, comments) split 70% platform / 30% author,
      every other surface is 100% platform. */
 const { AdRevenueLedger } = require('../models/revenue.model');
 const { Book } = require('../models/content.model');
 const { User } = require('../models/user.model');
+const { AdInventory } = require('../models/platform.model');
+const { Campaign } = require('../models/marketing.model');
+const pricing = require('./ad-pricing.service');
 
-const RATES = { impression: 0.005, click: 0.35 };
+/* Rates now live in the AdRateCard singleton (Ad Manager → Ad pricing), so
+   the console can price each currency without a deploy. The constants below
+   are only the seed defaults, kept for the header note and the demo fallback. */
+const DEFAULT_RATES = { impression: 0.005, click: 0.35 };
 const PLATFORM_PCT = 0.70;
 const AUTHOR_PCT = 0.30;
-const STORY_SLOT_RE = /^(fullReader|scrollReader|series|comments)[:.]/;
+const STORY_SLOT_RE = /^(fullReader|scrollReader|story|comments)[:.]/;
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 function dayStr(ts) {
@@ -61,7 +67,9 @@ function mongooseValid(id) {
 
 /* ── write path (called from ads.service.track) ── */
 async function record({ id, event, page, slot, storyId, ts }) {
-  const rev = RATES[event];
+  const card = await pricing.get();
+  const usd = card.prices.USD;                      // reports stay in dollars
+  const rev = event === 'click' ? usd.click : usd.impression;
   if (!id || !rev) return null;
   const sl = String(slot || '');
   const sid = String(storyId || '');
@@ -82,7 +90,41 @@ async function record({ id, event, page, slot, storyId, ts }) {
     { $inc, $set },
     { upsert: true }
   );
+  await billCampaign(id, event, card);
   return true;
+}
+
+/* Spend is accumulated on the campaign as events land — the same moment the
+   ledger row is written, so the counter can never lag the report. The amount
+   is the campaign's *own* currency leg, which is also the currency its budget
+   is written in; comparison then needs no exchange rate. */
+const adCache = new Map();
+const AD_CACHE_MS = 60000;
+async function adOwner(adId) {
+  const hit = adCache.get(adId);
+  if (hit && Date.now() - hit.at < AD_CACHE_MS) return hit.val;
+  let val = { campaign: '', currency: '' };
+  try {
+    const a = await AdInventory.findOne({ id: String(adId) }).select('campaign').lean();
+    if (a && a.campaign) {
+      const c = await Campaign.findOne({ id: String(a.campaign) }).select('currency').lean();
+      val = { campaign: String(a.campaign), currency: (c && c.currency) || '' };
+    }
+  } catch (e) { val = { campaign: '', currency: '' }; }
+  adCache.set(adId, { at: Date.now(), val });
+  if (adCache.size > 1000) adCache.clear();
+  return val;
+}
+async function billCampaign(adId, event, card) {
+  const owner = await adOwner(adId);
+  if (!owner.campaign) return;                     // house ad: nothing is billed
+  const cur = owner.currency || card.active;
+  const row = card.prices[cur] || card.prices.USD;
+  const amount = event === 'click' ? row.click : row.impression;
+  if (!amount) return;
+  try {
+    await Campaign.updateOne({ id: owner.campaign }, { $inc: { spent: amount } });
+  } catch (e) { /* a failed counter must not fail the impression */ }
 }
 
 /* window filter: ?days=N (last N days incl. today) or explicit from/to */
@@ -192,4 +234,4 @@ async function pay({ authorId, by }) {
   return { ok: true, modified: r.modifiedCount || 0, by: by || null };
 }
 
-module.exports = { record, ledger, summary, pay, RATES, STORY_SLOT_RE };
+module.exports = { record, ledger, summary, pay, RATES: DEFAULT_RATES, STORY_SLOT_RE };

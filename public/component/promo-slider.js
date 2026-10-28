@@ -25,7 +25,7 @@
   const CSS = `
     .dps-row{padding:0;background:transparent}
     .dps-slider{
-      position:relative;width:100%;height:87px;border-radius:14px;
+      position:relative;width:100%;height:104px;border-radius:14px;
       overflow:hidden;background:var(--divider,#EFEDF2);
     }
     .dps-track{

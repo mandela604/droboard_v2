@@ -85,7 +85,26 @@ function init() {
 }
 
 function svcToast(m){ if(typeof window.toast==='function'){ try{ window.toast(m); return; }catch(e){} } }
-function exportCSV(){ return callBackend('/transactions/export', { method:'POST' }).then(function(r){ if(!r) svcToast('Exporting transaction log…'); }); }
+// Real CSV download: POST → stream the file the backend returns as a download.
+function downloadCsv(path, filename, failMsg){
+  return fetch(API_BASE + path, { method:'POST', credentials:'include' })
+    .then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      var cd = res.headers.get('Content-Disposition') || '';
+      var m = /filename="?([^";]+)"?/.exec(cd);
+      return res.blob().then(function(blob){ return { blob: blob, name: (m && m[1]) || filename }; });
+    })
+    .then(function(x){
+      var url = URL.createObjectURL(x.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = x.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      svcToast('CSV downloaded');
+    })
+    .catch(function(e){ console.warn('[export] failed', e); svcToast(failMsg); });
+}
+function exportCSV(){ return downloadCsv('/transactions/export', 'transactions.csv', 'Export failed — is the backend reachable?'); }
 function openDatePicker(){ svcToast('Date picker'); }
 function openFilters(){ svcToast('Filters'); }
 

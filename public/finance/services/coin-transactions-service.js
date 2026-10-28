@@ -41,17 +41,20 @@ const DEMO_PACKAGES = [
   { id:'PKG-04', name:'Trial Pack',    coins:500,   priceUsd:5.99,  bonusPercent:0,  status:'inactive', createdAt:'2025-11-01' },
 ];
 const DEMO_GIFTS = [
-  { id:'GFT-01', name:'Rose',    icon:'🌹', costCoins:50,   status:'active',   createdAt:'2026-01-20' },
-  { id:'GFT-02', name:'Heart',   icon:'❤️', costCoins:100,  status:'active',   createdAt:'2026-01-20' },
-  { id:'GFT-03', name:'Crown',   icon:'👑', costCoins:500,  status:'active',   createdAt:'2026-02-15' },
-  { id:'GFT-04', name:'Diamond', icon:'💎', costCoins:1000, status:'active',   createdAt:'2026-03-05' },
-  { id:'GFT-05', name:'Trophy',  icon:'🏆', costCoins:2000, status:'inactive', createdAt:'2025-12-01' },
+  { id:'GFT-01', name:'Rose',    icon:'🌹', costCoins:50,   color:'#FF2D6A', status:'active',   createdAt:'2026-01-20' },
+  { id:'GFT-02', name:'Heart',   icon:'❤️', costCoins:100,  color:'#E11D48', status:'active',   createdAt:'2026-01-20' },
+  { id:'GFT-03', name:'Crown',   icon:'👑', costCoins:500,  color:'#F59E0B', status:'active',   createdAt:'2026-02-15' },
+  { id:'GFT-04', name:'Diamond', icon:'💎', costCoins:1000, color:'#3B82F6', status:'active',   createdAt:'2026-03-05' },
+  { id:'GFT-05', name:'Trophy',  icon:'🏆', costCoins:2000, color:'#A855F7', status:'inactive', createdAt:'2025-12-01' },
 ];
+/* Subscriptions mirror the reader Store's subscription cards exactly:
+   name · price ladder · period · features · badge · icon · color.
+   Duration and "Save X% vs daily" lines are derived automatically. */
 const DEMO_SUBSCRIPTIONS = [
-  { id:'SUB-01', name:'Basic Monthly',   priceUsd:4.99,  durationDays:30,  coinsPerDay:50,  bonusPercent:0,  status:'active',   createdAt:'2026-01-10' },
-  { id:'SUB-02', name:'Premium Monthly',  priceUsd:9.99,  durationDays:30,  coinsPerDay:150, bonusPercent:10, status:'active',   createdAt:'2026-02-01' },
-  { id:'SUB-03', name:'VIP Quarterly',    priceUsd:24.99, durationDays:90,  coinsPerDay:200, bonusPercent:15, status:'active',   createdAt:'2026-03-01' },
-  { id:'SUB-04', name:'Annual Premium',   priceUsd:89.99, durationDays:365, coinsPerDay:250, bonusPercent:20, status:'inactive', createdAt:'2025-10-01' },
+  { id:'SUB-01', name:'Daily',   priceUsd:0.99,  prices:{ NGN:'₦600',    USD:'$0.99',  GBP:'£1.13'  }, period:'day',   features:['Access all stories'], badge:'',           color:'#635F6E', icon:'fa-clock',         status:'active',   createdAt:'2026-01-10' },
+  { id:'SUB-02', name:'Weekly',  priceUsd:4.99,  prices:{ NGN:'₦3,000',  USD:'$4.99',  GBP:'£5.69'  }, period:'week',  features:['Access all stories'], badge:'Popular',    color:'#FF2D6A', icon:'fa-calendar-week', status:'active',   createdAt:'2026-02-01' },
+  { id:'SUB-03', name:'Monthly', priceUsd:14.99, prices:{ NGN:'₦9,000',  USD:'$14.99', GBP:'£17.09' }, period:'month', features:['Access all stories'], badge:'Best Value', color:'#D6165A', icon:'fa-calendar',      status:'active',   createdAt:'2026-03-01' },
+  { id:'SUB-04', name:'Yearly',  priceUsd:99.99, prices:{ NGN:'₦60,000', USD:'$99.99', GBP:'£113.99'}, period:'year',  features:['Access all stories'], badge:'Best Deal',  color:'#16A34A', icon:'fa-crown',         status:'active',   createdAt:'2025-10-01' },
 ];
 const DEMO_EARN = [
   { id:'ad1', action:'Watch Ad', coins:10, cooldown:'5 min', icon:'fa-film', available:true, status:'active', createdAt:'2026-01-15', type:'watch_ad' },
@@ -77,9 +80,9 @@ const DEMO_HISTORY = [
   { id:'CFG-006', action:'created',    itemType:'package',      itemName:'Power Pack',       actor:'Ngozi Falade', date:'2026-03-10T08:45:00', details:'12,000 coins for $99.99 (+10% bonus)' },
   { id:'CFG-007', action:'created',    itemType:'gift',         itemName:'Diamond',          actor:'Ngozi Falade', date:'2026-03-05T16:20:00', details:'1,000 coins per gift' },
   { id:'CFG-008', action:'deactivated',itemType:'gift',         itemName:'Trophy',           actor:'Ngozi Falade', date:'2026-04-02T09:00:00', details:'Retired seasonal gift item' },
-  { id:'CFG-009', action:'created',    itemType:'subscription', itemName:'Basic Monthly',    actor:'Ngozi Falade', date:'2026-01-10T10:00:00', details:'$4.99/mo · 50 coins/day' },
-  { id:'CFG-010', action:'created',    itemType:'subscription', itemName:'Premium Monthly',  actor:'Ngozi Falade', date:'2026-02-01T11:00:00', details:'$9.99/mo · 150 coins/day (+10% bonus)' },
-  { id:'CFG-011', action:'created',    itemType:'subscription', itemName:'VIP Quarterly',    actor:'Ngozi Falade', date:'2026-03-01T09:00:00', details:'$24.99/90d · 200 coins/day (+15% bonus)' },
+  { id:'CFG-009', action:'created',    itemType:'subscription', itemName:'Daily',    actor:'Ngozi Falade', date:'2026-01-10T10:00:00', details:'$0.99/day · unlimited reading pass' },
+  { id:'CFG-010', action:'created',    itemType:'subscription', itemName:'Weekly',  actor:'Ngozi Falade', date:'2026-02-01T11:00:00', details:'$4.99/week · unlimited reading pass' },
+  { id:'CFG-011', action:'created',    itemType:'subscription', itemName:'Monthly',    actor:'Ngozi Falade', date:'2026-03-01T09:00:00', details:'$14.99/month · unlimited reading pass' },
 ];
 
 let ALL = [];
@@ -186,7 +189,7 @@ async function loadConfig(){
     try{ const storedB=JSON.parse(localStorage.getItem('dro_finance_bundles')||'null'); if(Array.isArray(storedB)&&storedB.length) BUNDLES = storedB.map(b=>Object.assign({status:'active', createdAt:new Date().toISOString().slice(0,10)}, b)); }catch(_){}
     usingDemoConfig = true;
   }
-  syncPacksToStore(); syncEarnToStore(); syncBundlesToStore();
+  syncPacksToStore(); syncEarnToStore(); syncBundlesToStore(); syncSubsToStore(); syncGiftsToStore();
 }
 function logHistory(action, itemType, itemName, details){
   const entry = { id:'CFG-'+String(HISTORY.length+1).padStart(3,'0'), action, itemType, itemName, actor:'Ngozi Falade', date:new Date().toISOString(), details };
@@ -225,10 +228,47 @@ function syncBundlesToStore(){
 }
 function syncSubsToStore(){
   try{
-    const subs = SUBSCRIPTIONS.filter(s=>s.status==='active').map(s=>({ id:s.id, name:s.name, price:'$'+Number(s.priceUsd).toFixed(2), priceUSD:Number(s.priceUsd), prices:s.prices, durationDays:s.durationDays, coinsPerDay:s.coinsPerDay }));
+    // Exact shape the reader Store's subscription tab renders (store-service.getSubscriptions).
+    // Raw features only — store-service derives "Unlimited reading…" and "Save X% vs daily".
+    const subs = SUBSCRIPTIONS.filter(s=>s.status==='active').map(s=>({
+      id:s.id, name:s.name, price:'$'+Number(s.priceUsd).toFixed(2), priceUSD:Number(s.priceUsd),
+      prices:s.prices, period:s.period, features:s.features, badge:s.badge||'', color:s.color, icon:s.icon
+    }));
     if(subs.length) localStorage.setItem('dro_finance_subs', JSON.stringify(subs));
   }catch(e){}
 }
+/* Mirror of store-service's derivation so the staff preview shows what readers will see. */
+const PERIOD_DAYS = { day:1, week:7, month:30, year:365 };
+function deriveSubExtras(list){
+  const usd = s => Number(s.priceUSD) || Number(s.priceUsd) || parseFloat(String(s.price||'').replace(/[$,\s]/g,'')) || 0;
+  const daily = list.find(s => s.period === 'day' && s.status !== 'inactive');
+  const dailyPrice = daily ? usd(daily) : 0;
+  return list.map(s=>{
+    const out = Object.assign({}, s, { features:(s.features||[]).slice() });
+    const days = PERIOD_DAYS[s.period];
+    if(days && !out.features.some(f=>/unlimited reading/i.test(f)))
+      out.features.unshift(days===1 ? 'Unlimited reading for 24 hours' : 'Unlimited reading for ' + days + ' days');
+    if(dailyPrice > 0 && s.period !== 'day' && days){
+      const pct = Math.round((1 - (usd(s)/days)/dailyPrice) * 100);
+      if(pct > 0 && !out.features.some(f=>/save \d+% vs daily/i.test(f)))
+        out.features.push('Save ' + pct + '% vs daily');
+    }
+    return out;
+  });
+}
+function syncGiftsToStore(){
+  try{
+    // Exact shape the tip picker reads (store-service.getGifts → component/tip-picker.js).
+    const gifts = GIFTS.filter(g=>g.status==='active').map(g=>({
+      id:g.id, name:g.name, price:Number(g.costCoins), icon:g.icon,
+      faIcon:g.faIcon || (EMOJI_FA[g.icon] || 'fa-gift'),
+      color:g.color || '#FF2D6A', desc:g.desc || (Number(g.costCoins).toLocaleString('en-US') + ' coins')
+    }));
+    localStorage.setItem('dro_finance_gifts', JSON.stringify(gifts));
+  }catch(e){}
+}
+/* Emoji → font-awesome fallback so finance-created gifts render in the tip picker's icon style. */
+const EMOJI_FA = { '🌹':'fa-seedling', '❤️':'fa-heart', '👑':'fa-crown', '💎':'fa-gem', '🏆':'fa-trophy', '⭐':'fa-star', '🔥':'fa-fire', '🎁':'fa-gift', '🚀':'fa-rocket', '🍫':'fa-candy-cane', '🎵':'fa-music', '☕':'fa-mug-hot' };
 
 /* ── Stat cards ── */
 function renderStatCards(){
@@ -419,7 +459,7 @@ function renderPricing(){
         <span class="status-pill ${g.status}">${g.status}</span>
       </div>
       <div class="pkg-gift-cost" style="margin-top:8px"><i class="fas fa-coins" style="font-size:15px;color:var(--amber)"></i>${g.costCoins.toLocaleString()}</div>
-      <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(g.createdAt)}</div>
+      <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(g.createdAt)}${g.color?` · <span style="color:${g.color}">${g.color}</span>`:''}</div>
       <div class="pkg-actions">
         <button class="mini-btn" data-action="gift-toggle" data-id="${g.id}"><i class="fas fa-power-off"></i> ${g.status==='active'?'Deactivate':'Activate'}</button>
         <button class="mini-btn" data-action="gift-edit" data-id="${g.id}"><i class="fas fa-pen"></i> Edit</button>
@@ -431,12 +471,19 @@ function renderPricing(){
   /* ── Subscriptions ── */
   const subTotalPages = Math.max(1, Math.ceil(SUBSCRIPTIONS.length / PKG_PER_PAGE));
   if(subPage>subTotalPages) subPage = subTotalPages;
-  const subPageItems = SUBSCRIPTIONS.slice((subPage-1)*PKG_PER_PAGE, subPage*PKG_PER_PAGE);
+  const subPageItems = deriveSubExtras(SUBSCRIPTIONS.slice((subPage-1)*PKG_PER_PAGE, subPage*PKG_PER_PAGE));
   document.getElementById('subList').innerHTML = subPageItems.length ? subPageItems.map(s=>`
     <div class="pkg-card" data-id="${s.id}">
-      <div class="pkg-top"><span class="pkg-name">${s.name}</span><span class="status-pill ${s.status}">${s.status}</span></div>
-      <div class="pkg-coins" style="color:var(--purple)"><i class="fas fa-star" style="font-size:15px"></i>${s.coinsPerDay}/day</div>
-      <div class="pkg-price">${money(s.priceUsd)}/${s.durationDays}d${s.bonusPercent>0?` · <span class="pkg-bonus" style="display:inline">+${s.bonusPercent}% bonus</span>`:''}</div>
+      <div class="pkg-top">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="width:34px;height:34px;border-radius:10px;background:${s.color||'var(--purple)'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0"><i class="fas ${s.icon||'fa-star'}"></i></span>
+          <span class="pkg-name">${s.name}</span>
+          ${s.badge?`<span style="font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:20px;background:${s.color||'var(--purple)'};color:#fff">${s.badge}</span>`:''}
+        </div>
+        <span class="status-pill ${s.status}">${s.status}</span>
+      </div>
+      <div class="pkg-coins" style="color:var(--purple)"><i class="fas fa-tag" style="font-size:15px"></i>${money(s.priceUsd)}/${s.period}</div>
+      <div class="pkg-price">${(s.prices&&s.prices.NGN?s.prices.NGN+' · ':'')+(s.features?s.features.length+' features':'')}</div>
       <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(s.createdAt)}</div>
       <div class="pkg-actions">
         <button class="mini-btn" data-action="sub-toggle" data-id="${s.id}"><i class="fas fa-power-off"></i> ${s.status==='active'?'Deactivate':'Activate'}</button>
@@ -492,7 +539,7 @@ function setFormKind(kind, locked){
   document.getElementById('nameLabel').parentElement.style.display = isEarn?'none':'block';
   if(!isEarn){
     if(isBundle){ document.getElementById('nameLabel').textContent='Bundle Name'; document.getElementById('itemName').placeholder='e.g. Starter Bundle'; }
-    else { document.getElementById('nameLabel').textContent = kind==='package' ? 'Package Name' : kind==='gift' ? 'Gift Name' : 'Subscription Name'; document.getElementById('itemName').placeholder = kind==='package' ? 'e.g. Reader Bundle' : kind==='gift' ? 'e.g. Rose' : 'e.g. Premium Monthly'; }
+    else { document.getElementById('nameLabel').textContent = kind==='package' ? 'Package Name' : kind==='gift' ? 'Gift Name' : 'Subscription Name'; document.getElementById('itemName').placeholder = kind==='package' ? 'e.g. Reader Bundle' : kind==='gift' ? 'e.g. Rose' : 'e.g. Monthly'; }
   }
   document.getElementById('packageFields').style.display = kind==='package' ? 'flex' : 'none';
   document.getElementById('packageFields').style.flexDirection = 'column';
@@ -526,12 +573,16 @@ function openCreateModal(kind){
   document.getElementById('bundleColor').value = '#22c55e';
   document.getElementById('giftIcon').value = '';
   document.getElementById('giftCost').value = '';
+  document.getElementById('giftColor').value = '#FF2D6A';
+  document.getElementById('giftDesc').value = '';
   document.getElementById('subPrice').value = '';
   document.getElementById('subPriceNgn').value = '';
   document.getElementById('subPriceGbp').value = '';
-  document.getElementById('subDuration').value = '';
-  document.getElementById('subCoinsPerDay').value = '';
-  document.getElementById('subBonus').value = '';
+  document.getElementById('subPeriod').value = 'month';
+  document.getElementById('subBadge').value = '';
+  document.getElementById('subIcon').value = '';
+  document.getElementById('subColor').value = '#FF2D6A';
+  document.getElementById('subFeatures').value = '';
   document.getElementById('earnAction').value = '';
   document.getElementById('earnType').value = 'watch_ad';
   document.getElementById('earnCoins').value = '';
@@ -577,6 +628,8 @@ function openEditModal(kind, id){
   }else if(kind==='gift'){
     document.getElementById('giftIcon').value = item.icon;
     document.getElementById('giftCost').value = item.costCoins;
+    document.getElementById('giftColor').value = item.color || '#FF2D6A';
+    document.getElementById('giftDesc').value = item.desc || '';
   }else if(kind==='earn'){
     document.getElementById('earnAction').value = item.action;
     document.getElementById('earnType').value = item.type || 'watch_ad';
@@ -595,9 +648,11 @@ function openEditModal(kind, id){
     document.getElementById('subPrice').value = item.priceUsd;
     document.getElementById('subPriceNgn').value = (item.prices && item.prices.NGN) || '';
     document.getElementById('subPriceGbp').value = (item.prices && item.prices.GBP) || '';
-    document.getElementById('subDuration').value = item.durationDays;
-    document.getElementById('subCoinsPerDay').value = item.coinsPerDay;
-    document.getElementById('subBonus').value = item.bonusPercent || '';
+    document.getElementById('subPeriod').value = item.period || 'month';
+    document.getElementById('subBadge').value = item.badge || '';
+    document.getElementById('subIcon').value = item.icon || '';
+    document.getElementById('subColor').value = item.color || '#FF2D6A';
+    document.getElementById('subFeatures').value = (item.features || []).join('\n');
   }
   document.getElementById('itemStatus').value = item.status;
   document.getElementById('formModalError').classList.remove('show');
@@ -662,8 +717,10 @@ async function submitForm(){
   }else if(formKind==='gift'){
     const icon = document.getElementById('giftIcon').value.trim() || '🎁';
     const costCoins = parseInt(document.getElementById('giftCost').value,10) || 0;
+    const color = document.getElementById('giftColor').value || '#FF2D6A';
+    const desc = document.getElementById('giftDesc').value.trim();
     if(costCoins<=0){ errBox.textContent='Please enter a coin cost.'; errBox.classList.add('show'); return; }
-    payload = { name, icon, costCoins, status };
+    payload = { name, icon, costCoins, color, desc, status };
   }else if(formKind==='earn'){
     const action = document.getElementById('earnAction').value.trim();
     const type = document.getElementById('earnType').value;
@@ -696,14 +753,15 @@ async function submitForm(){
     }
   }else{
     const priceUsd = parseFloat(document.getElementById('subPrice').value) || 0;
-    const durationDays = parseInt(document.getElementById('subDuration').value,10) || 0;
-    const coinsPerDay = parseInt(document.getElementById('subCoinsPerDay').value,10) || 0;
-    const bonusPercent = parseInt(document.getElementById('subBonus').value,10) || 0;
+    const period = document.getElementById('subPeriod').value;
+    const badge = document.getElementById('subBadge').value.trim();
+    const icon = document.getElementById('subIcon').value.trim() || 'fa-star';
+    const color = document.getElementById('subColor').value || '#FF2D6A';
+    const features = document.getElementById('subFeatures').value.split('\n').map(f=>f.trim()).filter(Boolean);
     const prices = readLadder(priceUsd, null, document.getElementById('subPriceNgn').value, document.getElementById('subPriceGbp').value);
     if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
-    if(durationDays<=0){ errBox.textContent='Please enter duration in days.'; errBox.classList.add('show'); return; }
-    if(coinsPerDay<=0){ errBox.textContent='Please enter coins per day.'; errBox.classList.add('show'); return; }
-    payload = { name, priceUsd, prices, durationDays, coinsPerDay, bonusPercent, status };
+    if(!features.length){ errBox.textContent='Add at least one feature (one per line) — this is what the store card displays.'; errBox.classList.add('show'); return; }
+    payload = { name, priceUsd, prices, period, features, badge, color, icon, status };
   }
   errBox.classList.remove('show');
 
@@ -718,7 +776,7 @@ async function submitForm(){
       Object.assign(item, payload);
       if(formKind==='earn'){ item.status = payload.available?'active':'inactive'; }
       const dName = formKind==='earn' ? payload.action : name;
-      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${payload.price}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${payload.coinsPerDay}/day for ${money(payload.priceUsd)}/${payload.durationDays}d`;
+      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${payload.price}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${money(payload.priceUsd)}/${payload.period} · ${payload.features.length} features`;
       logHistory('updated', formKind, dName, details);
       toast(`✏️ "${dName}" updated`);
     }else{
@@ -731,13 +789,14 @@ async function submitForm(){
       }
       list.unshift(created);
       const dName2 = formKind==='earn' ? payload.action : name;
-      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${payload.price}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${payload.coinsPerDay}/day for ${money(payload.priceUsd)}/${payload.durationDays}d`;
+      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${payload.price}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${money(payload.priceUsd)}/${payload.period} · ${payload.features.length} features`;
       logHistory('created', formKind, dName2, details);
       toast(`✅ "${dName2}" created`);
     }
     if(formKind==='package') syncPacksToStore();
     if(formKind==='bundle') syncBundlesToStore();
     if(formKind==='subscription') syncSubsToStore();
+    if(formKind==='gift') syncGiftsToStore();
     if(formKind==='earn') syncEarnToStore();
     closeFormModal();
     renderPricing(); renderHistFilterPills(); renderHistory();
@@ -762,6 +821,8 @@ async function toggleStatus(kind, id){
   toast(`${newStatus==='active'?'✅':'⏸️'} "${dispName}" ${newStatus}`);
   if(kind==='package') syncPacksToStore();
   if(kind==='bundle') syncBundlesToStore();
+  if(kind==='subscription') syncSubsToStore();
+  if(kind==='gift') syncGiftsToStore();
   if(kind==='earn') syncEarnToStore();
   renderPricing(); renderHistFilterPills(); renderHistory();
 }
@@ -792,6 +853,8 @@ async function submitDel(){
   closeDelModal();
   if(kind==='package') syncPacksToStore();
   if(kind==='bundle') syncBundlesToStore();
+  if(kind==='subscription') syncSubsToStore();
+  if(kind==='gift') syncGiftsToStore();
   if(kind==='earn') syncEarnToStore();
   renderPricing(); renderHistFilterPills(); renderHistory();
 }

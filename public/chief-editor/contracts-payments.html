@@ -414,18 +414,18 @@ body{font-family:'Inter',system-ui,sans-serif}
       <div class="cf-tray" id="cfTray"><span class="cf-tray-lbl"><i class="fas fa-eye-slash"></i> Hidden</span><span id="cfTrayChips"></span></div>
 
       <div class="form-row">
-        <label class="form-label">Contract name</label>
+        <label class="form-label cf-label" data-cf-label="name">Contract name</label>
         <input class="form-input" id="fName" placeholder="e.g. Starter Non-Exclusive Agreement"/>
         <div class="field-error" id="fNameErr">Name is required.</div>
       </div>
 
       <div class="form-row two-col">
         <div>
-          <label class="form-label">Contract type</label>
+          <label class="form-label cf-label" data-cf-label="type">Contract type</label>
           <select class="form-select" id="fType"></select>
         </div>
         <div>
-          <label class="form-label">Term length</label>
+          <label class="form-label cf-label" data-cf-label="term">Term length</label>
           <select class="form-select" id="fTerm">
             <option>6 Months</option>
             <option selected>1 Year</option>
@@ -512,7 +512,7 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
 
       <div class="form-row">
-        <label class="form-label">Status</label>
+        <label class="form-label cf-label" data-cf-label="status">Status</label>
         <select class="form-select" id="fStatus">
           <option value="active">Active</option>
           <option value="draft">Draft</option>
@@ -522,12 +522,12 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
 
       <div class="form-row">
-        <label class="form-label">Description</label>
+        <label class="form-label cf-label" data-cf-label="desc">Description</label>
         <textarea class="form-textarea" id="fDesc" placeholder="What this contract is for and when senior editors should offer it…"></textarea>
       </div>
 
       <div class="form-row">
-        <label class="form-label">Key clauses</label>
+        <label class="form-label cf-label" data-cf-label="clauses">Key clauses</label>
         <textarea class="form-textarea" id="fClauses" placeholder="e.g. Non-exclusive serial rights · Signup $20–$50 on first published chapter · Completion bonus at 150k reads within 6 months · Profit-share bonus at $20 threshold…"></textarea>
       </div>
     </div>

@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#000000"/>
-<title>Droboard · Series Manager</title>
+<title>Droboard · Story Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -33,9 +33,9 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 .top-icon-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;color:#ccc;transition:.15s;flex-shrink:0}
 .top-icon-btn:active{transform:scale(.9)}
 
-/* SERIES SELECTOR BAR */
-.series-selector{background:var(--l1);border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none;display:flex;gap:0;padding:0}
-.series-selector::-webkit-scrollbar{display:none}
+/* STORY SELECTOR BAR */
+.story-selector{background:var(--l1);border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none;display:flex;gap:0;padding:0}
+.story-selector::-webkit-scrollbar{display:none}
 .ss-item{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;flex-shrink:0;transition:.15s}
 .ss-item.active{border-bottom-color:var(--acc)}
 .ss-item-cover{width:28px;height:32px;border-radius:5px;background-size:cover;background-position:center;border:1px solid var(--bd);flex-shrink:0}
@@ -47,8 +47,8 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 /* CONTENT AREA */
 .content{padding:14px}
 
-/* SERIES INFO CARD */
-.series-info-card{background:var(--l1);border:1px solid var(--bd);border-radius:16px;overflow:hidden;margin-bottom:14px;position:relative}
+/* STORY INFO CARD */
+.story-info-card{background:var(--l1);border:1px solid var(--bd);border-radius:16px;overflow:hidden;margin-bottom:14px;position:relative}
 .sic-hero{height:140px;position:relative;overflow:hidden;cursor:pointer}
 .sic-hero-img{width:100%;height:100%;object-fit:cover;display:block;transition:.2s}
 .sic-hero-grad{position:absolute;inset:0;background:linear-gradient(0deg,#000 0%,rgba(0,0,0,.4) 60%,transparent 100%)}
@@ -195,7 +195,7 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 .confirm-delete{background:#ef4444;color:#fff}
 .confirm-warn{background:var(--gold);color:#000}
 
-/* SERIES SETTINGS OVERLAY */
+/* STORY SETTINGS OVERLAY */
 .settings-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);backdrop-filter:blur(14px);display:none;align-items:flex-end}
 .settings-overlay.open{display:flex}
 .settings-sheet{width:100%;background:var(--l1);border-radius:20px 20px 0 0;animation:slideUp .28s ease;max-height:90vh;overflow-y:auto;scrollbar-width:none;padding-bottom:env(safe-area-inset-bottom,20px)}
@@ -235,7 +235,7 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
@@ -243,13 +243,13 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 <!-- TOP BAR -->
 <div class="top-bar">
   <div class="top-back" onclick="history.back()"><i class="fas fa-arrow-left"></i></div>
-  <div class="top-title" id="topTitle">Series Manager</div>
+  <div class="top-title" id="topTitle">Story Manager</div>
   <div class="top-icon-btn" data-search-trigger title="Search" role="button" aria-label="Search"><i class="fas fa-magnifying-glass"></i></div>
-  <div class="top-icon-btn" onclick="openSeriesSettings()" title="Series Settings"><i class="fas fa-ellipsis-vertical"></i></div>
+  <div class="top-icon-btn" onclick="openStorySettings()" title="Story Settings"><i class="fas fa-ellipsis-vertical"></i></div>
 </div>
 
-<!-- SERIES SELECTOR -->
-<div class="series-selector" id="seriesSelector"></div>
+<!-- STORY SELECTOR -->
+<div class="story-selector" id="storySelector"></div>
 
 <!-- MAIN CONTENT -->
 <div class="content" id="mainContent"></div>
@@ -287,20 +287,20 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
   </div>
 </div>
 
-<!-- SERIES SETTINGS OVERLAY -->
-<div class="settings-overlay" id="settingsOv" onclick="if(event.target===this)closeSeriesSettings()">
+<!-- STORY SETTINGS OVERLAY -->
+<div class="settings-overlay" id="settingsOv" onclick="if(event.target===this)closeStorySettings()">
   <div class="settings-sheet" id="settingsSheet">
     <div class="overlay-handle"></div>
     <div class="overlay-hdr">
-      <h3><i class="fas fa-sliders" style="color:var(--acc3);font-size:12px"></i> Series Settings</h3>
-      <button class="overlay-close" onclick="closeSeriesSettings()">✕</button>
+      <h3><i class="fas fa-sliders" style="color:var(--acc3);font-size:12px"></i> Story Settings</h3>
+      <button class="overlay-close" onclick="closeStorySettings()">✕</button>
     </div>
 
     <div class="settings-section-title">Visibility & Access</div>
     <div class="settings-row">
       <div class="settings-row-left">
-        <div class="settings-row-label">Series Visibility</div>
-        <div class="settings-row-sub">Who can discover and read this series</div>
+        <div class="settings-row-label">Story Visibility</div>
+        <div class="settings-row-sub">Who can discover and read this story</div>
       </div>
       <select class="settings-select" id="set-visibility">
         <option value="public">🌍 Public</option>
@@ -347,7 +347,7 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
     </div>
     <div class="settings-row">
       <div class="settings-row-left">
-        <div class="settings-row-label">Series Notifications</div>
+        <div class="settings-row-label">Story Notifications</div>
         <div class="settings-row-sub">Notify followers when new chapter drops</div>
       </div>
       <div class="settings-toggle on" id="set-notif" onclick="toggleSetting(this)"><div class="settings-toggle-knob"></div></div>
@@ -420,11 +420,11 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
     </div>
 
     <div class="settings-btn-row">
-      <div class="settings-action-btn accent" onclick="saveSeriesSettings()"><i class="fas fa-floppy-disk" style="font-size:11px;margin-right:5px"></i>Save Settings</div>
+      <div class="settings-action-btn accent" onclick="saveStorySettings()"><i class="fas fa-floppy-disk" style="font-size:11px;margin-right:5px"></i>Save Settings</div>
     </div>
     <div class="settings-btn-row" style="padding-top:0">
-      <div class="settings-action-btn danger" onclick="closeSeriesSettings();confirmDeleteSeries()"><i class="fas fa-trash" style="font-size:10px;margin-right:4px"></i>Delete Series</div>
-      <div class="settings-action-btn" style="border-color:rgba(251,191,36,.2);color:var(--gold)" onclick="closeSeriesSettings();pauseSeries()"><i class="fas fa-pause" style="font-size:10px;margin-right:4px"></i>Pause Series</div>
+      <div class="settings-action-btn danger" onclick="closeStorySettings();confirmDeleteStory()"><i class="fas fa-trash" style="font-size:10px;margin-right:4px"></i>Delete Story</div>
+      <div class="settings-action-btn" style="border-color:rgba(251,191,36,.2);color:var(--gold)" onclick="closeStorySettings();pauseStory()"><i class="fas fa-pause" style="font-size:10px;margin-right:4px"></i>Pause Story</div>
     </div>
     <div style="height:8px"></div>
   </div>
@@ -437,8 +437,8 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 
 </div>
 
-<script src="../component/search-overlay.js?v=3"></script>
-<script src="../component/status-ring.js?v=1"></script>
+<script src="../component/search-overlay.js?v=4"></script>
+<script src="../component/status-ring.js?v=4"></script>
 <script src="../services/story-management-service.js"></script>
 </div>
 <script src="../shared/theme-chrome.js"></script>

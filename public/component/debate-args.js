@@ -136,6 +136,8 @@
 
     /* Composer */
     .da-composer{display:flex;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--bd,rgba(0,0,0,.08));background:var(--l1,#fff);position:sticky;bottom:0;z-index:50}
+    .da-closed{padding:14px 4px;border-top:1px solid var(--bd,rgba(0,0,0,.08));font-size:12px;font-weight:600;color:var(--tx-muted,#6b7280);text-align:center}
+    .da-closed i{color:#c92a2a;margin-right:6px}
     .da-composer-input{flex:1;background:var(--l2,#f1f1f1);border:1.5px solid var(--bd,rgba(0,0,0,.1));border-radius:20px;padding:9px 14px;font-size:12.5px;font-family:inherit;color:var(--tx-high,#161616);outline:none;resize:none;max-height:80px}
     .da-composer-input:focus{border-color:rgba(255,0,80,.35)}
     .da-composer-input:disabled{opacity:.5;cursor:not-allowed}
@@ -182,6 +184,20 @@
     document.head.appendChild(el);
   }
 
+  /* Same lineup per author on every surface (see comment-section.js) —
+     otherwise "viewed" on the thread page never reconciles with the feed. */
+  function _canonStatuses(a) {
+    if (!a) return a;
+    try {
+      if (a.name && window.DroboardStatus && typeof DroboardStatus.writerStatuses === 'function') {
+        const canon = DroboardStatus.writerStatuses(a.name);
+        if (canon && canon.length) a.statuses = canon;
+      }
+    } catch (e) {}
+    a.replies = (a.replies || []).map(_canonStatuses);
+    return a;
+  }
+
   function attach(root, opts) {
     injectStyles();
     opts = opts || {};
@@ -193,6 +209,8 @@
       currentUser: opts.currentUser || { name: 'You', avatar: null, verified: false },
       debateId: opts.debateId || null,
       requireSide: opts.requireSide !== false,
+      /* closed debate: read the arguments, but nothing more can be added */
+      readOnly: !!opts.readOnly,
       userSide: opts.userSide || null,
       ads: opts.ads !== false,
       onPost: opts.onPost || null,
@@ -202,7 +220,7 @@
       onProfileClick: opts.onProfileClick || null,
     };
 
-    let _args = (O.debateId && loadStoredTree(O.debateId)) || (opts.args || []).slice();
+    let _args = ((O.debateId && loadStoredTree(O.debateId)) || (opts.args || [])).slice().map(_canonStatuses);
     let _filter = 'all';
     let _replyTo = null;
     let _threadId = null;
@@ -236,13 +254,18 @@
     /* Viewer list: thread order (top arg → its replies → next top arg),
        deduped by author, rotated to start at the tapped author — same
        cross-person browsing as comment threads and feed rows. */
+    /* Seeds use 'has'/'viewed' and the store returns 'ring-has'/… — accept both. */
+    function _ringClass(v) {
+      var s = String(v || '').replace(/^ring-/, '');
+      return s === 'has' || s === 'live' || s === 'viewed' ? 'ring-' + s : 'ring-none';
+    }
     function viewerAuthorsFor() {
       var out = [];
       function pushA(a) {
         if (!a || !a.statuses || !a.statuses.length || !a.name) return;
         out.push({
           id: 'da_' + a.id, name: a.name, avatar: a.avatar,
-          ring: a.statusRing === 'has' ? 'ring-has' : a.statusRing === 'viewed' ? 'ring-viewed' : 'ring-none',
+          ring: _ringClass(a.statusRing),
           likes: 0, threads: 0, statuses: a.statuses,
         });
       }
@@ -283,7 +306,7 @@
         : '';
       return '<div class="da-av-wrap' + (hasSt ? ' has-status' : '') + '" data-av-id="' + esc(a.id) + '">' +
         DroboardStatusRing.html(a, {
-          size: 32, key: a.name || '', innerHtml: inner,
+          size: 32, key: a.name || '', personKey: a.name || '', innerHtml: inner,
           innerBg: 'var(--l2,#f1f1f1)', gapColor: 'var(--l2,#f1f1f1)',
         }) + badge +
       '</div>';
@@ -367,7 +390,7 @@
 
       var h = '';
       // side picker (top)
-      if (O.requireSide) {
+      if (O.requireSide && !O.readOnly) {
         h += '<div class="da-side-picker">' +
           '<button class="da-side-chip for' + (O.userSide === 'for' ? ' on' : '') + '" data-pick-side="for">\u2705 ' + esc(O.sides.for) + '</button>' +
           '<button class="da-side-chip against' + (O.userSide === 'against' ? ' on' : '') + '" data-pick-side="against">\u274C ' + esc(O.sides.against) + '</button>' +
@@ -386,7 +409,7 @@
       '</div>';
 
       // gate prompt
-      if (O.requireSide && !O.userSide) {
+      if (O.requireSide && !O.userSide && !O.readOnly) {
         h += '<div class="da-gate" data-open-gate><i class="fas fa-hand-pointer"></i><div class="da-gate-t">Pick a side to join the debate</div><div class="da-gate-s">You must choose a side before posting</div></div>';
       }
 
@@ -405,7 +428,9 @@
       h += '</div>';
 
       // composer
-      h += '<div class="da-composer">' +
+      h += O.readOnly
+        ? '<div class="da-closed"><i class="fas fa-lock"></i> This debate has closed — the result is final. The arguments stay here to read.</div>'
+        : '<div class="da-composer">' +
         '<textarea class="da-composer-input" id="daComposerInput" rows="1" placeholder="' + (O.userSide ? 'Post your argument\u2026' : 'Pick a side first\u2026') + '"' + (O.userSide ? '' : ' disabled') + '></textarea>' +
         '<button class="da-composer-send" id="daComposerSend"' + (O.userSide ? '' : ' disabled') + '><i class="fas fa-paper-plane"></i></button>' +
       '</div>';
@@ -814,6 +839,7 @@
       // reply toggle
       rootEl.querySelectorAll('[data-reply]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          if (O.readOnly) { toast('This debate has closed — no new replies.'); return; }
           if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
           var id = btn.getAttribute('data-reply');
           var target = rootEl.querySelector('[data-reply-input="' + id + '"]');
@@ -886,8 +912,8 @@
 
     function doReply(parentId, text) {
       if (!text) return;
+      if (O.readOnly) { toast('This debate has closed — no new arguments.'); return; }
       if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
-      var parent = findArg(parentId);
       if (!parent) return;
       var full = text.charAt(0) === '@' ? text : '@' + parent.name + ' ' + text;
       var reply = makeReply(full, parent.side);
@@ -907,6 +933,7 @@
       var ci = rootEl.querySelector('#daComposerInput');
       var text = ci ? ci.value.trim() : '';
       if (!text) return;
+      if (O.readOnly) { toast('This debate has closed — no new arguments.'); return; }
       if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
       var arg = {
         id: 'a' + Date.now(),
@@ -942,7 +969,7 @@
 
     /* ── public API ── */
     var api = {
-      setArgs: function (list) { _args = (list || []).slice(); render(); },
+      setArgs: function (list) { _args = (list || []).slice().map(_canonStatuses); render(); },
       addArg: function (text) {
         if (!text) return;
         var arg = { id: 'a' + Date.now(), name: O.currentUser.name || 'You', avatar: O.currentUser.avatar, side: O.userSide || 'for', time: 'Just now', text: text, up: 0, down: 0, myVote: null, replies: [] };
@@ -950,6 +977,7 @@
       },
       getArgs: function () { return _args; },
       setUserSide: function (side) { O.userSide = side; render(); },
+      setReadOnly: function (v) { var next = !!v; if (next === O.readOnly) return; O.readOnly = next; render(); },
       getUserSide: function () { return O.userSide; },
       startEdit: function (id, inThread) { startEdit(id, !!inThread); },
       cancelEdit: function () { cancelEdit(); },
@@ -964,16 +992,19 @@
     // the viewer dedupes by name+avatar — so update ALL of that author's
     // cards, not just the one whose id happened to be sent back.
     var prevStatusHandler = window.onStatusViewerChange;
-    window.onStatusViewerChange = function (wid, ring) {
-      if (typeof prevStatusHandler === 'function') { try { prevStatusHandler(wid, ring); } catch (e) {} }
-      if (!wid || wid.indexOf('da_') !== 0) return;
-      var a = findArg(wid.slice(3));
-      if (!a) return;
-      var newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
-      var key = String(a.name) + '|' + String(a.avatar || '');
+    window.onStatusViewerChange = function (wid, ring, name) {
+      if (typeof prevStatusHandler === 'function') { try { prevStatusHandler(wid, ring, name); } catch (e) {} }
+      // The viewer emits the author's name as `name` (its store key), so
+      // match on identity: a status watched from ANY surface grays that
+      // author's ring on every card here too, not just the tapped one.
+      var isOurs = wid && wid.indexOf('da_') === 0;
+      var byName = name && String(name).toLowerCase();
+      var newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : ring === 'ring-live' ? 'live' : 'none';
       (function walk(list) {
         (list || []).forEach(function (x) {
-          if (String(x.name) + '|' + String(x.avatar || '') === key) {
+          const mine = (isOurs && String(x.id) === String(wid).slice(3)) ||
+            (byName && String(x.name).toLowerCase() === byName);
+          if (mine) {
             x.statusRing = newRing;
             [rootEl, document.getElementById('daThreadOv')].forEach(function (scopeEl) {
               if (!scopeEl) return;
@@ -1038,7 +1069,7 @@
         { id: 'r5', name: 'Priya_Sharma', avatar: 'https://i.pravatar.cc/100?img=44', verified: true, side: 'against', statusRing: 'viewed', time: '20h', text: 'Consequences are what make choices matter in a story.', up: 9, down: 1, myVote: null, replies: [] },
         { id: 'r6', name: 'Finn_Calloway', avatar: 'https://i.pravatar.cc/100?img=68', side: 'against', statusRing: 'none', time: '18h', text: 'If everyone gets redeemed, nobody is truly dangerous.', up: 14, down: 3, myVote: null, replies: [] },
         { id: 'r7', name: 'Mei_Lin', avatar: 'https://i.pravatar.cc/100?img=31', side: 'against', statusRing: 'has', time: '15h', text: 'The tension dies when you know the villain will be forgiven.', up: 11, down: 2, myVote: null,
-          statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy series', time: '6h ago' }],
+          statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' }],
           replies: [] },
       ]},
       { id: 'a3', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', verified: true, side: 'for', statusRing: 'has', time: '3d', text: 'If we don\'t believe people can change, what\'s the point of any story at all?', up: 31, down: 4, myVote: null, replies: [] },
@@ -1058,7 +1089,7 @@
       ]},
       { id: 'a9', name: 'Finn_Calloway', avatar: 'https://i.pravatar.cc/100?img=68', verified: false, side: 'for', statusRing: 'none', time: '8d', text: 'Some of the greatest characters in fiction started as villains. Imagine robbing readers of that journey.', up: 36, down: 5, myVote: null, replies: [] },
       { id: 'a10', name: 'Mei_Lin', avatar: 'https://i.pravatar.cc/100?img=31', verified: false, side: 'against', statusRing: 'has', time: '3h', text: 'A villain crying at the end doesn\'t erase a hundred chapters of cruelty.', up: 49, down: 6, myVote: null,
-        statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy series', time: '6h ago' }],
+        statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' }],
         replies: [] },
       { id: 'a11', name: 'Omar_Hassan', avatar: 'https://i.pravatar.cc/100?img=57', verified: false, side: 'for', statusRing: 'viewed', time: '9d', text: 'Redemption arcs teach empathy. That\'s literally the point of literature.', up: 22, down: 4, myVote: null, replies: [] },
       { id: 'a12', name: 'Chloe_Bennett', avatar: 'https://i.pravatar.cc/100?img=45', verified: true, side: 'against', statusRing: 'none', time: '5d', text: 'If the villain is truly irredeemable, giving them a soft ending is bad writing.', up: 38, down: 7, myVote: null, replies: [] },

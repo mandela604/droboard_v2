@@ -15,6 +15,27 @@ async function callBackend(path, opts){
   }catch(e){ return null; }
 }
 
+/* Live loader: GET /books (paged {items,total,...}) → demo BOOKS field names.
+   Backend Book: authorId→author, chapterCount→chapters, wordCount→words,
+   createdAt→dateAdded. This page only renders books, so only /books is wired. */
+async function loadLiveBooks(){
+  const d = await callBackend('/books?limit=50');
+  if(!d || !Array.isArray(d.items)) return null;
+  return d.items.map(b => ({
+    id: b.id,
+    title: b.title || '',
+    author: b.authorId || '',
+    cover: b.cover || '',
+    genre: b.genre || '',
+    status: b.status || 'draft',
+    chapters: b.chapterCount || 0,
+    words: b.wordCount || 0,
+    rating: b.rating || 0,
+    reads: b.reads || 0,
+    dateAdded: String(b.createdAt || b.updatedAt || '').slice(0, 10),
+  }));
+}
+
 let _initDone = false;
 
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
@@ -270,7 +291,7 @@ function submitDelete(){
 }
 
 /* ═══ INIT — runs everything the inline script did on load ═══ */
-function init(){
+async function init(){
   if(_initDone) return;
   _initDone = true;
 
@@ -310,6 +331,13 @@ function init(){
   document.getElementById('sortSel').addEventListener('change',applyFilters);
 
   /* ── INIT renders (run after shell has already built the real DOM) ── */
+  if(USE_API){
+    try{
+      const liveBooks = await loadLiveBooks();
+      if(liveBooks){ BOOKS = liveBooks; idCounter = BOOKS.length + 1; }
+      else console.warn('[PlatformContent] live load returned nothing, using demo books');
+    }catch(e){ console.warn('[PlatformContent] live load failed, using demo books', e); }
+  }
   buildGenreSelect();
   buildFilterPills();
   renderStats();

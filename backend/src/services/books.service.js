@@ -91,11 +91,29 @@ async function getBook(id) {
 
 // Book detail with chapters — everything is keyed by bookId.
 // Public: live chapters only (drafts never leak onto the platform).
+// Engagement objects ride along on each chapter (poll/prediction/debate) and
+// story-wide engagement attaches at book level (polls/predictions/debates[]
+// with a chapter ref), matching the reader's catalogue record shape.
 async function getBookDetail(id) {
   const book = await getBook(id);
-  const chapters = await require('../models/content.model').Chapter
-    .find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 }).select('n title words status views').lean();
-  return Object.assign({}, book, { chapters });
+  const [chapters, author] = await Promise.all([
+    require('../models/content.model').Chapter
+      .find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 })
+      .select('n title words status views price authorNote poll prediction debate').lean(),
+    require('../models/user.model').User
+      .findOne({ id: book.authorId }).select('id username fullName avatar').lean(),
+  ]);
+  return Object.assign({}, book, {
+    chapters,
+    writer: author ? {
+      id: author.id, username: author.username, name: author.fullName, avatar: author.avatar,
+    } : null,
+    engagement: {
+      polls: (book.polls || []),
+      predictions: (book.predictions || []),
+      debates: (book.debates || []),
+    },
+  });
 }
 
 function canWrite(book, user) {

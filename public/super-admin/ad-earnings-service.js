@@ -52,7 +52,7 @@
       '<div class="ae-row-lbl">Platform <span>' + fmtUSD(t.platformShare) + ' · ' + platPct.toFixed(1) + '%</span></div>'
       + '<div class="ae-splitbar"><div class="plat" style="width:' + platPct + '%"></div><div class="auth" style="width:' + authPct + '%"></div></div>'
       + '<div class="ae-splitleg"><span>Platform ' + Math.round(AdRevenue.CONFIG.platformShare * 100) + '% on story slots</span><span>Author ' + Math.round(AdRevenue.CONFIG.authorShare * 100) + '%</span></div>'
-      + '<div class="ae-note" style="margin-top:14px">Story-owned slots: <b>in-chapter</b> (full/scroll reader), <b>end-of-story</b> (bottom edge, series top), <b>story comments</b>. Every other surface (home, discover, feed, hub, library, overlay, profile) is 100% platform.</div>';
+      + '<div class="ae-note" style="margin-top:14px">Story-owned slots: <b>in-chapter</b> (full/scroll reader), <b>end-of-story</b> (bottom edge, story top), <b>story comments</b>. Every other surface (home, discover, feed, hub, library, overlay, profile) is 100% platform.</div>';
   }
 
   /* ── Render: surface breakdown ── */

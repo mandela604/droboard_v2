@@ -29,8 +29,44 @@ function resyncDemo(){
   buildGenreOptions();
 }
 
-var USE_API = false;
+var USE_API = true;
+var LIVE = false;
 var API_BASE = '/api/senior-editor';
+
+/* ── Chief visibility: every flag raised here is mirrored into the shared
+   story-reports store (component/reports-table.js) so it appears on the
+   Chief Editor's Story Reports accordion. Delete at go-live — the backend
+   owns the flow then. ── */
+var SE_TAG = { id: 'SE-15', name: 'Reina Morgan' };
+function todayLabel() {
+  var d = new Date();
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function reportTypeFromReason(reason) {
+  var r = String(reason || '').toLowerCase();
+  if (r.indexOf('plagiar') !== -1 || r.indexOf('stolen') !== -1 || r.indexOf('copied') !== -1) return 'plagiarism';
+  if (r.indexOf('spam') !== -1 || r.indexOf('link') !== -1) return 'spam';
+  if (r.indexOf('abus') !== -1 || r.indexOf('harass') !== -1) return 'abuse';
+  if (r.indexOf('explicit') !== -1 || r.indexOf('content') !== -1 || r.indexOf('mature') !== -1) return 'content';
+  return 'other';
+}
+function mirrorFlagToChief(b, payload) {
+  if (!b || !window.DroboardReportsTable) return;
+  DroboardReportsTable.addReport({
+    id: 'BOOK-' + b.id,
+    seId: SE_TAG.id, seName: SE_TAG.name,
+    authorId: b.author || '', storyId: b.id, storyTitle: b.title, author: b.author || '',
+    cover: b.img || b.cover || '', chapter: 'Entire story', chN: 1,
+    type: reportTypeFromReason(payload.reason), severity: 'medium',
+    desc: payload.reason + (payload.note ? ' — ' + payload.note : ''),
+    reporter: SE_TAG.name, status: 'pending', date: todayLabel()
+  });
+}
+function mirrorUnflagToChief(b) {
+  if (!b || !window.DroboardReportsTable) return;
+  // Unflag = leave the chief's view entirely; it only lists live flags.
+  DroboardReportsTable.removeReport('BOOK-' + b.id);
+}
 
 function authHeaders() {
   var h = { 'Content-Type': 'application/json' };
@@ -43,7 +79,7 @@ function authHeaders() {
 async function callBackend(path, options) {
   if (!USE_API) return null;
   try {
-    var res = await fetch(API_BASE + path, options);
+    var res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) {
       var body = await res.json().catch(function () { return {}; });
       var err = new Error(body.error || ('HTTP ' + res.status));
@@ -68,7 +104,7 @@ var Crud = {
     if (query && query.tab && query.tab !== 'all') qs.push('status=' + encodeURIComponent(mapStatusToApi(query.tab)));
     if (query && query.q) qs.push('q=' + encodeURIComponent(query.q));
     var remote = await callBackend('/books' + (qs.length ? '?' + qs.join('&') : ''));
-    if (remote && remote.items) books = remote.items.map(fromApiBook);
+    if (remote && remote.items) { LIVE = true; books = remote.items.map(fromApiBook); }
     return books;
   },
 
@@ -76,6 +112,7 @@ var Crud = {
   get: async function (id) {
     var remote = await callBackend('/books/' + encodeURIComponent(id));
     if (remote && remote.id) {
+      LIVE = true;
       var mapped = fromApiBook(remote);
       var i = books.findIndex(function (b) { return b.id === id; });
       if (i > -1) books[i] = mapped;
@@ -86,9 +123,9 @@ var Crud = {
 
   /* UPDATE — flag (reason required, password required) */
   flag: async function (id, payload) {
-    var remote = await callBackend('/books/' + encodeURIComponent(id) + '/flag', {
+    var remote = LIVE ? await callBackend('/books/' + encodeURIComponent(id) + '/flag', {
       method: 'POST', headers: authHeaders(), body: JSON.stringify(payload),
-    });
+    }) : null;
     var b = books.find(function (x) { return x.id === id; });
     if (b) {
       b.flagPrevStatus = b.status;
@@ -96,28 +133,30 @@ var Crud = {
       b.flagReason = payload.reason;
       b.flagNote = payload.note || '';
     }
+    mirrorFlagToChief(b, payload);
     return remote || b;
   },
 
   /* UPDATE — unflag (password required; restores prior status) */
   unflag: async function (id, payload) {
-    var remote = await callBackend('/books/' + encodeURIComponent(id) + '/unflag', {
+    var remote = LIVE ? await callBackend('/books/' + encodeURIComponent(id) + '/unflag', {
       method: 'POST', headers: authHeaders(), body: JSON.stringify(payload || {}),
-    });
+    }) : null;
     var b = books.find(function (x) { return x.id === id; });
     if (b) {
       b.status = b.flagPrevStatus && b.flagPrevStatus !== 'Flagged' ? b.flagPrevStatus : 'Published';
       b.flagReason = '';
       b.flagNote = '';
     }
+    mirrorUnflagToChief(b);
     return remote || b;
   },
 
   /* UPDATE — generic meta (title/desc/status…); kept for go-live completeness */
   update: async function (id, patch) {
-    var remote = await callBackend('/books/' + encodeURIComponent(id), {
+    var remote = LIVE ? await callBackend('/books/' + encodeURIComponent(id), {
       method: 'PUT', headers: authHeaders(), body: JSON.stringify(patch),
-    });
+    }) : null;
     var b = books.find(function (x) { return x.id === id; });
     if (b) Object.assign(b, patch);
     return remote || b;
@@ -125,9 +164,9 @@ var Crud = {
 
   /* DELETE — not wired to the UI today; ready for go-live */
   remove: async function (id) {
-    var remote = await callBackend('/books/' + encodeURIComponent(id), {
+    var remote = LIVE ? await callBackend('/books/' + encodeURIComponent(id), {
       method: 'DELETE', headers: authHeaders(),
-    });
+    }) : null;
     books = books.filter(function (x) { return x.id !== id; });
     return remote || { ok: true };
   },
@@ -154,10 +193,16 @@ function fromApiBook(b) {
   };
 }
 function mapStatusToApi(s) {
-  return { Published: 'published', Draft: 'draft', 'Under Review': 'under_review', Flagged: 'flagged' }[s] || s;
+  return {
+    Published: 'published', Draft: 'draft', 'Under Review': 'under_review', Flagged: 'flagged',
+    Ongoing: 'ongoing', Completed: 'completed',
+  }[s] || s;
 }
 function mapStatusFromApi(s) {
-  return { published: 'Published', draft: 'Draft', under_review: 'Under Review', flagged: 'Flagged' }[s] || 'Published';
+  return {
+    published: 'Published', draft: 'Draft', under_review: 'Under Review', flagged: 'Flagged',
+    ongoing: 'Ongoing', completed: 'Completed', paused: 'Paused',
+  }[s] || 'Published';
 }
 function fmtReads(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -205,7 +250,7 @@ var FLAG_REASONS = [
   'Other (see details)',
 ];
 
-function statusClass(s) { return { Published: 'published', Draft: 'draft', 'Under Review': 'review', Flagged: 'flagged' }[s] || 'draft'; }
+function statusClass(s) { return { Published: 'published', Draft: 'draft', 'Under Review': 'review', Flagged: 'flagged', Ongoing: 'review', Completed: 'published', Paused: 'draft' }[s] || 'draft'; }
 function statusPillHtml(s) { return '<span class="status-pill ' + statusClass(s) + '"><span class="dot"></span>' + s + '</span>'; }
 function esc(s) {
   return String(s == null ? '' : s)
@@ -239,7 +284,7 @@ function renderStats() {
 
 function renderTabs() {
   var counts = { all: books.length };
-  ['Published', 'Draft', 'Under Review', 'Flagged'].forEach(function (s) { counts[s] = books.filter(function (b) { return b.status === s; }).length; });
+  ['Published', 'Ongoing', 'Completed', 'Draft', 'Under Review', 'Flagged'].forEach(function (s) { counts[s] = books.filter(function (b) { return b.status === s; }).length; });
   document.getElementById('countAll').textContent = counts.all;
   document.querySelectorAll('.tab-item').forEach(function (t) {
     var k = t.dataset.tab;
@@ -252,7 +297,7 @@ async function refresh() {
   try {
     await Crud.list({ tab: activeTab });
   } catch (e) {
-    toast('Could not load books: ' + (e.message || 'error'));
+    if (LIVE) toast('Could not load books: ' + (e.message || 'error'));
   }
   var q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
   var genre = document.getElementById('fGenre').value;

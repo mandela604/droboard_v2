@@ -135,6 +135,21 @@ async function main() {
     ['pay config no-auth 401', 'GET', '/api/payments/config', null, null, 401],
     ['paystack verify missing pack 400', 'POST', '/api/payments/paystack/verify', atoken, { reference: 'x' }, 400],
     ['flutterwave verify bad body 400', 'POST', '/api/payments/flutterwave/verify', atoken, { packCode: 'pack1' }, 400],
+    // notifications read-all / patch / settings
+    ['notif read-all no-auth 401', 'POST', '/api/notifications/read-all', null, null, 401],
+    ['notif patch no-auth 401', 'PATCH', '/api/notifications/n-1', null, { read: true }, 401],
+    ['notif patch bad body 400', 'PATCH', '/api/notifications/n-1', atoken, { read: 'yes' }, 400],
+    ['notif settings get no-auth 401', 'GET', '/api/notifications/settings', null, null, 401],
+    ['notif settings put no-auth 401', 'PUT', '/api/notifications/settings', null, { activity: { inapp: true } }, 401],
+    // league board / me
+    ['league board bad scope 400', 'GET', '/api/league/board?scope=bogus', null, null, 400],
+    ['league board bad season 400', 'GET', '/api/league/board?season=nope', null, null, 400],
+    ['league me no-auth 401', 'GET', '/api/league/me', null, null, 401],
+    // insights hit + stats
+    ['insight hit no-auth ok (anon allowed)', 'POST', '/api/track/insight', null, { surface: 'hub', targetId: 'g1' }, 200],
+    ['insight hit bad surface 400', 'POST', '/api/track/insight', null, { surface: 'nope' }, 400],
+    ['insight stats bad period 400', 'GET', '/api/track/insight?surface=hub&period=decade', null, null, 400],
+    ['contracts empty ok (no fallback)', 'GET', '/api/contracts', null, null, 200],
   ];
   for (const [name, method, path, token, body, want] of cases) {
     const r = await call(method, path, token, body);

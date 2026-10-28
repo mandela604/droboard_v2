@@ -70,6 +70,7 @@ const PAGE_SIZE = 6;
 let filtered = [];
 let currentPage = 1;
 let editingId = null;
+const openCards = new Set();
 
 function fmtNum(n){
   n = n || 0;
@@ -299,7 +300,7 @@ function renderList(){
     const archived = c.status === 'archived';
 
     return `
-    <div class="ctr-card ${paused ? 'is-paused' : ''} ${archived ? 'is-archived' : ''}" data-id="${c.id}">
+    <div class="ctr-card ${paused ? 'is-paused' : ''} ${archived ? 'is-archived' : ''} ${openCards.has(c.id) ? 'is-open' : ''}" data-id="${c.id}">
       <div class="ctr-summary" data-toggle="${c.id}">
         <div class="ctr-top">
           <span class="ctr-id">${c.id}</span>
@@ -337,9 +338,7 @@ function renderList(){
           <button class="mini-btn" data-action="edit" data-id="${c.id}"><i class="fas fa-pen"></i> Edit</button>
           ${c.status === 'active'
             ? `<button class="mini-btn warn" data-action="pause" data-id="${c.id}"><i class="fas fa-pause"></i> Pause</button>`
-            : (c.status === 'paused' || c.status === 'draft')
-              ? `<button class="mini-btn green" data-action="activate" data-id="${c.id}"><i class="fas fa-play"></i> Activate</button>`
-              : ''}
+            : `<button class="mini-btn green" data-action="activate" data-id="${c.id}"><i class="fas fa-play"></i> Activate</button>`}
           <button class="mini-btn danger" data-action="remove" data-id="${c.id}"><i class="fas fa-trash"></i></button>
         </div>
       </div>
@@ -412,12 +411,14 @@ function cfLabelFor(c, key) {
   return (cfLabels[key] || CF_FIELDS[key].def);
 }
 function cfApplyDom() {
+  document.querySelectorAll('.cf-label').forEach(lbl => {
+    const key = lbl.dataset.cfLabel;
+    if (document.activeElement !== lbl) lbl.textContent = cfLabels[key] || lbl._cfDef;
+  });
   Object.keys(CF_FIELDS).forEach(key => {
     const wrap = document.querySelector(`.cf-field[data-cf="${key}"]`);
     if (!wrap) return;
     wrap.classList.toggle('cf-row-hidden', cfHidden.has(key));
-    const lbl = wrap.querySelector('.cf-label');
-    if (lbl && document.activeElement !== lbl) lbl.textContent = cfLabels[key] || CF_FIELDS[key].def;
     const btn = wrap.querySelector('.cf-btn');
     if (btn) btn.innerHTML = cfHidden.has(key) ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
   });
@@ -447,9 +448,10 @@ function cfWire() {
     cfApplyDom();
   });
   document.querySelectorAll('.cf-label').forEach(lbl => {
+    lbl._cfDef = lbl.textContent.trim();
     lbl.addEventListener('dblclick', () => {
       const key = lbl.dataset.cfLabel;
-      lbl.textContent = cfLabels[key] || CF_FIELDS[key].def;
+      lbl.textContent = cfLabels[key] || lbl._cfDef;
       lbl.contentEditable = 'true';
       lbl.focus();
       const range = document.createRange();
@@ -469,7 +471,7 @@ function cfWire() {
       if (e.key === 'Enter') { e.preventDefault(); lbl.blur(); }
       if (e.key === 'Escape') {
         const key = lbl.dataset.cfLabel;
-        lbl.textContent = cfLabels[key] || CF_FIELDS[key].def;
+        lbl.textContent = cfLabels[key] || lbl._cfDef;
         lbl.contentEditable = 'false';
       }
     });
@@ -632,15 +634,12 @@ function openDetailsModal(id){
     </div>` : ''}
   `;
 
-  const canToggle = c.status === 'active' || c.status === 'paused' || c.status === 'draft';
   document.getElementById('detailsFoot').innerHTML = `
     <button class="mini-btn ghost" data-close="detailsModal">Close</button>
     <button class="mini-btn" id="dEditBtn"><i class="fas fa-pen"></i> Edit</button>
-    ${canToggle
-      ? (c.status === 'active'
-        ? `<button class="mini-btn warn" id="dToggleBtn"><i class="fas fa-pause"></i> Pause</button>`
-        : `<button class="mini-btn green" id="dToggleBtn"><i class="fas fa-play"></i> Activate</button>`)
-      : ''}
+    ${c.status === 'active'
+      ? `<button class="mini-btn warn" id="dToggleBtn"><i class="fas fa-pause"></i> Pause</button>`
+      : `<button class="mini-btn green" id="dToggleBtn"><i class="fas fa-play"></i> Activate</button>`}
     <button class="mini-btn danger" id="dRemoveBtn"><i class="fas fa-trash"></i> Remove</button>`;
 
   document.getElementById('dEditBtn').addEventListener('click', () => { closeModal('detailsModal'); openEditModal(c.id); });
@@ -726,9 +725,10 @@ document.getElementById('ctrList').addEventListener('click', e => {
     if (card) {
       // Optional: close other open cards (accordion behavior)
       document.querySelectorAll('.ctr-card.is-open').forEach(other => {
-        if (other !== card) other.classList.remove('is-open');
+        if (other !== card) { other.classList.remove('is-open'); openCards.delete(other.dataset.id); }
       });
       card.classList.toggle('is-open');
+      if (card.classList.contains('is-open')) openCards.add(card.dataset.id); else openCards.delete(card.dataset.id);
     }
   }
 });

@@ -65,6 +65,21 @@
     };
   }
 
+  /* Payment methods are edited by the author in Payment Details; the finance
+     staff's withdrawal modal reads the same list, so persist across pages. */
+  const PM_KEY = 'dro_author_payment_methods';
+  function loadMethods() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PM_KEY) || 'null');
+      if (Array.isArray(stored) && stored.length) return stored;
+    } catch (e) {}
+    return getDemo().methods;
+  }
+  function saveMethods(list) {
+    try { localStorage.setItem(PM_KEY, JSON.stringify(list)); } catch (e) {}
+    return list;
+  }
+
   /* ══════════════════════════════════════════════════════════════
      API
      ══════════════════════════════════════════════════════════════ */
@@ -125,45 +140,49 @@
     async getPaymentMethods() {
       if (USE_API) { try { return await callBackend('/payment-methods'); } catch (e) { /* fallthrough */ } }
       await delay();
-      return getDemo().methods;
+      return loadMethods();
     },
 
     async addPaymentMethod(data) {
       if (USE_API) { try { return await callBackend('/payment-methods', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) { /* fallthrough */ } }
       await delay(200);
-      const demo = getDemo();
-      const newMethod = Object.assign({ id: 'PM-' + String(demo.methods.length + 1).padStart(2, '0'), verified: false, isDefault: demo.methods.length === 0 }, data);
-      demo.methods.push(newMethod);
+      const methods = loadMethods();
+      const newMethod = Object.assign({ id: 'PM-' + String(methods.length + 1).padStart(2, '0'), verified: false, isDefault: methods.length === 0 }, data);
+      methods.push(newMethod);
+      saveMethods(methods);
       return clone(newMethod);
     },
 
     async deletePaymentMethod(id) {
       if (USE_API) { try { return await callBackend('/payment-methods/' + id, { method: 'DELETE' }); } catch (e) { /* fallthrough */ } }
       await delay(150);
-      const demo = getDemo();
-      const idx = demo.methods.findIndex(m => m.id === id);
+      const methods = loadMethods();
+      const idx = methods.findIndex(m => m.id === id);
       if (idx === -1) throw new Error('Method not found');
-      const wasDefault = demo.methods[idx].isDefault;
-      demo.methods.splice(idx, 1);
-      if (wasDefault && demo.methods.length > 0) demo.methods[0].isDefault = true;
+      const wasDefault = methods[idx].isDefault;
+      methods.splice(idx, 1);
+      if (wasDefault && methods.length > 0) methods[0].isDefault = true;
+      saveMethods(methods);
       return { ok: true };
     },
 
     async updatePaymentMethod(id, data) {
       if (USE_API) { try { return await callBackend('/payment-methods/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) { /* fallthrough */ } }
       await delay(200);
-      const demo = getDemo();
-      const idx = demo.methods.findIndex(m => m.id === id);
+      const methods = loadMethods();
+      const idx = methods.findIndex(m => m.id === id);
       if (idx === -1) throw new Error('Method not found');
-      demo.methods[idx] = Object.assign({}, demo.methods[idx], data, { id });
-      return clone(demo.methods[idx]);
+      methods[idx] = Object.assign({}, methods[idx], data, { id });
+      saveMethods(methods);
+      return clone(methods[idx]);
     },
 
     async setDefaultMethod(id) {
       if (USE_API) { try { return await callBackend('/payment-methods/' + id + '/default', { method: 'PUT' }); } catch (e) { /* fallthrough */ } }
       await delay(100);
-      const demo = getDemo();
-      demo.methods.forEach(m => m.isDefault = (m.id === id));
+      const methods = loadMethods();
+      methods.forEach(m => m.isDefault = (m.id === id));
+      saveMethods(methods);
       return { ok: true };
     },
 
@@ -178,7 +197,8 @@
       if (USE_API) { try { return await callBackend('/withdrawals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, methodId }) }); } catch (e) { /* fallthrough */ } }
       await delay(250);
       const demo = getDemo();
-      const method = demo.methods.find(m => m.id === methodId);
+      const methods = loadMethods();
+      const method = methods.find(m => m.id === methodId) || demo.methods.find(m => m.id === methodId);
       if (!method) throw new Error('Payment method not found');
       if (amount < demo.minWithdrawal) throw new Error('Minimum withdrawal is $' + demo.minWithdrawal);
       if (amount > demo.earnings.balance) throw new Error('Insufficient balance');
@@ -190,6 +210,7 @@
         amount: amount,
         method: method.type === 'bank' ? 'Bank Transfer' : method.type === 'paypal' ? 'PayPal' : 'Mobile Money',
         account: accountLabel,
+        accountName: method.accountName || '',
         requested: new Date().toISOString(),
         status: 'pending',
         processed: null,
@@ -212,6 +233,13 @@
       await delay(200);
       const demo = getDemo();
       const txn = demo.transactions.find(t => t.id === transactionId);
+      // Same store the finance Payment Disputes page reads.
+      if (window.DroboardDisputes) {
+        return DroboardDisputes.add({
+          who: 'Luna Vale', role: 'author', amount: txn ? Math.abs(txn.amount) : 0,
+          reason: reason, txnId: transactionId, item: txn ? txn.type : '',
+        });
+      }
       const dispute = {
         id: 'DSP-' + String(demo.disputes.length + 1).padStart(3, '0'),
         transactionId: transactionId,

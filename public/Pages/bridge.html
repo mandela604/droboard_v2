@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#07070b"/>
 <title>Droboard · Story</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
 <style>
 /* ══════════════════════════════════════════════════════════════════
    CSS VARIABLES — unchanged from the original story page. Light theme
@@ -327,7 +328,7 @@ body.theme-white .dock{background:rgba(255,255,255,.95)}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);try{document.documentElement.setAttribute('data-bg',t);}catch(e){}})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <script>/* mirror Settings page theme (droboardTheme light/dark) onto bridge body class */
@@ -473,6 +474,12 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
 
     <div class="divider"></div>
 
+    <!-- BRIDGE PAGE AD — same minibanner format discover uses for its three
+         inline slots. Kill switch: marketing → Placements → Bridge Page. -->
+    <div data-ad-slot="story:main" data-ad-format="minibanner" style="background:var(--card);padding:2px 16px 4px"></div>
+
+    <div class="divider"></div>
+
     <!-- REACTIONS -->
     <div class="sec fu d4">
       <div class="sec-hdr"><div class="sec-title"><div class="sec-icon" style="background:rgba(236,72,153,.08)">😭</div>Reactions</div></div>
@@ -553,12 +560,13 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
   <script src="../component/save-modal.js"></script>
   <script src="../component/rate-modal.js?v=3"></script>
   <script src="../services/rate-api.js"></script>
-  <script src="../component/tip-picker.js"></script>
+  <script src="../component/tip-picker.js?v=3"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/status-viewer.js?v=10"></script>
-<script src="../component/status-ring.js?v=1"></script>
+<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/status-ring.js?v=4"></script>
+  <script src="../services/status-service.js?v=7"></script>
 <script src="../shared/status-loader.js"></script>
-<script src="../component/comment-section.js?v=9"></script>
+<script src="../component/comment-section.js?v=11"></script>
   <script src="../component/discover-card.js?v=3"></script>
 <script src="../component/more-like-this.js"></script>
 <script src="../component/community-cards.js"></script>
@@ -567,8 +575,16 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
 <script src="../data/central-demo-data.js"></script>
 <script src="../data/comments-data.js"></script>
 
+<!-- ═══ Ads (bridge page slot) — same chain discover.html uses ═══ -->
+<script src="../marketing/shared/marketing-data.js"></script>
+<script src="../services/audience-rules.js?v=2"></script>
+<script src="../services/audience-service.js?v=3"></script>
+<script src="../services/ad-service.js?v=4"></script>
+<script src="../component/ad-card.js?v=6"></script>
+<script src="../component/ad-slot.js?v=2"></script>
+
 <!-- ═══ Page service ═══ -->
-<script src="../services/bridge-service.js?v=3"></script>
+<script src="../services/bridge-service.js?v=2"></script>
 
 <script>
 BridgePage.init();

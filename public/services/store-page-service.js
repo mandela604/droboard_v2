@@ -207,6 +207,7 @@
         packCode: item.packCode, amountNGN: amountNGN,
         onSuccess: function (receipt) {
           // Server truth only: backend verified + credited. Refresh balance.
+          recordReceipt(item, receipt);
           refreshBalance();
           if (receipt && receipt.plan) toast('✅ Subscribed! Enjoy unlimited reading');
           else toast('✅ Payment successful! Balance updated');
@@ -222,8 +223,89 @@
     });
   }
 
-  // Strict pricing: block checkout unless the item has an exact local
-  // price. Never charge a substituted/fallback price.
+  /* ── Reader receipts + "report a charge" ──
+     Every successful checkout is logged locally so the reader can raise a
+     dispute against a specific purchase; that dispute lands on the finance
+     Payment Disputes page through the shared DroboardDisputes store. */
+  var RECEIPTS_KEY = 'dro_reader_receipts';
+  function readerName() {
+    var D = window.DemoData || {};
+    return (D.CURRENT_READER && D.CURRENT_READER.name) || 'Luna Vale';
+  }
+  function readReceipts() {
+    try { var v = JSON.parse(localStorage.getItem(RECEIPTS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function recordReceipt(item, receipt) {
+    try {
+      var list = readReceipts();
+      list.unshift({
+        id: (receipt && (receipt.reference || receipt.id)) || 'RC-' + Date.now(),
+        title: item.title, sub: item.sub, price: item.price,
+        amount: Number(receipt && receipt.amount) || 0,
+        usd: Number(item.priceUSD) || 0,
+        kind: item.kind,
+        at: new Date().toISOString(),
+      });
+      localStorage.setItem(RECEIPTS_KEY, JSON.stringify(list.slice(0, 20)));
+    } catch (e) {}
+    renderPurchases();
+  }
+  function disputeFor(txnId) {
+    if (!window.DroboardDisputes) return null;
+    return DroboardDisputes.list().find(function (d) { return d.txnId === txnId; }) || null;
+  }
+  function renderPurchases() {
+    var box = document.getElementById('purchaseList');
+    var sec = document.getElementById('problemSection');
+    if (!box || !sec) return;
+    var list = readReceipts();
+    sec.style.display = list.length ? 'block' : 'none';
+    box.innerHTML = list.length ? list.map(function (r) {
+      var d = disputeFor(r.id);
+      var badge = d ? '<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;background:rgba(255,45,106,.1);color:var(--pink)">' + (d.status === 'open' ? 'Dispute open' : d.status) + '</span>' : '';
+      return '<div class="purchase-row" data-receipt="' + r.id + '" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--divider)">' +
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">' + r.title + '</div>' +
+        '<div style="font-size:11px;color:var(--gray-600)">' + r.sub + ' · ' + new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</div></div>' +
+        badge +
+        '<span style="font-size:12.5px;font-weight:800">' + r.price + '</span>' +
+        (d ? '' : '<button class="report-btn" data-report="' + r.id + '" style="font-size:11px;font-weight:700;color:var(--pink);background:none;border:1px solid rgba(255,45,106,.35);border-radius:8px;padding:5px 9px">Report</button>') +
+        '</div>';
+    }).join('') : '';
+  }
+  function openReport(txnId) {
+    var r = readReceipts().find(function (x) { return x.id === txnId; });
+    if (!r) return;
+    var box = document.getElementById('purchaseList');
+    var row = box && box.querySelector('[data-receipt="' + txnId + '"]');
+    if (!row) return;
+    row.innerHTML = '<div style="flex:1">' +
+      '<div style="font-size:12px;font-weight:700;margin-bottom:6px">What went wrong with ' + r.title + ' (' + r.price + ')?</div>' +
+      '<select id="reportReasonSel" style="width:100%;padding:8px;border-radius:9px;border:1px solid var(--divider);font-family:inherit;font-size:12px;margin-bottom:6px">' +
+      '<option>Coins were not credited</option><option>Gift was not delivered</option><option>Charged twice</option><option>Charged the wrong amount</option><option>Other</option></select>' +
+      '<textarea id="reportNote" rows="2" placeholder="Add details (optional)" style="width:100%;padding:8px;border-radius:9px;border:1px solid var(--divider);font-family:inherit;font-size:12px"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:8px"><button id="reportCancel" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--divider);background:none;font-size:12px;font-weight:700">Cancel</button>' +
+      '<button id="reportSend" style="flex:1;padding:8px;border-radius:9px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700">Submit</button></div></div>';
+    document.getElementById('reportCancel').onclick = renderPurchases;
+    document.getElementById('reportSend').onclick = function () {
+      var reason = document.getElementById('reportReasonSel').value;
+      var note = document.getElementById('reportNote').value.trim();
+      if (window.DroboardDisputes) {
+        DroboardDisputes.add({
+          who: readerName(), role: 'reader', amount: r.usd || 0,
+          item: r.title + ' — ' + r.price,
+          reason: reason + (note ? ': ' + note : ''),
+          txnId: r.id,
+        });
+      }
+      toast('✅ Report submitted — finance will review it');
+      renderPurchases();
+    };
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-report]');
+    if (b) openReport(b.getAttribute('data-report'));
+  });
+
   function priceOk(item) {
     if (!window.DroboardCurrency) return true;
     var r = DroboardCurrency.resolve(item);
@@ -287,6 +369,7 @@
     renderRewards(data.adRewards);
     renderSubscriptions(data.subscriptions);
     renderMergeSub(data.mergeSub);
+    renderPurchases();
     // Re-price if geo-detection resolves after first paint.
     if (window.DroboardCurrency && !init._curSub) {
       init._curSub = true;

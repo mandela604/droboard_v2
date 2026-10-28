@@ -115,7 +115,7 @@ function computeTotals(data) {
 const PAGE_TO_PLACEMENT = {
   discover: 'discover', home: 'discover', search: 'search', feed: 'feed',
   profile: 'profile', status: 'status', genreHub: 'genre-hub',
-  fullReader: 'end-of-story', scrollReader: 'end-of-story', series: 'end-of-story',
+  fullReader: 'end-of-story', scrollReader: 'end-of-story', story: 'end-of-story',
   comments: 'comments',
 };
 let _lastData = null, _lastDays = 0;

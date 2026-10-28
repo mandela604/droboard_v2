@@ -12,7 +12,10 @@ function normOpts(opts) {
 }
 function normPollLike(p) {
   if (p === undefined || p === null) return p;
-  return p.opts !== undefined ? Object.assign({}, p, { opts: normOpts(p.opts) }) : Object.assign({}, p);
+  const out = p.opts !== undefined ? Object.assign({}, p, { opts: normOpts(p.opts) }) : Object.assign({}, p);
+  if (out.expiresAt != null) out.expiresAt = new Date(out.expiresAt);
+  else if (out.expiresAt === null) out.expiresAt = null;
+  return out;
 }
 
 // Chapter content fields that need editor approval on live chapters.
@@ -54,11 +57,12 @@ async function applyChapterProposal({ proposal, reviewerId }) {
   const data = proposal.proposed || {};
   const oldWords = ch.words || 0;
   const oldN = ch.n;
-  ['title', 'content', 'words', 'authorNote', 'debate'].forEach(k => {
+  ['title', 'content', 'words', 'authorNote'].forEach(k => {
     if (data[k] !== undefined) ch[k] = data[k];
   });
   if (data.poll !== undefined) ch.poll = normPollLike(data.poll);
   if (data.prediction !== undefined) ch.prediction = normPollLike(data.prediction);
+  if (data.debate !== undefined) ch.debate = normPollLike(data.debate);
   // Editor-approved publish/schedule (the only path onto the platform).
   if (data.status !== undefined && PUBLISH_CHAPTER_STATUS.includes(data.status)) ch.status = data.status;
   if (data.scheduledAt !== undefined) {
@@ -129,7 +133,7 @@ async function createChapter({ bookId, data }) {
     scheduledAt,
     authorNote: data.authorNote || '',
     price: Number.isFinite(Number(data.price)) && Number(data.price) >= 0 ? Math.floor(Number(data.price)) : 0,
-    poll: normPollLike(data.poll), prediction: normPollLike(data.prediction), debate: data.debate,
+    poll: normPollLike(data.poll), prediction: normPollLike(data.prediction), debate: normPollLike(data.debate),
   });
   await Book.updateOne({ id: bookId }, { $inc: { chapterCount: 1, wordCount: ch.words || 0 } });
   return ch.toJSON();
@@ -152,11 +156,12 @@ async function getChapter({ bookId, key, onlyLive }) {
 async function updateChapter({ ch, data }) {
   const oldWords = ch.words || 0;
   const oldN = ch.n;
-  ['title', 'content', 'words', 'status', 'authorNote', 'debate'].forEach(k => {
+  ['title', 'content', 'words', 'status', 'authorNote'].forEach(k => {
     if (data[k] !== undefined) ch[k] = data[k];
   });
   if (data.poll !== undefined) ch.poll = normPollLike(data.poll);
   if (data.prediction !== undefined) ch.prediction = normPollLike(data.prediction);
+  if (data.debate !== undefined) ch.debate = normPollLike(data.debate);
   if (data.price !== undefined) {
     const p = Math.floor(Number(data.price));
     if (Number.isFinite(p) && p >= 0) ch.price = p;

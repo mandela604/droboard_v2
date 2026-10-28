@@ -7,6 +7,7 @@
 'use strict';
 const USE_API = false;
 const API_BASE = '/api/droboard-page';
+const RP = global.DroboardReactionPicker; // loaded from component/reaction-picker.js before this service
 
 function _seed(){ return global.DroboardPageSeed || {}; }
 
@@ -154,6 +155,7 @@ function switchTab(tab){
 
 function renderFeed(){
   const area=document.getElementById('feedArea'); if(!area) return;
+  if(window.DroboardExpiry){ [POSTS, MORE_POSTS].forEach(function(a){ DroboardExpiry.sweep(a, { isMine: p => p.mine || p.name === 'You' }); }); }
   const list=currentList();
   if(!list.length){
     area.innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i><h4>Nothing here yet</h4><p>No posts in this category right now — check back soon.</p></div>';
@@ -258,7 +260,7 @@ function loadMore(){
 
 function toast(msg, dur){ dur=dur||2500; const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},dur); }
 
-function openSupport(){ if(global.DroboardTip) DroboardTip.open('droboard-page'); }
+function openSupport(){ if(global.DroboardTip) DroboardTip.open('droboard-page', { name:'Droboard', handle:'@droboard · Official page', avatar:DROBOARD_LOGO }); }
 function sharePage(){ if(global.openShareModal) window.openShareModal({ title:'Droboard — Official Page', sub:'@droboard · Announcements, debates & story picks', img:DROBOARD_LOGO, url:'https://droboard.app/droboard' }); }
 
 function attachPostCard(){
@@ -327,10 +329,14 @@ function attachPostCard(){
   }
   function goDiscussion(id){ if(id) location.href='discussion.html?id='+encodeURIComponent(id); }
   mountInlineRef = mountInline;
-  // register custom types once
+  // register custom types once.
+  // Text uses .pcc-text (shared uniform clamp + measured "See more" from
+  // post-card's truncation pass) and images use .pcc-image (160px cap) —
+  // never emit bare classes: an unstyled <img> here used to render at
+  // natural height and blow up the whole card.
   try{
     DroboardPostCard.registerType('announcement', function(post){
-      return '<div class="dpc-body"><div class="drb-badge drb-badge-ann"><i class="fas fa-bullhorn"></i> Announcement</div>'+(post.title?'<div class="dpc-title">'+esc(post.title)+'</div>':'')+(post.text?'<div class="dpc-text trunc-5" id="dpc-txt-'+post.id+'">'+nl(esc(post.text))+'</div><span class="dpc-more" data-pid="'+post.id+'">See more <i class="fas fa-chevron-down" style="font-size:8px"></i></span>':'')+(post.image?'<img class="dpc-image" src="'+post.image+'" loading="lazy" data-image-open="1"/>':'')+'</div>';
+      return '<div class="dpc-body"><div class="drb-badge drb-badge-ann"><i class="fas fa-bullhorn"></i> Announcement</div>'+(post.title?'<div class="dpc-title">'+esc(post.title)+'</div>':'')+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+(post.image?'<img class="pcc-image" src="'+esc(post.image)+'" alt="" loading="lazy" data-image-open="1"/>':'')+'</div>';
     });
     DroboardPostCard.registerType('shoutout', function(post){
       const s=post.shoutout||{};
@@ -345,7 +351,7 @@ function attachPostCard(){
         const books=w&&w.books? w.books.length : '';
         if(reads!=='' || followers!=='' || books!=='') statBits='<span><b style="color:var(--tx-high)">'+esc(String(reads))+'</b> reads</span><span><b style="color:var(--tx-high)">'+esc(String(followers))+'</b> followers</span><span><b style="color:var(--tx-high)">'+esc(String(books))+'</b> books</span>';
       }
-      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="dpc-text trunc-5" id="dpc-txt-'+post.id+'">'+nl(esc(post.text))+'</div><span class="dpc-more" data-pid="'+post.id+'">See more <i class="fas fa-chevron-down" style="font-size:8px"></i></span>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+(s.avatar||(w&&w.avatar)||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||(w&&w.name)||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
+      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+(s.avatar||(w&&w.avatar)||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||(w&&w.name)||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
     });
   }catch(e){}
 
@@ -371,7 +377,7 @@ function attachPostCard(){
     onPollVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.poll) return; if(orig.poll.voted>=0) return toast('✅ Already voted!'); orig.poll.opts[oi].v++; orig.poll.voted=oi; orig.poll.total++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('✅ Vote cast!'); },
     onPredVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.prediction) return; if(orig.prediction.voted>=0) return toast('✅ Already predicted!'); orig.prediction.opts[oi].v=(orig.prediction.opts[oi].v||0)+1; orig.prediction.voted=oi; orig.prediction.total=(orig.prediction.total||0)+1; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('🔮 Prediction locked!'); },
     onDebateVote:function(post, side){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.debateData) return; if(orig.debateData.userVote) return toast('✅ Already voted!'); orig.debateData.userVote=side; if(side==='for') orig.debateData.forV++; else orig.debateData.agV++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast(side==='for'?'✅ Voted FOR!':'❌ Voted AGAINST!'); },
-    onOpenDebate:function(post){ goDiscussion(post.id); },
+    onOpenDebate:function(post){ location.href='debate.html?id='+encodeURIComponent(post.id); },
     onAvatarClick:function(){ window.scrollTo({top:0,behavior:'smooth'}); },
     onDots:function(post, anchor){ if(window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); },
     onReplySend:function(post){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig) return; orig.comments++; DroboardPostCard.update(mapPost(orig)); toast('💬 Reply posted!'); }
@@ -379,10 +385,10 @@ function attachPostCard(){
 
   if(RP){ RP.attachCounters(area, counterHooks()); }
 
-  // Every See more / text tap / debate footer → discussion page for that post
+  // Text tap / debate footer → discussion page for that post.
+  // NOTE: "See more" is deliberately NOT intercepted here — post-card.js
+  // expands the clamped block inline (same behavior as feed + profile).
   area.addEventListener('click', function(e){
-    const sm=e.target.closest('.dpc-more[data-pid], [data-pcc-readmore]');
-    if(sm){ const card=e.target.closest('.pcc-post'); const pid=(sm.dataset&&sm.dataset.pid)||(card&&card.dataset.pccId); if(pid) goDiscussion(pid); return; }
     const df=e.target.closest('.pcc-debate-footer');
     if(df){ const card=e.target.closest('.pcc-post'); if(card&&card.dataset.pccId) goDiscussion(card.dataset.pccId); return; }
     const ot=e.target.closest('[data-pcc-openpost]');

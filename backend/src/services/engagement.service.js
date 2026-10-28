@@ -1,5 +1,5 @@
 'use strict';
-const { Chapter, EngagementVote } = require('../models/content.model');
+const { Chapter, Book, EngagementVote } = require('../models/content.model');
 const { ReadingProgress } = require('../models/social.model');
 
 async function loadChapter(bookId, key) {
@@ -176,4 +176,81 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
   return { progress: doc, totalSecs: (totalAgg[0] && totalAgg[0].secs) || 0, referral };
 }
 
-module.exports = { loadChapter, vote, retract, results, trackProgress, readState };
+/* ══ STORY-WIDE ENGAGEMENT (book-level poll/prediction/debate) ══
+   Same shapes as chapter-wise but keyed by bookId with chapterId '' —
+   EngagementVote.bookId set, chapterId ''. Vote mutates the Book's
+   embedded arrays in place (matches the reader's record shape). */
+
+async function bookEngagement({ bookId, userId }) {
+  const book = await Book.findOne({ id: bookId }).select('id polls predictions debates').lean();
+  if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const mine = await EngagementVote.find({ bookId: bookId, userId, chapterId: '' }).lean();
+  const myVotes = {};
+  mine.forEach(v => { myVotes[v.kind] = v.optionIdx; });
+  return {
+    polls: book.polls || [],
+    predictions: book.predictions || [],
+    debates: book.debates || [],
+    myVotes,
+  };
+}
+
+async function bookVote({ bookId, userId, kind, id, option }) {
+  const book = await Book.findOne({ id: bookId });
+  if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const list = kind === 'poll' ? book.polls : kind === 'prediction' ? book.predictions : kind === 'debate' ? book.debates : null;
+  if (!list) { const e = new Error('bad_kind'); e.status = 400; throw e; }
+  const item = list.find(p => String(p.id) === String(id));
+  if (!item) { const e = new Error('not_found'); e.status = 404; throw e; }
+  if (item.expiresAt && new Date(item.expiresAt) < new Date()) { const e = new Error('closed'); e.status = 409; throw e; }
+
+  let optionIdx;
+  if (kind === 'debate') {
+    if (option !== 'for' && option !== 'against') { const e = new Error('bad_side'); e.status = 400; throw e; }
+    optionIdx = option === 'for' ? 0 : 1;
+  } else {
+    optionIdx = parseInt(option, 10);
+    if (!Number.isInteger(optionIdx) || optionIdx < 0 || optionIdx >= (item.opts || []).length) {
+      const e = new Error('bad_option'); e.status = 400; throw e;
+    }
+  }
+  try {
+    await EngagementVote.create({ chapterId: '', bookId: bookId, userId, kind, optionIdx });
+  } catch (e) {
+    if (e.code === 11000) { const err = new Error('already_voted'); err.status = 409; throw err; }
+    throw e;
+  }
+  if (kind === 'debate') {
+    if (optionIdx === 0) item.forV = (item.forV || 0) + 1;
+    else item.agV = (item.agV || 0) + 1;
+  } else {
+    item.opts[optionIdx].v = (item.opts[optionIdx].v || 0) + 1;
+  }
+  await book.save();
+  return Object.assign({ kind }, item.toJSON());
+}
+
+async function bookRetract({ bookId, userId, kind }) {
+  const vote = await EngagementVote.findOneAndDelete({ bookId: bookId, userId, kind, chapterId: '' });
+  if (!vote) { const e = new Error('no_vote'); e.status = 404; throw e; }
+  const book = await Book.findOne({ id: bookId });
+  if (!book) return { ok: true, kind };
+  if (kind === 'debate') {
+    const deb = book.debates.find(d => d && d.id && d.forV != null);
+    if (deb) {
+      if (vote.optionIdx === 0) deb.forV = Math.max(0, (deb.forV || 0) - 1);
+      else deb.agV = Math.max(0, (deb.agV || 0) - 1);
+      await book.save();
+    }
+  } else {
+    const list = kind === 'poll' ? book.polls : book.predictions;
+    const item = list.find(p => p && p.opts && p.opts[vote.optionIdx] != null);
+    if (item) {
+      item.opts[vote.optionIdx].v = Math.max(0, (item.opts[vote.optionIdx].v || 0) - 1);
+      await book.save();
+    }
+  }
+  return { ok: true, kind };
+}
+
+module.exports = { loadChapter, vote, retract, results, trackProgress, readState, bookEngagement, bookVote, bookRetract };

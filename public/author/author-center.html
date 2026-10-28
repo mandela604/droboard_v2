@@ -88,6 +88,8 @@ a{color:inherit;text-decoration:none}
   border:1.5px dashed #ffb8c8;background:rgba(255,45,85,.05);border-radius:14px;
   padding:20px 16px;text-align:center;cursor:pointer;
 }
+.quick-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+@media(max-width:560px){.quick-row{grid-template-columns:1fr}}
 .new-book-card:active{opacity:.85}
 .new-book-plus{width:38px;height:38px;border-radius:50%;background:#fff;color:var(--pink);display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 8px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .new-book-title{font-size:13.5px;font-weight:800;color:var(--pink);margin-bottom:3px}
@@ -132,6 +134,28 @@ a{color:inherit;text-decoration:none}
   background:rgba(255,45,85,.1);padding:2px 6px;border-radius:20px;text-transform:uppercase;
 }
 
+/* ──────── Writer verification ──────── */
+.verify-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+.verify-row{display:flex;align-items:center;gap:12px}
+.verify-badge{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,45,85,.1);color:var(--pink);font-size:15px;flex:none}
+.verify-badge.ok{background:var(--success-soft);color:var(--success)}
+.verify-badge.wait{background:var(--warning-soft);color:var(--warning)}
+.verify-copy{flex:1;min-width:0}
+.verify-title{font-size:13.5px;font-weight:800}
+.verify-sub{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:2px}
+.verify-btn{padding:9px 16px;border:none;border-radius:10px;background:var(--pink);color:#fff;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;flex:none}
+.verify-pill{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:20px;flex:none}
+.verify-pill.ok{background:var(--success-soft);color:var(--success)}
+.verify-pill.wait{background:var(--warning-soft);color:var(--warning)}
+.verify-overlay{position:fixed;inset:0;background:rgba(10,10,20,.45);z-index:400;display:none;justify-content:center;padding:28px 16px;overflow:auto}
+.verify-overlay.open{display:flex}
+.verify-sheet{width:100%;max-width:420px;height:max-content;background:var(--card);border-radius:16px;padding:16px;
+  --acc:#ff2d55;--l1:#fff;--tx-muted:#8e8e93;--border:#ebebed;--green:#22c55e}
+.verify-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.verify-head h2{margin:0;font-size:16px;font-weight:800}
+.verify-head p{margin:4px 0 0;font-size:11.5px;color:var(--muted);line-height:1.45}
+.verify-close{margin-left:auto;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.05);color:inherit;font-size:13px;flex:none}
+
 /* ──────── RESPONSIVE ──────── */
 @media (max-width:359px){
   .stat-num{font-size:17px}
@@ -168,25 +192,42 @@ a{color:inherit;text-decoration:none}
     <div class="stat-grid" id="statGrid"></div>
   </section>
 
+  <section class="section" id="verification">
+    <div class="sec-head"><h2 class="sec-title">Writer Verification</h2></div>
+    <div class="verify-card" id="verifyCard"></div>
+  </section>
+
   <section class="section" style="margin-bottom:6px">
     <div class="sec-head"><h2 class="sec-title">My Books</h2><span class="view-all">View All ›</span></div>
     <div id="bookList"></div>
-    <div class="new-book-card" id="newBookBtn">
-      <div class="new-book-plus"><i class="fas fa-plus"></i></div>
-      <div class="new-book-title">New Book</div>
-      <div class="new-book-sub">Start writing your next great story.</div>
+    <div class="quick-row">
+      <div class="new-book-card" id="newBookBtn">
+        <div class="new-book-plus"><i class="fas fa-plus"></i></div>
+        <div class="new-book-title">New Book</div>
+        <div class="new-book-sub">Start writing your next great story.</div>
+      </div>
+      <div class="new-book-card" onclick="location.href='flyer-templates.html'">
+        <div class="new-book-plus" style="background:rgba(255,45,85,.1);color:var(--pink)"><i class="fas fa-images"></i></div>
+        <div class="new-book-title">Flyer Templates</div>
+        <div class="new-book-sub">Edit a ready-made flyer with your story, then share it.</div>
+      </div>
     </div>
   </section>
 
-  <section class="section" style="margin-bottom:6px">
-    <div class="sec-head"><h2 class="sec-title">Promote Your Work</h2></div>
-    <div class="new-book-card" onclick="location.href='flyer-templates.html'" style="cursor:pointer">
-      <div class="new-book-plus" style="background:rgba(255,45,85,.1);color:var(--pink)"><i class="fas fa-images"></i></div>
-      <div class="new-book-title">Flyer Templates</div>
-      <div class="new-book-sub">Edit a ready-made flyer with your story, then share it.</div>
-    </div>
-  </section>
+</div>
 
+<!-- Writer verification sheet -->
+<div class="verify-overlay" id="verifyOverlay">
+  <div class="verify-sheet">
+    <div class="verify-head">
+      <div>
+        <h2>Writer Verification</h2>
+        <p>Confirm your identity once — it earns your verified badge and unlocks contract signing later.</p>
+      </div>
+      <button class="verify-close" id="verifyClose" type="button"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div id="verifyMount"></div>
+  </div>
 </div>
 
 <!-- Hamburger drawer -->
@@ -202,10 +243,12 @@ a{color:inherit;text-decoration:none}
 
 <!-- Platform bottom nav removed: author pages carry no bottom nav -->
 <script src="../component/book-card.js"></script>
+<script src="../component/kyc-form.js?v=1"></script>
 <script src="services/api-config.js"></script>
-<script src="services/drawer-service.js"></script>
+<script src="services/drawer-service.js?v=2"></script>
 <script src="services/author-center-service.js?v=2"></script>
-<script>AuthorCenterService.init();</script>
+<script src="services/verification-service.js?v=2"></script>
+<script>AuthorCenterService.init(); VerificationService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

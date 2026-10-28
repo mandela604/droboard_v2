@@ -15,7 +15,7 @@
     await delay(); return { bookId: bookId, num: num, title: 'Chapter ' + num, content: '' };
   };
   Svc.save = Svc.save || async function (bookId, num, payload) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/chapters/' + num, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (r.ok) return await r.json(); } catch (e) {} }
+    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/chapters/' + num, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (r.ok) return await r.json(); } catch (e) {} }
     await delay(250); return { ok: true };
   };
 

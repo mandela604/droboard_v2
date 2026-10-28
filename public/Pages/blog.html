@@ -21,12 +21,15 @@ body{font-family:var(--font-body);background:var(--divider);display:flex;justify
 .post-title{font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--ink);margin-bottom:4px}
 .post-excerpt{font-size:12px;color:var(--gray-600);line-height:1.5;margin-bottom:8px}
 .post-meta{font-size:10px;color:var(--gray-400);font-weight:600;display:flex;align-items:center;gap:8px}
-.ad-box{background:var(--divider);border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;font-size:11px;color:var(--gray-400);font-weight:700;margin:0 16px 12px}
-.ad-box span{background:var(--pink);color:#fff;padding:2px 6px;border-radius:6px;font-size:9px;margin-right:6px}
 </style>
+<script src="../data/central-demo-data.js"></script>
 <script src="../services/store-service.js"></script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
+<script src="../component/ad-card.js?v=6"></script>
+<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
+<script src="../component/ad-slot.js?v=2"></script>
 </head>
 <body>
 <div class="phone">
@@ -43,11 +46,11 @@ body{font-family:var(--font-body);background:var(--divider);display:flex;justify
 
   <div class="progress-card" id="progressCard"></div>
 
-  <div class="ad-box"><span>Ad</span> Sponsored — Ads here earn for you (ca-pub-YOUR_ID) — 1k impressions = RPM</div>
+  <div data-ad-slot="blog:top" data-ad-format="minibanner" style="margin:0 16px 12px"></div>
 
   <div id="blogList"></div>
 
-  <div class="ad-box"><span>Ad</span> More from our sponsors — thank you for reading</div>
+  <div data-ad-slot="blog:bottom" data-ad-format="minibanner" style="margin:0 16px 12px"></div>
 </div>
 
 <script src="../services/blog-service.js"></script>

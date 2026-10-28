@@ -27,7 +27,7 @@
 if (window.__droboardReportsTable) return;
 window.__droboardReportsTable = true;
 
-const USE_API = false;
+const USE_API = true;
 // Chief serves this at /api/chief/reports/story; senior serves its own queue at
 // /api/senior-editor/reports. Pages can override before this file loads.
 const API_BASE = window.DROBOARD_REPORTS_API_BASE || '/api/chief/reports/story';
@@ -64,17 +64,82 @@ function readOverlay(){
 function writeOverlay(ov){
   try { localStorage.setItem(LS_KEY, JSON.stringify(ov)); } catch (e){}
 }
+/* ── Live list: backend rows replace the seed once a fetch succeeds ── */
+var LIVE_ROWS = null; // null = not fetched yet → seed
+function mapLiveRow(r){
+  return {
+    id: r.id,
+    seId: r.seId || '',
+    seName: r.seName || '',
+    authorId: r.authorId || '',
+    storyId: r.storyId || '',
+    storyTitle: r.storyTitle || r.title || 'Reported item',
+    author: r.author || '',
+    cover: r.cover || '',
+    chapter: r.chapter || '',
+    chN: r.chN || 1,
+    type: r.type || 'other',
+    severity: r.severity || 'medium',
+    desc: r.desc || '',
+    reporter: r.reporter || r.reporterLabel || '',
+    status: r.status || 'pending',
+    date: r.date || '',
+    resolvedBy: r.resolvedBy || ''
+  };
+}
+// Walks pages of 50 up to 4 pages (200 rows) — backend caps limit at 50.
+async function loadLiveList(){
+  if (!USE_API) return null;
+  var all = [];
+  for (var p = 1; p <= 4; p++){
+    var d = await callBackend('?page=' + p + '&limit=50');
+    var rows = (d && d.items) || [];
+    all = all.concat(rows.map(mapLiveRow));
+    var total = d && typeof d.total === 'number' ? d.total : all.length;
+    if (all.length >= total || rows.length < 50) break;
+  }
+  return all;
+}
 function allReports(){
   var ov = readOverlay();
-  return SEED.map(function(s){
+  var base = LIVE_ROWS !== null ? LIVE_ROWS : SEED;
+  var list = base.map(function(s){
     var patch = ov[s.id];
     return patch ? Object.assign({}, s, patch) : Object.assign({}, s);
   });
+  // Full records added by other modules (e.g. a senior editor flagging a book
+  // in Book Management) live only in the overlay — merge them in by id.
+  var known = {};
+  base.forEach(function(s){ known[s.id] = true; });
+  Object.keys(ov).forEach(function(id){
+    if (!known[id] && ov[id] && ov[id].storyTitle) list.push(Object.assign({ id: id }, ov[id]));
+  });
+  return list;
 }
 function savePatch(id, patch){
   var ov = readOverlay();
   ov[id] = Object.assign({}, ov[id], patch);
   writeOverlay(ov);
+}
+function addReport(rec){
+  if (!rec || !rec.id) return null;
+  var ov = readOverlay();
+  ov[rec.id] = Object.assign({}, ov[rec.id], rec);
+  writeOverlay(ov);
+  return Object.assign({}, rec);
+}
+function patchReport(id, patch){
+  var exists = SEED.some(function(s){ return s.id === id; }) || !!readOverlay()[id];
+  if (!exists) return null;
+  savePatch(id, patch);
+  return true;
+}
+function removeReport(id){
+  var ov = readOverlay();
+  if (!ov[id]) return false;
+  delete ov[id];
+  writeOverlay(ov);
+  return true;
 }
 function normSe(v){ return String(v || '').toLowerCase(); }
 function inScope(r, seIds){
@@ -155,6 +220,29 @@ const CSS = `
 .drt-kv span{color:var(--text-muted);font-weight:600}
 .drt-kv b{text-align:right}
 .drt-modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px 18px;border-top:1px solid var(--border);flex-wrap:wrap}
+.drt-acc{display:flex;flex-direction:column;gap:10px}
+.drt-acc-item{border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden;transition:.15s}
+.drt-acc-item:hover{border-color:var(--accent)}
+.drt-acc-item.open{border-color:var(--accent);box-shadow:0 4px 16px rgba(255,0,80,.08)}
+.drt-acc-head{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer}
+.drt-acc-cover{width:34px;height:48px;border-radius:7px;object-fit:cover;flex-shrink:0;background:var(--table-head)}
+.drt-acc-tw{flex:1;min-width:150px}
+.drt-acc-t1{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.drt-acc-t1 small{color:var(--text-faint);font-weight:600}
+.drt-acc-t2{font-size:10.5px;color:var(--text-faint);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.drt-acc-se{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--text-muted)}
+.drt-acc-se img{width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.drt-acc-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.drt-chev{font-size:11px;color:var(--text-faint);flex-shrink:0;transition:transform .18s;margin-left:4px}
+.drt-acc-item.open .drt-chev{transform:rotate(180deg)}
+.drt-acc-body{display:none;border-top:1px solid var(--border);padding:14px 16px 16px;background:var(--table-head)}
+.drt-acc-item.open .drt-acc-body{display:block}
+.drt-acc-reason{display:flex;gap:9px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:12.5px;color:var(--text);line-height:1.55;margin-bottom:12px}
+.drt-acc-reason i{color:var(--red);margin-top:3px}
+.drt-acc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;margin-bottom:6px}
+.drt-acc-grid .drt-kv span{color:var(--text-muted)}
+.drt-acc-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)}
+@media (max-width:640px){.drt-acc-head{flex-wrap:wrap}.drt-acc-badges{width:100%;justify-content:flex-start}.drt-acc-grid{grid-template-columns:1fr}}
 `;
 function injectStyles(){
   if (document.getElementById('drt-style')) return;
@@ -183,13 +271,20 @@ function attach(mount, opts){
   const canResolve = opts.canResolve !== false;
   const showSeFilter = !!opts.showSeFilter;
   const pageSize = opts.pageSize || 6;
+  const layout = opts.layout === 'accordion' ? 'accordion' : 'cards';
+  const pendingOnly = !!opts.pendingOnly;
+  const seAvatars = opts.seAvatars || {};
   const onChapter = opts.onChapter || function(r){ location.href = chapterUrl(r); };
   const onChange = opts.onChange || null;
 
   let tab = 'all', q = '', type = '', se = '', sort = 'newest', page = 1;
+  const openIds = {};
   const instId = 'drt' + (++attach._n || (attach._n = 1));
 
-  function scoped(){ return getScoped(seIds); }
+  function scoped(){
+    var list = getScoped(seIds);
+    return pendingOnly ? list.filter(function(r){ return r.status === 'pending'; }) : list;
+  }
   function seOptions(){
     const map = {};
     scoped().forEach(function(r){ map[r.seId] = r.seName || r.seId; });
@@ -263,23 +358,71 @@ function attach(mount, opts){
         + '<button class="drt-btn danger" data-drt-dismiss="' + r.id + '"><i class="fas fa-xmark"></i> Dismiss</button>' : '')
       + '</div></div>';
   }
+  function seChip(r){
+    const av = seAvatars[r.seId] ? '<img src="' + esc(seAvatars[r.seId]) + '" alt=""/>' : '';
+    return '<span class="drt-acc-se">' + av + esc(r.seName || r.seId) + '</span>';
+  }
+  function accHtml(r){
+    const open = !!openIds[r.id];
+    const rows = [
+      ['Report ID', r.id],
+      ['Flagged by', (r.seName || '—') + ' (' + (r.seId || '—') + ')'],
+      ['Target', (r.chapter || 'Entire story') + ' · by ' + r.author],
+      ['Type', (TYPE_LABEL[r.type] || r.type) + ' · ' + r.severity + ' severity'],
+      ['Filed', r.date]
+    ];
+    if (!pendingOnly) {
+      rows.push(['Status', r.status]);
+      if (r.resolvedBy) rows.push(['Handled by', r.resolvedBy]);
+    }
+    return '<div class="drt-acc-item' + (open ? ' open' : '') + '" data-drt-item="' + r.id + '">'
+      + '<div class="drt-acc-head" data-drt-toggle="' + r.id + '">'
+      + '<img class="drt-acc-cover" src="' + esc(r.cover || '') + '" alt=""/>'
+      + '<div class="drt-acc-tw"><div class="drt-acc-t1">' + esc(r.storyTitle)
+      + ' <small>' + esc(r.chapter || '') + '</small></div>'
+      + '<div class="drt-acc-t2">by ' + esc(r.author) + ' · flagged by ' + seChip(r) + '</div></div>'
+      + '<div class="drt-acc-badges"><span class="drt-pill type-' + r.type + '">' + (TYPE_LABEL[r.type] || r.type) + '</span>'
+      + '<span class="drt-pill sev-' + r.severity + '">' + r.severity + '</span>'
+      + (pendingOnly ? '' : '<span class="drt-pill status-' + r.status + '">' + r.status + '</span>') + '</div>'
+      + '<i class="fas fa-chevron-down drt-chev"></i></div>'
+      + '<div class="drt-acc-body">'
+      + '<div class="drt-acc-reason"><i class="fas fa-flag"></i><span>' + esc(r.desc) + '</span></div>'
+      + '<div class="drt-acc-grid">' + rows.map(function(kv){
+          return '<div class="drt-kv"><span>' + kv[0] + '</span><b>' + esc(kv[1]) + '</b></div>';
+        }).join('') + '</div>'
+      + '<div class="drt-acc-foot">'
+      + '<button class="drt-btn" data-drt-view="' + r.id + '"><i class="fas fa-eye"></i> Open chapter</button>'
+      + '<span style="flex:1"></span>'
+      + '<span style="font-size:10.5px;color:var(--text-faint);font-weight:600"><i class="fas fa-lock"></i> View-only — handled in the editor\'s own queue</span>'
+      + '</div></div></div>';
+  }
   function render(){
     const list = filtered();
     const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
     if (page > totalPages) page = totalPages;
     const start = (page - 1) * pageSize;
     const items = list.slice(start, start + pageSize);
-    let h = tabHtml() + toolbarHtml();
-    h += items.length
-      ? '<div class="drt-list">' + items.map(cardHtml).join('') + '</div>'
-      : '<div class="drt-empty"><i class="fas fa-flag" style="font-size:24px;display:block;margin-bottom:8px"></i>No story reports match.</div>';
+    let h = (pendingOnly ? '' : tabHtml()) + toolbarHtml();
+    const emptyHtml = '<div class="drt-empty"><i class="fas fa-flag" style="font-size:24px;display:block;margin-bottom:8px"></i>'
+      + (pendingOnly ? 'No books are currently flagged.' : 'No story reports match.') + '</div>';
+    if (layout === 'accordion') {
+      h += items.length
+        ? '<div class="drt-acc">' + items.map(accHtml).join('') + '</div>'
+        : emptyHtml;
+    } else {
+      h += items.length
+        ? '<div class="drt-list">' + items.map(cardHtml).join('') + '</div>'
+        : emptyHtml;
+    }
     h += '<div class="drt-pager"><div class="drt-pg-info">Showing ' + (list.length ? start + 1 : 0) + '–' + Math.min(start + pageSize, list.length) + ' of ' + list.length + '</div>'
       + '<div class="drt-pg-controls"><button class="drt-pg-btn" data-drt-pg="prev"' + (page === 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
     for (let p = 1; p <= totalPages; p++) {
       h += '<button class="drt-pg-btn' + (p === page ? ' active' : '') + '" data-drt-pg="' + p + '">' + p + '</button>';
     }
     h += '<button class="drt-pg-btn" data-drt-pg="next"' + (page === totalPages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button></div></div>';
-    h += '<div class="drt-overlay" data-drt-ov><div class="drt-modal"><div class="drt-modal-head"><b>Report details</b><button class="drt-modal-x" data-drt-close>✕</button></div><div class="drt-modal-body" data-drt-modalbody></div><div class="drt-modal-foot" data-drt-modalfoot></div></div></div>';
+    if (layout !== 'accordion') {
+      h += '<div class="drt-overlay" data-drt-ov><div class="drt-modal"><div class="drt-modal-head"><b>Report details</b><button class="drt-modal-x" data-drt-close>✕</button></div><div class="drt-modal-body" data-drt-modalbody></div><div class="drt-modal-foot" data-drt-modalfoot></div></div></div>';
+    }
     root.innerHTML = h;
     bind();
   }
@@ -325,6 +468,8 @@ function attach(mount, opts){
   function doReopen(id){
     const r = find(id);
     if (!r || r.status === 'pending' || !canResolve) return;
+    // Senior endpoint has no reopen route — a 404 here is caught and ignored.
+    callBackend('/' + id + '/reopen', { method: 'POST' }).catch(function(){});
     savePatch(id, { status: 'pending', resolvedBy: '' });
     render(); emit();
   }
@@ -363,6 +508,17 @@ function attach(mount, opts){
     root.querySelectorAll('[data-drt-dismiss]').forEach(function(b){
       b.addEventListener('click', function(e){ e.stopPropagation(); doDismiss(b.getAttribute('data-drt-dismiss')); });
     });
+    root.querySelectorAll('[data-drt-reopen]').forEach(function(b){
+      b.addEventListener('click', function(e){ e.stopPropagation(); doReopen(b.getAttribute('data-drt-reopen')); });
+    });
+    root.querySelectorAll('[data-drt-toggle]').forEach(function(hd){
+      hd.addEventListener('click', function(e){
+        if (e.target.closest('button')) return;
+        const id = hd.getAttribute('data-drt-toggle');
+        if (openIds[id]) delete openIds[id]; else openIds[id] = true;
+        render();
+      });
+    });
     root.querySelectorAll('[data-drt-open]').forEach(function(card){
       card.addEventListener('click', function(e){
         if (e.target.closest('[data-drt-view],[data-drt-resolve],[data-drt-dismiss],button')) return;
@@ -391,6 +547,14 @@ function attach(mount, opts){
   }
 
   render();
+  // Live list: seed paints instantly, then backend rows swap in on success.
+  loadLiveList().then(function(rows){
+    if (!rows || !rows.length) return;
+    LIVE_ROWS = rows;
+    render();
+  }).catch(function(e){
+    console.warn('[ReportsTable] live list unavailable, using demo seed', e);
+  });
   return {
     refresh: function(){ render(); emit(); },
     scoped: function(){ return getScoped(seIds); },
@@ -398,6 +562,6 @@ function attach(mount, opts){
   };
 }
 
-window.DroboardReportsTable = { attach: attach, getScoped: getScoped, stats: stats, chapterUrl: chapterUrl };
+window.DroboardReportsTable = { attach: attach, getScoped: getScoped, stats: stats, chapterUrl: chapterUrl, addReport: addReport, patchReport: patchReport, removeReport: removeReport };
 
 })();

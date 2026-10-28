@@ -41,6 +41,10 @@
     .cm-slider:before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
     .cm-switch input:checked + .cm-slider{background:var(--accent,#ff0050)}
     .cm-switch input:checked + .cm-slider:before{transform:translateX(18px)}
+    .cm-master{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--input-bg,#fafafa);border:1.5px solid var(--input-border,#e5e5e5);border-radius:10px;padding:11px 14px;margin-bottom:12px;transition:.15s}
+    .cm-master.on{background:var(--green-bg,#e4f8ea);border-color:rgba(22,163,74,.3)}
+    .cm-master .t b{display:block;font-size:12.5px;font-weight:800;color:var(--text,#1a1730)}
+    .cm-master .t span{display:block;font-size:10.5px;color:var(--text-faint,#999);margin-top:2px}
     .cm-search{display:flex;align-items:center;gap:9px;background:var(--input-bg,#fff);border:1.5px solid var(--input-border,#ddd);border-radius:10px;padding:9px 14px;margin:14px 0 10px}
     .cm-search:focus-within{border-color:var(--accent,#ff0050)}
     .cm-search input{border:none;background:none;outline:none;flex:1;font-size:12.5px;font-family:inherit;color:var(--text,#1a1730)}
@@ -109,6 +113,9 @@
       adsPerChapter: Math.max(0, parseInt(init.adsPerChapter, 10) || 0),
       allowAdUnlock: init.allowAdUnlock !== false,
       readOnly: !!opts.readOnly,
+      // Some pages (the review queue wizard) only need the controls — the
+      // per-chapter summary below is noise there and is turned off by the caller.
+      hideSummary: !!opts.hideSummary,
       query: '',
       rows: chapters.map(function (c) {
         var free = c.num <= (Math.max(0, parseInt(init.freeChapters, 10) || 0));
@@ -202,7 +209,7 @@
       if (state.allowAdUnlock) {
         h += '<div class="cm-note"><i class="fas fa-circle-info"></i><span>Ad count set above. Override per chapter when saving.</span></div>';
       }
-      h += summaryHTML(t);
+      if (!state.hideSummary) h += summaryHTML(t);
       h += '</div>';
       root.innerHTML = h;
     }

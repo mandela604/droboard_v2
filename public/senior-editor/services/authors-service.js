@@ -1,12 +1,12 @@
 (function(){
 'use strict';
 
-/* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+/* ── Backend header — live endpoints with demo fallbacks ── */
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
-  const res = await fetch(API_BASE + path, options);
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
   if (!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
 }
@@ -37,20 +37,24 @@ function attachShell(){
    LOAD DATA — backend first (scoped to THIS editor's assigned authors),
    demo fallback.
 ───────────────────────────────────────── */
-// Backend returns plain users; the page expects the richer demo author shape.
+// Backend returns decorated authors (story count, earnings, invite provenance);
+// demo rows already use the page shape.
 function mapBackendAuthor(u){
   return {
-    id: u.id, name: u.fullName || u.username || '', username: u.username || '',
-    email: u.email || '', avatar: u.avatar || '',
-    genre: (u.genres && u.genres[0]) || u.authorGenre || '—',
-    stories: u.books || 0,
+    id: u.id,
+    name: u.name || u.fullName || u.username || 'Unknown',
+    username: u.username || '',
+    email: u.email || '',
+    avatar: u.avatar || '../assets/droboard-icon.png',
+    genre: u.genre || (u.genres && u.genres[0]) || '—',
+    stories: u.stories || 0,
     earnings: u.earnings || '—',
-    source: u.via ? (u.via === 'assigned' ? 'assigned' : 'invited') : 'assigned',
+    source: u.source || (u.via === 'assigned' ? 'assigned' : 'invited'),
     status: u.status || 'active',
     warnings: u.warnings || 0,
-    joined: u.createdAt
+    joined: u.joined || (u.createdAt
       ? new Date(u.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-      : '—',
+      : '—'),
   };
 }
 
@@ -97,21 +101,21 @@ function mergeAuthors(assigned, referred){
 async function loadAuthors(){
   let assigned = [];
   try{
-    const remote = await callBackend('/authors?limit=100');
-    if (remote && remote.items) {
-      assigned = remote.items.map(mapBackendAuthor);
-      usingDemoData = false;
-    } else {
+    const remote = await callBackend('/authors?limit=200');
+    if (!remote || !Array.isArray(remote.items)) throw new Error('no authors endpoint');
+    assigned = remote.items.map(mapBackendAuthor);
+    usingDemoData = false;
+  }catch(err){
+    console.warn('Authors live data unavailable, using demo:', err.message);
+    usingDemoData = true;
+    try{
       const data = await SeniorEditorData.getAuthors();
       assigned = (Array.isArray(data) ? data : (data.authors || []))
-        .map(a => Object.assign({}, a, { source:'assigned' }));
-      usingDemoData = false;
-    }
-  }catch(err){
-    console.warn('Authors data unavailable:', err.message);
-    usingDemoData = true;
+        .map(a => Object.assign({}, a, { source: a.source || 'assigned' }));
+    }catch(e){ assigned = []; }
   }
-  AUTHORS = mergeAuthors(assigned, referredWriters().map(mapReferredWriter));
+  const extra = usingDemoData ? referredWriters().map(mapReferredWriter) : [];
+  AUTHORS = mergeAuthors(assigned, extra);
   populateGenreFilter();
   renderStats();
   renderAuthors();

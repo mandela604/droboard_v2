@@ -117,6 +117,16 @@
   let _draftKey = '';
 
   function val(id){ const el=document.getElementById(id); return el ? el.value : ''; }
+  /* deadline chips — component/expiry-chips.js; silent no-op if a page omits it */
+  function _expField(kind){
+    if(!window.DroboardExpiry) return '';
+    const ts = _editingPost && _editingPost.expiresAt;
+    return DroboardExpiry.field(kind, ts ? { expiresAt: ts } : {});
+  }
+  function _expAt(kind){
+    if(!window.DroboardExpiry) return null;
+    return DroboardExpiry.expiresAt(kind, document.getElementById('dpcBody'));
+  }
   function storyPool(){
     const out = [];
     const seen = new Set();
@@ -158,7 +168,7 @@
       } else if(_currentType==='debate'){
         d.text=val('dpcDebateQ'); d.prompt=val('dpcDebatePrompt'); d.forT=val('dpcFor'); d.against=val('dpcAgainst');
       } else if(_currentType==='ama'){
-        d.text=val('dpcAmaTitle'); d.meta=val('dpcAmaMeta'); d.viewers=val('dpcAmaViewers');
+        d.text=val('dpcAmaTitle'); d.meta=val('dpcAmaMeta');
       } else if(_currentType==='quote'){
         d.text=val('dpcQuote'); d.caption=val('dpcCaption'); d.bg=_quoteBg;
       }
@@ -233,7 +243,6 @@
       } else if(_currentType==='ama'){
         if(d.text) setVal('dpcAmaTitle', d.text);
         if(d.meta) setVal('dpcAmaMeta', d.meta);
-        if(d.viewers) setVal('dpcAmaViewers', d.viewers);
       } else if(_currentType==='quote'){
         if(d.text) setVal('dpcQuote', d.text);
         if(d.caption) setVal('dpcCaption', d.caption);
@@ -319,6 +328,7 @@
       h = `
         <div class="dpc-field"><label class="dpc-label">Poll question</label><textarea id="dpcPollQ" class="dpc-textarea" placeholder="Ask a question…"></textarea></div>
         <div class="dpc-field"><label class="dpc-label">Options (2-4)</label><div id="dpcPollOpts"></div><button class="dpc-add-opt" id="dpcAddOpt">+ Add option</button></div>
+        ${_expField('poll')}
         <div class="dpc-field"><label class="dpc-label">Add image to poll (optional)</label><input type="file" id="dpcPollImageFile" accept="image/*" class="dpc-input"/><div class="dpc-hint">or paste image URL</div><input id="dpcPollImageUrl" class="dpc-input" style="margin-top:8px" placeholder="https://..."/><div id="dpcPollImgPrev" class="dpc-image-preview"><img id="dpcPollImgPrevImg" src="" data-noguard/></div></div>
       `;
     } else if(_currentType==='debate'){
@@ -329,12 +339,12 @@
           <div class="dpc-field"><label class="dpc-label">For</label><input id="dpcFor" class="dpc-input" maxlength="60" placeholder="Yes, everyone deserves…"/></div>
           <div class="dpc-field"><label class="dpc-label">Against</label><input id="dpcAgainst" class="dpc-input" maxlength="60" placeholder="No, some actions…"/></div>
         </div>
+        ${_expField('debate')}
       `;
     } else if(_currentType==='ama'){
       h = `
         <div class="dpc-field"><label class="dpc-label">AMA title</label><input id="dpcAmaTitle" class="dpc-input" placeholder="Ask Ada_Writes Anything 🎙"/></div>
         <div class="dpc-field"><label class="dpc-label">Description</label><textarea id="dpcAmaMeta" class="dpc-textarea" placeholder="Writing process · Where Season 3 is going…"></textarea></div>
-        <div class="dpc-field"><label class="dpc-label">Viewers (optional)</label><input id="dpcAmaViewers" type="number" class="dpc-input" placeholder="e.g. 342"/></div>
       `;
     } else if(_currentType==='quote'){
       h = `
@@ -394,7 +404,6 @@
       } else if(_currentType==='ama' && _editingPost.amaData){
         document.getElementById('dpcAmaTitle').value = _editingPost.amaData.title||'';
         document.getElementById('dpcAmaMeta').value = _editingPost.amaData.meta||'';
-        document.getElementById('dpcAmaViewers').value = _editingPost.amaData.viewers||'';
       } else if(_currentType==='quote'){
         document.getElementById('dpcQuote').value = _editingPost.quote||'';
         document.getElementById('dpcCaption').value = _editingPost.caption||'';
@@ -707,7 +716,7 @@
       chStory.addEventListener('click', function(){ if(!chHits.innerHTML) paintChHits(); });
     }
     // persist every other field too, so leaving mid-post never loses text
-    ['dpcHeading','dpcImageUrl','dpcPollQ','dpcPollImageUrl','dpcDebateQ','dpcDebatePrompt','dpcFor','dpcAgainst','dpcAmaTitle','dpcAmaMeta','dpcAmaViewers','dpcQuote','dpcCaption','dpcChText'].forEach(function(id){
+    ['dpcHeading','dpcImageUrl','dpcPollQ','dpcPollImageUrl','dpcDebateQ','dpcDebatePrompt','dpcFor','dpcAgainst','dpcAmaTitle','dpcAmaMeta','dpcQuote','dpcCaption','dpcChText'].forEach(function(id){
       const el=document.getElementById(id); if(el) el.addEventListener('input', function(){ validate(); saveDraft(); });
     });
     try {
@@ -848,6 +857,7 @@
       else if(pollUrl && pollUrl.value.trim()) image=pollUrl.value.trim();
       else if(pollFile && pollFile.files[0]) image=URL.createObjectURL(pollFile.files[0]);
       const post={...base, type:'poll', poll:{ question:q, opts, total:0, voted:-1 }};
+      const exp=_expAt('poll'); if(exp) post.expiresAt=exp;
       if(image) post.image=image;
       return post;
     }
@@ -856,12 +866,13 @@
       const prompt=document.getElementById('dpcDebatePrompt').value.trim();
       const f=document.getElementById('dpcFor').value.trim();
       const a=document.getElementById('dpcAgainst').value.trim();
-      return {...base, type:'debate', debateData:{ motion:q, question:q, prompt, forText:f, againstText:a, forV:0, agV:0, userVote:null }};
+      const exp=_expAt('debate');
+      return {...base, type:'debate', expiresAt:exp||undefined, debateData:{ motion:q, question:q, prompt, forText:f, againstText:a, forV:0, agV:0, userVote:null }};
     }
     if(_currentType==='ama'){
       const title=document.getElementById('dpcAmaTitle').value.trim();
       const meta=document.getElementById('dpcAmaMeta').value.trim();
-      const viewers=parseInt(document.getElementById('dpcAmaViewers').value,10)||Math.floor(Math.random()*200+20);
+      const viewers=Math.floor(Math.random()*200+20);
       return {...base, type:'ama', amaData:{ isLive:true, viewers, title, meta: meta||'Ask me anything' }};
     }
     if(_currentType==='quote'){

@@ -175,6 +175,9 @@ const conversationSchema = new mongoose.Schema({
   participants: [{ type: String, ref: 'User', index: true }],
   preview: { type: String, default: '' },
   unreadBy: [{ type: String, ref: 'User' }],
+  // Senior-editor inbox controls (persisted; previously write-only in memory).
+  flagged: { type: Boolean, default: false },
+  status: { type: String, enum: ['open', 'closed'], default: 'open' },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
@@ -262,6 +265,19 @@ const bookRatingSchema = new mongoose.Schema({
 }, { timestamps: true });
 bookRatingSchema.index({ bookId: 1, userId: 1 }, { unique: true });
 
+// Surface analytics hits (insights-service.js / shared/insights-tracker.js):
+// hub|droboard|profile|collection per target, one row per (surface, target,
+// day, user) so charts can bucket by day. Anonymous hits have userId null.
+const insightHitSchema = new mongoose.Schema({
+  surface: { type: String, required: true, index: true }, // hub|droboard|profile|collection
+  targetId: { type: String, default: '', index: true },
+  userId: { type: String, ref: 'User', default: null, index: true },
+  country: { type: String, default: '' },
+  day: { type: String, required: true }, // YYYY-MM-DD (UTC)
+  count: { type: Number, default: 0 },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+insightHitSchema.index({ surface: 1, targetId: 1, day: 1, userId: 1 }, { unique: true });
+
 module.exports = {
   Post: mongoose.model('Post', postSchema),
   Comment: mongoose.model('Comment', commentSchema),
@@ -282,4 +298,5 @@ module.exports = {
   ShareEvent: mongoose.model('ShareEvent', shareEventSchema),
   ContentImpression: mongoose.model('ContentImpression', contentImpressionSchema),
   BookRating: mongoose.model('BookRating', bookRatingSchema),
+  InsightHit: mongoose.model('InsightHit', insightHitSchema),
 };

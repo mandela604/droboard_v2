@@ -1,21 +1,38 @@
 (function(){
 'use strict';
 
-/* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+/* ── Backend header — live endpoints with demo fallbacks ── */
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
-  const res = await fetch(API_BASE + path, options);
-  if (!res.ok) throw new Error('backend error: ' + res.status);
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
+  if (!res.ok) {
+    let body = {};
+    try { body = await res.json(); } catch (e) { /* non-JSON error */ }
+    const err = new Error((body && body.error) || ('backend error: ' + res.status));
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
 /* Demo handoff: review outcomes feed the reader -> writer UI on the profile.
    Backend replaces this once the API owns submissions. Returns true if this
    queue item was the current reader's pending book. */
+let LIVE = false;
+async function decideReview(id, status, feedback, contract){
+  if (!LIVE) return { ok: true, demo: true };
+  const body = { action: status, feedback: feedback || undefined };
+  if (contract) body.contract = contract;
+  return callBackend('/review-queue/' + encodeURIComponent(id), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
 function recordFlowOutcome(s, status, feedback){
-  if (USE_API) return false;
+  if (LIVE) return false;
   try {
     const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
     if (!flow || flow.status !== 'pending') return false;
@@ -31,7 +48,7 @@ function recordFlowOutcome(s, status, feedback){
 /* Demo handoff: surface the current reader's pending book at the top of the
    queue so an editor can review it (the API serves this later). */
 function ownPendingSubmission(){
-  if (USE_API) return null;
+  if (LIVE) return null;
   try {
     const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
     if (!flow || flow.status !== 'pending' || !flow.title) return null;
@@ -108,16 +125,16 @@ function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
 /* "Backend" contract types — tries a real endpoint first, falls back to demo
    data since there's no live contracts API yet. */
 const DEMO_CONTRACTS = [
-  { id: 'standard', label: 'Standard Royalty Contract', detail: '60/40 author-platform split · non-exclusive' },
-  { id: 'premium',  label: 'Premium Exclusive Contract', detail: '70/30 author-platform split · exclusive, 12-month term' },
-  { id: 'flex',     label: 'Flex Starter Contract',       detail: '50/50 split · month-to-month, for new authors' },
+  { id: 'standard', label: 'Standard Royalty Contract', detail: '60/40 author-platform split · non-exclusive', type: 'Non_Exclusive', termMonths: 12, revenueSplit: 60 },
+  { id: 'premium',  label: 'Premium Exclusive Contract', detail: '70/30 author-platform split · exclusive, 12-month term', type: 'Exclusive_Publishing', termMonths: 12, revenueSplit: 70 },
+  { id: 'flex',     label: 'Flex Starter Contract',       detail: '50/50 split · month-to-month, for new authors', type: 'Non_Exclusive', termMonths: 1, revenueSplit: 50 },
 ];
 let CONTRACTS = [];
 async function loadContracts(){
   try{
-    const res = await fetch('/api/contracts');
-    if(!res.ok) throw new Error('no contracts endpoint');
-    CONTRACTS = await res.json();
+    const live = await callBackend('/contract-types');
+    if(!Array.isArray(live) || !live.length) throw new Error('no contract types');
+    CONTRACTS = live;
   }catch(err){
     CONTRACTS = JSON.parse(JSON.stringify(DEMO_CONTRACTS));
   }
@@ -127,21 +144,33 @@ const PER_PAGE = 4;
 let allSubs = [], filtered = [], activeStat = 'all', currentPg = 1;
 let acceptTargetId = null;
 
+async function loadQueue(){
+  try{
+    const d = await callBackend('/review-queue');
+    if (d && Array.isArray(d.items)) { LIVE = true; return d; }
+  }catch(err){ /* fall through to demo */ }
+  return SeniorEditorData.getReviewQueue();
+}
+
 async function init(){
   await loadContracts();
-  const d = await SeniorEditorData.getReviewQueue();
-  allSubs = d.items.map((it, i) => {
-    const title = cleanTitle(it.title);
+  const d = await loadQueue();
+  const rows = Array.isArray(d) ? d : (d.items || []);
+  allSubs = rows.map((it, i) => {
+    const title = cleanTitle(it.title || it.book || 'Untitled');
     const ov = OVERRIDE[it.id] || {};
-    const words = Math.max(it.words, MIN_WORDS, ov.words || 0);
+    const words = it.words != null ? it.words : (ov.words != null ? ov.words : MIN_WORDS);
     return {
       ...it,
       title,
       words,
-      chapters: ov.chapters || (i % 2 === 0 ? 5 : 4),
-      cover: coverFor(title, i),
-      avatar: AVATARS[it.author] || null,
+      chapters: it.chapters != null ? it.chapters : (ov.chapters != null ? ov.chapters : (i % 2 === 0 ? 5 : 4)),
+      cover: it.cover || coverFor(title, i),
+      avatar: it.avatar || AVATARS[it.author] || null,
+      genre: it.genre || 'Fiction',
       synopsis: it.synopsis || 'No synopsis provided by the author.',
+      priority: it.priority || 'medium',
+      submitted: it.submitted || 'just now',
       editor: CURRENT_EDITOR,
     };
   });
@@ -370,7 +399,7 @@ function openSheet(id){
   document.getElementById('sheetBody').innerHTML = html;
 
   document.getElementById('mActRead').onclick = () => {
-    window.location.href = '../author/book-workspace.html?id=' + encodeURIComponent(s.id);
+    window.location.href = '../author/book-workspace.html?id=' + encodeURIComponent(s.bookId || s.id);
   };
   if (s.status === 'pending') {
     let acceptStep = 0;
@@ -393,7 +422,12 @@ function openSheet(id){
         btn.onclick = async () => {
           const fb = document.getElementById('rejectFeedback').value.trim();
           if (!fb) { toast('⚠️ Add feedback for the author before rejecting'); return; }
-          await SeniorEditorData.updateReviewItem(s.id, 'rejected', fb);
+          try {
+            await decideReview(s.id, 'rejected', fb);
+          } catch (err) {
+            toast('⚠️ Could not reject: ' + (err.message || 'server error'));
+            return;
+          }
           s.status = 'rejected'; s.feedback = fb;
           const wasOurs = recordFlowOutcome(s, 'rejected', fb);
           toast(`↩️ "${s.title}" declined` + (wasOurs ? ' — author stays a reader, feedback sent' : ''));
@@ -422,7 +456,7 @@ async function doQuickAccept(s){
   try {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Accepting…';
-    await SeniorEditorData.updateReviewItem(s.id, 'approved', 'Accepted — book is now live on the platform.');
+    await decideReview(s.id, 'approved', 'Accepted — book is now live on the platform.');
     s.status = 'approved';
     s.feedback = 'Accepted — book is now live on the platform.';
     const upgraded = recordFlowOutcome(s, 'approved');
@@ -506,6 +540,9 @@ function openContractModal(id){
   mzMonet = ContractMonetization.mount('#cwizMonet', {
     totalChapters: totalChaptersForBook,
     initial: { freeChapters: 3, adsPerChapter: 2, allowAdUnlock: true },
+    // The wizard is about setting terms, not reviewing them — the
+    // per-chapter summary at the bottom of the table is noise here.
+    hideSummary: true,
   });
   document.getElementById('contractPassword').value = '';
   document.getElementById('contractModalError').classList.remove('show');
@@ -530,7 +567,7 @@ async function submitAccept(){
   const password = document.getElementById('contractPassword').value;
   const errBox = document.getElementById('contractModalError');
 
-  if (!s.kyc || !s.kyc.type) {
+  if (!s.kyc || s.kyc.status !== 'approved' || !s.kyc.type) {
     errBox.textContent = 'Identity missing — verify the author\u2019s KYC record in Contract Review before accepting for a contract.';
     errBox.classList.add('show');
     return;
@@ -553,7 +590,13 @@ async function submitAccept(){
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming\u2026';
   try {
     const feedback = 'Accepted under ' + contract.label + '. Free chapters: ' + freeChapters + '. Ad unlock: ' + (allowAdUnlock ? 'ON (' + adsPerChapter + ' ads/chapter, ' + adCount + ' chapters)' : 'OFF') + '. Pricing: ' + (pricingSummary || 'all free') + '.';
-    await SeniorEditorData.updateReviewItem(s.id, 'approved', feedback);
+    await decideReview(s.id, 'approved', feedback, {
+      type: contract.type,
+      termMonths: contract.termMonths,
+      revenueSplit: contract.revenueSplit,
+      note: 'Offer created from the review queue acceptance.',
+      pricing: { freeChapters: freeChapters, adsPerChapter: adsPerChapter, allowAdUnlock: allowAdUnlock, rows: t.rows || [] },
+    });
     s.status = 'approved';
     s.feedback = feedback;
     const upgraded = recordFlowOutcome(s, 'approved', feedback);
@@ -561,7 +604,9 @@ async function submitAccept(){
     closeContractModal(); closeSheet();
     buildStats(); buildFilterPills(); applyFilters();
   } catch (err) {
-    errBox.textContent = 'Something went wrong. Please try again.';
+    errBox.textContent = err.status === 409 && /identit/i.test(err.message || '')
+      ? 'The book is accepted and live, but no contract was sent: this author’s identity is not verified yet. Approve their KYC, then send the offer from Contract Review.'
+      : (err.message || 'Something went wrong. Please try again.');
     errBox.classList.add('show');
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-signature"></i> Confirm Acceptance';

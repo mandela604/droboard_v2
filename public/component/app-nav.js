@@ -4,8 +4,9 @@
 
    1) BACK BUTTON — listens via @capacitor/app (guarded; retries until
       the native bridge is ready). Own sessionStorage stack tracks real
-      depth: back walks history, and at the logical root a double-press
-      shows "Press back again to exit" instead of killing the page.
+      depth: back walks history, and at the logical root it exits the app
+      on the first press. The launcher's redirect stub is never counted as
+      a page, so it cannot swallow a press.
    2) TAB DEDUPE — tapping the already-active bottom-nav tab scrolls to
       top instead of stacking a duplicate history entry.
    3) EDGE SWIPE — swipe in from the left edge = back, from the right
@@ -36,29 +37,28 @@
   var HERE = String(location.href).split('#')[0];
   var STACK_KEY = 'dro_nav_stack';
 
+  /* public/index.html is only a redirect stub: it replaces itself with
+     Pages/discover.html, so there is no history entry to go back to. Counting
+     it made the app land on discover with a stack of two, and the first back
+     press then did nothing at all. */
+  function isLauncherStub(href) {
+    var path = '';
+    try { path = new URL(href, location.href).pathname; } catch (e) { return false; }
+    return /\/index\.html$/i.test(path) && !/\/pages\/index\.html$/i.test(path);
+  }
   function loadStack() {
-    try { var s = JSON.parse(sessionStorage.getItem(STACK_KEY) || '[]'); return Array.isArray(s) ? s : []; }
+    try {
+      var s = JSON.parse(sessionStorage.getItem(STACK_KEY) || '[]');
+      if (!Array.isArray(s)) return [];
+      return s.filter(function (u) { return !isLauncherStub(u); });
+    }
     catch (e) { return []; }
   }
   function saveStack(s) {
     try { sessionStorage.setItem(STACK_KEY, JSON.stringify(s.slice(-30))); } catch (e) {}
   }
   var stack = loadStack();
-  if (stack[stack.length - 1] !== HERE) { stack.push(HERE); saveStack(stack); }
-
-  function toast(m) {
-    var t = document.getElementById('droAppNavToast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = 'droAppNavToast';
-      t.style.cssText = 'position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;z-index:9999;font-family:system-ui,sans-serif';
-      (document.body || document.documentElement).appendChild(t);
-    }
-    t.textContent = m;
-    t.style.opacity = '1';
-    clearTimeout(t._t);
-    t._t = setTimeout(function () { t.style.opacity = '0'; }, 2000);
-  }
+  if (!isLauncherStub(HERE) && stack[stack.length - 1] !== HERE) { stack.push(HERE); saveStack(stack); }
 
   /* ── 2) tab dedupe: current-tab tap scrolls home, no history dupe ── */
   document.addEventListener('click', function (e) {
@@ -77,26 +77,21 @@
   }, false);
 
   /* ── 1) back button ── */
-  var exitArmed = false, exitTimer = null;
   function goBack() {
     stack = loadStack();
-    if (stack.length > 1) {
+    if (stack.length > 1 && history.length > 1) {
       stack.pop();
       saveStack(stack);
-      exitArmed = false;
       history.back();
       return;
     }
     if (!isNative()) { history.back(); return; }
+    /* At the logical root, back means leave — the platform default. The old
+       "press back again to exit" guard is what made the landing page feel like
+       it needed two presses (plus one wasted on the redirect stub) to close. */
     var App = appPlugin();
-    if (exitArmed) {
-      if (App && App.exitApp) { try { App.exitApp(); } catch (e) {} }
-      return;
-    }
-    exitArmed = true;
-    toast('Press back again to exit');
-    clearTimeout(exitTimer);
-    exitTimer = setTimeout(function () { exitArmed = false; }, 2000);
+    if (App && App.exitApp) { try { App.exitApp(); return; } catch (e) {} }
+    history.back();
   }
   function bindBack() {
     try {
@@ -112,336 +107,177 @@
   // Cordova-style fallback (harmless elsewhere).
   document.addEventListener('backbutton', goBack, false);
 
-  /* ── 0) system chrome: app always sits BELOW the phone's own
-     icons (native only, web no-op) ──
-     The WebView is inset below the status bar, so page headers can
-     never slide under the clock/battery — on any page, on scroll.
-     The strip follows the page theme: light page → cream strip
-     (#F9EDE3) with dark icons; dark page → the page's own background
-     color with white icons (strip melts into the page). The icon
-     style follows the STRIP, not the page: Capacitor's 'LIGHT' style
-     means "dark text for light backgrounds".
-     On Android 15+ the status-bar color API is blocked, so the strip
-     color is pushed to the native window background via the DroWindow
-     plugin (same look on every Android version). The plugin is
-     app-shell only — website files untouched, web mode no-op. */
-  var DRO_LIGHT_STRIP = '#F9EDE3';
-  var droOverlayMode = false; // never draw under the status bar
-  function pageBg() {
-    var bg = '#ffffff';
+  /* ── 0) system chrome: the status-bar row (clock, wifi, battery) is
+     painted in the page's own top color (native only, web no-op) ──
+     It has to be MEASURED, not guessed from the theme setting: pages disagree
+     about where their background lives (the home page paints black on .phone
+     behind a gradient .top-bar, discover paints on body, readers on a
+     wrapper), and a gradient or alpha layer reports `transparent` to
+     getComputedStyle. So we composite the real stack of backgrounds at the top
+     edge of the viewport, bottom-up, until it is opaque.
+     That gives the two rules the app needs:
+       · Pages/index.html is dark-only CSS → black strip whatever Settings says
+         (pinned below anyway, so a future light override cannot break it);
+       · every other page follows data-theme, because its own CSS changes and
+         the measurement changes with it.
+     Icon contrast follows the STRIP, not the page: Capacitor's 'LIGHT' means
+     "dark icons for a light background". On Android 15+ the status-bar color
+     API is blocked, so the color is pushed to the native window background by
+     the DroWindow plugin — same look on every Android version, website files
+     untouched. */
+  var DRO_LIGHT_STRIP = '#FFFFFF';
+  function parseRGB(css) {
+    var m = /rgba?\(([^)]+)\)/.exec(String(css || ''));
+    if (!m) return null;
+    var p = m[1].split(',').map(function (v) { return parseFloat(v); });
+    if (p.length < 3 || isNaN(p[0]) || isNaN(p[1]) || isNaN(p[2])) return null;
+    var a = p.length > 3 && !isNaN(p[3]) ? p[3] : 1;
+    return { r: p[0], g: p[1], b: p[2], a: a };
+  }
+  function toHex(c) {
+    return '#' + [c.r, c.g, c.b].map(function (v) {
+      var h = Math.round(Math.max(0, Math.min(255, v))).toString(16);
+      return h.length < 2 ? '0' + h : h;
+    }).join('');
+  }
+  function isHome() {
+    /* The home feed is Pages/index.html — not the public/index.html redirect
+       stub the app launches into, which is a blank white page. */
+    try { return /\/pages\/index\.html$/i.test(String(location.pathname)); }
+    catch (e) { return false; }
+  }
+  /* Composite an element's background up through its ancestors until one is
+     opaque. Gradients and alpha layers report `transparent` to
+     getComputedStyle, which is why reading `body` alone kept lying about the
+     page's real color. */
+  function compositeUp(el) {
+    var layers = [];
     try {
-      bg = (document.body && getComputedStyle(document.body).backgroundColor) || bg;
-      if (/rgba\(0,\s*0,\s*0,\s*0\)|transparent/.test(String(bg))) {
-        bg = getComputedStyle(document.documentElement).backgroundColor || bg;
+      for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
+        var c = parseRGB(getComputedStyle(n).backgroundColor);
+        if (!c) continue;
+        layers.push(c);
+        if (c.a >= 1) break;
       }
     } catch (e) {}
-    var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(String(bg));
-    if (!m) return { lum: 1, hex: '#ffffff' };
-    var r = +m[1], g = +m[2], b = +m[3];
-    return {
-      lum: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
-      hex: '#' + [r, g, b].map(function (v) {
-        var h = v.toString(16);
-        return h.length < 2 ? '0' + h : h;
-      }).join('')
-    };
+    if (!layers.length) return null;
+    var out = { r: 255, g: 255, b: 255, a: 1 };
+    for (var j = layers.length - 1; j >= 0; j--) {
+      var L = layers[j];
+      out = {
+        r: L.r * L.a + out.r * (1 - L.a),
+        g: L.g * L.a + out.g * (1 - L.a),
+        b: L.b * L.a + out.b * (1 - L.a),
+        a: 1
+      };
+    }
+    return toHex(out);
   }
+  /* Same header selector list shared/theme-chrome.js uses to keep
+     <meta name="theme-color"> honest, so both report one color. */
+  var TOP_SELS = '.topbar,.top-bar,.header,.app-header,.navbar,.appbar,'
+    + '.ces-topbar,.sa-topbar,.mss-topbar,.dso-topbar';
+  function paintAt(x, y) {
+    var el = null;
+    try { el = document.elementFromPoint(x, y); } catch (e) {}
+    return el ? compositeUp(el) : null;
+  }
+  function stripHex() {
+    if (isHome()) return '#000000';
+    try {
+      var bar = document.querySelector(TOP_SELS);
+      var hex = bar ? compositeUp(bar) : null;
+      if (hex) return hex;
+      /* Page whose header row is not in that list: fall back to the widest
+         element actually painted at the top edge. */
+      var counts = {}, best = null, bestN = 0;
+      for (var s = 0; s < 5; s++) {
+        var col = paintAt(Math.round(window.innerWidth * (s + 0.5) / 5), 2);
+        if (!col) continue;
+        counts[col] = (counts[col] || 0) + 1;
+        if (counts[col] > bestN) { bestN = counts[col]; best = col; }
+      }
+      if (best) return best;
+      return compositeUp(document.body) || DRO_LIGHT_STRIP;
+    } catch (e) { return DRO_LIGHT_STRIP; }
+  }
+  /* The strip is native chrome — invisible to devtools. Console hooks:
+     __droStrip.hex() → what the app would paint; __droStrip.at(x, y) → the
+     composited color under one pixel. */
+  window.__droStrip = { hex: stripHex, at: paintAt };
   function setWindowStrip(color) {
     try {
       var W = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.DroWindow;
-      if (W && W.setBackgroundColor) W.setBackgroundColor({ color: color });
-    } catch (e) {}
+      if (!W || !W.setBackgroundColor) return false;
+      W.setBackgroundColor({ color: color });
+      return true;
+    } catch (e) { return false; }
   }
+  var lastPainted = null, lastPaintAt = 0;
+  /* Repainting the native window is NOT free: it re-dispatches window insets,
+     which relayouts the whole WebView. Doing it on every lifecycle event made
+     the page jump. So a color already painted is never painted again. */
   function applyChrome() {
-    try {
-      var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
-      if (!SB || !SB.setOverlaysWebView) return false;
-      droOverlayMode = false;
-      var info = pageBg();
-      var dark = info.lum <= 0.6;
-      var strip = dark ? info.hex : DRO_LIGHT_STRIP;
-      SB.setOverlaysWebView({ overlay: false });
-      try {
-        if (SB.setBackgroundColor) SB.setBackgroundColor({ color: strip });
-      } catch (e) {}
-      try { if (SB.setStyle) SB.setStyle({ style: dark ? 'DARK' : 'LIGHT' }); } catch (e) {}
-      setWindowStrip(strip);
-      try { scheduleSat(); } catch (e) {}
-      return true;
-    } catch (e) { return false; }
+    var hex = stripHex();
+    var now = Date.now();
+    if (lastPainted === hex) return true;
+    if (lastPainted !== null && now - lastPaintAt < 600) return false;
+    if (!setWindowStrip(hex)) return false;
+    lastPainted = hex;
+    lastPaintAt = now;
+    return true;
   }
-  if (!applyChrome()) {
-    var sbTries = 0;
-    var sbIv = setInterval(function () { sbTries++; if (applyChrome() || sbTries > 24) clearInterval(sbIv); }, 250);
-  }
-  // Delayed re-tunes: early calls can race page stylesheets.
-  setTimeout(function () { try { applyChrome(); } catch (e) {} }, 1500);
-  setTimeout(function () { try { applyChrome(); } catch (e) {} }, 3500);
-
-  /* Some pages lack viewport-fit=cover in their meta tag (discover,
-     library, feed). Without it the WebView letterboxes below the
-     status bar (white strip) and env(safe-area-…) reports 0. Patching
-     the meta at parse time (this script runs in <head>) takes effect
-     before layout. Native only — website files untouched. */
-  function ensureViewportFit() {
-    if (!isNative()) return false;
-    try {
-      var m = document.querySelector('meta[name="viewport"]');
-      if (!m) return false;
-      var c = m.getAttribute('content') || '';
-      if (/viewport-fit/.test(c)) return true;
-      m.setAttribute('content', c + ', viewport-fit=cover');
-      return true;
-    } catch (e) { return false; }
-  }
-  ensureViewportFit();
-  try {
+  if (isNative()) {
+    /* One paint per page. Measuring in <head> sees an unpainted body, picks the
+       fallback color and then has to correct itself — and every correction is
+       a native window call. So wait until the page has actually painted. */
+    var chromeTries = 0;
+    function bootChrome() {
+      if (applyChrome() || chromeTries++ > 24) return;
+      setTimeout(bootChrome, 250);
+    }
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () {
-        ensureViewportFit();
-        if (window.Capacitor) scheduleSat();
-      });
+      document.addEventListener('DOMContentLoaded', bootChrome);
+    } else {
+      bootChrome();
     }
-  } catch (e) {}
-
-  /* Reads the live status-bar inset (px). Falls back to 28px when the
-     WebView doesn't report safe-area (older devices). */
-  function satProbe() {
-    try {
-      var d = document.createElement('div');
-      d.style.cssText = 'position:fixed;top:0;left:0;height:0;padding:0;padding-top:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;';
-      document.documentElement.appendChild(d);
-      var h = d.offsetHeight || 0;
-      d.remove();
-      return h;
-    } catch (e) { return 0; }
+    // Late stylesheets, fonts and hero images can settle the top color later.
+    window.addEventListener('load', function () { try { applyChrome(); } catch (e) {} });
+    setTimeout(function () { try { applyChrome(); } catch (e) {} }, 2500);
   }
 
-  /* Icons must match the strip: cream/light strip → dark icons,
-     dark strip → white icons. */
-  function tuneStatusIcons() {
-    try {
-      var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
-      if (!SB || !SB.setStyle) return;
-      SB.setStyle({ style: pageBg().lum <= 0.6 ? 'DARK' : 'LIGHT' });
-    } catch (e) {}
-  }
-
-  /* Selectors whose own CSS already handles the notch (var(--safe-t)
-     / env(safe-area-…)) — the engine must not pad those twice.
-     Scanned once from same-origin stylesheets (CDN sheets throw and
-     are skipped). */
-  var safeSelCache = null;
-  function safeAreaSelectors() {
-    if (safeSelCache) return safeSelCache;
-    var out = [];
-    try {
-      for (var i = 0; i < document.styleSheets.length; i++) {
-        var rules;
-        try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
-        if (!rules) continue;
-        for (var j = 0; j < rules.length; j++) {
-          var r = rules[j];
-          if (r && r.selectorText && r.cssText && /safe-area|safe-t/.test(r.cssText)) out.push(r.selectorText);
-        }
-      }
-    } catch (e) {}
-    safeSelCache = out;
-    return out;
-  }
-  function alreadySafe(el) {
-    var sels = safeAreaSelectors();
-    for (var i = 0; i < sels.length; i++) {
-      try { if (el.matches(sels[i])) return true; } catch (e) {}
+  /* The WebView sits BELOW the status-bar row: Capacitor reserves the inset
+     natively (SystemBars insetsHandling = "native") and no page ships
+     viewport-fit=cover, so env(safe-area-inset-*) is 0 and every page lays out
+     exactly as it does on the website. The old engine measured that inset and
+     poured it into the top bar on top of the page's own padding — the
+     double-count was the white band. There is nothing to pad here. */
+  try {
+    // Theme toggles (html data-theme / data-bg, body class) change the painted
+    // top color — re-measure and repaint the strip to match.
+    var chromeQueued = 0;
+    function reChrome() {
+      if (!isNative() || chromeQueued) return;
+      /* 300ms, not a animation frame: measuring forces a layout pass, and the
+         carousels churn body classes continuously. */
+      chromeQueued = setTimeout(function () {
+        chromeQueued = 0;
+        try { applyChrome(); } catch (e) {}
+      }, 300);
     }
-    return false;
-  }
-
-  /* Pads top bars by the inset. Matches by geometry, not class names,
-     so it works on all 30+ pages without per-page edits: bars are
-     short (10–160px), wide and touch the viewport top. Bottom navs,
-     toasts, sheets and heroes never match.
-     SCROLL SAFETY: static (in-flow) elements are padded ONLY while
-     the page is at the very top — padding one mid-scroll is what
-     stretched cards and scattered layouts. Sticky/fixed headers are
-     viewport-stable so they can be padded on any pass. */
-  /* True when a stylesheet fixes this element's height (e.g. the
-     full-reader top bar, height:50px). Padding a fixed-height,
-     border-box bar crushes its buttons instead of moving it — those
-     bars must GROW (height + inset) instead. Same-origin sheets only;
-     CDN sheets throw and are skipped. */
-  function cssHeightFixed(el) {
-    try {
-      for (var i = 0; i < document.styleSheets.length; i++) {
-        var rules;
-        try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
-        if (!rules) continue;
-        for (var j = 0; j < rules.length; j++) {
-          var r = rules[j];
-          if (!r || !r.selectorText || !r.style) continue;
-          var h;
-          try { h = r.style.height; } catch (e) { continue; }
-          if (!h || h === 'auto') continue;
-          try { if (el.matches(r.selectorText)) return true; } catch (e) {}
-        }
-      }
-    } catch (e) {}
-    return false;
-  }
-  function padCandidate(el, inset, allowStatic) {
-    if (!el || el.nodeType !== 1) return;
-    var tag = el.tagName;
-    if (tag !== 'DIV' && tag !== 'HEADER' && tag !== 'NAV') return;
-    if (el.dataset.droSat === String(inset)) return;
-    // Never pad inside an already-padded bar (double spacing — the
-    // discover search row and genre-hub air came from this).
-    try {
-      if (el.parentElement && el.parentElement.closest('[data-dro-sat]')) {
-        el.dataset.droSat = String(inset);
-        return;
-      }
-    } catch (e) {}
-    if (alreadySafe(el)) { el.dataset.droSat = String(inset); return; }
-    var cs;
-    try { cs = getComputedStyle(el); } catch (e) { return; }
-    var pos = cs.position;
-    if (pos !== 'sticky' && pos !== 'fixed' && pos !== 'static') return;
-    if (pos === 'static' && !allowStatic) return;
-    var r;
-    try { r = el.getBoundingClientRect(); } catch (e) { return; }
-    if (r.top > inset + 24 || r.top < -2) return;
-    if (r.height < 10 || r.height > 160) return;
-    if (r.width < window.innerWidth * 0.5) return;
-    try {
-      // Re-pad from the ORIGINAL padding so rotation (inset change)
-      // never stacks padding twice.
-      var orig = el.dataset.droSatOrig !== undefined
-        ? parseFloat(el.dataset.droSatOrig)
-        : (parseFloat(cs.paddingTop) || 0);
-      if (el.dataset.droSatOrig === undefined) el.dataset.droSatOrig = String(orig);
-      el.style.paddingTop = (orig + inset) + 'px';
-      if (cssHeightFixed(el)) {
-        // Fixed-height bar: also grow it, else the padding crushes
-        // the buttons (full-reader top bar).
-        var h0 = el.dataset.droSatH0 !== undefined
-          ? parseFloat(el.dataset.droSatH0)
-          : el.offsetHeight;
-        if (el.dataset.droSatH0 === undefined) el.dataset.droSatH0 = String(h0);
-        el.style.height = (h0 + inset) + 'px';
-      }
-      el.dataset.droSat = String(inset);
-    } catch (e) {}
-  }
-  /* Page-scoped corrections (native only, injected stylesheet —
-     website files untouched):
-     - scroll-reader .story-top designs its own notch room
-       (safe-t + 70px); cap the notch part so the title doesn't float.
-     - genre-hub stacks sticky rows at hardcoded tops (57/101px);
-       shift them by the grown header so they don't slide under it.
-     - full-reader .read-progress sits at var(--topbar-h); follow the
-       grown top bar down. */
-  function injectAppCss() {
-    if (!isNative()) return;
-    try {
-      if (document.getElementById('droAppFix')) return;
-      var pg = '';
-      try { pg = (location.pathname.split('/').pop() || '').toLowerCase(); } catch (e) {}
-      var css = '';
-      if (pg === 'scroll-reader.html') {
-        css += '.story-top{padding-top:calc(70px + min(var(--safe-t,10px),14px)) !important;}';
-      }
-      if (pg === 'genre-hub.html') {
-        css += '.tabs{top:calc(57px + var(--dro-sat,0px)) !important;}'
-          + '.sort-row{top:calc(101px + var(--dro-sat,0px)) !important;}'
-          + '.floating-filters{top:calc(101px + var(--dro-sat,0px)) !important;}';
-      }
-      if (pg === 'full-reader.html') {
-        css += '.read-progress{top:calc(var(--topbar-h) + var(--dro-sat,0px)) !important;}';
-      }
-      if (!css) return;
-      var st = document.createElement('style');
-      st.id = 'droAppFix';
-      st.textContent = css;
-      (document.head || document.documentElement).appendChild(st);
-    } catch (e) {}
-  }
-  function applySat(nodes) {
-    if (!isNative()) return;
-    injectAppCss();
-    var inset = satProbe();
-    // Below-the-bar mode reports 0 and needs no padding; only assume
-    // 28px when actually drawing edge-to-edge.
-    if (!inset || inset < 10) inset = droOverlayMode === false ? 0 : 28;
-    try { document.documentElement.style.setProperty('--dro-sat', inset + 'px'); } catch (e) {}
-    var allowStatic = (window.scrollY || window.pageYOffset || 0) <= 4;
-    var list = nodes;
-    if (!list) {
-      try { list = document.body.querySelectorAll('div,header,nav'); } catch (e) { return; }
-    }
-    for (var i = 0; i < list.length; i++) padCandidate(list[i], inset, allowStatic);
-    tuneStatusIcons();
-  }
-
-  var satTimer = null;
-  function scheduleSat(nodes) {
-    clearTimeout(satTimer);
-    satTimer = setTimeout(function () { applySat(nodes); }, 350);
-  }
-  window.addEventListener('load', function () { scheduleSat(); });
-  window.addEventListener('resize', function () { scheduleSat(); });
-  window.addEventListener('orientationchange', function () { scheduleSat(); });
-  window.addEventListener('focus', function () { scheduleSat(); });
-  try {
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { scheduleSat(); });
-  } catch (e) {}
-  try {
-    // Cheap observer: only examines NEWLY added bars (a full-tree
-    // computed-style sweep on every feed append is what caused the
-    // scroll jank). Static content mid-scroll is never padded.
-    new MutationObserver(function (muts) {
-      if (!isNative()) return;
-      var hits = [];
-      for (var i = 0; i < muts.length; i++) {
-        var nodes = muts[i].addedNodes || [];
-        for (var j = 0; j < nodes.length; j++) {
-          var n = nodes[j];
-          if (!n || n.nodeType !== 1) continue;
-          if (n.tagName === 'DIV' || n.tagName === 'HEADER' || n.tagName === 'NAV') hits.push(n);
-          else if (n.querySelectorAll) {
-            var inner = n.querySelectorAll('div,header,nav');
-            for (var k = 0; k < inner.length && hits.length < 40; k++) hits.push(inner[k]);
-          }
-          if (hits.length >= 40) break;
-        }
-        if (hits.length >= 40) break;
-      }
-      if (hits.length) scheduleSat(hits);
-    }).observe(document.documentElement, { childList: true, subtree: true });
-  } catch (e) {}
-  try {
-    // Theme toggles (body class / html data-theme) change page
-    // luminance — re-pick strip vs edge-to-edge without a reload.
-    var themeObs = new MutationObserver(function () {
-      if (!isNative()) return;
-      try { applyChrome(); } catch (e) {}
-    });
+    var themeObs = new MutationObserver(reChrome);
     function watchTheme() {
       try {
         if (document.body) themeObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-        themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-bg', 'class'] });
       } catch (e) {}
     }
     if (document.body) watchTheme();
     else document.addEventListener('DOMContentLoaded', watchTheme);
-    document.addEventListener('droboard-theme', function () { try { applyChrome(); } catch (e) {} });
+    document.addEventListener('droboard-theme', reChrome);
     // Config changes (rotation, dark-mode toggle) can reset the native
     // strip to the theme default — re-assert the page's color.
-    window.addEventListener('resize', function () { try { applyChrome(); } catch (e) {} });
-  } catch (e) {}
-  // First pass as early as possible (script runs in <head>).
-  try {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleSat);
-    else scheduleSat();
+    window.addEventListener('resize', reChrome);
   } catch (e) {}
 
   /* ── helpers ── */

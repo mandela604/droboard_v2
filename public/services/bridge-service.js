@@ -34,7 +34,7 @@
 
   async function fetchStory(id) {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/stories/${id}`);
+      const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error('Story API failed');
       return res.json();
     }
@@ -176,6 +176,73 @@
   // renderer below gets the fields it expects. Short = 25 chapters max.
   function normalizeStory(s) {
     if (!s) return null;
+    // Backend book detail (GET /api/books/:id): chapters array of rows +
+    // writer {id, username, name, avatar}. Map into the bridge shape.
+    if (s.writer && Array.isArray(s.chapters) && s.chapters.length && typeof s.chapters[0] === 'object' && s.chapters[0].title !== undefined) {
+      const rows = s.chapters;
+      const first = rows[0];
+      const cat = splitCat(s.genre || '');
+      const genre = genreFor(cat.name);
+      const stories = (window.DemoData && window.DemoData.STORIES) || [];
+      const _r = rng(hashStr('tropes:' + (s.id || '')));
+      const tropes = tropesFor(genre, _r);
+      const totalCh = rows.length;
+      const totalWords = rows.reduce((a, c) => a + (c.words || 0), 0);
+      return enrichDemo({
+        id: s.id, title: s.title || 'Untitled', cover: s.cover || '',
+        category: cat, genre: genre, tropes: tropes, length: totalCh <= 25 ? 'short' : 'long',
+        chapterLabel: 'Ch ' + (s.lastChapterId || 1),
+        writer: {
+          name: s.writer.name || 'Unknown', handle: '@' + (s.writer.username || 'unknown'),
+          avatar: s.writer.avatar || '', followers: 0, following: false,
+          verified: false, stories: 0, reads: 0, rating: 0, bio: '',
+        },
+        stats: { comments: 0, reads: parseCount(s.reads), shares: 0, rating: s.rating || 0 },
+        likes: parseCount(s.likes),
+        continue: { chapterId: 1, chapterTitle: first.title || 'Chapter 1', progress: 0, timeLeft: '' },
+        synopsis: { short: s.synopsis || '', more: '' },
+        engagement: {
+          poll: {
+            q: (s.engagement && s.engagement.polls && s.engagement.polls[0] && s.engagement.polls[0].q) || 'What do you think so far?',
+            opts: ((s.engagement && s.engagement.polls && s.engagement.polls[0] && s.engagement.polls[0].opts) || []).map(o => ({ t: o.t, v: o.v })),
+            voted: -1,
+          },
+          debate: {
+            q: (s.engagement && s.engagement.debates && s.engagement.debates[0] && s.engagement.debates[0].motion) || 'Debate opens after Chapter 3.',
+            dFor: (s.engagement && s.engagement.debates && s.engagement.debates[0] && s.engagement.debates[0].forV) || 0,
+            dAg: (s.engagement && s.engagement.debates && s.engagement.debates[0] && s.engagement.debates[0].agV) || 0,
+          },
+          pred: {
+            q: (s.engagement && s.engagement.predictions && s.engagement.predictions[0] && s.engagement.predictions[0].q) || 'What happens next?',
+            opts: ((s.engagement && s.engagement.predictions && s.engagement.predictions[0] && s.engagement.predictions[0].opts) || []).map(o => ({ t: o.t, v: o.v })),
+          },
+        },
+        hubs: {
+          genre: { name: (cat.name || 'Story') + ' Hub', icon: cat.emoji, members: 0, joined: false },
+          circle: { name: (s.writer.name || 'Writer') + "'s Inner Circle", members: 0, joined: false, perks: 'Early chapters, behind-the-scenes, live Q&As' },
+        },
+        details: [
+          { icon: '📚', lbl: 'Type', val: (totalCh <= 25 ? 'Short' : 'Long') + ' story · ' + (s.status === 'completed' ? 'Completed' : 'Ongoing') },
+          { icon: '🏷️', lbl: 'Category', val: cat.emoji + ' ' + cat.name, acc: true },
+          { icon: '🎭', lbl: 'Genre', val: genre, acc: true },
+          { icon: '✨', lbl: 'Trope', val: tropes.slice(0, 2).join(' · ') },
+          { icon: '📅', lbl: 'Chapters', val: totalCh + ' Chapter' + (totalCh === 1 ? '' : 's') },
+          { icon: '⏱️', lbl: 'Read time', val: totalWords ? Math.max(1, Math.round(totalWords / 200 / totalCh)) + ' min/chapter' : '~4 min/chapter' },
+          { icon: '📝', lbl: 'Word count', val: totalWords ? totalWords.toLocaleString() + ' words' : '—' },
+          { icon: '✅', lbl: 'Status', val: s.status === 'completed' ? 'Completed' : 'Ongoing', acc: true },
+        ],
+        tags: [],
+        similar: stories.filter(x => String(x.id) !== String(s.id)).slice(0, 4),
+        reactions: { userRx: null, love: 0, crying: 0, angry: 0, shocked: 0, broken: 0, emotional: 0, savage: 0, sus: 0, twist: 0, laughing: 0 },
+        tipCount: 0,
+        chapters: rows.map((c, i) => ({
+          n: c.n, title: c.title,
+          meta: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min · ' + c.words + ' words' : '~4 min',
+          badge: c.price > 0 ? 'paid' : (i === 0 ? 'free' : null),
+          state: c.price > 0 ? 'locked' : (i === 0 ? 'current' : 'done'),
+        })),
+      });
+    }
     // Already bridge-shaped: complete any missing pieces instead of
     // trusting it blindly (an empty chapters list must never render).
     if (s.writer && Array.isArray(s.chapters)) {
@@ -470,17 +537,22 @@
   /* Status viewed → gray the ring (chained so any other handler still runs) */
   function wireStatusRing() {
     const prev = window.onStatusViewerChange;
-    window.onStatusViewerChange = function (wid, ring) {
-      if (wid === 'bridge_writer' && DATA && DATA.writer) {
+    window.onStatusViewerChange = function (wid, ring, name) {
+      const w = DATA && DATA.writer;
+      // The viewer keys on the author's name, not our 'bridge_writer' id.
+      const isWriter = w && (String(w.name || '').toLowerCase() === String(name || wid || '').toLowerCase());
+      if (isWriter && w) {
         // Viewer reports full class names ('ring-viewed' | 'ring-has')
-        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
-        DATA.writer.statusRing = newRing;
-        document.querySelectorAll('.dring').forEach(el => {
-          el.classList.remove('ring-has', 'ring-live', 'ring-viewed');
-          if (newRing === 'has' || newRing === 'viewed') el.classList.add('ring-' + newRing);
+        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : ring === 'ring-live' ? 'live' : 'none';
+        w.statusRing = newRing;
+        // Only this writer's rings — the page also carries commenter avatars.
+        document.querySelectorAll('[data-status-ring]').forEach(el => {
+          if (String(el.getAttribute('data-status-ring') || '').toLowerCase() !== String(w.name || '').toLowerCase()) return;
+          el.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
+          if (newRing === 'has' || newRing === 'viewed' || newRing === 'live') el.classList.add('ring-' + newRing);
         });
       }
-      if (typeof prev === 'function') prev(wid, ring);
+      if (typeof prev === 'function') prev(wid, ring, name);
     };
   }
 

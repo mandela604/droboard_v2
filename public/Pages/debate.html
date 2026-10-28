@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#ffffff"/>
 <title>Debate · DroBoard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
@@ -43,9 +43,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 [data-theme="dark"] .deb-q-wrap{border-bottom-color:#000;box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
 .deb-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:4px 10px;border-radius:12px;background:rgba(255,0,80,.08);color:var(--acc);margin-bottom:10px}
 .deb-live{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:blink 1.3s ease-in-out infinite}
+.deb-badge.closed{background:var(--l2,#f1f1f1);color:var(--tx-muted)}
+.deb-badge.closed .deb-live{background:var(--tx-muted);animation:none}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .deb-q{font-size:18px;font-weight:800;color:var(--tx-high);line-height:1.3;letter-spacing:-.02em;margin-bottom:6px}
 .deb-prompt{font-size:13px;color:var(--tx-muted);line-height:1.5}
+
+/* ── POSTER (who started the debate — tap to open profile) ── */
+.deb-poster{display:flex;align-items:center;gap:9px;text-decoration:none;margin:-4px 0 12px;width:fit-content}
+.deb-poster-av{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);flex-shrink:0;background:var(--l2)}
+.deb-poster-name{font-size:13px;font-weight:800;color:var(--tx-high);line-height:1.2}
+.deb-poster:hover .deb-poster-name{color:var(--acc)}
+.deb-poster-time{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-left:7px}
 
 /* ── VOTE SIDES ── */
 .deb-sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
@@ -72,6 +81,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-side.against .deb-side-check{background:var(--red)}
 .deb-side.chosen .deb-side-check{display:flex}
 .deb-total{padding:0 14px 14px;font-size:12px;color:var(--tx-muted);text-align:center;font-weight:600}
+.deb-closed{margin:0 14px 14px;padding:12px;border-radius:12px;background:var(--l2,#f1f1f1);border:1px solid var(--bd,rgba(0,0,0,.08));font-size:12.5px;font-weight:600;color:var(--tx-muted);text-align:center}
+.deb-sides.shut .deb-side{cursor:default;opacity:.72}
 
 /* ── PICK PROMPT ── */
 .deb-pick-prompt{
@@ -168,7 +179,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
@@ -187,12 +198,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   </div>
 
   <div class="deb-q-wrap">
-    <div class="deb-badge"><span class="deb-live"></span> Live Debate</div>
+    <a class="deb-poster" id="debPoster" style="display:none"></a>
+    <div class="deb-badge" id="debBadge"><span class="deb-live"></span> Live Debate</div>
     <div class="deb-q" id="debQ"></div>
     <div class="deb-prompt" id="debPrompt"></div>
   </div>
 
-  <div class="deb-sides">
+  <div class="deb-sides" id="debSides">
     <div class="deb-side for" id="sideFor" onclick="DebatePage.vote('for')">
       <div class="deb-side-check"><i class="fas fa-check"></i></div>
       <div class="deb-side-emoji">✅</div>
@@ -211,6 +223,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     </div>
   </div>
   <div class="deb-total" id="debTotal">0 joined the discussion</div>
+  <div class="deb-closed" id="debClosed" style="display:none"></div>
 
   <div class="deb-args">
     <div id="argsMount"></div>
@@ -219,23 +232,27 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 <div class="toast" id="toast"></div>
 
-<script src="../component/debate-args.js?v=4"></script>
-<script src="../component/status-viewer.js?v=10"></script>
-<script src="../component/status-ring.js?v=1"></script>
+<script src="../component/debate-args.js?v=7"></script>
+<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/status-ring.js?v=4"></script>
+  <script src="../services/status-service.js?v=7"></script>
   <script src="../shared/status-loader.js"></script>
 <script src="../component/report-sheet.js"></script>
 <script src="../component/dots-menu.js"></script>
 <script src="../component/share-modal.js"></script>
-<script src="../component/ad-card.js?v=4"></script>
+<script src="../component/ad-card.js?v=6"></script>
 <script src="../data/ad-data.js"></script>
 <script src="../data/central-demo-data.js"></script>
+<script src="../data/droboard-page-seed.js"></script>
 <script src="../services/feed-data.js"></script>
-<script src="../services/audience-service.js"></script>
+<script src="../services/audience-rules.js?v=2"></script>
+<script src="../services/audience-service.js?v=3"></script>
 <script src="../services/ad-service.js?v=4"></script>
-<script src="../services/ad-revenue-service.js?v=2"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
 <script src="../component/ad-slot.js?v=2"></script>
 <script src="../services/league-service.js"></script>
-<script src="../services/debate-service.js"></script>
+<script src="../component/expiry-chips.js?v=3"></script>
+<script src="../services/debate-service.js?v=3"></script>
 <script>DebatePage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

@@ -31,9 +31,10 @@ const chBody = z.object({
   // staff-only (enforced in controllers; admin/editor module sets prices).
   price: z.number().int().min(0).max(10000).optional(),
   scheduledAt: z.string().max(40).refine(v => !isNaN(new Date(v).getTime()), { message: 'bad_scheduledAt' }).optional(),
-  poll: z.object({ q: z.string().max(300).optional(), opts: z.array(z.string().max(120)).max(4).optional() }).optional(),
-  prediction: z.object({ q: z.string().max(300).optional(), opts: z.array(z.string().max(120)).max(4).optional() }).optional(),
-  debate: z.object({ motion: z.string().max(500).optional() }).optional(),
+  // Engagement expiry: epoch ms — null = never closes (create-wizard payload).
+  poll: z.object({ q: z.string().max(300).optional(), opts: z.array(z.string().max(120)).max(4).optional(), expiresAt: z.number().nullable().optional() }).optional(),
+  prediction: z.object({ q: z.string().max(300).optional(), opts: z.array(z.string().max(120)).max(4).optional(), expiresAt: z.number().nullable().optional() }).optional(),
+  debate: z.object({ motion: z.string().max(500).optional(), expiresAt: z.number().nullable().optional() }).optional(),
 }).strict();
 const chPatch = chBody.partial();
 
@@ -70,7 +71,7 @@ router.post('/batch', requireAuth, writeLimiter, audit('books.createBatch'),
     }).strict(),
   })), ctrl.createBatch);
 
-router.get('/:id', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.get);
+router.get('/:id', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.detail);
 router.patch('/:id', requireAuth, writeLimiter, audit('books.update'),
   validate(z.object({ params: z.object({ id }), body: bookPatch })), ctrl.update);
 router.delete('/:id', requireAuth, writeLimiter, audit('books.delete'),

@@ -6,13 +6,13 @@
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
   if (!USE_API) return null;
   try {
-    const res = await fetch(API_BASE + path, options);
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (e) {
@@ -44,6 +44,23 @@ function renderPageInfo(c){const t={all:47,pending:12,processing:8,completed:24,
 function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
 function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,6];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
 
+async function loadWithdrawals(){
+  const data = await callBackend('/withdrawal-requests');
+  if (data && Array.isArray(data.items)) {
+    WITHDRAWALS = data.items.map(w => ({
+      id: w.id,
+      author: w.author || '',
+      avatar: w.avatar || '',
+      amount: w.amount != null ? '$' + Number(w.amount).toLocaleString('en-US', {minimumFractionDigits: 2}) : '$0.00',
+      method: w.method || '',
+      status: w.status || 'pending',
+      requested: w.requested || w.requestedAt || '',
+      processed: w.processed || w.processedAt || '—'
+    }));
+    refresh();
+  }
+}
+
 function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
   SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'withdrawal-requests',title:'Withdrawal Requests',subtitle:'Manage and process author withdrawal requests',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search by author, amount, or ID...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
@@ -59,9 +76,7 @@ function bindEvents(){
 function init(){
   attachShell();
   window.refresh=refresh;
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/withdrawal-requests').then(function(data){ if(data&&data.items){ refresh(); } });
-  callBackend('/withdrawal-requests');
+  loadWithdrawals();
   bindEvents();
   renderPagination();refresh();
 }

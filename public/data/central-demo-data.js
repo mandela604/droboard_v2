@@ -35,7 +35,7 @@
       cover: COVERS[1],
       verified: true,
       isWriter: true,
-      bio: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal series updates every Friday.',
+      bio: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal story updates every Friday.',
       statuses: [
         { bg: 'linear-gradient(135deg,#ff0050,#7a0030)', quote: 'Chapter 63 drops Friday midnight.', caption: 'She finally opens the letter.', time: '2h' },
         { bg: 'linear-gradient(135deg,#7c3aed,#2e1065)', quote: '1M reads on Season of Betrayal.', caption: 'Thank you for every single one.', time: '1d' },
@@ -70,7 +70,7 @@
         { label: 'Weekly Streak', cls: 'purple' },
       ],
       books: [
-        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS[1], reads: '820k', likes: '94k', rating: '4.9', chapters: 62, seriesId: 's1' },
+        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS[1], reads: '820k', likes: '94k', rating: '4.9', chapters: 62, catalogId: 's1' },
         { id: 'b2', title: 'Crowned in Sin', cat: 'Mafia', cover: COVERS[2], reads: '310k', likes: '41k', rating: '4.7', chapters: 48 },
         { id: 'b3', title: 'Until You Regret', cat: 'Revenge · Romance', cover: COVERS[4], reads: '150k', likes: '22k', rating: '4.8', chapters: 35 },
       ],
@@ -134,7 +134,7 @@
         { name: 'Boardroom Romance', count: 8, privacy: 'Public', covers: [COVERS[3], COVERS[5], COVERS[6], COVERS[1]] },
       ],
       following: [
-        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal series', following: true },
+        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal story', following: true },
       ],
       posts: [
         {
@@ -196,7 +196,7 @@
         { name: 'Late Night Reads', count: 6, privacy: 'Private', covers: [COVERS[1], COVERS[2], COVERS[6], COVERS[7]] },
       ],
       following: [
-        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal series · 1.2M reads', following: true },
+        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal story · 1.2M reads', following: true },
         { name: 'Sarah_Odum', av: 'https://i.pravatar.cc/100?img=48', meta: 'Billionaire romance', following: true },
       ],
       posts: [
@@ -403,6 +403,7 @@
       title: 'Bound By Obsession',
       desc: 'He was supposed to destroy me, not become my greatest weakness.',
       chapters: 56, reads: '2.3M', likes: '189K', cat: '💔 Betrayal',
+      rating: '4.7',
       author: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', verified: true,
     },
     {
@@ -412,6 +413,7 @@
       title: 'The Way You Stay',
       desc: 'Some hearts are meant to break, so others can learn to heal.',
       chapters: 38, reads: '1.8M', likes: '142K', cat: '💔 Heartbreak',
+      rating: '4.8',
       author: 'Sarah_Odum', authorAv: 'https://i.pravatar.cc/100?img=48', verified: true,
     },
     {
@@ -421,6 +423,7 @@
       title: 'Yours, Always',
       desc: 'No matter how far we drift, some love finds its way back.',
       chapters: 42, reads: '1.6M', likes: '118K', cat: '💍 Romance',
+      rating: '4.9',
       author: 'Efe_O', authorAv: 'https://i.pravatar.cc/100?img=22', verified: true,
     },
     {
@@ -430,6 +433,7 @@
       title: 'Until Forever',
       desc: 'Promises made at the right time change the meaning of forever.',
       chapters: 27, reads: '980K', likes: '96K', cat: '🌙 Elegy',
+      rating: '4.6',
       author: 'Luna_Grey', authorAv: 'https://i.pravatar.cc/100?img=15', verified: true,
     },
     {
@@ -439,6 +443,7 @@
       title: 'The Runaway Bride',
       desc: 'Everyone watched. Only she knew why.',
       chapters: 28, reads: '312K', likes: '45K', cat: '✨ Twist',
+      rating: '4.9',
       author: 'Ifeanyi_Story', authorAv: 'https://i.pravatar.cc/100?img=53', verified: true,
     },
     {
@@ -448,6 +453,7 @@
       title: "My Grandmother's Will",
       desc: 'A family legacy. A stolen document. A fight no one saw coming.',
       chapters: 44, reads: '204K', likes: '31K', cat: '👑 Family',
+      rating: '4.7',
       author: 'Chiamaka_N', authorAv: 'https://i.pravatar.cc/100?img=47', verified: false,
     },
     {
@@ -457,6 +463,7 @@
       title: 'My Stepmother Stole My Fund',
       desc: 'She took everything. Now it is time to take it back.',
       chapters: 38, reads: '192K', likes: '29K', cat: '🔥 Revenge',
+      rating: '4.8',
       author: 'Zara_M', authorAv: 'https://i.pravatar.cc/100?img=16', verified: true,
     },
     {
@@ -466,6 +473,7 @@
       title: "He Proposed With My Best Friend's Ring",
       desc: 'What happens when betrayal comes from both directions at once.',
       chapters: 42, reads: '96K', likes: '19K', cat: '💔 Heartbreak',
+      rating: '4.5',
       author: 'Sarah_Odum', authorAv: 'https://i.pravatar.cc/100?img=48', verified: true,
     },
     {
@@ -475,6 +483,7 @@
       title: 'The Wife Who Knew Too Much',
       desc: 'She saw the messages. She said nothing. She planned everything.',
       chapters: 34, reads: '780K', likes: '92K', cat: '💔 Betrayal',
+      rating: '4.9',
       author: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', verified: true,
     },
     {
@@ -484,6 +493,7 @@
       title: 'His Secret Billionaire Life',
       desc: 'The man she married was not the man she thought she knew.',
       chapters: 51, reads: '1.1M', likes: '134K', cat: '💍 Romance',
+      rating: '4.8',
       author: 'Sarah_Odum', authorAv: 'https://i.pravatar.cc/100?img=48', verified: true,
     },
     {
@@ -493,6 +503,7 @@
       title: 'The Alpha\'s Rejected Mate',
       desc: 'She was meant to be his everything. He cast her aside.',
       chapters: 67, reads: '2.1M', likes: '245K', cat: '🐺 Werewolf',
+      rating: '4.7',
       author: 'Luna_Grey', authorAv: 'https://i.pravatar.cc/100?img=15', verified: true,
     },
     {
@@ -502,6 +513,7 @@
       title: 'Campus Lies',
       desc: 'Everyone has secrets. Hers could destroy them all.',
       chapters: 22, reads: '156K', likes: '28K', cat: '🎓 Campus',
+      rating: '4.6',
       author: 'Bode_Ilo', authorAv: 'https://i.pravatar.cc/100?img=12', verified: false,
     },
     {
@@ -511,6 +523,7 @@
       title: 'The Inheritance War',
       desc: 'Three siblings. One will. No one is safe.',
       chapters: 38, reads: '267K', likes: '41K', cat: '👑 Family',
+      rating: '4.6',
       author: 'Chiamaka_N', authorAv: 'https://i.pravatar.cc/100?img=47', verified: false,
     },
     {
@@ -520,6 +533,7 @@
       title: 'Her Sweet Revenge',
       desc: 'She lost everything. Now she will take it all back.',
       chapters: 45, reads: '890K', likes: '112K', cat: '🔥 Revenge',
+      rating: '4.8',
       author: 'Zara_M', authorAv: 'https://i.pravatar.cc/100?img=16', verified: true,
     },
     {
@@ -529,6 +543,7 @@
       title: 'The Doctor\'s Wife',
       desc: 'A perfect marriage. A deadly secret.',
       chapters: 55, reads: '1.4M', likes: '178K', cat: '✨ Twist',
+      rating: '4.8',
       author: 'Ifeanyi_Story', authorAv: 'https://i.pravatar.cc/100?img=53', verified: true,
     },
     {
@@ -538,6 +553,7 @@
       title: 'Queen of the Pack',
       desc: 'She was born to lead. He was born to challenge her.',
       chapters: 48, reads: '520K', likes: '76K', cat: '🐺 Werewolf',
+      rating: '4.6',
       author: 'Luna_Grey', authorAv: 'https://i.pravatar.cc/100?img=15', verified: true,
     },
   ];
@@ -826,8 +842,8 @@
       ]},
   ];
 
-  /* ── SERIES DATA (for story management) ── */
-  const SERIES = [
+  /* ── STORY RECORDS (story management) ── */
+  const STORY_RECORDS = [
     {
       id: 's1',
       cover: COVERS[0],
@@ -1097,21 +1113,21 @@
      (demo) or /api/ads (live). marketing/ad-manager.html edits them. */
   const AD_POOLS = {
     platform: [
-      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments', 'debate', 'collection'] },
+      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments', 'debate', 'collection', 'genreStories', 'leaderboard', 'blog', 'notifications', 'search', 'story'] },
       { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub', 'store', 'fullReader', 'scrollReader', 'debate'] },
       { id: 'plat_studio', sponsor: 'DroBoard Studio', title: 'Write Your Own Story Today', cta: 'Start Writing', img: c(4), pages: ['discover', 'feed', 'genreHub', 'debate'] },
     ],
     book: [
       { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'debate', 'collection'], campaign: 'CMP-010' },
-      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate', 'status'], campaign: 'CMP-002' },
+      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate', 'status', 'genreStories'], campaign: 'CMP-002' },
       { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate'], campaign: 'CMP-004' },
       { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'], campaign: 'CMP-001' },
-      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'] },
+      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'genreStories'] },
       { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'], campaign: 'CMP-004' },
     ],
     native: [
       { id: 'nat_status_1', brand: 'DroBoard Premium', heading: 'Read ad-free, anywhere', body: 'Unlimited coins, zero interruptions across stories and statuses.', cta: 'Go Premium', image: c(2), pages: ['status'], slots: ['status:every-3rd'] },
-      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['discover', 'feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion'] },
+      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['discover', 'feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion', 'genreStories', 'leaderboard', 'blog', 'search'] },
       { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'comments'] },
       { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments', 'status'] },
     ],
@@ -1127,7 +1143,7 @@
     /* Compact horizontal image banners (~74px leaderboards between sections).
         Slots dedupe by ad id, so each creative fills one slot per page load. */
     minibanner: [
-      { id: 'mb_novapay_1', brand: 'NovaPay', headline: 'Transfer with CONFIDENCE', sub: 'Fast, secure money transfers', cta: 'Try Free', img: 'https://picsum.photos/seed/drombnova/800/180', pages: ['discover', 'feed', 'genreHub', 'comments', 'discussion', 'debate', 'droboardPage'], campaign: 'CMP-021' },
+      { id: 'mb_novapay_1', brand: 'NovaPay', headline: 'Transfer with CONFIDENCE', sub: 'Fast, secure money transfers', cta: 'Try Free', img: 'https://picsum.photos/seed/drombnova/800/180', pages: ['discover', 'feed', 'genreHub', 'comments', 'discussion', 'debate', 'droboardPage', 'genreStories', 'leaderboard', 'blog', 'notifications', 'search', 'story'], campaign: 'CMP-021' },
       { id: 'mb_sale_1', brand: 'Super Sale', headline: 'Bonus coins on every top-up', sub: 'Limited time — this week only', cta: 'Shop Now', img: 'https://picsum.photos/seed/drombsale/800/180', pages: ['discover', 'feed', 'store', 'fullReader', 'scrollReader'], campaign: 'CMP-022' },
       { id: 'mb_studio_1', brand: 'DroBoard Studio', headline: 'Write your own story today', sub: 'Publish chapter 1 in minutes', cta: 'Start Writing', img: 'https://picsum.photos/seed/drombstudio/800/180', pages: ['discover', 'feed', 'genreHub', 'library'], campaign: 'CMP-023' },
     ],
@@ -1160,7 +1176,7 @@
     spotlight: [
       { id: 'spot_betrayal', kind: 'story', storyId: 'st1', title: 'Season of Betrayal', author: 'Ada_Writes', genre: 'Romance', rating: '4.9', chapters: 62, reads: '820k', preview: 'She signed the divorce papers. He signed a plan to win her back.', img: c(1), cta: 'Read Now', url: 'bridge.html?id=st1', pages: ['discover'] },
       { id: 'spot_wolf', kind: 'story', storyId: 'st11', title: 'Werewolf King, Human Queen', author: 'Luna_Grey', genre: 'Werewolf', rating: '4.7', chapters: 52, reads: '410k', preview: 'One throne. Two worlds. The moon chose the one match the kingdom fears.', img: c(2), cta: 'Start Reading', url: 'bridge.html?id=st11', pages: ['discover'] },
-      { id: 'spot_ada', kind: 'user', name: 'Ada Writes', handle: 'Ada_Writes', avatar: 'https://i.pravatar.cc/200?img=32', tagline: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal series updates every Friday.', followers: '48.2k', books: 3, reads: '1.2M', cta: 'Follow Ada', verified: true, url: 'profile.html?u=Ada_Writes', pages: ['discover'] },
+      { id: 'spot_ada', kind: 'user', name: 'Ada Writes', handle: 'Ada_Writes', avatar: 'https://i.pravatar.cc/200?img=32', tagline: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal story updates every Friday.', followers: '48.2k', books: 3, reads: '1.2M', cta: 'Follow Ada', verified: true, url: 'profile.html?u=Ada_Writes', pages: ['discover'] },
       { id: 'spot_top_readers', kind: 'board', boardType: 'readers', period: 'last_week', title: 'Meet the top 3 readers of last week', cta: 'View leaderboard', url: 'leaderboard.html', pages: ['discover'] },
       { id: 'spot_top_writers', kind: 'board', boardType: 'writers', period: 'last_month', title: 'Meet the top 3 writers of last month', cta: 'View leaderboard', url: 'leaderboard.html', pages: ['discover'] },
       { id: 'spot_refer', kind: 'promo', brand: 'DroBoard', title: 'Refer a friend, earn 250 coins', sub: 'Share your invite link — you both get coins when they finish their first chapter.', badge: '250 coins each', cta: 'Invite a friend', img: c(8), url: 'refer.html', pages: ['discover'] },
@@ -1183,7 +1199,7 @@
     comments: { interval: 5, enabled: true },
     status: { interval: 3, enabled: true },
     droboardPage: { interval: 4, enabled: true },
-    series: { slot: 'single' },
+    story: { slot: 'single' },
     home: { interval: 5 },
     fullReader: { interval: 3, format: 'book' },
     scrollReader: { interval: 4, format: 'book' },
@@ -1355,7 +1371,7 @@
 
   const SAVED_POSTS = [
     { id: 'sp1', type: 'debate', name: 'Ada Writes', avatar: 'https://i.pravatar.cc/100?img=32', text: 'Unpopular opinion: the villain in "Married for Revenge" was right. Change my mind.', likes: 342, comments: 89, time: '2h' },
-    { id: 'sp2', type: 'poll', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', text: 'Which trope hits harder? A) Secret Baby B) Enemies to Lovers C) Second Chance', likes: 518, comments: 234, time: '5h' },
+    { id: 'sp2', type: 'poll', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', text: 'Which trope hits harder? A) Secret Baby B) Enemies to Lovers C) Second Chance', poll: { q: 'Which trope hits harder?', opts: [{ label: 'Secret Baby', v: 412 }, { label: 'Enemies to Lovers', v: 806 }, { label: 'Second Chance', v: 233 }], total: 1451, voted: -1 }, expiresAt: Date.now() + 5 * 3600000, likes: 518, comments: 234, time: '5h' },
     { id: 'sp3', type: 'repost', name: 'Kemi_A', avatar: 'https://i.pravatar.cc/100?img=45', text: 'Reposting: "The Night She Returned" Ch. 40 broke me. That final line??', likes: 201, comments: 45, time: '1d' },
     { id: 'sp4', type: 'quote', name: 'Efe_O', avatar: 'https://i.pravatar.cc/100?img=53', text: '"She married him for revenge. He stayed for love." — If that is not the best opening line I have ever read.', likes: 876, comments: 167, time: '2d' },
     { id: 'sp5', type: 'ama', name: 'Luna_Grey', avatar: 'https://i.pravatar.cc/100?img=11', text: 'AMA: Ask me anything about writing werewolf romance. I will be live for 2 hours!', likes: 1204, comments: 456, time: '3d' },
@@ -1868,7 +1884,7 @@ const SERIES_CATALOG = {
     WRITERS_TO_FOLLOW,
     STATUSES,
     DEBATE_POSTS,
-    SERIES,
+    STORY_RECORDS,
     SERIES_CATALOG,
     COMMENTS,
     ADS,

@@ -512,7 +512,7 @@
       { q: 'The Runaway Bride', meta: '8.7k searches', fire: false },
       { q: 'campus romance 2025', meta: '7.2k searches', fire: false },
       { q: 'Chiamaka_N', meta: '6.8k searches · Writer', fire: false },
-      { q: 'family drama series', meta: '5.9k searches', fire: false },
+      { q: 'family drama books', meta: '5.9k searches', fire: false },
       { q: 'revenge arc', meta: '5.3k searches', fire: false },
       { q: 'best elegy stories', meta: '4.1k searches', fire: false },
     ],
@@ -843,10 +843,9 @@
     const st = _statusEntry(w);
     const key = w.handle || w.name || (st && st.id);
     if (window.DroboardStatusRing) {
-      return DroboardStatusRing.html({
-        id: key, name: w.name, avatar: av,
+      return DroboardStatusRing.avatar({
+        id: key, name: w.name, handle: w.handle, avatar: av,
         statuses: st ? st.statuses : null,
-        ring: st ? (st.ring || 'ring-has') : 'ring-none',
       }, {
         size: 44, key, pad: st ? 2.5 : 0, gap: 0,
         innerBg: 'var(--dso-bg)',
@@ -883,7 +882,7 @@ function renderDebates() {
 
   // Debates are the same composer-shaped posts the feed shows — they live in
   // the shared demo store (central-demo-data.js → DemoData.DEBATE_POSTS).
-  // The series reader debates (SERIES_CATALOG[*].debates) are NOT used here:
+  // The story-reader debates (SERIES_CATALOG[*].debates) are NOT used here:
   // nothing in the composer can produce them.
   function debatesFromShared() {
     const src = (window.DemoData && window.DemoData.DEBATE_POSTS) || [];

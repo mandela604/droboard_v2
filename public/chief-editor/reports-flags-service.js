@@ -1,42 +1,43 @@
 /**
  * reports-flags-service.js — Team story reports (Chief Editor scope)
- * Aggregate of all flagged stories under the managed SEs, rendered with the
- * shared ../component/reports-table.js component (same card UI as SE).
- * Resolving here stamps the CE name and reflects in the SE queue instantly
- * (shared store) — no escalation step needed.
+ * READ-ONLY view of every book flagged by any senior editor, rendered as an
+ * accordion via the shared ../component/reports-table.js (layout:'accordion').
+ * Expanding a row reveals the editor who flagged it, the reason, type/
+ * severity and the SE queue status. Resolution happens in the editor's own
+ * module — the CE only watches. Senior-editor Book-Management flags mirror
+ * into the same store, so they arrive here too.
  * reports-flags.html is shell only + ChiefStoryFlags.init().
  *
  * Going live: set USE_API=true in the component; endpoints:
  *   GET  /api/reports/story?scope=team
- *   POST /api/reports/story/:id/resolve | /dismiss
  */
 (function(){
 'use strict';
 
-const VIEWER_NAME = 'Adaeze Bello';
-
-function managedSeIds(){
+function seDirectory(){
+  var map = {};
   try {
     var D = window.ChiefEditorData && window.ChiefEditorData.DEMO;
-    if (D && Array.isArray(D.seniorEditors) && D.seniorEditors.length) {
-      return D.seniorEditors.map(function(s){ return s.id; });
+    if (D && Array.isArray(D.seniorEditors)) {
+      D.seniorEditors.forEach(function(s){ map[s.id] = s.avatar; });
     }
   } catch (e){}
-  return 'all';
+  return map;
 }
 
 function statCard(n, l, ico, bg, color){
   return '<div class="stat-card"><div class="stat-ico" style="background:' + bg + ';color:' + color + '"><i class="fas ' + ico + '"></i></div>'
     + '<div><div class="stat-num">' + n + '</div><div class="stat-lbl">' + l + '</div></div></div>';
 }
-function renderStats(seIds){
+function renderStats(){
   if (!window.DroboardReportsTable) return;
-  var s = window.DroboardReportsTable.stats(seIds);
+  var list = window.DroboardReportsTable.getScoped('all').filter(function(r){ return r.status === 'pending'; });
+  var sev = function(s){ return list.filter(function(r){ return r.severity === s; }).length; };
   document.getElementById('statCards').innerHTML =
-    statCard(s.total, 'Team Reports', 'fa-flag', 'var(--red-bg)', 'var(--red)')
-    + statCard(s.pending, 'Pending Review', 'fa-clock', 'var(--amber-bg)', 'var(--amber)')
-    + statCard(s.resolved, 'Resolved', 'fa-circle-check', 'var(--green-bg)', 'var(--green)')
-    + statCard(s.dismissed, 'Dismissed', 'fa-rotate-left', 'var(--blue-bg)', 'var(--blue)');
+    statCard(list.length, 'Flagged Books', 'fa-flag', 'var(--red-bg)', 'var(--red)')
+    + statCard(sev('high'), 'High Severity', 'fa-triangle-exclamation', 'var(--red-bg)', 'var(--red)')
+    + statCard(sev('medium'), 'Medium Severity', 'fa-circle-half-stroke', 'var(--amber-bg)', 'var(--amber)')
+    + statCard(sev('low'), 'Low Severity', 'fa-circle-info', 'var(--blue-bg)', 'var(--blue)');
 }
 
 function init(){
@@ -49,16 +50,17 @@ function init(){
     searchPlaceholder: 'Search anything…'
   });
 
-  var seIds = managedSeIds();
-  renderStats(seIds);
+  renderStats();
   if (window.DroboardReportsTable) {
     window.DroboardReportsTable.attach('#reportsMount', {
-      seIds: seIds,
-      viewerName: VIEWER_NAME,
-      canResolve: true,
+      seIds: 'all',
+      layout: 'accordion',
+      pendingOnly: true,
+      seAvatars: seDirectory(),
+      canResolve: false,
       showSeFilter: true,
-      pageSize: 6,
-      onChange: function(){ renderStats(seIds); }
+      pageSize: 8,
+      onChange: renderStats
     });
   }
 }

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#ffffff"/>
 <title>Droboard · Reader League</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -73,6 +73,7 @@ body{display:flex;justify-content:center}
 .crown-banner .cb-s{font-size:10px;color:var(--tx-muted);margin-top:1px}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
@@ -102,6 +103,7 @@ body{display:flex;justify-content:center}
 
   <div class="podium" id="podium"></div>
   <div class="rows" id="rows"></div>
+  <div data-ad-slot="leaderboard:inline" data-ad-format="native" style="padding:14px 14px 0"></div>
 
   <div class="card">
     <div class="card-t">🎁 Weekly prizes · zero cash, all glory</div>
@@ -123,9 +125,14 @@ body{display:flex;justify-content:center}
 <div class="toast" id="toast"></div>
 
 <script src="../services/auth-session.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../component/ad-card.js?v=6"></script>
+<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
+<script src="../component/ad-slot.js?v=2"></script>
 <script src="../services/store-service.js"></script>
 <script src="../services/league-service.js"></script>
-<script src="../services/notification-store.js?v=5"></script>
+<script src="../services/notification-store.js?v=6"></script>
 <script src="../component/share-modal.js"></script>
 <script>
 (function () {

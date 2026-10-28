@@ -1,19 +1,19 @@
 (function(){
 'use strict';
 
-/* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+/* ── Backend header — live endpoints with demo fallbacks ── */
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
-  const res = await fetch(API_BASE + path, options);
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
   if (!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
 }
 // Throwing variant — used for writes (regenerate) that must not look successful.
 async function apiFetch(path, options){
   if (!USE_API) return { demo: true };
-  const res = await fetch(API_BASE + path, options);
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
   if (!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
 }
@@ -73,7 +73,7 @@ function setCode(newCode){
 // Backend row → the shape the table/pager already expects.
 function mapBackendWriter(u){
   return {
-    id: u.id, name: u.name || u.fullName || '', email: u.email || '', avatar: u.avatar || '',
+    id: u.id, name: u.name || u.fullName || '', email: u.email || '', avatar: u.avatar || '../assets/droboard-icon.png',
     code: u.code || getCode(),
     via: u.via || 'assigned',
     signedUp: u.signedUp || u.createdAt || new Date().toISOString(),

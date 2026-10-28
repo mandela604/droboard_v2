@@ -7,7 +7,7 @@
  *
  * Story-owned slots (user decision):
  *   - in-chapter  (fullReader:per-300-words, scrollReader:per-300-words)
- *   - end-of-story (fullReader:bottom, scrollReader:bottom, series:top)
+ *   - end-of-story (fullReader:bottom, scrollReader:bottom, bookReader:top)
  *   - story comments (comments:*)
  * Everything else (home, discover, feed, search, hub, library, browse
  * overlay, profile, droboardPage, debate, …) → 100% platform.
@@ -52,8 +52,8 @@
   };
 
   /* Story-owned slot namespaces: fullReader, scrollReader (both readers),
-     series (book page edge slot), comments (story comment slots). */
-  var STORY_SLOT_RE = /^(fullReader|scrollReader|series|comments)[:.]/;
+     story (book page edge slot), comments (story comment slots). */
+  var STORY_SLOT_RE = /^(fullReader|scrollReader|story|comments)[:.]/;
 
   /* Story → author registry (mirrors the marketing campaign library so
      payout pages and campaigns show the same names). */
@@ -337,7 +337,7 @@
       { slot: 'fullReader:bottom', page: 'full-reader', w: 2 },
       { slot: 'scrollReader:per-300-words', page: 'scroll-reader', w: 4 },
       { slot: 'comments:inline', page: 'comments', w: 2 },
-      { slot: 'series:top', page: 'series', w: 1 },
+      { slot: 'bookReader:top', page: 'bookReader', w: 1 },
     ];
     var platformSlots = [
       { slot: 'home:swipe-card', page: 'home', adId: 'ad_home_hero', w: 3 },
@@ -402,12 +402,14 @@
     'story:fullReader': 'Story · Full Reader',
     'story:scrollReader': 'Story · Scroll Reader',
     'story:comments': 'Story · Comments',
-    'story:series': 'Story · Series Page',
+    'story:story': 'Story · Bridge Page',
     home: 'Home Feed', discover: 'Discover', feed: 'Feed',
+    bookReader: 'Book Reader',
     genreHub: 'Genre Hub', library: 'Library', search: 'Search',
     droboardPage: 'DroBoard Page', overlayBrowse: 'Browse Overlay',
     comments: 'Comments', profile: 'Profile', debate: 'Debate',
-    status: 'Status Viewer',
+    status: 'Status Viewer', genreStories: 'Genre Stories',
+    leaderboard: 'Leaderboard', blog: 'Blog', notifications: 'Notifications', store: 'Store',
   };
   function surfaceLabel(key) { return SURFACE_LABELS[key] || key; }
 

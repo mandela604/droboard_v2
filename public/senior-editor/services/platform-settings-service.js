@@ -119,7 +119,7 @@ const SECTIONS = {
     desc: 'Manage API keys and third-party integrations',
     html: () => `
       <div class="form-group"><label>API Status</label><div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span><span style="font-weight:700;color:var(--green)">Operational</span></div></div>
-      <div class="form-group"><label>API Base URL</label><input type="text" value="https://api.droboard.app/v1" readonly style="font-family:monospace;background:var(--table-head)"/></div>
+      <div class="form-group"><label>API Base URL</label><input type="text" value="${window.location.origin}/api" readonly style="font-family:monospace;background:var(--table-head)"/></div>
       <div class="form-group"><label>API Key</label><div style="display:flex;gap:10px"><input type="password" value="dro_sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" readonly style="font-family:monospace;flex:1;background:var(--table-head)" id="apiKeyInput"/><button class="btn-save" style="padding:9px 14px;font-size:11px" onclick="const i=document.getElementById('apiKeyInput');i.type=i.type==='password'?'text':'password'">Show</button></div></div>
       <div class="form-group"><label>Webhook URL</label><div class="desc">Receive real-time events via POST requests</div><input type="text" value="https://droboard.app/webhooks"/></div>
       <div class="toggle-row"><div class="toggle-info"><b>Public API Access</b><span>Allow third-party integrations via public API</span></div><div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="knob"></div></div></div>

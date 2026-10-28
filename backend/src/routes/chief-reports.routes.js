@@ -16,10 +16,7 @@ const listQuery = paging.extend({
   q: z.string().max(80).optional(),
   type: z.enum(['content', 'spam', 'plagiarism', 'abuse', 'other']).optional(),
   status: z.enum(['pending', 'resolved', 'dismissed']).optional(),
-  // accepted-but-ignored: Report schema has no severity field (see service header).
-  severity: z.string().max(20).optional(),
-  // best-effort team scope: matched against reporterId OR reporterLabel
-  // (Report has no seId field; full support needs a schema migration).
+  severity: z.enum(['low', 'medium', 'high']).optional(),
   seId: z.string().max(120).optional(),
 });
 const statsQuery = z.object({ seId: z.string().max(120).optional() }).strict();

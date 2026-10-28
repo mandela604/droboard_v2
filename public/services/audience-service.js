@@ -1,14 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
    AUDIENCE SERVICE — window.DroboardAudience
-   Resolves which behavior segments (AdSetupData.SEGMENTS) the current
-   device matches from data the app already tracks:
+   Resolves which behavior segments the current device matches from data
+   the app already tracks:
      dro_league_activity · dro_following · dro_finance_subs · dro_premium
      droboard_user / droboard_session · dro_writer_flow · dro_refer_stats_v2_*
      AdService.readStats() clicks · first/last seen stamps
 
-   The same rules the marketing Audience step writes are evaluated here,
-   so a targeted ad only serves to matching readers. Live swap: hydrate
-   signals() from GET /api/audience/me (same keys) instead of localStorage.
+   The segment definitions themselves are the editable catalog in
+   services/audience-rules.js — this file only computes the reader's
+   signals and evaluates them. Live swap: hydrate signals() from
+   GET /api/audience/me (same keys) instead of localStorage.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -22,34 +23,13 @@
   }
   function num(key) { return +ls(key, 0) || 0; }
 
+  /* The catalog is one shared, editable list (services/audience-rules.js),
+     loaded before this file on every page that matches readers. */
   function segmentsCatalog() {
-    try { return (window.AdSetupData && AdSetupData.SEGMENTS) || []; } catch (e) { return []; }
+    try { return (window.DroboardAudienceRules && DroboardAudienceRules.all()) || []; } catch (e) { return []; }
   }
-  /* Client pages don't load the marketing catalog, so rules ship here too.
-     Keep ids in sync with marketing/shared/ad-setup-data.js. */
-  var FALLBACK_RULES = {
-    'top-tippers': { signal: 'tip_sent', op: 'gte', value: 1 },
-    'super-reactors': { signal: 'reactions', op: 'gte', value: 50 },
-    'commentators': { signal: 'comments', op: 'gte', value: 10 },
-    'sharers': { signal: 'shares', op: 'gte', value: 3 },
-    'savers': { signal: 'saves', op: 'gte', value: 20 },
-    'unlockers': { signal: 'chapters_unlocked', op: 'gte', value: 3 },
-    'coin-buyers': { signal: 'coin_purchase', op: 'gte', value: 1 },
-    'premium': { signal: 'subscription_active', op: 'eq', value: true },
-    'power-followers': { signal: 'following_count', op: 'gte', value: 25 },
-    'binge-readers': { signal: 'weekly_hours_or_streak', op: 'any', value: [5, 10] },
-    'finishers': { signal: 'books_finished', op: 'gte', value: 3 },
-    'referrers': { signal: 'referrals_converted', op: 'gte', value: 1 },
-    'ad-responders': { signal: 'ad_click', op: 'gte', value: 1 },
-    'winback': { signal: 'days_since_active', op: 'gte', value: 30 },
-    'newcomers': { signal: 'account_age_days', op: 'lte', value: 14 },
-    'lapsed-subscribers': { signal: 'had_subscription', op: 'eq', value: true },
-    'writers': { signal: 'is_writer', op: 'eq', value: true },
-  };
   function segment(id) {
-    var all = segmentsCatalog();
-    for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
-    return FALLBACK_RULES[id] ? { id: id, rule: FALLBACK_RULES[id] } : null;
+    try { return DroboardAudienceRules.get(id) || null; } catch (e) { return null; }
   }
 
   function currentUser() {
@@ -151,37 +131,86 @@
     return true;
   }
 
-  function matchesSegment(id, sig) {
-    var seg = segment(id);
-    if (!seg || !seg.rule) return false;
-    sig = sig || signals();
-    var value = sig[seg.rule.signal];
-    if (value == null || value === false) {
-      if (seg.rule.op === 'eq' && seg.rule.value === false) return true;
-      return false;
-    }
-    return compare(value, seg.rule);
+  /* A missing signal reads as zero, not as "unknown" — that way raising a
+     threshold can never accidentally switch a segment off for a reader we
+     simply have no counter for yet. */
+  function matchesRule(rule, sig) {
+    if (!rule || !rule.signal) return false;
+    var value = (sig || {})[rule.signal];
+    if (value == null) value = 0;
+    if (value === false && rule.value === false && rule.op === 'eq') return true;
+    return compare(value, rule);
   }
+
+  function matchesSegment(idOrRule, sig) {
+    var rule = (idOrRule && idOrRule.signal) ? idOrRule : (segment(idOrRule) || {}).rule;
+    if (!rule) return false;
+    return matchesRule(rule, sig || signals());
+  }
+
+  /* Live path: GET /api/users/me/audience counts this reader's real events
+     and answers with the segment ids they belong to. Prefer it whenever it
+     has answered — the device counters below have no timestamps, so they
+     cannot honour a rule's window ("50+ reactions in the last 30 days") and
+     quietly read as all-time. Cached so a page load never waits on it;
+     logged out, offline or un-deployed, matching falls back to local. */
+  var ME_KEY = 'dro_audience_me';
+  var ME_TTL = 6 * 3600e3;
+  var _server = null;
+  (function readMe() {
+    try {
+      var c = JSON.parse(localStorage.getItem(ME_KEY) || 'null');
+      if (c && Array.isArray(c.segments) && Date.now() - (+c.at || 0) < ME_TTL) _server = c.segments;
+    } catch (e) {}
+  })();
+  function fetchMe() {
+    var u = currentUser();
+    if (!u || !u.id) return;
+    try {
+      fetch('/api/users/me/audience', { credentials: 'include' }).then(function (r) {
+        return r.ok ? r.json() : null;
+      }).then(function (d) {
+        if (!d || !Array.isArray(d.segments)) return;
+        _server = d.segments;
+        try { localStorage.setItem(ME_KEY, JSON.stringify({ segments: d.segments, at: Date.now() })); } catch (e) {}
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  fetchMe();
 
   /* ids: segment ids from the creative/placement · mode: any | all */
   function matches(ids, mode, sig) {
     if (!Array.isArray(ids) || !ids.length) return true;
+    if (_server) {
+      var inSet = function (id) { return _server.indexOf(id) !== -1; };
+      return mode === 'all' ? ids.every(inSet) : ids.some(inSet);
+    }
     sig = sig || signals();
     var test = function (id) { return matchesSegment(id, sig); };
     return mode === 'all' ? ids.every(test) : ids.some(test);
   }
 
   function matchedIds() {
+    if (_server) return _server.slice();
     var sig = signals();
     return segmentsCatalog().filter(function (s) { return matchesSegment(s.id, sig); })
       .map(function (s) { return s.id; });
   }
 
+  /* Pull the stored catalog once per load so a marketing edit lands on the
+     next page view rather than the next deploy. Nothing awaits it — this
+     page's own matching may use the previous copy, which is the same
+     behaviour as the ad inventory cache. */
+  try { if (window.DroboardAudienceRules) DroboardAudienceRules.refresh(); } catch (e) {}
+
   window.DroboardAudience = {
     signals: signals,
     matches: matches,
+    matchesRule: matchesRule,
     matchesSegment: matchesSegment,
     matchedIds: matchedIds,
     segment: segment,
+    fromServer: function () { return !!_server; },
+    refresh: fetchMe,
   };
 })();

@@ -17,7 +17,7 @@
     return clone({ acts: [{ n: 1, title: 'Setup' }, { n: 2, title: 'Confrontation' }, { n: 3, title: 'Resolution' }], roadmap: [], turningPoints: [] });
   };
   Svc.savePlot = Svc.savePlot || async function (bookId, plot) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/plot', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(plot) }); if (r.ok) return await r.json(); } catch (e) {} }
+    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/plot', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(plot) }); if (r.ok) return await r.json(); } catch (e) {} }
     await delay(200); return { ok: true };
   };
 

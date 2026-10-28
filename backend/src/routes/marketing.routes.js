@@ -32,6 +32,41 @@ router.post('/audience-estimate', requireAuth, generalLimiter,
     }).strict(),
   })), async (req, res) => base.wrap(res, async () => audience.estimate(req.valid.body)));
 
+/* ── Editable segment catalog (Ad Manager → Audience segments) ──
+   Definitions only. `reach` is accepted but ignored — the count comes from
+   the aggregates behind /audience-catalog, never from what the console sent,
+   so nobody can inflate an audience by editing the number shown for it. */
+const segmentRule = z.object({
+  signal: z.string().max(40),
+  op: z.enum(['gte', 'lte', 'eq', 'any']),
+  value: z.union([z.boolean(), z.number().min(0).max(1e7), z.array(z.number().min(0).max(1e5)).length(2)]),
+  windowDays: z.number().int().min(1).max(365).optional(),
+}).strict();
+const segmentBody = z.object({
+  id: z.string().min(1).max(60),
+  label: z.string().min(1).max(80),
+  icon: z.string().max(40).optional(),
+  color: z.string().max(9).optional(),
+  desc: z.string().max(300).optional(),
+  retired: z.boolean().optional(),
+  reach: z.number().min(0).optional(),
+  rule: segmentRule,
+}).strict();
+
+router.get('/audience-segments', requireAuth, generalLimiter,
+  async (req, res) => base.wrap(res, async () => ({ segments: await audience.listSegments() })));
+
+router.put('/audience-segments', requireAuth, ...C, writeLimiter, audit('marketing.audience.update'),
+  validate(z.object({ body: z.object({ segments: z.array(segmentBody).min(1).max(60) }).strict() })),
+  async (req, res) => base.wrap(res, async () => ({
+    segments: await audience.saveSegments(req.valid.body.segments, req.user && req.user.id),
+  })));
+
+router.post('/audience-segments/reset', requireAuth, ...C, writeLimiter, audit('marketing.audience.reset'),
+  async (req, res) => base.wrap(res, async () => ({
+    segments: await audience.resetSegments(req.user && req.user.id),
+  })));
+
 /* ── Dashboard + campaigns (marketing-data.js:240-304) ── */
 router.get('/dashboard', requireAuth, ...C, generalLimiter,
   async (req, res) => base.wrap(res, async () => surfaces.dashboard()));
@@ -47,6 +82,10 @@ const campaignBody = z.object({
   storyCover: z.string().max(2000).optional(),
   storyGenre: z.string().max(80).optional(),
   placements: z.array(z.string().max(40)).max(20).optional(),
+  // Slot entitlement (campaign-wizard.js): every slot the buy covers. Ad setup
+  // restricts a creative's slots to this list, so the two can't disagree.
+  slots: z.array(z.string().max(80)).max(60).optional(),
+  audienceTargeting: z.object({}).passthrough().optional(),
   startDate: z.string().max(30).optional(),
   endDate: z.string().max(30).optional(),
   hasBudget: z.boolean().optional(),
@@ -58,8 +97,12 @@ const campaignBody = z.object({
   impressions: z.number().min(0).max(1e12).optional(),
   clicks: z.number().min(0).max(1e12).optional(),
   ctr: z.number().min(0).max(100).optional(),
+  advertiserName: z.string().max(200).optional(),
+  advertiserEmail: z.string().max(200).optional(),
   conversions: z.number().min(0).max(1e12).optional(),
-}).strict();
+  // passthrough: the wizard also sends objective-specific keys; a strict
+  // object here 400s campaign creation for advertisers.
+}).passthrough();
 
 router.get('/campaigns', requireAuth, ...C, generalLimiter,
   async (req, res) => base.wrap(res, async () => surfaces.campaigns()));
@@ -102,6 +145,12 @@ router.post('/league/reset', requireAuth, ...C, writeLimiter, audit('marketing.l
 // page/slot programming: {page, enabled?, slots?, interval?, ...}
 // slots: { slotId: false } to kill one slot, or
 // { slotId: {enabled, formats[], adIds[]} } to program it (pinned ids first).
+// `passthrough()`: the ad-manager PUTs one bulk map covering every panel on
+// the placements card, so it also sends the spotlight schedule and
+// paidUnlockAds. A strict object here 400s the entire save, which the console
+// used to swallow and fall back to localStorage — the change looked applied in
+// the marketer's browser and never reached a reader. Unknown-but-safe config
+// now lands in placement.cfg (ads.service.js savePlacement).
 router.patch('/ads/placement', requireAuth, ...C, writeLimiter, audit('marketing.ads.placement'),
   validate(z.object({
     body: z.object({
@@ -122,7 +171,8 @@ router.patch('/ads/placement', requireAuth, ...C, writeLimiter, audit('marketing
       promoSlider: z.boolean().optional(),
       wordsPerSlot: z.number().int().min(50).max(5000).optional(),
       repeat: z.boolean().optional(),
-    }).strict(),
+      paidUnlockAds: z.boolean().optional(),
+    }).passthrough(),
   })), async (req, res) => base.wrap(res, async () => {
     const b = req.valid.body;
     return ads.savePlacement({ page: b.page, patch: b });
@@ -140,6 +190,7 @@ router.put('/ads/placements', requireAuth, ...C, writeLimiter, audit('marketing.
       topPromo: z.boolean().optional(),
       promoSlider: z.boolean().optional(),
       wordsPerSlot: z.number().int().min(50).max(5000).optional(),
+      paidUnlockAds: z.boolean().optional(),
       slots: z.record(z.string().max(80), z.union([
         z.boolean(),
         z.object({
@@ -148,7 +199,7 @@ router.put('/ads/placements', requireAuth, ...C, writeLimiter, audit('marketing.
           adIds: z.array(z.string().max(120)).max(20).optional(),
         }).strict(),
       ])).optional(),
-    }).strict()),
+    }).passthrough()),
   })), async (req, res) => base.wrap(res, async () => {
     const pages = Object.keys(req.valid.body || {}).slice(0, 30);
     for (const page of pages) {

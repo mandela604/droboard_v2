@@ -1,21 +1,54 @@
 'use strict';
-/* Audience segments backend — live evaluator for the marketing ad-setup
-   catalog (public/marketing/shared/ad-setup-data.js SEGMENTS).
-   Each segment declares {signal, windowDays, op, value}; evaluateSegment
-   counts matching users from real event collections. Catalog responses are
-   cached 10 minutes (console traffic is low, aggregates are heavy). */
+/* Audience segments backend — live evaluator for the marketing ad-targeting
+   catalog.
+
+   The catalog is stored, not hardcoded: marketing edits thresholds and
+   wording in Ad Manager → Audience segments, which writes the AudienceConfig
+   document (seeded from DEFAULT_SEGMENTS on first read). What stays in code
+   is the SIGNAL vocabulary below — each signal names a real collection and
+   how to count it, so a new signal is an engineering change while a new
+   threshold is not.
+
+   Each stored segment declares {signal, windowDays, op, value}; evaluateRule
+   turns that into an aggregate over the event collections. Catalog responses
+   are cached 10 minutes (console traffic is low, aggregates are heavy) and
+   the cache is dropped whenever the catalog is saved. */
 const { User } = require('../models/user.model');
-const { Book } = require('../models/content.model');
+const { Book, Category, Genre } = require('../models/content.model');
 const {
-  Post, Comment, Follow, LibraryItem, ReadingProgress, Referral, Reaction, ShareEvent,
+  Comment, Follow, LibraryItem, ReadingProgress, Referral, Reaction, ShareEvent,
 } = require('../models/social.model');
 const { LedgerEntry, CoinTransaction, Subscription } = require('../models/money.model');
 const { AdClick } = require('../models/platform.model');
+const { AudienceConfig } = require('../models/marketing.model');
 
 const DAY = 86400000;
 function since(days) { return new Date(Date.now() - days * DAY); }
+function clamp(n, lo, hi, fb) { n = Number(n); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fb; }
 
-const SEGMENTS = [
+/* Which collection answers each signal, and which operators it can answer.
+   Mirrors public/services/audience-rules.js — keep the two in step. */
+const SIGNALS = {
+  reactions: { window: true, ops: ['gte'] },
+  comments: { window: true, ops: ['gte'] },
+  shares: { window: true, ops: ['gte'] },
+  saves: { window: true, ops: ['gte'] },
+  books_finished: { window: true, ops: ['gte'] },
+  chapters_unlocked: { window: true, ops: ['gte'] },
+  tip_sent: { window: true, ops: ['gte'] },
+  coin_purchase: { window: true, ops: ['gte'] },
+  ad_click: { window: true, ops: ['gte'] },
+  referrals_converted: { window: true, ops: ['gte'] },
+  following_count: { window: false, ops: ['gte'] },
+  days_since_active: { window: false, ops: ['gte', 'lte'] },
+  account_age_days: { window: false, ops: ['gte', 'lte'] },
+  weekly_hours_or_streak: { window: false, ops: ['any'] },
+  subscription_active: { window: false, ops: ['eq'] },
+  had_subscription: { window: false, ops: ['eq'] },
+  is_writer: { window: false, ops: ['eq'] },
+};
+
+const DEFAULT_SEGMENTS = [
   { id: 'top-tippers', label: 'Top Tippers', icon: 'fa-coins', color: '#f0a800', desc: 'Tipped a writer in the last 30 days — proven spenders.', rule: { signal: 'tip_sent', windowDays: 30, op: 'gte', value: 1 } },
   { id: 'super-reactors', label: 'Super Reactors', icon: 'fa-heart', color: '#ff0050', desc: '50+ reactions in 30 days — the loudest engagers.', rule: { signal: 'reactions', windowDays: 30, op: 'gte', value: 50 } },
   { id: 'commentators', label: 'Commentators', icon: 'fa-comments', color: '#38bdf8', desc: '10+ comments in 30 days — discussion drivers.', rule: { signal: 'comments', windowDays: 30, op: 'gte', value: 10 } },
@@ -35,131 +68,230 @@ const SEGMENTS = [
   { id: 'writers', label: 'Writers', icon: 'fa-feather-pointed', color: '#e879f9', desc: 'Verified authors — for tools, promos, services.', rule: { signal: 'is_writer', op: 'eq', value: true } },
 ];
 
+/* ── stored catalog ── */
+
+/* Same clamping the client store applies, so a hand-written or stale record
+   cannot reach the evaluator with an operator its signal cannot answer. */
+function normalizeSegment(seg) {
+  const r = (seg && seg.rule) || {};
+  const id = String((seg && seg.id) || '').trim().slice(0, 60);
+  const signal = SIGNALS[r.signal] ? r.signal : null;
+  if (!id || !signal) return null;
+  const def = SIGNALS[signal];
+  const raw = r.value;
+  const op = def.ops.indexOf(r.op) > -1 ? r.op : def.ops[0];
+  const rule = { signal, op };
+  if (op === 'eq') rule.value = raw !== false;
+  else if (op === 'any') {
+    const v = Array.isArray(raw) ? raw : [raw, raw];
+    rule.value = [clamp(v[0], 0, 100000, 0), clamp(v[1], 0, 3650, 0)];
+  } else rule.value = clamp(raw, 0, 1e7, 0);
+  if (def.window) {
+    const w = clamp(r.windowDays, 1, 365, 0);
+    if (w) rule.windowDays = w;
+  }
+  const color = /^#[0-9a-fA-F]{6}$/.test(String(seg.color || '')) ? seg.color : '#ff0050';
+  return {
+    id,
+    label: String(seg.label || id).slice(0, 80),
+    icon: String(seg.icon || 'fa-users').slice(0, 40),
+    color,
+    desc: String(seg.desc || '').slice(0, 300),
+    rule,
+    ...(seg.retired ? { retired: true } : {}),
+  };
+}
+function normalizeList(list) {
+  const seen = {};
+  return (Array.isArray(list) ? list : []).map(normalizeSegment).filter(s => {
+    if (!s || seen[s.id]) return false;
+    seen[s.id] = true;
+    return true;
+  });
+}
+
+async function listSegments() {
+  const doc = await AudienceConfig.findOne({ key: 'segments' }).lean();
+  if (doc && Array.isArray(doc.segments) && doc.segments.length) return normalizeList(doc.segments);
+  const seeded = normalizeList(DEFAULT_SEGMENTS);
+  await AudienceConfig.updateOne({ key: 'segments' },
+    { $set: { segments: seeded } }, { upsert: true }).catch(() => {});
+  return seeded;
+}
+
+async function saveSegments(list, actor) {
+  const clean = normalizeList(list);
+  if (!clean.length) throw Object.assign(new Error('At least one segment is required'), { status: 400 });
+  await AudienceConfig.updateOne({ key: 'segments' },
+    { $set: { segments: clean, updatedBy: String(actor || '') } }, { upsert: true });
+  CACHE = { at: 0, data: null };
+  return clean;
+}
+
+async function resetSegments(actor) {
+  const seeded = normalizeList(DEFAULT_SEGMENTS);
+  await AudienceConfig.updateOne({ key: 'segments' },
+    { $set: { segments: seeded, updatedBy: String(actor || '') } }, { upsert: true });
+  CACHE = { at: 0, data: null };
+  return seeded;
+}
+
+/* ── evaluation ── */
+
 async function distinctUserIds(pipeline, Model) {
   const rows = await Model.aggregate(pipeline);
   return new Set(rows.map(r => String(r._id)).filter(Boolean));
 }
 function havingCount(field, min) {
-  return [
-    { $group: { _id: '$' + field, n: { $sum: 1 } } },
-    { $match: { n: { $gte: min } } },
-  ];
+  return [{ $group: { _id: '$' + field, n: { $sum: 1 } } }, { $match: { n: { $gte: min } } }];
 }
 function havingDistinct(field, distinct, min) {
-  return [
-    { $group: { _id: '$' + field, ids: { $addToSet: '$' + distinct } } },
-    { $project: { n: { $size: '$ids' } } },
-    { $match: { n: { $gte: min } } },
-  ];
+  return [{ $group: { _id: '$' + field, ids: { $addToSet: '$' + distinct } } },
+    { $project: { n: { $size: '$ids' } } }, { $match: { n: { $gte: min } } }];
+}
+function walletIds(set) { return new Set([...set].map(id => id.replace(/^wallet:/, ''))); }
+async function complement(matched) {
+  const rows = await User.find({ deletedAt: null }).select('_id').lean();
+  return new Set(rows.map(u => String(u._id)).filter(id => !matched.has(id)));
 }
 
-async function evaluateSegment(id) {
-  const d30 = since(30), d90 = since(90), d7 = since(7), d14 = since(14);
-  switch (id) {
-    case 'top-tippers': {
+/* One aggregate per signal, driven entirely by the stored rule. */
+async function evaluateRule(rule) {
+  const signal = rule && rule.signal;
+  const op = (SIGNALS[signal] && rule.op) || 'gte';
+  const val = Number(Array.isArray(rule.value) ? rule.value[0] : rule.value) || 0;
+  const win = SIGNALS[signal] && SIGNALS[signal].window && rule.windowDays
+    ? { createdAt: { $gte: since(clamp(rule.windowDays, 1, 365, 90)) } } : {};
+
+  switch (signal) {
+    case 'reactions':
+      return distinctUserIds([{ $match: { ...win } }, ...havingCount('userId', val)], Reaction);
+    case 'comments':
+      return distinctUserIds([{ $match: { ...win } }, ...havingCount('authorId', val)], Comment);
+    case 'shares':
+      return distinctUserIds([{ $match: { ...win } }, ...havingDistinct('userId', 'targetId', val)], ShareEvent);
+    case 'saves':
+      return distinctUserIds([{ $match: { list: { $in: ['library', 'saved'] }, ...win } },
+        ...havingDistinct('userId', 'storyId', val)], LibraryItem);
+    case 'books_finished':
+      return distinctUserIds([{ $match: { list: 'history', status: 'finished', ...win } },
+        ...havingDistinct('userId', 'storyId', val)], LibraryItem);
+    case 'chapters_unlocked': {
       const rows = await LedgerEntry.aggregate([
-        { $match: { debitAcct: /^wallet:/, kind: { $in: ['tip', 'gift'] }, createdAt: { $gte: d30 } } },
-        { $group: { _id: '$debitAcct' } },
+        { $match: { kind: 'spend', memo: /^unlock ch /, ...win } },
+        ...havingDistinct('debitAcct', 'saleId', val),
       ]);
-      return new Set(rows.map(r => String(r._id).replace(/^wallet:/, '')));
+      return walletIds(new Set(rows.map(r => String(r._id))));
     }
-    case 'super-reactors':
-      return distinctUserIds([{ $match: { createdAt: { $gte: d30 } } }, ...havingCount('userId', 50)], Reaction);
-    case 'commentators':
-      return distinctUserIds([{ $match: { createdAt: { $gte: d30 } } }, ...havingCount('authorId', 10)], Comment);
-    case 'sharers':
-      return distinctUserIds([{ $match: { createdAt: { $gte: d90 } } }, ...havingDistinct('userId', 'targetId', 3)], ShareEvent);
-    case 'savers':
-      return distinctUserIds([{ $match: { list: { $in: ['library', 'saved'] }, createdAt: { $gte: d90 } } }, ...havingDistinct('userId', 'storyId', 20)], LibraryItem);
-    case 'unlockers': {
+    case 'tip_sent': {
       const rows = await LedgerEntry.aggregate([
-        { $match: { kind: 'spend', memo: /^unlock ch /, createdAt: { $gte: d90 } } },
-        ...havingDistinct('debitAcct', 'saleId', 3),
+        { $match: { debitAcct: /^wallet:/, kind: { $in: ['tip', 'gift'] }, ...win } },
+        ...havingCount('debitAcct', Math.max(1, val)),
       ]);
-      return new Set([...rows].map(r => String(r._id).replace(/^wallet:/, '')));
+      return walletIds(new Set(rows.map(r => String(r._id))));
     }
-    case 'coin-buyers':
-      return distinctUserIds([{ $match: { type: 'purchase', status: 'completed', createdAt: { $gte: d90 } } }, { $group: { _id: '$userId' } }], CoinTransaction);
-    case 'premium':
-      return distinctUserIds([{ $match: { status: 'active' } }, { $group: { _id: '$userId' } }], Subscription);
-    case 'power-followers':
-      return distinctUserIds([...havingCount('followerId', 25)], Follow);
-    case 'binge-readers': {
+    case 'coin_purchase':
+      return distinctUserIds([{ $match: { type: 'purchase', status: 'completed', ...win } },
+        ...havingCount('userId', Math.max(1, val))], CoinTransaction);
+    case 'ad_click':
+      return distinctUserIds([{ $match: { ...win } }, ...havingCount('userId', Math.max(1, val))], AdClick);
+    case 'referrals_converted':
+      return distinctUserIds([{ $match: { readRewarded: true, ...win } },
+        ...havingCount('ownerId', Math.max(1, val))], Referral);
+    case 'following_count':
+      return distinctUserIds([...havingCount('followerId', val)], Follow);
+    case 'days_since_active': {
+      const cutoff = since(val);
+      const q = op === 'lte'
+        ? { lastLoginAt: { $gte: cutoff } }
+        : { $or: [{ lastLoginAt: { $lt: cutoff } }, { lastLoginAt: null, createdAt: { $lt: cutoff } }] };
+      const rows = await User.find({ deletedAt: null, ...q }).select('_id').lean();
+      return new Set(rows.map(u => String(u._id)));
+    }
+    case 'account_age_days': {
+      const cutoff = since(val);
+      const q = op === 'lte' ? { createdAt: { $gte: cutoff } } : { createdAt: { $lt: cutoff } };
+      const rows = await User.find({ deletedAt: null, ...q }).select('_id').lean();
+      return new Set(rows.map(u => String(u._id)));
+    }
+    case 'weekly_hours_or_streak': {
+      const pair = Array.isArray(rule.value) ? rule.value : [val, val];
+      const hrs = Number(pair[0]) || 0, streak = Number(pair[1]) || 0;
       const [heavy, streaky] = await Promise.all([
-        ReadingProgress.aggregate([
-          { $match: { lastReadAt: { $gte: d7 } } },
+        hrs ? ReadingProgress.aggregate([
+          { $match: { lastReadAt: { $gte: since(7) } } },
           { $group: { _id: '$userId', secs: { $sum: '$secondsSpent' } } },
-          { $match: { secs: { $gte: 5 * 3600 } } },
-        ]),
-        ReadingProgress.aggregate([
-          { $match: { lastReadAt: { $gte: d14 } } },
+          { $match: { secs: { $gte: hrs * 3600 } } },
+        ]) : [],
+        streak ? ReadingProgress.aggregate([
+          { $match: { lastReadAt: { $gte: since(Math.max(14, streak * 2)) } } },
           { $group: { _id: { u: '$userId', d: { $dateToString: { format: '%Y-%m-%d', date: '$lastReadAt' } } } } },
           { $group: { _id: '$_id.u', days: { $sum: 1 } } },
-          { $match: { days: { $gte: 10 } } },
-        ]),
+          { $match: { days: { $gte: streak } } },
+        ]) : [],
       ]);
       return new Set([...heavy, ...streaky].map(r => String(r._id)).filter(Boolean));
     }
-    case 'finishers':
-      return distinctUserIds([{ $match: { list: 'history', status: 'finished' } }, ...havingDistinct('userId', 'storyId', 3)], LibraryItem);
-    case 'referrers':
-      return distinctUserIds([{ $match: { readRewarded: true } }, { $group: { _id: '$ownerId' } }], Referral);
-    case 'ad-responders':
-      return distinctUserIds([{ $match: { createdAt: { $gte: d30 } } }, { $group: { _id: '$userId' } }], AdClick);
-    case 'winback': {
-      const rows = await User.find({
-        deletedAt: null,
-        $or: [
-          { lastLoginAt: { $lt: d30 } },
-          { lastLoginAt: null, createdAt: { $lt: d30 } },
-        ],
-      }).select('_id').lean();
-      return new Set(rows.map(u => String(u._id)));
+    case 'subscription_active': {
+      const on = await distinctUserIds([{ $match: { status: 'active' } }, { $group: { _id: '$userId' } }], Subscription);
+      return rule.value === false ? complement(on) : on;
     }
-    case 'newcomers': {
-      const rows = await User.find({ deletedAt: null, createdAt: { $gte: since(14) } }).select('_id').lean();
-      return new Set(rows.map(u => String(u._id)));
+    case 'had_subscription': {
+      const ever = await distinctUserIds([{ $group: { _id: '$userId' } }], Subscription);
+      return rule.value === false ? complement(ever) : ever;
     }
-    case 'lapsed-subscribers': {
-      const [all, active] = await Promise.all([
-        Subscription.aggregate([{ $group: { _id: '$userId' } }]),
-        Subscription.aggregate([{ $match: { status: 'active' } }, { $group: { _id: '$userId' } }]),
-      ]);
-      const on = new Set(active.map(r => String(r._id)));
-      return new Set(all.map(r => String(r._id)).filter(id => id && !on.has(id)));
-    }
-    case 'writers': {
+    case 'is_writer': {
       const rows = await User.find({ deletedAt: null, roles: 'writer' }).select('_id').lean();
-      return new Set(rows.map(u => String(u._id)));
+      const on = new Set(rows.map(u => String(u._id)));
+      return rule.value === false ? complement(on) : on;
     }
     default: return new Set();
   }
 }
 
+/* Back-compat: count a stored segment by id (used by nothing today, kept so
+   a console link can ask for one segment without pulling the whole catalog). */
+async function evaluateSegment(id) {
+  const seg = (await listSegments()).filter(s => s.id === String(id))[0];
+  return seg ? evaluateRule(seg.rule) : new Set();
+}
+
 async function genreAudiences() {
+  /* The Chief Editor's Genre collection is the only list there is: a genre the
+     CE has not created never appears, even if a book carries that string, and
+     one with no reads inside the window still appears (count 0) so it can be
+     aimed at. Counts are distinct readers per Book.genre in the last 90 days,
+     matched case-insensitively so "romance" and "Romance" never split. */
+  const curated = await Genre.find({ status: 'active' }).select('name').lean();
+  const canonical = {};
+  curated.forEach(g => { if (g.name) canonical[String(g.name).toLowerCase()] = g.name; });
+
   const pairs = await ReadingProgress.aggregate([
     { $match: { lastReadAt: { $gte: since(90) } } },
     { $group: { _id: { u: '$userId', s: '$storyId' } } },
     { $limit: 20000 },
   ]);
   const storyIds = [...new Set(pairs.map(p => String(p._id.s)).filter(Boolean))];
-  if (!storyIds.length) return [];
-  const books = await Book.find({ $or: [{ id: { $in: storyIds } }] }).select('genre').lean();
-  const hex = storyIds.filter(s => /^[0-9a-fA-F]{24}$/.test(s));
-  const legacy = hex.length ? await Book.find({ _id: { $in: hex } }).select('genre').lean() : [];
   const gmap = {};
-  [...books, ...legacy].forEach(b => {
-    if (b.id) gmap[String(b.id)] = b.genre || '';
-    if (b._id) gmap[String(b._id)] = b.genre || '';
-  });
+  if (storyIds.length) {
+    const hex = storyIds.filter(s => /^[0-9a-fA-F]{24}$/.test(s));
+    const books = await Book.find({ id: { $in: storyIds } }).select('genre').lean();
+    const legacy = hex.length ? await Book.find({ _id: { $in: hex } }).select('genre').lean() : [];
+    [...books, ...legacy].forEach(b => {
+      if (b.id) gmap[String(b.id)] = b.genre || '';
+      if (b._id) gmap[String(b._id)] = b.genre || '';
+    });
+  }
   const per = {};
   pairs.forEach(p => {
-    const g = gmap[String(p._id.s)];
-    if (!g) return;
-    per[g] = per[g] || new Set();
-    per[g].add(String(p._id.u));
+    const name = canonical[String(gmap[String(p._id.s)] || '').toLowerCase()];
+    if (!name) return;
+    per[name] = per[name] || new Set();
+    per[name].add(String(p._id.u));
   });
-  return Object.keys(per).sort().map(name => ({ name, count: per[name].size }));
+
+  return curated.map(g => ({ name: g.name, count: per[g.name] ? per[g.name].size : 0 }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 async function countryAudiences(total) {
@@ -177,23 +309,27 @@ const CACHE_TTL = 10 * 60 * 1000;
 
 async function catalog() {
   if (CACHE.data && Date.now() - CACHE.at < CACHE_TTL) return CACHE.data;
+  const segments = await listSegments();
   const [total, counts, genres] = await Promise.all([
     User.countDocuments({ deletedAt: null }),
-    Promise.all(SEGMENTS.map(s => evaluateSegment(s.id).then(set => ({ id: s.id, reach: set.size })).catch(() => ({ id: s.id, reach: 0 })))),
+    Promise.all(segments.map(s => evaluateRule(s.rule)
+      .then(set => ({ id: s.id, reach: set.size }))
+      .catch(() => ({ id: s.id, reach: 0 })))),
     genreAudiences().catch(() => []),
   ]);
   const reachById = {};
   counts.forEach(c => { reachById[c.id] = c.reach; });
   const countries = await countryAudiences(total).catch(() => []);
   const data = {
-    segments: SEGMENTS.map(s => Object.assign({}, s, { reach: reachById[s.id] || 0 })),
+    segments: segments.map(s => Object.assign({}, s, { reach: reachById[s.id] || 0 })),
     genres, countries, totalReaders: total, cachedAt: new Date().toISOString(),
   };
   CACHE = { at: Date.now(), data };
   return data;
 }
 
-/* union estimate mirroring the setup page: overlap discount + country scaling */async function estimate({ segments, genres, countries }) {
+/* union estimate mirroring the setup page: overlap discount + country scaling */
+async function estimate({ segments, genres, countries }) {
   const cat = await catalog();
   const segMap = {};
   cat.segments.forEach(s => { segMap[s.id] = s.reach; });
@@ -217,10 +353,9 @@ async function catalog() {
 /* per-user reading profile: hours, streak, sessions (derived from heartbeat
    gaps >30min — never stored), finishes, top categories/genres/tropes. */
 async function readingProfile(userId) {
-  const { Category } = require('../models/content.model');
   const me = await User.findOne({ $or: [{ id: String(userId) }] }).select('_id').lean().catch(() => null);
   const flavors = me ? [...new Set([String(me.id), String(me._id)])] : [String(userId)];
-  const d7 = since(7), d30 = since(30), d90 = since(90);
+  const d7 = since(7), d30 = since(30);
   const [rows, fins] = await Promise.all([
     ReadingProgress.find({ userId: { $in: flavors }, lastReadAt: { $gte: d30 } })
       .select('storyId chapterId secondsSpent wordsRead finished lastReadAt').limit(5000).lean(),
@@ -249,8 +384,7 @@ async function readingProfile(userId) {
   times.sort((a, b) => a - b);
   let sessions = 0, prevT = null;
   times.forEach(t => { if (prevT === null || t - prevT > 30 * 60 * 1000) sessions++; prevT = t; });
-  // affinity over category + genre + tropes (90d window via the 30d rows cap:
-  // extend with older rows when needed)
+  // affinity over category + genre + tropes
   const storyIds = [...stories];
   const books = storyIds.length ? await Book.find({ $or: [{ id: { $in: storyIds } }] }).select('id genre categoryId tropes').lean() : [];
   const hexIds = storyIds.filter(s => /^[0-9a-fA-F]{24}$/.test(s));
@@ -291,4 +425,163 @@ async function readingProfile(userId) {
   };
 }
 
-module.exports = { SEGMENTS, catalog, estimate, evaluateSegment, readingProfile };
+/* ── one reader against the stored rules ──
+   The set-based evaluator above answers "how many readers are in this
+   segment"; these answer "is this reader in it". Same rule fields, same
+   windowing, so the two can never disagree about who qualifies. */
+
+function asObjectId(s) { return /^[0-9a-fA-F]{24}$/.test(String(s)) ? String(s) : null; }
+
+/* Readers exist under both a public `id` and a legacy `_id`; every event
+   collection has written one or the other over the life of the app, so a
+   match is always against the set of both. */
+async function userContext(userId) {
+  const q = [{ id: String(userId) }];
+  const hex = asObjectId(userId);
+  if (hex) q.push({ _id: hex });
+  const me = await User.findOne({ $or: q }).select('_id id lastLoginAt createdAt roles').lean().catch(() => null);
+  const flavors = [String(userId)];
+  if (me) { if (me._id) flavors.push(String(me._id)); if (me.id) flavors.push(String(me.id)); }
+  const uniq = [...new Set(flavors.filter(Boolean))];
+  const now = Date.now();
+  const born = me ? new Date(me.createdAt).getTime() : now;
+  const last = me && me.lastLoginAt ? new Date(me.lastLoginAt).getTime() : born;
+  return {
+    flavors: uniq,
+    wallets: uniq.map(f => 'wallet:' + f),
+    me,
+    daysSinceActive: Math.max(0, Math.floor((now - last) / DAY)),
+    accountAgeDays: Math.max(0, Math.floor((now - born) / DAY)),
+    isWriter: !!(me && Array.isArray(me.roles) && me.roles.indexOf('writer') > -1),
+  };
+}
+
+/* Distinct active days in the window — deliberately the same math the
+   set-based `weekly_hours_or_streak` case uses, even though it is "days
+   read" rather than a strictly consecutive run. */
+async function streakDays(uid, from) {
+  const rows = await ReadingProgress.aggregate([
+    { $match: { userId: uid, lastReadAt: { $gte: from } } },
+    { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$lastReadAt' } } } },
+  ]);
+  return rows.length;
+}
+
+async function matchesUserRule(rule, ctx) {
+  const signal = rule && rule.signal;
+  const def = SIGNALS[signal];
+  if (!def) return false;
+  const op = def.ops.indexOf(rule.op) > -1 ? rule.op : def.ops[0];
+  const raw = rule.value;
+  const val = Number(Array.isArray(raw) ? raw[0] : raw) || 0;
+  const uid = ctx.flavors, wallets = ctx.wallets;
+  const win = def.window && rule.windowDays
+    ? { createdAt: { $gte: since(clamp(rule.windowDays, 1, 365, 90)) } } : {};
+  const passes = (n) => n >= Math.max(0, val);
+  const want = raw !== false;
+
+  switch (signal) {
+    case 'reactions': return passes(await Reaction.countDocuments({ userId: uid, ...win }));
+    case 'comments': return passes(await Comment.countDocuments({ authorId: uid, ...win }));
+    case 'shares': return passes((await ShareEvent.distinct('targetId', { userId: uid, ...win })).length);
+    case 'saves': return passes((await LibraryItem.distinct('storyId',
+      { userId: uid, list: { $in: ['library', 'saved'] }, ...win })).length);
+    case 'books_finished': return passes((await LibraryItem.distinct('storyId',
+      { userId: uid, list: 'history', status: 'finished', ...win })).length);
+    case 'chapters_unlocked': return passes((await LedgerEntry.distinct('saleId',
+      { debitAcct: wallets, kind: 'spend', memo: /^unlock ch /, ...win })).length);
+    case 'tip_sent': return passes(await LedgerEntry.countDocuments(
+      { debitAcct: wallets, kind: { $in: ['tip', 'gift'] }, ...win }));
+    case 'coin_purchase': return passes(await CoinTransaction.countDocuments(
+      { userId: uid, type: 'purchase', status: 'completed', ...win }));
+    case 'ad_click': return passes(await AdClick.countDocuments({ userId: uid, ...win }));
+    case 'referrals_converted': return passes(await Referral.countDocuments(
+      { ownerId: uid, readRewarded: true, ...win }));
+    case 'following_count': return passes(await Follow.countDocuments({ followerId: uid }));
+    case 'days_since_active': return op === 'lte' ? ctx.daysSinceActive <= val : ctx.daysSinceActive >= val;
+    case 'account_age_days': return op === 'lte' ? ctx.accountAgeDays <= val : ctx.accountAgeDays >= val;
+    case 'weekly_hours_or_streak': {
+      const pair = Array.isArray(raw) ? raw : [val, val];
+      const hrs = Number(pair[0]) || 0, streak = Number(pair[1]) || 0;
+      const sums = await ReadingProgress.aggregate([
+        { $match: { userId: uid, lastReadAt: { $gte: since(7) } } },
+        { $group: { _id: null, secs: { $sum: '$secondsSpent' } } },
+      ]);
+      if (sums.length && (sums[0].secs || 0) / 3600 >= hrs) return true;
+      return streak ? (await streakDays(uid, since(Math.max(14, streak * 2)))) >= streak : false;
+    }
+    case 'subscription_active': return ((await Subscription.countDocuments({ userId: uid, status: 'active' })) > 0) === want;
+    case 'had_subscription': return ((await Subscription.countDocuments({ userId: uid })) > 0) === want;
+    case 'is_writer': return ctx.isWriter === want;
+    default: return false;
+  }
+}
+
+/* Which segments one reader matches, from the same stored rules the console
+   edits — the client-side matcher and the backend cannot drift. */
+async function segmentsForUser(userId) {
+  const ctx = await userContext(userId);
+  const out = [];
+  for (const s of await listSegments()) {
+    try { if (await matchesUserRule(s.rule, ctx)) out.push(s.id); } catch (e) { /* a broken rule excludes, never crashes */ }
+  }
+  return out;
+}
+
+/* Reader's own view of the same vocabulary the catalog is written in.
+   Mirrors the keys public/services/audience-service.js computes locally,
+   so a page can swap one for the other without changing a rule. */
+async function userSignals(userId) {
+  const ctx = await userContext(userId);
+  const uid = ctx.flavors, wallets = ctx.wallets;
+  const d7 = since(7);
+  const read = await ReadingProgress.find({ userId: uid, lastReadAt: { $gte: d7 } }).select('secondsSpent').lean();
+  const [reactions, comments, shares, saves, finished, unlocks, tips, coins, clicks, refers, follows, subs, everSub] = await Promise.all([
+    Reaction.countDocuments({ userId: uid }),
+    Comment.countDocuments({ authorId: uid }),
+    ShareEvent.distinct('targetId', { userId: uid }),
+    LibraryItem.distinct('storyId', { userId: uid, list: { $in: ['library', 'saved'] } }),
+    LibraryItem.distinct('storyId', { userId: uid, list: 'history', status: 'finished' }),
+    LedgerEntry.distinct('saleId', { debitAcct: wallets, kind: 'spend', memo: /^unlock ch / }),
+    LedgerEntry.countDocuments({ debitAcct: wallets, kind: { $in: ['tip', 'gift'] } }),
+    CoinTransaction.countDocuments({ userId: uid, type: 'purchase', status: 'completed' }),
+    AdClick.countDocuments({ userId: uid }),
+    Referral.countDocuments({ ownerId: uid, readRewarded: true }),
+    Follow.countDocuments({ followerId: uid }),
+    Subscription.countDocuments({ userId: uid, status: 'active' }),
+    Subscription.countDocuments({ userId: uid }),
+  ]);
+  return {
+    reactions,
+    comments,
+    shares: shares.length,
+    saves: saves.length,
+    chapters_unlocked: unlocks.length,
+    tip_sent: tips,
+    coin_purchase: coins,
+    ad_click: clicks,
+    referrals_converted: refers,
+    following_count: follows,
+    books_finished: finished.length,
+    weekly_hours_or_streak: [
+      +(read.reduce((n, r) => n + (Number(r.secondsSpent) || 0), 0) / 3600).toFixed(1),
+      await streakDays(uid, since(14)),
+    ],
+    subscription_active: subs > 0,
+    had_subscription: everSub > 0,
+    is_writer: ctx.isWriter,
+    days_since_active: ctx.daysSinceActive,
+    account_age_days: ctx.accountAgeDays,
+  };
+}
+
+async function audienceMe(userId) {
+  const [segments, signals] = await Promise.all([segmentsForUser(userId), userSignals(userId)]);
+  return { segments, signals, at: new Date().toISOString() };
+}
+
+module.exports = {
+  SIGNALS, DEFAULT_SEGMENTS, listSegments, saveSegments, resetSegments,
+  evaluateRule, evaluateSegment, catalog, estimate,
+  segmentsForUser, userSignals, audienceMe, readingProfile,
+};

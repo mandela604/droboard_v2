@@ -32,6 +32,98 @@ function getDemo(){
   };
 }
 
+/* ── Live loaders: GET /categories, /genres, /tropes, /genres/popular → demo shapes ──
+   Backend Category/Genre: booksCount (number) → demo `books` (comma string);
+   Genre.categoryId → demo `cat` (category name). Trope carries genre name already.
+   /genres/popular returns [{name,count}] → demo {name, books:'N books'}.
+   Cosmetic icon/bg/color are not on the backend docs — empty values fall back
+   to the local ICON_OPTIONS palette so the tables never render blank tiles. */
+function toBooks(n){ return (Number(n)||0).toLocaleString('en-US'); }
+function icoFor(x){
+  var ico = pickIcon(), src = x || {};
+  return { icon: src.icon || ico.icon, bg: src.bg || ico.bg, color: src.color || ico.color };
+}
+
+function mapCategory(c, genreCounts){
+  var ico = icoFor(c);
+  return {
+    id: c.id,
+    name: c.name || '',
+    icon: ico.icon, bg: ico.bg, color: ico.color,
+    desc: c.desc || '',
+    genres: genreCounts[c.id] || 0,
+    books: toBooks(c.booksCount),
+    status: c.status || 'active'
+  };
+}
+function mapGenre(g, catNameById){
+  var ico = icoFor(g);
+  return {
+    id: g.id,
+    name: g.name || '',
+    cat: catNameById[g.categoryId] || '',
+    icon: ico.icon, bg: ico.bg, color: ico.color,
+    books: toBooks(g.booksCount),
+    status: g.status || 'active'
+  };
+}
+function mapTrope(t){
+  var ico = icoFor(t);
+  return {
+    id: t.id,
+    name: t.name || '',
+    genre: t.genre || '',
+    icon: ico.icon, bg: ico.bg, color: ico.color,
+    books: toBooks(t.booksCount),
+    status: t.status || 'active'
+  };
+}
+function mapPopular(p){
+  var ico = pickIcon();
+  return {
+    name: p.name || '',
+    icon: ico.icon, bg: ico.bg, color: ico.color,
+    books: toBooks(p.count) + ' books'
+  };
+}
+async function itemsOf(path){
+  var d = await callBackend(path);
+  if(Array.isArray(d)) return d;
+  return (d && Array.isArray(d.items)) ? d.items : null;
+}
+async function loadLive(){
+  var rs = await Promise.all([
+    itemsOf('/categories?limit=50'),
+    itemsOf('/genres?limit=50'),
+    itemsOf('/tropes?limit=50'),
+    callBackend('/genres/popular'),
+  ]);
+  var catRaw = rs[0], genRaw = rs[1], troRaw = rs[2], popRaw = rs[3];
+  if(!catRaw || !genRaw) return null; // core lists missing → caller falls back to demo
+
+  var catNameById = {}, genreCounts = {};
+  catRaw.forEach(function(c){ catNameById[c.id] = c.name; });
+  genRaw.forEach(function(g){ if(g.categoryId != null) genreCounts[g.categoryId] = (genreCounts[g.categoryId]||0)+1; });
+
+  var popular = Array.isArray(popRaw) ? popRaw.map(mapPopular) : null;
+  return {
+    categories: catRaw.map(function(c){ return mapCategory(c, genreCounts); }),
+    genres: genRaw.map(function(g){ return mapGenre(g, catNameById); }),
+    tropes: (troRaw || []).map(mapTrope),
+    popular: (popular && popular.length) ? popular : getDemo().popularGenres,
+  };
+}
+
+/* ── Live mutation helper: fire-and-forget under USE_API, demo state always applied locally ── */
+function jsonOpts(method, body){
+  return { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+}
+async function liveCall(path, opts){
+  if(!USE_API) return null;
+  try { return await callBackend(path, opts); }
+  catch(e){ console.warn('[CategoriesGenres] backend call failed:', path, e); return null; }
+}
+
 var ICON_OPTIONS = [
   {icon:'fa-heart',bg:'#ffe1eb',color:'#ff0050'},
   {icon:'fa-crown',bg:'#ece3fd',color:'#7c5cfc'},
@@ -132,7 +224,7 @@ window.CategoriesGenresService = {
 
 /* ═══ Page UI layer (migrated from categories-genres.html inline script; no data-layer collision) ═══ */
 var _cgInitDone = false;
-function init(){
+async function init(){
   if(_cgInitDone) return;
   _cgInitDone = true;
 
@@ -189,14 +281,19 @@ function renderCategoriesTable(list){
 }
 
 function renderGenresTable(list){
-  document.getElementById('tableHead').innerHTML='<tr><th>Genre Name</th><th>Category</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  document.getElementById('tableHead').innerHTML='<tr><th>Genre Name</th><th>Tropes</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
   var body=document.getElementById('tableBody');
   if(!list.length){body.innerHTML='<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No genres match this search.</td></tr>';return;}
   body.innerHTML=list.slice(0,8).map(function(g){
     var idx=GENRES.indexOf(g);
+    var tr=TROPES.filter(function(t){return t.genre===g.name;});
+    var tropesHtml;
+    if(!tr.length)tropesHtml='<span class="trope-chip">No tropes yet</span>';
+    else if(tr.length===1)tropesHtml='<span class="trope-chip">'+tr[0].name+'</span>';
+    else tropesHtml='<span class="trope-chip">'+tr[0].name+'</span><span class="trope-more" title="'+tr.slice(1).map(function(t){return t.name;}).join(' · ')+'">+'+(tr.length-1)+' more</span>';
     return'<tr>'+
       '<td data-label="Genre Name"><div class="cat-cell"><div class="cat-icn" style="background:'+g.bg+';color:'+g.color+'"><i class="fas '+g.icon+'"></i></div><div class="cat-name">'+g.name+'</div></div></td>'+
-      '<td data-label="Category" class="plain-cell">'+g.cat+'</td>'+
+      '<td data-label="Tropes"><div class="trope-cell">'+tropesHtml+'</div></td>'+
       '<td data-label="Books" class="plain-cell">'+g.books+'</td>'+
       '<td data-label="Status">'+statusPillHtml(g.status)+'</td>'+
       '<td data-label="Actions"><div class="actions-cell">'+
@@ -391,31 +488,63 @@ document.getElementById('formConfirm').addEventListener('click',function(){
   if(isCat){
     var desc=document.getElementById('formDesc').value.trim();
     if(isEdit){
+      var catPrev=CATEGORIES[formMode.idx];
+      var catPrevStatus=catPrev?catPrev.status:null;
       CategoriesGenresService.updateCategory(formMode.idx,{name:name,desc:desc,status:status},CATEGORIES);
       toast('Category updated: '+name);
+      if(catPrev&&catPrev.id){
+        liveCall('/categories/'+catPrev.id,jsonOpts('PATCH',{name:name,desc:desc}));
+        if(catPrevStatus!==status)liveCall('/categories/'+catPrev.id+'/toggle-status',jsonOpts('POST'));
+      }
     }else{
-      CategoriesGenresService.addCategory({name:name,desc:desc,status:status},CATEGORIES);
+      var newCat=CategoriesGenresService.addCategory({name:name,desc:desc,status:status},CATEGORIES);
       toast('Category added: '+name);
+      if(newCat){
+        liveCall('/categories',jsonOpts('POST',{name:name,desc:desc,icon:newCat.icon,bg:newCat.bg,color:newCat.color}))
+          .then(function(created){ if(created&&created.id)newCat.id=created.id; });
+      }
     }
   }else if(isTrope){
     var pgenre=document.getElementById('formTropeGenre').value;
     if(!pgenre){toast('Please select a genre.');return;}
     if(isEdit){
+      var troPrev=TROPES[formMode.idx];
       CategoriesGenresService.updateTrope(formMode.idx,{name:name,genre:pgenre,status:status},TROPES);
       toast('Trope updated: '+name);
+      if(troPrev&&troPrev.id)liveCall('/tropes/'+troPrev.id,jsonOpts('PATCH',{name:name,genre:pgenre,status:status}));
     }else{
-      CategoriesGenresService.addTrope({name:name,genre:pgenre,status:status},TROPES);
+      var newTro=CategoriesGenresService.addTrope({name:name,genre:pgenre,status:status},TROPES);
       toast('Trope added: '+name);
+      if(newTro){
+        liveCall('/tropes',jsonOpts('POST',{name:name,genre:pgenre,status:status}))
+          .then(function(created){ if(created&&created.id)newTro.id=created.id; });
+      }
     }
   }else{
     var cat=document.getElementById('formCat').value;
     if(!cat){toast('Please select a category.');return;}
+    var catRow=null;
+    for(var ci=0;ci<CATEGORIES.length;ci++){ if(CATEGORIES[ci].name===cat){catRow=CATEGORIES[ci];break;} }
     if(isEdit){
+      var genPrev=GENRES[formMode.idx];
+      var genPrevStatus=genPrev?genPrev.status:null;
       CategoriesGenresService.updateGenre(formMode.idx,{name:name,cat:cat,status:status},GENRES);
       toast('Genre updated: '+name);
+      if(genPrev&&genPrev.id){
+        var gPatch={name:name};
+        if(catRow&&catRow.id)gPatch.categoryId=catRow.id;
+        liveCall('/genres/'+genPrev.id,jsonOpts('PATCH',gPatch));
+        if(genPrevStatus!==status)liveCall('/genres/'+genPrev.id+'/toggle-status',jsonOpts('POST'));
+      }
     }else{
-      CategoriesGenresService.addGenre({name:name,cat:cat,status:status},GENRES);
+      var newGen=CategoriesGenresService.addGenre({name:name,cat:cat,status:status},GENRES);
       toast('Genre added: '+name);
+      if(catRow&&catRow.id&&newGen){
+        liveCall('/genres',jsonOpts('POST',{name:name,categoryId:catRow.id}))
+          .then(function(created){ if(created&&created.id)newGen.id=created.id; });
+      }else if(USE_API){
+        console.warn('[CategoriesGenres] genre create skipped on backend: category "'+cat+'" has no live id');
+      }
     }
   }
   document.getElementById('formModal').classList.remove('open');
@@ -430,16 +559,22 @@ function doToggleStatus(idx){
     c.status=c.status==='active'?'inactive':'active';
     CategoriesGenresService.updateCategory(idx,{status:c.status},CATEGORIES);
     toast(c.name+' set to '+c.status);
+    var catId=c.id;
+    if(catId)liveCall('/categories/'+catId+'/toggle-status',jsonOpts('POST')).then(function(d){ if(d&&d.status)c.status=d.status; });
   }else if(currentView==='genres'){
     var g=GENRES[idx];
     g.status=g.status==='active'?'inactive':'active';
     CategoriesGenresService.updateGenre(idx,{status:g.status},GENRES);
     toast(g.name+' set to '+g.status);
+    var genId=g.id;
+    if(genId)liveCall('/genres/'+genId+'/toggle-status',jsonOpts('POST')).then(function(d){ if(d&&d.status)g.status=d.status; });
   }else{
     var t=TROPES[idx];
     t.status=t.status==='active'?'inactive':'active';
     CategoriesGenresService.updateTrope(idx,{status:t.status},TROPES);
     toast(t.name+' set to '+t.status);
+    var troId=t.id;
+    if(troId)liveCall('/tropes/'+troId+'/toggle-status',jsonOpts('POST')).then(function(d){ if(d&&d.status)t.status=d.status; });
   }
   refresh();
 }
@@ -458,19 +593,24 @@ document.getElementById('deleteModal').addEventListener('click',function(e){if(e
 
 document.getElementById('deleteConfirm').addEventListener('click',function(){
   if(deleteIdx===null)return;
+  var delPath=null;
   if(currentView==='categories'){
     var name=CATEGORIES[deleteIdx].name;
+    delPath=CATEGORIES[deleteIdx].id?'/categories/'+CATEGORIES[deleteIdx].id:null;
     CategoriesGenresService.deleteCategory(deleteIdx,CATEGORIES);
     toast('Deleted category: '+name);
   }else if(currentView==='genres'){
     var name=GENRES[deleteIdx].name;
+    delPath=GENRES[deleteIdx].id?'/genres/'+GENRES[deleteIdx].id:null;
     CategoriesGenresService.deleteGenre(deleteIdx,GENRES);
     toast('Deleted genre: '+name);
   }else{
     var name=TROPES[deleteIdx].name;
+    delPath=TROPES[deleteIdx].id?'/tropes/'+TROPES[deleteIdx].id:null;
     CategoriesGenresService.deleteTrope(deleteIdx,TROPES);
     toast('Deleted trope: '+name);
   }
+  if(delPath)liveCall(delPath,jsonOpts('DELETE'));
   deleteIdx=null;
   document.getElementById('deleteModal').classList.remove('open');
   renderPagination();
@@ -489,10 +629,23 @@ t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(function(
 try{window.toast=toast;}catch(e){}
 
 /* ═══ INIT body (was inline init()) ═══ */
-  CATEGORIES=CategoriesGenresService.getCategories();
-  GENRES=CategoriesGenresService.getGenres();
-  TROPES=CategoriesGenresService.getTropes();
-  POPULAR_GENRES=CategoriesGenresService.getPopularGenres();
+  var live = null;
+  if(USE_API){
+    try { live = await loadLive(); }
+    catch(e){ console.warn('[CategoriesGenres] live load failed, using demo data', e); }
+    if(!live) console.warn('[CategoriesGenres] live load returned nothing, using demo data');
+  }
+  if(live){
+    CATEGORIES=live.categories;
+    GENRES=live.genres;
+    TROPES=live.tropes;
+    POPULAR_GENRES=live.popular;
+  }else{
+    CATEGORIES=CategoriesGenresService.getCategories();
+    GENRES=CategoriesGenresService.getGenres();
+    TROPES=CategoriesGenresService.getTropes();
+    POPULAR_GENRES=CategoriesGenresService.getPopularGenres();
+  }
   renderPagination();
   renderPopularGenres();
   refresh();

@@ -76,6 +76,26 @@ router.post('/:bookId/chapters/:key/debate/vote', requireAuth, writeLimiter, aud
 router.delete('/:bookId/chapters/:key/:kind', requireAuth, writeLimiter, audit('engagement.retract'),
   validate(z.object({ params: z.object({ bookId: id, key, kind: z.enum(['poll', 'prediction', 'debate']) }) })), ctrl.retract);
 
+/* ── story-wide engagement (book-level poll/prediction/debate) ──
+   Same shapes as chapter-wise but against the Book's embedded arrays; votes
+   key on (bookId, userId, kind) with chapterId '' in EngagementVote. */
+router.get('/:bookId/engagement', attachViewer, generalLimiter,
+  validate(z.object({ params: z.object({ bookId: id }) })), ctrl.bookResults);
+
+router.post('/:bookId/engagement/vote', requireAuth, writeLimiter, audit('engagement.bookVote'),
+  validate(z.object({
+    params: z.object({ bookId: id }),
+    body: z.object({
+      id: z.string().min(1).max(40),
+      kind: z.enum(['poll', 'prediction', 'debate']),
+      option: z.number().int().min(0).max(10).optional(),
+      side: z.enum(['for', 'against']).optional(),
+    }).strict(),
+  })), ctrl.bookVote);
+
+router.delete('/:bookId/engagement/:kind', requireAuth, writeLimiter, audit('engagement.bookRetract'),
+  validate(z.object({ params: z.object({ bookId: id, kind: z.enum(['poll', 'prediction', 'debate']) }) })), ctrl.bookRetract);
+
 // reader boot: coin-unlocked chapters + per-chapter progress + continue point
 router.get('/:bookId/read-state', requireAuth, generalLimiter,
   validate(z.object({ params: z.object({ bookId: id }) })), ctrl.readState);

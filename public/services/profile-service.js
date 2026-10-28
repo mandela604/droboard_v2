@@ -312,28 +312,23 @@
      (never clobber); refresh BOTH ring surfaces: header avatar + post-card
      avatar borders. Seen state lives in StatusStore (per status). */
   var _prevStatusCb = window.onStatusViewerChange;
-  window.onStatusViewerChange = function (wid, ring) {
-    if (typeof _prevStatusCb === 'function') { try { _prevStatusCb(wid, ring); } catch (e) {} }
+  window.onStatusViewerChange = function (wid, ring, name) {
+    if (typeof _prevStatusCb === 'function') { try { _prevStatusCb(wid, ring, name); } catch (e) {} }
     if (!PROFILE) return;
     var entry = null;
     try { entry = storyEntryFor(PROFILE); } catch (e) {}
     if (!entry) return;
     if (window.StatusStore && StatusStore.key) {
       var mineKey = StatusStore.key(entry.id);
-      var gotKey = StatusStore.key(wid);
+      // The viewer keys on the author's name; entry.id is the same person.
+      var gotKey = StatusStore.key(name || wid);
       if (gotKey && mineKey !== gotKey) return;
       ring = StatusStore.ringOf(mineKey) || ring;
     }
     try { refreshStoryRing(PROFILE); } catch (e) {}
-    try {
-      if (window.DroboardPostCard) {
-        var viewed = ring === 'ring-viewed';
-        _FEED_POSTS.forEach(function (post) {
-          var next = viewed ? 'viewed' : (entry ? true : false);
-          if (post.avatarRing !== next) { post.avatarRing = next; DroboardPostCard.update(post); }
-        });
-      }
-    } catch (e) {}
+    /* Feed cards on this page derive their own ring from StatusStore via
+       DroboardStatusRing.avatar() — stamping post.avatarRing from here only
+       ever marked every card viewed, whoever the viewer had just played. */
   };
 
   function renderActionRow() {
@@ -573,12 +568,9 @@
 
   /* ── Feed ── */
   function adaptPost(post) {
-    var ring = false;
-    try {
-      var entry = storyEntryFor(PROFILE);
-      if (entry) ring = entry.ring === 'ring-viewed' ? 'viewed' : true;
-    } catch (e) {}
-    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER, avatarRing: ring });
+    // No avatarRing: post-card asks the shared ring, which derives red/grey/
+    // none from StatusStore for that author.
+    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER });
   }
   /* Shared picker hooks (component contract): getState reads the profile
      post, onReact mutates it. Mirrors feed-service's counterHooks so the
@@ -1039,7 +1031,7 @@
       showNotif(count);
       return;
     }
-    try { const res = await fetch('https://api.droboard.app/v1/notifications/unread-count'); if (!res.ok) throw 0; const d = await res.json(); showNotif(d.count); } catch (e) { showNotif(5); }
+    try { const res = await fetch('/api/notifications/unread-count', { credentials: 'include' }); if (!res.ok) throw 0; const d = await res.json(); showNotif(d.count || 0); } catch (e) { showNotif(0); }
   }
   function showNotif(count) {
     const badge = document.getElementById('notifCount');

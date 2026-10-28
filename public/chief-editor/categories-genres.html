@@ -65,6 +65,10 @@
   .cat-name{font-weight:700;font-size:13px}
   .cat-desc{color:var(--text-muted);font-size:12px;line-height:1.4;max-width:260px}
   .genre-count{font-weight:600;color:var(--accent);font-size:12.5px}
+  .trope-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:300px}
+  .trope-chip{font-size:11px;font-weight:700;background:var(--input-bg);border:1px solid var(--input-border);border-radius:20px;padding:3px 10px;color:var(--text-muted);white-space:nowrap}
+  .trope-more{font-size:11px;font-weight:800;background:#ffe1eb;color:var(--accent);border:none;border-radius:20px;padding:3px 9px;cursor:default;white-space:nowrap}
+  html[data-theme="dark"] .trope-more{background:rgba(255,0,80,.16)}
   .plain-cell{font-weight:600;font-size:12.5px}
   .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
   html[data-theme="dark"] .status-pill{background:rgba(22,163,74,.16)}
@@ -206,6 +210,9 @@
 .modal-close:hover{color:var(--accent);border-color:var(--accent)}
 .modal-body{padding:20px}
 .form-group{margin-bottom:14px}
+.form-group:has(select){margin-bottom:22px}
+.form-group select{text-align:center;text-align-last:center}
+.form-group select option{text-align:center}
 .form-group label{display:block;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 13px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}

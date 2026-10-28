@@ -35,6 +35,17 @@
  *   DroboardPostCard.setPosts(FEED_POSTS);   // full render
  *   DroboardPostCard.update(post);           // re-render one card in place (after a vote, a like, etc.)
  *
+ * HEIGHT BUDGET (uniform cards):
+ *   • Every <img> in a card is capped at 160px (object-fit:cover) — even
+ *     images emitted by registered custom types with their own markup.
+ *   • Every long text block (post text, heading, quote, review body, AMA
+ *     meta, poll/debate question, announcement title) collapses to a fixed
+ *     line budget after render; a "See more" button appears ONLY when the
+ *     content actually overflows, and expands the block inline on tap.
+ *   • Line budget: 3 lines (pcc-text default) — droboard-page.html raises
+ *     it to 5 via #feedArea .pcc-text.clamp. Same override point for any
+ *     page that wants a different budget.
+ *
  * Sponsored posts (post.type === 'sponsored') are NOT rendered by this
  * component's own markup — it calls hooks.renderSponsored(post) and drops
  * the returned HTML in directly, same as feed.html's original DroboardAdCard
@@ -89,6 +100,24 @@
     .pcc-text.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
     .pcc-readmore{font-size:13px;font-weight:700;color:var(--acc);cursor:pointer;margin:-6px 0 11px;display:inline-block;background:none;border:none;padding:0;font-family:inherit}
     .pcc-image{width:100%;border-radius:12px;margin-bottom:11px;max-height:160px;object-fit:cover;border:1px solid var(--bd);display:block;cursor:pointer}
+    /* ── Truncation pass (see _applyTruncation) — the fixed line budget for
+       EVERY long text block in a card. Short content is never clamped;
+       overflowing content collapses and gets an injected "See more". ── */
+    .pcc-heading.clamp,.pcc-quote-text.clamp,.pcc-review-body.clamp,.pcc-ama-meta.clamp,.pcc-ama-title.clamp,.pcc-eng-q.clamp,.dpc-title.clamp{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+    .pcc-heading.clamp{-webkit-line-clamp:2}
+    .pcc-quote-text.clamp{-webkit-line-clamp:4}
+    .pcc-review-body.clamp{-webkit-line-clamp:5}
+    .pcc-ama-meta.clamp{-webkit-line-clamp:3}
+    .pcc-ama-title.clamp{-webkit-line-clamp:2}
+    .pcc-eng-q.clamp{-webkit-line-clamp:4}
+    .dpc-title.clamp{-webkit-line-clamp:2}
+    .pcc-quote .pcc-readmore{margin-left:8px}
+    /* Safety net: no <img> inside a card may ever exceed the 160px image
+       budget — even when a custom/registered type renders its own image
+       markup without the pcc-image class (tall-image card blowup fix). */
+    .pcc-post img{max-height:160px;object-fit:cover}
+    /* Announcement title (droboard-page registered type) */
+    .dpc-title{font-size:15px;font-weight:700;color:var(--tx-high);line-height:1.35;margin-bottom:6px}
 
     /* Shared horizontal story card (recommendation / chapter-drop / repost) */
     .pcc-story-card{display:flex;gap:12px;background:linear-gradient(135deg,rgba(52,211,153,.05),rgba(56,189,248,.04));border:1px solid rgba(52,211,153,.22);border-radius:13px;padding:11px;margin-bottom:4px;cursor:pointer}
@@ -144,6 +173,7 @@
 
     /* Poll */
     .pcc-eng-opt{position:relative;border-radius:10px;padding:10px 12px;overflow:hidden;border:1.5px solid var(--bd);margin-bottom:7px;cursor:pointer;transition:border-color .2s;user-select:none}
+    .pcc-eng-opt.is-closed,.pcc-eng-deb-side.is-closed{cursor:default}
     .pcc-eng-opt:last-child{margin-bottom:0}
     .pcc-eng-opt.voted{border-color:#ff0050}
     .pcc-eng-opt-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,0,80,.09);transition:width .6s cubic-bezier(.4,0,.2,1);z-index:0}
@@ -221,6 +251,10 @@
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function escAttr(s) { return String(s == null ? '' : s).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+  /* deadline chips — component/expiry-chips.js. A closed object loses its
+     vote attributes, so tapping an option does nothing at all. */
+  function _closed(post) { return !!(window.DroboardExpiry && DroboardExpiry.isClosed(post)); }
+  function _expTxt(post) { return window.DroboardExpiry ? DroboardExpiry.text(post) : ''; }
   function starsHTML(score) {
     const full = Math.round(score || 0);
     let h = '';
@@ -247,11 +281,11 @@
   // Shared header / actions
   // ══════════════════════════════════════════════════════════════════════
   function _head(post) {
-    const ringKey = post.handle || post.name || '';
-    const ring = post.avatarRing === 'viewed' ? 'ring-viewed' : (post.avatarRing ? 'ring-has' : 'ring-none');
+    // Never read post.avatarRing: the ring is the author's seen-state, and the
+    // shared call derives it (plus the tap target) from the status service.
     const avatar = window.DroboardStatusRing
-      ? DroboardStatusRing.html({ name: post.name, avatar: post.avatar, ring }, {
-          size: 42, key: ringKey, gapColor: 'var(--card)', innerBg: 'var(--card)',
+      ? DroboardStatusRing.avatar({ name: post.name, handle: post.handle, avatar: post.avatar, statuses: post.statuses }, {
+          size: 42, key: post.name || post.handle || '', gapColor: 'var(--card)', innerBg: 'var(--card)',
           attrs: 'data-pcc-avatar',
         })
       : `<img class="pcc-avatar" src="${post.avatar}" alt="${escAttr(post.name)}" data-pcc-avatar style="width:42px;height:42px;border-radius:50%;object-fit:cover;display:block;cursor:pointer">`;
@@ -358,7 +392,9 @@
     'quote': (post) => {
       const bgStyle = post.quoteBgCss ? ` style="background:${post.quoteBgCss}"` : '';
       const isDark = post.quoteBg === 'dark';
-      const textStyle = isDark ? ' style="color:#ffffff;white-space:pre-wrap"' : ' style="white-space:pre-wrap"';
+      // white-space comes from CSS (not inline) so the truncation pass's
+      // .clamp rule can take effect; newlines are already <br> below.
+      const textStyle = isDark ? ' style="color:#ffffff"' : '';
       const capStyle = isDark ? ' style="color:rgba(255,255,255,.7)"' : '';
       const markStyle = isDark ? ' style="color:rgba(255,255,255,.35)"' : '';
       const quoteHtml = esc(post.quote).replace(/\n/g,'<br>');
@@ -418,11 +454,13 @@
     'poll': (post) => {
       const pl = post.poll || { opts: [], total: 0, voted: -1 };
       const total = pl.total || pl.opts.reduce((a, o) => a + o.v, 0) || 1;
+      const closed = _closed(post);
+      const exp = _expTxt(post);
       const opts = pl.opts.map((o, i) => {
         const pct = Math.round((o.v / total) * 100) || 0;
         const voted = pl.voted === i;
         return `
-          <div class="pcc-eng-opt${voted ? ' voted' : ''}" data-pcc-poll-opt="${i}">
+          <div class="pcc-eng-opt${voted ? ' voted' : ''}${closed ? ' is-closed' : ''}"${closed ? '' : ` data-pcc-poll-opt="${i}"`}>
             <div class="pcc-eng-opt-bar" style="width:${pct}%"></div>
             <div class="pcc-eng-opt-row"><span class="pcc-eng-opt-txt">${esc(o.label || o.t)}${voted ? ' <span class="pcc-eng-opt-mine">· your vote</span>' : ''}</span><span class="pcc-eng-opt-pct">${pct}%</span></div>
           </div>`;
@@ -430,25 +468,27 @@
       const body = `${post.image ? `<img class="pcc-image" src="${esc(post.image)}" alt="" data-pcc-open style="margin:10px 14px 0">` : ''}
         <div class="pcc-eng-q">${esc(pl.question || pl.q)}</div>
         <div class="pcc-eng-opts">${opts}</div>
-        <div class="pcc-eng-foot"><span>${pl.voted >= 0 ? 'Thanks for voting' : 'Tap an option to vote'}</span><span>${fmtN(total)} votes</span></div>`;
+        <div class="pcc-eng-foot"><span>${closed ? 'Voting closed' : (pl.voted >= 0 ? 'Thanks for voting' : 'Tap an option to vote')}</span><span>${fmtN(total)} votes${exp ? ' · ' + exp : ''}</span></div>`;
       return `${_pill('poll')}${_engShell('📊', 'Poll', `${fmtN(total)} votes`, body)}`;
     },
 
     'prediction': (post) => {
       const pr = post.prediction || { opts: [], total: 0, voted: -1 };
       const total = pr.total || pr.opts.reduce((a, o) => a + (o.v || 0), 0) || 1;
+      const closed = _closed(post);
+      const exp = _expTxt(post);
       const opts = (pr.opts || []).map((o, i) => {
         const pct = Math.round(((o.v || 0) / total) * 100) || 0;
         const voted = pr.voted === i;
         return `
-          <div class="pcc-eng-opt${voted ? ' voted' : ''}" data-pcc-pred-opt="${i}">
+          <div class="pcc-eng-opt${voted ? ' voted' : ''}${closed ? ' is-closed' : ''}"${closed ? '' : ` data-pcc-pred-opt="${i}"`}>
             <div class="pcc-eng-opt-bar" style="width:${pct}%"></div>
             <div class="pcc-eng-opt-row"><span class="pcc-eng-opt-txt">${esc(o.label || o.t || o.text)}${voted ? ' <span class="pcc-eng-opt-mine">· your pick</span>' : ''}</span><span class="pcc-eng-opt-pct">${pct}%</span></div>
           </div>`;
       }).join('');
       const body = `<div class="pcc-eng-q">${esc(pr.question || pr.q)}</div>
         <div class="pcc-eng-opts">${opts}</div>
-        <div class="pcc-eng-foot"><span>${pr.voted >= 0 ? 'Prediction locked in' : 'Tap an option to predict'}</span><span>${fmtN(total)} predicts</span></div>`;
+        <div class="pcc-eng-foot"><span>${closed ? 'Picks locked' : (pr.voted >= 0 ? 'Prediction locked in' : 'Tap an option to predict')}</span><span>${fmtN(total)} predicts${exp ? ' · ' + exp : ''}</span></div>`;
       return `${_pill('prediction')}${_engShell('🔮', 'Prediction', `${fmtN(total)} predicts`, body)}`;
     },
 
@@ -457,8 +497,10 @@
       const f = d.forV || 0, a = d.agV || 0, tot = (f + a) || 1;
       const fp = Math.round(f / tot * 100), ap = 100 - fp;
       const voted = d.userVote || null;
+      const closed = _closed(post);
+      const exp = _expTxt(post);
       const side = (s, lbl, cnt, em, cls, pct) => `
-        <div class="pcc-eng-deb-side ${cls}${voted === s ? ' chosen' : ''}" data-pcc-debate="${s}">
+        <div class="pcc-eng-deb-side ${cls}${voted === s ? ' chosen' : ''}${closed ? ' is-closed' : ''}"${closed ? '' : ` data-pcc-debate="${s}"`}>
           ${voted === s ? `<div class="pcc-eng-deb-check"><i class="fas fa-check"></i></div>` : ''}
           <div class="pcc-eng-deb-em">${em}</div>
           <div class="pcc-eng-deb-lbl">${esc(lbl)}</div>
@@ -470,23 +512,72 @@
         <div class="pcc-eng-q">${esc(d.motion || d.question)}</div>
         ${post.text ? `<div class="pcc-text" style="margin-top:6px" data-pcc-openpost>${esc(post.text)}</div>` : ''}
         <div class="pcc-eng-deb-sides">${side('for', d.forText || 'For', f, '✅', 'for', fp)}${side('against', d.againstText || 'Against', a, '❌', 'against', ap)}</div>
-        <div class="pcc-eng-foot"><span>${fmtN(f + a)} joined the discussion</span><span class="pcc-eng-foot-link" data-pcc-debate-open>View full debate <i class="fas fa-chevron-right"></i></span></div>`;
+        <div class="pcc-eng-foot"><span>${fmtN(f + a)} joined the discussion${exp ? ' · ' + exp : ''}</span><span class="pcc-eng-foot-link" data-pcc-debate-open>View full debate <i class="fas fa-chevron-right"></i></span></div>`;
       return `${_pill('debate')}${_engShell('⚖️', 'Debate', `${fmtN(f + a)} takes`, body)}`;
     },
 
-    /* Plain author post — no type pill, optional heading, 3-line clamp + Read more, shorter image */
+    /* Plain author post — no type pill, optional heading. Truncation +
+       "See more" are applied by the measured post-render pass
+       (_applyTruncation): short posts render clean, long ones collapse to
+       the uniform line budget. */
     'default': (post) => {
-      const hasLongText = post.text && post.text.split(/\n/).length > 3 || (post.text && post.text.length > 160);
       return `
         ${post.heading ? `<div class="pcc-heading">${esc(post.heading)}</div>` : ''}
-        ${post.text ? `<div class="pcc-text clamp" data-pcc-text>${esc(post.text)}</div>` : ''}
-        ${post.text && hasLongText ? `<button class="pcc-readmore" data-pcc-readmore>Read more</button>` : ''}
+        ${post.text ? `<div class="pcc-text" data-pcc-text>${esc(post.text)}</div>` : ''}
         ${post.image ? `<img class="pcc-image" src="${post.image}" alt="" data-pcc-open>` : ''}`;
     },
   };
 
   // Alias: droboard-page seed uses type 'forum-poll' — same poll UI.
   RENDERERS['forum-poll'] = RENDERERS['poll'];
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Truncation pass — enforces the card's uniform height budget.
+  // Every candidate text block is clamped FIRST, then measured:
+  //   • still overflowing → content is long → inject a "See more" button
+  //   • fits              → unclamp (short posts render untouched)
+  // Runs after every full render (setPosts) and single-card re-render
+  // (update), so the budget holds no matter what a registered type emits.
+  // "See more" expands the block IN PLACE — the card only grows when the
+  // reader asks for it; the full post stays one tap away via the host
+  // page's onOpenPost / text-tap hooks (discussion page / reader).
+  // ══════════════════════════════════════════════════════════════════════
+  const CLAMP_CANDIDATES = '.pcc-text,.pcc-heading,.pcc-quote-text,.pcc-review-body,.pcc-ama-meta,.pcc-ama-title,.pcc-eng-q,.dpc-title';
+  const _expanded = {}; // post id -> true while its block is expanded
+
+  function _applyTruncation(root) {
+    if (!root) return;
+    const cards = (root.matches && root.matches('.pcc-post')) ? [root] : root.querySelectorAll('.pcc-post');
+    Array.prototype.forEach.call(cards, function (card) {
+      const blocks = card.querySelectorAll(CLAMP_CANDIDATES);
+      Array.prototype.forEach.call(blocks, function (el) {
+        if (el.dataset.pccTrunc === '1') return;
+        el.dataset.pccTrunc = '1';
+        el.classList.add('clamp');
+        let over;
+        if (el.clientHeight > 0) {
+          // With the clamp applied, scrollHeight reports the full content
+          // height while clientHeight is the collapsed box — overflow = long.
+          over = el.scrollHeight > el.clientHeight + 2;
+        } else {
+          // Card not laid out yet (hidden tab) — fall back to a conservative
+          // character budget so nothing can blow up when it becomes visible.
+          const t = (el.textContent || '').trim();
+          over = t.length > 140 || t.split('\n').length > 4;
+        }
+        if (!over) { el.classList.remove('clamp'); return; }
+        const btn = document.createElement('button');
+        btn.className = 'pcc-readmore';
+        btn.setAttribute('data-pcc-readmore', '');
+        btn.textContent = 'See more';
+        el.parentNode.insertBefore(btn, el.nextSibling);
+        if (_expanded[card.dataset.pccId]) {
+          el.classList.remove('clamp');
+          btn.textContent = 'Show less';
+        }
+      });
+    });
+  }
 
   // ══════════════════════════════════════════════════════════════════════
   // Card render
@@ -519,6 +610,7 @@
     _posts = posts || [];
     if (!_root) return;
     _root.innerHTML = _posts.map(renderCard).join('');
+    _applyTruncation(_root);
     try { if (window.StatusStore && StatusStore.applyAll) StatusStore.applyAll(_root); } catch (e) {}
   }
 
@@ -532,7 +624,10 @@
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
     const next = tmp.firstElementChild;
-    if (next) el.replaceWith(next);
+    if (next) {
+      el.replaceWith(next);
+      _applyTruncation(next);
+    }
     try { if (window.StatusStore && StatusStore.applyAll) StatusStore.applyAll(_root); } catch (e) {}
   }
 
@@ -548,13 +643,17 @@
       const post = _findPost(card.dataset.pccId);
       if (!post) return;
 
-      // Read more toggle for author posts
+      // "See more" — expand / collapse the clamped block IN PLACE.
+      // The button is injected directly after its block, so the target is
+      // always previousElementSibling (works for any card type, even with
+      // several clampable blocks). Expansion survives re-renders via _expanded.
       const readMoreBtn = e.target.closest('[data-pcc-readmore]');
       if (readMoreBtn) {
-        const textEl = card.querySelector('[data-pcc-text]');
-        if (textEl) {
-          textEl.classList.toggle('clamp');
-          readMoreBtn.textContent = textEl.classList.contains('clamp') ? 'Read more' : 'Show less';
+        const target = readMoreBtn.previousElementSibling;
+        if (target) {
+          const nowClamped = target.classList.toggle('clamp');
+          readMoreBtn.textContent = nowClamped ? 'See more' : 'Show less';
+          try { _expanded[card.dataset.pccId] = !nowClamped; } catch (err) {}
         }
         return;
       }

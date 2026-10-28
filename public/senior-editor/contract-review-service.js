@@ -37,6 +37,65 @@ var items=[
 ];
 items.forEach(function(a){ if(KYC[a.id]) a.kyc=KYC[a.id]; });
 var curPage=1,PP=5,openId=null,selCT={},activeStatus='';
+
+/* ── Live data ──────────────────────────────────────────────────────────────
+   GET /api/senior-editor/contract-applications replaces the demo rows above
+   when the backend answers. Anything that fails keeps the demo console intact. */
+var API_BASE='/api/senior-editor';
+var TYPE_TO_API={exclusive:'Exclusive_Publishing','non-exclusive':'Non_Exclusive','revenue-share':'Revenue_Share',licensing:'License_Agreement'};
+function monthsOf(term){var n=parseInt(term,10);return n>0?n:12;}
+function splitOf(rev){var n=parseInt(rev,10);return isNaN(n)?70:n;}
+function mapApiRow(r){
+  return {
+    id:r.id,
+    contractId:r.contractId||'',
+    author:r.author,
+    avatar:r.avatar||'../assets/droboard-icon.png',
+    bookTitle:r.bookTitle,
+    bookGenre:r.bookGenre,
+    chapters:r.chapters,
+    ct:r.ct||'',
+    term:r.term||'',
+    rev:r.rev||'',
+    submitted:r.submitted||'',
+    status:r.status,
+    sent:!!r.sent,
+    notes:r.notes||'',
+    kyc:r.kyc||null,
+    live:true
+  };
+}
+function apiCall(path,body){
+  return fetch(API_BASE+path,{
+    method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body||{})
+  }).then(function(res){
+    return res.json().catch(function(){return {};}).then(function(j){
+      if(!res.ok) throw new Error((j&&j.error)||String(res.status));
+      return j;
+    });
+  });
+}
+function apiMessage(code){
+  if(code==='identity_not_verified') return 'Verify the writer\u2019s identity before sending an offer.';
+  if(code==='not_decidable') return 'This application was already handled by another editor.';
+  if(code==='not_found') return 'That application belongs to another editor.';
+  if(code==='contract_not_open') return 'This contract is no longer open.';
+  return 'Could not reach the server \u2014 try again.';
+}
+function loadLive(){
+  fetch(API_BASE+'/contract-applications',{credentials:'include'})
+    .then(function(res){ if(!res.ok) throw new Error(res.status); return res.json(); })
+    .then(function(rows){
+      if(!Array.isArray(rows)) return;
+      items.length=0;
+      rows.forEach(function(r){ items.push(mapApiRow(r)); });
+      if(openId&&!items.some(function(a){return a.id===openId;})) openId=null;
+      render();
+    })
+    .catch(function(){});
+}
 function ctLabel(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].label;}return '--';}
 function ctTerm(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].term;}return '12 months';}
 function ctRev(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].rev;}return '70/30';}
@@ -56,167 +115,6 @@ function signBlockReason(a){
   if(!k.idPhotos||!k.idPhotos.front||!k.idPhotos.back) return 'ID photos required (front + back) before signing '+a.author+'\u2019s contract.';
   return null;
 }
-/* ── Identity viewer (personal details + front/back ID documents) ── */
-function kxDate(d){
-  if(!d) return '\u2014';
-  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var p=String(d).split('-');
-  if(p.length!==3) return d;
-  return parseInt(p[2],10)+' '+m[parseInt(p[1],10)-1]+' '+p[0];
-}
-function kxEsc(s){
-  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c];
-  });
-}
-function kxBadge(k){
-  if(!k) return '<span class="kyc-badge missing"><i class="fas fa-circle-exclamation"></i> Not submitted</span>';
-  if(!k.idPhotos||!k.idPhotos.front||!k.idPhotos.back) return '<span class="kyc-badge pending"><i class="fas fa-image"></i> Photos missing</span>';
-  if(k.type==='guardian') return '<span class="kyc-badge guardian"><i class="fas fa-user-shield"></i> Guardian co-sign</span>';
-  if(k.type==='pending') return '<span class="kyc-badge pending"><i class="fas fa-hourglass-half"></i> Pending NIN</span>';
-  return '<span class="kyc-badge verified"><i class="fas fa-shield-halved"></i> Verified \u00b7 self NIN</span>';
-}
-function kxFields(a){
-  var k=a.kyc,f=[
-    {l:'Full legal name',v:kxEsc(a.author)},
-    {l:'Date of birth',v:kxDate(k.dob)+' <small>age '+k.age+'</small>'},
-    {l:'Identity path',v:k.type==='guardian'?'Guardian co-sign':k.type==='pending'?'Pending NIN \u00b7 alternate ID':'NIN verified'}
-  ];
-  if(k.type==='guardian'&&k.guardian){
-    f.push({l:'Guardian',v:kxEsc(k.guardian.name)});
-    f.push({l:'Relationship',v:kxEsc(k.guardian.relationship)});
-    f.push({l:'Guardian ID no.',v:kxEsc(k.guardian.idNo),mono:true});
-  }else if(k.type==='pending'&&k.altId){
-    f.push({l:'Alternate ID type',v:kxEsc(k.altId.type)});
-    f.push({l:'Alternate ID no.',v:kxEsc(k.altId.no),mono:true});
-  }else{
-    f.push({l:'NIN',v:kxEsc(k.nin),mono:true});
-  }
-  return f;
-}
-/* Demo document preview: renders the submitted ID details as a document so
-   editors can actually inspect a face/ID pairing before signing. In live mode
-   `idPhotos` values are real image URLs and bypass this generator. */
-function kxDoc(a,k,side){
-  var guardian=k.type==='guardian'&&k.guardian;
-  var pending=k.type==='pending'&&k.altId;
-  var holder=guardian?k.guardian.name:a.author;
-  var idNo=guardian?k.guardian.idNo:(pending?k.altId.no:k.nin);
-  var issuer=guardian?'GUARDIAN IDENTIFICATION':pending?String(k.altId.type).toUpperCase():'FEDERAL REPUBLIC OF NIGERIA';
-  var docTitle=guardian?'Guardian identity document':pending?String(k.altId.type):'National Identification Number (NIN) Slip';
-  var idLabel=guardian?'GUARDIAN ID NUMBER':pending?'ID NUMBER':'NATIONAL IDENTIFICATION NUMBER';
-  var roleLine=guardian?('<text x="176" y="286" font-size="10" fill="#5c5c52" font-family="Arial">RELATIONSHIP: '+kxEsc(k.guardian.relationship).toUpperCase()+'</text>'):'';
-  var digits=String(idNo||'').replace(/\D/g,'')||'1234567';
-  var bars='',i;
-  for(i=0;i<46;i++){
-    var bh=18+(parseInt(digits.charAt(i%digits.length),10)||i%9)*6;
-    bars+='<rect x="'+(28+i*12)+'" y="'+(315-bh)+'" width="'+(i%4===0?5:2.5)+'" height="'+bh+'" fill="#17171a"/>';
-  }
-  var front=''
-    +'<rect width="600" height="380" fill="#fbfaf4"/>'
-    +'<rect width="600" height="72" fill="#0b6b3a"/>'
-    +'<circle cx="40" cy="36" r="18" fill="none" stroke="#f0cf6b" stroke-width="2"/>'
-    +'<text x="40" y="42" font-size="12" text-anchor="middle" fill="#f0cf6b" font-family="Georgia,serif" font-weight="700">NG</text>'
-    +'<text x="72" y="31" font-size="14" font-weight="700" fill="#fff" font-family="Arial">'+kxEsc(issuer)+'</text>'
-    +'<text x="72" y="50" font-size="9.5" fill="#cfe8d8" font-family="Arial" letter-spacing="1.6">IDENTITY DOCUMENT \u00b7 FRONT</text>'
-    +'<text x="30" y="102" font-size="10.5" font-weight="700" fill="#0b6b3a" font-family="Arial" letter-spacing="1.1">'+kxEsc(docTitle).toUpperCase()+'</text>'
-    +'<rect x="30" y="118" width="118" height="150" rx="4" fill="#e7e7de" stroke="#c9c9bd"/>'
-    +'<circle cx="89" cy="167" r="27" fill="#b9b9ac"/>'
-    +'<path d="M45 268c5-37 25-55 44-55s39 18 44 55z" fill="#b9b9ac"/>'
-    +'<text x="89" y="287" font-size="8" text-anchor="middle" fill="#8d8d80" font-family="Arial" letter-spacing="1">PHOTOGRAPH</text>'
-    +'<text x="176" y="136" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">FULL NAME</text>'
-    +'<text x="176" y="158" font-size="16" font-weight="700" fill="#17171a" font-family="Arial">'+kxEsc(holder)+'</text>'
-    +'<line x1="176" y1="168" x2="562" y2="168" stroke="#deded4"/>'
-    +'<text x="176" y="191" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">DATE OF BIRTH</text>'
-    +'<text x="176" y="211" font-size="13" font-weight="700" fill="#17171a" font-family="Arial">'+kxDate(k.dob)+'</text>'
-    +'<text x="380" y="191" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">AGE</text>'
-    +'<text x="380" y="211" font-size="13" font-weight="700" fill="#17171a" font-family="Arial">'+k.age+' years</text>'
-    +'<text x="176" y="242" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">'+idLabel+'</text>'
-    +'<text x="176" y="266" font-size="19" font-weight="700" fill="#0b6b3a" font-family="Courier New,monospace" letter-spacing="2">'+kxEsc(idNo)+'</text>'
-    +roleLine
-    +'<rect x="0" y="322" width="600" height="58" fill="#0b6b3a" opacity=".07"/>'
-    +'<text x="30" y="342" font-size="8" fill="#5c5c52" font-family="Arial" letter-spacing="1">THIS DOCUMENT REMAINS THE PROPERTY OF THE ISSUING AUTHORITY</text>';
-  var back=''
-    +'<rect width="600" height="380" fill="#fbfaf4"/>'
-    +'<rect width="600" height="72" fill="#0b6b3a"/>'
-    +'<circle cx="40" cy="36" r="18" fill="none" stroke="#f0cf6b" stroke-width="2"/>'
-    +'<text x="40" y="42" font-size="12" text-anchor="middle" fill="#f0cf6b" font-family="Georgia,serif" font-weight="700">NG</text>'
-    +'<text x="72" y="31" font-size="14" font-weight="700" fill="#fff" font-family="Arial">'+kxEsc(issuer)+'</text>'
-    +'<text x="72" y="50" font-size="9.5" fill="#cfe8d8" font-family="Arial" letter-spacing="1.6">IDENTITY DOCUMENT \u00b7 BACK</text>'
-    +'<rect x="0" y="118" width="600" height="200" fill="#f3f2ea"/>'
-    +bars
-    +'<text x="300" y="368" font-size="9" text-anchor="middle" fill="#7a7a6f" font-family="Arial" letter-spacing="1">DOCUMENT NO. '+kxEsc(idNo)+' \u00b7 '+kxEsc(holder).toUpperCase()+'</text>'
-    +'<text x="30" y="95" font-size="8.5" fill="#7a7a6f" font-family="Arial" letter-spacing="1">MACHINE READABLE ZONE</text>'
-    +'<text x="30" y="108" font-size="10" fill="#17171a" font-family="Courier New,monospace" letter-spacing="1.4">IDNGA'+kxEsc(idNo)+'&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</text>'
-    +'<text x="30" y="345" font-size="8" fill="#5c5c52" font-family="Arial" letter-spacing="1">IF FOUND, RETURN TO THE NEAREST ISSUING OFFICE</text>';
-  return '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380">'+(side==='back'?back:front)+'</svg>';
-}
-function kxPhotoSrc(a,side){
-  var k=a.kyc;if(!k||!k.idPhotos) return '';
-  var v=k.idPhotos[side];
-  if(!v) return '';
-  if(/^(https?:|data:|blob:|\/|\.{1,2}\/)/i.test(v)) return v;
-  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(kxDoc(a,k,side));
-}
-function kxPhotoCard(a,side,src){
-  var label=side==='front'?'ID photo \u2014 front':'ID photo \u2014 back';
-  var file=(a.kyc.idPhotos&&a.kyc.idPhotos[side])||'';
-  if(!src) return '<div class="kyc-photo is-missing"><span class="kyc-photo-thumb"><i class="fas fa-image-slash"></i></span><span class="kyc-photo-meta"><b>'+label+'</b><small>Not uploaded</small></span></div>';
-  return '<button type="button" class="kyc-photo" onclick="window._viewId(\''+a.id+'\',\''+side+'\')" title="View full size">'
-    +'<span class="kyc-photo-thumb"><img src="'+src+'" alt="'+kxEsc(a.author)+' '+label+'"><span class="kyc-zoom"><i class="fas fa-magnifying-glass-plus"></i></span></span>'
-    +'<span class="kyc-photo-meta"><b>'+label+'</b><small>'+kxEsc(file)+'</small><em>Click to view full size</em></span>'
-    +'</button>';
-}
-function kxPanelHTML(a){
-  var k=a.kyc;
-  var h='<div class="kyc-panel"><div class="kyc-panel-head"><div class="kyc-panel-title"><i class="fas fa-id-card"></i> Author Identity &amp; Personal Details</div>'+kxBadge(k)+'</div>';
-  if(!k){
-    h+='<div class="kyc-empty"><i class="fas fa-circle-exclamation"></i><div><b>No identity details submitted</b><span>This application has no KYC record. Ask the author to submit identity in the Author Center before signing.</span></div></div></div>';
-    return h;
-  }
-  h+='<div class="kyc-grid">';
-  kxFields(a).forEach(function(f){h+='<div class="kyc-field"><label>'+f.l+'</label><b'+(f.mono?' class="mono"':'')+'>'+f.v+'</b></div>';});
-  h+='</div><div class="kyc-photos">'
-    +kxPhotoCard(a,'front',kxPhotoSrc(a,'front'))
-    +kxPhotoCard(a,'back',kxPhotoSrc(a,'back'))
-    +'</div><div class="kyc-note"><i class="fas fa-lock"></i><span>Submitted by the author with this contract application. ID documents are confidential and visible only to senior editors.</span></div></div>';
-  return h;
-}
-var _lbA=null;
-function kxEnsureLightbox(){
-  if(document.getElementById('kycLightbox')) return;
-  var d=document.createElement('div');
-  d.id='kycLightbox';d.className='kyc-lightbox';
-  d.innerHTML='<div class="kyc-lb-box" role="dialog" aria-modal="true" aria-label="ID document viewer">'
-    +'<div class="kyc-lb-head"><div><b id="kycLbTitle"></b><span id="kycLbSub"></span></div><button class="kyc-lb-x" id="kycLbClose" aria-label="Close"><i class="fas fa-xmark"></i></button></div>'
-    +'<div class="kyc-lb-imgwrap"><img id="kycLbImg" alt="ID document"></div>'
-    +'<div class="kyc-lb-foot"><span><i class="fas fa-lock"></i> Confidential \u2014 senior editors only</span><button class="btn btn-ghost" id="kycLbFront"><i class="fas fa-address-card"></i> Front</button><button class="btn btn-ghost" id="kycLbBack"><i class="fas fa-rotate"></i> Back</button></div></div>';
-  document.body.appendChild(d);
-  d.addEventListener('click',function(e){if(e.target===d)kxCloseViewer();});
-  document.getElementById('kycLbClose').onclick=kxCloseViewer;
-  document.getElementById('kycLbFront').onclick=function(){kxRenderViewer('front');};
-  document.getElementById('kycLbBack').onclick=function(){kxRenderViewer('back');};
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&d.classList.contains('open'))kxCloseViewer();});
-}
-function kxRenderViewer(side){
-  if(!_lbA) return;
-  document.getElementById('kycLbImg').src=kxPhotoSrc(_lbA,side);
-  document.getElementById('kycLbImg').alt=_lbA.author+' ID '+side;
-  document.getElementById('kycLbTitle').textContent=_lbA.author+' \u2014 '+(side==='front'?'ID front':'ID back');
-  document.getElementById('kycLbSub').textContent=_lbA.bookTitle+' \u00b7 '+_lbA.id+' \u00b7 '+(side==='front'?'Front':'Back')+' of document';
-  var f=document.getElementById('kycLbFront'),b=document.getElementById('kycLbBack');
-  f.className='btn btn-ghost'+(side==='front'?' on':'');
-  b.className='btn btn-ghost'+(side==='back'?' on':'');
-  f.disabled=!kxPhotoSrc(_lbA,'front');
-  b.disabled=!kxPhotoSrc(_lbA,'back');
-}
-function kxCloseViewer(){var d=document.getElementById('kycLightbox');if(d)d.classList.remove('open');}
-window._viewId=function(id,side){
-  var a=null;for(var i=0;i<items.length;i++){if(items[i].id===id){a=items[i];break;}}
-  if(!a||!a.kyc)return;
-  _lbA=a;kxEnsureLightbox();kxRenderViewer(side||'front');
-  document.getElementById('kycLightbox').classList.add('open');
-};
 function filtered(){
   var q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
   return items.filter(function(a){
@@ -273,7 +171,10 @@ function render(){
       if(!a.sent){acts='<button class="btn btn-primary" onclick="event.stopPropagation();window._openD(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-paper-plane"></i> Send</span></button>';}
       else{acts='<span class="waiting-tag"><i class="fas fa-hourglass-half"></i> Awaiting</span>';}
     }else if(a.status==='approved'){
-      acts='<button class="btn btn-green" onclick="event.stopPropagation();window._doSign(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-pen-fancy"></i> Sign</span></button><button class="btn btn-danger" onclick="event.stopPropagation();window._doReject(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-xmark"></i></span></button>';
+      acts='<button class="btn btn-green" onclick="event.stopPropagation();window._doSign(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-pen-fancy"></i> Sign</span></button>';
+      // Once the author has signed there is nothing to reject — the platform
+      // signature is the remaining step (live rows only; demo keeps its flow).
+      if(!a.live) acts+='<button class="btn btn-danger" onclick="event.stopPropagation();window._doReject(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-xmark"></i></span></button>';
     }else if(a.status==='signed'){
       acts='<button class="btn btn-ghost" onclick="event.stopPropagation();window._dlPDF(\''+a.id+'\')"><i class="fas fa-download"></i> PDF</button>';
     }
@@ -334,7 +235,7 @@ function renderDetail(id){
     actsH='<span class="waiting-tag" style="font-size:12px"><i class="fas fa-hourglass-half"></i> Waiting for author to sign...</span>';
   }else if(isA){
     actsH='<button class="btn btn-green" onclick="window._doSign(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-pen-fancy"></i> Sign Contract</span></button>';
-    actsH+='<button class="btn btn-danger" onclick="window._doReject(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-xmark"></i> Reject</span></button>';
+    if(!a.live) actsH+='<button class="btn btn-danger" onclick="window._doReject(\''+a.id+'\')"><span class="btn-text"><i class="fas fa-xmark"></i> Reject</span></button>';
   }else if(isS){
     actsH='<span class="readonly-tag"><i class="fas fa-lock"></i> READ ONLY</span>';
     actsH+='<button class="btn btn-ghost" onclick="window._dlPDF(\''+a.id+'\')"><i class="fas fa-download"></i> Download PDF</button>';
@@ -343,7 +244,7 @@ function renderDetail(id){
   }
   var h='<div class="detail-inner">';
   h+='<div class="detail-header"><img class="detail-avatar" src="'+a.avatar+'" alt=""><div class="detail-title"><h3>'+a.author+'</h3><p>'+a.id+' | '+a.bookTitle+' | '+a.bookGenre+'</p></div>'+pill(a.status)+'</div>';
-  h+=roNote+grid+kxPanelHTML(a)+ctHtml+terms;
+  h+=roNote+grid+KycPanel.html(a)+ctHtml+terms;
   var canPrice=!isR;
   if(canPrice){
     var stateChip=isP?'<span class="mz-state draft">DRAFT</span>':'<span class="mz-state live">LIVE</span>';
@@ -376,6 +277,9 @@ function renderDetail(id){
       totalChapters:a.chapters||12,
       initial:init,
       readOnly:false,
+      // Same deal as the review-queue wizard: the editor sets terms, the
+      // per-chapter summary below is noise on this page too.
+      hideSummary:true,
       onChange:function(){
         var d=document.getElementById('mzDirty');
         if(d){d.className='mz-dirty show';d.textContent='Unsaved changes';}
@@ -459,10 +363,27 @@ window._doSend=function(id){
   if(!sel||!sel.value){toast('Please select a contract type first');return;}
   var btn=document.getElementById('sendBtn-'+id);
   if(btn){btn.classList.add('loading');btn.innerHTML='<span class="btn-text"><i class="fas fa-paper-plane"></i> Sending</span>';}
-  setTimeout(function(){
-    a.ct=sel.value;a.term=ctTerm(sel.value);a.rev=ctRev(sel.value);a.sent=true;
+  var type=sel.value;
+  function finish(contractId){
+    a.ct=type;a.term=ctTerm(type);a.rev=ctRev(type);a.sent=true;a.status='pending';
+    if(contractId)a.contractId=contractId;
     openId=null;render();toast('Contract sent to '+a.author+' for signature');
-  },800);
+  }
+  function failed(msg){
+    if(btn){btn.classList.remove('loading');btn.innerHTML='<span class="btn-text"><i class="fas fa-paper-plane"></i> Send</span>';}
+    toast(msg);
+  }
+  if(a.live){
+    apiCall('/contract-applications/'+encodeURIComponent(a.id)+'/approve',{
+      type:TYPE_TO_API[type],
+      termMonths:monthsOf(ctTerm(type)),
+      revenueSplit:splitOf(ctRev(type)),
+      note:a.notes||''
+    }).then(function(r){finish(r&&r.contractId);})
+      .catch(function(e){failed(apiMessage(e.message));});
+    return;
+  }
+  setTimeout(function(){finish('');},800);
 };
 window._doSign=function(id){
   var a=null;for(var i=0;i<items.length;i++){if(items[i].id===id){a=items[i];break;}}
@@ -473,16 +394,38 @@ window._doSign=function(id){
   if(row){var btn=row.querySelector('.btn-green');if(btn){btn.classList.add('loading');btn.innerHTML='<span class="btn-text"><i class="fas fa-pen-fancy"></i> Signing</span>';}}
   var det=document.getElementById('d-'+id);
   if(det){var dbtn=det.querySelector('.btn-green');if(dbtn){dbtn.classList.add('loading');dbtn.innerHTML='<span class="btn-text"><i class="fas fa-pen-fancy"></i> Signing</span>';}}
-  setTimeout(function(){
+  function readPricing(){
     if(window._contractMz&&window._contractMzId===id){
       try{var t=window._contractMz.getTerms();a.pricing={freeChapters:t.freeChapters,adsPerChapter:t.adsPerChapter,allowAdUnlock:t.allowAdUnlock,prices:{},ads:{}};t.rows.forEach(function(r){a.pricing.prices[r.num]=r.price;a.pricing.ads[r.num]=r.ads;});}catch(e){}
     }
-    a.status='signed';openId=null;render();toast(a.author+' - contract signed and complete');
-  },1000);
+    return a.pricing||null;
+  }
+  function finish(){a.status='signed';openId=null;render();toast(a.author+' - contract signed and complete');}
+  if(a.live&&a.contractId){
+    var pricing=readPricing();
+    apiCall('/contracts/'+encodeURIComponent(a.contractId)+'/sign',pricing?{pricing:pricing}:{})
+      .then(finish)
+      .catch(function(e){toast(apiMessage(e.message));render();});
+    return;
+  }
+  setTimeout(function(){readPricing();finish();},1000);
 };
 window._doReject=function(id){
   var a=null;for(var i=0;i<items.length;i++){if(items[i].id===id){a=items[i];break;}}
   if(!a)return;
+  if(a.live){
+    // A signed contract is not rejected from this console; only an application
+    // that has not produced a signed deal can be turned down, with a reason.
+    if(a.status!=='pending'){toast('The author already signed \u2014 platform signature is the remaining step.');return;}
+    var why=window.prompt('Why is this application being rejected? The author sees this reason.');
+    if(!why||why.trim().length<5){toast('Write a reason of at least 5 characters');return;}
+    var rrow=document.querySelector('.item-row[data-id="'+id+'"]');
+    if(rrow){var rbtn=rrow.querySelector('.btn-danger');if(rbtn){rbtn.classList.add('loading');rbtn.innerHTML='<span class="btn-text"><i class="fas fa-xmark"></i></span>';}}
+    apiCall('/contract-applications/'+encodeURIComponent(a.id)+'/reject',{reason:why.trim()})
+      .then(function(){a.status='rejected';openId=null;render();toast(a.author+' - application rejected');})
+      .catch(function(e){toast(apiMessage(e.message));render();});
+    return;
+  }
   var row=document.querySelector('.item-row[data-id="'+id+'"]');
   if(row){var btn=row.querySelector('.btn-danger');if(btn){btn.classList.add('loading');btn.innerHTML='<span class="btn-text"><i class="fas fa-xmark"></i></span>';}}
   var det=document.getElementById('d-'+id);
@@ -538,3 +481,4 @@ document.addEventListener('click',function(e){
 });
 document.getElementById('searchInput').addEventListener('input',function(){curPage=1;render();});
 render();
+loadLive();

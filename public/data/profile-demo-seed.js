@@ -41,7 +41,7 @@
       cover: COVERS.c1,
       verified: true,
       isWriter: true,
-      bio: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal series updates every Friday.',
+      bio: 'Writing messy love, power, and the kind of endings that keep you up. Betrayal story updates every Friday.',
       genres: ['romance', 'betrayal', 'mafia', 'drama'],
       location: 'Lagos, Nigeria',
       joinedLabel: 'Joined March 2023',
@@ -62,7 +62,7 @@
         { label: 'Weekly Streak', cls: 'purple' },
       ],
       books: [
-        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS.c1, reads: '820k', likes: '94k', rating: '4.9', chapters: 62, seriesId: 's1' },
+        { id: 'b1', title: 'Season of Betrayal', cat: 'Romance · Drama', cover: COVERS.c1, reads: '820k', likes: '94k', rating: '4.9', chapters: 62, catalogId: 's1' },
         { id: 'b2', title: 'Crowned in Sin', cat: 'Mafia', cover: COVERS.c2, reads: '310k', likes: '41k', rating: '4.7', chapters: 48 },
         { id: 'b3', title: 'Until You Regret', cat: 'Revenge · Romance', cover: COVERS.c4, reads: '150k', likes: '22k', rating: '4.8', chapters: 35 },
       ],
@@ -115,7 +115,7 @@
         },
         {
           id: 'pp4', type: 'post', time: '1w', pinned: false, liked: false, likes: 310, comments: 67, saved: false,
-          text: 'For everyone asking: yes, Season 3 of the Betrayal series is coming. Dropping next Friday. Midnight. Set your alarms.',
+          text: 'For everyone asking: yes, Season 3 of the Betrayal story is coming. Dropping next Friday. Midnight. Set your alarms.',
         },
         {
           id: 'pp5', type: 'repost', time: '2w', pinned: false, liked: false, likes: 188, comments: 22, saved: false,
@@ -169,7 +169,7 @@
         ]},
       ],
       following: [
-        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal series', following: true },
+        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal story', following: true },
       ],
       posts: [
         {
@@ -235,7 +235,7 @@
         ]},
       ],
       following: [
-        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal series · 1.2M reads', following: true },
+        { name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', meta: 'Betrayal story · 1.2M reads', following: true },
         { name: 'Sarah_Odum', av: 'https://i.pravatar.cc/100?img=48', meta: 'Billionaire romance', following: true },
       ],
       posts: [

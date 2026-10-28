@@ -11,8 +11,55 @@ async function callBackend(path, options){
   return res.json();
 }
 
+/* Live loader: GET /editorial-strategy (+ per-section sub-resources) → demo field names.
+   Backend EditorialStrategy doc: {notes, genrePriorities, quarterlyGoals, campaigns,
+   acquisitionTargets} — demo renders them as strategyNotes / seasonalCampaigns. */
+async function loadLive(){
+  const out = {};
+  let gotAny = false;
+
+  try {
+    const d = await callBackend('/editorial-strategy');
+    if(d){
+      if(d.notes != null){ out.strategyNotes = d.notes || ''; gotAny = true; }
+      if(Array.isArray(d.genrePriorities)){ out.genrePriorities = d.genrePriorities; gotAny = true; }
+      if(Array.isArray(d.quarterlyGoals)){ out.quarterlyGoals = d.quarterlyGoals; gotAny = true; }
+      if(Array.isArray(d.campaigns)){ out.seasonalCampaigns = d.campaigns; gotAny = true; }
+      if(Array.isArray(d.acquisitionTargets)){ out.acquisitionTargets = d.acquisitionTargets; gotAny = true; }
+    }
+  }catch(e){ console.warn('[EditorialStrategy] /editorial-strategy failed, trying sub-resources', e); }
+
+  // Sub-resources fill any gaps ({field: value} envelopes, {} when unseeded)
+  const slices = [
+    ['/editorial-strategy/notes', 'notes', 'strategyNotes'],
+    ['/editorial-strategy/genre-priorities', 'genrePriorities', 'genrePriorities'],
+    ['/editorial-strategy/quarterly-goals', 'quarterlyGoals', 'quarterlyGoals'],
+    ['/editorial-strategy/campaigns', 'campaigns', 'seasonalCampaigns'],
+    ['/editorial-strategy/acquisition-targets', 'acquisitionTargets', 'acquisitionTargets'],
+  ];
+  for(const [path, field, demoKey] of slices){
+    if(out[demoKey] !== undefined) continue;
+    try{
+      const s = await callBackend(path);
+      if(s && s[field] !== undefined && s[field] !== null){
+        out[demoKey] = s[field];
+        gotAny = true;
+      }
+    }catch(e){ console.warn('[EditorialStrategy] sub-resource failed:', path, e); }
+  }
+  return gotAny ? Object.assign({
+    strategyNotes: '',
+    genrePriorities: [],
+    quarterlyGoals: [],
+    seasonalCampaigns: [],
+    acquisitionTargets: [],
+  }, out) : null;
+}
+
 async function loadData(){
-  const data = await ChiefEditorData.getEditorialStrategy();
+  let live = null;
+  try{ live = await loadLive(); }catch(e){ console.warn('[EditorialStrategy] live load failed, using demo data', e); }
+  const data = live || await ChiefEditorData.getEditorialStrategy();
   document.getElementById('strategyNotes').textContent = data.strategyNotes;
 
   document.getElementById('genreTable').querySelector('tbody').innerHTML = data.genrePriorities.map(g => `

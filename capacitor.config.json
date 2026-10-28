@@ -6,6 +6,9 @@
     "allowMixedContent": true
   },
   "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native"
+    },
     "SplashScreen": {
       "launchShowDuration": 1500,
       "backgroundColor": "#000000"

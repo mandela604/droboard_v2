@@ -468,7 +468,6 @@
   // status is seen, so a new upload turns it red again automatically.
   // ══════════════════════════════════════════════════════════════════════
   const STATUS_STORE_KEY = 'dro_status_viewed_v2';
-  const LEGACY_STORE_KEY = 'dro_status_viewed_v1';
 
   function _normAuthor(v) {
     var s = String(v == null ? '' : v).trim().toLowerCase();
@@ -487,16 +486,10 @@
     _load() {
       if (this._m) return this._m;
       try {
-        var raw = localStorage.getItem(STATUS_STORE_KEY);
-        if (raw) { this._m = JSON.parse(raw) || {}; return this._m; }
-        // One-time import: the old store was author-level, so treat those
-        // authors as fully seen until they post again.
-        var old = JSON.parse(localStorage.getItem(LEGACY_STORE_KEY) || '{}') || {};
-        this._m = {};
-        var self = this;
-        Object.keys(old).forEach(function (k) {
-          self._m[_normAuthor(k)] = { count: 1, at: Date.now(), ids: {} };
-        });
+        // v1 was author-level ("watched one slide ⇒ everything seen"), which
+        // is exactly the state that produced stuck rings. Don't import it —
+        // per-status seen state starts clean and re-earns itself.
+        this._m = JSON.parse(localStorage.getItem(STATUS_STORE_KEY) || '{}') || {};
       } catch (e) { this._m = {}; }
       return this._m;
     },
@@ -544,16 +537,19 @@
         this._markAllSeen(key, statuses);
         return 'ring-viewed';
       }
-      // Cross-surface fallback: another surface may label the same demo
-      // slides differently. Only trust it while nothing is unseen and the
-      // author has not grown past the lineup we last finished.
+      // Cross-surface fallback: the same author can be shown with different
+      // slide lineups (feed row vs comment seed), so slide ids never match.
+      // If we already finished this author's lineup and they haven't posted
+      // again, treat the new lineup as seen too.
       if (!rec.unseen && statuses.length <= (rec.count || 0)) {
         rec.total = statuses.length;
         this._save();
         return 'ring-viewed';
       }
       rec.total = statuses.length;
-      rec.unseen = Math.max(rec.unseen || 0, statuses.length - seen) > 0 ? 1 : 0;
+      // `unseen` is only meaningful as "0 = finished"; a partial watch must
+      // not stamp unseen=1, or a surface showing a different slide lineup for
+      // the same author could never reconcile back to grey.
       this._save();
       return (meta && meta.isLive) || (meta && meta.isMine) ? 'ring-live' : 'ring-has';
     },
@@ -563,13 +559,14 @@
     ringOf(idOrHandle) {
       var key = this.key(idOrHandle);
       if (!key) return null;
+      /* Only a lineup that some surface on THIS page actually rendered can
+         answer. A leftover record is not proof: an author who used to have
+         slides and now has none would keep a grey border over an avatar with
+         no status behind it — and the tap on that border goes nowhere, so the
+         card falls through to the profile instead. No lineup → no ring. */
       var meta = this._authors[key];
-      if (meta && meta.statuses) return this.register(key, meta.statuses, meta.meta);
-      var rec = this._load()[key];
-      if (!rec) return null;
-      if (rec.unseen > 0) return 'ring-has';
-      if ((rec.total || 0) > 0 || (rec.count || 0) > 0) return 'ring-viewed';
-      return null;
+      if (!meta || !meta.statuses || !meta.statuses.length) return null;
+      return this.register(key, meta.statuses, meta.meta);
     },
     isStatusSeen(idOrHandle, status, index) {
       var key = this.key(idOrHandle);
@@ -685,7 +682,7 @@
       }));
     } catch (e) {}
     if (typeof window.onStatusViewerChange === 'function') {
-      try { window.onStatusViewerChange(wid, ring); } catch (e) {}
+      try { window.onStatusViewerChange(wid, ring, name); } catch (e) {}
     }
   }
 
@@ -1013,12 +1010,14 @@
 
     // ── Per-status seen state (never author-level) ──
     const authorKey = w.name || w.id;
-    const priorRing = w.ring;
     StatusStore.register(authorKey, slides, { isLive: w.isLive, isMine: _isMine(w) });
     StatusStore.markSeen(authorKey, slide, _slideIdx);
     const ring = StatusStore.ringForPerson(authorKey, slides, { isLive: w.isLive, isMine: _isMine(w) });
     w.ring = ring;
-    if (priorRing !== ring) _emit(w.id, ring, authorKey);
+    // Emit on every slide, not just when the value changes: the ring starts
+    // red and stays red across partial views, so a change-only emit never
+    // repaints the DOM and the author looks unviewed forever.
+    _emit(w.id, ring, authorKey);
     _reportView(w, slide);
 
     // ── Progress bars ──

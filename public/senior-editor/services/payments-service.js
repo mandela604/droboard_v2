@@ -6,13 +6,13 @@
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
   if (!USE_API) return null;
   try {
-    const res = await fetch(API_BASE + path, options);
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (e) {
@@ -34,7 +34,26 @@ const PAYMENTS=[
 function statusPillHtml(s){const m={completed:{cls:'',label:'Completed'},pending:{cls:'pending',label:'Pending'},failed:{cls:'failed',label:'Failed'}}[s]||m.completed;return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`}
 function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const s=document.getElementById('statusSelect').value;let l=PAYMENTS;if(s)l=l.filter(r=>r.status===s);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.recipient.toLowerCase().includes(q));return l}
 function svcToast(m){ if(typeof window.toast==='function'){ try{ window.toast(m); return; }catch(e){} } }
-function exportReport(){ return callBackend('/payments/export', { method:'POST' }).then(function(r){ if(!r) svcToast('Exporting payment report…'); }); }
+// Real CSV download: POST → stream the file the backend returns as a download.
+function downloadCsv(path, filename, failMsg){
+  return fetch(API_BASE + path, { method:'POST', credentials:'include' })
+    .then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      var cd = res.headers.get('Content-Disposition') || '';
+      var m = /filename="?([^";]+)"?/.exec(cd);
+      return res.blob().then(function(blob){ return { blob: blob, name: (m && m[1]) || filename }; });
+    })
+    .then(function(x){
+      var url = URL.createObjectURL(x.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = x.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      svcToast('CSV downloaded');
+    })
+    .catch(function(e){ console.warn('[export] failed', e); svcToast(failMsg); });
+}
+function exportReport(){ return downloadCsv('/payments/export', 'payments.csv', 'Export failed — is the backend reachable?'); }
 function openDatePicker(){ svcToast('Date picker'); }
 function openPaymentSettings(){ svcToast('Opening payment settings…'); }
 function openReconciliation(){ svcToast('Opening reconciliation report…'); }
@@ -44,6 +63,21 @@ function renderTable(list){const b=document.getElementById('tableBody');if(!list
 b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Payment ID" style="font-weight:700">${r.id}</td><td data-label="Recipient" style="font-weight:600">${r.recipient}</td><td data-label="Amount" style="font-weight:800">${r.amount}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Date" style="font-weight:600">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" onclick="PaymentsService.viewPayment('${r.id}')"><i class="fas fa-eye"></i></button><button class="act-btn" onclick="PaymentsService.moreActions('${r.id}')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
 function renderPageInfo(c){const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>181</b> payments`}
 function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
+
+async function loadPayments(){
+  const data = await callBackend('/payments');
+  if (data && Array.isArray(data.payments)) {
+    PAYMENTS = data.payments.map(p => ({
+      id: p.id,
+      recipient: p.recipient || p.recipientName || '',
+      amount: p.amount != null ? '$' + Number(p.amount).toLocaleString('en-US', {minimumFractionDigits: 2}) : '$0.00',
+      method: p.method || '',
+      status: p.status || 'pending',
+      date: p.date || p.createdAt || ''
+    }));
+    refresh();
+  }
+}
 function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,'...',23];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>p==='...'?`<span style="color:var(--text-faint);font-size:12px;padding:0 2px">…</span>`:`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
 
 var _bound=false;
@@ -54,9 +88,7 @@ function bindEvents(){
 
 function init(){
   SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'payments',title:'Payments',subtitle:'Manage platform payments and disbursements',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search payments...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/payments').then(function (data) { if (data && data.payments) { refresh(); } });
-  callBackend('/payments');
+  loadPayments();
   bindEvents();
   renderPagination();refresh();
 }

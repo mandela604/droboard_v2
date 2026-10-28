@@ -1,6 +1,7 @@
 /**
  * book-management-service.js — Book Management page logic
  * Reads data from window.EditorDemo.BOOKS (or DroboardAPI fallback).
+ * Backend-wired: GET /api/senior-editor/books returns {items,total,page,limit}.
  */
 (function () {
   'use strict';
@@ -9,6 +10,19 @@
    Service pulls it during parse; delete these 3 lines at go-live. */
 if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
   document.write('<script src="../data/editor-demo-data.js"><\/script>');
+}
+
+/* ── Backend call (demo fallback retained) ── */
+const API_BASE = '/api/senior-editor';
+async function callBackend(path, options){
+  try {
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
+    if (!res.ok) throw new Error('backend error: ' + res.status);
+    return await res.json();
+  } catch (e) {
+    console.warn('[BookManagement] backend unavailable, using demo data', e);
+    return null;
+  }
 }
 
 function resyncDemo(){
@@ -40,10 +54,11 @@ function resyncDemo(){
   GENRE_COLORS['Elegy'] = { bg: '#fde3e3', fg: '#e0384d' };
 
   /* ── Init ── */
-  function init() {
+  async function init() {
     if (!document.getElementById('tableBody')) return;
     resyncDemo();
     bindEvents();
+    await loadFromBackend();
     refresh();
   }
 
@@ -60,7 +75,7 @@ function resyncDemo(){
   }
 
   /* ── Refresh (filter + render) ── */
-  function refresh() {
+  async function refresh() {
     var q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
     var cat = document.getElementById('fCategory').value;
     var genre = document.getElementById('fGenre').value;
@@ -78,6 +93,31 @@ function resyncDemo(){
     renderTable(filtered);
     renderStats();
     renderTabs();
+  }
+
+  async function loadFromBackend(){
+    var qs = new URLSearchParams();
+    if (activeTab !== 'all') qs.set('status', activeTab);
+    if (cat !== 'All Categories' && cat) qs.set('tab', cat);
+    if (genre !== 'All Genres' && genre) qs.set('q', genre);
+    if (stat !== 'All Status' && stat) qs.set('status', stat);
+    if (q) qs.set('q', q);
+    qs.set('page', String(currentPage));
+    qs.set('limit', String(PER_PAGE));
+    var data = await callBackend('/books?' + qs.toString());
+    if (data && Array.isArray(data.items)) {
+      books = data.items.map(function(b){
+        return {
+          id: b.id, title: b.title || 'Untitled', author: b.authorName || b.author || '—',
+          avatar: b.avatar || '', img: b.cover || b.img || '', cat: b.cat || b.genre || '',
+          genre: b.genre || '', status: b.status || 'Draft', views: b.reads != null ? b.reads : '—',
+          added: b.createdAt || '—', authorId: b.authorId || '', cover: b.cover || ''
+        };
+      });
+      renderTable(books);
+      renderStats();
+      renderTabs();
+    }
   }
 
   /* ── Render table ── */

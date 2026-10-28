@@ -36,12 +36,11 @@
 
     { key: 'review-queue',        label: 'Review Queue',        icon: 'fa-inbox',             href: 'review-queue.html',           section: 'Content' },
     { key: 'book-management',     label: 'Book Management',      icon: 'fa-book',              href: 'book-management.html',        section: 'Content' },
-    { key: 'reports-flags',       label: 'Reports & Flags',      icon: 'fa-flag',              href: 'reports-flags.html',          section: 'Content' },
 
     { key: 'contract-review',     label: 'Contract Review',     icon: 'fa-file-signature',    href: 'contract-review.html',        section: 'Reviews' },
     { key: 'completion-review',   label: 'Completion Application',icon:'fa-flag-checkered',    href: 'completion-application.html', section: 'Reviews' },
     { key: 'chapter-review',      label: 'Chapter Edit Review', icon: 'fa-pen-to-square',     href: 'chapter-edit-review.html',    section: 'Reviews' },
-    { key: 'book-series-review',  label: 'Book Series Review',  icon: 'fa-book-open',         href: 'book-series-review.html',     section: 'Reviews' },
+    { key: 'book-story-review',  label: 'Book Story Review',  icon: 'fa-book-open',         href: 'book-story-review.html',     section: 'Reviews' },
 
     { key: 'authors',             label: 'Authors',              icon: 'fa-user-tie',          href: 'authors.html',                section: 'People' },
     { key: 'invite-authors',      label: 'Invite Authors',       icon: 'fa-user-plus',         href: 'invite-authors.html',        section: 'People' },
@@ -106,9 +105,8 @@
   .ses-tb-search input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
   .ses-tb-search input::placeholder{color:var(--text-faint)}
   .ses-tb-search i{color:var(--text-faint);font-size:13px}
-  .ses-tb-icon-btn{position:relative;width:38px;height:38px;border-radius:50%;background:var(--input-bg);border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:15px;flex-shrink:0;transition:.15s}
-  .ses-tb-icon-btn:hover{color:var(--accent);border-color:var(--accent)}
-  .ses-tb-badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--card)}
+
+
   .ses-theme-toggle{width:52px;height:30px;border-radius:20px;background:var(--input-bg);border:1px solid var(--input-border);position:relative;flex-shrink:0;cursor:pointer}
   .ses-theme-toggle .ses-knob{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;transition:transform .25s cubic-bezier(.4,0,.2,1)}
   html[data-theme="dark"] .ses-theme-toggle .ses-knob{transform:translateX(22px)}
@@ -226,7 +224,6 @@
     const instId = 'ses' + (++_instanceCounter);
     const activeItem = options.activeItem || 'dashboard';
     const user = Object.assign({ name: 'User', role: 'Senior Editor', avatar: null }, options.user || {});
-    const notifCount = options.notifCount != null ? options.notifCount : 0;
     const existingContent = container.innerHTML;
 
     function navHtml() {
@@ -286,10 +283,6 @@
             <button class="ses-theme-toggle" id="${instId}-theme" title="Toggle dark / light mode">
               <div class="ses-knob" id="${instId}-theme-icon"><i class="fas fa-sun"></i></div>
             </button>
-            <a class="ses-tb-icon-btn" id="${instId}-bell" href="#" style="display:flex;align-items:center;justify-content:center;text-decoration:none">
-              <i class="fas fa-bell"></i>
-              ${notifCount > 0 ? `<span class="ses-tb-badge">${notifCount}</span>` : ''}
-            </a>
             <div class="ses-tb-profile" id="${instId}-profile">
               ${user.avatar ? `<img src="${_esc(user.avatar)}" alt="${_esc(user.name)}"/>` : ''}
               <div class="ses-tb-profile-txt"><b>${_esc(user.name)}</b><span>${_esc(user.role)}</span></div>
@@ -348,11 +341,6 @@
       });
     }
 
-    document.getElementById(instId + '-bell').addEventListener('click', (e) => {
-      e.preventDefault();
-      if (typeof options.onBellClick === 'function') options.onBellClick();
-      else _toast(`${notifCount} new notification${notifCount === 1 ? '' : 's'}`);
-    });
     document.getElementById(instId + '-profile').addEventListener('click', () => {
       if (typeof options.onProfileClick === 'function') options.onProfileClick();
       else _toast('👤 Account menu');

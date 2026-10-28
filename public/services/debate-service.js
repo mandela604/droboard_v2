@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    DEBATE SERVICE
    Standalone debate page. Uses DroboardDebateArgs for arguments.
-   Resolves ?id= from FeedData debates → DemoData.SERIES debates.
+   Resolves ?id= from FeedData debates → DemoData.STORY_RECORDS debates.
    State persisted in localStorage.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
@@ -61,7 +61,7 @@
         { id: 'r5', name: 'Priya_Sharma', avatar: 'https://i.pravatar.cc/100?img=44', verified: true, side: 'against', statusRing: 'viewed', time: '20h', text: 'Consequences are what make choices matter in a story.', up: 9, down: 1, myVote: null, replies: [] },
         { id: 'r6', name: 'Finn_Calloway', avatar: 'https://i.pravatar.cc/100?img=68', side: 'against', statusRing: 'none', time: '18h', text: 'If everyone gets redeemed, nobody is truly dangerous.', up: 14, down: 3, myVote: null, replies: [] },
         { id: 'r7', name: 'Mei_Lin', avatar: 'https://i.pravatar.cc/100?img=31', side: 'against', statusRing: 'has', time: '15h', text: 'The tension dies when you know the villain will be forgiven.', up: 11, down: 2, myVote: null,
-          statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy series', time: '6h ago' }],
+          statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' }],
           replies: [] },
       ]},
       { id: 'a3', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', verified: true, side: 'for', statusRing: 'has', time: '3d', text: 'If we don\'t believe people can change, what\'s the point of any story at all?', up: 31, down: 4, myVote: null, replies: [] },
@@ -81,11 +81,26 @@
       ]},
       { id: 'a9', name: 'Finn_Calloway', avatar: 'https://i.pravatar.cc/100?img=68', verified: false, side: 'for', statusRing: 'none', time: '8d', text: 'Some of the greatest characters in fiction started as villains. Imagine robbing readers of that journey.', up: 36, down: 5, myVote: null, replies: [] },
       { id: 'a10', name: 'Mei_Lin', avatar: 'https://i.pravatar.cc/100?img=31', verified: false, side: 'against', statusRing: 'has', time: '3h', text: 'A villain crying at the end doesn\'t erase a hundred chapters of cruelty.', up: 49, down: 6, myVote: null,
-        statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy series', time: '6h ago' }],
+        statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' }],
         replies: [] },
       { id: 'a11', name: 'Omar_Hassan', avatar: 'https://i.pravatar.cc/100?img=57', verified: false, side: 'for', statusRing: 'viewed', time: '9d', text: 'Redemption arcs teach empathy. That\'s literally the point of literature.', up: 22, down: 4, myVote: null, replies: [] },
       { id: 'a12', name: 'Chloe_Bennett', avatar: 'https://i.pravatar.cc/100?img=45', verified: true, side: 'against', statusRing: 'none', time: '5d', text: 'If the villain is truly irredeemable, giving them a soft ending is bad writing.', up: 38, down: 7, myVote: null, replies: [] },
     ];
+  }
+
+  /* ── poster (who started the debate) → profile link ── */
+  function posterFrom(post, time, forceOfficial) {
+    if (!post) return null;
+    var name = post.name || post.author || '';
+    var official = forceOfficial || name === 'Droboard' || post.mine === true;
+    var handle = post.handle || (name ? name.replace(/\s+/g, '_') : '');
+    return {
+      name: official ? 'Droboard' : (handle || name || 'Unknown'),
+      avatar: post.avatar || (official ? '../assets/droboard-icon.png' : ''),
+      href: official ? 'droboard-page.html' : ('profile.html?u=' + encodeURIComponent(handle || name)),
+      time: time || post.time || '',
+      official: official
+    };
   }
 
   /* ── resolve debate ── */
@@ -107,15 +122,36 @@
             againstText: d.againstText || 'Against',
             forV: d.forV || 0,
             agV: d.agV || 0,
+            expiresAt: post.expiresAt || null,
+            poster: posterFrom(post),
           };
         }
       } catch (e) {}
     }
 
-    if (window.DemoData && DemoData.SERIES) {
-      for (var i = 0; i < DemoData.SERIES.length; i++) {
-        if (DemoData.SERIES[i].debates) {
-          var deb = DemoData.SERIES[i].debates.find(function (x) { return x.id === DEBATE_ID; });
+    /* @droboard official-page debates live in the page seed, not the feed */
+    if (window.DroboardPageSeed) {
+      var seedPosts = (window.DroboardPageSeed.DROBOARD_POSTS || []).concat(window.DroboardPageSeed.DROBOARD_MORE_POSTS || []);
+      var dp = seedPosts.find(function (p) { return p && p.id === DEBATE_ID && p.debateData; });
+      if (dp) {
+        return {
+          id: DEBATE_ID,
+          question: dp.debateData.motion || dp.debateData.question || dp.title || 'Join the debate.',
+          prompt: '',
+          forText: dp.debateData.forText || 'For',
+          againstText: dp.debateData.againstText || 'Against',
+          forV: dp.debateData.forV || 0,
+          agV: dp.debateData.agV || 0,
+          expiresAt: dp.expiresAt || null,
+          poster: posterFrom(dp, dp.time, true),
+        };
+      }
+    }
+
+    if (window.DemoData && DemoData.STORY_RECORDS) {
+      for (var i = 0; i < DemoData.STORY_RECORDS.length; i++) {
+        if (DemoData.STORY_RECORDS[i].debates) {
+          var deb = DemoData.STORY_RECORDS[i].debates.find(function (x) { return x.id === DEBATE_ID; });
           if (deb) {
             return {
               id: DEBATE_ID,
@@ -125,6 +161,7 @@
               againstText: 'Against',
               forV: deb.forV || 0,
               agV: deb.agV || 0,
+              expiresAt: deb.expiresAt || null,
             };
           }
         }
@@ -143,11 +180,13 @@
   }
 
   /* ── render sides ── */
+  function isShut() { return !!(window.DroboardExpiry && DroboardExpiry.isClosed(DEBATE)); }
   function renderSides() {
     var d = DEBATE;
     var total = (d.forV || 0) + (d.agV || 0) || 1;
     var forPct = Math.round((d.forV / total) * 100) || 0;
     var agPct = Math.round((d.agV / total) * 100) || 0;
+    var shut = isShut();
 
     document.getElementById('forFill').style.width = forPct + '%';
     document.getElementById('agFill').style.width = agPct + '%';
@@ -155,14 +194,34 @@
     document.getElementById('agPct').textContent = agPct + '%';
     document.getElementById('forCnt').textContent = fmtN(d.forV) + ' votes';
     document.getElementById('agCnt').textContent = fmtN(d.agV) + ' votes';
-    document.getElementById('debTotal').textContent = fmtN((d.forV || 0) + (d.agV || 0)) + ' joined the discussion';
+    document.getElementById('debTotal').textContent = shut
+      ? fmtN((d.forV || 0) + (d.agV || 0)) + ' votes — final'
+      : fmtN((d.forV || 0) + (d.agV || 0)) + ' joined the discussion';
 
     document.getElementById('sideFor').classList.toggle('chosen', S.userVote === 'for');
     document.getElementById('sideAg').classList.toggle('chosen', S.userVote === 'against');
+    document.getElementById('debSides').classList.toggle('shut', shut);
+
+    var badge = document.getElementById('debBadge');
+    if (badge) badge.innerHTML = shut
+      ? '<i class="fas fa-lock"></i> Debate closed'
+      : '<span class="deb-live"></span> Live Debate';
+    if (d.expiresAt && !shut) {
+      var ms = +d.expiresAt - Date.now(), h = ms / 3600000;
+      badge.innerHTML = '<span class="deb-live"></span> Closes in ' + (h < 1 ? Math.max(1, Math.round(ms / 60000)) + 'm' : h <= 72 ? Math.round(h) + 'h' : Math.round(h / 24) + 'd');
+    }
+    var shutLine = document.getElementById('debClosed');
+    if (shutLine) {
+      shutLine.style.display = shut ? '' : 'none';
+      if (shut) shutLine.innerHTML = '<i class="fas fa-lock" style="color:#c92a2a;margin-right:6px"></i> Voting closed ' +
+        new Date(+d.expiresAt || Date.now()).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) +
+        ' — ' + (forPct >= agPct ? '\u2705 ' + esc(d.forText) : '\u274C ' + esc(d.againstText)) + ' won at ' + Math.max(forPct, agPct) + '%.';
+    }
   }
 
   /* ── vote ── */
   function vote(side) {
+    if (isShut()) { toast('This debate has closed — the result is final.'); return; }
     if (S.userVote === side) return;
     if (S.userVote === 'for') DEBATE.forV--;
     if (S.userVote === 'against') DEBATE.agV--;
@@ -207,6 +266,20 @@
     }
 
     document.getElementById('debQ').textContent = DEBATE.question;
+    var posterEl = document.getElementById('debPoster');
+    if (posterEl) {
+      var pt = DEBATE.poster;
+      if (pt) {
+        posterEl.href = pt.href;
+        posterEl.innerHTML =
+          '<img class="deb-poster-av" src="' + esc(pt.avatar) + '" alt="" loading="lazy" onerror="this.src=\'../assets/droboard-icon.png\'"/>' +
+          '<span><span class="deb-poster-name">' + (pt.official ? '<i class="fas fa-shield-halved" style="font-size:10px;color:var(--acc);margin-right:3px"></i>' : '') + esc(pt.name) + '</span>' +
+          (pt.time ? '<span class="deb-poster-time">' + esc(pt.time) + '</span>' : '') + '</span>';
+        posterEl.style.display = '';
+      } else {
+        posterEl.style.display = 'none';
+      }
+    }
     var promptEl = document.getElementById('debPrompt');
     promptEl.textContent = DEBATE.prompt || '';
     promptEl.style.display = DEBATE.prompt ? '' : 'none';
@@ -234,6 +307,7 @@
         sides: { for: DEBATE.forText, against: DEBATE.againstText },
         currentUser: { name: 'You', avatar: 'https://i.pravatar.cc/100?img=5', verified: false },
         requireSide: true,
+        readOnly: isShut(),
         userSide: S.side,
         ads: true,
         debateId: DEBATE_ID,

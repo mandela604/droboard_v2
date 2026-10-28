@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <title>Book Changes · Droboard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -25,13 +25,13 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .page-header h1{font-size:22px;font-weight:800;color:var(--tx-high);margin-bottom:4px}
 .page-header p{font-size:13px;color:var(--tx-muted)}
 
-.series-list{display:flex;flex-direction:column;gap:10px}
-.series-row{background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden;transition:.2s}
+.story-list{display:flex;flex-direction:column;gap:10px}
+.story-row{background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden;transition:.2s}
 /* book card comes from component/book-card.js — flattened inside the row shell */
-.series-row .dbc-card{border:none;border-radius:0;box-shadow:none;background:transparent;padding:14px}
+.story-row .dbc-card{border:none;border-radius:0;box-shadow:none;background:transparent;padding:14px}
 
-.series-accordion{max-height:0;overflow:hidden;transition:max-height .3s ease}
-.series-row.open .series-accordion{max-height:400px}
+.story-accordion{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.story-row.open .story-accordion{max-height:400px}
 .accordion-inner{padding:0 14px 14px;border-top:1px solid var(--bd)}
 
 .change-options{display:flex;flex-direction:column;gap:6px}
@@ -74,10 +74,10 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .modal-title{font-size:17px;font-weight:800;color:var(--tx-high)}
 .modal-close{width:32px;height:32px;border-radius:50%;background:var(--l2);display:flex;align-items:center;justify-content:center;color:var(--tx-muted);font-size:13px;border:none;flex-shrink:0}
 .modal-body{flex:1;overflow-y:auto;padding:20px}
-.modal-series{display:flex;align-items:center;gap:12px;padding:12px;background:var(--l2);border-radius:12px;margin-bottom:16px}
-.modal-series img{width:40px;height:56px;border-radius:8px;object-fit:cover}
-.modal-series-title{font-size:14px;font-weight:700;color:var(--tx-high)}
-.modal-series-meta{font-size:11px;color:var(--tx-muted);margin-top:2px}
+.modal-story{display:flex;align-items:center;gap:12px;padding:12px;background:var(--l2);border-radius:12px;margin-bottom:16px}
+.modal-story img{width:40px;height:56px;border-radius:8px;object-fit:cover}
+.modal-story-title{font-size:14px;font-weight:700;color:var(--tx-high)}
+.modal-story-meta{font-size:11px;color:var(--tx-muted);margin-top:2px}
 .form-textarea{width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx-body);font-size:13px;font-family:inherit;outline:none;min-height:100px;resize:vertical;line-height:1.5}
 .form-textarea:focus{border-color:var(--acc)}
 .form-textarea::placeholder{color:var(--tx-faint)}
@@ -151,7 +151,7 @@ textarea.compare-input{min-height:74px;line-height:1.5}
       <h1>Book Changes</h1>
       <p>Request changes to your books. Tap a book to see options.</p>
     </div>
-    <div class="series-list" id="seriesList"></div>
+    <div class="story-list" id="storyList"></div>
   </div>
 </div>
 
@@ -164,7 +164,7 @@ textarea.compare-input{min-height:74px;line-height:1.5}
       <button class="modal-close" id="modalClose"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <div class="modal-series" id="modalSeries"></div>
+      <div class="modal-story" id="modalStory"></div>
       <div class="selected-tags" id="selectedTags"></div>
       <div id="modalBodyCover" style="display:none">
         <div class="cover-compare">
@@ -201,8 +201,8 @@ textarea.compare-input{min-height:74px;line-height:1.5}
 
 <script src="../component/book-card.js"></script>
 <script src="services/api-config.js"></script>
-<script src="services/drawer-service.js"></script>
-<script src="../services/notification-store.js?v=5"></script>
+<script src="services/drawer-service.js?v=2"></script>
+<script src="../services/notification-store.js?v=6"></script>
 <script src="services/request-book-change-service.js?v=6"></script>
 <script>BookChangeService.init();</script>
 <script src="../shared/theme-chrome.js"></script>

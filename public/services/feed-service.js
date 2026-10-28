@@ -69,6 +69,9 @@
 
   /* ── Hamburger sort/filter — actually re-orders the rendered feed ── */
   function applySort(scroll) {
+    /* deadlines are enforced at render time — idempotent, so a poll that
+       expired while the tab sat open closes itself and notifies once */
+    if (window.DroboardExpiry) DroboardExpiry.sweep(BASE_POSTS, { isMine: p => p.name === 'You' });
     let organic = BASE_POSTS.slice();
     if (FEED_SORT === 'popular') {
       organic.sort((a, b) => (((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0))));
@@ -170,30 +173,37 @@
       DroboardStatusRing.open(viewable, item.dataset.storyId, { onMissing: () => toast('Status viewer unavailable') });
     });
   }
-  window.onStatusViewerChange = function (wid, ring) {
-    const s = STORIES_CACHE.find(x => x.id === wid);
+  window.onStatusViewerChange = function (wid, ring, name) {
+    // The viewer keys on the author's name, so match id OR name.
+    const emitKey = String(name || wid || '').replace(/^@/, '').toLowerCase().replace(/[\s\-]+/g, '_');
+    const s = STORIES_CACHE.find(x => x.id === wid || String(x.name || x.handle || '').replace(/^@/, '').toLowerCase().replace(/[\s\-]+/g, '_') === emitKey);
     if (s) s.ring = ring;
-    const item = document.querySelector(`.story-item[data-story-id="${wid}"] .dring`);
+    const domKey = (s && (s.name || s.id)) || wid;
+    const item = document.querySelector(`.story-item[data-story-id="${domKey}"] .dring`)
+      || document.querySelector(`.story-item[data-story-id="${wid}"] .dring`);
     if (item) {
       item.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
       if (ring) item.classList.add(ring);
     }
-    // Feed post avatars by the same person are state-aware too.
-    try {
-      const key = String((s && (s.name || s.handle)) || wid || '')
-        .replace(/^@/, '').replace(/^wr:/, '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
-      (FEED_POSTS || []).forEach(function (p) {
-        if (!p || p.type === 'sponsored') return;
-        const pk = String(p.handle || p.name || '').replace(/^@/, '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
-        if (!key || pk !== key) return;
-        const next = ring === 'ring-viewed' ? 'viewed' : (ring ? true : false);
-        if (p.avatarRing !== next) {
-          p.avatarRing = next;
-          if (window.DroboardPostCard) DroboardPostCard.update(p);
-        }
-      });
-    } catch (e) {}
+    // Feed post cards by the same person ask the shared ring themselves
+    // (DroboardStatusRing reads StatusStore per author), so nothing to push here.
   };
+  /* An avatar tapped on a post card plays that author inside the stories row,
+     so the viewer still pages between people instead of stopping at one. */
+  (function bindAvatarTapGroup() {
+    const prev = window.onStatusAvatarTap;
+    window.onStatusAvatarTap = function (entry, key) {
+      if (typeof prev === 'function') {
+        try { if (prev(entry, key) === true) return true; } catch (e) {}
+      }
+      const who = String(key || entry && entry.name || '').replace(/^@/, '').toLowerCase().replace(/[\s\-]+/g, '_');
+      const viewable = (STORIES_CACHE || []).filter(s => !s.you && s.statuses && s.statuses.length);
+      const hit = viewable.find(s => String(s.name || s.handle || '').replace(/^@/, '').toLowerCase().replace(/[\s\-]+/g, '_') === who);
+      if (!hit) return false;
+      DroboardStatusRing.open(viewable, hit.id);
+      return true;
+    };
+  })();
 
   /* ── Promo (ad-marketing module: AdService promo pool, page 'feed') ── */
   async function mountPromo() {

@@ -11,6 +11,42 @@ async function callBackend(path, options){
   return res.json();
 }
 
+function fmtDate(v){
+  const dt = new Date(v);
+  return isNaN(dt) ? (v || '') : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+/* Live loader: GET /policies + GET /policies/history → demo shape ({policies, policyHistory}). */
+async function loadLive(){
+  const live = await callBackend('/policies?limit=50');
+  if(!live) return null; // USE_API=false
+  const items = Array.isArray(live) ? live : (live.items || []);
+  let historyItems = [];
+  try{
+    const h = await callBackend('/policies/history?limit=50');
+    const hItems = Array.isArray(h) ? h : ((h && h.items) || []);
+    historyItems = hItems.map(x => ({
+      date: fmtDate(x.at),
+      action: `"${x.title || 'Policy'}" updated to v${x.version || 1}`,
+      by: x.byId || 'system',
+    }));
+  }catch(e){ console.warn('[EditorialPolicies] policy history load failed', e); }
+  return {
+    policies: items.map(p => {
+      const body = p.body || '';
+      return {
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        updated: fmtDate(p.updatedAt),
+        author: p.author,
+        summary: body.substring(0, 120) + (body.length > 120 ? '…' : ''),
+        fullBody: body,
+      };
+    }),
+    policyHistory: historyItems,
+  };
+}
+
 /* ── DATA ── */
 let allPolicies = [];
 let filteredPolicies = [];
@@ -51,6 +87,11 @@ function openModal(policy) {
   document.getElementById('modalEditBtn').addEventListener('click', () => { toast('✏️ Opening policy editor...'); closeModal(); });
   document.getElementById('modalArchiveBtn').addEventListener('click', () => {
     if (!confirm(`Archive ${policy.title}?`)) return;
+    if (USE_API) {
+      callBackend(`/policies/${encodeURIComponent(policy.id)}/archive`, { method: 'POST' })
+        .then(updated => { if (updated && updated.status) policy.status = updated.status; })
+        .catch(e => console.warn('[EditorialPolicies] archive failed on backend', e));
+    }
     allPolicies = allPolicies.filter(p => p.id !== policy.id);
     toast(`📦 ${policy.title} archived`);
     closeModal();
@@ -122,11 +163,13 @@ function renderPolicies() {
 }
 
 async function loadData() {
-  const d = await ChiefEditorData.getEditorialPolicies();
-  // Add fullBody to each policy for modal display
+  let d = null;
+  try { d = await loadLive(); } catch(e){ console.warn('[EditorialPolicies] live load failed, using demo data', e); d = null; }
+  if(!d) d = await ChiefEditorData.getEditorialPolicies();
+  // Add fullBody to each policy for modal display (demo only — live items already carry fullBody)
   allPolicies = d.policies.map(p => ({
     ...p,
-    fullBody: p.summary + '\n\nThis policy is part of the Droboard platform content moderation system. It outlines the standards and procedures that all authors and editors must follow when publishing content on the platform. Violations may result in content takedown, warnings, or account suspension depending on severity and recurrence.'
+    fullBody: p.fullBody || (p.summary + '\n\nThis policy is part of the Droboard platform content moderation system. It outlines the standards and procedures that all authors and editors must follow when publishing content on the platform. Violations may result in content takedown, warnings, or account suspension depending on severity and recurrence.')
   }));
   document.getElementById('historyList').innerHTML = d.policyHistory.map(h => `
     <div class="history-item"><div class="hi-date">${h.date}</div><div>${h.action}</div><div style="color:var(--text-faint);font-size:11px">by ${h.by}</div></div>`).join('');
@@ -159,6 +202,18 @@ function init() {
       title, status: 'draft', updated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       author, summary: body.substring(0, 120) + (body.length > 120 ? '…' : ''), fullBody: body
     };
+    if (USE_API) {
+      callBackend('/policies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, status: 'draft' })
+      }).then(created => {
+        if (created && created.id) {
+          newPolicy.id = created.id;
+          newPolicy.updated = fmtDate(created.updatedAt || created.createdAt);
+        }
+      }).catch(e => console.warn('[EditorialPolicies] create failed on backend', e));
+    }
     allPolicies.unshift(newPolicy);
     toast(`✅ "${title}" created as draft`);
     closeAddModal();

@@ -248,7 +248,29 @@
       return { items, total: items.length, grandTotal: STORE.books.length };
     },
 
-    getBookById(id) {
+    // Live-first book fetch: story previews must show REAL data when the API
+    // is up. Falls back to the demo store only when it's unreachable.
+    async getBookById(id) {
+      try {
+        const res = await fetch('/api/books/' + encodeURIComponent(id), { credentials: 'include' });
+        if (res.ok) {
+          const d = await res.json();
+          const w = d.writer || {};
+          const statusLabel = { draft: 'Draft', ongoing: 'Ongoing', under_review: 'Under Review', published: 'Published', completed: 'Completed', paused: 'Paused', flagged: 'Flagged' };
+          // API Book → the shape story-modal.js renders
+          // (cover→img, lowercase status→Title Case, synopsis→desc, writer→author).
+          return Object.assign({}, d, {
+            img: d.cover || d.img || '',
+            avatar: w.avatar || d.avatar || '',
+            author: w.name || w.username || d.author || '',
+            cat: d.cat || '',
+            desc: d.synopsis || d.desc || '',
+            views: d.views != null ? d.views : (d.reads != null ? String(d.reads) : '0'),
+            added: d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : (d.added || 'Recently'),
+            status: statusLabel[d.status] || d.status,
+          });
+        }
+      } catch (e) { /* offline / demo mode → demo store */ }
       const b = STORE.books.find(x => x.id === id) || STORE.books[0];
       return _request(`/books/${id}`, {}, b);
     },
@@ -269,10 +291,30 @@
       return _request('/books', { method: 'POST', body: JSON.stringify(data) }, b);
     },
 
-    updateBook(id, data) {
+    // Live-first status update: persist to the API when reachable; keep demo
+    // behavior offline. A real 4xx refusal (e.g. 'flagged' is not PATCH-able —
+    // flagging goes through Book Management with reason + password) reports
+    // { success:false } instead of faking success. 401/403 → demo fallback.
+    async updateBook(id, data) {
       const idx = STORE.books.findIndex(b => b.id === id);
       if (idx >= 0) Object.assign(STORE.books[idx], data);
       _saveStore();
+      const statusValue = { 'Draft': 'draft', 'Ongoing': 'ongoing', 'Under Review': 'under_review', 'Published': 'published', 'Completed': 'completed', 'Paused': 'paused', 'Flagged': 'flagged' };
+      const body = Object.assign({}, data);
+      if (body.status && statusValue[body.status]) body.status = statusValue[body.status];
+      try {
+        const res = await fetch('/api/books/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) return await res.json();
+        if (res.status !== 401 && res.status !== 403) {
+          console.warn('[DroboardAPI] updateBook rejected by API: HTTP ' + res.status);
+          return { success: false, status: res.status };
+        }
+      } catch (e) { /* offline / demo mode → demo store */ }
       return _request(`/books/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, { success: true, id });
     },
 

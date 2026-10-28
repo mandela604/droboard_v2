@@ -242,7 +242,7 @@
   api.list = api.list || async function (bookId) { if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters'); if (r.ok) return await r.json(); } catch (e) {} } await delay(); return clone(DEMO); };
   api.getRelationships = api.getRelationships || async function (bookId) { await delay(80); return [{ from: 'Aria Cole', to: 'Darius Kane', type: 'Complicated' }]; };
   api.save = api.save || async function (bookId, data) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (r.ok) return await r.json(); } catch (e) {} }
+    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (r.ok) return await r.json(); } catch (e) {} }
     await delay(200); return Object.assign({ id: 'c' + Date.now() }, data);
   };
   api.init = init;

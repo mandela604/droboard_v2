@@ -1,5 +1,7 @@
 'use strict';
 const { AdInventory, AdPlacement, AdStat } = require('../models/platform.model');
+const { Campaign } = require('../models/marketing.model');
+const registry = require('../config/adSurfaces');
 
 async function placement(page) {
   // Fail closed: no placement doc means NO ads. There is deliberately no
@@ -32,6 +34,13 @@ async function inventoryAll() {
   return { pools, placements: map };
 }
 
+/* Keys serving logic or the document itself owns. Anything else the console
+   sends is creative payload and must survive the round-trip. */
+const AD_CORE_KEYS = new Set(['format', 'brand', 'title', 'heading', 'text', 'body', 'image',
+  'code', 'cta', 'url', 'genre', 'pages', 'slots', 'active', 'startDate', 'endDate',
+  'campaign', 'audience', 'offerRef', 'id', '_id', '__v', 'startAt', 'endAt',
+  'autoPaused', 'createdAt', 'updatedAt', 'pool']);
+
 function cleanAd(data) {
   const out = {};
   ['format', 'brand', 'title', 'heading', 'text', 'body', 'image', 'code', 'cta', 'url', 'genre'].forEach(k => {
@@ -42,6 +51,10 @@ function cleanAd(data) {
   }
   if (data.pages !== undefined) out.pages = Array.isArray(data.pages) ? data.pages.map(String).slice(0, 20) : [];
   if (data.slots !== undefined) out.slots = Array.isArray(data.slots) ? data.slots.map(String).slice(0, 40) : [];
+  /* Fail loudly on a surface or slot no reader page will ever ask for. These
+     ids are the join between the console checkbox and the `data-ad-slot`
+     marker in the page — a typo used to save cleanly and serve nothing. */
+  registry.assertTargeting({ pages: out.pages, slots: out.slots });
   if (data.active !== undefined) out.active = !!data.active;
   // The console round-trips 'YYYY-MM-DD' strings (it reads startDate back when
   // editing); serving filters on the parsed startAt/endAt — keep both in sync.
@@ -57,6 +70,19 @@ function cleanAd(data) {
       name: String(data.offerRef.name || data.offerRef.id).slice(0, 200),
     };
   } else if (data.offerRef !== undefined) out.offerRef = null;
+  /* Per-format creative fields (img, sponsor, headline, sub, author, cover,
+     avatar, name, handle, tagline, rating, chapters, preview, reads, likes,
+     comments, isBook, kind, boardType, period, …). The card renderers read
+     these, so dropping them meant a live ad passed every checkbox and then
+     painted an empty frame. The model is strict:false; keep the values as
+     sent so the wizard reads its own draft back. */
+  Object.keys(data).forEach(k => {
+    if (AD_CORE_KEYS.has(k) || k.startsWith('_')) return;
+    const v = data[k];
+    if (typeof v === 'string') out[k] = v.slice(0, 2000);
+    else if (typeof v === 'number' || typeof v === 'boolean') out[k] = v;
+    else if (v === null) out[k] = null;
+  });
   // never let a body overwrite the generated public id / internals
   if (data.id !== undefined) delete out.id;
   delete out._id; delete out.__v;
@@ -71,9 +97,33 @@ function cleanAudience(a) {
   };
 }
 
+/* The campaign is the buy, the ad is the delivery — so the buy constrains the
+   delivery here, not only in the console UI:
+     - slots outside the campaign's entitlement are refused (400);
+     - a campaign that isn't live/scheduled saves the creative paused,
+       autoPaused, so setting the campaign live switches it on (cascadeAds);
+     - legs outside the campaign window are refused.
+   No campaign = a Droboard house ad, bounded only by the placement kill
+   switches. */
+async function gateToCampaign(data) {
+  const id = String(data.campaign || '');
+  if (!id) return;
+  const c = await Campaign.findOne({ id }).lean();
+  if (!c) { const e = new Error('unknown_campaign:' + id); e.status = 400; throw e; }
+  if (Array.isArray(c.slots) && c.slots.length && Array.isArray(data.slots)) {
+    const outside = data.slots.filter(s => c.slots.indexOf(s) === -1);
+    if (outside.length) { const e = new Error('slot_not_in_campaign:' + outside.join(',')); e.status = 400; throw e; }
+  }
+  if (data.startDate && c.startDate && data.startDate < c.startDate) { const e = new Error('before_campaign_window'); e.status = 400; throw e; }
+  if (data.endDate && c.endDate && data.endDate > c.endDate) { const e = new Error('after_campaign_window'); e.status = 400; throw e; }
+  if (['live', 'scheduled'].indexOf(String(c.status)) === -1) { data.active = false; data.autoPaused = true; }
+}
+
 async function createAd(data) {
   if (!data.format) { const e = new Error('format_required'); e.status = 400; throw e; }
-  const doc = await AdInventory.create(cleanAd(data));
+  const cleaned = cleanAd(data);
+  await gateToCampaign(cleaned);
+  const doc = await AdInventory.create(cleaned);
   return doc.toJSON();
 }
 
@@ -82,7 +132,14 @@ async function updateAd({ id, data }) {
   if (!doc) { const e = new Error('not_found'); e.status = 404; throw e; }
   const patch = cleanAd(data);
   delete patch.id; delete patch._id; delete patch.__v;
+  await gateToCampaign(Object.assign({
+    campaign: doc.campaign, slots: doc.slots, startDate: doc.startDate,
+    endDate: doc.endDate, active: doc.active, autoPaused: doc.autoPaused,
+  }, patch));
   Object.assign(doc, patch);
+  if (data.active !== undefined || data.autoPaused !== undefined) {
+    doc.active = patch.active; doc.autoPaused = patch.autoPaused;
+  }
   if (data.format !== undefined) doc.format = data.format;
   await doc.save();
   return doc.toJSON();
@@ -100,18 +157,46 @@ async function placements() {
   const rows = await AdPlacement.find({}).lean();
   const map = {};
   rows.forEach(r => {
-    map[r.page] = {
+    /* cfg first, canonical keys after: a stray config entry must never be able
+       to shadow the kill switch or the slot map the serving path reads. */
+    map[r.page] = Object.assign({}, r.cfg || {}, {
       enabled: r.enabled !== false, slots: r.slots || {},
       interval: r.interval, cycle: r.cycle || [], format: r.format || 'auto',
       topPromo: !!r.topPromo, promoSlider: r.promoSlider !== false,
       wordsPerSlot: r.wordsPerSlot || 300, repeat: !!r.repeat,
-    };
+      paidUnlockAds: !!r.paidUnlockAds,
+    });
   });
   return map;
 }
 
+const PLACEMENT_RESERVED = new Set(['page', 'slots', 'cfg', 'enabled', 'interval', 'cycle',
+  'format', 'topPromo', 'promoSlider', 'wordsPerSlot', 'repeat', 'paidUnlockAds']);
+
+function jsonSafe(v, depth) {
+  const d = depth || 0;
+  if (d > 4) return null;
+  if (typeof v === 'string') return v.slice(0, 500);
+  if (typeof v === 'number' || typeof v === 'boolean') return v;
+  if (v === null) return null;
+  if (Array.isArray(v)) return v.slice(0, 40).map(x => jsonSafe(x, d + 1));
+  if (typeof v === 'object') {
+    const o = {};
+    Object.keys(v).slice(0, 40).forEach(k => { if (!k.startsWith('_')) o[k] = jsonSafe(v[k], d + 1); });
+    return o;
+  }
+  return null;
+}
+
 async function savePlacement({ page, patch }) {
-  const allowed = ['enabled', 'interval', 'cycle', 'format', 'topPromo', 'promoSlider', 'wordsPerSlot', 'repeat'];
+  /* The console PUTs one bulk map built from every panel on the placements
+     card. Rejecting the whole call over one unknown key used to mean the
+     marketer's change never left their browser, so unrecognised-but-safe
+     config is stored (in cfg) instead of dropped, and only an unknown page
+     or slot — which can never render — is refused. */
+  registry.assertPlacementPage(page);
+  registry.assertPlacementSlots(page, patch && patch.slots);
+  const allowed = ['enabled', 'interval', 'cycle', 'format', 'topPromo', 'promoSlider', 'wordsPerSlot', 'repeat', 'paidUnlockAds'];
   const set = {};
   allowed.forEach(k => { if (patch[k] !== undefined) set[k] = patch[k]; });
   if (set.wordsPerSlot !== undefined) {
@@ -131,12 +216,24 @@ async function savePlacement({ page, patch }) {
       }
     });
   }
+  const extras = {};
+  Object.keys(patch).forEach(k => {
+    if (PLACEMENT_RESERVED.has(k) || k.startsWith('_')) return;
+    extras[k] = jsonSafe(patch[k]);
+  });
+  if (Object.keys(extras).length) {
+    const cur = await AdPlacement.findOne({ page: String(page) }).lean().catch(() => null);
+    set.cfg = Object.assign({}, (cur && cur.cfg) || {}, extras);
+  }
   const doc = await AdPlacement.findOneAndUpdate(
     { page: String(page) },
     { $set: set, $setOnInsert: { page: String(page) } },
     { upsert: true, new: true }
   ).lean();
-  return { page: doc.page, enabled: doc.enabled !== false, slots: doc.slots || {}, interval: doc.interval, repeat: !!doc.repeat };
+  return Object.assign({}, doc.cfg || {}, {
+    page: doc.page, enabled: doc.enabled !== false, slots: doc.slots || {},
+    interval: doc.interval, repeat: !!doc.repeat,
+  });
 }
 
 function slotCfg(placement, slot) {
@@ -148,6 +245,22 @@ function slotCfg(placement, slot) {
   return null;
 }
 
+/* A campaign that has spent its budget stops serving — every creative under
+   it drops out of every pool. Cached for half a minute: pools() runs on every
+   ad request and the counter only moves as impressions land. */
+let budgetGate = { at: 0, ids: {} };
+const BUDGET_GATE_MS = 30 * 1000;
+async function overBudget() {
+  if (Date.now() - budgetGate.at < BUDGET_GATE_MS) return budgetGate.ids;
+  let ids = {};
+  try {
+    const rows = await Campaign.find({ hasBudget: true, budget: { $gt: 0 } }).select('id budget spent').lean();
+    rows.forEach(c => { if (Number(c.spent || 0) >= Number(c.budget || 0)) ids[String(c.id)] = true; });
+  } catch (e) { ids = budgetGate.ids; }
+  budgetGate = { at: Date.now(), ids };
+  return ids;
+}
+
 async function pools(page, slot) {
   const place = page ? await AdPlacement.findOne({ page }).lean().catch(() => null) : null;
   const empty = blankPools();
@@ -156,9 +269,13 @@ async function pools(page, slot) {
   if (cfg && cfg.enabled === false) return empty; // slot kill switch
   const formats = Array.isArray(cfg && cfg.formats) && cfg.formats.length ? cfg.formats : null;
   const pinned = Array.isArray(cfg && cfg.adIds) ? cfg.adIds.map(String).filter(Boolean) : [];
-  const all = await AdInventory.find({ active: true }).lean();
+  const [all, broke] = await Promise.all([
+    AdInventory.find({ active: true }).lean(),
+    overBudget(),
+  ]);
   const now = new Date();
   const live = all.filter(a => {
+    if (a.campaign && broke[String(a.campaign)]) return false; // budget spent
     if (a.startAt && new Date(a.startAt) > now) return false;
     if (a.endAt && new Date(a.endAt) < now) return false;
     if (page && Array.isArray(a.pages) && a.pages.length && !a.pages.includes(page)) return false;
@@ -392,4 +509,4 @@ async function performance({ days, page }) {
   return { days: n, from: from.toISOString().slice(0, 10), totals, slots, series };
 }
 
-module.exports = { placement, placements, savePlacement, pools, inventory, promos, track, performance, inventoryAll, createAd, updateAd, deleteAd };
+module.exports = { placement, placements, savePlacement, pools, inventory, promos, track, performance, inventoryAll, createAd, updateAd, deleteAd, surfaces: registry.surfaces };

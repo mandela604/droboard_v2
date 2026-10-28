@@ -7,6 +7,7 @@ const { ReviewSubmission, AuthorVerification, CompletionApplication } = require(
 const { InviteCode, ChapterEdit, BookEdit } = require('../models/application.model');
 const { Contract } = require('../models/contract.model');
 const { Report } = require('../models/editorial.model');
+const { hydrateReports } = require('./report-hydrate.service');
 const { Conversation } = require('../models/social.model');
 const { AuditLog } = require('../models/user.model');
 
@@ -46,7 +47,10 @@ function resource(Model, opts) {
       const filter = Object.assign({}, opts.baseFilter);
       if (query.status && opts.statusField) filter[opts.statusField] = query.status;
       if (query.q && opts.searchFields) Object.assign(filter, searchFilter(query.q, opts.searchFields));
-      return paged(Model, filter, { updatedAt: -1 }, query);
+      const out = await paged(Model, filter, { updatedAt: -1 }, query);
+      // Optional row decorator (e.g. Reports need story/author/SE joins).
+      if (opts.decorate) out.items = await opts.decorate(out.items);
+      return out;
     },
     async get(id) {
       const doc = await Model.findOne(guard(id)).lean();
@@ -82,9 +86,9 @@ function resource(Model, opts) {
 // Menu-backed resources ONLY (mirrors senior-editor sidebar — 13 items).
 // Anything not reachable from the menu has no endpoint here.
 const R = {
-  stories: () => resource(Book, { searchFields: ['title', 'genre'] }),
+  stories: () => resource(Book, { baseFilter: open('books'), searchFields: ['title', 'genre'] }),
   authors: () => resource(User, {}),
-  reports: () => resource(Report, {}),
+  reports: () => resource(Report, { decorate: hydrateReports }),
   messages: () => resource(Conversation, {}),
   contracts: () => resource(Contract, {}),
   completions: () => resource(CompletionApplication, {}),
@@ -104,6 +108,7 @@ const { EditorAssignment } = require('../models/chief.model');
 // resource-name → Mongo field holding the owning author ('' = the resource IS User)
 const OWNED = {
   authors: '',
+  books: 'authorId',
   reviews: 'authorId',
   chapterEdits: 'authorId',
   bookEdits: 'authorId',
@@ -142,11 +147,13 @@ async function scopedResources(user) {
     return OWNED[field] === undefined ? {} : owned(OWNED[field]);
   };
   return {
-    stories: () => resource(Book, { searchFields: ['title', 'genre'] }),
+    stories: () => resource(Book, { baseFilter: open('books'), searchFields: ['title', 'genre'] }),
     authors: () => resource(User, { baseFilter: open('authors'), searchFields: ['fullName', 'username', 'email'] }),
-    reports: () => resource(Report, {}),
-    messages: () => resource(Conversation, {}),
-    contracts: () => resource(Contract, {}),
+    reports: () => resource(Report, { baseFilter: ids === null ? {} : { seId: String(user.id) }, decorate: hydrateReports }),
+    // Inbox: only threads the editor is actually a participant in.
+    messages: () => resource(Conversation, { baseFilter: ids === null ? {} : { participants: String(user.id) } }),
+    // Offers on their authors' books, plus anything they sent themselves.
+    contracts: () => resource(Contract, { baseFilter: ids === null ? {} : { $or: [{ authorId: { $in: ids } }, { editorId: String(user.id) }] } }),
     completions: () => resource(CompletionApplication, { baseFilter: open('completions') }),
     chapterEdits: () => resource(ChapterEdit, { baseFilter: open('chapterEdits') }),
     bookEdits: () => resource(BookEdit, { baseFilter: open('bookEdits') }),
@@ -251,7 +258,24 @@ async function myAuthors(user, query) {
   return { items, total, page, limit, code };
 }
 
+// Reports are not a generic approve/reject resource: Report.status only accepts
+// pending|resolved|dismissed, so a decision must carry the note and resolvedBy.
+// Senior editors can only decide rows attributed to them; chief/admin decide any.
+async function decideReport(user, id, status, note) {
+  const roles = (user && user.roles) || [];
+  const wide = roles.includes('chief_editor') || roles.includes('admin');
+  const filter = wide ? { id } : { id, seId: String(user.id) };
+  const doc = await Report.findOne(filter);
+  if (!doc) { const e = new Error('not_found'); e.status = 404; throw e; }
+  doc.status = status;
+  doc.resolvedBy = String(user.id);
+  if (note !== undefined && note !== null) doc.resolutionNote = String(note).slice(0, 1000);
+  await doc.save();
+  return doc.toJSON();
+}
+
 module.exports = {
   pg, paged, searchFilter, resource, R, scopedResources, scopeAuthorIds, assertOwned,
   dashboard, activity, myAuthors, approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
+  decideReport,
 };

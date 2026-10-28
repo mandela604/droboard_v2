@@ -82,13 +82,37 @@
     return { coins, level: _levelFor(coins) };
   }
 
+  /* Duration + "Save X% vs daily" are pure math over the catalog — never typed.
+     Staff only enter price, period and real features; this runs wherever subs
+     are read (store page, finance preview, and the backend the same way live). */
+  const PERIOD_DAYS = { day:1, week:7, month:30, year:365 };
+  function deriveSubExtras(list){
+    const usd = s => Number(s.priceUSD) || parseFloat(String(s.price||'').replace(/[$,\s]/g,'')) || 0;
+    const daily = list.find(s => s.period === 'day');
+    const dailyPrice = daily ? usd(daily) : 0;
+    return list.map(s=>{
+      const out = Object.assign({}, s, { features:(s.features||[]).slice() });
+      const days = PERIOD_DAYS[s.period];
+      if(days && !out.features.some(f=>/unlimited reading/i.test(f)))
+        out.features.unshift(days===1 ? 'Unlimited reading for 24 hours' : 'Unlimited reading for ' + days + ' days');
+      if(dailyPrice > 0 && s.period !== 'day' && days){
+        const pct = Math.round((1 - (usd(s)/days)/dailyPrice) * 100);
+        if(pct > 0 && !out.features.some(f=>/save \d+% vs daily/i.test(f)))
+          out.features.push('Save ' + pct + '% vs daily');
+      }
+      return out;
+    });
+  }
+
   function getSubscriptions() {
-    return [
-      { id: 'sub-daily', name: 'Daily', price: '$0.99', priceUSD: 0.99, prices: { NGN: '₦600', USD: '$0.99', GBP: '£1.13' }, period: 'day', features: ['Unlimited reading for 24 hours', 'Access all stories'], badge: '', color: '#635F6E', icon: 'fa-clock' },
-      { id: 'sub-weekly', name: 'Weekly', price: '$4.99', priceUSD: 4.99, prices: { NGN: '₦3,000', USD: '$4.99', GBP: '£5.69' }, period: 'week', features: ['Unlimited reading for 7 days', 'Access all stories', 'Save 30% vs daily'], badge: 'Popular', color: '#FF2D6A', icon: 'fa-calendar-week' },
-      { id: 'sub-monthly', name: 'Monthly', price: '$14.99', priceUSD: 14.99, prices: { NGN: '₦9,000', USD: '$14.99', GBP: '£17.09' }, period: 'month', features: ['Unlimited reading for 30 days', 'Access all stories', 'Save 50% vs daily'], badge: 'Best Value', color: '#D6165A', icon: 'fa-calendar' },
-      { id: 'sub-yearly', name: 'Yearly', price: '$99.99', priceUSD: 99.99, prices: { NGN: '₦60,000', USD: '$99.99', GBP: '£113.99' }, period: 'year', features: ['Unlimited reading for 365 days', 'Access all stories', 'Save 72% vs daily'], badge: 'Best Deal', color: '#16A34A', icon: 'fa-crown' },
-    ];
+    // Finance → Coin Transactions "Subscriptions" section owns the live catalog.
+    try{ const fs=JSON.parse(localStorage.getItem('dro_finance_subs')||'null'); if(Array.isArray(fs)&&fs.length) return deriveSubExtras(fs); }catch(e){}
+    return deriveSubExtras([
+      { id: 'sub-daily', name: 'Daily', price: '$0.99', priceUSD: 0.99, prices: { NGN: '₦600', USD: '$0.99', GBP: '£1.13' }, period: 'day', features: ['Access all stories'], badge: '', color: '#635F6E', icon: 'fa-clock' },
+      { id: 'sub-weekly', name: 'Weekly', price: '$4.99', priceUSD: 4.99, prices: { NGN: '₦3,000', USD: '$4.99', GBP: '£5.69' }, period: 'week', features: ['Access all stories'], badge: 'Popular', color: '#FF2D6A', icon: 'fa-calendar-week' },
+      { id: 'sub-monthly', name: 'Monthly', price: '$14.99', priceUSD: 14.99, prices: { NGN: '₦9,000', USD: '$14.99', GBP: '£17.09' }, period: 'month', features: ['Access all stories'], badge: 'Best Value', color: '#D6165A', icon: 'fa-calendar' },
+      { id: 'sub-yearly', name: 'Yearly', price: '$99.99', priceUSD: 99.99, prices: { NGN: '₦60,000', USD: '$99.99', GBP: '£113.99' }, period: 'year', features: ['Access all stories'], badge: 'Best Deal', color: '#16A34A', icon: 'fa-crown' },
+    ]);
   }
 
   function getMergeSubscription() {
@@ -107,6 +131,9 @@
   }
 
   function getGifts() {
+    // Finance → Coin Transactions "Gift Items" section owns the live catalog
+    // (the tip picker reads gifts through this service).
+    try{ const fg=JSON.parse(localStorage.getItem('dro_finance_gifts')||'null'); if(Array.isArray(fg)&&fg.length) return fg; }catch(e){}
     return [
       { id: 'gift-rose', name: 'Rose', price: 10, icon: 'fa-rose', faIcon: 'fa-heart', color: '#FF2D6A', desc: 'A sweet thank you' },
       { id: 'gift-heart', name: 'Big Heart', price: 50, icon: 'fa-heart', faIcon: 'fa-heart', color: '#E11D48', desc: 'Show some love' },
@@ -123,7 +150,11 @@
     if (USE_API) {
       const res = await fetch(`${API_BASE}/store`);
       if (!res.ok) throw new Error('Store API failed');
-      return res.json();
+      const d = await res.json();
+      // Derived lines (duration + "Save X% vs daily") are computed client-side,
+      // so the API only ever has to return price + period + real features.
+      if (Array.isArray(d.subscriptions)) d.subscriptions = deriveSubExtras(d.subscriptions);
+      return d;
     }
     await new Promise(r => setTimeout(r, 80));
     const data = {

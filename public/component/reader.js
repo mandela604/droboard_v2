@@ -536,13 +536,13 @@ function _renderRxSlot(story) {
   function _closeQuoteOv() { document.getElementById('drdQOv').classList.remove('open'); qText = ''; qStory = null; }
 
   function _quoteUrl(story) {
-    return (typeof _hooks.getStoryUrl === 'function') ? _hooks.getStoryUrl(story) : `https://droboard.app/story/${story.id}`;
+    return (typeof _hooks.getStoryUrl === 'function') ? _hooks.getStoryUrl(story) : `/story/${story.id}`;
   }
 
   function _typeChBadge(story) {
     if (story.type === 'poem') return '🌙 Poem';
     if (story.type === 'short') return '✨ Short Story';
-    return `Season ${story.season} · Chapter ${story.chapter}`;
+    return `Chapter ${story.chapter}`;
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -729,7 +729,7 @@ function _renderRxSlot(story) {
   }
 
   function _buildCoverSlide(story, eng) {
-    const hasPoll = !!(eng && eng.poll), hasDebate = !!(eng && eng.debate), hasNext = !!(eng && eng.hasNext) && story.type === 'series';
+    const hasPoll = !!(eng && eng.poll), hasDebate = !!(eng && eng.debate), hasNext = !!eng.hasNext;
     return `<div class="drd-slide drd-cover-sl">
       <div class="drd-cover-bg" style="background-image:url('${story.cover}')"></div>
       <div class="drd-overlay-grad"></div>
@@ -785,7 +785,7 @@ function _renderRxSlot(story) {
     const tot = (d.forV + d.agV) || 1;
     const fp = Math.round(d.forV / tot * 100), ap = 100 - fp;
     const first = (d.comments || [])[0];
-    const meta = story.type !== 'series' ? (story.type === 'poem' ? '🌙 Poem' : '✨ Short Story') : `S${story.season}·Ch${story.chapter}`;
+    const meta = (story.type === 'poem' ? '🌙 Poem' : story.type === 'short' ? '✨ Short Story' : `Ch${story.chapter}`);
     const cmHtml = first ? `<div class="drd-dcm-row">${first.avatar ? `<img class="drd-dcm-av" src="${first.avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover" loading="lazy"/>` : `<div class="drd-dcm-av">${_esc((first.name || '?')[0])}</div>`}<div class="drd-dcm-body"><div class="drd-dcm-nm">${_esc(first.name)}<span class="drd-dcm-side ${first.side}">${first.side === 'for' ? '✅ FOR' : '❌ AGAINST'}</span></div><div class="drd-dcm-txt">${_esc(first.text)}</div><div class="drd-dcm-meta"><span class="drd-dcm-time">${_esc(first.time)}</span><span class="drd-dcm-like${first.liked ? ' liked' : ''}" data-cid="${first.id}"><i class="${first.liked ? 'fas' : 'far'} fa-heart"></i> ${first.likes}</span></div></div></div>` : '';
     return `<div class="drd-eng-sl" id="drdDebSl"><div class="drd-eng-inner">
       <div class="drd-eng-tag">⚔️ Reader Debate · ${meta}</div>
@@ -872,7 +872,7 @@ function _renderRxSlot(story) {
     _setupSelection(story);
 
     const eng = story.engagement || {};
-    const hasPoll = !!eng.poll, hasDebate = !!eng.debate, hasNext = !!eng.hasNext && story.type === 'series';
+    const hasPoll = !!eng.poll, hasDebate = !!eng.debate, hasNext = !!eng.hasNext;
     const adsPool = (_hooks.ads && _hooks.ads.length) ? _hooks.ads : DEFAULT_ADS;
     const total = story.scenes.length;
     const isLocked = story.unlockedThrough <= 0 && total > 0;
@@ -894,7 +894,7 @@ function _renderRxSlot(story) {
 
     html += `<div class="drd-slide drd-end-sl" style="background:#000"><div class="drd-end-box">
       <div style="font-size:40px">📖</div>
-      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;margin:8px 0">${story.type !== 'series' ? 'Story Complete!' : 'Chapter complete!'}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;margin:8px 0">${story.type === 'short' || story.type === 'poem' ? 'Story Complete!' : 'Chapter complete!'}</div>
       <div style="font-size:12px;color:#555;line-height:1.45;max-width:240px;font-style:italic">"${_esc(story.title)}"</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
         <button class="drd-end-btn sec" id="drdEndFull">📖 Read Full</button>

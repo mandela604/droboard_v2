@@ -421,13 +421,7 @@
 
   var FEATURED_SECTIONS = [
     { id:'hero-banner',        label:'Hero Banner (Homepage Slider)', icon:'🎬', needsSub:false },
-    { id:'popular-stories',    label:'Popular Stories',               icon:'📚', needsSub:false },
-    { id:'story-rankings',     label:'Story Rankings',                icon:'🏆', needsSub:true, subLabel:'Ranking Tab', subOptions:['Hot','Top','New'] },
     { id:'editors-picks',      label:"Editor's Picks",                icon:'⭐', needsSub:false },
-    { id:'browse-by-feeling',  label:'Browse by Feeling',             icon:'😭', needsSub:true, subLabel:'Feeling', subOptions:['Heartbreak','Rage','Shocked','Emotional','Savage'] },
-    { id:'genre-row',          label:'Genre Row',                     icon:'🏷️', needsSub:true, subLabel:'Genre', subOptions:['Romance','Betrayal','Family','Campus','Revenge','Elegy','Twist','Comedy','Dark','Spiritual','Werewolf'] },
-    { id:'new-releases',       label:'New Releases',                  icon:'✨', needsSub:false },
-    { id:'popular-by-country', label:'Popular By Country',            icon:'🌍', needsSub:true, subLabel:'Country', subOptions:['Nigeria','Ghana','Kenya','S.Africa','Uganda'] },
   ];
 
   var FEATURED_LIBRARY = [
@@ -447,17 +441,17 @@
 
   var FEATURED_PLACEMENTS = [
     { id:'ST-002', placement:{section:'hero-banner',sub:null}, tags:['featured','hot','editors-pick'], start:'2026-07-20', end:'2026-08-03', note:'Gripping storyline with unexpected twists — perfect for CEO romance fans.' },
-    { id:'ST-001', placement:{section:'genre-row',sub:'Romance'}, tags:['featured','trending'], start:'2026-07-15', end:'2026-07-29', note:'' },
-    { id:'ST-003', placement:{section:'genre-row',sub:'Werewolf'}, tags:['featured','new'], start:'2026-07-22', end:'2026-08-05', note:'' },
-    { id:'ST-007', placement:{section:'new-releases',sub:null}, tags:['featured','new','staff-fav'], start:'2026-07-25', end:'2026-08-08', note:'' },
-    { id:'ST-012', placement:{section:'story-rankings',sub:'Top'}, tags:['featured','staff-fav'], start:'2026-07-18', end:'2026-08-01', note:'' },
-    { id:'ST-009', placement:{section:'browse-by-feeling',sub:'Heartbreak'}, tags:['featured'], start:'2026-07-27', end:'2026-08-10', note:'' },
+    { id:'ST-001', placement:{section:'editors-picks',sub:null}, tags:['featured','trending'], start:'2026-07-15', end:'2026-07-29', note:'' },
+    { id:'ST-003', placement:{section:'hero-banner',sub:null}, tags:['featured','new'], start:'2026-07-22', end:'2026-08-05', note:'' },
+    { id:'ST-007', placement:{section:'editors-picks',sub:null}, tags:['featured','new','staff-fav'], start:'2026-07-25', end:'2026-08-08', note:'' },
+    { id:'ST-012', placement:{section:'hero-banner',sub:null}, tags:['featured','staff-fav'], start:'2026-07-18', end:'2026-08-01', note:'' },
+    { id:'ST-009', placement:{section:'editors-picks',sub:null}, tags:['featured'], start:'2026-07-27', end:'2026-08-10', note:'' },
   ];
 
   var FEATURED_HISTORY = [
     { title:"The Duke's Secret", author:'Isabelle Moreau', cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg', genre:'Historical & Regency', rating:4.7, placement:{section:'editors-picks',sub:null}, tags:['editors-pick'], period:'Jun 1 – Jun 15, 2026' },
     { title:'Betrayed by the Mafia Prince', author:'Marcus Webb Jr.', cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg', genre:'Mafia & Urban', rating:3.9, placement:{section:'hero-banner',sub:null}, tags:['hot'], period:'May 15 – May 29, 2026' },
-    { title:"The CEO's Hidden Son", author:'Luna Skye', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', genre:'Billionaire & CEO', rating:4.3, placement:{section:'story-rankings',sub:'Hot'}, tags:['hot','trending'], period:'Jun 20 – Jul 4, 2026' },
+    { title:"The CEO's Hidden Son", author:'Luna Skye', cover:'https://i.postimg.cc/23WvkFLH/images-(2).jpg', genre:'Billionaire & CEO', rating:4.3, placement:{section:'hero-banner',sub:null}, tags:['hot','trending'], period:'Jun 20 – Jul 4, 2026' },
   ];
 
   /* ── EDITOR'S PICKS ── */

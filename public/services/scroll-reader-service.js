@@ -572,6 +572,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   function setFF(el, val) { document.querySelectorAll(".ff-opt").forEach(x => x.classList.remove("on")); el.classList.add("on"); document.documentElement.style.setProperty("--font-story", val); }
   function setTheme(el, theme) {
     document.body.className = theme;
+    document.documentElement.setAttribute('data-theme', theme === 'theme-white' ? 'light' : 'dark');
     try {
       localStorage.setItem('dro_reader_theme', theme);
       if (theme === 'theme-white') localStorage.setItem('droboardTheme', 'light');
@@ -594,6 +595,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     } catch (e) {}
     if (theme) {
       document.body.className = theme;
+      document.documentElement.setAttribute('data-theme', theme === 'theme-white' ? 'light' : 'dark');
       document.querySelectorAll(".theme-opt").forEach(x => {
         const on = (x.getAttribute('data-theme') || '') === theme;
         x.classList.toggle("on", on);

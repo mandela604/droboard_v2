@@ -30,6 +30,12 @@ const bookSchema = new mongoose.Schema({
   flaggedBy: { type: String, default: null },
   flaggedAt: { type: Date, default: null },
   flagPrevStatus: { type: String, default: null },
+  // Story-wide structured engagement (poll/prediction/debate attached to the
+  // whole book, referenced by chapter n). Chapter-wise engagement lives on
+  // Chapter below; story-wide debate posts live in /api/posts.
+  polls: [{ id: String, chapter: { type: Number, default: null }, q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } }],
+  predictions: [{ id: String, chapter: { type: Number, default: null }, q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } }],
+  debates: [{ id: String, chapter: { type: Number, default: null }, motion: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 }, expiresAt: { type: Date, default: null } }],
   // Structured engagement (poll/prediction/debate) is chapter-wise only — lives
   // on Chapter below. Story-wide debate/polls are community Post 'debate'/'poll'
   // via /api/posts (feed/droboard composers).
@@ -50,19 +56,21 @@ const chapterSchema = new mongoose.Schema({
   price: { type: Number, default: 0, min: 0 },
   // author's note (reader-facing, below content) + engagement (polls/predictions)
   authorNote: { type: String, default: '' },
-  poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }] },
-  prediction: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }] },
-  debate: { motion: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 } },
+  poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } },
+  prediction: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } },
+  debate: { motion: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 }, expiresAt: { type: Date, default: null } },
 }, { timestamps: true });
 chapterSchema.index({ bookId: 1, n: 1 }, { unique: true });
 
 const engagementVoteSchema = new mongoose.Schema({
-  chapterId: { type: String, ref: 'Chapter', required: true, index: true },
+  chapterId: { type: String, default: '', index: true }, // '' = story-wide
+  bookId: { type: String, default: '', index: true }, // set when chapterId is ''
   userId: { type: String, ref: 'User', required: true, index: true },
   kind: { type: String, enum: ['poll', 'prediction', 'debate'], required: true },
   optionIdx: { type: Number, required: true },
 }, { timestamps: true });
 engagementVoteSchema.index({ chapterId: 1, userId: 1, kind: 1 }, { unique: true });
+engagementVoteSchema.index({ bookId: 1, userId: 1, kind: 1 }, { unique: true, sparse: true });
 
 const characterSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },

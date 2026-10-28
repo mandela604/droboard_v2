@@ -1,5 +1,5 @@
 /** request-book-change-service.js — Data + UI for request-book-change.html.
- * Restored series-page design, re-skinned to books: expandable book rows,
+ * Restored story-page design, re-skinned to books: expandable book rows,
  * change-option picker, reorder-chapters drag modal, request modal.
  * Live: GET /api/author/books, POST /api/author/books/:id/change-requests
  * (persists a pending BookEdit proposal). Demo drives the UI until flipped.
@@ -19,7 +19,7 @@
   Svc.submit = Svc.submit || async function (bookId, payload) {
     if (CFG.USE_API) {
       try {
-        var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/change-requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/change-requests', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (r.ok) return await r.json();
       } catch (e) {}
     }
@@ -81,14 +81,14 @@
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
   function renderList() {
-    document.getElementById('seriesList').innerHTML = BOOKS.map(function (s) {
-      return '<div class="series-row" data-sid="' + s.id + '">'
+    document.getElementById('storyList').innerHTML = BOOKS.map(function (s) {
+      return '<div class="story-row" data-sid="' + s.id + '">'
         + DroboardBookCard.render({
           id: s.id, cover: s.cover, title: s.title, genre: s.genre,
           stats: [{ icon: 'fas fa-list-ul', text: s.chapters + ' chapters' }],
           desc: s.desc, status: s.status || 'ongoing', chevron: 'down'
         })
-        + '<div class="series-accordion"><div class="accordion-inner">'
+        + '<div class="story-accordion"><div class="accordion-inner">'
         + '<div class="change-options">'
         + CHANGES.map(function (c) {
           return '<div class="change-opt" data-sid="' + s.id + '" data-change="' + c.label + '">'
@@ -100,12 +100,12 @@
         + '</div></div></div>';
     }).join('');
 
-    document.querySelectorAll('.series-row .dbc-card').forEach(function (h) {
+    document.querySelectorAll('.story-row .dbc-card').forEach(function (h) {
       h.addEventListener('click', function (e) {
         if (e.target.closest('.change-opt') || e.target.closest('.submit-selected')) return;
         var row = h.parentElement;
         var wasOpen = row.classList.contains('open');
-        document.querySelectorAll('.series-row').forEach(function (r) {
+        document.querySelectorAll('.story-row').forEach(function (r) {
           r.classList.remove('open');
           var c = r.querySelector('.dbc-card');
           if (c) c.classList.remove('dbc-open');
@@ -172,10 +172,10 @@
     if (!book) return;
     var title = changes.length === 1 ? changes[0] : 'Change Request';
     document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalSeries').innerHTML =
+    document.getElementById('modalStory').innerHTML =
       '<img src="' + esc(book.cover) + '" alt=""/>'
-      + '<div><div class="modal-series-title">' + esc(book.title) + '</div>'
-      + '<div class="modal-series-meta">' + esc(book.genre || '') + ' · ' + book.chapters + ' chapters</div></div>';
+      + '<div><div class="modal-story-title">' + esc(book.title) + '</div>'
+      + '<div class="modal-story-meta">' + esc(book.genre || '') + ' · ' + book.chapters + ' chapters</div></div>';
     document.getElementById('selectedTags').innerHTML = changes.map(function (c) {
       return '<span class="selected-tag">' + esc(c) + '</span>';
     }).join('');
@@ -200,10 +200,10 @@
     var book = BOOKS.find(function (s) { return s.id === sid; });
     if (!book) return;
     document.getElementById('modalTitle').textContent = 'Reorder Chapters';
-    document.getElementById('modalSeries').innerHTML =
+    document.getElementById('modalStory').innerHTML =
       '<img src="' + esc(book.cover) + '" alt=""/>'
-      + '<div><div class="modal-series-title">' + esc(book.title) + '</div>'
-      + '<div class="modal-series-meta">' + esc(book.genre || '') + ' · ' + book.chapters + ' chapters</div></div>';
+      + '<div><div class="modal-story-title">' + esc(book.title) + '</div>'
+      + '<div class="modal-story-meta">' + esc(book.genre || '') + ' · ' + book.chapters + ' chapters</div></div>';
     document.getElementById('selectedTags').innerHTML = '<span class="selected-tag">Reorder Chapters</span>';
     document.getElementById('modalBodyTextarea').style.display = 'none';
     document.getElementById('modalBodyCover').style.display = 'none';

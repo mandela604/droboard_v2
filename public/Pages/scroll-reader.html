@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#000000"/>
 <title>Droboard · Reading</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
 <style>
 :root{
   --acc:#ff0050;--acc2:#ff4d7a;--acc-dim:rgba(255,0,80,.12);--acc-border:rgba(255,0,80,.3);--glow:rgba(255,0,80,.22);
@@ -174,11 +175,11 @@ button{font-family:var(--font-ui);cursor:pointer;border:none;background:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body class="theme-dark">
 <script>/* early theme: match stored reader/site theme before first paint (no dark flash) */
-try{var _t=localStorage.getItem('dro_reader_theme');if(!_t||_t==='theme-dark'){var _s=localStorage.getItem('droboardTheme');_t=(_s==='light')?'theme-white':(_t||'theme-dark');}document.body.className=_t;}catch(e){}</script>
+try{var _t=localStorage.getItem('dro_reader_theme');if(!_t||_t==='theme-dark'){var _s=localStorage.getItem('droboardTheme');_t=(_s==='light')?'theme-white':(_t||'theme-dark');}document.body.className=_t;document.documentElement.setAttribute('data-theme',_t==='theme-white'?'light':'dark');}catch(e){}</script>
 <style>
 #pageSkeleton{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;background:#fff;transition:opacity .3s;padding:18px 22px 0}
 #pageSkeleton[data-theme="dark"]{background:#0a0a0d}
@@ -319,21 +320,23 @@ try{
 <script src="../component/share-modal.js"></script>
 <script src="../services/saves-bridge.js"></script>
 <script src="../component/save-modal.js"></script>
-<script src="../component/tip-picker.js"></script>
-<script src="../component/ad-card.js?v=4"></script>
+<script src="../component/tip-picker.js?v=3"></script>
+<script src="../component/ad-card.js?v=6"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/status-viewer.js?v=10"></script>
-<script src="../component/status-ring.js?v=1"></script>
+<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/status-ring.js?v=4"></script>
+  <script src="../services/status-service.js?v=7"></script>
 <script src="../shared/status-loader.js"></script>
-<script src="../component/comment-section.js?v=9"></script>
+<script src="../component/comment-section.js?v=11"></script>
 <script src="../component/community-cards.js?v=3"></script>
 
 <!-- â•â•â• Data â•â•â• -->
 <script src="../data/comments-data.js"></script>
 <script src="../data/central-demo-data.js"></script>
-<script src="../services/audience-service.js"></script>
+<script src="../services/audience-rules.js?v=2"></script>
+<script src="../services/audience-service.js?v=3"></script>
 <script src="../services/ad-service.js?v=4"></script>
-<script src="../services/ad-revenue-service.js?v=2"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
 <script src="../services/acquisition-service.js"></script>
 <script src="../component/ad-slot.js?v=2"></script>
 <script src="../services/auth-session.js"></script>

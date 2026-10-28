@@ -11,7 +11,7 @@
 (function(){
 'use strict';
 
-var USE_API = false, API_BASE = '/api/senior-editor';
+var USE_API = true, API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
   var res = await fetch(API_BASE + path, options);
@@ -42,6 +42,9 @@ function renderStats(){
 }
 
 function init(){
+  // Point the shared reports-table component to the senior editor reports endpoint
+  window.DROBOARD_REPORTS_API_BASE = '/api/senior-editor/reports';
+
   SeniorEditorSidebar.attach('#dashboardRoot', {
     activeItem: 'reports-flags',
     title: 'Story Reports',

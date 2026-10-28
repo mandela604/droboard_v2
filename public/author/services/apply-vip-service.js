@@ -19,7 +19,7 @@
   }
 
   var api = window.ApplyVipService || {};
-  api.submit = api.submit || async function (d) { if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/vip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); if (r.ok) return await r.json(); } catch (e) {} } await delay(250); return { ok: true }; };
+  api.submit = api.submit || async function (d) { if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/vip', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); if (r.ok) return await r.json(); } catch (e) {} } await delay(250); return { ok: true }; };
   api.init = init;
   window.ApplyVipService = api;
 })();

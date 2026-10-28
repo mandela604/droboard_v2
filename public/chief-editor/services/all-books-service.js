@@ -259,7 +259,6 @@ function renderTable(list){
         '<td data-label="Actions"><div class="actions-cell">'+
           '<button class="act-btn" title="View" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
           '<button class="act-btn" title="Edit" onclick="editBook(\''+b.id+'\')"><i class="fas fa-pen"></i></button>'+
-          '<button class="act-btn '+(isF?'':'danger')+'" title="'+(isF?'Unflag':'Flag')+'" onclick="'+(isF?'unflagBook':'flagBook')+'(\''+b.id+'\')"><i class="fas fa-flag'+(isF?'-circle-check':'')+'"></i></button>'+
         '</div></td></tr>';
     }).join('');
   }

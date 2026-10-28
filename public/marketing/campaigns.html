@@ -73,6 +73,8 @@ body{font-family:'Inter',system-ui,sans-serif}
 .cmp-btn{font-size:10px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;transition:.13s;white-space:nowrap}
 .cmp-btn:hover{border-color:var(--accent);color:var(--accent)}
 .cmp-btn.danger:hover{border-color:var(--red);color:var(--red)}
+.cmp-btn.accent{border-color:var(--accent);color:#fff;background:var(--accent)}
+.cmp-btn.accent:hover{filter:brightness(1.08);color:#fff}
 
 .empty-msg{text-align:center;padding:36px 20px;color:var(--text-faint);font-size:12.5px}
 .empty-msg i{font-size:28px;margin-bottom:8px;display:block;opacity:.35}
@@ -252,8 +254,9 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="../services/currency-service.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
-<script src="shared/campaign-wizard.js"></script>
-<script src="shared/campaigns-page-service.js"></script>
+<script src="shared/ad-setup-data.js?v=9"></script>
+<script src="shared/campaign-wizard.js?v=3"></script>
+<script src="shared/campaigns-page-service.js?v=2"></script>
 <script>CampaignsPage.init();</script>
 </body>
 </html>

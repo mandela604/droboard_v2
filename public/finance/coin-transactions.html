@@ -138,7 +138,8 @@ body{font-family:'Inter',system-ui,sans-serif}
 .modal-close-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0}
 .modal-box-body{padding:14px 20px 20px;display:flex;flex-direction:column;gap:12px}
 .field-group label{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
-.field-group input,.field-group select{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text)}
+.field-group input,.field-group select,.field-group textarea{width:100%;border:1px solid var(--input-border);background:var(--input-bg);border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text)}
+.field-group textarea{resize:vertical;min-height:70px}
 .field-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .radio-row{display:flex;gap:8px;flex-wrap:wrap}
 .radio-opt{flex:1;min-width:110px;border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:8px}
@@ -322,22 +323,28 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="field-group"><label>Emoji / Icon</label><input type="text" id="giftIcon" maxlength="4" placeholder="e.g. 🌹"/></div>
           <div class="field-group"><label>Cost (coins)</label><input type="number" id="giftCost" min="1" placeholder="e.g. 100"/></div>
         </div>
+        <div class="field-row-2">
+          <div class="field-group"><label>Color</label><input type="color" id="giftColor" value="#FF2D6A"/></div>
+          <div class="field-group"><label>Description (optional)</label><input type="text" id="giftDesc" placeholder="e.g. A thank-you rose"/></div>
+        </div>
       </div>
 
       <!-- Subscription fields -->
       <div id="subFields" style="display:none">
         <div class="field-row-2">
-          <div class="field-group"><label>Price (USD)</label><input type="number" id="subPrice" min="0.01" step="0.01" placeholder="e.g. 9.99"/></div>
-          <div class="field-group"><label>Duration (days)</label><input type="number" id="subDuration" min="1" placeholder="e.g. 30"/></div>
+          <div class="field-group"><label>Price (USD)</label><input type="number" id="subPrice" min="0.01" step="0.01" placeholder="e.g. 14.99"/></div>
+          <div class="field-group"><label>Billing period</label><select id="subPeriod"><option value="day">Per day</option><option value="week">Per week</option><option value="month" selected>Per month</option><option value="year">Per year</option></select></div>
         </div>
         <div class="field-row-2">
-          <div class="field-group"><label>Price NGN (e.g. ₦6,000)</label><input type="text" id="subPriceNgn" placeholder="₦6,000"/></div>
-          <div class="field-group"><label>Price GBP (e.g. £11.39)</label><input type="text" id="subPriceGbp" placeholder="£11.39"/></div>
+          <div class="field-group"><label>Price NGN (e.g. ₦9,000)</label><input type="text" id="subPriceNgn" placeholder="₦9,000"/></div>
+          <div class="field-group"><label>Price GBP (e.g. £17.09)</label><input type="text" id="subPriceGbp" placeholder="£17.09"/></div>
         </div>
         <div class="field-row-2">
-          <div class="field-group"><label>Coins per day</label><input type="number" id="subCoinsPerDay" min="1" placeholder="e.g. 150"/></div>
-          <div class="field-group"><label>Bonus % (optional)</label><input type="number" id="subBonus" min="0" max="100" placeholder="e.g. 10"/></div>
+          <div class="field-group"><label>Badge (optional)</label><input type="text" id="subBadge" placeholder="e.g. Best Value"/></div>
+          <div class="field-group"><label>Icon (fa-*)</label><input type="text" id="subIcon" placeholder="fa-calendar"/></div>
         </div>
+        <div class="field-group"><label>Color</label><input type="color" id="subColor" value="#FF2D6A"/></div>
+        <div class="field-group"><label>Features <span style="text-transform:none;color:var(--text-faint);font-weight:500">One per line — shown on the store card. "Unlimited reading for N days" and "Save X% vs daily" are calculated automatically from the price + period, don't type them.</span></label><textarea id="subFeatures" rows="4" placeholder="Access all stories&#10;Offline downloads"></textarea></div>
       </div>
 
       <!-- Earn fields -->

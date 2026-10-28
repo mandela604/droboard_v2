@@ -143,9 +143,9 @@ let castIdCounter = 0;
 let dropdownOpen = false;
 
 function mkEngState(){ return {
-  poll:{on:false,expanded:false,q:'',opts:['','']},
-  pred:{on:false,expanded:false,q:'',opts:['','','']},
-  debate:{on:false,expanded:false,motion:''},
+  poll:{on:false,expanded:false,q:'',opts:['',''],exp:24},
+  pred:{on:false,expanded:false,q:'',opts:['','',''],exp:72},
+  debate:{on:false,expanded:false,motion:'',exp:0},
 };}
 
 /* Stage order depends on type: 'link' only applies to long stories.
@@ -181,6 +181,12 @@ function toast(msg, dur=2200){
 }
 function wordCount(str){ return (str||'').trim().match(/\S+/g)?.length || 0; }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+/* deadline chips on a chapter's poll / prediction / debate (component/expiry-chips.js) */
+function _expRow(ch, kind){
+  if (!window.DroboardExpiry) return '';
+  return DroboardExpiry.field(kind, { hours: ch.eng[kind].exp, expiresAt: ch.eng[kind].expAt, attrs: ' data-drbe-ch="' + ch.id + '"' });
+}
+function _expMs(hours, at){ if (at) return +at; return hours ? Date.now() + hours * 3600000 : null; }
 function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function markUnsaved(){ /* hook for future autosave indicator */ }
 
@@ -851,14 +857,16 @@ function renderChapters(){
       <input class="opt-input" style="width:100%;margin-bottom:8px" placeholder="e.g. Who was truly wrong here?" value="${esc(eng.poll.q)}" oninput="updateEngField(${ch.id},'poll','q',this.value)"/>
       <div class="eng-config-lbl">Options</div>
       ${eng.poll.opts.map((o,i)=>`<div class="opt-row"><input class="opt-input" placeholder="Option ${i+1}" value="${esc(o)}" oninput="updateOpt(${ch.id},'poll',${i},this.value)"/>${eng.poll.opts.length>2?`<div class="opt-del" onclick="removeOpt(${ch.id},'poll',${i})"><i class="fas fa-times"></i></div>`:''}</div>`).join('')}
-      ${eng.poll.opts.length<4?`<div class="add-opt-btn" onclick="addOpt(${ch.id},'poll')"><i class="fas fa-plus"></i> Add option</div>`:''}`;
+      ${eng.poll.opts.length<4?`<div class="add-opt-btn" onclick="addOpt(${ch.id},'poll')"><i class="fas fa-plus"></i> Add option</div>`:''}
+      ${_expRow(ch,'poll')}`;
 
     const predBody = `
       <div class="eng-config-lbl">Prediction question</div>
       <input class="opt-input" style="width:100%;margin-bottom:8px" placeholder="e.g. What happens in the next chapter?" value="${esc(eng.pred.q)}" oninput="updateEngField(${ch.id},'pred','q',this.value)"/>
       <div class="eng-config-lbl">Options</div>
       ${eng.pred.opts.map((o,i)=>`<div class="opt-row"><input class="opt-input" placeholder="Prediction ${i+1}" value="${esc(o)}" oninput="updateOpt(${ch.id},'pred',${i},this.value)"/>${eng.pred.opts.length>2?`<div class="opt-del" onclick="removeOpt(${ch.id},'pred',${i})"><i class="fas fa-times"></i></div>`:''}</div>`).join('')}
-      ${eng.pred.opts.length<4?`<div class="add-opt-btn" onclick="addOpt(${ch.id},'pred')"><i class="fas fa-plus"></i> Add option</div>`:''}`;
+      ${eng.pred.opts.length<4?`<div class="add-opt-btn" onclick="addOpt(${ch.id},'pred')"><i class="fas fa-plus"></i> Add option</div>`:''}
+      ${_expRow(ch,'pred')}`;
 
     const debBody = `
       <div class="eng-config-lbl">The motion</div>
@@ -866,7 +874,8 @@ function renderChapters(){
       <div class="debate-sides-preview">
         <div class="deb-side-prev for">✅ FOR</div>
         <div class="deb-side-prev against">❌ AGAINST</div>
-      </div>`;
+      </div>
+      ${_expRow(ch,'debate')}`;
 
     return `<div class="ch-card" id="chCard-${ch.id}">
       <div class="ch-card-hd" onclick="toggleChapterOpen(${ch.id})">
@@ -1047,9 +1056,7 @@ function buildBookPayload(){
     cover: state.coverData || '',
     tags: state.tags.slice(0, 5),
     kind,
-    ageRating: state.ageRating || '13',
   };
-  if (state.extPlatform && validExtUrl(state.extUrl)) book.externalUrl = state.extUrl;
   return book;
 }
 function buildChapterPayload(ch, idx){
@@ -1063,13 +1070,13 @@ function buildChapterPayload(ch, idx){
   if ((ch.authorNote||'').trim()) out.authorNote = ch.authorNote.trim().slice(0, 500);
   if (ch.eng.poll.on && ch.eng.poll.q.trim()) {
     const opts = ch.eng.poll.opts.map(o=>String(o||'').trim()).filter(Boolean).slice(0, 4);
-    if (opts.length >= 2) out.poll = { q: ch.eng.poll.q.trim().slice(0,300), opts };
+    if (opts.length >= 2) out.poll = { q: ch.eng.poll.q.trim().slice(0,300), opts, expiresAt: _expMs(ch.eng.poll.exp, ch.eng.poll.expAt) };
   }
   if (ch.eng.pred.on && ch.eng.pred.q.trim()) {
     const opts = ch.eng.pred.opts.map(o=>String(o||'').trim()).filter(Boolean).slice(0, 4);
-    if (opts.length >= 2) out.prediction = { q: ch.eng.pred.q.trim().slice(0,300), opts };
+    if (opts.length >= 2) out.prediction = { q: ch.eng.pred.q.trim().slice(0,300), opts, expiresAt: _expMs(ch.eng.pred.exp, ch.eng.pred.expAt) };
   }
-  if (ch.eng.debate.on && (ch.eng.debate.motion||'').trim()) out.debate = { motion: ch.eng.debate.motion.trim().slice(0,500) };
+  if (ch.eng.debate.on && (ch.eng.debate.motion||'').trim()) out.debate = { motion: ch.eng.debate.motion.trim().slice(0,500), expiresAt: _expMs(ch.eng.debate.exp, ch.eng.debate.expAt) };
   if (state.pubMode==='schedule' && state.schedAt) { out.status = 'scheduled'; out.scheduledAt = state.schedAt; }
   return out;
 }
@@ -1303,5 +1310,15 @@ window.saveDraft = saveDraft;
 window.submitStory = submitStory;
 window.startAnother = startAnother;
 window.goBackOrExit = goBackOrExit;
+
+/* a tapped deadline chip writes back into that chapter's eng config */
+document.addEventListener('drbe:change', function (e) {
+  const d = e.detail || {};
+  if (!d.chId) return;
+  const ch = state.chapters.find(function (c) { return String(c.id) === String(d.chId); });
+  if (!ch) return;
+  const kind = d.kind === 'prediction' ? 'pred' : d.kind;
+  if (ch.eng[kind]) { ch.eng[kind].exp = d.hours; ch.eng[kind].expAt = d.custom ? (d.expiresAt || null) : null; }
+});
 
 })();

@@ -72,6 +72,12 @@ const adPlacementSchema = new mongoose.Schema({
   topPromo: { type: Boolean, default: false },
   promoSlider: { type: Boolean, default: true },
   repeat: { type: Boolean, default: false }, // repeat comment/thread ads (marketing-owned; readers default off)
+  paidUnlockAds: { type: Boolean, default: false }, // show ads to paid chapter unlocks too (readers)
+  // Non-canonical console config, merged on save so a new manager field never
+  // 400s the whole bulk PUT: the spotlight schedule (seconds, everyN, allowSkip,
+  // adId, delaySeconds, cooldownHours, startHour, endHour, days, audienceMode,
+  // match, segments) lives here under page 'spotlight'.
+  cfg: { type: mongoose.Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
 
 const adStatSchema = new mongoose.Schema({

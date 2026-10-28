@@ -116,7 +116,7 @@
   function renderSlSegs(sel) {
     const host = document.getElementById('plSlSegs');
     if (!host) return;
-    const segs = (window.AdSetupData && AdSetupData.SEGMENTS) || [];
+    const segs = DroboardAudienceRules.all();
     const on = sel || [];
     host.innerHTML = segs.map(s =>
       `<label class="pl-check" style="font-size:11px;align-items:flex-start"><input type="checkbox" data-sl-seg="${esc(s.id)}"${on.indexOf(s.id) !== -1 ? ' checked' : ''} style="margin-top:2px"/> <span>${esc(s.label)} <span style="color:var(--text-faint);font-weight:600">~${fmtN(s.reach)}</span></span></label>`
@@ -192,9 +192,12 @@
      appears here with no further wiring. */
   const BESPOKE_PAGES = ['discover', 'feed', 'genreHub', 'home', 'fullReader', 'scrollReader', 'library', 'droboardPage', 'comments'];
   const GEN_ICONS = {
-    series: ['fa-book', 'var(--blue)'], debate: ['fa-scale-balanced', 'var(--accent)'],
+    story: ['fa-book', 'var(--blue)'], bookReader: ['fa-book-open', 'var(--blue)'], debate: ['fa-scale-balanced', 'var(--accent)'],
     discussion: ['fa-comments', 'var(--purple)'], collection: ['fa-layer-group', 'var(--green)'],
     followers: ['fa-user-group', 'var(--amber)'], profile: ['fa-user', 'var(--accent)'],
+    genreStories: ['fa-list-ol', 'var(--purple)'], leaderboard: ['fa-ranking-star', 'var(--amber)'],
+    blog: ['fa-blog', 'var(--blue)'], notifications: ['fa-bell', 'var(--accent)'],
+    search: ['fa-magnifying-glass', 'var(--green)'], store: ['fa-coins', 'var(--amber)'],
   };
   function renderGenericSurfaces() {
     const grid = document.querySelector('#plBody .pl-grid');
@@ -605,6 +608,292 @@
     } catch (e) { toast('Could not reset league'); }
   }
 
+  /* ── Audience segments (editable catalog) ──
+     Signal is a choice from the fixed vocabulary (someone has to compute
+     it server-side); everything around it is marketing's. Edits go into
+     AU and land in the shared store on Save, which every targeting
+     surface reads. */
+  let AU = [];
+  let AU_SIGNALS = [];
+  const AU_OPS = [['gte', 'at least'], ['lte', 'no more than'], ['eq', 'exactly']];
+
+  async function loadAudience() {
+    AU_SIGNALS = DroboardAudienceRules.signals();
+    try { await DroboardAudienceRules.refresh(); } catch (e) {}
+    AU = DroboardAudienceRules.all({ includeRetired: true });
+  }
+  function auSig(id) {
+    for (let i = 0; i < AU_SIGNALS.length; i++) if (AU_SIGNALS[i].id === id) return AU_SIGNALS[i];
+    return { id: id, label: id, kind: 'count', unit: '', window: true };
+  }
+  function auVals(seg) {
+    const v = seg.rule.value;
+    return Array.isArray(v) ? v : [v, v];
+  }
+  function auRow(seg, i) {
+    const s = auSig(seg.rule.signal);
+    const vals = auVals(seg);
+    const sigOpts = AU_SIGNALS.map(x =>
+      `<option value="${x.id}"${x.id === seg.rule.signal ? ' selected' : ''}>${esc(x.label)}</option>`).join('');
+    let cond = '';
+    if (s.kind === 'bool') {
+      cond = `<select class="pl-inp" data-au="${i}" data-k="bool" style="margin-bottom:0">` +
+        `<option value="1"${seg.rule.value !== false ? ' selected' : ''}>is</option>` +
+        `<option value="0"${seg.rule.value === false ? ' selected' : ''}>isn't</option></select>`;
+    } else if (s.kind === 'pair') {
+      cond = `<input class="pl-inp" data-au="${i}" data-k="value" type="number" min="0" value="${+vals[0] || 0}" title="Hours read per week" style="margin-bottom:0"/>` +
+        `<span class="pl-lbl" style="margin:0 6px;align-self:center">hrs/wk or</span>` +
+        `<input class="pl-inp" data-au="${i}" data-k="value2" type="number" min="0" value="${+vals[1] || 0}" title="Consecutive-day streak" style="margin-bottom:0"/>` +
+        `<span class="pl-lbl" style="margin:0 0 0 6px;align-self:center">day streak</span>`;
+    } else {
+      const ops = (s.ops || ['gte']).map(o => AU_OPS.filter(x => x[0] === o)[0]).filter(Boolean);
+      cond = `<select class="pl-inp" data-au="${i}" data-k="op" style="margin-bottom:0">` +
+        ops.map(o => `<option value="${o[0]}"${(seg.rule.op || 'gte') === o[0] ? ' selected' : ''}>${o[1]}</option>`).join('') +
+        `</select>` +
+        `<input class="pl-inp" data-au="${i}" data-k="value" type="number" min="0" value="${+seg.rule.value || 0}" style="margin-bottom:0;max-width:96px"/>` +
+        `<span class="pl-lbl" style="margin:0 0 0 6px;align-self:center">${esc(s.unit || '')}</span>`;
+    }
+    const win = s.window
+      ? `<label class="pl-lbl" style="align-self:center;margin:0 0 0 8px">in last</label>` +
+        `<input class="pl-inp" data-au="${i}" data-k="window" type="number" min="1" max="365" value="${+seg.rule.windowDays || 30}" style="margin-bottom:0;max-width:74px"/>` +
+        `<span class="pl-lbl" style="margin:0 0 0 4px;align-self:center">days</span>`
+      : '';
+    return `<div class="pl-card"${seg.retired ? ' style="opacity:.5"' : ''}>` +
+      `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">` +
+      `<i class="fas ${esc(seg.icon)}" data-auicon="${i}" style="color:${esc(seg.color)};width:16px;text-align:center"></i>` +
+      `<input class="pl-inp" data-au="${i}" data-k="label" value="${esc(seg.label)}" style="margin-bottom:0;flex:1;font-weight:800"/>` +
+      `<span class="count-chip" title="${DroboardAudienceRules.source() === 'api' ? 'Readers the backend counted against this rule' : 'Demo estimate — no backend is answering to count this rule'}">${Number(seg.reach || 0).toLocaleString('en-US')}</span>` +
+      `</div>` +
+      `<input class="pl-inp" data-au="${i}" data-k="desc" value="${esc(seg.desc)}" placeholder="One line on who these readers are"/>` +
+      `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">` +
+      `<select class="pl-inp" data-au="${i}" data-k="signal" style="margin-bottom:0;flex:1;min-width:180px">${sigOpts}</select>` +
+      cond + win + `</div>` +
+      `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">` +
+      `<label class="pl-lbl" style="margin:0">Icon</label><input class="pl-inp" data-au="${i}" data-k="icon" value="${esc(seg.icon)}" style="margin-bottom:0;max-width:150px"/>` +
+      `<label class="pl-lbl" style="margin:0">Colour</label><input type="color" class="pl-inp" data-au="${i}" data-k="color" value="${esc(seg.color)}" style="margin-bottom:0;width:40px;height:32px;padding:2px;cursor:pointer"/>` +
+      `<button class="ad-btn${seg.retired ? '' : ' danger'}" data-auretire="${i}" style="margin-left:auto">${seg.retired ? 'Restore' : 'Retire'}</button>` +
+      `</div>` +
+      `<div class="pl-hint" style="margin:8px 0 0">Serves to readers where <b>${esc(auSig(seg.rule.signal).label)}</b> — ${esc(DroboardAudienceRules.describe(seg))}.</div>` +
+      `</div>`;
+  }
+  function renderAudience() {
+    const wrap = document.getElementById('auList');
+    if (!wrap) return;
+    const src = document.getElementById('auSrc');
+    if (src) {
+      const api = DroboardAudienceRules.source() === 'api';
+      src.className = 'au-src ' + (api ? 'api' : 'local');
+      src.textContent = api ? '● live — backend catalog' : '● demo — this browser only';
+      src.title = api
+        ? 'A backend answered, so these definitions and reach counts are stored server-side.'
+        : 'No backend is answering, so edits are kept in this browser. Start the API and reload to store them for real.';
+    }
+    const q = ((document.getElementById('auSearch') || {}).value || '').trim().toLowerCase();
+    const showRetired = !!(document.getElementById('auShowRetired') || {}).checked;
+    const rows = AU.map((s, i) => ({ s, i })).filter(r =>
+      (showRetired || !r.s.retired) &&
+      (!q || (r.s.label + ' ' + r.s.desc + ' ' + r.s.id).toLowerCase().indexOf(q) > -1));
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty-msg"><i class="fas fa-users"></i>No segment matches that search.</div>';
+      return;
+    }
+    wrap.innerHTML = '<div class="pl-grid" style="grid-template-columns:repeat(2,1fr)">' +
+      rows.map(r => auRow(r.s, r.i)).join('') + '</div>';
+    wrap.querySelectorAll('[data-au]').forEach(el => {
+      const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+      el.addEventListener(evt, () => auEdit(el));
+    });
+    wrap.querySelectorAll('[data-auretire]').forEach(b => b.addEventListener('click', () => {
+      const s = AU[+b.dataset.auretire];
+      if (!s) return;
+      if (!s.retired && !confirm(`Retire “${s.label}”?\n\nIt disappears from ad-setup's audience picker, but ads already targeting it keep working.`)) return;
+      s.retired = !s.retired;
+      renderAudience();
+      toast(s.retired ? 'Retired — Save segments to apply' : 'Restored — Save segments to apply');
+    }));
+  }
+  function auEdit(el) {
+    const seg = AU[+el.dataset.au];
+    const k = el.dataset.k;
+    if (!seg) return;
+    const r = seg.rule;
+    if (k === 'label') seg.label = el.value;
+    else if (k === 'desc') seg.desc = el.value;
+    else if (k === 'icon') seg.icon = el.value.trim() || 'fa-users';
+    else if (k === 'color') seg.color = el.value;
+    else if (k === 'signal') {
+      const s = auSig(el.value);
+      r.signal = s.id;
+      r.op = s.kind === 'bool' ? 'eq' : s.kind === 'pair' ? 'any' : 'gte';
+      r.value = s.kind === 'bool' ? true : s.kind === 'pair' ? [5, 10] : 1;
+      if (s.window && !r.windowDays) r.windowDays = 30;
+      if (!s.window) delete r.windowDays;
+      renderAudience();
+      return;
+    } else if (k === 'op') r.op = el.value;
+    else if (k === 'bool') r.value = el.value === '1';
+    else if (k === 'value') r.value = auSig(r.signal).kind === 'pair' ? [Math.max(0, +el.value || 0), auVals(seg)[1]] : Math.max(0, +el.value || 0);
+    else if (k === 'value2') r.value = [auVals(seg)[0], Math.max(0, +el.value || 0)];
+    else if (k === 'window') r.windowDays = Math.min(365, Math.max(1, +el.value || 1));
+    if (k === 'icon' || k === 'color') {
+      const ico = document.querySelector(`[data-auicon="${el.dataset.au}"]`);
+      if (ico) { ico.className = 'fas ' + seg.icon; ico.style.color = seg.color; }
+      return;
+    }
+    const hint = el.closest('.pl-card') && el.closest('.pl-card').querySelector('.pl-hint');
+    if (hint) hint.innerHTML = `Serves to readers where <b>${esc(auSig(seg.rule.signal).label)}</b> — ${esc(DroboardAudienceRules.describe(seg))}.`;
+  }
+  async function saveAudience() {
+    await DroboardAudienceRules.save(AU);
+    if (DroboardAudienceRules.source() === 'api') {
+      toast('✅ Saved to the backend — ad setup and every client page use these at next load');
+    } else {
+      toast('Saved in this browser only — no backend answered, so nothing else sees it yet');
+    }
+    renderAudience();
+  }
+  async function resetAudience() {
+    if (!confirm('Reset all segment definitions to defaults? Your edits are lost.')) return;
+    AU = await DroboardAudienceRules.reset();
+    renderAudience();
+    toast('Segments reset to defaults');
+  }
+  /* ── New segment dialog ──
+     One field per thing the backend stores, so a segment made here is
+     counted and matched exactly like a seeded one. The signal is a choice
+     from a fixed vocabulary — that part cannot come from a UI, because
+     someone has to write the query that computes it. */
+  let AU_DRAFT = null;
+  const auSlug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  function auDraft() {
+    return {
+      label: '', icon: 'fa-users', color: '#ff0050', desc: '',
+      rule: { signal: 'reactions', op: 'gte', value: 5, windowDays: 30 },
+    };
+  }
+  function auCondHtml(d) {
+    const s = auSig(d.rule.signal);
+    if (s.kind === 'bool') {
+      return `<label class="pl-lbl">Condition</label>` +
+        `<select class="pl-inp" data-adk="bool" style="margin-bottom:0">` +
+        `<option value="1"${d.rule.value !== false ? ' selected' : ''}>Reader ${esc(s.label.toLowerCase())}</option>` +
+        `<option value="0"${d.rule.value === false ? ' selected' : ''}>Reader is not ${esc(s.label.toLowerCase())}</option></select>`;
+    }
+    if (s.kind === 'pair') {
+      const v = auVals(d);
+      return `<label class="pl-lbl">Condition — either is enough</label>` +
+        `<div class="au-cond">` +
+        `<input class="pl-inp" data-adk="value" type="number" min="0" value="${+v[0] || 0}" style="max-width:88px"/><span class="pl-lbl" style="margin:0 10px 0 0;align-self:center">hrs read / week, or</span>` +
+        `<input class="pl-inp" data-adk="value2" type="number" min="0" value="${+v[1] || 0}" style="max-width:88px"/><span class="pl-lbl" style="margin:0;align-self:center">day streak</span></div>`;
+    }
+    const ops = (s.ops || ['gte']).map(o => AU_OPS.filter(x => x[0] === o)[0]).filter(Boolean);
+    return `<label class="pl-lbl">Condition</label>` +
+      `<div class="au-cond">` +
+      `<select class="pl-inp" data-adk="op" style="max-width:150px">` +
+      ops.map(o => `<option value="${o[0]}"${(d.rule.op || 'gte') === o[0] ? ' selected' : ''}>${o[1]}</option>`).join('') + `</select>` +
+      `<input class="pl-inp" data-adk="value" type="number" min="0" value="${+d.rule.value || 0}" style="max-width:96px"/>` +
+      `<span class="pl-lbl" style="margin:0;align-self:center">${esc(s.unit || '')}</span>` +
+      (s.window
+        ? `<label class="pl-lbl" style="margin:0 0 0 8px;align-self:center">in last</label>` +
+          `<input class="pl-inp" data-adk="window" type="number" min="1" max="365" value="${+d.rule.windowDays || 30}" style="max-width:74px"/>` +
+          `<span class="pl-lbl" style="margin:0;align-self:center">days</span>`
+        : '') +
+      `</div>`;
+  }
+  function auPrev(d) {
+    const s = auSig(d.rule.signal);
+    return `<i class="fas ${esc(d.icon)}" style="color:${esc(d.color)};margin-right:6px"></i>` +
+      `Serves to readers where <b>${esc(s.label)}</b> — ${esc(DroboardAudienceRules.describe(d))}.`;
+  }
+  function auIdLine(d) {
+    const id = auSlug(d.label) || 'new-segment';
+    const clash = AU.some(x => x.id === id);
+    return `Stored as <code>${esc(id)}</code>${clash ? ' — <b style="color:var(--amber)">name already used, a suffix will be added</b>' : ''}. Reach is counted by the backend, so it is not editable here.`;
+  }
+  function renderAudienceDialog() {
+    const body = document.getElementById('auDlgBody');
+    if (!body || !AU_DRAFT) return;
+    const d = AU_DRAFT;
+    const s = auSig(d.rule.signal);
+    body.innerHTML =
+      `<label class="pl-lbl">Segment name</label>` +
+      `<input class="pl-inp" data-adk="label" value="${esc(d.label)}" placeholder="e.g. Weekend Readers" maxlength="40"/>` +
+      `<label class="pl-lbl">Who they are</label>` +
+      `<input class="pl-inp" data-adk="desc" value="${esc(d.desc)}" placeholder="One line an advertiser reads before buying this audience." maxlength="120"/>` +
+      `<label class="pl-lbl">Signal — what the backend counts</label>` +
+      `<select class="pl-inp" data-adk="signal">` +
+      AU_SIGNALS.map(x => `<option value="${x.id}"${x.id === d.rule.signal ? ' selected' : ''}>${esc(x.label)}</option>`).join('') +
+      `</select>` +
+      `<div class="pl-hint" style="margin:-4px 0 12px">Counted from <b>${esc(s.live || s.id)}</b>. New signals need engineering; everything about how this one is used is yours.</div>` +
+      auCondHtml(d) +
+      `<div class="au-two" style="margin-top:12px">` +
+      `<div><label class="pl-lbl">Icon (Font Awesome)</label><input class="pl-inp" data-adk="icon" value="${esc(d.icon)}" style="margin-bottom:0"/></div>` +
+      `<div><label class="pl-lbl">Colour</label><input type="color" class="pl-inp" data-adk="color" value="${esc(d.color)}" style="height:38px;padding:3px;cursor:pointer;margin-bottom:0"/></div>` +
+      `</div>` +
+      `<div style="margin-top:14px"><div class="au-prev">${auPrev(d)}</div></div>` +
+      `<div class="pl-hint" id="auDlgId" style="margin:10px 0 0">${auIdLine(d)}</div>`;
+    body.querySelectorAll('[data-adk]').forEach(el => {
+      el.addEventListener(el.tagName === 'SELECT' || el.type === 'color' ? 'change' : 'input', () => auDlgEdit(el));
+    });
+  }
+  function auDlgEdit(el) {
+    const d = AU_DRAFT, k = el.dataset.adk, r = d.rule;
+    if (k === 'label') d.label = el.value;
+    else if (k === 'desc') d.desc = el.value;
+    else if (k === 'icon') d.icon = el.value.trim() || 'fa-users';
+    else if (k === 'color') d.color = el.value;
+    else if (k === 'op') r.op = el.value;
+    else if (k === 'bool') r.value = el.value === '1';
+    else if (k === 'value') r.value = auSig(r.signal).kind === 'pair' ? [Math.max(0, +el.value || 0), auVals(d)[1]] : Math.max(0, +el.value || 0);
+    else if (k === 'value2') r.value = [auVals(d)[0], Math.max(0, +el.value || 0)];
+    else if (k === 'window') r.windowDays = Math.min(365, Math.max(1, +el.value || 1));
+    else if (k === 'signal') {
+      const s = auSig(el.value);
+      d.rule = { signal: s.id, op: s.kind === 'bool' ? 'eq' : s.kind === 'pair' ? 'any' : 'gte', value: s.kind === 'bool' ? true : s.kind === 'pair' ? [5, 10] : 5 };
+      if (s.window) d.rule.windowDays = 30;
+      renderAudienceDialog();   // the condition row changes shape with the signal
+      return;
+    }
+    const prev = document.querySelector('#auDlgBody .au-prev');
+    if (prev) prev.innerHTML = auPrev(d);
+    if (k === 'label') {
+      const idLine = document.getElementById('auDlgId');
+      if (idLine) idLine.innerHTML = auIdLine(d);
+    }
+  }
+  function openAudienceDialog() {
+    AU_DRAFT = auDraft();
+    auDlgError('');
+    renderAudienceDialog();
+    document.getElementById('auMask').hidden = false;
+    const first = document.querySelector('#auDlgBody [data-adk="label"]');
+    if (first) first.focus();
+  }
+  function closeAudienceDialog() {
+    AU_DRAFT = null;
+    document.getElementById('auMask').hidden = true;
+  }
+  function auDlgError(msg) {
+    const el = document.getElementById('auDlgErr');
+    if (el) el.textContent = msg || '';
+  }
+  function commitAudienceDialog() {
+    const d = AU_DRAFT;
+    if (!d) return;
+    const label = d.label.trim();
+    if (label.length < 3) { auDlgError('Give the segment a name.'); return; }
+    if (!d.desc.trim()) { auDlgError('Say who these readers are in one line.'); return; }
+    let id = auSlug(label);
+    if (AU.some(s => s.id === id)) id += '-' + Math.random().toString(36).slice(2, 5);
+    AU.push(Object.assign({}, d, { id, label, desc: d.desc.trim(), reach: 0 }));
+    closeAudienceDialog();
+    renderAudience();
+    const card = document.querySelector(`[data-au="${AU.length - 1}"]`);
+    if (card && card.closest('.pl-card')) card.closest('.pl-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast(`“${label}” added — Save segments to store it`);
+  }
+  function addAudience() { openAudienceDialog(); }
+
   /* ── Ad list ── */
   function renderFilterPills() {
     const ads = allAds();
@@ -768,9 +1057,11 @@
     try { STATS = await MarketingData.getAdStats(); } catch (e) { STATS = []; }
     try { CAMPS = await MarketingData.getCampaigns(); } catch (e) { CAMPS = []; }
     try { LEAGUE = await MarketingData.getLeagueConfig(); } catch (e) { LEAGUE = null; }
+    await loadAudience();
     renderStats();
     renderPlacements();
     renderLeague();
+    renderAudience();
     renderFilterPills();
     renderStatusPills();
     renderCampFilter();
@@ -856,6 +1147,33 @@
     if (cc) cc.addEventListener('click', () => { campaignFilter = ''; listPage = 1; renderCampFilter(); renderList(); });
     const sortSel = document.getElementById('sortSel');
     if (sortSel) sortSel.addEventListener('change', () => { sortKey = sortSel.value; listPage = 1; renderList(); });
+    const _auSave = document.getElementById('auSaveBtn');
+    if (_auSave) _auSave.addEventListener('click', saveAudience);
+    const _auAdd = document.getElementById('auAddBtn');
+    if (_auAdd) _auAdd.addEventListener('click', addAudience);
+    const _auReset = document.getElementById('auResetBtn');
+    if (_auReset) _auReset.addEventListener('click', resetAudience);
+    const _auSearch = document.getElementById('auSearch');
+    if (_auSearch) _auSearch.addEventListener('input', renderAudience);
+    const _auRet = document.getElementById('auShowRetired');
+    if (_auRet) _auRet.addEventListener('change', renderAudience);
+    const _auHead = document.getElementById('auHead');
+    if (_auHead) {
+      const toggle = () => document.getElementById('auPanel').classList.toggle('collapsed');
+      _auHead.addEventListener('click', toggle);
+      _auHead.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    }
+    ['#auDlgX', '#auDlgCancel'].forEach(sel => {
+      const b = document.querySelector(sel);
+      if (b) b.addEventListener('click', closeAudienceDialog);
+    });
+    const _auAdd2 = document.getElementById('auDlgAdd');
+    if (_auAdd2) _auAdd2.addEventListener('click', commitAudienceDialog);
+    const _auMask = document.getElementById('auMask');
+    if (_auMask) _auMask.addEventListener('click', (e) => { if (e.target === _auMask) closeAudienceDialog(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && _auMask && !_auMask.hidden) closeAudienceDialog();
+    });
     const plHead = document.getElementById('plHead');
     if (plHead) {
       const toggle = () => document.getElementById('plPanel').classList.toggle('collapsed');

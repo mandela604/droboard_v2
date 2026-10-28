@@ -18,6 +18,13 @@ router.get('/', generalLimiter,
 router.get('/placements', generalLimiter,
   async (req, res) => base.wrap(res, async () => ads.placements()));
 
+// Surface + slot registry. The console renders its "Shows on" and slot
+// checkboxes from this, so a marketing choice can only ever name a page or
+// slot a reader page actually requests. createAd/savePlacement reject the
+// others instead of saving cleanly and serving nothing.
+router.get('/surfaces', generalLimiter,
+  async (req, res) => base.wrap(res, async () => ads.surfaces()));
+
 // ad-service contract: POST /api/ads/track {id, event, page, slot, storyId, …}
 // Lifecycle events (impression/viewable/click/complete/skip/conversion) are
 // accepted from signed-in AND signed-out viewers — guests carry a stable

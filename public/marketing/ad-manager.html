@@ -107,7 +107,29 @@ body{font-family:'Inter',system-ui,sans-serif}
 .adm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:#1a1730;color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
 .adm-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@media (max-width:720px){.grid-4{grid-template-columns:repeat(2,1fr)}.pl-grid{grid-template-columns:1fr}}
+/* New-segment dialog. Same field vocabulary as the cards, one at a time,
+   so what marketing sees is what the backend stores. */
+.au-mask{position:fixed;inset:0;background:rgba(8,6,20,.66);backdrop-filter:blur(3px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:18px}
+.au-mask[hidden]{display:none}
+.au-dlg{background:var(--card);border:1px solid var(--border);border-radius:16px;width:min(560px,100%);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.au-dlg-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.au-dlg-head h3{margin:0;font-size:15px;font-weight:800}
+.au-x{margin-left:auto;background:none;border:none;color:var(--text-faint);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:8px}
+.au-x:hover{color:var(--text);background:var(--table-head)}
+.au-dlg-body{padding:16px 18px;overflow-y:auto}
+.au-dlg-foot{display:flex;align-items:center;gap:8px;padding:13px 18px;border-top:1px solid var(--border)}
+.au-dlg-foot .btn-primary,.au-dlg-foot .btn-ghost{margin-left:auto}
+.au-err{font-size:11.5px;font-weight:700;color:var(--red)}
+.au-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.au-cond{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+.au-cond .pl-inp{margin-bottom:0}
+.au-prev{background:var(--table-head);border-radius:10px;padding:10px 12px;margin:4px 0 12px;font-size:12px;color:var(--text-muted);line-height:1.5}
+.au-prev b{color:var(--text)}
+.au-src{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--text-faint)}
+.au-src.api{color:var(--green)}
+.au-src.local{color:var(--amber)}
+
+@media (max-width:720px){.grid-4{grid-template-columns:repeat(2,1fr)}.pl-grid{grid-template-columns:1fr}.au-two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -274,6 +296,24 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
   </div>
 
+  <div class="panel collapsed" id="auPanel">
+    <div class="panel-head accordion-head" id="auHead" role="button" tabindex="0"><h2><i class="fas fa-users" style="color:var(--purple);font-size:13px"></i> Audience segments</h2><i class="fas fa-chevron-down accordion-chev"></i></div>
+    <div class="pl-body">
+    <div class="panel-sub">Who each segment means. The <b>signal</b> is a fixed choice — it names the data the backend counts. The threshold, window and wording are yours. Ad setup and every client page read this list.</div>
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="auSearch" placeholder="Search segments…"/></div>
+      <label class="pl-check"><input type="checkbox" id="auShowRetired"/> Show retired</label>
+      <span class="au-src" id="auSrc" style="margin-left:auto;align-self:center"></span>
+    </div>
+    <div id="auList"></div>
+    <div class="pl-actions" style="margin-top:12px">
+      <button class="btn-primary" id="auSaveBtn">Save segments</button>
+      <button class="btn-ghost" id="auAddBtn">＋ New segment</button>
+      <button class="btn-ghost" id="auResetBtn">Reset to defaults</button>
+    </div>
+    </div>
+  </div>
+
   <div class="panel">
     <div class="panel-head"><h2><i class="fas fa-rectangle-ad" style="color:var(--accent);font-size:13px"></i> Ad inventory</h2><span class="count-chip" id="adCount">0 ads</span></div>
     <div class="toolbar">
@@ -301,16 +341,32 @@ body{font-family:'Inter',system-ui,sans-serif}
   </div>
 </div>
 
+<div class="au-mask" id="auMask" hidden>
+  <div class="au-dlg" role="dialog" aria-modal="true" aria-labelledby="auDlgTitle">
+    <div class="au-dlg-head">
+      <h3 id="auDlgTitle">New segment</h3>
+      <button class="au-x" id="auDlgX" title="Close">✕</button>
+    </div>
+    <div class="au-dlg-body" id="auDlgBody"></div>
+    <div class="au-dlg-foot">
+      <div class="au-err" id="auDlgErr"></div>
+      <button class="btn-ghost" id="auDlgCancel">Cancel</button>
+      <button class="btn-primary" id="auDlgAdd">Add segment</button>
+    </div>
+  </div>
+</div>
+
 <div class="adm-toast" id="admToast"></div>
 
-<script src="shared/ad-setup-data.js?v=5"></script>
+<script src="../services/audience-rules.js?v=2"></script>
+<script src="shared/ad-setup-data.js?v=8"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
 <script src="../services/spotlight-board-service.js"></script>
 <script src="../component/spotlight-ad.js?v=8"></script>
 <script src="../services/league-service.js"></script>
-<script src="shared/ad-manager.js?v=7"></script>
+<script src="shared/ad-manager.js?v=10"></script>
 <script>AdManagerPage.init();</script>
 </body>
 </html>

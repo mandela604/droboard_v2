@@ -11,8 +11,53 @@ async function callBackend(path, options){
   return res.json();
 }
 
+/* Live loaders: GET /partnerships/{kind} + /partnerships/requests → demo shapes.
+   Backend Partnership docs: {id, kind, name, detail, status, meta:{...kind-specific}};
+   PartnershipRequest: {id, name, detail, status}. Extra display fields (type/region/
+   revenue/prize/…) live in `meta` — mapped defensively below. */
+function mapMeta(p){ return (p && p.meta) || {}; }
+async function liveList(path, mapper){
+  const d = await callBackend(path);
+  const items = Array.isArray(d) ? d : ((d && d.items) || []);
+  return items.map(mapper);
+}
+async function loadLive(){
+  const [pub, tr, ct, ip, rq] = await Promise.all([
+    liveList('/partnerships/publishing?limit=50', p => {
+      const m = mapMeta(p);
+      return { name:p.name, status:p.status, type:m.type||'', region:m.region||'', titlesLicensed:m.titlesLicensed||0, revenue:m.revenue||'' };
+    }),
+    liveList('/partnerships/translations?limit=50', t => {
+      const m = mapMeta(t);
+      return { name:t.name, status:t.status, languages:m.languages||'', territories:m.territories||'', revenue:m.revenue||'' };
+    }),
+    liveList('/partnerships/contests?limit=50', c => {
+      const m = mapMeta(c);
+      return { name:c.name, status:c.status, prize:m.prize||'', deadline:m.deadline||'', entries:m.entries||0 };
+    }),
+    liveList('/partnerships/ip-media?limit=50', x => {
+      const m = mapMeta(x);
+      return { title:x.name, status:x.status, type:m.type||'', partner:m.partner||'', value:m.value||'' };
+    }),
+    liveList('/partnerships/requests?limit=50', r => {
+      const m = mapMeta(r);
+      return { from:r.name, status:r.status, type:m.type||'', date:r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '', notes:r.detail||m.notes||'' };
+    }),
+  ]);
+  if(!pub.length && !tr.length && !ct.length && !ip.length && !rq.length) return null;
+  return {
+    publishingPartners: pub,
+    translationPartners: tr,
+    writingContests: ct,
+    ipMediaOpportunities: ip,
+    partnershipRequests: rq,
+  };
+}
+
 async function loadData(){
-  const d = await ChiefEditorData.getPartnerships();
+  let d = null;
+  try{ d = await loadLive(); }catch(e){ console.warn('[Partnerships] live load failed, using demo data', e); }
+  if(!d) d = await ChiefEditorData.getPartnerships();
   document.getElementById('publisherList').innerHTML = d.publishingPartners.map(p => `
     <div class="partner-card"><div class="pc-name">${p.name} <span class="status-pill ${p.status}">${p.status}</span></div><div class="pc-meta"><span>🏷️ ${p.type}</span><span>🌎 ${p.region}</span><span>📚 ${p.titlesLicensed} titles</span><span>💰 ${p.revenue}</span></div></div>`).join('');
   document.getElementById('translationList').innerHTML = d.translationPartners.map(t => `

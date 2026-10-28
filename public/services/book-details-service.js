@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════
-   BOOK DETAILS SERVICE (series landing page)
+   BOOK DETAILS SERVICE (story landing page)
    HTML calls BookDetailsPage.init(). Demo assembles from
-   central-demo-data.js SERIES (+ profile books for writer catalogs).
+   central-demo-data.js STORY (+ profile books for writer catalogs).
    When going live: set USE_API = true, point API_BASE at the backend.
-   API contract: GET /api/series/:id → normalized series record.
+   API contract: GET /api/books/:id → normalized story record.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -12,7 +12,7 @@
   const API_BASE = '/api';
   const THEME_KEY = 'droboardTheme';
 
-  let SERIES = null;
+  let STORY = null;
 
   function toast(msg, dur) {
     const t = document.getElementById('toast');
@@ -76,7 +76,7 @@
     }
     return list;
   }
-  function normalizeSeries(rec) {
+  function normalizeStory(rec) {
     if (!rec) return null;
     if (rec.source === 'profile') {
       return {
@@ -103,17 +103,17 @@
   }
   function findDemo(id) {
     const d = window.DemoData || {};
-    const hit = (d.SERIES || []).find(s => String(s.id) === String(id));
-    if (hit) return normalizeSeries(hit);
+    const hit = (d.STORY_RECORDS || []).find(s => String(s.id) === String(id));
+    if (hit) return normalizeStory(hit);
     const pb = profileBooks().find(b => String(b.id) === String(id));
-    if (pb) return normalizeSeries(pb);
-    return normalizeSeries((d.SERIES || [])[0]);
+    if (pb) return normalizeStory(pb);
+    return normalizeStory((d.STORY_RECORDS || [])[0]);
   }
-  async function fetchSeries(id) {
+  async function fetchStory(id) {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/series/${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error('Series API failed');
-      return normalizeSeries(await res.json());
+      const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error('Story API failed');
+      return normalizeStory(await res.json());
     }
     await new Promise(r => setTimeout(r, 120));
     return findDemo(id);
@@ -127,7 +127,7 @@
   }
   function moreLike() {
     const d = window.DemoData || {};
-    return (d.SERIES || []).filter(s => !SERIES || String(s.id) !== String(SERIES.id)).slice(0, 4);
+    return (d.STORY_RECORDS || []).filter(s => !STORY || String(s.id) !== String(STORY.id)).slice(0, 4);
   }
 
   /* ── Render ── */
@@ -242,21 +242,21 @@
 
   /* ── Actions ── */
   function goReader() {
-    if (!SERIES) return;
-    location.href = 'bridge.html?id=' + encodeURIComponent(SERIES.id);
+    if (!STORY) return;
+    location.href = 'bridge.html?id=' + encodeURIComponent(STORY.id);
   }
   function openSave() {
-    if (!SERIES || !window.openSaveModal) { toast('Save unavailable'); return; }
+    if (!STORY || !window.openSaveModal) { toast('Save unavailable'); return; }
     openSaveModal({
-      title: SERIES.title, sub: SERIES.author ? 'by ' + SERIES.author : 'DroBoard',
-      img: SERIES.cover, storyId: SERIES.id,
+      title: STORY.title, sub: STORY.author ? 'by ' + STORY.author : 'DroBoard',
+      img: STORY.cover, storyId: STORY.id,
     });
   }
   function openShare() {
-    if (!SERIES || !window.openShareModal) { toast('Share unavailable'); return; }
+    if (!STORY || !window.openShareModal) { toast('Share unavailable'); return; }
     openShareModal({
-      title: SERIES.title, sub: SERIES.author ? 'by ' + SERIES.author : 'DroBoard',
-      img: SERIES.cover, url: 'https://droboard.app/series/' + SERIES.id,
+      title: STORY.title, sub: STORY.author ? 'by ' + STORY.author : 'DroBoard',
+      img: STORY.cover, url: 'https://droboard.app/story/' + STORY.id,
     });
   }
 
@@ -271,23 +271,23 @@
     document.getElementById('btnLib').addEventListener('click', openSave);
     document.getElementById('btnShare').addEventListener('click', openShare);
     try {
-      SERIES = await fetchSeries(id || '');
+      STORY = await fetchStory(id || '');
     } catch (err) {
       console.error('[book-details] init() failed:', err);
-      SERIES = null;
+      STORY = null;
     }
     document.getElementById('loadingState').style.display = 'none';
-    if (!SERIES) { document.getElementById('emptyState').style.display = 'block'; return; }
+    if (!STORY) { document.getElementById('emptyState').style.display = 'block'; return; }
     document.getElementById('detailsRoot').style.display = 'block';
-    renderHero(SERIES);
-    renderSynopsis(SERIES);
-    renderChapters(SERIES);
-    renderDetails(SERIES);
-    renderAuthor(SERIES);
+    renderHero(STORY);
+    renderSynopsis(STORY);
+    renderChapters(STORY);
+    renderDetails(STORY);
+    renderAuthor(STORY);
     renderReviews();
     renderMore();
     window.onDroboardSaveChange = function (storyId, saved) {
-      if (String(storyId) === String(SERIES.id)) toast(saved ? 'Saved to library' : 'Removed from library');
+      if (String(storyId) === String(STORY.id)) toast(saved ? 'Saved to library' : 'Removed from library');
     };
   }
 

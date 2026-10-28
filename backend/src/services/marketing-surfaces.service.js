@@ -6,8 +6,10 @@
 // Each function documents the frontend file:line it satisfies.
 const { Campaign, LeagueConfig, LeagueActivity } = require('../models/marketing.model');
 const { AdInventory, AdPlacement, AdStat, ActivityLog } = require('../models/platform.model');
+const { AdRevenueLedger } = require('../models/revenue.model');
 const { LaunchCampaign, Promo } = require('../models/editorial.model');
 const ads = require('./ads.service');
+const registry = require('../config/adSurfaces');
 
 function bad(msg, status) { const e = new Error(msg); e.status = status || 400; throw e; }
 
@@ -146,8 +148,47 @@ async function dashboard() {
  * of its linked creatives so cards show real numbers.
  * ───────────────────────────────────────────────────────────── */
 const CAMPAIGN_FIELDS = ['name', 'status', 'type', 'objective', 'storyId', 'storyTitle', 'storyAuthor',
-  'storyCover', 'storyGenre', 'placements', 'startDate', 'endDate', 'hasBudget', 'budget', 'spent',
-  'owner', 'description', 'reach', 'impressions', 'clicks', 'ctr', 'conversions'];
+  'storyCover', 'storyGenre', 'placements', 'slots', 'audienceTargeting', 'startDate', 'endDate', 'hasBudget', 'budget', 'spent',
+  'owner', 'description', 'advertiserName', 'advertiserEmail',
+  'reach', 'impressions', 'clicks', 'ctr', 'conversions'];
+
+/* The campaign's buy: which surfaces and which slots it paid for. An unknown
+   id here would silently entitle nothing, so it is refused the same way ad
+   targeting is. */
+function cleanCampaignTargeting(b) {
+  if (b.placements !== undefined) {
+    b.placements = Array.isArray(b.placements) ? b.placements.map(String).slice(0, 20) : [];
+    const badPages = b.placements.filter(p => String(p).indexOf(':') === -1 && !registry.isPage(registry.surfaceFromLegacy(p)));
+    if (badPages.length) bad('unknown_page:' + badPages.join(','));
+  }
+  if (b.slots !== undefined) {
+    b.slots = Array.isArray(b.slots) ? b.slots.map(String).slice(0, 60) : [];
+    const badSlots = b.slots.filter(s => !registry.isSlot(s));
+    if (badSlots.length) bad('unknown_slot:' + badSlots.join(','));
+  }
+  return b;
+}
+
+/* Spend is what the advertiser owes, and it is already measured: the ad
+   revenue ledger books a rate per impression/click (impression $0.005,
+   click $0.35) against each creative. Rolling those rows up per campaign
+   is the whole of spend tracking — no second meter, no drifting counter. */
+async function spendByCampaign(adsByCampaign) {
+  const ids = [];
+  Object.keys(adsByCampaign).forEach(k => { ids.push(...adsByCampaign[k]); });
+  if (!ids.length) return {};
+  const rows = await AdRevenueLedger.aggregate([
+    { $match: { adId: { $in: ids } } },
+    { $group: { _id: '$adId', spend: { $sum: '$revenue' } } },
+  ]).catch(() => []);
+  const perAd = {};
+  rows.forEach(r => { perAd[String(r._id)] = r.spend || 0; });
+  const out = {};
+  Object.keys(adsByCampaign).forEach(k => {
+    out[k] = Math.round(adsByCampaign[k].reduce((s, id) => s + (perAd[id] || 0), 0) * 100) / 100;
+  });
+  return out;
+}
 
 async function campaigns() {
   const [docs, linked, stats] = await Promise.all([
@@ -161,9 +202,11 @@ async function campaigns() {
     if (!adsByCampaign[k]) adsByCampaign[k] = [];
     adsByCampaign[k].push(String(a.id));
   });
+  const spend = await spendByCampaign(adsByCampaign);
   return docs.map(c => {
     const row = Object.assign({}, c);
     const ids = adsByCampaign[String(c.id)] || [];
+    if (spend[String(c.id)] != null) row.spent = spend[String(c.id)];
     if (ids.length) {
       // Only show live stats for ads that are actually serving.
       const imps = ids.reduce((s, id) => s + ((stats[id] && stats[id].imp) || 0), 0);
@@ -184,7 +227,7 @@ async function createCampaign(payload) {
   CAMPAIGN_FIELDS.forEach(k => { if (payload && payload[k] !== undefined) b[k] = payload[k]; });
   if (!b.name) bad('name_required');
   b.status = ['live', 'scheduled', 'draft', 'paused', 'ended'].includes(b.status) ? b.status : 'draft';
-  b.placements = Array.isArray(b.placements) ? b.placements.map(String).slice(0, 20) : [];
+  cleanCampaignTargeting(b);
   const doc = await Campaign.create(b);
   return doc.toJSON();
 }
@@ -195,11 +238,11 @@ async function loadCampaignOr404(id) {
   return doc;
 }
 
-// Pausing/ending a campaign switches its linked ads off (autoPaused), and
-// resuming restores ONLY those — an ad an operator switched off by hand
+// Pausing/ending/drafting a campaign switches its linked ads off (autoPaused),
+// and going live restores ONLY those — an ad an operator switched off by hand
 // stays off (marketing-data.js "Campaign ↔ ad connection" comment).
 async function cascadeAds(campaignId, status) {
-  const stopping = ['paused', 'ended'].includes(status);
+  const stopping = ['paused', 'ended', 'draft'].includes(status);
   if (stopping) {
     await AdInventory.updateMany(
       { campaign: String(campaignId), active: true, autoPaused: false },
@@ -216,7 +259,7 @@ async function updateCampaign(id, payload) {
   const b = {};
   CAMPAIGN_FIELDS.forEach(k => { if (payload && payload[k] !== undefined) b[k] = payload[k]; });
   if (b.status !== undefined && !['live', 'scheduled', 'draft', 'paused', 'ended'].includes(b.status)) bad('bad_status');
-  if (b.placements !== undefined) b.placements = Array.isArray(b.placements) ? b.placements.map(String).slice(0, 20) : [];
+  cleanCampaignTargeting(b);
   Object.assign(doc, b);
   await doc.save();
   if (b.status !== undefined) await cascadeAds(doc.id, b.status);
@@ -366,9 +409,63 @@ async function track(action, n, userId) {
   return { ok: true, points, enabled: true };
 }
 
+/* ── GET /api/league/board (league-service.js:7) —
+   entries: [{ handle, name, avatar, points, parts }] ranked desc. */
+async function leagueBoard({ season, scope, userId }) {
+  const s = (season && /^(\d{4})-W\d{1,2}$/.test(String(season))) ? String(season) : seasonId();
+  const filter = scope === 'alltime' ? {} : { season: s };
+  const rows = await LeagueActivity.aggregate([
+    { $match: filter },
+    { $group: { _id: '$userId', points: { $sum: '$points' }, parts: { $push: '$action' } } },
+    { $sort: { points: -1 } },
+    { $limit: 100 },
+  ]);
+  const { User } = require('../models/user.model');
+  const ids = rows.map(r => r._id);
+  const users = ids.length
+    ? await User.find({ id: { $in: ids } }).select('id name handle avatar').lean() : [];
+  const byId = {};
+  users.forEach(u => { byId[u.id] = u; });
+  const entries = rows.map(r => {
+    const u = byId[r._id] || {};
+    const parts = {};
+    (r.parts || []).forEach(a => { parts[a] = (parts[a] || 0) + 1; });
+    return {
+      userId: r._id,
+      handle: u.handle || u.id || 'reader',
+      name: u.name || u.handle || 'Reader',
+      avatar: u.avatar || '',
+      points: r.points || 0,
+      parts,
+    };
+  });
+  let me = null;
+  if (userId) {
+    const mine = entries.findIndex(e => String(e.userId) === String(userId));
+    if (mine >= 0) me = { rank: mine + 1, points: entries[mine].points };
+  }
+  return { season: s, scope: scope === 'alltime' ? 'alltime' : 'weekly', entries, me };
+}
+
+/* ── GET /api/league/me (league-service.js:10) —
+   { rank, points, gapToNext } for the caller's current season. */
+async function leagueMe(userId) {
+  const s = seasonId();
+  const rows = await LeagueActivity.aggregate([
+    { $match: { season: s } },
+    { $group: { _id: '$userId', points: { $sum: '$points' } } },
+    { $sort: { points: -1 } },
+  ]);
+  const mine = rows.findIndex(r => String(r._id) === String(userId));
+  const myPoints = mine >= 0 ? rows[mine].points : 0;
+  const above = mine > 0 ? rows[mine - 1].points - myPoints : 0;
+  return { season: s, rank: mine >= 0 ? mine + 1 : 0, points: myPoints, gapToNext: mine > 0 ? above : 0 };
+}
+
 module.exports = {
   dashboard,
   campaigns, createCampaign, updateCampaign, deleteCampaign,
   adsByCampaign, adStats, resetAds,
   leagueConfig, saveLeagueConfig, resetLeague, track, seasonId,
+  leagueBoard, leagueMe,
 };

@@ -23,12 +23,23 @@ const campaignSchema = new mongoose.Schema({
   storyCover: { type: String, default: '' },
   storyGenre: { type: String, default: '' },
   placements: { type: [String], default: [] },
+  // Slot entitlement, expanded from `placements` by the console
+  // (AdSetupData.campaignSlotIds). Ad setup may only point a creative at slots
+  // in this list — the campaign buys, the creative delivers.
+  slots: { type: [String], default: [] },
+  // The wizard's targeting snapshot. Delivery targets live on the ad
+  // (AdInventory.audience); this is what was sold, kept for reporting.
+  audienceTargeting: { type: mongoose.Schema.Types.Mixed, default: null },
   // The console renders/edits these as plain 'YYYY-MM-DD' strings — stored
   // as strings so a round-trip never changes the displayed value.
   startDate: { type: String, default: '' },
   endDate: { type: String, default: '' },
   hasBudget: { type: Boolean, default: false },
   budget: { type: Number, default: 0 },
+  // The currency the budget and `spent` are denominated in — the rate card's
+  // active currency at creation. Spend is accumulated in this same currency,
+  // so the two numbers being compared never need an exchange rate.
+  currency: { type: String, default: 'NGN' },
   spent: { type: Number, default: 0 },
   owner: { type: String, default: '' },
   description: { type: String, default: '' },
@@ -50,6 +61,26 @@ const leagueConfigSchema = new mongoose.Schema({
   prizes: { type: [mongoose.Schema.Types.Mixed], default: [] },
 }, { timestamps: true });
 
+// Behaviour-segment catalog for ad targeting (Ad Manager → Audience segments).
+// One document, keyed 'segments'. Definitions only — measured reach is
+// computed per request, never stored here.
+const audienceConfigSchema = new mongoose.Schema({
+  key: { type: String, default: 'segments', unique: true },
+  segments: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  updatedBy: { type: String, default: '' },
+}, { timestamps: true });
+
+// What an impression and a click cost, priced per currency rather than
+// converted (the platform's rule everywhere else: each currency carries its
+// own authored price, so a rate change in one market never silently reprices
+// another). One document, keyed 'rates'.
+const adRateCardSchema = new mongoose.Schema({
+  key: { type: String, default: 'rates', unique: true },
+  active: { type: String, default: 'NGN' }, // billing currency for new campaigns
+  prices: { type: mongoose.Schema.Types.Mixed, default: {} }, // { NGN:{impression,click}, USD:{...}, GBP:{...} }
+  updatedBy: { type: String, default: '' },
+}, { timestamps: true });
+
 // POST /api/league/track — real points earned per reader per season.
 const leagueActivitySchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
@@ -63,5 +94,7 @@ leagueActivitySchema.index({ userId: 1, season: -1, action: 1 });
 module.exports = {
   Campaign: mongoose.model('Campaign', campaignSchema),
   LeagueConfig: mongoose.model('LeagueConfig', leagueConfigSchema),
+  AudienceConfig: mongoose.model('AudienceConfig', audienceConfigSchema),
+  AdRateCard: mongoose.model('AdRateCard', adRateCardSchema),
   LeagueActivity: mongoose.model('LeagueActivity', leagueActivitySchema),
 };

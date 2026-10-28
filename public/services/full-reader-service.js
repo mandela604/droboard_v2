@@ -215,6 +215,7 @@
   }
   function setTheme(el, theme) {
     document.body.className = theme;
+    document.documentElement.setAttribute('data-theme', theme === 'theme-white' ? 'light' : 'dark');
     try {
       localStorage.setItem('dro_reader_theme', theme);
       if (theme === 'theme-white') localStorage.setItem('droboardTheme', 'light');
@@ -237,6 +238,7 @@
     } catch (e) {}
     if (theme) {
       document.body.className = theme;
+      document.documentElement.setAttribute('data-theme', theme === 'theme-white' ? 'light' : 'dark');
       document.querySelectorAll(".theme-opt").forEach(x => {
         const on = (x.getAttribute('onclick') || '').indexOf("'" + theme + "'") !== -1;
         x.classList.toggle("on", on);

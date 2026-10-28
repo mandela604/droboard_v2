@@ -24,7 +24,9 @@
     { id: 'feed', label: 'Feed' },
     { id: 'genreHub', label: 'Genre Hub' },
     { id: 'library', label: 'Library' },
-    { id: 'series', label: 'Series Page' },
+    { id: 'store', label: 'Store (Coins & Subs)' },
+    { id: 'story', label: 'Bridge Page' },
+    { id: 'bookReader', label: 'Book Reader' },
     { id: 'home', label: 'Homepage' },
     { id: 'fullReader', label: 'Full Reader' },
     { id: 'scrollReader', label: 'Scroll Reader' },
@@ -35,6 +37,11 @@
     { id: 'collection', label: 'Collection' },
     { id: 'followers', label: 'Followers' },
     { id: 'profile', label: 'Profile' },
+    { id: 'genreStories', label: 'Genre Stories' },
+    { id: 'leaderboard', label: 'Leaderboard' },
+    { id: 'blog', label: 'Blog' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'search', label: 'Search Results' },
     { id: 'status', label: 'Status Viewer' },
   ];
 
@@ -67,6 +74,7 @@
     ],
     genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
     library: [{ id: 'library:slider', label: 'Slider' }],
+    store: [{ id: 'store:below-packs', label: 'Below the coin packs' }],
     droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
     collection: [{ id: 'collection:top', label: 'Top (below Follow)' }],
     discussion: [{ id: 'discussion:inline', label: 'Inline' }],
@@ -76,7 +84,22 @@
       { id: 'debate:thread-top', label: 'Thread top (view all replies)' },
     ],
     home: [{ id: 'home:swipe-card', label: 'Full-screen swipe card' }],
-    series: [{ id: 'series:main', label: 'Main' }],
+    story: [
+      { id: 'story:main', label: 'Bridge page' },
+    ],
+    /* book-reader.html is its own surface (book detail + reviews), so its
+       slot gets its own card instead of hiding under Bridge Page. */
+    bookReader: [
+      { id: 'bookReader:top', label: 'Top (above the book)' },
+    ],
+    genreStories: [{ id: 'genreStories:in-feed', label: 'Above the story list' }],
+    leaderboard: [{ id: 'leaderboard:inline', label: 'Below the rankings' }],
+    blog: [
+      { id: 'blog:top', label: 'Top (above posts)' },
+      { id: 'blog:bottom', label: 'Bottom (below posts)' },
+    ],
+    notifications: [{ id: 'notifications:in-feed', label: 'Above the list' }],
+    search: [{ id: 'search:banner', label: 'Results banner' }],
     status: [{ id: 'status:every-3rd', label: 'Between stories (every Nth)' }],
   }; /* profile has page-level targeting only — no ad slot renders there */
 
@@ -100,7 +123,7 @@
   var SPOT_STORY_FIELDS = [
     ['title', 'Story title', 'text'], ['author', 'Author', 'text'], ['authorAvatar', 'Author avatar URL (byline)', 'text'],
     ['genre', 'Genre', 'text'],
-    ['rating', 'Rating', 'text'], ['chapters', 'Chapters', 'text'], ['reads', 'Reads', 'text'],
+    ['chapters', 'Chapters', 'text'], ['reads', 'Reads', 'text'],
     ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image (portrait)', 'img'],
   ];
   var SPOT_USER_FIELDS = [
@@ -123,7 +146,7 @@
   ];
   var FIELDS = {
     platform: [['sponsor', 'Sponsor', 'text'], ['title', 'Headline', 'text'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
-    book: [['title', 'Book title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['rating', 'Rating', 'text'], ['chapters', 'Chapters', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
+    book: [['title', 'Book title', 'text'], ['author', 'Author', 'text'], ['genre', 'Genre', 'text'], ['chapters', 'Chapters', 'text'], ['preview', 'Preview line', 'area'], ['cta', 'CTA button', 'text'], ['img', 'Cover image', 'img']],
     native: [['brand', 'Brand', 'text'], ['heading', 'Headline', 'text'], ['body', 'Body', 'area'], ['cta', 'CTA button', 'text'], ['image', 'Image', 'img']],
     embed: [['brand', 'Network / label', 'text'], ['title', 'Internal label', 'text'], ['code', 'Ad network code (script / HTML)', 'area']],
     follow: [['name', 'Display name', 'text'], ['handle', 'Handle', 'text'], ['tagline', 'Tagline', 'text'], ['headline', 'Headline', 'text'], ['body', 'Body', 'area'], ['cta', 'Follow button', 'text'], ['avatar', 'Avatar', 'img'], ['cover', 'Cover image', 'img']],
@@ -139,7 +162,7 @@
 
   /* Spot creative types the setup wizard + ad manager understand. */
   var SPOT_KINDS = [
-    { id: 'story', label: 'A story', icon: 'fa-book-open', desc: 'Poster takeover for a series' },
+    { id: 'story', label: 'A story', icon: 'fa-book-open', desc: 'Poster takeover for a story' },
     { id: 'user', label: 'A creator', icon: 'fa-user', desc: 'Grow an author\'s followers' },
     { id: 'board', label: 'Top 3 leaderboard', icon: 'fa-trophy', desc: 'Writers or readers — status-style slides' },
     { id: 'promo', label: 'Promotion / link', icon: 'fa-gift', desc: 'Any offer — e.g. refer a friend, earn coins' },
@@ -156,25 +179,18 @@
   ];
 
   var TOTAL_READERS = 2400000;
-  var SEGMENTS = [
-    { id: 'top-tippers', label: 'Top Tippers', icon: 'fa-coins', color: '#f0a800', desc: 'Tipped a writer in the last 30 days — proven spenders.', reach: 184000, rule: { signal: 'tip_sent', windowDays: 30, op: 'gte', value: 1 } },
-    { id: 'super-reactors', label: 'Super Reactors', icon: 'fa-heart', color: '#ff0050', desc: '50+ reactions in 30 days — the loudest engagers.', reach: 642000, rule: { signal: 'reactions', windowDays: 30, op: 'gte', value: 50 } },
-    { id: 'commentators', label: 'Commentators', icon: 'fa-comments', color: '#38bdf8', desc: '10+ comments in 30 days — discussion drivers.', reach: 388000, rule: { signal: 'comments', windowDays: 30, op: 'gte', value: 10 } },
-    { id: 'sharers', label: 'Sharers', icon: 'fa-share-nodes', color: '#34d399', desc: 'Shared 3+ stories — organic amplifiers.', reach: 296000, rule: { signal: 'shares', windowDays: 90, op: 'gte', value: 3 } },
-    { id: 'savers', label: 'Savers', icon: 'fa-bookmark', color: '#60a5fa', desc: '20+ saved stories — library builders with intent.', reach: 514000, rule: { signal: 'saves', windowDays: 90, op: 'gte', value: 20 } },
-    { id: 'unlockers', label: 'Chapter Unlockers', icon: 'fa-lock-open', color: '#d97706', desc: 'Unlocked 3+ chapters — pay for content already.', reach: 228000, rule: { signal: 'chapters_unlocked', windowDays: 90, op: 'gte', value: 3 } },
-    { id: 'coin-buyers', label: 'Coin Buyers', icon: 'fa-wallet', color: '#a78bfa', desc: 'Bought coins in the last 90 days — wallet open.', reach: 176000, rule: { signal: 'coin_purchase', windowDays: 90, op: 'gte', value: 1 } },
-    { id: 'premium', label: 'Premium Members', icon: 'fa-crown', color: '#fbbf24', desc: 'Active subscription — highest lifetime value.', reach: 96000, rule: { signal: 'subscription_active', op: 'eq', value: true } },
-    { id: 'power-followers', label: 'Power Followers', icon: 'fa-user-group', color: '#f472b6', desc: 'Follows 25+ accounts — discovery hungry.', reach: 342000, rule: { signal: 'following_count', op: 'gte', value: 25 } },
-    { id: 'binge-readers', label: 'Binge Readers', icon: 'fa-fire', color: '#ef4444', desc: '5+ hrs/week or a 10-day streak — always reading.', reach: 458000, rule: { signal: 'weekly_hours_or_streak', op: 'any', value: [5, 10] } },
-    { id: 'finishers', label: 'Finishers', icon: 'fa-circle-check', color: '#22c55e', desc: 'Completed 3+ books — commit to full stories.', reach: 524000, rule: { signal: 'books_finished', op: 'gte', value: 3 } },
-    { id: 'referrers', label: 'Referrers', icon: 'fa-user-plus', color: '#0ea5e9', desc: 'Brought 1+ converted reader — trusted voices.', reach: 88000, rule: { signal: 'referrals_converted', op: 'gte', value: 1 } },
-    { id: 'ad-responders', label: 'Ad Responders', icon: 'fa-rectangle-ad', color: '#fb923c', desc: 'Clicked an ad in 30 days — proven to convert.', reach: 612000, rule: { signal: 'ad_click', windowDays: 30, op: 'gte', value: 1 } },
-    { id: 'winback', label: 'Win-back', icon: 'fa-moon', color: '#818cf8', desc: 'Dormant 30+ days — re-engagement plays.', reach: 734000, rule: { signal: 'days_since_active', op: 'gte', value: 30 } },
-    { id: 'newcomers', label: 'Newcomers', icon: 'fa-seedling', color: '#4ade80', desc: 'Joined in the last 14 days — onboarding window.', reach: 142000, rule: { signal: 'account_age_days', op: 'lte', value: 14 } },
-    { id: 'lapsed-subscribers', label: 'Lapsed Subscribers', icon: 'fa-ticket', color: '#f97316', desc: 'Held Daily/Weekly/Monthly before but not subscribed now — win them back.', reach: 64000, rule: { signal: 'had_subscription', op: 'eq', value: true } },
-    { id: 'writers', label: 'Writers', icon: 'fa-feather-pointed', color: '#e879f9', desc: 'Verified authors — for tools, promos, services.', reach: 28000, rule: { signal: 'is_writer', op: 'eq', value: true } },
-  ];
+  /* The segment catalog lives in one place — services/audience-rules.js —
+     so the Ad Manager editor, ad setup and the client matcher cannot drift
+     apart. Nothing here copies it. */
+  function segments() {
+    return (window.DroboardAudienceRules && window.DroboardAudienceRules.all()) || [];
+  }
+  /* Retired segments still count toward an existing ad's estimate — the ad
+     keeps serving to them, so hiding them from the picker must not quietly
+     shrink the reach shown on its review step. */
+  function segmentsKnown() {
+    return (window.DroboardAudienceRules && window.DroboardAudienceRules.all({ includeRetired: true })) || segments();
+  }
 
   var GENRES = [
     { name: 'Romance', count: 428000 },
@@ -217,7 +233,7 @@
     var genres = sel.genres || [];
     var countries = sel.countries || [];
     var SEG_MAP = {};
-    SEGMENTS.forEach(function (s) { SEG_MAP[s.id] = s; });
+    segmentsKnown().forEach(function (s) { SEG_MAP[s.id] = s; });
     var sum = 0, sets = 0;
     segIds.forEach(function (id) { if (SEG_MAP[id]) { sum += SEG_MAP[id].reach; sets++; } });
     genres.forEach(function (g) {
@@ -237,15 +253,16 @@
   }
 
   function segmentLabel(id) {
-    for (var i = 0; i < SEGMENTS.length; i++) {
-      if (SEGMENTS[i].id === id) return SEGMENTS[i].label;
+    var list = segments();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) return list[i].label;
     }
     return id;
   }
 
-  /* Live reach: pull /api/marketing/audience-catalog and patch the demo
-     numbers in place (same array refs, so ad-setup screens pick it up).
-     Anonymous/offline -> demo figures stand. */
+  /* Live reach: pull /api/marketing/audience-catalog and cache the counts
+     in the audience-rules store, which merges them over the definitions.
+     Anonymous/offline -> the seeded figures stand. */
   function refreshCatalog() {
     try {
       return fetch('/api/marketing/audience-catalog', { credentials: 'include' }).then(function (r) {
@@ -253,11 +270,11 @@
         return r.json();
       }).then(function (j) {
         if (!j) return;
-        (j.segments || []).forEach(function (s) {
-          for (var i = 0; i < SEGMENTS.length; i++) {
-            if (SEGMENTS[i].id === s.id && s.reach != null) SEGMENTS[i].reach = s.reach;
-          }
-        });
+        if (window.DroboardAudienceRules) {
+          var byId = {};
+          (j.segments || []).forEach(function (s) { if (s.id && s.reach != null) byId[s.id] = s.reach; });
+          DroboardAudienceRules.setReach(byId);
+        }
         if (Array.isArray(j.genres) && j.genres.length) {
           GENRES.length = 0;
           j.genres.forEach(function (g) { if (g.name) GENRES.push({ name: g.name, count: g.count || 0 }); });
@@ -276,7 +293,7 @@
      right card format, so setup feels guided (Facebook-style) while the
      engine underneath stays format-driven. */
   var GOALS = [
-    { id: 'story', label: 'Promote a story', icon: 'fa-book-open', desc: 'Gold book card for a chapter or series', format: 'book' },
+    { id: 'story', label: 'Promote a story', icon: 'fa-book-open', desc: 'Gold book card for a chapter or story', format: 'book' },
     { id: 'author', label: 'Promote an author', icon: 'fa-user-plus', desc: 'Rich follow card that grows followers', format: 'follow' },
     { id: 'offer', label: 'Sell coins or subscriptions', icon: 'fa-coins', desc: 'Platform card linked to a Finance offer', format: 'platform' },
     { id: 'sponsored', label: 'Sponsored content', icon: 'fa-newspaper', desc: 'Native in-feed post from a brand', format: 'native' },
@@ -289,16 +306,62 @@
     { id: 'network', label: 'Run a network tag', icon: 'fa-code', desc: 'Paste an AdSense / Adsterra / Monetag tag', format: 'embed' },
   ];
 
+  /* The surface list the campaign wizard sells against. Same ids as the ad
+     setup checkboxes and the `data-ad-slot` markers, so a campaign's
+     entitlement and an ad's placement are the same vocabulary — a campaign
+     that says "Genre Hub" constrains ad setup to genreHub, nothing else.
+     (campaigns-page-service.js + campaign-wizard.js consume this.) */
+  var SURFACE_ICONS = {
+    discover: 'fa-compass', feed: 'fa-rss', genreHub: 'fa-layer-group', library: 'fa-bookmark',
+    store: 'fa-coins', story: 'fa-link', bookReader: 'fa-book-open', home: 'fa-house',
+    fullReader: 'fa-book-open', scrollReader: 'fa-book', comments: 'fa-comment-dots',
+    discussion: 'fa-comments', debate: 'fa-scale-balanced', droboardPage: 'fa-hashtag',
+    collection: 'fa-layer-group', followers: 'fa-user-group', profile: 'fa-circle-user',
+    genreStories: 'fa-list-ol', leaderboard: 'fa-ranking-star', blog: 'fa-blog',
+    notifications: 'fa-bell', search: 'fa-magnifying-glass', status: 'fa-circle-notch',
+  };
+  var CAMPAIGN_SURFACES = PAGES.map(function (p) {
+    var slots = pageSlots(p.id);
+    return {
+      id: p.id, label: p.label, icon: SURFACE_ICONS[p.id] || 'fa-rectangle-ad',
+      desc: slots.length
+        ? slots.length + ' slot' + (slots.length === 1 ? '' : 's') + ': ' + slots.map(function (s) { return s.label; }).join(', ')
+        : 'Page-level targeting only (no slot picker)',
+    };
+  });
+  /* Legacy campaign placement ids (pre-registry rows) -> surface ids. Old
+     campaigns still display, and their entitlement still constrains ad setup
+     where the mapping is unambiguous. */
+  var LEGACY_SURFACE_ALIAS = {
+    'genre-hub': 'genreHub', 'end-of-story': 'fullReader', 'homepage': 'home',
+    'social-feed': 'feed', 'status-stories': 'status',
+  };
+  function surfaceFromLegacy(id) { return LEGACY_SURFACE_ALIAS[id] || id; }
+  /* Every slot id a campaign entitlement covers (all slots of the page when
+     the campaign only recorded a page). */
+  function campaignSlotIds(pages) {
+    var out = [];
+    (pages || []).forEach(function (raw) {
+      var pid = surfaceFromLegacy(raw);
+      if (String(raw).indexOf(':') !== -1) { if (out.indexOf(raw) === -1) out.push(raw); return; }
+      pageSlots(pid).forEach(function (s) { if (out.indexOf(s.id) === -1) out.push(s.id); });
+    });
+    return out;
+  }
+
   window.AdSetupData = {
     GOALS: GOALS,
     FORMATS: FORMATS,
     PAGES: PAGES,
     PAGE_SLOTS: PAGE_SLOTS,
+    CAMPAIGN_SURFACES: CAMPAIGN_SURFACES,
+    surfaceFromLegacy: surfaceFromLegacy,
+    campaignSlotIds: campaignSlotIds,
     FIELDS: FIELDS,
     SPOT_KINDS: SPOT_KINDS,
     SPOT_BOARD_TYPES: SPOT_BOARD_TYPES,
     SPOT_PERIODS: SPOT_PERIODS,
-    SEGMENTS: SEGMENTS,
+    segments: segments,
     GENRES: GENRES,
     TRACKED_COUNTRIES: TRACKED_COUNTRIES,
     TOTAL_READERS: TOTAL_READERS,

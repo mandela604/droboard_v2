@@ -23,7 +23,7 @@ public class DroWindowPlugin extends Plugin {
 
     @PluginMethod
     public void setBackgroundColor(PluginCall call) {
-        final String color = call.getString("color", "#F9EDE3");
+        final String color = call.getString("color", "#FFFFFF");
         final int rgb;
         try {
             rgb = Color.parseColor(color);
@@ -35,15 +35,20 @@ public class DroWindowPlugin extends Plugin {
             try {
                 getActivity().getWindow().setBackgroundDrawable(new ColorDrawable(rgb));
                 getActivity().getWindow().getDecorView().setBackgroundColor(rgb);
-                try {
-                    getActivity().getWindow().setNavigationBarColor(rgb);
-                } catch (Exception ignored) {}
                 boolean lightBg = ColorUtils.calculateLuminance(rgb) > 0.5;
                 WindowInsetsControllerCompat ctrl = WindowCompat.getInsetsController(
                     getActivity().getWindow(),
                     getActivity().getWindow().getDecorView()
                 );
-                ctrl.setAppearanceLightNavigationBars(lightBg);
+                // Icon contrast follows the strip we just painted. This only
+                // flips a flag — it changes no metrics.
+                //
+                // Deliberately NOT touching the navigation-bar color or its
+                // appearance here: on Android 15+ that re-dispatches window
+                // insets, which resizes the WebView, which reflows every
+                // 100vh-based section on the page. Recoloring the strip must
+                // never move the layout.
+                ctrl.setAppearanceLightStatusBars(lightBg);
                 JSObject ret = new JSObject();
                 ret.put("ok", true);
                 ret.put("color", color);

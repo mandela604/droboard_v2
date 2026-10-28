@@ -39,7 +39,7 @@
 
   var WRITERS = {
     last_week: [
-      w('Ada Writes', 'Ada_Writes', 'https://i.pravatar.cc/200?img=32', '1.4M', '3', 'Season of Betrayal · Betrayal series'),
+      w('Ada Writes', 'Ada_Writes', 'https://i.pravatar.cc/200?img=32', '1.4M', '3', 'Season of Betrayal · Betrayal story'),
       w('Ifeanyi Story', 'Ifeanyi_Story', 'https://i.pravatar.cc/200?img=53', '980k', '5', 'Claimed by the Alpha · updates Fridays'),
       w('Luna Grey', 'Luna_Grey', 'https://i.pravatar.cc/200?img=25', '862k', '4', 'His Sweet Revenge · new chapter Sunday'),
     ],
@@ -54,7 +54,7 @@
       w('Efe O', 'Efe_O', 'https://i.pravatar.cc/200?img=12', '356k', '4', 'The Quiet Twin · mystery'),
     ],
     month: [
-      w('Ada Writes', 'Ada_Writes', 'https://i.pravatar.cc/200?img=32', '3.1M', '3', 'Betrayal series · 1.2M reads'),
+      w('Ada Writes', 'Ada_Writes', 'https://i.pravatar.cc/200?img=32', '3.1M', '3', 'Betrayal story · 1.2M reads'),
       w('Ifeanyi Story', 'Ifeanyi_Story', 'https://i.pravatar.cc/200?img=53', '2.6M', '5', 'Werewolf romance · 5 books'),
       w('Chiamaka N', 'Chiamaka_N', 'https://i.pravatar.cc/200?img=47', '2.2M', '7', 'Billionaire contracts · campus drama'),
     ],

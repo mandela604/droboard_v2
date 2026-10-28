@@ -227,10 +227,24 @@
       + _metrics(n) + _chips(n) + _link(n) + '</div>';
   }
 
+  /* Award colors come from the Super Admin catalog (named or hex). */
+  const AWARD_HEX = { gold: '#d4a017', red: '#e0384d', blue: '#2f7de1', purple: '#5b4bcf',
+    green: '#16a34a', pink: '#ff0050', orange: '#d97706' };
+  function _awardHex(n) {
+    return AWARD_HEX[n.color] || (/^#[0-9a-f]{6}$/i.test(n.color || '') ? n.color : '');
+  }
+  function _medal(n) {
+    const hex = _awardHex(n);
+    if (!hex) return '<div class="dn-medal ' + _esc(n.tierClass || '') + '"><i class="fas ' + _esc(n.iconName || 'fa-trophy') + '"></i></div>';
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return '<div class="dn-medal" style="background:radial-gradient(circle at 35% 30%,' + hex + '33,rgba(' + r + ',' + g + ',' + b + ',.5));color:' + hex + ';box-shadow:0 3px 10px rgba(' + r + ',' + g + ',' + b + ',.26)"><i class="fas ' + _esc(n.iconName || 'fa-award') + '"></i></div>';
+  }
+
   function _achievement(n) {
+    const hex = _awardHex(n);
     return '<div class="dn-card dn-ach' + (n.unread ? ' unread' : '') + '" data-dn-id="' + _esc(n.id) + '">'
-      + '<div class="dn-medal ' + _esc(n.tierClass || '') + '"><i class="fas ' + _esc(n.iconName || 'fa-trophy') + '"></i></div>'
-      + '<div class="dn-body"><div class="dn-tier">' + _esc(n.tier || 'Achievement unlocked') + '</div>'
+      + _medal(n)
+      + '<div class="dn-body"><div class="dn-tier"' + (hex ? ' style="color:' + hex + '"' : '') + '>' + _esc(n.tier || 'Achievement unlocked') + '</div>'
       + '<div class="dn-title">' + _rich(n.title) + '</div>'
       + (n.desc ? '<div class="dn-desc">' + _rich(n.desc) + '</div>' : '')
       + _chips(n) + '<div class="dn-time">' + _esc(n.time) + '</div></div>'

@@ -170,7 +170,7 @@ a{color:inherit;text-decoration:none}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 
@@ -231,6 +231,8 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
+<div data-ad-slot="notifications:in-feed" data-ad-format="minibanner" style="padding:0 16px;max-width:560px;margin:0 auto"></div>
+
 <div class="content" id="feed"></div>
 
 <div class="sheet-overlay" id="settingsSheet">
@@ -245,12 +247,18 @@ a{color:inherit;text-decoration:none}
 </div>
 
 <script src="../data/central-demo-data.js"></script>
+<script src="../component/ad-card.js?v=6"></script>
+<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
+<script src="../component/ad-slot.js?v=2"></script>
 <script src="../component/bottom-nav.js"></script>
-<script src="../component/notification-item.js?v=1"></script>
+<script src="../component/notification-item.js?v=2"></script>
 <script src="../services/league-service.js"></script>
 <script src="../services/status-service.js"></script>
-<script src="../services/notification-store.js?v=5"></script>
-<script src="../services/notification-page-service.js?v=8"></script>
+<script src="../super-admin/data/admin-demo-data.js"></script>
+<script src="../super-admin/awards-service.js"></script>
+<script src="../services/notification-store.js?v=6"></script>
+<script src="../services/notification-page-service.js?v=9"></script>
 <script>NotifPageService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

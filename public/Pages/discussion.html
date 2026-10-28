@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#ffffff"/>
 <title>Discussion · DroBoard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
@@ -95,7 +95,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/app-nav.js"></script>
+<script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
@@ -111,6 +111,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   <div id="opMount"></div>
 
   <div class="comments-wrap">
+    <div data-ad-slot="discussion:inline" data-ad-format="minibanner" style="padding:6px 14px 2px"></div>
     <div id="commentsPlaceholder"></div>
   </div>
 </div>
@@ -122,22 +123,24 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="../data/comments-data.js"></script>
 <script src="../services/feed-data.js"></script>
 <script src="../component/reaction-picker.js"></script>
-<script src="../component/ad-card.js?v=4"></script>
+<script src="../component/ad-card.js?v=6"></script>
 <script src="../component/share-modal.js"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/status-viewer.js?v=10"></script>
-<script src="../component/status-ring.js?v=1"></script>
+<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/status-ring.js?v=4"></script>
+  <script src="../services/status-service.js?v=7"></script>
 <script src="../shared/status-loader.js"></script>
-<script src="../component/comment-section.js?v=9"></script>
+<script src="../component/comment-section.js?v=11"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../marketing/shared/marketing-data.js"></script>
-<script src="../services/audience-service.js"></script>
+<script src="../services/audience-rules.js?v=2"></script>
+<script src="../services/audience-service.js?v=3"></script>
 <script src="../services/ad-service.js?v=4"></script>
-<script src="../services/ad-revenue-service.js?v=2"></script>
+<script src="../services/ad-revenue-service.js?v=5"></script>
 <script src="../component/ad-slot.js?v=2"></script>
 <script src="../services/auth-session.js"></script>
 <script src="../services/league-service.js"></script>
-<script src="../services/discussion-service.js?v=1"></script>
+<script src="../services/discussion-service.js?v=2"></script>
 <script>DiscussionPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

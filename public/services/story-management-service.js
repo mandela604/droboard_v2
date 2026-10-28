@@ -1,6 +1,6 @@
 /* ===============================================================
    STORY MANAGEMENT SERVICE
-   Series manager data + render/mutation/charts (verbatim move from story-management.html). Auto-initializes on load.
+   Story manager data + render/mutation/charts (verbatim move from story-management.html). Auto-initializes on load.
    When going live: set USE_API = true, update API_BASE.
    =============================================================== */
 (function () {
@@ -11,7 +11,7 @@
 
 
 /* ── DATA ── */
-const SERIES_DATA = [
+const STORIES = [
   {
     id:'s1',
     cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
@@ -122,12 +122,12 @@ const SERIES_DATA = [
   }
 ];
 
-let activeSeries = null;
+let activeStory = null;
 let _confirmCb = null;
 let _chEditId = null;
-let _editingSeriesStatus = 'ongoing';
+let _editingStoryStatus = 'ongoing';
 
-/* ─ get series id from URL or default to s1 ─ */
+/* ─ get story id from URL or default to s1 ─ */
 function getUrlSid() {
   const p = new URLSearchParams(location.search);
   return p.get('sid') || 's1';
@@ -160,21 +160,21 @@ function calcWords(ch) {
   return ch.words || 0;
 }
 
-/* ── SERIES SELECTOR BAR ── */
+/* ── STORY SELECTOR BAR ── */
 function renderSelector() {
-  const bar = document.getElementById('seriesSelector');
-  bar.innerHTML = SERIES_DATA.map(s => `
-    <div class="ss-item${s.id===activeSeries.id?' active':''}" onclick="loadSeries('${s.id}')">
+  const bar = document.getElementById('storySelector');
+  bar.innerHTML = STORIES.map(s => `
+    <div class="ss-item${s.id===activeStory.id?' active':''}" onclick="loadStory('${s.id}')">
       <div class="ss-item-cover" style="background-image:url('${s.cover}')"></div>
       <span class="ss-item-name">${s.title}</span>
     </div>
-  `).join('') + `<div class="ss-add" onclick="toast('📝 Create new series…')"><i class="fas fa-plus" style="font-size:10px"></i> New Series</div>`;
+  `).join('') + `<div class="ss-add" onclick="toast('📝 Create new story…')"><i class="fas fa-plus" style="font-size:10px"></i> New Story</div>`;
 }
 
-/* ── LOAD SERIES ── */
-function loadSeries(sid) {
-  activeSeries = SERIES_DATA.find(s => s.id === sid) || SERIES_DATA[0];
-  document.getElementById('topTitle').textContent = 'Series Manager';
+/* ── LOAD STORY ── */
+function loadStory(sid) {
+  activeStory = STORIES.find(s => s.id === sid) || STORIES[0];
+  document.getElementById('topTitle').textContent = 'Story Manager';
   renderSelector();
   renderContent();
   history.replaceState(null,'','?sid='+sid);
@@ -182,7 +182,7 @@ function loadSeries(sid) {
 
 /* ── MAIN CONTENT RENDER ── */
 function renderContent() {
-  const s = activeSeries;
+  const s = activeStory;
   const statusBadgeClass = s.status==='ongoing'?'sb-ongoing':s.status==='complete'?'sb-complete':'sb-paused';
   const statusLabel = s.status==='ongoing'?'Ongoing':s.status==='complete'?'Complete':'Paused';
 
@@ -193,8 +193,8 @@ function renderContent() {
 
   document.getElementById('mainContent').innerHTML = `
 
-    <!-- SERIES INFO CARD -->
-    <div class="series-info-card">
+    <!-- STORY INFO CARD -->
+    <div class="story-info-card">
       <div class="sic-hero" onclick="triggerCoverUpload()" title="Change cover photo">
         <img class="sic-hero-img" src="${s.cover}" id="sic-cover-img" loading="lazy" alt=""/>
         <div class="sic-hero-grad"></div>
@@ -209,8 +209,8 @@ function renderContent() {
 
         <div class="sic-fields">
           <div class="sic-field">
-            <div class="sic-label">Series Title</div>
-            <input class="sic-input" id="sic-title-input" value="${s.title.replace(/"/g,'&quot;')}" placeholder="Series title…"/>
+            <div class="sic-label">Story Title</div>
+            <input class="sic-input" id="sic-title-input" value="${s.title.replace(/"/g,'&quot;')}" placeholder="Story title…"/>
           </div>
           <div class="sic-field">
             <div class="sic-label">Tagline / Description</div>
@@ -229,20 +229,20 @@ function renderContent() {
             </div>
           </div>
           <div class="sic-field">
-            <div class="sic-label">Series Status</div>
+            <div class="sic-label">Story Status</div>
             <div class="status-toggle-row" id="statusToggleRow">
-              <button class="status-btn${s.status==='ongoing'?' active-ongoing':''}" data-status="ongoing" onclick="setSeriesStatus('ongoing',this)"><i class="fas fa-pen" style="font-size:9px;margin-right:4px"></i>Ongoing</button>
-              <button class="status-btn${s.status==='complete'?' active-complete':''}" data-status="complete" onclick="setSeriesStatus('complete',this)"><i class="fas fa-check" style="font-size:9px;margin-right:4px"></i>Complete</button>
-              <button class="status-btn${s.status==='paused'?' active-paused':''}" data-status="paused" onclick="setSeriesStatus('paused',this)"><i class="fas fa-pause" style="font-size:9px;margin-right:4px"></i>Paused</button>
+              <button class="status-btn${s.status==='ongoing'?' active-ongoing':''}" data-status="ongoing" onclick="setStoryStatus('ongoing',this)"><i class="fas fa-pen" style="font-size:9px;margin-right:4px"></i>Ongoing</button>
+              <button class="status-btn${s.status==='complete'?' active-complete':''}" data-status="complete" onclick="setStoryStatus('complete',this)"><i class="fas fa-check" style="font-size:9px;margin-right:4px"></i>Complete</button>
+              <button class="status-btn${s.status==='paused'?' active-paused':''}" data-status="paused" onclick="setStoryStatus('paused',this)"><i class="fas fa-pause" style="font-size:9px;margin-right:4px"></i>Paused</button>
             </div>
           </div>
         </div>
 
-        <button class="sic-save-btn" onclick="saveSeriesInfo()"><i class="fas fa-floppy-disk" style="font-size:12px;margin-right:6px"></i>Save Changes</button>
+        <button class="sic-save-btn" onclick="saveStoryInfo()"><i class="fas fa-floppy-disk" style="font-size:12px;margin-right:6px"></i>Save Changes</button>
 
         <div class="sic-danger-row">
-          <button class="sic-danger-btn pause" onclick="pauseSeries()"><i class="fas fa-pause" style="font-size:10px;margin-right:4px"></i>Pause Series</button>
-          <button class="sic-danger-btn delete" onclick="confirmDeleteSeries()"><i class="fas fa-trash" style="font-size:10px;margin-right:4px"></i>Delete Series</button>
+          <button class="sic-danger-btn pause" onclick="pauseStory()"><i class="fas fa-pause" style="font-size:10px;margin-right:4px"></i>Pause Story</button>
+          <button class="sic-danger-btn delete" onclick="confirmDeleteStory()"><i class="fas fa-trash" style="font-size:10px;margin-right:4px"></i>Delete Story</button>
         </div>
       </div>
     </div>
@@ -287,14 +287,14 @@ function renderContent() {
     </div>
   `;
 
-  _editingSeriesStatus = s.status;
+  _editingStoryStatus = s.status;
   renderChapters();
   renderCharts();
 }
 
 /* ── CHAPTER LIST RENDER ── */
 function renderChapters() {
-  const s = activeSeries;
+  const s = activeStory;
   const list = document.getElementById('chapterList');
   if (!list) return;
   if (s.chapters.length === 0) {
@@ -352,7 +352,7 @@ function initDragDrop() {
       if (dragSrc && item !== dragSrc) {
         const fromIdx = parseInt(dragSrc.dataset.idx);
         const toIdx = parseInt(item.dataset.idx);
-        const chapters = activeSeries.chapters;
+        const chapters = activeStory.chapters;
         const moved = chapters.splice(fromIdx, 1)[0];
         chapters.splice(toIdx, 0, moved);
         chapters.forEach((c, i) => c.num = i + 1);
@@ -364,27 +364,27 @@ function initDragDrop() {
   });
 }
 
-/* ── SERIES STATUS ── */
-function setSeriesStatus(status, btn) {
-  _editingSeriesStatus = status;
+/* ── STORY STATUS ── */
+function setStoryStatus(status, btn) {
+  _editingStoryStatus = status;
   document.querySelectorAll('.status-btn').forEach(b => {
     b.className = 'status-btn';
     if (b.dataset.status === status) b.classList.add('active-' + status);
   });
 }
 
-/* ── SAVE SERIES INFO ── */
-function saveSeriesInfo() {
+/* ── SAVE STORY INFO ── */
+function saveStoryInfo() {
   const title = document.getElementById('sic-title-input').value.trim();
-  if (!title) { toast('✍️ Series title can\'t be empty!'); return; }
+  if (!title) { toast('✍️ Story title can\'t be empty!'); return; }
 
   const cat = document.getElementById('sic-cat-select').value;
   const tagline = document.getElementById('sic-tagline-input').value.trim();
 
-  activeSeries.title = title;
-  activeSeries.cat = cat;
-  activeSeries.tagline = tagline;
-  activeSeries.status = _editingSeriesStatus;
+  activeStory.title = title;
+  activeStory.cat = cat;
+  activeStory.tagline = tagline;
+  activeStory.status = _editingStoryStatus;
   /* seasons is read-only, derived from chapter season numbers in backend */
 
   const td = document.getElementById('sic-title-display');
@@ -395,11 +395,11 @@ function saveSeriesInfo() {
   if (sd) {
     const labels = {ongoing:'Ongoing',complete:'Complete',paused:'Paused'};
     const classes = {ongoing:'sb-ongoing',complete:'sb-complete',paused:'sb-paused'};
-    sd.textContent = labels[_editingSeriesStatus];
-    sd.className = 'sic-status-badge ' + classes[_editingSeriesStatus];
+    sd.textContent = labels[_editingStoryStatus];
+    sd.className = 'sic-status-badge ' + classes[_editingStoryStatus];
   }
   renderSelector();
-  toast('✅ Series info saved!');
+  toast('✅ Story info saved!');
 }
 
 /* ── COVER UPLOAD ── */
@@ -413,7 +413,7 @@ function handleCoverFileSelect(input) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const url = e.target.result;
-    activeSeries.cover = url;
+    activeStory.cover = url;
     const img = document.getElementById('sic-cover-img');
     if (img) img.src = url;
     renderSelector();
@@ -423,45 +423,45 @@ function handleCoverFileSelect(input) {
   input.value = '';
 }
 
-/* ── PAUSE SERIES ── */
-function pauseSeries() {
-  activeSeries.status = 'paused';
-  _editingSeriesStatus = 'paused';
+/* ── PAUSE STORY ── */
+function pauseStory() {
+  activeStory.status = 'paused';
+  _editingStoryStatus = 'paused';
   document.querySelectorAll('.status-btn').forEach(b => {
     b.className = 'status-btn';
     if (b.dataset.status === 'paused') b.classList.add('active-paused');
   });
   const sd = document.getElementById('sic-status-display');
   if (sd) { sd.textContent = 'Paused'; sd.className = 'sic-status-badge sb-paused'; }
-  toast('⏸️ Series paused.');
+  toast('⏸️ Story paused.');
 }
 
-/* ── DELETE SERIES ── */
-function confirmDeleteSeries() {
+/* ── DELETE STORY ── */
+function confirmDeleteStory() {
   openConfirm(
     '🗑️',
-    'Delete entire series?',
-    `"${activeSeries.title.substring(0,48)}…" and all ${activeSeries.chapters.length} chapters will be permanently deleted.`,
+    'Delete entire story?',
+    `"${activeStory.title.substring(0,48)}…" and all ${activeStory.chapters.length} chapters will be permanently deleted.`,
     () => {
-      const idx = SERIES_DATA.findIndex(s => s.id === activeSeries.id);
-      if (idx > -1) SERIES_DATA.splice(idx, 1);
-      if (SERIES_DATA.length === 0) {
-        toast('Series deleted. No more series.');
-        document.getElementById('mainContent').innerHTML = '<div class="empty-state" style="padding:40px 0"><i class="fas fa-tv"></i><p>No series yet. Create one!</p></div>';
-        document.getElementById('seriesSelector').innerHTML = '';
+      const idx = STORIES.findIndex(s => s.id === activeStory.id);
+      if (idx > -1) STORIES.splice(idx, 1);
+      if (STORIES.length === 0) {
+        toast('Story deleted. No more stories.');
+        document.getElementById('mainContent').innerHTML = '<div class="empty-state" style="padding:40px 0"><i class="fas fa-tv"></i><p>No stories yet. Create one!</p></div>';
+        document.getElementById('storySelector').innerHTML = '';
         return;
       }
-      loadSeries(SERIES_DATA[0].id);
-      toast('🗑️ Series deleted.');
+      loadStory(STORIES[0].id);
+      toast('🗑️ Story deleted.');
     },
-    'Delete Series',
+    'Delete Story',
     'confirm-delete'
   );
 }
 
 /* ── CHAPTER EDIT ── */
 function openChEdit(cid) {
-  const ch = activeSeries.chapters.find(c => c.id === cid);
+  const ch = activeStory.chapters.find(c => c.id === cid);
   if (!ch) return;
   _chEditId = cid;
   document.getElementById('chEditTitle').textContent = `Edit Chapter ${ch.num}`;
@@ -557,7 +557,7 @@ function setCeStatus(st, btn) {
 }
 
 function handleDraftClick(cid, btn) {
-  const ch = activeSeries.chapters.find(c => c.id === cid);
+  const ch = activeStory.chapters.find(c => c.id === cid);
   if (!ch) return;
   if (ch.status === 'published') {
     /* Published → Draft: show confirmation modal */
@@ -600,7 +600,7 @@ function handleDraftClick(cid, btn) {
 }
 
 function handleScheduledClick(cid, btn) {
-  const ch = activeSeries.chapters.find(c => c.id === cid);
+  const ch = activeStory.chapters.find(c => c.id === cid);
   if (!ch) return;
   if (ch.status === 'published') {
     /* Can't schedule a published chapter */
@@ -612,7 +612,7 @@ function handleScheduledClick(cid, btn) {
 }
 
 function saveChEdit() {
-  const ch = activeSeries.chapters.find(c => c.id === _chEditId);
+  const ch = activeStory.chapters.find(c => c.id === _chEditId);
   if (!ch) return;
   if (ch.status === 'published') { toast('ℹ️ Published chapters are read-only'); return; }
 
@@ -652,7 +652,7 @@ function saveChEdit() {
 }
 
 function updateStatsMini() {
-  const s = activeSeries;
+  const s = activeStory;
   const totalReads = s.chapters.reduce((a,c)=>a+(c.reads||0),0);
   const pubCount = s.chapters.filter(c=>c.status==='published').length;
   const draftCount = s.chapters.filter(c=>c.status==='draft').length;
@@ -672,14 +672,14 @@ function closeChEdit() {
 
 /* ── ADD NEW CHAPTER → STORY EDITOR ── */
 function addNewChapter() {
-  const nextNum = activeSeries.chapters.length + 1;
+  const nextNum = activeStory.chapters.length + 1;
   openStoryEditor(nextNum);
 }
 
 function openStoryEditor(chNum) {
   closeChEdit();
   toast(`📝 Opening Story Editor · Chapter ${chNum}…`);
-  window.location.href = 'create.html?book=' + encodeURIComponent(activeSeries.id) + '&newChapter=1';
+  window.location.href = 'create.html?book=' + encodeURIComponent(activeStory.id) + '&newChapter=1';
 }
 
 /* ── DELETE CHAPTER ── */
@@ -689,8 +689,8 @@ function confirmDeleteChapter(cid, title) {
     'Delete this chapter?',
     `"${title}" will be permanently deleted and can't be recovered.`,
     () => {
-      activeSeries.chapters = activeSeries.chapters.filter(c => c.id !== cid);
-      activeSeries.chapters.forEach((c, i) => c.num = i + 1);
+      activeStory.chapters = activeStory.chapters.filter(c => c.id !== cid);
+      activeStory.chapters.forEach((c, i) => c.num = i + 1);
       renderChapters();
       renderCharts();
       updateStatsMini();
@@ -719,26 +719,26 @@ document.getElementById('confirmOkBtn').addEventListener('click', () => {
   closeConfirm();
 });
 
-/* ── SERIES SETTINGS ── */
-function openSeriesSettings() {
+/* ── STORY SETTINGS ── */
+function openStorySettings() {
   document.getElementById('settingsOv').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
-function closeSeriesSettings() {
+function closeStorySettings() {
   document.getElementById('settingsOv').classList.remove('open');
   document.body.style.overflow = '';
 }
 function toggleSetting(el) {
   el.classList.toggle('on');
 }
-function saveSeriesSettings() {
-  closeSeriesSettings();
-  toast('⚙️ Series settings saved!');
+function saveStorySettings() {
+  closeStorySettings();
+  toast('⚙️ Story settings saved!');
 }
 
 /* ── CHARTS ── */
 function renderCharts() {
-  const s = activeSeries;
+  const s = activeStory;
   const published = s.chapters.filter(c => c.reads > 0);
 
   const chartWrap = document.getElementById('viewsChart');
@@ -787,7 +787,7 @@ function renderCharts() {
 
 /* ── INIT ── */
 const initSid = getUrlSid();
-activeSeries = SERIES_DATA.find(s => s.id === initSid) || SERIES_DATA[0];
+activeStory = STORIES.find(s => s.id === initSid) || STORIES[0];
 renderSelector();
 renderContent();
 
@@ -800,16 +800,16 @@ renderContent();
   window.getStatusIcon = getStatusIcon;
   window.calcWords = calcWords;
   window.renderSelector = renderSelector;
-  window.loadSeries = loadSeries;
+  window.loadStory = loadStory;
   window.renderContent = renderContent;
   window.renderChapters = renderChapters;
   window.initDragDrop = initDragDrop;
-  window.setSeriesStatus = setSeriesStatus;
-  window.saveSeriesInfo = saveSeriesInfo;
+  window.setStoryStatus = setStoryStatus;
+  window.saveStoryInfo = saveStoryInfo;
   window.triggerCoverUpload = triggerCoverUpload;
   window.handleCoverFileSelect = handleCoverFileSelect;
-  window.pauseSeries = pauseSeries;
-  window.confirmDeleteSeries = confirmDeleteSeries;
+  window.pauseStory = pauseStory;
+  window.confirmDeleteStory = confirmDeleteStory;
   window.openChEdit = openChEdit;
   window.tryParseDate = tryParseDate;
   window.setCeStatus = setCeStatus;
@@ -823,15 +823,15 @@ renderContent();
   window.confirmDeleteChapter = confirmDeleteChapter;
   window.openConfirm = openConfirm;
   window.closeConfirm = closeConfirm;
-  window.openSeriesSettings = openSeriesSettings;
-  window.closeSeriesSettings = closeSeriesSettings;
+  window.openStorySettings = openStorySettings;
+  window.closeStorySettings = closeStorySettings;
   window.toggleSetting = toggleSetting;
-  window.saveSeriesSettings = saveSeriesSettings;
+  window.saveStorySettings = saveStorySettings;
   window.renderCharts = renderCharts;
-  try { Object.defineProperty(window, 'SERIES_DATA', { configurable: true, enumerable: true, get: function () { return SERIES_DATA; }, set: function (val) { SERIES_DATA = val; } }); } catch (e) { try { window['SERIES_DATA'] = SERIES_DATA; } catch (_) {} }
-  try { Object.defineProperty(window, 'activeSeries', { configurable: true, enumerable: true, get: function () { return activeSeries; }, set: function (val) { activeSeries = val; } }); } catch (e) { try { window['activeSeries'] = activeSeries; } catch (_) {} }
+  try { Object.defineProperty(window, 'STORIES', { configurable: true, enumerable: true, get: function () { return STORIES; }, set: function (val) { STORIES = val; } }); } catch (e) { try { window['STORIES'] = STORIES; } catch (_) {} }
+  try { Object.defineProperty(window, 'activeStory', { configurable: true, enumerable: true, get: function () { return activeStory; }, set: function (val) { activeStory = val; } }); } catch (e) { try { window['activeStory'] = activeStory; } catch (_) {} }
   try { Object.defineProperty(window, '_confirmCb', { configurable: true, enumerable: true, get: function () { return _confirmCb; }, set: function (val) { _confirmCb = val; } }); } catch (e) { try { window['_confirmCb'] = _confirmCb; } catch (_) {} }
   try { Object.defineProperty(window, '_chEditId', { configurable: true, enumerable: true, get: function () { return _chEditId; }, set: function (val) { _chEditId = val; } }); } catch (e) { try { window['_chEditId'] = _chEditId; } catch (_) {} }
-  try { Object.defineProperty(window, '_editingSeriesStatus', { configurable: true, enumerable: true, get: function () { return _editingSeriesStatus; }, set: function (val) { _editingSeriesStatus = val; } }); } catch (e) { try { window['_editingSeriesStatus'] = _editingSeriesStatus; } catch (_) {} }
+  try { Object.defineProperty(window, '_editingStoryStatus', { configurable: true, enumerable: true, get: function () { return _editingStoryStatus; }, set: function (val) { _editingStoryStatus = val; } }); } catch (e) { try { window['_editingStoryStatus'] = _editingStoryStatus; } catch (_) {} }
   try { Object.defineProperty(window, 'initSid', { configurable: true, enumerable: true, get: function () { return initSid; }, set: function (val) { initSid = val; } }); } catch (e) { try { window['initSid'] = initSid; } catch (_) {} }
 })();

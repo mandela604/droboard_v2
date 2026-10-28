@@ -22,7 +22,12 @@ const shell = MarketingSidebar.attach('#cmpRoot', {
    No page-level legend/explainer here anymore; the wizard's
    Setup step is the single place surfaces are picked/explained.
 ───────────────────────────────────────── */
-const PLACEMENTS = [
+/* Surfaces a campaign can buy. Same registry ad setup ticks and the pages
+   render as `data-ad-slot`, so a campaign's entitlement and a creative's
+   placement are the same ids. LEGACY_PLACEMENTS only decorates rows written
+   before that — their stored ids are translated on display and on edit. */
+const REG = window.AdSetupData || {};
+const LEGACY_PLACEMENTS = [
   { id:'discover',      label:'Homepage / Discover', icon:'fa-house',          desc:'Banner slider & popular grid' },
   { id:'search',        label:'Search Results',      icon:'fa-magnifying-glass', desc:'Surfaced among organic results' },
   { id:'feed',          label:'Social Feed',         icon:'fa-rss',            desc:'Native post in the feed tab' },
@@ -32,7 +37,10 @@ const PLACEMENTS = [
   { id:'end-of-story',  label:'End of Story',        icon:'fa-book-open',      desc:'"You may also like" after a chapter' },
   { id:'comments',      label:'Inside Comments',     icon:'fa-comment-dots',   desc:'Sponsored slot in comment threads' },
 ];
-const PLACEMENT_MAP = {}; PLACEMENTS.forEach(p => PLACEMENT_MAP[p.id] = p);
+const PLACEMENTS = (REG.CAMPAIGN_SURFACES && REG.CAMPAIGN_SURFACES.length) ? REG.CAMPAIGN_SURFACES : LEGACY_PLACEMENTS;
+const PLACEMENT_MAP = {};
+LEGACY_PLACEMENTS.forEach(p => { PLACEMENT_MAP[p.id] = p; });
+PLACEMENTS.forEach(p => { PLACEMENT_MAP[p.id] = p; });
 
 /* ─────────────────────────────────────────
    STORY LIBRARY — passed into CampaignWizard's story picker
@@ -90,8 +98,10 @@ async function init() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDetail(); closeDel(); } });
   attachDelegation();
 
-  // Deep link: campaigns.html?new=1 (dashboard quick action) opens the create wizard.
-  if (/(?:^|[?&])new=1(?:&|$)/.test(location.search)) openCreateWizard();
+  // Deep link: campaigns.html?new=1 (dashboard quick action). A campaign is
+  // now bought in Ad setup — step 1 there creates it — so send the user there
+  // instead of opening a second, competing creator.
+  if (/(?:^|[?&])new=1(?:&|$)/.test(location.search)) { location.href = 'ad-setup.html'; return; }
 }
 
 /* ─────────────────────────────────────────
@@ -218,7 +228,8 @@ function applyFilters() {
     const matchesStatus = activeStatus === 'all' || c.status === activeStatus;
     const searchable = [c.name, c.owner, c.storyTitle, c.storyAuthor, c.advertiserName].filter(Boolean).join(' ').toLowerCase();
     const matchesQ = !q || searchable.includes(q);
-    const matchesPlacement = !placement || (c.placements || []).includes(placement);
+    const matchesPlacement = !placement || (c.placements || []).some(id =>
+      (REG.surfaceFromLegacy ? REG.surfaceFromLegacy(id) : id) === placement);
     return matchesType && matchesStatus && matchesQ && matchesPlacement;
   });
 
@@ -334,6 +345,7 @@ function renderPage() {
         <button class="cmp-btn" data-act="edit" data-id="${c.id}"><i class="fas fa-pen"></i> Edit</button>
         <button class="cmp-btn" data-act="toggle" data-id="${c.id}"><i class="fas fa-${c.status === 'live' ? 'pause' : 'play'}"></i> ${c.status === 'live' ? 'Pause' : (c.status === 'paused' ? 'Resume' : 'Set Live')}</button>
         <button class="cmp-btn" data-act="ads" data-id="${c.id}"><i class="fas fa-rectangle-ad"></i> Ads</button>
+        <button class="cmp-btn${(creativeCounts[c.id] || 0) ? '' : ' accent'}" data-act="newad" data-id="${c.id}"><i class="fas fa-plus"></i> ${creativeCounts[c.id] ? 'Another creative' : 'Add creative'}</button>
         <button class="cmp-btn danger" data-act="delete" data-id="${c.id}"><i class="fas fa-trash"></i> Delete</button>
       </div>
     </div>`;
@@ -350,6 +362,8 @@ function renderPage() {
       if (act === 'delete') openDel(id);
       if (act === 'toggle') quickToggleStatus(id);
       if (act === 'ads') location.href = 'ad-manager.html?campaign=' + encodeURIComponent(id);
+      // The buy is on this page; the creative is made in Ad setup, pre-attached.
+      if (act === 'newad') location.href = 'ad-setup.html?campaign=' + encodeURIComponent(id);
     });
   });
 

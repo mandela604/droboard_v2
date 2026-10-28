@@ -58,6 +58,11 @@ router.get('/me', requireAuth, async (req, res) =>
 router.get('/me/reading-profile', requireAuth, generalLimiter, async (req, res) =>
   base.wrap(res, async () => require('../services/audience.service').readingProfile(req.user.id)));
 
+// Ad audience: which behavior segments this reader is in, counted from real
+// events — the same stored rules the marketing console edits.
+router.get('/me/audience', requireAuth, generalLimiter, async (req, res) =>
+  base.wrap(res, async () => require('../services/audience.service').audienceMe(req.user.id)));
+
 // FIX 1: self-update.
 router.patch('/me', requireAuth, writeLimiter,
   validate(z.object({ body: z.object({

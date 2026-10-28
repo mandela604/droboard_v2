@@ -192,7 +192,7 @@
   }
   const CAT_DESC = {
     highlights: 'Trending, top ten, editor picks, league finish, debate verdicts, settled predictions.',
-    achievements: 'Badges unlocked by your stats.',
+    achievements: 'Awards granted from the admin catalog and the weekly league.',
     stats: 'A 24-hour report for each of your statuses, plus weekly rollups.',
     activity: 'Likes, comments, replies, mentions, follows, shares, saves, reposts, debate arguments.',
     stories: 'New chapters from authors you follow; your drops going live.',

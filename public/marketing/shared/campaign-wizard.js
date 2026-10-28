@@ -12,7 +12,13 @@
  *     storyLibrary: [{ id, title, author, genre, cover }, ...],
  *     onSubmit: (payload) => { ... },   // called with the full campaign payload
  *     onCancel: () => { ... },          // optional
+ *     skipAudience: true,               // Ad setup owns targeting + creative:
+ *                                       // run Setup -> Estimate only
  *   });
+ *
+ * `placements` and `storyLibrary` default to the shared ad-surface registry
+ * (AdSetupData.CAMPAIGN_SURFACES) and DEFAULT_STORY_LIBRARY below, so callers
+ * normally pass neither — load shared/ad-setup-data.js alongside this file.
  *
  * Steps:
  *   1. Campaign Setup — name, objective, story (if applicable), surfaces,
@@ -57,10 +63,23 @@
   ];
   const OBJ_MAP = {}; OBJECTIVES.forEach(o => OBJ_MAP[o.id] = o);
 
-  /* Interests now carry an audience-size stat (shown in the dropdown option
-     AND on the selected tag once chosen), sourced from platform analytics.
-     Numbers are demo figures — wire up to your real interest-audience
-     endpoint when available. */
+  /* Story picker default — campaigns.html used to own this list; it lives here
+     now so Ad setup can open the same wizard without a second copy. */
+  const DEFAULT_STORY_LIBRARY = [
+    { id: 'ST-001', title: 'Bound by the Ruthless Alpha', author: 'Chioma Okafor', genre: 'Romance & Betrayal', cover: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg' },
+    { id: 'ST-002', title: "The CEO's Hidden Son", author: 'Luna Skye', genre: 'Billionaire & CEO', cover: 'https://i.postimg.cc/23WvkFLH/images-(2).jpg' },
+    { id: 'ST-003', title: "Wolf King's Vow", author: 'Elena Vasquez', genre: 'Werewolf & Fantasy', cover: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg' },
+    { id: 'ST-004', title: 'Betrayed by the Mafia Prince', author: 'Marcus Webb Jr.', genre: 'Mafia & Urban', cover: 'https://i.postimg.cc/WF1j4Pnh/6.jpg' },
+    { id: 'ST-005', title: "The Duke's Secret", author: 'Isabelle Moreau', genre: 'Historical & Regency', cover: 'https://i.postimg.cc/fkdXzjSj/wife.jpg' },
+    { id: 'ST-006', title: 'Revenge at the Ivy League', author: 'Wren Okonkwo', genre: 'Campus & Revenge', cover: 'https://i.postimg.cc/cgLZJNmC/8.jpg' },
+    { id: 'ST-007', title: 'The Runaway Bride in Socked Feet', author: 'Ifeanyi_Story', genre: 'Twist & Drama', cover: 'https://i.postimg.cc/tY7KnJyr/images.jpg' },
+    { id: 'ST-008', title: 'The Letter He Never Sent', author: 'Efe_O', genre: 'Elegy & Heartbreak', cover: 'https://i.postimg.cc/N9jY0w4m/5.jpg' },
+  ];
+
+  /* Interests ARE the platform's genre catalogue. AdSetupData.GENRES is
+     replaced in place by GET /api/marketing/audience-catalog, which counts
+     real readers per Book.genre — the genres the Chief Editor curates. The
+     frozen array below only stands in when that call fails (offline/404). */
   const INTERESTS_DATA = [
     { name: 'Romance',              count: 428000 },
     { name: 'Fantasy',              count: 312500 },
@@ -76,7 +95,11 @@
     { name: 'Dark Fiction',         count: 88300  },
     { name: 'Spiritual',            count: 54200  },
   ];
-  const INTERESTS = INTERESTS_DATA.map(i => i.name); // flat names, kept for backward compat
+  function interestOptions() {
+    const live = (window.AdSetupData && window.AdSetupData.GENRES) || [];
+    const src = (live && live.length) ? live : INTERESTS_DATA;
+    return src.map(i => ({ id: i.name, label: i.name, stat: i.count }));
+  }
 
   const COUNTRIES = ['All Countries', 'Nigeria', 'Ghana', 'Kenya', 'South Africa', 'United States', 'United Kingdom', 'Canada', 'India', 'Philippines'];
   const LANGUAGES = ['All Languages', 'English', 'French', 'Yoruba', 'Hausa', 'Igbo', 'Swahili', 'Pidgin'];
@@ -355,19 +378,33 @@
     else a[id] = val;
   }
 
-  /* Mock — but reactive — audience estimate calculation */
+  /* Reach comes from the live audience catalogue (real readers per genre,
+     real country share) whenever AdSetupData has it; the behavioural filters
+     below still narrow that number. Offline it falls back to the same
+     relative math it always used. */
   function estimateAudience(t) {
-    const BASE = 250000;
+    const REG = window.AdSetupData || {};
+    const TOTAL = REG.TOTAL_READERS || 2400000;
+    const codes = [];
+    if (t.country && t.country !== 'All Countries' && REG.TRACKED_COUNTRIES) {
+      const hit = REG.TRACKED_COUNTRIES.find(c => c.name === t.country);
+      if (hit) codes.push(hit.code);
+    }
+    const real = (REG.estimateAudience && typeof REG.TOTAL_READERS === 'number')
+      ? REG.estimateAudience({ genres: t.interests || [], countries: codes })
+      : null;
+
+    const BASE = real ? real.reach : 250000;
     let mult = 1;
     let activeFilters = 0;
 
-    if (t.interests.length) { mult *= Math.min(0.9, 0.3 + t.interests.length * 0.12); activeFilters++; }
+    if (t.interests.length) { if (!real) mult *= Math.min(0.9, 0.3 + t.interests.length * 0.12); activeFilters++; }
     if (t.similarStories) { mult *= 0.35; activeFilters++; }
     if (t.tippedLast30Days) { mult *= 0.18; activeFilters++; }
     if (t.unlockedChapters.enabled) { mult *= Math.max(0.15, Math.min(0.6, 1 - (t.unlockedChapters.min || 0) / 50)); activeFilters++; }
     if (t.readTime.enabled) { mult *= Math.max(0.2, Math.min(0.7, 1 - (t.readTime.hours || 0) / 20)); activeFilters++; }
     if (t.followersOfSimilarAuthors) { mult *= 0.45; activeFilters++; }
-    if (t.country && t.country !== 'All Countries') { mult *= 0.45; activeFilters++; }
+    if (t.country && t.country !== 'All Countries') { if (!real) mult *= 0.45; activeFilters++; }
     if (t.language && t.language !== 'All Languages') { mult *= 0.6; activeFilters++; }
     if (t.age.enabled) { mult *= 0.55; activeFilters++; }
 
@@ -380,8 +417,9 @@
     if (a.genreHubMembers) { mult *= 0.45; activeFilters++; }
     if (a.followingSpecificAuthors.enabled) { mult *= 0.5; activeFilters++; }
 
-    const count = Math.max(800, Math.round(BASE * mult));
-    const reach = count > 50000 ? 'Very High' : count > 20000 ? 'High' : count > 8000 ? 'Medium' : count > 2000 ? 'Low' : 'Very Low';
+    const count = Math.max(800, Math.min(TOTAL, Math.round(BASE * mult)));
+    const frac = count / TOTAL;
+    const reach = frac > 0.35 ? 'Very High' : frac > 0.12 ? 'High' : frac > 0.04 ? 'Medium' : frac > 0.01 ? 'Low' : 'Very Low';
     const competition = activeFilters <= 2 ? 'Low' : activeFilters <= 5 ? 'Medium' : 'High';
     return { count, reach, competition, activeFilters };
   }
@@ -486,12 +524,23 @@
     _injectStyles();
 
     const instId = 'cwz' + (++_instanceCounter);
-    const placements = options.placements || [];
-    const storyLibrary = options.storyLibrary || [];
+    /* Surfaces come from the shared ad-surface registry unless the caller
+       overrides them, so the campaign's entitlement and ad setup's checkboxes
+       are always the same ids. */
+    const REG = window.AdSetupData || {};
+    const placements = options.placements || REG.CAMPAIGN_SURFACES || [];
+    const storyLibrary = options.storyLibrary || DEFAULT_STORY_LIBRARY;
+    const legacyId = id => (REG.surfaceFromLegacy ? REG.surfaceFromLegacy(id) : id);
     const mode = options.mode === 'edit' ? 'edit' : 'create';
     const existing = options.campaign || null;
 
     let step = 1;
+    /* Ad setup owns audience + creative, so when the wizard is opened from
+       there the targeting step is skipped: campaign = objective, surfaces,
+       budget, window. One decision, one owner. */
+    const STEPS_SEQ = options.skipAudience ? [1, 3] : [1, 2, 3];
+    const stepIdx = () => STEPS_SEQ.indexOf(step);
+    const lastStep = () => STEPS_SEQ[STEPS_SEQ.length - 1];
     const state = {
       objective: 'story-reads',
       name: '',
@@ -514,7 +563,7 @@
       const isBusiness = existing.type === 'business';
       state.objective = existing.objective || (isBusiness ? 'brand-awareness' : 'story-reads');
       state.name = existing.name || '';
-      state.selectedPlacements = (existing.placements || []).slice();
+      state.selectedPlacements = (existing.placements || []).map(legacyId);
       state.hasBudget = !!existing.hasBudget;
       state.budget = existing.budget || '';
       state.spent = existing.spent || '';
@@ -568,19 +617,20 @@
 
     /* ── Step indicator ── */
     function renderSteps() {
-      const labels = ['Setup', 'Audience', 'Estimate'];
-      stepsEl().innerHTML = labels.map((l, i) => {
-        const n = i + 1;
-        const cls = n === step ? 'on' : n < step ? 'done' : '';
+      const ALL_LABELS = { 1: 'Setup', 2: 'Audience', 3: 'Estimate' };
+      stepsEl().innerHTML = STEPS_SEQ.map((n, i) => {
+        const cls = n === step ? 'on' : i < stepIdx() ? 'done' : '';
         return `<div class="cwz-step-pill ${cls}">
-          <div class="cwz-step-num">${n < step ? '<i class="fas fa-check"></i>' : n}</div>
-          <span class="cwz-step-label">${l}</span>
+          <div class="cwz-step-num">${i < stepIdx() ? '<i class="fas fa-check"></i>' : i + 1}</div>
+          <span class="cwz-step-label">${ALL_LABELS[n]}</span>
         </div>`;
       }).join('');
       document.getElementById(instId + '-subtitle').textContent =
         step === 1 ? 'Name it, pick an objective, choose surfaces and duration.'
         : step === 2 ? 'Narrow down exactly who should see this campaign.'
-        : 'Review everything before it goes live.';
+        : options.skipAudience
+          ? 'Review the buy — the creative and its audience are set in Ad setup.'
+          : 'Review everything before it goes live.';
     }
 
     /* ── STEP 1: Setup ── */
@@ -800,7 +850,7 @@
 
       /* Interests dropdown — carries stats */
       createMultiSelect(document.getElementById(instId + '-interest-ms'), {
-        options: INTERESTS_DATA.map(i => ({ id: i.name, label: i.name, stat: i.count })),
+        options: interestOptions(),
         getSelected: () => t.interests,
         onAdd: (id) => { t.interests.push(id); renderEstimate(); },
         onRemove: (id) => { t.interests = t.interests.filter(x => x !== id); renderEstimate(); },
@@ -981,27 +1031,26 @@
       else if (step === 2) renderStepAudience();
       else renderStepReview();
 
-      document.getElementById(instId + '-back').style.visibility = step === 1 ? 'hidden' : 'visible';
+      document.getElementById(instId + '-back').style.visibility = stepIdx() === 0 ? 'hidden' : 'visible';
       const nextBtn = document.getElementById(instId + '-next');
-      nextBtn.innerHTML = step === 3
+      nextBtn.innerHTML = step === lastStep()
         ? `<i class="fas fa-bullseye"></i> ${mode === 'edit' ? 'Save Changes' : 'Launch Campaign'}`
         : `Next <i class="fas fa-arrow-right"></i>`;
       bodyEl().scrollTop = 0;
     }
 
     document.getElementById(instId + '-back').addEventListener('click', () => {
-      if (step === 1) return;
-      step--; renderStep();
+      if (stepIdx() === 0) return;
+      step = STEPS_SEQ[stepIdx() - 1]; renderStep();
     });
 
     document.getElementById(instId + '-next').addEventListener('click', () => {
       if (step === 1) {
         collectStep1();
         if (!validateStep1()) return;
-        step = 2; renderStep(); return;
       }
-      if (step === 2) { step = 3; renderStep(); return; }
-      // step 3 → submit
+      const nxt = STEPS_SEQ[stepIdx() + 1];
+      if (nxt) { step = nxt; renderStep(); return; }
       collectStep3();
       submit();
     });
@@ -1024,6 +1073,10 @@
         objective: state.objective,
         name: state.name,
         placements: state.selectedPlacements.slice(),
+        /* The entitlement expanded to slot ids — every slot on the bought
+           surfaces. Ad setup restricts its Placement step to this list, so a
+           creative can never be pointed at inventory the campaign didn't buy. */
+        slots: REG.campaignSlotIds ? REG.campaignSlotIds(state.selectedPlacements) : [],
         startDate: state.startDate,
         endDate: state.endDate,
         hasBudget: state.hasBudget,
@@ -1054,6 +1107,6 @@
     return { close };
   }
 
-  window.CampaignWizard = { open, estimateAudience, OBJECTIVES, INTERESTS, INTERESTS_DATA, COUNTRIES, LANGUAGES };
+  window.CampaignWizard = { open, estimateAudience, interestOptions, OBJECTIVES, COUNTRIES, LANGUAGES, STORY_LIBRARY: DEFAULT_STORY_LIBRARY };
 
 })();

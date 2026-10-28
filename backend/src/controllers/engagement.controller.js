@@ -53,6 +53,29 @@ async function readState(req, res) {
   }));
 }
 
+/* ── story-wide engagement (book-level poll/prediction/debate) ── */
+
+async function bookResults(req, res) {
+  return base.wrap(res, async () => engagement.bookEngagement({
+    bookId: req.valid.params.bookId, userId: req.user ? req.user.id : null,
+  }));
+}
+
+async function bookVote(req, res) {
+  return base.wrap(res, async () => engagement.bookVote({
+    bookId: req.valid.params.bookId, userId: req.user.id,
+    kind: req.valid.params.kind, id: req.valid.body.id,
+    option: req.valid.body.kind === 'debate' ? req.valid.body.side : req.valid.body.option,
+  }));
+}
+
+async function bookRetract(req, res) {
+  return base.wrap(res, async () => engagement.bookRetract({
+    bookId: req.valid.params.bookId, userId: req.user.id,
+    kind: req.valid.params.kind,
+  }));
+}
+
 /* ── ratings (rate-modal contract) ── */
 
 async function ratingGet(req, res) {
@@ -71,5 +94,6 @@ async function ratingPost(req, res) {
 
 module.exports = {
   votePoll, votePrediction, voteDebate, retract, results, progress, readState,
+  bookResults, bookVote, bookRetract,
   ratingGet, ratingPost,
 };

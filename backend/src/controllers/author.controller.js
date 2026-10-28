@@ -2,6 +2,12 @@
 const author = require('../services/author.service');
 const base = require('./base.controller');
 
+// Multer names the multipart parts idFront/idBack; the service speaks front/back.
+function idFilesOf(req) {
+  const f = req.files || {};
+  return { front: f.idFront, back: f.idBack };
+}
+
 async function dashboard(req, res) {
   return base.wrap(res, async () => author.dashboard({ userId: req.user.id }));
 }
@@ -96,10 +102,30 @@ async function contracts(req, res) {
 
 async function applyContract(req, res) {
   return base.wrap(res, async () => {
-    const out = await author.applyContract({ userId: req.user.id, bookId: req.valid.body.bookId, data: req.valid.body });
+    const out = await author.applyContract({
+      userId: req.user.id,
+      bookId: req.valid.body.bookId,
+      kyc: req.valid.body.kyc,
+      idFiles: idFilesOf(req),
+    });
     res.status(201);
     return out;
   });
+}
+
+async function signContract(req, res) {
+  return base.wrap(res, async () => author.signContract({
+    userId: req.user.id,
+    contractId: req.valid.params.contractId,
+  }));
+}
+
+async function declineContract(req, res) {
+  return base.wrap(res, async () => author.declineContract({
+    userId: req.user.id,
+    contractId: req.valid.params.contractId,
+    reason: req.valid.body.reason,
+  }));
 }
 
 async function applyCompletion(req, res) {
@@ -142,9 +168,26 @@ async function saveLaunchKit(req, res) {
   });
 }
 
+async function verification(req, res) {
+  return base.wrap(res, async () => author.getVerification({ userId: req.user.id }));
+}
+
+async function submitVerification(req, res) {
+  return base.wrap(res, async () => {
+    const out = await author.submitVerification({
+      userId: req.user.id,
+      kyc: req.valid.body.kyc,
+      idFiles: idFilesOf(req),
+    });
+    res.status(201);
+    return out;
+  });
+}
+
 module.exports = {
   dashboard, books, overview, book, bookChaptersList, saveBookChapter, requestBookChange,
   characters, saveCharacter, deleteCharacter,
-  plot, savePlot, bookChapters, contracts, applyContract, applyCompletion,
+  plot, savePlot, bookChapters, contracts, applyContract, signContract, declineContract, applyCompletion,
   applyVip, chapterReviews, chapterEdits, bookEdits, launchKit, saveLaunchKit,
+  verification, submitVerification,
 };

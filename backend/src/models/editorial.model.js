@@ -61,6 +61,8 @@ const reportSchema = new mongoose.Schema({
   title: { type: String, required: true },
   desc: { type: String, required: true },
   type: { type: String, enum: ['content', 'spam', 'plagiarism', 'abuse', 'other'], default: 'other', index: true },
+  severity: { type: String, enum: ['low', 'medium', 'high'], default: 'medium', index: true },
+  seId: { type: String, ref: 'User', index: true }, // Senior Editor who owns/manages this report
   reporterId: { type: String, ref: 'User' },
   reporterLabel: { type: String, default: '' },
   status: { type: String, enum: ['pending', 'resolved', 'dismissed'], default: 'pending', index: true },

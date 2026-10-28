@@ -39,6 +39,9 @@ function getStoryPool(){
   let _overlay=null, _cur='announcement', _onPosted=null;
   function getOnPosted(){ return _onPosted || (global.DroboardComposer && global.DroboardComposer._onPosted) || null; }
 let _pickedUser=null, _pickedStory=null, _pickedImage='';
+/* deadline chips — component/expiry-chips.js; silent no-op if a page omits it */
+function _expField(kind){ return window.DroboardExpiry ? DroboardExpiry.field(kind) : ''; }
+function _expAt(kind){ return window.DroboardExpiry ? DroboardExpiry.expiresAt(kind, _overlay) : null; }
 
 const CSS = ''
   + '.drb-ov{position:fixed;top:0;left:50%;transform:translate(-50%,100%);width:100%;max-width:420px;height:100dvh;z-index:600;background:var(--l1,#fff);display:flex;flex-direction:column;transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:0 0 50px rgba(0,0,0,.25);overflow:hidden} .drb-ov.open{transform:translate(-50%,0)}'
@@ -129,10 +132,12 @@ function renderBody(){
   } else if(_cur==='debate'){
     html+='<div class="drb-field"><label class="drb-label">Debate motion</label><input class="drb-input" id="drbExtra" placeholder=\'"Writers should be allowed to tag spoilers"\'/></div>';
     html+='<div class="drb-field"><label class="drb-label">Body (optional)</label><textarea class="drb-textarea" id="drbText" rows="3" placeholder="Add context…"></textarea></div>';
+    html+=_expField('debate');
     html+='<div id="drbDebatePreview" style="margin-top:10px;background:var(--l2,#f0f0f0);border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:12px;padding:12px"></div>';
   } else if(_cur==='forum-poll'){
     html+='<div class="drb-field"><label class="drb-label">Question</label><input class="drb-input" id="drbPollQ" placeholder="What keeps you reading past midnight?"/></div>';
     html+='<div class="drb-field"><label class="drb-label">Options</label><div id="drbPollOpts"><input class="drb-input" data-poll-opt placeholder="Option 1" style="margin-bottom:8px"/><input class="drb-input" data-poll-opt placeholder="Option 2"/></div><button id="drbAddOpt" style="margin-top:8px;font-size:12px;font-weight:700;color:var(--acc,#ff0050);background:none;border:none;cursor:pointer">+ Add option</button></div>';
+    html+=_expField('poll');
   } else if(_cur==='ama'){
     html+='<div class="drb-field"><label class="drb-label">Topic</label><textarea class="drb-textarea" id="drbText" rows="3" placeholder="What do you want to ask the team?"></textarea></div>';
   } else {
@@ -335,6 +340,7 @@ async function doPost(){
       // motion + question hold the same string (backend normaliser writes both)
       // so every renderer — feed card, discussion, search — finds the headline.
       base.debateData={ motion:_motion, question:_motion, prompt: text||'', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null };
+      const dexp=_expAt('debate'); if(dexp) base.expiresAt=dexp;
     } else if(_cur==='shoutout'){
       if(!_pickedUser) throw new Error('Search and select a writer or reader');
       const text=document.getElementById('drbText')?.value.trim();
@@ -352,6 +358,7 @@ async function doPost(){
       if(!q) throw new Error('Add a question');
       if(opts.length<2) throw new Error('Add at least 2 options');
       base.type='forum-poll'; base.title=q; base.poll={ q:q, opts:opts.map(function(t){return {t:t, v:0}}), voted:-1, total:0 };
+      const pexp=_expAt('poll'); if(pexp) base.expiresAt=pexp;
     } else if(_cur==='ama'){
       const t=document.getElementById('drbTitleF')?.value.trim();
       const tx=document.getElementById('drbText')?.value.trim();

@@ -50,13 +50,15 @@
   <div class="filters-card">
     <div class="filt-search"><i class="fas fa-magnifying-glass"></i><input id="tableSearch" placeholder="Search by book title, author, or ID..."/></div>
     <div class="filt-select"><select id="fGenre"><option>All Genres</option></select><i class="fas fa-chevron-down"></i></div>
-    <div class="filt-select"><select id="fStatus"><option>All Status</option><option>Published</option><option>Draft</option><option>Under Review</option><option>Flagged</option></select><i class="fas fa-chevron-down"></i></div>
+    <div class="filt-select"><select id="fStatus"><option>All Status</option><option>Published</option><option>Ongoing</option><option>Completed</option><option>Draft</option><option>Under Review</option><option>Flagged</option></select><i class="fas fa-chevron-down"></i></div>
   </div>
 
   <div class="table-card">
     <div class="tabs-row" id="tabsRow">
       <div class="tab-item active" data-tab="all">All Books <span class="tab-count" id="countAll">0</span></div>
       <div class="tab-item" data-tab="Published">Published <span class="tab-count">0</span></div>
+      <div class="tab-item" data-tab="Ongoing">Ongoing <span class="tab-count">0</span></div>
+      <div class="tab-item" data-tab="Completed">Completed <span class="tab-count">0</span></div>
       <div class="tab-item" data-tab="Draft">Draft <span class="tab-count">0</span></div>
       <div class="tab-item" data-tab="Under Review">Under Review <span class="tab-count">0</span></div>
       <div class="tab-item" data-tab="Flagged">Flagged <span class="tab-count">0</span></div>
@@ -73,6 +75,7 @@
 <style>#toast.show{opacity:1}</style>
 
 <script src="shared/senior-editor-sidebar.js"></script>
+<script src="../component/reports-table.js"></script>
 <script src="services/book-management-service.js?v=3"></script>
 <script>BookManagementService.init();</script>
 </body>

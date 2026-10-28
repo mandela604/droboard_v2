@@ -103,7 +103,7 @@
         id: 'fd1', hot: true, score: 98, name: 'LunaVale', avatar: 'https://i.pravatar.cc/100?img=47',
         badge: 'Top', time: '2h',
         title: "Who's your favorite morally gray Fantasy lead?",
-        body: 'Anti-heroes, fallen kings, and villains you still root for — Fantasy only. Drop the character and the series.',
+        body: 'Anti-heroes, fallen kings, and villains you still root for — Fantasy only. Drop the character and the story.',
         tag: 'Discussion', tagClass: 'discussion',
         media: COVERS.media1,
         likes: 214, comments: 87, liked: false, controversy: 12,
@@ -129,7 +129,7 @@
       {
         id: 'fd4', score: 55, controversy: 18, name: 'DragonBreath99', avatar: 'https://i.pravatar.cc/100?img=15', time: '6h',
         title: 'Best Fantasy world-building that earns the lore dumps?',
-        body: 'Maps, magic systems, and cultures that feel lived-in — not a powerpoint. Modern series welcome.',
+        body: 'Maps, magic systems, and cultures that feel lived-in — not a powerpoint. Modern epics welcome.',
         tag: 'Discussion', tagClass: 'discussion',
         media: COVERS.media2,
         likes: 98, comments: 54, liked: false,
@@ -146,7 +146,7 @@
       },
       {
         id: 'fd6', score: 40, controversy: 9, name: 'QuestGiver', avatar: 'https://i.pravatar.cc/100?img=20', time: '10h',
-        title: 'Mid-series slog in epic Fantasy — how do you push through books 2–3?',
+        title: 'Mid-story slog in epic Fantasy — how do you push through books 2–3?',
         body: 'Love the genre, but the middle often feels like filler. What’s worked for you?',
         tag: 'Question', tagClass: 'question',
         likes: 72, comments: 0, liked: false,
@@ -188,7 +188,7 @@
       {
         id: 'fd11', score: 45, name: 'ShelfWitch', avatar: 'https://i.pravatar.cc/100?img=9', time: '20h',
         title: 'Recommend standalone Fantasy under 400 pages',
-        body: 'Between series. Prefer tight casts, low fill, and an ending that ends. Fantasy only.',
+        body: 'Between stories. Prefer tight casts, low fill, and an ending that ends. Fantasy only.',
         tag: 'Recommendation', tagClass: 'recommendation',
         likes: 119, comments: 67, liked: false,
         participants: ['https://i.pravatar.cc/100?img=15', 'https://i.pravatar.cc/100?img=25', 'https://i.pravatar.cc/100?img=45'], extra: 33,
@@ -384,7 +384,7 @@
       },
       {
         id: 'wd4', score: 50, name: 'PackReader', avatar: 'https://i.pravatar.cc/100?img=15', time: '1d',
-        title: 'Recommend Werewolf series with real pack politics',
+        title: 'Recommend Werewolf stories with real pack politics',
         body: 'Not just the couple in a cabin — councils, rival packs, consequences.',
         tag: 'Recommendation', tagClass: 'recommendation',
         story: { title: 'Werewolf King, Human Queen', writer: 'Luna_Grey', cover: COVERS.c7 },

@@ -320,7 +320,7 @@
      in the native shell with the same payload.                    */
   function _dispatchLocal(item) {
     if (USE_API) return;
-    if (!('Notification' in window)) return;
+    if (!window.Notification) return;
     if (Notification.permission === 'default') requestPermission();
     if (Notification.permission !== 'granted') return;
     const body = String(item.desc || item.title || '').replace(/<[^>]*>/g, '').slice(0, 180);
@@ -332,7 +332,8 @@
     } catch (e) {}
   }
   function requestPermission() {
-    if (!('Notification' in window) || Notification.permission === 'granted') return Promise.resolve(Notification ? Notification.permission : 'unsupported');
+    if (!window.Notification) return Promise.resolve('unsupported');
+    if (Notification.permission === 'granted') return Promise.resolve(Notification.permission);
     return Notification.requestPermission();
   }
 
@@ -454,18 +455,74 @@
 
   const HOUR = 3600000, DAY = 86400000;
 
+  /* ── achievements ──────────────────────────────────────────
+     The Super Admin awards catalog is the source of truth: whatever admin
+     defines and the engine grants is exactly what the user is told earned
+     (super-admin/awards-service.js → AwardsEngine.grantedFor). Reader
+     achievements are the weekly league badges the season engine struck.
+     Pages without the awards service fall back to the local tier ladder. */
+  function _criteriaLine(c) {
+    if (!c) return 'Award unlocked';
+    if (c.metric === 'manual') return 'Awarded by our team';
+    if (c.metric === 'genre_rank') return 'Top ' + c.value + (c.genre ? ' in ' + c.genre : '') + (c.period ? ' · ' + c.period : '');
+    if (c.metric === 'growth') return 'Top ' + c.value + ' newcomers' + (c.period ? ' · ' + c.period : '');
+    if (c.metric === 'reads') return _fmt(c.value) + ' reads';
+    return c.metric + ' ' + (c.op || '>=') + ' ' + _fmt(c.value);
+  }
+  function grantedAwardRows() {
+    const out = [];
+    try {
+      if (!window.AwardsEngine || !AwardsEngine.grantedFor) return out;
+      let got = AwardsEngine.grantedFor(account().handle) || [];
+      /* the demo pen name has no grants yet — borrow a real holder so the
+         card shows the actual catalog instead of an empty achievements bin */
+      if (!got.length) got = AwardsEngine.grantedFor('Ada_Writes') || [];
+      got.forEach(function (a) {
+        const full = (window.AwardsService && AwardsService.byId) ? (AwardsService.byId(a.id) || {}) : {};
+        out.push({ key: 'aw:' + a.id, name: a.name, desc: a.desc || full.desc || '',
+          tier: _criteriaLine(full.criteria), iconName: a.icon || 'fa-award',
+          color: a.color || (full.color || ''), audience: 'author' });
+      });
+    } catch (e) {}
+    return out;
+  }
+  function seedAchievements(since) {
+    let rows = grantedAwardRows();
+    if (!rows.length) {
+      const st = authorStats();
+      rows = ACHIEVEMENTS.filter(a => (a.audience || 'author') === 'author')
+        .filter(function (a) { return a.when(st); })
+        .map(function (a) { return { key: 'ach:' + a.id, name: a.name, desc: a.desc, tier: a.tier, iconName: a.icon, audience: 'author' }; });
+    }
+    /* newest three — a wall of trophies reads as noise; the full case lives on the profile */
+    rows.slice(-3).forEach(function (a, i) {
+      emit({ type: 'achievement', key: a.key, title: a.name, desc: a.desc, tier: a.tier,
+        iconName: a.iconName, color: a.color, audience: a.audience,
+        link: { label: 'See my profile', href: 'profile.html' }, at: since + i * 4 * HOUR });
+    });
+
+    const badges = (window.ReaderLeague && ReaderLeague.myBadges) ? (ReaderLeague.myBadges() || []) : [];
+    badges.slice(0, 2).forEach(function (b, i) {
+      emit({ type: 'achievement', key: 'badge:' + (b.season || '') + ':' + b.label, audience: 'reader',
+        title: b.label, desc: 'Earned on the weekly reader league.',
+        tier: b.place ? 'Finished #' + b.place : 'League badge',
+        iconName: b.icon || 'fa-medal', color: b.color,
+        at: since + (i + 2) * 5 * HOUR, link: { label: 'Open leaderboard', href: 'leaderboard.html' } });
+    });
+    if (!badges.length) {
+      const rs = readerStats();
+      ACHIEVEMENTS.filter(a => a.audience === 'reader').filter(function (a) { return a.when(rs); }).forEach(function (a, i) {
+        emit({ type: 'achievement', key: 'ach:' + a.id, title: a.name, desc: a.desc, tier: a.tier,
+          iconName: a.icon, audience: 'reader', at: since + (i + 2) * HOUR,
+          link: { label: 'Open leaderboard', href: 'leaderboard.html' } });
+      });
+    }
+  }
+
   function seedAuthor(since) {
     const st = authorStats();
     const books = myBooks();
     const hero = books[0] || { title: 'Bound By Obsession', cover: '' };
-
-    /* newest three only — a wall of trophies reads as noise; the full
-       badge case lives on the profile */
-    ACHIEVEMENTS.filter(a => (a.audience || 'author') === 'author').filter(function (a) { return a.when(st); })
-      .slice(-3).forEach(function (a, i) {
-      emit({ type: 'achievement', key: 'ach:' + a.id, title: a.name, desc: a.desc, tier: a.tier,
-        iconName: a.icon, at: since + i * 4 * HOUR });
-    });
 
     /* milestones */
     emit({ type: 'trending_enter', key: 'trend:' + hero.title + ':7', rank: 7, rankNote: 'Trending · Romance',
@@ -520,11 +577,6 @@
 
   function seedReader(since) {
     const rs = readerStats();
-    ACHIEVEMENTS.filter(a => a.audience === 'reader').forEach(function (a, i) {
-      if (!a.when(rs)) return;
-      emit({ type: 'achievement', key: 'ach:' + a.id, title: a.name, desc: a.desc, tier: a.tier,
-        iconName: a.icon, audience: 'reader', at: since + (i + 2) * HOUR });
-    });
 
     if (rs.leagueRank) {
       emit({ type: 'league_finish', key: 'league:' + rs.season, rank: rs.leagueRank,
@@ -661,7 +713,7 @@
 
   /* Seed once per week; a returning user only gets genuinely new events.
      Both views are populated because one account can read and publish. */
-  const SEED_VERSION = 'v4';
+  const SEED_VERSION = 'v5';
   function seed() {
     if (USE_API) return;
     const marker = 'dro_notif_seeded';
@@ -673,6 +725,7 @@
     if (String(stamp).indexOf(SEED_VERSION) !== 0) _save(LOG_KEY, { items: [], lastTypeAt: {} });
     _save(marker, want);
     const since = Date.now() - 2 * DAY;
+    seedAchievements(since);
     seedAuthor(since);
     seedReader(since);
     seedStatusDigests(since);

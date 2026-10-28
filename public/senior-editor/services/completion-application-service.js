@@ -6,13 +6,13 @@
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
   if (!USE_API) return null;
   try {
-    const res = await fetch(API_BASE + path, options);
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (e) {
@@ -45,6 +45,27 @@ var items = [
 ];
 var currentPage = 1, PER_PAGE = 5, openRowId = null;
 var _bound = false;
+var LIVE = false;
+
+function mapBackendItem(a) {
+  return {
+    id: a.id,
+    author: a.author || a.authorName || '—',
+    avatar: a.avatar || '../assets/droboard-icon.png',
+    book: a.book || a.bookTitle || '—',
+    genre: a.genre || '—',
+    chapters: a.chapters || 0,
+    wordCount: typeof a.wordCount === 'number' ? a.wordCount.toLocaleString('en-US') : (a.wordCount || '—'),
+    submitted: a.submitted || '—',
+    status: a.status || 'pending',
+    notes: a.notes || a.authorNote || '',
+  };
+}
+
+async function loadItems() {
+  var d = await callBackend('/completion-applications?limit=100');
+  if (d && Array.isArray(d.items)) { LIVE = true; items = d.items.map(mapBackendItem); }
+}
 
 function filtered() {
   var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
@@ -112,8 +133,25 @@ function go(p) { currentPage = p; render(); }
 
 function toast(m) { var t = document.getElementById('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2400); }
 
-function approve(id) { var a = items.find(function (x) { return x.id === id; }); if (a) { a.status = 'approved'; openRowId = null; render(); toast(a.book + ' — completion approved'); } }
-function reject(id) { var a = items.find(function (x) { return x.id === id; }); if (a) { a.status = 'rejected'; openRowId = null; render(); toast(a.book + ' — completion rejected'); } }
+async function decide(id, action) {
+  var a = items.find(function (x) { return x.id === id; });
+  if (!a || a.status !== 'pending') return;
+  // URL verb is approve/reject (backend routes); the UI status stays approved/rejected.
+  var verb = action === 'approved' ? 'approve' : 'reject';
+  var r = await callBackend('/completion-applications/' + encodeURIComponent(id) + '/' + verb, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!r && LIVE) { toast('Could not reach the server — try again'); return; }
+  a.status = action;
+  if (r && r.id) Object.assign(a, mapBackendItem(r));
+  openRowId = null;
+  render();
+  toast(a.book + ' — completion ' + (action === 'approved' ? 'approved' : 'rejected'));
+}
+function approve(id) { decide(id, 'approved'); }
+function reject(id) { decide(id, 'rejected'); }
 
 function bindEvents() {
   if (_bound) return; _bound = true;
@@ -131,11 +169,9 @@ function init() {
   window.go = go;
   window.approve = approve;
   window.reject = reject;
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/completion-applications').then(function (data) { if (data && data.items) { items = data.items; render(); } });
-  callBackend('/completion-applications');
   bindEvents();
   render();
+  loadItems().then(function () { render(); });
 }
 
 window.CompletionApplicationService = { init: init };

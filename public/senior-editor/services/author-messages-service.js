@@ -6,13 +6,13 @@
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
   if (!USE_API) return null;
   try {
-    const res = await fetch(API_BASE + path, options);
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (e) {
@@ -21,25 +21,95 @@ async function callBackend(path, options) {
   }
 }
 
+/* Live inbox replaces the demo list once the request succeeds. Threads are
+   fetched lazily per conversation and cached on the row. */
+var LIVE = false;
+
+async function uploadImage(file) {
+  try {
+    var fd = new FormData();
+    fd.append('file', file);
+    var res = await fetch('/api/uploads/image', { method: 'POST', credentials: 'include', body: fd });
+    if (!res.ok) return '';
+    var j = await res.json();
+    return j.url || '';
+  } catch (e) { return ''; }
+}
+
+function mapConversation(c) {
+  return {
+    id: String(c.id),
+    name: c.name || 'Unknown',
+    avatar: c.avatar || '../assets/droboard-icon.png',
+    role: c.role || 'Author',
+    unread: Number(c.unread) || 0,
+    flagged: !!c.flagged,
+    status: c.status || 'open',
+    time: c.time || '',
+    preview: c.preview || '',
+    messages: [],
+    loaded: false,
+  };
+}
+function mapMessage(m) {
+  return {
+    mid: String(m.mid),
+    from: m.from === 'admin' ? 'admin' : 'author',
+    text: m.text || '',
+    file: m.file || null,
+    time: m.time || '',
+  };
+}
+
+async function loadConversations() {
+  var d = await callBackend('/author-messages?limit=50');
+  if (d && Array.isArray(d.items)) {
+    LIVE = true;
+    CONVERSATIONS = d.items.map(mapConversation);
+  }
+}
+
+async function loadThread(conv) {
+  if (!LIVE || !conv || conv.loaded) return;
+  var d = await callBackend('/author-messages/' + encodeURIComponent(conv.id) + '/messages');
+  if (d && Array.isArray(d.items)) {
+    conv.messages = d.items.map(mapMessage);
+    conv.loaded = true;
+    conv.unread = 0;
+  }
+}
+
 /* All CRUD writes go through these helpers: try the API first, fall back to
    the in-memory demo list when USE_API=false or the endpoint is down. */
 async function writeConv(id, patch, demoFn) {
-  var r = null;
-  try {
-    r = await callBackend('/author-messages/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
-  } catch (e) { r = null; }
-  if (!r) {
-    var conv = CONVERSATIONS.find(function (c) { return c.id === id; });
-    if (conv && demoFn) demoFn(conv);
+  if (LIVE) {
+    try {
+      return await callBackend('/author-messages/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+    } catch (e) {
+      toast('Could not save — try again');
+      return { ok: false };
+    }
   }
-  return r || { ok: true, demo: true };
+  var conv = convById(id);
+  if (conv && demoFn) demoFn(conv);
+  return { ok: true, demo: true };
 }
 async function persistMessage(conv, msg) {
   var r = null;
-  try {
-    r = await callBackend('/author-messages/' + conv.id + '/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(msg) });
-  } catch (e) { r = null; }
-  if (!r) { conv.messages.push(msg); conv.time = 'Just now'; }
+  if (LIVE) {
+    var payload = { text: msg.text || '' };
+    if (msg.file && msg.file.url) payload.image = msg.file.url;
+    try {
+      r = await callBackend('/author-messages/' + encodeURIComponent(conv.id) + '/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } catch (e) {
+      toast('Could not send — try again');
+      return { ok: false };
+    }
+  }
+  if (r && r.id) msg.mid = String(r.id);
+  conv.messages.push(msg);
+  conv.time = 'Just now';
+  conv.preview = (msg.text || (msg.file ? 'Image' : '')).slice(0, 140);
   return r || { ok: true, demo: true };
 }
 
@@ -101,6 +171,12 @@ function filteredConversations(){
   return list;
 }
 
+function convById(id) {
+  var key = String(id);
+  return CONVERSATIONS.find(function (c) { return String(c.id) === key; });
+}
+function isActive(c) { return String(c.id) === String(activeConvId); }
+
 function renderStats(){
   var total=CONVERSATIONS.length,unread=0,flagged=0;
   CONVERSATIONS.forEach(function(c){unread+=c.unread;if(c.flagged)flagged++});
@@ -119,17 +195,20 @@ function renderConvList(){
   if(!list.length){wrap.innerHTML='<div style="padding:40px 16px;text-align:center;color:var(--text-muted)"><i class="fas fa-inbox" style="font-size:24px;color:var(--text-faint);display:block;margin-bottom:8px"></i>No conversations here.</div>';return;}
   wrap.innerHTML=list.map(function(c){
     var lastMsg=c.messages[c.messages.length-1];
-    var preview=(lastMsg.from===PERSPECTIVE?'You: ':(lastMsg.file?'📎 File: '+lastMsg.file.name:''))+((lastMsg.text||'').substring(0,60));
-    return '<div class="conv-item'+(c.unread>0?' unread':'')+(c.id===activeConvId?' active':'')+(c.status==='closed'?' is-closed':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+(c.status==='closed'?'<span class="closed-chip">Closed</span>':'')+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
+    var preview=lastMsg
+      ? ((lastMsg.from===PERSPECTIVE?'You: ':(lastMsg.file?'📎 File: '+lastMsg.file.name:''))+((lastMsg.text||'').substring(0,60)))
+      : (c.preview||'');
+    return '<div class="conv-item'+(c.unread>0?' unread':'')+(isActive(c)?' active':'')+(c.status==='closed'?' is-closed':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+(c.status==='closed'?'<span class="closed-chip">Closed</span>':'')+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
   }).join('');
   wrap.querySelectorAll('.conv-item').forEach(function(el){
     el.addEventListener('click',function(){
-      activeConvId=+el.dataset.id;
-      var conv=CONVERSATIONS.find(function(c){return c.id===activeConvId});
+      activeConvId=el.dataset.id;
+      var conv=convById(activeConvId);
       if(conv)conv.unread=0;
       replyTarget=null;pendingFile=null;
       renderConvList();renderThread();bindLongPress();
       document.getElementById('inboxCard').classList.add('thread-open');
+      loadThread(conv).then(function(){ renderConvList();renderThread();bindLongPress();renderStats(); });
     });
   });
 }
@@ -137,14 +216,14 @@ function renderConvList(){
 function renderThread(){
   var pane=document.getElementById('threadPane');
   if(!pane)return;
-  var conv=CONVERSATIONS.find(function(c){return c.id===activeConvId});
+  var conv=convById(activeConvId);
   if(!conv){pane.innerHTML='<div class="inbox-empty"><i class="fas fa-comments"></i>Select a conversation</div>';return;}
 
   var messagesHtml=conv.messages.map(function(m){
     var isOut=m.from===PERSPECTIVE;
     var bodyHtml='';
     if(m.replyTo){
-      var ref=conv.messages.find(function(r){return r.mid===m.replyTo});
+      var ref=conv.messages.find(function(r){return String(r.mid)===String(m.replyTo)});
       if(ref){
         var rName=ref.from===PERSPECTIVE?'You':conv.name;
         var rText=(ref.text||'').substring(0,80)+((ref.text||'').length>80?'…':'');
@@ -175,14 +254,30 @@ function renderThread(){
   });
 
   var input=document.getElementById('composeInput');
-  var send=function(){
+  var send=async function(){
     var text=input.value.trim();
     if(!text&&!pendingFile)return;
-    var msg={mid:Date.now(),from:PERSPECTIVE,time:'Just now'};
+    var msg={mid:String(Date.now()),from:PERSPECTIVE,time:'Just now'};
     if(text)msg.text=text;
-    if(pendingFile){msg.file=pendingFile;pendingFile=null;}
+    if(pendingFile){
+      if(LIVE){
+        if(!pendingFile.isImage){ toast('Only image attachments can be sent right now'); return; }
+        var btn=document.getElementById('sendBtn');
+        btn.disabled=true;
+        var url=await uploadImage(pendingFile.raw||pendingFile);
+        btn.disabled=false;
+        if(!url){ toast('Image upload failed — try again'); return; }
+        msg.image=url;
+        msg.file={name:pendingFile.name,size:pendingFile.size,url:url,isImage:true};
+      }else{
+        msg.file=pendingFile;
+      }
+      pendingFile=null;
+    }
     if(replyTarget){msg.replyTo=replyTarget.mid;replyTarget=null;}
-    persistMessage(conv,msg).then(function(){
+    persistMessage(conv,msg).then(function(r){
+      if (r && r.ok === false) return;
+      input.value='';
       renderThread();bindLongPress();renderConvList();renderStats();
       toast('Message sent');
     });
@@ -200,13 +295,13 @@ function renderThread(){
     if(isImage){
       var reader=new FileReader();
       reader.onload=function(ev){
-        pendingFile={name:f.name,size:size,url:ev.target.result,isImage:true};
+        pendingFile={name:f.name,size:size,url:ev.target.result,isImage:true,raw:f};
         badgeEl.innerHTML='<div class="img-preview-bar show"><img src="'+ev.target.result+'" alt=""/><div class="img-preview-info"><b>'+f.name+'</b>Ready to send ('+size+')</div><button class="img-remove" id="fileRemove"><i class="fas fa-times"></i></button></div>';
         bindRemove();
       };
       reader.readAsDataURL(f);
     }else{
-      pendingFile={name:f.name,size:size,isImage:false};
+      pendingFile={name:f.name,size:size,isImage:false,raw:f};
       badgeEl.innerHTML='<div class="file-badge"><i class="fas fa-file"></i><span class="file-name">'+f.name+'</span><span style="opacity:.6">('+size+')</span><button class="file-remove" id="fileRemove"><i class="fas fa-times"></i></button></div>';
       bindRemove();
     }
@@ -231,7 +326,7 @@ function renderThread(){
 }
 
 function toggleFlag(id){
-  var conv=CONVERSATIONS.find(function(c){return c.id===id});if(!conv)return;
+  var conv=convById(id);if(!conv)return;
   var next=!conv.flagged;
   writeConv(id,{flagged:next},function(c){c.flagged=next;}).then(function(){
     toast(next?'Conversation flagged':'Flag removed');
@@ -259,9 +354,9 @@ function bindLongPress(){
 }
 
 function openCtx(row){
-  var mid=parseInt(row.getAttribute('data-mid'),10);
-  var conv=CONVERSATIONS.find(function(c){return c.id===activeConvId});if(!conv)return;
-  var msg=conv.messages.find(function(m){return m.mid===mid});if(!msg)return;
+  var mid=row.getAttribute('data-mid');
+  var conv=convById(activeConvId);if(!conv)return;
+  var msg=conv.messages.find(function(m){return String(m.mid)===String(mid)});if(!msg)return;
   ctxMsgId=mid;ctxConvId=activeConvId;
   var preview=msg.text||'';if(msg.file)preview='📎 '+msg.file.name;
   if(preview.length>80)preview=preview.substring(0,80)+'…';
@@ -275,8 +370,8 @@ function openCtx(row){
 function closeCtx(){document.getElementById('ctxOverlay').classList.remove('open');ctxMsgId=null;ctxConvId=null;}
 
 function startEdit(mid,cid){
-  var conv=CONVERSATIONS.find(function(c){return c.id===cid});if(!conv)return;
-  var msg=conv.messages.find(function(m){return m.mid===mid});if(!msg||msg.from!==PERSPECTIVE)return;
+  var conv=convById(cid);if(!conv)return;
+  var msg=conv.messages.find(function(m){return String(m.mid)===String(mid)});if(!msg||msg.from!==PERSPECTIVE)return;
   var row=document.querySelector('#threadBody .msg-row[data-mid="'+mid+'"]');if(!row)return;
   row.classList.add('editing');var bub=row.querySelector('.msg-bubble');if(!bub)return;
   var originalText=msg.text||'';var saved=false;
@@ -289,7 +384,7 @@ function startEdit(mid,cid){
 
 function doDelete(mid,cid){
   writeConv(cid,{deleteMessage:mid},function(c){
-    var idx=c.messages.findIndex(function(m){return m.mid===mid});if(idx===-1)return;
+    var idx=c.messages.findIndex(function(m){return String(m.mid)===String(mid)});if(idx===-1)return;
     c.messages.splice(idx,1);
   }).then(function(){renderThread();bindLongPress();renderConvList();toast('Message deleted');});
 }
@@ -303,8 +398,8 @@ function bindEvents(){
   document.getElementById('ctxReply').addEventListener('click',function(e){
     e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();
     if(mid===null)return;
-    var conv=CONVERSATIONS.find(function(c){return c.id===cid});if(!conv)return;
-    var msg=conv.messages.find(function(m){return m.mid===mid});if(!msg)return;
+    var conv=convById(cid);if(!conv)return;
+    var msg=conv.messages.find(function(m){return String(m.mid)===String(mid)});if(!msg)return;
     replyTarget=msg;
     var rp=document.getElementById('replyPreview');
     if(rp){rp.classList.add('show');document.getElementById('rpName').textContent=msg.from===PERSPECTIVE?'You':conv.name;document.getElementById('rpText').textContent=(msg.text||'').substring(0,80);}
@@ -314,8 +409,8 @@ function bindEvents(){
   document.getElementById('ctxDelete').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)doDelete(mid,cid);});
   document.querySelectorAll('.top-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.top-tab').forEach(function(t){t.classList.remove('active')});tab.classList.add('active');currentView=tab.dataset.view;renderConvList();});});
   document.getElementById('markAllBtn').addEventListener('click',function(){
-    callBackend('/author-messages/read-all',{method:'POST'}).then(function(r){
-      if(!r)CONVERSATIONS.forEach(function(c){c.unread=0});
+    callBackend('/author-messages/read-all',{method:'POST'}).then(function(){
+      CONVERSATIONS.forEach(function(c){c.unread=0});
       renderStats();renderConvList();toast('All messages marked as read');
     });
   });
@@ -326,17 +421,21 @@ function init(){
   SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
   // Dismiss the thread kebab menu on any outside click:
   document.addEventListener('click',function(){var m=document.getElementById('threadMenu');if(m)m.classList.remove('open');});
-  callBackend('/author-messages');
   bindEvents();
-  // Deep link from Authors page (?u=Author Name) — open that conversation if it exists:
-  try{
-    var u=(new URLSearchParams(window.location.search)).get('u');
-    if(u){
-      var hit=CONVERSATIONS.find(function(c){return c.name.toLowerCase()===u.trim().toLowerCase();});
-      if(hit)activeConvId=hit.id;
-    }
-  }catch(e){}
-  activeConvId=activeConvId||CONVERSATIONS[0].id;renderConvList();renderStats();renderThread();bindLongPress();
+  loadConversations().then(function(){
+    // Deep link from Authors page (?u=Author Name) — open that conversation if it exists:
+    try{
+      var u=(new URLSearchParams(window.location.search)).get('u');
+      if(u){
+        var hit=CONVERSATIONS.find(function(c){return c.name.toLowerCase()===u.trim().toLowerCase();});
+        if(hit)activeConvId=hit.id;
+      }
+    }catch(e){}
+    if(!convById(activeConvId)) activeConvId=CONVERSATIONS.length?CONVERSATIONS[0].id:null;
+    renderConvList();renderStats();renderThread();bindLongPress();
+    var conv=convById(activeConvId);
+    if(conv)loadThread(conv).then(function(){renderConvList();renderStats();renderThread();bindLongPress();});
+  });
 }
 
 window.AuthorMessagesService={init:init};

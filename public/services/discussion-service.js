@@ -157,24 +157,15 @@
   /* ── OP render ── */
   function profileHref(name) { return 'profile.html?u=' + encodeURIComponent(name || ''); }
 
-  /* Resolve the OP author's status ring ('has' | 'viewed' | 'none') from
-     the same status pool the avatar-click handler uses, so the ring is
-     drawn at mount time, not only after a click. */
-  async function resolveOpStatusRing(name) {
+  /* The OP's real lineup + ring come from the shared status service and
+     StatusStore — same as every other avatar. No seed-derived guesses. */
+  function opPerson() {
+    const name = String((POST && POST.name) || '').replace(/^@/, '');
+    let statuses = [];
     try {
-      if (window.FeedData && FeedData.getStories) {
-        const stories = await FeedData.getStories();
-        const viewable = (stories || []).filter(s => s && s.statuses && s.statuses.length);
-        const hit = viewable.find(s => s.name === name);
-        if (hit) return hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
-      }
+      if (window.DroboardStatus) statuses = DroboardStatus.writerStatuses(name) || [];
     } catch (e) {}
-    try {
-      const pool = (window.COMMENTS_DATA || []).filter(c => c && c.statuses && c.statuses.length);
-      const hit = pool.find(c => c.name === name);
-      if (hit) return hit.statusRing === 'viewed' ? 'viewed' : (hit.statusRing === 'none' ? 'none' : 'has');
-    } catch (e) {}
-    return 'none';
+    return { name, avatar: (POST && POST.avatar) || '', statuses };
   }
 
   function renderOp() {
@@ -215,8 +206,8 @@
     mount.innerHTML = `<div class="op">
       <div class="op-head">
         <div class="op-av-wrap" id="opAvWrap">
-          ${DroboardStatusRing.html({ name: POST.name, avatar: POST.avatar }, {
-            size: 44, key: POST.name, attrs: 'id="opAvRing"',
+          ${DroboardStatusRing.html(opPerson(), {
+            size: 44, personKey: POST.name, attrs: 'id="opAvRing"',
             innerHtml: `<img class="op-av" id="opAv" src="${esc(POST.avatar || '')}" alt=""/>`,
             innerBg: 'var(--l2)', gapColor: 'var(--l2)',
           })}
@@ -234,43 +225,35 @@
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';
 
-    // Draw the status ring now that the avatar is mounted
-    (async () => {
-      const ring = await resolveOpStatusRing(POST.name);
-      const ringEl = document.getElementById('opAvRing');
-      if (ringEl) {
-        ringEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
-        ringEl.classList.add('ring-' + ring);
-      }
-    })();
-
     // Gray the ring after the status is viewed — same contract as
     // comment-section/debate-args so every host page stays in sync.
     (function bindOpStatusSync() {
       const prev = window.onStatusViewerChange;
-      window.onStatusViewerChange = function (wid, ring) {
-        if (typeof prev === 'function') { try { prev(wid, ring); } catch (e) {} }
+      window.onStatusViewerChange = function (wid, ring, name) {
+        if (typeof prev === 'function') { try { prev(wid, ring, name); } catch (e) {} }
         const ringEl = document.getElementById('opAvRing');
         if (!ringEl || !POST) return;
-        // The viewer dedupes by name; match loosely on the author's name
-        // appearing in the viewer id, or fall back to any viewed event.
-        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : 'none';
+        // Only repaint when the viewed author IS the OP.
+        const opKey = String(POST.name || '').replace(/^@/, '').toLowerCase();
+        const gotKey = String(name || wid || '').replace(/^@/, '').toLowerCase();
+        if (opKey && gotKey !== opKey) return;
+        const newRing = ring === 'ring-viewed' ? 'viewed' : ring === 'ring-has' ? 'has' : ring === 'ring-live' ? 'live' : 'none';
         ringEl.classList.remove('ring-has', 'ring-live', 'ring-viewed', 'ring-none');
         ringEl.classList.add('ring-' + newRing);
       };
     })();
 
     document.getElementById('opAvWrap')?.addEventListener('click', async () => {
-      const name = POST.name;
-      if (window.FeedData && FeedData.getStories && window.openStatusViewer) {
-        try {
-          const stories = await FeedData.getStories();
-          const viewable = (stories || []).filter(s => !s.you && s.statuses && s.statuses.length);
-          const hit = viewable.find(s => s.name === name);
-          if (hit) { openStatusViewer(viewable, hit.id); return; }
-        } catch (e) {}
+      // Play the SAME lineup the ring was drawn from (the shared store keys
+      // it by author name), otherwise "viewed" lands on slides nobody sees.
+      const p = opPerson();
+      if (p.statuses.length && window.DroboardStatusRing) {
+        const ok = await DroboardStatusRing.open([{
+          id: p.name, name: p.name, avatar: p.avatar, statuses: p.statuses,
+        }], p.name);
+        if (ok) return;
       }
-      location.href = profileHref(name);
+      location.href = profileHref(p.name);
     });
     document.getElementById('opName')?.addEventListener('click', () => { location.href = profileHref(POST.name); });
     document.getElementById('storyRef')?.addEventListener('click', () => toast('📖 Opening story…'));
@@ -296,8 +279,15 @@
     });
   }
 
-  /* ── Discussion ads removed per product request: no mid-page slot. ── */
-  async function mountAd() { return; }
+  /* ── Discussion inline ad slot (discussion:inline). Mounted after the OP so
+     the slot auto-fills from the central inventory. ── */
+  async function mountAd() {
+    const el = document.querySelector('[data-ad-slot="discussion:inline"]');
+    if (!el) return;
+    if (window.DroboardAdSlot) {
+      await DroboardAdSlot.mount(el, { slot: 'discussion:inline', page: 'discussion' });
+    }
+  }
 
   /* ── Comments: droboard OPs reuse the page comment seed; everything
      else keeps the genre demo thread. ── */
@@ -305,30 +295,26 @@
     const s = String(r || '').replace(/^ring-/, '');
     return (s === 'has' || s === 'viewed') ? s : 'none';
   }
-  /* Thread seeds carry no status data — match authors against COMMENTS_DATA
-     first, else deal statuses round-robin so every comment behaves like
-     reader comments (ring shows, avatar opens the viewer). */
+  /* A commenter's ring comes from THEIR OWN statuses (canonical lineup, or
+     the seed's own slides). Dealing someone else's statuses round-robin gave
+     avatars a ring whose slides belonged to another author, so "viewed"
+    never landed. No statuses of their own → no border. */
   function enrichThreadStatuses(list) {
-    let pool = [];
-    try {
-      pool = (window.COMMENTS_DATA || []).filter(c => c && c.statuses && c.statuses.length);
-    } catch (e) { pool = []; }
-    if (!pool.length) return list;
     const byName = {};
-    pool.forEach(p => { if (p.name && !byName[p.name]) byName[p.name] = p; });
-    let n = 0;
+    try {
+      (window.COMMENTS_DATA || []).forEach(p => {
+        if (p && p.name && p.statuses && p.statuses.length && !byName[p.name]) byName[p.name] = p;
+      });
+    } catch (e) {}
     (function walk(arr) {
       (arr || []).forEach(c => {
         const hit = byName[c.name];
-        if (hit) {
-          if (!c.statuses || !c.statuses.length) c.statuses = hit.statuses;
-          c.statusRing = normThreadRing((c.statusRing && c.statusRing !== 'none') ? c.statusRing : hit.statusRing);
-        } else if (!c.statuses || !c.statuses.length) {
-          const p = pool[n++ % pool.length];
-          c.statuses = p.statuses;
-          c.statusRing = (n % 3 === 0) ? 'viewed' : 'has';
+        if ((!c.statuses || !c.statuses.length) && hit) c.statuses = hit.statuses;
+        if (c.statuses && c.statuses.length) {
+          // Seed value is cosmetic only — DroboardStatusRing reads the store.
+          c.statusRing = 'has';
         } else {
-          c.statusRing = normThreadRing(c.statusRing);
+          c.statusRing = 'none';
         }
         walk(c.replies || []);
       });
@@ -448,6 +434,7 @@
     if (!(await loadThread())) { toast('GenreDemoSeed missing'); return; }
     initWiring();
     renderOp();
+    await mountAd();
     mountComments();
     scrollToComment();
   }

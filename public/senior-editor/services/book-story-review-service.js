@@ -1,14 +1,13 @@
 /**
- * book-series-review-service.js — Book Series Review page logic (pure call-and-render)
+ * book-story-review-service.js — Book Story Review page logic (pure call-and-render)
  * Backend-ready: set USE_API=true; endpoints in senior.routes.js:
  *   GET  /api/senior-editor/book-edits           list
- *   GET  /api/senior-editor/book-edits/:id       read one
  *   POST /api/senior-editor/book-edits/:id/approve
  *   POST /api/senior-editor/book-edits/:id/reject   { note }
  */
 (function(){
 'use strict';
-var USE_API=false;
+var USE_API=true;
 var API_BASE='/api/senior-editor';
 
 function authHeaders(){
@@ -20,7 +19,7 @@ function authHeaders(){
 }
 async function callBackend(path,options){
   if(!USE_API)return null;
-  var res=await fetch(API_BASE+path,options);
+  var res=await fetch(API_BASE+path,Object.assign({credentials:'include'},options||{}));
   if(!res.ok){
     var body=await res.json().catch(function(){return {};});
     var err=new Error(body.error||('HTTP '+res.status));
@@ -30,6 +29,7 @@ async function callBackend(path,options){
   return res.json();
 }
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+var LIVE=false;
 
 /* ══════════════════════════════════════════════════════════════
    CRUD layer — every decision the page performs lives here.
@@ -42,22 +42,17 @@ var Crud={
     if(query&&query.status)qs.push('status='+encodeURIComponent(query.status));
     if(query&&query.q)qs.push('q='+encodeURIComponent(query.q));
     var remote=await callBackend('/book-edits'+(qs.length?'?'+qs.join('&'):''));
-    if(remote&&remote.items)items=remote.items.map(fromApiItem);
+    if(remote&&remote.items){LIVE=true;items=remote.items.map(fromApiItem);}
     return items;
-  },
-  get:async function(id){
-    var remote=await callBackend('/book-edits/'+encodeURIComponent(id));
-    if(remote&&remote.id){
-      var mapped=fromApiItem(remote);
-      var i=items.findIndex(function(x){return x.id===id;});
-      if(i>-1)items[i]=mapped;
-      return mapped;
-    }
-    return items.find(function(x){return x.id===id;})||null;
   },
   approve:async function(id){
     if(USE_API){
-      return callBackend('/book-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
+      try{
+        var res=await callBackend('/book-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
+        var a=items.find(function(x){return x.id===id;});
+        if(a)a.status='approved';
+        return res;
+      }catch(err){ if(LIVE) throw err; }
     }
     await sleep(700); /* demo: loader visible until "resolve" */
     var a=items.find(function(x){return x.id===id;});
@@ -66,9 +61,14 @@ var Crud={
   },
   reject:async function(id,reason){
     if(USE_API){
-      return callBackend('/book-edits/'+encodeURIComponent(id)+'/reject',{
-        method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
-      });
+      try{
+        var res=await callBackend('/book-edits/'+encodeURIComponent(id)+'/reject',{
+          method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
+        });
+        var a=items.find(function(x){return x.id===id;});
+        if(a){a.status='rejected';a.reviewNote=reason;}
+        return res;
+      }catch(err){ if(LIVE) throw err; }
     }
     await sleep(700); /* demo: loader visible until "resolve" */
     var a=items.find(function(x){return x.id===id;});
@@ -77,18 +77,22 @@ var Crud={
   },
 };
 
+function changeType(c){
+  var raw=String(c.type||c.field||'Change');
+  return {title:'Title',cover:'Cover',synopsis:'Description',description:'Description',genre:'Genre',tags:'Tags',tropes:'Tropes',kind:'Format',categoryId:'Category'}[raw]||raw;
+}
 function fromApiItem(d){
   return{
     id:d.id,
     author:d.authorName||d.author||'—',
-    avatar:d.avatar||'https://i.pravatar.cc/100?img=0',
+    avatar:d.avatar||'../assets/droboard-icon.png',
     book:d.bookTitle||d.book||'—',
     editType:d.editType||d.type||'Edit',
     submitted:d.submitted||'—',
     status:d.status||'pending',
     changeFrom:d.changeFrom||d.from||'',
     changeTo:d.changeTo||d.to||'',
-    changes:d.changes||null,
+    changes:Array.isArray(d.changes)?d.changes.map(function(c){return{type:changeType(c),from:c.from,to:c.to};}):null,
     notes:d.notes||d.authorNote||'',
     reviewNote:d.reviewNote||'',
   };
@@ -99,17 +103,17 @@ var items=[
   {id:'BSR-002',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',editType:'Cover Update',submitted:'1d ago',status:'pending',changeFrom:'https://picsum.photos/seed/ceo-cover-old/240/320',changeTo:'https://picsum.photos/seed/ceo-cover-new/240/320',notes:'Author uploaded new cover art. Needs review for quality and guidelines compliance.'},
   {id:'BSR-003',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',editType:'Description Edit',submitted:'2d ago',status:'pending',changeFrom:'A wolf shifter finds his fated mate in a human village.',changeTo:'When alpha warrior Kael discovers his fated mate is the one woman his pack has sworn to destroy, he must choose between duty and destiny.',notes:'Updated synopsis. Needs review for spoilers and accuracy.'},
   {id:'BSR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',editType:'Genre Change',submitted:'3d ago',status:'rejected',reviewNote:'Cannot change genre after publication without platform approval.',changeFrom:'Mafia Romance',changeTo:'Romantic Suspense',notes:'Cannot change genre after publication without platform approval. Rejected.'},
-  {id:'BSR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',editType:'Series Name',submitted:'4d ago',status:'approved',changeFrom:'Standalone',changeTo:'Ivy League Revenge Series',notes:'Added to series. Approved.'},
+  {id:'BSR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',editType:'Story Name',submitted:'4d ago',status:'approved',changeFrom:'Standalone',changeTo:'Ivy League Revenge',notes:'Story name updated. Approved.'},
   {id:'BSR-006',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'She Rejected Me 3 Times',editType:'Title Change',submitted:'5d ago',status:'pending',changeFrom:'She Rejected Me 3 Times',changeTo:'Three Times Rejected: A Love Story',notes:'Proposed new title under review.'},
   {id:'BSR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',editType:'Cover Update',submitted:'6d ago',status:'approved',changeFrom:'https://picsum.photos/seed/photo-cover-old/240/320',changeTo:'https://picsum.photos/seed/photo-cover-new/240/320',notes:'New cover matches brand guidelines. Approved.'},
   {id:'BSR-008',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'My Grandmother\'s Will',editType:'Description Edit',submitted:'1w ago',status:'rejected',reviewNote:'Description contains major spoilers — resubmit without plot reveals.',changeFrom:'A family drama about inheritance and secrets.',changeTo:'When Amara\'s grandmother dies, she leaves behind a will that will tear the family apart and reveal secrets buried for decades.',notes:'Description contains major spoilers. Rejected with feedback.'},
   {id:'BSR-009',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'The Billionaire\'s Guard',editType:'Title Change',submitted:'1w ago',status:'approved',changeFrom:'Bodyguard Romance',changeTo:'The Billionaire\'s Guard',notes:'Better title. More specific. Approved.'},
   {id:'BSR-010',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Shadow of the Alpha',editType:'Genre Change',submitted:'1w ago',status:'pending',changeFrom:'Paranormal Romance',changeTo:'Paranormal Romance · Urban Fantasy',notes:'Adding Urban Fantasy subgenre. Needs review.'},
-  {id:'BSR-011',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',editType:'Series Name',submitted:'2w ago',status:'approved',changeFrom:'Standalone',changeTo:'Billionaire Hearts Series',notes:'Added to series. Approved.'},
+  {id:'BSR-011',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',editType:'Story Name',submitted:'2w ago',status:'approved',changeFrom:'Standalone',changeTo:'Billionaire Hearts',notes:'Story name updated. Approved.'},
   {id:'BSR-012',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',editType:'Cover Update',submitted:'2w ago',status:'pending',changeFrom:'https://picsum.photos/seed/underground-cover-old/240/320',changeTo:'https://picsum.photos/seed/underground-cover-new/240/320',notes:'New cover with improved typography. Under review.'},
   {id:'BSR-013',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Princess Guard',editType:'Description Edit',submitted:'3w ago',status:'approved',changeFrom:'A princess falls for her guard.',changeTo:'Princess Elara has one rule: never fall for the guard. But when assassin shadows close in, the man sworn to protect her heart becomes the greatest danger of all.',notes:'Compelling description. Approved.'},
   {id:'BSR-014',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Campus Queen',editType:'Title Change',submitted:'3w ago',status:'rejected',reviewNote:'Original title is stronger and already ranking — keep it.',changeFrom:'Campus Queen',changeTo:'Queen of Campus',notes:'Original title is stronger. Rejected.'},
-  {id:'BSR-015',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',editType:'Title + Cover',submitted:'3d ago',status:'pending',changes:[{type:'Title',from:'Lagos Love Story',to:'Lagos Nights: A Love Story'},{type:'Cover',from:'https://picsum.photos/seed/lagos-cover-old/240/320',to:'https://picsum.photos/seed/lagos-cover-new/240/320'}],notes:'Author wants to rebrand the book with a new title and cover for the series launch.'},
+  {id:'BSR-015',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',editType:'Title + Cover',submitted:'3d ago',status:'pending',changes:[{type:'Title',from:'Lagos Love Story',to:'Lagos Nights: A Love Story'},{type:'Cover',from:'https://picsum.photos/seed/lagos-cover-old/240/320',to:'https://picsum.photos/seed/lagos-cover-new/240/320'}],notes:'Author wants to rebrand the book with a new title and cover for the relaunch.'},
   {id:'BSR-016',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',editType:'Title + Cover + Description',submitted:'4d ago',status:'pending',changes:[{type:'Title',from:'The Teacher\'s Secret',to:'Behind Closed Doors: A Teacher\'s Story'},{type:'Cover',from:'https://picsum.photos/seed/teacher-cover-old/240/320',to:'https://picsum.photos/seed/teacher-cover-new/240/320'},{type:'Description',from:'A teacher hides a dangerous secret.',to:'When Elizabeth discovers her student\'s dark home life, she must choose between her career and doing what\'s right — even if it means losing everything.'}],notes:'Full rebrand request. Title, cover, and description all changed to match the new direction of the story.'},
 ];
 
@@ -228,7 +232,7 @@ function editIcon(t){
   if(t.indexOf('Title')!==-1)return'fa-pen';
   if(t.indexOf('Description')!==-1)return'fa-align-left';
   if(t.indexOf('Genre')!==-1)return'fa-tags';
-  if(t.indexOf('Series')!==-1)return'fa-layer-group';
+  if(t.indexOf('Story')!==-1)return'fa-layer-group';
   return'fa-pen';
 }
 
@@ -505,7 +509,7 @@ function bind(){
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!submitting)closeOverlay('bsrRejectOv');});
 }
 function init(){
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'book-series-review',title:'Book Series Review',subtitle:'Authors request edits to book details',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'book-story-review',title:'Book Story Review',subtitle:'Authors request edits to book details',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
   ensureModal();
   ensureCoverViewer();
   bind();
@@ -514,5 +518,5 @@ function init(){
     render();
   });
 }
-window.BookSeriesReviewService={init:init};
+window.BookStoryReviewService={init:init};
 })();

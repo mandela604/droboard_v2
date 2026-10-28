@@ -55,6 +55,7 @@ const userSchema = new mongoose.Schema({
   settings: {
     theme: { type: String, default: 'dark' },
     notifications: { type: Boolean, default: true },
+    notificationChannels: { type: mongoose.Schema.Types.Mixed, default: null },
     privacy: { type: String, default: 'public' },
     readingActivity: { type: Boolean, default: true },
   },

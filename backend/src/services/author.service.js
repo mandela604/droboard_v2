@@ -7,8 +7,9 @@
 const { Book, Chapter, Character, Plot } = require('../models/content.model');
 const {
   ContractApplication, CompletionApplication, VipApplication,
-  ChapterReviewRequest,
+  ChapterReviewRequest, AuthorVerification,
 } = require('../models/application.model');
+const { User } = require('../models/user.model');
 const { LaunchCampaign } = require('../models/editorial.model');
 const { Contract } = require('../models/contract.model');
 
@@ -135,14 +136,236 @@ async function savePlot({ book, data }) {
   return plot;
 }
 
+// Book rows carry the contract state — the author page lists every book,
+// not just the ones that already applied.
 async function listContracts({ userId }) {
-  return ContractApplication.find({ authorId: userId }).sort({ createdAt: -1 }).lean();
+  const [books, apps, verification, contracts] = await Promise.all([
+    Book.find({ authorId: userId }).sort({ updatedAt: -1 })
+      .select('id title genre cover chapterCount contractStatus').lean(),
+    ContractApplication.find({ authorId: userId })
+      .sort({ createdAt: -1 }).select('bookId submittedAt verificationId').lean(),
+    AuthorVerification.findOne({ userId }).select('status kyc.type').lean(),
+    Contract.find({ authorId: userId, status: { $in: ['sent', 'approved', 'signed', 'active'] } })
+      .sort({ createdAt: -1 }).select('id bookId type status sentAt termMonths revenueSplit').lean(),
+  ]);
+  const latest = new Map();
+  for (const a of apps) if (!latest.has(a.bookId)) latest.set(a.bookId, a);
+  const openOffer = new Map();
+  for (const c of contracts) if (!openOffer.has(c.bookId)) openOffer.set(c.bookId, c);
+  return books.map((b) => {
+    const a = latest.get(b.id);
+    const c = openOffer.get(b.id);
+    return {
+      id: b.id,
+      title: b.title,
+      genre: b.genre,
+      cover: b.cover,
+      chapters: b.chapterCount || 0,
+      status: b.contractStatus || 'none',
+      appliedAt: a ? a.submittedAt || null : null,
+      contractId: c ? c.id : '',
+      offerType: c ? c.type : '',
+      offerSentAt: c ? c.sentAt || null : null,
+      termMonths: c ? c.termMonths : null,
+      revenueSplit: c ? c.revenueSplit : null,
+      kycType: verification && verification.kyc ? verification.kyc.type : null,
+      verificationStatus: verification ? verification.status : 'none',
+    };
+  });
 }
 
-async function applyContract({ userId, bookId, data }) {
-  const c = await ContractApplication.create(Object.assign({}, data, { bookId, authorId: userId, status: 'applied' }));
-  await Book.updateOne({ id: bookId, authorId: userId }, { contractStatus: 'applied' });
-  return c.toJSON();
+// Signing is gated: an offer exists (Contract 'sent') AND the writer's identity
+// is approved. Books stay live without a contract, so this is the only step
+// that turns an offer into a binding deal.
+async function signContract({ userId, contractId }) {
+  const contract = await Contract.findOne({ id: contractId, authorId: userId });
+  if (!contract) { const e = new Error('not_found'); e.status = 404; throw e; }
+
+  const verification = await AuthorVerification.findOne({ userId }).select('status').lean();
+  if (!verification || verification.status !== 'approved') {
+    const e = new Error('identity_not_verified'); e.status = 409; throw e;
+  }
+
+  const now = new Date();
+  const signed = await Contract.findOneAndUpdate(
+    { id: contractId, authorId: userId, status: 'sent' },
+    {
+      $set: { status: 'approved', signedAt: now },
+      $push: { signatures: { by: userId, role: 'author', at: now, hash: '' } },
+    },
+    { new: true }
+  );
+  // Already signed or the editor withdrew the offer — never double-sign.
+  if (!signed) { const e = new Error('contract_not_open'); e.status = 409; throw e; }
+
+  await ContractApplication.updateOne(
+    { authorId: userId, contractId, status: 'review' },
+    { $set: { status: 'contracted', decidedAt: now } }
+  );
+  await Book.updateOne({ id: signed.bookId, authorId: userId }, { contractStatus: 'contracted' });
+
+  try {
+    if (signed.editorId) {
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: signed.editorId, type: 'contract',
+        title: 'Contract signed by author',
+        desc: 'The author signed — the platform signature is the last step.',
+      });
+    }
+  } catch (e) {}
+
+  return Object.assign(signed.toJSON(), { contractStatus: 'contracted' });
+}
+
+async function declineContract({ userId, contractId, reason }) {
+  const now = new Date();
+  const declined = await Contract.findOneAndUpdate(
+    { id: contractId, authorId: userId, status: 'sent' },
+    {
+      $set: { status: 'rejected' },
+      $push: { replies: { from: 'author', message: (reason || 'Offer declined by the author.').trim(), at: now } },
+    },
+    { new: true }
+  );
+  if (!declined) { const e = new Error('contract_not_open'); e.status = 409; throw e; }
+
+  await ContractApplication.updateOne(
+    { authorId: userId, contractId, status: 'review' },
+    { $set: { status: 'rejected', reviewNote: (reason || '').trim(), decidedAt: now } }
+  );
+  await Book.updateOne({ id: declined.bookId, authorId: userId }, { contractStatus: 'none' });
+
+  try {
+    if (declined.editorId) {
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: declined.editorId, type: 'contract',
+        title: 'Contract offer declined',
+        desc: (reason || '').trim() || 'The author declined the offer.',
+      });
+    }
+  } catch (e) {}
+
+  return Object.assign(declined.toJSON(), { contractStatus: 'none' });
+}
+
+function ageFromDob(dob) {
+  const d = new Date(String(dob) + 'T00:00:00Z');
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - d.getUTCFullYear();
+  const m = now.getUTCMonth() - d.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) age--;
+  return age;
+}
+
+// One identity record per writer. Age is recomputed here — the client's
+// number is never trusted. Photos are mandatory: an application without
+// them cannot be reviewed.
+async function saveIdentity({ userId, kyc, idFiles }) {
+  const front = idFiles && idFiles.front && idFiles.front[0];
+  const back = idFiles && idFiles.back && idFiles.back[0];
+  if (!front || !back) { const e = new Error('id_photos_required'); e.status = 400; throw e; }
+
+  const age = ageFromDob(kyc.dob);
+  if (age === null || age < 10 || age > 110) { const e = new Error('bad_dob'); e.status = 400; throw e; }
+
+  const media = require('./media.service');
+  const [frontUrl, backUrl] = await Promise.all([
+    media.uploadImageBuffer(front.buffer, front.mimetype, 'kyc-front-' + userId),
+    media.uploadImageBuffer(back.buffer, back.mimetype, 'kyc-back-' + userId),
+  ]);
+
+  const identity = {
+    type: kyc.type,
+    dob: kyc.dob,
+    age,
+    nin: kyc.type === 'self' ? kyc.nin || '' : '',
+    altId: kyc.type === 'pending'
+      ? { type: kyc.altId.type, no: kyc.altId.no }
+      : { type: '', no: '' },
+    guardian: kyc.type === 'guardian'
+      ? { name: kyc.guardian.name, relationship: kyc.guardian.relationship, idNo: kyc.guardian.idNo }
+      : { name: '', relationship: '', idNo: '' },
+    idPhotos: { front: frontUrl, back: backUrl },
+  };
+
+  const u = await User.findOne({ id: userId }).select('fullName email avatar').lean();
+  const profile = {
+    name: (u && u.fullName) || '',
+    email: (u && u.email) || '',
+    avatar: (u && u.avatar) || '',
+  };
+  return AuthorVerification.findOneAndUpdate(
+    { userId },
+    {
+      $set: {
+        ...profile,
+        kyc: identity,
+        status: 'pending',
+        reviewerId: null,
+        reviewNote: '',
+        submittedAt: new Date(),
+      },
+      // Upserts bypass pre('validate'), so the custom public id is set here.
+      $setOnInsert: { id: require('../models/ids').uuidv7() },
+    },
+    { upsert: true, new: true }
+  );
+}
+
+async function getVerification({ userId }) {
+  const v = await AuthorVerification.findOne({ userId }).lean();
+  if (!v) return { status: 'none', kycType: null, submittedAt: null, hasPhotos: false };
+  const photos = v.kyc && v.kyc.idPhotos;
+  return {
+    status: v.status,
+    kycType: v.kyc ? v.kyc.type : null,
+    submittedAt: v.submittedAt || null,
+    hasPhotos: !!(photos && photos.front && photos.back),
+  };
+}
+
+// Profile badge path: a writer can verify before ever applying for a contract.
+async function submitVerification({ userId, kyc, idFiles }) {
+  const existing = await AuthorVerification.findOne({ userId });
+  if (existing && existing.status === 'approved') {
+    return { status: 'approved', kycType: existing.kyc ? existing.kyc.type : null };
+  }
+  const v = await saveIdentity({ userId, kyc, idFiles });
+  return { status: v.status, kycType: v.kyc ? v.kyc.type : null, submittedAt: v.submittedAt };
+}
+
+// A verified writer applies without re-uploading; everyone else supplies KYC
+// here and the same record backs their badge.
+async function applyContract({ userId, bookId, kyc, idFiles }) {
+  const book = await ownBook({ userId, bookId });
+
+  let verification = await AuthorVerification.findOne({ userId });
+  if (!verification || verification.status !== 'approved') {
+    if (!kyc) { const e = new Error('kyc_required'); e.status = 400; throw e; }
+    verification = await saveIdentity({ userId, kyc, idFiles });
+  }
+
+  // Resubmitting replaces the open application instead of stacking duplicates.
+  const open = await ContractApplication.findOne({
+    bookId: book.id, authorId: userId, status: { $in: ['applied', 'review'] },
+  });
+  let c;
+  if (open) {
+    open.verificationId = verification.id;
+    open.status = 'applied';
+    open.submittedAt = new Date();
+    await open.save();
+    c = open;
+  } else {
+    c = await ContractApplication.create({
+      bookId: book.id, authorId: userId, verificationId: verification.id, status: 'applied',
+    });
+  }
+  await Book.updateOne({ id: book.id, authorId: userId }, { contractStatus: 'applied' });
+  return Object.assign(c.toJSON(), { verificationStatus: verification.status });
 }
 
 async function applyCompletion({ userId, bookId, data }) {
@@ -194,7 +417,8 @@ module.exports = {
   dashboard, books, overview, ownBook, getBook, listChapters, saveBookChapter, requestBookChange,
   listCharacters, saveCharacter, deleteCharacter,
   getPlot, savePlot,
-  listContracts, applyContract, applyCompletion, applyVip,
+  listContracts, applyContract, signContract, declineContract, applyCompletion, applyVip,
+  getVerification, submitVerification,
   submitChapterReview,
   listChapterEdits, listBookEdits,
   launchKit, saveLaunchKit,

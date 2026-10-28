@@ -12,12 +12,16 @@
  * grey at once, on every surface.
  *
  * Usage:
- *   DroboardStatusRing.html(person, opts)  → ring markup
+ *   DroboardStatusRing.avatar(person, opts) → THE one call an avatar makes:
+ *       asks "does this person have statuses?" and answers with border,
+ *       no-border, and a working tap-to-play in the same markup.
+ *   DroboardStatusRing.html(person, opts)  → ring markup only (surfaces that
+ *       already own their tap, e.g. the feed story row)
  *   DroboardStatusRing.apply(root)         → repaint after a dynamic render
  *   DroboardStatusRing.open(list, key)     → open the viewer defensively
  *
  * person: { id|handle|name, avatar, statuses, ring, isLive, isMine }
- * opts:   { size, pad, gap, gradient, gapColor, innerBg, own, attrs,
+ * opts:   { size, pad, gap, gradient, gapColor, innerBg, own, attrs, pointer,
  *           innerClass, innerHtml, extraHtml }
  *   gradient — full CSS gradient for the red state (default linear story look)
  *   gapColor — colour of the cut between ring and avatar (defaults to --bg)
@@ -65,22 +69,44 @@
 
   function keyOf(p) { return p.key || p.id || p.handle || p.name || ''; }
 
-  /* Ask the shared store first, so every surface agrees on the same ring. */
-  function ringFor(p) {
-    var key = keyOf(p);
+  /* The seen-state key. The viewer stores every author under their NAME, so
+     a surface's own row/comment id must never win here — that splits one
+     person's state across surfaces and the ring can't read back "viewed". */
+  function authorKeyOf(p, override) {
+    if (override) return override;
+    return p.name || p.handle || p.id || p.key || '';
+  }
+
+  /* The whole rule, in one place:
+       no lineup     → no border (and so no click to fail)
+       some unseen   → red
+       all finished  → grey, from the shared store every surface reads
+     The store is asked with the author's REAL lineup, so the border and the
+     tap always describe the same set of slides. */
+  function ringFor(p, keyOverride) {
+    var key = authorKeyOf(p || {}, keyOverride);
+    var statuses = lineupFor(p, key);
+    if (!statuses.length) return 'ring-none';
     try {
       if (window.StatusStore && key) {
-        if (Array.isArray(p.statuses) && p.statuses.length) {
-          var r = StatusStore.register(key, p.statuses, { isLive: p.isLive, isMine: p.isMine });
-          if (r === 'ring-has' && (p.isLive || p.ring === 'ring-live')) return 'ring-live';
-          return r;
-        }
-        var fromStore = StatusStore.ringOf(key);
-        if (fromStore) return fromStore;
+        var r = StatusStore.register(key, statuses, { isLive: p.isLive, isMine: p.isMine });
+        if (r === 'ring-has' && (p.isLive || p.ring === 'ring-live')) return 'ring-live';
+        if (r) return r;
       }
     } catch (e) {}
     if (p.ring) return p.ring;
-    return (Array.isArray(p.statuses) && p.statuses.length) ? 'ring-has' : 'ring-none';
+    return 'ring-has';
+  }
+
+  /* The status service is the only place that knows who has statuses.
+     Asking it here means no surface ever guesses again — and a person with
+     no lineup gets NO border, which is the third state the rule demands. */
+  function lineupFor(p, key) {
+    if (p && Array.isArray(p.statuses) && p.statuses.length) return p.statuses;
+    var who = key || (p && (p.name || p.handle || p.id));
+    try {
+      return (window.DroboardStatus && window.DroboardStatus.writerStatuses(who)) || [];
+    } catch (e) { return []; }
   }
 
   function html(p, opts) {
@@ -89,8 +115,10 @@
     var size = opts.size || 44;
     var pad = opts.pad != null ? opts.pad : (size >= 56 ? 3 : 2);
     var gap = opts.gap != null ? opts.gap : (size >= 40 ? 2 : 1);
-    var ring = opts.own ? 'ring-own' : ringFor(p);
-    var key = opts.key != null ? opts.key : keyOf(p);
+    var ring = opts.own ? 'ring-own' : ringFor(p, opts.personKey || opts.key);
+    // The repaint stamp must be the SAME key ringFor() consulted, or a
+    // surface that renders red would never be found by the viewed repaint.
+    var key = authorKeyOf(p, opts.personKey || opts.key);
 
     var inner = opts.innerHtml;
     if (inner == null) {
@@ -108,6 +136,7 @@
     if (opts.noneBg) style += '--dring-none:' + opts.noneBg + ';';
     if (opts.ownBorder) style += '--dring-own:' + opts.ownBorder + ';';
     if (opts.extraStyle) style += opts.extraStyle;
+    if (opts.pointer) style += 'cursor:pointer;';
 
     return '<div class="dring ' + ring + '"' +
       (key ? ' data-status-ring="' + esc(key) + '"' : '') +
@@ -118,8 +147,64 @@
       '</div>';
   }
 
+  /* ── Tap-to-play, wired once for every surface ──
+     avatar() stamps the ring with data-status-open and parks the exact
+     lineup here, so the tap replays what the border promised. Surfaces that
+     already own their tap (story row, comment threads) use html() instead and
+     are never touched by this listener. */
+  var _openers = {};
+  var _clicksOn = false;
+
+  function bindClicks() {
+    if (_clicksOn || typeof document === 'undefined') return;
+    _clicksOn = true;
+    document.addEventListener('click', function (e) {
+      var el = e.target && e.target.closest && e.target.closest('[data-status-open]');
+      if (!el) return;
+      var entry = _openers[el.getAttribute('data-status-open')];
+      if (!entry || !entry.statuses.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      /* A page may want to play this author inside its own group (swipe to
+         the next person) — same chain-never-clobber contract as
+         window.onStatusViewerChange. Return true from it to take the tap. */
+      try {
+        if (typeof window.onStatusAvatarTap === 'function' &&
+            window.onStatusAvatarTap(entry, entry.id) === true) return;
+      } catch (err) {}
+      open([entry], entry.id);
+    }, true);
+  }
+
+  /* THE call. One question, one answer, no local guessing:
+       has statuses  → red/grey border from the store + tap plays them
+       no statuses   → no border, no pointer, the surface's own tap still runs */
+  function avatar(p, opts) {
+    p = p || {}; opts = opts || {};
+    var key = authorKeyOf(p, opts.personKey || opts.key);
+    var statuses = lineupFor(p, key);
+    if (!statuses.length) {
+      return html({ name: p.name, handle: p.handle, id: p.id, avatar: p.avatar,
+                    initialBg: p.initialBg, statuses: [], ring: 'ring-none' }, opts);
+    }
+    _openers[key] = {
+      id: key, name: p.name || key, handle: p.handle || '', avatar: p.avatar || '',
+      statuses: statuses, ring: 'ring-has', isLive: !!p.isLive, isMine: !!p.isMine,
+      likes: 0, threads: statuses.length,
+    };
+    bindClicks();
+    var withStamp = {};
+    for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) withStamp[k] = opts[k];
+    withStamp.attrs = (opts.attrs ? opts.attrs + ' ' : '') + 'data-status-open="' + esc(key) + '"';
+    withStamp.pointer = true;
+    return html({ name: p.name, handle: p.handle, id: p.id, key: p.key, avatar: p.avatar,
+                  initialBg: p.initialBg, statuses: statuses, ring: p.ring,
+                  isLive: p.isLive, isMine: p.isMine }, withStamp);
+  }
+
   /* Repaint stamped rings from the store after a dynamic render. */
   function apply(root) {
+    bindClicks();
     try { if (window.StatusStore && StatusStore.applyAll) StatusStore.applyAll(root); } catch (e) {}
   }
 
@@ -143,10 +228,12 @@
   }
 
   window.DroboardStatusRing = {
+    avatar: avatar,
     html: html,
     apply: apply,
     open: open,
     ringFor: ringFor,
+    lineupFor: lineupFor,
     keyOf: keyOf,
     GRADIENT: DEFAULT_GRAD,
   };
