@@ -4,7 +4,7 @@
 const { Book } = require('../models/content.model');
 const { User } = require('../models/user.model');
 const { ReviewSubmission, AuthorVerification, CompletionApplication } = require('../models/application.model');
-const { InviteCode, ChapterEdit, BookEdit } = require('../models/application.model');
+const { ChapterEdit, BookEdit } = require('../models/application.model');
 const { Contract } = require('../models/contract.model');
 const { Report } = require('../models/editorial.model');
 const { hydrateReports } = require('./report-hydrate.service');
@@ -83,22 +83,6 @@ function resource(Model, opts) {
   };
 }
 
-// Menu-backed resources ONLY (mirrors senior-editor sidebar — 13 items).
-// Anything not reachable from the menu has no endpoint here.
-const R = {
-  stories: () => resource(Book, { baseFilter: open('books'), searchFields: ['title', 'genre'] }),
-  authors: () => resource(User, {}),
-  reports: () => resource(Report, { decorate: hydrateReports }),
-  messages: () => resource(Conversation, {}),
-  contracts: () => resource(Contract, {}),
-  completions: () => resource(CompletionApplication, {}),
-  chapterEdits: () => resource(ChapterEdit, {}),
-  bookEdits: () => resource(BookEdit, {}),
-  reviews: () => resource(ReviewSubmission, {}),
-  verifications: () => resource(AuthorVerification, {}),
-  invites: () => resource(InviteCode, {}),
-};
-
 // ── Author-ownership scoping ───────────────────────────────────────────────
 // A senior_editor only sees work belonging to THEIR assigned authors
 // (EditorAssignment.authorIds). chief_editor/admin bypass — they see everything.
@@ -159,23 +143,7 @@ async function scopedResources(user) {
     bookEdits: () => resource(BookEdit, { baseFilter: open('bookEdits') }),
     reviews: () => resource(ReviewSubmission, { baseFilter: open('reviews') }),
     verifications: () => resource(AuthorVerification, {}),
-    invites: () => resource(InviteCode, {}),
   };
-}
-
-async function dashboard(user) {
-  // Pending-review count is scoped to the requesting editor's own authors;
-  // contracts/reports stay platform-wide (shared queues).
-  const ids = await scopeAuthorIds(user);
-  const pendingFilter = ids === null
-    ? { status: 'pending' }
-    : { status: 'pending', authorId: { $in: ids } };
-  const [pendingReviews, pendingContracts, pendingReports] = await Promise.all([
-    ReviewSubmission.countDocuments(pendingFilter),
-    Contract.countDocuments({ status: { $in: ['pending', 'sent', 'approved'] } }),
-    Report.countDocuments({ status: 'pending' }),
-  ]);
-  return { pendingReviews, pendingContracts, activeReports: pendingReports };
 }
 
 // Edit proposals: approve APPLIES the proposed content (the only time an
@@ -274,8 +242,23 @@ async function decideReport(user, id, status, note) {
   return doc.toJSON();
 }
 
+// Same ownership rule as decideReport, but reopening clears the resolution.
+async function reopenReport(user, id) {
+  const roles = (user && user.roles) || [];
+  const wide = roles.includes('chief_editor') || roles.includes('admin');
+  const filter = wide ? { id } : { id, seId: String(user.id) };
+  const doc = await Report.findOne(filter);
+  if (!doc) { const e = new Error('not_found'); e.status = 404; throw e; }
+  doc.status = 'pending';
+  doc.resolvedBy = null;
+  doc.resolutionNote = '';
+  await doc.save();
+  return doc.toJSON();
+}
+
 module.exports = {
-  pg, paged, searchFilter, resource, R, scopedResources, scopeAuthorIds, assertOwned,
-  dashboard, activity, myAuthors, approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
+  pg, paged, searchFilter, resource, scopedResources, scopeAuthorIds, assertOwned,
+  activity, myAuthors, approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
   decideReport,
+  reopenReport,
 };

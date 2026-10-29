@@ -6,7 +6,7 @@
  *   FinanceSidebar.attach('#root', { ... })
  *
  * Menu Sections:
- *   🏠 Dashboard          💵 Author Payments      🏦 Withdrawals
+ *   🏠 Dashboard          🏦 Withdrawals
  *   🪙 Coin Transactions   🎁 Bonuses              ⚖️ Payment Disputes
  *   📊 Financial Reports   🧾 Tax & Accounting
  *
@@ -33,12 +33,10 @@
 
   const MENU_ITEMS = [
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',            href: 'dashboard.html' },
-    { key: 'author-payments',     label: 'Author Payments',     icon: 'fa-money-check-dollar', href: 'author-payments.html' },
     { key: 'withdrawals',         label: 'Withdrawals',         icon: 'fa-building-columns',  href: 'withdrawals.html' },
     { key: 'coin-transactions',   label: 'Coin Transactions',   icon: 'fa-coins',             href: 'coin-transactions.html' },
     { key: 'payment-disputes',    label: 'Payment Disputes',    icon: 'fa-scale-balanced',    href: 'payment-disputes.html' },
     { key: 'financial-reports',   label: 'Financial Reports',   icon: 'fa-chart-pie',         href: 'financial-reports.html' },
-    { key: 'store-settings',        label: 'Store Settings',        icon: 'fa-store',             href: 'store-settings.html' },
   ];
 
   const CSS = `

@@ -296,6 +296,28 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
   </div>
 
+  <div class="panel collapsed" id="apPanel">
+    <div class="panel-head accordion-head" id="apHead" role="button" tabindex="0"><h2><i class="fas fa-money-bill-wave" style="color:var(--green);font-size:13px"></i> Ad pricing</h2><i class="fas fa-chevron-down accordion-chev"></i></div>
+    <div class="pl-body">
+    <div class="panel-sub">What one impression and one click cost, per currency. Priced per currency, never converted — each market carries its own price, so a naira change never reprices a dollar one.</div>
+    <div class="pl-grid" style="grid-template-columns:1fr">
+      <div class="pl-card">
+        <label class="pl-lbl">Billing currency for new campaigns</label>
+        <select class="pl-inp" id="apActive" style="margin-bottom:0;max-width:220px"></select>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <div style="flex:1;min-width:120px"><label class="pl-lbl">Impression</label></div>
+          <div style="flex:1;min-width:120px"><label class="pl-lbl">Click</label></div>
+        </div>
+        <div id="apRows"></div>
+        <div class="pl-hint" style="margin-top:10px">The USD leg is also what the ad revenue ledger books, so the earnings console keeps reporting in dollars. Campaigns bill in their own currency and spend is accumulated in it — no exchange rate is ever applied.</div>
+      </div>
+    </div>
+    <div class="pl-actions" style="margin-top:12px">
+      <button class="btn-primary" id="apSaveBtn">Save pricing</button>
+    </div>
+    </div>
+  </div>
+
   <div class="panel collapsed" id="auPanel">
     <div class="panel-head accordion-head" id="auHead" role="button" tabindex="0"><h2><i class="fas fa-users" style="color:var(--purple);font-size:13px"></i> Audience segments</h2><i class="fas fa-chevron-down accordion-chev"></i></div>
     <div class="pl-body">
@@ -359,6 +381,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 <div class="adm-toast" id="admToast"></div>
 
 <script src="../services/audience-rules.js?v=2"></script>
+<script src="../services/ad-pricing-service.js?v=1"></script>
 <script src="shared/ad-setup-data.js?v=8"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
@@ -366,7 +389,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="../services/spotlight-board-service.js"></script>
 <script src="../component/spotlight-ad.js?v=8"></script>
 <script src="../services/league-service.js"></script>
-<script src="shared/ad-manager.js?v=10"></script>
+<script src="shared/ad-manager.js?v=13"></script>
 <script>AdManagerPage.init();</script>
 </body>
 </html>

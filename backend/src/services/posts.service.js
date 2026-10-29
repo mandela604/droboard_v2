@@ -1,5 +1,8 @@
 'use strict';
 const { Post, Reaction } = require('../models/social.model');
+const { User } = require('../models/user.model');
+// users.service never requires back into posts, so this top-level import is safe.
+const { relTime } = require('./users.service');
 
 const POST_TYPES = ['announcement', 'post', 'debate', 'shoutout', 'repost', 'poll', 'forum-poll', 'ama', 'review', 'recommendation', 'quote', 'chapter-drop'];
 
@@ -61,7 +64,77 @@ async function createPost({ authorId, data }) {
   const payload = normContent(Object.assign({}, data));
   delete payload.id; // server assigns uuid — composers send demo p_<ts> ids
   const post = await Post.create(Object.assign({}, payload, { authorId }));
-  return post.toJSON();
+  return (await shape([post], authorId))[0];
+}
+
+// Card-ready authorship. A post row stores only authorId, and the feed renders
+// the header from that row alone — with no name/avatar the card prints blank,
+// and the shared status ring keys its seen-state off the handle, which only the
+// server can supply. `verified` follows the app-wide rule: a verified email.
+async function authorCards(ids) {
+  const uniq = Array.from(new Set(ids.filter(Boolean).map(String)));
+  if (!uniq.length) return {};
+  const rows = await User.find({ id: { $in: uniq } })
+    .select('id username fullName avatar emailVerified').lean();
+  const m = {};
+  rows.forEach(u => {
+    m[String(u.id)] = {
+      name: u.username || '', handle: '@' + (u.username || ''), fullName: u.fullName || '',
+      avatar: u.avatar || '', verified: !!u.emailVerified,
+    };
+  });
+  return m;
+}
+
+// The viewer's own reaction per post, one query for the whole page.
+async function viewerRx(ids, viewerId) {
+  if (!viewerId || !ids.length) return {};
+  const rows = await Reaction.find({
+    userId: String(viewerId), targetType: 'post', targetId: { $in: ids },
+  }).lean();
+  const m = {};
+  rows.forEach(r => { m[String(r.targetId)] = r.rid; });
+  return m;
+}
+
+// Stored doc → post-card shape. Voter lists (likedBy, savedBy, poll.votes,
+// debateData.votes) are reader ids and never leave the server: the card only
+// needs the viewer's own flag, which is what the counts already summarize.
+function toCard(p, author, viewerId, userRx) {
+  const v = viewerId ? String(viewerId) : '';
+  const has = (arr) => !!v && (arr || []).map(String).includes(v);
+  const c = Object.assign({}, p, author || { name: '', handle: '', fullName: '', avatar: '', verified: false }, {
+    time: relTime(p.createdAt),
+    likes: p.likesCount || 0,
+    comments: p.commentsCount || 0,
+    liked: has(p.likedBy),
+    saved: has(p.savedBy),
+    mine: !!v && String(p.authorId) === v,
+    reactions: reactionCounts(p),
+    userRx: userRx || null,
+  });
+  delete c.likedBy; delete c.savedBy;
+  if (p.poll) {
+    const mine = v && (p.poll.votes || []).find(x => String(x.user) === v);
+    c.poll = Object.assign({}, p.poll, { voted: mine ? mine.opt : -1 });
+    delete c.poll.votes;
+  }
+  if (p.debateData) {
+    const mine = v && (p.debateData.votes || []).find(x => String(x.user) === v);
+    c.debateData = Object.assign({}, p.debateData, { userVote: mine ? mine.side : null });
+    delete c.debateData.votes;
+  }
+  return c;
+}
+
+// Docs (lean or hydrated) + one viewer → the shapes the card consumes.
+async function shape(docs, viewerId) {
+  const list = docs.map(d => (d && typeof d.toJSON === 'function' ? d.toJSON() : d));
+  const [am, rx] = await Promise.all([
+    authorCards(list.map(p => p.authorId)),
+    viewerRx(list.map(p => String(p.id)), viewerId),
+  ]);
+  return list.map(p => toCard(p, am[String(p.authorId)], viewerId, rx[String(p.id)]));
 }
 
 async function listPosts({ tab, type, authorId, page, limit, viewerId }) {
@@ -82,20 +155,21 @@ async function listPosts({ tab, type, authorId, page, limit, viewerId }) {
   }
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
-  const [items, total] = await Promise.all([
+  const [docs, total] = await Promise.all([
     Post.find(filter).sort({ pinned: -1, createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Post.countDocuments(filter),
   ]);
-  return { items, total, page: pg, limit: lim };
+  return { items: await shape(docs, viewerId), total, page: pg, limit: lim };
 }
 
-async function getPost(id) {
+async function getPost(id, viewerId) {
   const post = await Post.findOne({ id }).lean();
   if (!post) { const e = new Error('not_found'); e.status = 404; throw e; }
-  return post;
+  const [card] = await shape([post], viewerId);
+  return card;
 }
 
-async function updatePost({ post, data }) {
+async function updatePost({ post, data, viewerId }) {
   ['title', 'text', 'note', 'image', 'pinned', 'heading', 'quote', 'caption', 'quoteBg', 'quoteBgCss'].forEach(k => {
     if (data[k] !== undefined) post[k] = data[k];
   });
@@ -103,14 +177,15 @@ async function updatePost({ post, data }) {
   if (data.poll !== undefined) {
     normContent(data);
     post.poll = data.poll;
-    post.poll.votedBy = [];
+    post.poll.votes = [];
   }
   if (data.debateData !== undefined) {
     normContent(data);
     post.debateData = data.debateData;
+    post.debateData.votes = [];
   }
   await post.save();
-  return post.toJSON();
+  return (await shape([post], viewerId))[0];
 }
 
 async function deletePost({ post }) {
@@ -138,26 +213,55 @@ async function toggleSave({ post, userId }) {
 
 async function votePoll({ post, idx, userId }) {
   if (!post.poll) { const e = new Error('no_poll'); e.status = 400; throw e; }
-  post.poll.votedBy = post.poll.votedBy || [];
-  if (post.poll.votedBy.map(String).includes(String(userId))) {
+  post.poll.votes = post.poll.votes || [];
+  if (post.poll.votes.some(x => String(x.user) === String(userId))) {
     const e = new Error('already_voted'); e.status = 409; throw e;
   }
   const opts = post.poll.opts || [];
   if (idx < 0 || idx >= opts.length) { const e = new Error('bad_option'); e.status = 400; throw e; }
   opts[idx].v = (opts[idx].v || 0) + 1;
   post.poll.total = (post.poll.total || 0) + 1;
-  post.poll.votedBy.push(String(userId));
+  post.poll.votes.push({ user: String(userId), opt: idx });
   await post.save();
-  return post.toJSON();
+  return (await shape([post], userId))[0];
 }
 
-async function voteDebate({ post, side }) {
-  if (!post.debateData) { const e = new Error('no_debate'); e.status = 400; throw e; }
-  if (side === 'for') post.debateData.forV += 1;
-  else if (side === 'against') post.debateData.agV += 1;
-  else { const e = new Error('bad_side'); e.status = 400; throw e; }
+// Pulling a vote back restores exactly the option that reader chose.
+async function retractPollVote({ post, userId }) {
+  if (!post.poll) { const e = new Error('no_poll'); e.status = 400; throw e; }
+  const i = (post.poll.votes || []).findIndex(x => String(x.user) === String(userId));
+  if (i === -1) return (await shape([post], userId))[0];
+  const idx = post.poll.votes[i].opt;
+  if (post.poll.opts[idx]) post.poll.opts[idx].v = Math.max(0, (post.poll.opts[idx].v || 0) - 1);
+  post.poll.total = Math.max(0, (post.poll.total || 0) - 1);
+  post.poll.votes.splice(i, 1);
   await post.save();
-  return post.toJSON();
+  return (await shape([post], userId))[0];
+}
+
+async function voteDebate({ post, side, userId }) {
+  if (!post.debateData) { const e = new Error('no_debate'); e.status = 400; throw e; }
+  if (side !== 'for' && side !== 'against') { const e = new Error('bad_side'); e.status = 400; throw e; }
+  post.debateData.votes = post.debateData.votes || [];
+  if (post.debateData.votes.some(x => String(x.user) === String(userId))) {
+    const e = new Error('already_voted'); e.status = 409; throw e;
+  }
+  if (side === 'for') post.debateData.forV += 1; else post.debateData.agV += 1;
+  post.debateData.votes.push({ user: String(userId), side });
+  await post.save();
+  return (await shape([post], userId))[0];
+}
+
+async function retractDebateVote({ post, userId }) {
+  if (!post.debateData) { const e = new Error('no_debate'); e.status = 400; throw e; }
+  const i = (post.debateData.votes || []).findIndex(x => String(x.user) === String(userId));
+  if (i === -1) return (await shape([post], userId))[0];
+  const { side } = post.debateData.votes[i];
+  if (side === 'for') post.debateData.forV = Math.max(0, post.debateData.forV - 1);
+  else post.debateData.agV = Math.max(0, post.debateData.agV - 1);
+  post.debateData.votes.splice(i, 1);
+  await post.save();
+  return (await shape([post], userId))[0];
 }
 
 async function loadOr404(id) {
@@ -224,6 +328,6 @@ async function sharePost({ post, channel, userId }) {
 
 module.exports = {
   POST_TYPES, createPost, listPosts, getPost, updatePost, deletePost,
-  toggleLike, toggleSave, votePoll, voteDebate, loadOr404, canWrite,
+  toggleLike, toggleSave, votePoll, retractPollVote, voteDebate, retractDebateVote, loadOr404, canWrite,
   reactToPost, unreactPost, reactionState, sharePost,
 };

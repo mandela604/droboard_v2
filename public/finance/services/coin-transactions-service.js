@@ -26,7 +26,15 @@ async function apiFetch(path, options){
       signal: ctl.signal,
       ...options,
     });
-    if (!res.ok) throw new Error('Request failed: ' + res.status);
+    if (!res.ok) {
+      // The server's own reason (and its field list for a rejected earn reward)
+      // is what the operator needs to see, not a bare "Request failed: 400".
+      const body = await res.json().catch(function () { return {}; });
+      const e = new Error(body.error || ('Request failed: ' + res.status));
+      e.status = res.status;
+      e.errors = Array.isArray(body.errors) ? body.errors : null;
+      throw e;
+    }
     return res.status === 204 ? null : res.json();
   } finally {
     clearTimeout(t);
@@ -35,10 +43,10 @@ async function apiFetch(path, options){
 let usingDemoConfig = false;
 
 const DEMO_PACKAGES = [
-  { id:'PKG-01', name:'Starter Pack',  coins:1000,  priceUsd:9.99,  bonusPercent:0,  status:'active',   createdAt:'2026-01-15' },
-  { id:'PKG-02', name:'Reader Bundle', coins:5000,  priceUsd:49.99, bonusPercent:5,  status:'active',   createdAt:'2026-02-01' },
-  { id:'PKG-03', name:'Power Pack',    coins:12000, priceUsd:99.99, bonusPercent:10, status:'active',   createdAt:'2026-03-10' },
-  { id:'PKG-04', name:'Trial Pack',    coins:500,   priceUsd:5.99,  bonusPercent:0,  status:'inactive', createdAt:'2025-11-01' },
+  { id:'PKG-01', name:'Starter Pack',  coins:1000,  priceUsd:9.99,  bonusPercent:0,  icon:'fa-coins',    color:'#635F6E', status:'active',   createdAt:'2026-01-15' },
+  { id:'PKG-02', name:'Reader Bundle', coins:5000,  priceUsd:49.99, bonusPercent:5,  icon:'fa-book-open', color:'#FF2D6A', status:'active',   createdAt:'2026-02-01' },
+  { id:'PKG-03', name:'Power Pack',    coins:12000, priceUsd:99.99, bonusPercent:10, icon:'fa-bolt',     color:'#D6165A', status:'active',   createdAt:'2026-03-10' },
+  { id:'PKG-04', name:'Trial Pack',    coins:500,   priceUsd:5.99,  bonusPercent:0,  icon:'fa-seedling', color:'#22c55e', status:'inactive', createdAt:'2025-11-01' },
 ];
 const DEMO_GIFTS = [
   { id:'GFT-01', name:'Rose',    icon:'🌹', costCoins:50,   color:'#FF2D6A', status:'active',   createdAt:'2026-01-20' },
@@ -198,19 +206,21 @@ function logHistory(action, itemType, itemName, details){
 }
 function syncPacksToStore(){
   try{
-    const storePacks = PACKAGES.filter(p=>p.status==='active').map(p=>({ id:p.id, coins:p.coins, price:'$'+Number(p.priceUsd).toFixed(2), priceUSD:Number(p.priceUsd), prices:p.prices, badge:p.bonusPercent?'+'+p.bonusPercent+'% bonus':'', color: p.coins>=5000?'#D6165A':p.coins>=1000?'#FF2D6A':'#635F6E' }));
+    const storePacks = PACKAGES.filter(p=>p.status==='active').map(p=>({ id:p.id, coins:p.coins, price:'$'+Number(p.priceUsd).toFixed(2), priceUSD:Number(p.priceUsd), prices:p.prices, badge:p.bonusPercent?'+'+p.bonusPercent+'% bonus':'', icon:p.icon||'fa-coins', color:p.color||'#FF2D6A' }));
     if(storePacks.length) localStorage.setItem('dro_finance_packs', JSON.stringify(storePacks));
   }catch(e){}
 }
 function syncEarnToStore(){
   try{
-    // type + adUrl MUST ride along — the reader store filters on type==='watch_ad'
-    // and opens adUrl when the reader claims the reward.
+    // Demo bridge: the reader store reads this when there is no backend. With
+    // a backend the server's own shaped catalog (validated, target included)
+    // replaces it, and an incomplete row is never served nor claimable there.
     const storeRewards = EARN.map(r=>({
       id:r.id, action:r.action, type:r.type, coins:r.coins, cooldown:r.cooldown,
       icon:r.icon, available:r.available!==false && r.status==='active',
       adUrl:r.adUrl || (r.meta && r.meta.adUrl) || undefined,
       blogUrl:r.blogUrl || (r.meta && r.meta.blogUrl) || undefined,
+      blogCategory:r.blogCategory || (r.meta && r.meta.blogCategory) || undefined,
       channelId:r.channelId || (r.meta && r.meta.channelId) || undefined,
       channelUrl:r.channelUrl || (r.meta && r.meta.channelUrl) || undefined,
       videoId:r.videoId || (r.meta && r.meta.videoId) || undefined,
@@ -419,9 +429,9 @@ function renderPricing(){
   document.getElementById('pkgList').innerHTML = pkgPageItems.length ? pkgPageItems.map(p=>`
     <div class="pkg-card" data-id="${p.id}">
       <div class="pkg-top"><span class="pkg-name">${p.name}</span><span class="status-pill ${p.status}">${p.status}</span></div>
-      <div class="pkg-coins"><i class="fas fa-coins" style="font-size:15px"></i>${p.coins.toLocaleString()}</div>
+      <div class="pkg-coins"><i class="fas ${p.icon||'fa-coins'}" style="font-size:15px;color:${p.color||'#FF2D6A'}"></i>${p.coins.toLocaleString()}</div>
       <div class="pkg-price">${money(p.priceUsd)}${p.bonusPercent>0?` · <span class="pkg-bonus" style="display:inline">+${p.bonusPercent}% bonus</span>`:''}</div>
-      <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(p.createdAt)}</div>
+      <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(p.createdAt)} · <span style="color:${p.color||'#FF2D6A'}">${p.color||'#FF2D6A'}</span></div>
       <div class="pkg-actions">
         <button class="mini-btn" data-action="pkg-toggle" data-id="${p.id}"><i class="fas fa-power-off"></i> ${p.status==='active'?'Deactivate':'Activate'}</button>
         <button class="mini-btn" data-action="pkg-edit" data-id="${p.id}"><i class="fas fa-pen"></i> Edit</button>
@@ -564,6 +574,8 @@ function openCreateModal(kind){
   document.getElementById('pkgPriceNgn').value = '';
   document.getElementById('pkgPriceGbp').value = '';
   document.getElementById('pkgBonus').value = '';
+  document.getElementById('pkgIcon').value = '';
+  document.getElementById('pkgColor').value = '#FF2D6A';
   document.getElementById('bundleCoins').value = '';
   document.getElementById('bundleBonus').value = '';
   document.getElementById('bundlePrice').value = '';
@@ -595,7 +607,7 @@ function openCreateModal(kind){
   document.getElementById('earnBlogCat').value = 'tech';
   document.getElementById('earnChannelId').value = '';
   document.getElementById('earnVideoId').value = '';
-  document.getElementById('earnWatchSec').value = '60';
+  document.getElementById('earnWatchSec').value = '';
   document.getElementById('itemStatus').value = 'active';
   document.getElementById('formModalError').classList.remove('show');
   setFormKind(kind || 'package', false);
@@ -617,6 +629,8 @@ function openEditModal(kind, id){
     document.getElementById('pkgPriceNgn').value = (item.prices && item.prices.NGN) || '';
     document.getElementById('pkgPriceGbp').value = (item.prices && item.prices.GBP) || '';
     document.getElementById('pkgBonus').value = item.bonusPercent || '';
+    document.getElementById('pkgIcon').value = item.icon || '';
+    document.getElementById('pkgColor').value = item.color || '#FF2D6A';
   }else if(kind==='bundle'){
     document.getElementById('bundleCoins').value = item.coins;
     document.getElementById('bundleBonus').value = item.bonus || '';
@@ -643,7 +657,7 @@ function openEditModal(kind, id){
     document.getElementById('earnBlogCat').value = item.blogCategory || 'tech';
     document.getElementById('earnChannelId').value = item.channelId || item.channelUrl || '';
     document.getElementById('earnVideoId').value = item.videoId || '';
-    document.getElementById('earnWatchSec').value = item.minWatchSec || 60;
+    document.getElementById('earnWatchSec').value = item.minWatchSec || '';
   }else{
     document.getElementById('subPrice').value = item.priceUsd;
     document.getElementById('subPriceNgn').value = (item.prices && item.prices.NGN) || '';
@@ -664,12 +678,21 @@ function openEditModal(kind, id){
 
 function closeFormModal(){ document.getElementById('formModalOv').classList.remove('open'); editingItemId = null; }
 
+const WATCH_DEFAULT = { watch_ad: 20, blog_read: 45, youtube_watch: 60 };
 function updateEarnExtras(){
   const t=document.getElementById('earnType').value;
   document.getElementById('earnExtraBlog').style.display = t==='blog_read' ? 'block':'none';
   document.getElementById('earnExtraYTSub').style.display = t==='youtube_sub' ? 'block':'none';
   document.getElementById('earnExtraYTWatch').style.display = t==='youtube_watch' ? 'block':'none';
   document.getElementById('earnExtraAd').style.display = t==='watch_ad' ? 'block':'none';
+  // Timed tasks pay only after this many seconds between Start and Claim.
+  const secs = document.getElementById('earnWatchSec');
+  const timed = WATCH_DEFAULT[t] !== undefined;
+  document.getElementById('earnExtraTime').style.display = timed ? 'block':'none';
+  if (timed) {
+    secs.placeholder = String(WATCH_DEFAULT[t]);
+    if (!secs.value) secs.value = WATCH_DEFAULT[t];
+  } else secs.value = '';
 }
 
 document.querySelectorAll('#kindRow .radio-opt').forEach(el=>{
@@ -703,7 +726,11 @@ async function submitForm(){
     const prices = readLadder(priceUsd, null, document.getElementById('pkgPriceNgn').value, document.getElementById('pkgPriceGbp').value);
     if(coins<=0){ errBox.textContent='Please enter a coin amount.'; errBox.classList.add('show'); return; }
     if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
-    payload = { name, coins, priceUsd, prices, bonusPercent, status };
+    // Same fallbacks the server and the reader store card use, so an untouched
+    // picker still posts an explicit value instead of relying on defaults.
+    const icon = document.getElementById('pkgIcon').value.trim() || 'fa-coins';
+    const color = document.getElementById('pkgColor').value || '#FF2D6A';
+    payload = { name, coins, priceUsd, prices, bonusPercent, icon, color, status };
   }else if(formKind==='bundle'){
     const coins = parseInt(document.getElementById('bundleCoins').value,10) || 0;
     const bonus = parseInt(document.getElementById('bundleBonus').value,10) || 0;
@@ -731,6 +758,9 @@ async function submitForm(){
     if(!action){ errBox.textContent='Please enter action label.'; errBox.classList.add('show'); return; }
     if(coins<=0){ errBox.textContent='Please enter coins.'; errBox.classList.add('show'); return; }
     payload = { action, type, coins, cooldown, icon, available, status: available?'active':'inactive' };
+    // Blank is fine for non-timed types; the server ignores it there.
+    const secs = parseInt(document.getElementById('earnWatchSec').value,10);
+    if(secs) payload.minWatchSec = secs;
     if(type==='watch_ad'){
       // Production: the reader must open a real ad/offerwall — no URL means
       // the claim is a fake local credit. Required so packages ship ready.
@@ -749,7 +779,6 @@ async function submitForm(){
       const vid=document.getElementById('earnVideoId').value.trim();
       if(!vid){ errBox.textContent='Video ID required.'; errBox.classList.add('show'); return; }
       payload.videoId = vid.includes('youtube.com') || vid.includes('youtu.be') ? extractYTId(vid) : vid;
-      payload.minWatchSec = parseInt(document.getElementById('earnWatchSec').value,10) || 60;
     }
   }else{
     const priceUsd = parseFloat(document.getElementById('subPrice').value) || 0;
@@ -770,9 +799,23 @@ async function submitForm(){
   try{
     const list = formKind==='package' ? PACKAGES : formKind==='bundle' ? BUNDLES : formKind==='gift' ? GIFTS : formKind==='earn' ? EARN : SUBSCRIPTIONS;
     const endpoint = formKind==='package' ? '/coin-packages' : formKind==='bundle' ? '/coin-bundles' : formKind==='gift' ? '/coin-gifts' : formKind==='earn' ? '/coin-earn' : '/coin-subscriptions';
+    // An earn task pays real coins, so a reward the server refuses (no https ad
+    // URL, bad video id, no cooldown — see backend earn-rules.js) is not saved
+    // anywhere, demo list included. Other kinds still fall back to demo state
+    // when the backend simply is not reachable.
+    const strict = formKind === 'earn';
+    const refused = (e) => {
+      const lines = (e && e.errors && e.errors.length) ? e.errors : [(e && e.message) || 'the server refused it'];
+      errBox.textContent = 'Not saved — ' + lines.join(' · ');
+      errBox.classList.add('show');
+      toast('⛔ This reward is not usable yet');
+    };
     if(editingItemId){
       const item = list.find(x=>x.id===editingItemId);
-      try{ if(!usingDemoConfig) await apiFetch(endpoint+'/'+editingItemId, { method:'PUT', body: JSON.stringify(payload) }); }catch(_){}
+      if(!usingDemoConfig){
+        try { await apiFetch(endpoint+'/'+editingItemId, { method:'PUT', body: JSON.stringify(payload) }); }
+        catch(e){ if(strict && e.status){ refused(e); return; } }
+      }
       Object.assign(item, payload);
       if(formKind==='earn'){ item.status = payload.available?'active':'inactive'; }
       const dName = formKind==='earn' ? payload.action : name;
@@ -781,7 +824,10 @@ async function submitForm(){
       toast(`✏️ "${dName}" updated`);
     }else{
       let created = null;
-      try{ if(!usingDemoConfig) created = await apiFetch(endpoint, { method:'POST', body: JSON.stringify(payload) }); }catch(_){}
+      if(!usingDemoConfig){
+        try { created = await apiFetch(endpoint, { method:'POST', body: JSON.stringify(payload) }); }
+        catch(e){ if(strict && e.status){ refused(e); return; } }
+      }
       if(!created){
         const prefix = formKind==='package' ? 'PKG-' : formKind==='bundle' ? 'BND-' : formKind==='gift' ? 'GFT-' : formKind==='earn' ? 'ad' : 'SUB-';
         const baseId = formKind==='earn' ? 'ad'+String(list.length+1) : prefix+String(list.length+1).padStart(2,'0');

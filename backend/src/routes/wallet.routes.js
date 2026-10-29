@@ -17,10 +17,38 @@ router.post('/unlock', requireAuth, moneyLimiter,
     // module). Accepted for frontend compat but IGNORED.
     priceCoins: z.number().int().min(0).max(10000).optional(),
   }).strict() })), ctrl.unlock);
+// Rewarded-video unlock. No coins are spent or minted: start returns a token,
+// the claim books the entitlement after the minimum watch time. Guard on the
+// economy lives in the service (paid chapter + allowAdUnlock).
+router.post('/unlock-ad/start', requireAuth, moneyLimiter,
+  validate(z.object({ body: z.object({
+    bookId: z.string().min(1).max(40), chapterId: z.string().min(1).max(40),
+  }).strict() })), ctrl.adUnlockStart);
+router.post('/unlock-ad', requireAuth, moneyLimiter,
+  validate(z.object({ body: z.object({
+    bookId: z.string().min(1).max(40), chapterId: z.string().min(1).max(40),
+    token: z.string().min(10).max(600),
+  }).strict() })), ctrl.adUnlock);
 router.post('/tip', requireAuth, moneyLimiter,
   validate(z.object({ body: z.object({
     authorId: z.string().min(1).max(40), coins: z.number().int().min(1).max(100000),
     giftCode: z.string().max(20).optional(),
+    // One value per open sheet: makes a retry/resend the SAME request instead
+    // of a second tip. Optional — the server falls back to a 10s window.
+    requestId: z.string().min(1).max(60).optional(),
   }).strict() })), ctrl.tip);
+
+// Reader's own coin history (store History tab + dispute itemization).
+router.get('/transactions', requireAuth, ctrl.transactions);
+// Earn tasks: coins come from the reward row, cooldown from the claim ledger —
+// never from whatever the client says it earned. Tasks that leave the app are
+// started first (/earn/start hands back a single-use token the claim needs).
+router.post('/earn/start', requireAuth, moneyLimiter,
+  validate(z.object({ body: z.object({ code: z.string().min(1).max(40) }).strict() })), ctrl.earnStart);
+router.post('/earn', requireAuth, moneyLimiter,
+  validate(z.object({ body: z.object({
+    code: z.string().min(1).max(40),
+    token: z.string().min(10).max(600).optional(),
+  }).strict() })), ctrl.earn);
 
 module.exports = router;

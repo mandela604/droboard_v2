@@ -320,7 +320,7 @@ const TRACK_EVENTS = ['impression', 'viewable', 'click', 'complete', 'skip', 'co
 const EVENT_INC = { impression: 'impressions', viewable: 'viewables', click: 'clicks', complete: 'completes', skip: 'skips', conversion: 'conversions' };
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
-async function track({ id, event, userId, anonId, page, slot, storyId, showingId, value, currency, orderId, source }) {
+async function track({ id, event, userId, anonId, page, slot, storyId, showingId, value, currency, orderId, source, country }) {
   if (!id) { const e = new Error('no_id'); e.status = 400; throw e; }
   if (!TRACK_EVENTS.includes(event)) { const e = new Error('bad_event'); e.status = 400; throw e; }
   const { AdEvent, AdConversion } = require('../models/platform.model');
@@ -389,7 +389,7 @@ async function track({ id, event, userId, anonId, page, slot, storyId, showingId
 
   if (event === 'impression' || event === 'click') {
     try {
-      await require('./ad-revenue.service').record({ id: adId, event, page: pageStr, slot: slotStr, storyId: storyStr, ts: Date.now() });
+      await require('./ad-revenue.service').record({ id: adId, event, page: pageStr, slot: slotStr, storyId: storyStr, ts: Date.now(), country });
     } catch (e) { /* revenue ledger never breaks tracking */ }
   }
   if (who && event === 'click') {

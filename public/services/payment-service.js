@@ -26,15 +26,25 @@
   }
   function isApp() { return platform() !== 'web'; }
 
+  var ALL_WEB = [
+    { id: 'flutterwave', name: 'Flutterwave', icon: 'fas fa-wallet', hint: 'Card · Bank · Mobile money' },
+    { id: 'paystack', name: 'Paystack', icon: 'fas fa-credit-card', hint: 'Card · Transfer · USSD' },
+  ];
+  // Only channels the server actually has keys for. Before /payments/config has
+  // been read the sheet shows the launch provider (Flutterwave) alone — never
+  // a list a tap could fail on.
   function methods() {
     var pf = platform();
     if (pf === 'android-app') return [{ id: 'play', name: 'Google Play', icon: 'fab fa-google-play', hint: 'Billed by Google' }];
     if (pf === 'ios-app') return [{ id: 'appstore', name: 'App Store', icon: 'fab fa-apple', hint: 'Billed by Apple' }];
-    return [
-      { id: 'paystack', name: 'Paystack', icon: 'fas fa-credit-card', hint: 'Card · Transfer · USSD' },
-      { id: 'flutterwave', name: 'Flutterwave', icon: 'fas fa-wallet', hint: 'Card · Bank · Mobile money' },
-    ];
+    if (!_config) return ALL_WEB.slice(0, 1);
+    var enabled = Array.isArray(_config.enabled) ? _config.enabled : null;
+    if (!enabled) return ALL_WEB;
+    return ALL_WEB.filter(function (m) { return enabled.indexOf(m.id) !== -1; });
   }
+  // Fire-and-forget at page init so the sheet knows the real provider list
+  // before a user taps Buy.
+  function warm() { return getConfig().catch(function () { return null; }); }
 
   var _sdk = {};
   function loadScript(src) {
@@ -72,17 +82,20 @@
     }).then(function (j) { _config = j || {}; return _config; });
   }
 
-  var _email = null;
-  function getEmail() {
-    if (_email) return Promise.resolve(_email);
+  // Providers echo this back on their webhook; without it the server cannot
+  // attribute a completed charge to a user + pack and rejects the webhook.
+  var _me = null;
+  function getMe() {
+    if (_me) return Promise.resolve(_me);
     return fetch('/api/users/me', { credentials: 'include' }).then(function (res) {
       if (!res.ok) return null;
       return res.json();
     }).then(function (j) {
-      _email = (j && j.email) || null;
-      return _email;
+      _me = j ? { id: j.id || j.userId || j._id || null, email: j.email || null } : null;
+      return _me;
     }).catch(function () { return null; });
   }
+  function getEmail() { return getMe().then(function (m) { return m && m.email ? m.email : null; }); }
 
   function verify(channel, body) {
     return fetch(API + '/' + channel + '/verify', {
@@ -121,9 +134,9 @@
       }
       return loadScript('https://js.paystack.co/v1/inline.js');
     }).then(function () {
-      return getEmail();
-    }).then(function (email) {
-      email = opts.email || email;
+      return getMe();
+    }).then(function (me) {
+      var email = opts.email || (me && me.email);
       if (!email) throw new Error('email_required');
       return new Promise(function (resolve, reject) {
         var handler = window.PaystackPop.setup({
@@ -132,6 +145,7 @@
           amount: Math.round(Number(opts.amountNGN) * 100), // naira -> kobo
           currency: 'NGN',
           ref: genRef('PSK'),
+          metadata: { userId: (me && me.id) || '', packCode: opts.packCode },
           callback: function (resp) {
             verify('paystack', { reference: resp.reference, packCode: opts.packCode }).then(resolve, reject);
           },
@@ -155,9 +169,9 @@
       }
       return loadScript('https://checkout.flutterwave.com/v3.js');
     }).then(function () {
-      return getEmail();
-    }).then(function (email) {
-      email = opts.email || email;
+      return getMe();
+    }).then(function (me) {
+      var email = opts.email || (me && me.email);
       if (!email) throw new Error('email_required');
       return new Promise(function (resolve, reject) {
         window.FlutterwaveCheckout({
@@ -166,6 +180,7 @@
           amount: Number(opts.amountNGN),
           currency: 'NGN',
           customer: { email: email },
+          meta: { userId: (me && me.id) || '', packCode: opts.packCode },
           callback: function (d) {
             var txId = d && (d.transaction_id || d.id || d.tx_ref);
             if (!txId) { reject(new Error('no_receipt')); return; }
@@ -186,11 +201,24 @@
     opts = opts || {};
     if (!opts.packCode) return Promise.reject(new Error('pack_required'));
     if (!(Number(opts.amountNGN) > 0)) return Promise.reject(new Error('amount_required'));
-    var method = opts.method || methods()[0].id;
+    var list = methods();
+    if (!list.length) {
+      // Config answered with zero enabled channels — no keys exist yet, so no
+      // provider can take this money. Fail before the SDK rather than inside it.
+      var none = new Error('no_provider_configured');
+      none.status = 503;
+      return Promise.reject(none);
+    }
+    var method = opts.method || list[0].id;
     if (method === 'play' || method === 'appstore') {
       var e = new Error('store_billing_unavailable');
       e.status = 501;
       return Promise.reject(e);
+    }
+    if (_config && Array.isArray(_config.enabled) && _config.enabled.indexOf(method) === -1) {
+      var off = new Error(method + '_not_configured');
+      off.status = 503;
+      return Promise.reject(off);
     }
     if (method === 'flutterwave') return payWithFlutterwave(opts);
     return payWithPaystack(opts);
@@ -198,6 +226,6 @@
 
   window.PaymentService = {
     platform: platform, isApp: isApp, methods: methods,
-    checkout: checkout, getConfig: getConfig,
+    checkout: checkout, getConfig: getConfig, warm: warm,
   };
 })();

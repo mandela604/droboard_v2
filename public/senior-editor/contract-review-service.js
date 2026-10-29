@@ -1,9 +1,20 @@
-var CT=[
+/* Offerable contracts. Live values come from the chief editor's active
+   templates (services/contract-catalog.js); DEMO_CT is the offline fallback.
+   Contract rows already sent carry the platform deal type, not a template id,
+   so LEGACY_CT still labels those. */
+var DEMO_CT=[
   {value:'exclusive',label:'Exclusive Publishing',term:'12 months',rev:'70/30'},
   {value:'non-exclusive',label:'Non-Exclusive Publishing',term:'6 months',rev:'60/40'},
   {value:'revenue-share',label:'Revenue Share',term:'12 months',rev:'65/35'},
   {value:'licensing',label:'Licensing Agreement',term:'9 months',rev:'55/45'}
 ];
+var CT=DEMO_CT.slice(),CT_LIVE=false;
+var LEGACY_CT={
+  'exclusive':{label:'Exclusive Publishing',term:'12 months',rev:'70/30'},
+  'non-exclusive':{label:'Non-Exclusive Publishing',term:'6 months',rev:'60/40'},
+  'revenue-share':{label:'Revenue Share',term:'12 months',rev:'65/35'},
+  'licensing':{label:'Licensing Agreement',term:'9 months',rev:'55/45'}
+};
 /* Identity (KYC) submitted by the author with the contract application.
    `idPhotos` holds storage keys (file names) in production; full URLs
    (https/data/blob/root-relative) are used as-is by the viewer. */
@@ -42,9 +53,6 @@ var curPage=1,PP=5,openId=null,selCT={},activeStatus='';
    GET /api/senior-editor/contract-applications replaces the demo rows above
    when the backend answers. Anything that fails keeps the demo console intact. */
 var API_BASE='/api/senior-editor';
-var TYPE_TO_API={exclusive:'Exclusive_Publishing','non-exclusive':'Non_Exclusive','revenue-share':'Revenue_Share',licensing:'License_Agreement'};
-function monthsOf(term){var n=parseInt(term,10);return n>0?n:12;}
-function splitOf(rev){var n=parseInt(rev,10);return isNaN(n)?70:n;}
 function mapApiRow(r){
   return {
     id:r.id,
@@ -61,13 +69,14 @@ function mapApiRow(r){
     status:r.status,
     sent:!!r.sent,
     notes:r.notes||'',
+    pricing:r.pricing||null,
     kyc:r.kyc||null,
     live:true
   };
 }
-function apiCall(path,body){
+function apiCall(path,body,method){
   return fetch(API_BASE+path,{
-    method:'POST',credentials:'include',
+    method:method||'POST',credentials:'include',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body||{})
   }).then(function(res){
@@ -82,6 +91,8 @@ function apiMessage(code){
   if(code==='not_decidable') return 'This application was already handled by another editor.';
   if(code==='not_found') return 'That application belongs to another editor.';
   if(code==='contract_not_open') return 'This contract is no longer open.';
+  if(code==='template_not_found') return 'That contract template no longer exists \u2014 pick another.';
+  if(code==='template_not_active') return 'That contract template is paused \u2014 pick another.';
   return 'Could not reach the server \u2014 try again.';
 }
 function loadLive(){
@@ -96,9 +107,23 @@ function loadLive(){
     })
     .catch(function(){});
 }
-function ctLabel(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].label;}return '--';}
-function ctTerm(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].term;}return '12 months';}
-function ctRev(v){for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i].rev;}return '70/30';}
+function ctEntry(v){
+  for(var i=0;i<CT.length;i++){if(CT[i].value===v)return CT[i];}
+  return LEGACY_CT[v]||null;
+}
+function ctLabel(v){var c=ctEntry(v);return c?c.label:'--';}
+function ctTerm(v){var c=ctEntry(v);return (c&&c.term)?c.term:'—';}
+function ctRev(v){var c=ctEntry(v);return (c&&c.rev)?c.rev:'—';}
+function loadCatalog(){
+  if(!window.ContractCatalog) return;
+  window.ContractCatalog.load().then(function(cat){
+    CT_LIVE=!!cat.live;
+    CT=cat.items.map(function(c){
+      return {value:c.id,label:c.label,term:c.term,rev:c.rev};
+    });
+    if(openId) renderDetail(openId); else render();
+  }).catch(function(){});
+}
 /* Identity (KYC): rows created before the KYC system carry no kyc field and count as
    verified; rows WITH kyc must have a verified type + front/back ID photos to sign. */
 function idBadge(a){
@@ -201,8 +226,8 @@ function renderDetail(id){
   var ctHtml='';
   if(isP&&!a.sent){
     var sv=selCT[id]||'';
-    ctHtml='<div class="detail-contract-select"><div class="lbl"><i class="fas fa-file-contract"></i> Select Contract Type</div>';
-    ctHtml+='<select id="cts-'+id+'" onchange="window._pickCT(\''+a.id+'\',this.value)"><option value="">-- Choose contract type --</option>';
+    ctHtml='<div class="detail-contract-select"><div class="lbl"><i class="fas fa-file-contract"></i> Select Contract<span class="ct-src'+(CT_LIVE?' live':'')+'">'+(CT_LIVE?'Chief Editor templates':'Demo list')+'</span></div>';
+    ctHtml+='<select id="cts-'+id+'" onchange="window._pickCT(\''+a.id+'\',this.value)"><option value="">-- Choose a contract --</option>';
     for(var j=0;j<CT.length;j++){ctHtml+='<option value="'+CT[j].value+'"'+(sv===CT[j].value?' selected':'')+'>'+CT[j].label+'</option>';}
     ctHtml+='</select></div>';
   }
@@ -217,7 +242,7 @@ function renderDetail(id){
   var terms='';
   if(selType){
     terms='<div class="detail-grid">';
-    terms+='<div class="detail-card accent"><label>Contract Type</label><b>'+typeLabel+'</b></div>';
+    terms+='<div class="detail-card accent"><label>Contract</label><b>'+typeLabel+'</b></div>';
     terms+='<div class="detail-card"><label>Term</label><b>'+term+'</b></div>';
     terms+='<div class="detail-card accent"><label>Revenue Split</label><b>'+rev+'</b></div>';
     terms+='<div class="detail-card"><label>Status</label><b>'+a.status.charAt(0).toUpperCase()+a.status.slice(1)+'</b></div></div>';
@@ -302,6 +327,11 @@ function renderDetail(id){
         if(d){d.className='mz-dirty saved';d.textContent='Saved';setTimeout(function(){if(d){d.className='mz-dirty';d.textContent='Unsaved changes';}},2400);}
         saveBtn.innerHTML='<i class="fas fa-check"></i> Saved';
         setTimeout(function(){saveBtn.innerHTML='<i class="fas fa-floppy-disk"></i> Save pricing';},1400);
+        if(a.live&&a.contractId){
+          apiCall('/contracts/'+encodeURIComponent(a.contractId)+'/pricing',
+            {freeChapters:t.freeChapters,adsPerChapter:t.adsPerChapter,allowAdUnlock:t.allowAdUnlock,rows:t.rows},'PUT')
+            .catch(function(e){toast('Pricing not saved — '+apiMessage(e.message));});
+        }
         var allFree=t.freeChapters>=t.rows.length;
         toast((isP?'Draft pricing saved':'Pricing published')+' — "'+a.bookTitle+'" '+(allFree?'is free for all '+t.rows.length+' chapters':'opens with '+t.freeChapters+' free chapter'+(t.freeChapters===1?'':'s')));
       };
@@ -360,7 +390,7 @@ window._doSend=function(id){
   var a=null;for(var i=0;i<items.length;i++){if(items[i].id===id){a=items[i];break;}}
   if(!a)return;
   var sel=document.getElementById('cts-'+id);
-  if(!sel||!sel.value){toast('Please select a contract type first');return;}
+  if(!sel||!sel.value){toast('Please select a contract first');return;}
   var btn=document.getElementById('sendBtn-'+id);
   if(btn){btn.classList.add('loading');btn.innerHTML='<span class="btn-text"><i class="fas fa-paper-plane"></i> Sending</span>';}
   var type=sel.value;
@@ -374,11 +404,22 @@ window._doSend=function(id){
     toast(msg);
   }
   if(a.live){
+    // Same offer the review-queue acceptance sends: the CE template + the
+    // monetization terms set in the panel below.
+    var pricing=null;
+    if(window._contractMz&&window._contractMzId===id){
+      try{
+        var pt=window._contractMz.getTerms();
+        pricing={freeChapters:pt.freeChapters,adsPerChapter:pt.adsPerChapter,allowAdUnlock:pt.allowAdUnlock,rows:pt.rows};
+        a.pricing={freeChapters:pt.freeChapters,adsPerChapter:pt.adsPerChapter,allowAdUnlock:pt.allowAdUnlock,prices:{},ads:{}};
+        pt.rows.forEach(function(r){a.pricing.prices[r.num]=r.price;a.pricing.ads[r.num]=r.ads;});
+      }catch(e){}
+    }
+    // The offer is the chief editor's template itself — no local mapping.
     apiCall('/contract-applications/'+encodeURIComponent(a.id)+'/approve',{
-      type:TYPE_TO_API[type],
-      termMonths:monthsOf(ctTerm(type)),
-      revenueSplit:splitOf(ctRev(type)),
-      note:a.notes||''
+      templateId:type,
+      note:a.notes||'',
+      pricing:pricing||undefined
     }).then(function(r){finish(r&&r.contractId);})
       .catch(function(e){failed(apiMessage(e.message));});
     return;
@@ -481,4 +522,5 @@ document.addEventListener('click',function(e){
 });
 document.getElementById('searchInput').addEventListener('input',function(){curPage=1;render();});
 render();
+loadCatalog();
 loadLive();

@@ -6,6 +6,7 @@ const { User } = require('../models/user.model');
 const { LibraryItem, ReadingProgress, Comment, ShareEvent, Status } = require('../models/social.model');
 const { AdInventory, AdPlacement } = require('../models/platform.model');
 const statusesSvc = require('./statuses.service');
+const posts = require('./posts.service');
 const { relTime } = require('./users.service');
 
 async function authorMap(ids) {
@@ -51,10 +52,11 @@ async function topBooks(sort, limit, viewerId) {
 }
 
 async function home(viewerId) {
-  const [top, rated, promos] = await Promise.all([
+  const [top, rated, promos, postsPage] = await Promise.all([
     topBooks({ reads: -1 }, 8, viewerId),
     topBooks({ rating: -1 }, 5, viewerId),
     AdInventory.find({ format: 'promo', active: true }).limit(5).lean(),
+    posts.listPosts({ viewerId, limit: 20 }),
   ]);
   const recentUsers = await User.find({}).sort({ updatedAt: -1 }).limit(8)
     .select('id username fullName avatar').lean();
@@ -94,6 +96,10 @@ async function home(viewerId) {
   }).filter(Boolean);
   return {
     statuses,
+    // The reader feed renders its cards from this call, so home answers posts
+    // too. Projected through posts.service: authorship + the viewer's own
+    // liked/saved/voted flags, not bare authorId rows.
+    posts: postsPage.items,
     heroStories: top.slice(0, 5),
     promoSlides: promos.map(p => ({ title: p.title, author: '', cta: p.cta, img: p.image })),
     trending: top, topRated: rated,

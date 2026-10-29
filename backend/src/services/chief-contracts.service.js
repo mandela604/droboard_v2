@@ -40,8 +40,27 @@ async function listTemplates({ page, limit }) {
   return { items, total, page: pg, limit: lim };
 }
 
+// The console posts its form verbatim: `description` (stored as desc), the
+// clause prose under `clauses` (the model keeps a count in `clauses` and the
+// prose in `clauseText`), and blank numbers as null.
+function templateData(data) {
+  const out = Object.assign({}, data);
+  if (out.description !== undefined) {
+    if (out.desc === undefined) out.desc = out.description;
+    delete out.description;
+  }
+  if (typeof out.clauses === 'string') {
+    if (out.clauseText === undefined) out.clauseText = out.clauses;
+    delete out.clauses;
+  }
+  ['completionTarget', 'completionWindowMonths', 'profitShareThreshold'].forEach(k => {
+    if (out[k] === null) out[k] = 0;
+  });
+  return out;
+}
+
 async function createTemplate(data, userId) {
-  const doc = await ContractTemplate.create(Object.assign({}, data, { updatedBy: userId }));
+  const doc = await ContractTemplate.create(Object.assign({}, templateData(data), { updatedBy: userId }));
   return doc.toJSON();
 }
 
@@ -54,10 +73,11 @@ async function getTemplate(id) {
 async function updateTemplate(id, data, userId) {
   const doc = await ContractTemplate.findOne({id: id});
   if (!doc) err('not_found', 404);
+  data = templateData(data);
   ['name', 'desc', 'type', 'status', 'clauses', 'clauseText', 'body', 'preview',
     'royaltyRate', 'termLength', 'signupBonusMin', 'signupBonusMax',
     'completionTarget', 'completionWindowMonths', 'profitShareThreshold', 'profitShareBonus',
-    'autoRenew', 'usageCount', 'defaultChapterPrice', 'cfHidden', 'cfLabels'].forEach(k => {
+    'autoRenew', 'usageCount', 'defaultChapterPrice', 'cfHidden', 'cfLabels', 'currency'].forEach(k => {
     if (data[k] !== undefined) doc[k] = data[k];
   });
   doc.updatedBy = userId;
@@ -106,21 +126,34 @@ async function pendingOffers({ page, limit }) {
   return pagedContracts({ status: { $in: ['pending', 'sent'] } }, pg, lim);
 }
 
-// Contract schema has no template FK: the template is validated (must exist)
-// and its terms are copied onto the offer; the source is noted in replies.
-async function createOffer({ authorId, templateId, value, type, bookId, editorId }) {
+// The template is the contract definition: its category, term and royalty are
+// copied onto the offer (Contract.templateId keeps the source).
+async function createOffer({ authorId, templateId, value, bookId, editorId }) {
   const tpl = await ContractTemplate.findOne({id: templateId}).lean();
   if (!tpl) err('template_not_found', 404);
+  const termMonths = minTerm(tpl.termLength);
   const doc = await Contract.create({
     authorId,
     bookId: bookId || undefined,
-    type: type || 'Exclusive_Publishing',
+    type: tpl.type || 'Publishing',
+    templateId: tpl.id,
     status: 'pending',
+    duration: tpl.termLength || termMonths + ' months',
+    termMonths,
+    revenueSplit: tpl.royaltyRate == null ? undefined : Math.round(tpl.royaltyRate),
     advance: value !== undefined ? value : 0,
     editorId,
     replies: [{ from: String(editorId || 'chief'), message: 'offer from template: ' + tpl.name }],
   });
   return doc.toJSON();
+}
+
+function minTerm(term) {
+  const s = String(term || '').toLowerCase();
+  if (s.includes('indefinite')) return 60;
+  const n = parseInt(term, 10);
+  if (!n) return 12;
+  return Math.min(60, s.includes('year') ? n * 12 : n);
 }
 
 async function loadContractOr404(id) {

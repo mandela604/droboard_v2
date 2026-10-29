@@ -9,6 +9,7 @@ const { User } = require('../models/user.model');
 const { EditorInvite, EditorAssignment } = require('../models/chief.model');
 const { Follow } = require('../models/social.model');
 const { Book } = require('../models/content.model');
+const { Report } = require('../models/editorial.model');
 
 // Invite lifetime: 72h from issue, refreshed on every resend.
 function inviteExpiry() { return new Date(Date.now() + 72 * 3600 * 1000); }
@@ -75,9 +76,24 @@ function editorShape(u, extra) {
     status: u.status, createdAt: u.createdAt, updatedAt: u.updatedAt,
     followers: extra.followers || 0,
     assignedAuthors: asg ? (asg.authorIds || []).length : 0,
+    openReports: extra.openReports || 0,
     quota: (asg && asg.quota) || {},
     assignment: asg,
   };
+}
+
+// Pending Report rows attributed to each editor (seId) — the list card's
+// report dot. One aggregate for the whole page, not a query per editor.
+async function openReportsMap(ids) {
+  const uniq = [...new Set((ids || []).filter(Boolean).map(String))];
+  if (!uniq.length) return {};
+  const rows = await Report.aggregate([
+    { $match: { status: 'pending', seId: { $in: uniq } } },
+    { $group: { _id: '$seId', n: { $sum: 1 } } },
+  ]);
+  const m = {};
+  for (const r of rows) m[String(r._id)] = r.n;
+  return m;
 }
 
 async function listSeniorEditors({ q, status, sort, page, pageSize, limit }) {
@@ -90,10 +106,13 @@ async function listSeniorEditors({ q, status, sort, page, pageSize, limit }) {
   const { pg, lim } = pgOf({ page, pageSize, limit });
   const users = await User.find(filter).lean();
   const ids = users.map(u => String(u.id));
-  const [fmap, amap] = await Promise.all([followersMap(ids), assignmentsMap(ids)]);
+  const [fmap, amap, rmap] = await Promise.all([
+    followersMap(ids), assignmentsMap(ids), openReportsMap(ids),
+  ]);
   let items = users.map(u => editorShape(u, {
     followers: fmap[String(u.id)] || 0,
     assignment: amap[String(u.id)] || null,
+    openReports: rmap[String(u.id)] || 0,
   }));
   const s = sort || 'newest';
   if (s === 'name') items.sort((a, b) => String(a.fullName || '').localeCompare(String(b.fullName || '')));
@@ -136,9 +155,10 @@ async function loadSeniorOr404(id) {
 }
 
 async function decorate(u) {
-  const [fmap, asg] = await Promise.all([
+  const [fmap, asg, rmap] = await Promise.all([
     followersMap([String(u.id)]),
     EditorAssignment.findOne({ editorId: String(u.id) }).lean(),
+    openReportsMap([String(u.id)]),
   ]);
   const [books] = await Promise.all([
     Book.countDocuments({ authorId: String(u.id) }).catch(() => 0),
@@ -146,6 +166,7 @@ async function decorate(u) {
   return Object.assign(editorShape(u, {
     followers: fmap[String(u.id)] || 0,
     assignment: asg || null,
+    openReports: rmap[String(u.id)] || 0,
   }), { books });
 }
 

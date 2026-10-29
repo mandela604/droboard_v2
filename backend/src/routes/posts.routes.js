@@ -1,7 +1,7 @@
 'use strict';
 const { z } = require('zod');
 const ctrl = require('../controllers/posts.controller');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -70,19 +70,9 @@ const postBody = z.object({
   { message: 'empty_post' },
 );
 
-router.get('/', generalLimiter, (req, _res, next) => {
-  try {
-    const hdr = req.headers.authorization || '';
-    const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.cookies && req.cookies.dro_access) || null;
-    if (token) {
-      const jwt = require('jsonwebtoken');
-      const env = require('../config/env');
-      const p = jwt.verify(token, env.jwtAccessSecret);
-      req.user = { id: p.sub, roles: p.roles || [] };
-    }
-  } catch (e) { /* anonymous */ }
-  next();
-}, validate(z.object({ query: z.object({
+// optionalAuth: anonymous readers get public counts, a signed-in reader also
+// gets her own liked/saved/voted flags on the same cards.
+router.get('/', generalLimiter, optionalAuth, validate(z.object({ query: z.object({
   tab: z.string().max(20).optional(), type: z.string().max(20).optional(),
   authorId: z.string().max(40).optional(), page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
 }).strict() })), ctrl.list);
@@ -90,7 +80,7 @@ router.get('/', generalLimiter, (req, _res, next) => {
 router.post('/', requireAuth, writeLimiter, audit('posts.create'),
   validate(z.object({ body: postBody })), ctrl.create);
 
-router.get('/:id', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.get);
+router.get('/:id', generalLimiter, optionalAuth, validate(z.object({ params: z.object({ id }) })), ctrl.get);
 router.patch('/:id', requireAuth, writeLimiter, audit('posts.update'),
   validate(z.object({
     params: z.object({ id }),
@@ -110,11 +100,15 @@ router.post('/:id/like', requireAuth, writeLimiter, validate(z.object({ params: 
 router.post('/:id/save', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.save);
 router.post('/:id/poll/vote', requireAuth, writeLimiter, audit('posts.pollVote'),
   validate(z.object({ params: z.object({ id }), body: z.object({ option: z.number().int().min(0).max(10) }).strict() })), ctrl.pollVote);
+router.delete('/:id/poll/vote', requireAuth, writeLimiter, audit('posts.pollRetract'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.pollRetract);
 router.post('/:id/debate/vote', requireAuth, writeLimiter, audit('posts.debateVote'),
   validate(z.object({ params: z.object({ id }), body: z.object({ side: z.enum(['for', 'against']) }).strict() })), ctrl.debateVote);
+router.delete('/:id/debate/vote', requireAuth, writeLimiter, audit('posts.debateRetract'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.debateRetract);
 
 const rid = z.string().min(1).max(40);
-router.get('/:id/reactions', generalLimiter,
+router.get('/:id/reactions', generalLimiter, optionalAuth,
   validate(z.object({ params: z.object({ id }) })), ctrl.reactions);
 router.post('/:id/react', requireAuth, writeLimiter, audit('posts.react'),
   validate(z.object({ params: z.object({ id }), body: z.object({ rid }).strict() })), ctrl.react);

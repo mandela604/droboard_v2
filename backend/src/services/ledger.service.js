@@ -1,7 +1,7 @@
 'use strict';
-const mongoose = require('mongoose');
 const crypto = require('crypto');
 const { LedgerEntry } = require('../models/money.model');
+const txn = require('./txn');
 
 function newId(prefix) {
   return prefix + '-' + crypto.randomBytes(9).toString('hex');
@@ -10,12 +10,11 @@ function newId(prefix) {
 // Post a balanced double-entry move inside a transaction.
 // legs: [{debit, credit, amount, coins}]. All-or-nothing. Duplicate
 // idempotencyKey returns the original journal instead of double-posting.
+// With no session in, txn.run supplies one — or runs the legs sequentially on
+// a standalone mongod, which cannot start transactions.
 async function post({ legs, authorId, saleId, kind, memo, idempotencyKey, configVersion, session }) {
   if (!idempotencyKey) { const e = new Error('idem_required'); e.status = 400; throw e; }
-  const own = !session;
-  if (own) session = await mongoose.startSession();
-  try {
-    if (own) session.startTransaction();
+  const write = async s => {
     const journalId = newId('jnl');
     for (const leg of legs) {
       await LedgerEntry.create([{
@@ -26,16 +25,15 @@ async function post({ legs, authorId, saleId, kind, memo, idempotencyKey, config
         kind: kind || '', memo: memo || '',
         idempotencyKey: idempotencyKey + ':' + leg.debit + '>' + leg.credit,
         configVersion: configVersion || null,
-      }], { session });
+      }], txn.withSession(s));
     }
-    if (own) await session.commitTransaction();
     return { journalId };
+  };
+  try {
+    return session ? await write(session) : await txn.run(write);
   } catch (e) {
-    if (own) { try { await session.abortTransaction(); } catch (_) {} }
     if (e.code === 11000) return { journalId: null, duplicate: true };
     throw e;
-  } finally {
-    if (own) session.endSession();
   }
 }
 

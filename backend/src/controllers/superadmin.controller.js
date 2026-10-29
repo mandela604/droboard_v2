@@ -91,6 +91,8 @@ module.exports = {
   adRevenueLedger: wrap(async (req) => adRev.ledger(req.valid.query)),
   adRevenueSummary: wrap(async (req) => adRev.summary(req.valid.query)),
   adRevenuePay: wrap(async (req) => adRev.pay({ authorId: req.valid.body.authorId, by: req.user.id })),
+  adRevenueNetworkImport: wrap(async (req) => adRev.recordNetwork(Object.assign({}, req.valid.body, { by: req.user.id }))),
+  adRevenueNetworkList: wrap(async (req) => adRev.networkImports(req.valid.query)),
 
   // revenue (legacy + flat console shapes; single home)
   revenueConfigGet: wrap(async (req) => {
@@ -103,7 +105,7 @@ module.exports = {
     if (b.google !== undefined || b.marketing !== undefined || b.editors !== undefined || b.writerShare !== undefined) {
       return revenue.saveFlatConfig({
         scope: b.scope || 'global', authorId: b.authorId,
-        splits: { google: b.google, marketing: b.marketing, editors: b.editors, writerShare: b.writerShare, giftWriterPct: b.giftWriterPct, subPlatformPct: b.subPlatformPct, subWritersPct: b.subWritersPct },
+        splits: { google: b.google, marketing: b.marketing, editors: b.editors, writerShare: b.writerShare, giftWriterPct: b.giftWriterPct, subPlatformPct: b.subPlatformPct, subWritersPct: b.subWritersPct, channelFeePct: b.channelFeePct },
         note: b.note, by: req.user.id,
       });
     }
@@ -112,7 +114,7 @@ module.exports = {
       splits: {
         storeFeePct: b.storeFeePct, marketingPct: b.marketingPct, editorsPct: b.editorsPct,
         writerShareOfNetPct: b.writerShareOfNetPct, giftWriterPct: b.giftWriterPct,
-        subscriptionCoinRateNGN: b.subscriptionCoinRateNGN,
+        subscriptionCoinRateNGN: b.subscriptionCoinRateNGN, channelFeePct: b.channelFeePct,
       },
       note: b.note, by: req.user.id,
     });

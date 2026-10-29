@@ -15,19 +15,25 @@ const pageQuery = z.object({
 }).strict();
 
 // ---- Contract templates ----
+// Mirrors the shape the Contracts & Payments form posts as-is: `description`
+// (stored as desc), clause text (stored as clauseText), currency, and blank
+// numeric fields arriving as null.
 const templateBody = z.object({
-  name: z.string().min(1).max(120), desc: z.string().max(1000).optional(),
-  type: z.enum(['Publishing', 'Financial', 'Legal', 'Rights', 'Non-Exclusive', 'Exclusive', 'Renewal', 'Amendment', 'Work-for-Hire']).optional(),
+  name: z.string().min(1).max(120),
+  desc: z.string().max(1000).optional(), description: z.string().max(1000).optional(),
+  type: z.string().max(60).optional(),
   status: z.enum(['active', 'draft', 'paused', 'archived']).optional(),
-  clauses: z.number().int().min(0).optional(), body: z.string().max(50000).optional(),
+  clauses: z.union([z.number().int().min(0), z.string().max(20000)]).optional(),
+  body: z.string().max(50000).optional(),
   clauseText: z.string().max(20000).optional(),
   royaltyRate: z.number().min(0).max(100).nullable().optional(),
   termLength: z.string().max(60).optional(),
   signupBonusMin: z.number().min(0).optional(), signupBonusMax: z.number().min(0).optional(),
-  completionTarget: z.number().min(0).optional(), completionWindowMonths: z.number().min(0).optional(),
-  profitShareThreshold: z.number().min(0).optional(), profitShareBonus: z.number().min(0).optional(),
+  completionTarget: z.number().min(0).nullable().optional(), completionWindowMonths: z.number().min(0).nullable().optional(),
+  profitShareThreshold: z.number().min(0).nullable().optional(), profitShareBonus: z.number().min(0).optional(),
   autoRenew: z.boolean().optional(), usageCount: z.number().min(0).optional(),
   defaultChapterPrice: z.number().min(0).optional(),
+  currency: z.string().max(8).optional(),
   cfHidden: z.array(z.string().max(60)).max(50).optional(),
   cfLabels: z.record(z.string().max(120)).optional(),
   preview: z.object({ title: z.string().max(200).optional(), body: z.string().max(5000).optional() }).optional(),
@@ -71,7 +77,6 @@ router.post('/author-contracts/offers', ...guard, audit('chief.contracts.offer')
   validate(z.object({ body: z.object({
     authorId: z.string().min(1).max(120), templateId: z.string().min(1).max(120),
     value: z.number().min(0).optional(),
-    type: z.enum(['Exclusive_Publishing', 'Revenue_Share', 'License_Agreement', 'Non_Exclusive']).optional(),
     bookId: z.string().max(120).optional(),
   }).strict() })), ctrl.createOffer);
 

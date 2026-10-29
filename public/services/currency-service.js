@@ -17,7 +17,8 @@
 
    Ladder sources (later wins): bundled `prices` on the item <
    finance-dashboard saves (localStorage 'dro_finance_prices') <
-   backend GET /api/pricing/ladders when USE_API is true.
+   backend GET /api/pricing/ladders (always attempted, silently skipped when
+   the backend is down).
 
    Global currency config (ONE switch, Super Admin → Coin Economy):
    localStorage 'dro_currency_config' { base:'NGN', locked:null|'NGN'|'USD'|'GBP' }
@@ -30,7 +31,6 @@
 (function () {
   'use strict';
 
-  var USE_API = false;
   var API_BASE = '/api';
 
   var GEO_KEY = 'droboard_geo';
@@ -197,7 +197,9 @@
     var cached = _loadGeo();
     if (cached) { _applyCountry(cached); }
     function liveLadders() {
-      if (!USE_API) return Promise.resolve(_currency);
+      // Always attempted: the super-admin's ladder edits and the base-currency
+      // lock are server truth and merge over the catalog's own prices. A dead
+      // backend simply leaves the demo config in place.
       return fetch(API_BASE + '/pricing/ladders').then(function (r) {
         if (!r.ok) throw new Error('ladders');
         return r.json();

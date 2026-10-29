@@ -4,7 +4,11 @@ const rateLimit = require('express-rate-limit');
 // zod validator: validate(schema) — 400 with details, nothing else.
 function validate(schema) {
   return function (req, res, next) {
-    const r = schema.safeParse({ body: req.body, query: req.query, params: req.params });
+    // Bodyless POSTs (no Content-Type) leave req.body undefined; treat that as
+    // {} so all-optional bodies (report resolve/dismiss notes) still parse.
+    // Schemas with required fields still reject.
+    const body = req.body === undefined ? {} : req.body;
+    const r = schema.safeParse({ body, query: req.query, params: req.params });
     if (!r.success) return res.status(400).json({ error: 'invalid_input', details: r.error.flatten() });
     req.valid = r.data;
     return next();

@@ -54,4 +54,16 @@ async function optionalAuth(req, _res, next) {
   return next();
 }
 
-module.exports = { signAccess, requireAuth, optionalAuth };
+// Password re-confirmation for privileged moderation actions (flag/unflag).
+// OAuth-only accounts have no hash and cannot use these actions.
+async function verifyPassword(userId, password) {
+  const argon2 = require('argon2');
+  const { User } = require('../models/user.model');
+  const u = await User.findOne({ id: String(userId) }).select('+passwordHash');
+  if (!u || !u.passwordHash) { const e = new Error('oauth_only'); e.status = 400; throw e; }
+  const ok = await argon2.verify(u.passwordHash, String(password || '')).catch(() => false);
+  if (!ok) { const e = new Error('invalid_password'); e.status = 401; throw e; }
+  return u;
+}
+
+module.exports = { signAccess, requireAuth, optionalAuth, verifyPassword };

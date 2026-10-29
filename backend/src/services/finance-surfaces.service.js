@@ -10,11 +10,13 @@
 const {
   Wallet, CoinPack, CoinBundle, SubscriptionPlan, Gift, EarnReward,
   CoinTransaction, AuthorTransaction, Withdrawal, Payout, PaymentMethod,
-  PaymentDispute, StoreConfigLog,
+  PaymentDispute, StoreConfigLog, LedgerEntry, Entitlement,
 } = require('../models/money.model');
 const { User } = require('../models/user.model');
 const { ActivityLog } = require('../models/platform.model');
-const { CoinRate } = require('../models/revenue.model');
+const { CoinRate, AdRevenueLedger } = require('../models/revenue.model');
+const ledger = require('./ledger.service');
+const txn = require('./txn');
 
 function bad(msg, status) { const e = new Error(msg); e.status = status || 400; throw e; }
 
@@ -58,36 +60,53 @@ function legNum(v) {
 async function usersById(ids) {
   const uniq = Array.from(new Set((ids || []).map(String).filter(Boolean)));
   if (!uniq.length) return {};
-  const rows = await User.find({ id: { $in: uniq } })
-    .select('id fullName username avatar status email').lean().catch(() => []);
+  // Accounts are keyed by their `_id` (usr_… strings) everywhere in the money
+  // docs, so match both that and a stored `id` and index the map under both.
+  const rows = await User.find({ $or: [{ _id: { $in: uniq } }, { id: { $in: uniq } }] })
+    .select('fullName username avatar status email').lean().catch(() => []);
   const m = {};
   rows.forEach(u => {
-    m[String(u.id)] = {
-      name: u.fullName || u.username || String(u.id),
+    const v = {
+      name: u.fullName || u.username || String(u._id),
       avatar: u.avatar || '',
       status: u.status || 'active',
       email: u.email || '',
     };
+    const keys = [String(u._id), u.id ? String(u.id) : ''];
+    keys.filter(Boolean).forEach(k => { m[k] = v; });
   });
   return m;
 }
 function nameOf(m, id) { const u = m[String(id)]; return u ? u.name : String(id || ''); }
 function avatarOf(m, id) { const u = m[String(id)]; return (u && u.avatar) || 'https://i.pravatar.cc/60?img=12'; }
 
-// NGN -> USD for console columns that show USD. Source: CoinRate.fx.USD
-// (NGN per USD, editable in Super Admin). 1500 is the documented fallback
-// matching the seed catalog (100 coins = 1500 NGN).
-let _fxUsd = null;
-async function ngnPerUsd() {
-  if (_fxUsd != null) return _fxUsd;
-  try {
-    const doc = await CoinRate.findOne({ key: 'live' }).lean();
-    const fx = (doc && doc.fx) || {};
-    const v = Number(fx.USD != null ? fx.USD : fx.usd);
-    _fxUsd = v > 0 ? v : 1500;
-  } catch (e) { _fxUsd = 1500; }
-  return _fxUsd;
+// NGN -> USD for console columns that show USD, the FX table for anything
+// priced in another currency, and the coin face value for coin-denominated
+// revenue. Source: the single CoinRate doc (editable in Super Admin).
+// 1500 / 15 are the documented fallbacks matching the seed catalog.
+let _fx = null;
+async function fxTable() {
+  if (_fx) return _fx;
+  let doc = null;
+  try { doc = await CoinRate.findOne({ key: 'live' }).lean(); } catch (e) { /* no rate doc yet */ }
+  const fx = (doc && doc.fx) || {};
+  const usd = Number(fx.USD != null ? fx.USD : fx.usd);
+  _fx = {
+    fx,
+    usd: usd > 0 ? usd : 1500,
+    coinFaceNGN: Number(doc && doc.coinFaceNGN) > 0 ? Number(doc.coinFaceNGN) : 15,
+  };
+  return _fx;
 }
+// NGN per one unit of `cur`. An unlisted currency is priced like USD rather
+// than dropped, so a new channel's money still reaches the report.
+function rateOf(t, cur) {
+  const c = String(cur || 'NGN').toUpperCase();
+  if (c === 'NGN') return 1;
+  const v = Number(t.fx[c]);
+  return v > 0 ? v : t.usd;
+}
+async function ngnPerUsd() { return (await fxTable()).usd; }
 async function toUsd(ngn) { return (Number(ngn) || 0) / (await ngnPerUsd()); }
 
 // priceUsd from a catalog doc: explicit USD leg wins, else basePriceNGN / fx.
@@ -137,16 +156,127 @@ async function loadWithdrawalOr404(id) {
   return doc;
 }
 
-// approve: requested|under_review -> approved (paid is set when funds move).
+// The console has one button per row ("approve the withdrawal and mark it as
+// processed"), so approval IS the settlement: it moves the money and lands the
+// payout row in the same step. Anything still parked at `approved` (an older
+// row, or a flow that approves first) is settled by payWithdrawal.
 async function approveWithdrawal(id, userId) {
   const doc = await loadWithdrawalOr404(id);
   if (!['requested', 'under_review'].includes(doc.status)) bad('not_approvable', 409);
-  doc.status = 'approved';
-  doc.reviewedBy = String(userId);
-  doc.processedAt = new Date();
-  await doc.save();
+  await settleWithdrawal(doc, userId);
   const umap = await usersById([doc.authorId]);
   return withdrawalShape(doc.toObject(), umap);
+}
+
+async function payWithdrawal(id, reference, userId) {
+  const doc = await loadWithdrawalOr404(id);
+  if (doc.status === 'paid') {
+    const umap = await usersById([doc.authorId]);
+    return withdrawalShape(doc.toObject(), umap); // already settled: echo, no second payment
+  }
+  if (doc.status !== 'approved') bad('not_payable', 409);
+  await settleWithdrawal(doc, userId, reference);
+  const umap = await usersById([doc.authorId]);
+  return withdrawalShape(doc.toObject(), umap);
+}
+
+// The author's cash, derived from the journal rather than trusted from the
+// cached Wallet.fiatAvail (money.model's own rule: balances come from the
+// ledger). Both credit shapes count: the author-scoped leg and the anonymous
+// `wallet:author` leg the unlock waterfall wrote before that leg carried the
+// author id — those rows still stamp authorId, so they remain attributable.
+async function authorCashOn(authorId, session) {
+  const id = String(authorId);
+  const scoped = 'wallet:author:' + id;
+  const rows = await LedgerEntry.aggregate([
+    {
+      $match: {
+        $or: [
+          { creditAcct: scoped }, { debitAcct: scoped },
+          { creditAcct: 'wallet:author', authorId: id },
+        ],
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        in: { $sum: { $cond: [{ $eq: ['$creditAcct', scoped] }, '$amount', 0] } },
+        legacy: { $sum: { $cond: [{ $eq: ['$creditAcct', 'wallet:author'] }, '$amount', 0] } },
+        out: { $sum: { $cond: [{ $eq: ['$debitAcct', scoped] }, '$amount', 0] } },
+      },
+    },
+  ], txn.withSession(session));
+  const r = rows[0] || { in: 0, legacy: 0, out: 0 };
+  return Math.max(0, r2(r.in + r.legacy - r.out));
+}
+
+// Money leaves the platform only through the journal: the idempotency key is
+// taken from the withdrawal id, so a double click or a retry after a crash
+// settles the row once. Everything after the gate is the paperwork for that one
+// payment — payout row, author debit, cached balance, status.
+// What this one withdrawal already took out of the author's cash. A retry after
+// a crash between the journal write and doc.save() finds the money gone; read
+// without this and the guard would refuse to finish paying a row the ledger
+// says is paid, leaving it stuck in the queue forever.
+async function prepaidOn(authorId, withdrawalId, session) {
+  const rows = await LedgerEntry.aggregate([
+    {
+      $match: {
+        authorId: String(authorId), kind: 'payout', saleId: String(withdrawalId),
+        debitAcct: 'wallet:author:' + String(authorId),
+      },
+    },
+    { $group: { _id: null, t: { $sum: '$amount' } } },
+  ], txn.withSession(session));
+  return Number(rows[0] && rows[0].t) || 0;
+}
+
+async function settleWithdrawal(doc, userId, reference) {
+  const amount = Number(doc.amount) || 0;
+  if (amount <= 0) bad('bad_amount', 400);
+  const authorId = String(doc.authorId);
+  await txn.run(async (session) => {
+    const [cash, prepaid, openOther] = await Promise.all([
+      authorCashOn(authorId, session),
+      prepaidOn(authorId, doc.id, session),
+      Withdrawal.aggregate([
+        { $match: { authorId, status: { $in: ['requested', 'under_review', 'approved'] }, _id: { $ne: doc._id } } },
+        { $group: { _id: null, t: { $sum: '$amount' } } },
+      ], txn.withSession(session)),
+    ]);
+    const committed = Number(openOther[0] && openOther[0].t) || 0;
+    // Pay only what the journal says the author holds, after the rest of the
+    // queue has reserved its share; beyond that an approve would be uncovered.
+    if (cash + prepaid - committed < amount) bad('insufficient_funds', 409);
+
+    const posted = await ledger.post({
+      legs: [{ debit: 'wallet:author:' + authorId, credit: 'bank:author-payouts', amount }],
+      authorId, kind: 'payout', saleId: doc.id,
+      memo: 'withdrawal ' + doc.id + ' via ' + doc.method,
+      idempotencyKey: 'withdrawal_payout:' + doc.id, session,
+    });
+    if (!posted.duplicate) {
+      await Payout.create([{
+        authorId, recipient: doc.account || authorId, amount, method: doc.method,
+        status: 'completed', reference: String(reference || '').slice(0, 120) || ('WPY-' + doc.id),
+        paidAt: new Date(),
+      }], txn.withSession(session));
+      await AuthorTransaction.create([{
+        authorId, type: 'withdrawal', desc: 'Withdrawal paid — ' + doc.method,
+        amount: -amount, status: 'completed',
+      }], txn.withSession(session));
+    }
+    // Cache re-read from the journal, never decremented by hand: a wallet whose
+    // fiatAvail drifted (pre-fix earnings, or a payout with no journal) is
+    // repaired on the first settle instead of staying wrong forever.
+    await Wallet.updateOne({ userId: authorId, kind: 'author' },
+      { $set: { fiatAvail: await authorCashOn(authorId, session) } },
+      txn.withSession(session, { upsert: true }));
+    doc.status = 'paid';
+    doc.reviewedBy = String(userId || '');
+    doc.processedAt = new Date();
+    await doc.save({ session });
+  });
 }
 
 // decline: carries the operator reason the console shows in the row note.
@@ -262,27 +392,22 @@ async function schedulePayout(authorId, amount, date) {
   return rows.find(r => r.id === String(authorId)) || null;
 }
 
-// processPayment: settles every open withdrawal for the author and writes a
-// Payout row (which feeds /payment-history). finance-data.js:269.
+// processPayment: settles every open withdrawal for the author. finance-data.js:269.
+// It used to flip the rows to paid and write a Payout with no journal behind it,
+// which is exactly what the derived author balance cannot survive (money out the
+// door, ledger still says it is there). Every row now goes through the same gate
+// Approve uses; a row the ledger cannot cover simply stays in the queue.
 async function processPayment(authorId, userId) {
   const id = String(authorId);
-  const open = await Withdrawal.find({ authorId: id, status: { $in: ['requested', 'under_review', 'approved'] } });
-  const amount = open.reduce((s, w) => s + (Number(w.amount) || 0), 0);
-  if (amount > 0) {
-    await Promise.all(open.map(w => {
-      w.status = 'paid';
-      w.reviewedBy = String(userId || '');
-      w.processedAt = new Date();
-      return w.save();
-    }));
-    const method = open[0].method || 'Bank Transfer';
-    await Payout.create({
-      authorId: id, recipient: id, amount, method, status: 'completed',
-      reference: 'TXN-' + Date.now().toString(36).toUpperCase(), paidAt: new Date(),
-    });
-    await AuthorTransaction.create({
-      authorId: id, type: 'withdrawal', desc: 'Payout processed', amount: -amount, status: 'completed',
-    }).catch(() => {});
+  const open = await Withdrawal.find({ authorId: id, status: { $in: ['requested', 'under_review', 'approved'] } })
+    .sort({ requestedAt: 1 });
+  for (const w of open) {
+    try {
+      await settleWithdrawal(w, userId);
+    } catch (e) {
+      if (e.message === 'insufficient_funds') continue;
+      throw e;
+    }
   }
   const w = await Wallet.findOne({ userId: id, kind: 'author' });
   if (w) { w.nextPayoutAt = null; w.nextPayoutAmount = 0; await w.save(); }
@@ -295,46 +420,50 @@ async function processPayment(authorId, userId) {
  * finance-data.js:312/:316/:320/:324; row reads payment-disputes-service.js
  * :70-73, :109-149, :192-256, :311-329.
  * ───────────────────────────────────────────────────────────── */
-async function paymentDisputes() {
-  const docs = await PaymentDispute.find({}).sort({ createdAt: -1 }).limit(200).lean();
-  const umap = await usersById(docs.map(d => d.authorId).concat(docs.flatMap(d => (d.replies || []).map(r => r.from))));
-  return docs.map(d => ({
-    id: d.id,
-    author: nameOf(umap, d.authorId),
-    avatar: avatarOf(umap, d.authorId),
+// One mapper for both the queue and the post-action echo. A row can come from
+// an author (authorId) or a reader (userId) — the finance page shows whichever
+// filed it, using the stored display name when the account lookup misses.
+function disputeShape(d, umap) {
+  const filerId = d.authorId || d.userId || '';
+  return {
+    // The console addresses resolve/reject/reply by this key, so it must be the
+    // stored public id (lean docs have no virtual).
+    id: String(d.id || d._id || ''),
+    author: nameOf(umap, filerId) || d.who || 'Reader',
+    avatar: avatarOf(umap, filerId) || d.avatar || '',
+    role: d.role || (d.authorId ? 'author' : 'reader'),
+    item: d.item || '',
+    txnId: d.transactionId || '',
     amount: Number(d.amount) || 0,
     reason: d.reason,
     status: d.status,
     filed: new Date(d.createdAt || Date.now()).toISOString(),
     resolutionNote: d.resolutionNote || '',
     replies: (d.replies || []).map(r => ({
-      from: nameOf(umap, r.from),
-      message: r.message,
-      time: new Date(r.at || Date.now()).toISOString(),
+      from: nameOf(umap, r.from), message: r.message, time: new Date(r.at || Date.now()).toISOString(),
     })),
-  }));
+  };
+}
+
+async function paymentDisputes() {
+  const docs = await PaymentDispute.find({}).sort({ createdAt: -1 }).limit(200).lean();
+  const ids = docs.map(d => d.authorId || d.userId).concat(docs.flatMap(d => (d.replies || []).map(r => r.from)));
+  const umap = await usersById(ids);
+  return docs.map(d => disputeShape(d, umap));
 }
 
 async function loadDisputeOr404(id) {
-  const doc = await PaymentDispute.findOne({ id: String(id) });
+  // Public id first; a raw {id:'PD-401'}-style value that is neither would
+  // otherwise throw a cast error (500) on the _id fallback, so check it.
+  const s = String(id);
+  const doc = await PaymentDispute.findOne({ id: s })
+    || (require('mongoose').Types.ObjectId.isValid(s) ? await PaymentDispute.findOne({ _id: s }) : null);
   if (!doc) bad('not_found', 404);
   return doc;
 }
 async function disputeOut(doc) {
-  const umap = await usersById([doc.authorId].concat((doc.replies || []).map(r => r.from)));
-  return ({
-    id: doc.id,
-    author: nameOf(umap, doc.authorId),
-    avatar: avatarOf(umap, doc.authorId),
-    amount: Number(doc.amount) || 0,
-    reason: doc.reason,
-    status: doc.status,
-    filed: new Date(doc.createdAt || Date.now()).toISOString(),
-    resolutionNote: doc.resolutionNote || '',
-    replies: (doc.replies || []).map(r => ({
-      from: nameOf(umap, r.from), message: r.message, time: new Date(r.at || Date.now()).toISOString(),
-    })),
-  });
+  const umap = await usersById([doc.authorId || doc.userId].concat((doc.replies || []).map(r => r.from)));
+  return disputeShape(doc, umap);
 }
 async function resolveDispute(id, note) {
   const doc = await loadDisputeOr404(id);
@@ -402,14 +531,17 @@ async function coinPackages() {
   return Promise.all(docs.map(async d => {
     const m = metaOut(d);
     return {
-      id: d.id, code: d.code,
+      id: d.code, code: d.code,
       name: m.name || d.code,
       coins: Number(d.coins) || 0,
       priceUsd: await priceUsdOf(d),
       bonusPercent: Number(d.bonusPct) || 0,
       status: d.status,
       prices: pricesOut(d),
-      badge: m.badge || '', color: m.color || '',
+      // Card chrome has no column on CoinPack — it rides in meta, which is
+      // exactly what the reader catalog (store.service packOut) renders from.
+      // The fallbacks match packOut so the console previews the real card.
+      badge: m.badge || '', color: m.color || '#FF2D6A', icon: m.icon || 'fa-coins',
       createdAt: createdAtStr(d.createdAt),
     };
   }));
@@ -421,7 +553,7 @@ async function coinBundles() {
     const m = metaOut(d);
     const p = await priceUsdOf(d);
     return {
-      id: d.id, code: d.code,
+      id: d.code, code: d.code,
       name: d.name, coins: Number(d.coins) || 0, bonus: Number(d.bonus) || 0,
       // The pricing grid renders `price` raw, so it must be a display string.
       price: usd(p),
@@ -438,7 +570,7 @@ async function coinBundles() {
 async function coinGifts() {
   const docs = await Gift.find({}).sort({ createdAt: -1 }).lean();
   return docs.map(d => ({
-    id: d.id, code: d.code, name: d.name, icon: d.icon || '🎁',
+    id: d.code, code: d.code, name: d.name, icon: d.icon || '🎁',
     costCoins: Number(d.costCoins) || 0, color: d.color || '',
     desc: d.desc || '', status: d.status,
     createdAt: createdAtStr(d.createdAt),
@@ -450,7 +582,7 @@ async function coinEarn() {
   return docs.map(d => {
     const m = metaOut(d);
     return Object.assign({
-      id: d.id, code: d.code, action: d.action, type: d.type,
+      id: d.code, code: d.code, action: d.action, type: d.type,
       coins: Number(d.coins) || 0, cooldown: d.cooldown || '',
       pagesRequired: Number(d.pagesRequired) || 0,
       icon: m.icon || 'fa-coins',
@@ -469,7 +601,7 @@ async function coinEarn() {
 async function coinSubscriptions() {
   const docs = await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean();
   return Promise.all(docs.map(async d => ({
-    id: d.id, code: d.code, name: d.name, period: d.period,
+    id: d.code, code: d.code, name: d.name, period: d.period,
     priceUsd: await priceUsdOf(d),
     durationDays: Number(d.durationDays) || 0,
     coinsPerDay: Number(d.coinsPerDay) || 0,
@@ -484,13 +616,21 @@ async function coinSubscriptions() {
 async function coinConfigHistory() {
   const docs = await StoreConfigLog.find({}).sort({ at: -1 }).limit(200).lean();
   return docs.map(d => ({
-    id: d.id, action: d.action, itemType: d.itemType, itemName: d.itemName,
+    id: String(d.id || d._id || ''), action: d.action, itemType: d.itemType, itemName: d.itemName,
     actor: d.actor || 'Finance', details: d.details || '',
     date: new Date(d.at || Date.now()).toISOString(),
   }));
 }
 // Generic upsert keyed on the console's `id`; creates need a `code` because
 // models key uniqueness on it (matches store.service conventions).
+// Console rows are identified by their catalog code ('pack1', 'SUB-01'), not a
+// Mongo id, so look up by code first and only fall back to _id when the value
+// actually is one — otherwise every PUT/DELETE on the console 500s on a cast.
+function byIdOrCode(Model, id) {
+  const s = String(id);
+  return Model.findOne({ code: s }).then(doc => doc
+    || (require('mongoose').Types.ObjectId.isValid(s) ? Model.findOne({ _id: s }) : null));
+}
 function makeCrud(Model, fields, requiredCode) {
   return {
     async create(body) {
@@ -502,21 +642,21 @@ function makeCrud(Model, fields, requiredCode) {
       return doc.toJSON();
     },
     async update(id, body) {
-      const doc = await Model.findOne({ id: String(id) });
+      const doc = await byIdOrCode(Model, id);
       if (!doc) bad('not_found', 404);
       Object.assign(doc, pickFields(body, fields));
       await doc.save();
       return doc.toJSON();
     },
     async patchStatus(id, status) {
-      const doc = await Model.findOne({ id: String(id) });
+      const doc = await byIdOrCode(Model, id);
       if (!doc) bad('not_found', 404);
       if (status !== undefined) doc.status = status;
       await doc.save();
       return doc.toJSON();
     },
     async remove(id) {
-      const doc = await Model.findOne({ id: String(id) });
+      const doc = await byIdOrCode(Model, id);
       if (!doc) bad('not_found', 404);
       await doc.deleteOne();
       return { ok: true, id: String(id) };
@@ -534,7 +674,7 @@ const BUNDLE_FIELDS = ['code', 'name', 'coins', 'bonus', 'basePriceNGN', 'prices
 const GIFT_FIELDS = ['code', 'name', 'icon', 'costCoins', 'color', 'desc', 'status'];
 const EARN_FIELDS = ['code', 'action', 'type', 'coins', 'cooldown', 'pagesRequired', 'status', 'meta'];
 const SUB_FIELDS = ['code', 'name', 'period', 'durationDays', 'basePriceNGN', 'prices', 'features', 'badge',
-  'coinsPerDay', 'bonusPercent', 'status'];
+  'icon', 'color', 'coinsPerDay', 'bonusPercent', 'status'];
 
 const packCrud = makeCrud(CoinPack, PACK_FIELDS, 'PACK');
 const bundleCrud = makeCrud(CoinBundle, BUNDLE_FIELDS, 'BND');
@@ -556,6 +696,11 @@ async function saveConfig(kind, body, userId) {
     b.basePriceNGN = Math.round(legNum(b.price) * rate);
   }
   if (b.bonusPercent !== undefined && b.bonusPct === undefined) b.bonusPct = b.bonusPercent;
+  if (kind === 'subscription' && b.period) {
+    // durationDays is required by the schema but the console only picks a
+    // period; derive it so a plan's length can never disagree with its name.
+    b.durationDays = b.durationDays || { day: 1, week: 7, month: 30, year: 365 }[b.period] || 30;
+  }
   if (kind === 'earn') {
     // The reward editor posts icon/available/blog/channel/video extras at the
     // top level; the schema keeps them in meta (same folding store.service does).
@@ -564,9 +709,28 @@ async function saveConfig(kind, body, userId) {
     const meta = Object.assign({}, b.meta && typeof b.meta === 'object' ? b.meta : {});
     extras.forEach(k => { if (b[k] !== undefined) meta[k] = b[k]; });
     if (Object.keys(meta).length) b.meta = meta;
+    // Nothing half-configured is saved: an ad task with no https ad URL, a
+    // YouTube row with no video id or a reward with no cooldown would all be
+    // claimed for coins the reader never earned. Same rules the store serves by.
+    let candidate = b;
+    if (b.id) {
+      const cur = await byIdOrCode(EarnReward, b.id);
+      candidate = Object.assign({}, cur ? cur.toObject() : {}, b);
+    }
+    const errs = require('./earn-rules').validate(candidate);
+    if (errs.length) { const e = new Error('reward_invalid'); e.status = 400; e.errors = errs; throw e; }
   }
   if (b.name !== undefined && (kind === 'package')) {
     b.meta = Object.assign({}, b.meta && typeof b.meta === 'object' ? b.meta : {}, { name: b.name });
+  }
+  if (kind === 'package' || kind === 'bundle') {
+    // CoinPack has no chrome columns at all (and neither model has a badge
+    // column); the store card chrome rides in meta so the console can set it
+    // and catalog() can hand it back out.
+    const extras = ['badge', 'period', 'features', 'icon', 'color'];
+    const meta = Object.assign({}, b.meta && typeof b.meta === 'object' ? b.meta : {});
+    extras.forEach(k => { if (b[k] !== undefined) meta[k] = b[k]; });
+    if (Object.keys(meta).length) b.meta = meta;
   }
   const doc = b.id ? await crud.update(b.id, b) : await crud.create(b);
   // History rows come from the console itself (POST /coin-config-history);
@@ -653,7 +817,7 @@ async function dashboard() {
 
   const quickActions = [
     { label: 'Review Withdrawals', icon: 'fa-building-columns', cls: 'blue', count: pendingWd.length, href: 'withdrawals.html' },
-    { label: 'Process Author Payments', icon: 'fa-money-check-dollar', cls: 'accent', count: 0, href: 'author-payments.html' },
+    { label: 'Configure Store Catalog', icon: 'fa-coins', cls: 'accent', count: 0, href: 'coin-transactions.html' },
     { label: 'Resolve Payment Disputes', icon: 'fa-scale-balanced', cls: 'red', count: openCount.length, href: 'payment-disputes.html' },
     { label: 'Generate Financial Report', icon: 'fa-chart-pie', cls: 'purple', count: 0, href: 'financial-reports.html' },
   ];
@@ -691,7 +855,6 @@ async function dashboard() {
 // "Redeemed" = coins spent against the ledger today (real movement, not a guess).
 async function LedgerAggregate() {
   try {
-    const { LedgerEntry } = require('../models/money.model');
     const now = new Date();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const row = await LedgerEntry.aggregate([
@@ -702,12 +865,176 @@ async function LedgerAggregate() {
   } catch (e) { return 0; }
 }
 
+/* ─────────────────────────────────────────────────────────────
+ * GET /api/finance/financial-reports?from&to
+ * finance-data.js:374 (getFinancialReports); rows consumed by
+ * financial-reports-service.js:68-144, which recomputes the KPI cards, the
+ * monthly chart, the expense breakdown and the category ranking from the
+ * three daily arrays below. So the daily arrays are the contract.
+ * Amounts are base currency (NGN), like every other money leg.
+ *   revenue   = coin/subscription sales + settled ad revenue
+ *   payouts   = author withdrawals actually paid out
+ *   platformIncome = revenue − payouts (what the platform keeps of the money in)
+ *   fees      = store/channel commission withheld at purchase
+ *   bonuses   = author bonus credits
+ *   marketing = money spent out of the marketing pool (ledger debits)
+ *   categories = coin unlocks by book genre at coin face value
+ * There is no source for infrastructure cost, so it reports 0 rather than a
+ * made-up daily figure.
+ * ───────────────────────────────────────────────────────────── */
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAYGROUP = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } };
+function r2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function add(map, key, v) { map.set(key, (map.get(key) || 0) + (Number(v) || 0)); }
+
+async function financialReports(q) {
+  const today = new Date();
+  const to = DAY_RE.test((q && q.to) || '') ? q.to : today.toISOString().slice(0, 10);
+  const fromDefault = new Date(today.getTime() - 89 * 864e5).toISOString().slice(0, 10);
+  const from = DAY_RE.test((q && q.from) || '') ? q.from : fromDefault;
+  if (from > to) bad('bad_range', 400);
+  const start = new Date(from + 'T00:00:00.000Z');
+  const stop = new Date(new Date(to + 'T00:00:00.000Z').getTime() + 864e5); // exclusive
+  if ((stop - start) > 400 * 864e5) bad('range_too_wide', 400);
+  const span = { $gte: start, $lt: stop };
+
+  const [fx, store, ads, payouts, bonuses, marketing, unlocks] = await Promise.all([
+    fxTable(),
+    CoinTransaction.aggregate([
+      { $match: { status: 'completed', type: { $in: ['purchase', 'subscription'] }, createdAt: span } },
+      { $group: { _id: { d: DAYGROUP, c: { $ifNull: [{ $toUpper: '$fiatCurrency' }, 'NGN'] } }, gross: { $sum: '$fiatAmount' }, fees: { $sum: '$feeAmount' } } },
+    ]),
+    AdRevenueLedger.aggregate([
+      { $match: { date: { $gte: from, $lte: to } } },
+      { $group: { _id: '$date', rev: { $sum: '$revenue' } } },
+    ]),
+    Payout.aggregate([
+      { $match: { status: 'completed', paidAt: span } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt', timezone: 'UTC' } }, t: { $sum: '$amount' } } },
+    ]),
+    AuthorTransaction.aggregate([
+      { $match: { status: 'completed', type: 'bonus', amount: { $gt: 0 }, createdAt: span } },
+      { $group: { _id: DAYGROUP, t: { $sum: '$amount' } } },
+    ]),
+    LedgerEntry.aggregate([
+      { $match: { debitAcct: 'pool:marketing', createdAt: span } },
+      { $group: { _id: DAYGROUP, t: { $sum: '$amount' } } },
+    ]),
+    Entitlement.aggregate([
+      { $match: { kind: 'coin', unlockedAt: span } },
+      { $group: { _id: { d: { $dateToString: { format: '%Y-%m-%d', date: '$unlockedAt', timezone: 'UTC' } }, bookId: '$bookId' }, coins: { $sum: '$priceCoins' } } },
+    ]),
+  ]);
+
+  const coinSales = new Map(), fees = new Map();
+  store.forEach(r => {
+    const rate = rateOf(fx, r._id.c);
+    add(coinSales, r._id.d, r.gross * rate);
+    add(fees, r._id.d, r.fees * rate);
+  });
+  const adRev = new Map();
+  ads.forEach(r => { add(adRev, r._id, r.rev * fx.usd); }); // network rows are booked in USD
+  const paid = new Map();
+  payouts.forEach(r => { if (r._id) add(paid, r._id, r.t); });
+  const bon = new Map();
+  bonuses.forEach(r => { if (r._id) add(bon, r._id, r.t); });
+  const mkt = new Map();
+  marketing.forEach(r => { if (r._id) add(mkt, r._id, r.t); });
+
+  // Genre names come from the catalog, not the unlock row, so resolve the books.
+  const bookIds = Array.from(new Set(unlocks.map(u => String(u._id.bookId)).filter(Boolean)));
+  const genreOf = {};
+  if (bookIds.length) {
+    const { Book } = require('../models/content.model');
+    const books = await Book.find({ id: { $in: bookIds } }).select('id genre').lean().catch(() => []);
+    books.forEach(b => { genreOf[String(b.id)] = b.genre || 'Unspecified'; });
+  }
+  const cats = [];
+  const catByDay = new Map();
+  unlocks.forEach(u => {
+    const genre = genreOf[String(u._id.bookId)] || 'Unspecified';
+    const revenue = u.coins * fx.coinFaceNGN;
+    if (revenue <= 0) return;
+    cats.push({ date: u._id.d, genre, revenue: r2(revenue) });
+    add(catByDay, genre, revenue);
+  });
+  cats.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || b.revenue - a.revenue);
+
+  const dayKeys = new Set();
+  [coinSales, adRev, paid, fees, bon, mkt].forEach(m => m.forEach((v, k) => { if (v) dayKeys.add(k); }));
+  const days = Array.from(dayKeys).sort();
+
+  const dailyRevenue = days.map(d => {
+    const cs = coinSales.get(d) || 0, ar = adRev.get(d) || 0, po = paid.get(d) || 0;
+    const revenue = cs + ar;
+    return { date: d, revenue: r2(revenue), payouts: r2(po), platformIncome: r2(revenue - po), coinSales: r2(cs) };
+  });
+  const dailyExpenses = days.map(d => ({
+    date: d,
+    authorPayouts: r2(paid.get(d) || 0),
+    processingFees: r2(fees.get(d) || 0),
+    bonuses: r2(bon.get(d) || 0),
+    marketing: r2(mkt.get(d) || 0),
+    infrastructure: 0,
+  }));
+
+  const monthAgg = new Map();
+  dailyRevenue.forEach(r => {
+    const label = MONTHS[Number(r.date.slice(5, 7)) - 1];
+    add(monthAgg, r.date.slice(0, 7) + '|' + label, r.revenue);
+  });
+  const monthlyRevenue = Array.from(monthAgg.entries())
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([k, v]) => ({ month: k.split('|')[1], revenue: r2(v) }));
+
+  const sum = (m) => Array.from(m.values()).reduce((s, v) => s + v, 0);
+  const totalRevenue = sum(coinSales) + sum(adRev);
+  const totalPayouts = sum(paid);
+  const totalFees = sum(fees);
+  const totalBonuses = sum(bon);
+  const totalMarketing = sum(mkt);
+  let growth = 0;
+  if (monthlyRevenue.length >= 2) {
+    const prev = monthlyRevenue[monthlyRevenue.length - 2].revenue;
+    const last = monthlyRevenue[monthlyRevenue.length - 1].revenue;
+    if (prev > 0) growth = ((last - prev) / prev) * 100;
+  }
+
+  return {
+    range: { from, to },
+    currency: 'NGN',
+    generatedAt: new Date().toISOString(),
+    summary: {
+      totalRevenue: r2(totalRevenue),
+      totalPayouts: r2(totalPayouts),
+      platformIncome: r2(totalRevenue - totalPayouts),
+      coinSalesRevenue: r2(sum(coinSales)),
+      growthVsLastMonth: Math.round(growth * 10) / 10,
+    },
+    monthlyRevenue,
+    dailyRevenue,
+    dailyExpenses,
+    dailyCategoryRevenue: cats,
+    expenseBreakdown: [
+      { label: 'Author Payouts', amount: r2(totalPayouts), color: 'accent' },
+      { label: 'Payment Processing Fees', amount: r2(totalFees), color: 'blue' },
+      { label: 'Bonuses & Incentives', amount: r2(totalBonuses), color: 'purple' },
+      { label: 'Marketing Spend', amount: r2(totalMarketing), color: 'amber' },
+      { label: 'Infrastructure', amount: 0, color: 'green' },
+    ],
+    topCategories: Array.from(catByDay.entries())
+      .map(([genre, revenue]) => ({ genre, revenue: r2(revenue) }))
+      .sort((a, b) => b.revenue - a.revenue),
+  };
+}
+
 module.exports = {
   dashboard,
-  withdrawals, approveWithdrawal, declineWithdrawal,
+  withdrawals, approveWithdrawal, declineWithdrawal, payWithdrawal, authorCashOn,
   authorPayments, paymentHistory, schedulePayout, processPayment,
   paymentDisputes, resolveDispute, rejectDispute, replyDispute,
-  coinTransactions,
+  coinTransactions, financialReports,
   coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions, coinConfigHistory,
   saveConfig, updateConfigStatus, removeConfig,
 };

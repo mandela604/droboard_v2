@@ -31,29 +31,46 @@ function cfg() {
 
 // Pack catalog lookup: code -> { kind, coins, code, doc }. Coins are trusted;
 // amounts are asserted against the pack's legs in assertPackAmount.
+// The paid/bonus split travels with the row: a pack priced at 500 +5% delivers
+// 525 coins but only 500 of them were bought, and only bought coins may ever
+// fund a payout. See wallet.creditPurchase.
 async function lookupPack(packCode) {
   if (!packCode) throw err('pack_required', 400);
   const code = String(packCode);
   const pack = await CoinPack.findOne({ code, status: 'active' }).lean();
-  if (pack) return { kind: 'pack', coins: pack.coins + Math.round(pack.coins * (pack.bonusPct || 0) / 100), code, doc: pack };
+  if (pack) {
+    const bonusCoins = Math.round((pack.coins || 0) * (pack.bonusPct || 0) / 100);
+    return { kind: 'pack', paidCoins: pack.coins, bonusCoins, coins: (pack.coins || 0) + bonusCoins, code, doc: pack };
+  }
   const bundle = await CoinBundle.findOne({ code, status: 'active' }).lean();
-  if (bundle) return { kind: 'bundle', coins: bundle.coins + (bundle.bonus || 0), code, doc: bundle };
+  if (bundle) {
+    const bonusCoins = Number(bundle.bonus) || 0;
+    return { kind: 'bundle', paidCoins: bundle.coins, bonusCoins, coins: (bundle.coins || 0) + bonusCoins, code, doc: bundle };
+  }
   const sub = await SubscriptionPlan.findOne({ code, status: 'active' }).lean();
-  if (sub) return { kind: 'subscription', coins: 0, code, plan: sub, doc: sub };
+  if (sub) return { kind: 'subscription', paidCoins: 0, bonusCoins: 0, coins: 0, code, plan: sub, doc: sub };
   throw err('unknown_pack', 400);
 }
 
 // Country -> ISO currency for leg lookup (legs may be keyed either way).
 const COUNTRY_CCY = { NG: 'NGN', US: 'USD', GB: 'GBP', GH: 'GHS', KE: 'KES', ZA: 'ZAR', IN: 'INR', CA: 'CAD', AU: 'AUD', PH: 'PHP' };
+// A leg is stored either as a number or as the display string the store
+// renders ("$9.99", "₦15,000"), so strip the formatting before comparing.
+function legNum(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const n = Number(String(v).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) && String(v).trim() !== '' ? n : null;
+}
 function legFor(doc, currency) {
   if (!doc) return null;
   const legs = doc.prices instanceof Map ? Object.fromEntries(doc.prices) : (doc.prices || {});
   const cur = String(currency || 'NGN').toUpperCase();
-  if (legs[cur] != null) return Number(legs[cur]);
+  if (legs[cur] != null) return legNum(legs[cur]);
   for (const k of Object.keys(legs)) {
-    if ((COUNTRY_CCY[String(k).toUpperCase()] || String(k).toUpperCase()) === cur) return Number(legs[k]);
+    if ((COUNTRY_CCY[String(k).toUpperCase()] || String(k).toUpperCase()) === cur) return legNum(legs[k]);
   }
-  if (cur === 'NGN' && doc.basePriceNGN != null) return Number(doc.basePriceNGN);
+  if (cur === 'NGN' && doc.basePriceNGN != null) return legNum(doc.basePriceNGN);
   return null;
 }
 
@@ -114,6 +131,9 @@ async function verifyPlay({ purchaseToken, productId }) {
     ok: true, orderId: p.orderId,
     amount: p.priceAmountMicros != null ? p.priceAmountMicros / 1000000 : null,
     currency: p.priceCurrencyCode || null,
+    // Play never reports its commission per purchase — only the monthly
+    // earnings report does — so the channel rate in RevenueConfig applies.
+    fee: null,
     purchaseTime: p.purchaseTimeMillis ? new Date(Number(p.purchaseTimeMillis)) : null,
   };
 }
@@ -134,6 +154,7 @@ async function verifyPaystack({ reference }) {
     ok: true, orderId: d.reference,
     amount: d.amount != null ? d.amount / 100 : null, // kobo -> naira
     currency: d.currency || null,
+    fee: d.fees != null ? Number(d.fees) / 100 : null, // kobo -> naira; the fee Paystack actually took
     paidAt: d.paid_at ? new Date(d.paid_at) : null,
     raw: d,
   };
@@ -162,10 +183,12 @@ async function verifyFlutterwave({ transactionId }) {
   const body = await res.json().catch(() => ({}));
   const d = body && body.data;
   if (!body.status || !d || d.status !== 'successful') throw err('flutterwave_not_successful', 402);
+  const f = d.app_fee != null ? d.app_fee : d.merchant_fee;
   return {
     ok: true, orderId: String(d.id || d.tx_ref),
     amount: d.amount != null ? Number(d.amount) : null,
     currency: d.currency || null,
+    fee: f != null && Number.isFinite(Number(f)) ? Number(f) : null, // the fee Flutterwave actually took
     txRef: d.tx_ref || null,
     raw: d,
   };
@@ -182,6 +205,6 @@ function verifyFlwHash(header) {
 }
 
 module.exports = {
-  lookupPack, assertPackAmount, verifyPlay, verifyPaystack, verifyFlutterwave,
+  lookupPack, assertPackAmount, legFor, verifyPlay, verifyPaystack, verifyFlutterwave,
   verifyPaystackSig, verifyFlwHash, cfg,
 };

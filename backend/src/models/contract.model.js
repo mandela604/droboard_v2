@@ -1,14 +1,18 @@
 /**
  * models/contract.model.js — contracts, templates, signed records.
  * Flow: pending → sent → approved(author signed) → signed(platform signs,
- * pricing locked) → active. Monetization terms live in ContractPricing.
+ * commercial terms locked; chapter pricing stays editable) → active.
+ * Monetization terms live in ContractPricing.
  */
 const mongoose = require('mongoose');
 
 const contractSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', index: true },
   authorId: { type: String, ref: 'User', required: true, index: true },
-  type: { type: String, enum: ['Exclusive_Publishing', 'Revenue_Share', 'License_Agreement', 'Non_Exclusive'], required: true },
+  // Free text copied from the chosen ContractTemplate.type: the chief editor
+  // defines the categories. Nothing in the platform computes from this value.
+  type: { type: String, required: true, maxlength: 60 },
+  templateId: { type: String, ref: 'ContractTemplate', default: '', index: true },
   status: { type: String, enum: ['draft', 'pending', 'sent', 'approved', 'signed', 'active', 'rejected', 'expired', 'terminated'], default: 'pending', index: true },
   duration: { type: String, default: '12 months' },
   termMonths: { type: Number, default: 12 },
@@ -29,9 +33,9 @@ contractSchema.index({ authorId: 1, status: 1 });
 const contractTemplateSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   desc: { type: String, default: '' },
-  // `type` widened additively: original four platform kinds plus the
-  // label set the Contracts & Payments console filters on. Old values valid.
-  type: { type: String, enum: ['Publishing', 'Financial', 'Legal', 'Rights', 'Non-Exclusive', 'Exclusive', 'Renewal', 'Amendment', 'Work-for-Hire'], default: 'Publishing' },
+  // Free text: the chief editor defines the categories in the console (they
+  // can add their own). A Contract written from this template copies it.
+  type: { type: String, default: 'Publishing', maxlength: 60 },
   // `paused` is a console workflow state (distinct from `draft`): the console
   // shows paused vs draft separately and re-activates from either.
   status: { type: String, enum: ['active', 'draft', 'paused', 'archived'], default: 'draft', index: true },
@@ -53,6 +57,7 @@ const contractTemplateSchema = new mongoose.Schema({
   defaultChapterPrice: { type: Number, default: 0 },
   cfHidden: { type: [String], default: [] },
   cfLabels: { type: mongoose.Schema.Types.Mixed, default: {} },
+  currency: { type: String, default: 'USD' },
   updatedBy: { type: String, ref: 'User' },
 }, { timestamps: true });
 

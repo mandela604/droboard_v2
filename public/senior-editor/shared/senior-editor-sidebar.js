@@ -47,6 +47,8 @@
     { key: 'author-verification', label: 'Author Verification',  icon: 'fa-user-check',        href: 'author-verification.html',    section: 'People' },
     { key: 'author-messages',     label: 'Author Messages',      icon: 'fa-envelope',          href: 'author-messages.html',        section: 'People' },
 
+    { key: 'editor-bill-review',  label: 'My Earnings',          icon: 'fa-wallet',            href: 'editor-bill-review.html',     section: 'Payout' },
+
     { key: 'activity-logs',       label: 'Activity Logs',        icon: 'fa-list',              href: 'activity-logs.html',          section: 'System' },
   ];
 

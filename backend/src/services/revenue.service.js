@@ -39,12 +39,60 @@ function splitGift(faceValue, cfg) {
   return { writer: faceValue * w, platform: faceValue * (1 - w) };
 }
 
+// Commission each channel keeps. Play exposes no per-purchase commission, so
+// its rate is configured; Paystack/Flutterwave return the exact fee on verify
+// and the purchase path prefers that number over this fallback.
+const DEFAULT_CHANNEL_FEE_PCT = { play: 30, appstore: 30, paystack: 2, flutterwave: 2, web: 2 };
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+function feeRateFor(cfg, channel) {
+  const map = (cfg && cfg.channelFeePct) || {};
+  const raw = typeof map.get === 'function' ? map.get(channel) : map[channel];
+  const v = Number(raw);
+  if (Number.isFinite(v) && v >= 0 && v <= 100) return v;
+  return DEFAULT_CHANNEL_FEE_PCT[channel] != null ? DEFAULT_CHANNEL_FEE_PCT[channel] : 30;
+}
+
+// Fee actually withheld for one purchase: the provider's own figure when it
+// reports one, otherwise the channel rate applied to the sticker price.
+function storeFeeFor({ gross, fee, channel, cfg }) {
+  const amount = round2(gross);
+  const reported = fee === null || fee === undefined ? null : Number(fee);
+  const feeAmount = Number.isFinite(reported) && reported >= 0
+    ? reported
+    : amount * feeRateFor(cfg, channel) / 100;
+  return round2(Math.min(amount, Math.max(0, feeAmount)));
+}
+
+// Spend-time split. The store's cut is already booked at purchase, so the
+// whole face value is distributed here: platform takes the store share plus
+// its own, while marketing/editors/writer keep the same percentages on every
+// purchase regardless of channel.
+function splitSale(gross, cfg) {
+  const s = splitGross(gross, cfg);
+  return {
+    storeFee: s.storeFee,
+    receipts: s.receipts,
+    marketing: s.marketing,
+    editors: s.editors,
+    net: s.net,
+    writer: s.writer,
+    platform: s.platform + s.storeFee,
+  };
+}
+
 async function saveConfig({ scope, authorId, splits, note, by }) {
   const last = await RevenueConfig.findOne({ scope }).sort({ version: -1 }).lean();
-  const doc = await RevenueConfig.create(Object.assign({
+  const payload = Object.assign({
     scope, authorId: authorId || null, version: (last ? last.version : 0) + 1,
     note: note || '', updatedBy: by || null,
-  }, splits));
+  }, splits);
+  // A console save that does not mention channel fees must not reset the ones
+  // already agreed with finance.
+  if (splits.channelFeePct === undefined && last && last.channelFeePct) {
+    payload.channelFeePct = last.channelFeePct;
+  }
+  const doc = await RevenueConfig.create(payload);
   return doc.toJSON();
 }
 
@@ -64,6 +112,9 @@ function toFlat(cfg) {
     subPlatformPct: o.subPlatformPct != null ? o.subPlatformPct : 50,
     subWritersPct: o.subWritersPct != null ? o.subWritersPct : 50,
     subscriptionCoinRateNGN: o.subscriptionCoinRateNGN != null ? o.subscriptionCoinRateNGN : 10,
+    channelFeePct: o.channelFeePct instanceof Map
+      ? Object.fromEntries(o.channelFeePct)
+      : (o.channelFeePct || {}),
     note: o.note || '', updatedBy: o.updatedBy || null, updatedAt: o.updatedAt || o.createdAt || null,
     authorId: o.authorId || null,
   };
@@ -85,10 +136,24 @@ function checkFlat(splits) {
   if (![sp, sw].every(n => Number.isFinite(n) && n >= 0 && n <= 100) || sp + sw !== 100) {
     throw Object.assign(new Error('sub_splits_must_sum'), { status: 400 });
   }
-  return {
+  let channelFeePct;
+  if (splits.channelFeePct !== undefined) {
+    channelFeePct = {};
+    const m = splits.channelFeePct || {};
+    Object.keys(m).forEach(k => {
+      const v = Number(m[k]);
+      if (!Number.isFinite(v) || v < 0 || v > 100) {
+        throw Object.assign(new Error('channel_fee_out_of_range'), { status: 400 });
+      }
+      channelFeePct[String(k)] = v;
+    });
+  }
+  const mapped = {
     storeFeePct: g, marketingPct: m, editorsPct: e, writerShareOfNetPct: w,
     giftWriterPct: gift, subPlatformPct: sp, subWritersPct: sw,
   };
+  if (channelFeePct) mapped.channelFeePct = channelFeePct;
+  return mapped;
 }
 async function configHistory() {
   const rows = await RevenueConfig.find({ scope: 'global' }).sort({ version: -1 }).lean();
@@ -225,7 +290,7 @@ async function coinRateGet() {
   return new CoinRate({ key: 'live' }).toObject(); // unsaved defaults for first render
 }
 async function coinRateSave(updates) {
-  const allowed = ['coinFaceNGN', 'minChapterCoins', 'minWithdrawal', 'bonusExpiryDays', 'dormancyBreakageMonths'];
+  const allowed = ['coinFaceNGN', 'minChapterCoins', 'minWithdrawal', 'bonusExpiryDays', 'dormancyBreakageMonths', 'fx'];
   const set = {};
   allowed.forEach(k => { if (updates[k] !== undefined) set[k] = updates[k]; });
   if (!Object.keys(set).length) { const e = new Error('nothing_to_save'); e.status = 400; throw e; }
@@ -237,7 +302,8 @@ async function coinRateSave(updates) {
 }
 
 module.exports = {
-  activeConfig, splitGross, splitGift, saveConfig,
+  activeConfig, splitGross, splitSale, splitGift, saveConfig,
+  feeRateFor, storeFeeFor, DEFAULT_CHANNEL_FEE_PCT,
   toFlat, checkFlat, configHistory, authorOverrides,
   saveFlatConfig, deleteAuthorOverride, authorDirectory, poolsShape,
   distributeSubscriptions, coinRateGet, coinRateSave,

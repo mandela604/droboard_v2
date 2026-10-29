@@ -9,6 +9,7 @@ const ctrl = require('../controllers/senior.controller');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/guards');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
+const editorEarnings = require('../services/editor-earnings.service');
 
 function Router() { return require('express').Router(); }
 const router = Router();
@@ -19,6 +20,60 @@ const id = z.string().min(1).max(120);
 const q = { q: z.string().max(80).optional(), status: z.string().max(30).optional(), page: z.string().max(6).optional(), limit: z.string().max(6).optional() };
 const anyBody = z.object({}).catchall(z.unknown());
 const reportNote = z.object({ note: z.string().max(1000).optional() }).strict();
+const announcementBody = z.object({
+  title: z.string().min(1).max(200).optional(),
+  content: z.string().max(20000).optional(),
+  image: z.string().max(2000000).nullable().optional(),
+  audience: z.enum(['all', 'authors', 'readers']).optional(),
+  status: z.enum(['draft', 'scheduled', 'published']).optional(),
+  type: z.enum(['update', 'event', 'system', 'policy', 'program', 'news', 'security']).optional(),
+  scheduledDate: z.string().max(40).nullable().optional(),
+  scheduled: z.string().max(40).nullable().optional(),
+}).strict();
+
+const contractCreateBody = z.object({
+  authorId: z.string().min(1).max(120),
+  bookId: z.string().max(120).optional(),
+  // The chief editor's contract definition: terms are resolved server-side.
+  templateId: z.string().min(1).max(120),
+  advance: z.number().min(0).optional(),
+  authorNote: z.string().max(2000).optional(),
+}).strict();
+
+// Same shape comes from ContractMonetization.getTerms() on both offer pages.
+const pricingRows = z.array(z.object({
+  num: z.number().int().min(1),
+  title: z.string().max(200).optional(),
+  price: z.number().min(0),
+  ads: z.number().min(0).optional(),
+  free: z.boolean().optional(),
+}).strict()).max(1000);
+
+const offerPricingBody = z.object({
+  freeChapters: z.number().int().min(0).optional(),
+  adsPerChapter: z.number().int().min(0).optional(),
+  allowAdUnlock: z.boolean().optional(),
+  rows: pricingRows.optional(),
+}).strict();
+
+const pricingBody = offerPricingBody.extend({
+  bookId: z.string().max(120).optional(),
+}).strict();
+
+// Banner writes: a banner is a FeaturedPlacement on a real story.
+const bannerPatch = z.object({
+  bookId: z.string().min(1).max(120).optional(),
+  section: z.string().max(60).optional(),
+  tag: z.string().max(40).optional(),
+  order: z.number().int().min(0).max(1000).optional(),
+  active: z.boolean().optional(),
+  start: z.string().max(40).nullable().optional(),
+  end: z.string().max(40).nullable().optional(),
+}).strict();
+const bannerCreateBody = bannerPatch.extend({
+  bookId: z.string().min(1).max(120),
+  title: z.string().max(200).optional(),
+});
 
 function crud(path, name, opts) {
   opts = opts || {};
@@ -92,39 +147,22 @@ router.put('/review-queue/:id', writeLimiter, audit('senior.reviews.decide'),
     body: z.object({
       action: z.enum(['approved', 'rejected']),
       feedback: z.string().max(2000).optional(),
-      // Present when the editor chose "Accept for Contract": the acceptance
-      // wizard's deal type + monetization terms become a real offer.
+      // Present when the editor chose "Accept for Contract": the chosen
+      // chief-editor template (terms resolved server-side) + monetization.
       contract: z.object({
-        type: z.enum(['Exclusive_Publishing', 'Non_Exclusive', 'Revenue_Share', 'License_Agreement']).optional(),
-        termMonths: z.number().int().min(1).max(60).optional(),
-        revenueSplit: z.number().int().min(0).max(100).optional(),
-        advance: z.number().min(0).optional(),
+        templateId: z.string().min(1).max(120),
         note: z.string().max(1000).optional(),
-        pricing: z.object({
-          freeChapters: z.number().int().min(0).optional(),
-          adsPerChapter: z.number().int().min(0).optional(),
-          allowAdUnlock: z.boolean().optional(),
-          rows: z.array(z.object({}).passthrough()).max(500).optional(),
-        }).strict().optional(),
+        pricing: offerPricingBody.optional(),
       }).strict().optional(),
     }).strict(),
   })), ctrl.reviewDecide);
 
-// book management (full CRUD + rate/flag/unflag used by book-management-service.js)
+// book management (read + flag/unflag). Editing a book belongs to its author.
 router.get('/books', generalLimiter, validate(z.object({ query: z.object({
   tab: z.string().max(20).optional(), status: z.string().max(30).optional(),
   q: q.q, page: q.page, limit: q.limit,
 }).strict() })), ctrl.booksList);
 router.get('/books/:id', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.res('stories').get);
-router.put('/books/:id', writeLimiter, audit('senior.books.update'),
-  validate(z.object({ params: z.object({ id }), body: anyBody })), ctrl.res('stories').update);
-router.delete('/books/:id', writeLimiter, audit('senior.books.delete'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.res('stories').remove);
-router.put('/books/:id/rating', writeLimiter, audit('senior.books.rate'),
-  validate(z.object({
-    params: z.object({ id }),
-    body: z.object({ rating: z.number().min(0).max(5) }).strict(),
-  })), ctrl.rateBook);
 router.post('/books/:id/flag', writeLimiter, audit('senior.books.flag'),
   validate(z.object({
     params: z.object({ id }),
@@ -146,11 +184,28 @@ router.post('/reports/:id/resolve', writeLimiter, audit('senior.reports.resolve'
   validate(z.object({ params: z.object({ id }), body: reportNote })), ctrl.reportResolve);
 router.post('/reports/:id/dismiss', writeLimiter, audit('senior.reports.reject'),
   validate(z.object({ params: z.object({ id }), body: reportNote })), ctrl.reportDismiss);
+router.post('/reports/:id/reopen', writeLimiter, audit('senior.reports.reopen'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.reportReopen);
 router.get('/reports/settings', generalLimiter, async (req, res) => {
   const base = require('../controllers/base.controller');
   const { PlatformSetting } = require('../models/platform.model');
   return base.wrap(res, async () => PlatformSetting.findOne({ key: 'reports' }).lean());
 });
+router.put('/reports/settings', writeLimiter, audit('senior.reports.settings'),
+  validate(z.object({
+    body: z.object({}).catchall(z.union([z.string().max(200), z.number(), z.boolean(), z.null()])),
+  })), async (req, res) => {
+    const base = require('../controllers/base.controller');
+    const { PlatformSetting } = require('../models/platform.model');
+    return base.wrap(res, async () => {
+      const doc = await PlatformSetting.findOneAndUpdate(
+        { key: 'reports' },
+        { $set: { value: req.valid.body, updatedBy: String(req.user.id) } },
+        { upsert: true, new: true }
+      ).lean();
+      return doc;
+    });
+  });
 
 /* ── Surface endpoints the dashboard pages name but the core review/contract
       models don't cover. Response shapes match each senior-editor service. */
@@ -162,6 +217,11 @@ const listQuery = validate(z.object({ query: z.object(q).strict() }));
 
 // author-content surfaces (scoped to this editor's assigned authors)
 router.get('/stories', generalLimiter, listQuery, read(r => S.stories(r.user, r.valid.query)));
+// Story Management page view (list + cover/reads/synopsis/recent chapters).
+router.get('/story-management', generalLimiter, listQuery,
+  read(r => S.storyManagement(r.user, r.valid.query)));
+// Reports & Compliance page view (plagiarism / complaints / enforcement).
+router.get('/reports-compliance', generalLimiter, read(r => S.reportsCompliance(r.user)));
 router.get('/story-analytics', generalLimiter, listQuery,
   read(r => S.storyAnalytics(r.user, r.valid.query)));
 
@@ -172,7 +232,11 @@ router.get('/editors-picks', generalLimiter, read(() => S.editorsPicks()));
 // announcements
 router.get('/announcements', generalLimiter, listQuery, read(() => S.announcements()));
 router.post('/announcements', writeLimiter, audit('senior.announcements.create'),
-  validate(z.object({ body: anyBody })), read(r => S.createAnnouncement(r.valid.body)));
+  validate(z.object({ body: announcementBody })), read(r => S.createAnnouncement(r.valid.body)));
+router.put('/announcements/:id', writeLimiter, audit('senior.announcements.update'),
+  validate(z.object({ params: z.object({ id }), body: announcementBody })), read(r => S.updateAnnouncement(r.valid.params.id, r.valid.body)));
+router.delete('/announcements/:id', writeLimiter, audit('senior.announcements.delete'),
+  validate(z.object({ params: z.object({ id }) })), read(r => S.deleteAnnouncement(r.valid.params.id)));
 
 // book reviews
 router.get('/book-reviews', generalLimiter, validate(z.object({ query: z.object({
@@ -192,9 +256,12 @@ router.get('/contract-templates/usage', generalLimiter, read(() => S.contractTem
 // featured banners
 router.get('/featured-banners', generalLimiter, read(() => S.featuredBanners()));
 router.post('/featured-banners', writeLimiter, audit('senior.banners.create'),
-  validate(z.object({ body: anyBody })), read(r => S.createFeaturedBanner(r.valid.body)));
+  validate(z.object({ body: bannerCreateBody })), read(r => S.createFeaturedBanner(r.valid.body, r.user.id)));
 router.get('/featured-banners/:id', generalLimiter,
   validate(z.object({ params: z.object({ id }) })), read(r => S.featuredBanner(r.valid.params.id)));
+router.put('/featured-banners/:id', writeLimiter, audit('senior.banners.update'),
+  validate(z.object({ params: z.object({ id }), body: bannerPatch })),
+  read(r => S.updateFeaturedBanner(r.valid.params.id, r.valid.body)));
 router.post('/featured-banners/:id/pause', writeLimiter, audit('senior.banners.pause'),
   validate(z.object({ params: z.object({ id }) })),
   read(r => S.pauseFeaturedBanner(r.valid.params.id)));
@@ -269,8 +336,36 @@ router.post('/notifications/read-all', writeLimiter, audit('senior.notifications
   read(r => S.notificationsReadAll(r.user, {})));
 
 router.get('/platform-settings', generalLimiter, read(() => S.platformSettings()));
+
+// My Earnings — the editor's own pay ledger (revenue share + fixed monthly).
+const earningsQuery = z.object({
+  status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
+  period: z.string().max(7).optional(),
+  sourceType: z.enum(['revenue_share', 'tip_share', 'fixed_monthly', 'adjustment']).optional(),
+  page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
+}).strict();
+router.get('/earnings', generalLimiter, validate(z.object({ query: earningsQuery })),
+  read(r => editorEarnings.list(r.user.id, r.valid.query)));
+router.get('/earnings/summary', generalLimiter, read(r => editorEarnings.summary(r.user.id)));
+router.get('/earnings/by-author', generalLimiter, read(r => editorEarnings.byAuthor(r.user.id)));
+router.get('/earnings/withdrawals', generalLimiter, listQuery,
+  read(r => editorEarnings.withdrawalsOf(r.user.id, r.valid.query)));
+router.post('/earnings/withdrawals', writeLimiter, audit('senior.earnings.withdraw'),
+  validate(z.object({
+    body: z.object({
+      amount: z.number().positive(),
+      methodId: z.string().min(1).max(120),
+      note: z.string().max(500).optional(),
+    }).strict(),
+  })), (req, res) => base.wrap(res, async () => {
+    const out = await editorEarnings.requestWithdrawal(req.user.id, req.valid.body);
+    res.status(201);
+    return out;
+  }));
+
+// Legacy path kept because editor-bill-review.html calls it; same real rows.
 router.get('/editor-bill-review', generalLimiter, listQuery,
-  read(r => S.editorBillReview(r.user, r.valid.query)));
+  read(r => editorEarnings.billRows(r.user.id, r.valid.query)));
 
 // author messages (decorated inbox + persisted thread history)
 router.get('/author-messages', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.messagesList);
@@ -286,20 +381,24 @@ router.post('/author-messages/read-all', writeLimiter, audit('senior.authorMessa
   ctrl.messagesReadAll);
 
 // contract review
-crud('/contracts', 'contracts');
+// Direct offers only — status/editorId/sentAt are set server-side, and the
+// writer must already be identity-verified (one KYC covers badge + signing).
+router.post('/contracts', writeLimiter, audit('senior.contracts.create'),
+  validate(z.object({ body: contractCreateBody })), ctrl.contractCreate);
+crud('/contracts', 'contracts', { create: false });
 
-// Author applications → the editor's offer. Approve assigns the deal type and
-// sends a Contract; the author then signs it from Author Center.
+// Author applications → the editor's offer. Approve sends a Contract built from
+// the chosen chief-editor template; the author then signs it from Author Center.
 router.get('/contract-applications', generalLimiter, ctrl.contractApplications);
 router.post('/contract-applications/:id/approve', writeLimiter, audit('senior.contracts.offer'),
   validate(z.object({
     params: z.object({ id }),
     body: z.object({
-      type: z.enum(['Exclusive_Publishing', 'Non_Exclusive', 'Revenue_Share', 'License_Agreement']),
-      termMonths: z.number().int().min(1).max(60).default(12),
-      revenueSplit: z.number().int().min(0).max(100).default(70),
+      templateId: z.string().min(1).max(120),
       advance: z.number().min(0).optional(),
       note: z.string().max(1000).optional(),
+      // Same monetization block the review-queue acceptance sends.
+      pricing: offerPricingBody.optional(),
     }).strict(),
   })), ctrl.contractApprove);
 router.post('/contract-applications/:id/reject', writeLimiter, audit('senior.contracts.rejectApplication'),
@@ -311,28 +410,17 @@ router.post('/contract-applications/:id/reject', writeLimiter, audit('senior.con
 router.post('/contracts/:id/send', writeLimiter, audit('senior.contracts.send'),
   validate(z.object({
     params: z.object({ id }),
-    body: z.object({ ct: z.string().max(40).optional() }).strict(),
+    body: z.object({ templateId: z.string().min(1).max(120) }).strict(),
   })), ctrl.contractSend);
 router.post('/contracts/:id/sign', writeLimiter, audit('senior.contracts.sign'),
   validate(z.object({
     params: z.object({ id }),
-    body: z.object({ pricing: z.object({}).catchall(z.unknown()).optional() }).strict(),
+    body: z.object({ pricing: offerPricingBody.optional() }).strict(),
   })), ctrl.signContract);
 router.post('/contracts/:id/reject', writeLimiter, audit('senior.contracts.reject'),
   validate(z.object({ params: z.object({ id }) })), ctrl.res('contracts').reject);
 router.put('/contracts/:id/pricing', writeLimiter, audit('senior.contracts.pricing'),
-  validate(z.object({ params: z.object({ id }), body: anyBody })), async (req, res) => {
-    const base = require('../controllers/base.controller');
-    const { ContractPricing } = require('../models/revenue.model');
-    return base.wrap(res, async () => {
-      const doc = await ContractPricing.findOneAndUpdate(
-        { contractId: req.valid.params.id },
-        Object.assign({ contractId: req.valid.params.id }, req.valid.body),
-        { upsert: true, new: true }
-      ).lean();
-      return doc;
-    });
-  });
+  validate(z.object({ params: z.object({ id }), body: pricingBody })), ctrl.contractPricing);
 
 // completion applications (decorated; approve closes the book)
 router.get('/completion-applications', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.completionList);
@@ -367,23 +455,17 @@ router.post('/book-edits/:id/reject', writeLimiter, audit('senior.bookEdits.reje
     body: z.object({ note: z.string().max(2000).optional() }).strict(),
   })), ctrl.rejectBookEdit);
 
-// contract type catalog for the review-queue acceptance wizard
-router.get('/contract-types', generalLimiter, ctrl.contractTypes);
-
 // VIP registration reviews (vip-registration-review-service.js reads {items})
 router.get('/vip-registrations', generalLimiter, listQuery,
   read(r => S.vipRegistrations(r.valid.query)));
 
-// authors + invites (decorated: story counts, earnings, invite provenance)
+// authors (decorated: story counts, earnings, invite provenance)
 router.get('/authors', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.authorsList);
 // This editor's own authors (scoped by EditorAssignment) + invite provenance.
 router.get('/my-authors', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.myAuthors);
 // Editor-invite code: signup with it ⇒ writer role + auto-assignment.
 router.get('/referral-code', generalLimiter, ctrl.referralCode);
 router.post('/referral-code/regenerate', writeLimiter, audit('senior.referral.rotate'), ctrl.rotateReferralCode);
-router.get('/invites', generalLimiter, ctrl.res('invites').list);
-router.post('/invites', writeLimiter, audit('senior.invites.create'),
-  validate(z.object({ body: anyBody })), ctrl.res('invites').create);
 
 // author verification — decide by record id (atomic, safe with many editors)
 router.get('/author-verification/requests', generalLimiter, ctrl.verificationRequests);

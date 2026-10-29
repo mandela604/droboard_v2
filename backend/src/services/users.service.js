@@ -192,7 +192,7 @@ async function me(userId) {
     ReadingProgress.countDocuments({ userId, finished: true }),
     require('./wallet.service').entitlements(userId).catch(() => null),
     require('../models/money.model').Wallet.findOne({ userId: String(userId), kind: 'reader' })
-      .select('coinBalance bonusBalance level currency').lean().catch(() => null),
+      .select('coinBalance bonusBalance currency').lean().catch(() => null),
     require('../models/application.model').VipApplication.findOne({ authorId: userId })
       .select('status').sort({ createdAt: -1 }).lean().catch(() => null),
   ]);
@@ -219,7 +219,6 @@ async function me(userId) {
     wallet: {
       coins: (wallet && wallet.coinBalance) || 0,
       bonusCoins: (wallet && wallet.bonusBalance) || 0,
-      level: (wallet && wallet.level) || 'Starter',
       currency: (wallet && wallet.currency) || 'NGN',
     },
     referralCode: u.referralCode || null,

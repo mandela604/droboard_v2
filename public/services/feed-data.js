@@ -8,8 +8,11 @@
  *
  *   const stories = await FeedData.getStories();
  *   const posts   = await FeedData.getFeedPosts();
- *   const slides  = await FeedData.getPromoSlides();
  *   const count   = await FeedData.getNotifCount();
+ *
+ * The ring row and the feed posts both come from GET /feed/home, so the
+ * two calls above share one request. Promo slides do NOT come from here —
+ * AdService.getPromoSlides() owns every slider on every page.
  *
  * To go live: FeedData.configure({ USE_DEMO: false, API_BASE: '/api' }).
  * Nothing in feed.html itself needs to change — this is the one place
@@ -20,8 +23,8 @@
  * window.AdData instead, so ad content only ever needs updating in one
  * place shared by every page that uses ad-card.js.
  *
- * This file is fully self-contained — DEMO_STORIES, DEMO_FEED_POSTS and
- * DEMO_PROMO_SLIDES all live below. It does NOT read window.FeedDemoSeed;
+ * This file is fully self-contained — DEMO_STORIES and DEMO_FEED_POSTS
+ * live below. It does NOT read window.FeedDemoSeed;
  * data/feed-demo-seed.js is not a dependency of this file.
  *
  * NOTE ON LIST LENGTH: DEMO_FEED_POSTS carries 28 organic posts (not
@@ -99,47 +102,6 @@
       statuses: [
         { bg: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', quote: '"This story ruined my whole week (in the best way)."', caption: 'Recommending a read', time: '2h ago' },
       ],
-    },
-  ];
-
-  /* ══════════════════════════════════════════════════════════════════
-     DEMO PROMO SLIDES — same shape component/promo-slider.js's
-     DroboardPromoSlider.mount() expects. Restored here so feed.html's
-     mountPromo() has something to render — this function was missing
-     from the self-contained rewrite of this file.
-  ══════════════════════════════════════════════════════════════════ */
-  const DEMO_PROMO_SLIDES = [
-    {
-      id: 'pr1',
-      title: 'His Sweet Revenge',
-      author: 'Luna Grey',
-      cta: 'Read Now',
-      img: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=800&h=200&fit=crop',
-      eyebrow: 'Promoted',
-    },
-    {
-      id: 'pr2',
-      title: 'Season of Betrayal · Ch. 63',
-      author: 'Ada_Writes',
-      cta: 'Open',
-      img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg',
-      eyebrow: 'Promoted',
-    },
-    {
-      id: 'pr3',
-      title: 'The letter folded inside his jacket',
-      author: 'Efe_O',
-      cta: 'Read Now',
-      img: 'https://i.postimg.cc/N9jY0w4m/5.jpg',
-      eyebrow: 'Promoted',
-    },
-    {
-      id: 'pr4',
-      title: 'Go Premium — unlock every chapter',
-      author: 'DroBoard',
-      cta: 'Go Premium',
-      img: 'https://picsum.photos/seed/dropremium/800/200',
-      eyebrow: 'DroBoard',
     },
   ];
 
@@ -351,19 +313,28 @@
     ));
   }
 
+  // /feed/home answers the ring row and the feed posts in one payload, and
+  // the page asks for both at the same time (feed-service.js runs
+  // Promise.all([getStories(), getFeedPosts()])). Sharing the in-flight
+  // request keeps that pair to a single HTTP call without changing either
+  // caller's shape. A settled-but-empty live response stays empty: demo
+  // rows only appear when the fetch never succeeded.
+  let homePending = null;
+  function homeLive() {
+    if (!homePending) {
+      homePending = apiFetch('/feed/home').finally(() => { homePending = null; });
+    }
+    return homePending;
+  }
+
   async function getStories() {
-    try { return await apiFetch('/feed/discover/stories'); }
+    try { return (await homeLive()).statuses || []; }
     catch (e) { return DEMO_STORIES; }
   }
 
   async function getFeedPosts() {
-    try { return await apiFetch('/feed/home'); }
+    try { return (await homeLive()).posts || []; }
     catch (e) { return withSharedDebates(DEMO_FEED_POSTS); }
-  }
-
-  async function getPromoSlides() {
-    try { return await apiFetch('/feed/discover/ads'); }
-    catch (e) { return DEMO_PROMO_SLIDES; }
   }
 
   async function getNotifCount() {
@@ -371,5 +342,5 @@
     catch (e) { return 6; }
   }
 
-  window.FeedData = { configure, getStories, getFeedPosts, getPromoSlides, getNotifCount, YOU_AV };
+  window.FeedData = { configure, getStories, getFeedPosts, getNotifCount, YOU_AV };
 })();

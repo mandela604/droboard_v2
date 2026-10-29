@@ -11,7 +11,7 @@
 const { Book, Chapter, BookDailyStat } = require('../models/content.model');
 const { Contract, ContractTemplate, SignedContract } = require('../models/contract.model');
 const {
-  FeaturedPlacement, FeaturedHistory, FeaturedSection, EditorPick, Announcement,
+  FeaturedPlacement, FeaturedHistory, EditorPick, Announcement, Report,
 } = require('../models/editorial.model');
 const { Notification, Conversation, Message, BookRating } = require('../models/social.model');
 const {
@@ -94,6 +94,92 @@ async function stories(user, query) {
   };
 }
 
+// Story Management page: the list shape above plus cover/reads/synopsis and
+// the latest chapters, so each card renders without extra calls.
+function ago(d) {
+  if (!d) return '';
+  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days < 7 ? days + 'd ago' : Math.floor(days / 7) + 'w ago';
+}
+
+async function storyManagement(user, query) {
+  const base = await stories(user, query);
+  const ids = base.stories.map(s => s.id);
+  if (!ids.length) return { stories: [] };
+
+  const [docs, chs] = await Promise.all([
+    Book.find({ id: { $in: ids } }).select('id authorId cover reads synopsis').lean(),
+    Chapter.find({ bookId: { $in: ids } }).sort({ n: -1 })
+      .select('bookId n title words status updatedAt').lean(),
+  ]);
+  const byId = {};
+  docs.forEach(b => { byId[b.id] = b; });
+  const people = await usersById(docs.map(b => b.authorId));
+
+  const recent = {};
+  for (const c of chs) {
+    const list = recent[c.bookId] || (recent[c.bookId] = []);
+    if (list.length < 4) {
+      list.push({ n: c.n, title: c.title, words: c.words || 0, status: c.status, date: ago(c.updatedAt) });
+    }
+  }
+
+  return {
+    stories: base.stories.map(s => {
+      const b = byId[s.id] || {};
+      const u = people[String(b.authorId)] || {};
+      return Object.assign({}, s, {
+        cover: b.cover || '',
+        avatar: u.avatar || '',
+        reads: b.reads || 0,
+        synopsis: b.synopsis || '',
+        recentChs: recent[s.id] || [],
+      });
+    }),
+  };
+}
+
+// Reports & Compliance page groups the same Report rows into three buckets:
+// plagiarism cases, reader complaints and enforcement actions already taken.
+function filed(d) {
+  return d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+
+async function reportsCompliance(user) {
+  const ids = await authorScope(user);
+  const filter = ids === null ? {} : { seId: String(user.id) };
+  const rows = await Report.find(filter).sort({ filedAt: -1 }).limit(200).lean();
+
+  const plagiarism = [];
+  const complaints = [];
+  const violations = [];
+  for (const r of rows) {
+    const day = filed(r.filedAt || r.createdAt);
+    if (r.status !== 'pending') {
+      violations.push({
+        id: r.id, story: r.title, type: r.type, status: r.status,
+        filed: day, action: r.resolutionNote || 'No action recorded',
+      });
+    } else if (r.type === 'plagiarism') {
+      plagiarism.push({
+        id: r.id, story: r.title, reporter: r.reporterLabel || 'System',
+        status: 'investigating', filed: day, confidence: 0, notes: r.desc,
+      });
+    } else {
+      complaints.push({
+        id: r.id, reader: r.reporterLabel || 'Reader', against: r.title,
+        type: r.type, status: 'open', filed: day, detail: r.desc,
+      });
+    }
+  }
+  return { plagiarism, complaints, violations };
+}
+
 /* ── Featured stories (CE-owned placements; SE reads them) ───────────── */
 
 async function featuredStories() {
@@ -174,28 +260,63 @@ async function editorsPicks() {
 
 async function announcements() {
   const rows = await Announcement.find({}).sort({ createdAt: -1 }).limit(100).lean();
-  return rows.map(a => ({
+  return rows.map(announcementRow);
+}
+
+// Row shape the announcements page renders (and edits back into its form).
+function announcementRow(a) {
+  const sched = a.scheduledAt ? new Date(a.scheduledAt).toISOString().slice(0, 10) : null;
+  return {
     id: a.id,
     title: a.title,
     audience: a.audience,
     content: a.content,
+    image: a.image || null,
     status: a.status,
+    createdDate: a.createdAt ? new Date(a.createdAt).toISOString().slice(0, 10) : null,
     created: iso(a.createdAt),
+    scheduledDate: sched,
     scheduled: iso(a.scheduledAt),
-  }));
+  };
+}
+
+function announcementFields(data) {
+  const out = {};
+  if (data.title !== undefined) out.title = data.title;
+  if (data.content !== undefined) out.content = data.content;
+  if (data.image !== undefined) out.image = data.image || '';
+  if (data.type !== undefined) out.type = data.type;
+  if (data.audience !== undefined && ['all', 'authors', 'readers'].includes(data.audience)) out.audience = data.audience;
+  if (data.status !== undefined && ['draft', 'scheduled', 'published'].includes(data.status)) out.status = data.status;
+  const when = data.scheduledDate !== undefined ? data.scheduledDate
+    : data.scheduledAt !== undefined ? data.scheduledAt
+    : data.scheduled;
+  if (when !== undefined) out.scheduledAt = when || null;
+  return out;
 }
 
 async function createAnnouncement(data) {
-  const doc = await Announcement.create({
-    title: data.title || 'Untitled',
-    audience: ['all', 'authors', 'readers'].includes(data.audience) ? data.audience : 'all',
-    content: data.content || '',
-    type: data.type,
-    status: ['draft', 'scheduled', 'published'].includes(data.status) ? data.status : 'draft',
-    scheduledAt: data.scheduled || data.scheduledAt || null,
-    image: data.image,
-  });
-  return { ok: true, id: doc.id };
+  const doc = await Announcement.create(Object.assign({
+    title: 'Untitled',
+    audience: 'all',
+    content: '',
+    status: 'draft',
+  }, announcementFields(data)));
+  return announcementRow(doc.toJSON());
+}
+
+async function updateAnnouncement(id, data) {
+  const doc = await Announcement.findOne({ id });
+  if (!doc) { const e = new Error('not_found'); e.status = 404; throw e; }
+  Object.assign(doc, announcementFields(data));
+  await doc.save();
+  return announcementRow(doc.toJSON());
+}
+
+async function deleteAnnouncement(id) {
+  const n = await Announcement.deleteOne({ id });
+  if (!n.deletedCount) { const e = new Error('not_found'); e.status = 404; throw e; }
+  return { ok: true };
 }
 
 /* ── Story analytics ─────────────────────────────────────────────────── */
@@ -288,6 +409,9 @@ async function bookReviewsDateFilter() {
 
 /* ── Contract templates ──────────────────────────────────────────────── */
 
+// The offer endpoint only accepts the four Contract.type values, while a
+// template's `type` is the chief console's category label. Map the label set
+// onto the platform deal type the offer needs.
 async function contractTemplates(query) {
   const { items, total, page, limit } =
     await paged(ContractTemplate, {}, { updatedAt: -1 }, query);
@@ -300,6 +424,11 @@ async function contractTemplates(query) {
       status: t.status,
       clauses: t.clauses || 0,
       preview: t.preview || { title: '', body: '' },
+      // Offer terms — what the senior editor sends on approval.
+      termLength: t.termLength || '',
+      royaltyRate: t.royaltyRate == null ? null : t.royaltyRate,
+      defaultChapterPrice: t.defaultChapterPrice || 0,
+      autoRenew: !!t.autoRenew,
       updated: iso(t.updatedAt),
       by: t.updatedBy || '',
     })),
@@ -437,17 +566,74 @@ async function featuredBanners() {
   };
 }
 
-async function createFeaturedBanner() {
-  const sections = await FeaturedSection.find({}).lean();
-  const sectionKey = (sections[0] && sections[0].key) || 'hero-banner';
-  const doc = await FeaturedPlacement.create({ bookId: '', sectionKey, active: false });
-  return { ok: true, id: doc.id };
+function bannerRow(p, book) {
+  const b = book || {};
+  const live = p.active && (!p.endAt || new Date(p.endAt) > new Date());
+  return {
+    id: p.id,
+    bookId: p.bookId,
+    emoji: '',
+    grad: '',
+    title: b.title || 'Featured banner',
+    sub: p.sectionKey,
+    position: p.sectionKey,
+    dates: iso(p.startAt) + ' → ' + (iso(p.endAt) || 'ongoing'),
+    views: 0,
+    clicks: 0,
+    ctr: 0,
+    status: live ? 'active' : 'paused',
+  };
+}
+
+async function createFeaturedBanner(body, userId) {
+  const data = body || {};
+  if (!data.bookId) { const e = new Error('book_required'); e.status = 400; throw e; }
+  const book = await Book.findOne({ id: data.bookId }).select('id').lean();
+  if (!book) throw notFound();
+
+  const sectionKey = data.section || 'hero-banner';
+  const doc = await FeaturedPlacement.create({
+    bookId: book.id,
+    sectionKey,
+    tag: data.tag || '',
+    order: data.order || 0,
+    active: data.active === undefined ? true : !!data.active,
+    startAt: data.start ? new Date(data.start) : new Date(),
+    endAt: data.end ? new Date(data.end) : null,
+    placedBy: String(userId || ''),
+  });
+  return bannerRow(doc.toObject(), { title: data.title });
 }
 
 async function featuredBanner(id) {
   const p = await FeaturedPlacement.findOne({ id }).lean();
   if (!p) throw notFound();
-  return p;
+  const books = await booksById([p.bookId]);
+  return bannerRow(p, books[String(p.bookId)]);
+}
+
+async function updateFeaturedBanner(id, data) {
+  const p = await FeaturedPlacement.findOne({ id });
+  if (!p) throw notFound();
+  const body = data || {};
+  if (body.bookId !== undefined) {
+    const book = await Book.findOne({ id: body.bookId }).select('id').lean();
+    if (!book) throw notFound();
+    p.bookId = book.id;
+  }
+  if (body.section !== undefined) p.sectionKey = body.section;
+  if (body.tag !== undefined) p.tag = body.tag;
+  if (body.order !== undefined) p.order = body.order;
+  if (body.active !== undefined) p.active = !!body.active;
+  if (body.start !== undefined) p.startAt = body.start ? new Date(body.start) : null;
+  if (body.end !== undefined) p.endAt = body.end ? new Date(body.end) : null;
+  await p.save();
+
+  if (p.bookId) {
+    const books = await booksById([p.bookId]);
+    return bannerRow(p.toObject(), books[String(p.bookId)]);
+  }
+  return bannerRow(p.toObject(), {});
 }
 
 async function featuredBannerAnalytics(id) {
@@ -677,48 +863,6 @@ async function platformSettings() {
   return PlatformSetting.find({}).lean();
 }
 
-/* ── Editor bill review ("My Earnings") ──────────────────────────────── */
-
-async function editorBillReview(user, query) {
-  void user;
-  const [txns, withdrawals] = await Promise.all([
-    AuthorTransaction.find({}).sort({ createdAt: -1 }).limit(50).lean(),
-    Withdrawal.find({}).sort({ requestedAt: -1 }).limit(50).lean(),
-  ]);
-  const people = await usersById(txns.map(t => t.authorId).concat(withdrawals.map(w => w.authorId)));
-  const nameOf = (id) => (people[String(id)] || {}).name || 'Author';
-
-  const rows = txns.map(t => ({
-    id: t.id,
-    type: 'earning',
-    title: t.desc || t.type,
-    book: t.bookId || '',
-    amount: t.amount,
-    num: t.amount,
-    date: iso(t.createdAt),
-    status: t.status,
-    desc: t.desc || '',
-    author: nameOf(t.authorId),
-  })).concat(withdrawals.map(w => ({
-    id: w.id,
-    type: 'withdrawal',
-    title: 'Withdrawal · ' + w.method,
-    book: '',
-    amount: -Math.abs(w.amount || 0),
-    num: w.amount,
-    date: iso(w.requestedAt),
-    status: w.status === 'requested' ? 'pending'
-      : (w.status === 'approved' || w.status === 'under_review') ? 'processing'
-      : w.status === 'paid' ? 'completed' : 'failed',
-    desc: w.note || '',
-    author: nameOf(w.authorId),
-  }))).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  const { page, limit } = pg(query || {});
-  const total = rows.length;
-  return { items: rows.slice((page - 1) * limit, page * limit), total, page, limit };
-}
-
 /* ── Author messages (write paths the page needs) ────────────────────── */
 
 async function authorMessagesUpdate(id, patch) {
@@ -792,16 +936,17 @@ async function vipRegistrations(query) {
 }
 
 module.exports = {
-  stories, featuredStories, editorsPicks, announcements, createAnnouncement,
+  stories, storyManagement, reportsCompliance, featuredStories, editorsPicks,
+  announcements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
   storyAnalytics, bookReviews, bookReviewsDateFilter,
   contractTemplates, contractTemplatesUsage, contractsOverview,
   featuredBanners, createFeaturedBanner, featuredBanner, featuredBannerAnalytics,
-  pauseFeaturedBanner,
+  pauseFeaturedBanner, updateFeaturedBanner,
   earningsOverview, payments, payment, transactions,
   withdrawalRequests, withdrawalSettings, signedContracts,
   systemPages, createSystemPage, systemPage, systemPagePreview,
   notifications, createNotification, notificationsReadAll,
-  platformSettings, editorBillReview,
+  platformSettings,
   authorMessagesUpdate, authorMessagesSend, authorMessagesReadAll,
   vipRegistrations,
 };

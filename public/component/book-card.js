@@ -63,6 +63,7 @@
     .dbc-status.rejected{background:var(--danger-soft,#fdeaea);color:#c92a2a}
     .dbc-status.completed{background:var(--success-soft,#e9fbf0);color:#158a48}
     .dbc-status.pending{background:var(--warning-soft,#fef3e2);color:#b7690a}
+    .dbc-status.under_review{background:var(--warning-soft,#fef3e2);color:#b7690a}
     .dbc-status.revision{background:var(--danger-soft,#fdeaea);color:#c92a2a}
 
     .dbc-new{
@@ -102,6 +103,7 @@
     published: 'Published',
     ongoing: 'Ongoing',
     draft: 'Draft',
+    under_review: 'Under Review',
     scheduled: 'Scheduled',
     paused: 'Paused',
     rejected: 'Rejected',

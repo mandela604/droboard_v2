@@ -31,7 +31,12 @@ async function wrap(res, fn) {
   try {
     return res.json(normalize(await fn()));
   } catch (e) {
-    return res.status(e.status || 500).json({ error: e.message || 'error' });
+    const body = { error: e.message || 'error' };
+    // Retry/wait hints and field-level reasons are how the client shows an
+    // honest message instead of a generic 4xx.
+    if (e.retryAfterSec != null) body.retryAfterSec = e.retryAfterSec;
+    if (Array.isArray(e.errors) && e.errors.length) body.errors = e.errors;
+    return res.status(e.status || 500).json(body);
   }
 }
 

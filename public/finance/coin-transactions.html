@@ -298,6 +298,10 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="field-group"><label>Price (GBP)</label><input type="text" id="pkgPriceGbp" placeholder="e.g. £56.99"/></div>
         </div>
         <div class="field-group"><label>Bonus % (optional)</label><input type="number" id="pkgBonus" min="0" max="100" placeholder="e.g. 5"/></div>
+        <div class="field-row-2">
+          <div class="field-group"><label>Icon (fa-*)</label><input type="text" id="pkgIcon" placeholder="fa-coins"/></div>
+          <div class="field-group"><label>Color</label><input type="color" id="pkgColor" value="#FF2D6A"/></div>
+        </div>
       </div>
 
       <!-- Bundle fields -->
@@ -356,7 +360,10 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="field-group"><label>Cooldown</label><input type="text" id="earnCooldown" placeholder="e.g. 5 min"/></div>
         </div>
         <div id="earnExtraAd" style="display:none">
-          <div class="field-group"><label>Ad / Offer URL <span style="text-transform:none;color:var(--text-faint);font-weight:500">Where the reader lands when they tap Watch Ad — your offerwall, rewarded-ad landing page, or ad network link (required in production)</span></label><input type="text" id="earnAdUrl" placeholder="https://offerwall.example.com/ad/123"/></div>
+          <div class="field-group"><label>Ad / Offer URL <span style="text-transform:none;color:var(--text-faint);font-weight:500">Where the reader lands when they tap Watch Ad — your offerwall, rewarded-ad landing page, or ad network link. Must start with https://; the server refuses the reward without it.</span></label><input type="text" id="earnAdUrl" placeholder="https://offerwall.example.com/ad/123"/></div>
+        </div>
+        <div id="earnExtraTime" style="display:none">
+          <div class="field-group"><label>Seconds on the task <span style="text-transform:none;color:var(--text-faint);font-weight:500">Time between Start and the claim that the server will honour (15–600). A claim before it comes back refused.</span></label><input type="number" id="earnWatchSec" min="15" max="600" placeholder="20"/></div>
         </div>
         <div class="field-row-2">
           <div class="field-group"><label>Icon (fa-*)</label><input type="text" id="earnIcon" placeholder="fa-film"/></div>
@@ -373,10 +380,7 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="field-group"><label>YouTube Channel ID / URL</label><input type="text" id="earnChannelId" placeholder="UCxxxx or https://youtube.com/@droboard"/></div>
         </div>
         <div id="earnExtraYTWatch" style="display:none">
-          <div class="field-row-2">
-            <div class="field-group"><label>YouTube Video ID / URL</label><input type="text" id="earnVideoId" placeholder="dQw4w9WgXcQ or full URL"/></div>
-            <div class="field-group"><label>Min watch (sec)</label><input type="number" id="earnWatchSec" min="5" placeholder="60"/></div>
-          </div>
+          <div class="field-group"><label>YouTube Video ID / URL</label><input type="text" id="earnVideoId" placeholder="dQw4w9WgXcQ or full URL"/></div>
         </div>
       </div>
 
@@ -410,10 +414,10 @@ body{font-family:'Inter',system-ui,sans-serif}
   </div>
 </div>
 
-<script src="shared/finance-sidebar.js"></script>
-<script src="../services/currency-service.js"></script>
-<script src="shared/finance-data.js"></script>
-<script src="services/coin-transactions-service.js"></script>
+<script src="shared/finance-sidebar.js?v=2"></script>
+<script src="../services/currency-service.js?v=2"></script>
+<script src="shared/finance-data.js?v=2"></script>
+<script src="services/coin-transactions-service.js?v=3"></script>
 <div class="toast" id="toast"></div>
 <script>CoinTransactionsService.init();</script>
 </body>

@@ -82,17 +82,14 @@ async function readState({ userId, bookId }) {
   const sid = String(bookId);
   const uid = String(userId);
   const { Book } = require('../models/content.model');
-  const { LedgerEntry } = require('../models/money.model');
+  const { Entitlement } = require('../models/money.model');
   const [book, progress, unlocks] = await Promise.all([
     Book.findOne({ id: sid }).select('id vipLocked').lean().catch(() => null),
     ReadingProgress.find({ userId: uid, storyId: sid }).select('chapterId pct finished secondsSpent lastReadAt').lean().catch(() => []),
-    LedgerEntry.find({ debitAcct: 'wallet:' + uid, kind: 'spend', memo: /^unlock ch / }).select('saleId').lean().catch(() => []),
+    // Ownership rows, not a guess from the accounting journal.
+    Entitlement.find({ userId: uid, bookId: sid }).select('chapterId').lean().catch(() => []),
   ]);
-  const unlocked = [];
-  unlocks.forEach(u => {
-    const parts = String(u.saleId || '').split(':');
-    if (parts.length >= 4 && parts[1] === uid && parts[2] === sid) unlocked.push(parts.slice(3).join(':'));
-  });
+  const unlocked = unlocks.map(u => String(u.chapterId));
   const pmap = {};
   let lastId = null, lastAt = 0;
   progress.forEach(p => {

@@ -21,17 +21,16 @@ router.get('/books', ...guard,
     sort: z.enum(['recent', 'views', 'likes', 'comments']).optional(),
   }).strict() })), ctrl.listBooks);
 
+// Platform Content is read-only for the chief editor: books belong to their
+// author. Author is referenced by user id, never by name.
+router.get('/books/flagged', ...guard,
+  validate(z.object({ query: pageQuery })), ctrl.flaggedBooks);
+
 router.get('/books/genres', ...guard,
   validate(z.object({ query: z.object({}).strict() }).partial()), ctrl.genres);
 
 router.get('/books/:id', ...guard,
   validate(z.object({ params: z.object({ id }) })), ctrl.getBook);
-
-router.post('/books/:id/flag', ...guard, audit('chief.books.flag'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.flagBook);
-
-router.post('/books/:id/unflag', ...guard, audit('chief.books.unflag'),
-  validate(z.object({ params: z.object({ id }) })), ctrl.unflagBook);
 
 // ---- Featured ----
 router.get('/featured/tags', ...guard,

@@ -12,12 +12,15 @@ function storeRefFor(channel, orderId) { return channel + ':' + orderId; }
 async function creditVerified({ userId, pack, verified, channel, packCode }) {
   verify.assertPackAmount(pack, verified.amount, verified.currency);
   const out = await wallet.creditPurchase({
-    userId, coins: pack.coins,
+    userId, coins: pack.coins, paidCoins: pack.paidCoins, bonusCoins: pack.bonusCoins,
     fiatAmount: verified.amount, fiatCurrency: verified.currency || 'NGN',
-    channel, storeRef: storeRefFor(channel, verified.orderId), packCode,
+    channel, storeRef: storeRefFor(channel, verified.orderId), packCode, kind: pack.kind,
+    fee: verified.fee,       // exact provider fee when reported; null -> channel rate
+    packNgn: verify.legFor(pack.doc, 'NGN'), // same pack priced in naira, for fee conversion
   });
   // Subscriptions fulfill as plan rows (coins stay 0); packs/bundles as coins.
-  if (pack.kind === 'subscription' && pack.plan) {
+  // A duplicate verify (client + webhook) must not open a second plan row.
+  if (pack.kind === 'subscription' && pack.plan && !out.duplicate) {
     const { Subscription } = require('../models/money.model');
     const days = Number(pack.plan.durationDays) || 30;
     const startedAt = new Date();
@@ -72,9 +75,15 @@ async function appstore(req, res) {
 async function config(req, res) {
   return base.wrap(res, async () => {
     const env = require('../config/env');
+    // `enabled` is the whole provider switch: the checkout sheet renders only
+    // these, so a channel with no keys can never be offered (or half-taken).
+    const enabled = [];
+    if (env.flwPublicKey && env.flwSecretKey) enabled.push('flutterwave');
+    if (env.paystackPublicKey && env.paystackSecret) enabled.push('paystack');
     return {
       paystackPublicKey: env.paystackPublicKey || '',
       flutterwavePublicKey: env.flwPublicKey || '',
+      enabled,
       currency: 'NGN',
     };
   });

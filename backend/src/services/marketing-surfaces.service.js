@@ -148,7 +148,7 @@ async function dashboard() {
  * of its linked creatives so cards show real numbers.
  * ───────────────────────────────────────────────────────────── */
 const CAMPAIGN_FIELDS = ['name', 'status', 'type', 'objective', 'storyId', 'storyTitle', 'storyAuthor',
-  'storyCover', 'storyGenre', 'placements', 'slots', 'audienceTargeting', 'startDate', 'endDate', 'hasBudget', 'budget', 'spent',
+  'storyCover', 'storyGenre', 'placements', 'slots', 'audienceTargeting', 'startDate', 'endDate', 'hasBudget', 'budget', 'currency', 'spent',
   'owner', 'description', 'advertiserName', 'advertiserEmail',
   'reach', 'impressions', 'clicks', 'ctr', 'conversions'];
 

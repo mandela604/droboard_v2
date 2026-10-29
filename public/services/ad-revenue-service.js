@@ -2,8 +2,12 @@
  * ad-revenue-service.js — Ad revenue tracking + author payout allocation.
  *
  * Single funnel: AdService.track() calls AdRevenue.record(payload) for every
- * impression/click. Story-owned slots are split (platform 70% / author 30%);
- * all other surfaces are 100% platform.
+ * impression/click. Money is booked only when the creative belongs to a
+ * campaign; story-owned slots then split (platform 70% / author 30%), other
+ * surfaces are 100% platform. House ads and network embeds count impressions
+ * but book $0 — a network payout has no per-impression price, so it is
+ * entered from the network's report (recordNetwork) and spread over the
+ * impressions counted in that window.
  *
  * Story-owned slots (user decision):
  *   - in-chapter  (fullReader:per-300-words, scrollReader:per-300-words)
@@ -33,6 +37,9 @@
  *   GET  /ledger?from=&to=          → ledger rows desc
  *   GET  /summary?days=30           → { totals, bySurface, byStory, byAuthor }
  *   POST /pay                       { authorId } → marks author rows paid
+ *   GET  /network                   → imported network reports
+ *   POST /network                   { adId?, network?, from, to, amount,
+ *                                     currency?, fxRate?, note? } → import row
  */
 (function () {
   'use strict';
@@ -58,19 +65,19 @@
   /* Story → author registry (mirrors the marketing campaign library so
      payout pages and campaigns show the same names). */
   var STORIES = {
-    'ST-001': { title: 'Bound by the Ruthless Alpha', authorId: 'au_1024', authorName: 'Chioma Okafor' },
-    'ST-002': { title: "The CEO's Hidden Son",        authorId: 'au_2041', authorName: 'Luna Skye' },
-    'ST-003': { title: "Wolf King's Vow",             authorId: 'au_3099', authorName: 'Elena Vasquez' },
-    'ST-004': { title: 'Betrayed by the Mafia Prince', authorId: 'au_4177', authorName: 'Marcus Webb Jr.' },
-    'ST-005': { title: "The Duke's Secret",           authorId: 'au_5210', authorName: 'Isabelle Moreau' },
-    'ST-006': { title: 'Revenge at the Ivy League',   authorId: 'au_6321', authorName: 'Wren Okonkwo' },
-    'ST-007': { title: 'The Runaway Bride in Socked Feet', authorId: 'au_7432', authorName: 'Ifeanyi_Story' },
-    'ST-008': { title: 'The Letter He Never Sent',    authorId: 'au_8543', authorName: 'Efe_O' },
+    'ST-001': { title: 'Bound by the Ruthless Alpha', authorId: 'au_1024', authorName: 'Chioma Okafor', cover: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg' },
+    'ST-002': { title: "The CEO's Hidden Son",        authorId: 'au_2041', authorName: 'Luna Skye', cover: 'https://i.postimg.cc/23WvkFLH/images-(2).jpg' },
+    'ST-003': { title: "Wolf King's Vow",             authorId: 'au_3099', authorName: 'Elena Vasquez', cover: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg' },
+    'ST-004': { title: 'Betrayed by the Mafia Prince', authorId: 'au_4177', authorName: 'Marcus Webb Jr.', cover: 'https://i.postimg.cc/WF1j4Pnh/6.jpg' },
+    'ST-005': { title: "The Duke's Secret",           authorId: 'au_5210', authorName: 'Isabelle Moreau', cover: 'https://i.postimg.cc/fkdXzjSj/wife.jpg' },
+    'ST-006': { title: 'Revenge at the Ivy League',   authorId: 'au_6321', authorName: 'Wren Okonkwo', cover: 'https://i.postimg.cc/cgLZJNmC/8.jpg' },
+    'ST-007': { title: 'The Runaway Bride in Socked Feet', authorId: 'au_7432', authorName: 'Ifeanyi_Story', cover: 'https://i.postimg.cc/tY7KnJyr/images.jpg' },
+    'ST-008': { title: 'The Letter He Never Sent',    authorId: 'au_8543', authorName: 'Efe_O', cover: 'https://i.postimg.cc/N9jY0w4m/5.jpg' },
     /* Luna Vale — the demo author (author/earnings pages). Book ids match
        DemoData.AUTHOR_EARNINGS.byBook so ad share accumulates by book. */
-    'b1': { title: 'Season of Betrayal', authorId: 'au_luna_vale', authorName: 'Luna Vale' },
-    'b2': { title: 'Crowned in Sin',     authorId: 'au_luna_vale', authorName: 'Luna Vale' },
-    'b3': { title: 'Until You Regret',   authorId: 'au_luna_vale', authorName: 'Luna Vale' },
+    'b1': { title: 'Season of Betrayal', authorId: 'au_luna_vale', authorName: 'Luna Vale', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg' },
+    'b2': { title: 'Crowned in Sin',     authorId: 'au_luna_vale', authorName: 'Luna Vale', cover: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg' },
+    'b3': { title: 'Until You Regret',   authorId: 'au_luna_vale', authorName: 'Luna Vale', cover: 'https://i.postimg.cc/DJwFzKgd/4.jpg' },
   };
 
   /* Author identity: real avatar + profile handle (avatars mirror the
@@ -149,16 +156,44 @@
     return 0; /* like/other events carry no payout */
   }
 
-  /* ── Record one tracked event (called from AdService.track) ── */
-  function record(payload) {
+  /* ── Record one tracked event (called from AdService.track) ──
+     Money only moves when a campaign bought the slot. House ads and network
+     tags count impressions/clicks but book $0: a network payout arrives later
+     as a report import (recordNetwork). */
+  var OWNER = { at: 0, p: null, map: {} };
+  function adOwners() {
+    if (OWNER.map && Date.now() - OWNER.at < 60000) return Promise.resolve(OWNER.map);
+    if (OWNER.p) return OWNER.p;
+    OWNER.p = Promise.resolve()
+      .then(function () {
+        if (!window.MarketingData || typeof MarketingData.getAdInventory !== 'function') return null;
+        return MarketingData.getAdInventory();
+      })
+      .then(function (inv) {
+        var map = {};
+        var pools = (inv && inv.pools) || {};
+        Object.keys(pools).forEach(function (f) {
+          (pools[f] || []).forEach(function (a) { if (a && a.id) map[String(a.id)] = { campaign: a.campaign || '', format: f }; });
+        });
+        OWNER = { at: Date.now(), p: null, map: map };
+        return map;
+      })
+      .catch(function () { OWNER = { at: Date.now(), p: null, map: {} }; return OWNER.map; });
+    return OWNER.p;
+  }
+
+  async function record(payload) {
     if (!payload || !payload.id) return;
-    var rev = eventRevenue(payload.event);
-    if (!rev) return;
+    var own = (await adOwners())[String(payload.id)] || {};
+    var billed = !!own.campaign;
+    var network = own.format === 'embed';
+    var rev = billed && !network ? eventRevenue(payload.event) : 0;
     var storyOwned = isStoryOwned(payload);
     var storyId = storyOwned ? String(payload.storyId) : '';
     var meta = storyOwned ? resolveStory(storyId) : null;
     var date = todayStr(payload.ts);
-    var key = [date, storyId, payload.id, payload.slot || ''].join('|');
+    var ctry = /^[A-Za-z]{2}$/.test(String(payload.country || '')) ? String(payload.country).toUpperCase() : '';
+    var key = [date, storyId, payload.id, payload.slot || '', ctry].join('|');
     var rows = readLedger();
     var row = null;
     for (var i = 0; i < rows.length; i++) { if (rows[i]._k === key) { row = rows[i]; break; } }
@@ -178,16 +213,146 @@
         revenue: 0,
         platformShare: 0,
         authorShare: 0,
+        network: network,
+        billed: billed,
+        country: ctry,
         paidAt: null,
       };
       rows.push(row);
     }
     if (payload.event === 'click') row.clicks += 1;
     else row.impressions += 1;
-    row.revenue = round2(row.revenue + rev);
-    row.platformShare = round2(storyOwned ? rev * CONFIG.platformShare : rev);
-    row.authorShare = round2(storyOwned ? rev * CONFIG.authorShare : 0);
+    row.network = !!row.network || network;
+    row.billed = !!row.billed || billed;
+    if (rev) {
+      row.revenue = round2(row.revenue + rev);
+      if (storyOwned) {
+        row.platformShare = round2(row.platformShare + rev * CONFIG.platformShare);
+        row.authorShare = round2(row.authorShare + rev * CONFIG.authorShare);
+      } else {
+        row.platformShare = round2(row.platformShare + rev);
+      }
+    }
     writeLedger(rows);
+  }
+
+  /* ── network earnings import (demo parity with ad-revenue.service.js) ── */
+  var NETWORK_KEY = 'dro_network_earnings_v1';
+
+  function readNetwork() {
+    try { return JSON.parse(localStorage.getItem(NETWORK_KEY) || '[]') || []; }
+    catch (e) { return []; }
+  }
+  function splitCents(totalUsd, weights) {
+    var cents = Math.round(totalUsd * 100);
+    var sum = weights.reduce(function (s, w) { return s + w; }, 0) || 1;
+    var left = cents;
+    return weights.map(function (w, i) {
+      var c = i === weights.length - 1 ? left : Math.round(cents * (w / sum));
+      left -= c;
+      return c / 100;
+    });
+  }
+  /* Spread one import over the rows it owns; blank country = "Others" (every
+     tracked country no per-country import claimed). Returns rows paid. */
+  function applyNetwork(rec) {
+    var rows = readLedger();
+    var others = readNetwork();
+    rows.forEach(function (row) {
+      if (row.networkEarningId === rec.id) { row.revenue = 0; row.platformShare = 0; row.authorShare = 0; row.networkEarningId = ''; }
+    });
+    var covered = {};
+    others.forEach(function (n) {
+      if (n.id === rec.id || !n.country) return;
+      if ((n.adId || '') === rec.adId && n.from === rec.from && n.to === rec.to) covered[n.country] = true;
+    });
+    var mine = rows.filter(function (row) {
+      if (!row.network || row.date < rec.from || row.date > rec.to) return false;
+      if (rec.adId && String(row.adId) !== rec.adId) return false;
+      var c = String(row.country || '');
+      return rec.country ? c === rec.country : !covered[c];
+    });
+    if (!mine.length) {
+      var k = [rec.to, '', rec.adId || 'network', 'network:report', rec.country || ''].join('|');
+      var row = rows.filter(function (r) { return r._k === k; })[0];
+      if (!row) {
+        row = { _k: k, date: rec.to, storyId: '', storyTitle: '', authorId: '', authorName: '', adId: rec.adId || 'network', slot: 'network:report', page: '', impressions: 0, clicks: 0, revenue: 0, platformShare: 0, authorShare: 0, network: true, country: rec.country || '', paidAt: null };
+        rows.push(row);
+      }
+      row.revenue = rec.amountUsd;
+      row.platformShare = rec.amountUsd;
+      row.authorShare = 0;
+      row.networkEarningId = rec.id;
+    } else {
+      var weights = mine.map(function (r) { return Math.max(Number(r.impressions) || 0, 0); });
+      if (!weights.some(function (w) { return w > 0; })) weights = weights.map(function () { return 1; });
+      var parts = splitCents(rec.amountUsd, weights);
+      mine.forEach(function (row, i) {
+        var cut = parts[i];
+        var owned = !!row.storyId && STORY_SLOT_RE.test(String(row.slot || ''));
+        var author = owned ? round2(cut * CONFIG.authorShare) : 0;
+        row.revenue = cut;
+        row.platformShare = round2(cut - author);
+        row.authorShare = author;
+        row.networkEarningId = rec.id;
+      });
+    }
+    writeLedger(rows);
+    return mine.length;
+  }
+  async function recordNetwork(payload) {
+    payload = payload || {};
+    var total = Number(payload.amount);
+    if (!(total > 0) || !payload.from || !payload.to || String(payload.from) > String(payload.to)) return null;
+    var cur = String(payload.currency || 'USD').toUpperCase();
+    var rate = cur === 'USD' ? 1 : Number(payload.fxRate);
+    if (!(rate > 0)) return null;
+    var totalUsd = round2(total * rate);
+    var adId = String(payload.adId || '');
+    var ctry = /^[A-Za-z]{2}$/.test(String(payload.country || '')) ? String(payload.country).toUpperCase() : '';
+
+    try {
+      var r = await callBackend('/network', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adId: adId || undefined, network: payload.network || '', country: ctry || undefined, from: payload.from, to: payload.to, amount: total, currency: cur, fxRate: cur === 'USD' ? undefined : rate, note: payload.note || '' }),
+      });
+      if (r && r.id) return r;
+    } catch (e) {}
+
+    var list = readNetwork();
+    var prev = list.filter(function (n) { return (n.adId || '') === adId && n.from === payload.from && n.to === payload.to && (n.country || '') === ctry; })[0];
+    var rec = {
+      id: prev ? prev.id : 'nw_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      adId: adId, network: String(payload.network || ''), country: ctry,
+      from: payload.from, to: payload.to,
+      amount: total, currency: cur, fxRate: rate, amountUsd: totalUsd,
+      allocated: 0, note: String(payload.note || ''), enteredBy: '',
+    };
+    list = list.filter(function (n) {
+      return n.id !== rec.id && !((n.adId || '') === adId && n.from === rec.from && n.to === rec.to && (n.country || '') === ctry);
+    });
+    list.unshift(rec);
+    try { localStorage.setItem(NETWORK_KEY, JSON.stringify(list)); } catch (e) {}
+
+    rec.allocated = applyNetwork(rec);
+    try { localStorage.setItem(NETWORK_KEY, JSON.stringify(list)); } catch (e) {}
+
+    if (ctry) {
+      var rest = list.filter(function (n) { return !n.country && (n.adId || '') === adId && n.from === rec.from && n.to === rec.to; })[0];
+      if (rest) {
+        rest.allocated = applyNetwork(rest);
+        try { localStorage.setItem(NETWORK_KEY, JSON.stringify(list)); } catch (e) {}
+      }
+    }
+    return rec;
+  }
+  async function getNetworkImports() {
+    try {
+      var r = await callBackend('/network');
+      if (r && Array.isArray(r.rows)) return r.rows;
+    } catch (e) {}
+    return readNetwork();
   }
 
   /* ── Aggregation (works on ledger rows; USE_API fetches /summary) ── */
@@ -237,6 +402,7 @@
           label: k,
           impressions: 0, clicks: 0, revenue: 0,
           platformShare: 0, authorShare: 0,
+          paidRevenue: 0, networkRevenue: 0, paidImpressions: 0, networkImpressions: 0,
           storyId: '', storyTitle: '', authorId: '', authorName: '',
         };
       }
@@ -245,6 +411,14 @@
       g.revenue = round2(g.revenue + r.revenue);
       g.platformShare = round2(g.platformShare + r.platformShare);
       g.authorShare = round2(g.authorShare + r.authorShare);
+      if (r.network) {
+        g.networkRevenue = round2(g.networkRevenue + r.revenue);
+        g.networkImpressions += r.impressions;
+      } else if (r.billed || r.revenue > 0) {
+        // legacy rows predate the billed flag; rate-card revenue was paid inventory
+        g.paidRevenue = round2(g.paidRevenue + r.revenue);
+        g.paidImpressions += r.impressions;
+      }
       if (r.storyId) { g.storyId = r.storyId; g.storyTitle = r.storyTitle; }
       if (r.authorId) { g.authorId = r.authorId; g.authorName = r.authorName; }
     });
@@ -282,10 +456,17 @@
     } catch (e) {}
     var rows = filterRows(readLedger(), days || 30);
     var paid = readPaid();
+    var stories = byStory(rows);
+    var storyCountry = {};
+    stories.forEach(function (g) {
+      storyCountry[g.storyId] = groupBy(rows.filter(function (r) { return r.storyId === g.storyId; }), function (r) { return r.country || 'unknown'; });
+    });
     return {
       totals: sumTotals(rows),
       bySurface: bySurface(rows),
-      byStory: byStory(rows),
+      byStory: stories,
+      byStoryCountry: storyCountry,
+      byCountry: groupBy(rows, function (r) { return r.country || 'unknown'; }),
       byAuthor: byAuthor(rows).map(function (g) {
         g.paid = !!(paid[g.authorId] && rows.every(function (r) { return r.authorId !== g.authorId || r.date <= paid[g.authorId]; }));
         return g;
@@ -349,6 +530,10 @@
       { slot: 'droboardPage:sponsored', page: 'droboardPage', adId: 'ad_drb_sponsored', w: 2 },
     ];
     var adPool = ['ad_luxe_01', 'ad_wolf_02', 'ad_ceo_03', 'ad_mafia_04', 'ad_campus_05', 'ad_herbal_06'];
+    /* Demo has no edge, so countries are a deterministic synthetic spread —
+       roughly the CPM ladder (US/GB/CA/AU high, NG/IN/BR low). Live rows get
+       CF-IPCountry from Cloudflare instead. */
+    var ctryPool = ['US', 'US', 'US', 'US', 'US', 'GB', 'GB', 'CA', 'AU', 'NG', 'NG', 'IN', 'DE', 'BR'];
     var now = new Date();
     now.setHours(0, 0, 0, 0);
     for (var d = 29; d >= 0; d--) {
@@ -375,6 +560,8 @@
             impressions: impressions, clicks: clicks, revenue: revenue,
             platformShare: round2(revenue * CONFIG.platformShare),
             authorShare: round2(revenue * CONFIG.authorShare),
+            country: ctryPool[Math.floor(rand() * ctryPool.length)],
+            billed: true,
             paidAt: null,
           });
         });
@@ -390,11 +577,33 @@
           date: date, storyId: '', storyTitle: '', authorId: '', authorName: '',
           adId: sl.adId, slot: sl.slot, page: sl.page,
           impressions: impressions, clicks: clicks, revenue: revenue,
-          platformShare: revenue, authorShare: 0, paidAt: null,
+          platformShare: revenue, authorShare: 0,
+          country: ctryPool[Math.floor(rand() * ctryPool.length)],
+          billed: true, paidAt: null,
         });
       });
     }
     writeLedger(rows);
+  }
+
+  /* Seeded demo rows carry a synthetic country spread (see ctryPool). Rows
+     created later by demo tracking have no edge behind them, so they fall back
+     to the browser's region — the same weak fallback we'd use live when
+     CF-IPCountry is missing. */
+  function browserCountry() {
+    try {
+      var m = String(navigator.language || '').match(/-([A-Za-z]{2})$/);
+      if (m) return m[1].toUpperCase();
+    } catch (e) {}
+    return '';
+  }
+  function stampDemoCountry() {
+    var c = browserCountry();
+    if (!c) return;
+    var rows = readLedger();
+    var touched = 0;
+    rows.forEach(function (r) { if (!r.country) { r.country = c; touched++; } });
+    if (touched) writeLedger(rows);
   }
 
   /* ── Surface label helpers for UIs ── */
@@ -414,6 +623,7 @@
   function surfaceLabel(key) { return SURFACE_LABELS[key] || key; }
 
   seedIfEmpty();
+  stampDemoCountry();
 
   window.AdRevenue = {
     __ready: true,
@@ -424,8 +634,11 @@
     getSummary: getSummary,
     markAuthorPaid: markAuthorPaid,
     isAuthorPaid: isAuthorPaid,
+    recordNetwork: recordNetwork,
+    getNetworkImports: getNetworkImports,
     surfaceLabel: surfaceLabel,
     authorMeta: authorMeta,
+    storyCover: function (id) { var s = STORIES[String(id || '')]; return s && s.cover ? s.cover : ''; },
     STORIES: STORIES,
   };
 })();

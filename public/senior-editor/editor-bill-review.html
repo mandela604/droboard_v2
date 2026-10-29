@@ -45,20 +45,18 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 .filt-sel:focus{border-color:var(--accent);outline:none}
 
 /* ── Table ── */
-.tbl-head{display:grid;grid-template-columns:40px 1fr 120px 110px 110px;gap:0;padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.tbl-head{display:grid;grid-template-columns:52px 1fr 120px 110px 110px;gap:0;padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px}
 .tbl-head span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);padding:0 8px}
 .tbl-body{display:flex;flex-direction:column;gap:4px}
 
-.item-row{display:grid;grid-template-columns:40px 1fr 120px 110px 110px;gap:0;align-items:center;padding:12px 0;border-radius:12px;border:1.5px solid transparent;transition:.18s;cursor:pointer}
+.item-row{display:grid;grid-template-columns:52px 1fr 120px 110px 110px;gap:0;align-items:center;padding:10px 0;border-radius:12px;border:1.5px solid transparent;transition:.18s;cursor:pointer}
 .item-row:hover{background:var(--hover);border-color:var(--border)}
 .item-row.is-open{background:var(--accent-soft);border-color:var(--accent)}
-.expand-ico{font-size:10px;color:var(--text-faint);transition:.2s;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:var(--input-bg);border:1px solid var(--border);flex-shrink:0;margin-left:8px}
-.item-row.is-open .expand-ico{transform:rotate(90deg);color:#fff;background:var(--accent);border-color:var(--accent)}
 
-.tx-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-left:8px}
-.tx-icon.earning{background:var(--green-bg);color:var(--green)}
-.tx-icon.withdrawal{background:var(--red-bg);color:var(--red)}
-.tx-icon.pending{background:var(--amber-bg);color:var(--amber)}
+.tx-thumb{width:38px;height:50px;border-radius:8px;overflow:hidden;flex-shrink:0;margin-left:8px;display:flex;align-items:center;justify-content:center;font-size:14px;background:var(--input-bg)}
+.tx-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.tx-thumb.earning{background:var(--green-bg);color:var(--green)}
+.tx-thumb.withdrawal{background:var(--red-bg);color:var(--red)}
 
 .tx-info{min-width:0;padding:0 8px}
 .tx-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
@@ -122,6 +120,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 .modal .modal-bal{background:var(--accent-soft);border:1px solid rgba(255,0,80,.2);border-radius:10px;padding:12px 14px;margin-bottom:20px;text-align:center}
 .modal .modal-bal b{font-size:22px;font-weight:900;color:var(--accent);display:block}
 .modal .modal-bal span{font-size:11px;color:var(--text-muted)}
+.modal .modal-min{font-size:11px;color:var(--text-faint);margin:-8px 0 14px}
 .modal-actions{display:flex;gap:10px}
 .modal-actions button{flex:1;padding:12px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
 .modal-actions .btn-cancel{background:var(--input-bg);color:var(--text-muted);border:1px solid var(--input-border)}
@@ -140,7 +139,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 .empty-msg{text-align:center;padding:48px 20px;color:var(--text-faint);font-size:13px}
 .empty-msg i{font-size:28px;margin-bottom:10px;display:block;opacity:.4}
 
-@media(max-width:1200px){.tbl-head{display:none}.item-row{grid-template-columns:40px 1fr 110px}.item-row .col-date,.item-row .col-status{display:none}.detail-grid{grid-template-columns:1fr 1fr}.pm-grid{grid-template-columns:1fr}.bh-stats{flex-wrap:wrap;gap:10px}.bh-stat{min-width:calc(50% - 5px)}}
+@media(max-width:1200px){.tbl-head{display:none}.item-row{grid-template-columns:52px 1fr 110px}.item-row .col-date,.item-row .col-status{display:none}.detail-grid{grid-template-columns:1fr 1fr}.pm-grid{grid-template-columns:1fr}.bh-stats{flex-wrap:wrap;gap:10px}.bh-stat{min-width:calc(50% - 5px)}}
 @media(max-width:640px){.page{padding:14px 14px 50px}.balance-hero{padding:20px}.bh-amount{font-size:28px}.modal{margin:14px}}
 </style>
 </head>
@@ -155,23 +154,23 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
       <button class="bh-withdraw" onclick="openWithdraw()"><i class="fas fa-arrow-up-from-bracket"></i> Withdraw</button>
     </div>
     <div class="bh-amount" id="balanceAmount">$4,850.00</div>
-    <div class="bh-sub">Last earned: 2 hours ago from "The CEO's Hidden Son"</div>
+    <div class="bh-sub" id="balanceSub">Last earned: 2 hours ago from "The CEO's Hidden Son"</div>
     <div class="bh-stats">
-      <div class="bh-stat"><label>Total Earned</label><b>$12,480</b></div>
-      <div class="bh-stat"><label>Withdrawn</label><b>$7,630</b></div>
-      <div class="bh-stat"><label>Pending</label><b>$850</b></div>
-      <div class="bh-stat"><label>This Month</label><b>$2,100</b></div>
+      <div class="bh-stat"><label>Total Earned</label><b id="statEarned">$12,480</b></div>
+      <div class="bh-stat"><label>Withdrawn</label><b id="statWithdrawn">$6,780</b></div>
+      <div class="bh-stat"><label>Pending</label><b id="statPending">$850</b></div>
+      <div class="bh-stat"><label>This Month</label><b id="statMonth">$2,100</b></div>
     </div>
   </div>
 
   <!-- Transactions -->
   <div class="panel" style="margin-bottom:20px">
-    <div class="panel-head"><div><h2><i class="fas fa-clock-rotate-left" style="color:var(--blue)"></i> Transaction History</h2><div class="panel-sub">All earnings, withdrawals, and payouts</div></div></div>
+    <div class="panel-head"><div><h2><i class="fas fa-clock-rotate-left" style="color:var(--blue)"></i> Transaction History</h2><div class="panel-sub" id="txnSub">All earnings, withdrawals, and payouts</div></div></div>
     <div class="panel-body">
       <div class="filters">
         <div class="filt-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by book, ID, or description…"/></div>
         <select class="filt-sel" id="typeFilter"><option value="">All Types</option><option value="earning">Earnings</option><option value="withdrawal">Withdrawals</option></select>
-        <select class="filt-sel" id="statusFilter"><option value="">All Status</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="processing">Processing</option></select>
+        <select class="filt-sel" id="statusFilter"><option value="">All Status</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="failed">Failed</option></select>
       </div>
       <div class="tbl-head"><span></span><span>Transaction</span><span>Date</span><span>Amount</span><span>Status</span></div>
       <div class="tbl-body" id="tableBody"></div>
@@ -195,9 +194,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
   <div class="modal">
     <h3>Withdraw Earnings</h3>
     <div class="modal-sub">Transfer your balance to your connected account</div>
-    <div class="modal-bal"><span>Available Balance</span><b>$4,850.00</b></div>
+    <div class="modal-bal"><span>Available Balance</span><b id="withdrawBal">$4,850.00</b></div>
     <label>Amount</label>
     <input type="text" id="withdrawAmount" placeholder="Enter amount" oninput="this.value=this.value.replace(/[^0-9.]/g,'')"/>
+    <div class="modal-min" id="withdrawMin">Minimum withdrawal $100.00</div>
     <label>Payment Method</label>
     <select id="withdrawMethod">
       <option>GTBank · · · · 4821</option>
@@ -245,7 +245,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 
 <div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:11px 24px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:.3s;pointer-events:none;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.3)}"></div>
 <style>#toast.show{opacity:1}</style>
-<script src="shared/senior-editor-sidebar.js"></script>
-<script src="services/editor-bill-review-service.js"></script><script>EditorBillReviewService.init();</script>
+<script src="shared/senior-editor-sidebar.js?v=2"></script>
+<script src="services/editor-bill-review-service.js?v=3"></script><script>EditorBillReviewService.init();</script>
 </body>
 </html>

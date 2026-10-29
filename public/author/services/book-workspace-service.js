@@ -125,6 +125,50 @@
     });
   }
 
+  // Status badge is the book's real state: a draft carries "Submit for
+  // review", a rejected draft carries the editor's reason, and anything
+  // already live never shows the submit action again.
+  function applyBookState(book) {
+    var old = document.getElementById('wsReviewBlock');
+    if (old) old.remove();
+    var badge = document.querySelector('.bh-info .status-badge');
+    if (badge) {
+      var labels = { published: 'Published', ongoing: 'Ongoing', draft: 'Draft',
+        under_review: 'Under Review', completed: 'Completed', paused: 'Paused', flagged: 'Flagged' };
+      badge.textContent = labels[book.status] || book.status || 'Draft';
+      badge.className = 'status-badge ' + (book.status === 'under_review' ? 'ongoing' : (book.status || 'draft'));
+    }
+    if (!book.reviewFeedback && !(CFG.USE_API && book.status === 'draft')) return;
+    var block = document.createElement('div');
+    block.id = 'wsReviewBlock';
+    if (book.reviewFeedback) {
+      var note = document.createElement('div');
+      note.style.cssText = 'margin:8px 0 10px;padding:10px 12px;border-radius:10px;background:rgba(224,56,77,.1);color:#c92a2a;font-size:12px;line-height:1.45;font-weight:600';
+      note.textContent = 'Editor feedback: ' + book.reviewFeedback;
+      block.appendChild(note);
+    }
+    if (CFG.USE_API && book.status === 'draft') {
+      var btn = document.createElement('button');
+      btn.id = 'wsSubmitBtn';
+      btn.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:10px';
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for review';
+      btn.addEventListener('click', async function () {
+        showBtnLoading(btn, 'Submitting…');
+        try {
+          await api.submitBook(BOOK_ID);
+          toastLocal('Submitted for review — your editor will decide it');
+          await initWorkspace();
+        } catch (e) {
+          hideBtnLoading(btn);
+          toastLocal('Could not submit: ' + (e.message || 'network error'));
+        }
+      });
+      block.appendChild(btn);
+    }
+    var info = document.querySelector('.bh-info');
+    if (info) info.appendChild(block);
+  }
+
   async function initWorkspace() {
     try {
       var res = await Promise.all([
@@ -135,6 +179,7 @@
       document.querySelector('.bh-title').textContent = book.title;
       document.querySelector('.bh-genre').textContent = book.genre;
       document.querySelector('.bh-cover img').src = book.cover;
+      applyBookState(book);
       CHAPTERS = (chRes.items || []);
       if (!CHAPTERS.length && chRes.total) CHAPTERS = chRes.items || [];
       totalPages = Math.max(1, Math.ceil(CHAPTERS.length / PAGE_SIZE));
@@ -168,6 +213,15 @@
     if (CFG.USE_API) { try { return await callBackend('/books/' + bookId + '/chapters?page=' + page); } catch (e) {} }
     await delay(); var all = demoChapters(); var ps = pageSize || 12;
     return { total: all.length, items: clone(all.slice((page - 1) * ps, page * ps)) };
+  };
+  // Live-only: a draft goes to the author's own editor (or the chief's
+  // allocation queue when the author is still a reader).
+  api.submitBook = api.submitBook || async function (bookId) {
+    if (!CFG.USE_API) { await delay(250); return { ok: true }; }
+    return callBackend('/books/' + encodeURIComponent(bookId) + '/submit', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, body: '{}'
+    });
   };
   api.init = init;
   window.BookWorkspaceService = api;

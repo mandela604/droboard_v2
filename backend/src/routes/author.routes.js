@@ -85,6 +85,10 @@ router.put('/books/:id/chapters/:num', writeLimiter, audit('author.chapters.save
     params: z.object({ id, num: z.string().min(1).max(10) }),
     body: z.object({}).catchall(z.unknown()),
   })), ctrl.saveBookChapter);
+// Submit the manuscript for review (draft → under_review). The book is what
+// gets reviewed once; accepted books publish later chapters automatically.
+router.post('/books/:id/submit', writeLimiter, audit('author.books.submit'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.submitBook);
 router.post('/books/:id/change-requests', writeLimiter, audit('author.changeRequests.submit'),
   validate(z.object({
     params: z.object({ id }),
@@ -137,8 +141,7 @@ router.post('/contracts', writeLimiter, audit('author.contracts.apply'), idUploa
   validate(z.object({ body: z.object({
     bookId: z.string().min(1).max(40),
     title: z.string().max(200).optional(),
-    // Assigned by the editor at review — authors may omit it entirely.
-    type: z.enum(['Exclusive_Publishing', 'Revenue_Share', 'License_Agreement']).optional(),
+    // The contract itself is chosen by staff at review (chief-editor template).
     // Omitted when the writer already has an approved identity on file.
     kyc: kyc.optional(),
   }).strict() })), ctrl.applyContract);

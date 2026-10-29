@@ -21,6 +21,10 @@ async function declineWithdrawal(req, res) {
   return base.wrap(res, async () => svc.declineWithdrawal(
     req.valid.params.id, req.valid.body && req.valid.body.reason, req.user.id));
 }
+async function payWithdrawal(req, res) {
+  return base.wrap(res, async () => svc.payWithdrawal(
+    req.valid.params.id, req.valid.body && req.valid.body.reference, req.user.id));
+}
 
 /* ── author payments ── */
 async function authorPayments(req, res) {
@@ -55,6 +59,9 @@ async function replyDispute(req, res) {
 /* ── coin transactions + catalog config ── */
 async function coinTransactions(req, res) {
   return base.wrap(res, async () => svc.coinTransactions());
+}
+async function financialReports(req, res) {
+  return base.wrap(res, async () => svc.financialReports(req.valid.query));
 }
 async function coinPackages(req, res) {
   return base.wrap(res, async () => svc.coinPackages());
@@ -127,10 +134,10 @@ function remove(kind) {
 }
 
 module.exports = {
-  dashboard, withdrawals, approveWithdrawal, declineWithdrawal,
+  dashboard, withdrawals, approveWithdrawal, declineWithdrawal, payWithdrawal,
   authorPayments, paymentHistory, schedulePayout, processPayment,
   paymentDisputes, resolveDispute, rejectDispute, replyDispute,
-  coinTransactions, coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions,
+  coinTransactions, financialReports, coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions,
   coinConfigHistory, logConfig,
   savePackage: save('package'), putPackage: put('package'), statusPackage: patchStatus('package'), deletePackage: remove('package'),
   saveBundle: save('bundle'), putBundle: put('bundle'), statusBundle: patchStatus('bundle'), deleteBundle: remove('bundle'),

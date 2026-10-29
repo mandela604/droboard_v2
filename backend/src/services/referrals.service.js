@@ -5,8 +5,10 @@
 //   - Every user owns ONE reusable code: User.referralCode (unique, uppercase).
 //   - Inviter-only rewards: +3 coins on invitee signup, +2 when inviteereads
 //     >= 30 min total within 7 days of signup. Invitee gets nothing.
-//   - Coins go to reader-wallet coinBalance (spendable — bonusBalance has no
-//     spend path/expiry job yet) with a double-entry ledger row kind=referral.
+//   - Coins go to reader-wallet coinBalance AND bonusBalance (tagged bonus: they
+//     read chapters but fund no author share and cannot tip — see
+//     wallet.unlockChapter and wallet.sendTip) with a double-entry ledger row
+//     kind=referral.
 //   - All credits are idempotent (ledger idempotencyKey + signupRewarded/
 //     readRewarded flags), safe to retry / double-submit.
 const crypto = require('crypto');
@@ -147,7 +149,9 @@ async function creditInviter({ inviterId, inviteeId, stage, coins }) {
   if (post.duplicate) return { credited: false, duplicate: true };
   await Wallet.updateOne(
     { userId: String(inviterId), kind: 'reader' },
-    { $inc: { coinBalance: coins } },
+    // Tagged as bonus: the ledger row above books amount 0, so these coins
+    // spend for the reader but pay no author share (wallet.unlockChapter).
+    { $inc: { coinBalance: coins, bonusBalance: coins } },
     { upsert: true }
   );
   try {

@@ -34,12 +34,29 @@ async function listBooks({ q, genre, status, sort, page, limit }) {
   if (status) filter.status = status;
   if (q) filter.$or = [{ title: new RegExp(q, 'i') }, { authorId: new RegExp(q, 'i') }];
   const { pg, lim } = paging({ page, limit });
-  return paged(
+  const out = await paged(
     Book.find(filter),
     Book.countDocuments(filter),
     pg, lim,
     BOOK_SORTS[sort] || BOOK_SORTS.recent,
   );
+  // All Books renders the author on every card — join it (authorId is a User id).
+  const { User } = require('../models/user.model');
+  const ids = [...new Set(out.items.map(b => b.authorId).filter(Boolean).map(String))];
+  const people = {};
+  if (ids.length) {
+    const users = await User.find({ id: { $in: ids } }).select('id fullName username avatar').lean();
+    for (const u of users) people[u.id] = u;
+  }
+  out.items = out.items.map(b => {
+    const u = people[String(b.authorId)] || {};
+    return Object.assign({}, b, {
+      authorName: u.fullName || u.username || '',
+      author: u.fullName || u.username || '',
+      avatar: u.avatar || '',
+    });
+  });
+  return out;
 }
 
 async function getBook(id) {
@@ -48,26 +65,52 @@ async function getBook(id) {
   return book;
 }
 
-async function loadBookOr404(id) {
-  const book = await Book.findOne({ $or: [{ id: id }, { slug: id }] });
-  if (!book) err('not_found', 404);
-  return book;
-}
+// Chief's flagged-books view: read-only list of every book any SE flagged.
+async function flaggedBooks({ q, page, limit }) {
+  const filter = { status: 'flagged' };
+  if (q) filter.$or = [{ title: new RegExp(q, 'i') }, { flagReason: new RegExp(q, 'i') }];
+  const { pg, lim } = paging({ page, limit });
+  const out = await paged(
+    Book.find(filter),
+    Book.countDocuments(filter),
+    pg, lim,
+    { flaggedAt: -1 },
+  );
 
-async function flagBook(id) {
-  const book = await loadBookOr404(id);
-  if (book.status !== 'published') err('only_published_can_be_flagged', 409);
-  book.status = 'flagged';
-  await book.save();
-  return book.toJSON();
-}
+  const { User } = require('../models/user.model');
+  const userIds = [...new Set(out.items.flatMap(b => [b.authorId, b.flaggedBy]).filter(Boolean).map(String))];
+  const people = {};
+  if (userIds.length) {
+    const users = await User.find({ id: { $in: userIds } })
+      .select('id fullName username avatar').lean();
+    for (const u of users) {
+      people[u.id] = { name: u.fullName || u.username || 'Unknown', avatar: u.avatar || '' };
+    }
+  }
 
-async function unflagBook(id) {
-  const book = await loadBookOr404(id);
-  if (book.status !== 'flagged') err('only_flagged_can_be_unflagged', 409);
-  book.status = 'published';
-  await book.save();
-  return book.toJSON();
+  out.items = out.items.map(b => {
+    const author = people[String(b.authorId)] || {};
+    const flagger = people[String(b.flaggedBy)] || {};
+    return {
+      id: b.id,
+      title: b.title,
+      cover: b.cover || '',
+      genre: b.genre || '',
+      status: b.status,
+      authorId: b.authorId,
+      author: author.name || '',
+      avatar: author.avatar || '',
+      chapterCount: b.chapterCount || 0,
+      reads: b.reads || 0,
+      rating: b.rating || 0,
+      flagReason: b.flagReason || '',
+      flagNote: b.flagNote || '',
+      flaggedBy: b.flaggedBy || null,
+      flaggedByName: flagger.name || '',
+      flaggedAt: b.flaggedAt || null,
+    };
+  });
+  return out;
 }
 
 async function genres() {
@@ -383,7 +426,7 @@ async function popularGenres() {
 }
 
 module.exports = {
-  listBooks, getBook, flagBook, unflagBook, genres,
+  listBooks, flaggedBooks, getBook, genres,
   tags, sections, library, placements, addPlacement, updatePlacement, removePlacement, history, refeature,
   listCategories, createCategory, updateCategory, deleteCategory, toggleCategoryStatus,
   listGenres, createGenre, updateGenre, deleteGenre, toggleGenreStatus, popularGenres,

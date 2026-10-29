@@ -63,7 +63,32 @@ async function saveBookChapter({ userId, bookId, num, data }) {
   const payload = Object.assign({}, data);
   delete payload.price;
   const chapters = require('./chapters.service');
+  const wantsContent = chapters.CHAPTER_CONTENT_FIELDS.some(k => payload[k] !== undefined);
+  const wantsPublish = payload.status !== undefined && chapters.PUBLISH_CHAPTER_STATUS.includes(payload.status);
+  // Accepted books are live: later content edits go back to the owning editor
+  // as a proposal (same rule as PATCH /api/books/:id/chapters/:key).
+  if (wantsPublish || (wantsContent && chapters.chapterNeedsProposal(ch))) {
+    return chapters.proposeChapterEdit({ book, ch, authorId: userId, data: payload });
+  }
   return chapters.updateChapter({ ch, data: payload });
+}
+
+/* draft → under_review. Only the book is reviewed; its chapters ride along.
+   Routed to the editor this author is assigned to — a reader has no editor
+   yet, so it lands unassigned for the chief to allocate. */
+async function submitBook({ userId, bookId }) {
+  const book = await ownBook({ userId, bookId });
+  if (book.status !== 'draft') { const e = new Error('not_draft'); e.status = 409; throw e; }
+  const written = await Chapter.countDocuments({ bookId: book.id, words: { $gt: 0 } });
+  if (!written) { const e = new Error('no_chapters'); e.status = 400; throw e; }
+  const { EditorAssignment } = require('../models/chief.model');
+  const asg = await EditorAssignment.findOne({ authorIds: String(userId) }).select('editorId').lean();
+  book.status = 'under_review';
+  book.assignedSeId = asg ? String(asg.editorId) : null;
+  book.submittedAt = new Date();
+  book.reviewFeedback = '';
+  await book.save();
+  return book.toJSON();
 }
 
 /* book change request: persists a pending BookEdit proposal for editors */
@@ -414,7 +439,7 @@ async function saveLaunchKit({ userId, data, id }) {
 }
 
 module.exports = {
-  dashboard, books, overview, ownBook, getBook, listChapters, saveBookChapter, requestBookChange,
+  dashboard, books, overview, ownBook, getBook, listChapters, saveBookChapter, submitBook, requestBookChange,
   listCharacters, saveCharacter, deleteCharacter,
   getPlot, savePlot,
   listContracts, applyContract, signContract, declineContract, applyCompletion, applyVip,

@@ -98,7 +98,7 @@
     .dgc-media{width:100%;max-height:220px;border-radius:12px;overflow:hidden;margin-bottom:10px;background:var(--l2,#f1f1f1);cursor:pointer}
     .dgc-media img{width:100%;height:100%;max-height:220px;object-fit:cover;display:block}
 
-    /* ── Engagement widgets (poll / prediction / debate) — same reader-page
+    /* ── Engagement widgets (poll / debate) — same reader-page
        UI, always expanded (no accordion), dgc- prefixed, host CSS vars. ── */
     .dgc-eng{border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:14px;overflow:hidden;margin-bottom:10px;background:var(--l2,#f1f1f1)}
     .dgc-eng-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px}

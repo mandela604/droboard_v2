@@ -105,7 +105,7 @@ async function nextN(bookId) {
 }
 
 async function createChapter({ bookId, data }) {
-  const book = await Book.findOne({ id: bookId }).select('id kind').lean();
+  const book = await Book.findOne({ id: bookId }).select('id kind status').lean();
   if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
   // short: max 25 chapters. long: unlimited.
   const kind = book.kind || 'long';
@@ -124,12 +124,21 @@ async function createChapter({ bookId, data }) {
     if (isNaN(scheduledAt.getTime())) { const e = new Error('bad_scheduledAt'); e.status = 400; throw e; }
   }
   const words = data.words != null ? parseInt(data.words, 10) : countWords(data.content);
+  // Only the BOOK goes to review. Once a book is accepted and live, every
+  // later chapter publishes on save (scheduled chapters keep their timer);
+  // before that, chapters stay in the draft pile with the manuscript.
+  const liveBook = ['ongoing', 'published', 'completed'].includes(book.status);
+  // A book still waiting on review can only carry drafts or a schedule; the
+  // scheduler holds scheduled chapters until the book itself is live.
+  const status = liveBook
+    ? (data.status || (scheduledAt ? 'scheduled' : 'live'))
+    : ((data.status === 'scheduled' && scheduledAt) ? 'scheduled' : 'draft');
   const ch = await Chapter.create({
     bookId, n,
     title: data.title || ('Chapter ' + n),
     content: data.content || '',
     words: Number.isFinite(words) ? words : 0,
-    status: data.status || 'draft',
+    status,
     scheduledAt,
     authorNote: data.authorNote || '',
     price: Number.isFinite(Number(data.price)) && Number(data.price) >= 0 ? Math.floor(Number(data.price)) : 0,

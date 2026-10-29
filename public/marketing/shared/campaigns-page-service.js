@@ -254,6 +254,13 @@ function fmtDate(d) {
 }
 function fmtNum(n) { n = n || 0; return n >= 1000 ? (n/1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/,'') + 'K' : String(n); }
 function mUSD(n) { if (window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + fmtNum(n); }
+/* Budgets are authored in the campaign's own billing currency and spend is
+   accumulated in that same currency, so neither goes through the USD helper. */
+const CCY_SYM = { NGN: '₦', USD: '$', GBP: '£' };
+function mCcy(n, cur) {
+  if (!cur || cur === 'USD') return mUSD(n);
+  return (CCY_SYM[cur] || cur + ' ') + fmtNum(n);
+}
 function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function placementChipsHtml(ids, limit) {
@@ -322,7 +329,7 @@ function renderPage() {
       ? `Promoting <b>${esc(c.storyTitle)}</b> by @${esc(c.storyAuthor)}`
       : `Advertiser: <b>${esc(c.advertiserName)}</b>${c.advertiserEmail ? ' · ' + esc(c.advertiserEmail) : ''}`;
     const budgetStat = c.hasBudget
-      ? `<span class="cmp-stat"><i class="fas fa-sack-dollar"></i>${mUSD(c.spent)} / ${mUSD(c.budget)}</span>`
+      ? `<span class="cmp-stat"><i class="fas fa-sack-dollar"></i>${mCcy(c.spent, c.currency)} / ${mCcy(c.budget, c.currency)}</span>`
       : `<span class="cmp-stat"><i class="fas fa-gift"></i>No budget</span>`;
 
     return `<div class="cmp-card" data-id="${c.id}">
@@ -423,7 +430,7 @@ function openDetail(id) {
     { l: 'Reach', v: fmtNum(c.reach) },
     { l: 'CTR', v: (c.ctr||0) + '%' },
     { l: 'Conversions', v: fmtNum(c.conversions) },
-      { l: 'Budget', v: c.hasBudget ? (mUSD(c.spent) + ' / ' + mUSD(c.budget)) : 'No budget' },
+      { l: 'Budget', v: c.hasBudget ? (mCcy(c.spent, c.currency) + ' / ' + mCcy(c.budget, c.currency)) : 'No budget' },
     { l: 'Owner', v: esc(c.owner || 'Unassigned') },
     { l: 'Dates', v: (c.startDate || c.endDate) ? (fmtDate(c.startDate) + ' – ' + fmtDate(c.endDate)) : 'Not scheduled' },
   ];

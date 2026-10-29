@@ -28,7 +28,6 @@
  *     onJoinAma:      (post) => toast('🎙️ Joining AMA…'),
  *     onOpenLink:     (post) => toast('📖 Opening story…'),   // chapter-drop / repost / review / recommendation tap
   *     onPollVote:     (post, i) => { post.poll.opts[i].v++; post.poll.voted = i; DroboardPostCard.update(post); },
-  *     onPredVote:     (post, i) => { post.prediction.opts[i].v++; post.prediction.voted = i; DroboardPostCard.update(post); },
   *     onDebateVote:   (post, side) => { ...; DroboardPostCard.update(post); },
  *   });
  *
@@ -88,7 +87,6 @@
     .pcc-pill-quote{background:rgba(251,191,36,.08);color:#b57e00;border-color:rgba(251,191,36,.25)}
     .pcc-pill-repost{background:rgba(56,189,248,.08);color:#0284c7;border-color:rgba(56,189,248,.25)}
     .pcc-pill-poll{background:rgba(52,211,153,.08);color:#0d9668;border-color:rgba(52,211,153,.25)}
-    .pcc-pill-prediction{background:rgba(167,139,250,.08);color:var(--purple);border-color:rgba(167,139,250,.25)}
     .pcc-pill-debate{background:rgba(251,146,60,.08);color:#c2610a;border-color:rgba(251,146,60,.25)}
     .pcc-pill-post{background:rgba(255,0,80,.08);color:var(--acc);border-color:var(--bd-acc)}
     .pcc-pill-review{background:rgba(251,191,36,.08);color:#b57e00;border-color:rgba(251,191,36,.25)}
@@ -158,7 +156,7 @@
     .pcc-ama-join{background:var(--acc);color:#fff;border:none;padding:9px 16px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 14px var(--glow-sm);font-family:inherit}
     @keyframes pccPulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-    /* ── Engagement widgets (poll / prediction / debate) — mirrors the
+    /* ── Engagement widgets (poll / debate) — mirrors the
        reader page's ReaderEngagement UI, but always expanded (no accordion).
        Uses the host page's CSS variables so it auto-themes light/dark. ── */
     .pcc-eng{border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:11px;background:var(--l2)}
@@ -181,11 +179,6 @@
     .pcc-eng-opt-txt{font-size:12px;font-weight:600;color:var(--tx-body)}
     .pcc-eng-opt-pct{font-size:11px;font-weight:800;color:var(--acc)}
     .pcc-eng-opt-mine{color:var(--acc);font-weight:700}
-
-    /* Prediction — purple accent */
-    .pcc-eng.pred .pcc-eng-opt.voted{border-color:var(--purple)}
-    .pcc-eng.pred .pcc-eng-opt-bar{background:rgba(167,139,250,.12)}
-    .pcc-eng.pred .pcc-eng-opt-pct,.pcc-eng.pred .pcc-eng-opt-mine{color:var(--purple)}
 
     .pcc-eng-foot{padding:8px 14px;font-size:10px;color:var(--tx-muted);display:flex;justify-content:space-between;align-items:center}
     .pcc-eng-foot-link{color:var(--acc);font-weight:800;cursor:pointer}
@@ -329,7 +322,6 @@
       case 'quote': return `<span class="pcc-pill pcc-pill-quote"><i class="fas fa-quote-right"></i>Quote</span>`;
       case 'repost': return `<span class="pcc-pill pcc-pill-repost"><i class="fas fa-retweet"></i>Repost</span>`;
       case 'poll': return `<span class="pcc-pill pcc-pill-poll"><i class="fas fa-chart-bar"></i>Poll</span>`;
-      case 'prediction': return `<span class="pcc-pill pcc-pill-prediction"><i class="fas fa-crystal-ball"></i>Prediction</span>`;
       case 'debate': return `<span class="pcc-pill pcc-pill-debate"><i class="fas fa-gavel"></i>Debate</span>`;
       case 'review': return `<span class="pcc-pill pcc-pill-review"><i class="fas fa-star"></i>Review</span>`;
       case 'recommendation': return `<span class="pcc-pill pcc-pill-recommend"><i class="fas fa-thumbs-up"></i>Recommendation</span>`;
@@ -338,7 +330,7 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Engagement widgets (poll / prediction / debate) — mirrors the
+  // Engagement widgets (poll / debate) — mirrors the
   // reader page's ReaderEngagement UI, always expanded (no accordion).
   // ══════════════════════════════════════════════════════════════════════
   function _engShell(icon, title, sub, bodyHtml) {
@@ -470,26 +462,6 @@
         <div class="pcc-eng-opts">${opts}</div>
         <div class="pcc-eng-foot"><span>${closed ? 'Voting closed' : (pl.voted >= 0 ? 'Thanks for voting' : 'Tap an option to vote')}</span><span>${fmtN(total)} votes${exp ? ' · ' + exp : ''}</span></div>`;
       return `${_pill('poll')}${_engShell('📊', 'Poll', `${fmtN(total)} votes`, body)}`;
-    },
-
-    'prediction': (post) => {
-      const pr = post.prediction || { opts: [], total: 0, voted: -1 };
-      const total = pr.total || pr.opts.reduce((a, o) => a + (o.v || 0), 0) || 1;
-      const closed = _closed(post);
-      const exp = _expTxt(post);
-      const opts = (pr.opts || []).map((o, i) => {
-        const pct = Math.round(((o.v || 0) / total) * 100) || 0;
-        const voted = pr.voted === i;
-        return `
-          <div class="pcc-eng-opt${voted ? ' voted' : ''}${closed ? ' is-closed' : ''}"${closed ? '' : ` data-pcc-pred-opt="${i}"`}>
-            <div class="pcc-eng-opt-bar" style="width:${pct}%"></div>
-            <div class="pcc-eng-opt-row"><span class="pcc-eng-opt-txt">${esc(o.label || o.t || o.text)}${voted ? ' <span class="pcc-eng-opt-mine">· your pick</span>' : ''}</span><span class="pcc-eng-opt-pct">${pct}%</span></div>
-          </div>`;
-      }).join('');
-      const body = `<div class="pcc-eng-q">${esc(pr.question || pr.q)}</div>
-        <div class="pcc-eng-opts">${opts}</div>
-        <div class="pcc-eng-foot"><span>${closed ? 'Picks locked' : (pr.voted >= 0 ? 'Prediction locked in' : 'Tap an option to predict')}</span><span>${fmtN(total)} predicts${exp ? ' · ' + exp : ''}</span></div>`;
-      return `${_pill('prediction')}${_engShell('🔮', 'Prediction', `${fmtN(total)} predicts`, body)}`;
     },
 
     'debate': (post) => {
@@ -671,9 +643,6 @@
 
       const pollRow = e.target.closest('[data-pcc-poll-opt]');
       if (pollRow) { _hooks.onPollVote && _hooks.onPollVote(post, parseInt(pollRow.dataset.pccPollOpt, 10)); return; }
-
-      const predRow = e.target.closest('[data-pcc-pred-opt]');
-      if (predRow) { _hooks.onPredVote && _hooks.onPredVote(post, parseInt(predRow.dataset.pccPredOpt, 10)); return; }
 
       const debateOpt = e.target.closest('[data-pcc-debate]');
       if (debateOpt) { _hooks.onDebateVote && _hooks.onDebateVote(post, debateOpt.dataset.pccDebate); return; }

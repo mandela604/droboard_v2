@@ -1,12 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════
    STORE SERVICE
    Coin packs, bundles, and ad rewards. HTML calls StorePage.init().
-   When going live: set USE_API = true, update API_BASE.
+   Live first: GET /api/store is the catalog the finance console edits.
+   Every getter below is the demo fallback for when the backend is down.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const USE_API = false;
   const API_BASE = '/api';
 
   function _financePacks(){ try{ const v=JSON.parse(localStorage.getItem('dro_finance_packs')||'null'); return Array.isArray(v)&&v.length?v:null; }catch(e){ return null; } }
@@ -33,53 +33,113 @@
   function _financeRewards(){ try{ const v=JSON.parse(localStorage.getItem('dro_finance_rewards')||'null'); return Array.isArray(v)&&v.length?v:null; }catch(e){ return null; } }
   function getAdRewards() {
     const fr=_financeRewards(); if(fr) return fr;
-    // Earn section shows Watch Ad only — the rest are commented out below.
-    // Marketing can show/hide or add options live (finance → Store Settings);
-    // live rewards overlay these demo entries in fetchStoreData.
+    // Offline demo only, and every task type is listed — the live catalog
+    // (finance → Coin Transactions) replaces this whole list, and the server
+    // decides which of its own rows are complete enough to be offered.
     return [
-      { id: 'ad1', action: 'Watch Ad', coins: 10, cooldown: '5 min', icon: 'fa-film', available: true, type:'watch_ad' },
-      // { id: 'ad2', action: 'Daily Check-in', coins: 25, cooldown: '24 hr', icon: 'fa-calendar-check', available: true, type:'checkin' },
-      // { id: 'ad3', action: 'Rate Story', coins: 5, cooldown: '1 hr', icon: 'fa-star', available: true, type:'rate' },
-      // { id: 'ad4', action: 'Share Story', coins: 15, cooldown: '2 hr', icon: 'fa-share-nodes', available: true, type:'share' },
-      // { id: 'ad5', action: 'Read Blog — Tech (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-microchip', available: true, type:'blog_read', pagesRequired:3, blogCategory:'tech', blogUrl:'Pages/blog.html?cat=tech' },
-      // { id: 'ad8', action: 'Read Blog — Health (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-heart-pulse', available: true, type:'blog_read', pagesRequired:3, blogCategory:'health', blogUrl:'Pages/blog.html?cat=health' },
-      // { id: 'ad6', action: 'Subscribe on YouTube', coins: 30, cooldown: '30d', icon: 'fa-youtube', available: true, type:'youtube_sub', channelId:'UCxxxxDroboard' },
-      // { id: 'ad7', action: 'Watch YouTube Video', coins: 15, cooldown: '24 hr', icon: 'fa-circle-play', available: true, type:'youtube_watch', videoId:'dQw4w9WgXcQ', minWatchSec:60 },
+      { id: 'ad1', action: 'Watch Ad', coins: 10, cooldown: '5 min', icon: 'fa-film', available: true, type: 'watch_ad', needsProof: true, needsWatch: true, minWatchSec: 20, target: '' },
+      { id: 'ad2', action: 'Daily Check-in', coins: 25, cooldown: '24 hr', icon: 'fa-calendar-check', available: true, type: 'checkin' },
+      { id: 'ad3', action: 'Rate Story', coins: 5, cooldown: '1 hr', icon: 'fa-star', available: true, type: 'rate', needsProof: true, target: 'Pages/library.html' },
+      { id: 'ad4', action: 'Share Story', coins: 15, cooldown: '2 hr', icon: 'fa-share-nodes', available: true, type: 'share', needsProof: true, target: 'Pages/library.html' },
+      { id: 'ad5', action: 'Read Blog — Tech (3 pages)', coins: 25, cooldown: '24 hr', icon: 'fa-newspaper', available: true, type: 'blog_read', pagesRequired: 3, blogCategory: 'tech', blogUrl: 'Pages/blog.html?cat=tech', needsProof: true, needsWatch: true, minWatchSec: 45, target: 'Pages/blog.html?cat=tech' },
+      { id: 'ad6', action: 'Subscribe on YouTube', coins: 30, cooldown: '30 days', icon: 'fa-youtube', available: true, type: 'youtube_sub', channelId: '@droboard', needsProof: true, target: 'https://www.youtube.com/@droboard?sub_confirmation=1' },
+      { id: 'ad7', action: 'Watch YouTube Video', coins: 15, cooldown: '24 hr', icon: 'fa-play', available: true, type: 'youtube_watch', videoId: 'dQw4w9WgXcQ', minWatchSec: 60, needsProof: true, needsWatch: true, target: 'youtube-earn.html?vid=dQw4w9WgXcQ&sec=60&earn=ad7' },
     ];
   }
 
-  /* Live rewards (finance → Store Settings) normalized to the card shape.
-     Inactive rewards never reach the page; extras ride in meta. */
+  /* Live rewards (finance → Coin Transactions) normalized to the card shape.
+     GET /api/store already hands back the validated, fully shaped task (label,
+     target, needsProof, minWatchSec); this only fills gaps for rows that came
+     from elsewhere, and never invents a destination. */
   function normalizeReward(r) {
     const m = (r && r.meta && typeof r.meta === 'object') ? r.meta : {};
+    const x = (k) => (r[k] !== undefined ? r[k] : m[k]);
+    const rawIcon = String(x('icon') || 'fa-coins');
+    const icon = /^fa-[a-z0-9-]+$/i.test(rawIcon) ? rawIcon : 'fa-coins';
+    const tgt = String(x('target') || '');
     return {
-      id: r.id, action: r.action, type: r.type, coins: r.coins, cooldown: r.cooldown || '',
-      pagesRequired: r.pagesRequired || 0,
-      icon: m.icon || 'fa-coins', available: (r.status || 'active') === 'active',
-      blogCategory: m.blogCategory, blogUrl: m.blogUrl,
-      channelId: m.channelId, channelUrl: m.channelUrl,
-      videoId: m.videoId, minWatchSec: m.minWatchSec,
-      adUrl: m.adUrl || r.adUrl,
+      id: r.id || r.code, code: r.code || r.id, action: r.action, label: r.label || r.action,
+      type: r.type, coins: Number(r.coins) || 0,
+      cooldown: r.cooldown || '', cooldownSec: Number(r.cooldownSec) || 0,
+      pagesRequired: Number(x('pagesRequired')) || 0,
+      icon, faIcon: icon,
+      available: r.available !== undefined ? !!r.available : (r.status || 'active') === 'active',
+      needsProof: !!r.needsProof, needsWatch: !!r.needsWatch,
+      // only an https link or a plain in-app path ever leaves this function
+      target: (/^https:\/\//i.test(tgt) || /^[A-Za-z0-9._~!$&'()*+,;=@/?#%:-]+$/.test(tgt)) ? tgt : '',
+      minWatchSec: Number(x('minWatchSec')) || 0,
+      blogCategory: x('blogCategory'), blogUrl: x('blogUrl'),
+      channelId: x('channelId'), channelUrl: x('channelUrl'),
+      videoId: x('videoId'), adUrl: x('adUrl'),
     };
   }
-  async function liveRewards() {
+  function arr(v){ return Array.isArray(v) ? v : []; }
+  /* The whole catalog comes from the backend the finance console writes to.
+     Any failure (offline, 401, empty) falls back to the demo getters. */
+  async function liveCatalog() {
     try {
       const res = await fetch(`${API_BASE}/store`, { credentials: 'include' });
       if (!res.ok) return null;
-      const j = await res.json();
-      const list = j.adRewards || (j.data && j.data.adRewards);
-      if (!Array.isArray(list) || !list.length) return null;
-      return list.map(normalizeReward);
+      const d = await res.json();
+      if (!d || (!arr(d.packs).length && !arr(d.subscriptions).length)) return null;
+      if (d.balance && d.balance.coins != null) setServerBalance(d.balance);
+      return {
+        balance: getBalance(),
+        packs: arr(d.packs),
+        bundles: arr(d.bundles),
+        gifts: arr(d.gifts),
+        adRewards: arr(d.adRewards).map(normalizeReward),
+        subscriptions: deriveSubExtras(arr(d.subscriptions)),
+        mergeSub: deriveSubExtras(d.mergeSub && d.mergeSub.id ? [d.mergeSub] : [])[0] || {},
+      };
     } catch (e) { return null; }
+  }
+
+  /* One shared, cached catalog. Pages that never render the store (the tip
+     picker on a reader page) still get the live gifts + the real balance,
+     because warm() runs as soon as this file loads. */
+  let _live = null, _warmP = null;
+  function warm() {
+    if (!_warmP) {
+      _warmP = liveCatalog().then(function (d) {
+        _live = d;
+        if (d) syncBalance();
+        return d;
+      });
+    }
+    return _warmP;
   }
 
   const BALANCE_KEY = 'dro_store_balance';
   function _readBal(){ try{ const v=parseInt(localStorage.getItem(BALANCE_KEY),10); return isNaN(v)?350:v; }catch(e){ return 350; } }
   function _writeBal(v){ try{ localStorage.setItem(BALANCE_KEY, String(v)); }catch(e){} }
-  function _levelFor(coins){ if(coins>=1000) return 'Gold'; if(coins>=500) return 'Silver'; if(coins>=100) return 'Bronze'; return 'Starter'; }
+  /* Once the wallet API has answered, its numbers are the only balance anyone
+     reads — local spends stop pretending to be the ledger. The API reports the
+     balance as {coins, bonus, paid}: `coins` is the spendable total and `bonus`
+     the part of it with no cash behind it, which reads chapters but cannot tip.
+     A bare number is still accepted (a write that only answers the total), and
+     the known bonus tag is kept, clamped to the new total. */
+  let _serverBal = null;
+  function setServerBalance(bal){
+    const src = (bal && typeof bal === 'object') ? bal : { coins: bal };
+    const c = Number(src.coins);
+    if (!isFinite(c)) return null;
+    const coins = Math.max(0, Math.round(c));
+    const b = Number(src.bonus);
+    const bonus = Math.max(0, Math.min(coins, isFinite(b) ? Math.round(b) : ((_serverBal && _serverBal.bonus) || 0)));
+    _serverBal = { coins, bonus, paid: coins - bonus };
+    _writeBal(coins);
+    return _serverBal;
+  }
   function getBalance() {
-    const coins = _readBal();
-    return { coins, level: _levelFor(coins) };
+    if (_serverBal) return { coins: _serverBal.coins, bonus: _serverBal.bonus, paid: _serverBal.paid };
+    return { coins: _readBal(), bonus: 0, paid: _readBal() };
+  }
+  function syncBalance(){
+    return fetch(`${API_BASE}/wallet/balance`, { credentials: 'include' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (j) { if (j && j.coins != null) setServerBalance(j); return getBalance(); })
+      .catch(function () { return getBalance(); });
   }
 
   /* Duration + "Save X% vs daily" are pure math over the catalog — never typed.
@@ -131,8 +191,9 @@
   }
 
   function getGifts() {
-    // Finance → Coin Transactions "Gift Items" section owns the live catalog
-    // (the tip picker reads gifts through this service).
+    // Live catalog (finance → Coin Transactions "Gift Items") first: this is
+    // what the tip picker on any reader page shows.
+    if (_live && _live.gifts.length) return _live.gifts;
     try{ const fg=JSON.parse(localStorage.getItem('dro_finance_gifts')||'null'); if(Array.isArray(fg)&&fg.length) return fg; }catch(e){}
     return [
       { id: 'gift-rose', name: 'Rose', price: 10, icon: 'fa-rose', faIcon: 'fa-heart', color: '#FF2D6A', desc: 'A sweet thank you' },
@@ -147,17 +208,10 @@
   }
 
   async function fetchStoreData() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/store`);
-      if (!res.ok) throw new Error('Store API failed');
-      const d = await res.json();
-      // Derived lines (duration + "Save X% vs daily") are computed client-side,
-      // so the API only ever has to return price + period + real features.
-      if (Array.isArray(d.subscriptions)) d.subscriptions = deriveSubExtras(d.subscriptions);
-      return d;
-    }
+    const live = await warm();
+    if (live) return live;
     await new Promise(r => setTimeout(r, 80));
-    const data = {
+    return {
       balance: getBalance(),
       packs: getCoinPacks(),
       bundles: getBundles(),
@@ -166,24 +220,26 @@
       mergeSub: getMergeSubscription(),
       gifts: getGifts(),
     };
-    // marketing overlay: live Earn options (show/hide/add) replace the demo list
-    const live = await liveRewards();
-    if (live) data.adRewards = live;
-    return data;
   }
+  warm();
 
+  /* With a server balance these are affordability checks only — the wallet API
+     moves coins (POST /api/wallet/tip, /unlock, /earn), then syncBalance() pulls
+     the new number. Locally decrementing here would just be a guess. */
   function spendCoins(amount){
+    if (_serverBal) return getBalance().coins >= amount;
     const cur=_readBal();
     if(cur < amount) return false;
     _writeBal(cur-amount);
     return true;
   }
   function addCoins(amount){
+    if (_serverBal) return getBalance().coins;
     const cur=_readBal();
     _writeBal(cur+amount);
     return _readBal();
   }
-  function canAfford(amount){ return _readBal() >= amount; }
+  function canAfford(amount){ return getBalance().coins >= amount; }
 
-  window.StoreService = { fetchStoreData, getBalance, getGifts, getBundles, getCoinPacks, getAdRewards, spendCoins, addCoins, canAfford };
+  window.StoreService = { fetchStoreData, getBalance, syncBalance, setServerBalance, getGifts, getBundles, getCoinPacks, getAdRewards, spendCoins, addCoins, canAfford };
 })();

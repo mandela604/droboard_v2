@@ -94,10 +94,6 @@ async function messagesReadAll(req, res) {
   return base.wrap(res, async () => sidebar.messagesReadAll(req.user));
 }
 
-async function contractTypes(req, res) {
-  return base.wrap(res, async () => sidebar.contractTypes());
-}
-
 // Report decisions write resolved/dismissed (never approved/rejected).
 async function reportResolve(req, res) {
   return base.wrap(res, async () => senior.decideReport(req.user, req.valid.params.id, 'resolved',
@@ -106,6 +102,9 @@ async function reportResolve(req, res) {
 async function reportDismiss(req, res) {
   return base.wrap(res, async () => senior.decideReport(req.user, req.valid.params.id, 'dismissed',
     req.valid.body && req.valid.body.note));
+}
+async function reportReopen(req, res) {
+  return base.wrap(res, async () => senior.reopenReport(req.user, req.valid.params.id));
 }
 
 // Edit proposals: approve APPLIES content to the live book/chapter (the only
@@ -129,27 +128,39 @@ async function rejectBookEdit(req, res) {
   return base.wrap(res, async () => senior.rejectBookEdit(req.valid.params.id, req.user.id, note, req.user));
 }
 
-// Contract sign: capture monetization pricing + lock terms.
+// Platform signature: only for this editor's writer, and only after the author
+// has signed ('approved'). Terms lock here — pricing sent with the signature
+// replaces the stored block, otherwise the saved rows keep their values and are
+// only marked signed.
 async function signContract(req, res) {
   return base.wrap(res, async () => {
     const { Contract } = require('../models/contract.model');
     const { ContractPricing } = require('../models/revenue.model');
     const c = await Contract.findOne({ id: req.valid.params.id });
     if (!c) { const e = new Error('not_found'); e.status = 404; throw e; }
-    const t = req.valid.body.pricing || {};
-    await ContractPricing.findOneAndUpdate(
-      { contractId: c.id },
-      {
-        contractId: c.id, bookId: c.bookId,
-        freeChapters: t.freeChapters || 0, adsPerChapter: t.adsPerChapter || 0,
-        allowAdUnlock: t.allowAdUnlock !== false,
-        rows: t.rows || [], paidCount: (t.rows || []).filter(r => !r.free).length,
-        status: 'signed',
-      },
-      { upsert: true, new: true }
-    );
+    await senior.assertOwned(req.user, c.authorId);
+    if (c.status !== 'approved') { const e = new Error('contract_not_open'); e.status = 409; throw e; }
+
+    const t = req.valid.body.pricing;
+    if (t) {
+      await ContractPricing.findOneAndUpdate(
+        { contractId: c.id },
+        {
+          contractId: c.id, bookId: c.bookId,
+          freeChapters: t.freeChapters || 0, adsPerChapter: t.adsPerChapter || 0,
+          allowAdUnlock: t.allowAdUnlock !== false,
+          rows: t.rows || [], paidCount: (t.rows || []).filter(r => !r.free).length,
+          status: 'signed',
+        },
+        { upsert: true, new: true }
+      );
+    } else {
+      await ContractPricing.updateOne({ contractId: c.id }, { $set: { status: 'signed' } });
+    }
+    const now = new Date();
     c.status = 'signed';
-    c.signedAt = new Date();
+    c.signedAt = now;
+    c.signatures.push({ by: String(req.user.id), role: 'editor', at: now });
     await c.save();
     try {
       const { notify } = require('../services/notifications.service');
@@ -214,6 +225,22 @@ async function reviewDecide(req, res) {
         out = book.toJSON();
       }
 
+      // Only the book was reviewed. Its chapters now go live with it —
+      // scheduled ones keep their timer. Later chapters publish on save.
+      const { Chapter } = require('../models/content.model');
+      await Chapter.updateMany(
+        { bookId: String(book.id), status: 'draft' },
+        { $set: { status: 'live' } }
+      );
+      // Record the deciding editor: for a reader's submission this is the
+      // allocation the chief made (a writer's book already points at their SE).
+      await Book.updateOne(
+        { id: book.id },
+        { $set: { assignedSeId: req.user.id, reviewFeedback: '' } }
+      );
+      book.assignedSeId = String(req.user.id);
+      book.reviewFeedback = '';
+
       // The book is live even if the offer cannot be sent (books publish with
       // no contract) — the KYC gate only blocks the contract, and the editor
       // can send the offer from Contract Review once verification passes.
@@ -234,9 +261,12 @@ async function reviewDecide(req, res) {
       const e = new Error('feedback_required'); e.status = 400; throw e;
     }
 
-    // Rejected: the manuscript returns to the author's drafts; any pending
-    // publish proposal is closed with the same reason so it leaves the queue.
+    // Rejected: the manuscript returns to the author's drafts with the reason
+    // attached (the author sees it in their workspace); any pending publish
+    // proposal is closed with the same reason so it leaves the queue.
     book.status = 'draft';
+    book.reviewFeedback = String(feedback).slice(0, 2000);
+    book.assignedSeId = String(req.user.id);
     await book.save();
     await BookEdit.updateMany(
       { bookId: book.id, status: 'pending' },
@@ -274,13 +304,108 @@ async function publishBookForSubmission(bookId) {
 async function contractSend(req, res) {
   return base.wrap(res, async () => {
     const { Contract } = require('../models/contract.model');
+    const { AuthorVerification } = require('../models/application.model');
     const c = await Contract.findOne({ id: req.valid.params.id });
     if (!c) { const e = new Error('not_found'); e.status = 404; throw e; }
-    if (req.valid.body.ct) c.type = req.valid.body.ct;
+    await senior.assertOwned(req.user, c.authorId);
+    // Terms can only be replaced before either signature exists.
+    if (!['draft', 'pending', 'sent'].includes(c.status)) {
+      const e = new Error('contract_not_open'); e.status = 409; throw e;
+    }
+    // Same gate as every other offer path: identity verified or no offer.
+    const v = await AuthorVerification.findOne({ userId: c.authorId }).select('status').lean();
+    if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
+    const offer = await sidebar.resolveTemplate(req.valid.body.templateId);
+    c.type = offer.type;
+    c.templateId = offer.templateId;
+    c.duration = offer.duration;
+    c.termMonths = offer.termMonths;
+    c.revenueSplit = offer.revenueSplit;
     c.status = 'sent';
     c.sentAt = new Date();
     await c.save();
     return c.toJSON();
+  });
+}
+
+// Chapter pricing is editable at any point in the contract's life (the console
+// keeps the table live after signing — only the commercial terms are locked).
+// What is enforced here is ownership: the contract must exist and belong to one
+// of this editor's writers, so pricing can't be planted against a bare id.
+async function contractPricing(req, res) {
+  return base.wrap(res, async () => {
+    const { Contract } = require('../models/contract.model');
+    const { ContractPricing } = require('../models/revenue.model');
+    const c = await Contract.findOne({ id: req.valid.params.id });
+    if (!c) { const e = new Error('not_found'); e.status = 404; throw e; }
+    await senior.assertOwned(req.user, c.authorId);
+
+    const body = req.valid.body;
+    const patch = Object.assign({}, body, { contractId: c.id, bookId: body.bookId || c.bookId });
+    if (Array.isArray(body.rows)) patch.paidCount = body.rows.filter(r => !r.free).length;
+    const signed = c.status === 'signed' || c.status === 'active';
+    const doc = await ContractPricing.findOneAndUpdate(
+      { contractId: c.id },
+      { $set: patch, $setOnInsert: { status: signed ? 'signed' : 'pending' } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean();
+    return doc;
+  });
+}
+
+// Direct offer: the editor picks the author and a chief-editor template (no
+// application to answer). Workflow fields are set here, never by the client.
+async function contractCreate(req, res) {
+  return base.wrap(res, async () => {
+    const { Contract } = require('../models/contract.model');
+    const { Book } = require('../models/content.model');
+    const { User } = require('../models/user.model');
+    const { AuthorVerification } = require('../models/application.model');
+
+    const body = req.valid.body;
+    const author = await User.findOne({ id: body.authorId }).select('id').lean();
+    if (!author) { const e = new Error('author_not_found'); e.status = 404; throw e; }
+    await senior.assertOwned(req.user, author.id);
+
+    const v = await AuthorVerification.findOne({ userId: author.id }).select('status').lean();
+    if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
+
+    if (body.bookId) {
+      const book = await Book.findOne({ id: body.bookId }).select('authorId').lean();
+      if (!book || String(book.authorId) !== String(author.id)) {
+        const e = new Error('book_not_found'); e.status = 404; throw e;
+      }
+    }
+
+    const offer = await sidebar.resolveTemplate(body.templateId);
+    const contract = await Contract.create({
+      bookId: body.bookId || undefined,
+      authorId: author.id,
+      type: offer.type,
+      templateId: offer.templateId,
+      status: 'sent',
+      sentAt: new Date(),
+      editorId: req.user.id,
+      duration: offer.duration,
+      termMonths: offer.termMonths,
+      revenueSplit: offer.revenueSplit,
+      advance: body.advance || 0,
+      authorNote: body.authorNote || '',
+    });
+    // The book reads 'offer pending' until the author signs (sign sets contracted).
+    if (body.bookId) await Book.updateOne({ id: body.bookId }, { contractStatus: 'review' });
+
+    try {
+      const { notify } = require('../services/notifications.service');
+      await notify({
+        recipientId: author.id, type: 'contract',
+        title: 'Contract offer ready',
+        desc: 'Your editor sent a contract — review and sign it in Author Center.',
+      });
+    } catch (e) {}
+
+    res.status(201);
+    return contract.toJSON();
   });
 }
 
@@ -392,13 +517,6 @@ async function verificationDecide(req, res, decision) {
 }
 
 // ── Contract applications (the author's apply → the editor's offer) ─────────
-// Console type keys, kept in sync with public/senior-editor/contract-review-service.js.
-const CONSOLE_TYPE = {
-  Exclusive_Publishing: 'exclusive',
-  Non_Exclusive: 'non-exclusive',
-  Revenue_Share: 'revenue-share',
-  License_Agreement: 'licensing',
-};
 
 function consoleContractStatus(app, contract) {
   if (contract) {
@@ -414,6 +532,7 @@ async function contractApplications(req, res) {
   return base.wrap(res, async () => {
     const { ContractApplication, AuthorVerification } = require('../models/application.model');
     const { Contract } = require('../models/contract.model');
+    const { ContractPricing } = require('../models/revenue.model');
     const { Book } = require('../models/content.model');
     const { User } = require('../models/user.model');
 
@@ -428,24 +547,29 @@ async function contractApplications(req, res) {
     const authorIds = [...new Set(apps.map((a) => a.authorId))];
     const contractIds = [...new Set(apps.map((a) => a.contractId).filter(Boolean))];
 
-    const [books, users, verifications, contracts] = await Promise.all([
+    const [books, users, verifications, contracts, pricings] = await Promise.all([
       Book.find({ id: { $in: bookIds } }).select('id title genre chapterCount cover').lean(),
       User.find({ id: { $in: authorIds } }).select('id fullName username avatar email').lean(),
       AuthorVerification.find({ userId: { $in: authorIds } }).select('userId status kyc').lean(),
       contractIds.length
-        ? Contract.find({ id: { $in: contractIds } }).select('id bookId type status duration revenueSplit authorNote').lean()
+        ? Contract.find({ id: { $in: contractIds } }).select('id bookId type templateId status duration revenueSplit authorNote').lean()
+        : [],
+      contractIds.length
+        ? ContractPricing.find({ contractId: { $in: contractIds } }).lean()
         : [],
     ]);
     const bookOf = new Map(books.map((b) => [b.id, b]));
     const userOf = new Map(users.map((u) => [u.id, u]));
     const verifOf = new Map(verifications.map((v) => [v.userId, v]));
     const contractOf = new Map(contracts.map((c) => [c.id, c]));
+    const pricingOf = new Map(pricings.map((p) => [p.contractId, p]));
 
     return apps.map((a) => {
       const b = bookOf.get(a.bookId) || {};
       const u = userOf.get(a.authorId) || {};
       const v = verifOf.get(a.authorId);
       const c = a.contractId ? contractOf.get(a.contractId) : null;
+      const p = a.contractId ? pricingOf.get(a.contractId) : null;
       return {
         id: a.id,
         contractId: c ? c.id : '',
@@ -457,7 +581,7 @@ async function contractApplications(req, res) {
         bookGenre: b.genre || '',
         chapters: b.chapterCount || 0,
         cover: b.cover || '',
-        ct: c ? CONSOLE_TYPE[c.type] || '' : '',
+        ct: c ? c.templateId || '' : '',
         type: c ? c.type : a.type || '',
         term: c ? c.duration : '',
         rev: c ? `${c.revenueSplit}/${100 - c.revenueSplit}` : '',
@@ -465,6 +589,14 @@ async function contractApplications(req, res) {
         status: consoleContractStatus(a, c),
         sent: !!c,
         notes: (c && c.authorNote) || '',
+        // Saved monetization, so the page reopens on the real terms.
+        pricing: p ? {
+          freeChapters: p.freeChapters || 0,
+          adsPerChapter: p.adsPerChapter || 0,
+          allowAdUnlock: p.allowAdUnlock !== false,
+          prices: Object.fromEntries((p.rows || []).map((r) => [r.num, r.price])),
+          ads: Object.fromEntries((p.rows || []).map((r) => [r.num, r.ads])),
+        } : null,
         kyc: v ? v.kyc : null,
         verificationStatus: v ? v.status : 'none',
       };
@@ -472,9 +604,9 @@ async function contractApplications(req, res) {
   });
 }
 
-// Approve = assign the deal type and send the offer. The book goes to 'review'
-// (live, offer pending); the author's signature is the only thing that makes it
-// 'contracted'.
+// Approve = send the offer for the chosen chief-editor template. The book goes
+// to 'review' (live, offer pending); the author's signature is the only thing
+// that makes it 'contracted'.
 async function contractApprove(req, res) {
   return base.wrap(res, async () => {
     const { ContractApplication, AuthorVerification } = require('../models/application.model');
@@ -490,9 +622,10 @@ async function contractApprove(req, res) {
     if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
 
     const body = req.valid.body;
+    const offer = await sidebar.resolveTemplate(body.templateId);
     const claimed = await ContractApplication.findOneAndUpdate(
       { id: app.id, status: 'applied' },
-      { $set: { status: 'review', type: body.type, reviewerId: req.user.id, decidedAt: new Date() } },
+      { $set: { status: 'review', type: offer.type, reviewerId: req.user.id, decidedAt: new Date() } },
       { new: true }
     );
     if (!claimed) { const e = new Error('not_decidable'); e.status = 409; throw e; }
@@ -502,13 +635,14 @@ async function contractApprove(req, res) {
       contract = await Contract.create({
         bookId: app.bookId,
         authorId: app.authorId,
-        type: body.type,
+        type: offer.type,
+        templateId: offer.templateId,
         status: 'sent',
         sentAt: new Date(),
         editorId: req.user.id,
-        duration: body.termMonths + ' months',
-        termMonths: body.termMonths,
-        revenueSplit: body.revenueSplit,
+        duration: offer.duration,
+        termMonths: offer.termMonths,
+        revenueSplit: offer.revenueSplit,
         advance: body.advance || 0,
         authorNote: body.note || '',
       });
@@ -519,6 +653,7 @@ async function contractApprove(req, res) {
     }
     await ContractApplication.updateOne({ id: app.id }, { $set: { contractId: contract.id } });
     await Book.updateOne({ id: app.bookId }, { contractStatus: 'review' });
+    await sidebar.saveOfferPricing(contract.id, app.bookId, body.pricing, 'pending');
 
     try {
       const { notify } = require('../services/notifications.service');
@@ -604,58 +739,32 @@ async function sendMessage(req, res) {
 
 // Book management: rate / flag / unflag (password-gated actions).
 async function verifyActorPassword(req, password) {
-  const argon2 = require('argon2');
-  const { User } = require('../models/user.model');
-  const u = await User.findOne({ id: req.user.id }).select('+passwordHash');
-  if (!u || !u.passwordHash) { const e = new Error('oauth_only'); e.status = 400; throw e; }
-  const ok = await argon2.verify(u.passwordHash, String(password || '')).catch(() => false);
-  if (!ok) { const e = new Error('invalid_password'); e.status = 401; throw e; }
-  return u;
+  const { verifyPassword } = require('../middleware/auth');
+  return verifyPassword(req.user.id, password);
 }
 
-// Staff book update/delete go through books.service so the same validation,
-// slug refresh and genre counts apply as everywhere else.
-async function bookUpdate(req, res) {
-  return base.wrap(res, async () => {
-    const books = require('../services/books.service');
-    const book = await books.loadBookById(req.valid.params.id);
-    await senior.assertOwned(req.user, book.authorId);
-    return books.updateBook({ book, data: req.valid.body });
-  });
-}
-
-async function bookRemove(req, res) {
-  return base.wrap(res, async () => {
-    const books = require('../services/books.service');
-    const book = await books.loadBookById(req.valid.params.id);
-    await senior.assertOwned(req.user, book.authorId);
-    return books.deleteBook({ book });
-  });
-}
-
-async function rateBook(req, res) {
-  return base.wrap(res, async () => {
-    const { Book } = require('../models/content.model');
-    const b = await Book.findOne({ id: req.valid.params.id });
-    if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
-    await senior.assertOwned(req.user, b.authorId);
-    const r = Number(req.valid.body.rating);
-    if (!(r >= 0 && r <= 5)) { const e = new Error('bad_rating'); e.status = 400; throw e; }
-    b.rating = r;
-    await b.save();
-    return { id: b.id, rating: b.rating };
-  });
+// Flag reasons are free text from the console; map them onto Report's enum so
+// the chief Story Reports queue can filter without keyword matching.
+function reportTypeForFlag(reason) {
+  const r = String(reason || '').toLowerCase();
+  if (r.includes('plagiar') || r.includes('copyright')) return 'plagiarism';
+  if (r.includes('spam') || r.includes('scam')) return 'spam';
+  if (r.includes('violence') || r.includes('hate') || r.includes('abuse')) return 'abuse';
+  if (r.includes('adult') || r.includes('nsfw') || r.includes('misleading')) return 'content';
+  return 'other';
 }
 
 async function flagBook(req, res) {
   return base.wrap(res, async () => {
     const { Book } = require('../models/content.model');
+    const { Report } = require('../models/editorial.model');
     const { reason, note, password } = req.valid.body;
     if (!reason) { const e = new Error('reason_required'); e.status = 400; throw e; }
     const actor = await verifyActorPassword(req, password);
     const b = await Book.findOne({ id: req.valid.params.id });
     if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
     await senior.assertOwned(req.user, b.authorId);
+    if (b.status === 'flagged') { const e = new Error('already_flagged'); e.status = 409; throw e; }
     b.flagPrevStatus = b.status;
     b.status = 'flagged';
     b.flagReason = String(reason).slice(0, 200);
@@ -663,21 +772,37 @@ async function flagBook(req, res) {
     b.flaggedBy = actor.id;
     b.flaggedAt = new Date();
     await b.save();
+
+    // The flag is also a report row, so it lands in the shared review queues.
+    const report = await Report.create({
+      storyId: b.id,
+      title: b.title,
+      desc: b.flagNote ? b.flagReason + ' — ' + b.flagNote : b.flagReason,
+      type: reportTypeForFlag(reason),
+      severity: 'medium',
+      seId: String(req.user.id),
+      reporterId: String(actor.id),
+      reporterLabel: 'Book flag',
+      status: 'pending',
+    });
+
     try {
       const { notify } = require('../services/notifications.service');
       await notify({ recipientId: b.authorId, type: 'moderation', title: 'Book flagged', desc: 'Your book "' + b.title + '" was flagged for review.' });
     } catch (e) {}
-    return { id: b.id, status: b.status, flagReason: b.flagReason };
+    return { id: b.id, status: b.status, flagReason: b.flagReason, reportId: report.id };
   });
 }
 
 async function unflagBook(req, res) {
   return base.wrap(res, async () => {
     const { Book } = require('../models/content.model');
+    const { Report } = require('../models/editorial.model');
     await verifyActorPassword(req, req.valid.body && req.valid.body.password);
     const b = await Book.findOne({ id: req.valid.params.id });
     if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
     await senior.assertOwned(req.user, b.authorId);
+    if (b.status !== 'flagged') { const e = new Error('not_flagged'); e.status = 409; throw e; }
     b.status = b.flagPrevStatus && b.flagPrevStatus !== 'flagged' ? b.flagPrevStatus : 'published';
     b.flagReason = '';
     b.flagNote = '';
@@ -685,6 +810,12 @@ async function unflagBook(req, res) {
     b.flaggedAt = null;
     b.flagPrevStatus = null;
     await b.save();
+
+    // Unflagging settles the open report it created.
+    await Report.updateMany(
+      { storyId: b.id, status: 'pending' },
+      { $set: { status: 'resolved', resolutionNote: 'Book unflagged by editor', resolvedBy: String(req.user.id) } }
+    );
     return { id: b.id, status: b.status };
   });
 }
@@ -713,16 +844,16 @@ async function rotateReferralCode(req, res) {
 module.exports = {
   res, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
   approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
-  rateBook, flagBook, unflagBook, bookUpdate, bookRemove, myAuthors, referralCode, rotateReferralCode,
+  flagBook, unflagBook, myAuthors, referralCode, rotateReferralCode,
   reviewQueue, booksList, completionList, completionApprove, completionReject,
   chapterEditList, bookEditList, authorsList,
   messagesList, messageThread, messageUpdate, messageSend, messagesReadAll,
-  contractTypes,
-  reportResolve, reportDismiss,
+  reportResolve, reportDismiss, reportReopen,
   verificationRequests: (req, res) => verificationList(req, res, 'requests'),
   verificationRecent: (req, res) => verificationList(req, res, 'recent'),
   verificationHistory: (req, res) => verificationList(req, res, 'history'),
   verificationApprove: (req, res) => verificationDecide(req, res, 'approved'),
   verificationReject: (req, res) => verificationDecide(req, res, 'rejected'),
-  contractApplications, contractApprove, contractAppReject,
+  contractApplications, contractApprove, contractAppReject, contractCreate,
+  contractPricing,
 };

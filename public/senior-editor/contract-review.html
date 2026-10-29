@@ -107,6 +107,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 .detail-contract-select{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .detail-contract-select .lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
 .detail-contract-select .lbl i{color:var(--accent)}
+.ct-src{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:20px;background:var(--input-bg);border:1px solid var(--border);color:var(--text-faint);text-transform:none}
+.ct-src.live{color:var(--green);border-color:rgba(22,163,74,.35);background:var(--green-bg)}
 .detail-contract-select select{width:100%;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239694ac'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
 .detail-contract-select select:focus{border-color:var(--accent);outline:none}
 .detail-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
@@ -210,7 +212,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
   </div>
   <div class="panel">
     <div class="panel-head">
-      <div><h2><i class="fas fa-file-signature" style="color:var(--accent)"></i> Contract Review</h2><div class="panel-sub">Select contract type, send to author for signature, approve and sign</div></div>
+      <div><h2><i class="fas fa-file-signature" style="color:var(--accent)"></i> Contract Review</h2><div class="panel-sub">Select a contract, send to author for signature, approve and sign</div></div>
     </div>
     <div class="panel-body">
       <div class="filters">
@@ -229,6 +231,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 <script src="shared/contract-monetization.js?v=4"></script>
 <script src="shared/kyc-panel.js?v=1"></script>
 <script>SeniorEditorSidebar.attach('#dashRoot',{activeItem:'contract-review',title:'Contract Review',subtitle:'Verify author identity documents, set contract terms, and sign',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search...',hideSearch:true});</script>
-<script src="contract-review-service.js?v=7"></script>
+<script src="services/contract-catalog.js?v=5"></script>
+<script src="contract-review-service.js?v=10"></script>
 </body>
 </html>

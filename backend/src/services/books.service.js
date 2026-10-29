@@ -116,9 +116,10 @@ async function getBookDetail(id) {
   });
 }
 
+// Only the author owns a book. Editors flag/unflag; the chief reads. Neither
+// may edit or delete someone else's book, so there is no staff bypass here.
 function canWrite(book, user) {
   if (!user) return false;
-  if ((user.roles || []).some(r => ['admin', 'chief_editor', 'senior_editor'].includes(r))) return true;
   return String(book.authorId) === String(user.id);
 }
 
@@ -191,6 +192,14 @@ async function applyBookProposal({ proposal, reviewerId }) {
   }
   if (data.title) book.slug = slugify(data.title) + '-' + String(book.id).slice(-6);
   await book.save();
+  // An approved publish takes the manuscript's draft chapters live with it.
+  if (book.status === 'published') {
+    const { Chapter } = require('../models/content.model');
+    await Chapter.updateMany(
+      { bookId: String(book.id), status: 'draft' },
+      { $set: { status: 'live' } }
+    );
+  }
   proposal.status = 'approved';
   proposal.reviewerId = reviewerId || null;
   proposal.decidedAt = new Date();

@@ -31,8 +31,9 @@ const contractApplicationSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },
   authorId: { type: String, ref: 'User', required: true, index: true },
   // Books go live with no contract and can sign later, so an application
-  // carries no deal type — the editor assigns one at review.
-  type: { type: String, enum: ['', 'Exclusive_Publishing', 'Non_Exclusive', 'Revenue_Share', 'License_Agreement'], default: '' },
+  // carries no deal type — the editor assigns one at review (copied from the
+  // chief editor's contract template).
+  type: { type: String, default: '', maxlength: 60 },
   status: { type: String, enum: ['none', 'applied', 'review', 'contracted', 'rejected'], default: 'applied', index: true },
   // Identity lives on AuthorVerification (one record per writer) so a badge
   // and a contract never duplicate the same photos.
@@ -127,15 +128,6 @@ const authorVerificationSchema = new mongoose.Schema({
 }, { timestamps: true });
 authorVerificationSchema.index({ userId: 1, status: 1 });
 
-const inviteCodeSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true },
-  createdBy: { type: String, ref: 'User' },
-  authorName: { type: String, default: '' },
-  authorEmail: { type: String, default: '' },
-  status: { type: String, enum: ['active', 'used', 'revoked'], default: 'active', index: true },
-  usedAt: { type: Date, default: null },
-}, { timestamps: true });
-
 const chapterEditSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },
   chapterId: { type: String, ref: 'Chapter', required: true, index: true },
@@ -185,7 +177,6 @@ module.exports = {
   ReviewSubmission: mongoose.model('ReviewSubmission', reviewSubmissionSchema),
   ReviewFeedback: mongoose.model('ReviewFeedback', reviewFeedbackSchema),
   AuthorVerification: mongoose.model('AuthorVerification', authorVerificationSchema),
-  InviteCode: mongoose.model('InviteCode', inviteCodeSchema),
   ChapterEdit: mongoose.model('ChapterEdit', chapterEditSchema),
   BookEdit: mongoose.model('BookEdit', bookEditSchema),
   StoryChange: mongoose.model('StoryChange', storyChangeSchema),

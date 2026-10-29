@@ -41,8 +41,11 @@
     opts = opts || {};
     ensureStyle();
     close();
-    const methods = (window.PaymentService ? PaymentService.methods() : [{ id: 'paystack', name: 'Paystack', icon: 'fas fa-credit-card', hint: '' }]);
-    let method = methods[0].id;
+    const methods = (window.PaymentService ? PaymentService.methods() : []);
+    // No keys on the server = no channel can take money; say so in the sheet
+    // instead of rendering a button that 503s on tap.
+    const ready = methods.length > 0;
+    let method = ready ? methods[0].id : null;
     const ov = document.createElement('div');
     ov.className = 'dps-ov'; ov.id = 'dpsOv';
     ov.innerHTML = '<div class="dps-sheet">'
@@ -56,9 +59,10 @@
           + '<i class="' + m.icon + '"></i><span style="flex:1">' + m.name + '<small>' + (m.hint || '') + '</small></span>'
           + '</button>';
       }).join('') + '</div>'
-      + '<button class="dps-pay" id="dpsPay">Pay ' + esc(opts.price || '') + '</button>'
+      + '<button class="dps-pay" id="dpsPay"' + (ready ? '' : ' disabled') + '>'
+      + (ready ? 'Pay ' + esc(opts.price || '') : 'Payments not enabled yet') + '</button>'
       + '<button class="dps-cancel" id="dpsCancel">Cancel</button>'
-      + '<div class="dps-note">Secured checkout · coins credit after verification.</div>'
+      + '<div class="dps-note">' + (ready ? 'Secured checkout · coins credit after verification.' : 'No payment provider is configured on this server yet.') + '</div>'
       + '</div>';
     document.body.appendChild(ov);
     requestAnimationFrame(function () { ov.classList.add('open'); });

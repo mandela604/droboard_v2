@@ -32,7 +32,9 @@ router.post('/play/verify', requireAuth, moneyLimiter, validate(z.object({ body:
 router.post('/appstore/verify', requireAuth, moneyLimiter, validate(z.object({ body: playBody })), ctrl.appstore);
 
 // Publishable config for inline SDKs (public keys only — never secrets).
-router.get('/config', requireAuth, generalLimiter,
+// No auth: the checkout sheet has to know which channels can actually take
+// money before the reader signs in, otherwise it offers a dead one.
+router.get('/config', generalLimiter,
   async (req, res) => base.wrap(res, async () => ctrl.config()));
 // Provider webhooks (no auth; HMAC/hash verified in controller).
 // NOTE: server.js parses these routes with express.raw — do not move them

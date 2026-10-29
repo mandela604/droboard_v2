@@ -67,6 +67,8 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function fmtN(n) { return Number(n || 0).toLocaleString('en-US'); }
+  function curSym(cur) { return { NGN: '₦', GBP: '£' }[cur] || '$'; }
+  function billingCur() { return (window.DroboardAdPricing && DroboardAdPricing.active()) || 'NGN'; }
   function $(id) { return document.getElementById(id); }
   function toast(m) {
     var t = $('suToast');
@@ -165,7 +167,7 @@
         '<div id="suObj" style="font-size:11px;color:var(--text-faint);margin:-4px 0 12px">' + objectiveLine() + '</div>' +
         '<label class="pg-check" style="display:inline-flex;margin-bottom:12px"><input type="checkbox" id="suCampBudgetOn"' + (d.campHasBudget ? ' checked' : '') + '/> Set a budget</label>' +
         (d.campHasBudget
-          ? '<label class="f-lbl">Budget<input class="f-inp" id="suCampBudget" type="number" min="0" step="500" value="' + (+d.campBudget || 0) + '"/></label>'
+          ? '<label class="f-lbl">Budget (' + billingCur() + ')<input class="f-inp" id="suCampBudget" type="number" min="0" step="500" value="' + (+d.campBudget || 0) + '"/></label>'
           : '<div style="font-size:11px;color:var(--text-faint);margin:-4px 0 12px">No budget — nothing is charged for this campaign.</div>');
     } else {
       html += '<label class="f-lbl">Existing campaign' +
@@ -303,7 +305,7 @@
   function campStatusLine(c) {
     if (!c) return '';
     var bits = [c.status || 'draft'];
-    if (c.hasBudget || c.budget) bits.push((c.currency === 'NGN' ? '₦' : '$') + fmtN(c.budget || 0) + ' · spent ' + fmtN(c.spent || 0));
+    if (c.hasBudget || c.budget) bits.push(curSym(c.currency) + fmtN(c.budget || 0) + ' · spent ' + fmtN(c.spent || 0));
     if (c.startDate || c.endDate) bits.push((c.startDate || '…') + ' → ' + (c.endDate || '…'));
     return bits.join(' · ');
   }
@@ -469,7 +471,7 @@
     var c = camp();
     var campName = _draft.campNew
       ? (_draft.campName || 'New campaign') + ' — created by this save · objective ' + objectiveOf(currentGoalId()).replace(/-/g, ' ') +
-        (_draft.campHasBudget ? ' · budget ' + fmtN(_draft.campBudget) : ' · no budget')
+        (_draft.campHasBudget ? ' · budget ' + curSym(billingCur()) + fmtN(_draft.campBudget) : ' · no budget')
       : 'None';
     if (c) campName = (c.name || c.id) + ' — ' + campStatusLine(c);
     if (c && !c.budget) campName += ' · no budget set';
@@ -1006,6 +1008,9 @@
         endDate: _draft.endDate,
         hasBudget: !!_draft.campHasBudget,
         budget: _draft.campHasBudget ? (+_draft.campBudget || 0) : 0,
+        // The rate card's active currency: budget and spend are denominated
+        // in it, so the two are compared without any exchange rate.
+        currency: (window.DroboardAdPricing && DroboardAdPricing.active()) || 'NGN',
         status: _draft.active ? 'live' : 'draft',
         audienceTargeting: payload.audience,
       }).then(function (c) {

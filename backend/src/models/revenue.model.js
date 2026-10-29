@@ -21,6 +21,10 @@ const revenueConfigSchema = new mongoose.Schema({
   subPlatformPct: { type: Number, default: 50 }, // subscription pool: platform %
   subWritersPct: { type: Number, default: 50 }, // subscription pool: writers % (pro-rata by qualifying reads)
   subscriptionCoinRateNGN: { type: Number, default: 10 }, // per-coin face for sub reads
+  // Commission each payment channel actually keeps, per channel. Web gateways
+  // report the exact fee on verification and that wins; Play reports nothing
+  // per order, so this configured rate is the source of truth for the app.
+  channelFeePct: { type: Map, of: Number, default: {} },
   version: { type: Number, required: true },
   note: { type: String, default: '' },
   updatedBy: { type: String, ref: 'User' },
@@ -41,6 +45,9 @@ const adImpressionSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', index: true },
   bookId: { type: String, ref: 'Book', index: true },
   chapterId: { type: String, ref: 'Chapter' },
+  // Copied at completion so a later ad report can pay the author without
+  // re-resolving the book (ownership can change).
+  authorId: { type: String, ref: 'User', index: true },
   network: { type: String, default: 'admob' }, // admob|adsense|direct
   adUnitId: { type: String, default: '' },
   kind: { type: String, enum: ['rewarded_unlock', 'page', 'banner'], default: 'page', index: true },
@@ -65,13 +72,40 @@ const adRevenueLedgerSchema = new mongoose.Schema({
   page: { type: String, default: '' },
   impressions: { type: Number, default: 0 },
   clicks: { type: Number, default: 0 },
+  // Viewed-from country (Cloudflare CF-IPCountry). Rows split per country so
+  // a book's value can follow the network's per-country rates.
+  country: { type: String, default: '', index: true },
   revenue: { type: Number, default: 0 },
   platformShare: { type: Number, default: 0 },
   authorShare: { type: Number, default: 0 },
+  // Network tag (embed): counted here, paid by the network's own report.
+  network: { type: Boolean, default: false, index: true },
+  billed: { type: Boolean, default: false }, // a campaign bought this slot
+  networkEarningId: { type: String, default: '', index: true },
   paidAt: { type: Date, default: null },
 }, { timestamps: false });
-adRevenueLedgerSchema.index({ date: 1, storyId: 1, adId: 1, slot: 1, page: 1 }, { unique: true });
+adRevenueLedgerSchema.index({ date: 1, storyId: 1, adId: 1, slot: 1, page: 1, country: 1 }, { unique: true });
 adRevenueLedgerSchema.index({ authorId: 1, paidAt: 1 });
+
+// One row per imported network report (AdSense / Adsterra / Monetag period
+// total). The amount is spread over the network impressions counted in the
+// window; re-importing the same window replaces the allocation.
+const networkEarningSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  adId: { type: String, default: '', index: true },
+  network: { type: String, default: '' },
+  country: { type: String, default: '' }, // '' = whole account, else one country's report
+  from: { type: String, required: true },
+  to: { type: String, required: true },
+  amount: { type: Number, required: true },      // as reported, in `currency`
+  currency: { type: String, default: 'USD' },
+  fxRate: { type: Number, default: 1 },          // entered by staff, never guessed
+  amountUsd: { type: Number, default: 0 },
+  allocated: { type: Number, default: 0 },       // ledger rows it was spread over
+  note: { type: String, default: '' },
+  enteredBy: { type: String, default: '' },
+}, { timestamps: true });
+networkEarningSchema.index({ adId: 1, from: 1, to: 1, country: 1 }, { unique: true });
 
 // Per-contract chapter pricing (from contract-monetization component)
 const contractPricingSchema = new mongoose.Schema({
@@ -90,7 +124,9 @@ const contractPricingSchema = new mongoose.Schema({
 const coinRateSchema = new mongoose.Schema({
   key: { type: String, default: 'live', unique: true },
   coinFaceNGN: { type: Number, default: 15 },
-  fx: { type: Map, of: Number, default: {} }, // currency -> NGN per unit, daily
+  fx: { type: Map, of: Number, default: {} }, // currency -> NGN per unit, refreshed from the live feed
+  fxUpdatedAt: { type: Date, default: null },
+  fxSource: { type: String, default: '' },
   bonusExpiryDays: { type: Number, default: 90 },
   dormancyBreakageMonths: { type: Number, default: 12 },
   minChapterCoins: { type: Number, default: 10 },
@@ -102,23 +138,12 @@ const coinRateSchema = new mongoose.Schema({
   locked: { type: String, default: null },
 }, { timestamps: true });
 
-// Daily financial rollup (reports)
-const financialDailySchema = new mongoose.Schema({
-  date: { type: String, required: true, unique: true }, // YYYY-MM-DD
-  revenue: { type: Number, default: 0 },
-  coinSales: { type: Number, default: 0 },
-  payouts: { type: Number, default: 0 },
-  platformIncome: { type: Number, default: 0 },
-  categoryRevenue: { type: Map, of: Number, default: {} },
-}, { timestamps: false });
-financialDailySchema.index({ date: 1 });
-
 module.exports = {
   RevenueConfig: mongoose.model('RevenueConfig', revenueConfigSchema),
   PoolBalance: mongoose.model('PoolBalance', poolBalanceSchema),
   AdImpression: mongoose.model('AdImpression', adImpressionSchema),
   AdRevenueLedger: mongoose.model('AdRevenueLedger', adRevenueLedgerSchema),
+  NetworkEarning: mongoose.model('NetworkEarning', networkEarningSchema),
   ContractPricing: mongoose.model('ContractPricing', contractPricingSchema),
   CoinRate: mongoose.model('CoinRate', coinRateSchema),
-  FinancialDaily: mongoose.model('FinancialDaily', financialDailySchema),
 };

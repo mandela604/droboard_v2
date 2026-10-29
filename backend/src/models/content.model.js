@@ -30,6 +30,13 @@ const bookSchema = new mongoose.Schema({
   flaggedBy: { type: String, default: null },
   flaggedAt: { type: Date, default: null },
   flagPrevStatus: { type: String, default: null },
+  // Review routing: stamped on submit. An assigned writer goes straight to
+  // their senior editor; a reader has no editor yet, so null means the chief
+  // sees it for allocation (the deciding editor is recorded on approve).
+  assignedSeId: { type: String, ref: 'User', default: null, index: true },
+  submittedAt: { type: Date, default: null },
+  // Rejection reason — the author reads it in their workspace.
+  reviewFeedback: { type: String, default: '' },
   // Story-wide structured engagement (poll/prediction/debate attached to the
   // whole book, referenced by chapter n). Chapter-wise engagement lives on
   // Chapter below; story-wide debate posts live in /api/posts.

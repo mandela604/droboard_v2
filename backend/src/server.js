@@ -50,9 +50,15 @@ async function main() {
   app.use('/api/chief', require('./routes/chief-content.routes'));
   app.use('/api/chief', require('./routes/chief-contracts.routes'));
   app.use('/api/chief', require('./routes/chief-editors.routes'));
+  app.use('/api/chief', require('./routes/chief-earnings.routes'));
   app.use('/api/super-admin', require('./routes/admin.routes'));
   app.use('/api', require('./routes/compat.routes'));
   app.use('/api', require('./routes/feed.routes'));
+  // Same router, second prefix: the reader feed calls /api/feed/home,
+  // /api/feed/discover/stories and /api/feed/discover/ads, while the library and
+  // story-detail reads are reached as /api/library/* and /api/stories/:id. One
+  // set of handlers serves both spellings so neither side drifts.
+  app.use('/api/feed', require('./routes/feed.routes'));
   app.use('/api', require('./routes/pricing.routes'));
   app.use('/api/ads', require('./routes/ads.routes'));
   app.use('/api/users', require('./routes/users.routes'));

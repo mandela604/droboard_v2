@@ -12,6 +12,8 @@ const { Book } = require('../models/content.model');
 const { Report, Dispute, Appeal } = require('../models/editorial.model');
 const { Contract } = require('../models/contract.model');
 const { AdStat, ActivityLog } = require('../models/platform.model');
+const { EditorAssignment } = require('../models/chief.model');
+const { Withdrawal, Wallet } = require('../models/money.model');
 
 const USER_ROLES = ['reader', 'writer', 'senior_editor', 'chief_editor', 'finance', 'admin'];
 const QUEUE_TYPES = ['dispute', 'policy', 'contract'];
@@ -56,20 +58,126 @@ async function stats() {
   return { usersByRole, usersTotal, booksByStatus, booksTotal, reportsOpen, contractsPending };
 }
 
-// Full dashboard: counts + queue depths + latest activity (top 5).
+// Full dashboard: page-shaped aggregate (the chief dashboard renders totals,
+// flagged reports, quick actions, editor quotas, payments and activity).
 async function dashboard() {
-  const [counts, disputesOpen, appealsOpen, policiesDraft, recentActivity] = await Promise.all([
+  const [counts, disputesOpen, appealsOpen, pendingContracts, flaggedReports, latestActivity, assignments,
+    pendingWithdrawals, scheduledWallets] = await Promise.all([
     stats(),
     Dispute.countDocuments({ status: { $in: ['open', 'in_review'] } }),
     Appeal.countDocuments({ status: { $in: ['open', 'in_review'] } }),
-    Contract.countDocuments({ status: { $in: ['pending', 'sent'] } }),
-    ActivityLog.find({}).sort({ at: -1 }).limit(5).lean(),
+    Contract.find({ status: { $in: ['pending', 'sent'] } }).select('id').lean(),
+    Report.find({ status: 'pending' }).sort({ filedAt: -1 }).limit(10).lean(),
+    ActivityLog.find({}).sort({ at: -1 }).limit(20).lean(),
+    EditorAssignment.find({}).lean(),
+    Withdrawal.find({ status: { $in: ['requested', 'under_review', 'approved'] } })
+      .sort({ requestedAt: -1 }).limit(10).lean(),
+    Wallet.find({ kind: 'author', nextPayoutAmount: { $gt: 0 } })
+      .sort({ nextPayoutAt: 1 }).limit(10).lean(),
   ]);
+
+  const editorIds = assignments.map(a => String(a.editorId));
+  const editors = editorIds.length
+    ? await User.find({ id: { $in: editorIds } }).select('id fullName username avatar').lean()
+    : [];
+  const who = {};
+  for (const u of editors) who[u.id] = { name: u.fullName || u.username || 'Editor', avatar: u.avatar || '' };
+
+  const editorQuotas = assignments.map(a => {
+    const target = Number(a.quota && (a.quota.target || a.quota.quota)) || 10;
+    const invited = (a.authorIds || []).length;
+    const info = who[String(a.editorId)] || { name: 'Editor', avatar: '' };
+    return {
+      name: info.name,
+      avatar: info.avatar,
+      invited,
+      target,
+      status: invited >= target ? 'ahead' : invited < target / 2 ? 'behind' : 'ok',
+      deadline: (a.quota && a.quota.deadline) || '',
+    };
+  });
+
+  // Payments due: unpaid Withdrawals (author cash-out requests) plus payouts
+  // finance scheduled on the author wallet (Wallet.nextPayoutAmount). Both are
+  // real documents; an empty queue stays empty.
+  const payeeIds = [...new Set(
+    pendingWithdrawals.map(w => w.authorId).concat(scheduledWallets.map(w => w.userId))
+      .filter(Boolean).map(String)
+  )];
+  const payees = payeeIds.length
+    ? await User.find({ id: { $in: payeeIds } }).select('id fullName username avatar').lean()
+    : [];
+  const payeeOf = {};
+  for (const u of payees) payeeOf[u.id] = u;
+  const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+  const dueDate = (d) => (d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
+  const payRow = (u, amount, due, status) => ({
+    name: (u && (u.fullName || u.username)) || 'Author',
+    avatar: (u && u.avatar) || '',
+    role: 'Author',
+    amount: money(amount),
+    due,
+    status,
+  });
+  const paymentsQueue = [
+    ...pendingWithdrawals.map(w => payRow(payeeOf[String(w.authorId)], w.amount, '', 'due')),
+    ...scheduledWallets.map(w => payRow(payeeOf[String(w.userId)], w.nextPayoutAmount, dueDate(w.nextPayoutAt), 'scheduled')),
+  ].slice(0, 5);
+
+  const TYPE_STYLE = {
+    create: ['fa-plus-circle', 'green'],
+    update: ['fa-pen', 'blue'],
+    delete: ['fa-trash', 'red'],
+    login: ['fa-right-to-bracket', 'purple'],
+    payout: ['fa-sack-dollar', 'accent'],
+    review: ['fa-check-circle', 'amber'],
+  };
+  const recentActivity = latestActivity.map(a => {
+    const style = TYPE_STYLE[a.type] || ['fa-circle-info', 'blue'];
+    return {
+      icon: style[0],
+      color: style[1],
+      text: (a.userLabel ? a.userLabel + ' — ' : '') + (a.detail || a.action),
+      time: agoFrom(a.at),
+    };
+  });
+
   return {
+    // Legacy aggregate keys (kept for any other consumer).
     counts,
-    queues: { disputesOpen, appealsOpen, contractsPending: policiesDraft },
+    queues: { disputesOpen, appealsOpen, contractsPending: pendingContracts.length },
+    // Chief dashboard page shape.
+    totalSeniorEditors: counts.usersByRole.senior_editor || 0,
+    totalAuthors: counts.usersByRole.writer || 0,
+    pendingContracts,
+    flaggedReports: flaggedReports.map(r => ({
+      id: r.id,
+      target: r.title || 'Reported item',
+      targetType: 'author',
+      severity: r.severity || 'medium',
+      reason: r.desc || '',
+      reportedBy: r.reporterLabel || 'Reader',
+      filed: r.filedAt ? new Date(r.filedAt).toISOString().slice(0, 10) : '',
+    })),
+    quickActions: [
+      { label: 'Flagged Reports', icon: 'fa-flag', cls: 'red', href: 'reports-flags.html', count: counts.reportsOpen },
+      { label: 'Disputes', icon: 'fa-scale-balanced', cls: 'amber', href: 'disputes-appeals.html', count: disputesOpen },
+      { label: 'Appeals', icon: 'fa-gavel', cls: 'purple', href: 'disputes-appeals.html', count: appealsOpen },
+      { label: 'Pending Contracts', icon: 'fa-file-signature', cls: 'blue', href: 'contracts-payments.html', count: pendingContracts.length },
+    ],
+    editorQuotas,
+    paymentsQueue,
     recentActivity,
   };
+}
+
+function agoFrom(d) {
+  if (!d) return '';
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+  if (m < 60) return Math.max(1, m) + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
 }
 
 async function queues(type, query) {

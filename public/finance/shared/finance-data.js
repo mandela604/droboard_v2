@@ -33,7 +33,7 @@
       openDisputes: 4,
       quickActions: [
         { label:'Review Withdrawals',       icon:'fa-building-columns',  cls:'blue',   count:9,  href:'withdrawals.html' },
-        { label:'Process Author Payments',  icon:'fa-money-check-dollar',cls:'accent', href:'author-payments.html' },
+        { label:'Configure Store Catalog',  icon:'fa-coins',             cls:'accent', href:'coin-transactions.html' },
         { label:'Resolve Payment Disputes', icon:'fa-scale-balanced',    cls:'red',    count:4,  href:'payment-disputes.html' },
         { label:'Generate Financial Report',icon:'fa-chart-pie',         cls:'purple', href:'financial-reports.html' },
       ],

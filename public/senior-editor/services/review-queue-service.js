@@ -122,22 +122,15 @@ const CURRENT_EDITOR = { name: 'Chioma Reddy', avatar: 'https://i.pravatar.cc/10
 
 function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
 
-/* "Backend" contract types — tries a real endpoint first, falls back to demo
-   data since there's no live contracts API yet. */
-const DEMO_CONTRACTS = [
-  { id: 'standard', label: 'Standard Royalty Contract', detail: '60/40 author-platform split · non-exclusive', type: 'Non_Exclusive', termMonths: 12, revenueSplit: 60 },
-  { id: 'premium',  label: 'Premium Exclusive Contract', detail: '70/30 author-platform split · exclusive, 12-month term', type: 'Exclusive_Publishing', termMonths: 12, revenueSplit: 70 },
-  { id: 'flex',     label: 'Flex Starter Contract',       detail: '50/50 split · month-to-month, for new authors', type: 'Non_Exclusive', termMonths: 1, revenueSplit: 50 },
-];
-let CONTRACTS = [];
+/* Contract offers come from the chief editor's active templates
+   (services/contract-catalog.js). The demo list shows only when the backend
+   has no active template to offer. */
+let CONTRACTS = [], CONTRACTS_LIVE = false;
 async function loadContracts(){
-  try{
-    const live = await callBackend('/contract-types');
-    if(!Array.isArray(live) || !live.length) throw new Error('no contract types');
-    CONTRACTS = live;
-  }catch(err){
-    CONTRACTS = JSON.parse(JSON.stringify(DEMO_CONTRACTS));
-  }
+  if(!window.ContractCatalog) return;
+  const cat = await window.ContractCatalog.load();
+  CONTRACTS = cat.items;
+  CONTRACTS_LIVE = cat.live;
 }
 
 const PER_PAGE = 4;
@@ -200,7 +193,7 @@ async function init(){
     if (action === 'cwiz-next'){
       if(wizardStep === 1){
         const cid = document.getElementById('contractType').value;
-        if(!cid){ document.getElementById('contractModalError').textContent = 'Please select a contract type.'; document.getElementById('contractModalError').classList.add('show'); return; }
+        if(!cid){ document.getElementById('contractModalError').textContent = 'Please select a contract.'; document.getElementById('contractModalError').classList.add('show'); return; }
         document.getElementById('contractModalError').classList.remove('show');
         openWizard(2);
       } else if(wizardStep === 2){
@@ -476,7 +469,7 @@ let totalChaptersForBook = 5;
 
 function updateContractHint(){
   const c = CONTRACTS.find(x => x.id === document.getElementById('contractType').value);
-  document.getElementById('contractHint').textContent = c ? c.detail : '';
+  document.getElementById('contractHint').textContent = c ? c.detail + (CONTRACTS_LIVE ? '' : ' · demo list') : '';
 }
 
 /* monetization table lives in shared/contract-monetization.js (mzMonet) */
@@ -591,9 +584,7 @@ async function submitAccept(){
   try {
     const feedback = 'Accepted under ' + contract.label + '. Free chapters: ' + freeChapters + '. Ad unlock: ' + (allowAdUnlock ? 'ON (' + adsPerChapter + ' ads/chapter, ' + adCount + ' chapters)' : 'OFF') + '. Pricing: ' + (pricingSummary || 'all free') + '.';
     await decideReview(s.id, 'approved', feedback, {
-      type: contract.type,
-      termMonths: contract.termMonths,
-      revenueSplit: contract.revenueSplit,
+      templateId: contract.id,
       note: 'Offer created from the review queue acceptance.',
       pricing: { freeChapters: freeChapters, adsPerChapter: adsPerChapter, allowAdUnlock: allowAdUnlock, rows: t.rows || [] },
     });

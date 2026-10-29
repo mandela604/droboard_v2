@@ -20,11 +20,14 @@ const postSchema = new mongoose.Schema({
   reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   sharesCount: { type: Number, default: 0 },
   sharesByChannel: { type: Map, of: Number, default: {} }, // channel -> count
-  poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], total: { type: Number, default: 0 }, votedBy: [{ type: String }] },
+  // One record per voter, with the choice they made: the same user cannot vote
+  // twice, and a retract knows which option/side to decrement. The counts stay
+  // denormalized on the options for cheap reads.
+  poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], total: { type: Number, default: 0 }, votes: [{ user: { type: String, ref: 'User' }, opt: Number }] },
   // debate posts (feed/profile/droboard composers): droboard sends {motion},
   // feed sends {question,prompt,forText,againstText} — both stored; renderer
   // reads motion||question and forText/againstText defaults in post-card.
-  debateData: { motion: String, question: String, prompt: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 } },
+  debateData: { motion: String, question: String, prompt: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 }, votes: [{ user: { type: String, ref: 'User' }, side: { type: String, enum: ['for', 'against'] } }] },
   shoutout: {
     userId: { type: String, ref: 'User' }, id: String, name: String, avatar: String,
     handle: String, tagline: String, role: String, stats: { type: mongoose.Schema.Types.Mixed, default: null },

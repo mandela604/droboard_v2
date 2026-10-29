@@ -85,6 +85,12 @@ async function saveBookChapter(req, res) {
   }));
 }
 
+async function submitBook(req, res) {
+  return base.wrap(res, async () => author.submitBook({
+    userId: req.user.id, bookId: req.valid.params.id,
+  }));
+}
+
 async function requestBookChange(req, res) {
   return base.wrap(res, async () => {
     const out = await author.requestBookChange({
@@ -185,7 +191,7 @@ async function submitVerification(req, res) {
 }
 
 module.exports = {
-  dashboard, books, overview, book, bookChaptersList, saveBookChapter, requestBookChange,
+  dashboard, books, overview, book, bookChaptersList, saveBookChapter, submitBook, requestBookChange,
   characters, saveCharacter, deleteCharacter,
   plot, savePlot, bookChapters, contracts, applyContract, signContract, declineContract, applyCompletion,
   applyVip, chapterReviews, chapterEdits, bookEdits, launchKit, saveLaunchKit,

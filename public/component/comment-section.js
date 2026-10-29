@@ -538,24 +538,6 @@
     }
   }
 
-  /* Impression counts on first view (not on fill) — in-flow slots may sit
-     below the fold or inside a collapsed section. */
-  function trackOnView(slotEl, adId) {
-    if (!adId) return;
-    try {
-      if (!('IntersectionObserver' in window)) { _trackAd(adId, 'impression'); return; }
-      const ob = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          if (en.isIntersecting) {
-            try { ob.disconnect(); } catch (e) {}
-            _trackAd(adId, 'impression');
-          }
-        });
-      }, { threshold: 0.5 });
-      ob.observe(slotEl);
-    } catch (e) { _trackAd(adId, 'impression'); }
-  }
-
   function _newRx(reactions) {
     const o = { userRx: null };
     reactions.forEach(r => (o[r.id] = 0));

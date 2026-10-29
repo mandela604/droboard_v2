@@ -415,11 +415,11 @@ async function reviews(user, query) {
         chapters: b.chapterCount || 0,
         kind: b.kind || 'long',
         status: 'pending',
-        feedback: '',
-        assignedSeId: '',
+        feedback: b.reviewFeedback || '',
+        assignedSeId: b.assignedSeId || '',
         kyc: kycOf(verifs[String(b.authorId)]),
-        submitted: timeAgo(b.createdAt),
-        submittedAt: iso(b.createdAt),
+        submitted: timeAgo(b.submittedAt || b.createdAt),
+        submittedAt: iso(b.submittedAt || b.createdAt),
       },
     });
   }
@@ -747,7 +747,7 @@ async function authors(user, query) {
   ]);
 
   const authorIds = docs.map(d => String(d.id));
-  const [storyRows, earnRows] = await Promise.all([
+  const [storyRows, earnRows, bookRows] = await Promise.all([
     authorIds.length
       ? Book.aggregate([
         { $match: { authorId: { $in: authorIds } } },
@@ -760,9 +760,28 @@ async function authors(user, query) {
         { $group: { _id: '$authorId', total: { $sum: '$amount' } } },
       ])
       : [],
+    authorIds.length
+      ? Book.find({ authorId: { $in: authorIds } }).select('id authorId').lean()
+      : [],
   ]);
   const stories = new Map(storyRows.map(r => [String(r._id), r.n]));
   const earnings = new Map(earnRows.map(r => [String(r._id), r.total]));
+
+  // A warning is an open report against one of the author's books (flagging a
+  // book files one too), so the count is the real queue, not a placeholder.
+  const authorOfBook = new Map(bookRows.map(b => [String(b.id), String(b.authorId)]));
+  const warningRows = bookRows.length
+    ? await Report.aggregate([
+      { $match: { storyId: { $in: [...authorOfBook.keys()] }, status: 'pending' } },
+      { $group: { _id: '$storyId', n: { $sum: 1 } } },
+    ])
+    : [];
+  const warningsByAuthor = new Map();
+  for (const r of warningRows) {
+    const aid = authorOfBook.get(String(r._id));
+    if (aid) warningsByAuthor.set(aid, (warningsByAuthor.get(aid) || 0) + r.n);
+  }
+  const warningTotal = [...warningsByAuthor.values()].reduce((s, n) => s + n, 0);
 
   const myOid = me ? String(me._id) : '';
   const code = (me && me.editorInviteCode) || '';
@@ -781,7 +800,7 @@ async function authors(user, query) {
       genre: (u.genres && u.genres[0]) || u.authorGenre || '—',
       stories: stories.get(String(u.id)) || 0,
       earnings: earned > 0 ? '$' + Math.round(earned).toLocaleString('en-US') : '—',
-      warnings: 0,
+      warnings: warningsByAuthor.get(String(u.id)) || 0,
       source: invited ? 'invited' : 'assigned',
       via: invited ? 'invite' : 'assigned',
       status: u.status || 'active',
@@ -806,7 +825,7 @@ async function authors(user, query) {
       assigned: Math.max(0, total - invitedCount),
       active,
       suspended,
-      warnings: 0,
+      warnings: warningTotal,
     },
   };
 }
@@ -966,29 +985,60 @@ async function activity(user, query) {
   return { items: await auditRows(items), total, page, limit };
 }
 
-/* ── Contract type catalog (review-queue wizard) ──────────────────────── */
+/* ── Contract templates → offer terms ─────────────────────────────────── */
 
-// Catalog shown in the review-queue acceptance wizard. `type`/`termMonths`/
-// `revenueSplit` are what the backend needs to turn the choice into a real
-// Contract offer, so the page never has to hard-code the mapping.
-async function contractTypes() {
-  return [
-    { id: 'standard', label: 'Standard Royalty Contract', detail: '60/40 author-platform split · non-exclusive', type: 'Non_Exclusive', termMonths: 12, revenueSplit: 60 },
-    { id: 'premium', label: 'Premium Exclusive Contract', detail: '70/30 author-platform split · exclusive, 12-month term', type: 'Exclusive_Publishing', termMonths: 12, revenueSplit: 70 },
-    { id: 'flex', label: 'Flex Starter Contract', detail: '50/50 split · month-to-month, for new authors', type: 'Non_Exclusive', termMonths: 1, revenueSplit: 50 },
-    { id: 'revenue', label: 'Revenue Share Agreement', detail: 'Configurable split · performance based', type: 'Revenue_Share', termMonths: 12, revenueSplit: 50 },
-  ];
+// The chief editor owns contract definitions. A senior editor's offer is just
+// "this template": every Contract field below is copied from the template.
+function monthsFromTerm(term) {
+  const s = String(term || '').toLowerCase();
+  if (s.includes('indefinite')) return 60;
+  const n = parseInt(term, 10);
+  if (!n) return 12;
+  return Math.min(60, s.includes('year') ? n * 12 : n);
 }
 
-const DEAL_TYPES = ['Exclusive_Publishing', 'Non_Exclusive', 'Revenue_Share', 'License_Agreement'];
+async function resolveTemplate(templateId) {
+  const { ContractTemplate } = require('../models/contract.model');
+  const tpl = await ContractTemplate.findOne({ id: String(templateId) }).lean();
+  if (!tpl) { const e = new Error('template_not_found'); e.status = 404; throw e; }
+  if (tpl.status !== 'active') { const e = new Error('template_not_active'); e.status = 409; throw e; }
+  const termMonths = Math.min(60, Math.max(1, monthsFromTerm(tpl.termLength)));
+  return {
+    templateId: tpl.id,
+    type: tpl.type || 'Publishing',
+    termMonths,
+    duration: tpl.termLength || termMonths + ' months',
+    revenueSplit: tpl.royaltyRate == null ? undefined : Math.round(tpl.royaltyRate),
+  };
+}
+
+// The offer's monetization block — identical on both offer surfaces (the
+// review-queue acceptance and Contract Review's send). Signing re-saves it
+// with status 'signed'.
+async function saveOfferPricing(contractId, bookId, pricing, status) {
+  if (!pricing) return null;
+  const rows = Array.isArray(pricing.rows) ? pricing.rows : [];
+  return ContractPricing.findOneAndUpdate(
+    { contractId },
+    {
+      contractId,
+      bookId,
+      freeChapters: Number(pricing.freeChapters) || 0,
+      adsPerChapter: Number(pricing.adsPerChapter) || 0,
+      allowAdUnlock: pricing.allowAdUnlock !== false,
+      rows,
+      paidCount: rows.filter(r => !r.free).length,
+      status: status || 'pending',
+    },
+    { upsert: true, new: true }
+  );
+}
 
 // "Accept for Contract" — the manuscript approval and the offer are one action
 // for the editor. Identity is the gate: no offer without an approved KYC.
 async function offerContract(user, { bookId, authorId, terms }) {
   const t = terms || {};
-  const type = DEAL_TYPES.includes(t.type) ? t.type : 'Non_Exclusive';
-  const termMonths = Math.min(60, Math.max(1, parseInt(t.termMonths, 10) || 12));
-  const revenueSplit = Math.min(100, Math.max(0, parseInt(t.revenueSplit, 10) || 60));
+  const offer = await resolveTemplate(t.templateId);
 
   const v = await AuthorVerification.findOne({ userId: String(authorId) }).lean();
   if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
@@ -997,23 +1047,24 @@ async function offerContract(user, { bookId, authorId, terms }) {
   let app = await ContractApplication.findOne({ bookId, authorId, status: { $in: ['applied', 'review'] } });
   if (app) {
     app.status = 'review';
-    app.type = type;
+    app.type = offer.type;
     app.reviewerId = String(user.id);
     app.decidedAt = now;
     await app.save();
   } else {
     app = await ContractApplication.create({
-      bookId, authorId, type, status: 'review',
+      bookId, authorId, type: offer.type, status: 'review',
       reviewerId: String(user.id), decidedAt: now, verificationId: v.id,
     });
   }
 
   const contract = await Contract.create({
-    bookId, authorId, type, status: 'sent', sentAt: now,
+    bookId, authorId, type: offer.type, templateId: offer.templateId,
+    status: 'sent', sentAt: now,
     editorId: String(user.id),
-    duration: termMonths + ' months',
-    termMonths,
-    revenueSplit,
+    duration: offer.duration,
+    termMonths: offer.termMonths,
+    revenueSplit: offer.revenueSplit,
     advance: Number(t.advance) || 0,
     authorNote: String(t.note || '').slice(0, 1000),
   });
@@ -1021,24 +1072,7 @@ async function offerContract(user, { bookId, authorId, terms }) {
   await Book.updateOne({ id: bookId }, { $set: { contractStatus: 'review' } });
 
   // Monetization terms collected during acceptance; signing locks them.
-  const pricing = t.pricing;
-  if (pricing) {
-    const rows = Array.isArray(pricing.rows) ? pricing.rows : [];
-    await ContractPricing.findOneAndUpdate(
-      { contractId: contract.id },
-      {
-        contractId: contract.id,
-        bookId,
-        freeChapters: Number(pricing.freeChapters) || 0,
-        adsPerChapter: Number(pricing.adsPerChapter) || 0,
-        allowAdUnlock: pricing.allowAdUnlock !== false,
-        rows,
-        paidCount: rows.filter(r => !r.free).length,
-        status: 'pending',
-      },
-      { upsert: true }
-    );
-  }
+  await saveOfferPricing(contract.id, bookId, t.pricing, 'pending');
 
   try {
     const { notify } = require('./notifications.service');
@@ -1056,7 +1090,7 @@ module.exports = {
   dashboard, reviews, books, completions, decideCompletion,
   chapterEdits, bookEdits, authors,
   messages, thread, messageUpdate, messageSend, messagesReadAll,
-  activity, contractTypes, offerContract,
+  activity, offerContract, resolveTemplate, saveOfferPricing,
   // exported for tests
   _timeAgo: timeAgo, _diffOf: diffOf,
 };

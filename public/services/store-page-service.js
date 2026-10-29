@@ -1,13 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════
    STORE PAGE SERVICE (call-and-render)
    Page-inline logic moved verbatim from Pages/store.html.
-   Catalog demo-driven until backend store catalog lands; checkout is live
-   (server-verified, no local crediting).
+   Catalog comes from GET /api/store (the finance console's own rows) with the
+   demo catalog as fallback; checkout is live (server-verified, no local crediting).
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const USE_API = false, API_BASE = '/api';
+  const API_BASE = '/api';
 
   let selectedPack = null;
   let currentTab = 'coins';
@@ -30,20 +30,34 @@
   }
 
   function renderBalance(data) {
+    const b = data.balance || {};
+    const coins = Number(b.coins) || 0;
+    const bonus = Math.max(0, Math.min(coins, Number(b.bonus) || 0));
+    /* Bonus is part of the total, never extra to it, so it is shown as a tag on
+       the number the reader already knows — and says what it will not do. */
     document.getElementById('balanceCard').innerHTML = `
       <div class="balance-label">YOUR BALANCE</div>
       <div class="balance-row">
         <div class="balance-icon"><i class="fas fa-coins"></i></div>
-        <div class="balance-coins">${data.balance.coins.toLocaleString()}</div>
+        <div class="balance-coins">${coins.toLocaleString()}</div>
       </div>
-      <div class="balance-level"><i class="fas fa-gem" style="margin-right:4px"></i>${data.balance.level} Member</div>`;
+      ${bonus > 0 ? `<div class="balance-split">
+        <span class="balance-chip"><i class="fas fa-gift"></i>${bonus.toLocaleString()} bonus · reading only</span>
+        <span class="balance-chip"><i class="fas fa-heart"></i>${(coins - bonus).toLocaleString()} can gift</span>
+      </div>` : ''}`;
   }
+
+  // Card chrome is typed by Finance into the catalog, so it is staff-authored
+  // text landing in innerHTML on every reader's store page: only a bare
+  // font-awesome class name and a #hex survive. Anything else falls back.
+  function safeIcon(v, dflt) { return /^fa-[a-z0-9-]+$/i.test(String(v || '')) ? v : dflt; }
+  function safeColor(v, dflt) { return /^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? v : dflt; }
 
   function renderPacks(packs) {
     document.getElementById('packsGrid').innerHTML = packs.map(p => `
       <div class="pack-card" data-pack-id="${p.id}" onclick="selectPack('${p.id}')">
         ${p.badge ? `<div class="pack-badge${p.badge === 'Best Value' ? ' green' : ''}">${p.badge}</div>` : ''}
-        <div class="pack-coins"><i class="fas fa-coins"></i>${p.coins.toLocaleString()}</div>
+        <div class="pack-coins"><i class="fas ${safeIcon(p.icon, 'fa-coins')}" style="color:${safeColor(p.color, 'var(--gold,#b45309)')}"></i>${p.coins.toLocaleString()}</div>
         <div class="pack-label">coins</div>
         <div class="pack-price">${priceFor(p)}</div>
       </div>`).join('');
@@ -52,7 +66,7 @@
   function renderBundles(bundles) {
     document.getElementById('bundlesList').innerHTML = bundles.map(b => `
       <div class="bundle-card" onclick="selectBundle('${b.id}')">
-        <div class="bundle-icon" style="background:${b.color}"><i class="fas ${b.icon}"></i></div>
+        <div class="bundle-icon" style="background:${safeColor(b.color, '#7c3aed')}"><i class="fas ${safeIcon(b.icon, 'fa-gift')}"></i></div>
         <div class="bundle-info">
           <div class="bundle-name">${b.name}</div>
           <div class="bundle-coins">${b.coins.toLocaleString()} coins</div>
@@ -63,68 +77,89 @@
   }
 
   function renderRewards(rewards) {
-    // Earn Coins keeps Watch Ad only — everything else is cut.
-    const list = (rewards || []).filter(function (r) { return r && r.type === 'watch_ad'; });
-    document.getElementById('rewardsList').innerHTML = list.map(r => `
+    // Every task type the server is willing to pay for is listed: the backend
+    // drops anything half-configured (no ad URL, bad video id, no cooldown), so
+    // a card here is a task whose claim will actually be honoured.
+    const list = (rewards || []).filter(function (r) { return r && Number(r.coins) > 0; });
+    let soonest = 0;
+    document.getElementById('rewardsList').innerHTML = list.map(r => {
+      const p = window.DroboardEarn ? DroboardEarn.pending(r.code || r.id) : null;
+      const left = p ? DroboardEarn.waitSec(p) : 0;
+      if (left > 0) soonest = soonest ? Math.min(soonest, left) : left;
+      const btn = p
+        ? (left > 0
+            ? `<button class="reward-btn" disabled>${left}s left</button>`
+            : `<button class="reward-btn" onclick="handleEarn('${r.id}')">Claim +${p.coins || r.coins}</button>`)
+        : `<button class="reward-btn" ${r.available ? '' : 'disabled'} onclick="handleEarn('${r.id}')">${r.needsProof ? 'Start' : 'Claim'}</button>`;
+      const hint = r.type === 'blog_read' ? ' · ' + (r.pagesRequired || 3) + ' pages, ' + (r.minWatchSec || 0) + 's'
+        : (r.needsWatch && r.minWatchSec) ? ' · ' + r.minWatchSec + 's on the task'
+        : '';
+      return `
       <div class="reward-card">
         <div class="reward-icon"><i class="fas ${r.icon}"></i></div>
         <div class="reward-info">
           <div class="reward-action">${r.action}</div>
-          <div class="reward-meta">Every ${r.cooldown}${r.type==='blog_read'?' · '+(r.pagesRequired||3)+' pages':''}${r.type==='youtube_watch' && r.minWatchSec ? ' · '+r.minWatchSec+'s watch':''}</div>
+          <div class="reward-meta">Every ${r.cooldown}${hint}</div>
         </div>
         <div class="reward-coins"><i class="fas fa-coins"></i>+${r.coins}</div>
-        <button class="reward-btn" ${r.available ? '' : 'disabled'} onclick="handleEarn('${r.id}')">Claim</button>
-      </div>`).join('');
+        ${btn}
+      </div>`;
+    }).join('');
+    // Redraw the moment the shortest countdown lands, so a waiting card becomes
+    // a Claim button without a per-second timer.
+    if (soonest && window.DroboardEarn) {
+      clearTimeout(renderRewards._t);
+      renderRewards._t = setTimeout(function () {
+        if (storeData && storeData.adRewards) renderRewards(storeData.adRewards);
+      }, soonest * 1000 + 400);
+    }
   }
+  function fmtWait(sec){
+    sec = Math.max(1, Math.round(Number(sec) || 0));
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.round(sec / 60) + ' min';
+    return Math.round(sec / 3600) + ' hr';
+  }
+  function demoCredit(r){
+    if (window.StoreService && StoreService.addCoins) {
+      StoreService.addCoins(r.coins);
+      storeData.balance = StoreService.getBalance();
+      renderBalance(storeData);
+    }
+  }
+  function credited(coins, balance) {
+    if (balance != null && window.StoreService && StoreService.setServerBalance) StoreService.setServerBalance(balance);
+    storeData.balance = StoreService.getBalance();
+    renderBalance(storeData);
+    toast('✅ +' + coins + ' coins credited');
+    renderRewards(storeData.adRewards);
+  }
+  /* One tap, whatever the task type. DroboardEarn owns the protocol: start (the
+     server hands out a single-use token + the destination) → do the task →
+     claim with that token. The server refuses an early claim, a replayed token
+     and any coin amount the client tried to bring itself, so there is no
+     "credit 2s after opening a tab" anymore. A demo credit only happens with
+     the backend unreachable AND a dev host. */
   function handleEarn(id){
-    const r=(storeData&&storeData.adRewards?storeData.adRewards:[]).find(x=>x.id===id);
-    if(!r) return toast('Claiming…');
-    if(r.type==='blog_read'){
-      const pages=r.pagesRequired||3;
-      const url=r.blogUrl||('blog.html?cat='+(r.blogCategory||'tech'));
-      // support both relative Pages/blog.html and full https://
-      const target = url.includes('http') ? url : url + (url.includes('?')?'&':'?') + 'earn='+encodeURIComponent(id);
-      // check per-category progress if internal blog, else generic
-      const cat=r.blogCategory||'tech';
-      const key='dro_blog_read_ids_'+cat;
-      let prog=0; try{ const arr=JSON.parse(localStorage.getItem(key)||'[]'); prog=Array.isArray(arr)?arr.length:0; }catch(e){}
-      if(prog>=pages){
-        if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
-        localStorage.setItem(key, JSON.stringify([]));
-        return toast('🎉 +'+r.coins+' coins for reading '+pages+' blog pages!');
+    const r = (storeData && storeData.adRewards ? storeData.adRewards : []).find(x => x.id === id);
+    if (!r) return toast('This reward is no longer available');
+    if (!window.DroboardEarn) return toast('Earn service did not load');
+    DroboardEarn.tap(r).then(function (res) {
+      if (!res) return;
+      if (res.kind === 'ok') {
+        if (res.coins) return credited(res.coins, res.balance);
+        toast('Do the task, then come back to claim +' + (res.pending && res.pending.coins || r.coins) + ' coins');
+        renderRewards(storeData.adRewards);
+        return;
       }
-      window.location.href=target;
-      return;
-    }
-    if(r.type==='youtube_sub'){
-      const ch=r.channelId||r.channelUrl||'';
-      const url= ch.includes('http')?ch:'https://youtube.com/channel/'+ch+'?sub_confirmation=1';
-      window.open(url,'_blank');
-      setTimeout(()=>{
-        if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
-        toast('✅ Subscribed! +'+r.coins+' coins');
-      }, 2000);
-      return;
-    }
-    if(r.type==='youtube_watch'){
-      const vid=r.videoId||'';
-      window.location.href='youtube-earn.html?vid='+encodeURIComponent(vid)+'&coins='+r.coins+'&sec='+(r.minWatchSec||60);
-      return;
-    }
-    // default (watch_ad etc): production opens the configured ad/offerwall
-    // URL, then credits after a 2s grace (same pattern as youtube_sub).
-    // Rewards saved without a URL (older demo data) keep the local credit.
-    const adUrl = r.adUrl || (r.meta && r.meta.adUrl) || '';
-    if (adUrl) {
-      window.open(adUrl, '_blank');
-      setTimeout(()=>{
-        if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
-        toast('Ad opened — +'+r.coins+' coins');
-      }, 2000);
-      return;
-    }
-    if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(r.coins); storeData.balance=StoreService.getBalance(); renderBalance(storeData); }
-    toast('Claiming +'+r.coins+' coins…');
+      if (res.kind === 'cooldown') return toast('⏳ Wait ' + fmtWait(res.retryAfterSec) + ' before claiming this again');
+      if (res.kind === 'early') return toast('⏳ Stay on the task ' + fmtWait(res.retryAfterSec) + ' longer');
+      if (res.kind === 'offline') {
+        if (DroboardEarn.isLocal()) { demoCredit(r); toast('🎉 +' + r.coins + ' coins (demo — backend offline)'); return; }
+        return toast('Could not reach the server — try again');
+      }
+      toast(res.msg || 'Could not claim');
+    });
   }
 
   function renderSubscriptions(subs) {
@@ -192,7 +227,8 @@
       const res = await fetch('/api/wallet/balance', { credentials: 'include' });
       if (!res.ok) return;
       const j = await res.json();
-      storeData.balance = { coins: j.coins != null ? j.coins : 0, level: j.level || 'Starter' };
+      if (window.StoreService && StoreService.setServerBalance) StoreService.setServerBalance(j);
+      storeData.balance = StoreService.getBalance();
       renderBalance(storeData);
     } catch (e) {}
   }
@@ -214,7 +250,7 @@
         },
         onError: function (err) {
           if (!err) { toast('Payment failed'); return; }
-          if (err.message === 'paystack_not_configured' || err.message === 'flutterwave_not_configured') toast('Payments not enabled yet');
+          if (err.message === 'paystack_not_configured' || err.message === 'flutterwave_not_configured' || err.message === 'no_provider_configured') toast('Payments not enabled yet');
           else if (err.message === 'store_billing_unavailable') toast('In-app billing coming soon');
           else if (err.message === 'email_required') toast('Add an email to your profile first');
           else toast('Payment failed' + (err.status ? ' (' + err.status + ')' : ''));
@@ -223,10 +259,9 @@
     });
   }
 
-  /* ── Reader receipts + "report a charge" ──
-     Every successful checkout is logged locally so the reader can raise a
-     dispute against a specific purchase; that dispute lands on the finance
-     Payment Disputes page through the shared DroboardDisputes store. */
+  /* ── Reader "report a problem" ──
+     Successful checkouts and gift tips are logged locally so a report can name
+     the exact purchase; it reaches finance via the shared DroboardDisputes store. */
   var RECEIPTS_KEY = 'dro_reader_receipts';
   function readerName() {
     var D = window.DemoData || {};
@@ -234,6 +269,25 @@
   }
   function readReceipts() {
     try { var v = JSON.parse(localStorage.getItem(RECEIPTS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  /* Server history wins over the local log: the ids are real CoinTransaction
+     ids, so a report can name the exact charge finance will find in the ledger. */
+  function writeServerReceipts(items) {
+    try {
+      var list = items.slice(0, 20).map(function (t) {
+        var title = (t.note || t.type || 'Purchase').split(' — ')[0];
+        return {
+          id: String(t.id), title: title, sub: t.type, price: (t.coins || 0).toLocaleString() + ' coins',
+          amount: Number(t.fiatAmount) || 0, usd: 0, kind: t.type, at: t.at,
+        };
+      });
+      if (list.length) localStorage.setItem(RECEIPTS_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+  function loadHistory() {
+    return fetch(API_BASE + '/wallet/transactions', { credentials: 'include' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .catch(function () { return null; });
   }
   function recordReceipt(item, receipt) {
     try {
@@ -248,63 +302,44 @@
       });
       localStorage.setItem(RECEIPTS_KEY, JSON.stringify(list.slice(0, 20)));
     } catch (e) {}
-    renderPurchases();
   }
-  function disputeFor(txnId) {
-    if (!window.DroboardDisputes) return null;
-    return DroboardDisputes.list().find(function (d) { return d.txnId === txnId; }) || null;
-  }
-  function renderPurchases() {
-    var box = document.getElementById('purchaseList');
-    var sec = document.getElementById('problemSection');
-    if (!box || !sec) return;
+  var FIELD = 'width:100%;padding:9px;border-radius:9px;border:1px solid var(--divider);font-family:inherit;font-size:12.5px;margin-bottom:6px';
+  function openStoreReport() {
+    var slot = document.getElementById('reportSlot');
+    if (!slot) return;
+    if (slot.childElementCount) { slot.innerHTML = ''; return; }
     var list = readReceipts();
-    sec.style.display = list.length ? 'block' : 'none';
-    box.innerHTML = list.length ? list.map(function (r) {
-      var d = disputeFor(r.id);
-      var badge = d ? '<span style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;background:rgba(255,45,106,.1);color:var(--pink)">' + (d.status === 'open' ? 'Dispute open' : d.status) + '</span>' : '';
-      return '<div class="purchase-row" data-receipt="' + r.id + '" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--divider)">' +
-        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">' + r.title + '</div>' +
-        '<div style="font-size:11px;color:var(--gray-600)">' + r.sub + ' · ' + new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</div></div>' +
-        badge +
-        '<span style="font-size:12.5px;font-weight:800">' + r.price + '</span>' +
-        (d ? '' : '<button class="report-btn" data-report="' + r.id + '" style="font-size:11px;font-weight:700;color:var(--pink);background:none;border:1px solid rgba(255,45,106,.35);border-radius:8px;padding:5px 9px">Report</button>') +
-        '</div>';
-    }).join('') : '';
-  }
-  function openReport(txnId) {
-    var r = readReceipts().find(function (x) { return x.id === txnId; });
-    if (!r) return;
-    var box = document.getElementById('purchaseList');
-    var row = box && box.querySelector('[data-receipt="' + txnId + '"]');
-    if (!row) return;
-    row.innerHTML = '<div style="flex:1">' +
-      '<div style="font-size:12px;font-weight:700;margin-bottom:6px">What went wrong with ' + r.title + ' (' + r.price + ')?</div>' +
-      '<select id="reportReasonSel" style="width:100%;padding:8px;border-radius:9px;border:1px solid var(--divider);font-family:inherit;font-size:12px;margin-bottom:6px">' +
+    var opts = list.slice(0, 5).map(function (r) {
+      return '<option value="' + r.id + '">' + r.title + ' — ' + r.price + ' · ' + new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</option>';
+    }).join('');
+    slot.innerHTML = '<div style="border:1px solid var(--divider);border-radius:14px;padding:12px;margin-bottom:14px">' +
+      '<div style="font-size:12.5px;font-weight:800;margin-bottom:8px">What went wrong?</div>' +
+      (opts ? '<select id="reportItem" style="' + FIELD + '">' + opts + '<option value="other">Something else</option></select>' : '') +
+      '<select id="reportReasonSel" style="' + FIELD + '">' +
       '<option>Coins were not credited</option><option>Gift was not delivered</option><option>Charged twice</option><option>Charged the wrong amount</option><option>Other</option></select>' +
-      '<textarea id="reportNote" rows="2" placeholder="Add details (optional)" style="width:100%;padding:8px;border-radius:9px;border:1px solid var(--divider);font-family:inherit;font-size:12px"></textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:8px"><button id="reportCancel" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--divider);background:none;font-size:12px;font-weight:700">Cancel</button>' +
-      '<button id="reportSend" style="flex:1;padding:8px;border-radius:9px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700">Submit</button></div></div>';
-    document.getElementById('reportCancel').onclick = renderPurchases;
+      '<textarea id="reportNote" rows="2" placeholder="Add details (optional)" style="' + FIELD + '"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:4px"><button id="reportCancel" style="flex:1;padding:9px;border-radius:9px;border:1px solid var(--divider);background:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>' +
+      '<button id="reportSend" style="flex:1;padding:9px;border-radius:9px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Submit</button></div></div>';
+    document.getElementById('reportCancel').onclick = function () { slot.innerHTML = ''; };
     document.getElementById('reportSend').onclick = function () {
       var reason = document.getElementById('reportReasonSel').value;
       var note = document.getElementById('reportNote').value.trim();
+      var itemSel = document.getElementById('reportItem');
+      var picked = itemSel ? readReceipts().find(function (x) { return x.id === itemSel.value; }) : null;
+      var label = picked ? picked.title + (picked.price ? ' — ' + picked.price : '') : 'Coin purchase / tip';
+      var fullReason = reason + (note ? ': ' + note : '');
+      var payload = {
+        reason: fullReason, role: 'reader', item: label,
+        amount: picked ? (picked.amount || 0) : 0,
+        transactionId: picked ? String(picked.id).slice(0, 40) : '',
+      };
       if (window.DroboardDisputes) {
-        DroboardDisputes.add({
-          who: readerName(), role: 'reader', amount: r.usd || 0,
-          item: r.title + ' — ' + r.price,
-          reason: reason + (note ? ': ' + note : ''),
-          txnId: r.id,
-        });
+        DroboardDisputes.add(Object.assign({ who: readerName(), txnId: payload.transactionId || 'GENERAL-' + Date.now() }, payload));
       }
+      slot.innerHTML = '';
       toast('✅ Report submitted — finance will review it');
-      renderPurchases();
     };
   }
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-report]');
-    if (b) openReport(b.getAttribute('data-report'));
-  });
 
   function priceOk(item) {
     if (!window.DroboardCurrency) return true;
@@ -361,7 +396,7 @@
 
   async function init() {
     let data;
-    try { data = await StoreService.fetchStoreData(); } catch (e) { data = { balance: { coins: 0, level: 'Bronze' }, packs: [], bundles: [], adRewards: [], subscriptions: [], mergeSub: {} }; }
+    try { data = await StoreService.fetchStoreData(); } catch (e) { data = { balance: { coins: 0 }, packs: [], bundles: [], adRewards: [], subscriptions: [], mergeSub: {} }; }
     storeData = data;
     renderBalance(data);
     renderPacks(data.packs);
@@ -369,7 +404,19 @@
     renderRewards(data.adRewards);
     renderSubscriptions(data.subscriptions);
     renderMergeSub(data.mergeSub);
-    renderPurchases();
+    // Which providers can actually take money today (Flutterwave until the
+    // Paystack keys exist) — read once, before anyone taps Buy.
+    if (window.PaymentService && PaymentService.warm) PaymentService.warm();
+    // Real history/balance when the wallet API answers; silent otherwise.
+    loadHistory().then(function (h) {
+      if (!h || !Array.isArray(h.items)) return;
+      writeServerReceipts(h.items);
+      if (h.balance && h.balance.coins != null && storeData) {
+        if (window.StoreService && StoreService.setServerBalance) StoreService.setServerBalance(h.balance);
+        storeData.balance = StoreService.getBalance();
+        renderBalance(storeData);
+      }
+    });
     // Re-price if geo-detection resolves after first paint.
     if (window.DroboardCurrency && !init._curSub) {
       init._curSub = true;
@@ -395,6 +442,7 @@
 
   // Expose identical window globals the HTML inline onclick attributes expect.
   window.switchTab = switchTab;
+  window.openStoreReport = openStoreReport;
   window.renderBalance = renderBalance;
   window.renderPacks = renderPacks;
   window.renderBundles = renderBundles;

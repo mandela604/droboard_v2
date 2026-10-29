@@ -10,21 +10,59 @@
 if(window.ContractsPaymentsService) return;
 
 /* ── Backend-ready header ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/chief';
+let LIVE = false;
+function authHeaders(base){
+  const h = Object.assign({}, base || {});
+  try{ const t = localStorage.getItem('dro_access_token'); if(t) h.Authorization = 'Bearer ' + t; }catch(e){}
+  return h;
+}
 async function callBackend(path, opts){
   if(!USE_API) return null;
-  const res = await fetch(API_BASE + path, opts);
-  if(!res.ok) throw new Error('Backend error ' + res.status);
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}, {
+    headers: authHeaders((opts && opts.headers) || {}),
+  }));
+  if(!res.ok){
+    let msg = String(res.status);
+    try{ const j = await res.json(); if(j && j.error) msg = j.error; }catch(e){}
+    throw new Error(msg);
+  }
   return res.json();
 }
 async function loadContractTemplates(){
   try{
-    const d = await callBackend('/contract-templates');
-    if(Array.isArray(d)) return d;
-    if(d && d.templates) return d.templates;
-  }catch(e){ /* fall through to demo data */ }
-  return window.ChiefEditorData.getContractTemplates();
+    const d = await callBackend('/contract-templates?limit=50');
+    const rows = Array.isArray(d) ? d : (d && d.templates) || (d && d.items) || null;
+    if(!rows) throw new Error('unexpected payload');
+    LIVE = true;
+    return rows.map(t => ({
+      id: t.id,
+      name: t.name,
+      description: t.description || t.desc || '',
+      type: t.type,
+      status: t.status || 'draft',
+      clauses: t.clauses || t.clauseText || '',
+      royaltyRate: t.royaltyRate == null ? null : t.royaltyRate,
+      termLength: t.termLength || '',
+      signupBonusMin: t.signupBonusMin || 0,
+      signupBonusMax: t.signupBonusMax || 0,
+      completionTarget: t.completionTarget || 0,
+      completionWindowMonths: t.completionWindowMonths || 0,
+      profitShareThreshold: t.profitShareThreshold || 0,
+      profitShareBonus: t.profitShareBonus || 0,
+      autoRenew: !!t.autoRenew,
+      usageCount: t.usageCount || 0,
+      defaultChapterPrice: t.defaultChapterPrice || 0,
+      cfHidden: Array.isArray(t.cfHidden) ? t.cfHidden : [],
+      cfLabels: (t.cfLabels && typeof t.cfLabels === 'object') ? t.cfLabels : {},
+      created: t.created || '',
+      lastEdited: t.lastEdited || t.updated || '',
+    }));
+  }catch(e){
+    LIVE = false;
+    return window.ChiefEditorData.getContractTemplates();
+  }
 }
 
 function __contractsMain(){
@@ -482,7 +520,7 @@ cfWire();
 function resetForm(){
   document.getElementById('fId').value = '';
   document.getElementById('fName').value = '';
-  document.getElementById('fType').value = CT_TYPES.length ? CT_TYPES[0].name : '';
+  populateTypeSelect();
   document.getElementById('fTerm').value = '1 Year';
   document.getElementById('fRoyalty').value = '15';
   document.getElementById('fBonusMin').value = '20';
@@ -514,7 +552,11 @@ function openEditModal(id){
   resetForm();
   document.getElementById('fId').value = c.id;
   document.getElementById('fName').value = c.name || '';
-  document.getElementById('fType').value = c.type;
+  const typeSel = document.getElementById('fType');
+  if (c.type && !CT_TYPES.some(t => t.name === c.type)) {
+    typeSel.insertAdjacentHTML('beforeend', `<option value="${c.type}">${c.type}</option>`);
+  }
+  typeSel.value = c.type;
   document.getElementById('fTerm').value = c.termLength;
   document.getElementById('fRoyalty').value = c.royaltyRate ?? '';
   document.getElementById('fBonusMin').value = c.signupBonusMin ?? 0;
@@ -537,7 +579,7 @@ function openEditModal(id){
 
 document.getElementById('addBtn').addEventListener('click', openAddModal);
 
-document.getElementById('fSaveBtn').addEventListener('click', () => {
+document.getElementById('fSaveBtn').addEventListener('click', async () => {
   const name = document.getElementById('fName').value.trim();
   if (!name) {
     document.getElementById('fNameErr').style.display = 'block';
@@ -567,6 +609,30 @@ document.getElementById('fSaveBtn').addEventListener('click', () => {
     cfHidden: [...cfHidden],
     cfLabels: Object.assign({}, cfLabels),
   };
+
+  if (LIVE) {
+    const btn = document.getElementById('fSaveBtn');
+    const was = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving';
+    try {
+      const opts = { method: editingId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+      await callBackend(editingId ? '/contract-templates/' + encodeURIComponent(editingId) : '/contract-templates', opts);
+      CONTRACTS = await loadContractTemplates();
+      closeModal('formModal');
+      populateTypeSelect();
+      populateTypeFilter();
+      renderStatCards();
+      applyFilters();
+      toast(`Saved “${name}”`, 'fa-circle-check');
+    } catch (e) {
+      toast('Save failed — ' + e.message, 'fa-triangle-exclamation');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = was;
+    }
+    return;
+  }
 
   if (editingId) {
     const c = CONTRACTS.find(x => x.id === editingId);
@@ -652,15 +718,21 @@ function openDetailsModal(id){
 
 function toggleStatus(id){
   const c = CONTRACTS.find(x => x.id === id); if (!c) return;
-  if (c.status === 'active') {
-    c.status = 'paused';
-    toast(`Paused “${c.name}”`, 'fa-circle-pause');
-  } else {
-    c.status = 'active';
-    toast(`Activated “${c.name}”`, 'fa-circle-play');
+  const pause = c.status === 'active';
+  const after = () => {
+    renderStatCards();
+    applyFiltersKeepPage();
+    toast((pause ? 'Paused “' : 'Activated “') + c.name + '”', pause ? 'fa-circle-pause' : 'fa-circle-play');
+  };
+  if (LIVE) {
+    callBackend('/contract-templates/' + encodeURIComponent(id) + (pause ? '/pause' : '/activate'), { method: 'POST' })
+      .then(loadContractTemplates)
+      .then(function(rows){ CONTRACTS = rows; after(); })
+      .catch(function(e){ toast('Update failed — ' + e.message, 'fa-triangle-exclamation'); });
+    return;
   }
-  renderStatCards();
-  applyFiltersKeepPage();
+  c.status = pause ? 'paused' : 'active';
+  after();
 }
 
 function applyFiltersKeepPage(){
@@ -695,6 +767,19 @@ function openConfirmDelete(id){
     btnLabel: 'Remove',
     btnIcon: 'fa-trash',
     onConfirm(){
+      if (LIVE) {
+        callBackend('/contract-templates/' + encodeURIComponent(id), { method: 'DELETE' })
+          .then(loadContractTemplates)
+          .then(function(rows){
+            CONTRACTS = rows;
+            populateTypeFilter();
+            renderStatCards();
+            applyFilters();
+            toast(`Removed “${c.name}”`, 'fa-trash');
+          })
+          .catch(function(e){ toast('Remove failed — ' + e.message, 'fa-triangle-exclamation'); });
+        return;
+      }
       CONTRACTS = CONTRACTS.filter(x => x.id !== id);
       toast(`Removed “${c.name}”`, 'fa-trash');
       populateTypeFilter();

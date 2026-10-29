@@ -8,7 +8,8 @@ function Router() { return require('express').Router(); }
 const router = Router();
 const pg = { page: z.string().max(6).optional(), limit: z.string().max(6).optional() };
 
-// mounted once at /api — paths below are the exact frontend contracts
+// mounted at /api AND /api/feed (see server.js) — paths below are the exact
+// frontend contracts, and the reader feed reaches them with the /feed prefix.
 router.get('/home', generalLimiter, ctrl.home);
 router.get('/discover', generalLimiter, ctrl.discover);
 router.get('/discover/stories', generalLimiter,

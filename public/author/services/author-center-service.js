@@ -64,9 +64,40 @@
   function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); }
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 
+  // Live books replace the demo list; a rejected manuscript (draft + editor
+  // feedback) reads as "Needs Changes" so the author can act on it.
+  async function hydrate() {
+    if (!CFG.USE_API) return;
+    try {
+      var live = await api.getBooks();
+      if (!Array.isArray(live)) return;
+      BOOKS.length = 0;
+      live.forEach(function (b) {
+        var rejected = b.status === 'draft' && b.reviewFeedback;
+        BOOKS.push({
+          id: b.id, title: b.title || 'Untitled',
+          genre: b.genre || '', cover: b.cover || '',
+          reads: fmtNum(b.reads), likes: fmtNum(b.likes),
+          chapters: b.chapterCount || 0,
+          status: rejected ? 'rejected' : (b.status || 'draft'),
+          statusLabel: rejected ? 'Needs Changes' : undefined,
+          statusClass: rejected ? 'rejected' : (b.status || 'draft')
+        });
+      });
+      renderBooks();
+    } catch (e) { /* demo list stays */ }
+  }
+  function fmtNum(n) {
+    n = Number(n) || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n);
+  }
+
   function init() {
     renderStats();
     renderBooks();
+    hydrate();
     if (window.AuthorDrawer) { window.AuthorDrawer.render('author-center.html'); window.AuthorDrawer.bind(); }
     else {
       document.getElementById('menuBtn').addEventListener('click', openDrawer);

@@ -35,7 +35,9 @@ crud('/announcements', 'announcements');
 crud('/messages', 'messages');
 crud('/verifications', 'verifications');
 crud('/authors', 'authors');
-crud('/books', 'books');
+// books are read-only for editors: only the author may edit or delete their own book.
+router.get('/books', generalLimiter, validate(z.object({ query: z.object(q).strict() })), ctrl.res('books').list);
+router.get('/books/:id', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.res('books').get);
 crud('/categories', 'categories');
 crud('/genres', 'genres');
 crud('/templates', 'templates');

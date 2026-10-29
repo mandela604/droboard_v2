@@ -894,6 +894,53 @@
   }
   function addAudience() { openAudienceDialog(); }
 
+  /* ── Ad pricing (editable rate card) ──
+     Priced per currency, never converted: each market carries its own price,
+     so a naira change never silently reprices a dollar one. The USD leg is
+     also what the ad revenue ledger books. */
+  let AP = null;
+  async function loadPricing() {
+    try { await DroboardAdPricing.refresh(); } catch (e) {}
+    AP = DroboardAdPricing.card();
+  }
+  function apRow(cur) {
+    const r = AP.prices[cur] || { impression: 0, click: 0 };
+    return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">' +
+      '<span style="font-weight:800;width:40px">' + esc(DroboardAdPricing.symbol(cur)) + '</span>' +
+      '<input class="pl-inp" data-apk="' + cur + ':imp" type="number" min="0" step="0.001" value="' + (+r.impression || 0) + '" style="max-width:140px"/>' +
+      '<span class="pl-lbl" style="margin:0">per impression</span>' +
+      '<input class="pl-inp" data-apk="' + cur + ':clk" type="number" min="0" step="0.001" value="' + (+r.click || 0) + '" style="max-width:140px"/>' +
+      '<span class="pl-lbl" style="margin:0">per click</span>' +
+      (cur === 'USD' ? '<span class="pl-hint" style="margin:0 0 0 8px">also books the ledger</span>' : '') +
+      '</div>';
+  }
+  function renderPricing() {
+    const rows = document.getElementById('apRows');
+    if (!rows) return;
+    rows.innerHTML = DroboardAdPricing.CURRENCIES.map(apRow).join('');
+    rows.querySelectorAll('[data-apk]').forEach(el => el.addEventListener('input', (e) => apEdit(e.target)));
+    const sel = document.getElementById('apActive');
+    if (sel) {
+      sel.innerHTML = DroboardAdPricing.CURRENCIES.map(c => '<option value="' + c + '"' + (c === AP.active ? ' selected' : '') + '>' + c + '</option>').join('');
+      sel.addEventListener('change', (e) => apEdit(e.target));
+    }
+  }
+  function apEdit(el) {
+    const k = el.dataset.apk;
+    if (k === undefined) { AP.active = el.value; return; }
+    const parts = k.split(':');
+    const field = parts[1] === 'imp' ? 'impression' : 'click';
+    if (!AP.prices[parts[0]]) AP.prices[parts[0]] = { impression: 0, click: 0 };
+    AP.prices[parts[0]][field] = Math.max(0, +el.value || 0);
+  }
+  async function savePricing() {
+    try {
+      await DroboardAdPricing.save({ active: AP.active, prices: AP.prices });
+      AP = DroboardAdPricing.card();
+      toast('✅ Pricing saved — impressions and clicks are charged at these rates');
+    } catch (e) { toast('Could not save pricing'); }
+  }
+
   /* ── Ad list ── */
   function renderFilterPills() {
     const ads = allAds();
@@ -1058,10 +1105,12 @@
     try { CAMPS = await MarketingData.getCampaigns(); } catch (e) { CAMPS = []; }
     try { LEAGUE = await MarketingData.getLeagueConfig(); } catch (e) { LEAGUE = null; }
     await loadAudience();
+    await loadPricing();
     renderStats();
     renderPlacements();
     renderLeague();
     renderAudience();
+    renderPricing();
     renderFilterPills();
     renderStatusPills();
     renderCampFilter();
@@ -1162,6 +1211,14 @@
       const toggle = () => document.getElementById('auPanel').classList.toggle('collapsed');
       _auHead.addEventListener('click', toggle);
       _auHead.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    }
+    const _apSave = document.getElementById('apSaveBtn');
+    if (_apSave) _apSave.addEventListener('click', savePricing);
+    const _apHead = document.getElementById('apHead');
+    if (_apHead) {
+      const toggle = () => document.getElementById('apPanel').classList.toggle('collapsed');
+      _apHead.addEventListener('click', toggle);
+      _apHead.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     }
     ['#auDlgX', '#auDlgCancel'].forEach(sel => {
       const b = document.querySelector(sel);

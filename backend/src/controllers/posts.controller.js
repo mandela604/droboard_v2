@@ -15,14 +15,14 @@ async function list(req, res) {
 }
 
 async function get(req, res) {
-  return base.wrap(res, async () => posts.getPost(req.valid.params.id));
+  return base.wrap(res, async () => posts.getPost(req.valid.params.id, req.user && req.user.id));
 }
 
 async function update(req, res) {
   return base.wrap(res, async () => {
     const post = await posts.loadOr404(req.valid.params.id);
     if (!posts.canWrite(post, req.user)) { const e = new Error('forbidden'); e.status = 403; throw e; }
-    return posts.updatePost({ post, data: req.valid.body });
+    return posts.updatePost({ post, data: req.valid.body, viewerId: req.user.id });
   });
 }
 
@@ -58,7 +58,21 @@ async function pollVote(req, res) {
 async function debateVote(req, res) {
   return base.wrap(res, async () => {
     const post = await posts.loadOr404(req.valid.params.id);
-    return posts.voteDebate({ post, side: req.valid.body.side });
+    return posts.voteDebate({ post, side: req.valid.body.side, userId: req.user.id });
+  });
+}
+
+async function pollRetract(req, res) {
+  return base.wrap(res, async () => {
+    const post = await posts.loadOr404(req.valid.params.id);
+    return posts.retractPollVote({ post, userId: req.user.id });
+  });
+}
+
+async function debateRetract(req, res) {
+  return base.wrap(res, async () => {
+    const post = await posts.loadOr404(req.valid.params.id);
+    return posts.retractDebateVote({ post, userId: req.user.id });
   });
 }
 
@@ -90,4 +104,4 @@ async function share(req, res) {
   });
 }
 
-module.exports = { create, list, get, update, remove, like, save, pollVote, debateVote, react, unreact, reactions, share };
+module.exports = { create, list, get, update, remove, like, save, pollVote, pollRetract, debateVote, debateRetract, react, unreact, reactions, share };

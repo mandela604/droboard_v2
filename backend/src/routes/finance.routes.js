@@ -10,10 +10,62 @@ const router = Router();
 const id = z.string().min(1).max(120);
 const STAFF = [requireAuth, requireRole('admin', 'finance')];
 
+/* ── Editor pay (finance-owned: accrual ledger + withdrawal queue) ── */
+const epctrl = require('../controllers/finance-earnings.controller');
+const epPaging = { page: z.string().max(6).optional(), limit: z.string().max(6).optional() };
+
+const epSettingsBody = z.object({
+  tipSharePct: z.number().min(0).max(100).optional(),
+  minWithdrawal: z.number().min(0).max(1000000000).optional(),
+  currency: z.string().length(3).optional(),
+}).strict();
+
+const epEarningsQuery = z.object(Object.assign({}, epPaging, {
+  editorId: z.string().max(120).optional(),
+  period: z.string().max(7).optional(),
+  status: z.enum(['accrued', 'void']).optional(),
+  q: z.string().max(120).optional(),
+})).strict();
+
+const epPayoutsQuery = z.object(Object.assign({}, epPaging, {
+  editorId: z.string().max(120).optional(),
+  status: z.enum(['requested', 'approved', 'paid', 'declined']).optional(),
+})).strict();
+
+const epReasonBody = z.object({ reason: z.string().max(500).optional() }).strict();
+
+router.get('/editor-earnings/settings', ...STAFF, generalLimiter, epctrl.settings);
+router.put('/editor-earnings/settings', ...STAFF, writeLimiter, audit('finance.editorpay.settings'),
+  validate(z.object({ body: epSettingsBody })), epctrl.saveSettings);
+
+router.get('/editor-earnings/stats', ...STAFF, generalLimiter, epctrl.stats);
+router.get('/editor-earnings', ...STAFF, generalLimiter,
+  validate(z.object({ query: epEarningsQuery })), epctrl.earnings);
+router.post('/editor-earnings/fixed-run', ...STAFF, writeLimiter, audit('finance.editorpay.fixedRun'),
+  validate(z.object({ body: z.object({ period: z.string().max(7).optional() }).strict() })), epctrl.runFixed);
+router.post('/editor-earnings/:id/void', ...STAFF, writeLimiter, audit('finance.editorpay.void'),
+  validate(z.object({ params: z.object({ id }), body: epReasonBody })), epctrl.voidEarning);
+
+router.get('/editor-payouts', ...STAFF, generalLimiter,
+  validate(z.object({ query: epPayoutsQuery })), epctrl.payouts);
+router.post('/editor-payouts/:id/approve', ...STAFF, writeLimiter, audit('finance.editorpay.approve'),
+  validate(z.object({ params: z.object({ id }) })), epctrl.approvePayout);
+router.post('/editor-payouts/:id/decline', ...STAFF, writeLimiter, audit('finance.editorpay.decline'),
+  validate(z.object({ params: z.object({ id }), body: epReasonBody })), epctrl.declinePayout);
+router.post('/editor-payouts/:id/pay', ...STAFF, writeLimiter, audit('finance.editorpay.pay'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ reference: z.string().max(120).optional() }).strict(),
+  })), epctrl.payPayout);
+
 router.get('/earnings', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.earnings);
 router.get('/transactions', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.transactions);
 
 router.get('/payment-methods', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.methods);
+router.get('/payment-methods/:id', requireAuth, generalLimiter, validate(z.object({
+  query: z.object({ authorId: z.string().max(40).optional() }).strict(),
+  params: z.object({ id }),
+})), ctrl.method);
 router.post('/payment-methods', requireAuth, writeLimiter, validate(z.object({
   query: z.object({ authorId: z.string().max(40).optional() }).strict(),
   body: z.object({
@@ -53,7 +105,13 @@ router.post('/withdrawals', requireAuth, writeLimiter, validate(z.object({
 router.get('/disputes', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.disputes);
 router.post('/disputes', requireAuth, writeLimiter, validate(z.object({
   query: z.object({ authorId: z.string().max(40).optional() }).strict(),
-  body: z.object({ transactionId: z.string().max(40).optional(), amount: z.number().min(0).optional(), reason: z.string().min(1).max(1000) }).strict(),
+  body: z.object({
+    transactionId: z.string().max(40).optional(), amount: z.number().min(0).optional(),
+    reason: z.string().min(1).max(1000),
+    item: z.string().max(200).optional(),   // what was bought, e.g. "5,000 coins — ₦6,000"
+    role: z.enum(['reader', 'author']).optional(),
+    who: z.string().max(120).optional(),    // display name; server fills from the account when absent
+  }).strict(),
 })), ctrl.fileDispute);
 
 // ── Store settings admin (coin packs / ad rewards / bundles) ──
@@ -164,6 +222,20 @@ router.post('/withdrawals/:id/decline', ...STAFF, writeLimiter, audit('finance.w
     params: z.object({ id }),
     body: z.object({ reason: z.string().max(1000).optional() }).strict(),
   })), fctrl.declineWithdrawal);
+// Settles a row already at `approved` (approve settles on the spot); an already
+// paid row echoes back, so a retry after a crash cannot pay twice.
+router.post('/withdrawals/:id/pay', ...STAFF, writeLimiter, audit('finance.withdrawals.pay'),
+  validate(z.object({
+    params: z.object({ id }),
+    body: z.object({ reference: z.string().max(120).optional() }).strict(),
+  })), fctrl.payWithdrawal);
+
+router.get('/financial-reports', ...STAFF, generalLimiter, validate(z.object({
+  query: z.object({
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  }).strict(),
+})), fctrl.financialReports);
 
 router.get('/author-payments', ...STAFF, generalLimiter, fctrl.authorPayments);
 router.get('/payment-history', ...STAFF, generalLimiter, fctrl.paymentHistory);

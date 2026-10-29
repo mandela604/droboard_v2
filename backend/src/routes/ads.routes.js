@@ -5,6 +5,7 @@ const base = require('../controllers/base.controller');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/guards');
 const { validate, generalLimiter, writeLimiter } = require('../middleware/http');
+const { countryOf } = require('../middleware/geo');
 
 function Router() { return require('express').Router(); }
 const router = Router();
@@ -48,6 +49,7 @@ router.post('/track', optionalAuth, writeLimiter,
     anonId: req.valid.body.viewerId,
     page: req.valid.body.page, slot: req.valid.body.slot, storyId: req.valid.body.storyId,
     showingId: req.valid.body.showingId,
+    country: countryOf(req),
     value: req.valid.body.value, currency: req.valid.body.currency, orderId: req.valid.body.orderId,
   })));
 

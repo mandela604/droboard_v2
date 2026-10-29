@@ -29,6 +29,9 @@ const EDITOR_TAX = (function () {
   const active = list => (Array.isArray(list) ? list : []).filter(x => x && x.status !== 'inactive');
   return { categories: active(D.CATEGORIES), genres: active(D.GENRES), tropes: active(D.TROPES) };
 })();
+// Display name → CE taxonomy id, filled by loadTaxonomy(). The payload sends
+// the id (categoryId) so a book is attached to the exact row the CE saved.
+const TAX_IDS = { categories: {}, genres: {}, tropes: {} };
 const LEGACY_CATEGORIES = ['💔 Betrayal','👑 Family','🎓 Campus','🔥 Revenge','🏙️ Urban Love','💍 Marriage','🌙 Elegy','😱 Thriller'];
 const CATEGORIES = EDITOR_TAX.categories.length ? EDITOR_TAX.categories.map(c => c.name) : LEGACY_CATEGORIES;
 const GENRES = ['💔 Betrayal','👑 Family','✨ Twist','🏙️ Urban','💍 Marriage','🎓 Campus','🔥 Revenge','💔 Heartbreak','😂 Comedy','😱 Thriller','🤝 Friendship','🔍 Mystery','✨ Inspirational','🙏 Faith','🌙 Elegy'];
@@ -50,6 +53,35 @@ function tropesFor(cat) {
   const own = EDITOR_TAX.tropes.filter(t => ownGenres.indexOf(t.genre) > -1).map(t => t.name);
   if (own.length) return own;
   return EDITOR_TAX.tropes.map(t => t.name);
+}
+
+/* The CE owns the taxonomy: categories, genres and tropes are created in the
+   chief-editor module and this wizard must offer exactly those rows. The demo
+   lists above are only the fallback until the read succeeds. */
+function loadTaxonomy(){
+  const get = url => fetch(url, { credentials: 'include' })
+    .then(r => (r.ok ? r.json() : null)).catch(() => null);
+  return Promise.all([
+    get('/api/categories?limit=100'),
+    get('/api/genres?limit=100'),
+    get('/api/tropes?limit=100'),
+  ]).then(([c, g, t]) => {
+    const live = x => x && x.status !== 'inactive';
+    const cats = ((c && c.items) || []).filter(live);
+    if (!cats.length) return false;
+    const genres = ((g && g.items) || []).filter(live);
+    const tropes = ((t && t.items) || []).filter(live);
+    const catName = id => (cats.find(x => x.id === id) || {}).name || '';
+    EDITOR_TAX.categories = cats.map(x => ({ id:x.id, name:x.name, icon:x.icon, bg:x.bg, color:x.color, status:x.status }));
+    EDITOR_TAX.genres = genres.map(x => ({ id:x.id, name:x.name, cat: catName(x.categoryId), status:x.status }));
+    EDITOR_TAX.tropes = tropes.map(x => ({ id:x.id, name:x.name, genre:x.genre, status:x.status }));
+    TAX_IDS.categories = {}; TAX_IDS.genres = {}; TAX_IDS.tropes = {};
+    cats.forEach(x => { TAX_IDS.categories[x.name] = x.id; });
+    genres.forEach(x => { TAX_IDS.genres[x.name] = x.id; });
+    tropes.forEach(x => { TAX_IDS.tropes[x.name] = x.id; });
+    CATEGORIES.splice(0, CATEGORIES.length, ...cats.map(x => x.name));
+    return true;
+  });
 }
 
 /* ══════════════════════════════════════════════════════
@@ -502,6 +534,20 @@ function updateCharCount(inputId,countId,max){
 }
 function handleCoverFile(e){
   const file = e.target.files[0]; if (!file) return;
+  // Live: the bytes go to Cloudflare Images and only the delivery URL is
+  // stored on the book (the backend rejects data URLs and hotlinks).
+  if (USE_API){
+    const fd = new FormData(); fd.append('file', file);
+    toast('Uploading cover…');
+    fetch(API_BASE + '/uploads/image', { method:'POST', credentials:'include', body: fd })
+      .then(r => r.json().catch(()=>null).then(body => {
+        if (!r.ok || !body || !body.url) throw new Error((body && body.error) || 'cover_upload_failed');
+        return body;
+      }))
+      .then(body => { setCover(body.url); e.target.value=''; toast('Cover uploaded'); })
+      .catch(err => toast('⚠️ ' + (err.message || 'Cover upload failed')));
+    return;
+  }
   const reader = new FileReader();
   reader.onload = ev => setCover(ev.target.result);
   reader.readAsDataURL(file);
@@ -519,7 +565,16 @@ function buildStockRow(){
     `<div class="stock-thumb" id="st${i}" onclick="pickStock('${url}',${i})"><img src="${url}" loading="lazy"/></div>`).join('');
 }
 function pickStock(url,idx){
-  setCover(url);
+  // Live: import the stock URL so the book stores OUR permanent Images copy
+  // instead of a hotlink the backend would reject.
+  if (USE_API){
+    toast('Adding cover…');
+    postJSON('/uploads/import', { url })
+      .then(body => { if (!body || !body.url) throw new Error('cover_import_failed'); setCover(body.url); })
+      .catch(err => toast('⚠️ ' + (err.message || 'Cover import failed')));
+  } else {
+    setCover(url);
+  }
   document.querySelectorAll('.stock-thumb').forEach(el=>el.classList.remove('picked'));
   document.getElementById(`st${idx}`)?.classList.add('picked');
 }
@@ -1057,6 +1112,11 @@ function buildBookPayload(){
     tags: state.tags.slice(0, 5),
     kind,
   };
+  // Attach the book to the CE's own rows (category is required by the wizard;
+  // tropes are names because the backend stores Trope names).
+  const catId = TAX_IDS.categories[state.category];
+  if (catId) book.categoryId = catId;
+  if (state.tropes.length) book.tropes = state.tropes.slice(0, MAX_TROPES);
   return book;
 }
 function buildChapterPayload(ch, idx){
@@ -1140,10 +1200,14 @@ async function submitStory(){
       const ch = state.chapters[0] || { title:'', content:'' };
       await postJSON(`/books/${encodeURIComponent(bid)}/chapters`, buildChapterPayload(ch, state.chapterNum - 1));
     } else {
-      await postJSON('/books/batch', {
+      const out = await postJSON('/books/batch', {
         book: buildBookPayload(),
         chapters: state.chapters.map((c, i) => buildChapterPayload(c, i)),
       });
+      // Creating a book IS submitting it: it goes to the author's own editor
+      // (or the chief, for a reader) as under_review.
+      const newId = out && out.book && out.book.id;
+      if (newId) await postJSON('/author/books/' + encodeURIComponent(newId) + '/submit', {});
     }
     localStorage.removeItem('droboard_create_story_draft');
     showSuccess();
@@ -1174,6 +1238,11 @@ loadAccountStatus().then(applyFirstBookRules);
 buildDropdownMenu();
 renderCategoryGrid();
 revealTaxonomy();
+loadTaxonomy().then(changed => {
+  if (!changed) return;
+  renderCategoryGrid();
+  if (state.category) revealTaxonomy();
+});
 renderTags();
 renderPlotActs();
 renderCast();

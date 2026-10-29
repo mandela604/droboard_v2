@@ -40,6 +40,9 @@ body{font-family:'Inter',system-ui,sans-serif}
 .pd-body{flex:1;min-width:220px}
 .pd-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px}
 .pd-name{font-size:13.5px;font-weight:700}
+.pd-role{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.pd-role.reader{background:rgba(124,58,237,.12);color:#7c3aed}
+.pd-role.author{background:var(--blue-bg);color:var(--blue)}
 .pd-amt{font-size:13px;font-weight:800;color:var(--text)}
 .status-pill{font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
 .status-pill.open{background:var(--amber-bg);color:var(--amber)}
@@ -138,11 +141,11 @@ body{font-family:'Inter',system-ui,sans-serif}
   <div class="dt-modal" id="dtModal"></div>
 </div>
 
-<script src="shared/finance-sidebar.js"></script>
-<script src="../services/currency-service.js"></script>
-<script src="../component/disputes-store.js"></script>
-<script src="shared/finance-data.js"></script>
-<script src="services/payment-disputes-service.js"></script>
+<script src="shared/finance-sidebar.js?v=2"></script>
+<script src="../services/currency-service.js?v=2"></script>
+<script src="../component/disputes-store.js?v=2"></script>
+<script src="shared/finance-data.js?v=2"></script>
+<script src="services/payment-disputes-service.js?v=2"></script>
 <div class="toast" id="toast"></div>
 <script>PaymentDisputesService.init();</script>
 </body>

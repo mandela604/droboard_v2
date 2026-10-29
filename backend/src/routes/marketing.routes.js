@@ -67,6 +67,25 @@ router.post('/audience-segments/reset', requireAuth, ...C, writeLimiter, audit('
     segments: await audience.resetSegments(req.user && req.user.id),
   })));
 
+/* ── Ad pricing (ad-pricing.service.js) ──
+   One doc keyed 'rates' — currency-priced legs, no FX. */
+const pricingBody = z.object({
+  active: z.enum(['NGN', 'USD', 'GBP']).optional(),
+  prices: z.object({
+    NGN: z.object({ impression: z.number().min(0), click: z.number().min(0) }).optional(),
+    USD: z.object({ impression: z.number().min(0), click: z.number().min(0) }).optional(),
+    GBP: z.object({ impression: z.number().min(0), click: z.number().min(0) }).optional(),
+  }).optional(),
+}).strict();
+
+const pricing = require('../services/ad-pricing.service');
+
+router.get('/ad-pricing', requireAuth, generalLimiter,
+  async (req, res) => base.wrap(res, async () => pricing.get()));
+router.put('/ad-pricing', requireAuth, ...C, writeLimiter, audit('marketing.ad-pricing.update'),
+  validate(z.object({ body: pricingBody })),
+  async (req, res) => base.wrap(res, async () => pricing.save(req.valid.body, req.user)));
+
 /* ── Dashboard + campaigns (marketing-data.js:240-304) ── */
 router.get('/dashboard', requireAuth, ...C, generalLimiter,
   async (req, res) => base.wrap(res, async () => surfaces.dashboard()));

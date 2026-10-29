@@ -6,16 +6,12 @@ async function listBooks(req, res) {
   return base.wrap(res, async () => svc.listBooks(req.valid.query));
 }
 
+async function flaggedBooks(req, res) {
+  return base.wrap(res, async () => svc.flaggedBooks(req.valid.query));
+}
+
 async function getBook(req, res) {
   return base.wrap(res, async () => svc.getBook(req.valid.params.id));
-}
-
-async function flagBook(req, res) {
-  return base.wrap(res, async () => svc.flagBook(req.valid.params.id));
-}
-
-async function unflagBook(req, res) {
-  return base.wrap(res, async () => svc.unflagBook(req.valid.params.id));
 }
 
 async function genres(req, res) {
@@ -143,7 +139,7 @@ async function toggleTropeStatus(req, res) {
 }
 
 module.exports = {
-  listBooks, getBook, flagBook, unflagBook, genres,
+  listBooks, flaggedBooks, getBook, genres,
   tags, sections, library, placements, addPlacement, updatePlacement, removePlacement, history, refeature,
   listCategories, createCategory, updateCategory, deleteCategory, toggleCategoryStatus,
   listGenres, createGenre, updateGenre, deleteGenre, toggleGenreStatus, popularGenres,

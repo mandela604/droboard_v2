@@ -39,7 +39,11 @@ async function createPost(payload){
 
 async function fetchPosts(){
   if(USE_API){
-    const r=await fetch(API_BASE+'/posts',{credentials:'include'}); if(r.ok){ const j=await r.json(); return j.data||j; }
+    const r=await fetch(API_BASE+'/posts?limit=50',{credentials:'include'}); if(r.ok){ const j=await r.json();
+      // GET /posts answers the posts.service ensemble ({items,total,page,limit});
+      // this page consumes {posts,morePosts}, so translate at the boundary.
+      return { posts: j.items||[], morePosts: [] };
+    }
   }
   const s=_seed();
   // merge any locally created posts on top (LS)

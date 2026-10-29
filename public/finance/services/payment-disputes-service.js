@@ -33,6 +33,14 @@ function timeAgo(iso){
 function statusLabel(s){
   return { open:'Open', investigating:'Investigating', resolved:'Resolved', rejected:'Rejected' }[s] || s;
 }
+/* Readers file from the store page, authors from their payouts — the chip says
+   which one, because the reply text and the fix live in different places. */
+function roleLabel(r){ return r==='reader' ? 'Reader' : r==='staff' ? 'Staff' : 'Author'; }
+function roleChip(d){
+  const r = d.role === 'reader' ? 'reader' : 'author';
+  return `<span class="pd-role ${r}">${roleLabel(d.role)}</span>`;
+}
+function avatarSrc(d){ return d.avatar || 'https://i.pravatar.cc/100?u=' + encodeURIComponent(d.author || d.id || 'x'); }
 
 function toast(msg){
   var t=document.getElementById('toast');
@@ -106,7 +114,7 @@ function getFiltered(){
   if(activeStatus!=='all') list = list.filter(d=>d.status===activeStatus);
   if(searchTerm){
     const q = searchTerm.toLowerCase();
-    list = list.filter(d=>d.author.toLowerCase().includes(q) || d.reason.toLowerCase().includes(q));
+    list = list.filter(d=>(d.author||'').toLowerCase().includes(q) || (d.reason||'').toLowerCase().includes(q) || (d.item||'').toLowerCase().includes(q) || (d.txnId||'').toLowerCase().includes(q));
   }
   if(sortMode==='amount-desc') list.sort((a,b)=>b.amount-a.amount);
   else if(sortMode==='amount-asc') list.sort((a,b)=>a.amount-b.amount);
@@ -129,16 +137,19 @@ function render(){
 
   box.innerHTML = `<div class="pd-list">${pageItems.map(d=>`
     <div class="pd-card" data-id="${d.id}">
-      <img class="pd-avatar" src="${d.avatar}" alt="${d.author}"/>
+      <img class="pd-avatar" src="${avatarSrc(d)}" alt="${d.author || 'filer'}"/>
       <div class="pd-body">
         <div class="pd-top">
-          <span class="pd-name">${d.author}</span>
+          <span class="pd-name">${d.author || 'Anonymous'}</span>
+          ${roleChip(d)}
           <span class="pd-amt">${money(d.amount)}</span>
           <span class="status-pill ${d.status}">${statusLabel(d.status)}</span>
         </div>
         <div class="pd-reason">${d.reason}</div>
         <div class="pd-meta">
           <span><i class="fas fa-clock"></i> Filed ${timeAgo(d.filed)}</span>
+          ${d.item ? `<span><i class="fas fa-bag-shopping"></i> ${d.item}</span>` : ''}
+          ${d.txnId ? `<span><i class="fas fa-receipt"></i> ${d.txnId}</span>` : ''}
           <span><i class="fas fa-hashtag"></i> ${d.id}</span>
         </div>
       </div>
@@ -223,7 +234,7 @@ function renderDetailModal(d){
   if(dtReplyMode){
     replyInputHtml = `
       <div class="dt-action-box">
-        <label>Reply to ${d.author} (will be visible to them)</label>
+        <label>Reply to ${d.author || 'the filer'} (will be visible to them)</label>
         <textarea id="dtReplyInput" placeholder="Type your reply to the author…"></textarea>
       </div>`;
   }
@@ -232,8 +243,8 @@ function renderDetailModal(d){
     <div class="dt-head">
       <div class="dt-head-top">
         <div class="dt-author">
-          <img class="dt-avatar" src="${d.avatar}" alt="${d.author}"/>
-          <div><div class="dt-author-name">${d.author}</div><div class="dt-author-sub">${d.id} · <span class="status-pill ${d.status}" style="margin-left:2px">${statusLabel(d.status)}</span></div></div>
+          <img class="dt-avatar" src="${avatarSrc(d)}" alt="${d.author || 'filer'}"/>
+          <div><div class="dt-author-name">${d.author || 'Anonymous'}</div><div class="dt-author-sub">${roleChip(d)} · ${d.id} · <span class="status-pill ${d.status}" style="margin-left:2px">${statusLabel(d.status)}</span></div></div>
         </div>
         <button class="dt-close" id="dtClose"><i class="fas fa-xmark"></i></button>
       </div>
@@ -243,6 +254,8 @@ function renderDetailModal(d){
       <div class="dt-meta-grid">
         <div class="dt-meta-item"><div class="dt-meta-lbl">Filed</div><div class="dt-meta-val" style="font-size:12px">${fmtDateTime(d.filed)}</div></div>
         <div class="dt-meta-item"><div class="dt-meta-lbl">Status</div><div class="dt-meta-val" style="font-size:12px">${statusLabel(d.status)}</div></div>
+        ${d.item ? `<div class="dt-meta-item"><div class="dt-meta-lbl">Item</div><div class="dt-meta-val" style="font-size:12px">${d.item}</div></div>` : ''}
+        ${d.txnId ? `<div class="dt-meta-item"><div class="dt-meta-lbl">Transaction</div><div class="dt-meta-val" style="font-size:12px">${d.txnId}</div></div>` : ''}
         <div class="dt-meta-item full"><div class="dt-meta-lbl">Reason for Dispute</div></div>
       </div>
       <div class="dt-reason-box">${d.reason}</div>

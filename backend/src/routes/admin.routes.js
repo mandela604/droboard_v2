@@ -21,6 +21,9 @@ router.post('/revenue/config', requireAuth, requireRole('admin'), audit('revenue
     writerShareOfNetPct: z.number().min(0).max(100).optional(),
     giftWriterPct: z.number().min(0).max(100).optional(),
     subscriptionCoinRateNGN: z.number().min(0).optional(),
+    // per-channel commission actually withheld at purchase (play/appstore
+    // have no per-order fee from the API; web uses the provider's own figure)
+    channelFeePct: z.record(z.string().max(20), z.number().min(0).max(100)).optional(),
     // flat revenue-splits console shape (google fixed at 30, rest sums to 70)
     google: z.number().min(0).max(100).optional(),
     marketing: z.number().min(0).max(100).optional(),
@@ -42,6 +45,9 @@ router.put('/revenue/coin-rate', requireAuth, requireRole('admin'),
     minWithdrawal: z.number().int().min(0).max(1000000).optional(),
     bonusExpiryDays: z.number().int().min(1).max(3650).optional(),
     dormancyBreakageMonths: z.number().int().min(1).max(120).optional(),
+    // currency -> naira per unit; converts foreign receipts and prices the
+    // international premium that platform keeps
+    fx: z.record(z.string().max(8), z.number().min(0)).optional(),
   }).strict().refine(v => Object.keys(v).length > 0, { message: 'nothing_to_save' }) })), ctrl.coinRateSave);
 
 /* ── Super Admin console (frontend service-level contracts) ── */
@@ -234,6 +240,28 @@ router.get('/ad-revenue/summary', ...A, validate(z.object({ query: z.object({
 }).strict() })), sa.adRevenueSummary);
 router.post('/ad-revenue/pay', ...A, require('../middleware/http').writeLimiter, audit('admin.ad-revenue.pay'),
   validate(z.object({ body: z.object({ authorId: ID }).strict() })), sa.adRevenuePay);
+
+// network earnings (AdSense/Adsterra/Monetag): the period total from the
+// network's own report, spread over the impressions we counted for that ad.
+//   GET  /ad-revenue/network          -> {rows,total}
+//   POST /ad-revenue/network          {adId?, network?, from, to, amount,
+//                                      currency?, fxRate?, note?} -> import row
+const networkBody = z.object({
+  adId: z.string().max(120).optional(),
+  network: z.string().max(80).optional(),
+  country: z.string().regex(/^[A-Za-z]{2}$/).optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  amount: z.number().positive().max(1e9),
+  currency: z.enum(['USD', 'NGN', 'GBP']).optional(),
+  fxRate: z.number().positive().max(1e6).optional(),
+  note: z.string().max(500).optional(),
+}).strict();
+router.get('/ad-revenue/network', ...A, validate(z.object({ query: z.object({
+  limit: z.string().max(6).optional(),
+}).strict() })), sa.adRevenueNetworkList);
+router.post('/ad-revenue/network', ...A, require('../middleware/http').writeLimiter, audit('admin.ad-revenue.network'),
+  validate(z.object({ body: networkBody })), sa.adRevenueNetworkImport);
 
 // revenue-splits console (flat shape; legacy /revenue/config* above untouched)
 const flatCuts = {

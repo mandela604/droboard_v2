@@ -255,7 +255,7 @@
   }
   function _getBalance(){
     if(window.StoreService && typeof window.StoreService.getBalance === 'function') return window.StoreService.getBalance();
-    try{ const v=parseInt(localStorage.getItem('dro_store_balance'),10); const c=isNaN(v)?350:v; const lvl=c>=1000?'Gold':c>=500?'Silver':c>=100?'Bronze':'Starter'; return {coins:c, level:lvl}; }catch(e){ return {coins:350, level:'Silver'}; }
+    try{ const v=parseInt(localStorage.getItem('dro_store_balance'),10); const c=isNaN(v)?350:v; return {coins:c}; }catch(e){ return {coins:350}; }
   }
   function _spendCoins(amt){
     if(window.StoreService && typeof window.StoreService.spendCoins === 'function') return window.StoreService.spendCoins(amt);
@@ -271,7 +271,7 @@
     const eye=document.getElementById('dtp-bal-eye');
     if(!el) return;
     const bal=_getBalance();
-    el.textContent = _balanceVisible ? bal.coins.toLocaleString() + ' coins · ' + bal.level : '••••';
+    el.textContent = _balanceVisible ? bal.coins.toLocaleString() + ' coins' : '••••';
     if(eye) eye.innerHTML = _balanceVisible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
   }
 
@@ -428,12 +428,16 @@
     const grid=document.getElementById('dtp-gift-grid');
     const gifts=_getGifts();
     const bal=_getBalance().coins;
-    grid.innerHTML = gifts.map(g=>`
+    grid.innerHTML = gifts.map(g=>{
+      // Console-saved gifts carry only `icon`; the demo list carries `faIcon`.
+      const ico = g.faIcon || (/^fa-/.test(g.icon||'') ? g.icon : 'fa-gem');
+      return `
       <div class="dtp-gift-card${bal < g.price ? ' disabled':''}${_selectedGiftId===g.id?' on':''}" data-gift="${g.id}" data-price="${g.price}">
-        <div class="dtp-gift-ico" style="background:${g.color}"><i class="fas ${g.faIcon}"></i></div>
+        <div class="dtp-gift-ico" style="background:${g.color}"><i class="fas ${ico}"></i></div>
         <div class="dtp-gift-name">${g.name}</div>
         <div class="dtp-gift-price"><i class="fas fa-coins" style="font-size:9px"></i> ${g.price}</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     grid.querySelectorAll('.dtp-gift-card:not(.disabled)').forEach(card=>{
       card.addEventListener('click', ()=>{
         const id=card.dataset.gift;
@@ -575,6 +579,42 @@
     }catch(e){}
   }
 
+  /* Gifts are coins, so they move through the wallet API when there is one:
+     POST /api/wallet/tip { authorId, coins, giftCode } debits the reader,
+     splits writer/platform and writes the ledger row + history entry.
+     server:false means "no backend answered" — only then does the demo keep
+     using the local coin balance. */
+  function _postGift(authorId, coins, giftCode){
+    var body = { authorId: String(authorId), coins: Number(coins), giftCode: String(giftCode || '') };
+    return fetch('/api/wallet/tip', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then(function (res) {
+      if (res.status === 404 || res.status === 502 || res.status === 504) return { server: false };
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        var out = { server: true, ok: res.ok, status: res.status, j: j || {} };
+        if (res.ok && j && j.balance != null && window.StoreService && StoreService.setServerBalance) {
+          StoreService.setServerBalance(j.balance);
+          _updateBalanceRow();
+        }
+        return out;
+      });
+    }).catch(function () { return { server: false }; });
+  }
+
+  function _finishGift(giftName, writer, note){
+    _logReceipt(giftName, _selectedGiftPrice, writer.name);
+    if(typeof _hooks.onSend === 'function'){
+      _hooks.onSend(_curId, _selectedGiftPrice, note, 'gift', _selectedGiftId);
+    } else {
+      const list=_demoSupporters(_curId);
+      list.unshift({ id:'you', name:'You', avatar:'https://i.pravatar.cc/100?img=1', time:'Just now · 🎁 '+giftName });
+    }
+    _toast(`🎁 ${giftName} sent to ${writer.name}!`);
+    _updateBalanceRow();
+    close();
+  }
+
   function _sendTip() {    const writer = _getWriter(_curId);
     const note = document.getElementById('dtp-note').value.trim();
     if(_mode==='gift'){
@@ -584,22 +624,28 @@
         _toast('Not enough coins — buy more in Store');
         return;
       }
-      if(!_spendCoins(_selectedGiftPrice)){
-        _toast('Not enough coins');
-        return;
-      }
       const gift=_getGifts().find(g=>g.id===_selectedGiftId);
       const giftName=gift?gift.name:_selectedGiftId;
-      _logReceipt(giftName, _selectedGiftPrice, writer.name);
-      if(typeof _hooks.onSend === 'function'){
-        _hooks.onSend(_curId, _selectedGiftPrice, note, 'gift', _selectedGiftId);
-      } else {
-        const list=_demoSupporters(_curId);
-        list.unshift({ id:'you', name:'You', avatar:'https://i.pravatar.cc/100?img=1', time:'Just now · 🎁 '+giftName });
-      }
-      _toast(`🎁 ${giftName} sent to ${writer.name}!`);
-      _updateBalanceRow();
-      close();
+      _postGift(_curId, _selectedGiftPrice, _selectedGiftId).then(function(res){
+        if(res.server){
+          if(!res.ok){
+            /* 402 means either out of coins or holding only bonus coins; the
+               backend names which, so the reader is never told the wrong thing. */
+            _toast(res.status===402 && res.j && res.j.error==='bonus_no_tip'
+                 ? 'Bonus coins read stories, they can\'t tip — buy coins to gift'
+                 : res.status===402 ? 'Not enough coins — buy more in Store'
+                 : (res.status===401||res.status===403) ? 'Sign in to send gifts'
+                 : 'Gift not sent — try again');
+            if(window.StoreService&&StoreService.syncBalance) StoreService.syncBalance().then(_updateBalanceRow);
+            return;
+          }
+          _finishGift(giftName, writer, note);
+          return;
+        }
+        // No wallet API (pure demo): the local ledger is the only truth we have.
+        if(!_spendCoins(_selectedGiftPrice)){ _toast('Not enough coins'); return; }
+        _finishGift(giftName, writer, note);
+      });
       return;
     }
     if (!_curId || !_selectedAmount || _selectedAmount <= 0) return;

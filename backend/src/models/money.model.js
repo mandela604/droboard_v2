@@ -5,17 +5,25 @@
  * Every coin movement carries a unique idempotencyKey.
  */
 const mongoose = require('mongoose');
+const ids = require('./ids');
 
 const walletSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
   kind: { type: String, enum: ['reader', 'author'], default: 'reader' },
-  // spendable balance (purchased + bonus). Bonus tracked separately for expiry.
+  // Spendable balance. bonusBalance is a TAGGED SUBSET of it, never added on
+  // top: the coins with no cash behind them (pack bonus, earn tasks, referral
+  // rewards). Bonus reads chapters — drawing bonus first, with no writer/
+  // editor/marketing split for that part — and nothing else: a tip or gift
+  // refuses when the bought part can't cover it (bonus_no_tip). So free coins
+  // can neither be laundered into withdrawable author cash nor given away as
+  // if they were money. No expiry job — it is an attribution marker, not a clock.
   coinBalance: { type: Number, default: 0, min: 0 },
-  bonusBalance: { type: Number, default: 0, min: 0 }, // spend-only, 90-day expiry
-  bonusExpiresAt: { type: Date, default: null },
+  bonusBalance: { type: Number, default: 0, min: 0 },
   lifetimeEarned: { type: Number, default: 0 }, // fiat credited as writer, base currency
+  // What the author can actually withdraw: writer share of sales/tips, less
+  // payouts already settled. Cached balance of ledger account wallet:author:{id}.
+  fiatAvail: { type: Number, default: 0 },
   currency: { type: String, default: 'NGN' },
-  level: { type: String, default: 'Starter' },
   // ADDITIVE (finance console): operator-scheduled next payout for an author.
   nextPayoutAt: { type: Date, default: null },
   nextPayoutAmount: { type: Number, default: 0 },
@@ -75,6 +83,10 @@ const subscriptionPlanSchema = new mongoose.Schema({
   prices: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} }, // ISO currency -> display leg (Mixed: see CoinPack)
   features: { type: [String], default: [] },
   badge: { type: String, default: '' },
+  // The store card is the plan, the colour and the icon, so those are stored
+  // with it — the finance console is what sets them.
+  icon: { type: String, default: '' },
+  color: { type: String, default: '' },
   // ADDITIVE (finance console): daily coin grant + bonus % the
   // coin-transactions subscriptions tab renders (coinsPerDay, bonusPercent).
   coinsPerDay: { type: Number, default: 0 },
@@ -114,7 +126,9 @@ const giftSchema = new mongoose.Schema({
 const earnRewardSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true },
   action: { type: String, required: true },
-  type: { type: String, enum: ['watch_ad', 'checkin', 'rate', 'share', 'blog_read', 'youtube_sub', 'youtube_watch'], required: true, index: true },
+  // Type list lives in services/earn-rules.js so the save-time validator, the
+  // store catalog and this schema can never drift apart.
+  type: { type: String, enum: require('../services/earn-rules').TYPES, required: true, index: true },
   coins: { type: Number, required: true },
   cooldown: { type: String, default: '' },
   pagesRequired: { type: Number, default: 0 },
@@ -124,16 +138,61 @@ const earnRewardSchema = new mongoose.Schema({
 
 const coinTransactionSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
-  type: { type: String, enum: ['purchase', 'gift', 'subscription', 'refund'], required: true, index: true },
+  // purchase/subscription = money in, spend/gift/tip = coins out,
+  // earn = reward claim, refund = reversal.
+  type: { type: String, enum: ['purchase', 'gift', 'tip', 'spend', 'earn', 'subscription', 'refund'], required: true, index: true },
   coins: { type: Number, required: true },
   fiatAmount: { type: Number, required: true },
   fiatCurrency: { type: String, default: 'NGN' },
-  channel: { type: String, enum: ['play', 'appstore', 'web'], default: 'web' },
+  // Web channels are recorded as the provider that actually took the money.
+  channel: { type: String, enum: ['play', 'appstore', 'web', 'paystack', 'flutterwave', 'reward'], default: 'web' },
   storeRef: { type: String, default: '' }, // Play/AppStore purchase token (verified)
+  // Store commission withheld at purchase, per channel, and the cash the
+  // channel actually settles. 0 for spends/earn; both are purchase-only.
+  feeAmount: { type: Number, default: 0 },
+  netAmount: { type: Number, default: 0 },
+  // NGN value credited to the reader (coins x face) and any amount the reader
+  // paid above that value — the international premium platform keeps.
+  faceAmount: { type: Number, default: 0 },
+  surplusAmount: { type: Number, default: 0 },
   status: { type: String, enum: ['completed', 'refunded', 'failed'], default: 'completed', index: true },
   note: { type: String, default: '' },
 }, { timestamps: true });
 coinTransactionSchema.index({ userId: 1, createdAt: -1 });
+
+// Earn-claim cooldown ledger: one row per (user, reward code) so "watch ad
+// every 5 min" is enforced server-side instead of by whatever the tab says.
+const earnClaimSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  code: { type: String, required: true, index: true },
+  type: { type: String, default: '' },
+  coins: { type: Number, default: 0 },
+  claimCount: { type: Number, default: 1 },
+  lastClaimedAt: { type: Date, default: Date.now },
+  // The task the reader started but has not claimed yet: { h: hash of a
+  // single-use nonce, at: issued ms, exp: deadline ms }. Cleared by a
+  // successful claim, so a token cannot be spent twice or replayed.
+  pending: { type: mongoose.Schema.Types.Mixed, default: null },
+}, { timestamps: true });
+earnClaimSchema.index({ userId: 1, code: 1 }, { unique: true });
+
+// Chapter ownership: the reader's right to read a paid chapter, held by the
+// server instead of in whatever the device happens to have cached. The unique
+// triple is also the double-charge guard — an unlock that already exists is
+// free, and the insert cannot race itself into two payments.
+const entitlementSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  bookId: { type: String, ref: 'Book', required: true, index: true },
+  chapterId: { type: String, required: true },
+  // coin = paid from the wallet, ad = paid with a rewarded video, free = chapter
+  // priced 0, subscription = granted by an active plan (not used yet — plans
+  // buy ad-free, not unlocks).
+  kind: { type: String, enum: ['coin', 'ad', 'free', 'subscription'], default: 'coin' },
+  priceCoins: { type: Number, default: 0 },
+  // The ledger journal this purchase was gated by, for auditing.
+  journalId: { type: String, default: '' },
+}, { timestamps: { createdAt: 'unlockedAt', updatedAt: false } });
+entitlementSchema.index({ userId: 1, bookId: 1, chapterId: 1 }, { unique: true });
 
 const authorTransactionSchema = new mongoose.Schema({
   authorId: { type: String, ref: 'User', required: true, index: true },
@@ -186,7 +245,15 @@ const paymentMethodSchema = new mongoose.Schema({
 paymentMethodSchema.index({ authorId: 1, isDefault: 1 });
 
 const paymentDisputeSchema = new mongoose.Schema({
+  // A dispute can come from either side: an author about their earnings, or a
+  // reader about a store purchase. authorId stays for the author case; userId
+  // carries the reader case so both land on the one finance queue.
   authorId: { type: String, ref: 'User', index: true },
+  userId: { type: String, ref: 'User', index: true },
+  who: { type: String, default: '' },   // display name shown on the finance row
+  avatar: { type: String, default: '' },
+  role: { type: String, enum: ['reader', 'author', 'staff'], default: 'author' },
+  item: { type: String, default: '' },  // what was bought/charged, e.g. "5,000 coins — ₦6,000"
   transactionId: { type: String, index: true },
   withdrawalId: { type: String, ref: 'Withdrawal' },
   amount: { type: Number, required: true },
@@ -221,6 +288,12 @@ const storeConfigLogSchema = new mongoose.Schema({
 }, { timestamps: false });
 storeConfigLogSchema.index({ at: -1 });
 
+// Public ids (models/ids.js): the finance and author consoles address these
+// rows by a stored uuidv7 `id`, never by Mongo `_id`. Without the path, every
+// {id: …} lookup silently matched nothing and every row key read back undefined.
+[coinTransactionSchema, authorTransactionSchema, withdrawalSchema, payoutSchema,
+  paymentMethodSchema, paymentDisputeSchema, storeConfigLogSchema].forEach(ids.plugin);
+
 module.exports = {
   Wallet: mongoose.model('Wallet', walletSchema),
   LedgerEntry: mongoose.model('LedgerEntry', ledgerEntrySchema),
@@ -232,6 +305,8 @@ module.exports = {
   Gift: mongoose.model('Gift', giftSchema),
   EarnReward: mongoose.model('EarnReward', earnRewardSchema),
   CoinTransaction: mongoose.model('CoinTransaction', coinTransactionSchema),
+  EarnClaim: mongoose.model('EarnClaim', earnClaimSchema),
+  Entitlement: mongoose.model('Entitlement', entitlementSchema),
   AuthorTransaction: mongoose.model('AuthorTransaction', authorTransactionSchema),
   Withdrawal: mongoose.model('Withdrawal', withdrawalSchema),
   Payout: mongoose.model('Payout', payoutSchema),

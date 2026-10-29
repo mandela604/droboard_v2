@@ -44,6 +44,17 @@ async function methods(req, res) {
   });
 }
 
+// Owner-only read of one method, including the unmasked account number so the
+// edit form can show what is stored. The list endpoint keeps it hidden.
+async function method(req, res) {
+  return base.wrap(res, async () => {
+    const authorId = mine(req);
+    const m = await PaymentMethod.findOne({ id: req.valid.params.id, authorId }).select('+accountNumber').lean();
+    if (!m) { const e = new Error('not_found'); e.status = 404; throw e; }
+    return m;
+  });
+}
+
 async function addMethod(req, res) {
   return base.wrap(res, async () => {
     const authorId = mine(req);
@@ -114,15 +125,31 @@ async function requestWithdrawal(req, res) {
 
 async function disputes(req, res) {
   return base.wrap(res, async () => {
-    const authorId = mine(req);
-    return PaymentDispute.find({ authorId }).sort({ createdAt: -1 }).lean();
+    // Both sides of a payment argument, whichever field carries the filer.
+    const id = String(req.user.id);
+    return PaymentDispute.find({ $or: [{ authorId: mine(req) }, { userId: id }] })
+      .sort({ createdAt: -1 }).lean();
   });
 }
 
 async function fileDispute(req, res) {
   return base.wrap(res, async () => {
-    const authorId = mine(req);
-    const body = Object.assign({ amount: 0 }, req.valid.body, { authorId, status: 'open' });
+    const body = Object.assign({ amount: 0, role: 'author' }, req.valid.body, { status: 'open' });
+    const isStaff = (req.user.roles || []).some(r => ['admin', 'finance'].includes(r));
+    if (body.role === 'reader' && !isStaff) {
+      body.userId = String(req.user.id);
+      body.authorId = '';
+    } else {
+      body.authorId = mine(req);
+      if (body.role !== 'reader') body.role = 'author';
+    }
+    if (!body.who) {
+      // The finance queue shows a name, not a Mongo id, so resolve it here.
+      const { User } = require('../models/user.model');
+      const u = await User.findOne({ _id: req.user.id }).select('fullName avatar').lean().catch(() => null);
+      body.who = (u && u.fullName) || '';
+      if (u && u.avatar) body.avatar = u.avatar;
+    }
     const d = await PaymentDispute.create(body);
     return d.toJSON();
   });
@@ -171,4 +198,4 @@ async function deleteBundle(req, res) {
   return base.wrap(res, async () => store.deleteBundle(req.valid.params.id));
 }
 
-module.exports = { earnings, transactions, methods, addMethod, updateMethod, deleteMethod, defaultMethod, withdrawals, requestWithdrawal, disputes, fileDispute, coinPacks, saveCoinPack, deleteCoinPack, adRewards, saveAdReward, deleteAdReward, bundles, saveBundle, deleteBundle };
+module.exports = { earnings, transactions, methods, method, addMethod, updateMethod, deleteMethod, defaultMethod, withdrawals, requestWithdrawal, disputes, fileDispute, coinPacks, saveCoinPack, deleteCoinPack, adRewards, saveAdReward, deleteAdReward, bundles, saveBundle, deleteBundle };

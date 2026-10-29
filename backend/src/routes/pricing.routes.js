@@ -1,10 +1,12 @@
 'use strict';
 /* routes/pricing.routes.js — reader-facing pricing config (mounted at /api):
- *   GET /api/pricing/ladders            services/currency-service.js:201
- *   GET /api/platform-settings/currency services/currency-service.js:206
- * Both are behind USE_API=false today; demo ladders/config stay intact.
+ *   GET /api/pricing/ladders            services/currency-service.js
+ *   GET /api/platform-settings/currency services/currency-service.js
+ * The client merges these over the catalog's own `prices`, so a finance edit
+ * wins without waiting for the store payload.
  * Ladder shape is a flat map product id -> { NGN:'₦1,500', USD:'$2.50', … }
- * (strings, because the client resolves legs with strict nonEmpty()). */
+ * (strings, because the client resolves legs with strict nonEmpty()).
+ * Keyed by `code` — that is what the store page puts in item.id. */
 const base = require('../controllers/base.controller');
 const { generalLimiter } = require('../middleware/http');
 
@@ -29,6 +31,9 @@ function pricesOut(doc) {
       out[cur] = (SYMBOL[cur] || '') + v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
     }
   });
+  if (!out.NGN && isFinite(Number(doc && doc.basePriceNGN)) && Number(doc.basePriceNGN) > 0) {
+    out.NGN = '₦' + Number(doc.basePriceNGN).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
   return out;
 }
 
@@ -42,7 +47,8 @@ router.get('/pricing/ladders', generalLimiter,
     const out = {};
     [...packs, ...bundles, ...plans].forEach((d) => {
       const legs = pricesOut(d);
-      if (Object.keys(legs).length) out[String(d.id || d._id)] = legs;
+      const key = String(d.code || d.id || d._id || '');
+      if (key && Object.keys(legs).length) out[key] = legs;
     });
     return out;
   }));

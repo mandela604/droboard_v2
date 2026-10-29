@@ -1,5 +1,6 @@
 'use strict';
 const { CoinPack, CoinBundle, SubscriptionPlan, Gift, EarnReward } = require('../models/money.model');
+const rules = require('./earn-rules');
 
 const SEED_PACKS = [
   { code: 'pack1', coins: 100, bonusPct: 0, basePriceNGN: 1500, status: 'active' },
@@ -57,24 +58,40 @@ function pick(data, fields) {
   if (Object.keys(meta).length) out.meta = meta;
   return out;
 }
+// Rows are addressed by catalog code (the console's own id); only fall back to
+// the Mongo id when the value really is one — a bare { id: 'SUB-01' } query
+// casts to _id and throws.
+function byIdOrCode(Model, id) {
+  const s = String(id);
+  return Model.findOne({ code: s }).then((doc) => doc
+    || (require('mongoose').Types.ObjectId.isValid(s) ? Model.findOne({ _id: s }) : null));
+}
 async function saveDoc(Model, data, required) {
+  const check = (candidate) => {
+    if (required !== 'reward') return;
+    const errs = rules.validate(candidate);
+    if (errs.length) { const e = err(400, 'reward_invalid'); e.errors = errs; throw e; }
+  };
   if (data.id) {
-    const doc = await Model.findOne({ id: String(data.id) });
+    const doc = await byIdOrCode(Model, data.id);
     if (!doc) throw err(404, 'not_found');
-    Object.assign(doc, pick(data, required === 'pack' ? PACK_FIELDS : required === 'reward' ? REWARD_FIELDS : BUNDLE_FIELDS));
+    const body = pick(data, required === 'pack' ? PACK_FIELDS : required === 'reward' ? REWARD_FIELDS : BUNDLE_FIELDS);
+    Object.assign(doc, body);
+    check(doc);
     await doc.save();
     return doc.toJSON();
   }
   const fields = required === 'pack' ? PACK_FIELDS : required === 'reward' ? REWARD_FIELDS : BUNDLE_FIELDS;
   const body = pick(data, fields);
   if (!body.code) throw err(400, 'code_required');
+  check(body);
   const dupe = await Model.findOne({ code: body.code }).select('_id').lean();
   if (dupe) throw err(409, 'code_taken');
   const doc = await Model.create(body);
   return doc.toJSON();
 }
 async function deleteDoc(Model, id) {
-  const doc = await Model.findOne({ id: String(id) });
+  const doc = await byIdOrCode(Model, id);
   if (!doc) throw err(404, 'not_found');
   await doc.deleteOne();
   return { ok: true, id: String(id) };
@@ -90,6 +107,103 @@ async function listBundles() { return CoinBundle.find({}).sort({ coins: 1 }).lea
 async function saveBundle(data) { return saveDoc(CoinBundle, data, 'bundle'); }
 async function deleteBundle(id) { return deleteDoc(CoinBundle, id); }
 
+/* ── Reader-facing catalog (store.html). The page renders these shapes
+   directly and prices them through DroboardCurrency.resolve(), which wants a
+   ladder of display STRINGS keyed by currency — never raw numbers. Extra UI
+   fields ride in meta (see pick()), so they come back out at top level. */
+const LEG_SYMBOL = { NGN: '₦', USD: '$', GBP: '£' };
+
+function legText(cur, v) {
+  if (typeof v === 'string' && v.trim()) return v.trim();
+  const n = Number(v);
+  if (!isFinite(n)) return '';
+  const dec = cur === 'NGN' ? 0 : 2;
+  return (LEG_SYMBOL[cur] || '') + n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function legsOf(doc) {
+  const raw = (doc && doc.prices instanceof Map) ? Object.fromEntries(doc.prices) : (doc && doc.prices) || {};
+  const out = {};
+  ['NGN', 'USD', 'GBP'].forEach((cur) => {
+    const s = legText(cur, raw[cur]);
+    if (s) out[cur] = s;
+  });
+  if (!out.NGN) {
+    const s = legText('NGN', doc && doc.basePriceNGN);
+    if (s) out.NGN = s;
+  }
+  return out;
+}
+function usdOf(legs, doc) {
+  if (legs.USD) return parseFloat(legs.USD.replace(/[^0-9.]/g, '')) || 0;
+  const n = Number(doc && doc.basePriceNGN);
+  return isFinite(n) ? n : 0;
+}
+function metaOf(doc) {
+  return doc && doc.meta && typeof doc.meta === 'object' ? doc.meta : {};
+}
+function priceLine(legs, doc) {
+  return legs.NGN || legs.USD || legs.GBP || legText('NGN', doc && doc.basePriceNGN) || '';
+}
+
+function baseNGNOf(doc, legs) {
+  const n = Number(doc && doc.basePriceNGN);
+  if (isFinite(n) && n > 0) return n;
+  return legNum(legs.NGN);
+}
+function legNum(s) {
+  const n = parseFloat(String(s || '').replace(/[^0-9.]/g, ''));
+  return isFinite(n) ? n : 0;
+}
+function packOut(p) {
+  const m = metaOf(p), prices = legsOf(p);
+  const bonusPct = Number(p.bonusPct) || 0;
+  return {
+    id: p.code, code: p.code, coins: p.coins, bonusPct,
+    bonusCoins: Math.round((p.coins || 0) * bonusPct / 100),
+    basePriceNGN: baseNGNOf(p, prices),
+    price: m.price || priceLine(prices, p), priceUSD: usdOf(prices, p), prices,
+    badge: m.badge || '', color: m.color || '#FF2D6A', icon: m.icon || 'fa-coins',
+    title: m.name || (p.coins + ' Coins'),
+  };
+}
+function bundleOut(b) {
+  const m = metaOf(b), prices = legsOf(b);
+  return {
+    id: b.code, code: b.code, name: m.name || b.name, coins: b.coins, bonus: Number(b.bonus) || 0,
+    basePriceNGN: baseNGNOf(b, prices),
+    price: m.price || priceLine(prices, b), priceUSD: usdOf(prices, b), prices,
+    icon: m.icon || b.icon || 'fa-gift', color: m.color || b.color || '#7c3aed',
+  };
+}
+function subOut(s) {
+  const m = metaOf(s), prices = legsOf(s);
+  return {
+    id: s.code, code: s.code, name: m.name || s.name, period: s.period, durationDays: s.durationDays,
+    features: s.features || [], badge: m.badge || s.badge || '', icon: m.icon || s.icon || 'fa-crown',
+    color: m.color || s.color || '#FF2D6A',
+    basePriceNGN: baseNGNOf(s, prices),
+    price: m.price || priceLine(prices, s), priceUSD: usdOf(prices, s), prices,
+    coinsPerDay: s.coinsPerDay, bonusPercent: s.bonusPercent,
+  };
+}
+function giftOut(g) {
+  const m = metaOf(g);
+  // The tip picker renders `<i class="fas ${faIcon}">`, so faIcon must be a
+  // Font Awesome class; a staff-entered emoji stays in `icon` only.
+  const ico = String(m.icon || g.icon || '');
+  return {
+    id: g.code, code: g.code, name: g.name, price: g.costCoins, coins: g.costCoins,
+    icon: ico || 'fa-gem', faIcon: m.faIcon || (/^fa-/.test(ico) ? ico : 'fa-gem'),
+    color: m.color || g.color || '#FF2D6A', desc: m.desc || g.desc || '',
+  };
+}
+// Only rewards that still pass earn-rules are served: a task with no ad URL, a
+// bad YouTube id or no cooldown is not offered at all, because the server would
+// have to refuse its claim anyway.
+function rewardOut(r) {
+  return rules.shaped(r);
+}
+
 async function catalog() {
   await Promise.all([
     seed(CoinPack, SEED_PACKS),
@@ -98,14 +212,24 @@ async function catalog() {
     seed(EarnReward, SEED_REWARDS),
     seed(CoinBundle, SEED_BUNDLES),
   ]);
-  const [packs, subscriptions, gifts, adRewards, bundles] = await Promise.all([
-    CoinPack.find({ status: 'active' }).lean(),
-    SubscriptionPlan.find({ status: 'active' }).lean(),
-    Gift.find({ status: 'active' }).lean(),
-    EarnReward.find({ status: 'active' }).lean(),
-    CoinBundle.find({ status: 'active' }).lean(),
+  const [p, s, g, a, b] = await Promise.all([
+    CoinPack.find({ status: 'active' }).sort({ coins: 1 }).lean(),
+    SubscriptionPlan.find({ status: 'active' }).sort({ durationDays: 1 }).lean(),
+    Gift.find({ status: 'active' }).sort({ costCoins: 1 }).lean(),
+    EarnReward.find({ status: 'active' }).sort({ coins: 1 }).lean(),
+    CoinBundle.find({ status: 'active' }).sort({ coins: 1 }).lean(),
   ]);
-  return { packs, subscriptions, gifts, adRewards, bundles };
+  const subs = s.map(subOut);
+  // The Merge Pass is a separate card on the page, not another row in the plans grid.
+  const merge = subs.find((x) => x.code === 'sub-merge');
+  return {
+    packs: p.map(packOut),
+    bundles: b.map(bundleOut),
+    gifts: g.map(giftOut),
+    adRewards: a.map(rewardOut).filter(Boolean),
+    subscriptions: subs.filter((x) => x.code !== 'sub-merge'),
+    mergeSub: merge || {},
+  };
 }
 
 module.exports = {

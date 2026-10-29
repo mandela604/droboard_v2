@@ -1,12 +1,12 @@
 /* ===============================================================
    YOUTUBE EARN SERVICE
    Watch-time tracking + claim + card template + local progress (verbatim move from youtube-earn.html). Auto-initializes on load.
-   When going live: set USE_API = true, update API_BASE.
+   The claim is server-side (POST /api/wallet/earn) whenever a reward code is
+   present; the local balance is only the demo fallback.
    =============================================================== */
 (function () {
   'use strict';
 
-  const USE_API = false;
   const API_BASE = '/api';
 
 
@@ -35,7 +35,7 @@ function onYouTubeIframeAPIReady(){
       }
     }
   });
-  document.getElementById('infoCard').innerHTML = `<div style="font-weight:800">Earn +${coins} coins</div><div style="font-size:12px;color:#635F6E;margin-top:4px">Watch at least ${needSec}s — keep the video playing. Progress is tracked locally.</div><div class="progress"><div class="fill" id="fill" style="width:0%"></div></div><div style="font-size:11px;color:#9A96A3;margin-top:6px" id="progressText">0s / ${needSec}s</div>`;
+  document.getElementById('infoCard').innerHTML = `<div style="font-weight:800">Earn +${coins} coins</div><div style="font-size:12px;color:#635F6E;margin-top:4px">Watch at least ${needSec}s — keep the video playing.</div><div class="progress"><div class="fill" id="fill" style="width:0%"></div></div><div style="font-size:11px;color:#9A96A3;margin-top:6px" id="progressText">0s / ${needSec}s</div>`;
 }
 
 function updateUI(){
@@ -48,16 +48,42 @@ function enableClaim(){
   claimed=false;
   const b=document.getElementById('claimBtn');
   b.disabled=false;
-  b.textContent='Claim +'+coins+' coins — YouTube verified';
+  b.textContent='Claim +'+coins+' coins';
   b.onclick=()=>{
     if(claimed) return; claimed=true;
-    if(window.StoreService&&StoreService.addCoins){ StoreService.addCoins(coins); }
-    alert('✅ +'+coins+' coins for watching! (YouTube verification via watch time)');
-    location.href='store.html';
+    claimOnServer();
   };
   // auto hint
   updateUI();
 }
+/* The reward code rides in ?earn= (the store page's Start hands out a
+   single-use token first, see services/earn-service.js). The server owns the
+   coin amount, the cooldown and the watch time — this page's timer is only the
+   countdown the reader sees; claiming early comes back as earn_too_soon and a
+   token cannot be spent twice. With no backend at all the local demo balance is
+   credited, but only on a dev host. */
+function claimOnServer(){
+  const code=qs.get('earn')||'';
+  if(!window.DroboardEarn){ creditLocal(); return done('✅ +'+coins+' coins for watching!'); }
+  if(!code) return done('This watch page has no reward attached');
+  const finish=function(res){
+    if(res && res.kind==='ok') return done('✅ +'+(Number(res.coins)||coins)+' coins credited');
+    if(res && res.kind==='cooldown') return done('⏳ Already claimed — '+Math.max(1,Number(res.retryAfterSec)||0)+'s until the next one');
+    if(res && res.kind==='early') return done('⏳ Keep it playing '+Number(res.retryAfterSec||1)+' more seconds');
+    if(res && res.kind==='auth') return done('Sign in to claim coins');
+    if(res && res.kind==='gone') return done('This reward is no longer available');
+    if(res && res.kind==='offline'){
+      if(window.DroboardEarn.isLocal()){ creditLocal(); return done('✅ +'+coins+' coins (demo — backend offline)'); }
+      return done('Could not reach the server — try again');
+    }
+    return done((res && res.msg) || 'Start the task again to claim this');
+  };
+  const existing=DroboardEarn.pending(code);
+  const ready=existing ? Promise.resolve(existing) : DroboardEarn.start(code).then(r=>(r&&r.kind==='ok'&&r.pending)?r.pending:null);
+  ready.then(p=>p?DroboardEarn.claim(code,p.token):{kind:'restart',msg:'Start the task again to claim this'}).then(finish).catch(()=>finish(null));
+}
+function done(msg){ setTimeout(()=>{ alert(msg); location.href='store.html'; }, 150); }
+function creditLocal(){ if(window.StoreService&&StoreService.addCoins) StoreService.addCoins(coins); }
 // fallback if API fails
 setTimeout(()=>{
   if(!player || !player.getPlayerState){
