@@ -357,7 +357,7 @@ function renderList(){
           <span class="ctr-chip"><strong>${c.termLength}</strong> term</span>
           ${bonus ? `<span class="ctr-chip bonus"><strong>${bonus}</strong> ${cfLabelFor(c, 'bonusMax').replace(/\s*\(\$\)$/, '').toLowerCase()}</span>` : ''}
           ${c.completionTarget ? `<span class="ctr-chip bonus"><strong>${fmtNum(c.completionTarget)}</strong> reads / ${c.completionWindowMonths || '?'} mo</span>` : ''}
-          ${c.profitShareThreshold != null ? `<span class="ctr-chip bonus">Bonus at <strong>$${c.profitShareThreshold}</strong> profit</span>` : ''}
+          ${c.profitShareThreshold != null ? `<span class="ctr-chip bonus">Bonus at <strong>${fmtUSD(c.profitShareThreshold)}</strong> profit</span>` : ''}
           ${c.autoRenew ? `<span class="ctr-chip">${cfLabelFor(c, 'autoRenew')}</span>` : ''}
         </div>
       </div>
@@ -688,8 +688,8 @@ function openDetailsModal(id){
       <div class="dt-grid">
         ${c.completionTarget ? `<div class="dt-item"><span>${cfLabelFor(c, 'compTarget')}</span><b>${fmtNum(c.completionTarget)} reads</b></div>` : ''}
         ${c.completionWindowMonths ? `<div class="dt-item"><span>${cfLabelFor(c, 'compMonths')}</span><b>${c.completionWindowMonths} months</b></div>` : ''}
-        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitThresh')}</span><b>$${c.profitShareThreshold}</b></div>` : ''}
-        ${c.profitShareBonus ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitBonus')}</span><b>$${c.profitShareBonus}</b></div>` : ''}
+        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitThresh').replace(/\s*\(\$\)$/, '')}</span><b>${fmtUSD(c.profitShareThreshold)}</b></div>` : ''}
+        ${c.profitShareBonus ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitBonus').replace(/\s*\(\$\)$/, '')}</span><b>${fmtUSD(c.profitShareBonus)}</b></div>` : ''}
       </div>
     </div>` : ''}
 

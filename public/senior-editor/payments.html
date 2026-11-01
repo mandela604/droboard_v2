@@ -32,8 +32,8 @@ table{width:100%;border-collapse:collapse;min-width:800px}thead th{text-align:le
     <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div><span class="stat-delta">+18% from last month</span></div><div class="stat-num">156</div><div class="stat-lbl">Successful Payments</div></div>
     <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div><span class="stat-delta">+12 awaiting</span></div><div class="stat-num">18</div><div class="stat-lbl">Pending Payments</div></div>
     <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-circle-xmark"></i></div><span class="stat-delta">+5 from last month</span></div><div class="stat-num">7</div><div class="stat-lbl">Failed Payments</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-sack-dollar"></i></div><span class="stat-delta">+22% from last month</span></div><div class="stat-num">$84,200</div><div class="stat-lbl">Total Disbursed</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-credit-card"></i></div><span class="stat-delta">$3,600 avg</span></div><div class="stat-num">$540</div><div class="stat-lbl">Avg Payment</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-sack-dollar"></i></div><span class="stat-delta">+22% from last month</span></div><div class="stat-num" id="stDisbursed"></div><div class="stat-lbl">Total Disbursed</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-credit-card"></i></div><span class="stat-delta" id="stAvgDelta"></span></div><div class="stat-num" id="stAvg"></div><div class="stat-lbl">Avg Payment</div></div>
   </div>
   <div class="two-col">
     <div class="table-card">
@@ -47,10 +47,10 @@ table{width:100%;border-collapse:collapse;min-width:800px}thead th{text-align:le
     </div>
     <div>
       <div class="panel"><div class="panel-head"><h2>Payment Summary</h2></div>
-        <div class="kv-row"><span class="k">This Month</span><span class="v">$12,840</span></div>
-        <div class="kv-row"><span class="k">Last Month</span><span class="v">$10,220</span></div>
+        <div class="kv-row"><span class="k">This Month</span><span class="v" id="kvThisMonth"></span></div>
+        <div class="kv-row"><span class="k">Last Month</span><span class="v" id="kvLastMonth"></span></div>
         <div class="kv-row"><span class="k">Avg Processing Time</span><span class="v">1.8 days</span></div>
-        <div class="kv-row"><span class="k">Pending Amount</span><span class="v">$8,450</span></div>
+        <div class="kv-row"><span class="k">Pending Amount</span><span class="v" id="kvPendingAmount"></span></div>
       </div>
       <div class="panel" style="margin-top:20px"><div class="panel-head"><h2>Quick Actions</h2></div>
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -61,11 +61,12 @@ table{width:100%;border-collapse:collapse;min-width:800px}thead th{text-align:le
     </div>
   </div>
 </div>
-<script src="shared/api.js"></script>
+<script src="shared/api.js?v=3"></script>
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script src="payments-enhanced.js"></script>
 <script src="remaining-pages-enhanced.js"></script>
-<script src="services/payments-service.js"></script><script>PaymentsService.init();</script>
+<script src="../services/currency-service.js?v=8"></script>
+<script src="services/payments-service.js?v=3"></script><script>PaymentsService.init();</script>
 </body>
 </html>

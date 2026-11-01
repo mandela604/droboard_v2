@@ -142,6 +142,12 @@ function fmtNum(n){
   if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
   return n.toString();
 }
+/* Author revenue is authored in dollars; staff screens show the currency Super
+   Admin set, so every money cell goes through this one wrapper. */
+function money(n){
+  if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n);
+  return '$' + fmtNum(Number(n) || 0);
+}
 function fmtDays(d){
   if(d<30) return d+'d ago';
   if(d<365) return Math.floor(d/30)+'mo ago';
@@ -154,7 +160,7 @@ function renderStatCards(){
     { n: fmtNum(s.total)+'+', l:'Total Authors', ico:'fa-user-pen', cls:'gold' },
     { n: fmtNum(s.active), l:'Active Authors', ico:'fa-circle-check', cls:'green' },
     { n: fmtNum(s.totalBooks), l:'Published Books', ico:'fa-book-open', cls:'blue' },
-    { n: '$'+fmtNum(s.totalRevenue), l:'Author Revenue (est.)', ico:'fa-sack-dollar', cls:'purple' },
+    { n: money(s.totalRevenue), l:'Author Revenue (est.)', ico:'fa-sack-dollar', cls:'purple' },
   ];
   document.getElementById('statCards').innerHTML = stats.map(s=>`
     <div class="kpi-card">
@@ -194,18 +200,12 @@ function renderList(){
         </div>
         <div class="col-hide num-cell faint">${a.books}</div>
         <div class="col-hide num-cell">${fmtNum(a.reads)}</div>
-        <div class="num-cell">$${fmtNum(a.revenue)}</div>
+        <div class="num-cell">${money(a.revenue)}</div>
         <div class="col-hide"><span class="genre-pill" style="background:${BG_MAP[colorKey]};color:${ICO_MAP[colorKey]}">${a.genre}</span></div>
         <div><span class="status-chip ${a.status}"><i class="fas fa-circle"></i>${a.status}</span></div>
         <div class="col-hide" style="font-size:11px;color:var(--text-faint)">${fmtDays(a.joinedDaysAgo)}</div>
         <div class="row-actions">
           <a class="icon-btn" href="../Pages/profile.html?id=${a.id}" title="View profile"><i class="fas fa-eye"></i></a>
-          <div class="row-menu">
-            <button class="row-menu-btn" data-action="toggle-menu" data-id="${a.id}" title="More actions"><i class="fas fa-ellipsis-vertical"></i></button>
-            <div class="dropdown" id="menu-${a.id}">
-              <div class="dropdown-item" data-action="view" data-id="${a.id}"><i class="fas fa-eye"></i> View Profile</div>
-            </div>
-          </div>
         </div>
       </div>`;
     }).join('');
@@ -268,29 +268,6 @@ function renderGenreBreakdown(){
 document.getElementById('searchInput').addEventListener('input', applyFilters);
 document.getElementById('statusFilter').addEventListener('change', applyFilters);
 document.getElementById('sortFilter').addEventListener('change', applyFilters);
-
-document.getElementById('authorList').addEventListener('click', function(e){
-  const menuBtn = e.target.closest('[data-action="toggle-menu"]');
-  if(menuBtn){
-    const id = menuBtn.dataset.id;
-    const dropdown = document.getElementById('menu-'+id);
-    document.querySelectorAll('.dropdown.open').forEach(function(d){ if(d!==dropdown) d.classList.remove('open'); });
-    dropdown.classList.toggle('open');
-    return;
-  }
-  const btn = e.target.closest('[data-action]');
-  if(!btn) return;
-  const action = btn.dataset.action;
-  const id = btn.dataset.id;
-  document.querySelectorAll('.dropdown.open').forEach(function(d){ d.classList.remove('open'); });
-  if(action==='view'){
-    window.location.href = '../Pages/profile.html?id='+id;
-  }
-});
-
-document.addEventListener('click', function(e){
-  if(!e.target.closest('.row-menu')) document.querySelectorAll('.dropdown.open').forEach(function(d){ d.classList.remove('open'); });
-});
 
 document.getElementById('exportBtn').addEventListener('click', function(){
   const rows = [['ID','Name','Status','Books','Reads','Revenue','Genre','Verified','Joined']];

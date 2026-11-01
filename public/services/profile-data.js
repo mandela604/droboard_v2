@@ -280,7 +280,7 @@
     const {
       type = 'post', text = '', quote = '', caption = '', note = '',
       chapterRef = null, storyRef = null, amaData = null, pinned = false,
-      image = '', poll = null, prediction = null, debateData = null,
+      image = '', poll = null, debateData = null,
     } = payload || {};
     await delay(300);
     const base = requireProfile(key);
@@ -292,7 +292,6 @@
     };
     if (image) post.image = image;
     if (poll) post.poll = poll;
-    if (prediction) post.prediction = prediction;
     if (debateData) post.debateData = debateData;
     if (pinned) base.posts.forEach(p => { p.pinned = false; });
     base.posts.unshift(post);

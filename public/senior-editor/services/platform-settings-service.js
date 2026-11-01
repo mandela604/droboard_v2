@@ -80,8 +80,7 @@ const SECTIONS = {
     title: 'Payment Settings',
     desc: 'Configure payment gateways and payout preferences',
     html: () => `
-      <div class="form-group"><label>Default Currency</label><select><option>USD ($)</option><option>EUR (€)</option><option>NGN (₦)</option><option>GBP (£)</option></select></div>
-      <div class="form-group"><label>Minimum Payout</label><div class="desc">Minimum amount before an author can withdraw</div><input type="text" value="$50.00"/></div>
+      <div class="form-group"><label>Minimum Payout (USD)</label><div class="desc">Minimum dollar balance before an author can withdraw. The display currency for staff pages is set in Super Admin → Platform Settings → Coin Economy.</div><input type="text" value="$50.00"/></div>
       <div class="form-group"><label>Payout Schedule</label><select><option>Monthly (1st of every month)</option><option>Bi-weekly</option><option>Weekly</option><option>Manual (admin initiated)</option></select></div>
       <div class="form-group"><label>Platform Commission (%)</label><input type="number" value="30" min="0" max="100"/></div>
       <div class="form-group"><label>Payment Gateway</label><select><option>Stripe</option><option>PayPal</option><option>Flutterwave</option><option>Paystack</option></select></div>

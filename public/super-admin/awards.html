@@ -117,7 +117,7 @@ body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;heig
       <div class="form-row"><label>Status</label><select id="fStatus2"><option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option></select></div>
       <div class="form-row"><label>Criteria</label>
         <div class="form-grid2">
-          <select id="fMetric"><option value="reads">Reads ≥</option><option value="genre_rank">Genre Top N</option><option value="manual">Manual (no auto)</option></select>
+          <select id="fMetric"><option value="reads">Reads ≥</option><option value="genre_rank">Genre Top N</option><option value="platform_tips">Platform tips ≥ (coins)</option><option value="manual">Manual (no auto)</option></select>
           <input id="fValue" type="number" placeholder="Value (e.g. 1000000 or 10)"/>
         </div>
         <div class="form-grid2" style="margin-top:8px">
@@ -133,6 +133,6 @@ body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;heig
 
 <script src="shared/super-admin-sidebar.js"></script>
 <script src="data/admin-demo-data.js"></script>
-<script src="awards-service.js"></script>
+<script src="awards-service.js?v=2"></script>
 </body>
 </html>

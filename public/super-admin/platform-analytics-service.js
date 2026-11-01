@@ -24,8 +24,12 @@ var BG={red:'var(--red-bg)',amber:'var(--amber-bg)',blue:'var(--blue-bg)',purple
 
 var COIN_RATE=15;
 function fmtNum(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n);}
-function fmtMoney(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n;}
-function coinToUSD(c){ if(window.DroboardCurrency && DroboardCurrency.coinsToMoney) return DroboardCurrency.coinsToMoney(c); return Math.round(c/COIN_RATE); }
+/* Revenue rows are authored in dollars (Jun 2026 = 47,280), so the staff
+   restatement is usdToMoneyShort — ngnToMoney here would divide by the rate. */
+function fmtMoney(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoneyShort) return DroboardCurrency.usdToMoneyShort(n); if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n;}
+// Coin acts stay in coins on this console — restating them as naira would make
+// the column header a lie. There is no coins→money helper by design.
+function coins(n){ if(window.DroboardCurrency && DroboardCurrency.coins) return DroboardCurrency.coins(n); return fmtNum(n)+' coins'; }
 
 /* ── Platform data (aggregated from all modules) ── */
 var DATA = {
@@ -116,6 +120,13 @@ var TOP_READERS=[
   {id:'u19',name:'Fatima_Z',username:'fatima_z',avatar:'https://i.pravatar.cc/60?img=26',readingHours:155,avgSessionMin:35,streakDays:22,coinsSpent:55000,tips:62000,likesGiven:720,shares:95,saves:180,comments:240,topGenre:'Elegy & Heartbreak',booksRead:48},
   {id:'u20',name:'Obi_N',username:'obi_n',avatar:'https://i.pravatar.cc/60?img=33',readingHours:75,avgSessionMin:20,streakDays:10,coinsSpent:21000,tips:15000,likesGiven:310,shares:42,saves:78,comments:110,topGenre:'Fantasy',booksRead:28}
 ];
+// A tip leaves the reader as coins, so this table states it in coins: the naira
+// these rows used to carry is restated at the ₦15 face and capped by that
+// reader's own total coin spend (tips are part of spending, never above it).
+TOP_READERS.forEach(function(r){
+  r.tipsCoins = Math.min(r.coinsSpent, Math.round((r.tips || 0) / 15));
+  delete r.tips;
+});
 
 /* ── Renderers ── */
 var revPage=1, acqPage=1, readerPage=1;
@@ -142,14 +153,14 @@ function renderRevenueDetail(view){
   var el=document.getElementById('revenueDetail');
   if(view==='bySource'){
     var sources=[
-      {name:'Coin Purchases',pct:66,color:'var(--gold)',amt:'$31.2K'},
-      {name:'Ad Revenue',pct:23,color:'var(--blue)',amt:'$10.7K'},
-      {name:'Subscriptions',pct:11,color:'var(--green)',amt:'$5.4K'}
+      {name:'Coin Purchases',pct:66,color:'var(--gold)',amt:fmtMoney(31200)},
+      {name:'Ad Revenue',pct:23,color:'var(--blue)',amt:fmtMoney(10680)},
+      {name:'Subscriptions',pct:11,color:'var(--green)',amt:fmtMoney(5400)}
     ];
     el.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">'+sources.map(function(s){
       return '<div style="text-align:center;padding:14px;background:var(--input-bg);border-radius:10px"><div style="font-size:22px;font-weight:800;color:'+s.color+'">'+s.pct+'%</div><div style="font-size:11px;color:var(--text-faint);font-weight:700;margin-top:2px">'+s.name+'</div><div style="font-size:13px;font-weight:800;margin-top:4px">'+s.amt+'</div></div>';
     }).join('')+'</div>';
-    el.innerHTML+='<div style="font-size:11px;color:var(--text-faint);font-weight:700;text-align:center">Current month breakdown — Total: $47,280</div>';
+    el.innerHTML+='<div style="font-size:11px;color:var(--text-faint);font-weight:700;text-align:center">Current month breakdown — Total: '+fmtMoney(47280)+'</div>';
     return;
   }
   var rows=view==='quarterly'?[
@@ -326,10 +337,10 @@ function renderTopReaders(){
   var start=(readerPage-1)*PAGE_SIZE;
   var pageRows=TOP_READERS.slice(start,start+PAGE_SIZE);
   var totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
-  var html='<table class="mini-tbl"><thead><tr><th>Reader</th><th>Top Genre</th><th class="num">Read Time</th><th class="num">Avg Session</th><th class="num">Streak</th><th class="num">Coins Spent</th><th class="num">Tips</th><th class="num">Books Read</th><th class="num">Comments</th></tr></thead><tbody>'+
+  var html='<table class="mini-tbl"><thead><tr><th>Reader</th><th>Top Genre</th><th class="num">Read Time</th><th class="num">Avg Session</th><th class="num">Streak</th><th class="num">Coins Spent</th><th class="num">Tips Sent</th><th class="num">Books Read</th><th class="num">Comments</th></tr></thead><tbody>'+
     pageRows.map(function(r){
       var streakVal=r.streakDays>0?('🔥 '+r.streakDays+'d'):'—';
-      return '<tr><td><div style="display:flex;align-items:center;gap:8px"><img src="'+r.avatar+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover" alt=""/><div><a href="../Pages/profile.html?id='+r.id+'" style="font-weight:700;color:var(--text);text-decoration:none;cursor:pointer" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--text)\'">'+r.name+'</a><div style="font-size:10px;color:var(--text-faint)">@'+r.username+'</div></div></div></td><td style="font-size:11px">'+r.topGenre+'</td><td class="num">'+r.readingHours+'h</td><td class="num">'+r.avgSessionMin+'m</td><td class="num">'+streakVal+'</td><td class="num">'+fmtMoney(coinToUSD(r.coinsSpent))+'</td><td class="num">'+fmtMoney(coinToUSD(r.tips))+'</td><td class="num">'+r.booksRead+'</td><td class="num">'+fmtNum(r.comments)+'</td></tr>';
+      return '<tr><td><div style="display:flex;align-items:center;gap:8px"><img src="'+r.avatar+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover" alt=""/><div><a href="../Pages/profile.html?id='+r.id+'" style="font-weight:700;color:var(--text);text-decoration:none;cursor:pointer" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--text)\'">'+r.name+'</a><div style="font-size:10px;color:var(--text-faint)">@'+r.username+'</div></div></div></td><td style="font-size:11px">'+r.topGenre+'</td><td class="num">'+r.readingHours+'h</td><td class="num">'+r.avgSessionMin+'m</td><td class="num">'+streakVal+'</td><td class="num">'+coins(r.coinsSpent)+'</td><td class="num">'+coins(r.tipsCoins)+'</td><td class="num">'+r.booksRead+'</td><td class="num">'+fmtNum(r.comments)+'</td></tr>';
     }).join('')+'</tbody></table>';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px"><div style="font-size:11px;color:var(--text-faint)">Showing '+(start+1)+'–'+Math.min(start+PAGE_SIZE,total)+' of '+total+'</div><div style="display:flex;gap:4px">';
   html+='<button onclick="readerPage=Math.max(1,readerPage-1);renderTopReaders()" '+(readerPage===1?'disabled':'')+' style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11px;cursor:pointer;font-family:inherit"><i class="fas fa-chevron-left"></i></button>';

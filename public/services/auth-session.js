@@ -1,107 +1,63 @@
 /**
  * services/auth-session.js — Session state (window.AuthSession)
  * ─────────────────────────────────────────────────────────────────────
- * DEMO account switcher + real session helpers.
+ * The one place the app reads "who is signed in".
  *
- * Demo account switcher — default account is the READER (You_Reader) so the
- * reader → writer flow (Create → submit → approve) is visible on profile.html.
- * Flip accounts from any page URL (persists):
- *   ?as=writer  → Ada Writes (existing writer)
- *   ?as=reader  → Jordan Blake (reader, default)
- *   ?as=guest   → signed out — no account, no profile, no library
+ * A session is written by services/login-service.js (and signup-service.js
+ * after auto-login):
+ *   droboard_session  → access token
+ *   droboard_user     → the user row returned by /api/auth/login
  *
- * Signing out also switches the demo to 'guest', so the guest views
- * (profile + library) are reachable without a backend.
+ * No session means guest: no account, no profile, no library. There is no
+ * demo persona and no account switcher — signed out really is signed out.
  *
- * Real session helpers (used by the live backend):
  *   AuthSession.isSignedIn()    → has a session?
- *   AuthSession.isGuest()       → no session (guest)?
+ *   AuthSession.isGuest()       → no session?
  *   AuthSession.getStoredUser() → the signed-in user record, or null
+ *   AuthSession.getSync()       → { handle, name, avatar } for sync renders
  *   AuthSession.loginUrl(next)  → login link that returns to `next`
+ *   AuthSession.getRoles()      → normalized roles from the user row
  */
 (function (global) {
   'use strict';
 
-  const ACCOUNTS = {
-    reader: { handle: 'You_Reader', name: 'Jordan Blake', avatar: 'https://i.pravatar.cc/200?img=11' },
-    writer: { handle: 'Ada_Writes', name: 'Ada Writes', avatar: 'https://i.pravatar.cc/200?img=32' },
-  };
-  const STORAGE_KEY = 'droboard_demo_as';
-
-  /* Real session keys — written by login-service.js / signup-service.js.
-     Their presence is the ONLY reliable "this person has an account"
-     signal; the demo account switcher above is not one. */
   const SESSION_KEY = 'droboard_session';
   const USER_KEY = 'droboard_user';
 
-  /* ── Effective mode ────────────────────────────────────────────────
-     One place that decides "who is this person right now", so the
-     identity and the signed-in flag can never disagree.
-
-     Precedence:
-       1. ?as=reader|writer|guest  → explicit override (always wins)
-       2. a real session            → signed in (wins over a stale 'guest')
-       3. the stored demo mode      → 'reader' | 'writer' | 'guest'
-       4. nothing stored            → 'reader' (demo default)          */
-  function effectiveMode() {
-    // 1. explicit ?as= override
+  function readJson(key) {
     try {
-      const as = new URLSearchParams(location.search).get('as');
-      if (as === 'reader' || as === 'writer' || as === 'guest') {
-        try { localStorage.setItem(STORAGE_KEY, as); } catch (e) {}
-        return as;
-      }
-    } catch (e) {}
-    // 2. a real session beats the demo switcher
-    try { if (localStorage.getItem(SESSION_KEY)) return 'reader'; } catch (e) {}
-    // 3./4. stored demo mode (may be null)
-    try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
-  }
-
-  /* True when the visitor has actually signed in (has a session).
-     Demo mode also counts: the account switcher stands in for a session
-     until the visitor switches to 'guest' or signs out. */
-  function isSignedIn() {
-    const mode = effectiveMode();
-    return mode === 'reader' || mode === 'writer';
-  }
-
-  /* Which demo account is active: 'reader' | 'writer' | 'guest'. */
-  function getMode() {
-    const mode = effectiveMode();
-    return mode === 'writer' ? 'writer' : (mode === 'guest' ? 'guest' : 'reader');
-  }
-
-  /* Switch the demo account (reader / writer / guest) and reload. */
-  function setMode(mode) {
-    const m = (mode === 'writer' || mode === 'guest') ? mode : 'reader';
-    try { localStorage.setItem(STORAGE_KEY, m); } catch (e) {}
-    // Switching accounts replaces whatever session was there.
-    try {
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(USER_KEY);
-    } catch (e) {}
-    _cache = resolveAccount();
-    return m;
+      const v = JSON.parse(localStorage.getItem(key) || 'null');
+      return (v && typeof v === 'object') ? v : null;
+    } catch (e) { return null; }
   }
 
   /* The signed-in user's record, or null for a guest. */
   function getStoredUser() {
-    try {
-      const u = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
-      return (u && typeof u === 'object') ? u : null;
-    } catch (e) { return null; }
+    return readJson(USER_KEY);
   }
 
-  /* Guest = nobody signed in. Pages use this to decide whether to show a
-     login gate instead of account-only UI (profile, library, …). */
+  function isSignedIn() {
+    try { return !!localStorage.getItem(SESSION_KEY); } catch (e) { return false; }
+  }
+
   function isGuest() { return !isSignedIn(); }
 
+  function account() {
+    if (!isSignedIn()) return { handle: null, name: null, avatar: null };
+    const u = getStoredUser();
+    if (!u) return { handle: null, name: null, avatar: null };
+    const handle = u.handle || u.username || '';
+    return {
+      handle: handle || null,
+      name: u.fullName || u.name || handle || null,
+      avatar: u.avatar || null,
+    };
+  }
+
   /* ── Roles ──────────────────────────────────────────────────────────
-     Canonical role names for menu/dashboard links. Reads the real session
-     user (droboard_user.roles/role/primaryRole), the legacy aurum_user,
-     the explicit dro_staff_role override, and a ?role= demo override.
-     Visibility only — dashboards must still authorize server-side. */
+     Canonical role names for menu/dashboard links, read from the real
+     session user (droboard_user.roles/role/primaryRole). Visibility only —
+     dashboards must still authorize server-side. */
   const ROLE_ALIASES = {
     superadmin: 'admin', super_admin: 'admin', administrator: 'admin',
     chief: 'chief_editor', chiefeditor: 'chief_editor',
@@ -114,12 +70,6 @@
     const key = String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
     return ROLE_ALIASES[key] || key;
   }
-  function readJson(key) {
-    try {
-      const v = JSON.parse(localStorage.getItem(key) || 'null');
-      return (v && typeof v === 'object') ? v : null;
-    } catch (e) { return null; }
-  }
   function getRoles() {
     const roles = new Set();
     const add = (r) => {
@@ -129,16 +79,8 @@
         if (n) roles.add(n);
       });
     };
-    [readJson(USER_KEY), readJson('aurum_user')].forEach((u) => {
-      if (!u) return;
-      add(u.roles); add(u.role); add(u.primaryRole);
-    });
-    try { add(localStorage.getItem('dro_staff_role')); } catch (e) {}
-    try {
-      const q = new URLSearchParams(location.search).get('role');
-      if (q) add(q);
-    } catch (e) {}
-    if (effectiveMode() === 'guest') return [];
+    const u = getStoredUser();
+    if (u) { add(u.roles); add(u.role); add(u.primaryRole); }
     return [...roles];
   }
   function hasRole() {
@@ -152,50 +94,36 @@
     return 'login.html?next=' + encodeURIComponent(back);
   }
 
-  function resolveAccount() {
-    const mode = effectiveMode();
-    if (mode === 'guest') return { handle: null, name: null, avatar: null };
-    if (!mode) {
-      // First run in the demo: default to the reader account and remember it.
-      try { localStorage.setItem(STORAGE_KEY, 'reader'); } catch (e) {}
-      return Object.assign({}, ACCOUNTS.reader);
-    }
-    return Object.assign({}, ACCOUNTS[mode === 'writer' ? 'writer' : 'reader']);
-  }
-
-  let _cache = resolveAccount();
-
-  // Synchronous read for components that render synchronously (e.g.
-  // comment-section currentUser). Returns a copy, never null fields.
   function getSync() {
-    return { ..._cache };
+    return { ...account() };
   }
 
   async function getSession() {
-    return { ..._cache };
+    return { ...account() };
   }
 
   async function getCurrentUserHandle() {
-    return _cache.handle || null;
+    return account().handle;
   }
 
   async function logout() {
-    _cache = { handle: null, name: null, avatar: null };
-    // Sign out for real: drop the stored session + user so the app
-    // treats this visitor as a guest again on the next page load.
+    // Revoke the refresh family first — dropping only the local copy would
+    // leave a valid httpOnly session cookie behind.
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    } catch (e) { /* backend unreachable — still sign out locally */ }
     try {
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(USER_KEY);
+      // Legacy demo keys from before login was wired.
+      localStorage.removeItem('droboard_demo_as');
+      localStorage.removeItem('dro_staff_role');
+      localStorage.removeItem('aurum_user');
     } catch (e) {}
-    // Demo mode: remember that we're signed out, otherwise the account
-    // switcher would silently sign us back in on the next page load.
-    try { localStorage.setItem(STORAGE_KEY, 'guest'); } catch (e) {}
     return true;
   }
 
-  function clearCache() {
-    _cache = resolveAccount();
-  }
+  function clearCache() {}
 
   global.AuthSession = {
     getSession,
@@ -207,8 +135,6 @@
     getStoredUser,
     isGuest,
     loginUrl,
-    getMode,
-    setMode,
     getRoles,
     hasRole,
   };

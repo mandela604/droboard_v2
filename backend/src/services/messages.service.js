@@ -6,6 +6,7 @@
 const { Conversation, Message } = require('../models/social.model');
 const { User } = require('../models/user.model');
 const { validateMediaUrl } = require('./media.service');
+const { userRefFilter } = require('./user-ref');
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 
@@ -26,7 +27,7 @@ function fromRoleFor(user) {
 async function loadUsers(ids) {
   const uniq = [...new Set((ids || []).map(String).filter(Boolean))];
   if (!uniq.length) return {};
-  const users = await User.find({ $or: [{ id: { $in: uniq } }, { _id: { $in: uniq } }] })
+  const users = await User.find(userRefFilter(uniq))
     .select('id username fullName avatar emailVerified roles').lean().catch(() => []);
   const byId = {};
   (users || []).forEach(u => {

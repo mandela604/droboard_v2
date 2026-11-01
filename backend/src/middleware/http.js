@@ -2,13 +2,36 @@
 const rateLimit = require('express-rate-limit');
 
 // zod validator: validate(schema) — 400 with details, nothing else.
+
+// Unwrap wrappers (optional/default/effects) until we reach the object shape,
+// so `z.object({ params }).strict()` and `.optional()`-wrapped envelopes both
+// expose which envelope keys they declare.
+function schemaShape(schema) {
+  let s = schema;
+  for (let i = 0; i < 5 && s; i++) {
+    if (s._def && s._def.typeName === 'ZodObject') return s.shape;
+    s = s._def && s._def.innerType;
+  }
+  return null;
+}
+
 function validate(schema) {
   return function (req, res, next) {
     // Bodyless POSTs (no Content-Type) leave req.body undefined; treat that as
     // {} so all-optional bodies (report resolve/dismiss notes) still parse.
     // Schemas with required fields still reject.
     const body = req.body === undefined ? {} : req.body;
-    const r = schema.safeParse({ body, query: req.query, params: req.params });
+    const envelope = { body, query: req.query, params: req.params };
+    // A schema declares only the parts it cares about, but validate always
+    // supplies all three. Schemas written as z.object({ params }).strict()
+    // would then reject the request over the untouched keys — so hand the
+    // schema only the envelope keys it actually declares. Strictness inside
+    // body/query/params is unaffected.
+    const shape = schemaShape(schema);
+    const input = shape
+      ? Object.fromEntries(Object.keys(envelope).filter(k => k in shape).map(k => [k, envelope[k]]))
+      : envelope;
+    const r = schema.safeParse(input);
     if (!r.success) return res.status(400).json({ error: 'invalid_input', details: r.error.flatten() });
     req.valid = r.data;
     return next();

@@ -327,11 +327,6 @@
     // ═══════════════════════════════════════════════════════
     // REVIEWS
     // ═══════════════════════════════════════════════════════
-    getPendingReviews() {
-      const items = STORE.reviews.filter(r => r.status === 'pending' || r.status === 'reviewing');
-      return _request('/reviews/pending', {}, items);
-    },
-
     async getReviews(filters = {}) {
       const data = await _request('/reviews', {}, { items: STORE.reviews, total: STORE.reviews.length });
       let items = [...data.items];
@@ -343,19 +338,8 @@
       return { items, total: items.length, grandTotal: STORE.reviews.length };
     },
 
-    approveReview(id) {
-      const r = STORE.reviews.find(r => r.id === id);
-      if (r) r.status = 'approved';
-      _saveStore();
-      return _request(`/reviews/${id}/approve`, { method: 'POST' }, { success: true, id, status: 'approved' });
-    },
-
-    rejectReview(id) {
-      const r = STORE.reviews.find(r => r.id === id);
-      if (r) r.status = 'rejected';
-      _saveStore();
-      return _request(`/reviews/${id}/reject`, { method: 'POST' }, { success: true, id, status: 'rejected' });
-    },
+    // Book Review Center is reader ratings — manuscripts are decided in the
+    // Review Queue (DROPBOARD_SE_REVIEW_QUEUE), so there is no approve/reject here.
 
     // ═══════════════════════════════════════════════════════
     // AUTHORS

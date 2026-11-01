@@ -265,6 +265,69 @@ function loadMore(){
 function toast(msg, dur){ dur=dur||2500; const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},dur); }
 
 function openSupport(){ if(global.DroboardTip) DroboardTip.open('droboard-page', { name:'Droboard', handle:'@droboard · Official page', avatar:DROBOARD_LOGO }); }
+
+/* Support Droboard is platform revenue, not a writer tip: the wallet posts it
+   with the 'platform' sentinel and debits paid coins only. With no backend the
+   amount comes off the demo balance and is mirrored into dro_platform_tips,
+   which the awards demo reads for the Supporter badge. */
+var PLATFORM_TIPS_KEY='dro_platform_tips';
+function viewerIdentity(){
+  try{ if(global.PROFILE_ME && global.PROFILE_ME.handle) return { userId:String(global.PROFILE_ME.id||''), handle:global.PROFILE_ME.handle }; }catch(e){}
+  try{ var me=JSON.parse(localStorage.getItem('drb_me')||'null'); if(me && me.handle) return { userId:String(me.id||''), handle:me.handle }; }catch(e){}
+  return { userId:'', handle:'Ada_Writes' };
+}
+function recordPlatformTip(coins, giftCode){
+  try{
+    var list=JSON.parse(localStorage.getItem(PLATFORM_TIPS_KEY)||'[]'); if(!Array.isArray(list)) list=[];
+    var me=viewerIdentity();
+    list.unshift({ userId:me.userId, handle:me.handle, coins:Number(coins)||0, giftCode:giftCode||'', at:new Date().toISOString() });
+    localStorage.setItem(PLATFORM_TIPS_KEY, JSON.stringify(list.slice(0,200)));
+  }catch(e){}
+}
+function demoSpendCoins(coins){
+  if(global.StoreService && typeof StoreService.spendCoins==='function'){ try{ return StoreService.spendCoins(coins); }catch(e){} }
+  try{
+    var cur=parseInt(localStorage.getItem('dro_store_balance'),10); if(isNaN(cur)) cur=350;
+    if(cur<coins) return false;
+    localStorage.setItem('dro_store_balance', String(cur-coins));
+    return true;
+  }catch(e){ return false; }
+}
+function sendPlatformTip(coins, giftCode){
+  var body={ authorId:'platform', coins:Number(coins), giftCode:String(giftCode||''), requestId:'support:'+Date.now()+':'+Math.random().toString(36).slice(2,8) };
+  return fetch('/api/wallet/tip',{ method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+    .then(function(res){
+      if(res.status===404||res.status===502||res.status===504) return {demo:true};
+      return res.json().catch(function(){return {};}).then(function(j){ return {server:true, ok:res.ok, status:res.status, j:j||{}}; });
+    }).catch(function(){ return {demo:true}; })
+    .then(function(out){
+      if(out.demo){
+        if(!demoSpendCoins(coins)) return {ok:false, message:'Not enough coins — top up in Store'};
+        recordPlatformTip(coins, giftCode);
+        return {ok:true};
+      }
+      if(!out.ok){
+        if(out.status===402) return {ok:false, message: out.j.error==='bonus_no_tip' ? "Bonus coins read stories, they can't tip — top up to support" : 'Not enough coins — top up in Store'};
+        if(out.status===401||out.status===403) return {ok:false, message:'Sign in to support Droboard'};
+        return {ok:false, message:'Support not sent — try again'};
+      }
+      try{ if(out.j.balance && out.j.balance.coins!=null) localStorage.setItem('dro_store_balance', String(out.j.balance.coins)); }catch(e){}
+      recordPlatformTip(coins, giftCode);
+      return {ok:true};
+    });
+}
+function attachSupportTips(){
+  if(!global.DroboardTip || typeof DroboardTip.attach!=='function') return;
+  DroboardTip.attach({
+    getTargetId:function(){ return 'platform'; },
+    onSend:function(id, amount, note, mode, giftId){
+      // Gifts were already posted by the picker (through getTargetId); only the local mirror is missing here.
+      if(mode==='gift'){ recordPlatformTip(amount, giftId); return {ok:true}; }
+      if(mode!=='coin') return {ok:false, message:'Card support is coming soon — use coins for now'};
+      return sendPlatformTip(amount, '');
+    },
+  });
+}
 function sharePage(){ if(global.openShareModal) window.openShareModal({ title:'Droboard — Official Page', sub:'@droboard · Announcements, debates & story picks', img:DROBOARD_LOGO, url:'https://droboard.app/droboard' }); }
 
 function attachPostCard(){
@@ -379,7 +442,6 @@ function attachPostCard(){
       if(action==='save'){ window.openSaveModal({ title:post.title||post.quote||'Droboard post', sub:'@droboard', img:post.image||DROBOARD_LOGO, storyId:post.id, type:'post' }); return; }
     },
     onPollVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.poll) return; if(orig.poll.voted>=0) return toast('✅ Already voted!'); orig.poll.opts[oi].v++; orig.poll.voted=oi; orig.poll.total++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('✅ Vote cast!'); },
-    onPredVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.prediction) return; if(orig.prediction.voted>=0) return toast('✅ Already predicted!'); orig.prediction.opts[oi].v=(orig.prediction.opts[oi].v||0)+1; orig.prediction.voted=oi; orig.prediction.total=(orig.prediction.total||0)+1; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('🔮 Prediction locked!'); },
     onDebateVote:function(post, side){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.debateData) return; if(orig.debateData.userVote) return toast('✅ Already voted!'); orig.debateData.userVote=side; if(side==='for') orig.debateData.forV++; else orig.debateData.agV++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast(side==='for'?'✅ Voted FOR!':'❌ Voted AGAINST!'); },
     onOpenDebate:function(post){ location.href='debate.html?id='+encodeURIComponent(post.id); },
     onAvatarClick:function(){ window.scrollTo({top:0,behavior:'smooth'}); },
@@ -722,6 +784,7 @@ async function init(){
   const rs=document.getElementById('droboardRoot');
   const es=document.getElementById('emptyState');
   wirePageChrome();
+  attachSupportTips();
   try{
     const fp=await fetchPosts(); POSTS=fp.posts||[]; MORE_POSTS=fp.morePosts||[]; allCache=POSTS.slice();
     if(!POSTS.length){

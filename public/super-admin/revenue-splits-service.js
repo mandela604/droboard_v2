@@ -106,10 +106,12 @@ function renderPools() {
   var el = document.getElementById('poolRow');
   if (!el) return;
   var icons = { editors_pool: 'fa-user-pen', platform: 'fa-vault', marketing: 'fa-bullhorn', writers: 'fa-wallet' };
+  var colors = { editors_pool: 'var(--blue)', platform: 'var(--green)', marketing: 'var(--amber)', writers: 'var(--gold)' };
   el.innerHTML = POOLS.map(function (p) {
+    var c = colors[p.id] || 'var(--accent)';
     return '<div class="rs-pool"><div class="rs-pool-top"><span class="rs-pool-ico"><i class="fas ' + (icons[p.id] || 'fa-coins') + '"></i></span>'
       + '<span class="rs-pool-lbl">' + esc(p.label) + '</span></div>'
-      + '<div class="rs-pool-val">' + fmtN(p.balance) + '</div>'
+      + '<div class="rs-pool-val" style="color:' + c + '">' + fmtN(p.balance) + '</div>'
       + '<div class="rs-pool-sub">Recomputed from ledger · ' + esc(p.recomputedAt) + '</div></div>';
   }).join('');
 }
@@ -163,13 +165,13 @@ function renderPreview() {
   var amt = Math.max(0, Number(amtEl.value) || 0);
   function part(pct) { return amt * (Number(pct) || 0) / 100; }
   var rows = [
-    ['Google', part(draft.google)],
-    ['Marketing pool', part(draft.marketing)],
-    ['Editors pool', part(draft.editors)],
-    ['Writer', part(draft.writerShare)]
+    ['Google', part(draft.google), 'var(--purple)'],
+    ['Marketing pool', part(draft.marketing), 'var(--amber)'],
+    ['Editors pool', part(draft.editors), 'var(--blue)'],
+    ['Writer', part(draft.writerShare), 'var(--gold)']
   ];
   outEl.innerHTML = rows.map(function (r) {
-    return '<div class="rs-prev-row"><span>' + r[0] + '</span><b>' + fmtN(r[1]) + '</b></div>';
+    return '<div class="rs-prev-row"><span>' + r[0] + '</span><b style="color:' + r[2] + '">' + fmtN(r[1]) + '</b></div>';
   }).join('');
 }
 

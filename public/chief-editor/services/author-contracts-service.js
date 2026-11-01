@@ -10,6 +10,9 @@ window.__authorContractsService = true;
 /* ── Backend-ready header ── */
 var USE_API = false;
 var API_BASE = window.DROBOARD_API_BASE || '/api/chief';
+/* Contract values are dollar figures ('$18,400'); restated in the currency
+   Super Admin set. Chapter prices stay coin counts — not money. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 var TIMEOUT_MS = 2500;
 async function callBackend(path, opts){
   if(!USE_API) return null;
@@ -36,9 +39,9 @@ async function init(){
   document.getElementById('templatesTable').querySelector('tbody').innerHTML = d.templates.map(t => `
     <tr><td><strong>${t.name}</strong></td><td><span class="status-pill ${t.type}">${t.type}</span></td><td>${t.royalty}%</td><td>${t.defaultChapterPrice} coins</td><td>${t.term}</td><td>${t.used}</td><td><span class="status-pill ${t.status}">${t.status}</span></td></tr>`).join('');
   document.getElementById('activeContracts').innerHTML = d.activeContracts.map(c => `
-    <div class="contract-card"><div class="cc-name">${c.author} <span class="status-pill ${c.status}">${c.status}</span></div><div class="cc-meta"><span>📄 ${c.template}</span><span>💰 ${c.value}</span><span>📅 ${c.start} — ${c.end}</span></div></div>`).join('');
+    <div class="contract-card"><div class="cc-name">${c.author} <span class="status-pill ${c.status}">${c.status}</span></div><div class="cc-meta"><span>📄 ${c.template}</span><span>💰 ${money(c.value)}</span><span>📅 ${c.start} — ${c.end}</span></div></div>`).join('');
   document.getElementById('pendingOffers').innerHTML = d.pendingOffers.map(o => `
-    <div class="contract-card"><div class="cc-name">${o.author} <span class="status-pill ${o.status}">${o.status}</span></div><div class="cc-meta"><span>📄 ${o.template}</span><span>💰 ${o.value}</span><span>📅 Sent: ${o.sent}</span></div></div>`).join('');
+    <div class="contract-card"><div class="cc-name">${o.author} <span class="status-pill ${o.status}">${o.status}</span></div><div class="cc-meta"><span>📄 ${o.template}</span><span>💰 ${money(o.value)}</span><span>📅 Sent: ${o.sent}</span></div></div>`).join('');
 }
 
 window.AuthorContractsService = { init: init };

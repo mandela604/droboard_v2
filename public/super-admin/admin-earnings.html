@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin Earnings — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.25);border-radius:6px}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}.page-hdr h1{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}.page-actions{display:flex;gap:8px}.btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}.card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px}.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)} .card-num{font-size:24px;font-weight:800;color:var(--green)}.card-lbl{font-size:11px;color:var(--text-muted);margin-top:6px}.ico-row{display:flex;align-items:center;gap:8px}.badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px}.badge.pink{background:var(--pink-bg);color:var(--accent)}.badge.green{background:var(--green-bg);color:var(--green)}.badge.amber{background:var(--amber-bg);color:var(--amber)}.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:22px}.tbl{width:100%;border-collapse:collapse}.tbl th{font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-faint);font-weight:700;text-align:left;padding:0 10px 10px;border-bottom:1px solid var(--border)}.tbl td{padding:14px 10px;border-bottom:1px solid var(--border);font-size:12px}.tbl tr:last-child td{border-bottom:none}.tbl tr:hover{background:var(--hover)}.tbl-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}.tbl-btn:hover{border-color:var(--accent);color:var(--accent)} .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.chip{font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;transition:.13s}.chip.on{border-color:var(--accent);background:rgba(255,0,80,.1);color:var(--accent)} .status-dot{width:8px;height:8px;border-radius:50%}.status-dot.done{background:var(--green)}.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(14px);background:#111;border:1px solid var(--bd);color:#e0e0e0;padding:10px 18px;border-radius:24px;font-size:12.5px;font-weight:600;z-index:2700;opacity:0;transition:.26s;pointer-events:none;white-space:nowrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)} .modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:200;align-items:center;justify-content:center;padding:20px}.modal-overlay.show{display:flex}.modal-box{background:var(--card);border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 70px -20px rgba(0,0,0,.4)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0}.modal-head h3{font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}.modal-close{width:30px;height:30px;border-radius:8px;border:none;background:var(--input-bg);color:var(--text-muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}.modal-close:hover{background:var(--red-bg);color:var(--red)}.modal-body{padding:22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid var(--border)}.form-row{margin-bottom:15px}.form-label{font-size:11.5px;font-weight:700;margin-bottom:6px;display:block}.form-input,.form-select{width:100%;font-family:inherit;font-size:12.5px;color:var(--tx);background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:10px 12px;outline:none}.form-input:focus,.form-select:focus{border-color:var(--accent)}.row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}.row span{font-weight:600}.row b{font-weight:800}.mini-btn{font-size:10.5px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}.mini-btn:hover{border-color:var(--accent);color:var(--accent)}.mini-btn.primary{background:var(--accent);border-color:transparent;color:#fff}.mini-btn.primary:hover{color:#fff}.mini-btn.ghost{background:transparent}.mini-btn.danger{background:var(--red-bg);border-color:transparent;color:var(--red)}.mini-btn.danger:hover{background:var(--red);color:#fff}.mini-btn.green{background:var(--green-bg);border-color:transparent;color:var(--green)}.mini-btn.green:hover{background:var(--green);color:#fff}.page-btn{font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer}.page-btn:hover{border-color:var(--accent)}.page-btn.on{border-color:var(--accent);background:rgba(255,0,80,.1);color:var(--accent)}.disabled{opacity:.4;cursor:not-allowed}.pagination-controls{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px}@media (max-width:1080px){.card-grid{grid-template-columns:1fr}.panel{padding:15px}}
+</style>
+</head>
+<body><div id="dashRoot"><div class="page-hdr"><h1><i class="fas fa-crown" style="color:var(--accent)"></i> Admin Earnings</h1><div class="page-actions"><button class="btn-add" onclick="AdminEarningsService.payoutPanel()"><i class="fas fa-money-bill-transfer"></i> Payout Platform</button></div></div>
+<div class="card-grid" id="cardsGrid"></div>
+<div class="panel"><div class="filter-bar" id="tipFilterBar"></div>
+<table class="tbl"><thead><tr><th>Date</th><th>Viewer</th><th>Type</th><th>Amount</th><th>Note</th></tr></thead><tbody id="tipTableBody"></tbody></table>
+<div id="paginationControls"></div>
+</div>
+
+<!-- Payout modal -->
+<div class="modal-overlay" id="modal-payoutModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3><i class="fas fa-money-bill-transfer" style="color:var(--accent)"></i> Payout Platform</h3>
+      <button class="modal-close" onclick="closeModal('payoutModal')"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Amount (from Platform Reserve)</label><input type="number" class="form-input" id="payoutAmount" placeholder="Enter naira"/></div>
+      <div class="form-row"><label class="form-label">Network fee (%)</label><input type="number" class="form-input" id="payoutFeePct" value="0" placeholder="0" oninput="updatePayoutSummary()"/></div>
+      <div id="payoutSummary"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" id="payoutCancelBtn">Cancel</button>
+      <button class="mini-btn primary" id="payoutSubmitBtn"><i class="fas fa-check"></i> Request Payout</button>
+    </div>
+  </div>
+</div>
+</div>
+<div id="toastHost"></div>
+<script src="shared/super-admin-sidebar.js"></script>
+<script src="../services/currency-service.js?v=8"></script>
+<script src="admin-earnings-service.js?v=5"></script>
+</body>
+</html>

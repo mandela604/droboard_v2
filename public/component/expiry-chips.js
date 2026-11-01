@@ -51,7 +51,7 @@
     document.head.appendChild(s);
   }
 
-  function _kind(type) { return type === 'prediction' ? 'pred' : (type === 'debate' ? 'debate' : 'poll'); }
+  function _kind(type) { return (type === 'prediction' || type === 'pred') ? 'pred' : (type === 'debate' ? 'debate' : 'poll'); }
 
   /**
    * field(kind, opts) → markup for the chip row.
@@ -199,7 +199,7 @@
      dedupes on key, so re-running can never double-notify.
      hooks: { isMine: fn(post) -> bool, onChange: fn() }        */
   const NOTIF = {
-    poll: 'poll_closed', debate: 'debate_verdict', pred: 'prediction_settled',
+    poll: 'poll_closed', debate: 'debate_verdict',
   };
   function sweep(posts, hooks) {
     const h = hooks || {};
@@ -209,7 +209,7 @@
       p.closed = true;
       p.closedAt = +p.expiresAt;
       closed++;
-      const kind = p.type === 'debate' ? 'debate' : (p.type === 'prediction' || p.type === 'pred' ? 'pred' : 'poll');
+      const kind = p.type === 'debate' ? 'debate' : 'poll';
       if (h.isMine && !h.isMine(p)) return;
       notify(p, kind);
     });
@@ -220,7 +220,6 @@
     if (!window.droNotify) return;
     const id = p.id || 'x';
     const head = String(p.title || p.text || (p.poll && (p.poll.q || p.poll.question)) ||
-      (p.prediction && (p.prediction.q || p.prediction.question)) ||
       (p.debateData && (p.debateData.motion || p.debateData.question)) || 'Your post').slice(0, 60);
     if (kind === 'debate') {
       const d = p.debateData || {};
@@ -231,20 +230,6 @@
         desc: head + (tot ? ' — ' + fp + '% landed on the winning side.' : ' — nobody voted, so it closed with no verdict.'),
         metrics: [{ label: 'For', value: fp + '%' }, { label: 'Against', value: (100 - fp) + '%' }, { label: 'Votes', value: String(tot) }],
         link: { label: 'Open debate', href: 'debate.html?id=' + encodeURIComponent(id) } });
-      return;
-    }
-    if (kind === 'pred') {
-      const pr = p.prediction || {};
-      const opts = pr.opts || [];
-      const total = pr.total || opts.reduce(function (n, o) { return n + (o.v || 0); }, 0);
-      const top = opts.slice().sort(function (x, y) { return (y.v || 0) - (x.v || 0); })[0];
-      window.droNotify({ type: 'prediction_settled', key: 'pred:' + id, medal: 'rank',
-        title: total ? 'Your prediction settled' : 'Your prediction closed',
-        desc: head + (top ? ' — "' + (top.label || top.t || top.text || 'Option 1') + '" called it.' : ' — no picks came in.'),
-        metrics: [{ label: 'Picks', value: String(total) }].concat(opts.slice(0, 2).map(function (o, i) {
-          return { label: 'Pick ' + (i + 1), value: (o.v || 0) + '' };
-        })),
-        link: { label: 'Open prediction', href: 'debate.html?id=' + encodeURIComponent(id) } });
       return;
     }
     const pl = p.poll || {};

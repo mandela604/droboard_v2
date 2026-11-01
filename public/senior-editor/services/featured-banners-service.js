@@ -49,6 +49,9 @@ var STATS=[
 ];
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+/* Banner copy can carry a prize figure ("Win prizes up to $5,000"); usdProse
+   restates the number into the staff currency before escaping. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 
 async function loadData(){
   var backend = await callBackend('/featured-banners');
@@ -71,7 +74,7 @@ function renderBanners(){
   if(!el) return;
   if(!BANNERS.length){ el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:28px">No banners yet.</div>'; return; }
   el.innerHTML = BANNERS.map(function(b){
-    return '<div class="banner-card"><div class="banner-preview" style="background:'+esc(b.grad)+'"><span>'+esc(b.emoji)+'</span><div class="banner-overlay"><div class="title">'+esc(b.title)+'</div><div class="sub">'+esc(b.sub)+'</div></div></div><div class="banner-body"><div class="banner-meta"><span class="position">Position: '+esc(b.position)+'</span><span class="date">'+esc(b.dates)+'</span></div><div class="banner-stats"><div><b>'+esc(b.views)+'</b><span>Views</span></div><div><b>'+esc(b.clicks)+'</b><span>Clicks</span></div><div><b>'+esc(b.ctr)+'</b><span>CTR</span></div></div><div class="banner-actions"><button onclick="FeaturedBannersService.editBanner(\''+esc(b.id)+'\')">Edit</button><button onclick="FeaturedBannersService.pauseBanner(\''+esc(b.id)+'\')">Pause</button><button onclick="FeaturedBannersService.openAnalytics(\''+esc(b.id)+'\')">Analytics</button></div></div></div>';
+    return '<div class="banner-card"><div class="banner-preview" style="background:'+esc(b.grad)+'"><span>'+esc(b.emoji)+'</span><div class="banner-overlay"><div class="title">'+esc(b.title)+'</div><div class="sub">'+esc(prose(b.sub))+'</div></div></div><div class="banner-body"><div class="banner-meta"><span class="position">Position: '+esc(b.position)+'</span><span class="date">'+esc(b.dates)+'</span></div><div class="banner-stats"><div><b>'+esc(b.views)+'</b><span>Views</span></div><div><b>'+esc(b.clicks)+'</b><span>Clicks</span></div><div><b>'+esc(b.ctr)+'</b><span>CTR</span></div></div><div class="banner-actions"><button onclick="FeaturedBannersService.editBanner(\''+esc(b.id)+'\')">Edit</button><button onclick="FeaturedBannersService.pauseBanner(\''+esc(b.id)+'\')">Pause</button><button onclick="FeaturedBannersService.openAnalytics(\''+esc(b.id)+'\')">Analytics</button></div></div></div>';
   }).join('');
 }
 

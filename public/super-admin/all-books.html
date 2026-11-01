@@ -72,17 +72,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 .icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
 .icon-btn:hover{background:var(--table-head);color:var(--gold)}
 
-.row-menu{position:relative}
-.row-menu-btn{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--text-faint);display:flex;align-items:center;justify-content:center;font-size:11.5px;cursor:pointer}
-.row-menu-btn:hover{background:var(--table-head);color:var(--gold)}
-.dropdown{position:absolute;right:0;top:30px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:8;overflow:hidden;min-width:160px;display:none}
-.dropdown.open{display:block}
-.dropdown-item{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:11.5px;font-weight:600;color:var(--text);text-decoration:none;cursor:pointer;font-family:inherit;white-space:nowrap}
-.dropdown-item:hover{background:var(--input-bg)}
-.dropdown-item i{width:14px;color:var(--text-faint);flex-shrink:0}
-.dropdown-item.danger{color:var(--red)}
-.dropdown-item.danger i{color:var(--red)}
-
 .dense .book-row{padding-top:6px;padding-bottom:6px}
 .dense .book-thumb{width:26px;height:36px}
 .dense .book-title{font-size:12px}
@@ -124,7 +113,6 @@ body{font-family:'Inter',system-ui,sans-serif}
         <option value="">All Statuses</option>
         <option value="published">Published</option>
         <option value="draft">Draft</option>
-        <option value="paused">Paused</option>
         <option value="flagged">Flagged</option>
       </select>
       <select class="select" id="sortFilter">
@@ -160,6 +148,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 </div>
 
 <script src="shared/super-admin-sidebar.js"></script>
-<script src="all-books-service.js"></script>
+<script src="../services/currency-service.js?v=8"></script>
+<script src="all-books-service.js?v=6"></script>
 </body>
 </html>

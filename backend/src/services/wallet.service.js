@@ -118,7 +118,8 @@ async function creditPurchase({ userId, coins, paidCoins, bonusCoins, fiatAmount
     });
     if (!posted.duplicate) {
       await CoinTransaction.create([{
-        userId, type: kind === 'subscription' ? 'subscription' : 'purchase', coins, fiatAmount: gross,
+        userId, type: kind === 'subscription' ? 'subscription' : 'purchase', coins,
+        paidCoins: paid, bonusCoins: bonus, fiatAmount: gross,
         fiatCurrency: fiatCurrency || 'NGN', channel: ch,
         storeRef: storeRef || '', status: 'completed',
         feeAmount: storeFee, netAmount: net,
@@ -213,7 +214,7 @@ async function unlockChapter({ userId, bookId, chapterId, priceCoins, coinFaceNG
     // column reports only the paid part, so a bonus-funded unlock reads 0 — the
     // coins still left the balance, and the note says why no author was paid.
     await CoinTransaction.create([{
-      userId, type: 'spend', coins: priceCoins, fiatAmount: gross,
+      userId, type: 'spend', coins: priceCoins, paidCoins: paidDraw, bonusCoins: bonusDraw, fiatAmount: gross,
       note: 'Unlocked chapter' + (book && book.title ? ' — ' + book.title : '')
         + (bonusDraw > 0 ? (paidDraw > 0 ? ' (' + bonusDraw + ' bonus coins)' : ' (bonus coins)') : ''),
     }], txn.withSession(session));
@@ -299,6 +300,8 @@ async function unlockByAd({ userId, bookId, chapterId, token }) {
 // (reader, author, gift, amount) — so a slipped double tap stops crediting
 // twice instead of silently doing so.
 const TIP_DEDUPE_MS = 10 * 1000;
+// Author ids are uuidv7 strings, so this sentinel cannot collide with one.
+const PLATFORM_TARGET = 'platform';
 function tipKey({ fromUserId, authorId, coins, giftCode, requestId }) {
   const stamp = requestId ? String(requestId).slice(0, 60)
     : Math.floor(Date.now() / TIP_DEDUPE_MS) + ':' + coins;
@@ -319,6 +322,26 @@ async function sendTip({ fromUserId, authorId, coins, giftCode, coinFaceNGN, req
     const paidBalance = wallet.coinBalance - bonusHeld;
     if (paidBalance < coins) { const e = new Error('bonus_no_tip'); e.status = 402; throw e; }
     const face = coins * coinFaceNGN;
+    // "Support Droboard": the tip buys nothing, so there is no split — the
+    // whole paid face goes to platform revenue and no author leg is written.
+    if (authorId === PLATFORM_TARGET) {
+      const posted = await ledger.post({
+        legs: [{ debit: 'wallet:' + fromUserId, credit: 'pool:platform', amount: face, coins }],
+        authorId: null, saleId: key, kind: giftCode ? 'gift' : 'tip',
+        memo: (giftCode ? 'gift ' + giftCode : 'support tip') + ' -> platform',
+        idempotencyKey: key, session,
+      });
+      if (posted.duplicate) return { balance: readerBalance(wallet), writerShare: 0, duplicate: true };
+      wallet.coinBalance -= coins;
+      await wallet.save({ session });
+      await bumpPool('platform', face, session);
+      await CoinTransaction.create([{
+        userId: fromUserId, type: giftCode ? 'gift' : 'tip', target: 'platform',
+        coins, paidCoins: coins, bonusCoins: 0, fiatAmount: face,
+        note: (giftCode ? 'Gift ' + giftCode : 'Support tip') + ' to Droboard',
+      }], txn.withSession(session));
+      return { balance: readerBalance(wallet), writerShare: 0 };
+    }
     const cfg = await revenue.activeConfig(authorId);
     const s = revenue.splitGift(face, cfg);
     const posted = await ledger.post({
@@ -336,7 +359,7 @@ async function sendTip({ fromUserId, authorId, coins, giftCode, coinFaceNGN, req
     await wallet.save({ session });
     await bumpPool('platform', s.platform, session);
     await CoinTransaction.create([{
-      userId: fromUserId, type: giftCode ? 'gift' : 'tip', coins, fiatAmount: face,
+      userId: fromUserId, type: giftCode ? 'gift' : 'tip', coins, paidCoins: coins, bonusCoins: 0, fiatAmount: face,
       note: (giftCode ? 'Gift ' + giftCode : 'Tip') + ' to author ' + authorId,
     }], txn.withSession(session));
     const [earned] = await AuthorTransaction.create([{
@@ -494,7 +517,7 @@ async function earnClaim({ userId, code, token }) {
     await Wallet.updateOne({ userId: String(userId), kind: 'reader' },
       { $inc: { coinBalance: coins, bonusBalance: coins } }, txn.withSession(session, { upsert: true }));
     await CoinTransaction.create([{
-      userId: String(userId), type: 'earn', coins, fiatAmount: 0, channel: 'reward',
+      userId: String(userId), type: 'earn', coins, paidCoins: 0, bonusCoins: coins, fiatAmount: 0, channel: 'reward',
       note: (s.action || s.code) + ' (' + s.code + ')',
     }], txn.withSession(session));
   });

@@ -27,15 +27,16 @@ function toast(msg){
 }
 
 async function getProfile(){
-  // prefer auth-session if available
   try{
     if(global.AuthSession && AuthSession.getSession){
       var s=await AuthSession.getSession();
-      if(s && s.handle) return { name:s.name||'Luna Morgan', handle:s.handle, email:'luna.morgan@email.com', avatar:s.avatar||'https://i.pravatar.cc/150?img=32' };
+      if(s && s.handle){
+        var u=(AuthSession.getStoredUser&&AuthSession.getStoredUser())||{};
+        return { name:s.name||s.handle, handle:s.handle, email:u.email||'', avatar:s.avatar||'' };
+      }
     }
   }catch(e){}
-  // demo fallback
-  return { name:'Luna Morgan', handle:'luna_morgan', email:'luna.morgan@email.com', avatar:'https://i.pravatar.cc/150?img=32' };
+  return { name:'', handle:'', email:'', avatar:'' };
 }
 
 const STORE_KEYS={ vis:'droboard_visibility', reading:'droboard_reading_activity' };
@@ -106,43 +107,15 @@ async function initDrawer(profile){
   document.getElementById('menuBtn').addEventListener('click', function(){ DroboardProfileMenu.open(); });
 }
 
-// ── Demo mode switcher (DEMO ONLY — remove with the backend) ──
-// Lets you flip between the demo Reader, the demo Writer and a full
-// Guest (signed out) so the guest views can be tested without a
-// backend. Changing it reloads the page.
-var DEMO_LABELS={
-  reader:'Reader (Jordan Blake)',
-  writer:'Writer (Ada Writes)',
-  guest:'Guest (signed out)'
-};
-function initDemoMode(){
-  var wrap=document.getElementById('demoModeSwitch');
-  var desc=document.getElementById('demoModeDesc');
-  if(!wrap&&!desc) return;
-  function paint(){
-    var mode=(global.AuthSession && AuthSession.getMode) ? AuthSession.getMode() : 'reader';
-    if(desc) desc.textContent=DEMO_LABELS[mode]||DEMO_LABELS.reader;
-    wrap.querySelectorAll('.demo-mode-opt').forEach(function(el){
-      el.classList.toggle('on', el.getAttribute('data-mode')===mode);
-    });
-  }
-  paint();
-  wrap.querySelectorAll('.demo-mode-opt').forEach(function(el){
-    el.addEventListener('click', function(){
-      var mode=el.getAttribute('data-mode');
-      if(global.AuthSession && AuthSession.setMode) AuthSession.setMode(mode);
-      toast('Switched to '+(DEMO_LABELS[mode]||mode));
-      setTimeout(function(){ location.reload(); },350);
-    });
-  });
-}
-
 async function init(){
+  // Settings is account-only; signed-out visitors go to login.
+  if(global.AuthSession && AuthSession.isGuest && AuthSession.isGuest()){
+    location.replace(AuthSession.loginUrl('settings.html'));
+    return;
+  }
   setTheme(getTheme());
   window.setTheme=setTheme;
   window.toast=toast;
-
-  initDemoMode();
 
   // theme options (markup carries no inline handlers)
   document.querySelectorAll('.theme-option').forEach(function(opt){

@@ -10,6 +10,9 @@ async function callBackend(path, options){
   if(!res.ok) throw new Error('backend error ' + res.status);
   return res.json();
 }
+/* Campaign budgets are dollar figures ('$12,000'); restated in the currency
+   Super Admin set. Without the service the stored string prints untouched. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 
 /* Live loader: GET /editorial-strategy (+ per-section sub-resources) → demo field names.
    Backend EditorialStrategy doc: {notes, genrePriorities, quarterlyGoals, campaigns,
@@ -81,7 +84,7 @@ async function loadData(){
     <div class="campaign-card">
       <div class="cc-name">${c.name}</div>
       <span class="status-pill ${c.status}">${c.status}</span>
-      <div class="cc-meta"><span>📅 ${c.deadline}</span><span>💰 ${c.budget}</span><span>📝 ${c.submissions}/${c.target}</span></div>
+      <div class="cc-meta"><span>📅 ${c.deadline}</span><span>💰 ${money(c.budget)}</span><span>📝 ${c.submissions}/${c.target}</span></div>
     </div>`).join('');
 
   document.getElementById('acquisitionContainer').innerHTML = data.acquisitionTargets.map(a => `

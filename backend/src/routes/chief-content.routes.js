@@ -32,6 +32,10 @@ router.get('/books/genres', ...guard,
 router.get('/books/:id', ...guard,
   validate(z.object({ params: z.object({ id }) })), ctrl.getBook);
 
+// Books are read-only for the chief: flag/unflag belongs to the owning senior
+// editor, and the chief sees the outcome in GET /books/flagged. Editing belongs
+// to the author. No write route is registered here on purpose.
+
 // ---- Featured ----
 router.get('/featured/tags', ...guard,
   validate(z.object({ query: z.object({}).strict() }).partial()), ctrl.tags);

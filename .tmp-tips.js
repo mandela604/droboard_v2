@@ -1,0 +1,1 @@
+[{"userId":"usr_1","handle":"Ada_Writes","coins":500,"kind":"tip","at":"2026-10-31T21:20:08.403Z"},{"userId":"usr_2","handle":"Ifeanyi_Story","coins":1500,"kind":"gift","giftCode":"gift-rose","at":"2026-10-31T22:20:08.404Z"},{"userId":"usr_3","handle":"Zara_M","coins":250,"kind":"tip","at":"2026-10-31T22:50:08.404Z"}]

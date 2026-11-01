@@ -7,6 +7,7 @@ const { Discussion, Comment } = require('../models/social.model');
 const { Genre, Category } = require('../models/content.model');
 const { User } = require('../models/user.model');
 const { validateMediaUrl } = require('./media.service');
+const { userRefFilter } = require('./user-ref');
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 

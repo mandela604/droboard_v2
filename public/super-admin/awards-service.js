@@ -23,10 +23,13 @@ const API_BASE = '/api/awards';
 
 // ── Demo catalog ──
 // criteria: { metric, op, value, genre?, period? }
-// metric: 'reads' | 'books' | 'followers' | 'rating' | 'genre_rank'
+// metric: 'reads' | 'books' | 'followers' | 'rating' | 'genre_rank' | 'platform_tips'
 // op: '>=' | 'top'  (top N in genre)
 // period: '2025' | '2025-H2' | null (all-time)
 const CATALOG = [
+  { id:'aw_supporter', name:'Supporter', icon:'fa-hand-holding-heart', color:'pink',
+    desc:'Tipped Droboard 1,000+ coins', status:'active',
+    criteria:{ metric:'platform_tips', op:'>=', value:1000 } },
   { id:'aw_top_romance_2025', name:'Top Romance 2025', icon:'fa-crown', color:'gold',
     desc:'Top-ranked romance writers this season', status:'active',
     criteria:{ metric:'genre_rank', op:'top', value:10, genre:'romance', period:'2025' } },
@@ -133,6 +136,17 @@ function evaluateCriteria(criteria, users){
     var v = Number(criteria.value)||0;
     return (users||[]).filter(function(u){ return (u.stats && Number(u.stats.reads)||0) >= v; }).map(function(u){ return u.handle; });
   }
+  if(criteria.metric==='platform_tips'){
+    // Demo only sees this browser's support history; the backend sums
+    // CoinTransaction tip rows with target 'platform' per user.
+    var need = Number(criteria.value)||0;
+    var mine = 0;
+    try{ var tips = JSON.parse(localStorage.getItem('dro_platform_tips')||'[]'); if(Array.isArray(tips)) tips.forEach(function(t){ mine += Number(t.coins)||0; }); }catch(e){}
+    if(!mine || mine < need) return [];
+    var handle = 'Ada_Writes';
+    try{ var me = JSON.parse(localStorage.getItem('drb_me')||'null'); if(me && me.handle) handle = me.handle; }catch(e){}
+    return [handle];
+  }
   if(criteria.metric==='genre_rank'){
     // demo: handled by caller that pre-sorted; here treat as reads-gte for simplicity
     var topN = Number(criteria.value)||10;
@@ -227,6 +241,7 @@ function criteriaText(c){
   if(c.metric==='manual') return 'Manual — no auto-grant';
   if(c.metric==='genre_rank') return `Top ${c.value} in ${c.genre||'any genre'}${c.period?' · '+c.period:''}`;
   if(c.metric==='reads') return `Reads ≥ ${Number(c.value).toLocaleString()}${c.period?' · '+c.period:''}`;
+  if(c.metric==='platform_tips') return `Platform tips ≥ ${Number(c.value).toLocaleString()} coins`;
   return `${c.metric} ${c.op} ${c.value}`;
 }
 function filtered(){

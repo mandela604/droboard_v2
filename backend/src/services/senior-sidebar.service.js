@@ -557,8 +557,8 @@ async function decideCompletion(user, id, action, note) {
   }
 
   try {
-    const { notify } = require('./notifications.service');
-    await notify({
+    const { emit } = require('./notification-emitter');
+    await emit({
       recipientId: app.authorId,
       type: 'completion',
       title: action === 'approved' ? 'Book completion approved' : 'Book completion rejected',
@@ -1075,8 +1075,8 @@ async function offerContract(user, { bookId, authorId, terms }) {
   await saveOfferPricing(contract.id, bookId, t.pricing, 'pending');
 
   try {
-    const { notify } = require('./notifications.service');
-    await notify({
+    const { emit } = require('./notification-emitter');
+    await emit({
       recipientId: String(authorId), type: 'contract',
       title: 'Contract offer ready',
       desc: 'Your editor sent a contract — review and sign it in Author Center.',

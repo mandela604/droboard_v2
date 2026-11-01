@@ -14,6 +14,11 @@ async function getBook(req, res) {
   return base.wrap(res, async () => svc.getBook(req.valid.params.id));
 }
 
+// Flag/unflag is NOT here by design: the chief reads the flagged queue
+// (GET /books/flagged); the owning senior editor is the one who flags and
+// unflags. Adding a chief write path would let a reviewer park any book without
+// the author's editor carrying the reason.
+
 async function genres(req, res) {
   return base.wrap(res, async () => svc.genres());
 }

@@ -16,6 +16,9 @@ const router = Router();
 
 router.use(requireAuth, requireRole('senior_editor', 'chief_editor', 'admin'));
 
+// Platform-wide surfaces: any editor may read, only the chief counter signs.
+const chiefOnly = requireRole('chief_editor', 'admin');
+
 const id = z.string().min(1).max(120);
 const q = { q: z.string().max(80).optional(), status: z.string().max(30).optional(), page: z.string().max(6).optional(), limit: z.string().max(6).optional() };
 const anyBody = z.object({}).catchall(z.unknown());
@@ -49,11 +52,19 @@ const pricingRows = z.array(z.object({
   free: z.boolean().optional(),
 }).strict()).max(1000);
 
+// The monetization panel emits two equivalent shapes: the review queue sends
+// the `rows` array, the contract-review panel sends per-chapter `prices`/`ads`
+// maps keyed by chapter number. Either is accepted; the controller folds maps
+// into rows before storing.
+const pricingMaps = z.record(z.string(), z.number().min(0));
+
 const offerPricingBody = z.object({
   freeChapters: z.number().int().min(0).optional(),
   adsPerChapter: z.number().int().min(0).optional(),
   allowAdUnlock: z.boolean().optional(),
   rows: pricingRows.optional(),
+  prices: pricingMaps.optional(),
+  ads: pricingMaps.optional(),
 }).strict();
 
 const pricingBody = offerPricingBody.extend({
@@ -231,11 +242,11 @@ router.get('/editors-picks', generalLimiter, read(() => S.editorsPicks()));
 
 // announcements
 router.get('/announcements', generalLimiter, listQuery, read(() => S.announcements()));
-router.post('/announcements', writeLimiter, audit('senior.announcements.create'),
+router.post('/announcements', chiefOnly, writeLimiter, audit('senior.announcements.create'),
   validate(z.object({ body: announcementBody })), read(r => S.createAnnouncement(r.valid.body)));
-router.put('/announcements/:id', writeLimiter, audit('senior.announcements.update'),
+router.put('/announcements/:id', chiefOnly, writeLimiter, audit('senior.announcements.update'),
   validate(z.object({ params: z.object({ id }), body: announcementBody })), read(r => S.updateAnnouncement(r.valid.params.id, r.valid.body)));
-router.delete('/announcements/:id', writeLimiter, audit('senior.announcements.delete'),
+router.delete('/announcements/:id', chiefOnly, writeLimiter, audit('senior.announcements.delete'),
   validate(z.object({ params: z.object({ id }) })), read(r => S.deleteAnnouncement(r.valid.params.id)));
 
 // book reviews
@@ -248,7 +259,7 @@ router.get('/book-reviews/date-filter', generalLimiter, read(() => S.bookReviews
 // contract templates + the one-shot overview the contracts page reads.
 // NOTE: /contracts/overview is registered BEFORE crud('/contracts') below so
 // it is never swallowed by GET /contracts/:id.
-router.get('/contracts/overview', generalLimiter, read(() => S.contractsOverview()));
+router.get('/contracts/overview', generalLimiter, read(r => S.contractsOverview(r.user)));
 router.get('/contract-templates', generalLimiter, listQuery,
   read(r => S.contractTemplates(r.valid.query)));
 router.get('/contract-templates/usage', generalLimiter, read(() => S.contractTemplatesUsage()));
@@ -261,10 +272,10 @@ router.get('/featured-banners/:id', generalLimiter,
   validate(z.object({ params: z.object({ id }) })), read(r => S.featuredBanner(r.valid.params.id)));
 router.put('/featured-banners/:id', writeLimiter, audit('senior.banners.update'),
   validate(z.object({ params: z.object({ id }), body: bannerPatch })),
-  read(r => S.updateFeaturedBanner(r.valid.params.id, r.valid.body)));
+  read(r => S.updateFeaturedBanner(r.valid.params.id, r.valid.body, r.user)));
 router.post('/featured-banners/:id/pause', writeLimiter, audit('senior.banners.pause'),
   validate(z.object({ params: z.object({ id }) })),
-  read(r => S.pauseFeaturedBanner(r.valid.params.id)));
+  read(r => S.pauseFeaturedBanner(r.valid.params.id, r.user)));
 router.get('/featured-banners/:id/analytics', generalLimiter,
   validate(z.object({ params: z.object({ id }) })),
   read(r => S.featuredBannerAnalytics(r.valid.params.id)));

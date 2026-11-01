@@ -444,11 +444,22 @@ async function contractTemplatesUsage() {
 
 /* ── Contracts overview (one aggregate the page reads in a single shot) ─ */
 
-async function contractsOverview() {
+// Scoped like every other read here: a senior editor sees the contracts of the
+// authors assigned to them plus the ones they sent themselves, never every
+// editor's book of contracts. Chief/admin (`scope === null`) keeps the
+// platform-wide view.
+async function contractsOverview(user) {
+  const scope = await authorScope(user);
+  const mine = String((user && user.id) || '');
+  const contractFilter = scope === null ? {} : {
+    $or: [{ authorId: { $in: scope } }, { editorId: mine }],
+  };
+  const signedFilter = scope === null ? {} : { editorId: mine };
+
   const [contracts, templates, signed] = await Promise.all([
-    Contract.find({}).sort({ createdAt: -1 }).limit(200).lean(),
+    Contract.find(contractFilter).sort({ createdAt: -1 }).limit(200).lean(),
     ContractTemplate.find({}).sort({ updatedAt: -1 }).limit(100).lean(),
-    SignedContract.find({}).sort({ createdAt: -1 }).limit(200).lean(),
+    SignedContract.find(signedFilter).sort({ createdAt: -1 }).limit(200).lean(),
   ]);
 
   const books = await booksById(contracts.map(c => c.bookId));
@@ -612,9 +623,19 @@ async function featuredBanner(id) {
   return bannerRow(p, books[String(p.bookId)]);
 }
 
-async function updateFeaturedBanner(id, data) {
+// A banner is a slot on the reader-facing home page, so the editor who placed it
+// owns it; the chief counter signs any. Same ownership rule as decideReport.
+function assertBannerAccess(user, placement) {
+  const roles = (user && user.roles) || [];
+  if (roles.includes('chief_editor') || roles.includes('admin')) return;
+  if (String(placement.placedBy || '') === String(user && user.id)) return;
+  const e = new Error('not_yours'); e.status = 403; throw e;
+}
+
+async function updateFeaturedBanner(id, data, user) {
   const p = await FeaturedPlacement.findOne({ id });
   if (!p) throw notFound();
+  assertBannerAccess(user, p);
   const body = data || {};
   if (body.bookId !== undefined) {
     const book = await Book.findOne({ id: body.bookId }).select('id').lean();
@@ -642,9 +663,10 @@ async function featuredBannerAnalytics(id) {
   return { id: p.id, section: p.sectionKey, views: 0, clicks: 0, ctr: 0, active: p.active };
 }
 
-async function pauseFeaturedBanner(id) {
+async function pauseFeaturedBanner(id, user) {
   const p = await FeaturedPlacement.findOne({ id });
   if (!p) throw notFound();
+  assertBannerAccess(user, p);
   p.active = !p.active;
   await p.save();
   return { ok: true, id: p.id, active: p.active };

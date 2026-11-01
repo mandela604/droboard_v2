@@ -17,6 +17,7 @@ const { User } = require('../models/user.model');
 const { Referral, ReadingProgress } = require('../models/social.model');
 const { Wallet } = require('../models/money.model');
 const { EditorAssignment } = require('../models/chief.model');
+const { userRefFilter } = require('./user-ref');
 const ledger = require('./ledger.service');
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
@@ -44,7 +45,7 @@ async function mintUserCode(username) {
 }
 
 async function ensureCode(userId) {
-  const u = await User.findById(userId).select('_id username referralCode');
+  const u = await User.findOne(userRefFilter([userId])).select('_id id username referralCode');
   if (!u) { const e = new Error('no_user'); e.status = 404; throw e; }
   if (u.referralCode) return u.referralCode;
   const code = await mintUserCode(u.username);
@@ -53,7 +54,7 @@ async function ensureCode(userId) {
     await u.save();
   } catch (e) {
     if (e.code === 11000) { // rare race — re-read winner
-      const fresh = await User.findById(userId).select('referralCode').lean();
+      const fresh = await User.findOne(userRefFilter([userId])).select('referralCode').lean();
       return fresh.referralCode;
     }
     throw e;
@@ -207,7 +208,7 @@ async function applyReferral(newUser, rawCode) {
 // Called whenever reading progress is recorded. Credits stage-2 (+2) once the
 // invitee totals >= REFERRAL_READ_SECONDS within REFERRAL_WINDOW_DAYS of signup.
 async function checkReadReward(inviteeId) {
-  const invitee = await User.findById(inviteeId).select('_id createdAt referredByUserId').lean();
+  const invitee = await User.findOne(userRefFilter([inviteeId])).select('_id createdAt referredByUserId').lean();
   if (!invitee || !invitee.referredByUserId) return { qualified: false };
   const ageMs = Date.now() - new Date(invitee.createdAt).getTime();
   if (ageMs > env.referralWindowDays * 86400000) return { qualified: false, expired: true };

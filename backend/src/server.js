@@ -25,6 +25,12 @@ async function main() {
 
   app.get('/health', (req, res) => res.json({ ok: true }));
 
+  // Dev-only request console (npm run dev:memory) — a page that fires these very
+  // endpoints from the browser. Never mounted in production.
+  if (!env.isProd) {
+    app.use('/dev', require('express').static(require('path').join(__dirname, '..', 'dev-console')));
+  }
+
   const { requireAuth } = require('./middleware/auth');
   app.use('/api/auth', require('./routes/auth.routes'));
 
@@ -42,7 +48,6 @@ async function main() {
   app.use('/api/finance', require('./routes/finance.routes')); // finance console base (finance-data.js)
   app.use('/api/author', require('./routes/author.routes'));
   app.use('/api/senior-editor', require('./routes/senior.routes'));
-  app.use('/api/editor', require('./routes/editor.routes'));
   app.use('/api/chief', require('./routes/chief-reports.routes'));
   app.use('/api/chief', require('./routes/chief-overview.routes'));
   app.use('/api/chief', require('./routes/chief-moderation.routes'));
@@ -70,6 +75,7 @@ async function main() {
   app.use('/api/saves', require('./routes/saves.routes'));
   app.use('/api/referrals', require('./routes/referrals.routes'));
   app.use('/api/notifications', require('./routes/notifications.routes'));
+  app.use('/api/templates', require('./routes/templates.routes'));
   app.use('/api/reports', require('./routes/reports.routes'));
   app.use('/api/search', require('./routes/search.routes'));
   app.use('/api/marketing', require('./routes/marketing.routes'));

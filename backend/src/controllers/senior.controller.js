@@ -128,6 +128,31 @@ async function rejectBookEdit(req, res) {
   return base.wrap(res, async () => senior.rejectBookEdit(req.valid.params.id, req.user.id, note, req.user));
 }
 
+// Pricing arrives in two shapes from the same panel: a rows array (review
+// queue) or prices/ads maps keyed by chapter number (contract review). Only the
+// rows form is ever stored, so paidCount and the reader paywall read one
+// source. free is chapter <= freeChapters, which is the panel's own rule.
+function pricingPatch(t, contractId, bookId) {
+  const rows = (() => {
+    if (Array.isArray(t.rows) && t.rows.length) return t.rows;
+    const prices = t.prices || {};
+    const ads = t.ads || {};
+    const free = Number(t.freeChapters) || 0;
+    const nums = [...new Set(Object.keys(prices).concat(Object.keys(ads)).map(Number))]
+      .filter(n => Number.isInteger(n) && n > 0)
+      .sort((a, b) => a - b);
+    return nums.map(n => ({ num: n, price: Number(prices[n]) || 0, ads: Number(ads[n]) || 0, free: n <= free }));
+  })();
+  return {
+    contractId, bookId,
+    freeChapters: t.freeChapters || 0,
+    adsPerChapter: t.adsPerChapter || 0,
+    allowAdUnlock: t.allowAdUnlock !== false,
+    rows,
+    paidCount: rows.filter(r => !r.free).length,
+  };
+}
+
 // Platform signature: only for this editor's writer, and only after the author
 // has signed ('approved'). Terms lock here — pricing sent with the signature
 // replaces the stored block, otherwise the saved rows keep their values and are
@@ -145,13 +170,7 @@ async function signContract(req, res) {
     if (t) {
       await ContractPricing.findOneAndUpdate(
         { contractId: c.id },
-        {
-          contractId: c.id, bookId: c.bookId,
-          freeChapters: t.freeChapters || 0, adsPerChapter: t.adsPerChapter || 0,
-          allowAdUnlock: t.allowAdUnlock !== false,
-          rows: t.rows || [], paidCount: (t.rows || []).filter(r => !r.free).length,
-          status: 'signed',
-        },
+        Object.assign(pricingPatch(t, c.id, c.bookId), { status: 'signed' }),
         { upsert: true, new: true }
       );
     } else {
@@ -163,8 +182,8 @@ async function signContract(req, res) {
     c.signatures.push({ by: String(req.user.id), role: 'editor', at: now });
     await c.save();
     try {
-      const { notify } = require('../services/notifications.service');
-      await notify({ recipientId: c.authorId, type: 'contract', title: 'Contract signed', desc: 'Your contract is now active.' });
+      const { emit } = require('../services/notification-emitter');
+      await emit({ recipientId: c.authorId, type: 'contract', title: 'Contract signed', desc: 'Your contract is now active.' });
     } catch (e) {}
     return c.toJSON();
   });
@@ -341,12 +360,13 @@ async function contractPricing(req, res) {
     await senior.assertOwned(req.user, c.authorId);
 
     const body = req.valid.body;
-    const patch = Object.assign({}, body, { contractId: c.id, bookId: body.bookId || c.bookId });
-    if (Array.isArray(body.rows)) patch.paidCount = body.rows.filter(r => !r.free).length;
-    const signed = c.status === 'signed' || c.status === 'active';
+    const patch = Object.assign(
+      pricingPatch(body, c.id, body.bookId || c.bookId),
+      { status: c.status === 'signed' || c.status === 'active' ? 'signed' : 'pending' }
+    );
     const doc = await ContractPricing.findOneAndUpdate(
       { contractId: c.id },
-      { $set: patch, $setOnInsert: { status: signed ? 'signed' : 'pending' } },
+      { $set: patch },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).lean();
     return doc;
@@ -396,8 +416,8 @@ async function contractCreate(req, res) {
     if (body.bookId) await Book.updateOne({ id: body.bookId }, { contractStatus: 'review' });
 
     try {
-      const { notify } = require('../services/notifications.service');
-      await notify({
+      const { emit } = require('../services/notification-emitter');
+      await emit({
         recipientId: author.id, type: 'contract',
         title: 'Contract offer ready',
         desc: 'Your editor sent a contract — review and sign it in Author Center.',
@@ -656,8 +676,8 @@ async function contractApprove(req, res) {
     await sidebar.saveOfferPricing(contract.id, app.bookId, body.pricing, 'pending');
 
     try {
-      const { notify } = require('../services/notifications.service');
-      await notify({
+      const { emit } = require('../services/notification-emitter');
+      await emit({
         recipientId: app.authorId, type: 'contract',
         title: 'Contract offer ready',
         desc: 'Your editor sent a contract — review and sign it in Author Center.',
@@ -700,8 +720,8 @@ async function contractAppReject(req, res) {
     await Book.updateOne({ id: app.bookId }, { contractStatus: 'none' });
 
     try {
-      const { notify } = require('../services/notifications.service');
-      await notify({
+      const { emit } = require('../services/notification-emitter');
+      await emit({
         recipientId: app.authorId, type: 'contract',
         title: 'Contract application not accepted',
         desc: reason,
@@ -737,86 +757,29 @@ async function sendMessage(req, res) {
   });
 }
 
-// Book management: rate / flag / unflag (password-gated actions).
+// Book management: rate / flag / unflag (password-gated actions). The flag itself
+// lives in services/book-flag.service.js, which only the assigned senior editor
+// can reach — the chief reads the flagged queue and never acts on it.
 async function verifyActorPassword(req, password) {
   const { verifyPassword } = require('../middleware/auth');
   return verifyPassword(req.user.id, password);
 }
 
-// Flag reasons are free text from the console; map them onto Report's enum so
-// the chief Story Reports queue can filter without keyword matching.
-function reportTypeForFlag(reason) {
-  const r = String(reason || '').toLowerCase();
-  if (r.includes('plagiar') || r.includes('copyright')) return 'plagiarism';
-  if (r.includes('spam') || r.includes('scam')) return 'spam';
-  if (r.includes('violence') || r.includes('hate') || r.includes('abuse')) return 'abuse';
-  if (r.includes('adult') || r.includes('nsfw') || r.includes('misleading')) return 'content';
-  return 'other';
-}
-
 async function flagBook(req, res) {
   return base.wrap(res, async () => {
-    const { Book } = require('../models/content.model');
-    const { Report } = require('../models/editorial.model');
+    const flag = require('../services/book-flag.service');
     const { reason, note, password } = req.valid.body;
-    if (!reason) { const e = new Error('reason_required'); e.status = 400; throw e; }
     const actor = await verifyActorPassword(req, password);
-    const b = await Book.findOne({ id: req.valid.params.id });
-    if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
-    await senior.assertOwned(req.user, b.authorId);
-    if (b.status === 'flagged') { const e = new Error('already_flagged'); e.status = 409; throw e; }
-    b.flagPrevStatus = b.status;
-    b.status = 'flagged';
-    b.flagReason = String(reason).slice(0, 200);
-    b.flagNote = String(note || '').slice(0, 2000);
-    b.flaggedBy = actor.id;
-    b.flaggedAt = new Date();
-    await b.save();
-
-    // The flag is also a report row, so it lands in the shared review queues.
-    const report = await Report.create({
-      storyId: b.id,
-      title: b.title,
-      desc: b.flagNote ? b.flagReason + ' — ' + b.flagNote : b.flagReason,
-      type: reportTypeForFlag(reason),
-      severity: 'medium',
-      seId: String(req.user.id),
-      reporterId: String(actor.id),
-      reporterLabel: 'Book flag',
-      status: 'pending',
-    });
-
-    try {
-      const { notify } = require('../services/notifications.service');
-      await notify({ recipientId: b.authorId, type: 'moderation', title: 'Book flagged', desc: 'Your book "' + b.title + '" was flagged for review.' });
-    } catch (e) {}
-    return { id: b.id, status: b.status, flagReason: b.flagReason, reportId: report.id };
+    return flag.flagBook(req.valid.params.id, { reason, note },
+      { user: req.user, actor });
   });
 }
 
 async function unflagBook(req, res) {
   return base.wrap(res, async () => {
-    const { Book } = require('../models/content.model');
-    const { Report } = require('../models/editorial.model');
+    const flag = require('../services/book-flag.service');
     await verifyActorPassword(req, req.valid.body && req.valid.body.password);
-    const b = await Book.findOne({ id: req.valid.params.id });
-    if (!b) { const e = new Error('not_found'); e.status = 404; throw e; }
-    await senior.assertOwned(req.user, b.authorId);
-    if (b.status !== 'flagged') { const e = new Error('not_flagged'); e.status = 409; throw e; }
-    b.status = b.flagPrevStatus && b.flagPrevStatus !== 'flagged' ? b.flagPrevStatus : 'published';
-    b.flagReason = '';
-    b.flagNote = '';
-    b.flaggedBy = null;
-    b.flaggedAt = null;
-    b.flagPrevStatus = null;
-    await b.save();
-
-    // Unflagging settles the open report it created.
-    await Report.updateMany(
-      { storyId: b.id, status: 'pending' },
-      { $set: { status: 'resolved', resolutionNote: 'Book unflagged by editor', resolvedBy: String(req.user.id) } }
-    );
-    return { id: b.id, status: b.status };
+    return flag.unflagBook(req.valid.params.id, { user: req.user });
   });
 }
 

@@ -34,6 +34,8 @@ img{max-width:100%}
 .lb-role.writer{color:#ff0050;background:rgba(255,0,80,.1)}
 .lb-role.reader{color:#1d9bf0;background:rgba(29,155,240,.1)}
 .lb-role.other{color:var(--text-muted);background:rgba(128,128,128,.12)}
+.lb-name-link{display:block;text-decoration:none;color:inherit}
+.lb-name-link:hover .lb-name{color:var(--accent)}
 .tbl-body{display:flex;flex-direction:column;gap:8px}
 .lb-row{display:flex;align-items:center;gap:10px;background:var(--table-head,#eef0f3);border:1px solid var(--border);border-radius:10px;padding:9px 13px}
 .lb-rank{font-size:12px;font-weight:800;color:var(--text-faint);width:22px;flex-shrink:0}
@@ -120,10 +122,10 @@ img{max-width:100%}
   </div>
 </div>
 
-<script src="data/admin-demo-data.js"></script>
-<script src="../services/currency-service.js?v=2"></script>
-<script src="users-service.js"></script>
+<script src="data/admin-demo-data.js?v=2"></script>
+<script src="../services/currency-service.js?v=8"></script>
+<script src="users-service.js?v=7"></script>
 <script src="shared/super-admin-sidebar.js"></script>
-<script src="user-insights-service.js"></script>
+<script src="user-insights-service.js?v=2"></script>
 </body>
 </html>

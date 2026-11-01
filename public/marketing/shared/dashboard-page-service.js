@@ -6,6 +6,10 @@
  */
 (function(){
 'use strict';
+/* Money inside sentences (contest prizes, activity copy) follows the staff
+   currency the Super Admin picked; the seed text is written in dollars. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
+function money(n){ return (window.DroboardCurrency && DroboardCurrency.usdToMoney) ? DroboardCurrency.usdToMoney(n) : '$' + Number(n||0).toLocaleString('en-US'); }
 let _d = null, _q = '';
 const shell = MarketingSidebar.attach('#dashRoot',{
   activeItem:'dashboard', title:'Dashboard', subtitle:'Growth & marketing overview',
@@ -150,7 +154,7 @@ function renderEvents(d){
       <div class="evt-body">
         <div class="evt-name">${e.name}</div>
         <div class="evt-meta">${e.type} · ${e.date}</div>
-        <div class="evt-detail">${e.detail}</div>
+        <div class="evt-detail">${prose(e.detail)}</div>
       </div>
     </div>`).join('');
 }
@@ -179,7 +183,7 @@ function renderActivity(d){
     <div class="act-row">
       <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
       <div class="act-body">
-        <div class="act-text">${a.text}</div>
+        <div class="act-text">${prose(a.text)}</div>
         <div class="act-time">${a.time}</div>
       </div>
     </div>`).join('');

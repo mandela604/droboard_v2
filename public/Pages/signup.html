@@ -45,6 +45,8 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
 .success{display:none;text-align:center;padding:18px}
 .btn:disabled{opacity:.7;cursor:wait}
 .btn .fa-spinner{font-size:14px}
+.form-error{display:none;background:rgba(224,56,77,.08);border:1px solid rgba(224,56,77,.3);color:#b42336;border-radius:10px;padding:9px 11px;font-size:11.5px;font-weight:600;line-height:1.45;margin-bottom:12px}
+.form-error.show{display:block}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light'}document.documentElement.setAttribute('data-theme',t)})()</script>
 <script src="../component/img-guard.js"></script>
@@ -59,7 +61,7 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
   <button class="btn google" id="googleBtn" type="button"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px" alt=""/> Continue with Google</button>
   <div class="divider"><span>or</span></div>
 
-  <div class="referral-banner" id="referralBanner"><i class="fas fa-user-plus"></i><div><b id="refBannerTitle">Referral code applied</b> <span id="referralByName"></span><br><span id="refBannerText">Code</span> <b id="referralByCode" style="color:#ff0050;letter-spacing:.06em">—</b> <span id="refBannerTail">detected — your friend earns 5 coins when you join.</span></div></div>
+  <div class="referral-banner" id="referralBanner"><i class="fas fa-user-plus"></i><div><b id="refBannerTitle">Referral code applied</b><br><span id="refBannerText">Code</span> <b id="referralByCode" style="color:#ff0050;letter-spacing:.06em">—</b> <span id="refBannerTail">checked when your account is created.</span></div></div>
 
   <div class="form-row"><label class="form-label">Full name *</label><input class="form-input" id="nameInput" placeholder="e.g. Adaeze Cole"/></div>
   <div class="form-row"><label class="form-label">Username *</label><input class="form-input" id="usernameInput" placeholder="e.g. adaeze_writes" autocomplete="username" maxlength="20" style="text-transform:lowercase"/>
@@ -74,7 +76,8 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
   </div>
   <div class="form-row">
     <label class="form-label">Password *</label>
-    <div class="pw-wrap"><input class="form-input" id="passInput" type="password" placeholder="••••••••"/><button type="button" class="pw-eye" data-target="passInput"><i class="far fa-eye"></i></button></div>
+    <div class="pw-wrap"><input class="form-input" id="passInput" type="password" placeholder="••••••••" autocomplete="new-password"/><button type="button" class="pw-eye" data-target="passInput"><i class="far fa-eye"></i></button></div>
+    <div class="hint">At least 8 characters.</div>
   </div>
   <div class="form-row">
     <label class="form-label">Confirm password *</label>
@@ -92,6 +95,7 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
     <label for="websiteInput">Website</label>
     <input id="websiteInput" name="website" type="text" tabindex="-1" autocomplete="off"/>
   </div>
+  <div class="form-error" id="formError" role="alert"></div>
   <button class="btn primary" id="signupBtn"><i class="fas fa-user-plus"></i> Create Account & Join</button>
   <div style="text-align:center;margin-top:12px;font-size:11px;color:#9694ac">Already have an account? <a href="login.html" style="color:#ff0050;font-weight:700;text-decoration:none">Log in</a></div>
 </div>
@@ -99,15 +103,14 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
 <div class="card success" id="successCard">
   <i class="fas fa-check" style="width:56px;height:56px;border-radius:50%;background:#e2f8ea;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px"></i>
   <h2 style="font-size:16px;font-weight:800">You're in!</h2>
-  <p style="font-size:12.5px;color:#71708a;margin-top:6px;line-height:1.5" id="successMsg">Assigned and active.</p>
-  <button class="btn primary" style="margin-top:16px" onclick="location.href='discover.html'">Start Discovering</button>
-  <button class="btn ghost" style="margin-top:8px" onclick="location.reload()">Create another (test)</button>
+  <p style="font-size:12.5px;color:#71708a;margin-top:6px;line-height:1.5" id="successMsg">Your account is ready.</p>
+  <button class="btn primary" style="margin-top:16px" id="successPrimary">Start Discovering</button>
 </div>
 
 <div id="toast" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;z-index:300">Done</div>
 <style>#toast.show{opacity:1}</style>
 
-<script src="../services/signup-service.js"></script>
+<script src="../services/signup-service.js?v=2"></script>
 <script src="../services/acquisition-service.js"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

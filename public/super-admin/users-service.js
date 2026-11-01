@@ -91,7 +91,7 @@ function addUser(data){
     avatar:'https://i.pravatar.cc/100?img='+Math.floor(Math.random()*70),
     verified:false, joined:new Date().toISOString().slice(0,10), lastActive:new Date().toISOString().slice(0,10),
     followers:0, stories:0, reads:0, payout:0, coinsSpent:0, following:0, comments:0, reports:0,
-    readingHours:0, avgSessionMin:0, streakDays:0, topGenres:[], likesGiven:0, sharesCount:0, savesCount:0, tipsAmount:0, platformRoles:[]
+    readingHours:0, avgSessionMin:0, streakDays:0, topGenres:[], likesGiven:0, sharesCount:0, savesCount:0, tipsCoins:0, tipsReceivedNGN:0, platformRoles:[]
   }, data);
   _users.unshift(u);
   return u;
@@ -161,10 +161,15 @@ let tempRoles = [];
 let openRowId = null;
 
 function fmtNum(n){ n=n||0; return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
-// Money displays follow the global currency toggle (Super Admin → Coin
-// Economy). Coins and NGN amounts convert; plain counts stay fmtNum.
-function moneyCoins(n){ if(window.DroboardCurrency && DroboardCurrency.coinsToMoney) return DroboardCurrency.coinsToMoney(n); return '$'+fmtNum(n); }
-function moneyNGN(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$'+fmtNum(n); }
+// Money displays follow the global currency toggle (Super Admin → Platform
+// settings). Coins and NGN amounts convert; plain counts stay fmtNum.
+// Without the service there is no rate to apply, so the fallback states the
+// stored unit instead of pretending the amounts are dollars.
+function moneyNGN(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '₦'+fmtNum(n); }
+// Tips, gifts and unlocks are coin acts — the ledger row is a coin count, the
+// reader's balance is coins, so the console states them in coins. moneyNGN is
+// for the fiat side (earnings, funding) and the two must not be swapped.
+function coins(n){ if(window.DroboardCurrency && DroboardCurrency.coins) return DroboardCurrency.coins(n); return fmtNum(n)+' coins'; }
 function fmtDate(d){ const dt=new Date(d+'T00:00:00'); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return months[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear(); }
 function daysAgo(d){ return Math.round((new Date()-new Date(d+'T00:00:00'))/86400000); }
 
@@ -324,12 +329,15 @@ function renderDetailPanel(id){
     overviewCols = '<div class="detail-item"><span>Total Reads</span><b>'+fmtNum(u.reads)+'</b></div>'
       + '<div class="detail-item"><span>Coins Spent</span><b>'+fmtNum(u.coinsSpent)+'</b></div>'
       + '<div class="detail-item"><span>Following</span><b>'+u.following+'</b></div>'
-      + '<div class="detail-item"><span>Tips Given</span><b>'+moneyCoins(u.tipsAmount)+'</b></div>';
+      + '<div class="detail-item"><span>Tips Given</span><b>'+coins(u.tipsCoins)+'</b></div>';
   }
   var notesHtml = u.notes ? '<div class="detail-notes"><i class="fas fa-note-sticky" style="color:var(--accent);margin-right:5px"></i>'+u.notes+'</div>' : '';
   var lockIco = u.status==='active' ? 'lock' : 'unlock';
   var lockLabel = u.status==='active' ? 'Suspend' : 'Activate';
   var streakVal = u.streakDays>0 ? ('\uD83D\uDD25 '+u.streakDays+'d') : '0d';
+  // Two different acts on one line: a reader sends coins, the author is credited
+  // naira off those coins. The banner states whichever one this account is in.
+  var tipVal = u.role==='Writer' ? moneyNGN(u.tipsReceivedNGN) : coins(u.tipsCoins);
   var tipLabel = u.role==='Writer' ? 'Tips Received' : 'Tips Sent';
 
   var html = '<div class="detail-inner">';
@@ -353,7 +361,7 @@ function renderDetailPanel(id){
   html += '<div class="detail-item"><span>Saves</span><b>'+fmtNum(u.savesCount)+'</b></div>';
   html += '</div></div>';
   html += '<div class="detail-section"><div class="ds-label"><i class="fas fa-coins"></i> Tips</div>';
-  html += '<div class="tip-banner"><div class="tb-left"><div class="tb-ico"><i class="fas fa-coins"></i></div><div><div class="tb-label">'+tipLabel+'</div><div class="tb-val">'+moneyCoins(u.tipsAmount)+'</div></div></div></div></div>';
+  html += '<div class="tip-banner"><div class="tb-left"><div class="tb-ico"><i class="fas fa-coins"></i></div><div><div class="tb-label">'+tipLabel+'</div><div class="tb-val">'+tipVal+'</div></div></div></div></div>';
   html += notesHtml;
   html += '<div class="detail-foot">';
   html += '<button class="mini-btn primary" data-action="assign-role" data-id="'+u.id+'"><i class="fas fa-user-shield"></i> Assign Role</button>';

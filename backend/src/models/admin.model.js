@@ -41,7 +41,7 @@ const awardSchema = new mongoose.Schema({
   desc: { type: String, default: '' },
   status: { type: String, enum: ['active', 'draft', 'archived'], default: 'draft', index: true },
   criteria: {
-    metric: { type: String, enum: ['reads', 'books', 'followers', 'rating', 'genre_rank', 'growth', 'manual'], default: 'manual' },
+    metric: { type: String, enum: ['reads', 'books', 'followers', 'rating', 'genre_rank', 'growth', 'platform_tips', 'manual'], default: 'manual' },
     op: { type: String, enum: ['>=', 'top', 'admin'], default: 'admin' },
     value: { type: Number, default: 0 },
     genre: { type: String, default: '' },

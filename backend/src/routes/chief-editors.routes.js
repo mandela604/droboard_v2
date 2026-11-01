@@ -25,6 +25,19 @@ router.get('/senior-editors', ...guard,
 
 router.get('/senior-editors/quotas', ...guard, ctrl.quotas);
 
+// Registered before /senior-editors/:id on purpose: Express matches in
+// declaration order, so the literal `invites` must come first or the wildcard
+// swallows it (id="invites") and the list read 404s.
+router.get('/senior-editors/invites', ...guard,
+  validate(z.object({
+    query: z.object({
+      status: z.string().max(40).optional(),
+      page: z.coerce.number().int().min(1).optional(),
+      pageSize: z.coerce.number().int().min(1).max(100).optional(),
+      limit: z.coerce.number().int().min(1).max(100).optional(),
+    }).strict(),
+  }).strict()), ctrl.listInvites);
+
 router.get('/senior-editors/:id', ...guard, validate(idParam), ctrl.get);
 
 router.patch('/senior-editors/:id', ...guard, audit('chief.editors.patch'),
@@ -55,16 +68,6 @@ const inviteBody = z.object({
 
 router.post('/senior-editors/invites', ...guard, audit('chief.editors.invite'),
   validate(z.object({ body: inviteBody }).strict()), ctrl.createInvite);
-
-router.get('/senior-editors/invites', ...guard,
-  validate(z.object({
-    query: z.object({
-      status: z.string().max(40).optional(),
-      page: z.coerce.number().int().min(1).optional(),
-      pageSize: z.coerce.number().int().min(1).max(100).optional(),
-      limit: z.coerce.number().int().min(1).max(100).optional(),
-    }).strict(),
-  }).strict()), ctrl.listInvites);
 
 router.patch('/senior-editors/invites/:id', ...guard, audit('chief.editors.invite.patch'),
   validate(z.object({
@@ -118,7 +121,22 @@ router.get('/assignments', ...guard, ctrl.assignments);
 router.put('/senior-editors/:id/assignments', ...guard, audit('chief.editors.assignments'),
   validate(z.object({
     params: z.object({ id: z.string().max(60) }).strict(),
-    body: z.object({ authorIds: z.array(z.string().max(60)).max(100) }).strict(),
+    // Replace-all: the Assign Authors sheet saves the whole selection at once,
+    // so the body carries every id the editor ends up holding.
+    body: z.object({ authorIds: z.array(z.string().max(60)).max(5000) }).strict(),
   }).strict()), ctrl.saveAssignments);
+
+// Single-writer deltas for the one-at-a-time picker — one id per request, so a
+// busy editor never has to resend their whole list to add one writer.
+router.post('/senior-editors/:id/assignments/authors', ...guard, audit('chief.editors.assign.add'),
+  validate(z.object({
+    params: z.object({ id: z.string().max(60) }).strict(),
+    body: z.object({ authorId: z.string().min(1).max(60) }).strict(),
+  }).strict()), ctrl.assignAuthor);
+
+router.delete('/senior-editors/:id/assignments/authors/:authorId', ...guard, audit('chief.editors.assign.remove'),
+  validate(z.object({
+    params: z.object({ id: z.string().max(60), authorId: z.string().min(1).max(60) }).strict(),
+  }).strict()), ctrl.unassignAuthor);
 
 module.exports = router;

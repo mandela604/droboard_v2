@@ -684,9 +684,13 @@
       (arr || []).forEach(function (o) {
         if (!o || !o.id || seen[kind + ':' + o.id]) return;
         seen[kind + ':' + o.id] = true;
-        var price = (o.prices && (o.prices.USD || o.prices.NGN || o.prices.GBP))
-          || (o.priceUSD != null ? '$' + Number(o.priceUSD).toFixed(2) : null)
-          || o.price || '';
+        /* An offer is bought, not reported: the advertiser sees the reader-price
+           leg for their own location, never the staff currency and never an FX guess. */
+        var price = (window.DroboardCurrency && DroboardCurrency.priceFor)
+          ? DroboardCurrency.priceFor(o)
+          : (o.prices && (o.prices.USD || o.prices.NGN || o.prices.GBP))
+            || (o.priceUSD != null ? '$' + Number(o.priceUSD).toFixed(2) : null)
+            || o.price || '';
         out.push({
           kind: kind, id: String(o.id),
           name: o.name || o.id,

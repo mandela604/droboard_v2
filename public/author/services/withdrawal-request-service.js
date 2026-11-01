@@ -20,7 +20,7 @@
     minWithdrawal = (window.DemoData && window.DemoData.WITHDRAWAL_MIN) || 100;
 
     document.getElementById('balanceMini').innerHTML =
-      '<div><div class="bal-label">Available Balance</div><div class="bal-amount">'+window.AuthorFinance.fmtCurrency(balance)+'</div><div class="bal-min">Minimum withdrawal: $'+minWithdrawal+'</div></div>'+
+      '<div><div class="bal-label">Available Balance</div><div class="bal-amount">'+window.AuthorFinance.fmtCurrency(balance)+'</div><div class="bal-min">Minimum withdrawal: '+window.AuthorFinance.fmtCurrency(minWithdrawal)+'</div></div>'+
       '<a href="payment-details.html" style="color:#fff;font-size:12px;font-weight:700;opacity:.8"><i class="fas fa-credit-card"></i> Manage</a>';
 
     renderMethods();
@@ -88,11 +88,11 @@
     document.getElementById('submitBtn').addEventListener('click', async function(){
       var amt = parseFloat(document.getElementById('amountInput').value) || 0;
       if (!selectedMethod) { toast('Select a payment method'); return; }
-      if (amt < minWithdrawal) { toast('Minimum withdrawal is $'+minWithdrawal); return; }
+      if (amt < minWithdrawal) { toast('Minimum withdrawal is '+window.AuthorFinance.fmtCurrency(minWithdrawal)); return; }
       if (amt > balance) { toast('Insufficient balance'); return; }
       try {
         await window.AuthorFinance.requestWithdrawal(amt, selectedMethod);
-        document.getElementById('successMsg').textContent = 'Your $'+amt+' withdrawal request has been submitted. Funds will arrive within 3-5 business days.';
+        document.getElementById('successMsg').textContent = 'Your '+window.AuthorFinance.fmtCurrency(amt)+' withdrawal request has been submitted. Funds will arrive within 3-5 business days.';
         document.getElementById('successModal').classList.add('show');
         if (window.droNotify) window.droNotify({
           type: 'payout', key: 'wd:' + amt + ':' + new Date().toISOString().slice(0, 16),

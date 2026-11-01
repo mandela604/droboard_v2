@@ -1,6 +1,7 @@
 'use strict';
 const { Comment, Reaction } = require('../models/social.model');
 const { User } = require('../models/user.model');
+const { userRefFilter } = require('./user-ref');
 
 // Attach display author ({name, avatar}) to lean comment rows so clients
 // never need a second lookup per comment.
@@ -8,7 +9,7 @@ async function withAuthors(rows) {
   const list = Array.isArray(rows) ? rows : [];
   const ids = [...new Set(list.map(c => String(c.authorId || '')).filter(Boolean))];
   if (!ids.length) return list;
-  const users = await User.find({ $or: [{ id: { $in: ids } }, { _id: { $in: ids } }] })
+  const users = await User.find(userRefFilter(ids))
     .select('id username fullName avatar emailVerified').lean().catch(() => []);
   const byId = {};
   (users || []).forEach(u => {

@@ -35,23 +35,82 @@ function hoursAgo(d) {
 
 /* ── dashboard ── */
 async function dashboardSummary() {
-  const [userCount, bookCount, postCount, ledgers, admins] = await Promise.all([
+  const [userCount, bookCount, postCount, activeCount, ledgers, subs] = await Promise.all([
     User.countDocuments({ deletedAt: null }),
     Book.countDocuments({}),
     Post.countDocuments({}),
+    User.countDocuments({ deletedAt: null, lastLoginAt: { $gte: new Date(Date.now() - 30 * 86400000) } }),
     LedgerEntry.aggregate([{ $group: { _id: null, total: { $sum: '$amount' } } }]),
-    User.find({ roles: 'admin', deletedAt: null }).select('id fullName email avatar roles status').lean(),
+    Subscription.find({ status: 'active' }).countDocuments(),
   ]);
   const revenue = (ledgers[0] && ledgers[0].total) || 0;
+  
+  // Top stories with all fields frontend expects
+  const topStoryIds = await Book.find({}).sort({ reads: -1 }).limit(5).select('id authorId').lean();
+  const authorIds = [...new Set(topStoryIds.map(b => String(b.authorId)))];
+  const authors = await User.find({ id: { $in: authorIds } }).select('id fullName username').lean();
+  const findAuthor = (aid) => authors.find(a => String(a.id) === String(aid));
+  
   const topStories = await Book.find({}).sort({ reads: -1 }).limit(5)
-    .select('id title authorId reads likes status').lean();
+    .select('id title authorId genre reads cover coverUrl').lean();
+  
+  const storiesData = topStories.map(b => {
+    const author = findAuthor(b.authorId);
+    return {
+      id: b.id,
+      title: b.title,
+      writer: author ? (author.fullName || '') : '',
+      genre: b.genre || '',
+      reads: b.reads || 0,
+      revenue: 0,
+      cover: b.cover || b.coverUrl || '',
+    };
+  });
+  
+  // Revenue chart data (last 12 months)
+  const monthData = await LedgerEntry.aggregate([
+    { $group: { 
+      _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+      revenue: { $sum: '$amount' }
+    }},
+    { $sort: { _id: 1 } },
+    { $limit: 12 }
+  ]);
+  const revenueChart = monthData.map(m => ({ m: m._id, v: m.revenue || 0 }));
+  
+  // Activity log mapped to frontend shape
   const activity = await ActivityLog.find({}).sort({ at: -1 }).limit(10).lean();
+  const activityLog = activity.map(a => ({
+    ico: a.icon || 'fa-circle-info',
+    cls: a.type || 'blue',
+    text: a.detail || a.action || '',
+    time: a.at ? new Date(a.at).toLocaleString() : '',
+  }));
+  
+  // Admin team with perms object
+  const adminUsers = await User.find({ roles: 'admin', deletedAt: null })
+    .select('id fullName email avatar roles status').lean();
+  const adminTeam = adminUsers.map(u => ({
+    id: u.id,
+    name: u.fullName,
+    email: u.email,
+    avatar: u.avatar || '',
+    role: 'Super Admin',
+    status: u.status,
+    perms: { contracts: true, campaigns: true, moderation: true, finance: true, admins: true },
+  }));
+  
   return {
-    kpis: { users: userCount, books: bookCount, posts: postCount, revenue },
-    revenue: { total: revenue },
-    topStories: topStories.map(b => ({ id: b.id, title: b.title, authorId: b.authorId, reads: b.reads, likes: b.likes, status: b.status })),
-    activity: activity.map(a => ({ id: a.id, userLabel: a.userLabel, action: a.action, type: a.type, detail: a.detail, at: a.at })),
-    admins: admins.map(u => ({ id: u.id, name: u.fullName, email: u.email, avatar: u.avatar, roles: u.roles, status: u.status })),
+    kpiCards: [
+      { n: userCount, l: 'Users', ico: 'fa-users', cls: 'blue' },
+      { n: bookCount, l: 'Books', ico: 'fa-book', cls: 'green' },
+      { n: postCount, l: 'Posts', ico: 'fa-message', cls: 'orange' },
+      { n: activeCount, l: 'Active (30d)', ico: 'fa-chart-line', cls: 'purple' },
+    ],
+    revenueChart,
+    topStories: storiesData,
+    activityLog,
+    adminTeam,
   };
 }
 
@@ -106,12 +165,73 @@ async function userStatsMap(ids) {
     Post.aggregate([{ $match: { authorId: { $in: ids } } }, { $group: { _id: '$authorId', n: { $sum: 1 } } }]),
     Report.aggregate([{ $match: { reporterId: { $in: ids } } }, { $group: { _id: '$reporterId', n: { $sum: 1 } } }]),
   ]);
-  const get = (rows, keys) => rowHit(rows, keys);
-  return { followers: get, following: get, stories: get, comments: get, filedReports: get };
+  // Each accessor takes the user's id keys — binding rows through a shared
+  // (rows, keys) function instead would feed the keys array in as `rows` and
+  // crash on the first user with any stat row at all.
+  const get = (rows) => (keys) => rowHit(rows, keys);
+  return { followers: get(followers), following: get(following), stories: get(stories), comments: get(comments), filedReports: get(filedReports) };
+}
+
+/* One pass over the coin ledger per user. The console used to sum `fiatAmount`
+   over every completed row, so a top-up and spending that same money both
+   landed in "coins spent" — and a $5 pack and a ₦1,500 pack added their raw
+   digits together. Out goes in coins (the reader's own unit); money in is
+   reported from the NGN-normalised columns the purchase already stores. */
+const COIN_OUT = ['spend', 'gift', 'tip'];
+const COIN_IN = ['purchase', 'subscription'];
+const COIN_ZERO = {
+  coinsSpent: 0, readCoins: 0, tipsCoins: 0, bonusSpent: 0,
+  coinsBought: 0, earnCoins: 0, fundedNGN: 0,
+};
+function coinCond(types, field) {
+  return { $sum: { $cond: [{ $in: ['$type', types] }, { $ifNull: [field, 0] }, 0] } };
+}
+async function coinLedgerMap(ids) {
+  if (!ids || !ids.length) return () => COIN_ZERO;
+  const rows = await CoinTransaction.aggregate([
+    { $match: { userId: { $in: ids }, status: 'completed' } },
+    { $group: {
+      _id: '$userId',
+      coinsSpent: coinCond(COIN_OUT, '$coins'),
+      readCoins: coinCond(['spend'], '$coins'),
+      tipsCoins: coinCond(['gift', 'tip'], '$coins'),
+      bonusSpent: coinCond(COIN_OUT, '$bonusCoins'),
+      coinsBought: coinCond(COIN_IN, '$coins'),
+      earnCoins: coinCond(['earn'], '$coins'),
+      fundedNGN: { $sum: { $cond: [{ $in: ['$type', COIN_IN] },
+        { $add: [{ $ifNull: ['$faceAmount', 0] }, { $ifNull: ['$surplusAmount', 0] }] }, 0] } },
+    } },
+  ]);
+  const by = {};
+  rows.forEach(r => { by[String(r._id)] = r; });
+  return (keys) => {
+    const hit = (keys || []).map(String).filter(k => by[k])[0];
+    return hit ? by[hit] : COIN_ZERO;
+  };
+}
+
+/* What an author actually received from tips and gifts, in naira — the fiat
+   half of the same act the reader paid in coins. Only the ledger leg carries
+   it: the reader's CoinTransaction row records coins out, never whose share
+   landed where. */
+async function tipsReceivedMap(ids) {
+  if (!ids || !ids.length) return () => 0;
+  const accts = ids.map(a => 'wallet:author:' + a);
+  const rows = await LedgerEntry.aggregate([
+    { $match: { creditAcct: { $in: accts }, kind: { $in: ['tip', 'gift'] } } },
+    { $group: { _id: '$creditAcct', n: { $sum: '$amount' } } },
+  ]);
+  const by = {};
+  rows.forEach(r => { by[String(r._id)] = r.n; });
+  return (keys) => {
+    const hit = (keys || []).map(String).map(k => by['wallet:author:' + k]).filter(v => v)[0];
+    return hit || 0;
+  };
 }
 
 function toAdminUser(u, extra) {
   extra = extra || {};
+  const c = Object.assign({}, COIN_ZERO, extra.coin || {});
   return {
     id: u.id,
     name: u.fullName,
@@ -128,7 +248,19 @@ function toAdminUser(u, extra) {
     stories: (extra.stories && extra.stories.n) || 0,
     reads: (extra.stories && extra.stories.reads) || 0,
     payout: extra.payout || 0,
-    coinsSpent: extra.coinsSpent || 0,
+    // Coins are the unit a coin act is denominated in — the reader's balance,
+    // gift receipts and tip sheet all read `coins`, never naira. Money in is a
+    // separate number (`fundedNGN`) and separate question.
+    coinsSpent: c.coinsSpent,
+    readCoins: c.readCoins,
+    tipsCoins: c.tipsCoins,
+    bonusCoinsSpent: c.bonusSpent,
+    coinsBought: c.coinsBought,
+    earnCoins: c.earnCoins,
+    fundedNGN: c.fundedNGN,
+    // An author's tips are money, not coins — the reader who sent them is the
+    // one holding a coin number. Different side of the same act, different unit.
+    tipsReceivedNGN: extra.tipsReceived || 0,
     comments: (extra.comments && extra.comments.n) || 0,
     reports: (extra.filed && extra.filed.n) || 0,
     readingHours: extra.readingHours || 0,
@@ -138,7 +270,6 @@ function toAdminUser(u, extra) {
     likesGiven: 0,
     sharesCount: 0,
     savesCount: 0,
-    tipsAmount: extra.tipsAmount || 0,
     platformRoles: (u.platformRoles && u.platformRoles.length ? u.platformRoles : (u.roles || [])).map(frontRole),
     notes: u.adminNotes || '',
   };
@@ -163,19 +294,35 @@ async function listUsers(q) {
   ]);
   const ids = bothIds(users);
   const stats = await userStatsMap(ids);
-  const [wallets, spends] = await Promise.all([
-    Wallet.find({ userId: { $in: ids }, kind: 'author' }).lean(),
-    CoinTransaction.aggregate([{ $match: { userId: { $in: ids }, status: 'completed' } }, { $group: { _id: '$userId', n: { $sum: '$fiatAmount' } } }]),
+  const [wallets, coinOf, tipsOf] = await Promise.all([
+    Wallet.find({ userId: { $in: ids }, kind: 'reader' }).lean(),
+    coinLedgerMap(ids),
+    tipsReceivedMap(ids),
   ]);
   const items = users.map(u => {
     const keys = keysOf(u);
     const w = wallets.find(x => keys.indexOf(String(x.userId)) !== -1);
-    const s = spends.find(x => keys.indexOf(String(x._id)) !== -1);
-    return toAdminUser(u, {
+    const row = toAdminUser(u, {
       followers: stats.followers(keys), following: stats.following(keys),
       stories: stats.stories(keys), comments: stats.comments(keys), filed: stats.filedReports(keys),
-      payout: (w && w.lifetimeEarned) || 0, coinsSpent: (s && s.n) || 0,
+      payout: (w && w.lifetimeEarned) || 0, coin: coinOf(keys), tipsReceived: tipsOf(keys),
     });
+    // Add stats object for frontend console tables
+    row.stats = {
+      followers: row.followers,
+      following: row.following,
+      stories: row.stories,
+      reads: row.reads,
+      comments: row.comments,
+    };
+    // Add wallet.balance.coins for frontend reader view
+    row.wallet = {
+      balance: {
+        coins: (w && w.coinBalance) || 0,
+        bonus: (w && w.bonusBalance) || 0,
+      },
+    };
+    return row;
   });
   const active = await User.countDocuments({ deletedAt: null, status: 'active' });
   return Object.assign(wrapList(items, total, page, limit), { stats: { total, active } });
@@ -186,13 +333,40 @@ async function getUser(id) {
   if (!u) throw err(404, 'user_not_found');
   const ids = bothIds([u]);
   const stats = await userStatsMap(ids);
-  const w = await Wallet.findOne({ userId: { $in: ids }, kind: 'author' }).lean();
-  const s = await CoinTransaction.aggregate([{ $match: { userId: { $in: ids }, status: 'completed' } }, { $group: { _id: null, n: { $sum: '$fiatAmount' } } }]);
-  return toAdminUser(u, {
+  const [w, coin, tips] = await Promise.all([
+    Wallet.findOne({ userId: { $in: ids }, kind: 'reader' }).lean(),
+    coinLedgerMap(ids),
+    tipsReceivedMap(ids),
+  ]);
+  const row = toAdminUser(u, {
     followers: stats.followers(ids), following: stats.following(ids),
     stories: stats.stories(ids), comments: stats.comments(ids), filed: stats.filedReports(ids),
-    payout: (w && w.lifetimeEarned) || 0, coinsSpent: (s[0] && s[0].n) || 0,
+    payout: (w && w.lifetimeEarned) || 0, coin: coin(ids), tipsReceived: tips(ids),
   });
+  // Add stats object for frontend console tables
+  row.stats = {
+    followers: row.followers,
+    following: row.following,
+    stories: row.stories,
+    reads: row.reads,
+    comments: row.comments,
+  };
+  // Add wallet.balance.coins for frontend reader view
+  row.wallet = {
+    balance: {
+      coins: (w && w.coinBalance) || 0,
+      bonus: (w && w.bonusBalance) || 0,
+    },
+  };
+  // Add profile field for frontend detail view
+  row.profile = {
+    bio: u.bio || '',
+    location: u.location || '',
+    website: u.website || '',
+  };
+  // Add wordsRead for frontend statistics
+  row.wordsRead = row.reads;
+  return row;
 }
 
 async function createUser(data, by) {
@@ -363,8 +537,8 @@ function genreColor(name) {
 async function insightsOverview() {
   const users = await User.find({ deletedAt: null }).sort({ lastLoginAt: -1 }).limit(500).lean();
   const ids = bothIds(users);
-  const [wallets, subs, referrals, reads] = await Promise.all([
-    Wallet.find({ userId: { $in: ids }, kind: 'author' }).lean(),
+  const [wallets, subs, referrals, reads, coinOf, tipsOf] = await Promise.all([
+    Wallet.find({ userId: { $in: ids }, kind: 'reader' }).lean(),
     Subscription.find({ userId: { $in: ids }, status: 'active' }).lean(),
     Referral.aggregate([
       { $match: { ownerId: { $in: ids } } },
@@ -374,11 +548,23 @@ async function insightsOverview() {
       { $match: { userId: { $in: ids } } },
       { $group: { _id: '$userId', days: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$lastReadAt' } } }, words: { $sum: '$wordsRead' } } },
     ]),
+    coinLedgerMap(ids),
+    tipsReceivedMap(ids),
   ]);
+  const walletOf = (keys) => wallets.find(x => keys.indexOf(String(x.userId)) !== -1);
+  
+  // Cohorts by month of first login
+  const cohortData = await User.aggregate([
+    { $match: { deletedAt: null, createdAt: { $gte: new Date(Date.now() - 365 * 86400000) } } },
+    { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } }, count: { $sum: 1 } } },
+    { $sort: { _id: 1 } },
+    { $limit: 12 }
+  ]);
+  const cohorts = cohortData.map(c => ({ m: c._id, v: c.count }));
+  
   const ex = users.map(u => {
     const id = String(u.id);
     const keys = keysOf(u);
-    const w = wallets.find(x => keys.indexOf(String(x.userId)) !== -1);
     const sub = subs.find(x => keys.indexOf(String(x.userId)) !== -1);
     const ref = referrals.find(x => keys.indexOf(String(x._id)) !== -1) || { sent: 0, converted: 0 };
     const rd = reads.find(x => keys.indexOf(String(x._id)) !== -1) || { days: [], words: 0 };
@@ -386,7 +572,8 @@ async function insightsOverview() {
       u: id,
       x: {
         referralsSent: ref.sent || 0, referralsConverted: ref.converted || 0,
-        plan: sub ? 'premium' : 'free', funded: (w && w.lifetimeEarned) || 0,
+        plan: sub ? 'premium' : 'free',
+        funded: coinOf(keys).fundedNGN,
         sessionsPerDay: rd.days.length ? +(rd.words / 1000 / Math.max(1, rd.days.length)).toFixed(1) : 0,
       },
     };
@@ -404,8 +591,14 @@ async function insightsOverview() {
   ]);
   genres.forEach(g => { if (g._id) genreColors[g._id] = genreColor(g._id); });
   return {
-    users: users.map(u => toAdminUser(u)),
-    ex, genreColors,
+    users: users.map(u => {
+      const keys = keysOf(u);
+      const w = walletOf(keys);
+      return toAdminUser(u, { payout: (w && w.lifetimeEarned) || 0, coin: coinOf(keys), tipsReceived: tipsOf(keys) });
+    }),
+    ex,
+    cohorts,
+    genreColors,
     refDate: refDate ? new Date(refDate).toISOString() : new Date().toISOString(),
     subPrice: 5,
   };
@@ -711,10 +904,32 @@ async function analyticsSummary() {
     LedgerEntry.aggregate([{ $group: { _id: null, total: { $sum: '$amount' } } }]),
     Report.countDocuments({ status: 'pending' }),
   ]);
+  
+  // Monthly revenue data for chart
+  const monthData = await LedgerEntry.aggregate([
+    { $group: { 
+      _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+      revenue: { $sum: '$amount' }
+    }},
+    { $sort: { _id: 1 } },
+    { $limit: 12 }
+  ]);
+  const monthlyRevenue = monthData.map(m => ({
+    label: m._id,
+    revenue: m.revenue || 0,
+    coins: 0,
+    ads: 0,
+    subs: 0,
+  }));
+  
   return {
-    totalUsers, activeUsers, totalBooks: books, totalPosts: posts,
-    revenue: (ledgers[0] && ledgers[0].total) || 0, pendingReports: reports,
-    systemHealth: 'ok', apiLatency: null, errorRate: null,
+    totalUsers,
+    totalRevenue: (ledgers[0] && ledgers[0].total) || 0,
+    monthlyRevenue,
+    pendingReports: reports,
+    systemHealth: 'ok',
+    apiLatency: null,
+    errorRate: null,
   };
 }
 async function analyticsRevenue(q) {
@@ -785,11 +1000,17 @@ async function analyticsTopReaders(limit) {
   ]);
   const users = await usersByStoredIds(agg.map(a => a._id), 'fullName username avatar');
   const findUser = userLookup(users);
+  const coinOf = await coinLedgerMap(agg.map(a => String(a._id)));
   return {
     items: agg.map(a => {
       const u = findUser(a._id);
       if (!u) return null;
-      return { id: a._id, name: u.fullName, handle: u.username, avatar: u.avatar, words: a.words, books: a.books.length };
+      const c = coinOf([String(a._id)]);
+      return {
+        id: a._id, name: u.fullName, handle: u.username, avatar: u.avatar,
+        words: a.words, books: a.books.length,
+        coinsSpent: c.coinsSpent, tipsCoins: c.tipsCoins, readCoins: c.readCoins,
+      };
     }).filter(Boolean),
   };
 }

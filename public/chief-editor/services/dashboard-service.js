@@ -41,6 +41,11 @@ const shell = ChiefEditorSidebar.attach('#dashRoot',{
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
 
+/* Payout amounts are dollar figures ('$2,140'); restated in whatever currency
+   Super Admin set. Without the service the stored unit is printed as-is. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
+
 let DATA = null;
 let actPage = 1;
 const ACT_PER_PAGE = 8;
@@ -85,7 +90,7 @@ function renderReports(){
         <span class="target-pill">${r.targetType==='author'?'Author':'Senior Editor'}</span>
         <span class="sev-pill ${r.severity}">${r.severity}</span>
       </div>
-      <div class="rpt-reason">${r.reason}</div>
+      <div class="rpt-reason">${prose(r.reason)}</div>
       <div class="rpt-meta">Reported by ${r.reportedBy} · ${r.filed}</div>
       <div class="rpt-actions">
         ${r.targetType==='author' ? `
@@ -153,7 +158,7 @@ function renderPayments(){
         <div class="pay-role">${p.role}</div>
       </div>
       <div>
-        <div class="pay-amt">${p.amount}</div>
+        <div class="pay-amt">${money(p.amount)}</div>
         <div class="pay-due">${p.due}</div>
       </div>
       <span class="pay-status ${p.status}">${p.status}</span>
@@ -173,7 +178,7 @@ function renderActivity(){
     <div class="act-row">
       <div class="act-dot" style="background:${BG_MAP[a.color]||'var(--table-head)'};color:${ICO_MAP[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
       <div class="act-body">
-        <div class="act-text">${a.text}</div>
+        <div class="act-text">${prose(a.text)}</div>
         <div class="act-time">${a.time}</div>
       </div>
     </div>`).join('') || '<div class="empty-msg">No recent activity.</div>';

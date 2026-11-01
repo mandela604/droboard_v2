@@ -4,3 +4,7 @@ backend/node_modules/
 .build/
 dist/
 .env
+# Live Bearer tokens for the in-memory dev server — regenerate with npm run dev:memory.
+backend/postman/dev.env.json
+backend/dev-console/env.json
+backend/test-report/

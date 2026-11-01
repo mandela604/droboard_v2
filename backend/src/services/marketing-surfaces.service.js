@@ -413,6 +413,11 @@ async function track(action, n, userId) {
    entries: [{ handle, name, avatar, points, parts }] ranked desc. */
 async function leagueBoard({ season, scope, userId }) {
   const s = (season && /^(\d{4})-W\d{1,2}$/.test(String(season))) ? String(season) : seasonId();
+  // League week ends Sunday; compute endsIn for this week's Monday→Sunday.
+  const now = new Date();
+  const d = now.getUTCDay() || 7;
+  const endOfWeek = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + (8 - d)));
+  const endsIn = Math.max(0, Math.round((endOfWeek.getTime() - now.getTime()) / 3600000));
   const filter = scope === 'alltime' ? {} : { season: s };
   const rows = await LeagueActivity.aggregate([
     { $match: filter },
@@ -432,8 +437,8 @@ async function leagueBoard({ season, scope, userId }) {
     (r.parts || []).forEach(a => { parts[a] = (parts[a] || 0) + 1; });
     return {
       userId: r._id,
-      handle: u.handle || u.id || 'reader',
-      name: u.name || u.handle || 'Reader',
+      handle: u.username || 'reader',
+      name: u.fullName || u.username || 'Reader',
       avatar: u.avatar || '',
       points: r.points || 0,
       parts,
@@ -444,7 +449,7 @@ async function leagueBoard({ season, scope, userId }) {
     const mine = entries.findIndex(e => String(e.userId) === String(userId));
     if (mine >= 0) me = { rank: mine + 1, points: entries[mine].points };
   }
-  return { season: s, scope: scope === 'alltime' ? 'alltime' : 'weekly', entries, me };
+  return { season: s, scope: scope === 'alltime' ? 'alltime' : 'weekly', endsIn, entries, me };
 }
 
 /* ── GET /api/league/me (league-service.js:10) —

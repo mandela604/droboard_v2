@@ -61,8 +61,10 @@
     { key: 'platform-analytics',   label: 'Platform Analytics',     icon: 'fa-chart-line',           href: 'platform-analytics.html',  section: 'Platform' },
     { key: 'platform-settings',    label: 'Platform Settings',      icon: 'fa-gear',                 href: 'platform-settings.html',   section: 'Platform' },
     { key: 'system-pages',         label: 'System Pages',           icon: 'fa-layer-group',          href: 'system-pages.html',        section: 'Platform' },
-    { key: 'revenue-splits',       label: 'Revenue Splits',         icon: 'fa-scale-balanced',       href: 'revenue-splits.html',       section: 'Finance' },
-    { key: 'ad-earnings',          label: 'Ad Earnings',            icon: 'fa-sack-dollar',          href: 'ad-earnings.html',          section: 'Finance' },
+
+    { key: 'revenue-splits',       label: 'Revenue Splits',         icon: 'fa-scale-balanced',       href: 'revenue-splits.html',      section: 'Finance' },
+    { key: 'admin-earnings',       label: 'Admin Earnings',         icon: 'fa-crown',                href: 'admin-earnings.html',      section: 'Finance' },
+    { key: 'ad-earnings',          label: 'Ad Earnings',            icon: 'fa-sack-dollar',          href: 'ad-earnings.html',         section: 'Finance' },
   ];
 
   const CSS = `
@@ -312,7 +314,7 @@
         <div class="sa-sb-overlay" id="${instId}-overlay"></div>
         <aside class="sa-sidebar" id="${instId}-sidebar">
           <div class="sa-sb-logo">
-            <div class="sa-sb-logo-ico"><i class="fas fa-crown"></i></div>
+            <div class="sa-sb-logo-ico"><img src="../assets/droboard-icon.png" alt="Droboard" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>
             <div class="sa-sb-logo-txt"><b>DROBOARD</b><b>SUPER ADMIN</b></div>
             <button class="sa-sb-close" id="${instId}-close"><i class="fas fa-xmark"></i></button>
           </div>

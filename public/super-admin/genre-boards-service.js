@@ -19,14 +19,6 @@ SuperAdminSidebar.attach('#boardsRoot', {
   searchPlaceholder: 'Search everything…',
 });
 
-function toast(m){
-  var t=document.getElementById('toastEl');
-  if(!t){t=document.createElement('div');t.id='toastEl';t.style.cssText='position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)';document.body.appendChild(t);}
-  t.textContent=m;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';
-  clearTimeout(t._t);
-  t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(16px)';},2400);
-}
-
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
 
@@ -84,10 +76,31 @@ const BOARDS = [
     visits:{d:1100,w:7400,m:30100}, threads:1700, reportsOpen:0, growth:-0.3, lastActiveMin:55 },
 ];
 
+/* ── Flag flow — mirrors the senior editor's book flag: reason required,
+   optional details, password confirm; flagged boards show the reason and
+   can be unflagged (password only). ── */
+const FLAG_REASONS = [
+  'Hate speech or harassment',
+  'Adult / NSFW content',
+  'Spam or scam',
+  'Unmoderated abuse',
+  'Off-topic / misleading',
+  'Other (see details)',
+];
+
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function todayLabel(){
+  return new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
 let filtered = BOARDS.slice();
 let page = 1;
 const pageSize = 10;
 const openIds = {};
+let flagBoardId = null;
+let flagMode = 'flag';
 
 function fmtNum(n){
   n = Number(n) || 0;
@@ -123,7 +136,8 @@ function applyFilters(){
   const sort = document.getElementById('sortFilter').value;
 
   filtered = BOARDS.filter(function(b){
-    if(status && b.status !== status) return false;
+    if(status === 'flagged'){ if(!b.flagReason) return false; }
+    else if(status && b.status !== status) return false;
     if(q){
       const inName = b.name.toLowerCase().indexOf(q) !== -1;
       const inMods = b.mods.some(function(m){ return m.name.toLowerCase().indexOf(q) !== -1; });
@@ -164,6 +178,11 @@ function detailHtml(b){
   const modList = b.mods.map(function(m){
     return '<b>'+m.name+'</b> ('+m.role+')';
   }).join(' · ') || 'No team assigned';
+  const flagBanner = b.flagReason
+    ? '<div class="flag-banner"><i class="fas fa-flag"></i><div><b>Flagged — '+esc(b.flagReason)+'</b>'
+      + (b.flagNote ? '<div class="flag-note">'+esc(b.flagNote)+'</div>' : '')
+      + '<div class="flag-meta">Flagged by '+esc(b.flaggedBy || 'Super Admin')+' · '+esc(b.flaggedAt || '')+'</div></div></div>'
+    : '';
   return '<div class="board-detail">'
     + '<div class="detail-grid">'
       + '<div class="dtile"><div class="dtile-lbl">Daily Visits</div><div class="dtile-val">'+fmtNum(b.visits.d)+'</div><div class="dtile-sub">last 24h</div></div>'
@@ -176,10 +195,11 @@ function detailHtml(b){
       + '<div class="dtile"><div class="dtile-lbl">Open Reports</div><div class="dtile-val '+reportsCls+'">'+b.reportsOpen+'</div><div class="dtile-sub">mod queue</div></div>'
       + '<div class="dtile"><div class="dtile-lbl">Last Activity</div><div class="dtile-val">'+lastActive(b.lastActiveMin)+'</div><div class="dtile-sub">most recent post</div></div>'
     + '</div>'
+    + flagBanner
     + '<div class="detail-foot">'
       + '<div class="mod-team">'+modList+'</div>'
       + '<div class="detail-actions">'
-        + '<button class="detail-flag" data-flag="'+b.id+'"><i class="fas fa-flag"></i> Flag board</button>'
+        + '<button class="detail-flag'+(b.flagReason ? ' on' : '')+'" data-flag="'+b.id+'"><i class="fas fa-flag'+(b.flagReason ? '-circle-check' : '')+'"></i> '+(b.flagReason ? 'Unflag board' : 'Flag board')+'</button>'
         + '<a class="detail-link" href="../Pages/genre-hub.html?genre='+b.id+'">Open board <i class="fas fa-arrow-up-right-from-square"></i></a>'
       + '</div>'
     + '</div>'
@@ -199,7 +219,7 @@ function renderList(){
       return '<div class="board-item'+(isOpen?' open':'')+'" data-id="'+b.id+'">'
         + '<div class="board-row" data-toggle="'+b.id+'">'
           + '<div class="board-main"><div class="board-ico" style="background:'+BG_MAP[b.color]+';color:'+ICO_MAP[b.color]+'"><i class="fas '+b.icon+'"></i></div>'
-          + '<div style="min-width:0"><div class="board-name">'+b.name+'</div>'
+          + '<div style="min-width:0"><div class="board-name">'+b.name+(b.flagReason ? ' <i class="fas fa-flag row-flag" title="Flagged: '+esc(b.flagReason)+'"></i>' : '')+'</div>'
           + '<div class="board-sub"><span class="status-dot '+b.status+'"></span>'+b.status+' · active '+lastActive(b.lastActiveMin)+'</div></div></div>'
           + '<div>'+modStackHtml(b.mods)+'</div>'
           + '<div class="num-cell">'+fmtNum(b.members)+'</div>'
@@ -258,9 +278,7 @@ document.getElementById('boardList').addEventListener('click', function(e){
   if(flagBtn){
     e.stopPropagation();
     const b = BOARDS.find(function(x){ return x.id === flagBtn.dataset.flag; });
-    if(b){
-      toast(b.name + (b.reportsOpen > 0 ? ' already has open reports' : ' flagged for review'));
-    }
+    if(b) openFlagModal(b);
     return;
   }
   const link = e.target.closest('a');
@@ -272,6 +290,116 @@ document.getElementById('boardList').addEventListener('click', function(e){
   if(openIds[id]){ delete openIds[id]; item.classList.remove('open'); }
   else { openIds[id] = true; item.classList.add('open'); }
 });
+
+/* ── Flag / unflag modal — same flow as the senior editor's book flag ── */
+function ensureFlagModal(){
+  if(document.getElementById('gbFlagOv')) return;
+  var style = document.createElement('style');
+  style.id = 'gbFlagCss';
+  style.textContent = ''
+    + '.gb-ov{position:fixed;inset:0;background:rgba(15,10,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}'
+    + '.gb-ov.open{display:flex}'
+    + '.gb-modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:430px;box-shadow:0 24px 60px rgba(0,0,0,.3);padding:20px}'
+    + '.gb-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}'
+    + '.gb-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}'
+    + '.gb-ico.red{background:var(--red-bg);color:var(--red)}.gb-ico.green{background:var(--green-bg);color:var(--green)}'
+    + '.gb-title{font-size:15px;font-weight:800}.gb-sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.gb-x{margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}'
+    + '.gb-label{font-size:11px;font-weight:700;display:block;margin-bottom:5px}.gb-label span{color:var(--red)}'
+    + '.gb-field{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;margin-bottom:12px}'
+    + '.gb-field:focus{border-color:var(--accent)}textarea.gb-field{resize:vertical;min-height:64px}'
+    + '.gb-hint{font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px}'
+    + '.gb-err{font-size:11.5px;color:var(--red);font-weight:600;min-height:16px;margin-bottom:8px}'
+    + '.gb-actions{display:flex;gap:8px;justify-content:flex-end}'
+    + '.gb-btn{font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}'
+    + '.gb-btn.danger{background:var(--red);border-color:transparent;color:#fff}.gb-btn.primary{background:var(--accent);border-color:transparent;color:#fff}.gb-btn:disabled{opacity:.5;cursor:default}';
+  document.head.appendChild(style);
+
+  var wrap = document.createElement('div');
+  wrap.innerHTML = ''
+    + '<div class="gb-ov" id="gbFlagOv"><div class="gb-modal">'
+      + '<div class="gb-head"><div class="gb-ico red" id="gbFlagIco"><i class="fas fa-flag"></i></div>'
+        + '<div><div class="gb-title" id="gbFlagHeading">Flag Board</div><div class="gb-sub" id="gbFlagBoard"></div></div>'
+        + '<button class="gb-x" id="gbFlagX" type="button"><i class="fas fa-xmark"></i></button></div>'
+      + '<div class="gb-hint" id="gbFlagHint"></div>'
+      + '<div id="gbFlagReasonWrap"><label class="gb-label">Reason <span>*</span></label>'
+        + '<select class="gb-field" id="gbFlagReason"><option value="">Select a reason…</option>'
+        + FLAG_REASONS.map(function(r){ return '<option value="'+esc(r)+'">'+esc(r)+'</option>'; }).join('')
+        + '</select></div>'
+      + '<div id="gbFlagNoteWrap"><label class="gb-label">Details <span style="color:var(--text-faint)">(optional)</span></label>'
+        + '<textarea class="gb-field" id="gbFlagNote" placeholder="Links, reports described, context…"></textarea></div>'
+      + '<label class="gb-label">Your password <span>*</span></label>'
+        + '<input type="password" class="gb-field" id="gbFlagPass" placeholder="Enter password to confirm" autocomplete="current-password"/>'
+      + '<div class="gb-err" id="gbFlagErr"></div>'
+      + '<div class="gb-actions"><button class="gb-btn" id="gbFlagCancel" type="button">Cancel</button>'
+        + '<button class="gb-btn danger" id="gbFlagSubmit" type="button"><i class="fas fa-flag"></i> Flag Board</button></div>'
+    + '</div></div>';
+  document.body.appendChild(wrap.firstChild);
+
+  document.getElementById('gbFlagCancel').addEventListener('click', closeFlagModal);
+  document.getElementById('gbFlagX').addEventListener('click', closeFlagModal);
+  document.getElementById('gbFlagSubmit').addEventListener('click', submitFlag);
+  document.getElementById('gbFlagOv').addEventListener('click', function(e){ if(e.target === this) closeFlagModal(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeFlagModal(); });
+}
+
+function closeFlagModal(){
+  var ov = document.getElementById('gbFlagOv');
+  if(ov) ov.classList.remove('open');
+}
+
+function openFlagModal(b){
+  ensureFlagModal();
+  flagBoardId = b.id;
+  flagMode = b.flagReason ? 'unflag' : 'flag';
+  var isFlag = flagMode === 'flag';
+  document.getElementById('gbFlagIco').className = 'gb-ico ' + (isFlag ? 'red' : 'green');
+  document.getElementById('gbFlagIco').innerHTML = '<i class="fas fa-flag' + (isFlag ? '' : '-circle-check') + '"></i>';
+  document.getElementById('gbFlagHeading').textContent = isFlag ? 'Flag Board' : 'Unflag Board';
+  document.getElementById('gbFlagBoard').textContent = b.name;
+  document.getElementById('gbFlagReasonWrap').style.display = isFlag ? '' : 'none';
+  document.getElementById('gbFlagNoteWrap').style.display = isFlag ? '' : 'none';
+  document.getElementById('gbFlagHint').textContent = isFlag
+    ? 'A reason is required. Confirm with your account password — this action is logged.'
+    : 'Confirm with your account password to restore this board.';
+  document.getElementById('gbFlagReason').value = '';
+  document.getElementById('gbFlagNote').value = '';
+  document.getElementById('gbFlagPass').value = '';
+  document.getElementById('gbFlagErr').textContent = '';
+  var btn = document.getElementById('gbFlagSubmit');
+  btn.innerHTML = '<i class="fas fa-flag"></i> ' + (isFlag ? 'Flag Board' : 'Unflag Board');
+  btn.className = 'gb-btn ' + (isFlag ? 'danger' : 'primary');
+  document.getElementById('gbFlagOv').classList.add('open');
+  document.getElementById('gbFlagPass').focus();
+}
+
+function submitFlag(){
+  var b = BOARDS.find(function(x){ return x.id === flagBoardId; });
+  if(!b) return;
+  var errEl = document.getElementById('gbFlagErr');
+  errEl.textContent = '';
+  var reason = flagMode === 'flag' ? document.getElementById('gbFlagReason').value : '';
+  var note = flagMode === 'flag' ? document.getElementById('gbFlagNote').value.trim() : '';
+  var pass = document.getElementById('gbFlagPass').value;
+  if(flagMode === 'flag' && !reason){ errEl.textContent = 'Select a reason for flagging.'; return; }
+  if(!pass){ errEl.textContent = 'Enter your password to confirm.'; return; }
+  if(pass.length < 4){ errEl.textContent = 'Demo mode: password must be at least 4 characters.'; return; }
+
+  if(flagMode === 'flag'){
+    b.flagReason = reason;
+    b.flagNote = note;
+    b.flaggedAt = todayLabel();
+    b.flaggedBy = 'Tobi Adenuga';
+  } else {
+    b.flagReason = '';
+    b.flagNote = '';
+    b.flaggedAt = '';
+    b.flaggedBy = '';
+  }
+  closeFlagModal();
+  toast(b.name + (flagMode === 'flag' ? ' flagged' : ' unflagged'));
+  renderList();
+}
 
 function init(){
   renderStatCards();

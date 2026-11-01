@@ -124,10 +124,10 @@
     function render(i) {
       index = (i + slides.length) % slides.length;
       const s = slides[index];
-      imgEl.style.backgroundImage = `url('${_esc(s.img || '')}')`;
+      imgEl.style.backgroundImage = `url('${_esc(s.img || s.cover || '')}')`;
       titleEl.innerHTML = s.title || '';
       authorEl.innerHTML = s.author ? _esc(s.author) + ' <i class="fas fa-circle-check"></i>' : '';
-      tagsEl.innerHTML = (s.tags || []).map(t => `<span class="dhc-tag">${_esc(t)}</span>`).join('');
+      tagsEl.innerHTML = (s.tags || s.genres || []).map(t => `<span class="dhc-tag">${_esc(t)}</span>`).join('');
       dots.forEach((d, di) => d.classList.toggle('on', di === index));
     }
 

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Droboard — reader & author console</title>
+<link rel="stylesheet" href="console.css">
+</head>
+<body>
+<header>
+  <h1>Droboard backend — reader &amp; author console</h1>
+  <nav class="tabs">
+    <a href="/dev/">Staff (chief · editor · finance)</a>
+    <a href="/dev/users.html" class="on">Users (reader · writer)</a>
+  </nav>
+  <p id="status" class="status">loading seeded ids…</p>
+</header>
+
+<main>
+  <section id="panel" class="panel" aria-label="requests">
+    <div class="panel-head">
+      <strong>Requests</strong>
+      <button id="runall" class="ghost" title="fire every request below in order and watch the responses arrive">▶ run all in order</button>
+    </div>
+    <div id="groups"></div>
+
+    <div class="custom">
+      <div class="custom-title">Your own call</div>
+      <div class="row">
+        <select id="c-token">
+          <option value="reader">as reader</option>
+          <option value="writer">as writer (author)</option>
+          <option value="writer2">as second writer</option>
+          <option value="se">as senior editor</option>
+          <option value="chief">as chief</option>
+          <option value="finance">as finance</option>
+          <option value="">no token</option>
+        </select>
+        <select id="c-method">
+          <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+        </select>
+        <input id="c-path" placeholder="/api/feed/home" value="/api/feed/home">
+      </div>
+      <textarea id="c-body" placeholder='{ "body": "optional JSON" }' rows="3"></textarea>
+      <button id="c-send" class="go">send</button>
+    </div>
+  </section>
+
+  <section class="log-wrap" aria-label="responses" aria-live="polite">
+    <div class="panel-head">
+      <strong>Responses <span id="count" class="muted"></span></strong>
+      <button id="clear" class="ghost">clear</button>
+    </div>
+    <ol id="log" class="log"></ol>
+  </section>
+</main>
+
+<script src="engine.js" defer></script>
+<script src="users.js" defer></script>
+</body>
+</html>

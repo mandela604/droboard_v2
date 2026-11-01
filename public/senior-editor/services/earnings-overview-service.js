@@ -23,20 +23,35 @@ async function callBackend(path, options) {
 
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun'];const AUTHOR_DATA=[45600,38900,32400,35600,41200,48300];const PLATFORM_DATA=[28400,25600,23800,26400,29100,30800];const AD_DATA=[12600,11800,10900,11400,12100,11500];
 function renderChart(){const max=Math.max(...AUTHOR_DATA,...PLATFORM_DATA,...AD_DATA);const c=document.getElementById('earningsChart');c.innerHTML=MONTHS.map((m,i)=>{const ah=(AUTHOR_DATA[i]/max)*140;const ph=(PLATFORM_DATA[i]/max)*140;const adh=(AD_DATA[i]/max)*140;return `<div class="bar"><div style="display:flex;flex-direction:column;gap:2px;width:100%;align-items:center"><div class="bar-fill" style="height:${ah}px;background:var(--green)"></div><div class="bar-fill" style="height:${ph}px;background:var(--accent)"></div><div class="bar-fill" style="height:${adh}px;background:var(--blue)"></div></div><div class="bar-lbl">${m}</div></div>`}).join('')}
+/* Author earnings figures are dollars ('$24,110'); restated in the currency
+   Super Admin set for staff reporting. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
+
 const TOP_EARNERS=[
   {name:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',book:'The Ruthless CEO',earn:'$24,110',pct:'+22%'},
   {name:'Isabella Rossi',avatar:'https://i.pravatar.cc/100?img=38',book:'His Hidden Luna',earn:'$21,050',pct:'+18%'},
   {name:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',book:'Bound by the Alpha',earn:'$18,420',pct:'+15%'},
   {name:'Layla Haddad',avatar:'https://i.pravatar.cc/100?img=48',book:'Broken Vows',earn:'$15,780',pct:'+12%'},
 ];
-function renderTopEarners(){document.getElementById('topEarners').innerHTML=TOP_EARNERS.map(e=>`<div class="pp-row"><img class="pp-av" src="${e.avatar}"/><div class="pp-info"><div class="pp-name">${e.name}</div><div class="pp-book">${e.book}</div></div><div class="pp-earn"><b>${e.earn}</b><span>${e.pct}</span></div></div>`).join('')}
+function renderTopEarners(){document.getElementById('topEarners').innerHTML=TOP_EARNERS.map(e=>`<div class="pp-row"><img class="pp-av" src="${e.avatar}"/><div class="pp-info"><div class="pp-name">${e.name}</div><div class="pp-book">${e.book}</div></div><div class="pp-earn"><b>${money(e.earn)}</b><span>${e.pct}</span></div></div>`).join('')}
+
+/* KPI cards. These used to be typed straight into the markup as '$284.5K', so
+   they could never follow the admin currency — same numbers, one render path. */
+const OVERVIEW_STATS=[
+  {v:284500,l:'Total Platform Earnings',c:'var(--green)',d:'18%',up:true},
+  {v:148200,l:'Author Payouts',c:'var(--accent)',d:'22%',up:true},
+  {v:92400,l:'Platform Commission',c:'var(--blue)',d:'15%',up:true},
+  {v:43900,l:'Ad Revenue',c:'var(--amber)',d:'3%',up:false},
+];
+function renderStatCards(){const el=document.getElementById('overviewStats');if(!el)return;
+  el.innerHTML=OVERVIEW_STATS.map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${money(s.v)}</div><div class="lbl">${s.l}</div><div class="delta ${s.up?'up':'down'}"><i class="fas fa-arrow-${s.up?'up':'down'}" style="font-size:8px"></i> ${s.up?'+':'-'}${s.d} from last month</div></div>`).join('')}
 
 function init(){
   SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
   // Backend swap point (demo paths keep working when USE_API=false):
   // callBackend('/earnings-overview').then(function (data) { if (data) { renderChart(); renderTopEarners(); } });
   callBackend('/earnings-overview');
-  renderChart();renderTopEarners();
+  renderChart();renderTopEarners();renderStatCards();
 }
 
 function svcToast(m){ if(typeof window.toast==='function'){ try{ window.toast(m); return; }catch(e){} } }

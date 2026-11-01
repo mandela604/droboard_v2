@@ -449,7 +449,6 @@ async function listUnassignedAuthors({ q, waiting, page, pageSize, limit }) {
 async function saveAssignments(editorId, { authorIds }, updatedBy) {
   await loadSeniorOr404(editorId); // editor must be a senior_editor
   const list = Array.from(new Set((authorIds || []).map(String)));
-  if (list.length > 100) throw err('too_many', 400);
   if (list.length) {
     // Assignees are usually still readers (writers only exist after approval).
     const n = await User.countDocuments({ id: { $in: list }, roles: { $in: ['reader', 'writer'] } });
@@ -460,6 +459,33 @@ async function saveAssignments(editorId, { authorIds }, updatedBy) {
     { $set: { authorIds: list, updatedBy: updatedBy || null } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  return doc.toJSON();
+}
+
+// Single-writer assignment for the one-at-a-time picker: the request carries
+// only the new id, so an editor holding thousands of writers is not forced to
+// resend the whole list. $addToSet keeps it idempotent.
+async function assignAuthor(editorId, authorId, updatedBy) {
+  await loadSeniorOr404(editorId);
+  const uid = String(authorId);
+  const ok = await User.exists({ id: uid, roles: { $in: ['reader', 'writer'] } });
+  if (!ok) throw err('bad_author', 400);
+  const doc = await EditorAssignment.findOneAndUpdate(
+    { editorId: String(editorId) },
+    { $addToSet: { authorIds: uid }, $set: { updatedBy: updatedBy || null } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  return doc.toJSON();
+}
+
+async function unassignAuthor(editorId, authorId, updatedBy) {
+  await loadSeniorOr404(editorId);
+  const doc = await EditorAssignment.findOneAndUpdate(
+    { editorId: String(editorId) },
+    { $pull: { authorIds: String(authorId) }, $set: { updatedBy: updatedBy || null } },
+    { new: true }
+  );
+  if (!doc) throw err('not_found', 404);
   return doc.toJSON();
 }
 
@@ -487,5 +513,6 @@ module.exports = {
   listSeniorEditors, quotas, getSeniorEditor, patchSeniorEditor,
   createInvite, listInvites, patchInvite, resendInvite, cancelInvite,
   getByToken, acceptInvite, listAuthors, getAssignments, saveAssignments,
+  assignAuthor, unassignAuthor,
   listUnassignedAuthors, pendingByAuthor, searchPlatformUsers,
 };

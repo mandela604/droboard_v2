@@ -48,6 +48,10 @@ const ACTIVITY = [
 ];
 
 /* ── Render ── */
+/* Activity and queue lines are prose that can carry a dollar figure ("… $1,200").
+   usdProse restates the number into the currency Super Admin set and leaves the
+   rest of the sentence alone. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 function renderStats(){
   const s = LIVE && LIVE.stats;
   const total = s ? s.totalPending : QUEUES.reduce((n,q)=>n+q.count,0);
@@ -85,7 +89,7 @@ function renderSubs(){
   document.getElementById('subList').innerHTML=rows.map(s=>`
     <div class="ri-row">
       <div class="ri-ico"><i class="fas fa-file-lines"></i></div>
-      <div class="ri-body"><div class="ri-title">${s.title}</div><div class="ri-meta"><span>✍️ ${s.author}</span><span>${s.meta}</span><span>${s.time}</span></div></div>
+      <div class="ri-body"><div class="ri-title">${s.title}</div><div class="ri-meta"><span>✍️ ${s.author}</span><span>${prose(s.meta)}</span><span>${s.time}</span></div></div>
       <span class="status-pill ${s.status}">${s.status}</span>
     </div>`).join('');
 }
@@ -99,7 +103,7 @@ function renderActivity(){
   document.getElementById('activityList').innerHTML=rows.map(a=>`
     <div class="act-row">
       <div class="act-dot" style="background:${BG[a.color]||'var(--table-head)'};color:${ICO[a.color]||'var(--text-faint)'}"><i class="fas ${a.icon}"></i></div>
-      <div class="act-body"><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
+      <div class="act-body"><div class="act-text">${prose(a.text)}</div><div class="act-time">${a.time}</div></div>
     </div>`).join('');
 }
 

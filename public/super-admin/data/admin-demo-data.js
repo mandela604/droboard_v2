@@ -87,7 +87,23 @@ function generateUsers(n){
       tipsAmount:Math.floor(Math.random()*200000), platformRoles:[]
     });
   }
-  return seeded.concat(out);
+  var all = seeded.concat(out);
+  // Demo used to store one naira `tipsAmount` for both sides of a tip. A tip is
+  // coins out of the reader and naira into the author, so split it at the ₦15
+  // coin face: readers get a coin count (which must fit inside their coin spend),
+  // writers keep the money they were credited.
+  all.forEach(function(u){
+    var legacy = u.tipsAmount || 0;
+    delete u.tipsAmount;
+    if (u.role === 'Writer') {
+      u.tipsReceivedNGN = legacy;
+      u.tipsCoins = 0;
+    } else {
+      u.tipsCoins = Math.round(legacy / 15);
+      u.coinsSpent = Math.max(u.coinsSpent || 0, u.tipsCoins);
+    }
+  });
+  return all;
 }
 
 var PLATFORM_USERS = generateUsers(86);

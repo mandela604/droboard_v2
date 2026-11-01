@@ -9,7 +9,15 @@
     "dev": "nodemon src/server.js",
     "smoke:ads": "node scripts/smoke-ad-surfaces.cjs",
     "smoke:audience": "node scripts/smoke-audience-catalog.cjs",
-    "check:ad-registry": "node scripts/check-ad-registry.cjs"
+    "smoke:staff": "node scripts/smoke-staff-scopes.cjs",
+    "smoke:staff:live": "node scripts/smoke-staff-live.cjs",
+    "smoke:coins": "node scripts/smoke-superadmin-coins.cjs",
+    "smoke:chief": "node scripts/smoke-chief-crud.cjs",
+    "smoke:all": "node scripts/smoke-staff-scopes.cjs && node scripts/smoke-chief-crud.cjs && node scripts/smoke-staff-live.cjs && node scripts/smoke-superadmin-coins.cjs",
+    "dev:memory": "node scripts/dev-inmemory.cjs",
+    "report": "node scripts/report.cjs",
+    "check:ad-registry": "node scripts/check-ad-registry.cjs",
+    "smoke:auth:live": "node scripts/smoke-auth-live.cjs"
   },
   "dependencies": {
     "argon2": "^0.41.1",
@@ -27,6 +35,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.1.0"
   }
 }

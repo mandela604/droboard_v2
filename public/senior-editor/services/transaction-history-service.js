@@ -22,6 +22,16 @@ async function callBackend(path, options) {
   }
 }
 
+/* Amounts here are dollar figures whose sign is baked into the string
+   ('-$2,450.00'). The row class already carries the direction, so the sign is
+   rendered from the class and the magnitude is restated in the currency Super
+   Admin set. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
+function moneyAmt(r){
+  var v = Math.abs(parseFloat(String(r.amount == null ? '' : r.amount).replace(/[^0-9.]/g, ''))) || 0;
+  return (r.cls === 'debit' ? '-' : '+') + money(v);
+}
+
 const TXNS = [
   { id: 'TXN-2450', desc: 'Book Sale - The Ruthless CEO', type: 'revenue', amount: '+$12.99', usr: 'Reader_2345', date: 'Jun 17, 2026 10:24AM', cls: 'credit' },
   { id: 'TXN-2449', desc: 'Author Payout - Amara Okafor', type: 'payout', amount: '-$2,450.00', usr: 'Amara Okafor', date: 'Jun 17, 2026 09:15AM', cls: 'debit' },
@@ -50,7 +60,7 @@ async function refresh() {
 function renderTable(l) {
   const b = document.getElementById('tableBody');
   if (!l.length) { b.innerHTML = `<tr class="empty-row"><td colspan="7"><i class="fas fa-clock-rotate-left"></i>No transactions match.</td></tr>`; return; }
-  b.innerHTML = l.slice(0, 8).map(r => `<tr><td data-label="Transaction ID" style="font-weight:700;font-size:11.5px">${r.id}</td><td data-label="Description" style="font-weight:600">${r.desc}</td><td data-label="Type"><span class="type-pill ${r.type}">${r.type.charAt(0).toUpperCase() + r.type.slice(1)}</span></td><td data-label="Amount" class="amount ${r.cls}">${r.amount}</td><td data-label="User" style="font-weight:600">${r.usr}</td><td data-label="Date" style="font-size:12px;color:var(--text-muted)">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" onclick="toast('Viewing transaction…')"><i class="fas fa-eye"></i></button></div></td></tr>`).join('');
+  b.innerHTML = l.slice(0, 8).map(r => `<tr><td data-label="Transaction ID" style="font-weight:700;font-size:11.5px">${r.id}</td><td data-label="Description" style="font-weight:600">${r.desc}</td><td data-label="Type"><span class="type-pill ${r.type}">${r.type.charAt(0).toUpperCase() + r.type.slice(1)}</span></td><td data-label="Amount" class="amount ${r.cls}">${moneyAmt(r)}</td><td data-label="User" style="font-weight:600">${r.usr}</td><td data-label="Date" style="font-size:12px;color:var(--text-muted)">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" onclick="toast('Viewing transaction…')"><i class="fas fa-eye"></i></button></div></td></tr>`).join('');
 }
 
 function renderPagination() {

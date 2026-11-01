@@ -5,6 +5,10 @@
  */
 (function () {
 'use strict';
+/* Money can appear inside sentences (activity lines, chat text, config
+   history, permission copy). usdProse restates only the "$" figures into the
+   currency Super Admin set and leaves the words alone. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 
 const USE_API = true;
 const API_BASE = '/api/senior-editor';
@@ -231,9 +235,9 @@ function renderThread(){
       }
     }
     var isImg = m.file && m.file.isImage && m.file.url;
-    if(isImg)bodyHtml+='<div class="msg-bubble"><img class="msg-img" src="'+m.file.url+'" alt=""/>'+(m.text?m.text:'')+'</div>';
+    if(isImg)bodyHtml+='<div class="msg-bubble"><img class="msg-img" src="'+m.file.url+'" alt=""/>'+(m.text?prose(m.text):'')+'</div>';
     else{
-      if(m.text)bodyHtml+='<div class="msg-bubble">'+m.text+'</div>';
+      if(m.text)bodyHtml+='<div class="msg-bubble">'+prose(m.text)+'</div>';
       if(m.file){
         var icon=m.file.name.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)?'fa-file-image':m.file.name.match(/\.pdf$/i)?'fa-file-pdf':m.file.name.match(/\.(doc|docx)$/i)?'fa-file-word':'fa-file';
         bodyHtml+='<div class="msg-file"><i class="fas '+icon+'"></i> '+m.file.name+' <span style="opacity:.6;font-weight:400">('+m.file.size+')</span></div>';

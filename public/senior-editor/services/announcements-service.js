@@ -5,6 +5,9 @@
    NOTE: API_BASE is defined below (window.DROBOARD_API_BASE || '/api/senior-editor');
    USE_API/callBackend wrap future live calls while demo fallback paths keep working. */
 const USE_API = false;
+/* Announcement bodies are prose that can carry a dollar figure ("… win $5,000").
+   usdProse restates just the number into the currency Super Admin set. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 async function callBackend(path, options){
   if (!USE_API) return null;
   const res = await fetch(API_BASE + path, options);
@@ -190,7 +193,7 @@ function renderPage(){
         <div class="ann-top">
           <div class="ann-title">${a.title} <span class="status-pill ${a.status}">${a.status}</span> <span class="audience-tag">${audienceLabel(a.audience)}</span></div>
         </div>
-        <div class="ann-content">${a.content}</div>
+        <div class="ann-content">${prose(a.content)}</div>
         <div class="ann-meta">
           <span><i class="fas fa-calendar"></i> Created ${a.created}</span>
           ${a.scheduled ? `<span><i class="fas fa-clock"></i> Scheduled for ${a.scheduled}</span>` : ''}

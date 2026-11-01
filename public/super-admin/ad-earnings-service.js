@@ -11,7 +11,11 @@
   var summary = null;
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-  function fmtUSD(n) { return '$' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2); }
+  /* Ad money is authored in USD; staff screens show the currency Super Admin set. */
+  function fmtUSD(n) {
+    if (window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n);
+    return '$' + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
+  }
   function fmtN(n) { return (Math.round(Number(n) || 0)).toLocaleString('en-US'); }
   function toast(m) { if (typeof window.toast === 'function') { try { window.toast(m); return; } catch (e) {} } }
 

@@ -102,20 +102,10 @@ async function register({ fullName, name, username, email, password, referralCod
   const verifyToken = crypto.randomBytes(24).toString('hex');
   user.emailVerifyTokenHash = hashToken(verifyToken);
   await user.save();
-  // Verification email via template (admin-defined only — no fallback).
-  // Token is returned ONLY in log (dev) mode — never alongside real delivery.
+  // Verification email disabled — no sign-up verification sent at launch.
+  // Token remains generated (for potential future gating) but never emailed.
   let emailed = false;
   let emailError = null;
-  try {
-    const mail = require('./mail.service');
-    const appUrl = (mail.cfg().appUrl || '').replace(/\/$/, '');
-    const backendUrl = (process.env.BACKEND_URL || '').replace(/\/$/, '') || 'http://127.0.0.1:4000';
-    await mail.sendTemplate('verify-email', user.email, {
-      name: user.fullName || user.username, appUrl,
-      link: backendUrl + '/api/auth/verify-email?token=' + verifyToken,
-    });
-    emailed = true;
-  } catch (e) { emailed = false; emailError = (e && e.message) || 'email_failed'; }
   const out = { id: user._id, username: user.username, email: user.email, referral, emailed, emailError };
   if (require('./mail.service').cfg().provider === 'log') out.verifyToken = verifyToken;
   return out;
@@ -483,31 +473,12 @@ async function googleCallback({ code, idToken, redirectUri, codeVerifier, referr
   return { user, isNew, session };
 }
 
-// FIX 8a: resend email verification (authed user or email body).
+// Resend verification email disabled — sign-up verification not used at launch.
 async function resendVerification({ userId, email }) {
-  let user = null;
-  if (userId) user = await User.findOne({ id: userId });
-  else if (email) user = await User.findOne({ email: String(email).toLowerCase() });
+  const user = await User.findOne({ id: userId });
   if (!user) return { ok: true }; // no enumeration
   if (user.emailVerified) return { ok: true, alreadyVerified: true };
-  const raw = crypto.randomBytes(24).toString('hex');
-  user.emailVerifyTokenHash = hashToken(raw);
-  await user.save();
-  let emailed = false;
-  let emailError = null;
-  try {
-    const mail = require('./mail.service');
-    const backendUrl = (process.env.BACKEND_URL || '').replace(/\/$/, '') || 'http://127.0.0.1:4000';
-    await mail.sendTemplate('verify-email', user.email, {
-      name: user.fullName || user.username,
-      appUrl: (mail.cfg().appUrl || '').replace(/\/$/, ''),
-      link: backendUrl + '/api/auth/verify-email?token=' + raw,
-    });
-    emailed = true;
-  } catch (e) { emailed = false; emailError = (e && e.message) || 'email_failed'; }
-  const out = { ok: true, emailed, emailError };
-  if (require('./mail.service').cfg().provider === 'log') out.verifyToken = raw;
-  return out;
+  return { ok: true, verified: true, msg: 'verification disabled' };
 }
 
 // FIX 8c: disable MFA (password or TOTP checked) + regenerate backup codes + status.

@@ -984,7 +984,7 @@
           ${state.selectedStory ? `<div class="cwz-review-item"><div class="cwz-review-lbl">Story</div><div class="cwz-review-val">${esc(state.selectedStory.title)}</div></div>` : ''}
           ${objDef.isBusiness ? `<div class="cwz-review-item"><div class="cwz-review-lbl">Advertiser</div><div class="cwz-review-val">${esc(state.advertiserName)}</div></div>` : ''}
           <div class="cwz-review-item"><div class="cwz-review-lbl">Surfaces</div><div class="cwz-review-val">${state.selectedPlacements.length}</div></div>
-          <div class="cwz-review-item"><div class="cwz-review-lbl">Budget</div><div class="cwz-review-val">${state.hasBudget ? '$' + fmtNum(parseFloat(state.budget) || 0) : 'None'}</div></div>
+          <div class="cwz-review-item"><div class="cwz-review-lbl">Budget (USD)</div><div class="cwz-review-val">${state.hasBudget ? '$' + fmtNum(parseFloat(state.budget) || 0) : 'None'}</div></div>
           <div class="cwz-review-item"><div class="cwz-review-lbl">Duration</div><div class="cwz-review-val" style="font-size:11.5px">${state.startDate || 'TBD'} → ${state.endDate || 'TBD'}</div></div>
         </div>
 

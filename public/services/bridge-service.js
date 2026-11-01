@@ -784,7 +784,10 @@
       onSend: (id, amount, note, mode) => {
         DATA.tipCount = (DATA.tipCount || 0) + 1;
         renderTipLine();
-        const label = mode === 'cash' ? '$' + fmtN(amount) : '🪙 ' + amount;
+        /* Cash tips are paid in the reader's own currency, same symbol the
+           picker used to render the amounts — never the staff currency. */
+        const symbol = (window.DroboardCurrency && DroboardCurrency.readerSymbol) ? DroboardCurrency.readerSymbol() : '$';
+        const label = mode === 'cash' ? symbol + fmtN(amount) : '🪙 ' + amount;
         toast(label + ' sent to ' + DATA.writer.name + '!');
       }
     });

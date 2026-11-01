@@ -153,13 +153,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
       <div class="bh-label">Available Balance</div>
       <button class="bh-withdraw" onclick="openWithdraw()"><i class="fas fa-arrow-up-from-bracket"></i> Withdraw</button>
     </div>
-    <div class="bh-amount" id="balanceAmount">$4,850.00</div>
+    <div class="bh-amount" id="balanceAmount"></div>
     <div class="bh-sub" id="balanceSub">Last earned: 2 hours ago from "The CEO's Hidden Son"</div>
     <div class="bh-stats">
-      <div class="bh-stat"><label>Total Earned</label><b id="statEarned">$12,480</b></div>
-      <div class="bh-stat"><label>Withdrawn</label><b id="statWithdrawn">$6,780</b></div>
-      <div class="bh-stat"><label>Pending</label><b id="statPending">$850</b></div>
-      <div class="bh-stat"><label>This Month</label><b id="statMonth">$2,100</b></div>
+      <div class="bh-stat"><label>Total Earned</label><b id="statEarned"></b></div>
+      <div class="bh-stat"><label>Withdrawn</label><b id="statWithdrawn"></b></div>
+      <div class="bh-stat"><label>Pending</label><b id="statPending"></b></div>
+      <div class="bh-stat"><label>This Month</label><b id="statMonth"></b></div>
     </div>
   </div>
 
@@ -194,10 +194,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
   <div class="modal">
     <h3>Withdraw Earnings</h3>
     <div class="modal-sub">Transfer your balance to your connected account</div>
-    <div class="modal-bal"><span>Available Balance</span><b id="withdrawBal">$4,850.00</b></div>
-    <label>Amount</label>
-    <input type="text" id="withdrawAmount" placeholder="Enter amount" oninput="this.value=this.value.replace(/[^0-9.]/g,'')"/>
-    <div class="modal-min" id="withdrawMin">Minimum withdrawal $100.00</div>
+    <div class="modal-bal"><span>Available Balance</span><b id="withdrawBal"></b></div>
+    <label>Amount (USD)</label>
+    <input type="text" id="withdrawAmount" placeholder="Enter amount in dollars" oninput="this.value=this.value.replace(/[^0-9.]/g,'')"/>
+    <div class="modal-min" id="withdrawMin"></div>
     <label>Payment Method</label>
     <select id="withdrawMethod">
       <option>GTBank · · · · 4821</option>
@@ -246,6 +246,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#f4f4fb);color
 <div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:11px 24px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:.3s;pointer-events:none;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.3)}"></div>
 <style>#toast.show{opacity:1}</style>
 <script src="shared/senior-editor-sidebar.js?v=2"></script>
-<script src="services/editor-bill-review-service.js?v=3"></script><script>EditorBillReviewService.init();</script>
+<script src="../services/currency-service.js?v=8"></script>
+<script src="services/editor-bill-review-service.js?v=6"></script><script>EditorBillReviewService.init();</script>
 </body>
 </html>

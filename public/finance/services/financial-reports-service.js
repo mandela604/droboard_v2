@@ -15,14 +15,9 @@ var RAW = null;
 var CURRENT_RANGE = { from:null, to:null };
 
 /* ── Helpers ── */
-function money(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n||0).toLocaleString('en-US'); }
-function moneyShort(n){
-  var v = Number(n||0);
-  var s = (window.DroboardCurrency && DroboardCurrency.symbol) ? DroboardCurrency.symbol() : '$';
-  var a = Math.abs(v);
-  var short = a>=1000000 ? (a/1000000).toFixed(1)+'M' : a>=1000 ? (a/1000).toFixed(1)+'K' : String(a);
-  return (v<0?'-':'') + s + short;
-}
+/* Reports are authored in dollars (finance-data seeds '$182,400'), so the
+   staff restatement is usdToMoney — ngnToMoney here would divide by the rate. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + Number(n||0).toLocaleString('en-US'); }
 function pct(n){ return Number(n||0).toFixed(1)+'%'; }
 function toNum(v){ return Number(v||0); }
 

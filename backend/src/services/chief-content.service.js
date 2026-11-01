@@ -19,6 +19,10 @@ async function paged(findQuery, countQuery, pg, lim, sort) {
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 
+// Console search text goes straight into a $regex. Unescaped it is both a 500
+// (`[` never closes) and a ReDoS lever, so match on the escaped literal.
+function rx(s) { return new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); }
+
 const BOOK_SORTS = {
   recent: { updatedAt: -1 },
   views: { reads: -1 },
@@ -32,7 +36,7 @@ async function listBooks({ q, genre, status, sort, page, limit }) {
   const filter = {};
   if (genre) filter.genre = genre;
   if (status) filter.status = status;
-  if (q) filter.$or = [{ title: new RegExp(q, 'i') }, { authorId: new RegExp(q, 'i') }];
+  if (q) filter.$or = [{ title: rx(q) }, { authorId: rx(q) }];
   const { pg, lim } = paging({ page, limit });
   const out = await paged(
     Book.find(filter),
@@ -68,7 +72,7 @@ async function getBook(id) {
 // Chief's flagged-books view: read-only list of every book any SE flagged.
 async function flaggedBooks({ q, page, limit }) {
   const filter = { status: 'flagged' };
-  if (q) filter.$or = [{ title: new RegExp(q, 'i') }, { flagReason: new RegExp(q, 'i') }];
+  if (q) filter.$or = [{ title: rx(q) }, { flagReason: rx(q) }];
   const { pg, lim } = paging({ page, limit });
   const out = await paged(
     Book.find(filter),
@@ -136,7 +140,7 @@ async function sections() {
 async function library({ q, genre, page, limit }) {
   const filter = { status: 'published' };
   if (genre) filter.genre = genre;
-  if (q) filter.$or = [{ title: new RegExp(q, 'i') }, { authorId: new RegExp(q, 'i') }];
+  if (q) filter.$or = [{ title: rx(q) }, { authorId: rx(q) }];
   const { pg, lim } = paging({ page, limit });
   return paged(
     Book.find(filter).select('id title authorId cover genre synopsis reads likes rating'),
@@ -148,7 +152,7 @@ async function library({ q, genre, page, limit }) {
 
 async function placements({ tag, section, page, limit }) {
   const filter = {};
-  if (tag) filter.tag = new RegExp(tag, 'i');
+  if (tag) filter.tag = rx(tag);
   if (section) filter.sectionKey = section;
   const { pg, lim } = paging({ page, limit });
   return paged(
@@ -212,7 +216,7 @@ async function removePlacement(storyId, byId) {
 
 async function history({ q, page, limit }) {
   const filter = {};
-  if (q) filter.$or = [{ section: new RegExp(q, 'i') }, { bookId: new RegExp(q, 'i') }];
+  if (q) filter.$or = [{ section: rx(q) }, { bookId: rx(q) }];
   const { pg, lim } = paging({ page, limit });
   return paged(
     FeaturedHistory.find(filter),
@@ -242,7 +246,7 @@ function slugify(t) {
 
 async function listCategories({ q, page, limit, status }) {
   const filter = {};
-  if (q) filter.name = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  if (q) filter.name = rx(q);
   if (status) filter.status = status;
   const { pg, lim } = paging({ page, limit });
   return paged(Category.find(filter), Category.countDocuments(filter), pg, lim, { name: 1 });
@@ -291,7 +295,7 @@ async function toggleCategoryStatus(id) {
 // ---- Genres (full hub fields: slug/about/admins) ----
 async function listGenres({ q, page, limit, status, categoryId }) {
   const filter = {};
-  if (q) filter.name = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  if (q) filter.name = rx(q);
   if (status) filter.status = status;
   if (categoryId) filter.categoryId = categoryId;
   const { pg, lim } = paging({ page, limit });
@@ -358,7 +362,7 @@ function tropeSlug(name) {
 }
 async function listTropes({ q, genre, status, page, limit }) {
   const filter = {};
-  if (q) filter.name = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  if (q) filter.name = rx(q);
   if (genre) filter.genre = genre;
   if (status) filter.status = status;
   const { pg, lim } = paging({ page, limit });

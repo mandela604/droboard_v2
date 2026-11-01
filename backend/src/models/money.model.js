@@ -142,6 +142,15 @@ const coinTransactionSchema = new mongoose.Schema({
   // earn = reward claim, refund = reversal.
   type: { type: String, enum: ['purchase', 'gift', 'tip', 'spend', 'earn', 'subscription', 'refund'], required: true, index: true },
   coins: { type: Number, required: true },
+  // Who the tip/gift was aimed at. Author tips feed the split waterfall;
+  // platform tips are pure platform revenue and never touch author earnings.
+  target: { type: String, enum: ['author', 'platform'], default: 'author', index: true },
+  // Coins and their money behind them are not the same number. `coins` is the
+  // movement the reader sees; these two say how much of it had cash behind it,
+  // which is the only way a spend total can separate bought coins from granted
+  // ones later — the face rate moves, so it cannot be re-derived from fiatAmount.
+  paidCoins: { type: Number, default: 0 },
+  bonusCoins: { type: Number, default: 0 },
   fiatAmount: { type: Number, required: true },
   fiatCurrency: { type: String, default: 'NGN' },
   // Web channels are recorded as the provider that actually took the money.

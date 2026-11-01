@@ -22,13 +22,16 @@ const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue
 const ROLE_CLS = { 'Super Admin':'accent', 'Chief Editor':'purple', 'Finance Admin':'green', 'Content Moderator':'red', 'Support Admin':'blue' };
 
 function fmtNum(n){ return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'K':String(n); }
-function fmtNaira(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$'+fmtNum(n); }
+function fmtNaira(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '₦'+fmtNum(n); }
+/* Money quoted inside an activity line is a dollar figure; usdProse restates the
+   number only, leaving the sentence intact. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 
 /* ── KPI cards ── */
 const KPIS = [
   { n:'284.5K', l:'Total Users', ico:'fa-users', cls:'blue', trend:'+3.2%', up:true },
   { n:'12,340', l:'Total Writers', ico:'fa-feather-pointed', cls:'purple', trend:'+1.8%', up:true },
-  { n:'$48.2M', l:'Monthly Revenue', ico:'fa-sack-dollar', cls:'green', trend:'+7.1%', up:true },
+  { n:fmtNaira(48200000), l:'Monthly Revenue', ico:'fa-sack-dollar', cls:'green', trend:'+7.1%', up:true },
   { n:'9,845', l:'Active Stories', ico:'fa-book', cls:'accent', trend:'+2.4%', up:true },
   { n:'37', l:'Pending Reports', ico:'fa-flag', cls:'red', trend:'+12', up:false },
   { n:'812', l:'Active Contracts', ico:'fa-file-contract', cls:'blue', trend:'+9', up:true },
@@ -51,6 +54,9 @@ const REVENUE = [
   { m:'May', v:41300000 }, { m:'Jun', v:45000000 }, { m:'Jul', v:48200000 },
 ];
 const maxRev = Math.max(...REVENUE.map(r=>r.v));
+/* The headline figure is the same naira number the chart plots, so it goes
+   through the same formatter instead of a typed '$48.2M'. */
+document.getElementById('revTotal').textContent = fmtNaira(maxRev);
 document.getElementById('chartWrap').innerHTML = REVENUE.map((r,i)=>`
   <div class="chart-col">
     <span class="chart-val">${fmtNaira(r.v)}</span>
@@ -80,7 +86,7 @@ const ACTIVITY = [
   { ico:'fa-file-signature', cls:'purple', text:'<b>CT-1012</b> was signed with <b>CampusQueen</b> — Exclusive, 2 years', time:'12m ago' },
   { ico:'fa-flag', cls:'red', text:'A chapter in <b>"The Neighbour Who Reported the Fire"</b> was flagged for plagiarism', time:'38m ago' },
   { ico:'fa-bullhorn', cls:'accent', text:'<b>Kemi_A</b> launched an End of Chapter campaign for <b>"He Proposed With My Best Friend\'s Ring"</b>', time:'1h ago' },
-  { ico:'fa-sack-dollar', cls:'green', text:'Payout of <b>$1.2M</b> processed for <b>Ifeanyi_Story</b>', time:'2h ago' },
+  { ico:'fa-sack-dollar', cls:'green', text:'Payout of <b>'+fmtNaira(1200000)+'</b> processed for <b>Ifeanyi_Story</b>', time:'2h ago' },
   { ico:'fa-user-plus', cls:'blue', text:'<b>842</b> new readers signed up in the last hour', time:'2h ago' },
   { ico:'fa-rotate', cls:'amber', text:"Contract <b>CT-1005</b> with <b>Zara_M</b> is due to renew in 17 days", time:'5h ago' },
   { ico:'fa-book', cls:'accent', text:'<b>Dami_Cole</b> published a new chapter of <b>"She Rejected Me 3 Times"</b>', time:'7h ago' },
@@ -88,7 +94,7 @@ const ACTIVITY = [
 document.getElementById('activityFeed').innerHTML = ACTIVITY.map(a=>`
   <div class="feed-item">
     <div class="feed-ico" style="background:${BG_MAP[a.cls]};color:${ICO_MAP[a.cls]}"><i class="fas ${a.ico}"></i></div>
-    <div class="feed-body"><p>${a.text}</p><div class="feed-time">${a.time}</div></div>
+    <div class="feed-body"><p>${prose(a.text)}</p><div class="feed-time">${a.time}</div></div>
   </div>`).join('');
 
 /* ── Admin team (full CRUD) ── */

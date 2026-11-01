@@ -267,6 +267,50 @@
       footerNote: document.getElementById('eteFooterNote').value,
       unsub: document.getElementById('eteUnsub').value,
     };
+
+    // Auto-generate styled HTML email from form fields
+    var hColor = data.headerColor;
+    var html = '';
+
+    // Header
+    html += '<table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,'+hColor+',darken('+hColor+',30));padding:36px 28px;text-align:center;">';
+    html += '<tr><th style="color:#ffffff;font-size:22px;font-weight:800;margin:0;text-shadow:0 1px 4px rgba(0,0,0,.15)">' + esc(data.headerTitle||'') + '</th></tr>';
+    if (data.headerSub) html += '<tr><td style="color:rgba(255,255,255,.85);font-size:13px;margin:6px 0 0;font-weight:500">'+esc(data.headerSub)+'</td></tr>';
+    html += '</table>';
+
+    // Content
+    html += '<table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:28px;font-family:Inter,system-ui,sans-serif;color:#1a1730;font-size:13.5px;line-height:1.75;">';
+    html += '<tr><td style="padding:0">';
+
+    if (data.greeting) html += '<h3 style="font-size:16px;font-weight:800;margin:0 0 10px">'+esc(data.greeting)+'</h3>';
+
+    if (data.body) {
+      var paras = data.body.split('\n').filter(function(p) { return p.trim(); });
+      html += paras.map(function(p) { return '<p style="margin:0 0 12px">'+esc(p)+'</p>'; }).join('');
+    }
+
+    if (data.bullets) {
+      var items = data.bullets.split('\n').filter(function(b) { return b.trim(); });
+      if (items.length) html += '<ul style="margin:0 0 14px;padding-left:18px;">'+items.map(function(b) { return '<li style="margin-bottom:4px">'+esc(b.trim())+'</li>'; }).join('')+'</ul>';
+    }
+
+    if (data.btnText) {
+      var btnUrl = data.btnLink || '#';
+      html += '<a href="'+esc(btnUrl)+'" style="display:inline-block;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;margin:14px 0 4px;background:'+data.btnColor+';color:#fff">'+esc(data.btnText)+'</a>';
+    }
+
+    html += '</td></tr></table>';
+
+    // Footer
+    html += '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9fc;padding:20px 28px;text-align:center;border-top:1px solid #e8e8ec;">';
+    if (data.footerNote) html += '<tr><td style="font-size:11.5px;color:#71708a;margin:0 0 6px;line-height:1.6">'+esc(data.footerNote)+'</td></tr>';
+    if (data.unsub) html += '<tr><td style="font-size:10.5px;color:#9694ac;padding-top:8px">'+esc(data.unsub)+'</td></tr>';
+    html += '</table>';
+
+    // Add both HTML bodies for sending
+    data.bodyHtml = html;
+    data.bodyText = (data.greeting ? data.greeting+'\n' : '') + (data.body || '') + (data.bullets ? '\n\n' + data.bullets : '');
+
     try { if (onSaveCb) onSaveCb(currentId, data); } catch(e) { console.error(e); }
     close();
   }

@@ -15,8 +15,11 @@ const {
 const { User } = require('../models/user.model');
 const { ActivityLog } = require('../models/platform.model');
 const { CoinRate, AdRevenueLedger } = require('../models/revenue.model');
+const { EditorPayout } = require('../models/editor-earnings.model');
+const editorPay = require('./editor-earnings.service');
 const ledger = require('./ledger.service');
 const txn = require('./txn');
+const { userRefFilter } = require('./user-ref');
 
 function bad(msg, status) { const e = new Error(msg); e.status = status || 400; throw e; }
 
@@ -60,10 +63,12 @@ function legNum(v) {
 async function usersById(ids) {
   const uniq = Array.from(new Set((ids || []).map(String).filter(Boolean)));
   if (!uniq.length) return {};
-  // Accounts are keyed by their `_id` (usr_… strings) everywhere in the money
-  // docs, so match both that and a stored `id` and index the map under both.
-  const rows = await User.find({ $or: [{ _id: { $in: uniq } }, { id: { $in: uniq } }] })
-    .select('fullName username avatar status email').lean().catch(() => []);
+  // Money docs reference the stored uuidv7 `id`; only legacy rows carry a 24-hex
+  // `_id`. A uuidv7 handed to an `_id` filter throws a CastError and the
+  // `.catch(() => [])` below turns that into an empty map — which is how payout
+  // rows used to print the owner's raw id instead of their name.
+  const rows = await User.find(userRefFilter(uniq))
+    .select('id fullName username avatar status email').lean().catch(() => []);
   const m = {};
   rows.forEach(u => {
     const v = {
@@ -123,14 +128,62 @@ const METHOD_LABEL = { bank: 'Bank Transfer', paypal: 'PayPal', mobile: 'Mobile 
  * finance-data.js:227; row reads withdrawals-service.js:70-73,105-145,183-208.
  * Backend enum requested|under_review|approved|paid|declined|failed maps onto
  * the console's three pill states pending|approved|declined.
+ * Senior editors withdraw through the same queue: their rows come from
+ * EditorPayout and are addressed with an 'ep:' prefix so the one set of
+ * approve/decline/pay routes settles both kinds.
  * ───────────────────────────────────────────────────────────── */
+const EP_PREFIX = 'ep:';
+const isEpId = (id) => String(id).startsWith(EP_PREFIX);
+const epRawId = (id) => String(id).slice(EP_PREFIX.length);
+
 function wdStatus(s) {
   if (s === 'approved' || s === 'paid') return 'approved';
   if (s === 'declined' || s === 'failed') return 'declined';
   return 'pending';
 }
-function withdrawalShape(w, umap) {
+
+// The approve modal shows where the money goes, so the staff read of the queue
+// carries the payee's own payment method: the exact one the withdrawal was
+// requested with, else that person's default. accountNumber is select:false in
+// the schema, so it only arrives through this explicit reveal — every
+// author-facing list still hides it (see finance.controller's method routes).
+async function payeesOf(rows) {
+  if (!rows.length) return [];
+  const methodIds = rows.map(r => String(r.paymentMethodId || r.methodId || '')).filter(Boolean);
+  const owners = rows.map(r => String(r.authorId || r.editorId || '')).filter(Boolean);
+  const or = [];
+  if (methodIds.length) or.push({ id: { $in: methodIds } });
+  if (owners.length) or.push({ authorId: { $in: owners }, isDefault: true });
+  const docs = or.length
+    ? await PaymentMethod.find({ $or: or }).select('+accountNumber').lean().catch(() => [])
+    : [];
+  const byMethod = {};
+  const defaultByOwner = {};
+  docs.forEach(m => {
+    byMethod[String(m.id)] = m;
+    const owner = String(m.authorId);
+    if (m.isDefault && !defaultByOwner[owner]) defaultByOwner[owner] = m;
+  });
+  return rows.map(r => byMethod[String(r.paymentMethodId || r.methodId || '')]
+    || defaultByOwner[String(r.authorId || r.editorId || '')] || null);
+}
+
+function payeeFields(m) {
+  if (!m) return {};
   return {
+    accountName: m.accountName || '',
+    bankName: m.bankName || '',
+    accountNumber: m.accountNumber || '',
+    routingCode: m.routingCode || '',
+    email: m.email || '',
+    provider: m.provider || '',
+    phoneNumber: m.phoneNumber || '',
+    payeeVerified: !!m.verified,
+  };
+}
+
+function withdrawalShape(w, umap, payee) {
+  return Object.assign({
     id: w.id,
     author: nameOf(umap, w.authorId),
     avatar: avatarOf(umap, w.authorId),
@@ -141,13 +194,38 @@ function withdrawalShape(w, umap) {
     status: wdStatus(w.status),
     note: w.note || '',
     processed: w.processedAt ? new Date(w.processedAt).toISOString() : undefined,
-  };
+  }, payeeFields(payee));
+}
+
+function editorPayoutShape(p, umap, payee) {
+  return Object.assign({
+    id: EP_PREFIX + p.id,
+    author: nameOf(umap, p.editorId),
+    avatar: avatarOf(umap, p.editorId),
+    amount: Number(p.amount) || 0,
+    method: p.method || 'Bank Transfer',
+    account: p.account || '',
+    requested: new Date(p.createdAt || Date.now()).toISOString(),
+    status: wdStatus(p.status),
+    note: p.note || p.declineReason || '',
+    processed: p.paidAt ? new Date(p.paidAt).toISOString() : undefined,
+  }, payeeFields(payee));
+}
+
+async function shapedWithdrawals(docs, eps, umap) {
+  const [a, b] = [await payeesOf(docs), await payeesOf(eps)];
+  return docs.map((w, i) => withdrawalShape(w, umap, a[i]))
+    .concat(eps.map((p, i) => editorPayoutShape(p, umap, b[i])))
+    .sort((x, y) => new Date(y.requested) - new Date(x.requested));
 }
 
 async function withdrawals() {
-  const docs = await Withdrawal.find({}).sort({ requestedAt: -1 }).limit(200).lean();
-  const umap = await usersById(docs.map(w => w.authorId));
-  return docs.map(w => withdrawalShape(w, umap));
+  const [docs, eps] = await Promise.all([
+    Withdrawal.find({}).sort({ requestedAt: -1 }).limit(200).lean(),
+    EditorPayout.find({}).sort({ createdAt: -1 }).limit(200).lean(),
+  ]);
+  const umap = await usersById(docs.map(w => w.authorId).concat(eps.map(p => p.editorId)));
+  return shapedWithdrawals(docs, eps, umap);
 }
 
 async function loadWithdrawalOr404(id) {
@@ -156,28 +234,60 @@ async function loadWithdrawalOr404(id) {
   return doc;
 }
 
+// A single-row echo after an action: the console re-reads the queue anyway, but
+// the response must not lose the payee block the row was rendered with.
+async function echoAuthorRow(doc) {
+  const umap = await usersById([doc.authorId]);
+  const plain = doc.toObject ? doc.toObject() : doc;
+  const [payee] = await payeesOf([plain]);
+  return withdrawalShape(plain, umap, payee);
+}
+
+async function echoEditorPayoutRow(rawId) {
+  const row = await EditorPayout.findOne({ id: String(rawId) }).lean();
+  if (!row) bad('not_found', 404);
+  const umap = await usersById([row.editorId]);
+  const [payee] = await payeesOf([row]);
+  return editorPayoutShape(row, umap, payee);
+}
+
+// The editor flow splits the steps the console merges: approvePayout only
+// marks the row, payPayout posts liability:editor -> bank:editor-payouts under
+// a payout idempotency key. Running both makes "approve and mark as processed"
+// actually move the money, and a retry after a crash cannot pay twice.
+async function settleEditorPayout(rawId, userId, reference) {
+  const row = await EditorPayout.findOne({ id: String(rawId) });
+  if (!row) bad('not_found', 404);
+  if (row.status === 'requested') await editorPay.approvePayout(row.id, userId);
+  if (row.status !== 'paid') await editorPay.payPayout(row.id, { reference }, userId);
+  return echoEditorPayoutRow(row.id);
+}
+
 // The console has one button per row ("approve the withdrawal and mark it as
 // processed"), so approval IS the settlement: it moves the money and lands the
 // payout row in the same step. Anything still parked at `approved` (an older
 // row, or a flow that approves first) is settled by payWithdrawal.
 async function approveWithdrawal(id, userId) {
+  if (isEpId(id)) return settleEditorPayout(epRawId(id), userId);
   const doc = await loadWithdrawalOr404(id);
   if (!['requested', 'under_review'].includes(doc.status)) bad('not_approvable', 409);
   await settleWithdrawal(doc, userId);
-  const umap = await usersById([doc.authorId]);
-  return withdrawalShape(doc.toObject(), umap);
+  return echoAuthorRow(doc);
 }
 
 async function payWithdrawal(id, reference, userId) {
-  const doc = await loadWithdrawalOr404(id);
-  if (doc.status === 'paid') {
-    const umap = await usersById([doc.authorId]);
-    return withdrawalShape(doc.toObject(), umap); // already settled: echo, no second payment
+  if (isEpId(id)) {
+    const raw = epRawId(id);
+    const row = await EditorPayout.findOne({ id: String(raw) }).lean();
+    if (!row) bad('not_found', 404);
+    if (row.status === 'paid') return echoEditorPayoutRow(raw);
+    return settleEditorPayout(raw, userId, reference);
   }
+  const doc = await loadWithdrawalOr404(id);
+  if (doc.status === 'paid') return echoAuthorRow(doc); // already settled: echo, no second payment
   if (doc.status !== 'approved') bad('not_payable', 409);
   await settleWithdrawal(doc, userId, reference);
-  const umap = await usersById([doc.authorId]);
-  return withdrawalShape(doc.toObject(), umap);
+  return echoAuthorRow(doc);
 }
 
 // The author's cash, derived from the journal rather than trusted from the
@@ -281,6 +391,15 @@ async function settleWithdrawal(doc, userId, reference) {
 
 // decline: carries the operator reason the console shows in the row note.
 async function declineWithdrawal(id, reason, userId) {
+  if (isEpId(id)) {
+    const raw = epRawId(id);
+    const row = await EditorPayout.findOne({ id: String(raw) });
+    if (!row) bad('not_found', 404);
+    if (row.status === 'paid') bad('already_paid', 409);
+    if (row.status === 'declined') return echoEditorPayoutRow(raw);
+    await editorPay.declinePayout(raw, reason ? String(reason).slice(0, 1000) : 'Declined by Finance.', userId);
+    return echoEditorPayoutRow(raw);
+  }
   const doc = await loadWithdrawalOr404(id);
   if (!['requested', 'under_review'].includes(doc.status)) bad('not_declinable', 409);
   doc.status = 'declined';
@@ -288,8 +407,7 @@ async function declineWithdrawal(id, reason, userId) {
   doc.reviewedBy = String(userId);
   doc.processedAt = new Date();
   await doc.save();
-  const umap = await usersById([doc.authorId]);
-  return withdrawalShape(doc.toObject(), umap);
+  return echoAuthorRow(doc);
 }
 
 /* ─────────────────────────────────────────────────────────────

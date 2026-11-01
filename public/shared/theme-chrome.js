@@ -69,6 +69,14 @@
     /* Late layout settles (fonts/overlays) */
     setTimeout(sync, 300);
     setTimeout(sync, 1200);
+
+    // Load socket client for live notifications/chat
+    if (!window.DroboardSocketClientLoaded && !document.getElementById('socket-client-script')) {
+      var s = document.createElement('script');
+      s.src = '../shared/socket-client.js?v=1';
+      s.id = 'socket-client-script';
+      document.body.appendChild(s);
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

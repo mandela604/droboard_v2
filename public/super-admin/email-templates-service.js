@@ -80,6 +80,8 @@ if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' 
         btnLink: '',
         footerNote: '',
         unsub: 'Unsubscribe | Manage Preferences',
+        bodyHtml: '', // auto-generated
+        bodyText: '', // plain-text fallback
         status: 'active',
         lastEdited: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       }, template);

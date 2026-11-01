@@ -7,6 +7,10 @@
  */
 (function(){
 'use strict';
+/* Money can appear inside sentences (activity lines, chat text, config
+   history, permission copy). usdProse restates only the "$" figures into the
+   currency Super Admin set and leaves the words alone. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', accent:'var(--accent)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', accent:'rgba(255,0,80,.1)' };
@@ -493,7 +497,7 @@ function renderPricing(){
         <span class="status-pill ${s.status}">${s.status}</span>
       </div>
       <div class="pkg-coins" style="color:var(--purple)"><i class="fas fa-tag" style="font-size:15px"></i>${money(s.priceUsd)}/${s.period}</div>
-      <div class="pkg-price">${(s.prices&&s.prices.NGN?s.prices.NGN+' · ':'')+(s.features?s.features.length+' features':'')}</div>
+      <div class="pkg-price">${s.features?s.features.length+' features':''}</div>
       <div class="pkg-meta"><i class="fas fa-calendar"></i> Created ${fmtDate(s.createdAt)}</div>
       <div class="pkg-actions">
         <button class="mini-btn" data-action="sub-toggle" data-id="${s.id}"><i class="fas fa-power-off"></i> ${s.status==='active'?'Deactivate':'Activate'}</button>
@@ -819,7 +823,7 @@ async function submitForm(){
       Object.assign(item, payload);
       if(formKind==='earn'){ item.status = payload.available?'active':'inactive'; }
       const dName = formKind==='earn' ? payload.action : name;
-      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${payload.price}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${money(payload.priceUsd)}/${payload.period} · ${payload.features.length} features`;
+      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${money(payload.price)}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${money(payload.priceUsd)}/${payload.period} · ${payload.features.length} features`;
       logHistory('updated', formKind, dName, details);
       toast(`✏️ "${dName}" updated`);
     }else{
@@ -835,7 +839,7 @@ async function submitForm(){
       }
       list.unshift(created);
       const dName2 = formKind==='earn' ? payload.action : name;
-      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${payload.price}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${money(payload.priceUsd)}/${payload.period} · ${payload.features.length} features`;
+      const details = formKind==='package' ? `${payload.coins.toLocaleString()} coins for ${money(payload.priceUsd)}` : formKind==='bundle' ? `${payload.coins} +${payload.bonus} bonus for ${money(payload.price)}` : formKind==='gift' ? `${payload.costCoins.toLocaleString()} coins per gift` : formKind==='earn' ? `${payload.coins} coins / ${payload.cooldown}` : `${money(payload.priceUsd)}/${payload.period} · ${payload.features.length} features`;
       logHistory('created', formKind, dName2, details);
       toast(`✅ "${dName2}" created`);
     }
@@ -941,7 +945,7 @@ function renderHistory(){
       <div class="hist-ico" style="background:${BG_MAP[ico.cls]};color:${ICO_MAP[ico.cls]}"><i class="fas ${ico.ico}"></i></div>
       <div class="hist-body">
         <div class="hist-text"><b>${h.actor}</b> ${h.action} ${h.itemType} <b>"${h.itemName}"</b></div>
-        <div class="hist-detail">${h.details}</div>
+        <div class="hist-detail">${prose(h.details)}</div>
       </div>
       <div class="hist-time">${fmtDateTime(h.date)}</div>
     </div>`;

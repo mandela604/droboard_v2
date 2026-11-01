@@ -215,7 +215,6 @@
     if (has('admin')) out.push({ label: 'Super Admin Dashboard', sub: 'Platform overview', href: '../super-admin/dashboard.html' });
     if (has('chief_editor')) out.push({ label: 'Chief Editor Dashboard', sub: 'Editors, contracts & flags', href: '../chief-editor/dashboard.html' });
     if (has('senior_editor')) out.push({ label: 'Senior Editor Dashboard', sub: 'Reviews, authors & reports', href: '../senior-editor/dashboard.html' });
-    if (has('editor')) out.push({ label: 'Editor Dashboard', sub: 'Books, authors & reviews', href: '../editor/dashboard.html' });
     if (has('finance')) out.push({ label: 'Finance Dashboard', sub: 'Payouts & revenue', href: '../finance/dashboard.html' });
     if (has('marketing')) out.push({ label: 'Marketing Dashboard', sub: 'Campaigns & growth', href: '../marketing/dashboard.html' });
     return out;

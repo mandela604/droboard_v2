@@ -57,7 +57,9 @@ function kycDetail(c) {
   return 'KYC verified';
 }
 
-function money(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n || 0).toLocaleString('en-US'); }
+/* Advances are entered and stored in dollars (the form asks for USD), so the
+   staff restatement is usdToMoney — ngnToMoney here would divide by the rate. */
+function money(n) { if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + Number(n || 0).toLocaleString('en-US'); }
 
 async function init() {
   SeniorEditorSidebar.attach('#pageRoot', {

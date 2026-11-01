@@ -7,7 +7,7 @@
 //            npm i nodemailer, then set SMTP_HOST/PORT/USER/PASS.
 // Templates: EmailTemplate docs keyed by `key` (welcome|contract|payout|flag...)
 // with {{var}} interpolation. Falls back to explicit subject/html.
-const { EmailTemplate } = require('../models/platform.model');
+const { Template } = require('../models/template.model');
 
 function cfg() {
   return {
@@ -41,7 +41,7 @@ function renderVars(text, vars) {
 async function loadTemplate(key) {
   if (!key) return null;
   try {
-    const t = await EmailTemplate.findOne({ key }).lean();
+    const t = await Template.findOne({ name: key }).lean();
     return t || null;
   } catch (e) { return null; }
 }
@@ -90,9 +90,12 @@ async function sendMail({ to, subject, html, text, templateKey, vars, from }) {
   if (templateKey) tpl = await loadTemplate(templateKey);
   if (templateKey && !tpl) throw Object.assign(new Error('missing_template:' + templateKey), { status: 500 });
   const finalSubject = subject || (tpl ? renderVars(tpl.subject, vars) : '');
-  const finalHtml = html || (tpl ? renderVars(tpl.body, vars) : '');
+  // Use bodyHtml as primary rich HTML fallback to body
+  const finalHtml = html || (tpl ? renderVars(tpl.bodyHtml || tpl.body, vars) : '');
+  // Use bodyText if provided, otherwise strip tags from HTML
+  const finalText = text || (tpl ? renderVars(tpl.bodyText || '', vars) : String(html || '').replace(/<[^>]+>/g, ' '));
   if (!finalSubject || !finalHtml) throw Object.assign(new Error('missing_content'), { status: 400 });
-  const out = await deliver({ to, subject: finalSubject, html: finalHtml, text, ...(from ? { from } : {}) });
+  const out = await deliver({ to, subject: finalSubject, html: finalHtml, text: finalText, ...(from ? { from } : {}) });
   return out;
 }
 

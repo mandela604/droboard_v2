@@ -1,7 +1,9 @@
 /**
  * all-books-service.js — All Books page controller (call-and-render).
  * Extracted VERBATIM from all-books.html inline <script>; NO renames, NO refactors, NO behavior changes.
- * Browse every title on the platform (2400-book generated catalog, filters, pagination, flag toggle).
+ * Browse every title on the platform (2400-book generated catalog, filters, pagination).
+ * Flagging and editing belong to the owning senior editor and the author; this
+ * screen is read-only browse — the Flagged filter is how the SE-flagged set is seen.
  * Backend-ready (pattern only): flip USE_API to true and point API_BASE at the real
  * endpoint when the backend lands. No HTML change required.
  */
@@ -17,14 +19,6 @@ const shell = SuperAdminSidebar.attach('#booksRoot', {
   notifCount: 9,
   searchPlaceholder: 'Search everything…',
 });
-
-function toast(m){
-  var t=document.getElementById('toastEl');
-  if(!t){t=document.createElement('div');t.id='toastEl';t.style.cssText='position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)';document.body.appendChild(t);}
-  t.textContent=m;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';
-  clearTimeout(t._t);
-  t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(16px)';},2400);
-}
 
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
@@ -72,6 +66,12 @@ function fmtNum(n){
   if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
   return n.toString();
 }
+/* Book revenue is authored in dollars; staff screens show the currency Super
+   Admin set, so every money cell goes through this one wrapper. */
+function money(n){
+  if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n);
+  return '$' + fmtNum(Number(n) || 0);
+}
 function fmtDays(d){
   if(d===0) return 'Today';
   if(d===1) return 'Yesterday';
@@ -89,7 +89,7 @@ function renderStatCards(){
     { n: fmtNum(total)+'+', l:'Total Books', ico:'fa-book-open', cls:'gold' },
     { n: fmtNum(published), l:'Published', ico:'fa-circle-check', cls:'green' },
     { n: flagged, l:'Flagged for Review', ico:'fa-flag', cls:'red' },
-    { n: '$'+fmtNum(totalRevenue), l:'Total Revenue (est.)', ico:'fa-sack-dollar', cls:'blue' },
+    { n: money(totalRevenue), l:'Total Revenue (est.)', ico:'fa-sack-dollar', cls:'blue' },
   ];
   document.getElementById('statCards').innerHTML = stats.map(function(s){
     return '<div class="stat-card"><div class="stat-ico" style="background:'+BG_MAP[s.cls]+';color:'+ICO_MAP[s.cls]+'"><i class="fas '+s.ico+'"></i></div><div><div class="stat-num">'+s.n+'</div><div class="stat-lbl">'+s.l+'</div></div></div>';
@@ -139,17 +139,11 @@ function renderList(){
         + '<div><span class="status-chip '+b.status+'"><i class="fas fa-circle"></i>'+b.status+'</span></div>'
         + '<div class="col-hide num-cell">'+fmtNum(b.reads)+'</div>'
         + '<div class="col-hide num-cell faint">\u2605 '+b.rating+'</div>'
-        + '<div class="num-cell">$'+fmtNum(b.revenue)+'</div>'
+        + '<div class="num-cell">'+money(b.revenue)+'</div>'
         + '<div class="col-hide" style="font-size:11px;color:var(--text-faint)">'+fmtDays(b.updatedDays)+'</div>'
         + '<div class="row-actions">'
         + '<a class="icon-btn" href="../author/book-workspace.html?book='+b.id+'" title="View book"><i class="fas fa-eye"></i></a>'
-        + '<div class="row-menu"><button class="row-menu-btn" data-action="toggle-menu" data-id="'+b.id+'" title="More"><i class="fas fa-ellipsis-vertical"></i></button>'
-        + '<div class="dropdown" id="menu-'+b.id+'">'
-        + '<a class="dropdown-item" href="../author/book-workspace.html?book='+b.id+'"><i class="fas fa-eye"></i> View Book</a>'
-        + '<a class="dropdown-item" href="../author/book-workspace.html?book='+b.id+'&mode=edit"><i class="fas fa-pen"></i> Edit Book</a>'
-        + '<div class="dropdown-item danger" data-action="flag" data-id="'+b.id+'"><i class="fas fa-flag"></i> Flag for Review</div>'
-        + '</div></div></div>'
-        + '</div>';
+        + '</div></div>';
     }).join('');
   }
 
@@ -199,29 +193,6 @@ document.querySelectorAll('#densitySeg button').forEach(function(btn){
     density = btn.dataset.density;
     renderList();
   });
-});
-
-document.addEventListener('click', function(e){
-  var btn = e.target.closest('[data-action="toggle-menu"]');
-  if(btn){
-    e.stopPropagation();
-    var id = btn.dataset.id;
-    document.querySelectorAll('.dropdown.open').forEach(function(d){ if(d.id!=='menu-'+id) d.classList.remove('open'); });
-    document.getElementById('menu-'+id).classList.toggle('open');
-    return;
-  }
-  var flagBtn = e.target.closest('[data-action="flag"]');
-  if(flagBtn){
-    var bookId = flagBtn.dataset.id;
-    var book = ALL_BOOKS.find(function(b){return b.id===bookId;});
-    if(book){
-      book.status = book.status==='flagged' ? 'published' : 'flagged';
-      toast(book.title+(book.status==='flagged'?' flagged':' unflagged'));
-      renderStatCards(); applyFilters();
-    }
-    return;
-  }
-  document.querySelectorAll('.dropdown.open').forEach(function(d){ d.classList.remove('open'); });
 });
 
 function init(){

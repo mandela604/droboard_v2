@@ -254,7 +254,7 @@ tbody tr:hover{background:var(--hover)}
       </div>
       <div class="form-row">
         <div class="form-group"><label>Revenue Split (%)</label><input id="sendRevenue" type="number" placeholder="e.g. 70" min="0" max="100"/></div>
-        <div class="form-group"><label>Advance ($)</label><input id="sendAdvance" type="number" placeholder="e.g. 500"/></div>
+        <div class="form-group"><label>Advance (USD)</label><input id="sendAdvance" type="number" placeholder="e.g. 500"/></div>
       </div>
       <div class="form-group"><label>Template</label><select id="sendTemplate"><option value="">Select template…</option></select></div>
       <div class="form-group"><label>Notes</label><textarea id="sendNotes" placeholder="Any additional terms or notes…"></textarea></div>
@@ -273,10 +273,10 @@ tbody tr:hover{background:var(--hover)}
 </div>
 
 <script src="shared/senior-editor-sidebar.js?v=2"></script>
-<script src="../services/currency-service.js?v=2"></script>
+<script src="../services/currency-service.js?v=8"></script>
 <script src="data/contracts-demo-data.js"></script>
 <script src="services/contracts-service.js"></script>
-<script src="services/contracts-page-service.js?v=3"></script>
+<script src="services/contracts-page-service.js?v=6"></script>
 <script>ContractsPageService.init();</script>
 </body>
 </html>

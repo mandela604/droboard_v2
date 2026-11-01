@@ -1,0 +1,458 @@
+{
+  "info": {
+    "name": "Droboard console — in-memory dev",
+    "description": "Run `npm run dev:memory` in backend/ first, then import postman/dev.env.json as an environment. Every request hits the real Express app (routers, guards, zod validators, Mongo) on an ephemeral in-memory database — nothing here touches your hosted DB. Expected statuses are written into each request name where they matter.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 · server",
+      "item": [
+        { "name": "GET /health (ok:true)", "request": { "method": "GET", "url": "{{base}}/health" } }
+      ]
+    },
+    {
+      "name": "1 · chief / senior editors",
+      "item": [
+        {
+          "name": "GET /api/chief/senior-editors?limit=10",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/senior-editors?limit=10"
+          }
+        },
+        {
+          "name": "GET /api/chief/senior-editors/quotas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/senior-editors/quotas"
+          }
+        },
+        {
+          "name": "GET /api/chief/senior-editors/{{seId}} (literal /invites is NOT swallowed by :id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/senior-editors/{{seId}}"
+          }
+        },
+        {
+          "name": "PATCH /api/chief/senior-editors/{{seId}} 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"target\": 40,\n  \"deadline\": \"2026-11-30\",\n  \"note\": \"q4 push\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/{{seId}}"
+          }
+        },
+        {
+          "name": "POST /api/chief/senior-editors/invites 201 (token returned ONCE)",
+          "event": [
+            { "listen": "test", "script": { "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('inviteId', j.id);",
+              "pm.test('201 + one-time token, no tokenHash', () => {",
+              "  pm.expect(pm.response.code).to.eql(201);",
+              "  pm.expect(j.token).to.be.a('string');",
+              "  pm.expect(j).to.not.have.property('tokenHash');",
+              "});"
+            ], "type": "exec" } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nia Author\",\n  \"email\": \"nia.smith@dev.local\",\n  \"target\": 20,\n  \"monthlyPay\": 50000,\n  \"deadline\": \"2026-12-01\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/invites"
+          }
+        },
+        {
+          "name": "GET /api/chief/senior-editors/invites (token must be absent here)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/senior-editors/invites"
+          }
+        },
+        {
+          "name": "POST same invite email again -> 409 invite_pending",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Dup\",\n  \"email\": \"nia.smith@dev.local\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/invites"
+          }
+        },
+        {
+          "name": "POST invalid email -> 400 invalid_input",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Bad\",\n  \"email\": \"not-an-email\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/invites"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 · chief / assignments (no 100-author cap)",
+      "item": [
+        {
+          "name": "PUT /assignments replace-all 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"authorIds\": [\"{{authorId}}\", \"{{authorId2}}\"]\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/{{seId}}/assignments"
+          }
+        },
+        {
+          "name": "POST delta: add ONE writer 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"authorId\": \"{{authorId}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/{{seId}}/assignments/authors"
+          }
+        },
+        {
+          "name": "DELETE delta: remove one writer 200",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/senior-editors/{{seId}}/assignments/authors/{{authorId2}}"
+          }
+        },
+        {
+          "name": "GET /api/chief/assignments (bare array — what mapAssignments consumes)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/assignments"
+          }
+        },
+        {
+          "name": "POST unknown author -> 400 bad_author",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"authorId\": \"nope-123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/{{seId}}/assignments/authors"
+          }
+        },
+        {
+          "name": "POST unknown editor -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"authorId\": \"{{authorId}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/senior-editors/nope-999/assignments/authors"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 · chief is read-only on books",
+      "item": [
+        {
+          "name": "GET /api/chief/books?q=%5Babc (unescaped regex used to 500) 200",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/books?q=%5Babc&limit=5"
+          }
+        },
+        {
+          "name": "GET /api/chief/books/flagged 200 (view only)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/books/flagged?limit=10"
+          }
+        },
+        {
+          "name": "GET /api/chief/reports/story 200",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/reports/story"
+          }
+        },
+        {
+          "name": "POST /api/chief/books/{{bookId}}/flag -> 404 (chief has NO flag route)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"spam\",\n  \"note\": \"mass-posted\",\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/books/{{bookId}}/flag"
+          }
+        },
+        {
+          "name": "chief on the SENIOR flag route -> 403 chief_does_not_flag",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"spam\",\n  \"note\": \"mass-posted\",\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/books/{{bookId}}/flag"
+          }
+        },
+        {
+          "name": "reader token on chief console -> 403",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_reader}}" }],
+            "url": "{{base}}/api/chief/senior-editors?limit=5"
+          }
+        },
+        {
+          "name": "no token at all -> 401",
+          "request": { "method": "GET", "url": "{{base}}/api/chief/senior-editors?limit=5" }
+        }
+      ]
+    },
+    {
+      "name": "4 · senior editor flags + scoping",
+      "item": [
+        {
+          "name": "GET contracts/overview as seA (own authors)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_se}}" }],
+            "url": "{{base}}/api/senior-editor/contracts/overview"
+          }
+        },
+        {
+          "name": "GET contracts/overview as seB (different rows — proof of scope)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_se2}}" }],
+            "url": "{{base}}/api/senior-editor/contracts/overview"
+          }
+        },
+        {
+          "name": "POST flag OWN author's book 200 (needs password re-confirm)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_se}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"plagiarism\",\n  \"note\": \"copied chapters\",\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/books/{{bookId}}/flag"
+          }
+        },
+        {
+          "name": "POST flag the same book again -> 409 already_flagged",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_se}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"plagiarism\",\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/books/{{bookId}}/flag"
+          }
+        },
+        {
+          "name": "POST flag with WRONG password -> 401 invalid_password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_se}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"plagiarism\",\n  \"password\": \"nope\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/books/{{bookId}}/flag"
+          }
+        },
+        {
+          "name": "POST flag a FOREIGN author's book -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_se}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"plagiarism\",\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/books/{{bookId2}}/flag"
+          }
+        },
+        {
+          "name": "POST unflag own book 200 (status restored, report resolved)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_se}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/books/{{bookId}}/unflag"
+          }
+        },
+        {
+          "name": "GET /api/senior-editor/announcements 200 (read is open)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_se}}" }],
+            "url": "{{base}}/api/senior-editor/announcements"
+          }
+        },
+        {
+          "name": "POST /api/senior-editor/announcements as SE -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_se}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Platform shift\",\n  \"content\": \"everyone\",\n  \"audience\": \"all\",\n  \"status\": \"published\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/senior-editor/announcements"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 · chief earnings + policies",
+      "item": [
+        {
+          "name": "PUT /api/chief/earnings/settings 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"enabled\": true,\n  \"mode\": \"hybrid\",\n  \"revenueSharePct\": 10,\n  \"fixedMonthlyAmount\": 250000,\n  \"currency\": \"NGN\",\n  \"payoutDay\": 28\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/earnings/settings"
+          }
+        },
+        {
+          "name": "GET /api/chief/earnings/settings (round-trip)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_chief}}" }],
+            "url": "{{base}}/api/chief/earnings/settings"
+          }
+        },
+        {
+          "name": "POST /api/chief/policies 201 (version 1)",
+          "event": [
+            { "listen": "test", "script": { "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('policyId', j.id);"
+            ], "type": "exec" } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"No AI-generated art\",\n  \"body\": \"Draft text\",\n  \"status\": \"draft\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/policies"
+          }
+        },
+        {
+          "name": "PATCH /api/chief/policies/{{policyId}} 200 (version bumps to 2)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"No AI-generated art (v2)\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/policies/{{policyId}}"
+          }
+        },
+        {
+          "name": "POST /api/chief/policies/{{policyId}}/archive 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_chief}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/chief/policies/{{policyId}}/archive"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 · finance payouts queue",
+      "item": [
+        {
+          "name": "GET /api/finance/withdrawals (bare array: author rows + ep: payouts, payee revealed)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_finance}}" }],
+            "url": "{{base}}/api/finance/withdrawals"
+          }
+        },
+        {
+          "name": "GET as plain SE -> only own Withdrawal rows, no platform queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_se}}" }],
+            "url": "{{base}}/api/finance/withdrawals"
+          }
+        },
+        {
+          "name": "POST /withdrawals/{{epayoutId}}/approve 200 (editor payout settles + journals)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_finance}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/finance/withdrawals/{{epayoutId}}/approve"
+          }
+        },
+        {
+          "name": "POST /withdrawals/{{withdrawalId}}/approve -> 409 insufficient_funds (fail-closed: the author journal holds nothing)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_finance}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base}}/api/finance/withdrawals/{{withdrawalId}}/approve"
+          }
+        }
+      ]
+    }
+  ]
+}

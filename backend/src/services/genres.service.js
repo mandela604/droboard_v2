@@ -85,13 +85,16 @@ async function listCategories({ q, page, limit }) {
 async function parentHub(categoryId, viewerId) {
   const c = await Category.findOne({ $or: [{ slug: categoryId }, { id: categoryId }] }).lean();
   if (!c || c.status !== 'active') err('not_found', 404);
-  const [genres, stories, members, admins] = await Promise.all([
-    Genre.find({ categoryId: c.id, status: 'active' }).sort({ name: 1 }).lean(),
+  // Genres first: the discussion count filters on their ids, and referencing the
+  // destructured binding inside the same Promise.all is a TDZ error.
+  const genres = await Genre.find({ categoryId: c.id, status: 'active' }).sort({ name: 1 }).lean();
+  const [stories, members, admins, discussions] = await Promise.all([
     Book.countDocuments({ categoryId: c.id, status: { $in: ['ongoing', 'completed', 'published'] } }),
     CategoryMembership.countDocuments({ categoryId: c.id }),
     (c.adminIds && c.adminIds.length
       ? User.find({ id: { $in: c.adminIds } }).select('username fullName avatar').lean()
       : Promise.resolve([])),
+    Discussion.countDocuments({ genreId: { $in: genres.map(g => g.id) }, closedAt: null }) || 0, // discussions in child genres
   ]);
   let isJoined = false;
   if (viewerId) {
@@ -101,10 +104,10 @@ async function parentHub(categoryId, viewerId) {
   return Object.assign(toCategory(c), {
     isParent: true,
     genres: genres.map(toGenre),
-    storiesCount: stories, discussionsCount: 0,
+    storiesCount: stories, discussionsCount: discussions,
     membersCount: members, isJoined,
     admins: admins.map(a => ({ id: a.id, username: a.username, fullName: a.fullName, avatar: a.avatar })),
-    moderators: [],
+    moderators: admins.map(a => ({ id: a.id, username: a.username, fullName: a.fullName, avatar: a.avatar })),
   });
 }
 

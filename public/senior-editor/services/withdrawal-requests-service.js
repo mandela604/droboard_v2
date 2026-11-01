@@ -21,6 +21,10 @@ async function callBackend(path, options) {
   }
 }
 
+/* Author withdrawals settle in dollars; the column is restated in the currency
+   Super Admin set (usdToMoney accepts the live number or the seeded '$2,450.00'). */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
+
 const WITHDRAWALS=[
   {id:'WD-0047',author:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',amount:'$2,450.00',method:'Bank Transfer',status:'pending',requested:'Jun 17, 2026',processed:'\u2014'},
   {id:'WD-0046',author:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',amount:'$1,820.00',method:'PayPal',status:'processing',requested:'Jun 16, 2026',processed:'Jun 17, 2026'},
@@ -37,9 +41,9 @@ let _bound=false;
 
 function statusPillHtml(s){const m={pending:{cls:'pending',label:'Pending'},processing:{cls:'processing',label:'Processing'},completed:{cls:'completed',label:'Completed'},rejected:{cls:'rejected',label:'Rejected'}}[s]||m.pending;return `<span class="status-pill ${m.cls}"><span class="dot"></span>${m.label}</span>`}
 function viewSource(){if(currentView==='all')return WITHDRAWALS;return WITHDRAWALS.filter(r=>r.status===currentView)}
-function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const s=document.getElementById('statusSelect').value;let l=viewSource();if(s)l=l.filter(r=>r.status===s);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.author.toLowerCase().includes(q)||r.amount.toLowerCase().includes(q));return l}
+function currentFiltered(){const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();const s=document.getElementById('statusSelect').value;let l=viewSource();if(s)l=l.filter(r=>r.status===s);if(q)l=l.filter(r=>r.id.toLowerCase().includes(q)||r.author.toLowerCase().includes(q)||String(r.amount).toLowerCase().includes(q));return l}
 function renderTable(list){const b=document.getElementById('tableBody');if(!list.length){b.innerHTML=`<tr class="empty-row"><td colspan="7"><i class="fas fa-money-bill-wave"></i>No requests match this search.</td></tr>`;return}
-b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Author"><div class="auth-cell"><img src="${r.avatar}" alt=""/><span>${r.author}</span></div></td><td data-label="Amount" class="amount-cell">${r.amount}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Requested" style="font-weight:600">${r.requested}</td><td data-label="Processed" style="color:var(--text-muted)">${r.processed}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" title="View" onclick="toast('Opening withdrawal details…')"><i class="fas fa-eye"></i></button><button class="act-btn" title="Approve" onclick="toast('Approving withdrawal…')"><i class="fas fa-check"></i></button><button class="act-btn" title="More" onclick="toast('More actions…')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
+b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Author"><div class="auth-cell"><img src="${r.avatar}" alt=""/><span>${r.author}</span></div></td><td data-label="Amount" class="amount-cell">${money(r.amount)}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Requested" style="font-weight:600">${r.requested}</td><td data-label="Processed" style="color:var(--text-muted)">${r.processed}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" title="View" onclick="toast('Opening withdrawal details…')"><i class="fas fa-eye"></i></button><button class="act-btn" title="Approve" onclick="toast('Approving withdrawal…')"><i class="fas fa-check"></i></button><button class="act-btn" title="More" onclick="toast('More actions…')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
 function renderPageInfo(c){const t={all:47,pending:12,processing:8,completed:24,rejected:3};const total=t[currentView]??c;const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>${total.toLocaleString()}</b> requests`}
 function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
 function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3,4,5,6];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
@@ -51,7 +55,7 @@ async function loadWithdrawals(){
       id: w.id,
       author: w.author || '',
       avatar: w.avatar || '',
-      amount: w.amount != null ? '$' + Number(w.amount).toLocaleString('en-US', {minimumFractionDigits: 2}) : '$0.00',
+      amount: Number(w.amount) || 0,
       method: w.method || '',
       status: w.status || 'pending',
       requested: w.requested || w.requestedAt || '',

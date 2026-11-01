@@ -37,6 +37,11 @@ function attachShell(){
    LOAD DATA — backend first (scoped to THIS editor's assigned authors),
    demo fallback.
 ───────────────────────────────────────── */
+// Author earnings shown here are reporting figures (USD number live, '$12,400'
+// in the demo seed), restated in the currency Super Admin set. '—' stays '—'.
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
+function showEarnings(v){ return v==='—'||v==null ? '—' : money(v); }
+
 // Backend returns decorated authors (story count, earnings, invite provenance);
 // demo rows already use the page shape.
 function mapBackendAuthor(u){
@@ -193,7 +198,7 @@ function renderAuthors(){
           <div class="lib-title">${a.name} <span class="status-pill ${a.status}">${a.status}</span> ${a.source==='invited'
             ? '<span class="via-pill invited" title="Signed up with your referral code or link"><i class="fas fa-link"></i>Invited</span>'
             : '<span class="via-pill assigned" title="Placed under you by the Chief Editor"><i class="fas fa-user-tie"></i>Assigned</span>'} ${a.warnings>0?`<span class="warn-badge"><i class="fas fa-triangle-exclamation"></i>${a.warnings}</span>`:''}</div>
-          <div class="lib-meta">${a.genre!=='—'?`${a.genre} · `:''}${a.stories} stories · ${a.earnings!=='—'?`💰 ${a.earnings}`:`Joined ${a.joined}`}</div>
+          <div class="lib-meta">${a.genre!=='—'?`${a.genre} · `:''}${a.stories} stories · ${a.earnings!=='—'?`💰 ${showEarnings(a.earnings)}`:`Joined ${a.joined}`}</div>
         </div>
         <i class="fas fa-chevron-down chevron${open?' open':''}"></i>
       </div>
@@ -202,7 +207,7 @@ function renderAuthors(){
           <div class="mm-item"><div class="mm-lbl">Status</div><div class="mm-val"><span class="status-pill ${a.status}" style="font-size:10px;padding:3px 10px">${a.status}</span></div></div>
           <div class="mm-item"><div class="mm-lbl">Source</div><div class="mm-val" style="font-size:12px">${a.source==='invited'?'Invited by you':'Assigned by Chief'}</div></div>
           <div class="mm-item"><div class="mm-lbl">Stories</div><div class="mm-val">${a.stories}</div></div>
-          <div class="mm-item"><div class="mm-lbl">Earnings</div><div class="mm-val">${a.earnings}</div></div>
+          <div class="mm-item"><div class="mm-lbl">Earnings</div><div class="mm-val">${showEarnings(a.earnings)}</div></div>
           <div class="mm-item"><div class="mm-lbl">Genre</div><div class="mm-val" style="font-size:12px">${a.genre}</div></div>
           <div class="mm-item"><div class="mm-lbl">Joined</div><div class="mm-val" style="font-size:12px">${a.joined}</div></div>
         </div>

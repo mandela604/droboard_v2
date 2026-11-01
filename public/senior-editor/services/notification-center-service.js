@@ -43,14 +43,17 @@ async function refresh() {
   render();
 }
 
+/* Notification bodies are prose that can carry a dollar figure ("… of $12,840").
+   usdProse restates just the number into the currency Super Admin set. */
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
+
 function render() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const t = document.getElementById('typeFilter').value;
+  const q = document.getElementById('searchInput').value.toLowerCase();  const t = document.getElementById('typeFilter').value;
   let list = notifs;
   if (t) list = list.filter(n => { return n.title.toLowerCase().includes(t.toLowerCase()); });
   if (q) list = list.filter(n => n.title.toLowerCase().includes(q) || n.desc.toLowerCase().includes(q));
   const el = document.getElementById('notifList');
-  el.innerHTML = list.map(n => `<div class="notif-item${n.unread ? ' unread' : ''}"><div class="notif-ico ${n.ico}"><i class="fas ${n.icon}"></i></div><div class="notif-body"><div class="notif-title">${n.title}</div><div class="notif-desc">${n.desc}</div><div class="notif-time">${n.time}</div></div>${n.unread ? '<div class="notif-dot"></div>' : ''}</div>`).join('');
+  el.innerHTML = list.map(n => `<div class="notif-item${n.unread ? ' unread' : ''}"><div class="notif-ico ${n.ico}"><i class="fas ${n.icon}"></i></div><div class="notif-body"><div class="notif-title">${prose(n.title)}</div><div class="notif-desc">${prose(n.desc)}</div><div class="notif-time">${n.time}</div></div>${n.unread ? '<div class="notif-dot"></div>' : ''}</div>`).join('');
 }
 
 function init() {

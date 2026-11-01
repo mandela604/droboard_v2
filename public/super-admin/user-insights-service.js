@@ -11,6 +11,9 @@
  * Backend event taxonomy (to build first): session.start/end, read.chapter_finished,
  * tip.sent, wallet.funded, coins.spent, subscription.started/cancelled,
  * referral.sent/converted. No HTML change needed.
+ * Units: tips sent / coin spend are COINS (tipsCoins, coinsSpent). Funded and
+ * payouts are naira (fundedNGN, payout, tipsReceivedNGN). Use coins() for the
+ * first group and fmtNGN() for the second — never the same formatter for both.
  */
 (function(global){
 'use strict';
@@ -39,7 +42,9 @@ function fmtNum(n){
   if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
   return String(Math.round(n));
 }
-function fmtMoney(n){ if(window.DroboardCurrency && DroboardCurrency.coinsToMoney) return DroboardCurrency.coinsToMoney(n); return '$' + fmtNum(n); }
+function fmtNGN(n){ if (window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '₦' + fmtNum(n); }
+function coins(n){ if (window.DroboardCurrency && DroboardCurrency.coins) return DroboardCurrency.coins(n); return fmtNum(n) + ' coins'; }
+function fmtUSD(n){ if (window.DroboardCurrency && DroboardCurrency.usdToMoneyShort) return DroboardCurrency.usdToMoneyShort(n); return '$' + fmtNum(n); }
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function dayDiff(a, b){
   try { return Math.floor((new Date(a) - new Date(b)) / 86400000); } catch (e){ return 9999; }
@@ -75,7 +80,9 @@ function derive(u){
     referralsSent: sent,
     referralsConverted: converted,
     plan: plan,
-    funded: (+u.coinsSpent || 0) + (h % 50000),
+    // Live field is fundedNGN — cash paid in, so the demo figure is naira too:
+    // the naira value of everything they spent, plus the top-up slack.
+    funded: Math.round((+u.coinsSpent || 0) * 15) + (h % 50000),
     sessionsPerDay: 1 + (h % 6)
   };
 }
@@ -128,9 +135,10 @@ function roleClass(role){
   return 'other';
 }
 function lbRow(i, u, val, sub){
+  var href = '../Pages/profile.html?id=' + esc(u.id);
   return '<div class="lb-row" data-lbid="' + esc(u.id) + '"><span class="lb-rank">' + (i + 1) + '</span>'
     + '<img class="lb-av" src="' + esc(u.avatar || '') + '" alt=""/>'
-    + '<span class="lb-text"><span class="lb-name">' + esc(u.name) + ' <span class="lb-role ' + roleClass(u.role) + '">· ' + esc(u.role || '') + '</span></span>'
+    + '<span class="lb-text"><a href="' + href + '" class="lb-name-link"><span class="lb-name">' + esc(u.name) + ' <span class="lb-role ' + roleClass(u.role) + '">· ' + esc(u.role || '') + '</span></span></a>'
     + '<span class="lb-sub">' + (sub || '') + '</span></span>'
     + '<span class="lb-val">' + val + '</span>'
     + '<i class="fas fa-chevron-right lb-chev"></i></div>'
@@ -155,9 +163,10 @@ function renderLbDetail(entry){
     + lbMeta('Plan', esc(x.plan)) + (+u.reads > 0 ? lbMeta('Reads', fmtNum(u.reads)) : lbMeta('Sessions', x.sessionsPerDay + '/day'))
     + lbMeta('Read time', (+u.readingHours || 0) + 'h total')
     + lbMeta('Top genre', topGenre ? esc(topGenre.name) : '—')
-    + lbMeta('Tips', fmtMoney(u.tipsAmount)) + lbMeta('Coin spend', fmtMoney(u.coinsSpent))
+    + lbMeta('Tips sent', coins(u.tipsCoins)) + (+u.tipsReceivedNGN ? lbMeta('Tips received', fmtNGN(u.tipsReceivedNGN)) : '')
+    + lbMeta('Coin spend', coins(u.coinsSpent))
     + lbMeta('Referrals', x.referralsConverted + ' / ' + x.referralsSent + ' (' + rate + '%)')
-    + lbMeta('Funded', fmtMoney(x.funded))
+    + lbMeta('Funded', fmtNGN(x.funded))
     + lbMeta('Sessions', x.sessionsPerDay + '/day · ' + (+u.avgSessionMin || 0) + 'm avg')
     + lbMeta('Streak', (u.streakDays || 0) + 'd')
     + lbMeta('Following', fmtNum(u.following)) + lbMeta('Last active', esc(u.lastActive || '—'))
@@ -192,17 +201,21 @@ function bindLbAccordion(bodyEl, entries){
 function renderStats(d){
   var premium = d.ex.filter(function(e){ return e.x.plan === 'premium'; }).length;
   var refConv = d.ex.reduce(function(s, e){ return s + e.x.referralsConverted; }, 0);
-  var tips = d.users.reduce(function(s, u){ return s + (+u.tipsAmount || 0); }, 0);
-  var cards = [
-    { n: d.users.length, l: 'Tracked users', ico: 'fa-users', c: 'blue', bg: 'var(--blue-bg)' },
-    { n: premium, l: 'Premium subscribers', ico: 'fa-crown', c: 'gold', bg: 'var(--gold-bg)' },
-    { n: fmtNum(refConv), l: 'Referral conversions', ico: 'fa-user-plus', c: 'green', bg: 'var(--green-bg)' },
-    { n: fmtMoney(tips), l: 'Tips volume', ico: 'fa-coins', c: 'amber', bg: 'var(--amber-bg)' }
-  ];
-  document.getElementById('statCards').innerHTML = cards.map(function(s){
-    return '<div class="stat-card"><div class="stat-ico" style="background:' + s.bg + ';color:var(--' + s.c + ')"><i class="fas ' + s.ico + '"></i></div>'
-      + '<div><div class="stat-num">' + s.n + '</div><div class="stat-lbl">' + s.l + '</div></div></div>';
-  }).join('');
+  var tips = d.users.reduce(function(s, u){ return s + (+u.tipsCoins || 0); }, 0);
+  
+  function kpiCard(label, value, icon, bgColor, colorName) {
+    var colorVar = 'var(--' + colorName + ')';
+    return '<div class="stat-card" style="background:#fff;border:1px solid var(--border);box-shadow:var(--shadow)">'
+      + '<div class="stat-ico" style="background:' + bgColor + ';color:' + colorVar + '"><i class="fas ' + icon + '"></i></div>'
+      + '<div><div class="stat-num" style="color:' + colorVar + '">' + value + '</div><div class="stat-lbl">' + label + '</div></div></div>';
+  }
+  
+  document.getElementById('statCards').innerHTML = [
+    kpiCard('Tracked users', d.users.length, 'fa-users', 'rgba(47,125,225,.12)', 'blue'),
+    kpiCard('Premium subscribers', premium, 'fa-crown', 'rgba(212,160,23,.12)', 'gold'),
+    kpiCard('Referral conversions', fmtNum(refConv), 'fa-user-plus', 'rgba(22,163,74,.12)', 'green'),
+    kpiCard('Tips sent', coins(tips), 'fa-coins', 'rgba(217,119,6,.12)', 'amber')
+  ].join('');
 }
 
 var activeLb = 'tips';
@@ -252,12 +265,12 @@ function renderBoard(d){
   openLbId = null;
   var rows = [], entries = [];
   var pool = lbApplyFilters(d.ex);
-  if (activeLb === 'tips') entries = topBy(pool, function(e){ return +e.u.tipsAmount || 0; });
+  if (activeLb === 'tips') entries = topBy(pool, function(e){ return +e.u.tipsCoins || 0; });
   else if (activeLb === 'readtime') entries = topBy(pool, function(e){ return +e.u.readingHours || 0; });
   else if (activeLb === 'referrals') entries = topBy(pool, function(e){ return e.x.referralsConverted; });
   else entries = topBy(pool, function(e){ return +e.u.streakDays || 0; });
   lbBoardEntries = entries;
-  if (activeLb === 'tips') rows = entries.map(function(e, i){ return lbRow(i, e.u, fmtMoney(e.u.tipsAmount), rowMeta(e.u, e.x, 'tips')); });
+  if (activeLb === 'tips') rows = entries.map(function(e, i){ return lbRow(i, e.u, coins(e.u.tipsCoins), rowMeta(e.u, e.x, 'tips')); });
   else if (activeLb === 'readtime') rows = entries.map(function(e, i){ return lbRow(i, e.u, fmtNum(e.u.readingHours) + 'h total', rowMeta(e.u, e.x, 'readtime')); });
   else if (activeLb === 'referrals') rows = entries.map(function(e, i){ return lbRow(i, e.u, e.x.referralsConverted + ' conv · ' + e.x.referralsSent + ' sent', rowMeta(e.u, e.x, 'referrals')); });
   else rows = entries.map(function(e, i){ return lbRow(i, e.u, (e.u.streakDays || 0) + 'd', rowMeta(e.u, e.x, 'streaks')); });
@@ -316,17 +329,26 @@ function renderMoney(d){
   var trial = d.ex.filter(function(e){ return e.x.plan === 'trial'; }).length;
   var funded = d.ex.reduce(function(s, e){ return s + e.x.funded; }, 0);
   var coinSpend = d.users.reduce(function(s, u){ return s + (+u.coinsSpent || 0); }, 0);
-  var tips = d.users.reduce(function(s, u){ return s + (+u.tipsAmount || 0); }, 0);
+  var tips = d.users.reduce(function(s, u){ return s + (+u.tipsCoins || 0); }, 0);
+  var tipsToAuthors = d.users.reduce(function(s, u){ return s + (+u.tipsReceivedNGN || 0); }, 0);
   var payouts = d.users.reduce(function(s, u){ return s + (+u.payout || 0); }, 0);
+  
+  function moneyRow(label, val, sub, cls) {
+    var colorVar = 'var(--' + cls + ')';
+    return '<div class="m-stat" style="border-bottom:1px solid var(--border)">'
+      + '<span>' + label + '</span><b style="color:' + colorVar + '">' + val + '</b>' + (sub ? '<small>' + sub + '</small>' : '')
+      + '</div>';
+  }
   document.getElementById('moneyGrid').innerHTML =
-    mstat('MRR', fmtMoney(premium * d.subPrice), premium + ' × $' + d.subPrice) +
-    mstat('Trials', trial, 'convert to premium') +
-    mstat('Wallet funding', fmtMoney(funded), 'top-ups') +
-    mstat('Coin spend', fmtMoney(coinSpend), 'all users') +
-    mstat('Tips volume', fmtMoney(tips), 'sent') +
-    mstat('Author payouts', fmtMoney(payouts), 'earned') +
-    mstat('Avg streak', (d.ex.reduce(function(s, e){ return s + (+e.u.streakDays || 0); }, 0) / Math.max(1, d.ex.length)).toFixed(1) + 'd', 'engagement') +
-    mstat('Paying users', premium + trial, 'premium + trial');
+    moneyRow('MRR', fmtUSD(premium * d.subPrice), premium + ' × $' + d.subPrice, 'green') +
+    moneyRow('Trials', trial, 'convert to premium', 'amber') +
+    moneyRow('Wallet funding', fmtNGN(funded), 'top-ups', 'blue') +
+    moneyRow('Coin spend', coins(coinSpend), 'all users', 'purple') +
+    moneyRow('Tips sent', coins(tips), 'coins out', 'gold') +
+    moneyRow('Tips to authors', fmtNGN(tipsToAuthors), 'naira in', 'green') +
+    moneyRow('Author payouts', fmtNGN(payouts), 'earned', 'purple') +
+    moneyRow('Avg streak', (d.ex.reduce(function(s, e){ return s + (+e.u.streakDays || 0); }, 0) / Math.max(1, d.ex.length)).toFixed(1) + 'd', 'engagement', 'amber') +
+    moneyRow('Paying users', premium + trial, 'premium + trial', 'blue');
 }
 
 function renderReferrals(d){

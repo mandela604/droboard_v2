@@ -1,0 +1,57 @@
+mongod up: mongodb://127.0.0.1:50603/dro_sa_pages
+
+=== TESTING DASHBOARD SUMMARY ===
+
+PASS  GET /dashboard/summary -> 200  ::  status=200
+PASS  dashboard has kpiCards array  ::  kpiCards type=object
+PASS  dashboard has revenueChart array  ::  revenueChart type=object
+PASS  dashboard has topStories array  ::  topStories type=object
+PASS  dashboard has activityLog array  ::  activityLog type=object
+PASS  dashboard has adminTeam array  ::  adminTeam type=object
+PASS  kpiCard has required fields  ::  kpi={n:true,l:true,ico:true}
+PASS  topStory has title, writer, genre, reads, revenue  ::  {"id":"000001a1-9488-731d-8127-93a86e8626ba","title":"The runaway bride — I left at the altar in my socked feet","writer":"Ifeanyi Story","genre":"Twist Fiction","reads":0,"revenue":0,"cover":"https://i.postimg.cc/vDn9YLx5/wife2.jpg"}
+PASS  topStory has cover url  ::  cover=https://i.postimg.cc/vDn9YLx5/wife2.jpg
+PASS  adminTeam row has id, name, email, role, perms  ::  {"id":"000001a1-9488-7b95-ad45-ccb878e1ee41","name":"Tobenna Achebe","email":"tobi@droboard.com","avatar":"","role":"Super Admin","status":"active","perms":{"contracts":true,"campaigns":true,"moderation":true,"finance":true,"admins":true}}
+PASS  adminTeam row has perms object  ::  perms={"contracts":true,"campaigns":true,"moderation":true,"finance":true,"admins":true}
+
+=== TESTING USERS LIST ===
+
+PASS  GET /users -> 200  ::  status=200
+PASS  users list has items array  ::  items type=OK
+PASS  users list returns created users  ::  found=4 expected>=4
+PASS  user row has id, name, email, username  ::  {"id":"000001a1-9488-7eab-89d1-5c4205d6f765","name":"Ifeanyi Story","username":"ifeanyi_author","email":"ifeanyi@droboard.com","role":"Reader","status":"active","avatar":"https://i.pravatar.cc/150?img=12","verified":false,"joined":"2026-11-
+PASS  user row has role field  ::  role=Reader,roles=undefined
+PASS  user row has stats object  ::  stats={"followers":0,"following":0,"stories":2,"reads":0,"comments":0}
+PASS  user row has wallet.balance.coins  ::  coins=0
+PASS  user row has coinsSpent (not naira)  ::  coinsSpent=0
+
+=== TESTING SINGLE USER DETAILS ===
+
+PASS  GET /users/:id -> 200  ::  status=200
+PASS  user detail matches list fields  ::  id=000001a1-9488-7eab-89d1-5c4205d6f765,name=Ifeanyi Story
+PASS  user detail has profile info  ::  profile={"bio":"","location":"","website":""},avatar=https://i.pravatar.cc/150?img=12
+PASS  user detail has statistics  ::  stories=2,wordsRead=0
+
+=== TESTING INSIGHTS OVERVIEW ===
+
+PASS  GET /insights/overview -> 200  ::  status=200
+PASS  overview has users array  ::  users type=object
+PASS  overview has ex array (expenditure)  ::  ex type=object
+PASS  overview has cohorts array  ::  cohorts type=object
+PASS  overview user has coinsSpent, coinsBought  ::  coinsSpent=0,coinsBought=0
+PASS  expenditure row has u (userId) and x object  ::  {"u":"000001a1-9488-7b95-ad45-ccb878e1ee41","x":{"referralsSent":0,"referralsConverted":0,"plan":"free","funded":0,"sessionsPerDay":0}}
+PASS  expenditure x has funded  ::  funded=0
+
+=== TESTING LEADERBOARD ===
+
+PASS  GET /insights/leaderboard -> 200  ::  status=200
+PASS  leaderboard has items array  ::  items type=object
+
+=== TESTING ANALYTICS SUMMARY ===
+
+PASS  GET /analytics/summary -> 200  ::  status=200
+PASS  analytics summary has totalUsers  ::  totalUsers=4
+PASS  analytics summary has totalRevenue  ::  totalRevenue=0
+PASS  analytics summary has monthlyRevenue array  ::  monthlyRevenue type=object
+
+===== 36/36 Super Admin page assertions passed =====

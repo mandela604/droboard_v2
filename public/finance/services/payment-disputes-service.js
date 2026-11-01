@@ -17,7 +17,10 @@ let searchTerm = '';
 let sortMode = 'recent';
 let page = 1;
 
-function money(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Number(n||0).toLocaleString('en-US'); }
+/* Disputed amounts mirror the withdrawal/payout rows they complain about, which
+   are dollar figures — restated from USD, never treated as naira. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + Number(n||0).toLocaleString('en-US'); }
+function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 function fmtDateTime(iso){
   if(!iso) return '';
   const d = new Date(iso);
@@ -145,7 +148,7 @@ function render(){
           <span class="pd-amt">${money(d.amount)}</span>
           <span class="status-pill ${d.status}">${statusLabel(d.status)}</span>
         </div>
-        <div class="pd-reason">${d.reason}</div>
+        <div class="pd-reason">${prose(d.reason)}</div>
         <div class="pd-meta">
           <span><i class="fas fa-clock"></i> Filed ${timeAgo(d.filed)}</span>
           ${d.item ? `<span><i class="fas fa-bag-shopping"></i> ${d.item}</span>` : ''}
@@ -225,7 +228,7 @@ function renderDetailModal(d){
       replies.map(function(r){
         return '<div style="background:var(--blue-bg);border-radius:10px;padding:11px 13px;margin-bottom:8px">'+
           '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:var(--blue)">'+r.from+'</span><span style="font-size:10px;color:var(--text-faint)">'+timeAgo(r.time)+'</span></div>'+
-          '<div style="font-size:12.5px;color:var(--text);line-height:1.5">'+r.message+'</div>'+
+          '<div style="font-size:12.5px;color:var(--text);line-height:1.5">'+prose(r.message)+'</div>'+
         '</div>';
       }).join('') + '</div>';
   }
@@ -258,7 +261,7 @@ function renderDetailModal(d){
         ${d.txnId ? `<div class="dt-meta-item"><div class="dt-meta-lbl">Transaction</div><div class="dt-meta-val" style="font-size:12px">${d.txnId}</div></div>` : ''}
         <div class="dt-meta-item full"><div class="dt-meta-lbl">Reason for Dispute</div></div>
       </div>
-      <div class="dt-reason-box">${d.reason}</div>
+      <div class="dt-reason-box">${prose(d.reason)}</div>
       ${noteSectionHtml}
       ${replySectionHtml}
       ${actionNoteHtml}

@@ -1,229 +1,292 @@
 /**
  * signup-service.js — Page logic for signup.html (call-and-render)
  * HTML is markup only; all logic lives here and runs on script load.
- * Backend-ready: keeps AUTH_CONFIG (/api/auth/* endpoints) AS IS; demo
- * fallbacks stay until backend is live. USE_API/API_BASE reserved for live swap.
+ * Live backend only: /api/auth/signup, the username availability check and
+ * Google OAuth. Register does not return a session, so a successful signup
+ * is followed by /api/auth/login with the same credentials — the visitor
+ * lands with a real session, never a demo one.
  */
 (function(){
 'use strict';
 
-const USE_API = false;
-const API_BASE = '/api';
+const API = '/api';
+const SESSION_KEY = 'droboard_session';
+const USER_KEY = 'droboard_user';
 
-const LS_CODE='se_referral_code_SE-01', LS_AUTHORS='se_referred_authors_SE-01', SE_NAME='Chioma Reddy';
-// ── Backend-ready auth ──
-const AUTH_CONFIG = {
-  API_BASE: (function(){ try{ return localStorage.getItem('droboard_api_base') || ''; }catch(e){ return ''; } })(),
-  ENDPOINTS: { GOOGLE_URL: '/api/auth/google/url', GOOGLE_CALLBACK: '/api/auth/google/callback', SIGNUP: '/api/auth/signup' }
-};
-function apiUrl(p){ return (AUTH_CONFIG.API_BASE || '') + p; }
+const COUNTRIES = ['Nigeria','Ghana','Kenya','South Africa','United States','United Kingdom','Canada','India','Philippines','Brazil','Germany','France','Australia'];
+
+function el(id){ return document.getElementById(id); }
 function setLoading(btn, on){
   if(!btn) return;
   if(on){ if(!btn.dataset.orig) btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Please wait…'; }
   else{ btn.disabled = false; if(btn.dataset.orig){ btn.innerHTML = btn.dataset.orig; delete btn.dataset.orig; } }
 }
-const COUNTRIES=['Nigeria','Ghana','Kenya','South Africa','United States','United Kingdom','Canada','India','Philippines','Brazil','Germany','France','Australia'];
-(function(){
-  const sel=document.getElementById('countryInput');
-  COUNTRIES.forEach(function(c){
-    const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);
+function toast(m){ const t=el('toast'); if(!t) return; t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},2600); }
+function showError(msg){ const box=el('formError'); if(!box){ toast(msg); return; } box.textContent=msg; box.classList.add('show'); }
+function clearError(){ const box=el('formError'); if(!box) return; box.textContent=''; box.classList.remove('show'); }
+
+function request(path, opts){
+  opts = opts || {};
+  opts.credentials = 'same-origin';
+  try{ if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opts.signal = AbortSignal.timeout(15000); }catch(e){}
+  return fetch(API + path, opts).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(body){
+      return { ok: r.ok, status: r.status, body: body };
+    });
   });
-  // auto-detect country via IP
-  fetch('https://ipapi.co/json/').then(function(r){return r.json()}).then(function(j){
-    if(j && j.country_name && COUNTRIES.indexOf(j.country_name)!==-1){ sel.value=j.country_name; document.getElementById('countryHint').textContent='Detected: '+j.country_name+'.'; }
+}
+function postJson(path, data){
+  return request(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+}
+
+/* ── Country select ──────────────────────────────────────────────── */
+(function(){
+  const sel = el('countryInput');
+  COUNTRIES.forEach(function(c){
+    const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
+  });
+  const opts = {};
+  try{ if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opts.signal = AbortSignal.timeout(4000); }catch(e){}
+  fetch('https://ipapi.co/json/', opts).then(function(r){ return r.json(); }).then(function(j){
+    if(j && j.country_name && COUNTRIES.indexOf(j.country_name) !== -1){
+      sel.value = j.country_name;
+      el('countryHint').textContent = 'Detected: ' + j.country_name + '.';
+    }
   }).catch(function(){});
 })();
 
-function getReferralCode(){ return localStorage.getItem(LS_CODE)||''; }
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},2200); }
-// Two distinct code families share this one field:
-//   SE-XXXXXX → a Senior Editor's invite code → the signup is auto-assigned to that editor.
-//   anything else → a friend's Refer-a-Friend code → the code owner earns their coins.
-function isEditorCode(code){
-  const c=String(code||'').trim().toUpperCase();
-  if(!/^SE-/.test(c)) return false;
-  const demo=String(getReferralCode()||'').toUpperCase();
-  if(demo && c===demo) return true;          // the local Senior Editor's own code
-  return /^SE-[A-Z0-9]{5,}$/.test(c);        // minted editor codes are SE- + 6 chars
-}
-// Banner copy follows the code family. "Auto-assigned" is only true for editor codes.
+/* ── Referral banner ─────────────────────────────────────────────── */
+// The code is validated by the backend at signup — the page only confirms
+// that it will be sent, it never claims who the inviter is.
+function pendingRef(){ try{ return localStorage.getItem('dro_pending_ref') || ''; }catch(e){ return ''; } }
+function setPendingRef(code){ try{ if(code) localStorage.setItem('dro_pending_ref', code); else localStorage.removeItem('dro_pending_ref'); }catch(e){} }
 function applyReferralBanner(code){
-  const b=document.getElementById('referralBanner'); if(!b) return;
-  const title=document.getElementById('refBannerTitle');
-  const nameEl=document.getElementById('referralByName');
-  const codeEl=document.getElementById('referralByCode');
-  const textEl=document.getElementById('refBannerText');
-  const tailEl=document.getElementById('refBannerTail');
-  code=String(code||'').trim().toUpperCase();
+  const b = el('referralBanner'); if(!b) return;
+  code = String(code || '').trim().toUpperCase();
   if(!code){ b.classList.remove('show'); return; }
-  if(codeEl) codeEl.textContent=code;
-  if(textEl) textEl.textContent='Code';
-  if(isEditorCode(code)){
-    if(title) title.textContent='Referred by Senior Editor';
-    if(nameEl) nameEl.textContent=SE_NAME;
-    if(tailEl) tailEl.textContent="detected — you'll be auto-assigned to them.";
-  } else {
-    if(title) title.textContent='Referral code applied';
-    if(nameEl) nameEl.textContent='';
-    if(tailEl) tailEl.textContent='detected — your friend earns 5 coins when you join.';
-  }
+  el('refBannerTitle').textContent = 'Referral code applied';
+  el('refBannerText').textContent = 'Code';
+  el('referralByCode').textContent = code;
+  el('refBannerTail').textContent = 'checked when your account is created.';
   b.classList.add('show');
 }
 function prefillFromUrl(){
-  const p=new URLSearchParams(location.search);
-  let code=(p.get('ref')||p.get('code')||'').trim().toUpperCase();
-  if(code) try{ localStorage.setItem('dro_pending_ref',code);}catch(e){}
-  else try{ code=localStorage.getItem('dro_pending_ref')||'';}catch(e){}
-  if(code){ const inp=document.getElementById('refInput'); if(inp){ inp.value=code; inp.classList.add('prefilled'); } }
+  const p = new URLSearchParams(location.search);
+  let code = (p.get('ref') || p.get('code') || '').trim().toUpperCase();
+  if(code) setPendingRef(code);
+  else code = pendingRef();
+  if(code){ const inp = el('refInput'); if(inp){ inp.value = code; inp.classList.add('prefilled'); } }
   applyReferralBanner(code);
 }
 prefillFromUrl();
-document.getElementById('refInput').addEventListener('input',function(){
-  applyReferralBanner(this.value.trim().toUpperCase());
-});
-// username live validation
+el('refInput').addEventListener('input', function(){ applyReferralBanner(this.value.trim().toUpperCase()); });
+
+/* ── Username availability (real check) ──────────────────────────── */
 (function(){
-  const u=document.getElementById('usernameInput'), hint=document.getElementById('usernameHint');
-  const re=/^[a-z][a-z0-9_]{2,19}$/;
-  u.addEventListener('input',function(){
-    const v=u.value.trim().toLowerCase();
-    if(!v){ hint.style.display='none'; u.style.borderColor=''; return; }
-    const ok=re.test(v);
-    hint.style.display='block';
-    hint.textContent=ok?'✓ Username available':'✗ 3-20 chars, start with letter, a-z 0-9 _ only';
-    hint.className='hint '+(ok?'ok':'bad'); hint.style.color=ok?'#16a34a':'#dc2626';
-    u.style.borderColor=ok?'#16a34a':'#dc2626';
-  });
-})();
-// eye + live match
-document.querySelectorAll('.pw-eye').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    const inp=document.getElementById(btn.dataset.target);
-    const isPw=inp.type==='password'; inp.type=isPw?'text':'password';
-    btn.querySelector('i').className=isPw?'far fa-eye-slash':'far fa-eye';
-  });
-});
-(function(){
-  const a=document.getElementById('passInput'), b=document.getElementById('confirmInput'), hint=document.getElementById('pwMatch');
-  function check(){
-    if(!b.value){ hint.style.display='none'; b.style.borderColor=''; return; }
-    const ok=a.value===b.value;
-    hint.style.display='block'; hint.textContent=ok?'✓ Passwords match':'✗ Passwords do not match';
-    hint.className='pw-match '+(ok?'ok':'bad'); hint.style.display='block';
-    b.style.borderColor=ok?'#16a34a':'#dc2626';
+  const u = el('usernameInput'), hint = el('usernameHint');
+  const re = /^[a-z][a-z0-9_]{2,19}$/;
+  let timer = null, seq = 0;
+  function status(text, ok){
+    hint.style.display = 'block';
+    hint.textContent = text;
+    hint.className = 'hint ' + (ok === true ? 'ok' : (ok === false ? 'bad' : ''));
+    hint.style.color = ok === true ? '#16a34a' : (ok === false ? '#dc2626' : '#9694ac');
+    u.style.borderColor = ok === true ? '#16a34a' : (ok === false ? '#dc2626' : '');
   }
-  a.addEventListener('input',check); b.addEventListener('input',check);
+  u.addEventListener('input', function(){
+    const v = u.value.trim().toLowerCase();
+    clearTimeout(timer);
+    if(!v){ hint.style.display = 'none'; u.style.borderColor = ''; return; }
+    if(!re.test(v)){ status('✗ 3-20 chars, start with a letter, a-z 0-9 _ only', false); return; }
+    status('Checking…', null);
+    const mine = ++seq;
+    timer = setTimeout(function(){
+      request('/users/check-username?username=' + encodeURIComponent(v))
+        .then(function(r){
+          if(mine !== seq) return;
+          if(!r.ok) throw new Error('http');
+          if(r.body && r.body.available) status('✓ Username available', true);
+          else status('✗ That username is taken', false);
+        })
+        .catch(function(){ if(mine !== seq) return; status('Couldn’t check that username — we’ll verify when you submit.', null); });
+    }, 350);
+  });
 })();
 
-// Google sign-up (backend-ready OAuth + demo fallback)
+/* ── Password visibility + live match ────────────────────────────── */
+document.querySelectorAll('.pw-eye').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    const inp = el(btn.dataset.target);
+    const isPw = inp.type === 'password';
+    inp.type = isPw ? 'text' : 'password';
+    btn.querySelector('i').className = isPw ? 'far fa-eye-slash' : 'far fa-eye';
+  });
+});
+(function(){
+  const a = el('passInput'), b = el('confirmInput'), hint = el('pwMatch');
+  function check(){
+    if(!b.value){ hint.style.display = 'none'; b.style.borderColor = ''; return; }
+    const ok = a.value === b.value;
+    hint.style.display = 'block';
+    hint.textContent = ok ? '✓ Passwords match' : '✗ Passwords do not match';
+    hint.className = 'pw-match ' + (ok ? 'ok' : 'bad');
+    b.style.borderColor = ok ? '#16a34a' : '#dc2626';
+  }
+  a.addEventListener('input', check); b.addEventListener('input', check);
+})();
+
+/* ── Google sign-up ──────────────────────────────────────────────── */
+function stripAuthParams(){
+  const p = new URLSearchParams(location.search);
+  ['code','error','state','scope','authuser','prompt','hd'].forEach(function(k){ p.delete(k); });
+  const q = p.toString();
+  try{ history.replaceState(null, '', location.pathname + (q ? '?' + q : '')); }catch(e){}
+}
+document.getElementById('googleBtn').addEventListener('click', function(){
+  const btn = this;
+  setLoading(btn, true);
+  clearError();
+  const ref = pendingRef();
+  request('/auth/google/url?mode=signup' + (ref ? '&referralCode=' + encodeURIComponent(ref) : ''))
+    .then(function(r){
+      if(r.ok && r.body && r.body.authUrl){ location.href = r.body.authUrl; return; }
+      showError(r.status === 501
+        ? 'Google sign-up isn’t set up yet. Use the form below.'
+        : 'Google sign-up isn’t available right now. Use the form below.');
+    })
+    .catch(function(){ showError('Can’t reach Droboard. Check your connection and try again.'); })
+    .finally(function(){ setLoading(btn, false); });
+});
+
 (function handleOAuthCallback(){
   const p = new URLSearchParams(location.search);
   const code = p.get('code');
-  if(!code) return;
-  const btn = document.getElementById('googleBtn');
+  const err = p.get('error');
+  if(!code && !err) return;
+  if(err){ stripAuthParams(); showError('Google sign-up was cancelled.'); return; }
+  stripAuthParams();
+  const btn = el('googleBtn');
   setLoading(btn, true);
-  fetch(apiUrl(AUTH_CONFIG.ENDPOINTS.GOOGLE_CALLBACK), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code, mode:'signup' }) })
-    .then(function(r){ if(!r.ok) throw new Error('backend'); return r.json(); })
-    .then(function(j){
-      if(j && (j.name || (j.user && j.user.name))){ document.getElementById('nameInput').value = j.name || j.user.name; }
-      if(j && (j.email || (j.user && j.user.email))){ document.getElementById('emailInput').value = j.email || j.user.email; }
-      try{ if(j.token) localStorage.setItem('droboard_session', j.token); }catch(e){}
-      toast('Google account connected — fill the rest and create account');
+  postJson('/auth/google/callback', { code: code, mode: 'signup', referralCode: pendingRef() || undefined })
+    .then(function(r){
+      if(r.ok && r.body && (r.body.access || r.body.token)){
+        try{
+          localStorage.setItem(SESSION_KEY, r.body.access || r.body.token);
+          if(r.body.user) localStorage.setItem(USER_KEY, JSON.stringify(r.body.user));
+        }catch(e){}
+        setPendingRef('');
+        try{ if(window.Acquisition && Acquisition.record) Acquisition.record('sign_up'); }catch(e){}
+        showSuccess({ emailed: false }, { signedIn: true });
+        setTimeout(function(){ location.href = 'discover.html'; }, 1200);
+        return;
+      }
+      if(r.ok && r.body && r.body.mfaRequired){
+        showError('This Google account uses two-factor authentication. Log in to finish signing in.');
+        return;
+      }
+      showError(r.status >= 500
+        ? 'Google sign-up failed on our side. Please try again.'
+        : 'Google sign-up failed. Please try again.');
     })
-    .catch(function(){ toast('Google connected (demo) — fill the rest'); })
+    .catch(function(){ showError('Can’t reach Droboard. Check your connection and try again.'); })
     .finally(function(){ setLoading(btn, false); });
 })();
-document.getElementById('googleBtn').addEventListener('click',function(){
-  const btn = this;
-  setLoading(btn, true);
-  fetch(apiUrl(AUTH_CONFIG.ENDPOINTS.GOOGLE_URL + '?mode=signup'))
-    .then(function(r){ if(!r.ok) throw new Error('no-backend'); return r.json(); })
-    .then(function(j){ if(j && j.authUrl){ location.href = j.authUrl; return; } throw new Error('no-url'); })
-    .catch(function(){
-      setTimeout(function(){
-        const name='Adaeze Cole', email='adaeze@example.com';
-        document.getElementById('nameInput').value=name; document.getElementById('emailInput').value=email;
-        toast('Google account connected — fill the rest and create account (demo)');
-        setLoading(btn, false);
-      },600);
-    });
-});
 
-document.getElementById('signupBtn').addEventListener('click',function(){
-  const btn = this;
-  const name=document.getElementById('nameInput').value.trim();
-  const username=document.getElementById('usernameInput').value.trim().toLowerCase();
-  const email=document.getElementById('emailInput').value.trim();
-  const country=document.getElementById('countryInput').value;
-  const pass=document.getElementById('passInput').value;
-  const confirm=document.getElementById('confirmInput').value;
-  const refCode=document.getElementById('refInput').value.trim().toUpperCase();
-  if(!name||!username||!email||!pass||!confirm){ toast('Fill name, username, email, password and confirm'); return; }
-  if(!/^[a-z][a-z0-9_]{2,19}$/.test(username)){ toast('Invalid username — 3-20 chars, start with letter'); return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('Enter a valid email'); return; }
-  if(pass.length<6){ toast('Password must be at least 6 characters'); return; }
-  if(pass!==confirm){ toast('Passwords do not match'); return; }
-  setLoading(btn, true);
-  const payload = { name, username, email, country: country||null, password: pass, referralCode: refCode||null };
-  function finishDemo(serverUser){
-    try{ if(window.Acquisition && Acquisition.record) Acquisition.record('sign_up'); }catch(e){}
-    const seCode=getReferralCode();
-    // referral mode: none | editor | friend | invalid
-    //  editor  → SE- code → signup is auto-assigned to that Senior Editor
-    //  friend  → Refer-a-Friend code → the code owner is credited their coins
-    const serverRef=(serverUser && serverUser.referral) || null;
-    let mode='none';
-    if(serverRef){
-      if(serverRef.editor) mode='editor';
-      else if(serverRef.inviterId) mode='friend';
-      else if(serverRef.invalid) mode='invalid';
-    } else if(refCode){
-      if(seCode && refCode===seCode) mode='editor';
-      else mode='friend';
-    }
-    let assignedSE=null;
-    if(mode==='editor') assignedSE={id:'SE-01', name:SE_NAME, code:seCode||refCode};
-    else if(mode==='invalid') toast('Code not found — signing up without referral');
+/* ── Submit ──────────────────────────────────────────────────────── */
+function signupMessage(status, body){
+  const code = body && body.error;
+  if(status === 409 || code === 'taken') return 'That email or username is already registered. Try logging in instead.';
+  if(status === 429) return 'Too many sign-ups from your network. Please try again later.';
+  if(status === 400) return 'Check your details and try again.';
+  if(status >= 500) return 'Something went wrong on our side. Please try again.';
+  return 'We couldn’t create your account. Please try again.';
+}
 
-    const newWriter={ id:(serverUser && serverUser.id) || ('WR-'+Date.now()), name:name, username:username, email:email, country:country||null, avatar:(serverUser && serverUser.avatar) || ('https://i.pravatar.cc/100?img='+(Math.floor(Math.random()*70)+1)), code:refCode||'', signedUp:new Date().toISOString(), status:'active', seniorEditorId:assignedSE?assignedSE.id:null, seniorEditorName:assignedSE?assignedSE.name:null, viaGoogle:false };
-    if(serverUser && serverUser.token){ try{ localStorage.setItem('droboard_session', serverUser.token); }catch(e){} }
-    if(assignedSE){
-      let list=[]; try{ list=JSON.parse(localStorage.getItem(LS_AUTHORS)||'[]');}catch(e){}
-      list.unshift(newWriter); try{ localStorage.setItem(LS_AUTHORS, JSON.stringify(list)); }catch(e){}
-      try{ localStorage.removeItem('dro_pending_ref');}catch(e){}
-      document.getElementById('successMsg').innerHTML='Assigned to Senior Editor <b>'+esc(assignedSE.name)+'</b> via <b>'+esc(assignedSE.code)+'</b> and <span style="color:#16a34a;font-weight:800">Active</span> — no approval needed.';
-    } else if(mode==='friend'){
-      try{ localStorage.removeItem('dro_pending_ref');}catch(e){}
-      document.getElementById('successMsg').innerHTML='Referral applied via <b>'+esc(refCode)+'</b> — your friend earned <b>5 coins</b> for inviting you.';
-    } else {
-      document.getElementById('successMsg').textContent='Account created — no referral, you can be assigned later.';
-    }
-    if(country) try{ localStorage.setItem('droboard_signup_country', country);}catch(e){}
-    document.getElementById('signupCard').style.display='none';
-    document.getElementById('successCard').style.display='block';
-    toast(mode==='editor' ? 'Referred — auto-assigned!' : (mode==='friend' ? 'Referral applied — your friend earned 5 coins' : 'Account created'));
-    setLoading(btn, false);
+function showSuccess(account, opts){
+  renderSuccess(account, opts);
+  el('signupCard').style.display = 'none';
+  el('successCard').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+function renderSuccess(account, opts){
+  const msg = el('successMsg'), primary = el('successPrimary');
+  const ref = (account && account.referral) || null;
+  let note = '';
+  if(ref && ref.editor) note = ' You were invited by a Senior Editor, so writer access is already active.';
+  else if(ref && ref.invalid) note = ' The referral code wasn’t found, so your account was created without it.';
+  else if(ref && ref.inviterId) note = ' Your referral was applied.';
+  let emailNote = '';
+  if(account && account.emailed) emailNote = ' Check your inbox to verify your email address.';
+  else if(account && account.emailError) emailNote = ' We couldn’t send the verification email right now.';
+  if(opts && opts.signedIn){
+    msg.textContent = 'Account created — taking you in…' + note + emailNote;
+    primary.textContent = 'Start Discovering';
+    primary.onclick = function(){ location.href = 'discover.html'; };
+  } else {
+    msg.textContent = 'Account created.' + note + emailNote + ' Log in to continue.';
+    primary.textContent = 'Log in';
+    primary.onclick = function(){ location.href = 'login.html'; };
   }
-  fetch(apiUrl(AUTH_CONFIG.ENDPOINTS.SIGNUP), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
-    .then(function(r){ if(!r.ok) throw new Error('demo'); return r.json(); })
-    .then(function(j){ finishDemo(j.user || j); })
-    .catch(function(){ finishDemo(null); });
-});
-(function(){ const p=new URLSearchParams(location.search); if(p.get('ref')) document.title='Sign Up — Referred ('+p.get('ref').toUpperCase()+') — Droboard'; })();
+}
 
-// Expose identical window globals (prior top-level names)
-window.LS_CODE = LS_CODE;
-window.LS_AUTHORS = LS_AUTHORS;
-window.SE_NAME = SE_NAME;
-window.AUTH_CONFIG = AUTH_CONFIG;
-window.apiUrl = apiUrl;
-window.setLoading = setLoading;
-window.COUNTRIES = COUNTRIES;
-window.getReferralCode = getReferralCode;
-window.isEditorCode = isEditorCode;
-window.applyReferralBanner = applyReferralBanner;
-window.toast = toast;
-window.prefillFromUrl = prefillFromUrl;
+function signInAfterSignup(email, pass, account){
+  postJson('/auth/login', { emailOrUsername: email, password: pass })
+    .then(function(r){
+      if(r.ok && r.body && (r.body.access || r.body.token)){
+        try{
+          localStorage.setItem(SESSION_KEY, r.body.access || r.body.token);
+          localStorage.setItem(USER_KEY, JSON.stringify(r.body.user || account));
+        }catch(e){}
+        try{ if(window.Acquisition && Acquisition.record) Acquisition.record('sign_up'); }catch(e){}
+        showSuccess(account, { signedIn: true });
+        setTimeout(function(){ location.href = 'discover.html'; }, 1200);
+        return;
+      }
+      showSuccess(account, { signedIn: false });
+    })
+    .catch(function(){ showSuccess(account, { signedIn: false }); })
+    .finally(function(){ setLoading(el('signupBtn'), false); });
+}
+
+document.getElementById('signupBtn').addEventListener('click', function(){
+  const btn = this;
+  const name = el('nameInput').value.trim();
+  const username = el('usernameInput').value.trim().toLowerCase();
+  const email = el('emailInput').value.trim();
+  const country = el('countryInput').value;
+  const pass = el('passInput').value;
+  const confirm = el('confirmInput').value;
+  const refCode = el('refInput').value.trim().toUpperCase();
+  const website = el('websiteInput') ? el('websiteInput').value : '';
+  clearError();
+  if(!name || !username || !email || !pass || !confirm){ showError('Fill in your name, username, email and password.'); return; }
+  if(!/^[a-z][a-z0-9_]{2,19}$/.test(username)){ showError('Choose a valid username — 3–20 characters, starting with a letter.'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showError('Enter a valid email address.'); return; }
+  if(pass.length < 8){ showError('Password must be at least 8 characters.'); return; }
+  if(pass !== confirm){ showError('Passwords do not match.'); return; }
+  setLoading(btn, true);
+  const payload = {
+    name: name,
+    username: username,
+    email: email,
+    country: country || undefined,
+    password: pass,
+    referralCode: refCode || undefined,
+    website: website || undefined,
+  };
+  postJson('/auth/signup', payload)
+    .then(function(r){
+      if(!r.ok){ showError(signupMessage(r.status, r.body)); setLoading(btn, false); return; }
+      const account = (r.body && r.body.user) || {};
+      setPendingRef('');
+      signInAfterSignup(email, pass, account);
+    })
+    .catch(function(){ showError('Can’t reach Droboard. Check your connection and try again.'); setLoading(btn, false); });
+});
+el('passInput').addEventListener('keydown', function(e){ if(e.key === 'Enter') el('confirmInput').focus(); });
+el('confirmInput').addEventListener('keydown', function(e){ if(e.key === 'Enter') el('signupBtn').click(); });
+el('refInput').addEventListener('keydown', function(e){ if(e.key === 'Enter') el('signupBtn').click(); });
+
+(function(){ const p = new URLSearchParams(location.search); if(p.get('ref')) document.title = 'Sign Up — Referred (' + p.get('ref').toUpperCase() + ') — Droboard'; })();
 
 })();

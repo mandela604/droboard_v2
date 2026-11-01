@@ -39,7 +39,8 @@
  *     getWriter:      (id) => ({ name:'Ada_Writes', avatar:'...', handle:'@ada_writes' }), // optional
  *     getSupporters:  (id) => [{ id, name, avatar, time }, ...],                            // optional (no amount needed — the list never displays it)
  *     getCurrency:    (id) => ({ symbol:'₦', code:'NGN' }),                                 // optional — defaults to Naira
- *     onSend:         (id, amount, note, mode) => { ... mode is 'coin' or 'cash' ... },      // optional
+ *     onSend:         (id, amount, note, mode) => { ... mode is 'coin' or 'cash' ... },      // optional — may return a promise resolving {ok:false, message} to keep the sheet open
+ *     getTargetId:    (id) => 'platform',                                                   // optional — wallet id gifts are posted to (defaults to id)
  *     profileUrl:     (supporter) => `profile.html?u=${supporter.id}`,                      // optional
  *   });
  *
@@ -585,7 +586,8 @@
      server:false means "no backend answered" — only then does the demo keep
      using the local coin balance. */
   function _postGift(authorId, coins, giftCode){
-    var body = { authorId: String(authorId), coins: Number(coins), giftCode: String(giftCode || '') };
+    var target = typeof _hooks.getTargetId === 'function' ? _hooks.getTargetId(authorId) : authorId;
+    var body = { authorId: String(target), coins: Number(coins), giftCode: String(giftCode || '') };
     return fetch('/api/wallet/tip', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -612,6 +614,12 @@
     }
     _toast(`🎁 ${giftName} sent to ${writer.name}!`);
     _updateBalanceRow();
+    close();
+  }
+
+  function _finishTip(writer, currency){
+    const amountLabel = _mode === 'cash' ? `${currency.symbol}${_fmtN(_selectedAmount)}` : `🪙 ${_selectedAmount}`;
+    _toast(`${amountLabel} sent to ${writer.name}!`);
     close();
   }
 
@@ -652,15 +660,33 @@
     const currency = _getCurrency(_curId);
 
     if (typeof _hooks.onSend === 'function') {
-      _hooks.onSend(_curId, _selectedAmount, note, _mode);
+      let result;
+      try { result = _hooks.onSend(_curId, _selectedAmount, note, _mode); } catch (e) { result = null; }
+      /* A host that returns a promise keeps the sheet open until the wallet
+         answers, so a refused tip (bonus-only coins, no balance) never shows
+         a success toast. Hosts that return nothing keep the old behaviour. */
+      if (result && typeof result.then === 'function') {
+        const btn = document.getElementById('dtp-send');
+        btn.disabled = true;
+        result.then(function (out) {
+          btn.disabled = false;
+          _syncSendBtn();
+          _updateBalanceRow();
+          if (out && out.ok === false) { _toast(out.message || 'Tip not sent — try again'); return; }
+          _finishTip(writer, currency);
+        }, function () {
+          btn.disabled = false;
+          _syncSendBtn();
+          _toast('Tip not sent — try again');
+        });
+        return;
+      }
     } else {
       const list = _demoSupporters(_curId);
       list.unshift({ id: 'you', name: 'You', avatar: 'https://i.pravatar.cc/100?img=1', time: 'Just now' });
     }
 
-    const amountLabel = _mode === 'cash' ? `${currency.symbol}${_fmtN(_selectedAmount)}` : `🪙 ${_selectedAmount}`;
-    _toast(`${amountLabel} sent to ${writer.name}!`);
-    close();
+    _finishTip(writer, currency);
   }
 
   // ══════════════════════════════════════════════════════════════════════

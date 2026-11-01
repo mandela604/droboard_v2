@@ -18,7 +18,16 @@
   /* ── helpers ── */
   function delay(ms) { return new Promise(r => setTimeout(r, ms || 150 + Math.random() * 150)); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
-  function fmtCurrency(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n); return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0 }); }
+  /* Author earnings settle in dollars, so this page never restates into the
+     admin-set staff currency — dollars() is the fixed-USD formatter. The sign
+     is kept out of the formatter so a debit still reads as negative. */
+  function fmtCurrency(n) {
+    const v = Number(n) || 0;
+    const s = (window.DroboardCurrency && DroboardCurrency.dollars)
+      ? DroboardCurrency.dollars(Math.abs(v))
+      : '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 0 });
+    return (v < 0 ? '-' : '') + s;
+  }
   function fmtDate(d) {
     if (!d) return '—';
     const dt = new Date(d);
@@ -200,7 +209,7 @@
       const methods = loadMethods();
       const method = methods.find(m => m.id === methodId) || demo.methods.find(m => m.id === methodId);
       if (!method) throw new Error('Payment method not found');
-      if (amount < demo.minWithdrawal) throw new Error('Minimum withdrawal is $' + demo.minWithdrawal);
+      if (amount < demo.minWithdrawal) throw new Error('Minimum withdrawal is ' + fmtCurrency(demo.minWithdrawal));
       if (amount > demo.earnings.balance) throw new Error('Insufficient balance');
       const accountLabel = method.type === 'bank' ? method.bankName + ' •••• ' + method.accountNumber.slice(-4) :
                            method.type === 'paypal' ? method.email :

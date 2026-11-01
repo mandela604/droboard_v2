@@ -8,6 +8,7 @@ const { Award, UserAward } = require('../models/admin.model');
 const { User } = require('../models/user.model');
 const { Book } = require('../models/content.model');
 const { Follow, ReadingProgress } = require('../models/social.model');
+const { CoinTransaction } = require('../models/money.model');
 
 function err(status, message) { return Object.assign(new Error(message), { status }); }
 function pageOf(q) {
@@ -102,20 +103,27 @@ async function revoke(awardId, handle) {
 }
 
 /* metric evaluation over live aggregates */
-async function userStats(handle) {
+async function userStats(handle, metric) {
   const user = await User.findOne({ $or: [{ username: String(handle).toLowerCase() }, { id: handle }] }).lean();
   if (!user) return null;
   const keys = [String(user.id), String(user._id)];
-  const [books, followers, readsAgg] = await Promise.all([
+  const [books, followers, readsAgg, tipsAgg] = await Promise.all([
     Book.find({ authorId: { $in: keys } }).select('reads rating genre').lean(),
     Follow.countDocuments({ followingId: { $in: keys } }),
     Book.aggregate([{ $match: { authorId: { $in: keys } } }, { $group: { _id: null, reads: { $sum: '$reads' }, rating: { $avg: '$rating' } } }]),
+    // Support Droboard tips only: paid coins the reader sent to the platform.
+    metric === 'platform_tips' ? CoinTransaction.aggregate([
+      { $match: { userId: { $in: keys }, type: 'tip', target: 'platform', status: 'completed' } },
+      { $group: { _id: null, coins: { $sum: '$coins' } } },
+    ]) : [],
   ]);
   return {
     user, books: books.length,
     reads: (readsAgg[0] && readsAgg[0].reads) || 0,
     rating: (readsAgg[0] && readsAgg[0].rating) || 0,
-    followers, genres: [...new Set(books.map(b => b.genre).filter(Boolean))],
+    followers,
+    platformTips: (tipsAgg[0] && tipsAgg[0].coins) || 0,
+    genres: [...new Set(books.map(b => b.genre).filter(Boolean))],
   };
 }
 async function genreRank(handle, genre, period) {
@@ -136,12 +144,13 @@ async function evaluate(awardId, handle) {
   if (!a) throw err(404, 'award_not_found');
   const c = a.criteria || {};
   if (c.metric === 'manual' || c.op === 'admin') return { awardId, handle, eligible: true, reason: 'manual' };
-  const st = await userStats(handle);
+  const st = await userStats(handle, c.metric);
   if (!st) return { awardId, handle, eligible: false, reason: 'unknown_handle' };
   if (c.metric === 'reads') return { awardId, handle, eligible: st.reads >= c.value, actual: st.reads, required: c.value };
   if (c.metric === 'books') return { awardId, handle, eligible: st.books >= c.value, actual: st.books, required: c.value };
   if (c.metric === 'followers') return { awardId, handle, eligible: st.followers >= c.value, actual: st.followers, required: c.value };
   if (c.metric === 'rating') return { awardId, handle, eligible: st.rating >= c.value, actual: +st.rating.toFixed(2), required: c.value };
+  if (c.metric === 'platform_tips') return { awardId, handle, eligible: st.platformTips >= c.value, actual: st.platformTips, required: c.value };
   if (c.metric === 'genre_rank') {
     const r = await genreRank(handle, c.genre, c.period);
     if (!r || !r.rank) return { awardId, handle, eligible: false, reason: 'unranked' };
@@ -152,7 +161,8 @@ async function evaluate(awardId, handle) {
 }
 async function runAutoGrant(by) {
   const awards = await Award.find({ status: 'active' }).lean();
-  const users = await User.find({ deletedAt: null, roles: 'writer' }).select('id username').lean();
+  // Readers can win supporter awards too, so every live account is in scope.
+  const users = await User.find({ deletedAt: null }).select('id username').lean();
   let granted = 0;
   const details = [];
   for (const a of awards) {

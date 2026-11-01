@@ -39,6 +39,7 @@ function getStoryPool(){
   let _overlay=null, _cur='announcement', _onPosted=null;
   function getOnPosted(){ return _onPosted || (global.DroboardComposer && global.DroboardComposer._onPosted) || null; }
 let _pickedUser=null, _pickedStory=null, _pickedImage='';
+let _forText='For', _againstText='Against'; // editable side labels for debates
 /* deadline chips — component/expiry-chips.js; silent no-op if a page omits it */
 function _expField(kind){ return window.DroboardExpiry ? DroboardExpiry.field(kind) : ''; }
 function _expAt(kind){ return window.DroboardExpiry ? DroboardExpiry.expiresAt(kind, _overlay) : null; }
@@ -130,8 +131,11 @@ function renderBody(){
     html+='<div class="drb-field"><label class="drb-label">Search story</label><div class="drb-search-wrap"><input class="drb-input" id="drbStorySearch" placeholder="Type story title…"/><div class="drb-dropdown" id="drbStoryDrop"></div></div><div id="drbStoryPicked"></div></div>';
     html+='<div class="drb-field"><label class="drb-label">Your note (optional)</label><textarea class="drb-textarea" id="drbText" rows="2" placeholder="Why this pick?"></textarea></div>';
   } else if(_cur==='debate'){
-    html+='<div class="drb-field"><label class="drb-label">Debate motion</label><input class="drb-input" id="drbExtra" placeholder=\'"Writers should be allowed to tag spoilers"\'/></div>';
+    html+='<div class="drb-field"><label class="drb-label">Debate motion</label><input class="drb-input" id="drbExtra" placeholder="e.g. Writers should be allowed to tag spoilers"/></div>';
     html+='<div class="drb-field"><label class="drb-label">Body (optional)</label><textarea class="drb-textarea" id="drbText" rows="3" placeholder="Add context…"></textarea></div>';
+    html+='<div class="drb-field"><label class="drb-label">Side labels (shown in cards)</label>'
+      +'<input class="drb-input" id="drbForText" placeholder="FOR label" value="'+escAttr(_forText)+'" style="margin-bottom:8px"/>'
+      +'<input class="drb-input" id="drbAgainstText" placeholder="AGAINST label" value="'+escAttr(_againstText)+'"/></div>';
     html+=_expField('debate');
     html+='<div id="drbDebatePreview" style="margin-top:10px;background:var(--l2,#f0f0f0);border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:12px;padding:12px"></div>';
   } else if(_cur==='forum-poll'){
@@ -162,14 +166,16 @@ function renderBody(){
 function updateDebatePreview(){
   const box=document.getElementById('drbDebatePreview'); if(!box) return;
   const motion=(document.getElementById('drbExtra')?.value.trim()) || '"Writers should be allowed to tag spoilers"';
+  const forText=document.getElementById('drbForText')?.value.trim()||_forText;
+  const againstText=document.getElementById('drbAgainstText')?.value.trim()||_againstText;
   const body=document.getElementById('drbText')?.value.trim() || '';
   box.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--tx-muted,#666);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Preview</div>'
     +'<div style="background:var(--l1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:12px;padding:12px">'
     +'<div style="font-size:13px;font-weight:800;color:var(--tx-high,#161616);line-height:1.4">'+esc(motion)+'</div>'
     +(body?'<div style="font-size:12px;color:var(--tx-muted,#666);margin-top:6px;line-height:1.5">'+esc(body)+'</div>':'')
     +'<div style="display:flex;gap:8px;margin-top:10px">'
-    +'<button style="flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--green,#34d399);background:rgba(52,211,153,.08);color:var(--green,#34d399);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-check"></i> For</button>'
-    +'<button style="flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--red,#f04438);background:rgba(248,113,113,.08);color:var(--red,#f04438);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-xmark"></i> Against</button>'
+    +'<button style="flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--green,#34d399);background:rgba(52,211,153,.08);color:var(--green,#34d399);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-check"></i>'+esc(forText)+'</button>'
+    +'<button style="flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--red,#f04438);background:rgba(248,113,113,.08);color:var(--red,#f04438);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-xmark"></i>'+esc(againstText)+'</button>'
     +'</div></div>';
 }
 
@@ -261,8 +267,13 @@ function bindBodyEvents(){
   if(imgUrl) imgUrl.addEventListener('input', function(){
     const v=imgUrl.value.trim();
     _pickedImage=v;
-    refreshImgPreview();
+    refreshImgPreview(); updatePostBtn();
   });
+  // debate side labels — store them globally for doPost
+  const forTxtEl=document.getElementById('drbForText');
+  const agTxtEl=document.getElementById('drbAgainstText');
+  if(forTxtEl) forTxtEl.addEventListener('input', function(){ _forText=this.value||'For'; updateDebatePreview(); });
+  if(agTxtEl) agTxtEl.addEventListener('input', function(){ _againstText=this.value||'Against'; updateDebatePreview(); });
   const imgClear=document.getElementById('drbImgClear');
   if(imgClear) imgClear.addEventListener('click', function(){
     _pickedImage=''; if(imgUrl) imgUrl.value=''; if(imgFile) imgFile.value=''; refreshImgPreview();
@@ -339,7 +350,12 @@ async function doPost(){
       const _motion = motion || '"This platform is better because of its readers."';
       // motion + question hold the same string (backend normaliser writes both)
       // so every renderer — feed card, discussion, search — finds the headline.
-      base.debateData={ motion:_motion, question:_motion, prompt: text||'', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null };
+      base.debateData={ 
+        motion:_motion, question:_motion, 
+        prompt: text||'', 
+        forText: _forText||'For', againstText: _againstText||'Against', 
+        forV:0, agV:0, userVote:null 
+      };
       const dexp=_expAt('debate'); if(dexp) base.expiresAt=dexp;
     } else if(_cur==='shoutout'){
       if(!_pickedUser) throw new Error('Search and select a writer or reader');

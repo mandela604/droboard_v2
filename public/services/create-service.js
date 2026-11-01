@@ -91,7 +91,7 @@ function loadTaxonomy(){
 ══════════════════════════════════════════════════════ */
 let MY_BOOKS = [];   // author's books — continue-existing-book list
 let STOCKS = [];     // stock cover images
-let accountStatus = { demoAs:null, flow:null };
+let accountStatus = { flow:null };
 
 function loadBooks(){
   // Live swap:
@@ -123,10 +123,9 @@ function loadAccountStatus(){
   //     .then(r=>r.json()).then(s=>{ accountStatus=s; });
   try {
     accountStatus = {
-      demoAs: localStorage.getItem('droboard_demo_as'),
       flow: JSON.parse(localStorage.getItem('dro_writer_flow') || 'null'),
     };
-  } catch (e) { accountStatus = { demoAs:null, flow:null }; }
+  } catch (e) { accountStatus = { flow:null }; }
   return Promise.resolve();
 }
 function recordSubmission(){
@@ -177,7 +176,7 @@ let dropdownOpen = false;
 function mkEngState(){ return {
   poll:{on:false,expanded:false,q:'',opts:['',''],exp:24},
   pred:{on:false,expanded:false,q:'',opts:['','',''],exp:72},
-  debate:{on:false,expanded:false,motion:'',exp:0},
+  debate:{on:false,expanded:false,motion:'',forText:'For',againstText:'Against',exp:0},
 };}
 
 /* Stage order depends on type: 'link' only applies to long stories.
@@ -865,6 +864,9 @@ function toggleEngExpand(chId, type){
 function updateEngField(chId, type, field, val){
   const ch = state.chapters.find(c=>c.id===chId); if (!ch) return;
   ch.eng[type][field] = val;
+  if (type !== 'debate' || (field !== 'forText' && field !== 'againstText')) return;
+  const chip = document.getElementById((field === 'forText' ? 'debPrevFor_' : 'debPrevAgainst_') + chId);
+  if (chip) chip.textContent = (field === 'forText' ? '✅ ' : '❌ ') + (val || (field === 'forText' ? 'For' : 'Against'));
 }
 function updateOpt(chId, type, i, val){
   const ch = state.chapters.find(c=>c.id===chId); if (!ch) return;
@@ -926,9 +928,12 @@ function renderChapters(){
     const debBody = `
       <div class="eng-config-lbl">The motion</div>
       <textarea class="opt-input" style="width:100%;min-height:56px;resize:vertical" placeholder='e.g. "Ada should stay and fight for her marriage."' oninput="updateEngField(${ch.id},'debate','motion',this.value)">${esc(eng.debate.motion)}</textarea>
+      <div class="eng-config-lbl" style="margin-top:12px;margin-bottom:7px;opacity:.8">Side labels (shown in cards)</div>
+      <div class="opt-row"><input class="opt-input" placeholder="FOR label" value="${esc(eng.debate.forText||'For')}" oninput="updateEngField(${ch.id},'debate','forText',this.value)"/></div>
+      <div class="opt-row"><input class="opt-input" placeholder="AGAINST label" value="${esc(eng.debate.againstText||'Against')}" oninput="updateEngField(${ch.id},'debate','againstText',this.value)"/></div>
       <div class="debate-sides-preview">
-        <div class="deb-side-prev for">✅ FOR</div>
-        <div class="deb-side-prev against">❌ AGAINST</div>
+        <div class="deb-side-prev for" id="debPrevFor_${ch.id}">✅ ${esc(eng.debate.forText||'For')}</div>
+        <div class="deb-side-prev against" id="debPrevAgainst_${ch.id}">❌ ${esc(eng.debate.againstText||'Against')}</div>
       </div>
       ${_expRow(ch,'debate')}`;
 
@@ -1008,10 +1013,8 @@ function setPubMode(mode){
   document.getElementById('schedRow').classList.toggle('show', mode==='schedule');
 }
 /* First-book submissions go straight to review — no scheduling.
-   Demo session/reader state: writer session or an already-approved
-   account counts as NOT first book (schedule allowed). */
+   An already-approved account counts as NOT first book (schedule allowed). */
 function isFirstBookSubmission(){
-  if (accountStatus.demoAs === 'writer') return false;
   return !(accountStatus.flow && accountStatus.flow.status === 'approved');
 }
 function applyFirstBookRules(){
@@ -1136,7 +1139,12 @@ function buildChapterPayload(ch, idx){
     const opts = ch.eng.pred.opts.map(o=>String(o||'').trim()).filter(Boolean).slice(0, 4);
     if (opts.length >= 2) out.prediction = { q: ch.eng.pred.q.trim().slice(0,300), opts, expiresAt: _expMs(ch.eng.pred.exp, ch.eng.pred.expAt) };
   }
-  if (ch.eng.debate.on && (ch.eng.debate.motion||'').trim()) out.debate = { motion: ch.eng.debate.motion.trim().slice(0,500), expiresAt: _expMs(ch.eng.debate.exp, ch.eng.debate.expAt) };
+  if (ch.eng.debate.on && (ch.eng.debate.motion||'').trim()) out.debate = {
+    motion: ch.eng.debate.motion.trim().slice(0,500),
+    forText: String(ch.eng.debate.forText||'').trim().slice(0,60) || 'For',
+    againstText: String(ch.eng.debate.againstText||'').trim().slice(0,60) || 'Against',
+    expiresAt: _expMs(ch.eng.debate.exp, ch.eng.debate.expAt)
+  };
   if (state.pubMode==='schedule' && state.schedAt) { out.status = 'scheduled'; out.scheduledAt = state.schedAt; }
   return out;
 }

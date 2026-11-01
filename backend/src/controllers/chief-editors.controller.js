@@ -52,6 +52,12 @@ async function assignments(req, res) {
 async function saveAssignments(req, res) {
   return base.wrap(res, async () => svc.saveAssignments(req.valid.params.id, req.valid.body, req.user.id));
 }
+async function assignAuthor(req, res) {
+  return base.wrap(res, async () => svc.assignAuthor(req.valid.params.id, req.valid.body.authorId, req.user.id));
+}
+async function unassignAuthor(req, res) {
+  return base.wrap(res, async () => svc.unassignAuthor(req.valid.params.id, req.valid.params.authorId, req.user.id));
+}
 // Option B queue: writers with no editor (chief picks who takes them).
 async function unassigned(req, res) {
   return base.wrap(res, async () => svc.listUnassignedAuthors(req.valid.query));
@@ -65,5 +71,5 @@ module.exports = {
   list, quotas, get, patch,
   createInvite, listInvites, patchInvite, resendInvite, cancelInvite,
   inviteByToken, acceptInvite,
-  authors, assignments, saveAssignments, unassigned, searchUsers,
+  authors, assignments, saveAssignments, assignAuthor, unassignAuthor, unassigned, searchUsers,
 };

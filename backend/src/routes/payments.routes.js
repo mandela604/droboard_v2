@@ -1,7 +1,6 @@
 'use strict';
 const { z } = require('zod');
 const ctrl = require('../controllers/payments.controller');
-const base = require('../controllers/base.controller');
 const { requireAuth } = require('../middleware/auth');
 const { validate, moneyLimiter, generalLimiter } = require('../middleware/http');
 
@@ -35,7 +34,7 @@ router.post('/appstore/verify', requireAuth, moneyLimiter, validate(z.object({ b
 // No auth: the checkout sheet has to know which channels can actually take
 // money before the reader signs in, otherwise it offers a dead one.
 router.get('/config', generalLimiter,
-  async (req, res) => base.wrap(res, async () => ctrl.config()));
+  async (req, res) => ctrl.config(req, res));
 // Provider webhooks (no auth; HMAC/hash verified in controller).
 // NOTE: server.js parses these routes with express.raw — do not move them
 // behind express.json or Paystack HMAC verification breaks.

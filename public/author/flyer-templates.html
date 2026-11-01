@@ -89,7 +89,7 @@ a{color:inherit;text-decoration:none}
 <script src="../data/central-demo-data.js"></script>
 <script src="../marketing/shared/flyer-templates-data.js?v=5"></script>
 <script src="../component/flyer-preview.js?v=5"></script>
-<script src="../services/auth-session.js"></script>
+<script src="../services/auth-session.js?v=3"></script>
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js?v=2"></script>
 <script>
@@ -101,10 +101,9 @@ function toast(msg){var h=document.getElementById('toastHost');var el=document.c
 function readCopies(){try{return JSON.parse(localStorage.getItem(COPY_KEY)||'{}')||{}}catch(e){return{}}}
 function writeCopy(id,vars){var all=readCopies();all[id]=vars;try{localStorage.setItem(COPY_KEY,JSON.stringify(all))}catch(e){}}
 function myProfile(){
-  // Demo session only carries a writer when the writer account is active;
-  // otherwise fall back to the Author Center identity shown on the dashboard.
-  var mode=null; try{ mode=localStorage.getItem('droboard_demo_as'); }catch(e){}
-  var s=(mode==='writer'&&window.AuthSession&&AuthSession.getSync)?AuthSession.getSync():{};
+  // Real session first; fall back to the Author Center identity shown on
+  // the dashboard when nobody is signed in.
+  var s=(window.AuthSession&&AuthSession.getSync)?AuthSession.getSync():{};
   return { authorName:s.name||'Luna Vale', handle:s.handle?('@'+String(s.handle).replace(/^@/,'')):'@luna_vale', userPhoto:s.avatar||'' };
 }
 function savedCount(){var all=readCopies();return Object.keys(all).length;}

@@ -1,0 +1,65 @@
+mongod up: mongodb://127.0.0.1:53609/dro_sa_pages
+
+=== TESTING DASHBOARD SUMMARY ===
+
+PASS  GET /dashboard/summary -> 200  ::  status=200
+FAIL  dashboard has kpiCards array  ::  kpiCards type=undefined
+FAIL  dashboard has revenueChart array  ::  revenueChart type=undefined
+PASS  dashboard has topStories array  ::  topStories type=object
+FAIL  dashboard has activityLog array  ::  activityLog type=undefined
+FAIL  dashboard has adminTeam array  ::  adminTeam type=undefined
+FAIL  topStory has title, writer, genre, reads, revenue  ::  {"id":"000001a1-9476-7186-909c-23acd7dbacdf","title":"The runaway bride — I left at the altar in my socked feet","authorId":"000001a1-9476-73b2-85da-5466232352fa","reads":0,"likes":0,"status":"published"}
+FAIL  topStory has cover url  ::  cover=undefined
+
+=== TESTING USERS LIST ===
+
+PASS  GET /users -> 200  ::  status=200
+PASS  users list has items array  ::  items type=OK
+PASS  users list returns created users  ::  found=4 expected>=4
+PASS  user row has id, name, email, username  ::  {"id":"000001a1-9476-73b2-85da-5466232352fa","name":"Ifeanyi Story","username":"ifeanyi_author","email":"ifeanyi@droboard.com","role":"Reader","status":"active","avatar":"https://i.pravatar.cc/150?img=12","verified":false,"joined":"2026-11-
+PASS  user row has role field  ::  role=Reader,roles=undefined
+FAIL  user row has stats object  ::  stats=undefined
+FAIL  user row has wallet.balance.coins  ::  coins=undefined
+PASS  user row has coinsSpent (not naira)  ::  coinsSpent=0
+
+=== TESTING SINGLE USER DETAILS ===
+
+PASS  GET /users/:id -> 200  ::  status=200
+PASS  user detail matches list fields  ::  id=000001a1-9476-73b2-85da-5466232352fa,name=Ifeanyi Story
+PASS  user detail has profile info  ::  profile=undefined,avatar=https://i.pravatar.cc/150?img=12
+PASS  user detail has statistics  ::  stories=2,wordsRead=undefined
+
+=== TESTING INSIGHTS OVERVIEW ===
+
+PASS  GET /insights/overview -> 200  ::  status=200
+PASS  overview has users array  ::  users type=object
+PASS  overview has ex array (expenditure)  ::  ex type=object
+FAIL  overview has cohorts array  ::  cohorts type=undefined
+PASS  overview user has coinsSpent, coinsBought  ::  coinsSpent=0,coinsBought=0
+PASS  expenditure row has u (userId) and x object  ::  {"u":"000001a1-9476-711c-b51e-605bbe9c79be","x":{"referralsSent":0,"referralsConverted":0,"plan":"free","funded":0,"sessionsPerDay":0}}
+PASS  expenditure x has funded  ::  funded=0
+
+=== TESTING LEADERBOARD ===
+
+PASS  GET /insights/leaderboard -> 200  ::  status=200
+PASS  leaderboard has items array  ::  items type=object
+
+=== TESTING ANALYTICS SUMMARY ===
+
+PASS  GET /analytics/summary -> 200  ::  status=200
+PASS  analytics summary has totalUsers  ::  totalUsers=4
+FAIL  analytics summary has totalRevenue  ::  totalRevenue=undefined
+FAIL  analytics summary has monthlyRevenue array  ::  monthlyRevenue type=undefined
+
+===== 22/33 Super Admin page assertions passed =====
+  FAIL dashboard has kpiCards array :: kpiCards type=undefined
+  FAIL dashboard has revenueChart array :: revenueChart type=undefined
+  FAIL dashboard has activityLog array :: activityLog type=undefined
+  FAIL dashboard has adminTeam array :: adminTeam type=undefined
+  FAIL topStory has title, writer, genre, reads, revenue :: {"id":"000001a1-9476-7186-909c-23acd7dbacdf","title":"The runaway bride — I left at the altar in my socked feet","authorId":"000001a1-9476-73b2-85da-5466232352fa","reads":0,"likes":0,"status":"published"}
+  FAIL topStory has cover url :: cover=undefined
+  FAIL user row has stats object :: stats=undefined
+  FAIL user row has wallet.balance.coins :: coins=undefined
+  FAIL overview has cohorts array :: cohorts type=undefined
+  FAIL analytics summary has totalRevenue :: totalRevenue=undefined
+  FAIL analytics summary has monthlyRevenue array :: monthlyRevenue type=undefined

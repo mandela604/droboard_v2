@@ -87,6 +87,12 @@ body{font-family:'Inter',system-ui,sans-serif}
 .detail-link:hover{border-color:var(--gold)}
 .detail-flag{font-size:11.5px;font-weight:700;color:var(--text-muted);padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-family:inherit}
 .detail-flag:hover{color:var(--red);border-color:var(--red)}
+.detail-flag.on{color:var(--green);border-color:var(--green)}
+.flag-banner{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:10px 12px;background:var(--red-bg);border:1px solid rgba(224,56,77,.25);border-radius:8px;font-size:11.5px;color:var(--red);line-height:1.5}
+.flag-banner i{margin-top:2px}
+.flag-note{color:var(--text-muted);margin-top:2px}
+.flag-meta{color:var(--text-faint);font-size:10.5px;margin-top:3px}
+.row-flag{color:var(--red);font-size:10px;margin-left:4px}
 
 .list-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px}
 .list-footer-info{font-size:11.5px;color:var(--text-faint)}
@@ -125,6 +131,7 @@ body{font-family:'Inter',system-ui,sans-serif}
         <option value="active">Active</option>
         <option value="growing">Growing</option>
         <option value="quiet">Quiet</option>
+        <option value="flagged">Flagged</option>
       </select>
       <select class="select" id="sortFilter">
         <option value="members">Sort: Most Members</option>
@@ -159,6 +166,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 </div>
 
 <script src="shared/super-admin-sidebar.js"></script>
-<script src="genre-boards-service.js"></script>
+<script src="genre-boards-service.js?v=2"></script>
 </body>
 </html>

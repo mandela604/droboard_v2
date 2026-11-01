@@ -117,9 +117,6 @@
     .dgc-eng-opt-txt{font-size:12px;font-weight:600;color:var(--tx-body,#3a3a3a)}
     .dgc-eng-opt-pct{font-size:11px;font-weight:800;color:var(--acc,#ff0050)}
     .dgc-eng-opt-mine{color:var(--acc,#ff0050);font-weight:700}
-    .dgc-eng.pred .dgc-eng-opt.voted{border-color:var(--purple,#a78bfa)}
-    .dgc-eng.pred .dgc-eng-opt-bar{background:rgba(167,139,250,.12)}
-    .dgc-eng.pred .dgc-eng-opt-pct,.dgc-eng.pred .dgc-eng-opt-mine{color:var(--purple,#a78bfa)}
     .dgc-eng-foot{padding:8px 14px;font-size:10px;color:var(--tx-muted,#666);display:flex;justify-content:space-between;align-items:center}
     .dgc-eng-foot-link{color:var(--acc,#ff0050);font-weight:800;cursor:pointer}
     .dgc-eng-deb-sides{display:flex;gap:8px;padding:0 14px 6px}
@@ -289,7 +286,7 @@
     return match(_posts) || _bindings.reduce((found, b) => found || match(b.posts), undefined);
   }
 
-  // ── Engagement widgets (poll / prediction / debate) — reader-page UI, always expanded ──
+  // ── Engagement widgets (poll / debate) — reader-page UI, always expanded ──
   function _fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n || 0); }
   function _engShell(icon, title, sub, bodyHtml) {
     return `<div class="dgc-eng" data-dgc-eng>
@@ -319,22 +316,6 @@
       <div class="dgc-eng-foot"><span>${pl.voted >= 0 ? 'Thanks for voting' : 'Tap an option to vote'}</span><span>${_fmtN(total)} votes</span></div>`;
     return _engShell('📊', 'Poll', `${_fmtN(total)} votes`, body);
   }
-  function _predHtml(p) {
-    const pr = p.prediction || {};
-    const opts = pr.opts || [];
-    const total = pr.total || opts.reduce((a, o) => a + (o.v || 0), 0) || 1;
-    const rows = opts.map((o, i) => {
-      const pct = Math.round(((o.v || 0) / total) * 100) || 0;
-      const voted = pr.voted === i;
-      return `<div class="dgc-eng-opt${voted ? ' voted' : ''}" data-dgc-pred-opt="${_esc(p.id)}:${i}">
-        <div class="dgc-eng-opt-bar" style="width:${pct}%"></div>
-        <div class="dgc-eng-opt-row"><span class="dgc-eng-opt-txt">${_esc(o.label || o.t || o.text)}${voted ? ' <span class="dgc-eng-opt-mine">· your pick</span>' : ''}</span><span class="dgc-eng-opt-pct">${pct}%</span></div>
-      </div>`;
-    }).join('');
-    const body = `<div class="dgc-eng-q">${_esc(pr.question || pr.q)}</div><div class="dgc-eng-opts">${rows}</div>
-      <div class="dgc-eng-foot"><span>${pr.voted >= 0 ? 'Prediction locked in' : 'Tap an option to predict'}</span><span>${_fmtN(total)} predicts</span></div>`;
-    return _engShell('🔮', 'Prediction', `${_fmtN(total)} predicts`, body);
-  }
   function _debHtml(p) {
     const d = p.debateData || {};
     const f = d.forV || 0, a = d.agV || 0, tot = (f + a) || 1;
@@ -357,7 +338,6 @@
   function _engHtml(p) {
     let h = '';
     if (p.poll) h += _pollHtml(p);
-    if (p.prediction) h += _predHtml(p);
     if (p.debateData) h += _debHtml(p);
     return h;
   }
@@ -538,15 +518,6 @@
             const [pid, idx] = pollOpt.dataset.dgcPollOpt.split(':');
             const p = _find(pid);
             if (p && typeof hooksNow.onPollVote === 'function') hooksNow.onPollVote(p, parseInt(idx, 10));
-          });
-          return;
-        }
-        const predOpt = e.target.closest('[data-dgc-pred-opt]');
-        if (predOpt) {
-          handled(() => {
-            const [pid, idx] = predOpt.dataset.dgcPredOpt.split(':');
-            const p = _find(pid);
-            if (p && typeof hooksNow.onPredVote === 'function') hooksNow.onPredVote(p, parseInt(idx, 10));
           });
           return;
         }

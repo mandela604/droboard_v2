@@ -1,0 +1,32 @@
+mongod up: mongodb://127.0.0.1:57063/dro_coins_lock
+PASS  POST /api/wallet/tip -> 200  ::  status=200 {"balance":{"coins":450,"bonus":0,"paid":450},"writerShare":225}
+PASS  tip row stamps paidCoins = 50, bonusCoins = 0  ::  {"coins":50,"p":50,"b":0,"fiat":750}
+PASS  GET /super-admin/users -> 200  ::  status=200 {"items":[{"id":"000001a1-8eea-77e5-9d49-97d8fe47a5a7","name":"Lock writer","username":"writer17933990723450.5814195067960692","email":"writer17933990723450.343
+PASS  users row exists  ::  ["000001a1-8eea-77e5-9d49-97d8fe47a5a7"]
+PASS  coinsSpent is coins, not naira  ::  got=240 want=240
+PASS  spend is NOT the old fiat sum  ::  old formula would say 4505
+PASS  readCoins counts chapter unlocks only  ::  got=60
+PASS  tipsCoins counts tips + gifts  ::  got=180
+PASS  bonusCoinsSpent isolates granted coins  ::  got=20
+PASS  coinsBought counts the two packs, refunds excluded  ::  got=300
+PASS  earnCoins reports the reward grant  ::  got=25
+PASS  fundedNGN converts the USD pack to naira  ::  got=4900 want=4900 (1500 NGN + 3000 face + 400 premium)
+PASS  users list survives stat rows  ::  status=200 rows=3
+PASS  author row carries its book count  ::  stories=1
+PASS  author row keeps lifetimeEarned as payout  ::  payout=777225
+PASS  author with no coin history reads zeros  ::  {"s":0,"b":0,"f":0}
+PASS  author tipsReceivedNGN comes off the ledger tip leg  ::  got=225 share=225
+PASS  a reader has no tips-received money  ::  reader tipsReceivedNGN=0
+PASS  GET /users/:id -> 200  ::  status=200
+PASS  detail page agrees with the list  ::  {"s":240,"t":180,"f":4900}
+PASS  tipsAmount key is gone (tipsCoins replaced it)  ::  tipsAmount=undefined
+PASS  GET /insights/overview -> 200  ::  status=200
+PASS  overview users carry coins, not naira  ::  {"s":240,"b":300}
+PASS  funded = cash the reader paid in  ::  {"referralsSent":0,"referralsConverted":0,"plan":"free","funded":4900,"sessionsPerDay":12}
+PASS  funded is no longer the author wallet  ::  author lifetimeEarned=777000, funded=4900
+PASS  GET /analytics/top-readers -> 200  ::  status=200
+PASS  top readers expose coinsSpent + tipsCoins  ::  {"s":240,"t":180,"w":12000}
+PASS  reader history sums to the console number  ::  reader=240 console=240
+PASS  reader balance still reports coins  ::  {"coins":450,"bonus":0,"paid":450}
+
+===== 29/29 live coin-ledger assertions passed =====

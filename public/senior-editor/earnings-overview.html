@@ -19,12 +19,7 @@
 <body>
 <div id="dashboardRoot">
   <div class="page-hdr-row"><div></div><button class="btn-add" onclick="EarningsOverviewService.exportReport()"><i class="fas fa-download"></i> Export Report</button></div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="num" style="color:var(--green)">$284.5K</div><div class="lbl">Total Platform Earnings</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +18% from last month</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--accent)">$148.2K</div><div class="lbl">Author Payouts</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +22% from last month</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--blue)">$92.4K</div><div class="lbl">Platform Commission</div><div class="delta up"><i class="fas fa-arrow-up" style="font-size:8px"></i> +15% from last month</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--amber)">$43.9K</div><div class="lbl">Ad Revenue</div><div class="delta down"><i class="fas fa-arrow-down" style="font-size:8px"></i> -3% from last month</div></div>
-  </div>
+  <div class="stats-grid" id="overviewStats"></div>
   <div class="charts-grid">
     <div class="panel"><div class="panel-head"><h2>Monthly Earnings Trend</h2><a onclick="EarningsOverviewService.openDetailedAnalytics()">View Details</a></div>
       <div class="legend">
@@ -39,10 +34,11 @@
     </div>
   </div>
 </div>
-<script src="shared/api.js"></script>
+<script src="shared/api.js?v=3"></script>
 <script src="shared/story-modal.js"></script>
 <script src="shared/senior-editor-sidebar.js"></script>
 <script src="remaining-pages-enhanced.js"></script>
-<script src="services/earnings-overview-service.js"></script><script>EarningsOverviewService.init();</script>
+<script src="../services/currency-service.js?v=8"></script>
+<script src="services/earnings-overview-service.js?v=3"></script><script>EarningsOverviewService.init();</script>
 </body>
 </html>

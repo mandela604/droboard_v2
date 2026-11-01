@@ -34,8 +34,12 @@ function plugin(schema) {
   // Do NOT touch _id — it stays ObjectId.
   // Stored custom id: every doc gets id = uuidv7().
   schema.add({ id: { type: String, default: uuidv7, unique: true, index: true } });
+  // Insert-time only. A document loaded with a projection that excludes `id`
+  // has this.id undefined, and minting a replacement on save() then rewrote the
+  // user's public id — silently orphaning every stored reference (authorId,
+  // wallet userId, follow rows) and invalidating live token subjects.
   schema.pre('validate', function (next) {
-    if (!this.id) this.id = uuidv7();
+    if (!this.id && this.isNew) this.id = uuidv7();
     next();
   });
   const prev = (schema.options.toJSON && schema.options.toJSON.transform) || null;

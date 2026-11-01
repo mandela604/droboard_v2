@@ -33,11 +33,10 @@ const SECTIONS = {
     html: () => `
       <div class="ca-head" style="margin-top:0;padding-bottom:14px;border-bottom:1px solid var(--border)"><h2>Coin Rate</h2><p>Set how coins convert to real currency</p></div>
       <div class="form-group" style="margin-top:18px"><label>Coin-to-Dollar Rate ($)</label><div class="desc">How much 1 coin costs in USD</div><input type="number" id="f-coinRate" value="0.02" min="0.01" step="0.01"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> 1 coin = $<span id="coinRatePreview">0.02</span> &nbsp;|&nbsp; 100 coins = $<span id="coinRate100">2.00</span></div></div>
-      <div class="form-group"><label>Coin-to-USD Rate ($)</label><div class="desc">How much 1 coin costs in USD (for international users)</div><input type="number" id="f-coinRateUsd" value="0.02" min="0.01" step="0.01"/></div>
 
-      <div class="ca-head" style="margin-top:28px"><h2>Display Currency</h2><p>One switch for every price on every page</p></div>
-      <div class="form-group" style="margin-top:18px"><label>Base currency (Naira recommended)</label><div class="desc">Home/settlement currency — finance legs are authored in this. Unknown locations display USD.</div><select id="f-curBase" class="f-inp" style="max-width:240px"><option value="NGN">NGN ₦ Naira</option><option value="USD">USD $ Dollar</option><option value="GBP">GBP £ Pound</option></select></div>
-      <div class="form-group"><label>Force one currency everywhere</label><div class="desc">Auto shows each reader their local ladder. Lock to override all pages at once.</div><select id="f-curLock" class="f-inp" style="max-width:240px"><option value="">Auto (per-location)</option><option value="NGN">NGN ₦ only</option><option value="USD">USD $ only</option><option value="GBP">GBP £ only</option></select><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> Now showing: <b id="curNow">—</b></div></div>
+      <div class="ca-head" style="margin-top:28px"><h2>Display Currency</h2><p>Two separate policies: staff screens restate, reader prices follow the reader</p></div>
+      <div class="form-group" style="margin-top:18px"><label>Staff currency (Naira recommended)</label><div class="desc">Every admin, editor and finance screen restates its dollar figures into this currency. Reader prices and author earnings ignore it.</div><select id="f-curBase" class="f-inp" style="max-width:240px"><option value="NGN">NGN ₦ Naira</option><option value="USD">USD $ Dollar</option><option value="GBP">GBP £ Pound</option></select></div>
+      <div class="form-group"><label>Lock reader prices to one currency</label><div class="desc">Unlocked: each reader sees the ladder leg for their own location, and a market with no leg shows as unavailable. Locked: every reader page shows this one currency.</div><select id="f-curLock" class="f-inp" style="max-width:240px"><option value="">Auto (per-location)</option><option value="NGN">NGN ₦ only</option><option value="USD">USD $ only</option><option value="GBP">GBP £ only</option></select><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> Now showing: <b id="curNow">—</b></div></div>
 
       <div class="ca-head" style="margin-top:28px"><h2>Chapter Pricing</h2><p>Default pricing rules for chapter unlocks</p></div>
       <div class="form-group" style="margin-top:18px"><label>Default Chapter Price (coins)</label><div class="desc">Default coin cost editors can use when setting chapter prices</div><input type="number" id="f-defaultChapterPrice" value="15" min="0"/></div>
@@ -100,8 +99,7 @@ const SECTIONS = {
     title: 'Payment Settings',
     desc: 'Configure payment gateways and payout preferences',
     html: () => `
-      <div class="form-group"><label>Default Currency</label><select><option>USD ($)</option><option>EUR (€)</option><option>NGN (₦)</option><option>GBP (£)</option></select></div>
-      <div class="form-group"><label>Minimum Payout</label><div class="desc">Minimum amount before an author can withdraw</div><input type="text" value="$50.00"/></div>
+      <div class="form-group"><label>Minimum Payout (USD)</label><div class="desc">Minimum dollar balance before an author can withdraw. Author earnings always settle and read in dollars.</div><input type="text" value="$50.00"/></div>
       <div class="form-group"><label>Payout Schedule</label><select><option>Monthly (1st of every month)</option><option>Bi-weekly</option><option>Weekly</option><option>Manual (admin initiated)</option></select></div>
       <div class="form-group"><label>Platform Commission (%)</label><input type="number" value="30" min="0" max="100"/></div>
       <div class="form-group"><label>Payment Gateway</label><select><option>Stripe</option><option>PayPal</option><option>Flutterwave</option><option>Paystack</option></select></div>
@@ -148,6 +146,37 @@ const SECTIONS = {
 // ── Render active section ───────────────────────────────
 let activeSection = 'general';
 
+const SETTINGS_KEY = 'dro_sa_platform_settings';
+
+function readSavedSettings() {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function applySavedSettings() {
+  const saved = readSavedSettings();
+  Object.keys(saved).forEach(function (key) {
+    if (key.indexOf('__toggle') === 0) return;
+    const el = document.getElementById(key);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!saved[key]; else el.value = saved[key];
+  });
+  document.querySelectorAll('#settingsContent .toggle-switch').forEach(function (t, i) {
+    if (saved['__toggle' + i] === undefined) return;
+    t.classList.toggle('active', !!saved['__toggle' + i]);
+  });
+}
+
+function collectSettings() {
+  const out = {};
+  document.querySelectorAll('#settingsContent input[id], #settingsContent select[id], #settingsContent textarea[id]').forEach(function (el) {
+    out[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  document.querySelectorAll('#settingsContent .toggle-switch').forEach(function (t, i) {
+    out['__toggle' + i] = t.classList.contains('active');
+  });
+  return out;
+}
+
 function renderSection(sectionId) {
   const section = SECTIONS[sectionId];
   if (!section) return;
@@ -157,6 +186,8 @@ function renderSection(sectionId) {
     ${section.html()}
   `;
   activeSection = sectionId;
+  applySavedSettings();
+  if (window.DroboardCurrency) syncCurrencyInputs();
 }
 
 // ── Nav click handlers ──────────────────────────────────
@@ -169,13 +200,10 @@ document.querySelectorAll('.sn-item').forEach(item => {
 });
 
 // ── Save button ────────────────────────────────────────
-document.getElementById('saveAllBtn').addEventListener('click', async () => {
-  toast('Saving all settings…');
-  // Simulate API call
-  if (window.DroboardAPI && DroboardAPI.updateBook) {
-    await new Promise(r => setTimeout(r, 600));
-  }
-  toast('✅ All settings saved successfully!');
+document.getElementById('saveAllBtn').addEventListener('click', () => {
+  const merged = Object.assign(readSavedSettings(), collectSettings());
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged)); } catch (e) {}
+  toast('✅ Settings saved');
 });
 
 // ── Init ───────────────────────────────────────────────
@@ -192,7 +220,7 @@ function syncCurrencyInputs() {
   var now = document.getElementById('curNow');
   if (now) {
     var g = DroboardCurrency.get();
-    now.textContent = g.locked ? g.locked + ' (locked everywhere)' : g.currency + ' (auto' + (g.country ? ', ' + g.country : '') + '), base ' + g.base;
+    now.textContent = g.staff + ' for staff screens · ' + g.reader + ' for reader prices' + (g.locked ? ' (locked)' : ' (auto' + (g.country ? ', ' + g.country : '') + ')');
   }
 }
 document.getElementById('settingsContent').addEventListener('change', function (e) {

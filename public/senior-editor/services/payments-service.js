@@ -21,6 +21,10 @@ async function callBackend(path, options) {
   }
 }
 
+/* Payment amounts are dollar figures (live: USD number; demo seeds: '$3,420.00'
+   strings). usdToMoney parses either and restates in the currency Super Admin set. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
+
 const PAYMENTS=[
   {id:'PYMT-0156',recipient:'Amara Okafor',amount:'$3,420.00',method:'Bank Transfer',status:'completed',date:'Jun 17, 2026'},
   {id:'PYMT-0155',recipient:'Sofia Lindqvist',amount:'$2,180.00',method:'PayPal',status:'completed',date:'Jun 17, 2026'},
@@ -60,8 +64,12 @@ function openReconciliation(){ svcToast('Opening reconciliation report…'); }
 function viewPayment(id){ return callBackend('/payments/' + encodeURIComponent(id)).then(function(r){ if(!r) svcToast('Viewing payment…'); }); }
 function moreActions(id){ svcToast('More actions…'); }
 function renderTable(list){const b=document.getElementById('tableBody');if(!list.length){b.innerHTML=`<tr class="empty-row"><td colspan="7"><i class="fas fa-credit-card"></i>No payments match.</td></tr>`;return}
-b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Payment ID" style="font-weight:700">${r.id}</td><td data-label="Recipient" style="font-weight:600">${r.recipient}</td><td data-label="Amount" style="font-weight:800">${r.amount}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Date" style="font-weight:600">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" onclick="PaymentsService.viewPayment('${r.id}')"><i class="fas fa-eye"></i></button><button class="act-btn" onclick="PaymentsService.moreActions('${r.id}')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
+b.innerHTML=list.slice(0,8).map(r=>`<tr><td data-label="Payment ID" style="font-weight:700">${r.id}</td><td data-label="Recipient" style="font-weight:600">${r.recipient}</td><td data-label="Amount" style="font-weight:800">${money(r.amount)}</td><td data-label="Method" style="font-weight:600">${r.method}</td><td data-label="Status">${statusPillHtml(r.status)}</td><td data-label="Date" style="font-weight:600">${r.date}</td><td data-label="Actions"><div class="actions-cell"><button class="act-btn" onclick="PaymentsService.viewPayment('${r.id}')"><i class="fas fa-eye"></i></button><button class="act-btn" onclick="PaymentsService.moreActions('${r.id}')"><i class="fas fa-ellipsis"></i></button></div></td></tr>`).join('')}
 function renderPageInfo(c){const s=Math.min(8,c);document.getElementById('pageInfo').innerHTML=`Showing <b>${c?1:0}</b> to <b>${s}</b> of <b>181</b> payments`}
+/* Page totals above the table were typed into the markup as '$84,200', so they
+   could never follow the admin currency. Same numbers, rendered here instead. */
+const SUMMARY_STATS={stDisbursed:84200,stAvg:540,stAvgDelta:3600,kvThisMonth:12840,kvLastMonth:10220,kvPendingAmount:8450};
+function renderSummaryStats(){Object.keys(SUMMARY_STATS).forEach(function(id){const el=document.getElementById(id);if(!el)return;el.textContent=id==='stAvgDelta'?money(SUMMARY_STATS[id])+' avg':money(SUMMARY_STATS[id]);})}
 function refresh(){const l=currentFiltered();renderTable(l);renderPageInfo(l.length)}
 
 async function loadPayments(){
@@ -70,7 +78,7 @@ async function loadPayments(){
     PAYMENTS = data.payments.map(p => ({
       id: p.id,
       recipient: p.recipient || p.recipientName || '',
-      amount: p.amount != null ? '$' + Number(p.amount).toLocaleString('en-US', {minimumFractionDigits: 2}) : '$0.00',
+      amount: Number(p.amount) || 0,
       method: p.method || '',
       status: p.status || 'pending',
       date: p.date || p.createdAt || ''
@@ -90,7 +98,7 @@ function init(){
   SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'payments',title:'Payments',subtitle:'Manage platform payments and disbursements',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search payments...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
   loadPayments();
   bindEvents();
-  renderPagination();refresh();
+  renderPagination();renderSummaryStats();refresh();
 }
 
 window.PaymentsService={init:init,exportReport:exportReport,openDatePicker:openDatePicker,openPaymentSettings:openPaymentSettings,openReconciliation:openReconciliation,viewPayment:viewPayment,moreActions:moreActions};

@@ -45,11 +45,15 @@ var _bound=false;
 /* ── Helpers ── */
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function round2(n){return Math.round((Number(n)||0)*100)/100;}
-function curCode(){return (SUMMARY&&SUMMARY.currency)||DEMO_SUMMARY.currency;}
+/* Pay is stored in dollars (the backend summary's `currency` says what the
+   numbers ARE, not how they should be shown). Displays restate that figure in
+   the currency Super Admin set; the withdrawal INPUT stays dollars, because
+   that is the unit the POST body is written in. */
 function money(n){
-  var sym={NGN:'\u20a6',USD:'$',GBP:'\u00a3',EUR:'\u20ac'}[curCode()]||(curCode()+' ');
-  return sym+Math.abs(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(Math.abs(Number(n)||0));
+  return '$' + Math.abs(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+function moneySigned(n){ var v=Number(n)||0; return (v<0?'-':'+') + money(v); }
 function authHeaders(extra){
   var h=Object.assign({'Accept':'application/json'},extra||{});
   var t=null;try{t=localStorage.getItem('dro_access_token')||sessionStorage.getItem('dro_access_token');}catch(e){}
@@ -180,7 +184,8 @@ function render(){
         : '<div class="tx-thumb earning"><i class="fas fa-arrow-down"></i></div>')
       : '<div class="tx-thumb withdrawal"><i class="fas fa-arrow-up"></i></div>';
     var amtCls=isEarning?'positive':'negative';
-    return '<div><div class="item-row'+(isOpen?' is-open':'')+'" data-id="'+esc(a.id)+'">'+thumb+'<div class="tx-info"><span class="tx-title">'+esc(a.title)+'</span><span class="tx-sub">'+esc(a.id)+'</span></div><div class="tx-date col-date">'+esc(a.date)+'</div><div class="amount '+amtCls+'">'+esc(a.amount)+'</div><div class="col-status">'+statusPill(a.status)+'</div></div><div class="item-detail'+(isOpen?' show':'')+'" id="detail-'+esc(a.id)+'"></div></div>';
+    var amtHtml = typeof a.num === 'number' ? moneySigned(a.num) : esc(a.amount);
+    return '<div><div class="item-row'+(isOpen?' is-open':'')+'" data-id="'+esc(a.id)+'">'+thumb+'<div class="tx-info"><span class="tx-title">'+esc(a.title)+'</span><span class="tx-sub">'+esc(a.id)+'</span></div><div class="tx-date col-date">'+esc(a.date)+'</div><div class="amount '+amtCls+'">'+amtHtml+'</div><div class="col-status">'+statusPill(a.status)+'</div></div><div class="item-detail'+(isOpen?' show':'')+'" id="detail-'+esc(a.id)+'"></div></div>';
   }).join('');
   if(openRowId&&page.some(function(a){return a.id===openRowId;}))renderDetail(openRowId);
   document.getElementById('pageInfo').innerHTML='Showing <b>'+(start+1)+'</b> – <b>'+Math.min(start+PER_PAGE,total)+'</b> of <b>'+total+'</b> transactions';
@@ -190,7 +195,8 @@ function renderDetail(id){
   var a=txns.find(function(x){return x.id===id;});if(!a)return;
   var p=document.getElementById('detail-'+id);if(!p)return;
   var isEarning=a.type==='earning';
-  p.innerHTML='<div class="detail-inner"><div class="detail-grid"><div class="detail-card"><label>Transaction ID</label><b>'+esc(a.id)+'</b></div><div class="detail-card"><label>Type</label><b>'+(isEarning?'Earning':'Withdrawal')+'</b></div><div class="detail-card accent"><label>Amount</label><b>'+esc(a.amount)+'</b></div><div class="detail-card"><label>Date</label><b>'+esc(a.date)+'</b></div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="fas fa-note-sticky" style="color:var(--accent)"></i> Description</div><p style="font-size:12.5px;color:var(--text-muted);line-height:1.7">'+esc(a.desc)+'</p></div></div>';
+  var amtDetail = typeof a.num === 'number' ? moneySigned(a.num) : esc(a.amount);
+  p.innerHTML='<div class="detail-inner"><div class="detail-grid"><div class="detail-card"><label>Transaction ID</label><b>'+esc(a.id)+'</b></div><div class="detail-card"><label>Type</label><b>'+(isEarning?'Earning':'Withdrawal')+'</b></div><div class="detail-card accent"><label>Amount</label><b>'+amtDetail+'</b></div><div class="detail-card"><label>Date</label><b>'+esc(a.date)+'</b></div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="fas fa-note-sticky" style="color:var(--accent)"></i> Description</div><p style="font-size:12.5px;color:var(--text-muted);line-height:1.7">'+esc(a.desc)+'</p></div></div>';
 }
 function renderPag(tp){
   var w=document.getElementById('pageBtns');if(tp<=1){w.innerHTML='';return;}

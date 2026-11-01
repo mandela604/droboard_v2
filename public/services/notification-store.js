@@ -387,12 +387,13 @@
   /* ── role detection (one inbox, two views) ───────────────── */
   function account() {
     let u = {};
-    try { u = JSON.parse(localStorage.getItem('aurum_user') || localStorage.getItem('droboard_user') || '{}') || {}; } catch (e) {}
+    try { u = JSON.parse(localStorage.getItem('droboard_user') || '{}') || {}; } catch (e) {}
     const role = String(u.role || '').toLowerCase();
+    const roles = (Array.isArray(u.roles) ? u.roles : []).map(function (r) { return String(r).toLowerCase(); });
     const isWriter = role === 'author' || role === 'writer' || u.isWriter === true
-      || /luna|author|writer/i.test(String(u.handle || u.name || ''));
-    const isReader = role === 'reader' || u.isReader === true || !isWriter;
-    return { isWriter, isReader, both: isWriter && isReader, handle: u.handle || 'You_Reader' };
+      || roles.indexOf('author') > -1 || roles.indexOf('writer') > -1;
+    const isReader = role === 'reader' || u.isReader === true || roles.indexOf('reader') > -1 || !isWriter;
+    return { isWriter, isReader, both: isWriter && isReader, handle: u.handle || u.username || null };
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -473,10 +474,9 @@
     const out = [];
     try {
       if (!window.AwardsEngine || !AwardsEngine.grantedFor) return out;
-      let got = AwardsEngine.grantedFor(account().handle) || [];
-      /* the demo pen name has no grants yet — borrow a real holder so the
-         card shows the actual catalog instead of an empty achievements bin */
-      if (!got.length) got = AwardsEngine.grantedFor('Ada_Writes') || [];
+      const handle = account().handle;
+      if (!handle) return out;
+      const got = AwardsEngine.grantedFor(handle) || [];
       got.forEach(function (a) {
         const full = (window.AwardsService && AwardsService.byId) ? (AwardsService.byId(a.id) || {}) : {};
         out.push({ key: 'aw:' + a.id, name: a.name, desc: a.desc || full.desc || '',

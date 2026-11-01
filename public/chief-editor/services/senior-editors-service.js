@@ -32,6 +32,9 @@ function esc(s){
     return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
   });
 }
+/* Editor pay is a dollar figure ('$3,200'); restated in the currency Super
+   Admin set. Typed-in pay text in the invite/quota sheets stays as entered. */
+function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 
 /* EditorAssignment.authorIds is the ownership record on the backend. */
 const Crud = {
@@ -182,7 +185,7 @@ function pendingCard(e){
   h+='</div></div>';
   h+='<div class="ed-meta-row">';
   h+=metaItem('Quota Target',e.target+'/mo');
-  h+=metaItem('Payment',e.paymentType==='revenue-share'?(e.revenueShare||'—')+' rev-share':e.monthlyPay);
+  h+=metaItem('Payment',e.paymentType==='revenue-share'?(e.revenueShare||'—')+' rev-share':money(e.monthlyPay));
   h+='<div class="ed-meta-item"><span>Type</span><b><span class="pay-badge '+(e.paymentType||'fixed')+'">'+(e.paymentType==='revenue-share'?'Revenue Share':'Fixed Pay')+'</span></b></div>';
   h+=metaItem('Invited',e.invitedAt.split('T')[0]);
   h+='</div>';
@@ -215,8 +218,8 @@ function activeCard(e){
   h+=metaItem('Assigned',ac);
   h+=metaItem('Joined',e.joined);
   h+='<div class="ed-meta-item"><span>Payment</span><b><span class="pay-badge '+(e.paymentType||'fixed')+'">'+(e.paymentType==='revenue-share'?'Revenue Share':'Fixed Pay')+'</span></b></div>';
-  h+=metaItem('Pay',e.paymentType==='revenue-share'?(e.revenueShare||'—')+' rev-share':e.monthlyPay);
-  h+=metaItem('YTD Paid',e.ytdPaid);
+  h+=metaItem('Pay',e.paymentType==='revenue-share'?(e.revenueShare||'—')+' rev-share':money(e.monthlyPay));
+  h+=metaItem('YTD Paid',money(e.ytdPaid));
   h+='</div>';
   h+='<div><div class="ed-quota-label"><span>Invite quota \u2014 '+e.invited+'/'+e.target+'</span>';
   h+='<span>Due '+e.deadline+'</span></div>';

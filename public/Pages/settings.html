@@ -65,11 +65,6 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 
 /* ── Version ── */
 .version{text-align:center;padding:20px 0 10px;font-size:11px;color:var(--tx-faint)}
- .demo-mode-opt{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 6px;border-radius:11px;font-size:10.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:rgba(0,0,0,.02);color:var(--tx-muted);transition:.15s;white-space:nowrap}
- .demo-mode-opt:active{transform:scale(.96)}
- .demo-mode-opt.on{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35);color:#b45309}
- [data-theme="dark"] .demo-mode-opt{background:rgba(255,255,255,.04)}
- [data-theme="dark"] .demo-mode-opt.on{color:#fbbf24}
 
 /* ── Modals use same z as drawer component — keep below it ── */
 /* ── Centered modals (constrained to phone width) ── */
@@ -175,27 +170,6 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
           <div class="setting-desc">Show on profile</div>
         </div>
         <div class="toggle on" id="readingToggle"></div>
-      </div>
-    </div>
-
-    <!-- Demo mode (DEMO ONLY — delete this section when going live) -->
-    <div class="section">
-      <div class="section-title">Demo Mode</div>
-      <div style="padding:2px 14px 12px;font-size:11px;color:var(--tx-muted);line-height:1.5">
-        No backend is connected yet. Switch the account you're testing with,
-        or sign out completely to preview the guest experience.
-      </div>
-      <div class="setting-row" style="cursor:default">
-        <div class="setting-icon" style="background:rgba(245,158,11,.08);color:#d97706"><i class="fas fa-flask"></i></div>
-        <div class="setting-info">
-          <div class="setting-label">Active Account</div>
-          <div class="setting-desc" id="demoModeDesc">Reader (Jordan Blake)</div>
-        </div>
-      </div>
-      <div id="demoModeSwitch" style="display:flex;gap:7px;padding:2px 14px 6px">
-        <div class="demo-mode-opt" data-mode="reader"><i class="fas fa-book-open"></i> Reader</div>
-        <div class="demo-mode-opt" data-mode="writer"><i class="fas fa-feather-pointed"></i> Writer</div>
-        <div class="demo-mode-opt" data-mode="guest"><i class="fas fa-user-slash"></i> Guest</div>
       </div>
     </div>
 
@@ -311,12 +285,12 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
   </div>
 </div>
 
-<script src="../services/auth-session.js"></script>
+<script src="../services/auth-session.js?v=3"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../data/profile-demo-seed.js"></script>
-<script src="../services/profile-data.js"></script>
-<script src="../component/profile-menu.js"></script>
-<script src="../services/settings-service.js"></script>
+<script src="../services/profile-data.js?v=3"></script>
+<script src="../component/profile-menu.js?v=3"></script>
+<script src="../services/settings-service.js?v=2"></script>
 <script>SettingsPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

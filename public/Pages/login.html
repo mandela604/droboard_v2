@@ -37,10 +37,8 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
 .link{font-size:11px;color:#ff0050;font-weight:700;text-decoration:none}
 .btn:disabled{opacity:.7;cursor:wait}
 .btn .fa-spinner{font-size:14px}
-.demo-note{display:flex;align-items:flex-start;gap:9px;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.3);border-radius:11px;padding:10px 11px;margin-bottom:14px;font-size:11px;line-height:1.5;color:#8a5a00}
-.demo-note i{color:#d97706;font-size:12px;margin-top:1px;flex-shrink:0}
-.demo-note b{color:#8a5a00}
-.demo-note a{color:#b45309;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(180,83,9,.35)}
+.form-error{display:none;background:rgba(224,56,77,.08);border:1px solid rgba(224,56,77,.3);color:#b42336;border-radius:10px;padding:9px 11px;font-size:11.5px;font-weight:600;line-height:1.45;margin-bottom:12px}
+.form-error.show{display:block}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light'}document.documentElement.setAttribute('data-theme',t)})()</script>
 <script src="../component/img-guard.js"></script>
@@ -52,28 +50,35 @@ h1{font-size:18px;font-weight:800;margin-bottom:4px}
   <h1>Welcome back</h1>
   <div class="sub">Sign in to continue reading and publishing.</div>
 
-  <div class="demo-note">
-    <i class="fas fa-flask"></i>
-    <span><b>Demo mode</b> — no backend is connected yet, so any email &amp; password works. Prefer to browse without an account? <a href="#" id="guestLink">Continue as guest</a>.</span>
+  <div id="loginForm">
+    <button class="btn google" id="googleBtn" type="button"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px" alt=""/> Continue with Google</button>
+    <div class="divider"><span>or</span></div>
+
+    <div class="form-row"><label class="form-label">Email address</label><input class="form-input" id="emailInput" type="email" placeholder="e.g. adaeze@example.com" autocomplete="email"/></div>
+    <div class="form-row">
+      <label class="form-label">Password</label>
+      <div class="pw-wrap"><input class="form-input" id="passInput" type="password" placeholder="••••••••" autocomplete="current-password"/><button type="button" class="pw-eye" data-target="passInput"><i class="far fa-eye"></i></button></div>
+    </div>
+    <div class="row-between" style="justify-content:flex-end"><a class="link" href="forgot-password.html" id="forgotLink">Forgot password?</a></div>
+    <div class="form-error" id="formError" role="alert"></div>
+    <button class="btn primary" id="loginBtn"><i class="fas fa-arrow-right-to-bracket"></i> Log In</button>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:#9694ac">No account? <a href="signup.html" style="color:#ff0050;font-weight:700;text-decoration:none">Create one</a></div>
+    <div style="text-align:center;margin-top:8px;font-size:11px"><a href="#" id="guestLink" style="color:#71708a;font-weight:600;text-decoration:none">Continue as guest</a></div>
   </div>
 
-  <button class="btn google" id="googleBtn" type="button"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px" alt=""/> Continue with Google</button>
-  <div class="divider"><span>or</span></div>
-
-  <div class="form-row"><label class="form-label">Email address</label><input class="form-input" id="emailInput" type="email" placeholder="e.g. adaeze@example.com" autocomplete="email"/></div>
-  <div class="form-row">
-    <label class="form-label">Password</label>
-    <div class="pw-wrap"><input class="form-input" id="passInput" type="password" placeholder="••••••••" autocomplete="current-password"/><button type="button" class="pw-eye" data-target="passInput"><i class="far fa-eye"></i></button></div>
+  <div id="mfaBox" style="display:none">
+    <div class="sub" style="margin-bottom:12px">Enter the 6-digit code from your authenticator app, or one of your backup codes.</div>
+    <div class="form-row"><label class="form-label">Authentication code</label><input class="form-input" id="mfaInput" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"/></div>
+    <div class="form-error" id="mfaError" role="alert"></div>
+    <button class="btn primary" id="mfaBtn">Verify &amp; Log In</button>
+    <button class="btn ghost" id="mfaBack" style="margin-top:8px">Back</button>
   </div>
-  <div class="row-between"><label style="font-size:11px;color:#71708a;display:flex;align-items:center;gap:6px"><input type="checkbox" id="rememberCheck" checked/> Remember me</label><a class="link" href="forgot-password.html" id="forgotLink">Forgot password?</a></div>
-  <button class="btn primary" id="loginBtn"><i class="fas fa-arrow-right-to-bracket"></i> Log In</button>
-  <div style="text-align:center;margin-top:12px;font-size:11px;color:#9694ac">No account? <a href="signup.html" style="color:#ff0050;font-weight:700;text-decoration:none">Create one</a></div>
 </div>
 
 <div id="toast" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;z-index:300">Done</div>
 <style>#toast.show{opacity:1}</style>
 
-<script src="../services/login-service.js"></script>
+<script src="../services/login-service.js?v=3"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

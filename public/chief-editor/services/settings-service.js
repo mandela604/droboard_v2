@@ -28,7 +28,7 @@ function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
 /* ══════════════════ PROFILE (read-only — editor platform account) ══════════════════ */
 const USE_PROFILE_API = false;
-const PROFILE_API = '/api/editor/profile';
+const PROFILE_API = API_BASE + '/profile';
 const PROFILE_DEFAULTS = {
   name:'Adaeze Bello', email:'adaeze.bello@droboard.io', phone:'+234 802 555 0134',
   bio:'Chief Editor overseeing platform-wide editorial quality, senior editor performance, and author agreements.',
