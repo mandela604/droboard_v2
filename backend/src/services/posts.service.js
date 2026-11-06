@@ -3,8 +3,12 @@ const { Post, Reaction } = require('../models/social.model');
 const { User } = require('../models/user.model');
 // users.service never requires back into posts, so this top-level import is safe.
 const { relTime } = require('./users.service');
+const counters = require('./user-counters');
 
 const POST_TYPES = ['announcement', 'post', 'debate', 'shoutout', 'repost', 'poll', 'forum-poll', 'ama', 'review', 'recommendation', 'quote', 'chapter-drop'];
+
+// Share channels: must match the 8 data-platform values in share-modal.js (line 422-450).
+const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy'];
 
 function canWrite(post, user) {
   if (!user) return false;
@@ -46,6 +50,17 @@ function normContent(data) {
       following: s.following === undefined ? undefined : !!s.following,
     };
   }
+  // Repost card embeds the source post. `time` is a stored relative label, not
+  // a server-derived one — the reshared post lives on another board/author and
+  // the card reads the original author's name/avatar from this blob, not from
+  // the resharing author.
+  if (data.original) {
+    const o = data.original;
+    data.original = {
+      name: o.name || '', avatar: o.avatar || '', time: o.time || '',
+      text: o.text || '', cover: o.cover || '', title: o.title || '',
+    };
+  }
   return data;
 }
 
@@ -64,6 +79,7 @@ async function createPost({ authorId, data }) {
   const payload = normContent(Object.assign({}, data));
   delete payload.id; // server assigns uuid — composers send demo p_<ts> ids
   const post = await Post.create(Object.assign({}, payload, { authorId }));
+  await counters.bump(post.authorId, 'postCount', 1);
   return (await shape([post], authorId))[0];
 }
 
@@ -162,6 +178,22 @@ async function listPosts({ tab, type, authorId, page, limit, viewerId }) {
   return { items: await shape(docs, viewerId), total, page: pg, limit: lim };
 }
 
+/* The library page's Saved tab: everything this reader saved that is NOT a
+   story — chapter drops, reposts, polls, debates, quotes, AMAs, reviews. They
+   are all Post docs with the saver in `savedBy`, so this is one query, and it
+   goes through the same `shape()` the feed row uses: the card renders a saved
+   chapter-drop exactly like the one it just came from. */
+async function savedPosts({ userId, page, limit }) {
+  const filter = { savedBy: String(userId) };
+  const pg = Math.max(1, parseInt(page, 10) || 1);
+  const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+  const [docs, total] = await Promise.all([
+    Post.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
+    Post.countDocuments(filter),
+  ]);
+  return { items: await shape(docs, userId), total, page: pg, limit: lim };
+}
+
 async function getPost(id, viewerId) {
   const post = await Post.findOne({ id }).lean();
   if (!post) { const e = new Error('not_found'); e.status = 404; throw e; }
@@ -190,8 +222,14 @@ async function updatePost({ post, data, viewerId }) {
 
 async function deletePost({ post }) {
   const { Comment } = require('../models/social.model');
+  // The post's comments go with it, so their authors lose those counts too.
+  const gone = await Comment.find({ postId: post.id }).select('authorId').lean();
   await Comment.deleteMany({ postId: post.id });
   await post.deleteOne();
+  await Promise.all([
+    counters.bump(post.authorId, 'postCount', -1),
+    counters.bumpByAuthor(gone, 'commentCount', -1),
+  ]);
   return { ok: true };
 }
 
@@ -307,15 +345,19 @@ async function reactionState({ post, userId }) {
   return { counts: reactionCounts(post), userRx: prev ? prev.rid : null };
 }
 async function sharePost({ post, channel, userId }) {
+  if (!SHARE_CHANNELS.includes(channel)) { const e = new Error('bad_channel'); e.status = 400; throw e; }
+  // One share per user per hour prevents burst spam.
+  const { ShareEvent } = require('../models/social.model');
+  const recent = await ShareEvent.findOne({ userId: String(userId), targetType: 'post', targetId: String(post.id), channel, createdAt: { $gte: new Date(Date.now() - 3600000) } });
+  if (recent) { return { sharesCount: post.sharesCount || 0, byChannel: Object.fromEntries((post.sharesByChannel || new Map())) }; }
   post.sharesCount = (post.sharesCount || 0) + 1;
   const ch = post.sharesByChannel || (post.sharesByChannel = new Map());
   ch.set(channel, (ch.get(channel) || 0) + 1);
   await post.save();
   if (userId) {
     try {
-      const { ShareEvent } = require('../models/social.model');
       await ShareEvent.updateOne(
-        { userId: String(userId), targetType: 'post', targetId: String(post.id) },
+        { userId: String(userId), targetType: 'post', targetId: String(post.id), channel },
         { $setOnInsert: { userId: String(userId), targetType: 'post', targetId: String(post.id), channel: String(channel || '') } },
         { upsert: true }
       );
@@ -327,7 +369,8 @@ async function sharePost({ post, channel, userId }) {
 }
 
 module.exports = {
-  POST_TYPES, createPost, listPosts, getPost, updatePost, deletePost,
+  POST_TYPES, createPost, listPosts, savedPosts, getPost, updatePost, deletePost,
+  shape,
   toggleLike, toggleSave, votePoll, retractPollVote, voteDebate, retractDebateVote, loadOr404, canWrite,
   reactToPost, unreactPost, reactionState, sharePost,
 };

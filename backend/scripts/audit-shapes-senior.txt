@@ -1,0 +1,117 @@
+LIVE BACKEND SHAPE DUMP — 2026-11-02T07:56:07.955Z
+51 routes returned 200, 6 did not.
+
+200  GET /api/senior-editor/activity-logs
+      (root):object{4}  items:array[1]  items[].id:string  items[].av:string  items[].user:string  items[].action:string  items[].type:string  items[].detail:string  items[].ip:string  items[].time:string  items[].at:string  total:number  page:number  limit:number
+200  GET /api/senior-editor/announcements
+      (root):array[1]  [].id:string  [].title:string  [].audience:string  [].content:string  [].image:null  [].status:string  [].createdDate:string  [].created:string  [].scheduledDate:null  [].scheduled:null
+200  GET /api/senior-editor/author-messages
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+404  GET /api/senior-editor/author-messages/:id/messages
+      (root):object{1}  error:string
+200  GET /api/senior-editor/author-verification/history
+      (root):array[0]
+200  GET /api/senior-editor/author-verification/recent-reviews
+      (root):array[0]
+200  GET /api/senior-editor/author-verification/requests
+      (root):array[0]
+200  GET /api/senior-editor/authors
+      (root):object{6}  items:array[1]  items[].id:string  items[].name:string  items[].username:string  items[].email:string  items[].avatar:string  items[].genre:string  items[].stories:number  items[].earnings:string  items[].warnings:number  items[].source:string  items[].via:string  items[].status:string  items[].joined:string  items[].code:string  total:number  page:number  limit:number  code:string  stats.total:number  stats.invited:number  stats.assigned:number  stats.active:number  stats.suspended:number  stats.warnings:number
+200  GET /api/senior-editor/book-edits
+      (root):object{4}  items:array[1]  items[].id:string  items[].bookId:string  items[].authorId:string  items[].author:string  items[].avatar:string  items[].book:string  items[].editType:string  items[].submitted:string  items[].submittedAt:string  items[].status:string  items[].changeFrom:string  items[].changeTo:string  items[].changes:array[1]  items[].changes[].field:string  items[].changes[].from:string  items[].changes[].to:string  items[].notes:string  items[].authorNote:string  items[].reviewNote:string  items[].decidedAt:null  total:number  page:number  limit:number
+200  GET /api/senior-editor/book-reviews
+      (root):object{1}  items:array[0]
+200  GET /api/senior-editor/book-reviews/date-filter
+      (root):object{2}  ok:boolean  ranges:array[4]  ranges[]:string
+200  GET /api/senior-editor/books
+      (root):object{4}  items:array[2]  items[].id:string  items[].title:string  items[].authorId:string  items[].authorName:string  items[].author:string  items[].avatar:string  items[].cover:string  items[].img:string  items[].genre:string  items[].cat:string  items[].synopsis:string  items[].tropes:array[0]  items[].kind:string  items[].status:string  items[].chapterCount:number  items[].chapters:number  items[].wordCount:number  items[].reads:number  items[].rating:number  items[].flagReason:string  items[].flagNote:string  items[].createdAt:string  items[].updatedAt:string  total:number  page:number  limit:number
+200  GET /api/senior-editor/books/:id
+      (root):object{32}  title:string  authorId:string  cover:string  kind:string  genre:string  categoryId:null  synopsis:string  tags:array[0]  tropes:array[0]  status:string  contractStatus:string  vipLocked:boolean  wordCount:number  chapterCount:number  reads:number  likes:number  rating:number  ratingCount:number  flagReason:string  flagNote:string  flaggedBy:null  flaggedAt:null  flagPrevStatus:null  assignedSeId:null  submittedAt:null  reviewFeedback:string  polls:array[0]  predictions:array[0]  debates:array[0]  id:string  createdAt:string  updatedAt:string
+200  GET /api/senior-editor/chapter-edits
+      (root):object{4}  items:array[1]  items[].id:string  items[].bookId:string  items[].authorId:string  items[].chapterId:string  items[].author:string  items[].avatar:string  items[].book:string  items[].chapter:string  items[].chapterLabel:string  items[].chapterTitle:string  items[].words:number  items[].wordsChanged:number  items[].editType:string  items[].submitted:string  items[].submittedAt:string  items[].status:string  items[].authorNote:string  items[].reviewNote:string  items[].decidedAt:null  total:number  page:number  limit:number
+200  GET /api/senior-editor/completion-applications
+      (root):object{4}  items:array[1]  items[].id:string  items[].bookId:string  items[].authorId:string  items[].author:string  items[].avatar:string  items[].book:string  items[].genre:string  items[].chapters:number  items[].wordCount:number  items[].submitted:string  items[].submittedAt:string  items[].status:string  items[].notes:string  items[].reviewerId:string  items[].decidedAt:null  total:number  page:number  limit:number
+200  GET /api/senior-editor/contract-applications
+      (root):array[0]
+200  GET /api/senior-editor/contract-templates
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/contract-templates/usage
+      (root):object{1}  items:array[0]
+200  GET /api/senior-editor/contracts
+      (root):object{4}  items:array[1]  items[].bookId:string  items[].authorId:string  items[].type:string  items[].templateId:string  items[].status:string  items[].duration:string  items[].termMonths:number  items[].effectiveAt:null  items[].expiryAt:null  items[].revenueSplit:number  items[].advance:number  items[].authorNote:string  items[].editorId:string  items[].sentAt:null  items[].signedAt:null  items[].pdfUrl:string  items[].signatures:array[0]  items[].replies:array[0]  items[].id:string  items[].createdAt:string  items[].updatedAt:string  total:number  page:number  limit:number
+200  GET /api/senior-editor/contracts/:id
+      (root):object{21}  bookId:string  authorId:string  type:string  templateId:string  status:string  duration:string  termMonths:number  effectiveAt:null  expiryAt:null  revenueSplit:number  advance:number  authorNote:string  editorId:string  sentAt:null  signedAt:null  pdfUrl:string  signatures:array[0]  replies:array[0]  id:string  createdAt:string  updatedAt:string
+200  GET /api/senior-editor/contracts/overview
+      (root):object{3}  contracts:array[1]  contracts[].id:string  contracts[].type:string  contracts[].status:string  contracts[].author:string  contracts[].authorAv:string  contracts[].book:string  contracts[].bookId:string  contracts[].kyc:null  contracts[].dateSent:string  contracts[].signedDate:null  contracts[].notes:string  contracts[].duration:string  contracts[].revenue:number  contracts[].advance:number  contracts[].settled:boolean  contracts[].replies:array[0]  templates:array[0]  signed:array[0]
+200  GET /api/senior-editor/dashboard
+      (root):object{7}  pendingReviews:number  pendingContracts:number  activeReports:number  queues.contracts:number  queues.completions:number  queues.chapterEdits:number  queues.bookEdits:number  queues.reviews:number  queues.verifications:number  stats.totalPending:number  stats.urgentChapterEdits:number  stats.approvalRate:number  stats.avgTurnaround:string  recent:array[5]  recent[].id:string  recent[].kind:string  recent[].status:string  recent[].title:string  recent[].author:string  recent[].meta:string  recent[].time:string  activity:array[1]  activity[].icon:string  activity[].color:string  activity[].text:string  activity[].time:string
+200  GET /api/senior-editor/earnings
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/earnings-overview
+      (root):object{3}  lifetime:number  pending:number  byBook:array[0]
+200  GET /api/senior-editor/earnings/analytics
+      (root):object{3}  lifetime:number  pending:number  byBook:array[0]
+200  GET /api/senior-editor/earnings/by-author
+      (root):object{3}  currency:string  total:number  items:array[0]
+200  GET /api/senior-editor/earnings/leaderboard
+      (root):object{3}  lifetime:number  pending:number  byBook:array[0]
+200  GET /api/senior-editor/earnings/summary
+      (root):object{11}  currency:string  terms.mode:string  terms.rate:number  terms.monthlyAmount:number  tipSharePct:number  minWithdrawal:number  earned:number  available:number  pendingPayout:number  thisMonth:number  authorCount:number  earningRows:number  lastPayout:null
+200  GET /api/senior-editor/earnings/withdrawals
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/editor-bill-review
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/editors-picks
+      (root):object{3}  current:array[0]  previous:array[0]  categories:array[0]
+200  GET /api/senior-editor/featured-banners
+      (root):object{2}  banners:array[0]  stats:array[4]  stats[].num:number  stats[].lbl:string  stats[].ico:string  stats[].cls:string  stats[].delta:string
+404  GET /api/senior-editor/featured-banners/:id
+      (root):object{1}  error:string
+404  GET /api/senior-editor/featured-banners/:id/analytics
+      (root):object{1}  error:string
+200  GET /api/senior-editor/featured-stories
+      (root):object{3}  active:array[0]  history:array[0]  availableStories:array[0]
+200  GET /api/senior-editor/messages
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/my-authors
+      (root):object{5}  items:array[1]  items[].id:string  items[].name:string  items[].username:string  items[].email:string  items[].avatar:string  items[].code:string  items[].via:string  items[].signedUp:string  items[].status:string  total:number  page:number  limit:number  code:string
+200  GET /api/senior-editor/notifications
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/payments
+      (root):object{4}  payments:array[0]  total:number  page:number  limit:number
+404  GET /api/senior-editor/payments/:id
+      (root):object{1}  error:string
+200  GET /api/senior-editor/platform-settings
+      (root):array[0]
+200  GET /api/senior-editor/referral-code
+      (root):object{1}  code:string
+200  GET /api/senior-editor/reports
+      (root):object{4}  items:array[1]  items[].storyId:string  items[].discussionId:null  items[].postId:null  items[].commentId:null  items[].title:string  items[].desc:string  items[].type:string  items[].severity:string  items[].seId:string  items[].reporterId:string  items[].reporterLabel:string  items[].status:string  items[].resolutionNote:string  items[].id:string  items[].filedAt:string  items[].updatedAt:string  items[].storyTitle:string  items[].cover:string  items[].authorId:string  items[].author:string  items[].chapter:string  items[].chN:number  items[].seName:string  items[].reporter:string  items[].resolvedBy:string  items[].date:string  total:number  page:number  limit:number
+200  GET /api/senior-editor/reports-compliance
+      (root):object{3}  plagiarism:array[1]  plagiarism[].id:string  plagiarism[].story:string  plagiarism[].reporter:string  plagiarism[].status:string  plagiarism[].filed:string  plagiarism[].confidence:number  plagiarism[].notes:string  complaints:array[0]  violations:array[0]
+200  GET /api/senior-editor/reports/settings
+      (root):null
+200  GET /api/senior-editor/review-queue
+      (root):object{4}  items:array[1]  items[].id:string  items[].bookId:string  items[].authorId:string  items[].title:string  items[].author:string  items[].avatar:string  items[].cover:string  items[].genre:string  items[].synopsis:string  items[].words:number  items[].chapters:number  items[].kind:string  items[].status:string  items[].feedback:string  items[].assignedSeId:string  items[].kyc:null  items[].submitted:string  items[].submittedAt:string  total:number  page:number  limit:number
+200  GET /api/senior-editor/signed-contracts
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/stories
+      (root):object{1}  stories:array[2]  stories[].id:string  stories[].title:string  stories[].author:string  stories[].genre:string  stories[].kind:string  stories[].chapters:number  stories[].status:string  stories[].lastUpdated:string  stories[].words:number  stories[].rating:number
+200  GET /api/senior-editor/story-analytics
+      (root):object{1}  stories:array[2]  stories[].id:string  stories[].title:string  stories[].author:string  stories[].reads:number  stories[].completions:number  stories[].retention:number  stories[].chapters:number  stories[].engagement:number  stories[].revenue:number
+200  GET /api/senior-editor/story-management
+      (root):object{1}  stories:array[2]  stories[].id:string  stories[].title:string  stories[].author:string  stories[].genre:string  stories[].kind:string  stories[].chapters:number  stories[].status:string  stories[].lastUpdated:string  stories[].words:number  stories[].rating:number  stories[].cover:string  stories[].avatar:string  stories[].reads:number  stories[].synopsis:string  stories[].recentChs:array[0]
+200  GET /api/senior-editor/system-pages
+      (root):object{1}  pages:array[0]
+404  GET /api/senior-editor/system-pages/:id
+      (root):object{1}  error:string
+404  GET /api/senior-editor/system-pages/:id/preview
+      (root):object{1}  error:string
+200  GET /api/senior-editor/transactions
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/vip-registrations
+      (root):object{1}  items:array[0]
+200  GET /api/senior-editor/withdrawal-requests
+      (root):object{4}  items:array[0]  total:number  page:number  limit:number
+200  GET /api/senior-editor/withdrawal-settings
+      (root):object{3}  key:string  minAmount:number  methods:array[3]  methods[]:string

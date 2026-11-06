@@ -1,0 +1,30 @@
+process.env.NODE_ENV='test';
+process.env.PORT='4212';
+process.env.JWT_ACCESS_SECRET='a'.repeat(48);
+process.env.JWT_REFRESH_SECRET='b'.repeat(48);
+process.env.MFA_SECRET_KEY='c'.repeat(48);
+const { MongoMemoryServer } = require('mongodb-memory-server');
+(async()=>{
+ const mongod=await MongoMemoryServer.create({instance:{startupTimeout:90000}});
+ process.env.MONGO_URI=mongod.getUri('dbg2');
+ require('../src/server');
+ const base='http://127.0.0.1:4212';
+ for(let i=0;i<160;i++){try{const p=await fetch(base+'/health');if(p.ok)break;}catch(e){} await new Promise(r=>setTimeout(r,250));}
+ const call=async(m,p,b,t)=>{const h={};if(b!==undefined)h['Content-Type']='application/json';if(t)h.Authorization='Bearer '+t;const res=await fetch(base+p,{method:m,headers:h,body:b===undefined?undefined:JSON.stringify(b)});return{s:res.status,j:await res.json().catch(()=>null)};};
+ let r=await call('POST','/api/auth/signup',{name:'Dbg Auth',username:'dbgauth99',email:'d9a@test.co',password:'SecurePass123!'});
+ r=await call('POST','/api/auth/login',{emailOrUsername:'dbgauth99',password:'SecurePass123!'});
+console.log('signup',r.s,JSON.stringify(r.j));
+ const at=r.json.access, aid=String(r.json.user.id);
+ r=await call('POST','/api/auth/signup',{name:'Dbg Read',username:'dbgrd99',email:'d9r@test.co',password:'SecurePass123!'});
+ r=await call('POST','/api/auth/login',{emailOrUsername:'dbgrd99',password:'SecurePass123!'});
+ const rt=r.json.access;
+ const {Book,Chapter}=require('../src/models/content.model');
+ const b=await Book.create({title:'Dbg',authorId:aid,status:'published',genre:'X'});
+ await Chapter.create({bookId:b.id,n:1,title:'C1',words:100,status:'live'});
+ const anon=await call('GET','/api/books/'+b.id);
+ console.log('anon status',anon.s, Object.keys(anon.j||{}).join(','));
+ const auth=await call('GET','/api/books/'+b.id,undefined,rt);
+ console.log('auth status',auth.s, JSON.stringify(auth.j).slice(0,400));
+ process.on('uncaughtException',e=>console.log('UNCAUGHT',e.stack));
+ await mongod.stop(); process.exit(0);
+})().catch(e=>{console.error('ERR',e&&e.stack||e);process.exit(2)});

@@ -1,5 +1,6 @@
 'use strict';
 const { z } = require('zod');
+const jwt = require('jsonwebtoken');
 const ctrl = require('../controllers/feed.controller');
 const { requireAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
@@ -8,11 +9,29 @@ function Router() { return require('express').Router(); }
 const router = Router();
 const pg = { page: z.string().max(6).optional(), limit: z.string().max(6).optional() };
 
+// Optional auth (house pattern): a viewer id unlocks liked/saved/voted flags on
+// the read feeds; anonymous reads still work with every flag defaulted off.
+function optionalAuth(req, _res, next) {
+  try {
+    const hdr = req.headers.authorization || '';
+    const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.cookies && req.cookies.dro_access) || null;
+    if (!token) return next();
+    const env = require('../config/env');
+    const p = jwt.verify(token, env.jwtAccessSecret);
+    req.user = { id: p.sub, roles: p.roles || [] };
+  } catch (e) { /* anonymous */ }
+  return next();
+}
+
 // mounted at /api AND /api/feed (see server.js) — paths below are the exact
 // frontend contracts, and the reader feed reaches them with the /feed prefix.
-router.get('/home', generalLimiter, ctrl.home);
-router.get('/discover', generalLimiter, ctrl.discover);
-router.get('/discover/stories', generalLimiter,
+router.get('/home', optionalAuth, generalLimiter, ctrl.home);
+// taste = the discover filter pills, comma separated. It tunes this response
+// only and is never stored on the profile.
+router.get('/discover', optionalAuth, generalLimiter, validate(z.object({ query: z.object({
+  taste: z.string().max(200).optional(),
+}).passthrough() })), ctrl.discover);
+router.get('/discover/stories', optionalAuth, generalLimiter,
   validate(z.object({ query: z.object({ page: pg.page, limit: pg.limit }).strict() })), ctrl.discoverStories);
 router.get('/discover/ads', generalLimiter, async (req, res) => {
   const base = require('../controllers/base.controller');

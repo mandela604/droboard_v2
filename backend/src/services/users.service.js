@@ -3,8 +3,10 @@ const argon2 = require('argon2');
 const crypto = require('crypto');
 const { User, RefreshFamily } = require('../models/user.model');
 const { Book, Chapter, Genre } = require('../models/content.model');
-const { Follow, Block, Mute, ReadingProgress, LibraryItem, Notification, Referral, Post, Status } = require('../models/social.model');
+const { Collection, Follow, Block, Mute, ReadingProgress, LibraryItem, Notification, Referral, Post, Status, Reaction } = require('../models/social.model');
 const { validateMediaUrl } = require('./media.service');
+const counters = require('./user-counters');
+const collections = require('./collections.service');
 
 const WRITER_ROLES = ['writer', 'senior_editor', 'chief_editor', 'admin'];
 
@@ -28,35 +30,6 @@ function relTime(d) {
   try {
     return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric' });
   } catch (e) { return ''; }
-}
-
-// Post model → frontend post-card shape (profile/feed card contract).
-function toCardPost(p, viewerId) {
-  const o = p.toJSON ? p.toJSON() : p;
-  const poll = o.poll && o.poll.opts ? {
-    q: o.poll.q || '',
-    opts: (o.poll.opts || []).map(x => ({ t: x.t, v: x.v || 0 })),
-    total: o.poll.total || 0,
-    voted: viewerId ? (o.poll.votedBy || []).map(String).indexOf(String(viewerId)) : -1,
-  } : null;
-  return {
-    id: o.id, type: o.type, time: relTime(o.createdAt), pinned: !!o.pinned,
-    liked: viewerId ? ((o.likedBy || []).map(String).includes(String(viewerId))) : false,
-    likes: o.likesCount || 0, comments: o.commentsCount || 0,
-    saved: viewerId ? ((o.savedBy || []).map(String).includes(String(viewerId))) : false,
-    text: o.text || '', quote: o.quote || '', caption: o.caption || '', note: o.note || '',
-    image: o.image || '', poll,
-    amaData: o.amaData || null,
-    debateData: o.debateData && o.debateData.motion ? {
-      motion: o.debateData.motion, forV: o.debateData.forV || 0, agV: o.debateData.agV || 0,
-      userVote: null,
-    } : null,
-    storyRef: o.storyRef && o.storyRef.title ? {
-      title: o.storyRef.title, cat: o.storyRef.cat || '', author: o.storyRef.writer || '',
-      cover: o.storyRef.cover || '',
-    } : null,
-    shares: o.sharesCount || 0,
-  };
 }
 
 // Status doc → story-slide shape ({bg, quote, caption, time}).
@@ -143,6 +116,16 @@ async function readingStatsFor(userId) {
   }
 }
 
+// Profile Collections tab: the owner sees all of theirs, everyone else only
+// public ones. Shaped by collections.service.listCards (name/count/covers).
+async function collectionsFor(userId, viewerId) {
+  const q = { ownerId: String(userId) };
+  if (!viewerId || String(viewerId) !== String(userId)) q.privacy = 'public';
+  const rows = await Collection.find(q).sort({ updatedAt: -1 }).limit(60).lean();
+  if (!rows.length) return [];
+  return collections.listCards(rows, viewerId);
+}
+
 // Profile tabs: library items joined with books (card shape).
 async function libraryFor(userId) {
   const rows = await LibraryItem.find({ userId: String(userId), list: { $in: ['library', 'saved', 'continue'] } })
@@ -186,9 +169,7 @@ function escRx(s) {
 async function me(userId) {
   const u = await User.findOne({ id: userId }).lean();
   if (!u) { const e = new Error('not_found'); e.status = 404; throw e; }
-  const [following, followers, reads, ent, wallet, vipApp] = await Promise.all([
-    Follow.countDocuments({ followerId: userId }),
-    Follow.countDocuments({ followingId: userId }),
+  const [reads, ent, wallet, vipApp] = await Promise.all([
     ReadingProgress.countDocuments({ userId, finished: true }),
     require('./wallet.service').entitlements(userId).catch(() => null),
     require('../models/money.model').Wallet.findOne({ userId: String(userId), kind: 'reader' })
@@ -206,7 +187,7 @@ async function me(userId) {
   const plan = ent && ent.plan ? 'premium' : 'free';
   return Object.assign(publicShape(u), {
     email: u.email, emailVerified: u.emailVerified, phone: u.phone || null, phoneVerified: !!u.phoneVerified,
-    following, followers, reads,
+    following: u.followingCount || 0, followers: u.followerCount || 0, reads,
     mfaEnabled: !!u.mfaEnabled,
     settings: Object.assign({ theme: 'dark', notifications: true, privacy: 'public', readingActivity: true }, u.settings || {}),
     // store / plan (frontend: free|trial|premium + subscription detail)
@@ -238,10 +219,8 @@ async function profile(handle, viewerId) {
   const privacy = (u.settings && u.settings.privacy) || 'public';
   const isOwner = viewerId && String(viewerId) === String(u.id);
   const isWriter = (u.roles || []).some(r => WRITER_ROLES.includes(r));
-  const [following, followers] = await Promise.all([
-    Follow.countDocuments({ followerId: u.id }),
-    Follow.countDocuments({ followingId: u.id }),
-  ]);
+  const followers = u.followerCount || 0;
+  const following = u.followingCount || 0;
   if (privacy === 'private' && !isOwner) {
     return {
       id: u.id, username: u.username, handle: u.username,
@@ -251,6 +230,7 @@ async function profile(handle, viewerId) {
       isWriter, verified: !!u.emailVerified,
       status: u.status, createdAt: u.createdAt, joinedLabel: joinedLabel(u.createdAt),
       following, followers, books: 0, isPrivate: true, isOwner: false,
+      collections: [], library: [], posts: [], statuses: [],
     };
   }
   let isFollowing = false;
@@ -273,9 +253,10 @@ async function profile(handle, viewerId) {
     reads: b.reads || 0, likes: b.likes || 0, rating: b.rating || 0,
     chapters: b.chapterCount || 0, status: b.status || 'ongoing',
   }));
-  const [readingStats, lib, ach, postDocs, followEdges, statusDocs] = await Promise.all([
+  let [readingStats, lib, coll, ach, postDocs, followEdges, statusDocs] = await Promise.all([
     readingStatsFor(u.id),
     libraryFor(u.id),
+    collectionsFor(u.id, viewerId),
     achievementsFor(u.username),
     Post.find({ authorId: u.id }).sort({ pinned: -1, createdAt: -1 }).limit(20).lean(),
     Follow.find({ followerId: u.id }).sort({ createdAt: -1 }).limit(12).select('followingId').lean(),
@@ -293,6 +274,10 @@ async function profile(handle, viewerId) {
       .map(e => toFollowRow(fm[String(e.followingId)], true));
   }
   const base = publicShape(u);
+  // One card mapper for every surface: the profile feed reuses the /droboard
+  // post-card component, so it needs the same shape — poster name/avatar/
+  // verified/mine plus the viewer's reaction and ballot state.
+  const postCards = await require('./posts.service').shape(postDocs, viewerId);
   return Object.assign(base, {
     following, followers, books: books.length, isFollowing, isBlockedByViewer: isBlocked,
     isOwner: !!isOwner,
@@ -307,10 +292,11 @@ async function profile(handle, viewerId) {
     },
     readingStats,
     achievements: ach,
+    collections: coll,
     books,
     library: lib,
     following: followingRows,
-    posts: postDocs.map(p => toCardPost(p, viewerId)),
+    posts: postCards,
     statuses: statusDocs.map(s => toSlide(s, viewerId, !!isOwner)),
   });
 }
@@ -362,8 +348,18 @@ async function updateMe(userId, patch) {
   }
   if (patch.genres !== undefined) {
     if (!Array.isArray(patch.genres)) { const e = new Error('bad_genres'); e.status = 400; throw e; }
-    const g = patch.genres.map(s => String(s).slice(0, 40)).filter(Boolean).slice(0, 6);
-    u.genres = g;
+    const want = Array.from(new Set(patch.genres.map(s => String(s).trim().toLowerCase()).filter(Boolean)));
+    if (want.length > 4) { const e = new Error('too_many_genres'); e.status = 400; throw e; }
+    if (want.length) {
+      // Vocabulary is the Chief's live catalogue — a retired or invented slug
+      // would render as a blank pill, so it is refused instead of stored.
+      const live = await Genre.find({ status: 'active' }).select('name slug').lean();
+      const known = new Set();
+      live.forEach(g => { known.add(String(g.name).toLowerCase()); known.add(String(g.slug).toLowerCase()); });
+      const bad = want.filter(g => !known.has(g));
+      if (bad.length) { const e = new Error('unknown_genre:' + bad.join(',')); e.status = 400; throw e; }
+    }
+    u.genres = want;
   }
   await u.save();
   return publicShape(u.toJSON ? u.toJSON() : u);
@@ -443,10 +439,15 @@ async function deleteMe(userId, { password }) {
   u.status = 'suspended';
   u.suspendedReason = 'self_deactivated';
   await u.save();
+  const severed = await Follow.find({
+    $or: [{ followerId: u.id }, { followingId: u.id }],
+  }).lean();
   await Promise.all([
     RefreshFamily.deleteMany({ userId: u.id }),
-    Follow.deleteMany({ $or: [{ followerId: u.id }, { followingId: u.id }] }),
+    severed.length ? Follow.deleteMany({ _id: { $in: severed.map(e => e._id) } }) : Promise.resolve(),
   ]);
+  // Everyone who followed them loses a follower; they lose everyone they followed.
+  if (severed.length) await counters.unhookFollows(severed);
   return { ok: true, deleted: true };
 }
 
@@ -498,7 +499,7 @@ async function searchUsers({ q, page, limit }) {
 async function followersOf(handle, { page, limit, q, filter }) {
   const u = await User.findOne({
     $or: [{ username: String(handle).toLowerCase() }, { id: handle }],
-  }).select('id').lean();
+  }).select('id followerCount').lean();
   if (!u) { const e = new Error('not_found'); e.status = 404; throw e; }
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
@@ -515,14 +516,14 @@ async function followersOf(handle, { page, limit, q, filter }) {
   // edges may be empty → users empty; keep total accurate
   return {
     items: users.map(x => Object.assign(toFollowRow(x, true), { id: x.id })),
-    total: await Follow.countDocuments({ followingId: u.id }), page: pg, limit: lim,
+    total: u.followerCount || 0, page: pg, limit: lim,
   };
 }
 
 async function followingOf(handle, { page, limit, q }) {
   const u = await User.findOne({
     $or: [{ username: String(handle).toLowerCase() }, { id: handle }],
-  }).select('id').lean();
+  }).select('id followingCount').lean();
   if (!u) { const e = new Error('not_found'); e.status = 404; throw e; }
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
@@ -536,7 +537,7 @@ async function followingOf(handle, { page, limit, q }) {
   const users = await User.find(userFilter).select('username fullName avatar roles emailVerified bio').lean();
   return {
     items: users.map(x => Object.assign(toFollowRow(x, true), { id: x.id })),
-    total: await Follow.countDocuments({ followerId: u.id }), page: pg, limit: lim,
+    total: u.followingCount || 0, page: pg, limit: lim,
   };
 }
 
@@ -556,16 +557,26 @@ async function follow({ userId, target }) {
     $or: [{ blockerId: userId, blockedId: t.id }, { blockerId: t.id, blockedId: userId }],
   });
   if (blocked) { const e = new Error('blocked'); e.status = 403; throw e; }
+  // The unique index is the concurrency backstop, but it builds in the
+  // background and is absent on a young collection, so a repeat follow can
+  // otherwise insert a second edge and double-count it. Check first; keep the
+  // 11000 catch for the two-writes-at-once case.
+  const already = await Follow.exists({ followerId: userId, followingId: t.id });
+  if (already) return { ok: true, following: true };
+  let edge = null;
   try {
-    await Follow.create({ followerId: userId, followingId: t.id });
+    edge = await Follow.create({ followerId: userId, followingId: t.id });
   } catch (e) { if (e.code !== 11000) throw e; }
+  if (edge) await counters.hookFollows([edge]);
   return { ok: true, following: true };
 }
 
 async function unfollow({ userId, target }) {
   const t = await resolveTarget(target);
   if (!t) { const e = new Error('not_found'); e.status = 404; throw e; }
-  await Follow.deleteOne({ followerId: userId, followingId: t.id });
+  // Only a delete that removed something may move the counters.
+  const edge = await Follow.findOneAndDelete({ followerId: userId, followingId: t.id });
+  if (edge) await counters.unhookFollows([edge]);
   return { ok: true, following: false };
 }
 
@@ -576,11 +587,17 @@ async function blockUser({ userId, target }) {
   try {
     await Block.create({ blockerId: userId, blockedId: t.id });
   } catch (e) { if (e.code !== 11000) throw e; }
-  // blocking also unfollows both directions
-  await Promise.all([
-    Follow.deleteOne({ followerId: userId, followingId: t.id }),
-    Follow.deleteOne({ followerId: t.id, followingId: userId }),
-  ]);
+  // blocking also unfollows both directions — unhook only the edges that existed
+  const broken = await Follow.find({
+    $or: [
+      { followerId: userId, followingId: t.id },
+      { followerId: t.id, followingId: userId },
+    ],
+  }).lean();
+  if (broken.length) {
+    await Follow.deleteMany({ _id: { $in: broken.map(e => e._id) } });
+    await counters.unhookFollows(broken);
+  }
   return { ok: true, blocked: true };
 }
 

@@ -9,22 +9,86 @@ function mine(req) {
   return (isStaff && req.valid.query.authorId) ? req.valid.query.authorId : req.user.id;
 }
 
+// Author-console withdrawal pill only has three states; the DB keeps the full
+// approval history so finance can audit — collapse the 6→3 at the read boundary.
+function authorWdStatus(s) {
+  if (s === 'approved' || s === 'paid') return 'approved';
+  if (s === 'declined' || s === 'failed') return 'declined';
+  return 'pending';
+}
+
+function monthStart(offset) {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth() + (offset || 0), 1);
+}
+
 async function earnings(req, res) {
   return base.wrap(res, async () => {
     const authorId = mine(req);
-    const agg = await AuthorTransaction.aggregate([
-      { $match: { authorId, status: 'completed' } },
-      { $group: { _id: '$type', total: { $sum: '$amount' } } },
+    const thisStart = monthStart(0);
+    const lastStart = monthStart(-1);
+    const histStart = monthStart(-11); // trailing 12 buckets incl. this month
+    const [completed, pendingAgg, wallet, lifetimeAgg, bookAgg] = await Promise.all([
+      AuthorTransaction.find({
+        authorId, status: 'completed', type: { $in: ['earned', 'bonus'] },
+        createdAt: { $gte: histStart },
+      }).select('amount type bookId createdAt').lean(),
+      Withdrawal.aggregate([
+        { $match: { authorId, status: { $in: ['requested', 'under_review', 'approved'] } } },
+        { $group: { _id: null, t: { $sum: '$amount' } } },
+      ]),
+      Wallet.findOne({ userId: authorId, kind: 'author' }).lean(),
+      // Lifetime is every author credit, not the 12-month window above.
+      AuthorTransaction.aggregate([
+        { $match: { authorId, status: 'completed', type: { $in: ['earned', 'bonus'] } } },
+        { $group: { _id: null, t: { $sum: '$amount' } } },
+      ]),
+      // byBook rolls earned credits (bonus has no bookId) up to the source.
+      AuthorTransaction.aggregate([
+        { $match: { authorId, status: 'completed', type: 'earned', bookId: { $ne: null } } },
+        { $group: { _id: '$bookId', earnings: { $sum: '$amount' } } },
+      ]),
     ]);
-    const t = {};
-    agg.forEach(a => { t[a._id] = a.total; });
-    const w = await Wallet.findOne({ userId: authorId, kind: 'author' }).lean();
+
+    const sum = (rows) => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const thisMonthRows = completed.filter(r => r.createdAt >= thisStart);
+    const lastMonthRows = completed.filter(r => r.createdAt >= lastStart && r.createdAt < thisStart);
+
+    const bookIds = bookAgg.map(r => String(r._id)).filter(Boolean);
+    const { Book } = require('../models/content.model');
+    const bookRows = bookIds.length
+      ? await Book.find({ id: { $in: bookIds } }).select('id title cover').lean().catch(() => [])
+      : [];
+    const meta = {};
+    bookRows.forEach(b => { meta[String(b.id)] = { title: b.title || 'Untitled', cover: b.cover || '' }; });
+    const byBook = bookAgg
+      .map(r => ({
+        id: String(r._id),
+        title: (meta[String(r._id)] && meta[String(r._id)].title) || 'Untitled',
+        cover: (meta[String(r._id)] && meta[String(r._id)].cover) || '',
+        earnings: Math.round((Number(r.earnings) || 0) * 100) / 100,
+      }))
+      .sort((a, b) => b.earnings - a.earnings);
+
+    const monthlyHistory = [];
+    for (let i = 11; i >= 0; i--) {
+      const from = monthStart(-i);
+      const to = monthStart(-i + 1);
+      const label = from.toLocaleDateString('en-US', { month: 'short' });
+      const rows = completed.filter(r => r.createdAt >= from && r.createdAt < to);
+      monthlyHistory.push({ month: label, earned: Math.round(sum(rows) * 100) / 100 });
+    }
+
     return {
-      balance: (w && w.coinBalance) || 0,
-      lifetime: t.earned || 0,
-      thisMonth: t.earned || 0,
-      pending: 0,
-      byBook: [],
+      // Balance is withdrawable fiat, not the coin wallet — the author page
+      // uses it to gate the Withdraw button.
+      balance: Math.max(0, Number(wallet && wallet.fiatAvail) || 0),
+      lifetime: Math.round((Number(lifetimeAgg[0] && lifetimeAgg[0].t) || 0) * 100) / 100,
+      thisMonth: Math.round(sum(thisMonthRows) * 100) / 100,
+      lastMonth: Math.round(sum(lastMonthRows) * 100) / 100,
+      monthlyHistory,
+      pending: Math.round((Number(pendingAgg[0] && pendingAgg[0].t) || 0) * 100) / 100,
+      byBook,
     };
   });
 }
@@ -104,7 +168,21 @@ async function withdrawals(req, res) {
       return require('../services/finance-surfaces.service').withdrawals();
     }
     const authorId = mine(req);
-    return Withdrawal.find({ authorId }).sort({ requestedAt: -1 }).lean();
+    const rows = await Withdrawal.find({ authorId }).sort({ requestedAt: -1 }).lean();
+    // Author console sees the three pill states and the field names the
+    // frontend's `getWithdrawals` renders — collapse the raw 6-state queue
+    // and `requestedAt` -> `requested` here so the reader never has to know
+    // about the internal approval lifecycle.
+    return rows.map(w => ({
+      id: w.id,
+      amount: Number(w.amount) || 0,
+      method: w.method,
+      account: w.account || '',
+      requested: (w.requestedAt || w.createdAt || new Date()).toISOString(),
+      status: authorWdStatus(w.status),
+      note: w.note || '',
+      processed: w.processedAt ? new Date(w.processedAt).toISOString() : null,
+    }));
   });
 }
 

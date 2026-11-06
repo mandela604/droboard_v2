@@ -86,6 +86,8 @@ const categoryBody = z.object({
   color: z.string().max(20).optional(), desc: z.string().max(2000).optional(),
   tagline: z.string().max(200).optional(), cover: z.string().max(2000).optional(),
   adminIds: z.array(z.string().max(120)).max(20).optional(),
+  moderatorIds: z.array(z.string().max(120)).max(20).optional(),
+  rules: z.array(z.string().max(300)).max(15).optional(),
 }).strict();
 
 router.get('/categories', ...guard,
@@ -113,8 +115,6 @@ const genreBody = z.object({
   about: z.any().optional(),
   icon: z.string().max(200).optional(), cover: z.string().max(2000).optional(),
   bg: z.string().max(20).optional(), color: z.string().max(20).optional(),
-  adminIds: z.array(z.string().max(120)).max(20).optional(),
-  moderatorIds: z.array(z.string().max(120)).max(20).optional(),
 }).strict();
 
 router.get('/genres/popular', ...guard,

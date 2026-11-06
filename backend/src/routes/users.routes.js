@@ -76,7 +76,10 @@ router.patch('/me', requireAuth, writeLimiter,
     avatar: z.string().max(2000).optional(),
     cover: z.string().max(2000).optional(),
     about: z.any().optional(),
-    genres: z.array(z.string().max(40)).max(6).optional(),
+    // The profile genre row: the reader's own display slots, chosen from the
+    // Chief's catalogue (checked in users.service.updateMe). Discover's taste
+    // filter is a query param on /api/feed/discover and never lands here.
+    genres: z.array(z.string().max(40)).max(4).optional(),
   }).strict() })),
   async (req, res) => base.wrap(res, async () => users.updateMe(req.user.id, req.valid.body)));
 

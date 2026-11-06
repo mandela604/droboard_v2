@@ -1,0 +1,29 @@
+mongod up: mongodb://127.0.0.1:58513/dro_store
+PASS  GET /api/store (guest) -> 200  ::  status=200
+PASS  catalog has packs/bundles/gifts/adRewards/subscriptions/mergeSub  ::  ["packs","bundles","gifts","adRewards","subscriptions","mergeSub"]
+PASS  guest gets NO balance  ::  balance=undefined
+PASS  GET /api/store (reader) -> 200  ::  status=200
+PASS  reader balance is {coins,bonus,paid}  ::  {"coins":0,"bonus":0,"paid":0}
+PASS  balance.coins = bonus + paid  ::  {"coins":0,"bonus":0,"paid":0}
+PASS  packs seeded (>=4)  ::  n=4
+PASS  subscriptions seeded (>=4 excl. merge)  ::  n=4
+PASS  gifts seeded (>=6)  ::  n=6
+PASS  mergeSub present with code sub-merge  ::  "sub-merge"
+PASS  mergeSub is NOT also in the subscriptions grid
+PASS  every pack has a positive basePriceNGN for checkout  ::  
+PASS  every pack has a display price  ::  
+PASS  pack icon is a font-awesome class the renderer accepts  ::  fa-coins,fa-coins,fa-coins,fa-coins
+PASS  every bundle has id/name/coins/bonus/icon/color  ::  n=3 bad=
+PASS  every subscription has name/period/price/icon/color + features[]  ::  bad=
+PASS  mergeSub has features[] for the card  ::  ["Ad-free browsing","Unlimited reading"]
+PASS  every gift has name/price/faIcon(FA)/color(#hex)  ::  bad=
+PASS  adRewards array present  ::  n=1
+PASS  every served reward has id/action/faIcon/coins>0  ::  bad=
+PASS  every served reward exposes cooldown + available
+PASS  pack prices leg is an object of strings  ::  {"NGN":"₦1,500","USD":"$10.00","GBP":"£8.99"}
+PASS  an invalid earn task (watch_ad with no ad URL) is dropped from the catalog  ::  served=["ad2"]
+PASS  every NGN-only pack reports priceUSD 0  ::  []
+PASS  every NGN-only sub reports priceUSD 0
+PASS  mergeSub is null (not {}) when the plan does not exist  ::  null
+
+===== 26/26 store-catalog assertions passed =====

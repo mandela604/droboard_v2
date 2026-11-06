@@ -1,0 +1,97 @@
+mongod up: mongodb://127.0.0.1:60387/dro_messages
+PASS  GET /conversations requires auth  ::  401
+PASS  empty conversation list is { items: [] }  ::  {"items":[]}
+PASS  POST /conversations creates a thread (201)  ::  {"id":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","peer":{"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor"
+PASS  thread row carries the peer identity  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false}
+PASS  thread row starts empty (preview "", unread 0)  ::  preview= unread=0
+PASS  thread row exposes no Mongo _id  ::  {"id":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","peer":{"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":""
+PASS  re-opening the same peer returns the same thread  ::  201 000001a1-b1ee-7e6a-afde-e883d7c08a9f vs 000001a1-b1ee-7e6a-afde-e883d7c08a9f
+PASS  the peer opening from their side finds the same thread  ::  201 000001a1-b1ee-7e6a-afde-e883d7c08a9f
+PASS  each side sees the other as the peer  ::  {"id":"000001a1-b1ee-7874-a669-4cf0e7f62687","handle":"ada1793986583812","name":"Ada Writes","avatar":"","verified":true,"role":"Writer","online":false}
+PASS  cannot open a thread with yourself  ::  400 {"error":"invalid_peer"}
+PASS  unknown peer 404s  ::  404 {"error":"peer_not_found"}
+PASS  send text returns 201  ::  201 {"id":"000001a1-b1ee-7ef7-9290-7f3c73aeca48","conversationId":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","text":"Hello there","image":"","edited":false,"read":false
+PASS  message row marks isMine for the sender  ::  isMine=true
+PASS  writer sender maps to fromRole "author"  ::  author
+PASS  message row carries its own conversation id  ::  000001a1-b1ee-7e6a-afde-e883d7c08a9f
+PASS  empty message body is rejected  ::  400 {"error":"invalid_input","details":{"formErrors":[],"fieldErrors":{"body":["empty_message"]}}}
+PASS  whitespace-only message is rejected  ::  400 {"error":"invalid_input","details":{"formErrors":[],"fieldErrors":{"body":["empty_message"]}}}
+PASS  inline data-URL image is rejected (upload only)  ::  400 {"error":"image_must_be_uploaded"}
+PASS  uploaded delivery-URL image is accepted  ::  201 {"id":"000001a1-b1ee-7e47-8d76-2b1e856717e8","conversationId":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","text":"","image":"https://imagedelivery.net/acct123/imgid4
+PASS  list row is keyed by the thread with peer + updatedAt  ::  {"id":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","peer":{"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false},"pr
+PASS  image-only message previews as [Image]  ::  [Image]
+PASS  peer has written nothing yet, so unread is 0  ::  0
+PASS  the peer can post into the same thread  ::  201 {"id":"000001a1-b1ee-7aa5-976f-7934f380a687","conversationId":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","text":"Hi Ada, noted","image":"","edited":false,"read":fal
+PASS  editor role maps to fromRole "editor"  ::  editor
+PASS  unread badge counts the peer message  ::  1
+PASS  each side's badge counts only the other side's messages  ::  bobSees=2 (2 from alice) aliceSees=1 (1 from bob)
+PASS  preview follows the newest message of either side  ::  Hi Ada, noted
+PASS  mark-read returns ok  ::  {"ok":true}
+PASS  mark-read clears the badge  ::  0
+PASS  the peer row is not mine from my side of the thread  ::  false
+PASS  mark-read flips the peer message to read  ::  {"id":"000001a1-b1ee-7aa5-976f-7934f380a687","conversationId":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","text":"Hi Ada, noted","image":"","edited":false,"read":tru
+PASS  mark-read leaves my own rows untouched  ::  {"id":"000001a1-b1ee-7e47-8d76-2b1e856717e8","conversationId":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","text":"","image":"https://imagedelivery.net/acct123/imgid4
+PASS  history returns items + total + page + limit  ::  {"total":3,"page":1,"limit":50}
+PASS  history is newest-first  ::  Hi Ada, noted,,Hello there. vs 000001a1-b1ee-7aa5-976f-7934f380a687,000001a1-b1ee-7e47-8d76-2b1e856717e8,000001a1-b1ee-7ef7-9290-7f3c73aeca48
+PASS  history rows carry sender identity for avatars  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":fa
+PASS  history rows expose text/image/edited/read  ::  id,conversationId,text,image,edited,read,senderId,fromRole,isMine,sender,createdAt
+PASS  image message keeps its delivery URL in history  ::  ,https://imagedelivery.net/acct123/imgid456/public,
+PASS  pagination windows are disjoint  ::  p4,p3 vs p2,p1
+PASS  total counts every message, not the page  ::  7/7
+PASS  page echoes the requested page  ::  page=2 limit=2
+PASS  page 2 is the older half of the thread  ::  p4,p3 / p2,p1
+PASS  non-participant cannot read a thread  ::  403 {"error":"forbidden"}
+PASS  non-participant cannot post into a thread  ::  403 {"error":"forbidden"}
+PASS  non-participant cannot mark a thread read  ::  403
+PASS  an admin who is not in the thread cannot read it  ::  403 {"error":"forbidden"}
+PASS  unknown thread 404s  ::  404 {"error":"not_found"}
+PASS  sender can edit own message  ::  200 {"id":"000001a1-b1ee-7e47-8d76-2b1e856717e8","conversationId":"000001a1-b1ee-7e6a-afde-e883d7c08a9f","text":"Hello there (fixed)","image":"https://imagedelivery
+PASS  edited message is flagged for the "edited" chip  ::  true
+PASS  cannot edit the peer message  ::  403 {"error":"forbidden"}
+PASS  edit requires text  ::  400 {"error":"invalid_input","details":{"formErrors":[],"fieldErrors":{"body":["String must contain at least 1 character(s)"]}}}
+PASS  editing the newest message syncs the preview  ::  p4 edited live
+PASS  cannot delete the peer message  ::  403 {"error":"forbidden"}
+PASS  sender can delete own message  ::  200 {"ok":true}
+PASS  deleted message is gone from history  ::  total=6
+PASS  deleting the newest message rolls the preview back  ::  preview=p3 expected=p3
+PASS  a deleted message cannot be edited  ::  404 {"error":"not_found"}
+PASS  badge counts peer messages only, not my own  ::  badge=1 peerRows=1
+PASS  admin sender maps to fromRole "admin"  ::  201 admin
+PASS  list returns one row per peer thread  ::  Reina Morgan|Support Bot
+PASS  peer rows expose verified as a real boolean from the user record  ::  [{"p":"Support Bot","v":false},{"p":"Reina Morgan","v":false}]
+PASS  a verified peer reports verified true  ::  {"id":"000001a1-b1ee-7874-a669-4cf0e7f62687","handle":"ada1793986583812","name":"Ada Writes","avatar":"","verified":true,"role":"Writer","online":false}
+PASS  an unverified peer reports verified false  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false}
+PASS  peer row carries the handle the composer needs  ::  "ada1793986583812"
+PASS  peer.role renders "Senior Editor" from the stored role token  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false}
+PASS  peer.role renders "Chief Editor" from the stored role token  ::  {"id":"000001a1-b1ee-77ee-a248-40ef12f843c1","handle":"chief1793986583812","name":"Jasmine Cole","avatar":"","verified":false,"role":"Chief Editor","online":false}
+PASS  peer.role renders "Admin" from the stored role token  ::  {"id":"000001a1-b1ee-76e2-bf4c-94e65441f0dd","handle":"sup1793986583812","name":"Support Bot","avatar":"","verified":false,"role":"Admin","online":false}
+PASS  peer.role renders "Reader" from the stored role token  ::  {"id":"000001a1-b1ee-752a-b828-c2567a79f3df","handle":"plain1793986583812","name":"Plain Reader","avatar":"","verified":false,"role":"Reader","online":false}
+PASS  the most privileged role wins the label  ::  Senior Editor
+PASS  primaryRole overrides the rank list when it is set  ::  Writer
+PASS  message rows expose sender.role too  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false}
+PASS  peer.online starts false with no live socket  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false}
+PASS  a live socket flips the peer to online for the other side  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":true}
+PASS  the server announces the flip to the watching side  ::  [{"userId":"000001a1-b1ee-7874-a669-4cf0e7f62687","online":true},{"userId":"000001a1-b1ee-7a05-af1d-0a06d5978a46","online":true}]
+PASS  one of two devices dropping off keeps the peer online  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":true}
+PASS  a second device disconnecting announces nothing  ::  [{"userId":"000001a1-b1ee-7874-a669-4cf0e7f62687","online":true},{"userId":"000001a1-b1ee-7a05-af1d-0a06d5978a46","online":true}]
+PASS  the peer goes offline when their last device drops  ::  {"id":"000001a1-b1ee-7a05-af1d-0a06d5978a46","handle":"reina1793986583812","name":"Reina Morgan","avatar":"","verified":false,"role":"Senior Editor","online":false}
+PASS  the drop is announced too  ::  [{"userId":"000001a1-b1ee-7874-a669-4cf0e7f62687","online":true},{"userId":"000001a1-b1ee-7a05-af1d-0a06d5978a46","online":true},{"userId":"000001a1-b1ee-7a05-af1d-0a06d5978a46","online":false}]
+PASS  the observing user reads as online to the other side  ::  {"id":"000001a1-b1ee-7874-a669-4cf0e7f62687","handle":"ada1793986583812","name":"Ada Writes","avatar":"","verified":true,"role":"Writer","online":true}
+PASS  no _id key leaks to the client  ::  false
+PASS  a fresh conversation opens for the notification tests  ::  {"id":"000001a1-b1ee-7e0b-b886-6879c810360b","peer":{"id":"000001a1-b1ee-76e2-bf4c-94e65441f0dd","handle":"sup1793986583812","name":"Support Bot","avatar":"","verified":false,"role":"Admin","online":false},"preview":"Your payout is done","u
+PASS  a DM notifies the recipient  ::  ["Ada Writes"]
+PASS  three messages coalesce into one row, not three  ::  1
+PASS  the coalesced row carries the climbing count  ::  3
+PASS  the row is in the messages category  ::  messages
+PASS  the row icon is blue, not the default pink  ::  {"name":"fa-comment-dots","bg":"#e8f1ff","color":"#2563eb"}
+PASS  the row deep-links to that conversation  ::  {"href":"Pages/chat.html?contact=000001a1-b1ee-7e0b-b886-6879c810360b","label":"Reply"}
+PASS  the preview is the latest message  ::  Third note
+PASS  the sender is the actor on the row  ::  000001a1-b1ee-7874-a669-4cf0e7f62687
+PASS  the sender gets no notification for their own message  ::  [{"id":"000001a1-b1ee-797b-8c45-332b036677e0","type":"direct_message","cat":"messages","kind":"row","audience":"both","pushEligible":true,"unread":true,"at":1793986585907,"title":"Support Bot","desc":"Your payout is done","actorId":"000001a
+PASS  the notify event reaches the recipient socket  ::  ["direct_message","direct_message","direct_message"]
+PASS  unread-count splits chats out so the bell can go blue  ::  {"count":1,"chats":1}
+PASS  opening the thread clears the chat notification  ::  {"count":0,"chats":0}
+PASS  a message after reading starts the count over  ::  [{"n":1,"d":"After you read it"}]
+PASS  a muted recipient gets no chat notification  ::  []
+
+===== 94/94 message assertions passed =====

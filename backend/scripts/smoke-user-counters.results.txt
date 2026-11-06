@@ -1,0 +1,48 @@
+mongod up: mongodb://127.0.0.1:63588/dro_counters
+PASS  every counter starts at zero and matches an empty graph  ::  cache matches collections
+PASS  POST /users/:handle/follow -> 200  ::  status=200 {"ok":true,"following":true}
+PASS  target gains one follower  ::  bob.followerCount=1
+PASS  follower gains one following  ::  alice.followingCount=1
+PASS  repeat follow is accepted  ::  status=200
+PASS  repeat follow stored exactly one edge  ::  edges=1
+PASS  repeat follow left bob at one follower  ::  bob.followerCount=1
+PASS  repeat follow left alice at one following  ::  alice.followingCount=1
+PASS  after bob follows alice both sides moved  ::  cache matches collections
+PASS  profile stats reports the stored counters  ::  {"following":1,"followers":1,"books":0,"reads":0,"likes":0,"saved":0,"readingHours":0,"streak":0}
+PASS  GET /users/:handle/followers total = followerCount  ::  total=1
+PASS  GET /users/:handle/following total = followingCount  ::  total=1
+PASS  GET /users/me reports the same two numbers  ::  {"following":1,"followers":1}
+PASS  POST /api/posts -> 201  ::  status=201 {"authorId":"000001a1-b0a8-7840-b2d2-3a368ccac8a2","type":"post","title":"","text":"Counted post","note":"","heading":""
+PASS  author gains a post  ::  alice.postCount=1
+PASS  POST /api/comments -> 201  ::  status=201 {"id":"000001a1-b0a8-7950-9420-1b43876bdf57","name":"bob17939652267950.26992362871815345","handle":"bob17939652267950.26992362871815345","avatar":"","verified":
+PASS  commenter gains a comment  ::  bob.commentCount=1
+PASS  a reply counts as a comment too  ::  bob.commentCount=2
+PASS  posts and comments match their collections  ::  cache matches collections
+PASS  console users row carries the counters  ::  {"f":1,"g":1,"p":1,"m":0}
+PASS  console stats object exposes the same four  ::  {"followers":1,"following":1,"posts":1,"stories":0,"reads":0,"comments":0}
+PASS  console user detail reports bob two comments  ::  comments=2
+PASS  DELETE /api/comments/:id -> 200  ::  status=200 {"ok":true}
+PASS  deleted reply releases its count  ::  bob.commentCount=1
+PASS  DELETE /api/posts/:id -> 200  ::  status=200 {"ok":true}
+PASS  post author releases the post  ::  alice.postCount=0
+PASS  cascade deletes release the comment author too  ::  bob.commentCount=0
+PASS  after the cascading delete everything still matches  ::  cache matches collections
+PASS  DELETE /users/:handle/follow -> 200  ::  status=200
+PASS  unfollow released exactly one edge  ::  cache matches collections
+PASS  repeat unfollow is accepted  ::  status=200
+PASS  repeat unfollow did not underflow  ::  cache matches collections
+PASS  no counter went negative  ::  {"f":1,"g":0,"p":0,"m":0}
+PASS  carol and bob follow each other  ::  cache matches collections
+PASS  POST /users/:handle/block -> 200  ::  status=200 {"ok":true,"blocked":true}
+PASS  block removed both edges and both counts  ::  cache matches collections
+PASS  dave follows bob  ::  status=200
+PASS  DELETE /users/me -> 200  ::  status=200 {"ok":true,"deleted":true}
+PASS  bob loses the deactivated follower  ::  bob.followerCount=0
+PASS  the deactivated user reads zeros  ::  {"f":0,"g":0,"p":0,"m":0}
+PASS  every counter matches its collection after all writes  ::  cache matches collections
+PASS  followerCount sums to the edge count  ::  sum=1 edges=1
+PASS  followingCount sums to the same edge count  ::  sum=1 edges=1
+PASS  postCount sums to the surviving posts  ::  sum=0 posts=0
+PASS  commentCount sums to the surviving comments  ::  sum=0 comments=0
+
+===== 45/45 live counter assertions passed =====

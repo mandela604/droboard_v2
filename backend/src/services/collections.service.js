@@ -16,7 +16,7 @@ const HEX24 = /^[0-9a-fA-F]{24}$/;
    mode 'any': any existing story (zero friction, discovery-first).
    mode 'read': only own books + stories where the user has read >= minChapters
      distinct chapters (ReadingProgress.chapterId). Flip one line to change. */
-const STORY_ACCESS_RULE = { mode: 'any', minChapters: 15 };
+const STORY_ACCESS_RULE = { mode: 'read', minChapters: 15 };
 
 /* Read credit: an opened chapter only counts once finished or after 120s of
    read time — opens alone never qualify (also feeds eligible-stories). */
@@ -447,7 +447,7 @@ async function shareCollection({ userId, id, channel }) {
 async function eligibleStories({ userId }) {
   const flavors = await userFlavors(userId);
   const [mine, saved, prog] = await Promise.all([
-    Book.find({ authorId: { $in: flavors } }).select('id title cover genre authorId').limit(200).lean(),
+    Book.find({ authorId: { $in: flavors } }).select('id title cover genre authorId chapterCount').limit(200).lean(),
     LibraryItem.find({ userId: { $in: flavors } }).select('storyId').limit(500).lean(),
     ReadingProgress.aggregate([
       { $match: {
@@ -459,8 +459,14 @@ async function eligibleStories({ userId }) {
   ]);
   const readMap = {};
   prog.forEach(r => { readMap[String(r._id)] = r.chapters.length; });
-  const savedIds = [...new Set(saved.map(i => String(i.storyId)).filter(Boolean))].slice(0, 200);
-  const books = await booksByIds(savedIds, 'id title cover genre authorId chapterCount');
+  /* Candidates are own books, library saves AND anything the reader has
+     credited chapters of — otherwise the book the rule exists to unlock
+     (read a lot, never saved) is absent from the picker entirely. */
+  const candidateIds = [...new Set([
+    ...saved.map(i => String(i.storyId)).filter(Boolean),
+    ...Object.keys(readMap),
+  ])].slice(0, 200);
+  const books = await booksByIds(candidateIds, 'id title cover genre authorId chapterCount');
   const seen = new Map();
   mine.forEach(b => { if (b.id) seen.set(String(b.id), { b, mine: true }); });
   books.forEach(b => { if (b.id && !seen.has(String(b.id))) seen.set(String(b.id), { b, mine: false }); });

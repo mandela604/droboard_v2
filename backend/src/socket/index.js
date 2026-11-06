@@ -6,6 +6,17 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 
 let io = null;
+// userId -> how many live sockets that user holds. A phone plus a laptop is one
+// online person, so presence counts connections, not sockets.
+const connections = new Map();
+
+function isOnline(userId) {
+  return connections.has(String(userId));
+}
+
+function onlineIds() {
+  return [...connections.keys()];
+}
 
 function init(httpServer) {
   io = new Server(httpServer, {
@@ -26,12 +37,22 @@ function init(httpServer) {
   });
 
   io.on('connection', (socket) => {
-    socket.join('user:' + socket.userId);
+    const uid = String(socket.userId);
+    const wasOnline = connections.has(uid);
+    connections.set(uid, (connections.get(uid) || 0) + 1);
+    // Everyone else watching this user flips them green once, not per device.
+    if (!wasOnline) io.emit('presence', { userId: uid, online: true });
+    socket.join('user:' + uid);
     socket.on('join', (room) => {
       // only conversation rooms the user belongs to (checked on use)
-      if (typeof room === 'string' && room.startsWith('conv:')) socket.join(room + ':' + socket.userId);
+      if (typeof room === 'string' && room.startsWith('conv:')) socket.join(room + ':' + uid);
     });
-    socket.on('disconnect', () => {});
+    socket.on('disconnect', () => {
+      const left = (connections.get(uid) || 1) - 1;
+      if (left > 0) connections.set(uid, left);
+      else connections.delete(uid);
+      if (left <= 0) io.emit('presence', { userId: uid, online: false });
+    });
   });
 
   return io;
@@ -42,4 +63,4 @@ function emitToUser(userId, event, payload) {
   if (io) io.to('user:' + userId).emit(event, payload);
 }
 
-module.exports = { init, getIo, emitToUser };
+module.exports = { init, getIo, emitToUser, isOnline, onlineIds };

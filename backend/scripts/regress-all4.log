@@ -1,0 +1,358 @@
+
+> droboard-backend@0.1.0 smoke:all
+> node scripts/smoke-staff-scopes.cjs && node scripts/smoke-chief-crud.cjs && node scripts/smoke-staff-live.cjs && node scripts/smoke-superadmin-coins.cjs && node scripts/smoke-superadmin-pages.cjs && node scripts/smoke-user-counters.cjs
+
+PASS  CE book search escapes the regex metacharacter  ::  source=\[ada
+PASS  flagged search escapes too  ::  source=\(x\)
+PASS  history search escapes (was a raw new RegExp)  ::  source=\*
+PASS  category search routes through the escaper  ::  source=\+
+PASS  genre search survives an unclosed bracket  ::  "\\["
+PASS  SE contract overview carries a scope filter  ::  {"$or":[{"authorId":{"$in":["u-auth-1"]}},{"editorId":"u-seA"}]}
+PASS  SE sees only own authors + own signed rows  ::  n=1 ids=CT-1
+PASS  SE signed list is limited to own rows  ::  {"editorId":"u-seA"}
+PASS  other SE cannot read Editor A contracts  ::  {"$or":[{"authorId":{"$in":["u-auth-2"]}},{"editorId":"u-seB"}]}
+PASS  chief overview is platform-wide (no filter)  ::  filter={} n=2
+PASS  other SE editing a banner -> 403  ::  thrown=not_yours/403
+PASS  refused banner edit leaves the row alone  ::  tag=trending
+PASS  owner SE edits own banner -> row returned  ::  {"id":"FP-1","title":"Ada[book"}
+PASS  banner write lands on the stored row  ::  "editors-pick"
+PASS  chief can pause any banner  ::  {"ok":true,"id":"FP-1","active":false}
+PASS  other SE pausing a banner -> 403  ::  thrown=403
+PASS  assigned SE flags through the shared service  ::  {"id":"B-2","status":"flagged","flagReason":"plagiarism","reportId":"new-Report-1"}
+PASS  flag mirrors a pending Report typed from the reason  ::  {"type":"plagiarism","st":"pending","seId":"u-seB"}
+PASS  flag stamps flaggedBy with the actor id  ::  {"flaggedBy":"u-seB"}
+PASS  chief flag -> 403 chief_does_not_flag  ::  thrown=chief_does_not_flag/403
+PASS  refused chief flag leaves the book published  ::  status=published
+PASS  chief unflag -> 403 too  ::  thrown=chief_does_not_flag/403
+PASS  SE flagging a foreign author's book is refused  ::  thrown=404
+PASS  SE flags own author's book  ::  {"id":"B-1","status":"flagged","flagReason":"spam","reportId":"new-Report-2"}
+PASS  flag without a reason -> 400  ::  thrown=reason_required/400
+PASS  unflag restores the previous status  ::  {"id":"B-1","status":"published"}
+PASS  unflag resolves the mirrored report row  ::  last Report op=updateMany
+PASS  chief router registers no flag/unflag route  ::  ["/books/flagged"]
+PASS  the senior routes are the only flag path  ::  ["/books/:id/flag","/books/:id/unflag"]
+PASS  queue mixes the author withdrawal and the editor payout  ::  ["ep:EP-1","WD-1"]
+PASS  editor payout is addressed with the ep: prefix  ::  id=ep:EP-1
+PASS  queue sorts newest first  ::  first=ep:EP-1
+PASS  author row reveals the exact payment method  ::  {"an":"0123456789","bn":"GTBank","v":true}
+PASS  editor row falls back to that owner's default method  ::  {"an":"9988776655","author":"Editor A"}
+PASS  author payee lookup prefers the exact method id, then the owner default  ::  {"$or":[{"id":{"$in":["PM-1"]}},{"authorId":{"$in":["u-auth-1"]},"isDefault":true}]}
+PASS  editor payout shows the editor name, not the author  ::  status=pending
+PASS  ep: approve settles through the editor payout engine  ::  {"id":"ep:EP-1","st":"approved","an":"9988776655"}
+PASS  ep: settle lands the payout row at paid with a reference  ::  {"st":"paid","ref":"EPAY-MVYZKDI3","by":"u-chief"}
+PASS  ep: settle posts exactly one liability -> bank leg  ::  [{"d":"liability:editor:u-seA","c":"bank:editor-payouts","a":120000}]
+PASS  already-paid ep: row echoes without posting again  ::  legs=0 st=approved
+PASS  declining a paid ep: row -> 409 already_paid  ::  thrown=already_paid/409
+
+===== 41/41 stub-runtime assertions passed =====
+mongod up: mongodb://127.0.0.1:58191/droboard_chief
+(node:21192) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21192) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21192) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21192) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21192) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:21192) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4277
+
+--- reads ---
+PASS  GET /health  ::  {"ok":true}
+PASS  GET /senior-editors 200 + paged shape  ::  status=200 keys=items,total,page,limit,invites
+PASS  list row exposes uuidv7 id, hides _id/__v  ::  id=000001a1-9b55-76c8-beb8-765f03b84040 _id=false __v=false
+
+--- invite CRUD ---
+[mail:log] {"to":["nia.smith@t.co"],"subject":"You’re invited as a Droboard Senior Editor"}
+PASS  POST /invites 201  ::  status=201 {"name":"Nia Author","email":"nia.smith@t.co","target":20,"paymentType":"","monthlyPay":50000,"revenueShare":0,"deadline":"2026-12-01T00:00:00.000Z","note":"","status":"pending","expiresAt"
+PASS  invite returned: stored hash hidden, plaintext token shown ONCE  ::  keys=name,email,target,paymentType,monthlyPay,revenueShare,deadline,note,status,expiresAt,invitedBy,id,createdAt,updatedAt,token,isNew
+PASS  invite token absent from list read (one-time only) + literal route not shadowed by /:id  ::  status=200 tokenReused=false
+PASS  duplicate pending invite -> 409 invite_pending  ::  status=409 {"error":"invite_pending"}
+PASS  invalid email still 400  ::  status=400
+
+--- editor PATCH (quota/deadline) ---
+PASS  PATCH /senior-editors/:id 200  ::  status=200 {"id":"000001a1-9b55-76c8-beb8-765f03b84040","fullName":"Test senior_editor","name":"Test senior_editor","username":"senior_editor17936074637780.7431908084094558","email":"senior_editor1793
+
+--- assignments: replace-all + one-writer deltas ---
+PASS  PUT /assignments 200  ::  status=200 {"editorId":"000001a1-9b55-76c8-beb8-765f03b84040","authorIds":["000001a1-9b55-7f62-9334-6c0cfa8a79b5","000001a1-9b55-73e4-bddf-8f6611a06e5a"],"createdAt":"2026-11-02T08:17:46.311Z","id":"0
+PASS  DB holds exactly the 2 assigned ids  ::  authorIds=2
+PASS  POST delta (one id only) 200  ::  status=200 {"editorId":"000001a1-9b55-76c8-beb8-765f03b84040","authorIds":["000001a1-9b55-7f62-9334-6c0cfa8a79b5","000001a1-9b55-73e4-bddf-8f6611a06e5a","000001a1-9b55-7ea1-92a5-dadad38ca328"],"create
+PASS  DB now holds 3 — new id added, old ones kept  ::  n=3
+PASS  repeat add is idempotent (still 3)  ::  n=3
+PASS  DELETE delta 200  ::  status=200 {"editorId":"000001a1-9b55-76c8-beb8-765f03b84040","authorIds":["000001a1-9b55-73e4-bddf-8f6611a06e5a","000001a1-9b55-7ea1-92a5-dadad38ca328"],"createdAt":"2026-11-02T08:17:46.311Z","id":"0
+PASS  DB now holds 2, w1 removed  ::  n=2
+PASS  unknown author -> 400 bad_author  ::  status=400 {"error":"bad_author"}
+PASS  unknown editor -> 404  ::  status=404
+PASS  replace-all with 122 authors accepted (old cap was 100)  ::  status=200 undefined
+PASS  DB stored all 122 ids  ::  n=122
+PASS  GET /assignments 200  ::  status=200
+PASS  GET /assignments = bare array of {editorId, authorIds[]} (what mapAssignments consumes)  ::  [{"editorId":"000001a1-9b55-76c8-beb8-765f03b84040","authorIds":["000001a1-9b55-73e4-bddf-8f6611a06e5a","000001a1-9b55-7
+
+--- report scope: CE reads, does not act ---
+PASS  GET /reports/story 200 (view)  ::  status=200
+PASS  CE has no resolve action on chief base  ::  status=404
+
+--- earnings settings (chief pay console) ---
+PASS  PUT /earnings/settings 200  ::  status=200 {"enabled":true,"mode":"hybrid","revenueSharePct":10,"tipSharePct":5,"fixedMonthlyAmount":250000,"minWithdrawal":100,"currency":"NGN","payoutDay":28}
+PASS  settings round-trip persisted  ::  {"enabled":true,"mode":"hybrid","revenueSharePct":10,"tipSharePct":5,"fixedMonthlyAmount":250000,"minWithdrawal":100,"currency":"NGN","payoutDay":28}
+
+--- policy CRUD (growth) ---
+PASS  POST /policies 201  ::  status=201 {"title":"No AI-generated art","body":"Draft text","author":"000001a1-9b55-709d-ace6-f630d2eb522f","status":"draft","version":1,"id":"000001a1-9b55-7c45-9c4e-a2d40673af8e","createdAt":"2026
+PASS  PATCH /policies/:id 200  ::  status=200 {"title":"No AI-generated art (v2)","body":"Draft text","author":"000001a1-9b55-709d-ace6-f630d2eb522f","status":"draft","version":2,"id":"000001a1-9b55-7c45-9c4e-a2d40673af8e","createdAt":
+PASS  POST /policies/:id/archive 200 + status=archived  ::  status=200 "archived"
+
+--- auth boundary ---
+PASS  unauthenticated chief read -> 401  ::  status=401
+PASS  reader hitting chief console -> 403  ::  status=403
+
+===== 31/31 live assertions passed =====
+mongod up: mongodb://127.0.0.1:58630/droboard_lock
+(node:21636) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21636) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21636) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21636) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21636) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:21636) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4178
+PASS  CE flag route does not exist -> 404  ::  status=404 null
+PASS  CE unflag route does not exist -> 404  ::  status=404
+PASS  book never left published after chief attempts
+PASS  chief cannot flag via the senior route -> 403  ::  status=403 {"error":"chief_does_not_flag"}
+PASS  chief cannot unflag via the senior route -> 403  ::  status=403
+PASS  chief reads the flagged queue  ::  status=200
+PASS  SE flag a foreign author's book -> 404  ::  status=404 {"error":"not_found"}
+PASS  SE flag with wrong password -> 401  ::  status=401 {"error":"invalid_password"}
+PASS  SE flag own author's book -> 200  ::  status=200 {"id":"000001a1-9b56-7944-a1f4-c34db9184e12","status":"flagged","flagReason":"plagiarism","reportId":"000001a1-9b56-7c04-803c-ebe870bc7eed"}
+PASS  SE flag mirrors a pending Report row  ::  {"type":"plagiarism","seId":"000001a1-9b56-7a32-a62c-eca40f3fff22"}
+PASS  SE flag stamps flaggedBy = the acting editor  ::  {"flaggedBy":"000001a1-9b56-7a32-a62c-eca40f3fff22"}
+PASS  flag twice -> 409 already_flagged  ::  status=409 {"error":"already_flagged"}
+PASS  SE unflag own book -> 200 + status restored  ::  status=200 {"id":"000001a1-9b56-7944-a1f4-c34db9184e12","status":"published"}
+PASS  unflag resolves the mirrored Report  ::  pending=0
+PASS  CE /books?q=[ -> 200 not 500  ::  status=200 {"items":[],"total":0,"page":1,"limit":5}
+PASS  CE /featured/history?q=*** -> 200  ::  status=200
+PASS  CE /categories?q=( -> 200  ::  status=200
+PASS  SE overview shows only own authors  ::  status=200 rows=["Lock writer"]
+PASS  chief overview is platform-wide  ::  count=2
+PASS  SE can read announcements  ::  status=200
+PASS  SE create announcement -> 403  ::  status=403 {"error":"forbidden"}
+PASS  chief create announcement -> 200  ::  status=200 {"id":"000001a1-9b56-7ab4-adbb-6a61fb342f64","title":"Platform shift","audience":"all","content":"everyone","image":null
+PASS  SE edit announcement -> 403  ::  status=403
+PASS  SE create banner -> 200/201  ::  status=200 {"id":"000001a1-9b56-7746-a94f-169064201431","bookId":"000001a1-9b56-7944-a1f4-c34db9184e12","emoji":"","grad":"","title":"Locked Inbox","su
+PASS  other SE edit banner -> 403  ::  status=403 {"error":"not_yours"}
+PASS  other SE pause banner -> 403  ::  status=403
+PASS  owner SE edit banner -> 200 + tag persisted  ::  status=200 tag=editors-pick
+PASS  chief pause any banner -> 200  ::  status=200
+PASS  staff queue mixes author + editor payouts  ::  status=200 n=2
+PASS  author row reveals the payee account  ::  {"an":"0123456789","bn":"GTBank","v":true}
+PASS  rows name the owner, never a raw id  ::  {"author":"Lock writer","epAuthor":"Lock senior_editor"}
+PASS  editor row reveals the payee by owner default  ::  {"an":"9988776655","acctName":"Sam Editor","status":"pending"}
+PASS  settle ep: row -> 200 + console status  ::  status=200 row="approved"
+PASS  ep: settle moves the payout row + ledger  ::  {"s":"paid","ref":"EPAY-MVYZL3RI"}
+PASS  ep: settle posts exactly one journal  ::  legs=1
+PASS  author withdrawal approve -> 200 + payee echoed  ::  status=200 row={"s":"approved","an":"0123456789"}
+PASS  author approve moves the row to paid  ::  {"s":"paid"}
+PASS  non-staff cannot read the staff queue  ::  status=200 keys=
+PASS  GET /api/editor/* -> 404 (router removed)  ::  status=404
+PASS  banner keeps placedBy attribution  ::  {"placedBy":"000001a1-9b56-7a32-a62c-eca40f3fff22"}
+
+===== 40/40 live assertions passed =====
+mongod up: mongodb://127.0.0.1:63395/dro_coins_lock
+(node:8444) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8444) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:8444) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:8444) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:8444) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:8444) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4181
+PASS  POST /api/wallet/tip -> 200  ::  status=200 {"balance":{"coins":450,"bonus":0,"paid":450},"writerShare":225}
+PASS  tip row stamps paidCoins = 50, bonusCoins = 0  ::  {"coins":50,"p":50,"b":0,"fiat":750}
+PASS  GET /super-admin/users -> 200  ::  status=200 {"items":[{"id":"000001a1-9b56-73bb-a2e9-d02da6394e82","name":"Lock writer","username":"writer17936074967440.7751877411037154","email":"writer17936074967430.351
+PASS  users row exists  ::  ["000001a1-9b56-73bb-a2e9-d02da6394e82"]
+PASS  coinsSpent is coins, not naira  ::  got=240 want=240
+PASS  spend is NOT the old fiat sum  ::  old formula would say 4505
+PASS  readCoins counts chapter unlocks only  ::  got=60
+PASS  tipsCoins counts tips + gifts  ::  got=180
+PASS  bonusCoinsSpent isolates granted coins  ::  got=20
+PASS  coinsBought counts the two packs, refunds excluded  ::  got=300
+PASS  earnCoins reports the reward grant  ::  got=25
+PASS  fundedNGN converts the USD pack to naira  ::  got=4900 want=4900 (1500 NGN + 3000 face + 400 premium)
+PASS  users list survives stat rows  ::  status=200 rows=3
+PASS  author row carries its book count  ::  stories=1
+PASS  author row keeps lifetimeEarned as payout  ::  payout=777225
+PASS  author with no coin history reads zeros  ::  {"s":0,"b":0,"f":0}
+PASS  author tipsReceivedNGN comes off the ledger tip leg  ::  got=225 share=225
+PASS  a reader has no tips-received money  ::  reader tipsReceivedNGN=0
+PASS  GET /users/:id -> 200  ::  status=200
+PASS  detail page agrees with the list  ::  {"s":240,"t":180,"f":4900}
+PASS  tipsAmount key is gone (tipsCoins replaced it)  ::  tipsAmount=undefined
+PASS  GET /insights/overview -> 200  ::  status=200
+PASS  overview users carry coins, not naira  ::  {"s":240,"b":300}
+PASS  funded = cash the reader paid in  ::  {"referralsSent":0,"referralsConverted":0,"plan":"free","funded":4900,"sessionsPerDay":1}
+PASS  funded is no longer the author wallet  ::  author lifetimeEarned=777000, funded=4900
+PASS  GET /analytics/top-readers -> 200  ::  status=200
+PASS  top readers expose coinsSpent + tipsCoins  ::  {"s":240,"t":180,"w":12000}
+PASS  reader history sums to the console number  ::  reader=240 console=240
+PASS  reader balance still reports coins  ::  {"coins":450,"bonus":0,"paid":450}
+
+===== 29/29 live coin-ledger assertions passed =====
+mongod up: mongodb://127.0.0.1:62684/dro_sa_pages
+(node:20420) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20420) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20420) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20420) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20420) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:20420) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4192
+
+=== TESTING DASHBOARD SUMMARY ===
+
+PASS  GET /dashboard/summary -> 200  ::  status=200
+PASS  dashboard has kpiCards array  ::  kpiCards type=object
+PASS  dashboard has revenueChart array  ::  revenueChart type=object
+PASS  dashboard has topStories array  ::  topStories type=object
+PASS  dashboard has activityLog array  ::  activityLog type=object
+PASS  dashboard has adminTeam array  ::  adminTeam type=object
+PASS  kpiCard has required fields  ::  kpi={n:true,l:true,ico:true}
+PASS  topStory has title, writer, genre, reads, revenue  ::  {"id":"000001a1-9b56-7d02-a924-07b997a0f782","title":"The runaway bride — I left at the altar in my socked feet","writer":"Ifeanyi Story","genre":"Twist Fiction","reads":900,"revenue":12500,"cover":"https://i.postimg.cc/vDn9YLx5/wife2.jpg"}
+PASS  topStory has cover url  ::  cover=https://i.postimg.cc/vDn9YLx5/wife2.jpg
+PASS  adminTeam row has id, name, email, role, perms  ::  {"id":"000001a1-9b56-7a82-90d5-0e05919e88d4","name":"Tobenna Achebe","email":"tobi@droboard.com","avatar":"","role":"Platform Ops","status":"active","perms":{"contracts":true,"campaigns":false,"moderation":true,"finance":false,"admins":fals
+PASS  adminTeam row has perms object  ::  perms={"contracts":true,"campaigns":false,"moderation":true,"finance":false,"admins":false}
+
+=== TESTING ACTIVITY / PERMS / REVENUE FROM REAL DATA ===
+
+PASS  PATCH /users/:id -> 200  ::  status=200 {"id":"000001a1-9b56-7146-bbc9-2b727628deea","name":"Chioma Reader","username":"chioma_reader","email":"chioma@droboard.com","role":"Reader","status":"active","avatar":"","verified":true,"joined":"2026-11-02T08:18:27.865Z","lastA
+PASS  audit() wrote AuditLog rows  ::  count=1
+PASS  activityLog panel is not permanently empty  ::  len=1
+PASS  activity names the real actor  ::  text=Tobenna Achebe — Users updated
+PASS  activity humanises the audit action  ::  text=Tobenna Achebe — Users updated
+PASS  topStories[].revenue is what the book earned  ::  revenue=12500
+PASS  adminTeam role label comes from the AdminRole doc  ::  role=Platform Ops
+PASS  adminTeam perms roll up from the real role flags  ::  perms={"contracts":true,"campaigns":false,"moderation":true,"finance":false,"admins":false}
+
+=== TESTING USERS LIST ===
+
+PASS  GET /users -> 200  ::  status=200
+PASS  users list has items array  ::  items type=OK
+PASS  users list returns created users  ::  found=4 expected>=4
+PASS  user row has id, name, email, username  ::  {"id":"000001a1-9b56-700c-b354-b0ba6648b20e","name":"Ifeanyi Story","username":"ifeanyi_author","email":"ifeanyi@droboard.com","role":"Writer","status":"active","avatar":"https://i.pravatar.cc/150?img=12","verified":true,"joined":"2026-11-0
+PASS  user row has role field  ::  role=Writer,roles=undefined
+PASS  user row has stats object  ::  stats={"followers":0,"following":0,"posts":0,"stories":2,"reads":1200,"comments":0}
+PASS  user row has wallet.balance.coins  ::  coins=0
+PASS  user row has coinsSpent (not naira)  ::  coinsSpent=0
+PASS  likesGiven counts the reader Reaction rows  ::  likesGiven=3
+PASS  sharesCount counts distinct ShareEvent targets  ::  sharesCount=2
+PASS  savesCount counts distinct saved + library stories  ::  savesCount=2
+PASS  readingHours comes from secondsSpent  ::  readingHours=0.5
+PASS  avgSessionMin is minutes per chapter session  ::  avgSessionMin=10
+PASS  streakDays is the consecutive-day run  ::  streakDays=2
+PASS  topGenres are the genres actually read  ::  topGenres=[{"name":"Revenge Drama","count":1},{"name":"Twist Fiction","count":1}]
+
+=== TESTING SINGLE USER DETAILS ===
+
+PASS  GET /users/:id -> 200  ::  status=200
+PASS  user detail matches list fields  ::  id=000001a1-9b56-700c-b354-b0ba6648b20e,name=Ifeanyi Story
+PASS  user detail has profile info  ::  profile={"bio":"","location":"","website":""},avatar=https://i.pravatar.cc/150?img=12
+PASS  GET /users/:id -> 200 for the reader  ::  status=200
+PASS  user detail carries engagement aggregates  ::  likes=3,shares=2,saves=2
+PASS  user detail carries reading aggregates  ::  h=0.5,min=10,streak=2,genres=[{"name":"Revenge Drama","count":1},{"name":"Twist Fiction","count":1}]
+
+=== TESTING INSIGHTS OVERVIEW ===
+
+PASS  GET /insights/overview -> 200  ::  status=200
+PASS  overview has users array  ::  users type=object
+PASS  overview has ex array (expenditure)  ::  ex type=object
+PASS  overview has cohorts array  ::  cohorts type=object
+PASS  overview user has coinsSpent, coinsBought  ::  coinsSpent=0,coinsBought=0
+PASS  expenditure row has u (userId) and x object  ::  {"u":"000001a1-9b56-7a82-90d5-0e05919e88d4","x":{"referralsSent":0,"referralsConverted":0,"plan":"free","funded":0,"sessionsPerDay":0}}
+PASS  expenditure x has funded  ::  funded=0
+PASS  subPrice is the live monthly plan USD leg  ::  subPrice=2
+PASS  sessionsPerDay is chapter sessions per reading day  ::  sessionsPerDay=1.5
+PASS  insights user rows carry engagement + reading too  ::  likes=3,saves=2,streak=2
+PASS  a user with no activity reads as zero, not as a gap  ::  likes=0,h=0
+
+=== TESTING LEADERBOARD ===
+
+PASS  GET /insights/leaderboard -> 200  ::  status=200
+PASS  leaderboard has items array  ::  items type=object
+
+=== TESTING ANALYTICS SUMMARY ===
+
+PASS  GET /analytics/summary -> 200  ::  status=200
+PASS  analytics summary has totalUsers  ::  totalUsers=4
+PASS  analytics summary has totalRevenue  ::  totalRevenue=0
+PASS  analytics summary has monthlyRevenue array  ::  monthlyRevenue type=object
+
+=== TESTING CHIEF / FINANCE / MARKETING ACTIVITY FEED ===
+
+PASS  chief dashboard activity feeds from AuditLog  ::  status=200 len=1 body=[{"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}]
+PASS  chief activity row has icon/color/text/time  ::  {"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}
+PASS  finance dashboard activity feeds from AuditLog  ::  status=200 len=1 body=[{"icon":"fa-pen","color":"purple","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}]
+PASS  finance activity row has icon/color/text/time  ::  {"icon":"fa-pen","color":"purple","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}
+PASS  marketing dashboard activity feeds from AuditLog  ::  status=200 len=1 body=[{"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}]
+PASS  marketing activity row has icon/color/text/time  ::  {"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}
+PASS  GET /api/chief/activity -> 200 with rows  ::  status=200 items=1
+PASS  chief activity row carries action + actor + time  ::  {"id":"6ae84754f00d008d93d3f2f7","action":"admin.users.update","type":"update","entity":"/api/super-admin/users/000001a1-9b56-7146-bbc9-2b727628deea","entityId":"000001a1-9b56-7146-bbc9-2b727628deea",
+
+===== 65/65 Super Admin page assertions passed =====
+mongod up: mongodb://127.0.0.1:56281/dro_counters
+(node:20776) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20776) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20776) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20776) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:20776) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:20776) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4194
+PASS  every counter starts at zero and matches an empty graph  ::  cache matches collections
+PASS  POST /users/:handle/follow -> 200  ::  status=200 {"ok":true,"following":true}
+PASS  target gains one follower  ::  bob.followerCount=1
+PASS  follower gains one following  ::  alice.followingCount=1
+PASS  repeat follow is accepted  ::  status=200
+PASS  repeat follow stored exactly one edge  ::  edges=1
+PASS  repeat follow left bob at one follower  ::  bob.followerCount=1
+PASS  repeat follow left alice at one following  ::  alice.followingCount=1
+PASS  after bob follows alice both sides moved  ::  cache matches collections
+PASS  profile stats reports the stored counters  ::  {"following":1,"followers":1,"books":0,"reads":0,"likes":0,"saved":0,"readingHours":0,"streak":0}
+PASS  GET /users/:handle/followers total = followerCount  ::  total=1
+PASS  GET /users/:handle/following total = followingCount  ::  total=1
+PASS  GET /users/me reports the same two numbers  ::  {"following":1,"followers":1}
+PASS  POST /api/posts -> 201  ::  status=201 {"authorId":"000001a1-9b56-774d-babc-b9589ec3935a","type":"post","title":"","text":"Counted post","note":"","heading":""
+PASS  author gains a post  ::  alice.postCount=1
+PASS  POST /api/comments -> 201  ::  status=201 {"authorId":"000001a1-9b56-7ba6-8f98-4088a8b05442","scope":"post","postId":"000001a1-9b56-774c-86c6-5fbd4a930809","discussionId":null,"parentId":null,"text":"Co
+PASS  commenter gains a comment  ::  bob.commentCount=1
+PASS  a reply counts as a comment too  ::  bob.commentCount=2
+PASS  posts and comments match their collections  ::  cache matches collections
+PASS  console users row carries the counters  ::  {"f":1,"g":1,"p":1,"m":0}
+PASS  console stats object exposes the same four  ::  {"followers":1,"following":1,"posts":1,"stories":0,"reads":0,"comments":0}
+PASS  console user detail reports bob two comments  ::  comments=2
+PASS  DELETE /api/comments/:id -> 200  ::  status=200 {"ok":true}
+PASS  deleted reply releases its count  ::  bob.commentCount=1
+PASS  DELETE /api/posts/:id -> 200  ::  status=200 {"ok":true}
+PASS  post author releases the post  ::  alice.postCount=0
+PASS  cascade deletes release the comment author too  ::  bob.commentCount=0
+PASS  after the cascading delete everything still matches  ::  cache matches collections
+PASS  DELETE /users/:handle/follow -> 200  ::  status=200
+PASS  unfollow released exactly one edge  ::  cache matches collections
+PASS  repeat unfollow is accepted  ::  status=200
+PASS  repeat unfollow did not underflow  ::  cache matches collections
+PASS  no counter went negative  ::  {"f":1,"g":0,"p":0,"m":0}
+PASS  carol and bob follow each other  ::  cache matches collections
+PASS  POST /users/:handle/block -> 200  ::  status=200 {"ok":true,"blocked":true}
+PASS  block removed both edges and both counts  ::  cache matches collections
+PASS  dave follows bob  ::  status=200
+PASS  DELETE /users/me -> 200  ::  status=200 {"ok":true,"deleted":true}
+PASS  bob loses the deactivated follower  ::  bob.followerCount=0
+PASS  the deactivated user reads zeros  ::  {"f":0,"g":0,"p":0,"m":0}
+PASS  every counter matches its collection after all writes  ::  cache matches collections
+PASS  followerCount sums to the edge count  ::  sum=1 edges=1
+PASS  followingCount sums to the same edge count  ::  sum=1 edges=1
+PASS  postCount sums to the surviving posts  ::  sum=0 posts=0
+PASS  commentCount sums to the surviving comments  ::  sum=0 comments=0
+
+===== 45/45 live counter assertions passed =====

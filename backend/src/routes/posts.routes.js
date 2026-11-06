@@ -3,6 +3,7 @@ const { z } = require('zod');
 const ctrl = require('../controllers/posts.controller');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
+const { SHARE_CHANNELS } = require('../services/engagement.service');
 
 function Router() { return require('express').Router(); }
 const router = Router();
@@ -80,6 +81,13 @@ router.get('/', generalLimiter, optionalAuth, validate(z.object({ query: z.objec
 router.post('/', requireAuth, writeLimiter, audit('posts.create'),
   validate(z.object({ body: postBody })), ctrl.create);
 
+// Library page "Saved" tab. Declared before /:id, which would otherwise read
+// the literal word as a post id. requireAuth, not optionalAuth: an anonymous
+// reader has no saved list to answer with, and the page guest-gates anyway.
+router.get('/saved', requireAuth, generalLimiter, validate(z.object({ query: z.object({
+  page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
+}).strict() })), ctrl.saved);
+
 router.get('/:id', generalLimiter, optionalAuth, validate(z.object({ params: z.object({ id }) })), ctrl.get);
 router.patch('/:id', requireAuth, writeLimiter, audit('posts.update'),
   validate(z.object({
@@ -115,6 +123,6 @@ router.post('/:id/react', requireAuth, writeLimiter, audit('posts.react'),
 router.delete('/:id/react', requireAuth, writeLimiter, audit('posts.unreact'),
   validate(z.object({ params: z.object({ id }) })), ctrl.unreact);
 router.post('/:id/share', requireAuth, writeLimiter, audit('posts.share'),
-  validate(z.object({ params: z.object({ id }), body: z.object({ channel: z.string().min(1).max(30) }).strict() })), ctrl.share);
+  validate(z.object({ params: z.object({ id }), body: z.object({ channel: z.enum(SHARE_CHANNELS) }).strict() })), ctrl.share);
 
 module.exports = router;

@@ -29,13 +29,14 @@ const slug = z.string().min(1).max(120);
 // service lowercases; enum values are the source of truth.
 const tag = z.enum(['discussion', 'recommendation', 'theory', 'question', 'controversial']);
 const tagIn = z.string().max(30).transform(v => String(v || '').toLowerCase().trim());
-// optional linked story from the hub composer's story picker
+// optional linked story from the hub composer's story picker. nullable because
+// unlinking a rec is a real edit — updateThread already does `story || null`.
 const storyIn = z.object({
   id: z.string().max(40).optional(), title: z.string().max(160).optional(),
   writer: z.string().max(80).optional(), author: z.string().max(80).optional(),
   cover: z.string().max(500).optional(), cat: z.string().max(40).optional(),
   genre: z.string().max(40).optional(),
-}).passthrough().optional();
+}).passthrough().nullable().optional();
 
 router.get('/', generalLimiter, optionalAuth,
   validate(z.object({ query: z.object({
@@ -44,9 +45,18 @@ router.get('/', generalLimiter, optionalAuth,
     page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
   }).strict() })), ctrl.list);
 
+// Reader feed "Trending in hubs" — cross-genre, must precede /:id.
+// `page` is what the "See all" trending page uses to walk past the first
+// screen; the feed row itself still calls with a bare `limit`.
+router.get('/feed', generalLimiter, optionalAuth,
+  validate(z.object({ query: z.object({ limit: z.string().max(6).optional(), page: z.string().max(6).optional() }).strict() })), ctrl.feed);
+
 router.post('/', requireAuth, writeLimiter, audit('discussions.create'),
   validate(z.object({ body: z.object({
-    genre: slug, title: z.string().min(1).max(200),
+    genre: slug,
+    // When `genre` names the board, the child genre the thread attaches to.
+    genreId: z.string().max(120).optional(),
+    title: z.string().min(1).max(200),
     body: z.string().max(8000).optional(), tag: tagIn.optional(),
     media: z.string().max(2800000).optional(),
     trope: z.string().max(60).optional(),

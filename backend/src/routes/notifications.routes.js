@@ -29,10 +29,10 @@ router.post('/read-all', requireAuth, writeLimiter,
 router.patch('/:id', requireAuth, writeLimiter,
   validate(z.object({
     params: z.object({ id: z.string().max(40) }),
-    body: z.object({ read: z.boolean().optional() }).strict(),
+    body: z.object({ read: z.boolean().optional(), deleted: z.boolean().optional() }).strict(),
   })),
   async (req, res) => base.wrap(res, async () => notifications.patchOne({
-    userId: req.user.id, id: req.valid.params.id, read: req.valid.body.read,
+    userId: req.user.id, id: req.valid.params.id, read: req.valid.body.read, deleted: req.valid.body.deleted,
   })));
 
 router.get('/settings', requireAuth, generalLimiter,

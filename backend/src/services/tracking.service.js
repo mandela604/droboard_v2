@@ -4,8 +4,11 @@
 // insights (InsightHit — shared/insights-tracker.js hit streams). All
 // writes are fire-and-forget style — tracking never breaks the action
 // that triggered it.
-const { ContentImpression, InsightHit } = require('../models/social.model');
+const mongoose = require('mongoose');
+const { ContentImpression, InsightHit, InsightVisitor, Discussion, ReadingProgress } = require('../models/social.model');
 const { SearchLog, AdView, AdClick } = require('../models/platform.model');
+const DAY = 864e5;
+const WEEK = 7 * DAY;
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 
@@ -103,7 +106,97 @@ async function publicTrending({ limit }) {
   };
 }
 
-module.exports = { impression, logSearch, myActivity, impressionsFor, searchesFor, trendingSearches, publicTrending, insightHit, insightStats };
+// ── Platform rollup ────────────────────────────────────────────────────────
+// GET /api/track/platform?days=30 → {
+//   days,
+//   pageviews: { bySurface: { hub, droboard, profile, collection }, storyReads },
+//   returningReaderRate: { pct, definition, windowDays },
+//   activeUsers: { dau, wau, mau, definition },
+//   countries: [{ country, reads }],
+// }
+// InsightHit (hub|droboard|profile|collection) carries surface + country + day;
+// ReadingProgress carries userId + lastReadAt for story reads.
+async function platformStats({ days }) {
+  const n = Math.min(Math.max(parseInt(days, 10) || 30, 1), 365);
+  const since = new Date(Date.now() - n * 864e5);
+  const sinceDay = since.toISOString().slice(0, 10);
+
+  const [surfaceRows, countryRows, readRows, dayRows, weekRows, monthRows] = await Promise.all([
+    // 1) pageviews per surface (InsightHit.count summed)
+    InsightHit.aggregate([
+      { $match: { day: { $gte: sinceDay } } },
+      { $group: { _id: '$surface', pageviews: { $sum: '$count' } } },
+    ]),
+    // 2) country mix on reads (InsightHit.country)
+    InsightHit.aggregate([
+      { $match: { day: { $gte: sinceDay }, country: { $nin: ['', null] } } },
+      { $group: { _id: '$country', reads: { $sum: '$count' } } },
+      { $sort: { reads: -1 } },
+      { $limit: 20 },
+    ]),
+    // 3) returning reader rate: users with ≥2 read-days vs users with ≥1 read-day
+    ReadingProgress.aggregate([
+      { $match: { lastReadAt: { $gte: since } } },
+      { $group: { _id: '$userId', days: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$lastReadAt' } } } } },
+      { $project: { dayCount: { $size: '$days' } } },
+    ]),
+    // 4) DAU — one bucket per calendar day
+    InsightHit.aggregate([
+      { $match: { day: { $gte: sinceDay }, userId: { $ne: null } } },
+      { $group: { _id: '$day', users: { $addToSet: '$userId' } } },
+      { $project: { dau: { $size: '$users' } } },
+      { $sort: { _id: 1 } },
+    ]),
+    // 5) WAU — 7-day ISO week bucket (YYYY-WW from day string)
+    InsightHit.aggregate([
+      { $match: { day: { $gte: sinceDay }, userId: { $ne: null } } },
+      { $group: { _id: { $substr: ['$day', 0, 8] }, users: { $addToSet: '$userId' } } },
+      { $project: { wau: { $size: '$users' } } },
+      { $sort: { _id: 1 } },
+    ]),
+    // 6) MAU — YYYY-MM month bucket
+    InsightHit.aggregate([
+      { $match: { day: { $gte: sinceDay }, userId: { $ne: null } } },
+      { $group: { _id: { $substr: ['$day', 0, 7] }, users: { $addToSet: '$userId' } } },
+      { $project: { mau: { $size: '$users' } } },
+      { $sort: { _id: 1 } },
+    ]),
+  ]);
+
+  const bySurface = {};
+  surfaceRows.forEach(r => { bySurface[r._id] = r.pageviews; });
+  ['hub', 'droboard', 'profile', 'collection'].forEach(k => { if (bySurface[k] === undefined) bySurface[k] = 0; });
+
+  const totalReaders = readRows.length;
+  const returningReaders = readRows.filter(r => r.dayCount >= 2).length;
+  const returningReaderRate = totalReaders ? Math.round((returningReaders / totalReaders) * 1000) / 10 : 0;
+
+  return {
+    days: n,
+    pageviews: {
+      bySurface,
+      total: Object.values(bySurface).reduce((a, b) => a + b, 0),
+    },
+    returningReaderRate: {
+      pct: returningReaderRate,
+      returningReaders, totalReaders, windowDays: n,
+      definition: 'readers with >=2 distinct read-days in the window',
+    },
+    activeUsers: {
+      dau: dayRows.map(r => ({ day: r._id, users: r.dau })),
+      wau: weekRows.map(r => ({ week: r._id, users: r.wau })),
+      mau: monthRows.map(r => ({ month: r._id, users: r.mau })),
+      definition: {
+        dau: 'distinct signed-in users with an InsightHit on any surface that calendar day (UTC)',
+        wau: 'distinct signed-in users in a YYYY-WW bucket',
+        mau: 'distinct signed-in users in a YYYY-MM bucket',
+      },
+    },
+    countries: countryRows.map(r => ({ country: String(r._id).toUpperCase(), reads: r.reads })),
+  };
+}
+
+module.exports = { impression, logSearch, myActivity, impressionsFor, searchesFor, trendingSearches, publicTrending, insightHit, insightStats, platformStats, uniqueVisits };
 
 /* ── Page insights (insights-service.js loadInsights contract) ──
    POST /api/track/insight {surface, targetId?, country?} — one hit.
@@ -112,15 +205,80 @@ module.exports = { impression, logSearch, myActivity, impressionsFor, searchesFo
    The frontend merges demo + live, so both shapes stay additive. */
 const SURFACES = ['hub', 'droboard', 'profile', 'collection'];
 
-async function insightHit({ userId, surface, targetId, country }) {
+async function insightHit({ userId, surface, targetId, country, deviceId }) {
   if (!SURFACES.includes(surface)) err('bad_surface', 400);
-  const tid = String(targetId || '');
+  // Profile targets are handles: one row per handle, so they are lowercased.
+  let tid = String(targetId || '');
+  if (surface === 'profile') tid = tid.toLowerCase();
+  const hour = new Date().getUTCHours();
+  const cc = String(country || '').trim().replace(/[.$]/g, '_').slice(0, 40);
+  const inc = { count: 1, ['hours.' + hour]: 1 };
+  if (cc) inc['countries.' + cc] = 1;
   await InsightHit.updateOne(
     { surface, targetId: tid, day: today(), userId: userId ? String(userId) : null },
-    { $inc: { count: 1 }, $set: { country: String(country || '').slice(0, 40) } },
+    { $inc: inc, $set: { country: cc } },
     { upsert: true },
   ).catch(() => {});
+  await touchUnique({ surface, targetId: tid, userId, deviceId });
   return { ok: true };
+}
+
+// A reload storm is one visit, not fifty: the same reader only counts again
+// after UNIQUE_WINDOW_MS of silence. Window in one place so the reader-facing
+// label and the write agree.
+const UNIQUE_WINDOW_MS = 20 * 60 * 1000;
+
+async function touchUnique({ surface, targetId, userId, deviceId }) {
+  const visitorKey = userId ? 'u:' + String(userId)
+    : (deviceId ? 'd:' + String(deviceId).replace(/[.$]/g, '_').slice(0, 80) : '');
+  if (!visitorKey) return false;
+  const now = new Date();
+  const day = today();
+  const filter = { surface, targetId, visitorKey };
+  try {
+    // Out-of-window visitor: count and stamp in one atomic write, so two
+    // simultaneous hits from the same device cannot both pass the check.
+    const bumped = await InsightVisitor.findOneAndUpdate(
+      Object.assign({}, filter, { lastSeenAt: { $lte: new Date(now.getTime() - UNIQUE_WINDOW_MS) } }),
+      { $inc: { visits: 1, ['days.' + day]: 1 }, $set: { lastSeenAt: now } },
+      { new: true },
+    );
+    if (bumped) return true;
+    // null here means either "seen inside the window" or "never seen".
+    const seen = await InsightVisitor.exists(filter);
+    if (seen) return false;
+    await InsightVisitor.updateOne(filter,
+      { $inc: { visits: 1, ['days.' + day]: 1 }, $set: { lastSeenAt: now } },
+      { upsert: true });
+    return true;
+  } catch (e) {
+    // Tracking never breaks the page that triggered it. A lost unique count is
+    // visible as a low number, which is better than a failed hit.
+    return false;
+  }
+}
+
+// Summed counted visits + distinct visitors over a UTC day range, sliced from
+// each visitor row's `days` map.
+async function uniqueVisits({ surface, targetIds, fromDay, toDay }) {
+  const filter = { surface };
+  if (targetIds && targetIds.length) filter.targetId = { $in: targetIds.map(String) };
+  let counted = 0;
+  let visitors = 0;
+  try {
+    const rows = await InsightVisitor.find(filter).select('days').lean();
+    rows.forEach(r => {
+      let hit = 0;
+      const days = r.days || {};
+      Object.keys(days).forEach(d => {
+        if (fromDay && d < fromDay) return;
+        if (toDay && d > toDay) return;
+        hit += Number(days[d]) || 0;
+      });
+      if (hit > 0) { counted += hit; visitors++; }
+    });
+  } catch (e) { /* same rule: a read that fails shows 0, not a 500 */ }
+  return { unique: counted, uniqueVisitors: visitors };
 }
 
 // Day-count buckets matching insights-service.js chartBuckets lengths.
@@ -140,7 +298,7 @@ async function insightStats({ surface, targetId, period }) {
       $group: {
         _id: '$day',
         visits: { $sum: '$count' },
-        countries: { $push: '$country' },
+        mixes: { $push: '$countries' },
       },
     },
     { $sort: { _id: 1 } },
@@ -151,7 +309,9 @@ async function insightStats({ surface, targetId, period }) {
   rows.forEach(r => {
     byDay[r._id] = r.visits;
     visits += r.visits;
-    (r.countries || []).forEach(c => { if (c) countryCounts[c] = (countryCounts[c] || 0) + 1; });
+    (r.mixes || []).forEach(mix => {
+      Object.keys(mix || {}).forEach(c => { countryCounts[c] = (countryCounts[c] || 0) + (Number(mix[c]) || 0); });
+    });
   });
 
   // Previous window for the delta (same length immediately before).
@@ -192,5 +352,20 @@ async function insightStats({ surface, targetId, period }) {
   const countries = Object.keys(countryCounts).map(c => ({ country: c, n: countryCounts[c] }))
     .sort((a, b) => b.n - a.n).slice(0, 5);
 
-  return { surface, targetId: tid, period: period || 'all', visits, visitsPrev, series, countries };
+  const fromDay = days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : '';
+  const toDay = today();
+  const cur = await uniqueVisits({ surface, targetIds: [tid], fromDay, toDay });
+  let uniquePrev = null;
+  if (days) {
+    const pFrom = new Date(Date.now() - 2 * days * 864e5).toISOString().slice(0, 10);
+    const pTo = new Date(Date.now() - (days + 1) * 864e5).toISOString().slice(0, 10);
+    uniquePrev = (await uniqueVisits({ surface, targetIds: [tid], fromDay: pFrom, toDay: pTo })).unique;
+  }
+
+  return {
+    surface, targetId: tid, period: period || 'all',
+    visits, visitsPrev, series, countries,
+    unique: cur.unique, uniqueVisitors: cur.uniqueVisitors, uniquePrev,
+    uniqueWindowMinutes: UNIQUE_WINDOW_MS / 60000,
+  };
 }

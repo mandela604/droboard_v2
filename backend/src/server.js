@@ -11,11 +11,44 @@ const { generalLimiter } = require('./middleware/http');
 async function main() {
   if (!env.corsOrigins.length && env.isProd) throw new Error('CORS_ORIGINS required in production');
   await db.connect();
+  // Idempotent boot seed — creates the six canonical AdminRole docs (admin,
+  // chief_editor, senior_editor, finance, marketing, support) if missing so
+  // requirePerm() and the console Roles page have data on a fresh database.
+  try {
+    const sa = require('./services/superadmin.service');
+    const seeded = await sa.ensureSystemRoles();
+    if (seeded.created) console.log('seeded system roles:', seeded.slugs.join(', '));
+  } catch (e) { console.error('role seed failed:', e && e.message); }
 
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // behind Cloudflare
-  app.use(helmet());
+  /* helmet()'s default CSP is `script-src 'self'`, which blocks every inline
+     <script> in our own pages AND every ad-network tag: Monetag/Adsterra hand
+     over a bare inline snippet that appends a remote script, so an embed
+     creative can never run under a no-inline policy. Ads are a product
+     feature, so script-src is opened to inline + https while the rest of
+     helmet stays on. Trade-off: any stored XSS in an embed field executes with
+     page privileges — the console already says "only paste networks you trust".
+     script-src-attr has to be opened too: helmet's default is 'none', which
+     blocks every onclick="…" in the UI (period chips, icon buttons, list
+     rows) while the inline <script> blocks right next to them keep working.
+     Leaving it closed makes the served pages look dead. */
+  app.use(helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        'script-src': ["'self'", "'unsafe-inline'", 'https:'],
+        'script-src-attr': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'", 'https:'],
+        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        'font-src': ["'self'", 'data:', 'https:'],
+        'connect-src': ["'self'", 'https:', 'wss:'],
+        'frame-src': ["'self'", 'https:'],
+        'object-src': ["'none'"],
+      },
+    },
+  }));
   app.use(cors({ origin: env.corsOrigins.length ? env.corsOrigins : true, credentials: true }));
   // Provider webhooks need EXACT raw bytes for HMAC — parse before json().
   app.use('/api/payments/webhook', require('express').raw({ type: '*/*', limit: '1mb' }));
@@ -41,12 +74,15 @@ async function main() {
   app.use('/api/collections', require('./routes/collections.routes'));
   app.use('/api/posts', require('./routes/posts.routes'));
   app.use('/api/comments', require('./routes/comments.routes'));
+  app.use('/api', require('./routes/debate-args.routes'));
   app.use('/api/wallet', require('./routes/wallet.routes'));
   app.use('/api/store', require('./routes/store.routes'));
   app.use('/api/payments', require('./routes/payments.routes'));
   app.use('/api/author/finance', require('./routes/finance.routes'));
   app.use('/api/finance', require('./routes/finance.routes')); // finance console base (finance-data.js)
   app.use('/api/author', require('./routes/author.routes'));
+  // story-wide engagement under /api/author/books/:bookId/engagement — merged with author/* via mergeParams
+  app.use('/api/author/books/:bookId', require('./routes/author-engagement.routes'));
   app.use('/api/senior-editor', require('./routes/senior.routes'));
   app.use('/api/chief', require('./routes/chief-reports.routes'));
   app.use('/api/chief', require('./routes/chief-overview.routes'));
@@ -71,7 +107,9 @@ async function main() {
   app.use('/api/statuses', require('./routes/statuses.routes'));
   app.use('/api/discussions', require('./routes/discussions.routes'));
   app.use('/api/messages', require('./routes/messages.routes'));
+  app.use('/api/author/messages', require('./routes/author-messages.routes'));
   app.use('/api/track', require('./routes/tracking.routes'));
+  app.use('/api/insights', require('./routes/insights.routes'));
   app.use('/api/saves', require('./routes/saves.routes'));
   app.use('/api/referrals', require('./routes/referrals.routes'));
   app.use('/api/notifications', require('./routes/notifications.routes'));
@@ -85,12 +123,33 @@ async function main() {
   app.use('/api/stories', require('./routes/engagement.routes'));
   app.use('/api/awards', require('./routes/awards.routes'));
 
+  // Dev-only: serve the frontend from the same origin as the API, so a browser
+  // test needs one URL and no proxy. Mounted after every /api router so a page
+  // path can never shadow an endpoint, and never mounted in production.
+  if (!env.isProd) {
+    app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
+  }
+
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => res.status(500).json({ error: 'error' }));
 
   const server = http.createServer(app);
   require('./socket').init(server);
   require('./services/scheduler.service').start(); // scheduled → live publisher
+  // Every domain router is required by now, so mongoose knows every model.
+  const ids = require('./models/ids');
+  await ids.ensureIdIndexes();
+  // Votes key on the engagement row now, not just the kind. Without the sync the
+  // old (chapterId, userId, kind) unique index stays behind and silently blocks
+  // a reader's second poll on the same book.
+  await require('./models/content.model').EngagementVote.syncIndexes();
+  // Unique-visit rows are deduped by their (surface, target, visitor) index;
+  // without it two concurrent first hits would both insert and the same reader
+  // would count twice forever.
+  await require('./models/social.model').InsightVisitor.syncIndexes();
+  // One earned badge per reader per week; the unique index is what makes a
+  // rollover retry safe.
+  await require('./models/marketing.model').LeagueBadge.syncIndexes();
   server.listen(env.port, () => console.log('droboard api on :' + env.port));
 }
 

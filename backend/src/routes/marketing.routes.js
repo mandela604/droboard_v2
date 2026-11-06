@@ -181,6 +181,10 @@ router.patch('/ads/placement', requireAuth, ...C, writeLimiter, audit('marketing
           enabled: z.boolean().optional(),
           formats: z.array(z.string().max(20)).max(10).optional(),
           adIds: z.array(z.string().max(120)).max(20).optional(),
+          // per-visitor frequency cap, enforced by the shared ad slot component
+          cap: z.enum(['off', 'session', 'daily']).optional(),
+          capCount: z.number().int().min(1).max(100).optional(),
+          capScope: z.enum(['slot', 'target', 'global']).optional(),
         }).strict(),
       ])).optional(),
       interval: z.number().int().min(1).max(50).optional(),
@@ -216,6 +220,10 @@ router.put('/ads/placements', requireAuth, ...C, writeLimiter, audit('marketing.
           enabled: z.boolean().optional(),
           formats: z.array(z.string().max(20)).max(10).optional(),
           adIds: z.array(z.string().max(120)).max(20).optional(),
+          // per-visitor frequency cap, enforced by the shared ad slot component
+          cap: z.enum(['off', 'session', 'daily']).optional(),
+          capCount: z.number().int().min(1).max(100).optional(),
+          capScope: z.enum(['slot', 'target', 'global']).optional(),
         }).strict(),
       ])).optional(),
     }).passthrough()),

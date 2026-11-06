@@ -1,0 +1,20 @@
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+
+================ droboard dev api (in-memory Mongo) ================
+  >>> OPEN THIS IN YOUR BROWSER  http://127.0.0.1:4000/dev/
+  base   http://127.0.0.1:4000/api
+  health http://127.0.0.1:4000/health
+  seed   C:\Users\USER\OneDrive\Desktop\Droboard-V2\backend\postman\dev.env.json
+  password for every seeded account: Memory1234!  (flag/unflag re-confirm needs it)
+  tokens last 8h — restart this script for a fresh database.
+  Ctrl+C stops the server AND destroys the database.
+  ----------------------------------------------------------------------
+  chief_editor            chief_editor.cleo.chief@dev.local     {{token_chief}}
+  senior_editor (owner)   senior_editor.sam.ade@dev.local       {{token_se}}
+  senior_editor (other)   senior_editor.bo.okafor@dev.local     {{token_se2}}
+  finance                 finance.femi.cash@dev.local           {{token_finance}}
+  writer (owns Nine Lives, Twice)writer.ada.writer@dev.local           {{token_writer}}
+  reader                  reader.rae.read@dev.local             {{token_reader}}
+====================================================================
+
+droboard api on :4000

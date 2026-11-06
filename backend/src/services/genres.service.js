@@ -5,9 +5,9 @@
 // Hub rule: hub is created by the PARENT (category) even though it is called
 // "genre hub" — all child genres enter it. GET /api/genres/:slug accepts a
 // genre slug OR a category slug (parent hub with children + aggregated stories).
-const { Book, Genre, Category, GenreMembership, CategoryMembership, BookDailyStat } = require('../models/content.model');
+const { Book, Chapter, Genre, Category, GenreMembership, CategoryMembership, BookDailyStat } = require('../models/content.model');
 const { User } = require('../models/user.model');
-const { Discussion } = require('../models/social.model');
+const { Discussion, Follow } = require('../models/social.model');
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 
@@ -26,10 +26,23 @@ function toGenre(g) {
     id: g.id, name: g.name, slug: g.slug, categoryId: g.categoryId,
     desc: g.desc || '', tagline: g.tagline || '', about: g.about || null,
     icon: g.icon || '', cover: g.cover || '', bg: g.bg || '', color: g.color || '',
-    adminIds: g.adminIds || [], moderatorIds: g.moderatorIds || [],
     booksCount: g.booksCount || 0, membersCount: g.membersCount || 0,
     status: g.status, createdAt: g.createdAt, updatedAt: g.updatedAt,
+    // Same board-facing aliases as toCategory: display labels, printed as-is.
+    // The numbers stay under booksCount / membersCount for the CE console.
+    blurb: g.desc || '',
+    stories: compact(g.booksCount || 0),
+    members: compact(g.membersCount || 0),
   };
+}
+
+// Board cards show "1.2K members", not "1234" — the label travels with the
+// number so the board never has to guess a locale.
+function compact(n) {
+  const v = Number(n) || 0;
+  if (v >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(v);
 }
 
 function toCategory(c) {
@@ -37,10 +50,31 @@ function toCategory(c) {
     id: c.id, name: c.name, slug: c.slug,
     icon: c.icon || '', bg: c.bg || '', color: c.color || '',
     desc: c.desc || '', tagline: c.tagline || '', cover: c.cover || '',
-    adminIds: c.adminIds || [],
+    adminIds: c.adminIds || [], moderatorIds: c.moderatorIds || [],
+    rules: c.rules || [],
     booksCount: c.booksCount || 0, membersCount: c.membersCount || 0,
     status: c.status, createdAt: c.createdAt, updatedAt: c.updatedAt,
+    // Board contract: a board IS the category the CE created. The reader-side
+    // surfaces print these names directly, so they are display labels; the raw
+    // numbers stay in booksCount / membersCount for the CE console.
+    blurb: c.desc || '',
+    stories: compact(c.booksCount || 0),
+    members: compact(c.membersCount || 0),
   };
+}
+
+// The board's crew: one admin team + one moderator team for the whole category.
+// Genres are sections inside the board and carry no crew of their own.
+async function boardCrew(c) {
+  const adminIds = (c.adminIds || []).map(String);
+  const modIds = (c.moderatorIds || []).map(String);
+  const ids = [...new Set([...adminIds, ...modIds])];
+  const users = ids.length
+    ? await User.find({ id: { $in: ids } }).select('id username fullName avatar').lean()
+    : [];
+  const shape = u => ({ id: u.id, username: u.username, fullName: u.fullName, avatar: u.avatar });
+  const pick = list => users.filter(u => list.includes(String(u.id))).map(shape);
+  return { admins: pick(adminIds), moderators: pick(modIds) };
 }
 
 async function resolveGenre(slugOrId) {
@@ -67,15 +101,33 @@ async function listGenres({ q, page, limit }) {
   return { items: items.map(toGenre), total, page: pg, limit: lim };
 }
 
-async function listCategories({ q, page, limit }) {
+// Boards are categories. The boards explorer splits its two sections from this:
+// joined=me returns only the boards the reader joined, and every row carries
+// isJoined so a single call can paint both halves.
+async function listCategories({ q, page, limit, viewerId, joined }) {
   const { page: pg, limit: lim } = paging({ page, limit });
   const filter = { status: 'active' };
   if (q) filter.name = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  let memberIds = [];
+  if (viewerId) {
+    memberIds = (await CategoryMembership.find({ userId: viewerId }).select('categoryId').lean())
+      .map(m => String(m.categoryId));
+    if (joined === 'me') {
+      if (!memberIds.length) return { items: [], total: 0, page: pg, limit: lim };
+      filter.id = { $in: memberIds };
+    }
+  } else if (joined === 'me') {
+    return { items: [], total: 0, page: pg, limit: lim };
+  }
   const [items, total] = await Promise.all([
     Category.find(filter).sort({ name: 1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Category.countDocuments(filter),
   ]);
-  return { items: items.map(toCategory), total, page: pg, limit: lim };
+  const joinedSet = new Set(memberIds);
+  return {
+    items: items.map(c => Object.assign(toCategory(c), { isJoined: joinedSet.has(String(c.id)) })),
+    total, page: pg, limit: lim,
+  };
 }
 
 // ---- hub detail: PARENT ONLY ----
@@ -88,13 +140,11 @@ async function parentHub(categoryId, viewerId) {
   // Genres first: the discussion count filters on their ids, and referencing the
   // destructured binding inside the same Promise.all is a TDZ error.
   const genres = await Genre.find({ categoryId: c.id, status: 'active' }).sort({ name: 1 }).lean();
-  const [stories, members, admins, discussions] = await Promise.all([
+  const [stories, members, discussions, crew] = await Promise.all([
     Book.countDocuments({ categoryId: c.id, status: { $in: ['ongoing', 'completed', 'published'] } }),
     CategoryMembership.countDocuments({ categoryId: c.id }),
-    (c.adminIds && c.adminIds.length
-      ? User.find({ id: { $in: c.adminIds } }).select('username fullName avatar').lean()
-      : Promise.resolve([])),
-    Discussion.countDocuments({ genreId: { $in: genres.map(g => g.id) }, closedAt: null }) || 0, // discussions in child genres
+    Discussion.countDocuments({ genreId: { $in: genres.map(g => g.id) } }), // discussions in child genres
+    boardCrew(c),
   ]);
   let isJoined = false;
   if (viewerId) {
@@ -106,8 +156,10 @@ async function parentHub(categoryId, viewerId) {
     genres: genres.map(toGenre),
     storiesCount: stories, discussionsCount: discussions,
     membersCount: members, isJoined,
-    admins: admins.map(a => ({ id: a.id, username: a.username, fullName: a.fullName, avatar: a.avatar })),
-    moderators: admins.map(a => ({ id: a.id, username: a.username, fullName: a.fullName, avatar: a.avatar })),
+    // The board prints these live values (as labels), not the stored counts
+    // toCategory aliased. Raw numbers stay in the *Count fields above.
+    stories: compact(stories), members: compact(members), discussions: compact(discussions),
+    admins: crew.admins, moderators: crew.moderators,
   });
 }
 
@@ -120,30 +172,61 @@ async function genreHub(slugOrId, viewerId) {
 
 async function categoryHub(slugOrId, viewerId) {
   const c = await resolveCategory(slugOrId);
-  const [genres, stories, members, admins] = await Promise.all([
+  const [genres, stories, members, crew] = await Promise.all([
     Genre.find({ categoryId: c.id, status: 'active' }).sort({ name: 1 }).lean(),
     Book.countDocuments({ categoryId: c.id, status: { $in: ['ongoing', 'completed', 'published'] } }),
     CategoryMembership.countDocuments({ categoryId: c.id }),
-    (c.adminIds && c.adminIds.length
-      ? User.find({ id: { $in: c.adminIds } }).select('username fullName avatar').lean()
-      : Promise.resolve([])),
+    boardCrew(c),
   ]);
   let isJoined = false;
   if (viewerId) {
     const m = await CategoryMembership.exists({ userId: viewerId, categoryId: c.id });
     isJoined = !!m;
   }
+  const discussions = await Discussion.countDocuments({ genreId: { $in: genres.map(g => g.id) } });
   return Object.assign(toCategory(c), {
-    genres: genres.map(toGenre), storiesCount: stories,
+    genres: genres.map(toGenre), storiesCount: stories, discussionsCount: discussions,
     membersCount: members, isJoined,
-    admins: admins.map(a => ({ id: a.id, username: a.username, fullName: a.fullName, avatar: a.avatar })),
+    stories: compact(stories), members: compact(members), discussions: compact(discussions),
+    admins: crew.admins, moderators: crew.moderators,
   });
 }
 
 // ---- stories in hub ----
 // top = most reads. new = newest books. rising = reads velocity
 // (reads per day since creation) — fully automatic, no manual picks.
-const STORY_FIELDS = 'title authorId cover genre synopsis reads likes rating chapterCount kind createdAt';
+const STORY_FIELDS = 'id title authorId cover genre synopsis reads likes rating chapterCount kind status createdAt';
+
+// Board story rows render through the shared book card. The UI knows the writer
+// under two names depending on the component (`s.author || s.writer`), so both
+// keys carry the same bare username — the card adds the "@" itself.
+//
+// `latestChapterAt` is the only "New" signal the board has: the front end used
+// to roll dice for it. A row is new when its newest live chapter is recent.
+async function storyCards(docs) {
+  const ids = Array.from(new Set(docs.map(d => String(d.authorId || '')).filter(Boolean)));
+  const bookIds = docs.map(d => String(d.id));
+  const [users, drops] = await Promise.all([
+    ids.length ? User.find({ id: { $in: ids } }).select('id username').lean() : [],
+    bookIds.length ? Chapter.aggregate([
+      { $match: { bookId: { $in: bookIds }, status: { $in: ['live', 'published', 'scheduled'] } } },
+      { $group: { _id: '$bookId', latestChapterAt: { $max: '$createdAt' } } },
+    ]) : [],
+  ]);
+  const nameOf = {};
+  users.forEach(u => { nameOf[String(u.id)] = u.username || ''; });
+  const dropOf = {};
+  drops.forEach(d => { dropOf[String(d._id)] = d; });
+  return docs.map(b => {
+    const w = nameOf[String(b.authorId)] || '';
+    const drop = dropOf[String(b.id)] || {};
+    return Object.assign({}, b, {
+      chapters: b.chapterCount || 0,
+      writer: w, author: w,
+      latestChapterAt: drop.latestChapterAt ? new Date(drop.latestChapterAt).toISOString() : null,
+    });
+  });
+}
 
 function storySort(sort) {
   const s = String(sort || 'top').toLowerCase();
@@ -212,7 +295,7 @@ async function genreStories(slugOrId, { page, limit, sort }) {
     Genre.find({ categoryId: c.id, status: 'active' }).sort({ name: 1 }).lean(),
     sortedStories(filter, sort, pg, lim),
   ]);
-  return { category: toCategory(c), genres: genres.map(toGenre), items, total, page: pg, limit: lim, sort: storySort(sort), isParent: true };
+  return { category: toCategory(c), genres: genres.map(toGenre), items: await storyCards(items), total, page: pg, limit: lim, sort: storySort(sort), isParent: true };
 }
 
 async function categoryStories(slugOrId, { page, limit, sort }) {
@@ -220,11 +303,11 @@ async function categoryStories(slugOrId, { page, limit, sort }) {
   const { page: pg, limit: lim } = paging({ page, limit });
   const filter = { categoryId: c.id, status: { $in: ['ongoing', 'completed', 'published'] } };
   const { items, total } = await sortedStories(filter, sort, pg, lim);
-  return { category: toCategory(c), items, total, page: pg, limit: lim, sort: storySort(sort) };
+  return { category: toCategory(c), items: await storyCards(items), total, page: pg, limit: lim, sort: storySort(sort) };
 }
 
 // ---- members: parent only (genre slug → parent category members) ----
-async function genreMembers(slugOrId, { page, limit }) {
+async function genreMembers(slugOrId, { page, limit, viewerId }) {
   let categoryId = slugOrId;
   const g = await Genre.findOne({ $or: [{ slug: slugOrId }, { id: slugOrId }] }).lean();
   if (g && g.status === 'active') categoryId = g.categoryId;
@@ -236,10 +319,30 @@ async function genreMembers(slugOrId, { page, limit }) {
     CategoryMembership.countDocuments({ categoryId: c.id }),
   ]);
   const users = edges.length
-    ? await User.find({ id: { $in: edges.map(e => e.userId) } }).select('username fullName avatar roles').lean()
+    ? await User.find({ id: { $in: edges.map(e => e.userId) } }).select('id username fullName avatar bio roles').lean()
     : [];
+  // The member list is the shared FollowList component, so each row needs the
+  // viewer's follow state — otherwise every joined member reads "Follow".
+  let following = new Set();
+  if (viewerId && users.length) {
+    following = new Set((await Follow.find({
+      followerId: viewerId, followingId: { $in: users.map(u => String(u.id)) },
+    }).select('followingId').lean()).map(f => String(f.followingId)));
+  }
   return {
-    items: users.map(u => ({ id: u.id, username: u.username, fullName: u.fullName, avatar: u.avatar, roles: u.roles })),
+    items: users.map(u => {
+      const login = u.username || String(u.fullName || '').toLowerCase().replace(/\s+/g, '_');
+      // FollowList uses `handle` as the key it links and follows by, and prints
+      // "@" itself — so both name and handle are the bare username.
+      return {
+        id: u.id, username: u.username, fullName: u.fullName,
+        name: login, handle: login,
+        av: u.avatar || '', avatar: u.avatar || '',
+        meta: u.bio || (u.roles || []).join(' · '),
+        roles: u.roles || [], isWriter: (u.roles || []).some(r => ['writer', 'senior_editor', 'chief_editor'].includes(r)),
+        following: following.has(String(u.id)),
+      };
+    }),
     total, page: pg, limit: lim, isParent: true,
   };
 }
@@ -291,10 +394,57 @@ async function recountForCategoryId(categoryId) {
   await Category.updateOne({ id: categoryId }, { booksCount: count });
 }
 
+// ---- board membership gate for writes ----
+// Reading a board is open to everyone; writing in it is not. A thread attaches
+// to a child genre, but the board the reader joins is the PARENT category, so
+// every check resolves genre → category first.
+//
+// The people who run a board are the crew assigned to the board row by the
+// admin console: Category.adminIds + Category.moderatorIds. That crew is the
+// only crew — a genre is a section inside the board and grants nothing. They
+// act without joining; a plain reader or writer does not get in.
+const BOARD_STAFF = ['chief_editor', 'senior_editor', 'admin', 'super_admin', 'moderator', 'support'];
+
+async function boardCategoryOf({ genreId, categoryId }) {
+  if (categoryId) {
+    const c = await Category.findOne({ $or: [{ id: categoryId }, { slug: categoryId }] }).select('id').lean();
+    return c ? c.id : null;
+  }
+  if (genreId) {
+    const g = await Genre.findOne({ $or: [{ id: genreId }, { slug: genreId }] }).select('categoryId').lean();
+    if (g && g.categoryId) return g.categoryId;
+    // A category slug also reaches this helper — boards accept either key.
+    const c = await Category.findOne({ $or: [{ id: genreId }, { slug: genreId }] }).select('id').lean();
+    return c ? c.id : null;
+  }
+  return null;
+}
+
+async function isBoardMember(userId, ref) {
+  const cid = await boardCategoryOf(ref);
+  if (!cid || !userId) return false;
+  if (await CategoryMembership.exists({ userId, categoryId: cid })) return true;
+  const c = await Category.findOne({ id: cid }).select('adminIds moderatorIds').lean();
+  if (!c) return false;
+  const crew = [...(c.adminIds || []), ...(c.moderatorIds || [])].map(String);
+  return crew.includes(String(userId));
+}
+
+function assertBoardMember(user, ref) {
+  if (!user || !user.id) { const e = new Error('unauthenticated'); e.status = 401; throw e; }
+  const roles = user.roles || [];
+  if (roles.some(r => BOARD_STAFF.includes(String(r)))) return Promise.resolve(true);
+  return isBoardMember(user.id, ref).then(ok => {
+    if (ok) return true;
+    const e = new Error('join_board_first'); e.status = 403; throw e;
+  });
+}
+
 module.exports = {
   slugify, toGenre, toCategory,
   listGenres, listCategories, genreHub, categoryHub,
   genreStories, categoryStories, genreMembers,
   joinGenre, leaveGenre, joinCategory, leaveCategory,
   recountForGenreName, recountForCategoryId,
+  boardCategoryOf, isBoardMember, assertBoardMember,
 };

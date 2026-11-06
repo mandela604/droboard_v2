@@ -34,3 +34,18 @@ async function emit(options) {
 }
 
 module.exports = { emit };
+
+// Platform broadcast: send same notification to multiple recipients (Admin console)
+async function broadcast(recipientIds, options) {
+  const { actorId, type, title, desc, link } = options;
+  const results = [];
+  for (const id of recipientIds) {
+    try {
+      const r = await emit({ recipientId: id, actorId, type, title, desc, link });
+      results.push({ recipientId: id, ok: !!r.ok, error: null });
+    } catch (e) {
+      results.push({ recipientId: id, ok: false, error: e.message });
+    }
+  }
+  return { total: recipientIds.length, succeeded: results.filter(r => r.ok).length, failed: results.filter(r => !r.ok).length, results };
+}

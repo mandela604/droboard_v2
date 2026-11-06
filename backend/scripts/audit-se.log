@@ -1,0 +1,71 @@
+mongod up: mongodb://127.0.0.1:56429/dro_shape_audit
+(node:2908) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2908) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2908) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2908) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2908) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:2908) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4250
+application seeds skipped: ContractApplication validation failed: status: `pending` is not a valid enum value for path `status`.
+enumerated GET routes in scope: 57
+200  /api/senior-editor/activity-logs
+200  /api/senior-editor/announcements
+200  /api/senior-editor/author-messages
+404  /api/senior-editor/author-messages/:id/messages
+200  /api/senior-editor/author-verification/history
+200  /api/senior-editor/author-verification/recent-reviews
+200  /api/senior-editor/author-verification/requests
+200  /api/senior-editor/authors
+200  /api/senior-editor/book-edits
+200  /api/senior-editor/book-reviews
+200  /api/senior-editor/book-reviews/date-filter
+200  /api/senior-editor/books
+200  /api/senior-editor/books/:id
+200  /api/senior-editor/chapter-edits
+200  /api/senior-editor/completion-applications
+200  /api/senior-editor/contract-applications
+200  /api/senior-editor/contract-templates
+200  /api/senior-editor/contract-templates/usage
+200  /api/senior-editor/contracts
+200  /api/senior-editor/contracts/:id
+200  /api/senior-editor/contracts/overview
+200  /api/senior-editor/dashboard
+200  /api/senior-editor/earnings
+200  /api/senior-editor/earnings-overview
+200  /api/senior-editor/earnings/analytics
+200  /api/senior-editor/earnings/by-author
+200  /api/senior-editor/earnings/leaderboard
+200  /api/senior-editor/earnings/summary
+200  /api/senior-editor/earnings/withdrawals
+200  /api/senior-editor/editor-bill-review
+200  /api/senior-editor/editors-picks
+200  /api/senior-editor/featured-banners
+404  /api/senior-editor/featured-banners/:id
+404  /api/senior-editor/featured-banners/:id/analytics
+200  /api/senior-editor/featured-stories
+200  /api/senior-editor/messages
+200  /api/senior-editor/my-authors
+200  /api/senior-editor/notifications
+200  /api/senior-editor/payments
+404  /api/senior-editor/payments/:id
+200  /api/senior-editor/platform-settings
+200  /api/senior-editor/referral-code
+200  /api/senior-editor/reports
+200  /api/senior-editor/reports-compliance
+200  /api/senior-editor/reports/settings
+200  /api/senior-editor/review-queue
+200  /api/senior-editor/signed-contracts
+200  /api/senior-editor/stories
+200  /api/senior-editor/story-analytics
+200  /api/senior-editor/story-management
+200  /api/senior-editor/system-pages
+404  /api/senior-editor/system-pages/:id
+404  /api/senior-editor/system-pages/:id/preview
+200  /api/senior-editor/transactions
+200  /api/senior-editor/vip-registrations
+200  /api/senior-editor/withdrawal-requests
+200  /api/senior-editor/withdrawal-settings
+
+wrote scripts/audit-shapes-senior.json — 51 ok / 6 non-200

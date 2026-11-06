@@ -23,6 +23,19 @@ function check(name, pass, detail) {
   results.push({ name, pass, detail: detail === undefined ? '' : String(detail) });
   say(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? '  ::  ' + String(detail).slice(0, 240) : ''}`);
 }
+// UTC day arithmetic: iso(0) is now, iso(-1) exactly 24 h earlier — two
+// consecutive reading days, which is what a streak is measured on.
+function iso(dayOffset) { return new Date(Date.now() + dayOffset * 86400000).toISOString(); }
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// Boot is async (listen fires after the role seed), and the fetch below would
+// otherwise race it.
+async function waitReady() {
+  for (let i = 0; i < 160; i++) {
+    try { const res = await fetch(BASE + '/health'); if (res.ok) return; } catch (e) { /* not up yet */ }
+    await sleep(250);
+  }
+  throw new Error('api never came up on ' + BASE);
+}
 
 async function main() {
   const mongod = await MongoMemoryServer.create({ instance: { startupTimeout: 60000 } });
@@ -30,11 +43,15 @@ async function main() {
   say('mongod up: ' + process.env.MONGO_URI);
 
   require('../src/server');
-  await new Promise(r => setTimeout(r, 2000));
+  // Boot now ends with ensureIdIndexes(), so listen can land later than a fixed
+  // sleep assumed — poll /health instead of guessing.
+  await waitReady();
 
-  const { User, AuthorProfile } = require('../src/models/user.model');
+  const { User, AuditLog } = require('../src/models/user.model');
   const { Book } = require('../src/models/content.model');
-  const { Wallet } = require('../src/models/money.model');
+  const { Wallet, AuthorTransaction, SubscriptionPlan } = require('../src/models/money.model');
+  const { Reaction, ShareEvent, LibraryItem, ReadingProgress } = require('../src/models/social.model');
+  const { AdminRole } = require('../src/models/admin.model');
   const { signAccess } = require('../src/middleware/auth');
 
   const DUMMY = '$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -43,38 +60,37 @@ async function main() {
   const admin = await User.create({
     fullName: 'Tobenna Achebe', email: 'tobi@droboard.com',
     username: 'tobi_superadmin', passwordHash: DUMMY, status: 'active',
-    roles: ['admin'], platformRoles: ['superadmin']
+    primaryRole: 'admin', roles: ['admin'], platformRoles: ['superadmin']
   });
   
   const editor = await User.create({
     fullName: 'Adaeze Bello', email: 'adaeze@droboard.com',
     username: 'adaede_se', passwordHash: DUMMY, status: 'active',
-    roles: ['editor'], platformRoles: ['senior_editor']
+    primaryRole: 'senior_editor', roles: ['senior_editor']
   });
   
   const reader = await User.create({
     fullName: 'Chioma Reader', email: 'chioma@droboard.com',
     username: 'chioma_reader', passwordHash: DUMMY, status: 'active',
-    roles: ['reader'], verified: true,
-    stats: { reads: 523000, likes: 45200, saves: 12300, shares: 3400, chapters: 142, followers: 8900 }
+    primaryRole: 'reader', roles: ['reader'], emailVerified: true
   });
   
   const author = await User.create({
     fullName: 'Ifeanyi Story', email: 'ifeanyi@droboard.com',
     username: 'ifeanyi_author', passwordHash: DUMMY, status: 'active',
-    roles: ['writer', 'author'], verified: true,
+    primaryRole: 'writer', roles: ['writer'], emailVerified: true,
     avatar: 'https://i.pravatar.cc/150?img=12'
   });
   
   const book1 = await Book.create({
     title: 'The runaway bride — I left at the altar in my socked feet',
     authorId: String(author.id), status: 'published', genre: 'Twist Fiction',
-    cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg'
+    reads: 900, cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg'
   });
   const book2 = await Book.create({
     title: 'My stepmother stole my university fund',
     authorId: String(author.id), status: 'published', genre: 'Revenge Drama',
-    cover: 'https://i.postimg.cc/ftRZbhKx/3.jpg'
+    reads: 300, cover: 'https://i.postimg.cc/ftRZbhKx/3.jpg'
   });
 
   // Create wallets with some spend history
@@ -82,6 +98,49 @@ async function main() {
     userId: String(reader.id), kind: 'reader',
     coinBalance: 500, bonusBalance: 0
   });
+
+  /* What the console claims about a reader must come from the collections the
+     reader-facing services actually write. Seed those, production field shapes
+     exactly, and assert the numbers the console returns. */
+  await Promise.all([
+    // 3 reactions given, 2 distinct shares, 2 distinct saves
+    Reaction.create([
+      { userId: String(reader.id), targetType: 'post', targetId: 'post_a', rid: 'love' },
+      { userId: String(reader.id), targetType: 'post', targetId: 'post_b', rid: 'like' },
+      { userId: String(reader.id), targetType: 'comment', targetId: 'cmt_c', rid: 'like' },
+    ]),
+    ShareEvent.create([
+      { userId: String(reader.id), targetType: 'story', targetId: String(book1.id), channel: 'wa' },
+      { userId: String(reader.id), targetType: 'post', targetId: 'post_a', channel: 'x' },
+    ]),
+    LibraryItem.create([
+      { userId: String(reader.id), storyId: String(book1.id), list: 'saved', status: 'saved' },
+      { userId: String(reader.id), storyId: String(book2.id), list: 'library', status: 'progress' },
+    ]),
+    // Reading: 3 chapter sessions across 2 consecutive days (yesterday, today),
+    // 1800 s total → 0.5 h read, 10 min/session, 1.5 sessions per reading day,
+    // streak 2.
+    ReadingProgress.create([
+      { userId: String(reader.id), storyId: String(book1.id), chapterId: 'ch1', secondsSpent: 600, wordsRead: 1200, lastReadAt: iso(-1) },
+      { userId: String(reader.id), storyId: String(book1.id), chapterId: 'ch2', secondsSpent: 900, wordsRead: 1800, lastReadAt: iso(-1) },
+      { userId: String(reader.id), storyId: String(book2.id), chapterId: 'ch3', secondsSpent: 300, wordsRead: 600, lastReadAt: iso(0) },
+    ]),
+    // What book1 actually earned its author.
+    AuthorTransaction.create({
+      authorId: String(author.id), bookId: String(book1.id), type: 'earned',
+      status: 'completed', amount: 12500, desc: 'Chapter unlocks'
+    }),
+    // The plan the insights MRR card prices against.
+    SubscriptionPlan.create({
+      code: 'sub-monthly', name: 'Monthly', period: 'month', durationDays: 30,
+      basePriceNGN: 3000, prices: { USD: 2 }, status: 'active'
+    }),
+    // Real RBAC doc: grants the contracts + moderation groups, nothing else.
+    AdminRole.create({
+      name: 'Platform Ops', slug: '', memberIds: [String(admin.id)],
+      perms: { approve_contracts: true, ban_users: true, view_financials: false }
+    }),
+  ]);
   
   const tok = (u) => ({ 
     'Content-Type': 'application/json', 
@@ -98,6 +157,7 @@ async function main() {
 
   /* ── DASHBOARD SUMMARY ───────────────────────────────────── */
   say('\n=== TESTING DASHBOARD SUMMARY ===\n');
+  await waitReady();
   
   let r = await call('GET', `${SA}/dashboard/summary`);
   check('GET /dashboard/summary -> 200', r.status === 200, `status=${r.status}`);
@@ -153,6 +213,36 @@ async function main() {
       `perms=${JSON.stringify(adminRow.perms)}`);
   }
 
+  /* ── REAL WRITES: activity, perms, revenue ───────────────── */
+  say('\n=== TESTING ACTIVITY / PERMS / REVENUE FROM REAL DATA ===\n');
+
+  // A staff action through the ordinary route is what records activity:
+  // audit() writes AuditLog and the console feed reads from it.
+  const wr = await call('PATCH', `${SA}/users/${reader.id}`, { notes: 'Top reader — watch the tip flow' });
+  check('PATCH /users/:id -> 200', wr.status === 200, `status=${wr.status} ${JSON.stringify(wr.json)}`);
+  await sleep(400); // audit() writes fire-and-forget on response finish
+
+  const audited = await AuditLog.countDocuments({});
+  check('audit() wrote AuditLog rows', audited > 0, `count=${audited}`);
+
+  r = await call('GET', `${SA}/dashboard/summary`);
+  const ds2 = r.json || {};
+  check('activityLog panel is not permanently empty', (ds2.activityLog || []).length > 0,
+    `len=${(ds2.activityLog || []).length}`);
+  const act0 = (ds2.activityLog || [])[0] || {};
+  check('activity names the real actor', /Tobenna Achebe/.test(act0.text || ''), `text=${act0.text}`);
+  check('activity humanises the audit action', /Users updated/.test(act0.text || ''), `text=${act0.text}`);
+
+  // book1 leads on reads and has one completed earning row.
+  const top = (ds2.topStories || []).find(s => s.title === book1.title) || {};
+  check('topStories[].revenue is what the book earned', top.revenue === 12500, `revenue=${top.revenue}`);
+
+  const team = (ds2.adminTeam || []).find(a => String(a.id) === String(admin.id)) || {};
+  check('adminTeam role label comes from the AdminRole doc', team.role === 'Platform Ops', `role=${team.role}`);
+  check('adminTeam perms roll up from the real role flags',
+    JSON.stringify(team.perms) === JSON.stringify({ contracts: true, campaigns: false, moderation: true, finance: false, admins: false }),
+    `perms=${JSON.stringify(team.perms)}`);
+
   /* ── USERS LIST ──────────────────────────────────────────── */
   say('\n=== TESTING USERS LIST ===\n');
   
@@ -178,6 +268,19 @@ async function main() {
       `coinsSpent=${user.coinsSpent}`);
   }
 
+  // Engagement + reading figures are aggregated from the collections the
+  // reader services write, so the seeded rows above have to show up as numbers.
+  const rdRow = users.find(x => String(x.id) === String(reader.id)) || {};
+  check('likesGiven counts the reader Reaction rows', rdRow.likesGiven === 3, `likesGiven=${rdRow.likesGiven}`);
+  check('sharesCount counts distinct ShareEvent targets', rdRow.sharesCount === 2, `sharesCount=${rdRow.sharesCount}`);
+  check('savesCount counts distinct saved + library stories', rdRow.savesCount === 2, `savesCount=${rdRow.savesCount}`);
+  check('readingHours comes from secondsSpent', rdRow.readingHours === 0.5, `readingHours=${rdRow.readingHours}`);
+  check('avgSessionMin is minutes per chapter session', rdRow.avgSessionMin === 10, `avgSessionMin=${rdRow.avgSessionMin}`);
+  check('streakDays is the consecutive-day run', rdRow.streakDays === 2, `streakDays=${rdRow.streakDays}`);
+  check('topGenres are the genres actually read',
+    JSON.stringify(rdRow.topGenres) === JSON.stringify([{ name: 'Revenge Drama', count: 1 }, { name: 'Twist Fiction', count: 1 }]),
+    `topGenres=${JSON.stringify(rdRow.topGenres)}`);
+
   /* ── SINGLE USER DETAILS ────────────────────────────────── */
   say('\n=== TESTING SINGLE USER DETAILS ===\n');
   
@@ -191,9 +294,19 @@ async function main() {
       `id=${ud.id},name=${ud.name}`);
     check('user detail has profile info', ud.profile || ud.avatar, 
       `profile=${JSON.stringify(ud.profile)},avatar=${ud.avatar}`);
-    check('user detail has statistics', ud.stories || ud.wordsRead, 
-      `stories=${ud.stories},wordsRead=${ud.wordsRead}`);
   }
+
+  // The detail route has to aggregate the same figures the list shows —
+  // otherwise the drawer renders zeros next to a populated table row.
+  const det = await call('GET', `${SA}/users/${reader.id}`);
+  check('GET /users/:id -> 200 for the reader', det.status === 200, `status=${det.status}`);
+  const dd = det.json || {};
+  check('user detail carries engagement aggregates',
+    dd.likesGiven === 3 && dd.sharesCount === 2 && dd.savesCount === 2,
+    `likes=${dd.likesGiven},shares=${dd.sharesCount},saves=${dd.savesCount}`);
+  check('user detail carries reading aggregates',
+    dd.readingHours === 0.5 && dd.avgSessionMin === 10 && dd.streakDays === 2 && (dd.topGenres || []).length === 2,
+    `h=${dd.readingHours},min=${dd.avgSessionMin},streak=${dd.streakDays},genres=${JSON.stringify(dd.topGenres)}`);
 
   /* ── INSIGHTS OVERVIEW ───────────────────────────────────── */
   say('\n=== TESTING INSIGHTS OVERVIEW ===\n');
@@ -224,6 +337,21 @@ async function main() {
       `funded=${expRow.x.funded}`);
   }
 
+  // MRR = premium count × plan price, so the price has to be the catalog's,
+  // and sessionsPerDay has to be sessions — not words divided by a guess.
+  check('subPrice is the live monthly plan USD leg', io.subPrice === 2, `subPrice=${io.subPrice}`);
+  const readerEx = (io.ex || []).find(x => String(x.u) === String(reader.id)) || {};
+  check('sessionsPerDay is chapter sessions per reading day',
+    readerEx.x && readerEx.x.sessionsPerDay === 1.5, `sessionsPerDay=${readerEx.x && readerEx.x.sessionsPerDay}`);
+  const ioReader = (io.users || []).find(x => String(x.id) === String(reader.id)) || {};
+  check('insights user rows carry engagement + reading too',
+    ioReader.likesGiven === 3 && ioReader.savesCount === 2 && ioReader.streakDays === 2,
+    `likes=${ioReader.likesGiven},saves=${ioReader.savesCount},streak=${ioReader.streakDays}`);
+  const otherRow = (io.users || []).find(x => String(x.id) === String(author.id)) || {};
+  check('a user with no activity reads as zero, not as a gap',
+    otherRow.likesGiven === 0 && otherRow.readingHours === 0 && Array.isArray(otherRow.topGenres),
+    `likes=${otherRow.likesGiven},h=${otherRow.readingHours}`);
+
   /* ── LEADERBOARD ─────────────────────────────────────────── */
   say('\n=== TESTING LEADERBOARD ===\n');
   
@@ -253,6 +381,32 @@ async function main() {
     `totalRevenue=${as.totalRevenue}`);
   check('analytics summary has monthlyRevenue array', Array.isArray(as.monthlyRevenue),
     `monthlyRevenue type=${typeof as.monthlyRevenue}`);
+
+  /* ── THE SAME FEED IN EVERY CONSOLE ──────────────────────── */
+  say('\n=== TESTING CHIEF / FINANCE / MARKETING ACTIVITY FEED ===\n');
+
+  // All four "Recent activity" panels read AuditLog through
+  // activity-feed.service, so one recorded staff action lights them all up.
+  for (const [label, path] of [
+    ['chief', '/api/chief/dashboard'],
+    ['finance', '/api/finance/dashboard'],
+    ['marketing', '/api/marketing/dashboard'],
+  ]) {
+    const rr = await call('GET', path);
+    const list = (rr.json && rr.json.recentActivity) || [];
+    check(`${label} dashboard activity feeds from AuditLog`,
+      rr.status === 200 && list.length > 0, `status=${rr.status} len=${list.length} body=${JSON.stringify(rr.json && rr.json.recentActivity)}`);
+    if (list.length) check(`${label} activity row has icon/color/text/time`,
+      !!list[0].icon && !!list[0].color && !!list[0].text && !!list[0].time, JSON.stringify(list[0]));
+  }
+
+  const ca = await call('GET', '/api/chief/activity?limit=10');
+  check('GET /api/chief/activity -> 200 with rows',
+    ca.status === 200 && Array.isArray(ca.json.items) && ca.json.items.length > 0,
+    `status=${ca.status} items=${ca.json && ca.json.items && ca.json.items.length}`);
+  const car = (ca.json && ca.json.items || [])[0] || {};
+  check('chief activity row carries action + actor + time',
+    !!car.action && !!car.userLabel && !!car.at, JSON.stringify(car).slice(0, 200));
 
   finish();
 }

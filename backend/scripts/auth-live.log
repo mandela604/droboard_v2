@@ -1,0 +1,59 @@
+
+> droboard-backend@0.1.0 smoke:auth:live
+> node scripts/smoke-auth-live.cjs
+
+mongod up: mongodb://127.0.0.1:65183/droboard_auth
+(node:2348) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2348) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2348) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2348) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:2348) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:2348) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4193
+PASS  signup -> 2xx  ::  status=200 {"user":{"id":"6ae8477b16c9cefb674c990b","username":"new_reader_546765","email":"new.reader.1793607546765@example.com","referral":{"inviterId":null},"emailed":false,"emailError":null},"veri
+PASS  signup returns the user row  ::  {"id":"6ae8477b16c9cefb674c990b","username":"new_reader_546765","email":"new.reader.1793607546765@example.com","referral":{"inviterId":null},"emailed":false,"emailError":null}
+PASS  signup returns no session token
+PASS  signup sets no access cookie
+PASS  log mail provider exposes the verify token
+PASS  duplicate email -> 409 taken  ::  status=409 {"error":"taken"}
+PASS  6-char password -> 400 invalid_input  ::  status=400
+PASS  6-char password did not create a user
+PASS  honeypot website -> 400  ::  status=400
+PASS  invalid referral code does not fail signup  ::  status=200 {"inviterId":null,"invalid":true}
+PASS  wrong password -> 401 invalid  ::  status=401
+PASS  login -> 200 with access + user  ::  status=200 {"id":"000001a1-9b57-7afb-a7c0-5a484a2e24de","username":"new_reader_546765","handle":"new_reader_546765","email":"new.reader.1793607546765@example.com","fullName":"New Reader","name":"New R
+PASS  login sets access + refresh cookies
+PASS  login user carries roles for the header  ::  ["admin","reader"]
+PASS  /users/me -> 200 with the same account  ::  status=200 "new.reader.1793607546765@example.com"
+PASS  /users/me starts with no phone  ::  null
+PASS  PATCH /users/me updates name + bio  ::  status=200 "New Reader Edited"
+PASS  PATCH /users/me refuses email (change needs /me/email/request)  ::  status=400 {"error":"invalid_input","details":{"formErrors":[],"fieldErrors":{"body":["Unrecognized key(s) in object: 'email'"]}}}
+PASS  PATCH /me/settings -> 200 private  ::  status=200 {"theme":"dark","notifications":true,"notificationChannels":null,"privacy":"private","readingActivity":false}
+PASS  GET /me/settings persists privacy
+PASS  public profile of a private account is limited  ::  status=200 true
+PASS  PUT /notifications/settings stores the matrix  ::  status=200
+PASS  GET /notifications/settings returns it  ::  {"settings":{"email":true,"push":false,"inApp":true,"sms":false}}
+PASS  email change request -> 200 token  ::  status=200 ["ok","verifyToken"]
+PASS  email change confirm -> 200  ::  status=200 {"ok":true,"email":"moved.1793607546765@example.com","verifyToken":"29488368a9289652f2a756d3192b48eca79b167fefd8b12f"}
+PASS  login with the new email -> 200  ::  status=200
+PASS  password change with a wrong old password -> 401  ::  status=401
+PASS  password change -> 200  ::  status=200
+PASS  old password is rejected  ::  status=401
+PASS  7-char new password is rejected -> 400  ::  status=400
+PASS  new password logs in  ::  status=200
+PASS  MFA enroll returns a secret  ::  status=200
+PASS  MFA confirm enables it + returns backup codes  ::  status=200
+PASS  MFA-enabled login returns a challenge, not a session  ::  status=200 {"mfaRequired":true,"ticket":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDFhMS05YjU3LTdhZmItYTdjMC01YTQ4NGEyZTI0ZGUiLCJwdXJwb3NlIjoibWZhIiwiaWF0IjoxNzkzNjA3NTUxLCJleHAiOjE3OTM2MD
+PASS  wrong MFA code -> 401  ::  status=401
+PASS  correct TOTP -> 200 session  ::  status=200
+PASS  backup code disables MFA  ::  status=200 {"ok":true,"mfaEnabled":false}
+PASS  refresh with a live cookie -> 200  ::  status=200
+PASS  logout -> 200  ::  status=200
+PASS  refresh after logout -> 401  ::  status=401
+PASS  5 failed attempts lock the account -> 423  ::  status=423 {"error":"locked"}
+PASS  banned account -> 403 banned, no session  ::  status=403 {"error":"banned"}
+PASS  Google URL without config -> 501  ::  status=501 {"error":"google_not_configured"}
+
+ALL 43 PASS

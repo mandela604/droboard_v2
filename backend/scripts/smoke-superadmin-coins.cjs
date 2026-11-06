@@ -52,7 +52,12 @@ async function main() {
   say('mongod up: ' + process.env.MONGO_URI);
 
   require('../src/server');
-  await new Promise(r => setTimeout(r, 1500));
+  // Boot ends with ensureIdIndexes(), so listen lands later than a fixed sleep
+  // assumed — wait for /health instead of guessing.
+  for (let i = 0; i < 160; i++) {
+    try { const p = await fetch(BASE + '/health'); if (p.ok) break; } catch (e) { /* not up yet */ }
+    await new Promise(r => setTimeout(r, 250));
+  }
 
   const { User } = require('../src/models/user.model');
   const { Book, Chapter } = require('../src/models/content.model');
@@ -86,7 +91,11 @@ async function main() {
   }
 
   /* ── the money side: one naira pack, one dollar pack, one reward grant ── */
-  await CoinRate.create({ key: 'live', coinFaceNGN: 15, fx: { USD: 1600, GBP: 2000 } });
+  // The scheduler seeds CoinRate{key:'live'} from the FX feed on boot, so this
+  // must overwrite that doc — a second create() hits the key_1 unique index.
+  await CoinRate.findOneAndUpdate({ key: 'live' }, {
+    $set: { key: 'live', coinFaceNGN: 15, fx: { USD: 1600, GBP: 2000 } },
+  }, { upsert: true });
   const uid = String(reader.id);
   await CoinTransaction.create([
     // 100 coins bought for ₦1,500 — all of it cash behind it.

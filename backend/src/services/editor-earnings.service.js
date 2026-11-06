@@ -278,7 +278,7 @@ async function balance(editorId) {
 
 async function summary(editorId) {
   const cfg = await settings();
-  const [asg, groups, monthAgg, authors, lastPayout, pendingAgg, available] = await Promise.all([
+  const [asg, groups, monthAgg, authors, lastPayout, pendingAgg, paidAgg, available] = await Promise.all([
     EditorAssignment.findOne({ editorId: String(editorId) }).select('quota').lean(),
     EditorEarning.aggregate([
       { $match: { editorId: String(editorId) } },
@@ -292,6 +292,10 @@ async function summary(editorId) {
     EditorPayout.findOne({ editorId: String(editorId), status: 'paid' }).sort({ paidAt: -1 }).lean(),
     EditorPayout.aggregate([
       { $match: { editorId: String(editorId), status: { $in: ['requested', 'approved'] } } },
+      { $group: { _id: null, amount: { $sum: '$amount' } } },
+    ]),
+    EditorPayout.aggregate([
+      { $match: { editorId: String(editorId), status: 'paid' } },
       { $group: { _id: null, amount: { $sum: '$amount' } } },
     ]),
     balance(editorId),
@@ -309,6 +313,10 @@ async function summary(editorId) {
     minWithdrawal: cfg.minWithdrawal,
     earned,                                   // lifetime, non-void
     available,                                // what can be withdrawn now
+    // Cash already settled out. The bill page derives this as
+    // earned-available-pendingPayout, which silently counts a rejected-and-
+    // re-requested payout twice; the paid ledger is the honest number.
+    withdrawn: round2((paidAgg[0] && paidAgg[0].amount) || 0),
     pendingPayout: round2((pendingAgg[0] && pendingAgg[0].amount) || 0),
     thisMonth: round2((monthAgg[0] && monthAgg[0].amount) || 0),
     authorCount: authors.length,

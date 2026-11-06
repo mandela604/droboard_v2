@@ -284,7 +284,7 @@ const bonusSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Store catalog audit trail (finance console: coin packages / bundles /
-// gifts / earn / subscriptions). Separate from ActivityLog so the console can
+// gifts / earn / subscriptions). Separate from AuditLog so the console can
 // list catalog edits without scanning platform-wide activity.
 const storeConfigLogSchema = new mongoose.Schema({
   action: { type: String, enum: ['created', 'updated', 'deleted', 'activated', 'deactivated'], required: true, index: true },
@@ -301,7 +301,7 @@ storeConfigLogSchema.index({ at: -1 });
 // rows by a stored uuidv7 `id`, never by Mongo `_id`. Without the path, every
 // {id: …} lookup silently matched nothing and every row key read back undefined.
 [coinTransactionSchema, authorTransactionSchema, withdrawalSchema, payoutSchema,
-  paymentMethodSchema, paymentDisputeSchema, storeConfigLogSchema].forEach(ids.plugin);
+  paymentMethodSchema, paymentDisputeSchema, storeConfigLogSchema, bonusSchema].forEach(ids.plugin);
 
 module.exports = {
   Wallet: mongoose.model('Wallet', walletSchema),

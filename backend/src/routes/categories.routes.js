@@ -23,9 +23,14 @@ function optionalAuth(req, _res, next) {
   return next();
 }
 
-router.get('/', generalLimiter,
-  validate(z.object({ query: z.object({ q: z.string().max(80).optional(), page: pg.page, limit: pg.limit }).strict() })),
-  async (req, res) => base.wrap(res, async () => svc.listCategories(req.valid.query)));
+// Boards explorer: every board is the category the CE created.
+// joined=me narrows to the reader's own boards; rows always carry isJoined.
+router.get('/', generalLimiter, optionalAuth,
+  validate(z.object({ query: z.object({
+    q: z.string().max(80).optional(), page: pg.page, limit: pg.limit,
+    joined: z.enum(['me']).optional(),
+  }).strict() })),
+  async (req, res) => base.wrap(res, async () => svc.listCategories(Object.assign({}, req.valid.query, { viewerId: req.user && req.user.id }))));
 
 router.get('/:slug', generalLimiter, optionalAuth,
   validate(z.object({ params: z.object({ slug }) })),
@@ -37,6 +42,15 @@ router.get('/:slug/stories', generalLimiter,
     query: z.object({ page: pg.page, limit: pg.limit, sort: z.enum(['top', 'new', 'rising', 'recent', 'reads', 'likes', 'rating']).optional() }).strict(),
   })),
   async (req, res) => base.wrap(res, async () => svc.categoryStories(req.valid.params.slug, req.valid.query)));
+
+// The board's Members tab is the same parent-only membership list, reachable by
+// the board's own slug — no genre detour needed for a category.
+router.get('/:slug/members', generalLimiter, optionalAuth,
+  validate(z.object({
+    params: z.object({ slug }),
+    query: z.object({ page: pg.page, limit: pg.limit }).strict(),
+  })),
+  async (req, res) => base.wrap(res, async () => svc.genreMembers(req.valid.params.slug, Object.assign({}, req.valid.query, { viewerId: req.user && req.user.id }))));
 
 router.post('/:slug/join', requireAuth, writeLimiter,
   validate(z.object({ params: z.object({ slug }) })),

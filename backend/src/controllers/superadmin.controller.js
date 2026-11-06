@@ -5,6 +5,8 @@ const sa = require('../services/superadmin.service');
 const revenue = require('../services/revenue.service');
 const track = require('../services/tracking.service');
 const adRev = require('../services/ad-revenue.service');
+const boards = require('../services/admin-boards.service');
+const { verifyPassword } = require('../middleware/auth');
 
 const wrap = (fn) => async (req, res) => base.wrap(res, () => fn(req));
 const created = (fn) => async (req, res) => {
@@ -43,6 +45,8 @@ module.exports = {
   booksList: wrap(async (req) => sa.booksAdmin(req.valid.query)),
   bookSetStatus: wrap(async (req) => sa.setBookStatus(req.valid.params.id, req.valid.body.status)),
   bookDelete: wrap(async (req) => sa.deleteBook(req.valid.params.id)),
+  bulkBooks: async (req, res) => base.wrap(res, () => sa.bulkBooks(req)),
+  bulkCollections: async (req, res) => base.wrap(res, () => sa.bulkCollections(req)),
 
   collectionsList: wrap(async (req) => sa.collectionsAdmin(req.valid.query)),
   collectionDelete: wrap(async (req) => sa.collectionDelete(req.valid.params.id)),
@@ -69,6 +73,25 @@ module.exports = {
   emailTemplateUpdate: wrap(async (req) => sa.updateEmailTemplate(req.valid.params.id, req.valid.body)),
   emailTemplateDelete: wrap(async (req) => sa.deleteEmailTemplate(req.valid.params.id)),
 
+  notificationBroadcast: async (req, res) => {
+    try {
+      const emitter = require('../services/notification-emitter');
+      const ids = req.valid.body.recipientIds || [];
+      if (!Array.isArray(ids) || ids.length === 0) throw new Error('recipientIds required');
+      const result = await emitter.broadcast(ids, {
+        actorId: String(req.user?.id || 'system'),
+        type: req.valid.body.type || 'announcement',
+        title: req.valid.body.title,
+        desc: req.valid.body.desc || '',
+        link: req.valid.body.link || '',
+      });
+      return res.status(201).json(result);
+    } catch (e) {
+      console.error('notificationBroadcast error:', e);
+      return res.status(e.status || 500).json({ error: e.message || 'broadcast_failed' });
+    }
+  },
+
   pagesList: wrap(async () => sa.listSystemPages()),
   pageCreate: created(async (req) => sa.createSystemPage(req.valid.body, req.user.id)),
   pageGet: wrap(async (req) => sa.getSystemPage(req.valid.params.id)),
@@ -86,6 +109,8 @@ module.exports = {
       title, url: b.url || ('/' + slug),
     }), req.user.id);
   }),
+  systemPagesUpdate: wrap(async (req) => sa.updateSystemPage(req.valid.params.id, req.valid.body, req.user.id)),
+  systemPagesDelete: wrap(async (req) => sa.deleteSystemPage(req.valid.params.id)),
 
   // ad earnings console (services/ad-revenue-service.js)
   adRevenueLedger: wrap(async (req) => adRev.ledger(req.valid.query)),
@@ -123,6 +148,7 @@ module.exports = {
   revenueHistory: wrap(async () => revenue.configHistory()),
   revenueOverrides: wrap(async () => revenue.authorOverrides()),
   revenueAuthorSearch: wrap(async (req) => revenue.authorDirectory(req.valid.query.q)),
+  // NEW: handlers for /revenue/config/author/:authorId endpoints
   revenueAuthorSave: created(async (req) => {
     const b = req.valid.body;
     return revenue.saveFlatConfig({
@@ -133,4 +159,19 @@ module.exports = {
   }),
   revenueAuthorDelete: wrap(async (req) => revenue.deleteAuthorOverride(req.valid.params.authorId)),
   revenueSubscriptions: wrap(async (req) => revenue.distributeSubscriptions(req.valid.query.period)),
+
+  // Admin Earnings Console — uses superadmin.service.adminEarnings()
+  adminEarnings: wrap(async (req) => sa.adminEarnings(req.valid ? req.valid.query : req.query)),
+
+  // Boards page — a board is the category the CE creates. Crew and flag live
+  // here; the CE console only names the board.
+  boardsList: wrap(async (req) => boards.listBoards(req.valid.query)),
+  boardsCrew: wrap(async (req) => boards.setCrew(req.valid.params.id, req.valid.body)),
+  boardsFlag: wrap(async (req) => boards.flagBoard(
+    req.valid.params.id, { reason: req.valid.body.reason, note: req.valid.body.note },
+    await verifyPassword(req.user.id, req.valid.body.password)
+  )),
+  boardsUnflag: wrap(async (req) => boards.unflagBoard(
+    req.valid.params.id, await verifyPassword(req.user.id, req.valid.body.password)
+  )),
 };

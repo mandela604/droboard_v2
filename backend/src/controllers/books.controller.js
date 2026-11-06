@@ -42,12 +42,28 @@ async function get(req, res) {
   });
 }
 
+// The reader story page read. optionalAuth above it means a signed-in reader
+// gets their own votes/reaction/save/continue state in the same call.
 async function detail(req, res) {
-  return base.wrap(res, async () => {
-    const out = await books.getBookDetail(req.valid.params.id);
-    if (!books.VISIBLE_BOOK_STATUS.includes(out.status)) { const e = new Error('not_found'); e.status = 404; throw e; }
-    return out;
-  });
+  return base.wrap(res, async () => books.getBookDetail(req.valid.params.id, req.user ? req.user.id : null));
+}
+
+async function similar(req, res) {
+  return base.wrap(res, async () => ({
+    items: await books.similarBooks(await books.getBook(req.valid.params.id), req.valid.query.limit),
+  }));
+}
+
+// Story emoji reactions: rid 'love' is the topbar like. One per reader per
+// story; re-sending the same rid is a no-op, a different rid swaps it.
+async function react(req, res) {
+  return base.wrap(res, async () => require('../services/engagement.service')
+    .reactStory({ bookId: req.valid.params.id, userId: req.user.id, rid: req.valid.body.rid }));
+}
+
+async function unreact(req, res) {
+  return base.wrap(res, async () => require('../services/engagement.service')
+    .unreactStory({ bookId: req.valid.params.id, userId: req.user.id }));
 }
 
 async function update(req, res) {
@@ -79,4 +95,9 @@ async function remove(req, res) {
   });
 }
 
-module.exports = { create, createBatch, list, get, detail, update, remove };
+async function share(req, res) {
+  return base.wrap(res, async () => require('../services/engagement.service')
+    .shareStory({ bookId: req.valid.params.id, userId: req.user.id, channel: req.valid.body.channel }));
+}
+
+module.exports = { create, createBatch, list, get, detail, similar, react, unreact, update, remove, share };

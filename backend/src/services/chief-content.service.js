@@ -252,22 +252,39 @@ async function listCategories({ q, page, limit, status }) {
   return paged(Category.find(filter), Category.countDocuments(filter), pg, lim, { name: 1 });
 }
 
+// Crew ids must resolve to real people, else the board lists a ghost mod.
+async function assertCrew(data) {
+  const { User } = require('../models/user.model');
+  for (const [key, code] of [['adminIds', 'bad_admin'], ['moderatorIds', 'bad_moderator']]) {
+    const ids = data[key];
+    if (!ids || !ids.length) continue;
+    const n = await User.countDocuments({ id: { $in: ids } });
+    if (n !== new Set(ids.map(String)).size) err(code, 400);
+  }
+}
+
+// House-rules are ordered, non-empty lines — mirror the editor's trim/filter so
+// a blank row never persists as a rendered rule.
+function cleanRules(rules) {
+  return rules.map(r => String(r).trim()).filter(Boolean);
+}
+
 async function createCategory(data) {
   const slug = data.slug || slugify(data.name);
   if (await Category.exists({ $or: [{ slug }, { name: data.name }] })) err('category_exists', 409);
-  const doc = await Category.create(Object.assign({}, data, { slug }));
+  await assertCrew(data);
+  const payload = Object.assign({}, data, { slug });
+  if (payload.rules !== undefined) payload.rules = cleanRules(payload.rules);
+  const doc = await Category.create(payload);
   return doc.toJSON();
 }
 
 async function updateCategory(id, data) {
   const doc = await Category.findOne({id: id});
   if (!doc) err('not_found', 404);
-  if (data.adminIds !== undefined && data.adminIds.length) {
-    const { User } = require('../models/user.model');
-    const n = await User.countDocuments({ id: { $in: data.adminIds } });
-    if (n !== data.adminIds.length) err('bad_admin', 400);
-  }
-  ['name', 'slug', 'icon', 'bg', 'color', 'desc', 'tagline', 'cover', 'adminIds'].forEach(k => { if (data[k] !== undefined) doc[k] = data[k]; });
+  await assertCrew(data);
+  ['name', 'slug', 'icon', 'bg', 'color', 'desc', 'tagline', 'cover', 'adminIds', 'moderatorIds', 'rules'].forEach(k => { if (data[k] !== undefined) doc[k] = data[k]; });
+  if (data.rules !== undefined) doc.rules = cleanRules(data.rules);
   await doc.save();
   return doc.toJSON();
 }
@@ -292,7 +309,7 @@ async function toggleCategoryStatus(id) {
   return doc.toJSON();
 }
 
-// ---- Genres (full hub fields: slug/about/admins) ----
+// ---- Genres (sections of a board — no crew of their own) ----
 async function listGenres({ q, page, limit, status, categoryId }) {
   const filter = {};
   if (q) filter.name = rx(q);
@@ -308,11 +325,6 @@ async function createGenre(data) {
   if (!cat) err('bad_category', 400);
   const slug = data.slug || slugify(data.name);
   if (await Genre.exists({ $or: [{ slug }, { name: data.name }] })) err('genre_exists', 409);
-  if (data.adminIds && data.adminIds.length) {
-    const { User } = require('../models/user.model');
-    const n = await User.countDocuments({ id: { $in: data.adminIds } });
-    if (n !== data.adminIds.length) err('bad_admin', 400);
-  }
   const doc = await Genre.create(Object.assign({}, data, { slug }));
   return doc.toJSON();
 }
@@ -324,17 +336,7 @@ async function updateGenre(id, data) {
     const cat = await Category.findOne({ id: data.categoryId }).select('id').lean();
     if (!cat) err('bad_category', 400);
   }
-  if (data.adminIds !== undefined && data.adminIds.length) {
-    const { User } = require('../models/user.model');
-    const n = await User.countDocuments({ id: { $in: data.adminIds } });
-    if (n !== data.adminIds.length) err('bad_admin', 400);
-  }
-  if (data.moderatorIds !== undefined && data.moderatorIds.length) {
-    const { User } = require('../models/user.model');
-    const n = await User.countDocuments({ id: { $in: data.moderatorIds } });
-    if (n !== data.moderatorIds.length) err('bad_moderator', 400);
-  }
-  ['name', 'slug', 'categoryId', 'desc', 'tagline', 'about', 'icon', 'cover', 'bg', 'color', 'adminIds', 'moderatorIds'].forEach(k => { if (data[k] !== undefined) doc[k] = data[k]; });
+  ['name', 'slug', 'categoryId', 'desc', 'tagline', 'about', 'icon', 'cover', 'bg', 'color'].forEach(k => { if (data[k] !== undefined) doc[k] = data[k]; });
   await doc.save();
   return doc.toJSON();
 }

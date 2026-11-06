@@ -30,8 +30,8 @@ router.get('/index', generalLimiter, optionalAuth,
     q: z.string().max(80).optional(), type: z.string().max(20).optional(), limit: z.string().max(6).optional(),
   }).strict() })),
   async (req, res) => base.wrap(res, async () => {
-    const out = await search.index(req.valid.query);
-    const results = (out.books || []).length + (out.users || []).length + (out.collections || []).length + (out.tags || []).length;
+    const out = await search.index(Object.assign({}, req.valid.query, { viewerId: req.user && req.user.id }));
+    const results = out.poolStories.length + out.poolWriters.length + out.poolBoards.length + out.poolDebates.length;
     tracking.logSearch({ userId: req.user && req.user.id, q: req.valid.query.q, type: req.valid.query.type, results });
     return out;
   }));

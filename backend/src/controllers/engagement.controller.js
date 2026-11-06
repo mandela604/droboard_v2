@@ -61,18 +61,22 @@ async function bookResults(req, res) {
   }));
 }
 
+// kind + the chosen answer both arrive in the BODY; only bookId is a path
+// param. Reading kind off params gives undefined and the service answers
+// bad_kind, which is how every reader vote used to 400.
 async function bookVote(req, res) {
+  const b = req.valid.body;
   return base.wrap(res, async () => engagement.bookVote({
     bookId: req.valid.params.bookId, userId: req.user.id,
-    kind: req.valid.params.kind, id: req.valid.body.id,
-    option: req.valid.body.kind === 'debate' ? req.valid.body.side : req.valid.body.option,
+    kind: b.kind, id: b.id,
+    option: b.kind === 'debate' ? b.side : b.option,
   }));
 }
 
 async function bookRetract(req, res) {
   return base.wrap(res, async () => engagement.bookRetract({
     bookId: req.valid.params.bookId, userId: req.user.id,
-    kind: req.valid.params.kind,
+    kind: req.valid.params.kind, itemId: req.valid.params.itemId,
   }));
 }
 
@@ -92,8 +96,31 @@ async function ratingPost(req, res) {
   });
 }
 
+/* ── reviews list + helpful votes (reader-facing story page) ── */
+
+async function ratingsList(req, res) {
+  return base.wrap(res, async () => {
+    const ratings = require('../services/ratings.service');
+    return ratings.listRatings(req.valid.params.id, req.user ? req.user.id : null, req.valid.query);
+  });
+}
+
+async function helpfulMark(req, res) {
+  return base.wrap(res, async () => {
+    const ratings = require('../services/ratings.service');
+    return ratings.setHelpful(req.valid.params.id, req.valid.params.ratingId, req.user.id, true);
+  });
+}
+
+async function helpfulUnmark(req, res) {
+  return base.wrap(res, async () => {
+    const ratings = require('../services/ratings.service');
+    return ratings.setHelpful(req.valid.params.id, req.valid.params.ratingId, req.user.id, false);
+  });
+}
+
 module.exports = {
   votePoll, votePrediction, voteDebate, retract, results, progress, readState,
   bookResults, bookVote, bookRetract,
-  ratingGet, ratingPost,
+  ratingGet, ratingPost, ratingsList, helpfulMark, helpfulUnmark,
 };

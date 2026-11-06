@@ -1,0 +1,54 @@
+PASS  1 GET /api/discussions?genre= -> 200 with items at the envelope root
+PASS  2 the card is the FLAT OP card the page paints (name/avatar/time/comments, no nested author)
+PASS  3 real author resolved: name, http avatar, @handle and verified flag
+PASS  4 time is a relative string and comments maps the stored commentsCount
+PASS  5 tag is the Title-case pill label, tagClass the lowercase CSS key
+PASS  6 hot / controversy / badge / badgeClass come from the stored columns
+PASS  7 the OP media image and the linked-story block survive on the page card
+PASS  8 trope is carried (composer field the OP shows)
+PASS  9 the pinned house-rules thread is flagged for the sticky card
+PASS  10 _genreName gives the "· Dark Romance" line on the OP header
+PASS  11 liked is per-viewer (member liked it, stranger did not)
+PASS  12 the same card reads liked:false for a viewer who never liked it
+PASS  13 a board (category) slug lists threads from all child genres
+PASS  14 sort=top orders by likes
+PASS  15 sort=hot puts the hot thread first
+PASS  16 default sort is newest first
+PASS  17 ?tag= filters to that tag only
+PASS  18 pagination pages without overlap and reports total/hasMore
+PASS  19 an unknown sort is rejected by the strict validator, not ignored
+PASS  20 an unknown board answers genre_not_found 404
+PASS  21 the genre param is required (no unscoped thread dump)
+PASS  22 GET /api/discussions/:id -> the same flat OP card
+PASS  23 the thread page carries the story rec, media and genre label
+PASS  24 an unknown thread answers 404 so the page shows its not-found state
+PASS  25 a non-member cannot open a thread -> join_board_first
+PASS  26 a member opens a thread -> 201 with the flat card
+PASS  27 the write returns the author name and a relative time, not a bare id
+PASS  28 the new thread surfaces on the board list
+PASS  29 an unknown tag is refused with bad_tag
+PASS  30 media is validated, so no script url reaches <img src>
+PASS  31 a thread needs a board (genre) and a title
+PASS  32 PATCH by someone else -> 403 forbidden
+PASS  33 the author edits title / tag / and clears the media + story
+PASS  34 the edit persisted on a fresh read (no cache, no second write)
+PASS  35 PATCH validates the tag too
+PASS  36 an admin can edit someone else's thread
+PASS  37 a non-member cannot like a board thread
+PASS  38 like -> {liked:true} and the counter moves
+PASS  39 liking again un-likes (no double count)
+PASS  40 the list card reflects the stored like state
+PASS  41 replying inside a thread -> 201
+PASS  42 replying inside a board thread needs board membership too
+PASS  42b a member's reply to a comment is accepted
+PASS  43 the comment list returns the shape the shared comment section renders
+PASS  44 the nested reply comes back under its parent
+PASS  45 the OP comment count tracks the real thread (2, not the stored 0)
+PASS  46 a stranger cannot delete a thread -> 403
+PASS  47 the author deletes a thread -> ok:true
+PASS  48 the deleted thread is gone from the reader side
+PASS  49 deleting the thread deleted its comments (no orphan rows)
+PASS  50 and it dropped off the board list
+PASS  51 the feed row stays the stripped card: no media / trope / story
+PASS  52 the feed row keeps _genreId + _genreName + the flat author fields
+PASS  53 one mapper serves both readers: every shared field agrees exactly

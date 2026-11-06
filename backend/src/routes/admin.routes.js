@@ -2,7 +2,7 @@
 const { z } = require('zod');
 const ctrl = require('../controllers/superadmin.controller');
 const { requireAuth } = require('../middleware/auth');
-const { requireRole } = require('../middleware/guards');
+const { requireRole, requirePerm } = require('../middleware/guards');
 const { validate, audit } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -11,7 +11,7 @@ const router = Router();
 router.get('/revenue/config', requireAuth, requireRole('admin'),
   validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.revenueConfigGet);
 
-router.post('/revenue/config', requireAuth, requireRole('admin'), audit('revenue.config.save'),
+router.post('/revenue/config', requireAuth, requireRole('admin'), requirePerm('edit_rates'), audit('revenue.config.save'),
   validate(z.object({ body: z.object({
     scope: z.enum(['global', 'author']).default('global'),
     authorId: z.string().max(40).optional(),
@@ -37,7 +37,7 @@ router.get('/revenue/pools', requireAuth, requireRole('admin', 'finance'), ctrl.
 // coin rate — single 'live' CoinRate doc (unlock/tip face value + minimums).
 // Frontend finance console reads this; PUT updates without code changes.
 router.get('/revenue/coin-rate', requireAuth, requireRole('admin'), ctrl.coinRateGet);
-router.put('/revenue/coin-rate', requireAuth, requireRole('admin'),
+router.put('/revenue/coin-rate', requireAuth, requireRole('admin'), requirePerm('edit_rates'),
   require('../middleware/http').writeLimiter, audit('admin.revenue.coin-rate.save'),
   validate(z.object({ body: z.object({
     coinFaceNGN: z.number().min(0.01).max(10000).optional(),
@@ -84,23 +84,27 @@ router.patch('/users/:id', ...A, require('../middleware/http').writeLimiter, aud
     platformRoles: z.array(z.string().max(30)).max(10).optional(),
     verified: z.boolean().optional(), notes: z.string().max(1000).optional(),
   }).strict() })), sa.updateUser);
-router.delete('/users/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.users.delete'),
+router.delete('/users/:id', ...A, requirePerm('ban_users'), require('../middleware/http').writeLimiter, audit('admin.users.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.removeUser);
 
 // roles
 const roleBody = z.object({
   name: z.string().min(1).max(80), desc: z.string().max(500).optional(),
+  // slug is the User.roles token this role grants (system roles use the
+  // canonical snake_case names). Once set it's frozen — user rows already
+  // reference it. Custom roles may set one on create or leave it ''.
+  slug: z.string().max(40).regex(/^[a-z0-9_]*$/).optional(),
   icon: z.string().max(40).optional(), color: z.string().max(20).optional(),
   memberIds: z.array(z.string().max(120)).max(500).optional(),
   perms: z.record(z.boolean()).optional(),
 }).strict();
 router.get('/roles', ...A, sa.listRoles);
 router.get('/roles/:id', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.getRole);
-router.post('/roles', ...A, require('../middleware/http').writeLimiter, audit('admin.roles.create'),
+router.post('/roles', ...A, requirePerm('manage_roles'), require('../middleware/http').writeLimiter, audit('admin.roles.create'),
   validate(z.object({ body: roleBody })), sa.createRole);
-router.put('/roles/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.roles.update'),
+router.put('/roles/:id', ...A, requirePerm('manage_roles'), require('../middleware/http').writeLimiter, audit('admin.roles.update'),
   validate(z.object({ params: z.object({ id: ID }), body: roleBody.partial() })), sa.updateRole);
-router.delete('/roles/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.roles.delete'),
+router.delete('/roles/:id', ...A, requirePerm('manage_roles'), require('../middleware/http').writeLimiter, audit('admin.roles.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.deleteRole);
 
 // editorial team
@@ -136,6 +140,12 @@ router.patch('/books/:id/status', ...A, require('../middleware/http').writeLimit
   validate(z.object({ params: z.object({ id: ID }), body: z.object({ status: z.string().min(1).max(20) }).strict() })), sa.bookSetStatus);
 router.delete('/books/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.books.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.bookDelete);
+// bulk update — POST /api/super-admin/books/bulk { bookIds: [...], status: 'published'|'flagged'|... }
+router.post('/books/bulk', ...A, require('../middleware/http').writeLimiter, audit('admin.books.bulk'),
+  validate(z.object({ body: z.object({
+    bookIds: z.array(ID).min(1),
+    status: z.string().min(1).max(20),
+  }).strict() })), ctrl.bulkBooks);
 
 // collections moderation
 router.get('/collections', ...A, validate(z.object({ query: z.object({
@@ -144,6 +154,13 @@ router.get('/collections', ...A, validate(z.object({ query: z.object({
 }).strict() })), sa.collectionsList);
 router.delete('/collections/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.collections.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.collectionDelete);
+// bulk update — POST /api/super-admin/collections/bulk { collectionIds: [...], status: 'public'|'private'|... }
+router.post('/collections/bulk', ...A, require('../middleware/http').writeLimiter, audit('admin.collections.bulk'),
+  validate(z.object({ body: z.object({
+    collectionIds: z.array(ID).min(1),
+    status: z.string().min(1).max(20),
+  }).strict() })), ctrl.bulkCollections);
+
 
 // posts moderation
 router.get('/posts', ...A, validate(z.object({ query: z.object({
@@ -155,6 +172,30 @@ router.patch('/posts/:id/status', ...A, require('../middleware/http').writeLimit
   validate(z.object({ params: z.object({ id: ID }), body: z.object({ status: z.string().min(1).max(20) }).strict() })), sa.postSetStatus);
 router.delete('/posts/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.posts.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.postDelete);
+
+// boards — a board is the category the CE creates. This console assigns its one
+// admin + moderator team and flags the board itself.
+router.get('/boards', ...A, validate(z.object({ query: z.object({
+  ...PG, q: z.string().max(80).optional(), status: z.string().max(20).optional(),
+  sort: z.string().max(20).optional(),
+}).strict() })), sa.boardsList);
+router.put('/boards/:id/crew', ...A, requirePerm('manage_settings'),
+  require('../middleware/http').writeLimiter, audit('admin.boards.crew'),
+  validate(z.object({ params: z.object({ id: ID }), body: z.object({
+    admins: z.array(z.string().max(120)).max(20).optional(),
+    moderators: z.array(z.string().max(120)).max(20).optional(),
+  }).strict().refine(v => v.admins !== undefined || v.moderators !== undefined, { message: 'nothing_to_save' }) })), sa.boardsCrew);
+router.post('/boards/:id/flag', ...A, requirePerm('manage_settings'),
+  require('../middleware/http').writeLimiter, audit('admin.boards.flag'),
+  validate(z.object({ params: z.object({ id: ID }), body: z.object({
+    reason: z.string().min(1).max(200), note: z.string().max(2000).optional(),
+    password: z.string().min(1).max(200),
+  }).strict() })), sa.boardsFlag);
+router.post('/boards/:id/unflag', ...A, requirePerm('manage_settings'),
+  require('../middleware/http').writeLimiter, audit('admin.boards.unflag'),
+  validate(z.object({ params: z.object({ id: ID }), body: z.object({
+    password: z.string().min(1).max(200),
+  }).strict() })), sa.boardsUnflag);
 
 // analytics
 router.get('/analytics/summary', ...A, sa.analyticsSummary);
@@ -169,6 +210,9 @@ router.get('/analytics/top-readers', ...A, validate(z.object({ query: z.object({
 router.get('/analytics/trending-searches', ...A, validate(z.object({ query: z.object({
   limit: z.string().max(6).optional(),
 }).strict() })), sa.trendingSearches);
+
+// admin earnings console — stub placeholder
+router.get('/earnings', ...A, sa.adminEarnings);
 
 // audit trail — staff-scope by default (readers' like/save noise excluded);
 // scope=all returns the raw log. Filters: actorId, role, action, entity.
@@ -199,6 +243,16 @@ router.put('/email-templates/:id', ...A, require('../middleware/http').writeLimi
 router.delete('/email-templates/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.email.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.emailTemplateDelete);
 
+// platform notifications broadcast — Admin sends announcement/push to users
+router.post('/notifications/broadcast', ...A, require('../middleware/http').writeLimiter, audit('admin.notifications.broadcast'),
+  validate(z.object({ body: z.object({
+    recipientIds: z.array(z.string().min(1).max(120)).min(1),
+    type: z.string().max(40).optional().default('announcement'),
+    title: z.string().min(1).max(200),
+    desc: z.string().max(5000).optional(),
+    link: z.string().max(500).optional(),
+  }).strict() })), ctrl.notificationBroadcast);
+
 // system pages
 const pageBody = z.object({
   title: z.string().min(1).max(120), url: z.string().min(1).max(200),
@@ -219,11 +273,17 @@ const spBody = z.object({
   icon: z.string().max(40).optional(),
   tone: z.string().max(20).optional(),
   status: z.enum(['active', 'draft', 'hidden']).optional(),
+  content: z.string().max(50000).optional(),
+  questions: z.array(z.object({ q: z.string().max(500), a: z.string().max(5000) }).strict()).max(100).optional(),
 }).strict();
 router.get('/system-pages', ...A, sa.pagesList);
 router.post('/system-pages', ...A, require('../middleware/http').writeLimiter, audit('admin.pages.create'),
   validate(z.object({ body: spBody })), sa.systemPagesCreate);
 router.get('/system-pages/:id', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.pageGet);
+router.put('/system-pages/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.pages.update'),
+  validate(z.object({ params: z.object({ id: ID }), body: spBody })), sa.systemPagesUpdate);
+router.delete('/system-pages/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.pages.delete'),
+  validate(z.object({ params: z.object({ id: ID }) })), sa.systemPagesDelete);
 router.get('/system-pages/:id/preview', ...A, validate(z.object({ params: z.object({ id: ID }) })), sa.pagePreview);
 
 // ad earnings console — FE: services/ad-revenue-service.js (loaded by
@@ -275,6 +335,9 @@ const flatCuts = {
 router.get('/revenue/config/active', ...A, sa.revenueActiveFlat);
 router.get('/revenue/config/history', ...A, sa.revenueHistory);
 router.get('/revenue/config/author', ...A, sa.revenueOverrides);
+// revenue-splits console saves the global row here (flat shape; controller
+// routes to saveFlatConfig when google/writerShare are present).
+// NOTE: DO NOT add another POST /revenue/config — first match wins in Express routing.
 router.get('/revenue/authors', ...A, validate(z.object({ query: z.object({
   q: z.string().max(80).optional(),
 }).strict() })), sa.revenueAuthorSearch);

@@ -8,11 +8,18 @@
  * from ReadingProgress rows, not the client-supplied chaptersRead.
  */
 const { Book } = require('../models/content.model');
-const { BookRating, ReadingProgress, Post } = require('../models/social.model');
+const { BookRating, RatingHelpful, ReadingProgress, Post } = require('../models/social.model');
 const { User } = require('../models/user.model');
 
 const MIN_CHAPTERS = 12;
 const READABLE = ['ongoing', 'published', 'completed'];
+// Sort keys the reviews list understands — the same three the page's revSort
+// chips use (helpful | newest | rating). Default is 'helpful'.
+const REV_SORTS = {
+  helpful: { helpfulCount: -1, createdAt: -1 },
+  newest: { createdAt: -1 },
+  rating: { stars: -1, helpfulCount: -1 },
+};
 
 function fail(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 
@@ -77,4 +84,84 @@ async function submitRating(bookId, userId, { stars, text, spoiler }) {
   return { ok: true, mine: { stars, text: text || '', spoiler: !!spoiler }, avg, count };
 }
 
-module.exports = { getRating, submitRating, MIN_CHAPTERS };
+/* ── reviews list (the reader-facing grid under the story page) ──
+   The page renders one card per reader review: author id/name/avatar (so the
+   status ring can attach by id), the real stars, text, a helpful tally and the
+   mark time. All read from BookRating + a bulk User join — never the debate
+   comments the demo used, and never a client-side rating hash. */
+async function listRatings(bookId, viewerId, { page, limit, sort } = {}) {
+  const book = await loadLiveBook(bookId);
+  const pg = Math.max(1, parseInt(page, 10) || 1);
+  const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 12));
+  const order = REV_SORTS[sort] || REV_SORTS.helpful;
+
+  const [rows, total] = await Promise.all([
+    BookRating.find({ bookId: book.id }).sort(order).skip((pg - 1) * lim).limit(lim).lean(),
+    BookRating.countDocuments({ bookId: book.id }),
+  ]);
+  if (!rows.length) return { items: [], total, page: pg, limit: lim };
+
+  const ids = [...new Set(rows.map(r => String(r.userId)))];
+  const viewer = viewerId ? String(viewerId) : null;
+  const [authors, marks] = await Promise.all([
+    User.find({ id: { $in: ids } }).select('id username fullName avatar').lean(),
+    viewer
+      ? RatingHelpful.find({ userId: viewer, ratingId: { $in: rows.map(r => String(r.id)) } }).select('ratingId').lean()
+      : Promise.resolve([]),
+  ]);
+  const byId = {};
+  authors.forEach(u => { byId[String(u.id)] = u; });
+  const mine = new Set(marks.map(m => String(m.ratingId)));
+
+  return {
+    items: rows.map(r => {
+      const u = byId[String(r.userId)] || {};
+      return {
+        id: String(r.id),
+        userId: String(r.userId),
+        name: u.fullName || u.username || '',
+        avatar: u.avatar || '',
+        stars: r.stars,
+        text: r.text || '',
+        spoiler: !!r.spoiler,
+        createdAt: new Date(r.createdAt).getTime(),
+        helpful: r.helpfulCount || 0,
+        mineHelpful: mine.has(String(r.id)),
+      };
+    }),
+    total, page: pg, limit: lim,
+  };
+}
+
+/* One "helpful" mark per (rating, user). The tally is denormalized on
+   BookRating.helpfulCount and paired 1:1 with a RatingHelpful row, so a mark
+   that already exists (or an unmark of a non-mark) never double-counts. */
+async function setHelpful(bookId, ratingId, userId, on) {
+  const book = await loadLiveBook(bookId);
+  const rating = await BookRating.findOne({ id: String(ratingId), bookId: book.id });
+  if (!rating) fail('not_found', 404);
+  const uid = String(userId);
+
+  if (on) {
+    const existing = await RatingHelpful.findOne({ ratingId: String(ratingId), userId: uid });
+    if (!existing) {
+      try {
+        await RatingHelpful.create({ ratingId: String(ratingId), userId: uid });
+        await BookRating.updateOne({ id: rating.id }, { $inc: { helpfulCount: 1 } });
+      } catch (e) {
+        // Unique index won the race — a parallel mark; treat as already counted.
+        if (e.code !== 11000) throw e;
+      }
+    }
+  } else {
+    const del = await RatingHelpful.deleteOne({ ratingId: String(ratingId), userId: uid });
+    if (del.deletedCount > 0) {
+      await BookRating.updateOne({ id: rating.id, helpfulCount: { $gt: 0 } }, { $inc: { helpfulCount: -1 } });
+    }
+  }
+
+  const fresh = await BookRating.findOne({ id: rating.id }).select('helpfulCount').lean();
+  return { ok: true, helpful: fresh ? fresh.helpfulCount : 0, mineHelpful: !!on };
+}
+
+module.exports = { getRating, submitRating, listRatings, setHelpful, MIN_CHAPTERS };

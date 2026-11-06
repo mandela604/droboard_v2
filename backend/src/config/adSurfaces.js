@@ -33,6 +33,7 @@ const PAGES = [
   { id: 'notifications', label: 'Notifications' },
   { id: 'search', label: 'Search Results' },
   { id: 'status', label: 'Status Viewer' },
+  { id: 'trending', label: 'Trending' },
 ];
 
 const PAGE_SLOTS = {
@@ -41,7 +42,10 @@ const PAGE_SLOTS = {
   comments: ['comments:list-top', 'comments:every-nth', 'comments:thread-top'],
   feed: ['feed:in-feed'],
   discover: ['discover:strip', 'discover:banner-top', 'discover:inline-banner', 'discover:banner-bottom', 'discover:spotlight'],
-  genreHub: ['genreHub:strip'],
+  // strip = the in-layout house card; popup = the network overlay zone, which
+  // paints over the page wherever its own script decides, so it needs a slot of
+  // its own instead of stealing the golden book card from the strip.
+  genreHub: ['genreHub:strip', 'genreHub:popup'],
   library: ['library:slider'],
   store: ['store:below-packs'],
   droboardPage: ['droboardPage:feed'],
@@ -57,6 +61,9 @@ const PAGE_SLOTS = {
   notifications: ['notifications:in-feed'],
   search: ['search:banner'],
   status: ['status:every-3rd'],
+  // trending.html — the cross-hub "See all" list. Ads drop in after every N
+  // cards; N is placements.trending.interval, set in the Ad Manager.
+  trending: ['trending:in-feed'],
   // followers / profile render through their own services: followers injects
   // sponsored rows programmatically (followers:in-feed), profile is
   // page-targeted only and has no slot marker.

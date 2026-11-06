@@ -173,6 +173,27 @@ async function placements() {
 const PLACEMENT_RESERVED = new Set(['page', 'slots', 'cfg', 'enabled', 'interval', 'cycle',
   'format', 'topPromo', 'promoSlider', 'wordsPerSlot', 'repeat', 'paidUnlockAds']);
 
+/* Per-slot frequency cap, set in the marketing console and read by the shared
+   ad slot before an ad renders:
+     cap      off | session | daily      (window the counter lives in)
+     capCount 1..100                     (showings allowed in that window)
+     capScope slot | target | global     (what one "place" means: this slot,
+        this slot for one board/post, or this creative anywhere)
+   Nothing about the numbers lives in code — an unset cap is unlimited. */
+const AD_CAPS = new Set(['off', 'session', 'daily']);
+const AD_CAP_SCOPES = new Set(['slot', 'target', 'global']);
+
+function cleanSlotCfg(v) {
+  const cfg = {};
+  if (v.enabled !== undefined) cfg.enabled = !!v.enabled;
+  if (Array.isArray(v.formats)) cfg.formats = v.formats.map(String).slice(0, 10);
+  if (Array.isArray(v.adIds)) cfg.adIds = v.adIds.map(String).slice(0, 20);
+  if (v.cap !== undefined) cfg.cap = AD_CAPS.has(String(v.cap)) ? String(v.cap) : 'off';
+  if (v.capCount !== undefined) cfg.capCount = Math.min(100, Math.max(1, parseInt(v.capCount, 10) || 1));
+  if (v.capScope !== undefined) cfg.capScope = AD_CAP_SCOPES.has(String(v.capScope)) ? String(v.capScope) : 'slot';
+  return cfg;
+}
+
 function jsonSafe(v, depth) {
   const d = depth || 0;
   if (d > 4) return null;
@@ -208,11 +229,7 @@ async function savePlacement({ page, patch }) {
       const key = 'slots.' + String(k).slice(0, 80);
       if (typeof v === 'boolean') { set[key] = v; return; }
       if (v && typeof v === 'object') {
-        const cfg = {};
-        if (v.enabled !== undefined) cfg.enabled = !!v.enabled;
-        if (Array.isArray(v.formats)) cfg.formats = v.formats.map(String).slice(0, 10);
-        if (Array.isArray(v.adIds)) cfg.adIds = v.adIds.map(String).slice(0, 20);
-        set[key] = cfg;
+        set[key] = cleanSlotCfg(v);
       }
     });
   }

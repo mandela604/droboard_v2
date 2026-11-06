@@ -9,7 +9,8 @@
 // 0xC0000135 (DLL not found) without it, which is why the same assertions run
 // against stubbed collections in smoke-staff-scopes.cjs.
 process.env.NODE_ENV = 'test';
-process.env.PORT = '4178';
+const PORT = process.env.SMOKE_PORT || '4178';
+process.env.PORT = PORT;
 process.env.JWT_ACCESS_SECRET = 'a'.repeat(48);
 process.env.JWT_REFRESH_SECRET = 'b'.repeat(48);
 process.env.MFA_SECRET_KEY = 'c'.repeat(48);
@@ -31,7 +32,12 @@ async function main() {
   console.log('mongod up:', process.env.MONGO_URI);
 
   require('../src/server');
-  await new Promise(r => setTimeout(r, 1200));
+  // Boot is async (the role seed runs before listen), so a fixed sleep loses
+  // the race on a cold box.
+  for (let i = 0; i < 160; i++) {
+    try { const p = await fetch('http://127.0.0.1:' + PORT + '/health'); if (p.ok) break; } catch (e) { /* not up yet */ }
+    await new Promise(r => setTimeout(r, 250));
+  }
 
   const argon2 = require('argon2');
   const { User } = require('../src/models/user.model');
@@ -60,7 +66,7 @@ async function main() {
   await EditorAssignment.create({ editorId: String(seA.id), authorIds: [String(a1.id)] });
   await EditorAssignment.create({ editorId: String(seB.id), authorIds: [String(a2.id)] });
 
-  const base = 'http://127.0.0.1:4178';
+  const base = 'http://127.0.0.1:' + PORT;
   function hdr(u) { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + signAccess(u) }; }
   async function call(u, method, path, body) {
     const init = { method, headers: hdr(u) };

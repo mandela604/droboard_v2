@@ -38,9 +38,10 @@ router.get('/:slug/stories', generalLimiter,
   })),
   async (req, res) => base.wrap(res, async () => svc.genreStories(req.valid.params.slug, req.valid.query)));
 
-router.get('/:slug/members', generalLimiter,
+// member rows carry the viewer's follow state, so the hub needs the session
+router.get('/:slug/members', generalLimiter, optionalAuth,
   validate(z.object({ params: z.object({ slug }), query: z.object({ page: pg.page, limit: pg.limit }).strict() })),
-  async (req, res) => base.wrap(res, async () => svc.genreMembers(req.valid.params.slug, req.valid.query)));
+  async (req, res) => base.wrap(res, async () => svc.genreMembers(req.valid.params.slug, Object.assign({}, req.valid.query, { viewerId: req.user && req.user.id }))));
 
 router.post('/:slug/join', requireAuth, writeLimiter,
   validate(z.object({ params: z.object({ slug }) })),

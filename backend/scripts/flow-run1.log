@@ -1,0 +1,55 @@
+
+> droboard-backend@0.1.0 smoke:flow
+> node scripts/smoke-user-book-flow.cjs
+
+mongod up: mongodb://127.0.0.1:51438/dro_flow
+(node:12188) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12188) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:12188) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:12188) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:12188) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:12188) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4197
+PASS  A0 catalog seeded (wizard needs active Genre/Trope/Category rows)  ::  {"cat":"000001a1-9b4d-7226-90a0-db8335c83803","genre":"Fantasy","trope":"Enemies to Lovers"}
+PASS  A1 signup (web payload) -> 2xx  ::  200 {"user":{"id":"6ae845124ee726d521e1e215","username":"flow_reader","email":"flow_reader@example.com","referral":{"inviterId":null},"emailed":false,"emailError":null},"verifyToken":"dfbe8dad2620ecf991c4351dd75dc66f92513b9476c2bcd8"}
+PASS  A2 signup body.user exists  ::  ["user","verifyToken"]
+PASS  A3 login -> access + user  ::  200
+PASS  A4 login user has handle/username for AuthSession  ::  {"keys":["id","username","handle","email","fullName","name","avatar","roles","primaryRole"],"handle":"flow_reader","username":"flow_reader"}
+PASS  A5 login user row carries roles  ::  {"roles":["admin","reader"]}
+PASS  A6 check-username taken -> {available:false}  ::  {"available":false}
+PASS  A7 check-username free -> {available:true}  ::  {"available":true}
+PASS  A8 GET /users/me -> id + handle + email (what AuthSession stores)  ::  {"keys":["id","username","handle","fullName","name","avatar","cover","bio","location","about","genres","country","roles","primaryRole","isWriter","verified","status","createdAt","joinedLabel","email","emailVerified","phone","phoneVerified","following"]}
+PASS  A8b GET /users/me has NO stats object (drawer must read /users/:handle)
+PASS  A9 GET /users/:handle -> 200  ::  200 undefined
+PASS  A10 profile.handle present (IS_OWNER compare uses this)  ::  {"handle":"flow_reader","username":"flow_reader"}
+PASS  A11 profile.stats.{followers,following} are numbers  ::  {"following":0,"followers":0,"books":0,"reads":0,"likes":0,"saved":0,"readingHours":0,"streak":0}
+PASS  A12 profile has books[] collections[] library[] posts[]
+PASS  A13 profile.isWriter is boolean  ::  true
+PASS  A14 PATCH /users/me accepts fullName + bio  ::  200 undefined
+PASS  A15 edited name persisted  ::  {"fullName":"Jordan B Edited","name":"Jordan B Edited"}
+PASS  B1 POST /books/batch (plain wizard payload) -> 2xx  ::  201 undefined
+PASS  B2 batch response has book.id (frontend reads out.book.id)  ::  {"keys":["book","chapters"],"book":["title","authorId","cover","kind","genre","categoryId","synopsis","tags","tropes","status","contractStatus","vipLocked","wordCount","chapterCount","reads","likes"]}
+PASS  B3 batch response reports chapters  ::  {"chapters":1}
+PASS  B4 POST /author/books/:id/submit -> 2xx  ::  200 undefined
+PASS  B5 GET /author/books lists the new book  ::  200 count=1
+PASS  B6 author row status is under_review  ::  "under_review"
+PASS  B7 author row has fields the wizard/workspace renders (id,title,chapters/lastChapter)  ::  ["title","authorId","cover","kind","genre","categoryId","synopsis","tags","tropes","status","contractStatus","vipLocked","wordCount","chapterCount","reads","likes","rating","ratingCount","flagReason","flagNote","flaggedBy","flaggedAt","flagPrevStatus","assigne
+PASS  B8 chapter poll payload accepted  ::  201 undefined
+PASS  B9 chapter debate payload (forText/againstText) accepted  ::  201 undefined
+PASS  B10 scheduled chapter (datetime-local string) accepted  ::  201 undefined
+PASS  B11 POST /books/:id/chapters (new-chapter mode) -> 2xx  ::  201 undefined
+PASS  B12 GET /books/:id detail returns the book to its author  ::  404 "not_found"
+PASS  B13 chapters has NO leaked subdocument unique index (poll.opts.id)  ::  [{"_id":1},{"bookId":1},{"id":1},{"status":1},{"bookId":1,"n":1}]
+PASS  B13b chapters has the top-level unique id index  ::  [{"v":2,"key":{"id":1},"name":"id_1","background":true,"unique":true}]
+PASS  B14 three chapters with NO poll/prediction/debate save  ::  201 undefined
+PASS  B15 poll chapter accepted alongside plain ones  ::  201 undefined
+PASS  B16 plain chapter still saves AFTER a poll chapter exists  ::  201 undefined
+PASS  B17 debate forText/againstText persisted on the chapter  ::  {"motion":"Should the market close forever?","forText":"Yes","againstText":"No"}
+PASS  B18 GET /author/books row has lastChapter + category (wizard dropdown)  ::  {"id":"000001a1-9b4d-7a28-a9d7-787be6fd5f17","lastChapter":4,"category":"Night Market","title":"The Night Market Rules"}
+PASS  B19 next-chapter number derives from lastChapter+1 (create-service:1264)  ::  5
+PASS  B20 profile.collections -> [{id,name,count,covers}]  ::  [{"id":"000001a1-9b4d-75d3-8275-2c2dccc3be1d","name":"Night Shelf","title":"Night Shelf","sub":"test","about":"","cover":"","covers":[],"icon":"","author":"Jordan B Edited","authorAv":"","authorId":"000001a1-9b4d-776d-a501-c0caa973ecde","verified":false,"stori
+
+──────────────────────────────────────────
+38/38 passed

@@ -11,7 +11,6 @@ const templateSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: { createdAt: false, updatedAt: true } });
 
-templateSchema.index({ name: 1 });
 
 const Template = mongoose.models.Template || mongoose.model('Template', templateSchema);
 

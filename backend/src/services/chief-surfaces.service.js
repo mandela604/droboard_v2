@@ -15,7 +15,7 @@ const { Report, Dispute, Appeal } = require('../models/editorial.model');
 const { Contract, ContractTemplate } = require('../models/contract.model');
 const { EditorAssignment } = require('../models/chief.model');
 const { Withdrawal } = require('../models/money.model');
-const { ActivityLog } = require('../models/platform.model');
+const activityFeed = require('./activity-feed.service');
 
 const SEV_BY_TYPE = { plagiarism: 'high', abuse: 'high', spam: 'medium', content: 'medium', other: 'low' };
 const ACT_STYLE = {
@@ -25,6 +25,8 @@ const ACT_STYLE = {
   login: { icon: 'fa-right-to-bracket', color: 'purple' },
   payout: { icon: 'fa-money-check-dollar', color: 'green' },
   review: { icon: 'fa-eye', color: 'amber' },
+  approve: { icon: 'fa-circle-check', color: 'green' },
+  reject: { icon: 'fa-triangle-exclamation', color: 'amber' },
 };
 
 function esc(s) {
@@ -115,7 +117,7 @@ async function dashboard() {
         .select('id fullName username avatar').lean(),
       Withdrawal.find({ status: { $in: ['requested', 'under_review'] } })
         .sort({ requestedAt: -1 }).limit(20).lean(),
-      ActivityLog.find({}).sort({ at: -1 }).limit(20).lean(),
+      activityFeed.recent({ limit: 20 }),
     ]);
 
   const [reportUsers, editorAssignments, withdrawalUsers] = await Promise.all([

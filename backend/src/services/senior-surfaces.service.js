@@ -19,7 +19,7 @@ const {
 } = require('../models/money.model');
 const { SystemPage } = require('../models/admin.model');
 const { VipApplication } = require('../models/application.model');
-const { ActivityLog, PlatformSetting } = require('../models/platform.model');
+const { PlatformSetting } = require('../models/platform.model');
 const { User } = require('../models/user.model');
 const senior = require('./senior.service');
 

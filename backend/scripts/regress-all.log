@@ -1,0 +1,63 @@
+
+> droboard-backend@0.1.0 smoke:all
+> node scripts/smoke-staff-scopes.cjs && node scripts/smoke-chief-crud.cjs && node scripts/smoke-staff-live.cjs && node scripts/smoke-superadmin-coins.cjs && node scripts/smoke-superadmin-pages.cjs && node scripts/smoke-user-counters.cjs
+
+PASS  CE book search escapes the regex metacharacter  ::  source=\[ada
+PASS  flagged search escapes too  ::  source=\(x\)
+PASS  history search escapes (was a raw new RegExp)  ::  source=\*
+PASS  category search routes through the escaper  ::  source=\+
+PASS  genre search survives an unclosed bracket  ::  "\\["
+PASS  SE contract overview carries a scope filter  ::  {"$or":[{"authorId":{"$in":["u-auth-1"]}},{"editorId":"u-seA"}]}
+PASS  SE sees only own authors + own signed rows  ::  n=1 ids=CT-1
+PASS  SE signed list is limited to own rows  ::  {"editorId":"u-seA"}
+PASS  other SE cannot read Editor A contracts  ::  {"$or":[{"authorId":{"$in":["u-auth-2"]}},{"editorId":"u-seB"}]}
+PASS  chief overview is platform-wide (no filter)  ::  filter={} n=2
+PASS  other SE editing a banner -> 403  ::  thrown=not_yours/403
+PASS  refused banner edit leaves the row alone  ::  tag=trending
+PASS  owner SE edits own banner -> row returned  ::  {"id":"FP-1","title":"Ada[book"}
+PASS  banner write lands on the stored row  ::  "editors-pick"
+PASS  chief can pause any banner  ::  {"ok":true,"id":"FP-1","active":false}
+PASS  other SE pausing a banner -> 403  ::  thrown=403
+PASS  assigned SE flags through the shared service  ::  {"id":"B-2","status":"flagged","flagReason":"plagiarism","reportId":"new-Report-1"}
+PASS  flag mirrors a pending Report typed from the reason  ::  {"type":"plagiarism","st":"pending","seId":"u-seB"}
+PASS  flag stamps flaggedBy with the actor id  ::  {"flaggedBy":"u-seB"}
+PASS  chief flag -> 403 chief_does_not_flag  ::  thrown=chief_does_not_flag/403
+PASS  refused chief flag leaves the book published  ::  status=published
+PASS  chief unflag -> 403 too  ::  thrown=chief_does_not_flag/403
+PASS  SE flagging a foreign author's book is refused  ::  thrown=404
+PASS  SE flags own author's book  ::  {"id":"B-1","status":"flagged","flagReason":"spam","reportId":"new-Report-2"}
+PASS  flag without a reason -> 400  ::  thrown=reason_required/400
+PASS  unflag restores the previous status  ::  {"id":"B-1","status":"published"}
+PASS  unflag resolves the mirrored report row  ::  last Report op=updateMany
+PASS  chief router registers no flag/unflag route  ::  ["/books/flagged"]
+PASS  the senior routes are the only flag path  ::  ["/books/:id/flag","/books/:id/unflag"]
+PASS  queue mixes the author withdrawal and the editor payout  ::  ["ep:EP-1","WD-1"]
+PASS  editor payout is addressed with the ep: prefix  ::  id=ep:EP-1
+PASS  queue sorts newest first  ::  first=ep:EP-1
+PASS  author row reveals the exact payment method  ::  {"an":"0123456789","bn":"GTBank","v":true}
+PASS  editor row falls back to that owner's default method  ::  {"an":"9988776655","author":"Editor A"}
+PASS  author payee lookup prefers the exact method id, then the owner default  ::  {"$or":[{"id":{"$in":["PM-1"]}},{"authorId":{"$in":["u-auth-1"]},"isDefault":true}]}
+PASS  editor payout shows the editor name, not the author  ::  status=pending
+PASS  ep: approve settles through the editor payout engine  ::  {"id":"ep:EP-1","st":"approved","an":"9988776655"}
+PASS  ep: settle lands the payout row at paid with a reference  ::  {"st":"paid","ref":"EPAY-MVYZB3DI","by":"u-chief"}
+PASS  ep: settle posts exactly one liability -> bank leg  ::  [{"d":"liability:editor:u-seA","c":"bank:editor-payouts","a":120000}]
+PASS  already-paid ep: row echoes without posting again  ::  legs=0 st=approved
+PASS  declining a paid ep: row -> 409 already_paid  ::  thrown=already_paid/409
+
+===== 41/41 stub-runtime assertions passed =====
+mongod up: mongodb://127.0.0.1:55254/droboard_chief
+(node:17132) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17132) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:17132) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:17132) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:17132) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:17132) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+
+--- reads ---
+FATAL TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async call (C:\Users\USER\OneDrive\Desktop\Droboard-V2\backend\scripts\smoke-chief-crud.cjs:70:17)
+    at async main (C:\Users\USER\OneDrive\Desktop\Droboard-V2\backend\scripts\smoke-chief-crud.cjs:77:11)

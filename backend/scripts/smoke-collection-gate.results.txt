@@ -1,0 +1,20 @@
+PASS  the rule is in read mode (a requirement exists at all)
+PASS  adding an unread book to a collection -> 403
+PASS  refusal names the rule
+PASS  refusal tells the UI required=15 and chaptersRead=0
+PASS  10 opened-but-unread chapters still refused (and counts them as 0)
+PASS  14 chapters read -> still refused, chaptersRead=14
+PASS  15 chapters read -> allowed
+PASS  created collection reports the story and its cover
+PASS  5-chapter short with 0 read -> refused asking for 5, not 15
+PASS  reading all 5 chapters of the short -> allowed
+PASS  own book passes with zero chapters read
+PASS  save-sheet create with an unread story -> 403 + numbers
+PASS  adding an unread story to an EXISTING collection -> 403
+PASS  quick-save "library" stays UNGATED on an unread book
+PASS  quick-save "fav" stays UNGATED on an unread book
+PASS  quick-save "later" stays UNGATED on an unread book
+PASS  eligible-stories lists the read book as eligible
+PASS  a saved-but-unread book is offered with eligible:false + the real counts
+PASS  a book never read and never saved is not offered at all
+PASS  eligible-stories marks an own book eligible regardless of reading

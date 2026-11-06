@@ -9,7 +9,10 @@
 // REQUIRES the Microsoft VC++ 2015-2022 x64 runtime: mongod.exe aborts with
 // 0xC0000135 (DLL not found) without it.
 process.env.NODE_ENV = 'test';
-process.env.PORT = '4177';
+// 4177 is what `npm run dev:memory` binds, so this suite defaults to its own
+// port; SMOKE_PORT overrides for parallel runs.
+const PORT = process.env.SMOKE_PORT || '4277';
+process.env.PORT = PORT;
 process.env.JWT_ACCESS_SECRET = 'a'.repeat(48);
 process.env.JWT_REFRESH_SECRET = 'b'.repeat(48);
 process.env.MFA_SECRET_KEY = 'c'.repeat(48);
@@ -41,7 +44,11 @@ async function main() {
   console.log('mongod up:', process.env.MONGO_URI);
 
   require('../src/server');                       // connects + listens for real
-  await new Promise(r => setTimeout(r, 1500));
+  // Boot ends with ensureIdIndexes(); poll instead of a fixed sleep.
+  for (let i = 0; i < 160; i++) {
+    try { const p = await fetch('http://127.0.0.1:' + PORT + '/health'); if (p.ok) break; } catch (e) { /* not up */ }
+    await new Promise(r => setTimeout(r, 250));
+  }
 
   const { User } = require('../src/models/user.model');
   const { EditorAssignment } = require('../src/models/chief.model');
@@ -60,7 +67,7 @@ async function main() {
   for (let i = 0; i < 120; i++) many.push(String((await mk('writer')).id));
 
   const H = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + signAccess(chief) };
-  const base = 'http://127.0.0.1:4177';
+  const base = 'http://127.0.0.1:' + PORT;
   async function call(method, path_, body) {
     const init = { method, headers: H };
     if (body !== undefined) init.body = JSON.stringify(body);

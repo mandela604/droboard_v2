@@ -4,7 +4,10 @@ const base = require('./base.controller');
 
 async function home(req, res) {
   return base.wrap(res, async () => {
-    const d = await feed.home(req.user && req.user.id);
+    // ?scope=authors restricts the top strip to writers only (index.html).
+    // Anything else — including no query — is the feed row: every role.
+    const q = (req.valid && req.valid.query) || req.query || {};
+    const d = await feed.home(req.user && req.user.id, q.scope);
     if (req.user) {
       const { Notification } = require('../models/social.model');
       d.notifCount = await Notification.countDocuments({ recipientId: req.user.id, unread: true });
@@ -14,7 +17,9 @@ async function home(req, res) {
 }
 
 async function discover(req, res) {
-  return base.wrap(res, async () => feed.discoverData(req.user && req.user.id));
+  const raw = (req.valid && req.valid.query && req.valid.query.taste) || '';
+  const taste = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+  return base.wrap(res, async () => feed.discoverData(req.user && req.user.id, taste));
 }
 
 async function discoverStories(req, res) {

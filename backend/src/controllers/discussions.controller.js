@@ -10,10 +10,18 @@ async function list(req, res) {
   }));
 }
 
+// Cross-genre "Trending in hubs" row for the reader feed.
+async function feed(req, res) {
+  return base.wrap(res, async () => svc.feedThreads({
+    limit: req.valid.query.limit, page: req.valid.query.page, viewerId: req.user && req.user.id,
+  }));
+}
+
 async function create(req, res) {
   return base.wrap(res, async () => {
     const out = await svc.createThread({
-      userId: req.user.id, genre: req.valid.body.genre, title: req.valid.body.title,
+      user: req.user, genre: req.valid.body.genre, genreId: req.valid.body.genreId,
+      title: req.valid.body.title,
       body: req.valid.body.body, tag: req.valid.body.tag, media: req.valid.body.media,
       trope: req.valid.body.trope, story: req.valid.body.story,
     });
@@ -46,7 +54,7 @@ async function remove(req, res) {
 }
 
 async function like(req, res) {
-  return base.wrap(res, async () => svc.toggleLike({ id: req.valid.params.id, userId: req.user.id }));
+  return base.wrap(res, async () => svc.toggleLike({ id: req.valid.params.id, user: req.user }));
 }
 
-module.exports = { list, create, get, update, remove, like };
+module.exports = { list, feed, create, get, update, remove, like };

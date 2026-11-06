@@ -14,6 +14,10 @@ async function list(req, res) {
   return base.wrap(res, async () => posts.listPosts(Object.assign({}, req.valid.query, { viewerId: req.user && req.user.id })));
 }
 
+async function saved(req, res) {
+  return base.wrap(res, async () => posts.savedPosts({ userId: req.user.id, page: req.valid.query.page, limit: req.valid.query.limit }));
+}
+
 async function get(req, res) {
   return base.wrap(res, async () => posts.getPost(req.valid.params.id, req.user && req.user.id));
 }
@@ -104,4 +108,4 @@ async function share(req, res) {
   });
 }
 
-module.exports = { create, list, get, update, remove, like, save, pollVote, pollRetract, debateVote, debateRetract, react, unreact, reactions, share };
+module.exports = { create, list, saved, get, update, remove, like, save, pollVote, pollRetract, debateVote, debateRetract, react, unreact, reactions, share };

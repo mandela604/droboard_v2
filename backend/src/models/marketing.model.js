@@ -43,6 +43,13 @@ const campaignSchema = new mongoose.Schema({
   spent: { type: Number, default: 0 },
   owner: { type: String, default: '' },
   description: { type: String, default: '' },
+  // Business-objective creatives carry the advertiser's own identity so the
+  // console row shows who bought the campaign. `channel` is a free-text label
+  // for the marketing surface mix ('social', 'newsletter', …); the dashboard
+  // renders it as a chip and tolerates an empty value.
+  advertiserName: { type: String, default: '' },
+  advertiserEmail: { type: String, default: '' },
+  channel: { type: String, default: '' },
   reach: { type: Number, default: 0 },
   impressions: { type: Number, default: 0 },
   clicks: { type: Number, default: 0 },
@@ -91,10 +98,24 @@ const leagueActivitySchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 leagueActivitySchema.index({ userId: 1, season: -1, action: 1 });
 
+// Earned top-3 prizes. Awarded server-side at week rollover from the season's
+// real points, never claimed by the client — a badge is a fact about a finished
+// week, so one row per reader per season and a re-run cannot mint a second.
+const leagueBadgeSchema = new mongoose.Schema({
+  userId: { type: String, ref: 'User', required: true, index: true },
+  season: { type: String, required: true, index: true }, // YYYY-Www, the week won
+  place: { type: Number, required: true, min: 1, max: 20 },
+  label: { type: String, default: '' },
+  icon: { type: String, default: '' },
+  color: { type: String, default: '' },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+leagueBadgeSchema.index({ userId: 1, season: 1 }, { unique: true });
+
 module.exports = {
   Campaign: mongoose.model('Campaign', campaignSchema),
   LeagueConfig: mongoose.model('LeagueConfig', leagueConfigSchema),
   AudienceConfig: mongoose.model('AudienceConfig', audienceConfigSchema),
   AdRateCard: mongoose.model('AdRateCard', adRateCardSchema),
   LeagueActivity: mongoose.model('LeagueActivity', leagueActivitySchema),
+  LeagueBadge: mongoose.model('LeagueBadge', leagueBadgeSchema),
 };

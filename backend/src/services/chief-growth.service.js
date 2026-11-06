@@ -138,6 +138,9 @@ async function profile(userId) {
   delete user.mfaBackupCodes;
   delete user.emailVerifyTokenHash;
   delete user.resetTokenHash;
+  // The settings panel binds three inputs to `name`; every other chief read
+  // already aliases fullName that way.
+  user.name = user.fullName || '';
   return user;
 }
 // RefreshFamily fields: familyId,userId,currentHash,prevHash,reused,mfaAt,

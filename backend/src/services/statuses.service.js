@@ -58,6 +58,87 @@ async function homeStatuses({ userId }) {
   };
 }
 
+/* Status-row roster (top strip on feed.html and index.html).
+   scope='any'     — feed.html: every role, writers and readers together.
+   scope='authors' — index.html: only users with the 'writer' role; a reader's
+                     status never appears on the homepage.
+   Ordering: authors the viewer follows first (most-recent live slide within
+   each bucket), then fill to `limit` with any eligible author so the row
+   always has `limit` entries when the DB offers that many. Never invents a
+   status — authors without a live Status doc are simply omitted. */
+async function statusRoster({ userId, scope = 'any', limit = 20 } = {}) {
+  const { Follow } = require('../models/social.model');
+  const cap = Math.max(1, Math.min(50, parseInt(limit, 10) || 20));
+  const now = new Date();
+  const liveFilter = { expiresAt: { $gt: now } };
+  if (scope === 'authors') {
+    // The roles array lives on User, not Status, so resolve the writer id-set
+    // up-front; a $lookup inside this query would be another round trip.
+    const authors = await User.find({ roles: 'writer', deletedAt: null })
+      .select('id').lean();
+    liveFilter.userId = { $in: authors.map(a => String(a.id)) };
+    if (!liveFilter.userId.$in.length) return [];
+  }
+  const rows = await Status.find(liveFilter).sort({ createdAt: 1 }).lean();
+  if (!rows.length) return [];
+  const uids = [...new Set(rows.map(r => String(r.userId)))];
+  const hex = uids.filter(v => /^[0-9a-fA-F]{24}$/.test(v));
+  const users = await User.find(
+    hex.length ? { $or: [{ id: { $in: uids } }, { _id: { $in: hex } }] } : { id: { $in: uids } }
+  ).select('id username fullName avatar roles deletedAt').lean();
+  const um = {};
+  users.forEach(u => { um[String(u.id)] = u; if (u._id) um[String(u._id)] = u; });
+  const groups = {};
+  rows.forEach(r => { (groups[String(r.userId)] = groups[String(r.userId)] || []).push(r); });
+  const latestMs = {};
+  Object.keys(groups).forEach(id => {
+    latestMs[id] = groups[id].reduce((mx, r) => {
+      const t = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+      return t > mx ? t : mx;
+    }, 0);
+  });
+  const follows = userId
+    ? await Follow.find({ followerId: String(userId) }).select('followingId').lean()
+    : [];
+  const following = new Set(follows.map(f => String(f.followingId)));
+  // Only authors that still exist, aren't soft-deleted, and (scope=authors)
+  // really carry the writer role. Belt-and-braces after the $in filter above.
+  const eligible = Object.keys(groups).filter(id => {
+    const u = um[id];
+    if (!u || u.deletedAt) return false;
+    if (scope === 'authors' && !(u.roles || []).includes('writer')) return false;
+    return true;
+  });
+  eligible.sort((a, b) => {
+    const af = following.has(a) ? 0 : 1;
+    const bf = following.has(b) ? 0 : 1;
+    if (af !== bf) return af - bf;
+    return latestMs[b] - latestMs[a];
+  });
+  return eligible.slice(0, cap).map(id => {
+    const u = um[id];
+    const isMine = !!userId && String(id) === String(userId);
+    const slides = groups[id].map(r => {
+      const t = toStatus(r, userId, { owner: isMine });
+      return {
+        id: t.id, bg: t.bg, quote: t.quote, caption: t.caption,
+        time: relTimeLabel(r.createdAt),
+        ts: r.createdAt ? new Date(r.createdAt).getTime() : Date.now(),
+        viewed: t.viewed, likes: t.likes, liked: t.liked, isLive: t.isLive,
+        views: t.views,
+      };
+    });
+    const unseen = slides.filter(s => !s.viewed).length;
+    return {
+      id: u.id, name: u.username || u.fullName || '', handle: u.username || '',
+      avatar: u.avatar || '', isLive: slides.some(s => s.isLive),
+      isMine, isYou: isMine,
+      ring: unseen > 0 ? 'ring-has' : 'ring-viewed',
+      likes: 0, threads: slides.length, statuses: slides,
+    };
+  });
+}
+
 // Frontend contract: GET /api/statuses/me → { statuses: [{bg,quote,caption,time}] }
 async function myStatuses({ userId }) {
   const rows = await Status.find({ userId: String(userId), expiresAt: { $gt: new Date() } })
@@ -72,6 +153,44 @@ async function myStatuses({ userId }) {
       };
     }),
   };
+}
+
+/* Frontend contract: GET /api/statuses/writers?handles=a,b,c
+   → [{ handle, statuses: [{ bg, quote, caption, time, ... }] }]
+   The live source behind every "Top Writers" ring. Only real, unexpired
+   Status docs are returned — a writer with no live story gets an empty list
+   and therefore renders no ring. Nothing here invents a status, and viewed
+   state stays client-side in StatusStore. */
+async function writersByHandles({ handles, userId }) {
+  const wanted = [...new Set((Array.isArray(handles) ? handles : [])
+    .map(h => String(h || '').replace(/^@/, '').trim().toLowerCase())
+    .filter(Boolean))].slice(0, 40);
+  if (!wanted.length) return [];
+  const users = await User.find({ username: { $in: wanted }, deletedAt: null })
+    .collation({ locale: 'en', strength: 2 })
+    .select('id username').lean();
+  const handleOf = {};
+  users.forEach(u => { handleOf[String(u.id)] = String(u.username); });
+  const ids = Object.keys(handleOf);
+  const rows = ids.length
+    ? await Status.find({ userId: { $in: ids }, expiresAt: { $gt: new Date() } })
+      .sort({ createdAt: 1 }).lean()
+    : [];
+  const groups = {};
+  rows.forEach(r => {
+    const handle = handleOf[String(r.userId)];
+    if (!handle) return;
+    const o = toStatus(r, userId);
+    groups[handle] = groups[handle] || [];
+    groups[handle].push({
+      id: o.id, bg: o.bg, quote: o.quote, caption: o.caption,
+      time: relTimeLabel(o.createdAt),
+      ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
+      likes: o.likes, liked: o.liked, isLive: o.isLive, viewed: o.viewed,
+      expiresAt: o.expiresAt,
+    });
+  });
+  return wanted.map(handle => ({ handle, statuses: groups[handle] || [] }));
 }
 
 function relTimeLabel(d) {
@@ -259,4 +378,4 @@ async function deleteStatus({ status }) {
   return { ok: true };
 }
 
-module.exports = { toStatus, homeStatuses, myStatuses, createStatus, loadOr404, canWrite, viewStatus, statusViewers, toggleLike, deleteStatus, stateStatuses };
+module.exports = { toStatus, homeStatuses, statusRoster, myStatuses, writersByHandles, createStatus, loadOr404, canWrite, viewStatus, statusViewers, toggleLike, deleteStatus, stateStatuses };

@@ -1,0 +1,25 @@
+mongod up: mongodb://127.0.0.1:59202/dro_ratings
+PASS  GET /:id/ratings (anon) -> 200  ::  status=200
+PASS  list returns {items[], total, page, limit}  ::  {"total":3,"n":3}
+PASS  total = 3 reviews  ::  3
+PASS  every card has the full render contract  ::  
+PASS  stars are the REAL seeded values (not a hash)  ::  4,3,5
+PASS  author ids are surfaced for the live status ring
+PASS  anonymous viewer has mineHelpful=false everywhere
+PASS  sort=helpful orders by tally desc (9,5,1)  ::  9,5,1
+PASS  sort=rating orders by stars desc (5,4,3)  ::  5,4,3
+PASS  sort=newest orders by age asc (r1,r2,r3)  ::  000001a1-ad67-7562-8182-d9a4c9880d4f,000001a1-ad67-748a-8984-4e28a99b1377,000001a1-ad67-77bb-b220-cc948b05a807
+PASS  limit=1 returns one item but keeps total=3  ::  {"n":1,"total":3}
+PASS  page=3 returns the last review in default (helpful) order  ::  ["000001a1-ad67-748a-8984-4e28a99b1377"]
+PASS  POST helpful -> 200, tally 1 -> 2  ::  {"ok":true,"helpful":2,"mineHelpful":true}
+PASS  re-mark by the same reader does NOT double-count (stays 2)  ::  {"ok":true,"helpful":2,"mineHelpful":true}
+PASS  signed-in viewer sees mineHelpful=true on their mark  ::  {"id":"000001a1-ad67-7da0-ad84-be737c6bcb81","userId":"000001a1-ad67-748a-8984-4e28a99b1377","name":"revb","avatar":"","stars":5,"text":"loved it","spoiler":false,"createdAt":1793737830340,"helpful":2,"mineHelpful":true}
+PASS  a different viewer still sees mineHelpful=false
+PASS  exactly one RatingHelpful row backs the tally  ::  1
+PASS  DELETE helpful -> tally back to 1  ::  {"ok":true,"helpful":1,"mineHelpful":false}
+PASS  unmark removed the RatingHelpful row
+PASS  POST helpful without auth -> 401  ::  status=401
+PASS  ratings list on a DRAFT book -> 404  ::  status=404
+PASS  helpful on a nonexistent review -> 404  ::  status=404
+
+===== 22/22 story-ratings assertions passed =====

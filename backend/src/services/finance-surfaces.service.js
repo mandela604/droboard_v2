@@ -13,8 +13,8 @@ const {
   PaymentDispute, StoreConfigLog, LedgerEntry, Entitlement,
 } = require('../models/money.model');
 const { User } = require('../models/user.model');
-const { ActivityLog } = require('../models/platform.model');
 const { CoinRate, AdRevenueLedger } = require('../models/revenue.model');
+const activityFeed = require('./activity-feed.service');
 const { EditorPayout } = require('../models/editor-earnings.model');
 const editorPay = require('./editor-earnings.service');
 const ledger = require('./ledger.service');
@@ -119,6 +119,61 @@ async function priceUsdOf(doc) {
   const legs = (doc && doc.prices instanceof Map) ? Object.fromEntries(doc.prices) : ((doc && doc.prices) || {});
   if (legs.USD != null && legs.USD !== '') return legNum(legs.USD);
   return Number((await toUsd(doc && doc.basePriceNGN)).toFixed(2));
+}
+
+/* Money-in per calendar month in the ledger base (NGN), split the way the
+   analytics tables column it: coin purchases, subscriptions, ad settlements.
+   Same pricing rule as financialReports — store sales are priced through the
+   rate card in their own fiat, network ad rows are booked in USD and raised to
+   the Super Admin dashboard plots naira, Platform Analytics restates dollars,
+   so every row carries both: the base figure and the same row divided once by
+   the rate card. A caller that divided on its own would drift from this one
+   the day the rate doc changes.
+   The window comes back whole and zero-filled: a chart with a missing month
+   draws a phantom bar, and "no money that month" is an answer, not a gap. */
+async function revenueMonths(months) {
+  const n = Math.min(24, Math.max(1, Number(months) || 12));
+  const start = new Date();
+  start.setUTCDate(1);
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCMonth(start.getUTCMonth() - (n - 1));
+  const keys = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(start.getTime());
+    d.setUTCMonth(d.getUTCMonth() + i);
+    keys.push(d.toISOString().slice(0, 7));
+  }
+  const ym = { $dateToString: { format: '%Y-%m', date: '$createdAt', timezone: 'UTC' } };
+  const [fx, store, ads] = await Promise.all([
+    fxTable(),
+    CoinTransaction.aggregate([
+      { $match: { status: 'completed', type: { $in: ['purchase', 'subscription'] }, createdAt: { $gte: start } } },
+      { $group: { _id: { m: ym, t: '$type', c: { $ifNull: [{ $toUpper: '$fiatCurrency' }, 'NGN'] } }, gross: { $sum: '$fiatAmount' } } },
+    ]),
+    AdRevenueLedger.aggregate([
+      { $match: { date: { $gte: start.toISOString().slice(0, 10) } } },
+      { $group: { _id: { $substr: ['$date', 0, 6] }, rev: { $sum: '$revenue' } } },
+    ]),
+  ]);
+  const bucket = {};
+  keys.forEach(m => { bucket[m] = { coins: 0, subs: 0, ads: 0 }; });
+  const at = (m) => (bucket[m] || (bucket[m] = { coins: 0, subs: 0, ads: 0 }));
+  store.forEach(r => {
+    const b = at(r._id.m);
+    const ngn = r.gross * rateOf(fx, r._id.c);
+    if (r._id.t === 'subscription') b.subs += ngn; else b.coins += ngn;
+  });
+  // Ad rows are USD; carried through NGN so every column leaves on one path.
+  ads.forEach(r => { if (r._id) at(r._id).ads += r.rev * fx.usd; });
+  const usd = (v) => Math.round((v / fx.usd) * 100) / 100;
+  return Object.keys(bucket).sort().map(m => ({
+    month: m,
+    coins: Math.round(bucket[m].coins * 100) / 100,
+    subs: Math.round(bucket[m].subs * 100) / 100,
+    ads: Math.round(bucket[m].ads * 100) / 100,
+    revenue: Math.round((bucket[m].coins + bucket[m].subs + bucket[m].ads) * 100) / 100,
+    usd: { coins: usd(bucket[m].coins), subs: usd(bucket[m].subs), ads: usd(bucket[m].ads), revenue: usd(bucket[m].coins + bucket[m].subs + bucket[m].ads) },
+  }));
 }
 
 const METHOD_LABEL = { bank: 'Bank Transfer', paypal: 'PayPal', mobile: 'Mobile Money' };
@@ -881,6 +936,8 @@ const FIN_ACT = {
   delete: { icon: 'fa-trash', color: 'red' },
   login: { icon: 'fa-right-to-bracket', color: 'amber' },
   review: { icon: 'fa-scale-balanced', color: 'accent' },
+  approve: { icon: 'fa-circle-check', color: 'green' },
+  reject: { icon: 'fa-triangle-exclamation', color: 'amber' },
 };
 
 async function dashboard() {
@@ -903,7 +960,7 @@ async function dashboard() {
         { $match: { createdAt: { $gte: monthStart }, status: 'completed' } },
         { $group: { _id: null, amount: { $sum: '$fiatAmount' } } },
       ]),
-      ActivityLog.find({}).sort({ at: -1 }).limit(20).lean(),
+      activityFeed.recent({ limit: 20 }),
     ]);
 
   const pendingTotal = pendingWd.reduce((s, w) => s + (Number(w.amount) || 0), 0);
@@ -1155,4 +1212,5 @@ module.exports = {
   coinTransactions, financialReports,
   coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions, coinConfigHistory,
   saveConfig, updateConfigStatus, removeConfig,
+  priceUsdOf, toUsd, ngnPerUsd, revenueMonths,
 };

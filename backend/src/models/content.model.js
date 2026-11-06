@@ -21,9 +21,15 @@ const bookSchema = new mongoose.Schema({
   wordCount: { type: Number, default: 0 },
   chapterCount: { type: Number, default: 0 },
   reads: { type: Number, default: 0 },
-  likes: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 }, // sum of reactions — kept in step on every reaction write
+  // Reader emoji reactions (love/crying/savage/...). One active rid per reader,
+  // tracked in Reaction{targetType:'story'}; these are the display counts.
+  reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   rating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
+  // Share analytics: one row per click on a confirmed share action. Channel tracking mirrors posts for cross-surface reports.
+  sharesCount: { type: Number, default: 0 },
+  sharesByChannel: { type: Map, of: Number, default: {} }, // channel -> count (webcopy/whatsapp/twitter/link)
   // Senior-editor flagging (book-management page)
   flagReason: { type: String, default: '' },
   flagNote: { type: String, default: '' },
@@ -72,12 +78,18 @@ chapterSchema.index({ bookId: 1, n: 1 }, { unique: true });
 const engagementVoteSchema = new mongoose.Schema({
   chapterId: { type: String, default: '', index: true }, // '' = story-wide
   bookId: { type: String, default: '', index: true }, // set when chapterId is ''
+  // Which poll/prediction/debate inside the book's array. A book can carry
+  // several of each, so a vote without this cannot be retracted accurately.
+  itemId: { type: String, default: '', index: true },
   userId: { type: String, ref: 'User', required: true, index: true },
   kind: { type: String, enum: ['poll', 'prediction', 'debate'], required: true },
   optionIdx: { type: Number, required: true },
 }, { timestamps: true });
-engagementVoteSchema.index({ chapterId: 1, userId: 1, kind: 1 }, { unique: true });
-engagementVoteSchema.index({ bookId: 1, userId: 1, kind: 1 }, { unique: true, sparse: true });
+// One vote per reader per question per user. A book can carry several polls,
+// so the row's itemId is part of the key; chapter votes leave bookId '' and
+// story-wide votes leave chapterId '', which is why every column is in the
+// index instead of two partial ones.
+engagementVoteSchema.index({ chapterId: 1, bookId: 1, userId: 1, kind: 1, itemId: 1 }, { unique: true });
 
 const characterSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },
@@ -105,7 +117,18 @@ const categorySchema = new mongoose.Schema({
   desc: { type: String, default: '' },
   tagline: { type: String, default: '' },
   cover: { type: String, default: '' },
+  // Crew belongs to the BOARD, never to a genre inside it.
   adminIds: { type: [String], default: [] },
+  moderatorIds: { type: [String], default: [] },
+  // Board house-rules: ordered rule lines the hub editor CRUDs and the pinned
+  // rules thread renders. Lives on the BOARD, not on a genre inside it.
+  rules: { type: [String], default: [] },
+  // Admin-console flagging of the board itself (genre-boards page), mirroring
+  // the book flag: the reason is required, the note optional.
+  flagReason: { type: String, default: '' },
+  flagNote: { type: String, default: '' },
+  flaggedBy: { type: String, default: null },
+  flaggedAt: { type: Date, default: null },
   booksCount: { type: Number, default: 0 },
   membersCount: { type: Number, default: 0 },
   status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
@@ -122,13 +145,13 @@ const genreSchema = new mongoose.Schema({
   cover: { type: String, default: '' },
   bg: { type: String, default: '' },
   color: { type: String, default: '' },
-  adminIds: { type: [String], default: [] },
-  moderatorIds: { type: [String], default: [] },
   booksCount: { type: Number, default: 0 },
   membersCount: { type: Number, default: 0 },
   status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
 }, { timestamps: true });
 
+// NOTE: genres carry no crew. A genre is a section inside a board; the board
+// (Category) holds the single admin + moderator team for all of its children.
 const genreMembershipSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
   genreId: { type: String, ref: 'Genre', required: true, index: true },
@@ -160,7 +183,6 @@ const bookDailyStatSchema = new mongoose.Schema({
   finishes: { type: Number, default: 0 },
 }, { timestamps: true });
 bookDailyStatSchema.index({ bookId: 1, day: 1 }, { unique: true });
-bookDailyStatSchema.index({ day: 1 });
 bookDailyStatSchema.index({ createdAt: 1 }, { expireAfterSeconds: 120 * 86400 });
 
 module.exports = {

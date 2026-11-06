@@ -11,7 +11,8 @@ const { User } = require('../models/user.model');
 const { Book } = require('../models/content.model');
 const { Report, Dispute, Appeal } = require('../models/editorial.model');
 const { Contract } = require('../models/contract.model');
-const { AdStat, ActivityLog } = require('../models/platform.model');
+const { AdStat } = require('../models/platform.model');
+const activityFeed = require('./activity-feed.service');
 const { EditorAssignment } = require('../models/chief.model');
 const { Withdrawal, Wallet } = require('../models/money.model');
 
@@ -68,7 +69,7 @@ async function dashboard() {
     Appeal.countDocuments({ status: { $in: ['open', 'in_review'] } }),
     Contract.find({ status: { $in: ['pending', 'sent'] } }).select('id').lean(),
     Report.find({ status: 'pending' }).sort({ filedAt: -1 }).limit(10).lean(),
-    ActivityLog.find({}).sort({ at: -1 }).limit(20).lean(),
+    activityFeed.recent({ limit: 20 }),
     EditorAssignment.find({}).lean(),
     Withdrawal.find({ status: { $in: ['requested', 'under_review', 'approved'] } })
       .sort({ requestedAt: -1 }).limit(10).lean(),
@@ -131,6 +132,8 @@ async function dashboard() {
     login: ['fa-right-to-bracket', 'purple'],
     payout: ['fa-sack-dollar', 'accent'],
     review: ['fa-check-circle', 'amber'],
+    approve: ['fa-check-circle', 'green'],
+    reject: ['fa-triangle-exclamation', 'amber'],
   };
   const recentActivity = latestActivity.map(a => {
     const style = TYPE_STYLE[a.type] || ['fa-circle-info', 'blue'];
@@ -293,11 +296,7 @@ async function editorialTeam() {
 
 async function activity({ limit } = {}) {
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
-  const [items, total] = await Promise.all([
-    ActivityLog.find({}).sort({ at: -1 }).limit(lim).lean(),
-    ActivityLog.countDocuments({}),
-  ]);
-  return { items, total, limit: lim };
+  return activityFeed.feed({ limit: lim });
 }
 
 module.exports = { stats, dashboard, queues, queueAction, performance, editorialTeam, activity };

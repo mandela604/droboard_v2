@@ -55,6 +55,7 @@ const reportSchema = new mongoose.Schema({
   storyId: { type: String, ref: 'Book' },
   chapterId: { type: String, ref: 'Chapter' },
   collectionId: { type: String, ref: 'Collection', index: true },
+  categoryId: { type: String, ref: 'Category', default: null, index: true }, // board flag
   discussionId: { type: String, default: null, index: true },
   postId: { type: String, ref: 'Post', default: null, index: true },
   commentId: { type: String, ref: 'Comment', default: null, index: true },

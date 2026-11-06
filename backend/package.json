@@ -10,14 +10,41 @@
     "smoke:ads": "node scripts/smoke-ad-surfaces.cjs",
     "smoke:audience": "node scripts/smoke-audience-catalog.cjs",
     "smoke:staff": "node scripts/smoke-staff-scopes.cjs",
+    "smoke:roles": "node scripts/smoke-staff-roles.cjs",
     "smoke:staff:live": "node scripts/smoke-staff-live.cjs",
     "smoke:coins": "node scripts/smoke-superadmin-coins.cjs",
+    "smoke:pages": "node scripts/smoke-superadmin-pages.cjs",
+    "smoke:counters": "node scripts/smoke-user-counters.cjs",
     "smoke:chief": "node scripts/smoke-chief-crud.cjs",
-    "smoke:all": "node scripts/smoke-staff-scopes.cjs && node scripts/smoke-chief-crud.cjs && node scripts/smoke-staff-live.cjs && node scripts/smoke-superadmin-coins.cjs",
+    "smoke:bridge": "node scripts/smoke-bridge.cjs",
+    "smoke:all": "node scripts/smoke-staff-scopes.cjs && node scripts/smoke-chief-crud.cjs && node scripts/smoke-staff-live.cjs && node scripts/smoke-superadmin-coins.cjs && node scripts/smoke-superadmin-pages.cjs && node scripts/smoke-user-counters.cjs && node scripts/smoke-bridge.cjs && node scripts/smoke-messages.cjs && node scripts/smoke-insights-live.cjs && node scripts/smoke-league-live.cjs",
     "dev:memory": "node scripts/dev-inmemory.cjs",
     "report": "node scripts/report.cjs",
     "check:ad-registry": "node scripts/check-ad-registry.cjs",
-    "smoke:auth:live": "node scripts/smoke-auth-live.cjs"
+    "smoke:auth:live": "node scripts/smoke-auth-live.cjs",
+    "smoke:mf": "node scripts/smoke-mf-fixes.cjs",
+    "smoke:flow": "node scripts/smoke-user-book-flow.cjs",
+    "smoke:engagement": "node scripts/smoke-author-engagement.cjs",
+    "smoke:feed": "node scripts/smoke-feed-live.cjs",
+    "smoke:discover": "node scripts/smoke-discover.cjs",
+    "smoke:writers": "node scripts/smoke-writers-live.cjs",
+    "smoke:boards": "node scripts/smoke-boards-live.cjs",
+    "smoke:insights": "node scripts/smoke-insights-live.cjs",
+    "smoke:league": "node scripts/smoke-league-live.cjs",
+    "smoke:search:live": "node scripts/smoke-search-live.cjs",
+    "smoke:platform:live": "node scripts/smoke-platform-live.cjs",
+    "smoke:comments:live": "node scripts/smoke-comments-debate-live.cjs",
+    "e2e:discover": "playwright test e2e/discover.spec.js",
+    "e2e:discover:headed": "playwright test e2e/discover.spec.js --headed",
+    "smoke:boards-admin": "node scripts/smoke-admin-boards.cjs",
+    "smoke:notifications": "node scripts/smoke-notifications.cjs",
+    "smoke:store": "node scripts/smoke-store.cjs",
+    "smoke:author:dashboard": "node scripts/smoke-author-dashboard.cjs",
+    "smoke:ratings": "node scripts/smoke-story-ratings.cjs",
+    "smoke:droboard": "node scripts/smoke-droboard.cjs",
+    "smoke:discussion:live": "node scripts/smoke-discussion-live.cjs",
+    "smoke:collection:gate": "node scripts/smoke-collection-gate.cjs",
+    "smoke:messages": "node scripts/smoke-messages.cjs"
   },
   "dependencies": {
     "argon2": "^0.41.1",
@@ -35,7 +62,10 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "mongodb-memory-server": "^11.3.0",
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.0",
+    "playwright": "^1.64.1",
+    "socket.io-client": "^4.7.5"
   }
 }

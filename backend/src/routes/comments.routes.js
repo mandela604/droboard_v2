@@ -1,7 +1,7 @@
 'use strict';
 const { z } = require('zod');
 const ctrl = require('../controllers/comments.controller');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -19,7 +19,7 @@ const commentBody = z.object({
   text: z.string().min(1).max(2000),
 }).strict();
 
-router.get('/', generalLimiter, validate(z.object({ query: z.object({
+router.get('/', generalLimiter, optionalAuth, validate(z.object({ query: z.object({
   scope: z.enum(['story', 'chapter', 'post', 'discussion']).optional(),
   storyId: z.string().max(40).optional(), chapterId: z.string().max(40).optional(),
   postId: z.string().max(40).optional(), discussionId: z.string().max(40).optional(),
@@ -29,7 +29,7 @@ router.get('/', generalLimiter, validate(z.object({ query: z.object({
 router.post('/', requireAuth, writeLimiter, audit('comments.create'),
   validate(z.object({ body: commentBody })), ctrl.create);
 
-router.get('/:id/replies', generalLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.replies);
+router.get('/:id/replies', generalLimiter, optionalAuth, validate(z.object({ params: z.object({ id }) })), ctrl.replies);
 router.post('/:id/like', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.like);
 router.patch('/:id', requireAuth, writeLimiter, audit('comments.update'),
   validate(z.object({ params: z.object({ id }), body: z.object({ text: z.string().min(1).max(2000) }).strict() })), ctrl.update);

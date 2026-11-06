@@ -1,0 +1,64 @@
+
+> droboard-backend@0.1.0 smoke:chief
+> node scripts/smoke-chief-crud.cjs
+
+mongod up: mongodb://127.0.0.1:54559/droboard_chief
+(node:21764) [MONGOOSE] Warning: Duplicate schema index on {"status":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21764) [MONGOOSE] Warning: Duplicate schema index on {"day":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21764) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21764) [MONGOOSE] Warning: Duplicate schema index on {"at":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:21764) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+seeded system roles: admin, chief_editor, senior_editor, finance, marketing, support
+(node:21764) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+droboard api on :4277
+
+--- reads ---
+PASS  GET /health  ::  {"ok":true}
+PASS  GET /senior-editors 200 + paged shape  ::  status=200 keys=items,total,page,limit,invites
+PASS  list row exposes uuidv7 id, hides _id/__v  ::  id=000001a1-9b4f-7314-bd34-bfee61fc1c1a _id=false __v=false
+
+--- invite CRUD ---
+[mail:log] {"to":["nia.smith@t.co"],"subject":"You’re invited as a Droboard Senior Editor"}
+PASS  POST /invites 201  ::  status=201 {"name":"Nia Author","email":"nia.smith@t.co","target":20,"paymentType":"","monthlyPay":50000,"revenueShare":0,"deadline":"2026-12-01T00:00:00.000Z","note":"","status":"pending","expiresAt"
+PASS  invite returned: stored hash hidden, plaintext token shown ONCE  ::  keys=name,email,target,paymentType,monthlyPay,revenueShare,deadline,note,status,expiresAt,invitedBy,id,createdAt,updatedAt,token,isNew
+PASS  invite token absent from list read (one-time only) + literal route not shadowed by /:id  ::  status=200 tokenReused=false
+PASS  duplicate pending invite -> 409 invite_pending  ::  status=409 {"error":"invite_pending"}
+PASS  invalid email still 400  ::  status=400
+
+--- editor PATCH (quota/deadline) ---
+PASS  PATCH /senior-editors/:id 200  ::  status=200 {"id":"000001a1-9b4f-7314-bd34-bfee61fc1c1a","fullName":"Test senior_editor","name":"Test senior_editor","username":"senior_editor17936070651680.6779971595480938","email":"senior_editor1793
+
+--- assignments: replace-all + one-writer deltas ---
+PASS  PUT /assignments 200  ::  status=200 {"editorId":"000001a1-9b4f-7314-bd34-bfee61fc1c1a","authorIds":["000001a1-9b4f-7d22-913a-087c305aeedd","000001a1-9b4f-7434-90c2-c09706d371c8"],"createdAt":"2026-11-02T08:11:13.263Z","id":"0
+PASS  DB holds exactly the 2 assigned ids  ::  authorIds=2
+PASS  POST delta (one id only) 200  ::  status=200 {"editorId":"000001a1-9b4f-7314-bd34-bfee61fc1c1a","authorIds":["000001a1-9b4f-7d22-913a-087c305aeedd","000001a1-9b4f-7434-90c2-c09706d371c8","000001a1-9b4f-750b-98b8-34f62e69d6e8"],"create
+PASS  DB now holds 3 — new id added, old ones kept  ::  n=3
+PASS  repeat add is idempotent (still 3)  ::  n=3
+PASS  DELETE delta 200  ::  status=200 {"editorId":"000001a1-9b4f-7314-bd34-bfee61fc1c1a","authorIds":["000001a1-9b4f-7434-90c2-c09706d371c8","000001a1-9b4f-750b-98b8-34f62e69d6e8"],"createdAt":"2026-11-02T08:11:13.263Z","id":"0
+PASS  DB now holds 2, w1 removed  ::  n=2
+PASS  unknown author -> 400 bad_author  ::  status=400 {"error":"bad_author"}
+PASS  unknown editor -> 404  ::  status=404
+PASS  replace-all with 122 authors accepted (old cap was 100)  ::  status=200 undefined
+PASS  DB stored all 122 ids  ::  n=122
+PASS  GET /assignments 200  ::  status=200
+PASS  GET /assignments = bare array of {editorId, authorIds[]} (what mapAssignments consumes)  ::  [{"editorId":"000001a1-9b4f-7314-bd34-bfee61fc1c1a","authorIds":["000001a1-9b4f-7434-90c2-c09706d371c8","000001a1-9b4f-7
+
+--- report scope: CE reads, does not act ---
+PASS  GET /reports/story 200 (view)  ::  status=200
+PASS  CE has no resolve action on chief base  ::  status=404
+
+--- earnings settings (chief pay console) ---
+PASS  PUT /earnings/settings 200  ::  status=200 {"enabled":true,"mode":"hybrid","revenueSharePct":10,"tipSharePct":5,"fixedMonthlyAmount":250000,"minWithdrawal":100,"currency":"NGN","payoutDay":28}
+PASS  settings round-trip persisted  ::  {"enabled":true,"mode":"hybrid","revenueSharePct":10,"tipSharePct":5,"fixedMonthlyAmount":250000,"minWithdrawal":100,"currency":"NGN","payoutDay":28}
+
+--- policy CRUD (growth) ---
+PASS  POST /policies 201  ::  status=201 {"title":"No AI-generated art","body":"Draft text","author":"000001a1-9b4f-72f6-898d-c9f7c356b48a","status":"draft","version":1,"id":"000001a1-9b4f-7f79-ace2-b9e8b873e937","createdAt":"2026
+PASS  PATCH /policies/:id 200  ::  status=200 {"title":"No AI-generated art (v2)","body":"Draft text","author":"000001a1-9b4f-72f6-898d-c9f7c356b48a","status":"draft","version":2,"id":"000001a1-9b4f-7f79-ace2-b9e8b873e937","createdAt":
+PASS  POST /policies/:id/archive 200 + status=archived  ::  status=200 "archived"
+
+--- auth boundary ---
+PASS  unauthenticated chief read -> 401  ::  status=401
+PASS  reader hitting chief console -> 403  ::  status=403
+
+===== 31/31 live assertions passed =====

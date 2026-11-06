@@ -26,16 +26,24 @@ async function requireAuth(req, res, next) {
   } catch (e) {
     return res.status(401).json({ error: 'unauthorized' });
   }
+  let freshRoles = p.roles || [];
   try {
     const { User } = require('../models/user.model');
-    const u = await User.findOne({ id: p.sub }).select('status deletedAt').lean();
+    const u = await User.findOne({ id: p.sub }).select('status deletedAt roles').lean();
     if (!u || u.deletedAt) return res.status(401).json({ error: 'unauthorized' });
     if (u.status === 'banned') return res.status(403).json({ error: 'banned' });
     if (u.status === 'suspended') return res.status(403).json({ error: 'suspended' });
+    /* Roles come from the DB, not the token: the JWT is minted at sign-in,
+       so a grant/revocation (role add, $pull, ban-adjacent demotion) would
+       otherwise stay invisible until the access token refreshes. The DB row
+       is already fetched here for the status check, so this costs nothing
+       extra. Token roles remain the fallback for rows written before the
+       `roles` field existed. */
+    freshRoles = Array.isArray(u.roles) ? u.roles : (p.roles || []);
   } catch (e) {
     return res.status(503).json({ error: 'account_check_failed' });
   }
-  req.user = { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null };
+  req.user = { id: p.sub, roles: freshRoles, mfaAt: p.mfaAt || null };
   return next();
 }
 

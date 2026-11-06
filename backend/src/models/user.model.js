@@ -60,13 +60,19 @@ const userSchema = new mongoose.Schema({
     readingActivity: { type: Boolean, default: true },
   },
   termsVersion: { type: String, default: '' },
+  // Denormalized activity counters. Read directly by profile + console views
+  // so a page of users never needs a cross-collection aggregate; each is
+  // $inc'd by the write that creates/destroys the row it counts.
+  followerCount: { type: Number, default: 0, min: 0 },
+  followingCount: { type: Number, default: 0, min: 0 },
+  postCount: { type: Number, default: 0, min: 0 },
+  commentCount: { type: Number, default: 0, min: 0 },
   // super-admin console extras (admin-curated, additive)
   adminNotes: { type: String, default: '' },
   authorGenre: { type: String, default: '' }, // admin-curated primary genre for writers
   deletedAt: { type: Date, default: null }, // soft delete
 }, { timestamps: true });
 
-userSchema.index({ status: 1 });
 
 // Refresh-token families (rotation + reuse detection)
 const refreshFamilySchema = new mongoose.Schema({

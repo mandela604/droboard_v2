@@ -7,6 +7,8 @@ const { Conversation, Message } = require('../models/social.model');
 const { User } = require('../models/user.model');
 const { validateMediaUrl } = require('./media.service');
 const { userRefFilter } = require('./user-ref');
+const { roleLabelFor } = require('./role-labels');
+const { isOnline } = require('../socket');
 
 function err(msg, status) { const e = new Error(msg); e.status = status; throw e; }
 
@@ -28,7 +30,7 @@ async function loadUsers(ids) {
   const uniq = [...new Set((ids || []).map(String).filter(Boolean))];
   if (!uniq.length) return {};
   const users = await User.find(userRefFilter(uniq))
-    .select('id username fullName avatar emailVerified roles').lean().catch(() => []);
+    .select('id username fullName avatar emailVerified roles primaryRole').lean().catch(() => []);
   const byId = {};
   (users || []).forEach(u => {
     const key = String(u.id || u._id || '');
@@ -38,11 +40,13 @@ async function loadUsers(ids) {
 }
 
 function peerShape(u) {
-  if (!u) return { id: '', handle: '', name: 'User', avatar: '', verified: false };
+  if (!u) return { id: '', handle: '', name: 'User', avatar: '', verified: false, role: 'Reader', online: false };
   return {
     id: String(u.id || u._id || ''), handle: u.username || '',
     name: u.fullName || u.username || 'User', avatar: u.avatar || '',
     verified: !!u.emailVerified,
+    role: roleLabelFor(u),
+    online: isOnline(String(u.id || u._id || '')),
   };
 }
 
@@ -95,7 +99,7 @@ async function listConversations({ userId }) {
 async function openOrCreate({ userId, peerId }) {
   const pid = String(peerId);
   if (pid === String(userId)) err('invalid_peer', 400);
-  const peer = await User.findOne({ id: pid }).select('id username fullName avatar emailVerified').lean();
+  const peer = await User.findOne({ id: pid }).select('id username fullName avatar emailVerified roles primaryRole').lean();
   if (!peer) err('peer_not_found', 404);
   let conv = await Conversation.findOne({ participants: { $all: [String(userId), pid], $size: 2 } }).lean();
   if (!conv) {
@@ -137,9 +141,27 @@ async function listMessages({ userId, convId, page, limit }) {
   return { items: items.map(m => toMessage(m, byId, userId)), total, page: pg, limit: lim };
 }
 
+// One unread notification per conversation, not one per message: the count
+// climbs while it is unread and starts over once the thread has been opened.
+async function notifyPeer({ peerId, sender, conv, preview }) {
+  const { Notification } = require('../models/social.model');
+  const { notify } = require('./notifications.service');
+  const key = 'dm:' + conv.id;
+  const prev = await Notification.findOne({ recipientId: peerId, key }).lean();
+  const count = prev && prev.unread ? ((prev.payload && prev.payload.count) || 0) + 1 : 1;
+  // Re-created rather than updated so a reply to an old thread jumps to the top.
+  if (prev) await Notification.deleteOne({ id: prev.id });
+  await notify({
+    recipientId: peerId, actorId: String(sender.id), type: 'direct_message',
+    title: sender.fullName || sender.username || 'User',
+    desc: preview, link: 'Pages/chat.html?contact=' + conv.id, linkLabel: 'Reply',
+    key, count, badge: 'chat', avatar: sender.avatar || undefined,
+  });
+}
+
 async function sendMessage({ userId, convId, text, image }) {
   const conv = await loadConv(convId, userId);
-  const me = await User.findOne({ id: String(userId) }).select('id username fullName avatar roles').lean();
+  const me = await User.findOne({ id: String(userId) }).select('id username fullName avatar emailVerified roles primaryRole').lean();
   const msg = await Message.create({
     conversationId: conv.id, senderId: String(userId),
     fromRole: fromRoleFor(me),
@@ -152,12 +174,17 @@ async function sendMessage({ userId, convId, text, image }) {
   conv.unreadBy = [...new Set([...(conv.unreadBy || []).map(String), ...peers])];
   await conv.save();
   const byId = { [String(userId)]: me };
-  const out = toMessage(msg.toJSON(), byId, userId);
   try {
     const { emitToUser } = require('../socket');
-    peers.forEach(p => emitToUser(p, 'message', out));
+    // Each recipient gets the row from THEIR point of view: isMine is relative to
+    // the reader, so one shared payload would render an incoming message as your own.
+    peers.forEach(p => emitToUser(p, 'message', toMessage(msg.toJSON(), byId, p)));
   } catch (e) { /* socket not initialized (tests/scripts) */ }
-  return out;
+  // The message is already saved: a notification failure must not fail the send.
+  for (const p of peers) {
+    try { await notifyPeer({ peerId: p, sender: me, conv, preview: conv.preview }); } catch (e) {}
+  }
+  return toMessage(msg.toJSON(), byId, userId);
 }
 
 async function markRead({ userId, convId }) {
@@ -168,6 +195,12 @@ async function markRead({ userId, convId }) {
   );
   conv.unreadBy = (conv.unreadBy || []).map(String).filter(u => u !== String(userId));
   await conv.save();
+  // Opening the thread is reading the notification too — the bell must not stay
+  // blue for a conversation the viewer has already looked at.
+  try {
+    const { Notification } = require('../models/social.model');
+    await Notification.updateMany({ recipientId: userId, key: 'dm:' + conv.id }, { unread: false });
+  } catch (e) { /* notifications are best-effort alongside the read receipt */ }
   return { ok: true };
 }
 

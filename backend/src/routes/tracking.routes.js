@@ -6,6 +6,7 @@ const { z } = require('zod');
 const jwt = require('jsonwebtoken');
 const base = require('../controllers/base.controller');
 const track = require('../services/tracking.service');
+const { countryOf } = require('../middleware/geo');
 const { validate, writeLimiter, generalLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -63,12 +64,18 @@ router.post('/insight', optionalAuth, writeLimiter,
     surface: z.enum(['hub', 'droboard', 'profile', 'collection']),
     targetId: z.string().max(120).optional(),
     country: z.string().max(40).optional(),
+    // Anonymous visitors are deduped by this (the tracker mints one uuid per
+    // device and keeps it in localStorage); signed-in readers use their id.
+    deviceId: z.string().max(64).optional(),
   }).strict() })),
   async (req, res) => base.wrap(res, async () => track.insightHit({
     userId: req.user && req.user.id,
     surface: req.valid.body.surface,
     targetId: req.valid.body.targetId,
-    country: req.valid.body.country,
+    deviceId: req.valid.body.deviceId,
+    // Cloudflare's edge header is the geo truth; the client guess is only a
+    // fallback for a direct (non-proxied) request.
+    country: countryOf(req) || req.valid.body.country,
   })));
 
 router.get('/insight', generalLimiter,
@@ -82,5 +89,11 @@ router.get('/insight', generalLimiter,
     targetId: req.valid.query.targetId,
     period: req.valid.query.period || 'all',
   })));
+
+// Platform-wide rollup (marketing/marketing-analytics.html):
+//   pageviews by surface, returning reader rate, DAU/WAU/MAU, country mix.
+router.get('/platform', generalLimiter,
+  validate(z.object({ query: z.object({ days: z.string().max(4).optional() }).strict() })),
+  async (req, res) => base.wrap(res, async () => track.platformStats({ days: req.valid.query.days })));
 
 module.exports = router;

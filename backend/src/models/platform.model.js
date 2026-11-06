@@ -17,11 +17,29 @@ const roleSchema = new mongoose.Schema({
 
 const emailTemplateSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true }, // welcome|contract|payout|flag
-  sender: { type: String, default: '' },
+  name: { type: String, default: '' }, // human readable name (Welcome Email)
+  sender: { type: String, default: '' }, // internal sender tag
   smtpHost: { type: String, default: '' },
   subject: { type: String, required: true },
-  body: { type: String, required: true },
+  body: { type: String, required: true }, // plain text fallback
+  bodyHTML: { type: String, default: '' }, // optional rich text version
   enabled: { type: Boolean, default: true },
+  // UI builder fields — these are what the template editor stores and reads back:
+  preheader: { type: String, default: '' }, // preview text
+  fromName: { type: String, default: 'Droboard Team' },
+  fromEmail: { type: String, default: 'welcome@droboard.app' },
+  headerColor: { type: String, default: '#ff0050' },
+  headerTitle: { type: String, default: 'Welcome to Droboard!' },
+  headerSub: { type: String, default: 'Your publishing journey begins now' },
+  greeting: { type: String, default: 'Hi {name},' },
+  bullets: { type: [String], default: [] }, // array of action items
+  btnText: { type: String, default: 'Get Started' },
+  btnColor: { type: String, default: '#ff0050' },
+  btnLink: { type: String, default: 'https://droboard.app/dashboard' },
+  footerNote: { type: String, default: 'You received this email because you signed up on Droboard.' },
+  unsub: { type: String, default: 'Unsubscribe | Manage Preferences' },
+  status: { type: String, enum: ['draft', 'active', 'archived'], default: 'active' },
+  lastEdited: { type: String, default: '' }, // human-readable date
 }, { timestamps: true });
 
 // Ad inventory (marketing ad-manager). Embed = network code for slots.
@@ -108,7 +126,8 @@ const adEventSchema = new mongoose.Schema({
   eventKey: { type: String }, // impression/viewable only — unique sparse
   userId: { type: String, default: '', index: true },
   anonId: { type: String, default: '' },
-  at: { type: Date, default: Date.now, index: true },
+  // no index here: the TTL index below is the only one this field gets
+  at: { type: Date, default: Date.now },
 }, { timestamps: false });
 adEventSchema.index({ at: 1 }, { expireAfterSeconds: 90 * 24 * 3600 });
 adEventSchema.index({ eventKey: 1 }, { unique: true, sparse: true });
@@ -117,7 +136,7 @@ adEventSchema.index({ eventKey: 1 }, { unique: true, sparse: true });
 // postback idempotent (both carry the same id).
 const adConversionSchema = new mongoose.Schema({
   adId: { type: String, required: true, index: true },
-  orderId: { type: String, index: true },
+  orderId: { type: String },
   userId: { type: String, default: '' },
   anonId: { type: String, default: '' },
   value: { type: Number, default: 0 },
@@ -156,16 +175,6 @@ const searchLogSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 searchLogSchema.index({ createdAt: -1 });
 
-const activityLogSchema = new mongoose.Schema({
-  userLabel: { type: String, default: '' },
-  avatar: { type: String, default: '' },
-  action: { type: String, required: true, index: true },
-  type: { type: String, enum: ['create', 'update', 'delete', 'login', 'payout', 'review'], default: 'update', index: true },
-  detail: { type: String, default: '' },
-  ip: { type: String, default: '' },
-  at: { type: Date, default: Date.now, index: true },
-}, { timestamps: false });
-
 module.exports = {
   PlatformSetting: mongoose.model('PlatformSetting', platformSettingSchema),
   Role: mongoose.model('Role', roleSchema),
@@ -178,5 +187,4 @@ module.exports = {
   AdClick: mongoose.model('AdClick', adClickSchema),
   AdView: mongoose.model('AdView', adViewSchema),
   SearchLog: mongoose.model('SearchLog', searchLogSchema),
-  ActivityLog: mongoose.model('ActivityLog', activityLogSchema),
 };

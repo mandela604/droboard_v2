@@ -68,11 +68,14 @@ async function results({ chapter, userId }) {
   const mine = await EngagementVote.find({ chapterId: chapter.id, userId }).lean();
   const myVotes = {};
   mine.forEach(v => { myVotes[v.kind] = v.optionIdx; });
+  // Must be plain: base.wrap's normalize() walks every key, and a live
+  // subdocument's $parent/$__ point back at the parent doc forever.
+  const c = chapter.toObject({ virtuals: false });
   return {
-    poll: chapter.poll || null,
-    prediction: chapter.prediction || null,
-    debate: chapter.debate || null,
-    authorNote: chapter.authorNote || '',
+    poll: c.poll || null,
+    prediction: c.prediction || null,
+    debate: c.debate || null,
+    authorNote: c.authorNote || '',
     myVotes,
   };
 }
@@ -174,28 +177,90 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
 }
 
 /* ══ STORY-WIDE ENGAGEMENT (book-level poll/prediction/debate) ══
-   Same shapes as chapter-wise but keyed by bookId with chapterId '' —
-   EngagementVote.bookId set, chapterId ''. Vote mutates the Book's
-   embedded arrays in place (matches the reader's record shape). */
+   Same shapes as chapter-wise but keyed by bookId with chapterId '' plus the
+   engagement row's itemId, so a book can run several polls and retract still
+   finds the right one. Vote mutates the Book's embedded arrays in place. */
+
+const ENGAGEMENT_LISTS = { poll: 'polls', prediction: 'predictions', debate: 'debates' };
+
+function plain(o) { return o && typeof o.toJSON === 'function' ? o.toJSON() : o; }
+
+// One mapper for every story-wide read (GET /engagement, the story detail
+// read, and the post-vote response) so the reader always gets the fields it
+// needs to vote again: id + kind (the vote body), totals, closed, myVote.
+function shapeStoryEngagement(book, myVotes) {
+  const votes = myVotes || {};
+  const out = { polls: [], predictions: [], debates: [] };
+  Object.keys(ENGAGEMENT_LISTS).forEach(kind => {
+    const key = ENGAGEMENT_LISTS[kind];
+    out[key] = (book[key] || []).map(raw => {
+      const item = plain(raw) || {};
+      const mine = votes[kind + ':' + item.id];
+      const shaped = {
+        id: item.id, kind,
+        chapter: item.chapter == null ? null : item.chapter,
+        expiresAt: item.expiresAt || null,
+        closed: !!(item.expiresAt && new Date(item.expiresAt) < new Date()),
+        myVote: mine === undefined ? null : mine,
+      };
+      if (kind === 'debate') {
+        shaped.motion = item.motion || '';
+        shaped.forText = item.forText || 'For';
+        shaped.againstText = item.againstText || 'Against';
+        shaped.forV = item.forV || 0;
+        shaped.agV = item.agV || 0;
+        shaped.totalVotes = shaped.forV + shaped.agV;
+      } else {
+        shaped.q = item.q || '';
+        shaped.opts = (item.opts || []).map((o, i) => ({
+          t: o.t, v: o.v || 0,
+          pct: optsTotal(item) ? Math.round(((o.v || 0) / optsTotal(item)) * 100) : 0,
+          picked: mine === i,
+        }));
+        shaped.totalVotes = optsTotal(item);
+      }
+      return shaped;
+    });
+  });
+  return out;
+}
+function optsTotal(item) {
+  return (item.opts || []).reduce((a, o) => a + (o.v || 0), 0);
+}
+
+// Votes are stored as optionIdx (debate: 0=for, 1=against); readers want the
+// same spelling the vote body takes, so map debate back to its side word.
+function myVoteMap(rows) {
+  const out = {};
+  rows.forEach(v => {
+    out[v.kind + ':' + v.itemId] = v.kind === 'debate' ? (v.optionIdx === 0 ? 'for' : 'against') : v.optionIdx;
+  });
+  return out;
+}
+
+async function storyVotes(bookId, userId) {
+  if (!userId) return {};
+  const rows = await EngagementVote.find({ bookId, userId, chapterId: '' }).lean();
+  return myVoteMap(rows);
+}
+
+// Reads resolve id OR slug exactly like the detail route, so a story reached
+// by slug can still be voted on.
+async function storyBook(id) {
+  const book = await Book.findOne({ $or: [{ id }, { slug: id }] });
+  if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
+  return book;
+}
 
 async function bookEngagement({ bookId, userId }) {
-  const book = await Book.findOne({ id: bookId }).select('id polls predictions debates').lean();
-  if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
-  const mine = await EngagementVote.find({ bookId: bookId, userId, chapterId: '' }).lean();
-  const myVotes = {};
-  mine.forEach(v => { myVotes[v.kind] = v.optionIdx; });
-  return {
-    polls: book.polls || [],
-    predictions: book.predictions || [],
-    debates: book.debates || [],
-    myVotes,
-  };
+  const book = await storyBook(bookId);
+  const votes = await storyVotes(book.id, userId);
+  return { bookId: book.id, engagement: shapeStoryEngagement(book, votes) };
 }
 
 async function bookVote({ bookId, userId, kind, id, option }) {
-  const book = await Book.findOne({ id: bookId });
-  if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
-  const list = kind === 'poll' ? book.polls : kind === 'prediction' ? book.predictions : kind === 'debate' ? book.debates : null;
+  const book = await storyBook(bookId);
+  const list = kind ? book[ENGAGEMENT_LISTS[kind]] : null;
   if (!list) { const e = new Error('bad_kind'); e.status = 400; throw e; }
   const item = list.find(p => String(p.id) === String(id));
   if (!item) { const e = new Error('not_found'); e.status = 404; throw e; }
@@ -211,8 +276,14 @@ async function bookVote({ bookId, userId, kind, id, option }) {
       const e = new Error('bad_option'); e.status = 400; throw e;
     }
   }
+  // The unique index is the real guarantee, but an insert into a collection
+  // whose indexes are still building succeeds — so the row is checked first
+  // and a second vote for the same item always answers already_voted.
+  const already = await EngagementVote
+    .findOne({ chapterId: '', bookId: book.id, userId, kind, itemId: String(item.id) }).lean();
+  if (already) { const err = new Error('already_voted'); err.status = 409; throw err; }
   try {
-    await EngagementVote.create({ chapterId: '', bookId: bookId, userId, kind, optionIdx });
+    await EngagementVote.create({ chapterId: '', bookId: book.id, itemId: String(item.id), userId, kind, optionIdx });
   } catch (e) {
     if (e.code === 11000) { const err = new Error('already_voted'); err.status = 409; throw err; }
     throw e;
@@ -224,30 +295,134 @@ async function bookVote({ bookId, userId, kind, id, option }) {
     item.opts[optionIdx].v = (item.opts[optionIdx].v || 0) + 1;
   }
   await book.save();
-  return Object.assign({ kind }, item.toJSON());
+  const votes = await storyVotes(book.id, userId);
+  return { kind, item: shapeStoryEngagement(book, votes)[ENGAGEMENT_LISTS[kind]].find(p => p.id === item.id) };
 }
 
-async function bookRetract({ bookId, userId, kind }) {
-  const vote = await EngagementVote.findOneAndDelete({ bookId: bookId, userId, kind, chapterId: '' });
+async function bookRetract({ bookId, userId, kind, itemId }) {
+  const book = await storyBook(bookId);
+  const filter = { bookId: book.id, userId, kind, chapterId: '' };
+  // Without an itemId the caller means "whatever I voted for this kind" —
+  // with one, only that row's vote is removed.
+  if (itemId) filter.itemId = String(itemId);
+  const vote = await EngagementVote.findOneAndDelete(filter);
   if (!vote) { const e = new Error('no_vote'); e.status = 404; throw e; }
-  const book = await Book.findOne({ id: bookId });
-  if (!book) return { ok: true, kind };
-  if (kind === 'debate') {
-    const deb = book.debates.find(d => d && d.id && d.forV != null);
-    if (deb) {
-      if (vote.optionIdx === 0) deb.forV = Math.max(0, (deb.forV || 0) - 1);
-      else deb.agV = Math.max(0, (deb.agV || 0) - 1);
-      await book.save();
-    }
-  } else {
-    const list = kind === 'poll' ? book.polls : book.predictions;
-    const item = list.find(p => p && p.opts && p.opts[vote.optionIdx] != null);
-    if (item) {
+  const item = (book[ENGAGEMENT_LISTS[kind]] || []).find(p => String(p.id) === String(vote.itemId));
+  if (item) {
+    if (kind === 'debate') {
+      if (vote.optionIdx === 0) item.forV = Math.max(0, (item.forV || 0) - 1);
+      else item.agV = Math.max(0, (item.agV || 0) - 1);
+    } else if (item.opts && item.opts[vote.optionIdx] != null) {
       item.opts[vote.optionIdx].v = Math.max(0, (item.opts[vote.optionIdx].v || 0) - 1);
-      await book.save();
     }
+    await book.save();
   }
-  return { ok: true, kind };
+  const votes = await storyVotes(book.id, userId);
+  return { ok: true, kind, itemId: vote.itemId || null, engagement: shapeStoryEngagement(book, votes) };
 }
 
-module.exports = { loadChapter, vote, retract, results, trackProgress, readState, bookEngagement, bookVote, bookRetract };
+/* ══ STORY REACTIONS (the bridge page's emoji grid + topbar love) ══
+   One active reaction per reader per story, same contract as post reactions:
+   per-user state in Reaction{targetType:'story'}, display counts denormalized
+   on Book.reactions. Book.likes is kept as their sum so the catalogue sorts
+   and the "Likes" stat can never drift from the grid. */
+
+const STORY_RX = ['love', 'crying', 'angry', 'shocked', 'broken', 'emotional', 'savage', 'sus', 'twist', 'laughing'];
+
+function rxCounts(book) {
+  const raw = book.reactions instanceof Map
+    ? Object.fromEntries(book.reactions)
+    : (book.reactions || {});
+  const counts = {};
+  STORY_RX.forEach(rid => { counts[rid] = raw[rid] || 0; });
+  return counts;
+}
+
+function rxTotal(counts) {
+  return Object.keys(counts).reduce((a, k) => a + (counts[k] || 0), 0);
+}
+
+// rid === 'love' IS the topbar like: the picker and the grid are one surface.
+async function reactStory({ bookId, userId, rid }) {
+  if (!STORY_RX.includes(rid)) { const e = new Error('bad_reaction'); e.status = 400; throw e; }
+  const book = await storyBook(bookId);
+  const { Reaction } = require('../models/social.model');
+  const prev = await Reaction.findOne({ userId: String(userId), targetType: 'story', targetId: book.id });
+  if (prev && prev.rid === rid) {
+    return { counts: rxCounts(book), userRx: rid, likes: book.likes || 0 };
+  }
+  if (prev) {
+    const left = Math.max(0, (book.reactions.get(prev.rid) || 0) - 1);
+    if (left) book.reactions.set(prev.rid, left); else book.reactions.delete(prev.rid);
+    await Reaction.deleteOne({ userId: String(userId), targetType: 'story', targetId: book.id });
+  }
+  await Reaction.create({ userId: String(userId), targetType: 'story', targetId: book.id, rid });
+  book.reactions.set(rid, (book.reactions.get(rid) || 0) + 1);
+  const counts = rxCounts(book);
+  book.likes = rxTotal(counts);
+  await book.save();
+  return { counts, userRx: rid, likes: book.likes };
+}
+
+async function unreactStory({ bookId, userId }) {
+  const book = await storyBook(bookId);
+  const { Reaction } = require('../models/social.model');
+  const prev = await Reaction.findOneAndDelete({ userId: String(userId), targetType: 'story', targetId: book.id });
+  if (prev) {
+    const left = Math.max(0, (book.reactions.get(prev.rid) || 0) - 1);
+    if (left) book.reactions.set(prev.rid, left); else book.reactions.delete(prev.rid);
+    book.likes = rxTotal(rxCounts(book));
+    await book.save();
+  }
+  return { counts: rxCounts(book), userRx: null, likes: book.likes || 0 };
+}
+
+async function storyReactionState(book, userId) {
+  const counts = rxCounts(book);
+  if (!userId) return { counts, userRx: null };
+  const { Reaction } = require('../models/social.model');
+  const mine = await Reaction.findOne({ userId: String(userId), targetType: 'story', targetId: book.id }).lean();
+  return { counts, userRx: mine ? mine.rid : null };
+}
+
+// Share channels: must match the 8 data-platform values in share-modal.js (line 422-450).
+const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy'];
+
+function shareCounts(book) {
+  return { sharesCount: book.sharesCount || 0 };
+}
+
+function shareChannelCounts(book) {
+  const raw = book.sharesByChannel instanceof Map
+    ? Object.fromEntries(book.sharesByChannel)
+    : (book.sharesByChannel || {});
+  return { channelShares: raw };
+}
+
+async function shareStory({ bookId, userId, channel }) {
+  if (!SHARE_CHANNELS.includes(channel)) { const e = new Error('bad_channel'); e.status = 400; throw e; }
+  const book = await storyBook(bookId);
+  // One share per user per hour per channel prevents burst spam.
+  const { ShareEvent } = require('../models/social.model');
+  const recent = await ShareEvent.findOne({
+    userId: String(userId), targetType: 'story', targetId: String(book.id), channel,
+    createdAt: { $gte: new Date(Date.now() - 3600000) },
+  });
+  if (recent) { return { counts: shareCounts(book), channelShares: shareChannelCounts(book) }; }
+  book.sharesCount = (book.sharesCount || 0) + 1;
+  const byCh = book.sharesByChannel.get(channel) || 0;
+  book.sharesByChannel.set(channel, byCh + 1);
+  await book.save();
+  await ShareEvent.create({ userId: String(userId), targetType: 'story', targetId: String(book.id), channel });
+  return { counts: shareCounts(book), channelShares: shareChannelCounts(book) };
+}
+
+module.exports = {
+  loadChapter, vote, retract, results, trackProgress, readState,
+  bookEngagement, bookVote, bookRetract,
+  // The story detail read builds the same engagement block, so it borrows the
+  // mapper instead of growing a second one.
+  shapeStoryEngagement, storyVotes, ENGAGEMENT_LISTS,
+  reactStory, unreactStory, storyReactionState, STORY_RX,
+  shareStory, SHARE_CHANNELS,
+};

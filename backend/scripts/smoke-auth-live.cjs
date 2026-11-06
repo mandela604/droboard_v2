@@ -5,7 +5,8 @@
 // channels, email change, password change, MFA enroll → login → verify, and
 // logout/refresh revocation. No frontend mocks are involved.
 process.env.NODE_ENV = 'test';
-process.env.PORT = '4193';
+const PORT = process.env.SMOKE_PORT || '4193';
+process.env.PORT = PORT;
 process.env.JWT_ACCESS_SECRET = 'a'.repeat(48);
 process.env.JWT_REFRESH_SECRET = 'b'.repeat(48);
 process.env.MFA_SECRET_KEY = 'c'.repeat(48);
@@ -26,15 +27,20 @@ function check(name, pass, detail) {
 }
 
 async function main() {
-  const mongod = await MongoMemoryServer.create({ instance: { startupTimeout: 60000 } });
+  const mongod = await MongoMemoryServer.create({ instance: { launchTimeout: 60000 } });
   process.env.MONGO_URI = mongod.getUri('droboard_auth');
   console.log('mongod up:', process.env.MONGO_URI);
 
   require('../src/server');
-  await new Promise(r => setTimeout(r, 1200));
+  // Boot is async (the role seed runs before listen), so a fixed sleep loses
+  // the race on a cold box.
+  const base = 'http://127.0.0.1:' + PORT;
+  for (let i = 0; i < 160; i++) {
+    try { const p = await fetch(base + '/health'); if (p.ok) break; } catch (e) { /* not up yet */ }
+    await new Promise(r => setTimeout(r, 250));
+  }
 
   const { User } = require('../src/models/user.model');
-  const base = 'http://127.0.0.1:4193';
 
   async function call(method, path, body, token, extraHeaders) {
     const headers = Object.assign({ 'Content-Type': 'application/json' }, extraHeaders || {});

@@ -4,8 +4,9 @@
 // and falls back only when they 404/timeout).
 //
 // Each function documents the frontend file:line it satisfies.
-const { Campaign, LeagueConfig, LeagueActivity } = require('../models/marketing.model');
-const { AdInventory, AdPlacement, AdStat, ActivityLog } = require('../models/platform.model');
+const { Campaign, LeagueConfig, LeagueActivity, LeagueBadge } = require('../models/marketing.model');
+const { AdInventory, AdPlacement, AdStat } = require('../models/platform.model');
+const activityFeed = require('./activity-feed.service');
 const { AdRevenueLedger } = require('../models/revenue.model');
 const { LaunchCampaign, Promo } = require('../models/editorial.model');
 const ads = require('./ads.service');
@@ -60,6 +61,8 @@ const MK_ACT = {
   login: { icon: 'fa-right-to-bracket', color: 'amber' },
   payout: { icon: 'fa-money-check-dollar', color: 'accent' },
   review: { icon: 'fa-scale-balanced', color: 'purple' },
+  approve: { icon: 'fa-circle-check', color: 'green' },
+  reject: { icon: 'fa-triangle-exclamation', color: 'amber' },
 };
 
 async function adStatsMap() {
@@ -78,7 +81,7 @@ async function dashboard() {
     AdPlacement.find({}).lean(),
     LaunchCampaign.find({ status: { $in: ['scheduled', 'active'] } }).sort({ launchDate: 1 }).limit(8).lean(),
     Promo.find({ status: 'scheduled' }).sort({ startAt: 1 }).limit(8).lean(),
-    ActivityLog.find({}).sort({ at: -1 }).limit(20).lean(),
+    activityFeed.recent({ limit: 20 }),
   ]);
 
   const active = camps.filter(c => ['live', 'scheduled'].includes(c.status)).length;
@@ -149,7 +152,7 @@ async function dashboard() {
  * ───────────────────────────────────────────────────────────── */
 const CAMPAIGN_FIELDS = ['name', 'status', 'type', 'objective', 'storyId', 'storyTitle', 'storyAuthor',
   'storyCover', 'storyGenre', 'placements', 'slots', 'audienceTargeting', 'startDate', 'endDate', 'hasBudget', 'budget', 'currency', 'spent',
-  'owner', 'description', 'advertiserName', 'advertiserEmail',
+  'owner', 'description', 'advertiserName', 'advertiserEmail', 'channel',
   'reach', 'impressions', 'clicks', 'ctr', 'conversions'];
 
 /* The campaign's buy: which surfaces and which slots it paid for. An unknown
@@ -428,7 +431,7 @@ async function leagueBoard({ season, scope, userId }) {
   const { User } = require('../models/user.model');
   const ids = rows.map(r => r._id);
   const users = ids.length
-    ? await User.find({ id: { $in: ids } }).select('id name handle avatar').lean() : [];
+    ? await User.find({ id: { $in: ids } }).select('id fullName username avatar').lean() : [];
   const byId = {};
   users.forEach(u => { byId[u.id] = u; });
   const entries = rows.map(r => {
@@ -449,7 +452,61 @@ async function leagueBoard({ season, scope, userId }) {
     const mine = entries.findIndex(e => String(e.userId) === String(userId));
     if (mine >= 0) me = { rank: mine + 1, points: entries[mine].points };
   }
-  return { season: s, scope: scope === 'alltime' ? 'alltime' : 'weekly', endsIn, entries, me };
+  // The reader page renders weights, action labels and prizes off this same
+  // payload: the only config endpoint is staff-gated, so without these a
+  // reader would score and read prizes from their own localStorage instead of
+  // what Marketing actually saved.
+  const cfg = await leagueConfig();
+  return {
+    season: s, scope: scope === 'alltime' ? 'alltime' : 'weekly', endsIn, entries, me,
+    enabled: cfg.enabled, weights: cfg.weights,
+    actionLabels: cfg.actionLabels, actionIcons: cfg.actionIcons, prizes: cfg.prizes,
+  };
+}
+
+/* Award the finished week's top-3 from its real points. Idempotent: one badge
+   per reader per season, written with $setOnInsert so a later prize edit never
+   rewrites a badge somebody already earned. Runs from the scheduler; the
+   season argument defaults to the week that just ended. */
+async function awardLeagueBadges({ season } = {}) {
+  const s = season || seasonId(new Date(Date.now() - 7 * 864e5));
+  const cfg = await leagueConfig();
+  const prizes = (cfg.prizes || []).filter(p => p && Number(p.place) > 0);
+  if (!prizes.length) return { season: s, awarded: 0 };
+  const top = await LeagueActivity.aggregate([
+    { $match: { season: s } },
+    { $group: { _id: '$userId', points: { $sum: '$points' } } },
+    { $sort: { points: -1 } },
+    { $limit: prizes.length },
+  ]);
+  let awarded = 0;
+  for (let i = 0; i < top.length; i++) {
+    const prize = prizes.find(p => Number(p.place) === i + 1);
+    if (!prize || !top[i].points) continue;
+    const r = await LeagueBadge.updateOne(
+      { userId: String(top[i]._id), season: s },
+      { $setOnInsert: {
+        place: i + 1,
+        label: String(prize.badge || ('League #' + (i + 1))).slice(0, 80),
+        icon: String(prize.icon || '').slice(0, 60),
+        color: String(prize.color || '').slice(0, 24),
+      } },
+      { upsert: true },
+    ).catch(() => null);
+    if (r && r.upsertedCount) awarded++;
+  }
+  return { season: s, awarded };
+}
+
+// The reader's own badges, newest week first — league-service.js renders the
+// same { label, icon, color, season, place } shape the demo stored locally.
+async function badgesFor(userId) {
+  const rows = await LeagueBadge.find({ userId: String(userId) })
+    .sort({ season: -1, place: 1 }).limit(12).lean();
+  return rows.map(b => ({
+    label: b.label + ' · ' + b.season,
+    icon: b.icon, color: b.color, season: b.season, place: b.place,
+  }));
 }
 
 /* ── GET /api/league/me (league-service.js:10) —
@@ -464,7 +521,11 @@ async function leagueMe(userId) {
   const mine = rows.findIndex(r => String(r._id) === String(userId));
   const myPoints = mine >= 0 ? rows[mine].points : 0;
   const above = mine > 0 ? rows[mine - 1].points - myPoints : 0;
-  return { season: s, rank: mine >= 0 ? mine + 1 : 0, points: myPoints, gapToNext: mine > 0 ? above : 0 };
+  return {
+    season: s, rank: mine >= 0 ? mine + 1 : 0, points: myPoints,
+    gapToNext: mine > 0 ? above : 0,
+    badges: await badgesFor(userId),
+  };
 }
 
 module.exports = {
@@ -472,5 +533,5 @@ module.exports = {
   campaigns, createCampaign, updateCampaign, deleteCampaign,
   adsByCampaign, adStats, resetAds,
   leagueConfig, saveLeagueConfig, resetLeague, track, seasonId,
-  leagueBoard, leagueMe,
+  leagueBoard, leagueMe, awardLeagueBadges, badgesFor,
 };

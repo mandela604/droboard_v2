@@ -1,0 +1,46 @@
+mongod up: mongodb://127.0.0.1:51155/dro_notif
+PASS  GET /notifications -> 200  ::  status=200
+PASS  list returns {items,total,unreadCount,page,limit}  ::  {"total":3,"unreadCount":3}
+PASS  list returns the three seeded rows  ::  n=3
+PASS  list total matches items  ::  total=3
+PASS  list unreadCount is 3 before any read  ::  unreadCount=3
+PASS  bob sees an empty inbox (recipientId scoping)  ::  n=0
+PASS  GET /unread-count -> {count:3}  ::  {"count":3}
+PASS  list rows expose the frontend row fields (id,type,cat,audience,at,link,unread)  ::  present=["id","type","cat","kind","audience","pushEligible","unread","at","title","desc","link","key","icon"]
+PASS  list row id is a stable string the client can PATCH  ::  id=000001a1-ac82-797c-910b-11d367073831
+PASS  list row carries `cat` for the filter chips  ::  cat=revenue
+PASS  list row carries `audience` for the reader/author role tabs  ::  audience=author
+PASS  list row carries `at` as a numeric timestamp for day-grouping  ::  at=1793895569629 (number)
+PASS  list row link is an object with href (page reads n.link.href)  ::  link={"href":"tx"}
+PASS  PATCH /:id {read:true} -> 200  ::  status=200
+PASS  PATCH read cleared unread on that row  ::  unread=false
+PASS  PATCH read dropped unreadCount to 2  ::  unreadCount=2
+PASS  PATCH {read:false} re-flags unread
+PASS  unreadCount back to 3  ::  unreadCount=3
+PASS  POST /read {id} -> 200  ::  status=200
+PASS  POST /read cleared only that row  ::  unreadCount=2
+PASS  POST /read-all -> 200  ::  status=200
+PASS  read-all zeroed unreadCount  ::  unreadCount=0
+PASS  unread-count endpoint agrees
+PASS  GET ?unread=true returns only unread rows  ::  n=1
+PASS  GET ?page&limit windows the list  ::  {"n":2,"total":4}
+PASS  page 2 returns the remaining rows  ::  n=2
+PASS  PATCH /:id with empty body is a no-op (does not delete)  ::  status=200
+PASS  empty-body PATCH left the row in place  ::  total=4
+PASS  PATCH /:id {deleted:true} -> 200  ::  status=200
+PASS  deleted row is gone from the list  ::  total=3
+PASS  PUT /settings -> 200 ok  ::  status=200
+PASS  GET /settings returns the saved matrix verbatim  ::  {"highlights":{"inapp":true,"push":false,"email":true},"all":true,"mutedTypes":["like"]}
+PASS  GET /notifications without a token -> 401  ::  status=401
+PASS  milestone row projects kind=milestone  ::  kind=milestone
+PASS  milestone row projects cat=highlights  ::  cat=highlights
+PASS  milestone row projects audience=author  ::  audience=author
+PASS  milestone row carries rank + rankNote  ::  {"rank":7,"rankNote":"Romance"}
+PASS  milestone row carries cover  ::  cover=https://x/cover.jpg
+PASS  milestone row carries metrics array  ::  [{"label":"Rank","value":"#7"},{"label":"24h reads","value":"48.2K"}]
+PASS  milestone row carries chips  ::  ["+15 ranks"]
+PASS  milestone row link is {href,label}  ::  {"href":"discover.html","label":"See trending board"}
+PASS  milestone row exposes a numeric at for day-grouping  ::  at=1793895572606
+PASS  duplicate key is deduped (still one row)  ::  n=1
+
+===== 43/43 notification assertions passed =====

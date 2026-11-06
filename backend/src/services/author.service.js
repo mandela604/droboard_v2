@@ -4,7 +4,7 @@
 //   GET /dashboard, /books, /books/:id/overview, /books/:id/characters (CRUD),
 //   /books/:id/plot, /books/:bookId/chapters/:num, /contracts, /completion,
 //   /vip, /launch-kit, /chapter-reviews
-const { Book, Chapter, Character, Plot } = require('../models/content.model');
+const { Book, Category, Chapter, Character, Plot, BookDailyStat } = require('../models/content.model');
 const {
   ContractApplication, CompletionApplication, VipApplication,
   ChapterReviewRequest, AuthorVerification,
@@ -12,27 +12,115 @@ const {
 const { User } = require('../models/user.model');
 const { LaunchCampaign } = require('../models/editorial.model');
 const { Contract } = require('../models/contract.model');
+const { Wallet, LedgerEntry } = require('../models/money.model');
+const { Follow } = require('../models/social.model');
+
+// Percentage change of a metric over its prior 30-day base. null when there is
+// no base to divide by — the frontend hides the delta instead of showing a
+// made-up 0% or 100%. Never fabricates.
+function pctChange(cur, prev) {
+  if (!(prev > 0)) return null;
+  return Math.round(((cur - prev) / prev) * 1000) / 10;
+}
 
 async function dashboard({ userId }) {
-  const [books, contracts] = await Promise.all([
-    Book.countDocuments({ authorId: userId }),
+  const DAY = 864e5;
+  const now = Date.now();
+  const since = (days) => new Date(now - days * DAY);
+  // BookDailyStat.day is a YYYY-MM-DD string, so window filtering is lexical.
+  const sinceDay = (days) => since(days).toISOString().slice(0, 10);
+
+  const [bookRows, contracts, user, wallet] = await Promise.all([
+    Book.find({ authorId: userId }).select('id status reads').lean(),
     Contract.countDocuments({ authorId: userId }),
+    User.findOne({ id: userId }).select('followerCount').lean(),
+    Wallet.findOne({ userId, kind: 'author' }).select('lifetimeEarned').lean(),
   ]);
-  const reads = await Book.aggregate([
-    { $match: { authorId: userId } },
-    { $group: { _id: null, t: { $sum: '$reads' } } },
+
+  const bookIds = bookRows.map(b => String(b.id));
+  const reads = bookRows.reduce((s, b) => s + (b.reads || 0), 0);
+  const published = bookRows.filter(b => b.status === 'published' || b.status === 'completed').length;
+  const completionRate = bookIds.length ? Math.round((published / bookIds.length) * 100) : 0;
+
+  const [reads30, reads60, newFollow30, earn30, earnPrev, pendingReviews] = await Promise.all([
+    // Reads momentum comes from the per-book daily snapshot. Book.reads itself
+    // has no timestamps, so summing reads by book.createdAt would misattribute
+    // every read to the publish date. reads60 covers days 0-60; the 30-60
+    // window is the difference between the two.
+    bookIds.length ? BookDailyStat.aggregate([
+      { $match: { bookId: { $in: bookIds }, day: { $gte: sinceDay(30) } } },
+      { $group: { _id: null, t: { $sum: '$reads' } } },
+    ]) : Promise.resolve([]),
+    bookIds.length ? BookDailyStat.aggregate([
+      { $match: { bookId: { $in: bookIds }, day: { $gte: sinceDay(60) } } },
+      { $group: { _id: null, t: { $sum: '$reads' } } },
+    ]) : Promise.resolve([]),
+    Follow.countDocuments({ followingId: userId, createdAt: { $gte: since(30) } }),
+    LedgerEntry.aggregate([
+      { $match: { creditAcct: 'wallet:author:' + userId, createdAt: { $gte: since(30) } } },
+      { $group: { _id: null, t: { $sum: '$amount' } } },
+    ]),
+    LedgerEntry.aggregate([
+      { $match: { creditAcct: 'wallet:author:' + userId, createdAt: { $gte: since(60), $lt: since(30) } } },
+      { $group: { _id: null, t: { $sum: '$amount' } } },
+    ]),
+    // ChapterReviewRequest has no authorId column — a review belongs to the
+    // author through its book, so scope by this author's book ids.
+    ChapterReviewRequest.countDocuments({ bookId: { $in: bookIds }, status: 'pending' }),
   ]);
+
+  const readsLast30 = reads30[0] ? reads30[0].t : 0;
+  const readsPrev30 = Math.max(0, (reads60[0] ? reads60[0].t : 0) - readsLast30);
+  const earnLast30 = earn30[0] ? earn30[0].t : 0;
+  const earnPrev30 = earnPrev[0] ? earnPrev[0].t : 0;
+  const followerCount = user ? (user.followerCount || 0) : 0;
+  // Net follower-base growth over the window. Follow rows are deleted on
+  // unfollow, so the base 30d ago is reconstructed as current less the follows
+  // created within it — the only signal the timestamps actually carry.
+  const followerBase = Math.max(0, followerCount - newFollow30);
+
   return {
     stats: {
-      books, contracts,
-      reads: reads[0] ? reads[0].t : 0,
-      pendingReviews: 0,
+      books: bookIds.length,
+      contracts,
+      reads,
+      followers: followerCount,
+      earnings: wallet ? (wallet.lifetimeEarned || 0) : 0, // fiat credited as writer, base currency
+      completionRate,
+      pendingReviews,
+    },
+    growth: {
+      reads: pctChange(readsLast30, readsPrev30),
+      followers: pctChange(followerCount, followerBase),
+      earnings: pctChange(earnLast30, earnPrev30),
+      completionRate: null, // no historical ratio snapshot to diff — never fabricated
     },
   };
 }
 
+// The create-wizard's "continue this book" list and book-workspace both read
+// this: every Book field plus lastChapter (highest chapter n) and the category
+// label, so the frontend never has to join books -> chapters -> categories.
 async function books({ userId }) {
-  return Book.find({ authorId: userId }).sort({ updatedAt: -1 }).lean();
+  const rows = await Book.find({ authorId: userId }).sort({ updatedAt: -1 }).lean();
+  if (!rows.length) return [];
+  const bookIds = rows.map(b => String(b.id));
+  const [lastOf, cats] = await Promise.all([
+    Chapter.aggregate([
+      { $match: { bookId: { $in: bookIds } } },
+      { $group: { _id: '$bookId', last: { $max: '$n' } } },
+    ]),
+    Category.find({ id: { $in: [...new Set(rows.map(b => String(b.categoryId || '')).filter(Boolean))] } })
+      .select('id name').lean(),
+  ]);
+  const last = {};
+  lastOf.forEach(r => { last[String(r._id)] = r.last || 0; });
+  const catName = {};
+  cats.forEach(c => { catName[String(c.id)] = c.name; });
+  return rows.map(b => Object.assign({}, b, {
+    lastChapter: last[String(b.id)] || 0,
+    category: catName[String(b.categoryId || '')] || b.genre || '',
+  }));
 }
 
 /* single own book + own chapter list/save (book-workspace, edit-chapter) */

@@ -51,6 +51,12 @@ router.get('/me', requireAuth, ctrl.me);
 router.get('/state', generalLimiter, optionalAuth,
   validate(z.object({ query: z.object({ handles: z.string().max(2400).optional() }).strict() })),
   ctrl.state);
+// Full slide lineup for a set of writer handles — the live source of the
+// Top Writers rings. /state is the ring summary; this is what opens when a
+// ring is tapped.
+router.get('/writers', generalLimiter, optionalAuth,
+  validate(z.object({ query: z.object({ handles: z.string().max(2400).optional() }).strict() })),
+  ctrl.writers);
 router.post('/', requireAuth, writeLimiter, audit('statuses.create'), multerMw,
   validate(z.object({ body: statusFormBody })), ctrl.create);
 // Views are logged for signed-in users AND guests (stable anonId from the

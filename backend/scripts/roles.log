@@ -1,0 +1,28 @@
+
+> droboard-backend@0.1.0 smoke:roles
+> node scripts/smoke-staff-roles.cjs
+
+PASS  ensureSystemRoles creates 6 canonical slugs  ::  {"created":6,"slugs":["admin","chief_editor","senior_editor","finance","marketing","support"]}
+PASS  seed slugs are admin/chief_editor/senior_editor/finance/marketing/support  ::  ["admin","chief_editor","finance","marketing","senior_editor","support"]
+PASS  ensureSystemRoles is idempotent (0 created on second pass)  ::  {"created":0,"slugs":[]}
+PASS  seeded admin role is system:true and carries every perm  ::  system=true keys=37
+PASS  finance seed grants release_payouts but not manage_roles  ::  rel=true mr=false
+PASS  permsBySlug indexes every slug  ::  ["admin","chief_editor","senior_editor","finance","marketing","support"]
+PASS  permsBySlug.admin has all PERM_KEYS true  ::  {"view_editors":true,"manage_editors":true,"approve_contracts":true,"read_flagged_books":true,"manage_editorial_policy":true,"set_editorial_strategy":true,"publish_announcements":true,"manage_submissi
+PASS  requirePerm(finance) on release_payouts passes through  ::  {"passed":true,"err":null,"status":0,"body":null}
+PASS  requirePerm(finance) on manage_roles -> 403 missing_perm  ::  {"passed":false,"err":null,"status":403,"body":{"error":"missing_perm","perm":"manage_roles"}}
+PASS  requirePerm blocks a role with no AdminRole doc  ::  {"passed":false,"err":null,"status":403,"body":{"error":"missing_perm","perm":"release_payouts"}}
+PASS  createRole returns the slug on the row  ::  {"slug":"qa_lead"}
+PASS  createRole write-through adds the slug to each member User.roles  ::  {"ua":["writer","qa_lead"],"ub":["writer","qa_lead"]}
+PASS  createRole rejects a duplicate slug -> 409 slug_taken  ::  thrown=409/slug_taken
+PASS  updateRole write-through drops the removed member's slug  ::  ["writer"]
+PASS  updateRole write-through keeps the retained member's slug  ::  ["writer","qa_lead"]
+PASS  updateRole leaves slug unchanged  ::  slug=qa_lead
+PASS  permsBySlug picks up the updated role flag  ::  {"view_editors":false,"manage_editors":false,"approve_contracts":false,"read_flagged_books":false,"manage_editorial_policy":false,"set_editorial_strategy":false,"publish_announcements":false,"manage_s
+PASS  deleteRole pulls slug from former members after delete  ::  ["writer"]
+PASS  deleteRole refuses system role -> 400 system_role_locked  ::  thrown=400/system_role_locked
+PASS  editorialTeam authors count is distinct, not raw contract count  ::  {"a":2,"c":3}
+PASS  editorialTeam second editor counts one author  ::  {"a":1,"c":1}
+PASS  seeded admin slug satisfies requirePerm(manage_roles)  ::  {"passed":true,"err":null,"status":0,"body":null}
+
+===== 22/22 stub-runtime role/perm assertions passed =====

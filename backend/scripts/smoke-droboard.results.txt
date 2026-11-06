@@ -1,0 +1,27 @@
+PASS  GET /api/droboard-page/posts -> 200
+PASS  answers the envelope root {items,total,page,limit} (no data wrapper)
+PASS  every seeded type is served
+PASS  every card has id/type/pinned/likes/comments/liked/saved/name/avatar/time
+PASS  likes/comments are the numbers the card prints (not only *Count)
+PASS  the author name is a profile-linkable handle (p.name -> profile.html?u=)
+PASS  debate carries debateData{motion,forV,agV,userVote}
+PASS  poll + forum-poll carry poll{q,opts[{t,v}],voted,total}
+PASS  shoutout carries shoutout.id (drives follow UI + writersFeatured)
+PASS  shoutout carries name/avatar/tagline and a stats object
+PASS  repost carries original{name,avatar,time,text,cover,title} for the quote card
+PASS  repost also carries storyRef{cat,title,cover,writer} (renders as a story pick)
+PASS  ama carries amaData{isLive,viewers,title,meta}
+PASS  announcement carries title/heading/image
+PASS  pinned post is served (the page pins the official announcement)
+PASS  GET /api/collections -> 200
+PASS  collections answers a list the page can read (array or {items})
+PASS  every collection has id/name/count/covers[] (the grid reads these)
+PASS  covers[] are real image URLs (no placeholder gaps)
+PASS  POST /api/wallet/tip (reader) -> ok
+PASS  POST /api/wallet/tip without session -> 401
+PASS  POST /api/posts/:id/poll/vote accepts a droboard poll
+PASS  POST /api/posts/:id/debate/vote accepts a droboard debate
+PASS  POST /api/posts/:id/save toggles save
+PASS  POST /api/posts takes the droboard debate dialect (composer)
+PASS  PATCH /api/posts/:id pins (the page pin action)
+PASS  page=2 answers a second slice ("Load more" / morePosts)

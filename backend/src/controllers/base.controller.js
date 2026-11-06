@@ -31,10 +31,15 @@ async function wrap(res, fn) {
   try {
     return res.json(normalize(await fn()));
   } catch (e) {
+    if (process.env.NODE_ENV === 'test' && process.env.SMOKE_DEBUG) console.error('WRAP', e && e.stack);
     const body = { error: e.message || 'error' };
     // Retry/wait hints and field-level reasons are how the client shows an
     // honest message instead of a generic 4xx.
     if (e.retryAfterSec != null) body.retryAfterSec = e.retryAfterSec;
+    // Collection eligibility answers "how much more must I read", so the counts
+    // the service attached have to survive serialization.
+    if (e.required != null) body.required = e.required;
+    if (e.chaptersRead != null) body.chaptersRead = e.chaptersRead;
     if (Array.isArray(e.errors) && e.errors.length) body.errors = e.errors;
     return res.status(e.status || 500).json(body);
   }

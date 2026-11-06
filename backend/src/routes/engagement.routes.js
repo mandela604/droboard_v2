@@ -27,7 +27,9 @@ function attachViewer(req, _res, next) {
 }
 
 // reader-engagement-service contract: results include totals + my votes
-router.get('/:bookId/chapters/:key/engagement', generalLimiter,
+// attachViewer too — without it a signed-in reader gets an empty myVotes and
+// cannot see or undo the option they picked.
+router.get('/:bookId/chapters/:key/engagement', attachViewer, generalLimiter,
   validate(z.object({ params: z.object({ bookId: id, key }) })), ctrl.results);
 
 // bridge + collection-story contract: GET /api/stories/:id (single segment, no clash)
@@ -52,9 +54,26 @@ router.post('/:id/rating', requireAuth, writeLimiter,
     }).strict(),
   })), ctrl.ratingPost);
 
-// chapter-level engagement only (story-wide engagement deliberately not offered:
-// structured polls/predictions/debates are chapter-wise; story-wide debate lives
-// as community posts via /api/posts)
+// reviews list (reader-facing story page): paginated BookRating rows joined to
+// author {id,name,avatar} + helpful tally. sort = helpful|newest|rating.
+router.get('/:id/ratings', attachViewer, generalLimiter,
+  validate(z.object({
+    params: z.object({ id }),
+    query: z.object({
+      page: z.coerce.number().int().min(1).max(100000).optional(),
+      limit: z.coerce.number().int().min(1).max(50).optional(),
+      sort: z.enum(['helpful', 'newest', 'rating']).optional(),
+    }).strict(),
+  })), ctrl.ratingsList);
+
+// "helpful" mark on a single review — one per (review, user); re-mark is a no-op.
+router.post('/:id/ratings/:ratingId/helpful', requireAuth, writeLimiter, audit('ratings.helpful'),
+  validate(z.object({ params: z.object({ id, ratingId: id }) })), ctrl.helpfulMark);
+router.delete('/:id/ratings/:ratingId/helpful', requireAuth, writeLimiter, audit('ratings.helpful'),
+  validate(z.object({ params: z.object({ id, ratingId: id }) })), ctrl.helpfulUnmark);
+
+// chapter-level engagement (the author's per-chapter poll/prediction/debate)
+// Story-wide engagement, which the bridge page renders, is below.
 router.post('/:bookId/chapters/:key/poll/vote', requireAuth, writeLimiter, audit('engagement.pollVote'),
   validate(z.object({
     params: z.object({ bookId: id, key }),
@@ -77,8 +96,9 @@ router.delete('/:bookId/chapters/:key/:kind', requireAuth, writeLimiter, audit('
   validate(z.object({ params: z.object({ bookId: id, key, kind: z.enum(['poll', 'prediction', 'debate']) }) })), ctrl.retract);
 
 /* ── story-wide engagement (book-level poll/prediction/debate) ──
-   Same shapes as chapter-wise but against the Book's embedded arrays; votes
-   key on (bookId, userId, kind) with chapterId '' in EngagementVote. */
+   A book carries polls[]/predictions[]/debates[], so a vote names the ROW it
+   answers (body.id) and votes key on (bookId, userId, kind, itemId) with
+   chapterId '' in EngagementVote. */
 router.get('/:bookId/engagement', attachViewer, generalLimiter,
   validate(z.object({ params: z.object({ bookId: id }) })), ctrl.bookResults);
 
@@ -90,11 +110,17 @@ router.post('/:bookId/engagement/vote', requireAuth, writeLimiter, audit('engage
       kind: z.enum(['poll', 'prediction', 'debate']),
       option: z.number().int().min(0).max(10).optional(),
       side: z.enum(['for', 'against']).optional(),
-    }).strict(),
+    }).strict().refine(b => (b.kind === 'debate' ? !!b.side : b.option !== undefined), {
+      // Without this, a poll vote with no option reached the service as
+      // undefined and came back bad_option — the message is clearer here.
+      message: 'poll_and_prediction_need_option',
+    }),
   })), ctrl.bookVote);
 
-router.delete('/:bookId/engagement/:kind', requireAuth, writeLimiter, audit('engagement.bookRetract'),
-  validate(z.object({ params: z.object({ bookId: id, kind: z.enum(['poll', 'prediction', 'debate']) }) })), ctrl.bookRetract);
+router.delete('/:bookId/engagement/:kind/:itemId', requireAuth, writeLimiter, audit('engagement.bookRetract'),
+  validate(z.object({
+    params: z.object({ bookId: id, kind: z.enum(['poll', 'prediction', 'debate']), itemId: z.string().min(1).max(40) }),
+  })), ctrl.bookRetract);
 
 // reader boot: coin-unlocked chapters + per-chapter progress + continue point
 router.get('/:bookId/read-state', requireAuth, generalLimiter,

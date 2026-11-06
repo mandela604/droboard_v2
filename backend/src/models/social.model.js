@@ -38,6 +38,14 @@ const postSchema = new mongoose.Schema({
   caption: { type: String, default: '' },
   quoteBg: { type: String, default: '' },
   quoteBgCss: { type: String, default: '' },
+  // author rank pill (post-card.js renders post.rank). Free label like
+  // "#1 This Week"; empty means no pill. Server-owned, never a client counter.
+  rank: { type: String, default: '' },
+  // repost (quote-share) cards embed the source post they're resharing.
+  // post-card.js:403 reads post.original; without it a repost renders blank.
+  // `time` is a pre-rendered relative label (the source may be on another
+  // board), so it is stored as a string, not a Date.
+  original: { name: String, avatar: String, time: String, text: String, cover: String, title: String },
   // chapter-drop posts (feed composer): dropped-chapter story card
   chapterRef: { id: String, title: String, author: String, cover: String, ch: String, cat: String },
   storyRef: { id: String, title: String, cat: String, writer: String, cover: String },
@@ -50,6 +58,9 @@ const postSchema = new mongoose.Schema({
 }, { timestamps: true });
 postSchema.index({ authorId: 1, createdAt: -1 });
 postSchema.index({ type: 1, createdAt: -1 });
+// The library page's Saved tab reads "posts this reader saved", which is an
+// array match sorted by time — without this it collection-scans.
+postSchema.index({ savedBy: 1, createdAt: -1 });
 
 const commentSchema = new mongoose.Schema({
   authorId: { type: String, ref: 'User', required: true, index: true },
@@ -63,7 +74,6 @@ const commentSchema = new mongoose.Schema({
   likes: { type: Number, default: 0 },
   likedBy: [{ type: String, ref: 'User' }],
   reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
-  reactions: { type: Map, of: Number, default: {} },
   team: { type: String, default: null },
   edited: { type: Boolean, default: false },
   repliesCount: { type: Number, default: 0 },
@@ -82,9 +92,18 @@ const discussionSchema = new mongoose.Schema({
   story: { type: mongoose.Schema.Types.Mixed, default: null }, // genre-hub composer: optional linked story {id,title,writer,cover,cat}
   score: { type: Number, default: 0 },
   hot: { type: Boolean, default: false, index: true },
+  // community-card flags the demo row renders (genre-card.js:362,364):
+  // badge/badgeClass = "Top"/"Author" pill; controversy (0-100) drives the
+  // ⚡ Controversial flag at >= 50. Feed never shows them until stored here.
+  badge: { type: String, default: '' },
+  badgeClass: { type: String, default: '' }, // 'author' → accent pill, else default
+  controversy: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
   likedBy: [{ type: String, ref: 'User' }], // per-user like toggle state (matches Post/Comment)
   commentsCount: { type: Number, default: 0 },
+  // The hub's sticky house-rules card (discussion-service.js renders a
+  // title+body-only OP when this is set) — a demo field, so a real column.
+  pinned: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const collectionSchema = new mongoose.Schema({
@@ -148,6 +167,14 @@ const notificationSchema = new mongoose.Schema({
   link: { type: String, default: '' },
   thumb: { type: String, default: '' },
   unread: { type: Boolean, default: true, index: true },
+  // Renderer contract: kind/cat/audience drive which card, filter chip and role tab
+  // a row lands in; key is the idempotency handle the server cron dedupes on;
+  // payload carries the rich milestone/digest fields (metrics, chips, icon, …).
+  key: { type: String, index: true },
+  cat: { type: String },
+  kind: { type: String },
+  audience: { type: String },
+  payload: { type: mongoose.Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
 notificationSchema.index({ recipientId: 1, unread: 1, createdAt: -1 });
 
@@ -169,7 +196,8 @@ const statusSchema = new mongoose.Schema({
   }],
   isLive: { type: Boolean, default: false },
   viewed: { type: Boolean, default: false },
-  expiresAt: { type: Date, required: true, index: true },
+  // no index here: the TTL index below is the only one this field gets
+  expiresAt: { type: Date, required: true },
 }, { timestamps: true });
 statusSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 statusSchema.index({ userId: 1, createdAt: -1 });
@@ -190,6 +218,7 @@ const messageSchema = new mongoose.Schema({
   fromRole: { type: String, enum: ['author', 'editor', 'admin', 'user'], default: 'user' },
   text: { type: String, default: '' },
   image: { type: String, default: '' },
+  edited: { type: Boolean, default: false },
   read: { type: Boolean, default: false },
 }, { timestamps: true });
 messageSchema.index({ conversationId: 1, createdAt: 1 });
@@ -244,6 +273,7 @@ const shareEventSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 shareEventSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
 
+
 // Per-user content impressions ("which posts did this reader see").
 // One row per user+target+day with a repeat count — deduped daily so a
 // scroll-past and a re-open both count once per view event.
@@ -265,8 +295,19 @@ const bookRatingSchema = new mongoose.Schema({
   stars: { type: Number, min: 1, max: 5, required: true },
   text: { type: String, default: '' },
   spoiler: { type: Boolean, default: false },
+  // Denormalized "helpful" tally so the reviews list sorts without scanning
+  // RatingHelpful per row. Kept in step by ratings.service.setHelpful.
+  helpfulCount: { type: Number, default: 0, min: 0 },
 }, { timestamps: true });
 bookRatingSchema.index({ bookId: 1, userId: 1 }, { unique: true });
+
+// One "helpful" mark per (rating, user) — the reviews list's vote ledger.
+// Deleting a mark never loses history; helpfulCount is reconciled by the write.
+const ratingHelpfulSchema = new mongoose.Schema({
+  ratingId: { type: String, ref: 'BookRating', required: true, index: true },
+  userId: { type: String, ref: 'User', required: true },
+}, { timestamps: true });
+ratingHelpfulSchema.index({ ratingId: 1, userId: 1 }, { unique: true });
 
 // Surface analytics hits (insights-service.js / shared/insights-tracker.js):
 // hub|droboard|profile|collection per target, one row per (surface, target,
@@ -276,10 +317,54 @@ const insightHitSchema = new mongoose.Schema({
   targetId: { type: String, default: '', index: true },
   userId: { type: String, ref: 'User', default: null, index: true },
   country: { type: String, default: '' },
+  // Hits per country inside the row — `country` alone only keeps the last
+  // one, so a reader whose edge geo changes mid-day would lose the mix.
+  countries: { type: Map, of: Number, default: {} },
   day: { type: String, required: true }, // YYYY-MM-DD (UTC)
   count: { type: Number, default: 0 },
+  // Hits per UTC hour inside the day — the "Today" chart buckets in 4h
+  // slices, which a day-level count alone cannot fill.
+  hours: { type: Map, of: Number, default: {} },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 insightHitSchema.index({ surface: 1, targetId: 1, day: 1, userId: 1 }, { unique: true });
+
+// Unique page visits (tracking.service.touchUnique). One row per visitor per
+// surface+target, so "the same reader reloading the page" cannot inflate the
+// counter: a hit only counts again once UNIQUE_WINDOW_MS has passed since
+// lastSeenAt. `days` keeps the counted visits per UTC day, which is what lets
+// a period window slice one row into today / 7d / month buckets.
+// visitorKey = 'u:'+userId when signed in, 'd:'+deviceId when anonymous —
+// a hit with neither has no way to tell two people apart, so it stays in
+// InsightHit only.
+const insightVisitorSchema = new mongoose.Schema({
+  surface: { type: String, required: true }, // hub|droboard|profile|collection
+  targetId: { type: String, default: '' },
+  visitorKey: { type: String, required: true },
+  lastSeenAt: { type: Date, required: true },
+  visits: { type: Number, default: 0 },
+  days: { type: Map, of: Number, default: {} },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+insightVisitorSchema.index({ surface: 1, targetId: 1, visitorKey: 1 }, { unique: true });
+
+// Debate argument rows (debate-args.js). Each row is one argument posted under
+// a `for` or `against` side of a debate Post; replies share the parent's side.
+// `votedBy` maps userId -> 'up' | 'down'; `up`/`down` are the tallies the card
+// renders. Author must have picked a side on the parent Post.debateData before
+// posting (enforced in debate-args.service).
+const debateArgSchema = new mongoose.Schema({
+  postId: { type: String, ref: 'Post', required: true, index: true },
+  authorId: { type: String, ref: 'User', required: true, index: true },
+  parentId: { type: String, ref: 'DebateArg', default: null, index: true },
+  side: { type: String, enum: ['for', 'against'], required: true },
+  text: { type: String, required: true, maxlength: 2000 },
+  up: { type: Number, default: 0 },
+  down: { type: Number, default: 0 },
+  votedBy: { type: Map, of: String, default: {} },
+  repliesCount: { type: Number, default: 0 },
+  edited: { type: Boolean, default: false },
+}, { timestamps: true });
+debateArgSchema.index({ postId: 1, parentId: 1, createdAt: 1 });
+debateArgSchema.index({ postId: 1, side: 1, up: -1 });
 
 module.exports = {
   Post: mongoose.model('Post', postSchema),
@@ -301,5 +386,8 @@ module.exports = {
   ShareEvent: mongoose.model('ShareEvent', shareEventSchema),
   ContentImpression: mongoose.model('ContentImpression', contentImpressionSchema),
   BookRating: mongoose.model('BookRating', bookRatingSchema),
+  RatingHelpful: mongoose.model('RatingHelpful', ratingHelpfulSchema),
   InsightHit: mongoose.model('InsightHit', insightHitSchema),
+  InsightVisitor: mongoose.model('InsightVisitor', insightVisitorSchema),
+  DebateArg: mongoose.model('DebateArg', debateArgSchema),
 };

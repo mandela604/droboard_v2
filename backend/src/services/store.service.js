@@ -3,17 +3,17 @@ const { CoinPack, CoinBundle, SubscriptionPlan, Gift, EarnReward } = require('..
 const rules = require('./earn-rules');
 
 const SEED_PACKS = [
-  { code: 'pack1', coins: 100, bonusPct: 0, basePriceNGN: 1500, status: 'active' },
-  { code: 'pack2', coins: 500, bonusPct: 5, basePriceNGN: 7000, status: 'active' },
-  { code: 'pack3', coins: 1200, bonusPct: 10, basePriceNGN: 16000, status: 'active' },
-  { code: 'pack4', coins: 2500, bonusPct: 15, basePriceNGN: 32000, status: 'active' },
+  { code: 'pack1', coins: 100, bonusPct: 0, basePriceNGN: 1500, prices: { NGN: '₦1,500', USD: '$10.00', GBP: '£8.99' }, status: 'active' },
+  { code: 'pack2', coins: 500, bonusPct: 5, basePriceNGN: 7000, prices: { NGN: '₦7,000', USD: '$45.00', GBP: '£39.99' }, status: 'active' },
+  { code: 'pack3', coins: 1200, bonusPct: 10, basePriceNGN: 16000, prices: { NGN: '₦16,000', USD: '$99.00', GBP: '£89.99' }, status: 'active' },
+  { code: 'pack4', coins: 2500, bonusPct: 15, basePriceNGN: 32000, prices: { NGN: '₦32,000', USD: '$195.00', GBP: '£175.00' }, status: 'active' },
 ];
 const SEED_SUBS = [
-  { code: 'sub-daily', name: 'Daily', period: 'day', durationDays: 1, basePriceNGN: 500, features: ['Unlimited reading for 24 hours'], status: 'active' },
-  { code: 'sub-weekly', name: 'Weekly', period: 'week', durationDays: 7, basePriceNGN: 2000, features: ['Unlimited reading for 7 days'], status: 'active' },
-  { code: 'sub-monthly', name: 'Monthly', period: 'month', durationDays: 30, basePriceNGN: 6000, features: ['Unlimited reading for 30 days'], status: 'active' },
-  { code: 'sub-yearly', name: 'Yearly', period: 'year', durationDays: 365, basePriceNGN: 40000, features: ['Unlimited reading for 365 days'], status: 'active' },
-  { code: 'sub-merge', name: 'Merge Pass', period: 'month', durationDays: 30, basePriceNGN: 8000, features: ['Ad-free browsing', 'Unlimited reading'], status: 'active' },
+  { code: 'sub-daily', name: 'Daily', period: 'day', durationDays: 1, basePriceNGN: 500, prices: { NGN: '₦500', USD: '$3.00', GBP: '£2.99' }, features: ['Unlimited reading for 24 hours'], status: 'active' },
+  { code: 'sub-weekly', name: 'Weekly', period: 'week', durationDays: 7, basePriceNGN: 2000, prices: { NGN: '₦2,000', USD: '$12.00', GBP: '£10.99' }, features: ['Unlimited reading for 7 days'], status: 'active' },
+  { code: 'sub-monthly', name: 'Monthly', period: 'month', durationDays: 30, basePriceNGN: 6000, prices: { NGN: '₦6,000', USD: '$35.00', GBP: '£31.99' }, features: ['Unlimited reading for 30 days'], status: 'active' },
+  { code: 'sub-yearly', name: 'Yearly', period: 'year', durationDays: 365, basePriceNGN: 40000, prices: { NGN: '₦40,000', USD: '$350.00', GBP: '£315.00' }, features: ['Unlimited reading for 365 days'], status: 'active' },
+  { code: 'sub-merge', name: 'Merge Pass', period: 'month', durationDays: 30, basePriceNGN: 8000, prices: { NGN: '₦8,000', USD: '$45.00', GBP: '£39.99' }, features: ['Ad-free browsing', 'Unlimited reading'], status: 'active' },
 ];
 const SEED_GIFTS = [
   { code: 'gift-rose', name: 'Rose', costCoins: 10, color: '#FF2D6A', status: 'active' },
@@ -29,9 +29,9 @@ const SEED_REWARDS = [
 ];
 
 const SEED_BUNDLES = [
-  { code: 'b1', name: 'Starter Bundle', coins: 500, bonus: 50, basePriceNGN: 2400, status: 'active' },
-  { code: 'b2', name: 'Pro Bundle', coins: 1500, bonus: 300, basePriceNGN: 6000, status: 'active' },
-  { code: 'b3', name: 'Elite Bundle', coins: 5000, bonus: 1500, basePriceNGN: 18000, status: 'active' },
+  { code: 'b1', name: 'Starter Bundle', coins: 500, bonus: 50, basePriceNGN: 2400, prices: { NGN: '₦2,400', USD: '$15.00', GBP: '£13.99' }, icon: 'fa-seedling', status: 'active' },
+  { code: 'b2', name: 'Pro Bundle', coins: 1500, bonus: 300, basePriceNGN: 6000, prices: { NGN: '₦6,000', USD: '$35.00', GBP: '£31.99' }, icon: 'fa-fire', status: 'active' },
+  { code: 'b3', name: 'Elite Bundle', coins: 5000, bonus: 1500, basePriceNGN: 18000, prices: { NGN: '₦18,000', USD: '$95.00', GBP: '£85.99' }, icon: 'fa-crown', status: 'active' },
 ];
 
 async function seed(Model, rows) {
@@ -133,10 +133,10 @@ function legsOf(doc) {
   }
   return out;
 }
-function usdOf(legs, doc) {
-  if (legs.USD) return parseFloat(legs.USD.replace(/[^0-9.]/g, '')) || 0;
-  const n = Number(doc && doc.basePriceNGN);
-  return isFinite(n) ? n : 0;
+// No USD leg means there IS no USD price. Falling back to basePriceNGN shipped
+// the naira number under a dollar label (₦1,500 read as "priceUSD: 1500").
+function usdOf(legs) {
+  return legs.USD ? parseFloat(legs.USD.replace(/[^0-9.]/g, '')) || 0 : 0;
 }
 function metaOf(doc) {
   return doc && doc.meta && typeof doc.meta === 'object' ? doc.meta : {};
@@ -161,7 +161,7 @@ function packOut(p) {
     id: p.code, code: p.code, coins: p.coins, bonusPct,
     bonusCoins: Math.round((p.coins || 0) * bonusPct / 100),
     basePriceNGN: baseNGNOf(p, prices),
-    price: m.price || priceLine(prices, p), priceUSD: usdOf(prices, p), prices,
+    price: m.price || priceLine(prices, p), priceUSD: usdOf(prices), prices,
     badge: m.badge || '', color: m.color || '#FF2D6A', icon: m.icon || 'fa-coins',
     title: m.name || (p.coins + ' Coins'),
   };
@@ -171,7 +171,7 @@ function bundleOut(b) {
   return {
     id: b.code, code: b.code, name: m.name || b.name, coins: b.coins, bonus: Number(b.bonus) || 0,
     basePriceNGN: baseNGNOf(b, prices),
-    price: m.price || priceLine(prices, b), priceUSD: usdOf(prices, b), prices,
+    price: m.price || priceLine(prices, b), priceUSD: usdOf(prices), prices,
     icon: m.icon || b.icon || 'fa-gift', color: m.color || b.color || '#7c3aed',
   };
 }
@@ -182,7 +182,7 @@ function subOut(s) {
     features: s.features || [], badge: m.badge || s.badge || '', icon: m.icon || s.icon || 'fa-crown',
     color: m.color || s.color || '#FF2D6A',
     basePriceNGN: baseNGNOf(s, prices),
-    price: m.price || priceLine(prices, s), priceUSD: usdOf(prices, s), prices,
+    price: m.price || priceLine(prices, s), priceUSD: usdOf(prices), prices,
     coinsPerDay: s.coinsPerDay, bonusPercent: s.bonusPercent,
   };
 }
@@ -228,7 +228,7 @@ async function catalog() {
     gifts: g.map(giftOut),
     adRewards: a.map(rewardOut).filter(Boolean),
     subscriptions: subs.filter((x) => x.code !== 'sub-merge'),
-    mergeSub: merge || {},
+    mergeSub: merge || null,
   };
 }
 

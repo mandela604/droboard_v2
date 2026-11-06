@@ -1,0 +1,13 @@
+
+> droboard-backend@0.1.0 smoke:flow
+> node scripts/smoke-user-book-flow.cjs
+
+Starting the MongoMemoryServer Instance failed, enable debug log for more information. Error:
+ GenericMMSError: Instance failed to start within 10000ms
+    at Timeout.<anonymous> (C:\Users\USER\OneDrive\Desktop\Droboard-V2\backend\node_modules\mongodb-memory-server-core\lib\util\MongoInstance.js:174:29)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+HARNESS ERROR Error: Instance failed to start within 10000ms
+    at Timeout.<anonymous> (C:\Users\USER\OneDrive\Desktop\Droboard-V2\backend\node_modules\mongodb-memory-server-core\lib\util\MongoInstance.js:174:29)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)

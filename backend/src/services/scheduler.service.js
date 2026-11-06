@@ -6,9 +6,11 @@ const { Chapter, Book } = require('../models/content.model');
 const INTERVAL_MS = 60 * 1000;
 const BILL_INTERVAL_MS = 60 * 60 * 1000;
 const FX_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const LEAGUE_INTERVAL_MS = 60 * 60 * 1000;
 let _timer = null;
 let _lastBillRun = 0;
 let _lastFxRun = 0;
+let _lastLeagueRun = 0;
 
 // A scheduled chapter only goes live with its book: scheduling must never be
 // a way around review, so a manuscript still in draft/under_review stays put.
@@ -48,9 +50,17 @@ async function refreshFx({ force } = {}) {
   return svc.refresh().catch(() => null);
 }
 
+// Reader league prizes settle once the week is over. Hourly rather than a
+// Monday-only cron: the write is one badge per reader per season with
+// $setOnInsert, so a retry after downtime costs nothing and cannot double-award.
+async function leagueRollover() {
+  return require('./marketing-surfaces.service').awardLeagueBadges().catch(() => null);
+}
+
 function start() {
   if (_timer) return _timer;
   refreshFx().catch(() => {}); // seed on boot when stale/missing
+  leagueRollover().catch(() => {}); // settle the week that just ended
   _timer = setInterval(() => {
     publishDue().catch(() => {});
     const now = Date.now();
@@ -62,9 +72,13 @@ function start() {
       _lastFxRun = now;
       refreshFx().catch(() => {});
     }
+    if (now - _lastLeagueRun >= LEAGUE_INTERVAL_MS) {
+      _lastLeagueRun = now;
+      leagueRollover().catch(() => {});
+    }
   }, INTERVAL_MS);
   if (_timer.unref) _timer.unref();
   return _timer;
 }
 
-module.exports = { start, publishDue, editorFixedBills, refreshFx, INTERVAL_MS, FX_INTERVAL_MS };
+module.exports = { start, publishDue, editorFixedBills, refreshFx, leagueRollover, INTERVAL_MS, FX_INTERVAL_MS, LEAGUE_INTERVAL_MS };
