@@ -6,7 +6,6 @@
 (function () {
   'use strict';
 
-  const USE_API = false;
   const API_BASE = '/api';
 
   const GENRES = [
@@ -244,20 +243,17 @@
      server returns rather than only what the browser shuffles. */
   async function renderRecRow() {
     let rows = null;
-    if (USE_API) {
-      const key = tasteKey();
-      if (LAST_DISCOVER && key === LAST_TASTE) rows = LAST_DISCOVER.recommended;
-      else {
-        try {
-          const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
-          if (res.ok) {
-            const j = await res.json();
-            if (Array.isArray(j.recommended)) { LAST_DISCOVER = j; LAST_TASTE = key; rows = j.recommended; }
-          }
-        } catch (e) { /* the row the page already has stands */ }
+    const key = tasteKey();
+    if (LAST_DISCOVER && key === LAST_TASTE) {
+      rows = LAST_DISCOVER.recommended;
+    } else {
+      const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
+      if (res.ok) {
+        const j = await res.json();
+        if (Array.isArray(j.recommended)) { LAST_DISCOVER = j; LAST_TASTE = key; rows = j.recommended; }
       }
     }
-    if (!rows || !rows.length) rows = buildRecommended();
+    if (!rows) rows = [];
     DiscoverCard.renderRow('recRow', rows, 'No recommendations yet.');
     renderTuneChip();
   }
@@ -446,66 +442,25 @@
   }
 
   async function fetchDiscoverData() {
-    if (USE_API) {
-      /* credentials: the feed personalizes recommended + continue-reading from
-         the reader's tastes/history, so /discover needs the access cookie. */
-      const key = tasteKey();
-      const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Discover API failed');
-      const j = await res.json();
-      LAST_DISCOVER = j; LAST_TASTE = key;
-      return j;
-    }
-    await new Promise(r => setTimeout(r, 100));
-    return {
-      heroes: buildHeroes(), topRated: buildTopRated(),
-      topRomance: buildTopRomance(), trending: buildTrending(),
-      collections: buildCollections(), newReleases: buildNewReleases(),
-      editorsPicks: buildEditorsPicks(), recommended: buildRecommended(),
-      complete: buildComplete(), recentlyUpdated: buildRecentlyUpdated(),
-      moreStories: buildMoreStories(),
-    };
+    const key = tasteKey();
+    const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Discover API failed: ' + res.status);
+    const j = await res.json();
+    LAST_DISCOVER = j; LAST_TASTE = key;
+    return j;
   }
 
   async function fetchDiscoverAds() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/discover/ads`);
-      if (!res.ok) throw new Error('Ads API failed');
-      return res.json();
-    }
-    // Central inventory (ad-service) first; local build as fallback
-    if (window.AdService) {
-      try {
-        const placement = await AdService.getPlacement('discover');
-        if (placement.interval) AD_INTERVAL = placement.interval;
-        if (Array.isArray(placement.cycle) && placement.cycle.length) AD_CYCLE = placement.cycle;
-        const pools = await AdService.getAds({ page: 'discover' });
-        if ((pools.platform || []).length || (pools.book || []).length) {
-          return { platformAds: pools.platform || [], bookAds: pools.book || [] };
-        }
-      } catch (e) {}
-    }
-    return { platformAds: [], bookAds: [] };
+    const res = await fetch(`${API_BASE}/discover/ads`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Ads API failed: ' + res.status);
+    return res.json();
   }
 
   async function fetchMoreStories(page, limit) {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/discover/stories?page=${page}&limit=${limit}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Stories API failed');
-      return res.json();
-    }
-    await new Promise(r => setTimeout(r, 500));
-    const all = buildMoreStories();
-    const expanded = [];
-    while (expanded.length < 50) {
-      all.forEach((s, i) => {
-        if (expanded.length >= 50) return;
-        expanded.push({ ...s, img: window.DemoData.c((i + expanded.length) % window.DemoData.COVERS.length) });
-      });
-    }
-    const start = (page - 1) * limit;
-    const items = expanded.slice(start, start + limit);
-    return { items, hasMore: start + limit < expanded.length };
+  async function fetchMoreStories(page, limit) {
+    const res = await fetch(`${API_BASE}/discover/stories?page=${page}&limit=${limit}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Stories API failed: ' + res.status);
+    return res.json();
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -818,17 +773,13 @@
     const _tc = document.querySelector('meta[name="theme-color"]');
     if (_tc) _tc.content = '#000000';
     let data;
-    try { data = await fetchDiscoverData(); } catch (e) { data = { heroes: [], topRated: [], topRomance: [], trending: [], collections: [], newReleases: [], editorsPicks: [], recommended: [], complete: [], recentlyUpdated: [], moreStories: [] }; }
-    // Collections are part of this module's live gate like every other row:
-    // with USE_API off the whole page is demo, and one live row must not
-    // quietly replace the demo grid.
-    if (USE_API) {
-      try {
-        const lr = await fetch('/api/collections?limit=12&sort=popular', { credentials: 'include' });
-        if (lr.ok) { const lj = await lr.json(); if (Array.isArray(lj) && lj.length) data.collections = lj; }
-      } catch (e) { /* demo row stands */ }
-    }
-    try { ADS = await fetchDiscoverAds(); } catch (e) { ADS = { platformAds: [], bookAds: [] }; }
+    data = await fetchDiscoverData();
+    // Always fetch live collections
+    try {
+      const lr = await fetch('/api/collections?limit=12&sort=popular', { credentials: 'include' });
+      if (lr.ok) { const lj = await lr.json(); if (Array.isArray(lj) && lj.length) data.collections = lj; }
+    } catch (e) { data.collections = data.collections || []; }
+    ADS = await fetchDiscoverAds();
     ADS.platformAds = ADS.platformAds || [];
     ADS.bookAds = ADS.bookAds || [];
 

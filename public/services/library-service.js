@@ -5,90 +5,46 @@
 (function () {
   'use strict';
 
-  const USE_API = false;
+  const USE_API = true;
   const API_BASE = '/api';
 
   async function getStats() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/stats`, { credentials:'include' });
-      if (!res.ok) throw new Error('Library Stats API failed');
-      return res.json();
-    }
-    await new Promise(r => setTimeout(r, 60));
-    const d = window.DemoData;
-    const lib = d.LIBRARY || [];
-    const inProgress = lib.filter(s => s.status === 'progress').length;
-    const finished = lib.filter(s => s.status === 'finished').length;
-    return { inProgress, finished, hoursRead: 48 };
+    const res = await fetch(`${API_BASE}/library/stats`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Library Stats API failed: ' + res.status);
+    return res.json();
   }
 
   async function getPromoSlides() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/promo`, { credentials:'include' });
-      if (!res.ok) throw new Error('Library Promo API failed');
-      return res.json();
-    }
-    if (window.AdService) {
-      try { return await AdService.getPromoSlides({ page: 'library' }); }
-      catch (e) {}
-    }
-    return [];
+    const res = await fetch(`${API_BASE}/library/promo`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Library Promo API failed: ' + res.status);
+    return res.json();
   }
 
   async function getContinueReading() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/continue`, { credentials:'include' });
-      if (!res.ok) throw new Error('Continue Reading API failed');
-      return res.json();
-    }
-    await new Promise(r => setTimeout(r, 80));
-    const d = window.DemoData;
-    return (d.CONTINUE_READING || []).map(s => ({
-      ...s,
-      img: s.img || s.cover,
-    }));
+    const res = await fetch(`${API_BASE}/library/continue`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Continue Reading API failed: ' + res.status);
+    return res.json();
   }
 
   async function getLibrary() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/items`, { credentials:'include' });
-      if (!res.ok) throw new Error('Library API failed');
-      return res.json();
-    }
-    await new Promise(r => setTimeout(r, 100));
-    const d = window.DemoData;
-    return (d.LIBRARY || []).map(s => ({
-      ...s,
-      img: s.img || s.cover,
-    }));
+    const res = await fetch(`${API_BASE}/library/items`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Library API failed: ' + res.status);
+    return res.json();
   }
 
   async function getSaved() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/posts/saved`, { credentials:'include' });
-      if (!res.ok) throw new Error('Saved API failed');
-      return res.json();
-    }
-    await new Promise(r => setTimeout(r, 80));
-    const d = window.DemoData;
-    return (d.SAVED_POSTS || []).map(p => ({
-      ...p,
-      img: p.avatar,
-    }));
+    const res = await fetch(`${API_BASE}/posts/saved`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Saved API failed: ' + res.status);
+    const j = await res.json();
+    // backend returns { items, total, page, limit } — unwrap to array
+    const arr = Array.isArray(j) ? j : (j.items || []);
+    return arr.map(p => ({ ...p, img: p.avatar || p.image || '' }));
   }
 
   async function getHistory() {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/history`, { credentials:'include' });
-      if (!res.ok) throw new Error('History API failed');
-      return res.json();
-    }
-    await new Promise(r => setTimeout(r, 80));
-    const d = window.DemoData;
-    return (d.HISTORY || []).map(s => ({
-      ...s,
-      img: s.img || s.cover,
-    }));
+    const res = await fetch(`${API_BASE}/library/history`, { credentials: 'include' });
+    if (!res.ok) throw new Error('History API failed: ' + res.status);
+    return res.json();
   }
 
   window.LibraryData = {

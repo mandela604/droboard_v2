@@ -20,7 +20,7 @@
 
   /* Demo sources: profile seed first (approved visuals), central USERS
      directory second (every other user). Live: USE_API → /api/users. */
-  const USE_API = false;
+  const USE_API = true;
   const API_BASE = '/api';
 
   const seed = global.ProfileDemoSeed;
@@ -165,9 +165,8 @@
     const isOwner = sameHandle(raw.handle, me);
     const p = clone(raw);
     p.isOwner = isOwner;
-    // Demo reader->writer approval: editor approved our first book => writer.
-    // Gated on !USE_API so the backend owns this flag once the API is live.
-    if (isOwner && !USE_API && !p.isWriter) {
+    // Backend owns the isWriter flag — roles are set server-side on approval.
+    if (isOwner && !p.isWriter) {
       try {
         const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
         if (flow && flow.status === 'approved') {
@@ -203,173 +202,89 @@
 
   async function getProfile(handle) {
     const key = normalizeHandle(handle);
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/users/${encodeURIComponent(key)}`);
-      if (!res.ok) throw new Error('Profile API failed');
-      return presentProfile(await res.json());
-    }
-    await delay(180);
-    const presented = await presentProfile(ensureProfile(key));
-    if (!presented) return presented;
-    // overlay live collections when reachable: own full list when the viewer
-    // is the owner, privacy-filtered list otherwise. Demo seeds stay otherwise.
-    try {
-      const me = await getCurrentUserHandle();
-      const path = sameHandle(key, me)
-        ? '/collections?owner=me'
-        : '/collections?owner=' + encodeURIComponent(key);
-      const res = await api(path);
-      const live = res && res.ok ? res.json : null;
-      if (Array.isArray(live)) presented.collections = live.map(c => backendToProfile(c));
-    } catch (e) { /* demo stands */ }
-    return presented;
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(key)}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Profile API failed: ' + res.status);
+    const d = await res.json();
+    d.name = d.name || d.fullName || d.username || '';
+    d.handle = d.handle || d.username || '';
+    d.isOwner = !!d.isOwner;
+    return d;
   }
 
   async function updateProfile(handle, patch) {
-    const key = normalizeHandle(handle);
-    const allowed = ['name', 'bio', 'location', 'avatar', 'cover', 'about'];
+    const allowed = ['name', 'fullName', 'bio', 'location', 'avatar', 'cover', 'about'];
     const safe = {};
-    allowed.forEach(k => {
-      if (patch && patch[k] !== undefined) safe[k] = patch[k];
-    });
-    await delay(250);
-    const base = requireProfile(key);
-    if (safe.about !== undefined) {
-      base.about = Object.assign({}, base.about || {}, safe.about || {});
-      if (Array.isArray(safe.about.favoriteGenres)) {
-        base.genres = safe.about.favoriteGenres.slice();
-      }
-      delete safe.about;
-    }
-    Object.assign(base, safe);
-    return presentProfile(base);
+    allowed.forEach(k => { if (patch && patch[k] !== undefined) safe[k] = patch[k]; });
+    const r = await api('/users/me', { method: 'PATCH', body: JSON.stringify(safe) });
+    const updated = unwrap(r);
+    if (!updated) throw new Error('Update profile failed');
+    updated.name = updated.name || updated.fullName || updated.username || '';
+    updated.handle = updated.handle || updated.username || '';
+    return updated;
   }
 
   async function updateGenres(handle, genreIds) {
     const key = normalizeHandle(handle);
     const ids = Array.isArray(genreIds) ? genreIds.filter(Boolean) : [];
-    await delay(200);
-    const base = requireProfile(key);
-    base.genres = ids.slice();
-    base.about = base.about || {};
-    base.about.favoriteGenres = ids.slice();
-    return presentProfile(base);
+    const r = await api('/users/me', { method: 'PATCH', body: JSON.stringify({ genres: ids }) });
+    if (!unwrap(r)) throw new Error('Update genres failed');
+    return getProfile(key);
   }
 
   async function followUser(handle, targetHandle) {
     const key = normalizeHandle(handle);
     const target = normalizeHandle(targetHandle);
-    await delay(200);
-    const base = requireProfile(key);
-    base.following = base.following || [];
-    let row = base.following.find(f => f.name === target);
-    if (row) row.following = true;
-    else {
-      base.following.push({
-        name: target,
-        av: 'https://i.pravatar.cc/100?u=' + encodeURIComponent(target),
-        meta: 'On Droboard',
-        following: true,
-      });
-    }
-    base.stats = base.stats || {};
-    base.stats.following = base.following.filter(f => f.following).length;
-    return presentProfile(base);
+    await api('/users/' + encodeURIComponent(target) + '/follow', { method: 'POST' });
+    return getProfile(key);
   }
 
   async function unfollowUser(handle, targetHandle) {
     const key = normalizeHandle(handle);
     const target = normalizeHandle(targetHandle);
-    await delay(200);
-    const base = requireProfile(key);
-    base.following = base.following || [];
-    const row = base.following.find(f => f.name === target);
-    if (row) row.following = false;
-    base.stats = base.stats || {};
-    base.stats.following = base.following.filter(f => f.following).length;
-    return presentProfile(base);
+    await api('/users/' + encodeURIComponent(target) + '/follow', { method: 'DELETE' });
+    return getProfile(key);
   }
 
   async function createPost(handle, payload) {
     const key = normalizeHandle(handle);
-    const {
-      type = 'post', text = '', quote = '', caption = '', note = '',
+    const { type = 'post', text = '', quote = '', caption = '', note = '',
       chapterRef = null, storyRef = null, amaData = null, pinned = false,
-      image = '', poll = null, debateData = null,
-    } = payload || {};
-    await delay(300);
-    const base = requireProfile(key);
-    base.posts = base.posts || [];
-    const post = {
-      id: 'p_' + Date.now(), type, time: 'Just now', pinned: !!pinned,
-      liked: false, likes: 0, comments: 0, saved: false,
-      text, quote, caption, note, chapterRef, storyRef, amaData,
-    };
-    if (image) post.image = image;
-    if (poll) post.poll = poll;
-    if (debateData) post.debateData = debateData;
-    if (pinned) base.posts.forEach(p => { p.pinned = false; });
-    base.posts.unshift(post);
-    return presentProfile(base);
+      image = '', poll = null, debateData = null } = payload || {};
+    const body = { type, text, quote, caption, note, chapterRef, storyRef, amaData, pinned, image, poll, debateData };
+    const r = await api('/posts', { method: 'POST', body: JSON.stringify(body) });
+    if (!unwrap(r)) throw new Error('Create post failed');
+    return getProfile(key);
   }
 
   async function pinPost(handle, postId, pinned) {
     if (pinned === undefined) pinned = true;
     const key = normalizeHandle(handle);
-    await delay(200);
-    const base = requireProfile(key);
-    const post = findPost(base, postId);
-    if (pinned) (base.posts || []).forEach(p => { p.pinned = false; });
-    post.pinned = !!pinned;
-    if (post.pinned) {
-      base.posts = [post].concat(base.posts.filter(p => p.id !== postId));
-    }
-    return presentProfile(base);
+    await api('/posts/' + encodeURIComponent(postId), { method: 'PATCH', body: JSON.stringify({ pinned }) });
+    return getProfile(key);
   }
 
   async function likePost(handle, postId) {
     const key = normalizeHandle(handle);
-    await delay(120);
-    const base = requireProfile(key);
-    const post = findPost(base, postId);
-    if (!post.liked) {
-      post.liked = true;
-      post.likes = (post.likes || 0) + 1;
-    }
-    return presentProfile(base);
+    await api('/posts/' + encodeURIComponent(postId) + '/like', { method: 'POST' });
+    return getProfile(key);
   }
 
   async function unlikePost(handle, postId) {
     const key = normalizeHandle(handle);
-    await delay(120);
-    const base = requireProfile(key);
-    const post = findPost(base, postId);
-    if (post.liked) {
-      post.liked = false;
-      post.likes = Math.max(0, (post.likes || 0) - 1);
-    }
-    return presentProfile(base);
+    await api('/posts/' + encodeURIComponent(postId) + '/like', { method: 'DELETE' });
+    return getProfile(key);
   }
 
-  async function savePost(handle, postId, saved) {
-    if (saved === undefined) saved = true;
+  async function savePost(handle, postId) {
     const key = normalizeHandle(handle);
-    await delay(120);
-    const base = requireProfile(key);
-    const post = findPost(base, postId);
-    post.saved = !!saved;
-    base.stats = base.stats || {};
-    if (saved) base.stats.saved = (base.stats.saved || 0) + 1;
-    else base.stats.saved = Math.max(0, (base.stats.saved || 0) - 1);
-    return presentProfile(base);
+    await api('/posts/' + encodeURIComponent(postId) + '/save', { method: 'POST' });
+    return getProfile(key);
   }
 
   async function deletePost(handle, postId) {
     const key = normalizeHandle(handle);
-    await delay(200);
-    const base = requireProfile(key);
-    base.posts = (base.posts || []).filter(p => p.id !== postId);
-    return presentProfile(base);
+    await api('/posts/' + encodeURIComponent(postId), { method: 'DELETE' });
+    return getProfile(key);
   }
 
   async function updatePost(handle, postId, patch) {
