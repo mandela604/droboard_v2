@@ -63,6 +63,9 @@
     .dgc-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;background:rgba(167,139,250,.12);color:var(--purple,#a78bfa);letter-spacing:.02em}
     .dgc-badge.author{background:rgba(255,0,80,.08);color:var(--acc,#ff0050)}
     .dgc-time{font-size:11px;color:var(--tx-muted,#666);font-weight:600;margin-top:1px}
+    .dgc-genre{font:inherit;color:inherit;background:none;border:none;padding:0;margin:0;cursor:pointer;
+      font-weight:700;transition:color .15s}
+    .dgc-genre:hover{color:var(--acc,#ff0050);text-decoration:underline}
     .dgc-dots{
       width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
       color:var(--tx-muted,#666);font-size:14px;flex-shrink:0;background:none;border:none;cursor:pointer;font-family:inherit;
@@ -402,7 +405,19 @@
       .map(u => `<img class="dgc-part" src="${_esc(u)}" alt=""/>`)
       .join('');
 
-    const genreBit = _genreName ? ` · ${_esc(_genreName)}` : '';
+    /* Category under the name is its own control: clicking it opens that
+       board (genre-hub.html?genre=…). The feed bakes " · Genre" into the
+       time string, so strip it back out before rendering the chip. */
+    const genreName = p._genreName || _genreName || '';
+    const genreSlug = s => String(s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const genreId = p._genreId || p.genreId || (genreName ? genreSlug(genreName) : '');
+    let timeTxt = p.time || '';
+    if (genreName && timeTxt.indexOf(' · ' + genreName) !== -1) {
+      timeTxt = timeTxt.split(' · ' + genreName).join('');
+    }
+    const genreBit = genreName
+      ? ` <span class="dgc-sep">·</span> <button type="button" class="dgc-genre" data-dgc-genre="${_esc(genreId)}" title="Open the ${_esc(genreName)} board">${_esc(genreName)}</button>`
+      : '';
 
     return `<article class="dgc-post ${flags.join(' ')}" data-dgc-id="${_esc(p.id)}">
       <div class="dgc-head">
@@ -412,7 +427,7 @@
             <span class="dgc-name" data-dgc-name="${_esc(p.name || '')}">${_esc(p.name || '')}</span>
             ${badge}
           </div>
-          <div class="dgc-time">${_esc(p.time || '')}${genreBit}</div>
+          <div class="dgc-time">${_esc(timeTxt)}${genreBit}</div>
         </div>
         <button type="button" class="dgc-dots" data-dgc-dots="${_esc(p.id)}" aria-label="More"><i class="fas fa-ellipsis"></i></button>
       </div>
@@ -515,6 +530,7 @@
         const pollOpt = e.target.closest('[data-dgc-poll-opt]');
         if (pollOpt) {
           handled(() => {
+            if (window.RequireAuth && !RequireAuth.ensure('vote in this poll')) return;
             const [pid, idx] = pollOpt.dataset.dgcPollOpt.split(':');
             const p = _find(pid);
             if (p && typeof hooksNow.onPollVote === 'function') hooksNow.onPollVote(p, parseInt(idx, 10));
@@ -524,6 +540,7 @@
         const debSide = e.target.closest('[data-dgc-debate]');
         if (debSide) {
           handled(() => {
+            if (window.RequireAuth && !RequireAuth.ensure('vote in this debate')) return;
             const [pid, side] = debSide.dataset.dgcDebate.split(':');
             const p = _find(pid);
             if (p && typeof hooksNow.onDebateVote === 'function') hooksNow.onDebateVote(p, side);
@@ -541,8 +558,23 @@
         const like = e.target.closest('[data-dgc-like]');
         if (like) {
           handled(() => {
+            if (window.RequireAuth && !RequireAuth.ensure('like this post')) return;
             const p = _find(like.dataset.dgcLike);
             if (p && typeof hooksNow.onLike === 'function') hooksNow.onLike(p);
+          });
+          return;
+        }
+        /* Category chip → open that board. Username (data-dgc-name) keeps
+           going to the profile, comment/…See more (data-dgc-comment /
+           data-dgc-thread) keep going to the discussion. */
+        const gen = e.target.closest('[data-dgc-genre]');
+        if (gen) {
+          handled(() => {
+            const gid = gen.dataset.dgcGenre || '';
+            const card = gen.closest('[data-dgc-id]');
+            const p = card ? _find(card.dataset.dgcId) : null;
+            if (typeof hooksNow.onGenre === 'function') hooksNow.onGenre(p, gid);
+            else location.href = 'genre-hub.html?genre=' + encodeURIComponent(gid);
           });
           return;
         }

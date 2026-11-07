@@ -5,9 +5,12 @@
    (so your own actions move your rank live). Live: swap the demo fns for:
 
      GET  /api/league/board?season=YYYY-Www&scope=weekly|alltime
-       → { season, endsAt, entries: [{ handle,name,avatar,points,parts }] }
+       → { season, endsIn, entries: [{ handle,name,avatar,points,parts }], me,
+           enabled, weights, actionLabels, actionIcons, prizes }
+         (config rides along because the only config endpoint is staff-gated)
      POST /api/league/track  { action, n }   (chapter|hour|reaction|comment|debate|win|streak)
      GET  /api/league/me      → { rank, points, gapToNext, badges[] }
+         (badges are awarded server-side when the week settles, not claimed here)
 
    SCORING (activity blend — social readers can beat pure bingers):
      chapter finished 10 · hour read 5 · reaction given 2 · comment/reply 8

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<title>Trending in hubs · DroBoard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<link rel="stylesheet" href="../shared/theme.css"/>
+<style>
+:root{--safe-b:env(safe-area-inset-bottom,12px)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:var(--font-ui)}
+body{display:flex;justify-content:center;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{display:none}
+.phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);
+  box-shadow:0 0 50px rgba(0,0,0,.10);display:flex;flex-direction:column;
+  padding-bottom:calc(var(--safe-b) + 16px)}
+.top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px;
+  padding:11px 12px;background:var(--card);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+.top-icon-btn{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--tx-muted);flex-shrink:0}
+.top-center{flex:1;min-width:0}
+.top-title{font-size:15px;font-weight:800;color:var(--tx-high)}
+.top-sub{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-top:1px}
+#feed{display:flex;flex-direction:column}
+.load-more{margin:6px 14px 8px;padding:13px;border-radius:12px;background:var(--l2);
+  border:1px solid var(--bd);font-size:13px;font-weight:800;color:var(--tx-high);width:calc(100% - 28px)}
+.load-more:disabled{opacity:.6}
+.empty{padding:48px 20px;text-align:center;color:var(--tx-muted);font-size:13px}
+.toast{position:fixed;bottom:calc(var(--safe-b) + 24px);left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:9px 16px;border-radius:24px;
+  font-size:12px;font-weight:600;z-index:900;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+<script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
+<script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../services/notification-store.js"></script>
+<script src="../services/notification-service.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
+<script src="../component/app-nav.js?v=7"></script>
+</head>
+<body>
+<div class="phone">
+  <div class="top-bar">
+    <button type="button" class="top-icon-btn" id="backBtn" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <div class="top-center">
+      <div class="top-title"><i class="fas fa-bolt" style="color:var(--acc)"></i> Trending in hubs</div>
+      <div class="top-sub">Hot discussions across every board</div>
+    </div>
+  </div>
+
+  <div id="feed"></div>
+  <button type="button" class="load-more" id="loadMore" style="display:none">Load more</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="../data/genre-demo-seed.js"></script>
+<script src="../data/central-demo-data.js"></script>
+<script src="../services/feed-data.js?v=3"></script>
+<script src="../component/reaction-picker.js?v=5"></script>
+<script src="../component/share-modal.js?v=5"></script>
+<script src="../component/report-sheet.js"></script>
+<script src="../component/dots-menu.js?v=2"></script>
+<script src="../component/genre-card.js?v=13"></script>
+<script src="../component/bottom-nav.js"></script>
+<script src="../component/hamburger-menu.js"></script>
+<script src="../component/search-overlay.js?v=5"></script>
+<script src="../services/auth-session.js?v=3"></script>
+<!-- Ad stack — same order as feed/genre-hub: marketing store → creative
+     renderer → serving/placement config → revenue booking → slot filler.
+     The 'trending' surface + 'trending:in-feed' slot are registered in
+     marketing/shared/ad-setup-data.js and backend config/adSurfaces.js. -->
+<script src="../marketing/shared/marketing-data.js"></script>
+<script src="../component/ad-card.js?v=10"></script>
+<script src="../services/ad-service.js?v=7"></script>
+<script src="../services/ad-revenue-service.js?v=10"></script>
+<script src="../component/ad-slot.js?v=3"></script>
+<script src="../services/trending-service.js"></script>
+<script>TrendingPage.init();</script>
+<script src="../shared/theme-chrome.js"></script>
+</body>
+</html>

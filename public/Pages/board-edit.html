@@ -68,7 +68,7 @@
 <body>
 
 <div class="topbar">
-  <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+  <div class="tb-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
   <div class="tb-titles">
     <div class="tb-h">Edit hub</div>
     <div class="tb-sub" id="tbSub">Loading…</div>
@@ -125,7 +125,9 @@
 
 <script src="../data/genre-demo-seed.js"></script>
 <script src="../shared/ui-helpers.js"></script>
-<script src="../services/genre-hub-edit-service.js"></script>
+<script src="../services/board-edit-service.js"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

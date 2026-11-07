@@ -182,6 +182,18 @@ function googleStart(){
 }
 el('googleBtn').addEventListener('click', googleStart);
 
+/* Deep link from the auth wall (login.html?next=…&google=1): the guest
+   tapped "Continue with Google" on another page, so start the flow for
+   them instead of making them press the button again. */
+(function autoStartGoogle(){
+  var p = new URLSearchParams(location.search);
+  if (p.get('google') !== '1') return;
+  p.delete('google');
+  var q = p.toString();
+  try{ history.replaceState(null, '', location.pathname + (q ? '?' + q : '')); }catch(e){}
+  setTimeout(googleStart, 0);
+})();
+
 (function handleOAuthCallback(){
   const p = new URLSearchParams(location.search);
   const code = p.get('code');

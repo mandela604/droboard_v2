@@ -17,7 +17,11 @@
 (function () {
   'use strict';
 
-  const USE_API = false;
+  // Use the real API only when served from a proper backend host.
+  // file:// (OneDrive / local disk) and localhost both stay on demo data.
+  const USE_API = location.protocol !== 'file:' &&
+    !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(location.hostname) &&
+    !/netlify\.app$/.test(location.hostname);
   const API_BASE = '/api';
   const OVERRIDE_KEY = 'dro_ads_override';
   const STATS_KEY = 'dro_ads_stats';
@@ -148,6 +152,17 @@
       if (live) return Object.assign({}, base, live);
     } catch (e) {}
     return base;
+  }
+
+  /* Public: the resolved config for ONE slot id — kill switch, format pin,
+     frequency cap. Same cached placement map the serving path already uses, so
+     a cap check costs no extra request. Slot ids are namespaced
+     ('discover:strip'), which is exactly how the map is keyed. */
+  async function getSlotConfig(page, slot) {
+    try {
+      const map = await backendPlacements();
+      return slotCfg(map && map[page], slot);
+    } catch (e) { return null; }
   }
 
   function dayStart(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
@@ -485,5 +500,5 @@
     });
   }
 
-  window.AdService = { getPlacement, getAds, getPromoSlides, getInventory, track, observe, newShowing, convert, getPerformance, readStats, getViewerId, spotlightStats };
+  window.AdService = { getPlacement, getSlotConfig, getAds, getPromoSlides, getInventory, track, observe, newShowing, convert, getPerformance, readStats, getViewerId, spotlightStats };
 })();

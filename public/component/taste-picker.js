@@ -1,19 +1,21 @@
 /* ===============================================================
-   TASTE PICKER - first-visit genre + trope chooser for Discover.
-   Shown once (localStorage dro_tastes_seen). Both steps skippable.
+   TASTE PICKER - genre + trope FILTER for the Discover recommended
+   row. Opened only from the "Tune your feed" chip: there is no
+   first-visit onboarding any more.
    Saves dro_tastes = { genres:[...], tropes:[...] } which
    discover-service uses to personalize the Recommended row.
 
-   Usage:
-     DroboardTastePicker.maybeShow({ onDone: fn }); // first visit only
-     DroboardTastePicker.open({ onDone: fn });       // "Tune your feed" chip
+   This is a filter, not a profile fact: it never writes the genre
+   row on the reader's profile, and signing out clears it.
 
-   Live swap: persist dro_tastes via POST /api/profile/tastes.
+   Usage:
+     DroboardTastePicker.open({ onDone: fn });  // "Tune your feed" chip
+
+   Live swap: send dro_tastes as ?taste= on GET /api/feed/discover.
    =============================================================== */
 (function () {
   'use strict';
 
-  var SEEN_KEY = 'dro_tastes_seen';
   var PREF_KEY = 'dro_tastes';
 
   var TROPES_BY_GENRE = {
@@ -216,24 +218,10 @@
         localStorage.setItem(PREF_KEY, JSON.stringify({ genres: _genres.slice(), tropes: _tropeSel.slice(), at: Date.now() }));
       } catch (e) {}
     }
-    try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
     var cb = _cb;
     _cb = null;
     _step = 1;
     if (typeof cb === 'function') { try { cb(); } catch (e) {} }
-  }
-
-  function maybeShow(opts) {
-    _cb = (opts && opts.onDone) || null;
-    var seen = null;
-    try { seen = localStorage.getItem(SEEN_KEY); } catch (e) {}
-    if (seen) {
-      var cb = _cb; _cb = null;
-      if (typeof cb === 'function') { try { cb(); } catch (e) {} }
-      return false;
-    }
-    setTimeout(_open, 400);
-    return true;
   }
 
   function open(opts) {
@@ -243,5 +231,5 @@
 
   function prefs() { return _read(PREF_KEY, null); }
 
-  window.DroboardTastePicker = { maybeShow: maybeShow, open: open, prefs: prefs };
+  window.DroboardTastePicker = { open: open, prefs: prefs };
 })();

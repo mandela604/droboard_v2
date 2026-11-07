@@ -33,6 +33,7 @@
     .dn-badge.mention{background:#1d9bf0}.dn-badge.coin{background:#22c55e}.dn-badge.follow{background:#7c5cff}
     .dn-badge.trophy{background:#f59e0b}.dn-badge.check{background:#22c55e}.dn-badge.gift{background:#ff2d55}
     .dn-badge.alert{background:#ef4444}.dn-badge.payout{background:#22c55e}.dn-badge.chart{background:#f59e0b}
+    .dn-badge.chat{background:#2563eb}
     .dn-body{flex:1;min-width:0}
     .dn-title{font-size:13px;font-weight:650;line-height:1.35}
     .dn-title b{font-weight:800}
@@ -62,10 +63,15 @@
     .dn-menu button i{width:14px;font-size:11px;color:var(--muted,#8e8e93)}
     .dn-menu button.danger i{color:#c92a2a}
 
-    /* milestone — trending / top-10 / editor pick / league finish */
+    /* milestone — trending / top-10 / editor pick / league finish.
+       One card, one row: the story on the left, its numbers welded to the right
+       edge so the stats sit INSIDE the card instead of on a strip below it. */
     .dn-card.dn-milestone{padding:0;overflow:hidden;border:none;background:var(--card,#fff);
-      box-shadow:0 1px 4px rgba(0,0,0,.05)}
-    .dn-milestone-inner{padding:14px;display:flex;gap:12px;align-items:flex-start}
+      box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;align-items:stretch}
+    .dn-milestone-inner{padding:14px;display:flex;gap:12px;align-items:flex-start;
+      flex:1;min-width:0;position:relative}
+    .dn-card.dn-milestone .dn-title{font-size:15px;font-weight:800;line-height:1.3}
+    .dn-card.dn-milestone .dn-desc{font-size:12.5px;margin-top:4px}
     .dn-ms-medal{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
       font-size:19px;flex-shrink:0;background:linear-gradient(140deg,#fff0c2,#ffd27a);color:#9a6508}
     .dn-ms-medal.rank{background:linear-gradient(140deg,#ffe3ec,#ffb3c8);color:#c2185b}
@@ -75,12 +81,20 @@
     .dn-ms-cover img{width:100%;height:100%;object-fit:cover;display:block}
     .dn-ms-rank{font-size:19px;font-weight:900;letter-spacing:-.02em;line-height:1;color:var(--text,#1a1a1a)}
     .dn-ms-rank span{font-size:11px;font-weight:750;color:var(--muted,#8e8e93);margin-left:4px}
-    .dn-ms-strip{display:flex;gap:0;background:var(--bg,#f7f7f9);border-top:1px solid var(--border,#ececee)}
-    .dn-ms-stat{flex:1;padding:9px 6px;text-align:center;border-right:1px solid var(--border,#ececee)}
+    .dn-ms-strip{display:flex;flex-shrink:0;background:var(--bg,#f7f7f9);
+      border-left:1px solid var(--border,#ececee)}
+    .dn-ms-stat{display:flex;flex-direction:column;justify-content:center;
+      padding:12px 13px;text-align:center;border-right:1px solid var(--border,#ececee);min-width:64px}
     .dn-ms-stat:last-child{border-right:none}
-    .dn-ms-stat b{display:block;font-size:13px;font-weight:850;line-height:1.2}
-    .dn-ms-stat span{font-size:9.5px;font-weight:650;color:var(--muted,#8e8e93);text-transform:uppercase;letter-spacing:.04em}
-    .dn-ms-dot{position:absolute;right:12px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--pink,#ff2d55);z-index:2}
+    .dn-ms-stat b{display:block;font-size:15px;font-weight:850;line-height:1.15}
+    .dn-ms-stat span{font-size:9.5px;font-weight:650;color:var(--muted,#8e8e93);text-transform:uppercase;
+      letter-spacing:.04em;line-height:1.25}
+    /* phones: slide the panel back under the content so the text keeps its room */
+    @media (max-width:480px){
+      .dn-card.dn-milestone{flex-direction:column}
+      .dn-ms-strip{border-left:none;border-top:1px solid var(--border,#ececee)}
+      .dn-ms-stat{flex:1}
+    }
 
     /* digest — 24h post summary / weekly rollup */
     .dn-card.dn-digest{flex-direction:column;gap:10px}
@@ -118,7 +132,7 @@
   const BADGE_ICON = {
     heart: 'fa-heart', book: 'fa-book', comment: 'fa-comment', mention: 'fa-at', coin: 'fa-arrow-up',
     follow: 'fa-user-plus', trophy: 'fa-star', check: 'fa-check', gift: 'fa-gift', alert: 'fa-shield-halved',
-    payout: 'fa-building-columns', chart: 'fa-chart-line', award: 'fa-award',
+    payout: 'fa-building-columns', chart: 'fa-chart-line', award: 'fa-award', chat: 'fa-comment-dots',
   };
 
   function _esc(s) {
@@ -197,7 +211,6 @@
   function _milestone(n) {
     const stats = (n.metrics || []).slice(0, 3);
     return '<div class="dn-card dn-milestone' + (n.unread ? ' unread' : '') + '" data-dn-id="' + _esc(n.id) + '">'
-      + (n.unread ? '<span class="dn-ms-dot"></span>' : '')
       + '<div class="dn-milestone-inner">'
       + (n.cover ? '<div class="dn-ms-cover"><img src="' + _esc(n.cover) + '" alt="" loading="lazy"/></div>'
         : '<div class="dn-ms-medal ' + _esc(n.medal || '') + '"><i class="fas ' + _esc(n.iconName || 'fa-trophy') + '"></i></div>')

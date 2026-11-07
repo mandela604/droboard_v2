@@ -68,16 +68,6 @@
       ],
     },
 
-    /* ── Story Management ── */
-    storyManagement: {
-      stories: [
-        { id: 'ST-001', title: 'Bound by the Ruthless Alpha', author: 'Chioma Okafor', genre: 'Romance & Betrayal', chapters: 31, status: 'ongoing', lastUpdated: '2d ago', words: 124000, rating: 4.5 },
-        { id: 'ST-002', title: 'The CEO\'s Hidden Son', author: 'Luna Skye', genre: 'Billionaire & CEO', chapters: 24, status: 'ongoing', lastUpdated: '1d ago', words: 96000, rating: 4.3 },
-        { id: 'ST-003', title: 'Wolf King\'s Vow', author: 'Elena Vasquez', genre: 'Werewolf & Fantasy', chapters: 12, status: 'ongoing', lastUpdated: '4h ago', words: 48000, rating: 4.1 },
-        { id: 'ST-004', title: 'Betrayed by the Mafia Prince', author: 'Marcus Webb Jr.', genre: 'Mafia & Urban', chapters: 7, status: 'ongoing', lastUpdated: '6h ago', words: 28000, rating: 3.9 },
-        { id: 'ST-005', title: 'The Duke\'s Secret', author: 'Isabelle Moreau', genre: 'Historical & Regency', chapters: 31, status: 'completed', lastUpdated: '1w ago', words: 155000, rating: 4.7 },
-      ],
-    },
 
     /* ── Authors ── */
     authors: [
@@ -231,11 +221,6 @@
     async updateReviewItem(id, action, feedback) {
       try { return await callBackend('/review-queue/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, feedback }) }); }
       catch (e) { await delay(200); const item = DEMO.reviewQueue.items.find(x => x.id === id); if (item) { item.status = action; if (feedback) item.feedback = feedback; } return { ok: true }; }
-    },
-    /* Story Management */
-    async getStories() {
-      try { return await callBackend('/stories'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.storyManagement)); }
     },
     /* Authors */
     async getAuthors() {

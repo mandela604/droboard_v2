@@ -25,7 +25,15 @@
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     return h;
   }
-  function _isLiveStatusId(id) { return /^[a-f0-9]{24}$/i.test(String(id || '')); }
+  /* A slide is "live" when its id came from the backend: ids are stored uuidv7
+     (8-4-4-4-12 hex), with the legacy 24-char ObjectId string as a fallback.
+     Demo ids ('my_…', 'fd:handle.0', 'usr:handle.0') match neither, so this is
+     the only reliable way to tell a real status from a seeded one. */
+  function _isLiveStatusId(id) {
+    var s = String(id || '');
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ||
+      /^[a-f0-9]{24}$/i.test(s);
+  }
 
   /* Stable guest id so a signed-out reader counts once per status, not once
      per open. Survives reloads; scoped to this browser. */
@@ -293,9 +301,10 @@
      people-service.js; only status seeds live HERE. Components call
      decorateWriters() with the people list and render the rings.
 
-     Live swap: replace writerStatuses() with a fetch to
+     Live swap: loadWriters(handles) fills the cache below from
        GET /api/statuses/writers?handles=a,b,c
        → [{ handle, statuses:[{ bg, quote, caption, time }] }]
+     and writerStatuses() reads it, so decorateWriters() stays synchronous.
      Viewed state persists through status-viewer.js's StatusStore
      (shared key), so nothing else changes.
      ═══════════════════════════════════════════════════════════════ */
@@ -310,6 +319,74 @@
   }
   function _normName(v) {
     return String(v || '').replace(/^@/, '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
+  }
+
+  /* Live lineups, keyed by lowercase handle, filled from
+     GET /api/statuses/writers?handles=. An entry here IS the backend's answer —
+     including the empty one, which means "no story, no ring" — so a handle we
+     have already asked about must never fall back to a demo seed. Viewed state
+     is NOT stored here: it stays client-side in StatusStore. */
+  var _liveWriters = {};
+  var _pending = {};
+
+  function _liveSlide(handle, s, i) {
+    var slide = {
+      id: String((s && s.id) || ''), bg: (s && s.bg) || '',
+      quote: (s && s.quote) || '', caption: (s && s.caption) || '',
+      time: (s && s.time) || 'Just now', ts: (s && s.ts) || Date.now(),
+      likes: (s && s.likes) || 0, liked: !!(s && s.liked),
+      isLive: !!(s && s.isLive), expiresAt: (s && s.expiresAt) || null,
+      viewed: false,
+    };
+    slide.viewed = _viewed(handle, slide, i);
+    return slide;
+  }
+
+  function _fetchBatch(missing) {
+    var p = fetch(API_BASE + '/statuses/writers?handles=' + encodeURIComponent(missing.join(',')),
+      { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) {
+        var got = {};
+        (rows || []).forEach(function (row) {
+          if (!row || !row.handle) return;
+          var k = String(row.handle).toLowerCase();
+          got[k] = (row.statuses || []).map(function (s, i) { return _liveSlide(k, s, i); });
+        });
+        missing.forEach(function (k) { _liveWriters[k] = got[k] || []; });
+      })
+      .catch(function () {
+        // Nothing was answered: let a later row retry rather than pinning
+        // every writer to "no ring" for the session.
+        missing.forEach(function (k) { delete _pending[k]; });
+      });
+    missing.forEach(function (k) { _pending[k] = p; });
+    return p;
+  }
+
+  /* Prefetch the rings for a Top Writers / browse row. Resolves once every
+     handle in the list has an answer; render stays synchronous through
+     writerStatuses(), which reads this cache. */
+  function loadWriters(handles) {
+    if (!USE_API) return Promise.resolve([]);
+    var list = [];
+    (handles || []).forEach(function (h) {
+      var k = String(h || '').replace(/^@/, '').trim().toLowerCase();
+      if (k && list.indexOf(k) === -1) list.push(k);
+    });
+    if (!list.length) return Promise.resolve([]);
+    var waits = [];
+    var missing = [];
+    list.forEach(function (k) {
+      if (_liveWriters[k]) return;
+      if (_pending[k]) { waits.push(_pending[k]); return; }
+      missing.push(k);
+    });
+    if (missing.length) waits.push(_fetchBatch(missing));
+    if (!waits.length) return Promise.resolve(list.map(function (k) { return _liveWriters[k]; }));
+    return Promise.all(waits).then(function () {
+      return list.map(function (k) { return _liveWriters[k] || []; });
+    });
   }
   /* Feed-row authors whose lineups only live in feed-data.js. Mirrored here
      so profile/search/discover show the SAME slides (and ids) as the feed. */
@@ -389,6 +466,15 @@
      no border at all when this returns empty. */
   function writerStatuses(handle) {
     var key = String(handle || '').replace(/^@/, '').toLowerCase();
+    // Already answered by the backend: use its slides, empty included — an
+    // invented lineup would give the avatar a ring no viewer can play.
+    if (_liveWriters[key]) {
+      // The payload's `viewed` is whoever asked. Re-read the client's own
+      // seen-state on every render, so a row redrawn after the reader opens
+      // a story shows the ring the StatusStore actually has.
+      _liveWriters[key].forEach(function (s, i) { s.viewed = _viewed(key, s, i); });
+      return _liveWriters[key];
+    }
     var canonical = _demoStatuses(key);
     return canonical || [];
   }
@@ -461,7 +547,7 @@
       var key = s.name || s.handle || s.id;
       // Never replace real API slides with demo lineups.
       var liveIds = (s.statuses || []).some(function (st) {
-        return st && /^[a-f0-9]{24}$/i.test(String(st.id || ''));
+        return st && _isLiveStatusId(st.id);
       });
       var canon = liveIds ? null : _demoStatuses(key);
       if (canon && canon.length) s.statuses = canon;
@@ -504,6 +590,7 @@
   window.DroboardStatus = {
     post: post, slides: slides, myEntry: myEntry, mergeStories: mergeStories, markViewed: markViewed,
     writerStatuses: writerStatuses, decorateWriters: decorateWriters, openWriterStatus: openWriterStatus,
+    loadWriters: loadWriters,
     profileStatuses: profileStatuses, profileEntry: profileEntry, ringOf: ringOf,
     registerStories: registerStories,
     // Views: shared adapter for the viewer + any page (live vs demo is USE_API)

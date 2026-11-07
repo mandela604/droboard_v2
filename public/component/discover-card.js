@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
    DISCOVER CARD COMPONENT
-   Reusable card renderers for discover page (horizontal rows,
-   list items, ads, writers row). Self-contained CSS injection.
+   The one card renderer for every story surface: Discover rows, the
+   "More Stories" feed and the browse overlay's genre list (which
+   skins these rows as raised cards). Self-contained CSS injection.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -36,7 +37,8 @@
 
     .dc-coll-card{flex:0 0 200px;width:200px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ebebed;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer}
     .dc-coll-covers{display:grid;grid-template-columns:1fr 1fr;height:100px}
-    .dc-coll-covers div{background-size:cover;background-position:center}
+    .dc-coll-covers div{background-size:cover;background-position:center;background-color:#f3f1f5}
+    .dc-coll-covers .dc-coll-ph{display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#c7c4cc;background:#f3f1f5}
     .dc-coll-info{padding:10px 12px}
     .dc-coll-name{font-size:13px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dc-coll-meta{font-size:11px;color:#8e8e93}
@@ -47,7 +49,6 @@
     .dc-list-cover-link,.dc-list-title-link{display:block;cursor:pointer}
     .dc-list-cover-link:active .dc-list-cover,.dc-list-title-link:active .dc-list-title{opacity:.7}
     .dc-list-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
-    .dc-list-genre{font-size:9px;font-weight:800;color:#ff2d55;text-transform:uppercase;letter-spacing:.05em}
     .dc-list-catrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
     .dc-list-cat{font-size:9px;font-weight:800;color:#8e8e93;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dc-list-trope{font-size:9px;font-weight:800;color:#ff2d55;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex-shrink:0}
@@ -57,18 +58,10 @@
     .dc-list-stat{display:flex;align-items:center;gap:3px;font-size:10px;color:#8e8e93;font-weight:600}
     .dc-list-author{color:#ff2d55;font-weight:800;cursor:pointer}
 
-    .dc-list-item.dc-ad{border:1px solid #e5e5ea;border-radius:12px;background:#fff;padding:12px;margin:6px 0}
-    .dc-ad-tag{position:absolute;top:6px;left:6px;z-index:2;font-size:7px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#999;color:#fff}
-    .dc-ad .dc-list-cover{border:1px solid #e5e5ea}
-    .dc-ad-cta{align-self:flex-start;margin-top:4px;font-size:10.5px;font-weight:800;color:#fff;background:#ff2d55;padding:5px 12px;border-radius:14px}
-
-    .dc-list-item.dc-book-ad{border:1.5px solid #c9a227;border-radius:12px;background:#fdf7e6;padding:10px;margin:4px 0;border-bottom:1.5px solid #c9a227}
-
     @keyframes dcIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .dc-list-item{animation:dcIn .2s ease both}
     [data-theme="dark"] .dc-coll-card{background:#0b0b10;border-color:rgba(255,255,255,.08)}
     [data-theme="dark"] .dc-list-item{border-bottom-color:rgba(255,255,255,.08)}
-    [data-theme="dark"] .dc-list-item.dc-ad{background:#0b0b10;border-color:rgba(255,255,255,.1)}
     [data-theme="dark"] .dc-scard-cover,[data-theme="dark"] .dc-list-cover{background:#1a1a24}
   `;
 
@@ -99,8 +92,10 @@
     else if (s.badge === 'update') badge = '<span class="dc-badge update">Update</span>';
     else if (s.rank) badge = `<span class="dc-rank">${s.rank}</span>`;
 let extra = '';
-    if (s.rating) extra = `<div class="dc-scard-rating">★ ${esc(s.rating)}</div>`;
-    else if (s.ch) extra = `<div class="dc-cont-ch">${esc(s.ch)}</div>${s.pct != null ? `<div class="dc-prog-track"><div class="dc-prog-fill" style="width:${s.pct}%"></div></div>` : ''}`;
+    // Continue-reading is the only card that carries `ch`, and there the
+    // progress bar is the whole point: rating must not win the branch.
+    if (s.ch) extra = `<div class="dc-cont-ch">${esc(s.ch)}</div>${s.pct != null ? `<div class="dc-prog-track"><div class="dc-prog-fill" style="width:${s.pct}%"></div></div>` : ''}`;
+    else if (s.rating) extra = `<div class="dc-scard-rating">★ ${esc(s.rating)}</div>`;
     else if (s.cat) extra = `<div class="dc-scard-cat">${esc(s.cat)}</div>`;
     else if (s.meta) extra = `<div class="dc-scard-meta">${esc(s.meta)}</div>`;
     const author = s.author
@@ -119,8 +114,19 @@ let extra = '';
   function collCard(col) {
     injectStyles();
     const id = col.id || (col.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    // A live collection with one story has one cover: it must fill the tile,
+    // not sit in the top-left quarter of a 2x2 grid.
+    const covers = (col.covers && col.covers.length ? col.covers : (col.cover ? [col.cover] : [])).filter(Boolean).slice(0, 4);
+    // A 2x2 grid with 1 or 3 covers leaves a blank cell, so those get the first
+    // tile full-width and the rest fall into a clean row.
+    const span = covers.length === 1 || covers.length === 3 ? ';grid-column:1/-1' : '';
+    // No art at all still gets a tile with the collection's initial, never a
+    // blank white box — an empty card tells the reader nothing.
+    const tiles = covers.length
+      ? covers.map(img => `<div style="background-image:url('${esc(img)}')${span}"></div>`).join('')
+      : `<div class="dc-coll-ph" style="grid-column:1/-1">${esc(String(col.name || '?').trim().charAt(0).toUpperCase())}</div>`;
     return `<a class="dc-coll-card" href="collection.html?id=${encodeURIComponent(id)}" style="text-decoration:none;color:inherit">
-      <div class="dc-coll-covers">${(col.covers || []).map(img => `<div style="background-image:url('${esc(img)}')"></div>`).join('')}</div>
+      <div class="dc-coll-covers">${tiles}</div>
       <div class="dc-coll-info">
         <div class="dc-coll-name">${esc(col.name)}</div>
         <div class="dc-coll-meta">${col.count} stories</div>
@@ -179,34 +185,16 @@ let extra = '';
     </div>`;
   }
 
+  /* Ad rows are the shared ad card, not a discover skin — one renderer,
+     so theme-safe ink and the golden book style land identically here. */
   function platformAdItem(ad) {
     injectStyles();
-    return `<div class="dc-list-item dc-ad" data-ad="platform" data-adid="${esc(ad.id || '')}">
-      <div class="dc-list-cover"><span class="dc-ad-tag">Ad</span><img src="${esc(ad.img)}" loading="lazy" alt=""/></div>
-      <div class="dc-list-body">
-        <div class="dc-list-genre">${esc(ad.sponsor || 'DroBoard')}</div>
-        <div class="dc-list-title">${esc(ad.title)}</div>
-        <div class="dc-ad-cta">${esc(ad.cta || 'Learn More')}</div>
-      </div>
-    </div>`;
+    return DroboardAdCard.renderListPlatform(ad);
   }
 
   function bookAdItem(ad) {
     injectStyles();
-    const href = storyHref(ad);
-    return `<div class="dc-list-item dc-book-ad" data-ad="book" data-adid="${esc(ad.id || '')}" data-href="${href}" style="cursor:pointer" onclick="if(!event.target.closest('a'))window.location.href=this.dataset.href">
-      <a class="dc-list-cover-link" href="${href}"><div class="dc-list-cover"><span class="dc-ad-tag">Promoted</span><img src="${esc(ad.img)}" loading="lazy" alt=""/></div></a>
-      <div class="dc-list-body">
-        <div class="dc-list-genre">${esc(ad.genre || '')}</div>
-        <a class="dc-list-title-link" href="${href}"><div class="dc-list-title">${esc(ad.title)}</div></a>
-        ${ad.preview ? `<div class="dc-list-preview">${esc(ad.preview)}</div>` : ''}
-        <div class="dc-list-foot">
-          <a class="dc-list-stat dc-list-author" href="${profileHref(ad.author)}" onclick="event.stopPropagation()">${esc(ad.author || '')}</a>
-          ${ad.rating ? `<div class="dc-list-stat"><i class="fas fa-star" style="color:#f59e0b"></i> ${esc(ad.rating)}</div>` : ''}
-          ${ad.chapters ? `<div class="dc-list-stat"><i class="fas fa-book-open"></i> ${ad.chapters} ch</div>` : ''}
-        </div>
-      </div>
-    </div>`;
+    return DroboardAdCard.renderListBook(ad);
   }
 
   function writersRow(writers) {

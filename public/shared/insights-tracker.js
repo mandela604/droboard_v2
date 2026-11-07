@@ -5,12 +5,14 @@
    filter Today / 7D / Month / All-time, compare vs the previous
    window, and rank Top countries (country guessed from timezone —
    live swap: read it from the request server-side).
-   localStorage (this device) until the backend owns analytics —
-   at cutover: POST /api/insights/hit and keep the read methods. */
+   localStorage (this device) is the offline copy — the server counter is
+   written at the same time via POST /api/track/insight, and the Insights
+   page reads the real numbers from GET /api/insights/:surface. */
 (function () {
   'use strict';
   var KEY = 'dro_insights_hits';
   var MAX_TS = 600; // cap stored hits per key
+  var UNIQUE_MS = 20 * 60 * 1000; // same dedupe window as tracking.service.js
 
   /* Timezone → country for the regions we care about; fallback is
      the tz city name so the list is never empty/unknown-only. */
@@ -73,6 +75,39 @@
   function save(all) {
     try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {}
   }
+  /* The server owns the counters now: every hit also lands in InsightHit so
+     the Insights page can read real numbers (and the edge geo header). The
+     local copy stays as the offline/demo record. */
+  /* Anonymous visitors are deduped server-side by this id — a signed-in
+     reader is keyed by their user id instead, so this only matters for
+     logged-out traffic. Minted once per browser, never derived from anything
+     the server could use to identify a person. */
+  var DEV_KEY = 'dro_device_id';
+  function deviceId() {
+    try {
+      var d = localStorage.getItem(DEV_KEY);
+      if (d) return d;
+      d = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+      localStorage.setItem(DEV_KEY, d);
+      return d;
+    } catch (e) { return ''; }
+  }
+  function sendHit(surface, id) {
+    try {
+      var body = JSON.stringify({
+        surface: surface, targetId: id ? String(id) : '',
+        country: detectCountry(), deviceId: deviceId(),
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/track/insight', new Blob([body], { type: 'application/json' }));
+        return;
+      }
+      fetch('/api/track/insight', {
+        method: 'POST', credentials: 'include', keepalive: true,
+        headers: { 'Content-Type': 'application/json' }, body: body,
+      }).catch(function () {});
+    } catch (e) {}
+  }
   function hitTime(x) { return typeof x === 'number' ? x : (x && x.t) || 0; }
   function hitCountry(x) { return (x && x.c) || 'Unknown'; }
   /* Legacy values were plain numbers, then bare timestamps —
@@ -113,6 +148,7 @@
       if (rec.ts.length > MAX_TS) rec.ts = rec.ts.slice(rec.ts.length - MAX_TS);
       all[key] = rec;
       save(all);
+      sendHit(surface, id);
     },
     /* Totals map {key: n} — backward compatible. */
     read: function () {
@@ -121,9 +157,22 @@
       Object.keys(raw).forEach(function (k) { out[k] = migrateRec(raw[k]).total; });
       return out;
     },
-    /* Page opens inside [since, now]. since=0 → all time. */
-    readPeriod: function (surface, id, since) {
+    /* Unique visits inside [since, now]: the same 20-minute rule the server
+       applies, replayed over this device's own timestamp list. This browser is
+       a single visitor, so the demo figure is a genuine count, not a fraction
+       of the raw total. */
+    readUnique: function (surface, id, since) {
       var all = load();
+      var key = id ? surface + ':' + id : surface;
+      var ts = migrateRec(all[key]).ts.map(hitTime).filter(function (t) { return t >= since; }).sort(function (a, b) { return a - b; });
+      var n = 0, last = -Infinity;
+      for (var i = 0; i < ts.length; i++) {
+        if (ts[i] - last >= UNIQUE_MS) { n++; last = ts[i]; }
+      }
+      return n;
+    },
+    /* Page opens inside [since, now]. since=0 → all time. */
+    readPeriod: function (surface, id, since) {      var all = load();
       var key = id ? surface + ':' + id : surface;
       var rec = migrateRec(all[key]);
       if (!since) return rec.total;

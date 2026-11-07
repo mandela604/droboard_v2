@@ -11,6 +11,9 @@
 
   let GENRE = null;
   let GENRE_ID = null;
+  /* Chip labels carry the display name ("Fantasy"); the URL wants the id
+     ("fantasy"). Used by the category-chip → board link. */
+  function genreSlug(s) { return String(s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
   let ALL_POSTS = [];
   let PROMO_SLIDES = [];
   let sort = 'all';
@@ -92,6 +95,18 @@
   }
 
   function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'genreHub', slot: 'genreHub:in-feed' }); } catch (e) {} }
+
+  /* Both markers are deferred because a frequency cap scoped to 'target'
+     counts per board, and GENRE_ID is only known after loadGenre(). */
+  function mountHubAd() {
+    [['genreHub:strip', ''], ['genreHub:popup', 'embed']].forEach(function (p) {
+      var el = document.querySelector('[data-ad-slot="' + p[0] + '"]');
+      if (!el || !window.DroboardAdSlot) return;
+      el.setAttribute('data-ad-target', GENRE_ID || '');
+      DroboardAdSlot.mount(el, { page: 'genreHub', slot: p[0], target: GENRE_ID || '', format: p[1] || 'auto' });
+    });
+  }
+
   function toast(msg, dur) {
     const t = document.getElementById('toast');
     if (!t) return;
@@ -189,7 +204,7 @@
     const eb = document.getElementById('hubEditBtn');
     if (eb) {
       if (isStaff()) eb.style.display = '';
-      eb.onclick = function () { location.href = 'genre-hub-edit.html?genre=' + encodeURIComponent(GENRE_ID); };
+      eb.onclick = function () { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE_ID); };
     }
   }
 
@@ -335,7 +350,7 @@
   function renderAbout() {
     const feed = document.getElementById('feed');
     feed.innerHTML = '<div style="padding:14px"><div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:14px">About '+GENRE.name+'</b><button id="aboutEditBtn" style="font-size:11px;font-weight:700;color:var(--acc);background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);padding:6px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div><div style="font-size:12px;line-height:1.6;color:var(--tx-body)" id="aboutBlurbView">'+(GENRE.blurb||'')+'</div><div id="aboutForm" style="display:none;margin-top:10px"><input id="aboutName" value="'+(GENRE.name||'').replace(/"/g,'&quot;')+'" placeholder="Genre name" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><input id="aboutTagline" value="'+(GENRE.tagline||'').replace(/"/g,'&quot;')+'" placeholder="Tagline" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><textarea id="aboutBlurb" rows="3" placeholder="About this hub" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:8px">'+(GENRE.blurb||'')+'</textarea><input id="aboutCover" value="'+(GENRE.cover||'').replace(/"/g,'&quot;')+'" placeholder="Cover image URL" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px"/><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--acc);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutDelete" style="flex:1;background:var(--l2);border:1px solid var(--bd);padding:10px;border-radius:10px;font-weight:700">Reset</button><button id="aboutCancel" style="flex:1;background:transparent;border:1px solid var(--bd);padding:10px;border-radius:10px">Cancel</button></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.members||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Members</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.stories||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Stories</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.discussions||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Threads</div></div></div></div>';
-    document.getElementById('aboutEditBtn').onclick = () => { location.href = 'genre-hub-edit.html?genre=' + encodeURIComponent(GENRE_ID) + '#details'; };
+    document.getElementById('aboutEditBtn').onclick = () => { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE_ID) + '#details'; };
     document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutBlurbView').style.display='block'; };
     document.getElementById('aboutSave').onclick = () => {
       const patch = { name: document.getElementById('aboutName').value.trim()||GENRE.name, tagline: document.getElementById('aboutTagline').value.trim(), blurb: document.getElementById('aboutBlurb').value.trim(), cover: document.getElementById('aboutCover').value.trim() };
@@ -605,6 +620,13 @@
         },
         onAvatar: (post) => { location.href = 'profile.html?u=' + encodeURIComponent(post.name || ''); },
         onNameClick: (post, name) => { location.href = 'profile.html?u=' + encodeURIComponent(name || (post && post.name) || ''); },
+        onGenre: (post, genreId) => {
+          const gid = genreSlug(genreId || GENRE_ID);
+          if (!gid || gid === genreSlug(GENRE_ID) || gid === genreSlug(GENRE.name)) {
+            toast('You are already in this board'); return;
+          }
+          location.href = 'genre-hub.html?genre=' + encodeURIComponent(gid);
+        },
         onPinned: () => toast('Hub rules…'),
       });
     }
@@ -871,6 +893,8 @@
     try { localStorage.removeItem(ghcDraftKey()); } catch(e){}
   }
   function openComposer() {
+    /* Posting needs an account — guests get the shared login wall. */
+    if (window.RequireAuth && !RequireAuth.ensure('start a discussion')) return;
     ensureHubComposer();
     refreshTropeOptions();
     const h=document.querySelector('#ghcOv .ghc-head div'); if(h) h.textContent='New in '+GENRE.name;
@@ -890,14 +914,17 @@
   }
   function initToTop() {
     const toTop = document.getElementById('toTop');
-    const sortRow = document.getElementById('sortRow');
     window.addEventListener('scroll', () => {
       const y = window.scrollY || document.documentElement.scrollTop;
       toTop.classList.toggle('show', y > 420);
     }, { passive: true });
+    /* Land at the top of the page. Do NOT compute a target from
+       sortRow.getBoundingClientRect(): .sort-row is position:sticky
+       (top:101px), so once stuck its rect.top is pinned at 101 and
+       `rect.top + scrollY - 110` collapses to `scrollY - 9` — the arrow
+       then nudges the page up by 9px and looks dead. */
     toTop.addEventListener('click', () => {
-      const top = sortRow.getBoundingClientRect().top + window.scrollY - 110;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
   function initFilterFab(){
@@ -956,6 +983,7 @@
       loadGenre();
       if (!GENRE) { GENRE={id:'fantasy',name:'Fantasy',tagline:'Where imagination becomes legend.',icon:'fa-hat-wizard',cover:'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&h=400&fit=crop',members:'45.7K',discussions:'3.2K',stories:'1.8K',blurb:'Discuss tropes.'}; GENRE_ID='fantasy'; ALL_POSTS=[{id:'pinned-fallback',pinned:true,title:'Welcome to Fantasy',desc:'Start a discussion.',likes:0,comments:0}]; }
       await loadHubAds();
+      mountHubAd();
     wireComponents();
     initFilters();
     initTropeFilter();

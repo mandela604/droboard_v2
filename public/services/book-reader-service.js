@@ -500,7 +500,7 @@ async function mountAdStrip() {
   } catch (e) { el.style.display = "none"; }
 }
 
-window.StoryReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, pickTeam: pickTeam, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
+window.StoryReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
 
 /* ══ REVIEWS — sorted + paginated (12 per page) ══ */
 const REV_PER_PAGE = 12;
@@ -567,7 +567,7 @@ function renderReviews() {
         <div class="rev-stars">${starHtml(t)}</div>
       </div>
       <div class="rev-text">${esc0(t.text)}</div>
-      <div class="rev-foot rev-helpful" data-rev="${esc0(t.id)}"><i class="${h ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.likes + (h ? 1 : 0))})</div>
+      <div class="rev-foot rev-helpful${h ? ' on' : ''}" data-rev="${esc0(t.id)}"><i class="${h ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.likes + (h ? 1 : 0))})</div>
     </div>`;
   }).join('');
 
@@ -584,12 +584,35 @@ function renderReviews() {
   el.querySelectorAll('[data-revpg]').forEach(b => b.addEventListener('click', () => { if (!b.disabled) revGoPage(+b.dataset.revpg); }));
   el.querySelectorAll('[data-rev]').forEach(b => b.addEventListener('click', () => helpfulTake(b.dataset.rev)));
 }
-function helpfulTake(id) {
+async function helpfulTake(id) {
   id = String(id);
-  if (helpfulPicks[id]) { toast('Already marked helpful'); return; }
-  helpfulPicks[id] = true;
+  const currently = !!helpfulPicks[id];
+  const wantMark = !currently;
+
+  /* ── Backend (live) ──
+     POST /api/stories/:bookId/ratings/:ratingId/helpful   → mark
+     DELETE /api/stories/:bookId/ratings/:ratingId/helpful → unmark
+     Falls back to local-only toggle when guest, offline, or API errors. */
+  if (window.AuthSession && AuthSession.isSignedIn()) {
+    try {
+      const method = wantMark ? 'POST' : 'DELETE';
+      const res = await fetch(`${API_BASE}/stories/${storyId}/ratings/${id}/helpful`, {
+        method,
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error('helpful api failed');
+      const data = await res.json();
+      helpfulPicks[id] = !!data.mineHelpful;
+    } catch (e) {
+      helpfulPicks[id] = wantMark;
+    }
+  } else {
+    helpfulPicks[id] = wantMark;
+  }
+
   renderReviews();
-  toast('👍 Marked helpful');
+  toast(helpfulPicks[id] ? '👍 Marked helpful' : 'Helpful removed');
 }
 /* Deterministic demo rating: explicit t.rating if seeded, else hash the
    take text → stable 3.5–5 stars (mostly high, feels real). */
@@ -786,27 +809,31 @@ function toggleSynopsis() {
   document.getElementById('synToggle').textContent = synExpanded ? 'Show less ‹' : 'Read more ›';
 }
 
-/* ══ TEAMS ══ */
-let teamPicked = null;
+/* ══ TEAMS ══
+   Read-only on this page. Joining happens while reading, never here. */
+function myTeamId() {
+  return STORY.myTeam || null;
+}
 
 function renderTeams() {
   const container = document.getElementById('teamsSection');
   const teams = STORY.teams;
   const tot = teams.reduce((a, t) => a + t.count, 0) || 1;
+  const mine = myTeamId();
 
   const colsClass = teams.length === 2 ? 'grid-template-columns:1fr 1fr' :
                     teams.length === 3 ? 'grid-template-columns:1fr 1fr 1fr' :
                     'grid-template-columns:1fr 1fr';
 
   const teamBtns = teams.map(t => `
-    <div class="team-btn${teamPicked === t.id ? ' selected' : ''}" data-team="${t.id}" onclick="StoryReaderPage.pickTeam('${t.id}')">
+    <div class="team-btn${mine === t.id ? ' selected' : ''}" data-team="${t.id}">
       <div class="team-icon">${t.icon}</div>
       <div class="team-info">
         <div class="team-name">${t.name}</div>
         <div class="team-count" id="tc-${t.id}">${fmtN(t.count)} readers</div>
       </div>
       <div class="team-check" id="tck-${t.id}">
-        <i class="${teamPicked === t.id ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
+        <i class="${mine === t.id ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
       </div>
     </div>`).join('');
 
@@ -824,7 +851,7 @@ function renderTeams() {
   container.innerHTML = `
     <div style="margin-bottom:14px">
       <div class="sh" style="margin-bottom:4px">
-        <div class="sh-title">Choose Your Side</div>
+        <div class="sh-title">Your Side</div>
         <div style="font-size:9px;color:var(--tx-muted);font-weight:600">${fmtN(tot)} readers have picked</div>
       </div>
       <div style="font-size:11px;color:var(--tx-muted);margin-bottom:12px">
@@ -835,11 +862,14 @@ function renderTeams() {
       <div class="team-bar-labels">${barLabels}</div>
     </div>
 
-    ${teamPicked ? `
+    ${mine ? `
     <div style="background:rgba(255,0,80,.06);border:1px solid var(--bd-acc);border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--tx-body);line-height:1.6;text-align:center">
-      You're on <strong style="color:${teams.find(t=>t.id===teamPicked)?.color}">${teams.find(t=>t.id===teamPicked)?.icon} ${teams.find(t=>t.id===teamPicked)?.name}</strong>!
+      You're on <strong style="color:${teams.find(t=>t.id===mine)?.color}">${teams.find(t=>t.id===mine)?.icon} ${teams.find(t=>t.id===mine)?.name}</strong>.
       Head to Debates to argue your case 👇
-    </div>` : ''}
+    </div>` : `
+    <div style="background:var(--l1);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--tx-muted);line-height:1.6;text-align:center">
+      You haven't picked a side yet. Join a team while reading to appear here.
+    </div>`}
 
     <div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px">
       <div class="sh-title" style="margin-bottom:10px">Team Breakdown</div>
@@ -858,22 +888,6 @@ function renderTeams() {
         </div>`;
       }).join('')}
     </div>`;
-}
-
-function pickTeam(id) {
-  const teams = STORY.teams;
-  if (teamPicked === id) return;
-  if (teamPicked) {
-    const prev = teams.find(t => t.id === teamPicked);
-    if (prev) prev.count--;
-  }
-  teamPicked = id;
-  const team = teams.find(t => t.id === id);
-  if (team) {
-    team.count++;
-    toast(`${team.icon} You're on ${team.name}!`);
-  }
-  renderTeams();
 }
 
 /* ══ POLLS & PREDICTIONS ══
@@ -933,7 +947,7 @@ function renderPolls() {
       `${STORY.id}-poll-${poll.id}`,
       poll.chapter || 1,
       mount,
-      '',
+      '',   // NO author note for polls
       {
         poll: {
           q: poll.question,
@@ -941,7 +955,7 @@ function renderPolls() {
           voted: poll.voted != null ? poll.voted : -1
         },
         kinds: { poll: true, pred: false, deb: false },
-        chapterLabel: chLabel(poll)
+        chapterLabel: poll.chapter == null ? '' : chLabel(poll)
       }
     );
   });
@@ -952,7 +966,7 @@ function renderPolls() {
       `${STORY.id}-pred-${pred.id}`,
       pred.chapter || 1,
       mount,
-      '',
+      '',   // NO author note for predictions
       {
         prediction: {
           q: pred.question,
@@ -960,7 +974,7 @@ function renderPolls() {
           voted: predPickedMap[pred.id] != null ? predPickedMap[pred.id] : -1
         },
         kinds: { poll: false, pred: true, deb: false },
-        chapterLabel: chLabel(pred)
+        chapterLabel: pred.chapter == null ? '' : chLabel(pred)
       }
     );
   });
@@ -1002,13 +1016,18 @@ function pickPrediction(predId, oi) {
    debate.html (View full debate →). Paginated 10 per page. */
 function renderDebates() {
   const container = document.getElementById('debatesContent');
-  if (!STORY.debates.length) {
+  
+  // Book-wide debates first (chapter: null), then chapter-scoped
+  const bookWideDebs = STORY.debates.filter(d => d.chapter == null);
+  const chapterDebs = STORY.debates.filter(d => d.chapter != null);
+  const debits = [...bookWideDebs, ...chapterDebs].slice(0, engShown.deb);
+  
+  if (!debits.length) {
     container.innerHTML = `<div class="empty-state"><i class="fas fa-comments"></i><p>No debates yet for this story</p></div>`;
     return;
   }
 
-  const userTeam = teamPicked ? STORY.teams.find(t => t.id === teamPicked) : null;
-  const debits = STORY.debates.slice(0, engShown.deb);
+  const userTeam = STORY.teams.find(t => t.id === myTeamId()) || null;
 
   let html = '';
   if (userTeam) {
@@ -1028,11 +1047,14 @@ function renderDebates() {
     const mount = document.getElementById(`eng-${STORY.id}-deb-${deb.id}`);
     if (!mount) return;
     const uv = debateUserVotes[deb.id] || deb.userVote;
+    
+    // Book-wide engagement (chapter: null) — no "Ch." label, no author notes
+    const isBookWide = deb.chapter == null;
     ReaderEngagement.renderInto(
       `${STORY.id}-deb-${deb.id}`,
       deb.chapter || 1,
       mount,
-      '',
+      '',   // NO author note for book-wide engagement
       {
         debate: {
           motion: deb.motion,
@@ -1043,7 +1065,7 @@ function renderDebates() {
           voted: uv === 'for' ? 0 : uv === 'against' ? 1 : -1
         },
         kinds: { poll: false, pred: false, deb: true },
-        chapterLabel: chLabel(deb),
+        chapterLabel: isBookWide ? '' : chLabel(deb), // only show "Ch. X" for chapter-scoped
         debateId: deb.id
       }
     );
@@ -1129,6 +1151,7 @@ function attachDebateLikes() {
 
 /* ══ SAVE / FOLLOW ══ */
 function toggleSave() {
+  if (window.RequireAuth && !RequireAuth.ensure('save this story')) return;
   if (!window.openSaveModal) { toast("Save unavailable"); return; }
   openSaveModal({
     title: STORY.title,
@@ -1145,6 +1168,7 @@ function syncSaveIcon(saved) {
   btn.innerHTML = "<i class=\"" + (isSaved ? "fas" : "far") + "\ fa-bookmark></i>";
 }
 function toggleFollow() {
+  if (window.RequireAuth && !RequireAuth.ensure('follow this writer')) return;
   isFollowing = !isFollowing;
   const btn = document.getElementById('hwFollow');
   btn.textContent = isFollowing ? '✓ Following' : '+ Follow';

@@ -960,6 +960,8 @@
   }
 
   function open(typeOrOpts){
+    /* Writing needs an account — guests get the shared login wall. */
+    if (window.RequireAuth && !RequireAuth.ensure('publish a post')) return;
     inject();
     try{ const t=localStorage.getItem('droboardTheme')||'light'; document.documentElement.setAttribute('data-theme', t); }catch(e){}
     let type = typeOrOpts;

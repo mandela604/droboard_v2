@@ -196,6 +196,7 @@
         const i = +btn.dataset.ptfFollow;
         const p = people[i];
         if (!p) return;
+        if (window.RequireAuth && !RequireAuth.ensure('follow @' + (p.name || 'this person'))) return;
         p.following = !p.following;
         btn.textContent = p.following ? 'Following' : '+ Follow';
         btn.classList.toggle('ptf-following', p.following);

@@ -541,6 +541,12 @@
       { name: 'Efe_O', handle: '@efe_o', genre: '🌙 Elegy', av: 'https://i.pravatar.cc/100?img=22', followers: '22.3k', verified: true, following: false },
       { name: 'Zara_M', handle: '@zara_m', genre: '🔥 Revenge', av: 'https://i.pravatar.cc/100?img=16', followers: '14.8k', verified: false, following: false },
     ],
+    boards: [
+      { id: 'top-writers-week', type: 'board', name: 'Top Writers This Week', description: 'Ada Writes · Ifeanyi Story · Luna Grey', people: ['Ada_Writes', 'Ifeanyi_Story', 'Luna_Grey'], icon: 'fa-trophy', keywords: ['top writers', 'weekly leaders', 'trending writers'] },
+      { id: 'top-readers-month', type: 'board', name: 'Top Readers This Month', description: 'Blessing O · Nneka Reads · Amara_Reads', people: ['Blessing_O', 'Nneka_Reads', 'Amara_Reads'], icon: 'fa-book-reader', keywords: ['top readers', 'monthly leaders', 'active readers'] },
+      { id: 'top-writers-month', type: 'board', name: 'Top Writers This Month', description: 'Chiamaka N · Ada Writes · Zara M', people: ['Chiamaka_N', 'Ada_Writes', 'Zara_M'], icon: 'fa-star', keywords: ['top writers', 'monthly leaders', 'best authors'] },
+      { id: 'top-readers-week', type: 'board', name: 'Top Readers This Week', description: 'Praise Unending · Chapter Chaser · Blessing O', people: ['PraiseUnending', 'ChapterChaser', 'Blessing_O'], icon: 'fa-fire', keywords: ['top readers', 'weekly leaders', 'hottest readers'] },
+    ],
     debates: [],
     poolStories: [
       { type: 'story', img: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', cat: '💔 Betrayal', title: "I came home early and caught my husband kissing my late sister's photograph", author: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', views: '171k', likes: '24.3k', badge: 'hot', keywords: ['betrayal', 'husband', 'sister', 'photograph', 'ada'] },
@@ -563,6 +569,7 @@
       { type: 'writer', name: 'Dami_Cole', handle: '@dami_cole', genre: '🏙️ Urban Love', av: 'https://i.pravatar.cc/100?img=64', followers: '9.4k', verified: false, following: false, keywords: ['dami', 'urban', 'love', 'writer'] },
     ],
     poolDebates: [],
+    poolBoards: [],
   };
 
   // ══════════════════════════════════════════════════════════════════
@@ -573,6 +580,7 @@
     onOpenStory: () => { location.href = 'bridge.html'; },
     onOpenWriter: () => { location.href = 'profile.html'; },
     onOpenDebate: (d) => { location.href = 'debate.html?id=' + encodeURIComponent((d && d.id) || ''); },
+    onOpenBoard: (b) => { location.href = 'discover.html?board=' + encodeURIComponent((b && b.id) || ''); },
     onFollowToggle: null,
     onAdClick: (ad) => { _toast('Opening ' + (ad.brand || 'ad') + '…'); },
   };
@@ -591,7 +599,7 @@
     if (options.theme) {
       _applyTheme(options.theme);
     }
-    ['onOpenStory', 'onOpenWriter', 'onOpenDebate', 'onFollowToggle', 'onAdClick'].forEach(k => {
+    ['onOpenStory', 'onOpenWriter', 'onOpenDebate', 'onOpenBoard', 'onFollowToggle', 'onAdClick'].forEach(k => {
       if (typeof options[k] === 'function') _hooks[k] = options[k];
     });
   }
@@ -625,6 +633,7 @@
           <div class="dso-fpill on" data-f="all">🔥 All</div>
           <div class="dso-fpill" data-f="stories">📖 Stories</div>
           <div class="dso-fpill" data-f="writers">✍️ Writers</div>
+          <div class="dso-fpill" data-f="boards">📑 Boards</div>
           <div class="dso-fpill" data-f="debates">⚔️ Debates</div>
           <div class="dso-fpill" data-f="tags"># Tags</div>
         </div>
@@ -929,6 +938,23 @@ function renderDebates() {
     </div>`;
   }
 
+  function boardCardHtml(b) {
+    return `<div class="dso-story-card" data-dso-openboard='${_esc(JSON.stringify(b))}'>
+      <div class="dso-sc-img" style="background-image:url('https://i.postimg.cc/MXBR6bfY/wolf3.jpg');">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)">
+          <i class="fas ${b.icon || 'fa-trophy'}"></i>
+        </div>
+      </div>
+      <div class="dso-sc-body">
+        <div class="dso-sc-cat"><i class="fas ${b.icon || 'fa-trophy'}" style="font-size:8px;margin-right:3px"></i> Board</div>
+        <div class="dso-sc-title">${_esc(b.name)}</div>
+        <div class="dso-sc-meta">
+          <span style="font-size:9px;color:var(--dso-text-dim);font-weight:600">${_esc(b.description || '')}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function renderAd() {
     /* Same banner slot as discover's 3 minibanner slots — filled by the
        shared ad-slot component (loads it on demand if the page lacks it). */
@@ -975,7 +1001,7 @@ function renderDebates() {
   }
 
   function allPool() {
-    return [].concat(_data.poolStories || [], _data.poolWriters || [], _data.poolDebates || []);
+    return [].concat(_data.poolStories || [], _data.poolWriters || [], _data.poolBoards || [], _data.poolDebates || []);
   }
 
   function displayResults(q) {
@@ -989,6 +1015,7 @@ function renderDebates() {
 
     if (_currentFilter === 'stories') hits = hits.filter(h => h.type === 'story');
     else if (_currentFilter === 'writers') hits = hits.filter(h => h.type === 'writer');
+    else if (_currentFilter === 'boards') hits = hits.filter(h => h.type === 'board');
     else if (_currentFilter === 'debates') hits = hits.filter(h => h.type === 'debate');
     else if (_currentFilter === 'tags') hits = hits.filter(h => h.type === 'story');
 
@@ -1005,6 +1032,7 @@ function renderDebates() {
 
     const storiesHits = hits.filter(h => h.type === 'story');
     const writersHits = hits.filter(h => h.type === 'writer');
+    const boardsHits = hits.filter(h => h.type === 'board');
     const debatesHits = hits.filter(h => h.type === 'debate');
 
     let html = `<div class="dso-results-count"><strong>${hits.length}</strong> result${hits.length !== 1 ? 's' : ''} for "<strong>${_esc(q)}</strong>"</div><div class="dso-results-inner">`;
@@ -1046,6 +1074,12 @@ function renderDebates() {
           ${s.badge ? `<span class="dso-sc-badge ${bc}">${s.badge.toUpperCase()}</span>` : ''}
         </div>`;
       }).join('');
+      if (debatesHits.length) html += `<div class="dso-sdiv" style="margin:4px 0 0"></div>`;
+    }
+
+    if (boardsHits.length && (_currentFilter === 'all' || _currentFilter === 'boards')) {
+      html += `<div class="dso-sh" style="padding:${(writersHits.length || storiesHits.length) ? '12px' : '4px'} 0 10px"><div class="dso-sh-title"><i class="fas fa-users" style="font-size:10px"></i> Boards</div></div>`;
+      html += boardsHits.map(b => boardCardHtml(b)).join('');
       if (debatesHits.length) html += `<div class="dso-sdiv" style="margin:4px 0 0"></div>`;
     }
 
@@ -1112,6 +1146,7 @@ function renderDebates() {
         const i = +followBtn.dataset.dsoFollow;
         const w = _data.writers[i];
         if (!w) return;
+        if (window.RequireAuth && !RequireAuth.ensure((w.following ? 'unfollow @' : 'follow @') + (w.name || 'this writer'))) return;
         w.following = !w.following;
         followBtn.textContent = w.following ? '✓ Following' : '+ Follow';
         followBtn.classList.toggle('ing', w.following);
@@ -1123,6 +1158,7 @@ function renderDebates() {
       if (followResultBtn) {
         e.stopPropagation();
         const w = JSON.parse(followResultBtn.dataset.dsoFollowresult);
+        if (window.RequireAuth && !RequireAuth.ensure((w.following ? 'unfollow @' : 'follow @') + (w.name || 'this writer'))) return;
         w.following = !w.following;
         followResultBtn.textContent = w.following ? '✓ Following' : '+ Follow';
         followResultBtn.classList.toggle('ing', w.following);
@@ -1141,6 +1177,9 @@ function renderDebates() {
 
       const debateEl = e.target.closest('[data-dso-opendebate]');
       if (debateEl) { _hooks.onOpenDebate(JSON.parse(debateEl.dataset.dsoOpendebate)); return; }
+
+      const boardEl = e.target.closest('[data-dso-openboard]');
+      if (boardEl) { _hooks.onOpenBoard(JSON.parse(boardEl.dataset.dsoOpenboard)); return; }
     });
   }
 
@@ -1238,8 +1277,9 @@ function renderDebates() {
        onOpenStory:  (story)  => location.href = `story.html?id=${story.id}`,
        onOpenWriter: (writer) => location.href = `profile.html?u=${writer.handle}`,
        onOpenDebate: (debate) => location.href = `debate.html?id=${debate.id}`,
+       onOpenBoard:  (board)   => location.href = `discover.html?board=${board.id}`,
        onFollowToggle: (writer, isFollowing) => api.follow(writer.handle, isFollowing),
-       data: { poolStories: MY_REAL_STORY_INDEX, poolWriters: MY_REAL_WRITERS, ... },
+       data: { poolStories: MY_REAL_STORY_INDEX, poolWriters: MY_REAL_WRITERS, poolBoards: MY_REAL_BOARDS, ... },
        theme: 'light', // optional — force a starting theme (default is 'light' regardless)
      });
 

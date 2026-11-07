@@ -241,5 +241,5 @@
   }
   function canAfford(amount){ return getBalance().coins >= amount; }
 
-  window.StoreService = { fetchStoreData, getBalance, syncBalance, setServerBalance, getGifts, getBundles, getCoinPacks, getAdRewards, spendCoins, addCoins, canAfford };
+  window.StoreService = { fetchStoreData, getBalance, syncBalance, setServerBalance, getGifts, getBundles, getCoinPacks, getAdRewards, getSubscriptions, spendCoins, addCoins, canAfford };
 })();

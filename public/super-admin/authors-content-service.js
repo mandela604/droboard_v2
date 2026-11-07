@@ -16,7 +16,7 @@ if(typeof window.AdminDemo === 'undefined' && typeof document !== 'undefined' &&
 }
 
 var USE_API = false;
-var API_BASE = window.DROBOARD_API_BASE || '/api/super-admin/authors-content';
+var API_BASE = window.DROBOARD_API_BASE || '/api/super-admin/authors';
 var TIMEOUT_MS = 2500;
 function timeoutFetch(url, opts){
   var c = new AbortController();

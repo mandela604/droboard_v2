@@ -17,10 +17,13 @@
 
   // Fallback demo (mirrors current inline STATS/BOOKS until backend live)
   function demoStats() { return { books: 6, reads: '2.3M', earnings: 1240, followers: 18900 }; }
+  // Full inline demo list (mirrors BOOKS constant on lines 34-43)
   function demoBooks() {
     return [
-      { id: 'b1', title: 'Bound By Obsession', genre: 'Romance', status: 'published', chapters: 56, reads: '2.3M', cover: 'https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop' },
-      { id: 'b2', title: 'Second Chance', genre: 'Drama', status: 'ongoing', chapters: 24, reads: '480K', cover: 'https://i.pravatar.cc/300?img=12' }
+      { id: 'b1', title: 'Bound By Obsession', genre: 'Romance · Drama', reads: '2.3M', likes: '189K', chapters: 56, status: 'published', cover: 'https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop' },
+      { id: 'b2', title: 'The Way You Stay', genre: 'Romance · Contemporary', reads: '1.8M', likes: '142K', chapters: 38, status: 'ongoing', cover: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300&h=400&fit=crop' },
+      { id: 'b3', title: 'Yours, Always', genre: 'Romance · Second Chance', reads: '1.6M', likes: '118K', chapters: 42, status: 'published', cover: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&h=400&fit=crop' },
+      { id: 'b4', title: 'Until Forever', genre: 'Romance · Young Adult', reads: '980K', likes: '96K', chapters: 27, status: 'draft', cover: 'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=400&fit=crop' }
     ];
   }
 
@@ -56,8 +59,57 @@
 
   function renderBooks() {
     if (!window.DroboardBookCard) { document.getElementById('bookList').innerHTML = ''; return; }
+    // Flag in place, never clone: onCreated writes back onto these same
+    // objects, and a copy here would silently drop the new engagement.
+    BOOKS.forEach(function (b) { b.onEngage = true; });
     DroboardBookCard.renderList('#bookList', BOOKS, {
-      onOpen: function (b) { location.href = 'book-workspace.html?book=' + b.id; }
+      onOpen: function (b) { location.href = 'book-workspace.html?book=' + b.id; },
+      showNew: true
+    });
+  }
+
+  // Story-wide engagement: the sheet owns validation and the payload; this
+  // service decides where it lands — the backend when live, the demo row when not.
+  function createEngagement(bookId, payload) {
+    if (!CFG.USE_API) {
+      // Demo: no backend write, so the row lives on the in-memory book only.
+      return Promise.resolve(Object.assign({ id: 'demo_' + Date.now().toString(36) }, payload));
+    }
+    return fetch(CFG.API_BASE + '/books/' + encodeURIComponent(bookId) + '/engagement', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok) throw new Error(data && data.error ? String(data.error) : 'Could not save (' + r.status + ')');
+        return data;
+      });
+    });
+  }
+
+  function onCreated(book, item) {
+    book.engagements = (book.engagements || []).concat([item]);
+    if (!CFG.USE_API) {
+      if (window.AuthorDrawer) window.AuthorDrawer.toast('Demo only — not saved to a server.');
+      return;
+    }
+    if (window.AuthorDrawer) window.AuthorDrawer.toast('Live on ' + book.title + '.');
+  }
+
+  function wireEngagementCreator() {
+    if (!window.DroboardBookCard || !window.DroboardBookCard.configure) return;
+    window.DroboardBookCard.configure({
+      onEngage: function (book, anchorEl, kind) {
+        if (!window.DroboardEngagementCreator) return;
+        window.DroboardEngagementCreator.open({
+          bookId: book.id,
+          bookTitle: book.title,
+          kind: kind, // picker chose Poll / Prediction / Debate
+          submit: function (payload) { return createEngagement(book.id, payload); },
+          onCreated: function (item) { onCreated(book, item); },
+        });
+      }
     });
   }
 
@@ -67,10 +119,11 @@
   // Live books replace the demo list; a rejected manuscript (draft + editor
   // feedback) reads as "Needs Changes" so the author can act on it.
   async function hydrate() {
+    // Demo mode: nothing to load, use inline BOOKS (lines 34-43 above)
     if (!CFG.USE_API) return;
     try {
       var live = await api.getBooks();
-      if (!Array.isArray(live)) return;
+      if (!Array.isArray(live)) { BOOKS.length = 0; BOOKS.push(...clone(demoBooks())); renderBooks(); return; }
       BOOKS.length = 0;
       live.forEach(function (b) {
         var rejected = b.status === 'draft' && b.reviewFeedback;
@@ -85,7 +138,11 @@
         });
       });
       renderBooks();
-    } catch (e) { /* demo list stays */ }
+    } catch (e) { 
+      // Network error or 500 — fall back to demo list
+      BOOKS.length = 0; BOOKS.push(...clone(demoBooks()));
+      renderBooks();
+    }
   }
   function fmtNum(n) {
     n = Number(n) || 0;
@@ -96,6 +153,7 @@
 
   function init() {
     renderStats();
+    wireEngagementCreator();
     renderBooks();
     hydrate();
     if (window.AuthorDrawer) { window.AuthorDrawer.render('author-center.html'); window.AuthorDrawer.bind(); }

@@ -61,7 +61,6 @@
       nav: [{ section: null, items: [
         { key: 'dashboard', label: 'Dashboard', icon: 'fa-house', href: 'senior-editor-dashboard.html', implemented: false },
         { key: 'review-queue', label: 'Review Queue', icon: 'fa-inbox', href: 'review-queue.html', implemented: false },
-        { key: 'story-management', label: 'Story Management', icon: 'fa-book', href: 'story-management.html', implemented: false },
         { key: 'authors', label: 'Authors', icon: 'fa-user-tie', href: 'se-authors.html', implemented: false },
         { key: 'featured-stories', label: 'Featured Stories', icon: 'fa-star', href: 'featured-stories.html', implemented: false },
         { key: 'editors-picks', label: "Editor's Picks", icon: 'fa-award', href: 'editors-picks.html', implemented: false },

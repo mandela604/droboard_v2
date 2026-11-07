@@ -58,10 +58,16 @@
      or null on network failure. Callers use unwrap() below. */
   async function api(path, opts) {
     try {
-      const res = await fetch(API_BASE + path, Object.assign(
-        { credentials: 'include', headers: { 'Content-Type': 'application/json' } },
-        opts || {}
-      ));
+      // A dead backend can leave fetch() pending forever, and every demo page
+      // that awaits it then paints a skeleton for good. Bound the wait so an
+      // unreachable API falls back to demo instead of hanging the screen.
+      const res = await Promise.race([
+        fetch(API_BASE + path, Object.assign(
+          { credentials: 'include', headers: { 'Content-Type': 'application/json' } },
+          opts || {}
+        )),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('api_timeout')), 2500)),
+      ]);
       let json = null;
       try { json = await res.json(); } catch (e) {}
       return { ok: res.ok, status: res.status, json };
@@ -90,6 +96,15 @@
 
   function normalizeHandle(handle) {
     return (handle || '').replace(/^@/, '');
+  }
+
+  /* Handles are case-insensitive: the backend stores usernames lowercased
+     ("you_reader") while demo seeds keep display casing ("You_Reader"). A
+     strict === here marks your own profile as someone else's. */
+  function sameHandle(a, b) {
+    const norm = (h) => String(h || '').trim().replace(/^@/, '').toLowerCase();
+    const na = norm(a);
+    return !!na && na === norm(b);
   }
 
   function genreLabel(id) {
@@ -147,7 +162,7 @@
   async function presentProfile(raw) {
     if (!raw) return null;
     const me = await getCurrentUserHandle();
-    const isOwner = raw.handle === me;
+    const isOwner = sameHandle(raw.handle, me);
     const p = clone(raw);
     p.isOwner = isOwner;
     // Demo reader->writer approval: editor approved our first book => writer.
@@ -200,7 +215,7 @@
     // is the owner, privacy-filtered list otherwise. Demo seeds stay otherwise.
     try {
       const me = await getCurrentUserHandle();
-      const path = (key === me)
+      const path = sameHandle(key, me)
         ? '/collections?owner=me'
         : '/collections?owner=' + encodeURIComponent(key);
       const res = await api(path);
@@ -369,29 +384,11 @@
 
   async function becomeWriter(handle, payload) {
     const key = normalizeHandle(handle);
-    const firstBookTitle = (payload && payload.firstBookTitle) || 'Untitled';
-    const genre = payload && payload.genre;
-    await delay(400);
+    // Note: This method is NOT used in production workflow.
+    // Writer promotion happens ONLY when SE approves book review via senior-editor/reviews/:id/decide endpoint.
+    // Backend automatically calls grantWriterRole(submission.authorId) on approval.
+    // This demo fallback is only for UI testing.
     const base = requireProfile(key);
-    base.isWriter = true;
-    base.verified = true;
-    base.stats = base.stats || {};
-    base.stats.books = (base.stats.books || 0) + 1;
-    base.books = base.books || [];
-    base.books.unshift({
-      id: 'new_' + Date.now(),
-      title: firstBookTitle,
-      cat: genreLabel(genre) || 'Story',
-      cover: COVERS.c5 || '',
-      reads: '0',
-      likes: '0',
-      rating: '—',
-      chapters: 1,
-    });
-    base.achievements = base.achievements || [];
-    if (!base.achievements.some(a => a.label === 'Verified Writer')) {
-      base.achievements.unshift({ label: 'Verified Writer', cls: 'blue' });
-    }
     return presentProfile(base);
   }
 
@@ -403,7 +400,7 @@
     const base = requireProfile(key);
     base.collections = base.collections || [];
     // production: persist (POST /api/collections) — 4xx throws, else demo below
-    const created = unwrap(await api('/collections', {
+    const created = unwrap(await api('/api/collections', {
       method: 'POST',
       body: JSON.stringify({ name, privacy, stories: stories.map(s => (s && s.id) || s) }),
     }));
@@ -431,7 +428,7 @@
     if (patch && patch.name !== undefined && String(patch.name).trim()) body.name = String(patch.name).trim();
     if (patch && patch.privacy !== undefined) body.privacy = patch.privacy;
     if (patch && Array.isArray(patch.stories)) body.stories = patch.stories.map(s => (s && s.id) || s);
-    const saved = unwrap(await api('/collections/' + encodeURIComponent(collId), { method: 'PATCH', body: JSON.stringify(body) }));
+    const saved = unwrap(await api('/api/collections/' + encodeURIComponent(collId), { method: 'PATCH', body: JSON.stringify(body) }));
     if (saved && saved.id) {
       const i = (base.collections || []).findIndex(c => String(c.id) === String(collId));
       const next = backendToProfile(saved, patch && patch.stories);
@@ -456,7 +453,7 @@
     const key = normalizeHandle(handle);
     const base = requireProfile(key);
     // production: persist (DELETE /api/collections/:id); 401/404 -> demo path
-    const r = await api('/collections/' + encodeURIComponent(collId), { method: 'DELETE' });
+    const r = await api('/api/collections/' + encodeURIComponent(collId), { method: 'DELETE' });
     let gone = null;
     if (r && r.ok) gone = r.json;
     else if (r && r.status !== 401 && r.status !== 404) gone = unwrap(r); // throws server message

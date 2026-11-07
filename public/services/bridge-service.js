@@ -968,9 +968,14 @@
     openRateModal(n);
   }
 
-  /* "View all reviews" → book reader, Overview tab, scrolled to reviews */
+  /* "View all reviews" → book reader, Overview tab, scrolled to reviews.
+     The bridge and the reader use different demo id spaces (bridge ids are
+     STORIES "stN"; the reader resolves SERIES_CATALOG "sN" + profile books),
+     so forwarding the bridge id 404s the reader. In demo let the reader open
+     its own default story (which carries the debates/reviews); once live, the
+     ids share one space and we forward STORY_ID. */
   function openAllReviews() {
-    location.href = 'book-reader.html?id=b1&view=reviews';
+    location.href = 'book-reader.html?view=reviews' + (USE_API && STORY_ID ? '&id=' + encodeURIComponent(STORY_ID) : '');
   }
 
   window.BridgePage = {

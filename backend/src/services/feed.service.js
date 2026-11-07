@@ -194,11 +194,12 @@ async function discoverData(viewerId, taste) {
   }
 
   // Base pools for other sections (topBooks already returns render-ready cards)
-  const [trending, recent, completed, writers] = await Promise.all([
+  const [trending, recent, completed, writers, rated] = await Promise.all([
     topBooks({ reads: -1 }, 20, viewerId),
     topBooks({ updatedAt: -1 }, 12, viewerId),
     topBooks({ reads: -1 }, 10, viewerId, ['completed']),
     topWriters(10),
+    topBooks({ rating: -1 }, 10, viewerId),
   ]);
 
   // Recommendation row: the reader's discover filter — a request query, never a
@@ -249,7 +250,7 @@ async function discoverData(viewerId, taste) {
 
   return {
     heroes,
-    continueReading,
+    topRated: rated,
     topRomance: trending.filter(t => /romance/i.test(t.genre)).slice(0, 8),
     trending,
     // The reader page loads collections from /api/collections?sort=popular,

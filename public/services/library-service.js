@@ -10,7 +10,7 @@
 
   async function getStats() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/stats`);
+      const res = await fetch(`${API_BASE}/library/stats`, { credentials:'include' });
       if (!res.ok) throw new Error('Library Stats API failed');
       return res.json();
     }
@@ -24,7 +24,7 @@
 
   async function getPromoSlides() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/promo`);
+      const res = await fetch(`${API_BASE}/library/promo`, { credentials:'include' });
       if (!res.ok) throw new Error('Library Promo API failed');
       return res.json();
     }
@@ -37,7 +37,7 @@
 
   async function getContinueReading() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/continue`);
+      const res = await fetch(`${API_BASE}/library/continue`, { credentials:'include' });
       if (!res.ok) throw new Error('Continue Reading API failed');
       return res.json();
     }
@@ -51,7 +51,7 @@
 
   async function getLibrary() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/items`);
+      const res = await fetch(`${API_BASE}/library/items`, { credentials:'include' });
       if (!res.ok) throw new Error('Library API failed');
       return res.json();
     }
@@ -65,7 +65,7 @@
 
   async function getSaved() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/saved`);
+      const res = await fetch(`${API_BASE}/posts/saved`, { credentials:'include' });
       if (!res.ok) throw new Error('Saved API failed');
       return res.json();
     }
@@ -79,7 +79,7 @@
 
   async function getHistory() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/library/history`);
+      const res = await fetch(`${API_BASE}/library/history`, { credentials:'include' });
       if (!res.ok) throw new Error('History API failed');
       return res.json();
     }
@@ -92,6 +92,7 @@
   }
 
   window.LibraryData = {
+    USE_API,
     getStats,
     getPromoSlides,
     getContinueReading,
@@ -197,58 +198,36 @@
     el.innerHTML = html;
   }
 
-  function renderPosts(containerId, posts) {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    const typeIcon = { debate: 'fa-comments', poll: 'fa-poll', repost: 'fa-retweet', quote: 'fa-quote-left', ama: 'fa-circle-question' };
-    const typeLabel = { debate: 'Debate', poll: 'Poll', repost: 'Repost', quote: 'Quote', ama: 'AMA' };
-    el.innerHTML = posts.map(p => {
-      const isLong = p.text && p.text.length > 90;
-      const shortText = isLong ? p.text.substring(0, 90).trim() + '…' : p.text;
-      return `
-      <div class="lib-item post-item" data-id="${esc(p.id)}">
-        <img class="post-avatar" src="${esc(p.avatar)}" alt="" onerror="this.style.display='none'"/>
-        <div class="lib-body">
-          <div class="lib-title">
-            <a href="profile.html?u=${esc(p.name)}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(p.name)}</a>
-            <span class="post-type">${typeLabel[p.type] || ''}</span>
-          </div>
-          <div class="lib-preview post-text">${esc(shortText)} <a href="discussion.html?id=${esc(p.id)}" onclick="event.stopPropagation()" style="color:var(--pink);font-weight:600">see more</a></div>
-          <div class="lib-foot">
-            <span class="lib-ch"><i class="fas ${typeIcon[p.type] || 'fa-comment'}"></i> ${p.likes || 0} likes · ${p.comments || 0} comments</span>
-            <div style="display:flex;align-items:center;gap:8px;position:relative">
-              <span class="lib-pct">${esc(p.time || '')}</span>
-              <button class="post-menu-btn" onclick="event.stopPropagation();togglePostMenu('${esc(p.id)}')" title="More"><i class="fas fa-ellipsis"></i></button>
-              <div class="post-menu" id="menu-${esc(p.id)}" style="display:none;position:absolute;right:0;top:32px;background:var(--white);border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:10;min-width:120px">
-                <button onclick="event.stopPropagation();confirmRemovePost('${esc(p.id)}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;font-size:13px;color:var(--ink-2);border-radius:10px;text-align:left"><i class="fas fa-trash-can" style="color:var(--pink)"></i> Remove</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `}).join('');
-  }
-
-  function togglePostMenu(id) {
-    document.querySelectorAll('.post-menu').forEach(m => { if (m.id !== 'menu-' + id) m.style.display = 'none'; });
-    const menu = document.getElementById('menu-' + id);
-    if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-  }
-
-  function confirmRemovePost(id) {
-    const post = SAVED.find(p => p.id === id);
-    if (!post) return;
-    openModal(
-      'Remove post?',
-      'This will remove the post from your saved list.',
-      () => { SAVED = SAVED.filter(p => p.id !== id); renderSaved(); }
-    );
-  }
 
   function renderSaved() {
     const count = document.getElementById('saved-count');
-    if (count) count.textContent = SAVED.length + '/10';
-    renderPosts('saved-container', SAVED);
+    if (count) count.textContent = SAVED.length; // no /10 cap — we removed that limit
+    if (!window.DroboardPostCard) return;
+    const container = document.getElementById('saved-container');
+    if (!container) return;
+    container.innerHTML = ''; // clear before mounting DroboardPostCard
+    if (!SAVED.length) {
+      container.innerHTML = '<div class="empty"><div class="empty-sub">No saved posts yet.</div></div>';
+      return;
+    }
+    DroboardPostCard.attach(container, {
+      onAvatarClick: (post) => { location.href = 'profile.html?u=' + encodeURIComponent(post.name); },
+      onNameClick:   (post) => { location.href = 'profile.html?u=' + encodeURIComponent(post.name); },
+      onOpenPost:    (post) => { /* open reader for long-form posts */ },
+      onComment:     (post) => { location.href = 'discussion.html?id=' + encodeURIComponent(post.id); },
+      onSave:        (post) => { toggleSaveStatus(post.id, !post.saved); },
+    });
+    DroboardPostCard.setPosts(SAVED);
+  }
+
+  function toggleSaveStatus(id, saved) {
+    // Toggle the local SAVED array while USE_API is off
+    if (!saved) {
+      SAVED = SAVED.filter(p => p.id !== id);
+    } else {
+      // fetch to add to savedBy could be done via API later
+    }
+    renderSaved();
   }
 
   function renderHistory() {
@@ -507,8 +486,11 @@
     renderQuickIcons();
     renderViewToggleIcons();
 
-    // No account → no library. Show the gate and stop here.
-    if (window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
+    // No account → no library — but only once the page is reading real
+    // accounts. In demo there is no session to wait for, and gating would
+    // blank a page that has rows to show; the same call the profile page makes.
+    if (window.LibraryData && window.LibraryData.USE_API
+        && window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
       renderGuestGate();
       return;
     }
@@ -557,6 +539,4 @@
   }
 
   window.LibraryPage = { init, toggleTheme };
-  window.togglePostMenu = togglePostMenu;
-  window.confirmRemovePost = confirmRemovePost;
 })();

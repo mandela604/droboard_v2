@@ -142,9 +142,12 @@
       -webkit-box-orient:vertical;overflow:hidden;margin-bottom:2px}
     .bro-card-author{font-size:10px;color:var(--bro-muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    /* ── list (always used): each row is a card so it separates from the page
+    /* ── list (always used): story rows are the shared DiscoverCard markup;
+       this surface only skins them as cards so they separate from the page
        in both themes (light: white on gray, dark: l3 layer on black) ── */
     .bro-list{display:flex;flex-direction:column;gap:11px;padding:8px 12px}
+    .bro-list .dc-list-item{padding:12px;background:var(--bro-card);border-radius:14px;cursor:pointer}
+    .bro-list .dc-list-item:active{opacity:.85}
     .bro-list-item{display:flex;gap:12px;padding:12px;background:var(--bro-card);
       border:none;border-radius:14px;cursor:pointer}
     .bro-list-item:active{opacity:.85}
@@ -152,28 +155,11 @@
       background:var(--bro-surface);box-shadow:0 2px 8px var(--bro-shadow)}
     .bro-list-cover img{width:100%;height:100%}
     .bro-list-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
-    .bro-list-genre{font-size:9px;font-weight:800;color:var(--bro-gold);text-transform:uppercase;letter-spacing:.05em}
-    .bro-list-catrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
-    .bro-list-cat{font-size:9px;font-weight:800;color:var(--bro-muted,#8e8e93);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .bro-list-trope{font-size:9px;font-weight:800;color:var(--bro-acc,#ff2d55);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex-shrink:0}
     .bro-list-title{font-size:13.5px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
       -webkit-box-orient:vertical;overflow:hidden}
     .bro-list-preview{font-size:11.5px;color:var(--bro-muted);line-height:1.45;display:-webkit-box;
       -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .bro-list-foot{display:flex;align-items:center;gap:10px;margin-top:2px;flex-wrap:wrap}
-    .bro-list-stat{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--bro-muted);font-weight:600}
-    .bro-list-author{color:var(--bro-acc);font-weight:800}
 
-    /* ── platform ad — DroBoard house ad, neutral styling ── */
-    .bro-ad-tag{position:absolute;top:6px;left:6px;z-index:2;font-size:7px;font-weight:800;letter-spacing:.3px;
-      text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#999;color:#fff}
-    .bro-ad .bro-list-cover{position:relative;border:1px solid var(--bro-border)}
-    .bro-ad-cta{align-self:flex-start;margin-top:4px;font-size:10.5px;font-weight:800;color:#fff;
-      background:var(--bro-acc);padding:5px 12px;border-radius:14px}
-
-    /* ── book ad — writer's promoted book, golden background ── */
-    .bro-list-item.bro-book-ad{border:1.5px solid var(--bro-gold);border-radius:14px;background:var(--bro-gold-soft);padding:12px;margin:0}
-    .bro-list-item.bro-book-ad .bro-list-cover{position:relative}
     .bro-card.bro-gold-border{position:relative;background:var(--bro-gold-soft);border:1.5px solid var(--bro-gold);border-radius:12px;padding:10px}
     .bro-card.bro-gold-border .bro-card-cover{border:2px solid var(--bro-gold)}
     .bro-card-badge.bro-badge-gold{background:var(--bro-gold)}
@@ -201,7 +187,7 @@
     .bro-empty-body{font-size:12.5px;color:var(--bro-muted);line-height:1.6;max-width:240px}
 
     @keyframes broIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .bro-card,.bro-list-item{animation:broIn .2s ease both}
+    .bro-card,.bro-list-item,.bro-list .dc-list-item{animation:broIn .2s ease both}
   `;
 
   /* ═══════════════════════ DATA ═══════════════════════ */
@@ -424,22 +410,6 @@
   }
 
   // List mode (genre browsing) — story / bookAd / platformAd / writers-row.
-  function _authorLink(item) {
-    const handle = (item.author || '').replace('@', '');
-    return `<a class="bro-list-stat bro-list-author" href="profile.html?u=${_esc(handle)}" onclick="event.stopPropagation()">${_esc(item.author || '')}</a>`;
-  }
-
-  function _platformAdHTML(item) {
-    return `<div class="bro-list-item bro-ad" data-bro-ad='${_esc(JSON.stringify(item))}'>
-      <div class="bro-list-cover"><span class="bro-ad-tag">Ad</span><img src="${_esc(item.img)}" loading="lazy" alt=""/></div>
-      <div class="bro-list-body">
-        <div class="bro-list-genre">${_esc(item.sponsor || 'DroBoard')}</div>
-        <div class="bro-list-title">${_esc(item.title)}</div>
-        <div class="bro-ad-cta">${_esc(item.cta || 'Learn More')}</div>
-      </div>
-    </div>`;
-  }
-
   function _writersRowHTML() {
     if (!window.DroboardWritersRow || typeof window.DroboardWritersRow.render !== 'function') return '';
     return window.DroboardWritersRow.render({
@@ -473,60 +443,16 @@
       '<div class="bro-list-body"><div class="bro-list-title">'+_esc(item.title||'')+'</div><div class="bro-list-preview">'+_esc((item.ch||'')+' · '+(item.pct||0)+'%')+'</div></div></div>';
   }
 
-  /* Trope per story: explicit trope/tropes win, else a stable pick from the
-     CE catalog pool for the story's genre (live books carry tropes). */
-  var _TROPE_POOL = {
-    romance: ['Enemies to Lovers', 'Secret Baby', 'Second Chance'],
-    billionaire: ['Billionaire Boss', 'Secret Baby', 'Fake Dating'],
-    ceo: ['CEO Romance', 'Fake Dating', 'Billionaire Boss'],
-    werewolf: ['Fated Mates', 'Alpha Romance', 'Second Chance'],
-    fantasy: ['Royal Romance', 'Royal Secret', 'Fated Mates'],
-    mafia: ['Mafia Romance', 'Forced Proximity', 'Secret Baby'],
-    campus: ['Fake Dating', 'Forced Proximity', 'Love Triangle'],
-    revenge: ['Second Chance', 'Forced Proximity', 'Secret Baby'],
-    drama: ['Second Chance', 'Marriage of Convenience', 'Forbidden Love'],
-    betrayal: ['Secret Baby', 'Love Triangle', 'Second Chance'],
-    family: ['Arranged Marriage', 'Secret Baby', 'Second Chance'],
-    heartbreak: ['Second Chance', 'Forbidden Love', 'Love Triangle'],
-    horror: ['Forbidden Love', 'Fated Mates', 'Vampire Romance'],
-    mystery: ['Secret Baby', 'Forced Proximity', 'Love Triangle'],
-    marriage: ['Arranged Marriage', 'Marriage of Convenience', 'Second Chance'],
-    vampire: ['Vampire Romance', 'Forbidden Love', 'Fated Mates'],
-  };
-  var _TROPE_FALLBACK = ['Second Chance', 'Forbidden Love', 'Secret Baby'];
-  function _storyTrope(s) {
-    if (s.trope) return s.trope;
-    if (s.tropes && s.tropes.length) return s.tropes[0];
-    var pool = _TROPE_POOL[String(s.genre || '').toLowerCase()] || _TROPE_FALLBACK;
-    var key = String(s.id || s.title || '');
-    var h = 0;
-    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-    return pool[h % pool.length];
-  }
-
+  /* Story rows come from the shared DiscoverCard component so the overlay and
+     the Discover "More Stories" feed render from one code path. */
   function _listItemHTML(item) {
     if (item.type === 'sectionHeader') return `<div style="grid-column:1/-1;padding:14px 0 6px;font-size:11px;font-weight:800;color:var(--bro-muted,#8e8e93);text-transform:uppercase;letter-spacing:.06em">${_esc(item.label)}</div>`;
     if (item.type === 'continue') return _continueHTML(item);
     if (item.type === 'collection') return _collectionHTML(item);
     if (item.type === 'writers') return _writersRowHTML();
-    if (item.type === 'platformAd') return _platformAdHTML(item);
-
-    const isBookAd = item.type === 'bookAd';
-    const _cat = item.cat || item.category || item.genre || '';
-    const _trope = _storyTrope(item);
-    return `<div class="bro-list-item${isBookAd ? ' bro-book-ad' : ''}" data-bro-story='${_esc(JSON.stringify(item))}'>
-      <div class="bro-list-cover">${isBookAd ? '<span class="bro-ad-tag">Promoted</span>' : ''}<img src="${_esc(item.img)}" loading="lazy" alt=""/></div>
-      <div class="bro-list-body">
-        <div class="bro-list-catrow"><span class="bro-list-cat">${_esc(_cat)}</span>${_trope ? `<span class="bro-list-trope"><i class="fas fa-wand-magic-sparkles"></i> ${_esc(_trope)}</span>` : ''}</div>
-        <div class="bro-list-title">${_esc(item.title)}</div>
-        ${item.preview ? `<div class="bro-list-preview">${_esc(item.preview)}</div>` : ''}
-        <div class="bro-list-foot">
-          ${_authorLink(item)}
-          ${item.rating ? `<div class="bro-list-stat"><i class="fas fa-star" style="color:#f59e0b"></i> ${_esc(item.rating)}</div>` : ''}
-          ${item.chapters ? `<div class="bro-list-stat"><i class="fas fa-book-open"></i> ${item.chapters} ch</div>` : ''}
-        </div>
-      </div>
-    </div>`;
+    if (item.type === 'platformAd') return DiscoverCard.platformAdItem(item);
+    if (item.type === 'bookAd') return DiscoverCard.bookAdItem(item);
+    return DiscoverCard.listItem(item);
   }
 
   /* ═══════════════════════ PROMO SLIDER ═══════════════════════ */
@@ -630,7 +556,13 @@
       const storyEl = e.target.closest('[data-bro-story]');
       if (storyEl) { try { _hooks.onOpenStory(JSON.parse(storyEl.dataset.broStory)); } catch (_) {} return; }
       const adEl = e.target.closest('[data-bro-ad]');
-      if (adEl) { try { _hooks.onAdClick(JSON.parse(adEl.dataset.broAd)); } catch (_) {} }
+      if (adEl) { try { _hooks.onAdClick(JSON.parse(adEl.dataset.broAd)); } catch (_) {} return; }
+      // Shared DiscoverCard rows link on cover + title only; here the whole row opens.
+      const rowEl = e.target.closest('.dc-list-item');
+      if (rowEl && !e.target.closest('a') && !rowEl.dataset.href) {
+        const link = rowEl.querySelector('.dc-list-title-link');
+        if (link) location.href = link.getAttribute('href');
+      }
     });
 
     // rootMargin lets the next page start fetching before the user hits bottom.

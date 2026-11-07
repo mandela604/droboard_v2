@@ -35,6 +35,7 @@
     achievements: { label: 'Achievements', icon: 'fa-award', bg: '#fdeee0', color: '#9a6508' },
     stats: { label: 'Your stats', icon: 'fa-chart-line', bg: '#e7f0fe', color: '#1d5fd6' },
     activity: { label: 'Activity', icon: 'fa-heart', bg: '#ffe9ef', color: '#ff2d55' },
+    messages: { label: 'Messages', icon: 'fa-comment-dots', bg: '#e8f1ff', color: '#2563eb' },
     stories: { label: 'Stories', icon: 'fa-book-open', bg: '#efe9ff', color: '#7c5cff' },
     revenue: { label: 'Revenue', icon: 'fa-dollar-sign', bg: '#e9fbf0', color: '#158a48' },
     system: { label: 'System', icon: 'fa-shield-halved', bg: '#f1f1f4', color: '#5c5c66' },
@@ -82,6 +83,10 @@
     debate_verdict: { cat: 'highlights', kind: 'milestone', audience: 'both', push: true, cooldownHours: 24 },
     poll_closed: { cat: 'stats', kind: 'digest', audience: 'both', push: false, cooldownHours: 0 },
     prediction_settled: { cat: 'highlights', kind: 'milestone', audience: 'both', push: true, cooldownHours: 24 },
+
+    /* 1:1 chat — coalesced per conversation, so a thread is one unread row
+       whose count climbs. Never one notification per message. */
+    direct_message: { cat: 'messages', kind: 'row', audience: 'both', push: true, cooldownHours: 0 },
 
     /* revenue */
     tip: { cat: 'revenue', kind: 'row', audience: 'author', push: true, cooldownHours: 0 },
@@ -173,6 +178,8 @@
     return cur;
   }
   function muteType(type, on) {
+    /* Notification settings are per-account — guests get the login wall. */
+    if (window.RequireAuth && !RequireAuth.ensure('change notification settings')) return null;
     const cur = settings();
     const set = new Set(cur.mutedTypes || []);
     if (on) set.add(type); else set.delete(type);
@@ -620,6 +627,10 @@
     emit({ type: 'mention', key: 'mention:c-1042', audience: 'both', avatar: 'https://i.pravatar.cc/100?img=47', badge: 'mention',
       title: '{@Sarah_K|Sarah_K} mentioned you in a comment', desc: '"you have to read this chapter — it\'s wild"',
       link: { label: 'See mention', href: 'comments.html?id=c-1042' }, at: since + 8.5 * HOUR });
+    emit({ type: 'direct_message', key: 'dm:demo_ed_morgan', upsert: true, count: 2, audience: 'both',
+      avatar: 'https://i.pravatar.cc/100?img=47', badge: 'chat',
+      title: 'Reina Morgan', desc: 'Love this! The direction is really coming together.',
+      link: { label: 'Reply', href: 'chat.html?contact=demo_ed_morgan' }, at: since + 8.7 * HOUR });
     emit({ type: 'share', key: 'share:post:' + _weekKey(), audience: 'both', badge: 'chart',
       icon: { name: 'fa-share-nodes', bg: '#e7f0fe', color: '#1d5fd6' },
       title: '<b>312 people</b> shared your post this week', desc: 'Shares drove 1,940 new reads to your story.',

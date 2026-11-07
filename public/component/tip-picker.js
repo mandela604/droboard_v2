@@ -207,6 +207,28 @@
     t._t = setTimeout(() => t.classList.remove('show'), 2400);
   }
 
+  /* ── Guest gate ────────────────────────────────────────────────────
+     Tipping moves money/coins, so it needs an account. Delegates to the
+     shared RequireAuth wall (component/auth-wall.js) so guests get the
+     same login prompt as every other write action; falls back to a
+     toast on pages that don't load it. The backend remains the real
+     boundary — POST /api/wallet/tip is requireAuth. */
+  function _isGuest() {
+    try {
+      if (window.AuthSession && typeof AuthSession.isGuest === 'function') return !!AuthSession.isGuest();
+      return !localStorage.getItem('droboard_session');
+    } catch (e) { return false; }
+  }
+  function _refuseForGuest() {
+    if (window.RequireAuth) { RequireAuth.wall('send a tip'); return false; }
+    _toast('Sign in to send a tip');
+    setTimeout(function () {
+      var back = location.pathname.split('/').pop() || 'index.html';
+      location.href = 'login.html?next=' + encodeURIComponent(back + (location.search || ''));
+    }, 700);
+    return false;
+  }
+
   const DEMO_NAMES = ['Chioma_R', 'Emeka_Writes', 'Ada_Lover', 'Zara_M', 'Dami_Cole', 'Efe_O', 'Kemi_A', 'Sade_Reads', 'CampusQueen', 'Chiamaka_N', 'Ifeanyi_Story', 'Anon_Reader'];
   function _demoSupporters(id) {
     if (_supportersCache[id]) return _supportersCache[id];
@@ -624,6 +646,8 @@
   }
 
   function _sendTip() {    const writer = _getWriter(_curId);
+    /* Re-checked at send time: the sheet can outlive a sign-out. */
+    if (_isGuest()) return _refuseForGuest();
     const note = document.getElementById('dtp-note').value.trim();
     if(_mode==='gift'){
       if(!_curId || !_selectedGiftId || !_selectedGiftPrice) return;
@@ -733,6 +757,8 @@
    *                 (or whenever getWriter() isn't supplied)
    */
   function open(id, writerMeta) {
+    /* No account → no tip sheet at all. */
+    if (_isGuest()) return _refuseForGuest();
     _build();
     _curId = id;
     _selectedAmount = null;

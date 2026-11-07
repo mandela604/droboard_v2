@@ -1,18 +1,18 @@
 /* ═══════════════════════════════════════════════════════════════
-   GENRE HUB EDIT SERVICE — call-and-render for genre-hub-edit.html
-   Full hub editor: details, rules CRUD, moderators (staff assigns
+   BOARD EDIT SERVICE — call-and-render for board-edit.html
+   Full board editor: details, rules CRUD, moderators (staff assigns
    from existing members — no invite links). Demo storage is
    localStorage behind DATA LAYER functions (loadHub/saveDetails/
    loadRules/saveRules/loadMods/saveMods/seedDemoMods/resetHub) —
    at cutover swap those bodies for API calls, nothing else changes.
-   URL: genre-hub-edit.html?genre=<id>
+   URL: board-edit.html?board=<id>
 ══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
   const params = new URLSearchParams(location.search);
   const DEFAULT_ID = (window.GenreDemoSeed && window.GenreDemoSeed.DEFAULT_GENRE_ID) || 'fantasy';
-  const GENRE_ID = (params.get('genre') || DEFAULT_ID).toLowerCase();
+  const GENRE_ID = (params.get('board') || DEFAULT_ID).toLowerCase();
 
   const ABOUT_KEY = 'dro_genre_about_override'; // same key the hub page reads
   const RULES_KEY = 'dro_hub_rules_' + GENRE_ID;
@@ -33,7 +33,7 @@
 
   /* ══ DATA LAYER — demo now, API later ══ */
   function loadHub() {
-    // Live swap: fetch GET /api/genre-hubs/<id>
+    // Live swap: GET board (Category) card — /api/genres/:slug
     const seed = window.GenreDemoSeed;
     let base = (seed && seed.DEMO_GENRES && (seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[DEFAULT_ID])) || null;
     if (!base) base = { id: 'fantasy', name: 'Fantasy', tagline: 'Where imagination becomes legend.', icon: 'fa-hat-wizard', cover: '', blurb: 'Discuss tropes, argue theories.' };
@@ -43,7 +43,7 @@
     return Promise.resolve();
   }
   function loadRules() {
-    // Live swap: GET /api/genre-hubs/<id>/rules
+    // Live swap: rules[] on the board card — /api/genres/:slug
     try {
       const r = JSON.parse(localStorage.getItem(RULES_KEY) || 'null');
       if (Array.isArray(r)) { RULES = r; return Promise.resolve(); }
@@ -56,7 +56,7 @@
     return Promise.resolve();
   }
   function saveDetails() {
-    // Live swap: PATCH /api/genre-hubs/<id> (cover: upload to storage first)
+    // Live swap: PATCH /api/chief/categories/:id (cover: upload to storage first)
     const patch = {
       name: document.getElementById('dName').value.trim() || GENRE.name,
       tagline: document.getElementById('dTagline').value.trim(),
@@ -74,14 +74,14 @@
     toast('Hub details saved');
   }
   function saveRules() {
-    // Live swap: PUT /api/genre-hubs/<id>/rules
+    // Live swap: PATCH /api/chief/categories/:id { rules }
     RULES = RULES.map(function (r) { return String(r).trim(); }).filter(Boolean);
     try { localStorage.setItem(RULES_KEY, JSON.stringify(RULES)); } catch (e) {}
     renderRules();
     toast('Rules saved');
   }
   function loadMods() {
-    // Live swap: GET /api/genre-hubs/<id>/mods
+    // Live swap: moderatorIds on the board card — /api/genres/:slug
     try { MODS = JSON.parse(localStorage.getItem(MODS_KEY) || 'null') || null; } catch (e) { MODS = null; }
     if (!MODS) MODS = seedDemoMods();
     buildUserPool();
@@ -99,7 +99,7 @@
     return mods;
   }
   function saveMods() {
-    // Live swap: role changes → PATCH /api/…
+    // Live swap: PUT /api/admin/boards/:id/crew
     try { localStorage.setItem(MODS_KEY, JSON.stringify(MODS)); } catch (e) {}
   }
   function resetHub() {

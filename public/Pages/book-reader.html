@@ -169,8 +169,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sh-title{font-size:11px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.1em}
 .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.team-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--bd);background:var(--l1);cursor:pointer;transition:.18s;user-select:none}
-.team-btn:active{transform:scale(.98)}
+.team-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--bd);background:var(--l1);cursor:default;transition:.18s;user-select:none}
 .team-icon{font-size:18px;flex-shrink:0}
 .team-info{flex:1;min-width:0}
 .team-name{font-size:10px;font-weight:800;color:var(--tx-high)}
@@ -326,6 +325,8 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .rev-foot{font-size:10.5px;font-weight:700;color:var(--tx-muted);display:flex;align-items:center;gap:5px}
 .rev-helpful{cursor:pointer;user-select:none}
 .rev-helpful:active{transform:scale(.97)}
+.rev-helpful.on{color:var(--acc)}
+.rev-helpful.on i{color:var(--acc)}
 .rev-stars{margin-left:auto;color:var(--gold);font-size:10px;display:flex;align-items:center;gap:1px;flex-shrink:0}
 .rev-star-num{font-size:9px;font-weight:800;color:var(--tx-muted);margin-left:4px}
 .rev-sort{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
@@ -343,6 +344,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);try{document.body.classList.toggle('theme-white',t==='light');}catch(e){}})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
@@ -352,7 +354,7 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 
 <!-- TOP BAR -->
 <div class="top-bar" id="topBar">
-  <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+  <div class="tb-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
   <div class="tb-title">
     <div class="tb-story-name" id="tbStoryName">Loading…</div>
     <div class="tb-story-sub" id="tbStorySub"></div>
@@ -451,27 +453,29 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <div class="toast" id="toast"></div>
 
 <script src="../data/profile-demo-seed.js"></script>
-<script src="../component/share-modal.js"></script>
-<script src="../services/saves-bridge.js"></script>
-<script src="../component/save-modal.js"></script>
-<script src="../data/central-demo-data.js"></script>
-<script src="../component/ad-card.js?v=6"></script>
+<script src="../component/share-modal.js?v=5"></script>
+<script src="../services/saves-bridge.js?v=2"></script>
+<script src="../component/save-modal.js?v=2"></script>
+<script src="../data/central-demo-data.js?v=10"></script>
+<script src="../component/ad-card.js?v=10"></script>
 <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/audience-service.js?v=3"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
 <script src="../services/acquisition-service.js"></script>
-<script src="../component/ad-slot.js?v=2"></script>
-  <script src="../component/discover-card.js?v=3"></script>
+<script src="../component/ad-slot.js?v=3"></script>
+  <script src="../component/discover-card.js?v=10"></script>
 <script src="../component/more-like-this.js"></script>
-<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/status-viewer.js?v=16"></script>
 <script src="../component/status-ring.js?v=4"></script>
-  <script src="../services/status-service.js?v=7"></script>
+  <script src="../services/status-service.js?v=8"></script>
 <script src="../shared/status-loader.js"></script>
-<script src="../services/reader-engagement-service.js?v=2"></script>
-<script src="../services/book-reader-service.js?v=5"></script>
+<script src="../services/reader-engagement-service.js?v=4"></script>
+<script src="../services/book-reader-service.js?v=10"></script>
 <script>StoryReaderPage.init();</script>
 
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

@@ -83,6 +83,7 @@
     .drp-trigger{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#3f3f46;cursor:pointer;padding:5px 8px;border-radius:9px;user-select:none;position:relative;flex-shrink:0;font-family:'DM Sans',system-ui,sans-serif}
     .drp-trigger:active{background:rgba(255,255,255,.04)}
     .drp-trigger.liked{color:#ff0050}
+    .drp-trigger.reacted i[data-drp-icon]{color:#ff0050}
     .drp-trigger i{font-size:13px}
     .drp-like{display:contents}
     .drp-like-count{font-size:11px;font-weight:600}
@@ -213,8 +214,9 @@
     // Heart fills ONLY when Love itself is picked — other reactions show
     // via the emoji badges + count, not a filled heart.
     const liked = rx.userRx === 'love';
+    const reacted = !!rx.userRx && rx.userRx !== 'love';
 
-    return `<div class="drp-trigger${liked ? ' liked' : ''}" data-drp-id="${id}" data-drp-trigger="1">
+    return `<div class="drp-trigger${liked ? ' liked' : reacted ? ' reacted' : ''}" data-drp-id="${id}" data-drp-trigger="1">
       <div class="drp-popup" id="drp-pop-${id}">
         ${REACTIONS.map(r => `
           <div class="drp-btn${rx.userRx === r.id ? ' reacted' : ''}" data-drp-pid="${id}" data-drp-rid="${r.id}">
@@ -234,6 +236,8 @@
   // apart from each other.
   // ══════════════════════════════════════════════════════════════════════
   function _toggleReaction(id, rid) {
+    /* Reacting writes a row — guests get the shared login wall. */
+    if (window.RequireAuth && !RequireAuth.ensure('react to this')) return;
     const r = _resolve(id);
     // No owning binding (or it can't write) → inert. State lives in the host.
     if (!r || typeof r.hooks.onReact !== 'function') return;
@@ -263,8 +267,10 @@
     if (!rx) return;
     const total = _totalCount(rx);
     const liked = rx.userRx === 'love';
+    const reacted = !!rx.userRx && rx.userRx !== 'love';
 
     trigger.classList.toggle('liked', liked);
+    trigger.classList.toggle('reacted', reacted);
     const ico = trigger.querySelector('i');
     if (ico) {
       const iconName = ico.dataset.drpIcon || 'heart';

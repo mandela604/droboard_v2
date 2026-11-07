@@ -79,6 +79,28 @@
           + '</div>';
       }).join('');
 
+      /* Row + button handlers bind HERE — before the pager's early return.
+         They used to sit below `if (tp <= 1) … return`, so on any list that
+         fits on one page the buttons were rendered but never wired up. */
+      el.querySelectorAll('.fl-item').forEach(row=>{
+        row.addEventListener('click', (e)=>{
+          if (e.target.closest('[data-toggle]')) return;
+          const h=row.getAttribute('data-handle');
+          if (opts.onProfileClick) opts.onProfileClick(h, row);
+          else location.href='profile.html?u='+encodeURIComponent(h);
+        });
+      });
+      el.querySelectorAll('[data-toggle]').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          const h=btn.getAttribute('data-toggle');
+          const item=data.find(d=> (d.handle||d.name)===h);
+          /* Follow/unfollow writes a relation — guests get the login wall. */
+          if (window.RequireAuth && !RequireAuth.ensure((item && item.following ? 'unfollow @' : 'follow @') + (h || 'this person'))) return;
+          if (opts.onToggle) opts.onToggle(h, item, btn);
+        });
+      });
+
       // pager element is sibling .fl-pager or create one
       let pager = el.nextElementSibling;
       if (!pager || !pager.classList.contains('fl-pager')) {
@@ -94,24 +116,6 @@
         const p=b.dataset.p; if(p==='prev') page--; else if(p==='next') page++; else page=parseInt(p); render();
         el.scrollIntoView({behavior:'smooth',block:'start'});
       }));
-
-      // bind row clicks
-      el.querySelectorAll('.fl-item').forEach(row=>{
-        row.addEventListener('click', (e)=>{
-          if (e.target.closest('[data-toggle]')) return;
-          const h=row.getAttribute('data-handle');
-          if (opts.onProfileClick) opts.onProfileClick(h, row);
-          else location.href='profile.html?u='+encodeURIComponent(h);
-        });
-      });
-      el.querySelectorAll('[data-toggle]').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-          e.stopPropagation();
-          const h=btn.getAttribute('data-toggle');
-          const item=data.find(d=> (d.handle||d.name)===h);
-          if (opts.onToggle) opts.onToggle(h, item, btn);
-        });
-      });
     }
 
     function setData(list) { data = Array.isArray(list)? list.slice() : []; page=1; render(); }

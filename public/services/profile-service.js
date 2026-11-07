@@ -9,16 +9,70 @@
   let PROFILE = null;
   let VIEW_HANDLE = null;
   let ME_HANDLE = null;
+  let REQ_HANDLE = null;   // the raw ?u= param, null when it's my own profile
   let IS_OWNER = false;
   let IS_GUEST = false;
   let RENDERED = {};
   let FEED_HOOKED = false;
   let LIB_INSTANCE = null;
   let _following = false;
+  /* Role preview. Everything on the page reads PROFILE.isWriter, so a role
+     preview is just flipping that one flag and re-running the render pipeline.
+       'real'   → no preview, the page as it really is
+       null     → the VISITOR view: what a non-owner sees (owner chrome gone)
+       'reader' → forced role view (you're still the owner, just as a reader)
+       'writer' → forced role view (you're still the owner, just as a writer) */
+  let PREVIEW_ROLE = 'real';
+  let REAL_IS_WRITER = false;
+  let REAL_IS_WRITER_SET = false;
+  let ACTIVE_TAB = 'feed';
+
+  /* ── Owner visibility helper ───────────────────────────────────────
+     The single predicate for "may owner-only chrome be on screen?".
+     False on someone else's profile, and false while previewing as a
+     visitor (PREVIEW_ROLE === null) so that preview shows the real thing.
+
+     Rule of thumb for callers:
+       • presentation → canSeeOwnerUI() / ownerOnly()   (menus, buttons, badges)
+       • permissions  → IS_OWNER                        (pin, edit, delete, open) */
+  function canSeeOwnerUI() {
+    return !!IS_OWNER && PREVIEW_ROLE !== null;
+  }
+  /* Hide an element unless the owner should be seeing it. `showAs` is the
+     display to restore when it is visible (e.g. 'flex'); omit it to let the
+     element's CSS decide. Returns whether the element is now visible. */
+  function ownerOnly(el, showAs) {
+    if (!el) return false;
+    const show = canSeeOwnerUI();
+    el.style.display = show ? (showAs || '') : 'none';
+    return show;
+  }
+  /* The top bar sits outside profileRoot, so its owner-only chrome (hamburger,
+     wallet pill) has to be re-applied on every render, not just the first. */
+  function applyTopBarVisibility() {
+    ownerOnly(document.getElementById('menuBtn'), 'flex');
+    ownerOnly(document.getElementById('coinPill'), 'inline-flex');
+  }
+  /* The role currently being displayed, honouring a forced preview. */
+  function roleIsWriter() {
+    if (PREVIEW_ROLE === 'writer') return true;
+    if (PREVIEW_ROLE === 'reader') return false;
+    return REAL_IS_WRITER;
+  }
 
   const GENRES_ALL = window.ProfileData ? ProfileData.GENRES_ALL : [];
   const BOOK_STATUSES = ['ongoing', 'completed', 'paused'];
   const STATUS_LABEL = { ongoing: 'Ongoing', completed: 'Completed', paused: 'Paused' };
+
+  /* Two handles refer to the same account. Handles are case-insensitive and
+     may arrive with a leading '@'; the backend stores usernames lowercased
+     while demo seeds keep display casing ("You_Reader" vs "you_reader"), so a
+     strict === here would mark your own profile as someone else's. */
+  function sameHandle(a, b) {
+    const norm = (h) => String(h || '').trim().replace(/^@/, '').toLowerCase();
+    const na = norm(a);
+    return !!na && na === norm(b);
+  }
 
   function fmtN(n) { if (typeof n === 'string') return n; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
   function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -61,7 +115,10 @@
   function getTabsForProfile(p) {
     const tabs = [{ id: 'feed', label: '🏠 Feed' }];
     if (p.isWriter) tabs.push({ id: 'books', label: '📖 Books', badge: (p.books || []).length });
-    else tabs.push({ id: 'library', label: '📚 Library', badge: (p.library || []).length });
+    /* A profile's Library is its owner's private saved list, so it only
+       exists for owner chrome — never for a stranger, nor in the visitor
+       preview that stands in for one. */
+    else if (canSeeOwnerUI()) tabs.push({ id: 'library', label: '📚 Library', badge: (p.library || []).length });
     tabs.push({ id: 'collections', label: '📂 Collections', badge: (p.collections || []).length });
     tabs.push({ id: 'following', label: '👥 Following' });
     tabs.push({ id: 'about', label: '✦ About' });
@@ -176,13 +233,13 @@
     document.getElementById('profileHandle').textContent = '@' + p.handle;
     document.getElementById('verifiedInline').style.display = p.verified ? 'inline-flex' : 'none';
     document.getElementById('profileBio').textContent = p.bio;
-    document.getElementById('heroEditBtn').style.display = IS_OWNER ? 'flex' : 'none';
-    document.getElementById('heroStatsBtn').style.display = IS_OWNER ? 'flex' : 'none';
+    ownerOnly(document.getElementById('heroEditBtn'), 'flex');
+    ownerOnly(document.getElementById('heroStatsBtn'), 'flex');
     const shown = (p.genres || []).slice(0, 5);
     document.getElementById('genrePillsDisplay').innerHTML = shown.map(id => {
       const g = GENRES_ALL.find(x => x.id === id);
       return g ? `<a class="genre-pill" style="text-decoration:none" href="genre-hub.html?genre=${encodeURIComponent(g.id)}">${g.label}</a>` : '';
-    }).join('') + (IS_OWNER ? `<div class="genre-pill inactive" id="editGenresPill">+ Edit</div>` : '');
+    }).join('') + (canSeeOwnerUI() ? `<div class="genre-pill inactive" id="editGenresPill">+ Edit</div>` : '');
     const pill = document.getElementById('editGenresPill');
     if (pill) pill.addEventListener('click', openGenreEdit);
   }
@@ -333,7 +390,7 @@
 
   function renderActionRow() {
     const el = document.getElementById('actionRow');
-    if (IS_OWNER) {
+    if (canSeeOwnerUI()) {
       el.innerHTML = `<a class="pact edit" href="edit-profile.html">Edit Profile</a><button class="pact msg" id="msgEditorBtn" title="Message your editor"><i class="fas fa-paper-plane"></i></button>`;
       document.getElementById('msgEditorBtn').addEventListener('click', () => {
         window.location.href = 'chat.html?contact=ed_morgan';
@@ -342,10 +399,16 @@
     }
     const startedFollowing = (PROFILE.following || []).some(f => f.name === ME_HANDLE && f.following);
     el.innerHTML = `<button class="pact follow${startedFollowing ? ' ing' : ''}" id="followBtn">${startedFollowing ? '✓ Following' : '+ Follow'}</button>`;
-    document.getElementById('followBtn').addEventListener('click', toggleFollowOwner);
+    document.getElementById('followBtn').addEventListener('click', () => {
+      /* In the visitor preview this is a look, not the real thing — don't
+         let the preview follow the very profile you're standing on. */
+      if (PREVIEW_ROLE === null) { toast('👁 Visitor preview — following is disabled here.'); return; }
+      toggleFollowOwner();
+    });
   }
 
   async function toggleFollowOwner() {
+    if (window.RequireAuth && !RequireAuth.ensure('follow this profile')) return;
     const btn = document.getElementById('followBtn');
     const willFollow = !_following;
     btn.disabled = true;
@@ -397,7 +460,7 @@
   function renderUpgradeStrip(p) {
     const el = document.getElementById('upgradeStrip');
     if (!el) return;
-    if (!IS_OWNER || p.isWriter) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    if (!canSeeOwnerUI() || p.isWriter) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
     let flow = null;
     try { flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null'); } catch (e) {}
@@ -432,14 +495,23 @@
   /* ── Tabs ── */
   function renderTabs(p) {
     const tabs = getTabsForProfile(p);
-    document.getElementById('profileTabs').innerHTML = tabs.map((t, i) =>
-      `<div class="ptab${i === 0 ? ' active' : ''}" data-tab="${t.id}">${t.label}${t.badge ? `<span class="ptab-badge">${t.badge}</span>` : ''}</div>`
+    /* Keep the tab you were on across a re-render (e.g. a role preview);
+       the role may drop that tab — Books↔Library — so fall back to feed. */
+    const ids = tabs.map(t => t.id);
+    if (ids.indexOf(ACTIVE_TAB) === -1) ACTIVE_TAB = 'feed';
+    document.getElementById('profileTabs').innerHTML = tabs.map((t) =>
+      `<div class="ptab${t.id === ACTIVE_TAB ? ' active' : ''}" data-tab="${t.id}">${t.label}${t.badge ? `<span class="ptab-badge">${t.badge}</span>` : ''}</div>`
     ).join('');
     document.querySelectorAll('.ptab').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
     RENDERED = {};
-    switchTab('feed');
+    switchTab(ACTIVE_TAB);
   }
   function switchTab(tab) {
+    /* The tab must exist in the current mode: a role preview or a
+       non-owner view can drop it (Library), and activating an orphaned
+       panel would show content with no highlighted tab. */
+    if (!document.querySelector('.ptab[data-tab="' + tab + '"]')) tab = 'feed';
+    ACTIVE_TAB = tab;
     document.querySelectorAll('.ptab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('.tab-panel').forEach(pnl => pnl.classList.toggle('active', pnl.id === 'panel-' + tab));
     if (!RENDERED[tab]) { renderTabContent(tab); RENDERED[tab] = true; }
@@ -457,7 +529,7 @@
   /* ── Books ── */
   function renderBooks(p) {
     document.getElementById('booksCountTitle').textContent = (p.books || []).length + ' Books';
-    if (IS_OWNER && p.isWriter && !document.getElementById('authorCenterLink')) {
+    if (canSeeOwnerUI() && p.isWriter && !document.getElementById('authorCenterLink')) {
       const link = document.createElement('a');
       link.id = 'authorCenterLink';
       link.className = 'sh-more';
@@ -492,7 +564,7 @@
       hrefFor: (c) => 'collection.html?id=' + encodeURIComponent(c.id),
       onShare: (c) => { if (window.openShareModal) openShareModal({ title: c.name, sub: `${c.count} stories · ${p.name}`, img: (c.covers || [])[0], url: 'https://droboard.app/collection/' + c.id }); },
       onCreateNew: openNewCollection,
-      onManage: IS_OWNER ? handleCollAction : undefined,
+      onManage: canSeeOwnerUI() ? handleCollAction : undefined,
       createButtonEl: document.getElementById('newCollBtn'),
     });
     const withIds = (p.collections || []).map((c, i) => ({ ...c, id: c.id || ('coll_' + i) }));
@@ -570,7 +642,7 @@
   function adaptPost(post) {
     // No avatarRing: post-card asks the shared ring, which derives red/grey/
     // none from StatusStore for that author.
-    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: IS_OWNER, pinnable: IS_OWNER });
+    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: canSeeOwnerUI(), pinnable: canSeeOwnerUI() });
   }
   /* Shared picker hooks (component contract): getState reads the profile
      post, onReact mutates it. Mirrors feed-service's counterHooks so the
@@ -861,7 +933,19 @@
     btn.textContent = 'Creating…'; btn.disabled = true;
     let updated = null;
     try { updated = await ProfileData.createCollection(VIEW_HANDLE, { name, privacy: priv, stories }); }
-    catch (e) { btn.disabled = false; btn.textContent = 'Create Collection ✓'; toast('❌ ' + (e.message || 'Could not create collection')); return; }
+    catch (e) {
+      btn.disabled = false; btn.textContent = 'Create Collection ✓';
+      // The story picker only lists eligible stories, so reaching the server
+      // with this error means the pick went stale — say what to do, not the
+      // internal error code.
+      if (e && /insufficient_reading/.test(String(e.message || ''))) {
+        const left = Math.max(1, (Number(e.required) || 0) - (Number(e.chaptersRead) || 0));
+        toast(`📖 Read ${left} more chapter${left === 1 ? '' : 's'} before adding a story to a collection`);
+      } else {
+        toast('❌ ' + (e.message || 'Could not create collection'));
+      }
+      return;
+    }
     btn.disabled = false; btn.textContent = 'Create Collection ✓';
     if (!updated) { toast('Something went wrong — try again.'); return; }
     PROFILE = updated;
@@ -933,6 +1017,10 @@
 
   /* ── Drawer (shared component/profile-menu.js) ── */
   function openDrawer() {
+    /* The account menu is personal: it carries Edit Profile, Settings, Wallet
+       and Sign Out, so it only opens when owner chrome is on screen — that
+       rules out someone else's profile and the visitor preview alike. */
+    if (!canSeeOwnerUI()) return;
     if (!PROFILE) { toast('Still loading your profile…'); return; }
     renderDrawer(PROFILE);
     if (window.DroboardProfileMenu) DroboardProfileMenu.open();
@@ -946,7 +1034,7 @@
     var collDataP = getMyCollectionsForProfile();
     DroboardProfileMenu.configure({
       profile: p,
-      isOwner: IS_OWNER,
+      isOwner: canSeeOwnerUI(),
       boards: boardsData.joined,
       collections: collDataP.joined,
       onNewPost: function () { openNewPostComposer(); },
@@ -977,42 +1065,29 @@
   })();
 
   /* ── Top-level render + boot ── */
-  /* A visitor with no account has no profile of their own. Show the guest
-     gate (create-account CTA + story recommendations) instead of an empty
-     profile shell — see component/guest-gate.js. */
-  function renderGuest() {
-    const empty = document.getElementById('emptyState');
-    const root = document.getElementById('profileRoot');
-    if (empty) empty.style.display = 'none';
-    if (root) root.style.display = 'none';
-    if (!window.DroboardGuestGate) return;
-    DroboardGuestGate.mount({
-      anchor: '#profileRoot',
-      variant: 'profile',
-      cta: [
-        { label: 'Create account', href: 'signup.html', primary: true, icon: 'fa-user-plus' },
-        { label: 'Log in', href: (window.AuthSession && AuthSession.loginUrl) ? AuthSession.loginUrl('profile.html') : 'login.html', icon: 'fa-right-to-bracket' },
-      ],
-    });
-  }
-
-  /* Signed in, but this profile doesn't exist → plain "not found". */
-  function renderNotFound() {
-    if (window.DroboardGuestGate) DroboardGuestGate.unmount();
-    const empty = document.getElementById('emptyState');
-    const root = document.getElementById('profileRoot');
-    if (empty) empty.style.display = 'block';
-    if (root) root.style.display = 'none';
-  }
-
   function renderProfile(p) {
     if (!p) {
-      if (IS_GUEST) renderGuest();
-      else renderNotFound();
+      /* No profile at all — only reachable if the data layer itself failed,
+         since init() resolves a demo reader for guests before calling this.
+         Must stay synchronous: rerenderProfile() calls it after a role preview. */
+      document.getElementById('emptyState').style.display = 'flex';
       return;
     }
     if (window.DroboardGuestGate) DroboardGuestGate.unmount();
-    IS_OWNER = (p.handle === ME_HANDLE);
+    /* Ownership: I didn't ask for anyone else's profile (no ?u=) → this IS my
+       profile, full stop. Don't try to prove it by comparing handles — when a
+       stored account has no handle field, both sides come back null and a
+       strict compare would wrongly turn my own page into a stranger's (no
+       menu, no "View as", a Follow button instead of Edit Profile). With an
+       explicit ?u=, it's mine only if that handle is actually me. */
+    IS_OWNER = !IS_GUEST && (REQ_HANDLE ? sameHandle(REQ_HANDLE, ME_HANDLE) : true);
+    /* Remember the true role once, before any preview override, so exiting a
+       preview can always restore the real profile. */
+    if (!REAL_IS_WRITER_SET) { REAL_IS_WRITER = !!p.isWriter; REAL_IS_WRITER_SET = true; }
+    p.isWriter = roleIsWriter();
+    /* Owner chrome in the top bar — hamburger and wallet pill — follows the
+       same rule as everything else on the page. */
+    applyTopBarVisibility();
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('profileRoot').style.display = 'block';
     renderHeader(p);
@@ -1020,8 +1095,71 @@
     renderStats(p);
     renderAchievements(p);
     renderUpgradeStrip(p);
+    renderPreviewControl(p);
     renderTabs(p);
     renderDrawer(p);
+  }
+
+  /* ── Preview ─────────────────────────────────────────────────────
+     Owner-only switch that re-renders the whole profile in another state:
+     as a reader, as a writer, or as a VISITOR (a non-owner) — so you can
+     confirm exactly what each of them sees. */
+  function setRolePreview(role) {
+    if (!IS_OWNER || !PROFILE) return;
+    /* 'real' exits; null picks the visitor view; everything else is a role. */
+    if (role !== null && ['real', 'reader', 'writer'].indexOf(role) === -1) {
+      toast("Preview: use 'real', 'reader', 'writer' or null.");
+      return;
+    }
+    PREVIEW_ROLE = role;
+    rerenderProfile();
+    toast(
+      role === null ? '👁 Visitor view — owner tools hidden'
+        : role === 'real' ? 'Back to your real profile'
+          : role === 'writer' ? '✍️ Previewing as Writer'
+            : '📖 Previewing as Reader');
+  }
+  function rerenderProfile() {
+    if (!PROFILE) return;
+    PROFILE.isWriter = roleIsWriter();
+    /* A stale Author Center link would linger in the Books panel when
+       previewing as a reader — drop it and let renderBooks re-add it. */
+    const _acl = document.getElementById('authorCenterLink');
+    if (_acl) _acl.remove();
+    /* Owner chrome outside profileRoot (top bar) must track the mode too. */
+    applyTopBarVisibility();
+    renderHeader(PROFILE);
+    renderActionRow();
+    renderStats(PROFILE);
+    renderAchievements(PROFILE);
+    renderUpgradeStrip(PROFILE);
+    renderPreviewControl(PROFILE);
+    renderTabs(PROFILE);   /* re-renders tabs and re-activates ACTIVE_TAB */
+    renderDrawer(PROFILE);
+  }
+  function renderPreviewControl(p) {
+    const el = document.getElementById('rolePreview');
+    if (!el) return;
+    /* Previewing is a personal tool: never on someone else's profile.
+       Note this bar is deliberately NOT routed through ownerOnly() — it is
+       the one control you need in order to leave the visitor preview. */
+    if (!IS_OWNER) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'flex';
+    const view = PREVIEW_ROLE === null ? 'visitor'
+      : PREVIEW_ROLE === 'real' ? (REAL_IS_WRITER ? 'writer' : 'reader')
+        : PREVIEW_ROLE;
+    el.innerHTML =
+      `<span class="rp-label"><i class="fas fa-eye"></i> View as</span>` +
+      `<span class="rp-toggle">` +
+        `<button class="rp-opt${view === 'reader' ? ' on' : ''}" data-role="reader">📖 Reader</button>` +
+        `<button class="rp-opt${view === 'writer' ? ' on' : ''}" data-role="writer">✍️ Writer</button>` +
+        `<button class="rp-opt${view === 'visitor' ? ' on' : ''}" data-role="visitor" title="What a non-owner sees">👤 Visitor</button>` +
+      `</span>` +
+      (PREVIEW_ROLE !== 'real'
+        ? `<button class="rp-exit" onclick="ProfilePage.setRolePreview('real')">✕ Exit preview</button>`
+        : '');
+    el.querySelectorAll('.rp-opt').forEach(b =>
+      b.addEventListener('click', () => setRolePreview(b.dataset.role === 'visitor' ? null : b.dataset.role)));
   }
 
   async function loadNotifCount() {
@@ -1073,8 +1211,22 @@
     const mcSearch = document.getElementById('mcStorySearch');
     if (mcSearch) mcSearch.addEventListener('input', () => paintStoryGrid('mcStoryGrid'));
     const params = new URLSearchParams(location.search);
+    /* If the session exists but the stored user row is missing (a login path
+       that only returned tokens), restore it first — the handle and roles
+       that follow depend on it. */
+    if (window.AuthSession && AuthSession.ensureAccount) {
+      /* Bounded: this is a bonus restore for signed-in readers, never a gate.
+         If the API is down or slow, the demo seed still paints the page. */
+      try {
+        await Promise.race([
+          AuthSession.ensureAccount(),
+          new Promise(r => setTimeout(r, 1500)),
+        ]);
+      } catch (e) {}
+    }
     ME_HANDLE = await ProfileData.getCurrentUserHandle();
     const requested = params.get('u');
+    REQ_HANDLE = requested;
     VIEW_HANDLE = requested || ME_HANDLE;
 
     /* Browsing someone else's profile (?u=handle) stays public — anyone
@@ -1083,14 +1235,21 @@
     const signedIn = !!(window.AuthSession && AuthSession.isSignedIn && AuthSession.isSignedIn());
     IS_GUEST = !signedIn && !requested;
 
-    let data = null;
-    if (!IS_GUEST) {
-      data = await ProfileData.getProfile(VIEW_HANDLE);
-      if (!data) { data = await ProfileData.getProfile('You_Reader'); } // hardcode reader fallback (remove after testing)
-    }
+    /* No session and no ?u= is not a locked screen. In demo the page renders the
+       seeded demo reader as its own profile, so the owner chrome and every tab
+       work with no account. Flipping IS_GUEST here is what makes that happen —
+       it has to happen before the fetch, because renderProfile is synchronous
+       and cannot go and get a profile of its own. */
+    if (IS_GUEST) { VIEW_HANDLE = 'You_Reader'; IS_GUEST = false; }
+
+    let data = await ProfileData.getProfile(VIEW_HANDLE);
+    if (!data) data = await ProfileData.getProfile('You_Reader');
     document.getElementById('loadingState').style.display = 'none';
     PROFILE = data;
     renderProfile(PROFILE);
+    // The profile being viewed is the counter target — the owner's own
+    // Insights page reads these hits back.
+    try { if (window.InsightsTracker) InsightsTracker.hit('profile', String(VIEW_HANDLE || '').toLowerCase()); } catch (e) {}
     // Deep links: ?tab=collections opens the tab, ?create=1 opens the
     // new-collection sheet (all collection creation flows through here).
     // Guests get no owner-only tabs/sheets — the gate owns their screen.
@@ -1116,5 +1275,5 @@
     }
   }
 
-  window.ProfilePage = { init, toast, toggleTheme, openDrawer, closeDrawer, openGenreEdit, closeGenreEdit, saveGenres, openNewCollection, closeNewCollection, submitNewCollection, openManageCollection, closeManageCollection, submitManageCollection, switchTab };
+  window.ProfilePage = { init, toast, toggleTheme, openDrawer, closeDrawer, openGenreEdit, closeGenreEdit, saveGenres, openNewCollection, closeNewCollection, submitNewCollection, openManageCollection, closeManageCollection, submitManageCollection, switchTab, setRolePreview };
 })();

@@ -8,7 +8,7 @@
  */
 (function(){
 var USE_API = false;
-var API_BASE = '/api/super-admin/platform-settings';
+var API_BASE = window.DROBOARD_API_BASE || '/api/super-admin/settings';
 
 SuperAdminSidebar.attach('#dashboardRoot',{activeItem:'platform-settings',title:'Platform Settings',subtitle:'Configure platform settings and preferences',user:{name:'Tobi Adenuga',role:'Super Admin',avatar:'https://i.pravatar.cc/100?img=68'},notifCount:9,hideSearch:true});
 

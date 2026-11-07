@@ -669,6 +669,8 @@ function authorMatches(q){
 }
 // ── Remote search — the local pools above are page data; the backend is the
 // source of truth (works on every page, no StoryLibrary required).
+// It reads the one search contract every client shares: /api/search/index →
+// { poolStories, poolWriters }. Nothing here invents a second card shape.
 function remoteQuery(qs){
   if(typeof fetch!=='function') return Promise.resolve(null);
   var base=(global.DROBOARD_API_BASE||'/api')+'/search/index';
@@ -677,19 +679,19 @@ function remoteQuery(qs){
     .catch(function(){ return null; });
 }
 function remoteStories(q, limit){
-  return remoteQuery('type=books&limit='+(limit||8)+'&q='+encodeURIComponent(q)).then(function(j){
-    if(!j||!j.books) return [];
-    return j.books.map(function(b){
-      return { id:b.id, title:b.title||'', cover:b.cover||'', genre:b.genre||'',
-               author:b.author||'', authorPhoto:b.authorPhoto||'', hook:b.hook||'' };
-    });
+  return remoteQuery('type=stories&limit='+(limit||8)+'&q='+encodeURIComponent(q)).then(function(j){
+    if(!j||!Array.isArray(j.poolStories)) return [];
+    return j.poolStories.map(function(s){
+      return { id:s.id, title:s.title||'', cover:s.img||'', genre:s.cat||'',
+               author:s.author||'', authorPhoto:s.av||'', hook:s.hook||'' };
+    }).filter(function(s){ return s.title; });
   });
 }
 function remoteAuthors(q){
-  return remoteQuery('type=users&limit=6&q='+encodeURIComponent(q)).then(function(j){
-    if(!j||!j.users) return [];
-    return j.users.map(function(u){
-      return { name:u.name||u.fullName||u.username||'', handle:u.handle||(u.username?'@'+u.username:''), photo:u.photo||u.avatar||'' };
+  return remoteQuery('type=writers&limit=6&q='+encodeURIComponent(q)).then(function(j){
+    if(!j||!Array.isArray(j.poolWriters)) return [];
+    return j.poolWriters.map(function(u){
+      return { id:u.id, name:u.name||'', handle:u.handle||'', photo:u.av||'' };
     }).filter(function(a){ return a.name; });
   });
 }

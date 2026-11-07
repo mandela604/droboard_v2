@@ -29,7 +29,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--divider);display:flex;jus
 <body>
 <div class="phone">
   <div class="topbar">
-    <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="icon-btn" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
     <div style="font-weight:800">Watch & Earn</div>
     <div class="icon-btn" onclick="location.href='store.html'"><i class="fas fa-coins"></i></div>
   </div>
@@ -48,3 +48,5 @@ body{font-family:'DM Sans',sans-serif;background:var(--divider);display:flex;jus
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

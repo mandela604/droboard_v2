@@ -98,6 +98,17 @@ button{font-family:inherit;cursor:pointer}
 .upgrade-strip-title{font-size:12.5px;font-weight:800;color:var(--tx-high)}
 .upgrade-strip-sub{font-size:10.5px;color:var(--tx-muted);margin-top:1px}
 .upgrade-strip-btn{background:var(--acc);color:#fff;border:none;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 0 12px var(--glow-sm)}
+.role-preview{display:none;align-items:center;gap:9px;flex-wrap:wrap;background:rgba(56,189,248,.05);border:1px dashed rgba(56,189,248,.35);border-radius:12px;padding:9px 11px;margin-bottom:14px}
+.rp-label{font-size:10.5px;font-weight:800;color:var(--tx-muted);display:inline-flex;align-items:center;gap:5px;letter-spacing:.03em;text-transform:uppercase}
+.rp-label i{color:var(--blue);font-size:11px}
+.rp-toggle{display:inline-flex;background:rgba(0,0,0,.05);border:1px solid var(--bd);border-radius:20px;padding:2px;gap:2px}
+[data-theme="dark"] .rp-toggle{background:rgba(255,255,255,.06)}
+.rp-opt{border:none;background:transparent;padding:6px 13px;border-radius:16px;font-size:11px;font-weight:800;color:var(--tx-muted);cursor:pointer;transition:.15s;white-space:nowrap;font-family:inherit}
+.rp-opt:active{transform:scale(.96)}
+.rp-opt.on{background:var(--acc);color:#fff;box-shadow:0 0 12px var(--glow-sm)}
+.rp-exit{margin-left:auto;border:1px solid var(--bd);background:rgba(0,0,0,.05);color:var(--tx-body);padding:6px 12px;border-radius:20px;font-size:10.5px;font-weight:800;cursor:pointer;transition:.15s;font-family:inherit;white-space:nowrap}
+[data-theme="dark"] .rp-exit{background:rgba(255,255,255,.06)}
+.rp-exit:active{transform:scale(.96)}
 .profile-tabs{display:flex;border-bottom:1px solid var(--bd);background:rgba(255,255,255,.97);overflow-x:auto;scrollbar-width:none}
 [data-theme="dark"] .profile-tabs{background:rgba(0,0,0,.97)}
 .ptab{flex-shrink:0;padding:10px 12px;font-size:11px;font-weight:700;color:var(--tx-faint);cursor:pointer;border-bottom:2.5px solid transparent;transition:.2s;white-space:nowrap}
@@ -215,6 +226,10 @@ button{font-family:inherit;cursor:pointer}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../services/notification-store.js"></script>
+<script src="../services/notification-service.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
@@ -223,14 +238,14 @@ button{font-family:inherit;cursor:pointer}
 
   <div class="top-bar">
     <div class="top-logo" onclick="location.href='index.html'"><img src="../assets/droboard-icon.png" alt="Droboard" style="height:28px;width:auto;display:block;border-radius:8px"/></div>
-    <a href="store.html" id="coinPill" title="Coin balance" style="text-decoration:none;background:var(--gold-soft);border:1px solid rgba(240,168,0,.2);color:#8a6200;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:800;margin:0 auto;flex-shrink:0"><i class="fas fa-coins" style="font-size:12px"></i><span id="coinBalance">0</span></a>
+    <a href="store.html" id="coinPill" title="Coin balance" style="text-decoration:none;background:var(--gold-soft);border:1px solid rgba(240,168,0,.2);color:#8a6200;display:none;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:800;margin:0 auto;flex-shrink:0"><i class="fas fa-coins" style="font-size:12px"></i><span id="coinBalance"></span></a>
     <div class="top-right">
       <div class="top-icon-btn" data-search-trigger title="Search"><i class="fas fa-magnifying-glass"></i></div>
-      <div class="top-icon-btn" onclick="location.href='notifications.html'" title="Notifications">
+      <div class="dro-icon-btn" onclick="location.href='notifications.html'" title="Notifications">
         <i class="fas fa-bell"></i>
-        <div class="notif-count" id="notifCount" style="display:none">0</div>
+        <span class="dro-icon-btn__badge" id="notifCount" style="display:none">0</span>
       </div>
-      <div class="top-icon-btn" onclick="ProfilePage.openDrawer()" title="Menu"><i class="fas fa-bars"></i></div>
+      <div class="top-icon-btn" id="menuBtn" onclick="ProfilePage.openDrawer()" title="Menu" style="display:none"><i class="fas fa-bars"></i></div>
     </div>
   </div>
 
@@ -274,6 +289,7 @@ button{font-family:inherit;cursor:pointer}
       <div class="profile-genres" id="genrePillsDisplay"></div>
       <div class="stats-row" id="statsRow"></div>
       <div class="ach-row" id="achRow"></div>
+      <div class="role-preview" id="rolePreview" style="display:none"></div>
       <div class="upgrade-strip" id="upgradeStrip"></div>
     </div>
 
@@ -405,51 +421,55 @@ button{font-family:inherit;cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-<script src="../services/auth-session.js?v=3"></script>
+<script src="../services/auth-session.js?v=5"></script>
 <script src="../data/profile-demo-seed.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../super-admin/data/admin-demo-data.js"></script>
 <script src="../super-admin/awards-service.js"></script>
-<script src="../services/profile-data.js?v=3"></script>
+<script src="../services/profile-data.js?v=5"></script>
 <script src="../services/search-service.js"></script>
-  <script src="../component/search-overlay.js?v=4"></script>
+  <script src="../component/search-overlay.js?v=5"></script>
   <script src="../component/bottom-nav.js"></script>
   <script src="../component/report-sheet.js"></script>
-  <script src="../component/dots-menu.js"></script>
-  <script src="../component/profile-menu.js?v=3"></script>
+  <script src="../component/dots-menu.js?v=2"></script>
+  <script src="../component/profile-menu.js?v=5"></script>
   <script src="../component/collection-card.js"></script>
-  <script src="../component/follow-list.js?v=3"></script>
-  <script src="../component/library.js"></script>
+  <script src="../component/follow-list.js?v=5"></script>
+  <script src="../component/library.js?v=1"></script>
 <script src="../component/expiry-chips.js?v=8"></script>
-  <script src="../component/post-composer.js?v=25"></script>
-  <script src="../component/discover-card.js?v=3"></script>
+  <script src="../component/post-composer.js?v=26"></script>
+  <script src="../component/discover-card.js?v=10"></script>
   <script src="../component/more-like-this.js"></script>
   <script src="../component/guest-gate.js"></script>
 <script src="../services/reading-history.js"></script>
   <script src="../component/boards-overlay.js"></script>
-  <script src="../component/browse-overlay.js?v=13"></script>
-  <script src="../component/ad-card.js?v=6"></script>
+  <script src="../component/browse-overlay.js?v=16"></script>
+  <script src="../component/ad-card.js?v=10"></script>
   <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/audience-service.js?v=3"></script>
-  <script src="../services/ad-service.js?v=4"></script>
+  <script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/status-viewer.js?v=16"></script>
 <script src="../component/status-ring.js?v=4"></script>
   <script src="../shared/status-loader.js"></script>
-<script src="../services/people-service.js"></script>
-<script src="../services/status-service.js?v=7"></script>
-<script src="../component/writers-row.js?v=1"></script>
+<script src="../services/people-service.js?v=1"></script>
+<script src="../services/status-service.js?v=8"></script>
+<script src="../component/writers-row.js?v=2"></script>
   <script src="../services/store-service.js?v=6"></script>
-  <script src="../component/reaction-picker.js"></script>
-<script src="../component/post-card.js?v=7"></script>
-<script src="../services/saves-bridge.js"></script>
-<script src="../component/save-modal.js"></script>
-<script src="../component/share-modal.js"></script>
-<script src="../component/book-card.js"></script>
+  <script src="../component/reaction-picker.js?v=5"></script>
+<script src="../component/post-card.js?v=9"></script>
+<script src="../services/saves-bridge.js?v=2"></script>
+<script src="../component/save-modal.js?v=2"></script>
+<script src="../component/share-modal.js?v=5"></script>
+<script src="../component/book-card.js?v=4"></script>
 <script src="../services/league-service.js"></script>
-<script src="../shared/insights-tracker.js"></script>
-<script src="../services/profile-service.js?v=7"></script>
-<script>ProfilePage.init(); InsightsTracker.hit('profile');</script>
+<script src="../shared/insights-tracker.js?v=3"></script>
+<script src="../services/profile-service.js?v=18"></script>
+<script>
+function hideLoading(){var l=document.getElementById('loadingState');if(l)l.style.display='none';}
+function showError(){hideLoading();var e=document.getElementById('emptyState');if(e)e.style.display='flex';}
+ProfilePage.init().catch(err=>{console.error('[profile] init failed:',err);showError();});
+</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

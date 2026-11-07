@@ -1,91 +1,107 @@
 /**
- * reset-password-service.js — Page logic for reset-password.html (call-and-render)
- * HTML is markup only; all logic lives here and runs on script load.
- * Backend-ready: keeps AUTH_CONFIG (/api/auth/* endpoints) AS IS; demo
- * fallbacks stay until backend is live. USE_API/API_BASE reserved for live swap.
+ * reset-password-service.js — Page logic for reset-password.html
+ * Production: real API only, real errors shown, no demo fallbacks.
  */
-(function(){
-'use strict';
+(function () {
+  'use strict';
 
-const USE_API = false;
-const API_BASE = '/api';
+  const API = '/api';
 
-// ── Backend-ready auth (works in demo until backend is live) ──
-const AUTH_CONFIG = {
-  API_BASE: (function(){ try{ return localStorage.getItem('droboard_api_base') || ''; }catch(e){ return ''; } })(),
-  ENDPOINTS: { VALIDATE: '/api/auth/reset-password/validate', RESET: '/api/auth/reset-password' }
-};
-function apiUrl(p){ return (AUTH_CONFIG.API_BASE || '') + p; }
-function setLoading(btn, on){
-  if(!btn) return;
-  if(on){ btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Please wait…'; }
-  else{ btn.disabled = false; if(btn.dataset.orig) btn.innerHTML = btn.dataset.orig; }
-}
-function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},2200); }
-function getToken(){
-  try{ return new URLSearchParams(location.search).get('token') || ''; }catch(e){ return ''; }
-}
-function showInvalid(){
-  document.getElementById('resetCard').style.display = 'none';
-  document.getElementById('invalidCard').style.display = 'block';
-}
-function showSuccess(){
-  document.getElementById('resetCard').style.display = 'none';
-  document.getElementById('successCard').style.display = 'block';
-  toast('Password updated ✓');
-}
+  function el(id) { return document.getElementById(id); }
+  function setLoading(btn, on) {
+    if (!btn) return;
+    if (on) { btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Please wait…'; }
+    else { btn.disabled = false; if (btn.dataset.orig) btn.innerHTML = btn.dataset.orig; }
+  }
+  function toast(m) {
+    const t = el('toast'); if (!t) return;
+    t.textContent = m; t.classList.add('show');
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+  function getToken() {
+    try { return new URLSearchParams(location.search).get('token') || ''; } catch (e) { return ''; }
+  }
+  function showInvalid() {
+    el('resetCard').style.display = 'none';
+    el('invalidCard').style.display = 'block';
+  }
+  function showSuccess() {
+    el('resetCard').style.display = 'none';
+    el('successCard').style.display = 'block';
+  }
 
-// Validate token on load — backend when live, demo accepts any non-empty token
-(function validateToken(){
-  const token = getToken();
-  if(!token){ showInvalid(); return; }
-  fetch(apiUrl(AUTH_CONFIG.ENDPOINTS.VALIDATE) + '?token=' + encodeURIComponent(token))
-    .then(function(r){ if(!r.ok) throw new Error('demo'); return r.json(); })
-    .then(function(j){ if(j && j.valid === false) showInvalid(); })
-    .catch(function(){ /* demo fallback: any ?token= value opens the form */ });
-})();
-
-document.querySelectorAll('.pw-eye').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    const inp=document.getElementById(btn.dataset.target);
-    const isPw=inp.type==='password'; inp.type=isPw?'text':'password';
-    btn.querySelector('i').className=isPw?'far fa-eye-slash':'far fa-eye';
-  });
-});
-function checkMatch(){
-  const pass=document.getElementById('passInput').value;
-  const conf=document.getElementById('confirmInput').value;
-  const el=document.getElementById('pwMatch');
-  if(!conf){ el.style.display='none'; return false; }
-  el.style.display='block';
-  if(pass===conf){ el.textContent='Passwords match ✓'; el.className='pw-match ok'; return true; }
-  el.textContent='Passwords don\'t match'; el.className='pw-match bad'; return false;
-}
-document.getElementById('confirmInput').addEventListener('input',checkMatch);
-document.getElementById('passInput').addEventListener('input',checkMatch);
-
-document.getElementById('resetBtn').addEventListener('click',function(){
-  const btn = this;
-  const token = getToken();
-  const pass=document.getElementById('passInput').value;
-  const conf=document.getElementById('confirmInput').value;
-  if(pass.length < 8){ toast('Password must be at least 8 characters'); return; }
-  if(pass!==conf){ toast('Passwords don\'t match'); return; }
-  setLoading(btn, true);
-  fetch(apiUrl(AUTH_CONFIG.ENDPOINTS.RESET), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, password: pass }) })
-    .then(function(r){ if(!r.ok) throw new Error('demo'); return r.json(); })
-    .then(function(){ showSuccess(); })
-    .catch(function(){
-      // demo fallback: accept and continue until backend is live
-      showSuccess();
+  // Validate token on load — invalid or missing token shows the error card immediately
+  (function validateToken() {
+    const token = getToken();
+    if (!token) { showInvalid(); return; }
+    fetch(API + '/auth/reset-password/validate?token=' + encodeURIComponent(token), {
+      credentials: 'same-origin',
     })
-    .finally(function(){ setTimeout(function(){ setLoading(btn, false); },450); });
-});
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (body) {
+          return { ok: r.ok, status: r.status, body };
+        });
+      })
+      .then(function (r) {
+        if (!r.ok || (r.body && r.body.valid === false)) showInvalid();
+      })
+      .catch(function () {
+        // Network failure on validation — show error so user requests a fresh link
+        showInvalid();
+      });
+  })();
 
-// Expose identical window globals (prior top-level names)
-window.AUTH_CONFIG = AUTH_CONFIG;
-window.apiUrl = apiUrl;
-window.setLoading = setLoading;
-window.toast = toast;
+  // Password visibility toggles
+  document.querySelectorAll('.pw-eye').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const inp = el(btn.dataset.target);
+      const isPw = inp.type === 'password';
+      inp.type = isPw ? 'text' : 'password';
+      btn.querySelector('i').className = isPw ? 'far fa-eye-slash' : 'far fa-eye';
+    });
+  });
 
+  // Live password match indicator
+  function checkMatch() {
+    const pass = el('passInput').value;
+    const conf = el('confirmInput').value;
+    const hint = el('pwMatch');
+    if (!conf) { hint.style.display = 'none'; return false; }
+    hint.style.display = 'block';
+    if (pass === conf) { hint.textContent = '✓ Passwords match'; hint.className = 'pw-match ok'; return true; }
+    hint.textContent = '✗ Passwords do not match'; hint.className = 'pw-match bad'; return false;
+  }
+  el('passInput').addEventListener('input', checkMatch);
+  el('confirmInput').addEventListener('input', checkMatch);
+
+  el('resetBtn').addEventListener('click', function () {
+    const btn = this;
+    const token = getToken();
+    const pass = el('passInput').value;
+    const conf = el('confirmInput').value;
+    if (!token) { showInvalid(); return; }
+    if (pass.length < 8) { toast('Password must be at least 8 characters.'); return; }
+    if (pass !== conf) { toast('Passwords do not match.'); return; }
+    setLoading(btn, true);
+    fetch(API + '/auth/reset-password', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password: pass }),
+    })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (body) {
+          return { ok: r.ok, status: r.status, body };
+        });
+      })
+      .then(function (r) {
+        if (r.ok) { showSuccess(); return; }
+        if (r.status === 400 || r.status === 404) { showInvalid(); return; }
+        if (r.status === 429) { toast('Too many attempts. Wait a few minutes and try again.'); return; }
+        if (r.status >= 500) { toast('Something went wrong on our side. Please try again.'); return; }
+        toast('We couldn\'t reset your password. Please try again.');
+      })
+      .catch(function () { toast('Can\'t reach Droboard. Check your connection and try again.'); })
+      .finally(function () { setLoading(btn, false); });
+  });
 })();

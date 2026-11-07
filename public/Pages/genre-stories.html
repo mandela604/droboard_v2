@@ -66,12 +66,13 @@ a{color:inherit;text-decoration:none}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
   <div class="top-bar">
-    <button type="button" class="top-icon-btn" onclick="history.back()" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <button type="button" class="top-icon-btn" onclick="history.length>1?history.back():location.href='feed.html'" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
     <div class="top-center">
       <div class="top-title" id="pageTitle">Genre Stories</div>
       <div class="top-sub" id="pageSub">Top 10 in this genre</div>
@@ -91,14 +92,16 @@ a{color:inherit;text-decoration:none}
 <div class="toast" id="toast"></div>
 <script src="../data/genre-demo-seed.js"></script>
 <script src="../data/central-demo-data.js"></script>
-<script src="../component/book-card.js?v=1"></script>
-<script src="../component/ad-card.js?v=6"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../component/book-card.js?v=4"></script>
+<script src="../component/ad-card.js?v=10"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/ad-slot.js?v=2"></script>
+<script src="../component/ad-slot.js?v=3"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../services/genre-stories-service.js?v=1"></script>
 <script>GenreStoriesPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

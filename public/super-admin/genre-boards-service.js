@@ -1,10 +1,16 @@
 /**
- * genre-boards-service.js — Genre Boards admin page controller.
+ * genre-boards-service.js — Boards admin page controller.
  * Accordion list: summary columns on the row, full engagement stats on expand.
  * Metrics: members, new/wk, posts/wk, replies/post (discussion depth),
  * returning visitors %, daily/weekly/monthly visits, open mod reports,
  * growth. No story counts — boards are discussion-only.
- * Backend-ready: flip USE_API, point API_BASE at GET /api/admin/genre-boards.
+ * A board is a chief-editor category; its genres are sections inside it, so the
+ * crew shown here is the one team covering all of them.
+ * Backend-ready: flip USE_API, point API_BASE at the live routes —
+ *   GET  /api/super-admin/boards        (?q=&status=&sort=&page=&limit=)
+ *   PUT  /api/super-admin/boards/:id/crew   {admins:[], moderators:[]}
+ *   POST /api/super-admin/boards/:id/flag     {reason, note?, password}
+ *   POST /api/super-admin/boards/:id/unflag   {password}
  */
 (function(){
 'use strict';
@@ -12,7 +18,7 @@ const USE_API = false, API_BASE = '/api';
 
 SuperAdminSidebar.attach('#boardsRoot', {
   activeItem: 'genre-boards',
-  title: 'Genre Boards',
+  title: 'Boards',
   subtitle: 'Every board, its moderation team & engagement stats',
   user: { name: 'Tobi Adenuga', role: 'Super Admin', avatar: 'https://i.pravatar.cc/100?img=68' },
   notifCount: 9,
@@ -22,7 +28,7 @@ SuperAdminSidebar.attach('#boardsRoot', {
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
 
-/* ── DEMO DATASET — live swap: GET /api/admin/genre-boards ── */
+/* ── DEMO DATASET — live swap: GET /api/super-admin/boards ── */
 function mod(name, img, role){ return { name:name, avatar:'https://i.pravatar.cc/100?img='+img, role:role }; }
 
 const BOARDS = [
@@ -120,7 +126,7 @@ function renderStatCards(){
   const reportsOpen = BOARDS.reduce(function(s,b){return s+b.reportsOpen;},0);
   const avgReplies = (BOARDS.reduce(function(s,b){return s+b.repliesPerPost;},0)/BOARDS.length).toFixed(1);
   const stats = [
-    { n:String(BOARDS.length), l:'Genre Boards', ico:'fa-th-large', cls:'gold' },
+    { n:String(BOARDS.length), l:'Boards', ico:'fa-th-large', cls:'gold' },
     { n:fmtNum(totalMembers), l:'Total Members', ico:'fa-users', cls:'blue' },
     { n:fmtNum(postsWeek), l:'Posts This Week', ico:'fa-pen-nib', cls:'green' },
     { n:avgReplies, l:'Avg Replies / Post', ico:'fa-comments', cls:'purple' },

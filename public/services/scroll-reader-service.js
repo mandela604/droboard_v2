@@ -820,7 +820,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     qa('[data-act="fs-inc"]').forEach(function (b) { b.addEventListener("click", function () { changeFontSize(1); }); });
     qa('[data-lh]').forEach(function (el) { el.addEventListener("click", function () { setLH(el, el.getAttribute("data-lh")); }); });
     qa('[data-ff]').forEach(function (el) { el.addEventListener("click", function () { setFF(el, el.getAttribute("data-ff")); }); });
-    qa('[data-theme]').forEach(function (el) { el.addEventListener("click", function () { setTheme(el, el.getAttribute("data-theme")); }); });
+    qa('.theme-opt').forEach(function (el) { el.addEventListener("click", function () { setTheme(el, el.getAttribute("data-theme")); }); });
     const overlay = document.getElementById("overlayBg");
     if (overlay) overlay.addEventListener("click", closeAllSheets);
     const exitCta = document.getElementById("exitCta");

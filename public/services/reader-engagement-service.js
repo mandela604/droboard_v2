@@ -54,8 +54,8 @@
         opts: [{ t: 'Reconciliation', v: 2100 }, { t: 'Bigger twist', v: 3400 }, { t: 'Someone leaves', v: 900 }],
         voted: -1
       },
-      // demo author note on ch 1 so UI is visible; backend/create will supply real notes
-      authorNote: n === 1 ? 'Thanks for reading! Next chapter drops Friday — tell me who you trust.' : '',
+      // No author notes by default — backend will supply real per-chapter notes if needed
+      // authorNote: '',
       debate: {
         motion: 'Was the lead right in chapter ' + n + '?',
         forText: 'Yes, everyone deserves a second chance.',

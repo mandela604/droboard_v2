@@ -1,4 +1,4 @@
-mongod up: mongodb://127.0.0.1:50603/dro_sa_pages
+mongod up: mongodb://127.0.0.1:61705/dro_sa_pages
 
 === TESTING DASHBOARD SUMMARY ===
 
@@ -9,28 +9,49 @@ PASS  dashboard has topStories array  ::  topStories type=object
 PASS  dashboard has activityLog array  ::  activityLog type=object
 PASS  dashboard has adminTeam array  ::  adminTeam type=object
 PASS  kpiCard has required fields  ::  kpi={n:true,l:true,ico:true}
-PASS  topStory has title, writer, genre, reads, revenue  ::  {"id":"000001a1-9488-731d-8127-93a86e8626ba","title":"The runaway bride — I left at the altar in my socked feet","writer":"Ifeanyi Story","genre":"Twist Fiction","reads":0,"revenue":0,"cover":"https://i.postimg.cc/vDn9YLx5/wife2.jpg"}
+PASS  revenueChart row has m and v  ::  rev={m:true,v:0}
+PASS  topStory has title, writer, genre, reads, revenue  ::  {"id":"000001a1-9e3e-73a6-a1d9-136c1439a765","title":"The runaway bride — I left at the altar in my socked feet","writer":"Ifeanyi Story","genre":"Twist Fiction","reads":900,"revenue":12500,"cover":"https://i.postimg.cc/vDn9YLx5/wife2.jpg",
 PASS  topStory has cover url  ::  cover=https://i.postimg.cc/vDn9YLx5/wife2.jpg
-PASS  adminTeam row has id, name, email, role, perms  ::  {"id":"000001a1-9488-7b95-ad45-ccb878e1ee41","name":"Tobenna Achebe","email":"tobi@droboard.com","avatar":"","role":"Super Admin","status":"active","perms":{"contracts":true,"campaigns":true,"moderation":true,"finance":true,"admins":true}}
-PASS  adminTeam row has perms object  ::  perms={"contracts":true,"campaigns":true,"moderation":true,"finance":true,"admins":true}
+PASS  adminTeam row has id, name, email, role, perms  ::  {"id":"000001a1-9e3e-713e-9bf6-89e31bab4c83","name":"Tobenna Achebe","email":"tobi@droboard.com","avatar":"","role":"Platform Ops","status":"active","perms":{"contracts":true,"campaigns":false,"moderation":true,"finance":false,"admins":fals
+PASS  adminTeam row has perms object  ::  perms={"contracts":true,"campaigns":false,"moderation":true,"finance":false,"admins":false}
+
+=== TESTING ACTIVITY / PERMS / REVENUE FROM REAL DATA ===
+
+PASS  PATCH /users/:id -> 200  ::  status=200 {"id":"000001a1-9e3e-78e6-b946-c02b4f7f06d4","name":"Chioma Reader","username":"chioma_reader","email":"chioma@droboard.com","role":"Reader","status":"active","avatar":"","verified":true,"joined":"2026-11-02T21:50:55.570Z","lastA
+PASS  audit() wrote AuditLog rows  ::  count=1
+PASS  activityLog panel is not permanently empty  ::  len=1
+PASS  activity names the real actor  ::  text=Tobenna Achebe — Users updated
+PASS  activity humanises the audit action  ::  text=Tobenna Achebe — Users updated
+PASS  topStories[].revenue is what the book earned  ::  revenue=12500
+PASS  adminTeam role label comes from the AdminRole doc  ::  role=Platform Ops
+PASS  adminTeam perms roll up from the real role flags  ::  perms={"contracts":true,"campaigns":false,"moderation":true,"finance":false,"admins":false}
 
 === TESTING USERS LIST ===
 
 PASS  GET /users -> 200  ::  status=200
 PASS  users list has items array  ::  items type=OK
 PASS  users list returns created users  ::  found=4 expected>=4
-PASS  user row has id, name, email, username  ::  {"id":"000001a1-9488-7eab-89d1-5c4205d6f765","name":"Ifeanyi Story","username":"ifeanyi_author","email":"ifeanyi@droboard.com","role":"Reader","status":"active","avatar":"https://i.pravatar.cc/150?img=12","verified":false,"joined":"2026-11-
-PASS  user row has role field  ::  role=Reader,roles=undefined
-PASS  user row has stats object  ::  stats={"followers":0,"following":0,"stories":2,"reads":0,"comments":0}
+PASS  user row has id, name, email, username  ::  {"id":"000001a1-9e3e-7bbe-be44-fe94190974d5","name":"Ifeanyi Story","username":"ifeanyi_author","email":"ifeanyi@droboard.com","role":"Writer","status":"active","avatar":"https://i.pravatar.cc/150?img=12","verified":true,"joined":"2026-11-0
+PASS  user row has role field  ::  role=Writer,roles=undefined
+PASS  user row has stats object  ::  stats={"followers":0,"following":0,"posts":0,"stories":2,"reads":1200,"comments":0}
 PASS  user row has wallet.balance.coins  ::  coins=0
 PASS  user row has coinsSpent (not naira)  ::  coinsSpent=0
+PASS  likesGiven counts the reader Reaction rows  ::  likesGiven=3
+PASS  sharesCount counts distinct ShareEvent targets  ::  sharesCount=2
+PASS  savesCount counts distinct saved + library stories  ::  savesCount=2
+PASS  readingHours comes from secondsSpent  ::  readingHours=0.5
+PASS  avgSessionMin is minutes per chapter session  ::  avgSessionMin=10
+PASS  streakDays is the consecutive-day run  ::  streakDays=2
+PASS  topGenres are the genres actually read  ::  topGenres=[{"name":"Revenge Drama","count":1},{"name":"Twist Fiction","count":1}]
 
 === TESTING SINGLE USER DETAILS ===
 
 PASS  GET /users/:id -> 200  ::  status=200
-PASS  user detail matches list fields  ::  id=000001a1-9488-7eab-89d1-5c4205d6f765,name=Ifeanyi Story
+PASS  user detail matches list fields  ::  id=000001a1-9e3e-7bbe-be44-fe94190974d5,name=Ifeanyi Story
 PASS  user detail has profile info  ::  profile={"bio":"","location":"","website":""},avatar=https://i.pravatar.cc/150?img=12
-PASS  user detail has statistics  ::  stories=2,wordsRead=0
+PASS  GET /users/:id -> 200 for the reader  ::  status=200
+PASS  user detail carries engagement aggregates  ::  likes=3,shares=2,saves=2
+PASS  user detail carries reading aggregates  ::  h=0.5,min=10,streak=2,genres=[{"name":"Revenge Drama","count":1},{"name":"Twist Fiction","count":1}]
 
 === TESTING INSIGHTS OVERVIEW ===
 
@@ -39,8 +60,12 @@ PASS  overview has users array  ::  users type=object
 PASS  overview has ex array (expenditure)  ::  ex type=object
 PASS  overview has cohorts array  ::  cohorts type=object
 PASS  overview user has coinsSpent, coinsBought  ::  coinsSpent=0,coinsBought=0
-PASS  expenditure row has u (userId) and x object  ::  {"u":"000001a1-9488-7b95-ad45-ccb878e1ee41","x":{"referralsSent":0,"referralsConverted":0,"plan":"free","funded":0,"sessionsPerDay":0}}
+PASS  expenditure row has u (userId) and x object  ::  {"u":"000001a1-9e3e-713e-9bf6-89e31bab4c83","x":{"referralsSent":0,"referralsConverted":0,"plan":"free","funded":0,"sessionsPerDay":0}}
 PASS  expenditure x has funded  ::  funded=0
+PASS  subPrice is the live monthly plan USD leg  ::  subPrice=2
+PASS  sessionsPerDay is chapter sessions per reading day  ::  sessionsPerDay=1.5
+PASS  insights user rows carry engagement + reading too  ::  likes=3,saves=2,streak=2
+PASS  a user with no activity reads as zero, not as a gap  ::  likes=0,h=0
 
 === TESTING LEADERBOARD ===
 
@@ -54,4 +79,15 @@ PASS  analytics summary has totalUsers  ::  totalUsers=4
 PASS  analytics summary has totalRevenue  ::  totalRevenue=0
 PASS  analytics summary has monthlyRevenue array  ::  monthlyRevenue type=object
 
-===== 36/36 Super Admin page assertions passed =====
+=== TESTING CHIEF / FINANCE / MARKETING ACTIVITY FEED ===
+
+PASS  chief dashboard activity feeds from AuditLog  ::  status=200 len=1 body=[{"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}]
+PASS  chief activity row has icon/color/text/time  ::  {"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}
+PASS  finance dashboard activity feeds from AuditLog  ::  status=200 len=1 body=[{"icon":"fa-pen","color":"purple","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}]
+PASS  finance activity row has icon/color/text/time  ::  {"icon":"fa-pen","color":"purple","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}
+PASS  marketing dashboard activity feeds from AuditLog  ::  status=200 len=1 body=[{"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}]
+PASS  marketing activity row has icon/color/text/time  ::  {"icon":"fa-pen","color":"blue","text":"<b>Tobenna Achebe</b> Users updated","time":"just now"}
+PASS  GET /api/chief/activity -> 200 with rows  ::  status=200 items=1
+PASS  chief activity row carries action + actor + time  ::  {"id":"6ae905c0bb475278fb04d153","action":"admin.users.update","type":"update","entity":"/api/super-admin/users/000001a1-9e3e-78e6-b946-c02b4f7f06d4","entityId":"000001a1-9e3e-78e6-b946-c02b4f7f06d4",
+
+===== 66/66 Super Admin page assertions passed =====

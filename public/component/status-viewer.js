@@ -865,7 +865,12 @@
   // Render
   // ══════════════════════════════════════════════════════════════════════
   function _isLiveStatusId(id) {
-    return /^[a-f0-9]{24}$/i.test(String(id || ''));
+    // Backend ids are stored uuidv7 (8-4-4-4-12 hex); the 24-char form is a
+    // legacy ObjectId string. Demo slide ids match neither — see
+    // status-service.js _isLiveStatusId for the shared rule.
+    var s = String(id || '');
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ||
+      /^[a-f0-9]{24}$/i.test(s);
   }
   function _liveSession() {
     try {
@@ -1438,6 +1443,18 @@
   window.StatusStore       = StatusStore;
   window.STATUS_VIEWED_RING = '#f1f1f1';
   document.documentElement.style.setProperty('--status-viewed-ring', '#f1f1f1');
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Cross-tab seen-state sync (same browser, different tabs).
+  // A 'storage' event fires only in the tabs that DID NOT write, so the
+  // sibling tab sees the ring flip grey without waiting for a page reload.
+  // ══════════════════════════════════════════════════════════════════════
+  window.addEventListener('storage', function (e) {
+    if (!e || e.key === null || e.key === STATUS_STORE_KEY) {
+      StatusStore._m = null;      // drop the in-memory mirror; _load() re-reads disk
+      try { StatusStore.applyAll(); } catch (err) {}
+    }
+  });
 
   // ══════════════════════════════════════════════════════════════════════
   // Init

@@ -1050,6 +1050,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (threadOpenId === null) return;
       const text = threadInputEl.value.trim();
       if (!text) return;
+      if (window.RequireAuth && !RequireAuth.ensure('reply to this comment')) return;
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
       const parent = findById(comments, threadOpenId);
       if (!parent) return;
@@ -1079,6 +1080,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     function postTop() {
       const text = inputEl.value.trim();
       if (!text) return;
+      if (window.RequireAuth && !RequireAuth.ensure('post a comment')) return;
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
       const c = _normalize({
         name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
@@ -1097,6 +1099,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     function submitReply(ns, parentId) {
       const inp = document.getElementById(ns + '-cri-' + parentId);
       if (!inp || !inp.value.trim()) return;
+      if (window.RequireAuth && !RequireAuth.ensure('reply to this comment')) return;
       const parent = findById(comments, parentId);
       if (!parent) return;
       const text = inp.value.trim();
@@ -1148,6 +1151,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
     // ── Like / react (FALLBACK ONLY — used when reaction-picker.js isn't loaded) ──
     function toggleLike(cid) {
+      if (window.RequireAuth && !RequireAuth.ensure('like this comment')) return;
       const c = findById(comments, cid); if (!c) return;
       c.liked = !c.liked; c.likes += c.liked ? 1 : -1;
       if (c.liked) { try { if (window.ReaderLeague) ReaderLeague.track('reaction'); } catch (e) {} }
@@ -1155,6 +1159,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (typeof options.onLike === 'function') options.onLike(c, c.liked);
     }
     function pickReaction(cid, rid) {
+      if (window.RequireAuth && !RequireAuth.ensure('react to this comment')) return;
       const c = findById(comments, cid); if (!c) return;
       if (c.rx.userRx === rid) { c.rx[rid] = Math.max(0, (c.rx[rid] || 0) - 1); c.rx.userRx = null; }
       else {
@@ -1229,6 +1234,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       _toast('Reported: ' + reportTypeLabel(typeId) + ' (demo)');
     }
     function openReportTypes(cid) {
+      if (window.RequireAuth && !RequireAuth.ensure('report this comment')) return;
       const c = findById(comments, cid);
       // The main menu is torn down on item click — rebuild the shell if gone.
       let overlay = document.getElementById(instId + '-menuov');

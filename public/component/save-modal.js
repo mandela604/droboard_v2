@@ -439,6 +439,8 @@
   // Open / close — save sheet
   // ════════════════════════════════════════════════════════════════════════
   async function openSaveModal(data) {
+    /* Saving writes to the library — guests get the shared login wall. */
+    if (window.RequireAuth && !RequireAuth.ensure('save this')) return;
     _data = data || {};
     _loading = true;
     _renderCollections(); // show skeletons immediately
@@ -584,6 +586,8 @@
 
     try {
       let ok = false;
+      let refusal = null;
+      let expired = false;
       if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.toggleCollection === 'function') {
         try {
           const result = await window.DroboardSaveAPI.toggleCollection(_data.storyId, collId, newVal);
@@ -592,7 +596,36 @@
             if (result.count !== undefined) coll.count = result.count;
             _renderCollections();
           }
-        } catch (e) { ok = false; }
+        } catch (e) {
+          // A 403 from the server is an ANSWER, not a dead backend: the reader
+          // has not read enough of this story. Falling through to the demo
+          // path here would toast "Added" on a write that will never persist.
+          if (e && (e.required != null || e.chaptersRead != null ||
+              /insufficient_reading/.test(String(e && e.message || '')))) refusal = e;
+          // 401 = the session expired mid-scroll. Same problem: the demo path
+          // would claim a save that the server rejected.
+          if (e && e.status === 401) expired = true;
+          ok = false;
+        }
+      }
+      if (expired) {
+        coll.saved  = !newVal;
+        coll.count -= newVal ? 1 : -1;
+        _renderCollections();
+        _notifyChange();
+        _toast('🔒 Your session expired — sign in again to save to collections');
+        _posting = false;
+        return;
+      }
+      if (refusal) {
+        coll.saved  = !newVal;
+        coll.count -= newVal ? 1 : -1;
+        _renderCollections();
+        _notifyChange();
+        const left = Math.max(1, (Number(refusal.required) || 0) - (Number(refusal.chaptersRead) || 0));
+        _toast(`📖 Read ${left} more chapter${left === 1 ? '' : 's'} of this story before adding it to a collection`);
+        _posting = false;
+        return;
       }
       if (!ok) {
         await new Promise(r => setTimeout(r, 200));

@@ -276,6 +276,11 @@
   function _head(post) {
     // Never read post.avatarRing: the ring is the author's seen-state, and the
     // shared call derives it (plus the tap target) from the status service.
+    // Live cards carry BOTH: `name` is the clean username (what feeds-service
+    // links profile.html?u= with — the backend does not strip an '@'), and
+    // `fullName` is the display name the reader chose. The card shows the
+    // person, the link stays the handle; demo posts have no fullName, so
+    // `name` still renders.
     const avatar = window.DroboardStatusRing
       ? DroboardStatusRing.avatar({ name: post.name, handle: post.handle, avatar: post.avatar, statuses: post.statuses }, {
           size: 42, key: post.name || post.handle || '', gapColor: 'var(--card)', innerBg: 'var(--card)',
@@ -291,7 +296,7 @@
         </div>
         <div class="pcc-meta">
           <div class="pcc-name-row">
-            <span class="pcc-name" data-pcc-name>${esc(post.name)}</span>
+            <span class="pcc-name" data-pcc-name>${esc(post.fullName || post.name)}</span>
             ${post.rank ? `<span class="pcc-rank">${esc(post.rank)}</span>` : ''}
           </div>
           <div class="pcc-time">${esc(post.time)}${post.pinned ? ' · 📌 Pinned' : ''}</div>
@@ -632,20 +637,39 @@
 
       if (e.target.closest('[data-pcc-avatar]')) { _hooks.onAvatarClick && _hooks.onAvatarClick(post); return; }
       if (e.target.closest('[data-pcc-name]')) { _hooks.onNameClick && _hooks.onNameClick(post); return; }
-      if (e.target.closest('[data-pcc-like]')) { _hooks.onLike && _hooks.onLike(post); return; }
+      /* Every hook below that MUTATES state (like/save/vote/join) is a write
+         action: guests get the shared login wall instead of a silent success.
+         Reads and navigation (comment/share/open/dots) are deliberately not
+         gated — the wall belongs where the write happens, not before it. */
+      if (e.target.closest('[data-pcc-like]')) {
+        if (window.RequireAuth && !RequireAuth.ensure('like this post')) return;
+        _hooks.onLike && _hooks.onLike(post); return;
+      }
       if (e.target.closest('[data-pcc-comment]')) { _hooks.onComment && _hooks.onComment(post); return; }
       if (e.target.closest('[data-pcc-share]')) { _hooks.onShare && _hooks.onShare(post); return; }
-      if (e.target.closest('[data-pcc-save]')) { _hooks.onSave && _hooks.onSave(post); return; }
+      if (e.target.closest('[data-pcc-save]')) {
+        if (window.RequireAuth && !RequireAuth.ensure('save this')) return;
+        _hooks.onSave && _hooks.onSave(post); return;
+      }
       const dotsEl = e.target.closest('[data-pcc-dots]');
       if (dotsEl) { _hooks.onDots && _hooks.onDots(post, dotsEl); return; }
-      if (e.target.closest('[data-pcc-join]')) { _hooks.onJoinAma && _hooks.onJoinAma(post); return; }
+      if (e.target.closest('[data-pcc-join]')) {
+        if (window.RequireAuth && !RequireAuth.ensure('join this AMA')) return;
+        _hooks.onJoinAma && _hooks.onJoinAma(post); return;
+      }
       if (e.target.closest('[data-pcc-open]')) { _hooks.onOpenLink && _hooks.onOpenLink(post); return; }
 
       const pollRow = e.target.closest('[data-pcc-poll-opt]');
-      if (pollRow) { _hooks.onPollVote && _hooks.onPollVote(post, parseInt(pollRow.dataset.pccPollOpt, 10)); return; }
+      if (pollRow) {
+        if (window.RequireAuth && !RequireAuth.ensure('vote in this poll')) return;
+        _hooks.onPollVote && _hooks.onPollVote(post, parseInt(pollRow.dataset.pccPollOpt, 10)); return;
+      }
 
       const debateOpt = e.target.closest('[data-pcc-debate]');
-      if (debateOpt) { _hooks.onDebateVote && _hooks.onDebateVote(post, debateOpt.dataset.pccDebate); return; }
+      if (debateOpt) {
+        if (window.RequireAuth && !RequireAuth.ensure('vote in this debate')) return;
+        _hooks.onDebateVote && _hooks.onDebateVote(post, debateOpt.dataset.pccDebate); return;
+      }
 
       const debateOpen = e.target.closest('[data-pcc-debate-open]');
       if (debateOpen) { _hooks.onOpenDebate && _hooks.onOpenDebate(post); return; }

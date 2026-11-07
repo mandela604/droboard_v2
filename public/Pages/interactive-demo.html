@@ -123,7 +123,7 @@ html,body{background:#111;color:var(--tx);font-family:'DM Sans',sans-serif;min-h
 <body>
 <div class="phone">
   <div class="top">
-    <div class="back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
     <div class="tt"><div class="tt1">Droboard · Interactive demo</div><div class="tt2" id="ttTitle">…</div></div>
     <div class="iconbtn" onclick="Demo.toggleDrawer()" title="Story state"><i class="fas fa-fingerprint"></i></div>
   </div>
@@ -710,3 +710,5 @@ render();
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

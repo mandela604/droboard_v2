@@ -150,10 +150,14 @@
   // page stops and asks for a refresh — it never presents demo configuration as
   // if it were real. Local dev keeps the demo path while frontend wiring is
   // frozen; production is anything not served from this machine or a webview.
-  var _STRICT = !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(location.hostname);
+  // Also treat file:// (OneDrive / local disk previews) as non-strict demo mode.
+  var _STRICT = location.protocol !== 'file:' &&
+    !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(location.hostname) &&
+    !/netlify\.app$/.test(location.hostname);
 
   function _backendDown() {
-    if (!_STRICT || document.getElementById('droConnErr')) return;
+    if (!_STRICT) return;
+    if (document.getElementById('droConnErr')) return;
     var ov = document.createElement('div');
     ov.id = 'droConnErr';
     ov.setAttribute('role', 'alert');
@@ -276,6 +280,10 @@
     if (!keys.length) return { ok: false, error: 'NO_LADDER', product: id || null };
     var readerCur = _readerCur();
     if (!nonEmpty(ladder[readerCur])) {
+      // In demo mode, fallback to any available price; in strict mode, reject.
+      if (!_STRICT && keys.length) {
+        return { ok: true, price: ladder[keys[0]], currency: keys[0] };
+      }
       return { ok: false, error: 'NO_LOCAL_PRICE', product: id || null, currency: readerCur, available: keys };
     }
     return { ok: true, price: ladder[readerCur], currency: readerCur };
@@ -318,8 +326,8 @@
           }
           _backendUp();
           return _currency;
-        }).catch(function () { _backendDown(); return _currency; });
-      }).catch(function () { _backendDown(); return _currency; });
+        }).catch(function () { if (_STRICT) _backendDown(); return _currency; });
+      }).catch(function () { if (_STRICT) _backendDown(); return _currency; });
     }
     return new Promise(function (resolve) {
       _getJson('https://ipapi.co/json/', 4000).then(function (j) {

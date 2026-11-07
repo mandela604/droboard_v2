@@ -5,6 +5,12 @@
 
       <div data-ad-slot="feed:in-feed"></div>
       <div data-ad-slot="debate:top" data-ad-post="p123"></div>
+      <div data-ad-slot="genreHub:strip" data-ad-target="romance" data-ad-defer></div>
+
+    data-ad-target  identity this slot belongs to (a board, a post) — lets a
+                    frequency cap count per board instead of per page.
+    data-ad-defer   skip the auto-scan; the page fills it with mount() once it
+                    knows its own identity.
 
     Programmatic:
       DroboardAdSlot.mount('#mySlot', { slot: 'debate:top', max: 1, postId: 'p123' });
@@ -66,6 +72,69 @@
     try { if (window.AdService) AdService.track(id, ev, ctx); } catch (e) {}
   }
 
+  /* ── Frequency cap ─────────────────────────────────────────────────────
+     Config comes from the marketing console, per page/slot
+     (AdPlacement.slots['page:slot'] = { cap, capCount, capScope }) — this
+     component stores no numbers of its own, so 'off'/absent means unlimited.
+
+       cap      off | session | daily   the window a count lives in
+       capCount N                       showings allowed in that window
+       capScope slot | target | global  what one "place" is: this slot, this
+                                        slot for one board/post (data-ad-target),
+                                        or this creative anywhere on the site
+
+     Counted on the device, before the creative renders, because a capped
+     popup has to be suppressed locally — the server-side impression log
+     stays the reporting truth. A capped creative is dropped from the pick,
+     so the next creative (or an empty slot) takes it rather than the capped
+     one blocking a house ad.
+
+     sessionStorage for 'session' (dies with the tab), localStorage for
+     'daily'; the record carries its day so yesterday can never count
+     against today. */
+  var CAP_PREFIX = 'dro_adcap:';
+  function dayStamp() {
+    var d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function capStore(cap) {
+    try { return cap === 'session' ? window.sessionStorage : window.localStorage; } catch (e) { return null; }
+  }
+  function capKey(cfg, adId, opts) {
+    var scope = cfg.capScope || 'slot';
+    if (scope === 'global') return CAP_PREFIX + adId;
+    if (scope === 'target') {
+      return CAP_PREFIX + adId + '|t:' + (opts.slot || opts.page || '') + '|'
+        + (opts.target || opts.postId || opts.storyId || opts.genre || '');
+    }
+    return CAP_PREFIX + adId + '|s:' + (opts.slot || opts.page || '');
+  }
+  function capReached(cfg, adId, opts) {
+    if (!cfg || !cfg.cap || cfg.cap === 'off') return false;
+    var st = capStore(cfg.cap); if (!st) return false;
+    var max = Math.max(1, parseInt(cfg.capCount, 10) || 1);
+    try {
+      var raw = st.getItem(capKey(cfg, adId, opts));
+      if (!raw) return false;
+      var rec = JSON.parse(raw);
+      if (cfg.cap === 'daily' && rec.d !== dayStamp()) return false;
+      return (parseInt(rec.n, 10) || 0) >= max;
+    } catch (e) { return false; }
+  }
+  function capCount(cfg, adId, opts) {
+    if (!cfg || !cfg.cap || cfg.cap === 'off') return;
+    var st = capStore(cfg.cap); if (!st) return;
+    var n = 1;
+    try {
+      var raw = st.getItem(capKey(cfg, adId, opts));
+      if (raw) {
+        var rec = JSON.parse(raw);
+        if (cfg.cap !== 'daily' || rec.d === dayStamp()) n = (parseInt(rec.n, 10) || 0) + 1;
+      }
+      st.setItem(capKey(cfg, adId, opts), JSON.stringify({ d: dayStamp(), n: n }));
+    } catch (e) {}
+  }
+
   /* One impression per rendered instance, fired once the slot is >=50%
      visible; AdService.observe() then adds the IAB viewable event for the
      same showingId after 1s. Re-showing the same creative is a new showing
@@ -101,10 +170,15 @@
     if (max) o.max = parseInt(max, 10) || 1;
     var postId = readAttr(el, 'data-ad-post') || readAttr(el, 'data-ad-post-id') || readAttr(el, 'data-post-id');
     var storyId = readAttr(el, 'data-ad-story') || readAttr(el, 'data-ad-story-id') || readAttr(el, 'data-story-id');
+    var target = readAttr(el, 'data-ad-target');
     if (postId) o.postId = postId;
     if (storyId) o.storyId = storyId;
+    if (target) o.target = target;
     if (el.hasAttribute('data-ad-compact')) o.compact = true;
     if (el.hasAttribute('data-ad-keep-empty')) o.hideOnEmpty = false;
+    /* The page fills this one itself (usually because its identity — a board,
+       a post — is only known after data loads). The auto-scan leaves it be. */
+    if (el.hasAttribute('data-ad-defer')) o.defer = true;
     return o;
   }
 
@@ -121,6 +195,7 @@
       genre: o.genre || '',
       postId: o.postId || o.storyId || '',
       storyId: o.storyId || o.postId || '',
+      target: o.target || '',
     };
   }
 
@@ -131,8 +206,10 @@
   }
 
   /* Pick up to `max` ads. Pass 0 = never-used ads, pass 1 = allow repeats
-     so a pinned-format slot is never left empty just for dedupe's sake. */
-  function takeAds(pools, format, max, genre) {
+     so a pinned-format slot is never left empty just for dedupe's sake.
+     `cfg` is the slot's placement config: a creative that has used up its
+     frequency cap is skipped here, so it never reaches the renderer. */
+  function takeAds(pools, format, max, genre, cfg, opts) {
     var names = (format && format !== 'auto')
       ? [format]
       : AUTO_ORDER.slice();
@@ -146,6 +223,7 @@
           var ad = list[i];
           if (!ad || !ad.id || seen[ad.id]) continue;
           if (pass === 0 && _used[ad.id]) continue;
+          if (capReached(cfg, ad.id, opts)) continue;
           if (genre) {
             var g = ad.genre || ad.cat || '';
             if (g && String(g).toLowerCase() !== String(genre).toLowerCase()) continue;
@@ -196,11 +274,14 @@
     el.__adSlotBusy = true;
     try {
       var pools = await AdService.getAds({ page: opts.page, slot: opts.slot });
-      var picks = takeAds(pools || {}, opts.format, opts.max, opts.genre);
+      var cfg = null;
+      try { cfg = AdService.getSlotConfig ? await AdService.getSlotConfig(opts.page, opts.slot) : null; } catch (e) {}
+      var picks = takeAds(pools || {}, opts.format, opts.max, opts.genre, cfg, opts);
       if (!picks.length) { hideEl(el); return false; }
 
       var html = picks.map(function (p) {
         _used[p.ad.id] = true;
+        capCount(cfg, p.ad.id, opts);
         p.showingId = AdService.newShowing ? AdService.newShowing() : '';
         return '<div class="ad-slot-item" data-adid="' + esc(p.ad.id) + '"' +
           (p.showingId ? ' data-showing="' + esc(p.showingId) + '"' : '') + '>' +
@@ -236,8 +317,9 @@
     if (scope.nodeType === 1 && scope.hasAttribute && scope.hasAttribute('data-ad-slot')) {
       nodes.unshift(scope);
     }
-    var jobs = nodes.filter(function (el) { return !el.__adSlotDone; })
-      .map(function (el) { return fill(el); });
+    var jobs = nodes.filter(function (el) {
+      return !el.__adSlotDone && !el.hasAttribute('data-ad-defer');
+    }).map(function (el) { return fill(el); });
     return Promise.all(jobs).then(function (r) {
       return r.filter(Boolean).length;
     }).catch(function () { return 0; });

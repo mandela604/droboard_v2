@@ -292,6 +292,8 @@
           _toast('📤 Share link copied!');
         }
       } else if (action === 'remove') {
+        /* Removing from the library writes state — guests get the wall. */
+        if (window.RequireAuth && !RequireAuth.ensure('remove from your library')) return;
         removeItem(it.id);
         _toast('🗑️ Removed from library');
         if (typeof options.onRemove === 'function') options.onRemove(it);

@@ -337,10 +337,33 @@
     catch (e) { return withSharedDebates(DEMO_FEED_POSTS); }
   }
 
+  // "Trending in hubs" community row. Live: GET /discussions/feed → flat cards
+  // ({id,title,tag,media,trope,story,likes,liked,comments,score,hot,name,avatar,
+  // time,_genreId,_genreName}). Demo (USE_DEMO, or no backend): [] — feed-service
+  // then falls back to window.GenreDemoSeed. feed-service owns the hot/mid/more
+  // bucketing, so this returns the flat list in the card shape only.
+  async function getCommunityPosts() {
+    try { const d = await apiFetch('/discussions/feed?limit=12'); return (d && d.items) || []; }
+    catch (e) { return []; }
+  }
+
+  // Paginated cross-hub trending for the "See all" page. Same flat card shape
+  // as getCommunityPosts, plus total/page/hasMore so the page can walk past the
+  // first screen. Throws on any failure — the caller decides demo fallback.
+  async function getCommunityPage(page, limit) {
+    const d = await apiFetch(`/discussions/feed?page=${encodeURIComponent(page || 1)}&limit=${encodeURIComponent(limit || 12)}`);
+    return {
+      items: (d && d.items) || [],
+      total: (d && d.total) || 0,
+      page: (d && d.page) || (page || 1),
+      hasMore: !!(d && d.hasMore),
+    };
+  }
+
   async function getNotifCount() {
     try { const d = await apiFetch('/notifications/unread-count'); return d.count || 0; }
     catch (e) { return 6; }
   }
 
-  window.FeedData = { configure, getStories, getFeedPosts, getNotifCount, YOU_AV };
+  window.FeedData = { configure, getStories, getFeedPosts, getCommunityPosts, getCommunityPage, getNotifCount, YOU_AV };
 })();

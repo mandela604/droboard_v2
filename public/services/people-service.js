@@ -4,15 +4,28 @@
    "More Stories" and the browse overlay), and the future source for
    People to Follow.
 
-   Live swap: replace writersFor() with
-     GET /api/writers?category=<key>&limit=10
-     → [{ name, handle, avatar }]
+   The ranking is the backend's: GET /api/feed/discover → topWriters[]
+   carries { id, handle, name, avatar, books, reads } ordered by total
+   reads across the writer's live books, followers as tiebreaker.
+   Whoever has the payload (discover-service.js) hands it to
+   setLiveWriters(), so every surface — Discover AND the browse overlay —
+   reads the same ranked directory from one cache instead of each keeping
+   its own list.
+
    Statuses are layered on separately by status-service.js
    (DroboardStatus.decorateWriters), so a writer identity exists even
    when they have no status.
+
+   WRITER_POOL below is demo seed only: it renders when no live directory
+   has arrived yet (USE_API off, or the request failed). Nothing invented
+   here ever wears a real author's handle.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
+
+  // This module's own live gate — same pattern as discover-service.js.
+  const USE_API = false;
+  const API_BASE = '/api';
 
   var WRITER_POOL = [
     { name: 'Ifeanyi Story', handle: 'Ifeanyi_Story', avatar: 'https://i.pravatar.cc/100?img=53' },
@@ -41,6 +54,53 @@
     'trending today', 'top romance', 'new releases', "editor's picks", 'recommended for you',
     'recently updated', 'all stories', 'continue reading'];
 
+  /* Backend-ranked writers, in the order the server sent them. */
+  var _live = [];
+
+  function _clean(rows) {
+    var out = [], seen = {};
+    (rows || []).forEach(function (w) {
+      if (!w) return;
+      var handle = String(w.handle || w.id || '').replace(/^@/, '').trim();
+      if (!handle || seen[handle.toLowerCase()]) return;
+      seen[handle.toLowerCase()] = true;
+      out.push({
+        id: w.id ? String(w.id) : '',
+        handle: handle,
+        name: w.name || handle.replace(/_/g, ' '),
+        avatar: w.avatar || '',
+        followers: w.followers || 0,
+        books: w.books || 0,
+        reads: w.reads || 0,
+      });
+    });
+    return out;
+  }
+
+  /* Hand the ranked directory to the app. Called by whoever has the
+     /discover payload; the browse overlay then reads it from here. */
+  function setLiveWriters(rows) {
+    var list = _clean(rows);
+    if (list.length) _live = list;
+    return list.length;
+  }
+
+  function liveWriters() { return _live.slice(); }
+
+  /* A page that never loaded Discover has no directory yet (the browse
+     overlay included). topWriters[] only rides on /api/feed/discover, so ask
+     that endpoint once and fill the cache; the row on the next render is the
+     real ranking. Fire-and-forget — a writers row must never block on it. */
+  var _requested = false;
+  function fetchLiveWriters() {
+    if (!USE_API || _requested || _live.length) return;
+    _requested = true;
+    fetch(API_BASE + '/feed/discover', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.topWriters) setLiveWriters(d.topWriters); })
+      .catch(function () { _requested = false; });
+  }
+
   function _hash(s) {
     var h = 0;
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -48,14 +108,18 @@
   }
 
   /* Ten writers for the tapped category/genre, deterministically rotated
-     per key so each view-all or genre pill shows a different lineup. */
+     per key so each view-all or genre pill shows a different lineup. The
+     rotation only reorders real ranked writers — it never re-ranks them
+     (reads is the server's answer) and never synthesises a writer. */
   function writersFor(key, limit) {
     key = String(key || 'all').toLowerCase();
-    limit = Math.max(1, Math.min(limit || 10, WRITER_POOL.length));
+    if (!_live.length) fetchLiveWriters();
+    var pool = _live.length ? _live : WRITER_POOL;
+    limit = Math.max(1, Math.min(limit || 10, pool.length));
     var idx = CATEGORY_ORDER.indexOf(key);
-    var start = idx >= 0 ? (idx * 3) % WRITER_POOL.length : _hash(key) % WRITER_POOL.length;
+    var start = idx >= 0 ? (idx * 3) % pool.length : _hash(key) % pool.length;
     var out = [];
-    for (var i = 0; i < limit; i++) out.push(WRITER_POOL[(start + i) % WRITER_POOL.length]);
+    for (var i = 0; i < limit; i++) out.push(pool[(start + i) % pool.length]);
     return out;
   }
 
@@ -65,20 +129,30 @@
   function avatarFor(nameOrHandle) {
     var key = String(nameOrHandle || '').replace(/^@/, '').replace(/^by\s+/i, '').trim().toLowerCase();
     if (!key) return '';
+    for (var i = 0; i < _live.length; i++) {
+      var w = _live[i];
+      if (String(w.handle).toLowerCase() === key || String(w.name).toLowerCase() === key) return w.avatar || '';
+    }
     var users = (window.DemoData && window.DemoData.USERS) || {};
     var handles = Object.keys(users);
-    for (var i = 0; i < handles.length; i++) {
-      var u = users[handles[i]] || {};
-      if (String(u.handle || handles[i]).toLowerCase() === key || String(u.name || '').toLowerCase() === key) {
+    for (var j = 0; j < handles.length; j++) {
+      var u = users[handles[j]] || {};
+      if (String(u.handle || handles[j]).toLowerCase() === key || String(u.name || '').toLowerCase() === key) {
         return u.avatar || '';
       }
     }
-    for (var j = 0; j < WRITER_POOL.length; j++) {
-      var w = WRITER_POOL[j];
-      if (String(w.handle).toLowerCase() === key || String(w.name).toLowerCase() === key) return w.avatar || '';
+    for (var k = 0; k < WRITER_POOL.length; k++) {
+      var d = WRITER_POOL[k];
+      if (String(d.handle).toLowerCase() === key || String(d.name).toLowerCase() === key) return d.avatar || '';
     }
     return '';
   }
 
-  window.DroboardPeople = { writersFor: writersFor, avatarFor: avatarFor };
+  window.DroboardPeople = {
+    writersFor: writersFor,
+    avatarFor: avatarFor,
+    setLiveWriters: setLiveWriters,
+    liveWriters: liveWriters,
+    fetchLiveWriters: fetchLiveWriters,
+  };
 })();

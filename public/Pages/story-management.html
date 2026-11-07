@@ -235,6 +235,8 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
@@ -242,7 +244,7 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 
 <!-- TOP BAR -->
 <div class="top-bar">
-  <div class="top-back" onclick="history.back()"><i class="fas fa-arrow-left"></i></div>
+  <div class="top-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-arrow-left"></i></div>
   <div class="top-title" id="topTitle">Story Manager</div>
   <div class="top-icon-btn" data-search-trigger title="Search" role="button" aria-label="Search"><i class="fas fa-magnifying-glass"></i></div>
   <div class="top-icon-btn" onclick="openStorySettings()" title="Story Settings"><i class="fas fa-ellipsis-vertical"></i></div>
@@ -437,10 +439,11 @@ body{display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;padd
 
 </div>
 
-<script src="../component/search-overlay.js?v=4"></script>
+<script src="../component/search-overlay.js?v=5"></script>
 <script src="../component/status-ring.js?v=4"></script>
-<script src="../services/story-management-service.js"></script>
+
 </div>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+

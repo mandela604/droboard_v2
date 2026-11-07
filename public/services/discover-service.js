@@ -28,6 +28,7 @@
   let heroes = [], hi = 0, heroTimer;
   let ADS = { platformAds: [], bookAds: [] };
   let TOP_WRITERS = [];
+  let LAST_DISCOVER = null, LAST_TASTE = '';
   let morePage = 1, moreHasMore = true, moreLoading = false;
   let moreGlobalIndex = 0, moreAdCounter = 0, writersRowInserted = false;
 
@@ -91,16 +92,32 @@
   function buildTopRomance() {
     const d = window.DemoData, c = d.c;
     return [
-      { img: c(0), title: "The CEO's Hidden Heir", author: '@Ada_Writes', badge: 'new', rating: '4.8' },
-      { img: c(1), title: 'Devil in a Suit', author: '@Zara_M', badge: 'hot', rating: '4.7' },
-      { img: c(2), title: 'Protected by the Billionaire', author: '@Chiamaka_N', badge: 'new', rating: '4.9' },
-      { img: c(3), title: 'Broken Vows', author: '@Kemi_A', badge: 'new', rating: '4.6' },
-      { img: c(4), title: 'His Second Chance', author: '@Efe_O', rating: '4.5' },
-      { img: c(5), title: 'Married for Revenge', author: '@Ifeanyi_Story', badge: 'hot', rating: '4.8' },
-      { img: c(6), title: 'The Billionaire Next Door', author: '@CampusQueen', rating: '4.4' },
-      { img: c(7), title: 'Love in Disguise', author: '@Dami_Cole', badge: 'new', rating: '4.7' },
-      { img: c(8), title: 'Her Secret Admirer', author: '@Ada_Writes', rating: '4.3' },
-      { img: c(9), title: 'Twisted Hearts', author: '@Zara_M', badge: 'hot', rating: '4.9' },
+      { img: c(0), title: "The CEO's Hidden Heir", author: '@Ada_Writes', badge: 'new' },
+      { img: c(1), title: 'Devil in a Suit', author: '@Zara_M', badge: 'hot' },
+      { img: c(2), title: 'Protected by the Billionaire', author: '@Chiamaka_N', badge: 'new' },
+      { img: c(3), title: 'Broken Vows', author: '@Kemi_A', badge: 'new' },
+      { img: c(4), title: 'His Second Chance', author: '@Efe_O' },
+      { img: c(5), title: 'Married for Revenge', author: '@Ifeanyi_Story', badge: 'hot' },
+      { img: c(6), title: 'The Billionaire Next Door', author: '@CampusQueen' },
+      { img: c(7), title: 'Love in Disguise', author: '@Dami_Cole', badge: 'new' },
+      { img: c(8), title: 'Her Secret Admirer', author: '@Ada_Writes' },
+      { img: c(9), title: 'Twisted Hearts', author: '@Zara_M', badge: 'hot' },
+    ];
+  }
+
+  function buildTopRated() {
+    const d = window.DemoData, c = d.c;
+    return [
+      { img: c(1), title: 'Until You Regret', author: '@Ada_Writes', rating: '4.9' },
+      { img: c(3), title: "The Alpha King's Captive", author: '@Chiamaka_N', rating: '4.9' },
+      { img: c(0), title: 'His Dark Promise', author: '@Ifeanyi_Story', rating: '4.8' },
+      { img: c(5), title: 'Married for Revenge', author: '@Ifeanyi_Story', rating: '4.8' },
+      { img: c(7), title: 'Crown of Thorns', author: '@Dami_Cole', rating: '4.8' },
+      { img: c(2), title: "The Mafia Lord's Bride", author: '@Zara_M', rating: '4.7' },
+      { img: c(4), title: 'Bound by Her Silence', author: '@Kemi_A', rating: '4.7' },
+      { img: c(6), title: 'The Forbidden Alpha', author: '@CampusQueen', rating: '4.7' },
+      { img: c(8), title: 'Blood and Roses', author: '@Ada_Writes', rating: '4.6' },
+      { img: c(9), title: 'Twisted Hearts', author: '@Efe_O', rating: '4.6' },
     ];
   }
 
@@ -163,11 +180,17 @@
     ];
   }
 
-  /* Taste preferences from the first-visit picker (localStorage).
-     Live swap: dro_tastes synced via POST /api/profile/tastes. */
+  /* Taste filter from the "Tune your feed" chip (localStorage).
+     Live swap: send it as ?taste=a,b on GET /api/feed/discover. */
   function readTastes() {
     try { return JSON.parse(localStorage.getItem('dro_tastes') || 'null') || null; }
     catch (e) { return null; }
+  }
+  // The ?taste= string this visit sends: the picker's genre names, max 4.
+  function tasteKey() {
+    const t = readTastes();
+    const g = (t && Array.isArray(t.genres) ? t.genres : []).map(x => String(x).trim()).filter(Boolean);
+    return g.slice(0, 4).join(',');
   }
 
   function staticRecommended() {
@@ -188,7 +211,9 @@
 
   /* Personalized picks: STORIES matching selected genres first (cat may
      carry a mojibake emoji prefix - lowercase include still matches),
-     then the rest of the pool, padded with the static list. */
+     then the rest of the pool, padded with the static list.
+     Demo only — live recommendations are ranked by the backend, which owns
+     the catalogue, the reader's history and the taste filter. */
   function buildRecommended() {
     const t = readTastes();
     const d = window.DemoData;
@@ -213,8 +238,27 @@
     return out;
   }
 
-  function renderRecRow() {
-    DiscoverCard.renderRow('recRow', buildRecommended(), 'No recommendations yet.');
+  /* The recommended row has one source per mode. Live, it is the backend's
+     ranking for the current taste filter — the picker re-asks the API instead
+     of re-scoring DemoData locally, so "tune your feed" changes what the
+     server returns rather than only what the browser shuffles. */
+  async function renderRecRow() {
+    let rows = null;
+    if (USE_API) {
+      const key = tasteKey();
+      if (LAST_DISCOVER && key === LAST_TASTE) rows = LAST_DISCOVER.recommended;
+      else {
+        try {
+          const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
+          if (res.ok) {
+            const j = await res.json();
+            if (Array.isArray(j.recommended)) { LAST_DISCOVER = j; LAST_TASTE = key; rows = j.recommended; }
+          }
+        } catch (e) { /* the row the page already has stands */ }
+      }
+    }
+    if (!rows || !rows.length) rows = buildRecommended();
+    DiscoverCard.renderRow('recRow', rows, 'No recommendations yet.');
     renderTuneChip();
   }
 
@@ -329,17 +373,12 @@
     });
   }
 
-  /* First-visit flow: taste picker, then spotlight once the picker settles. */
+  /* First visit: render, then the spotlight. There is no onboarding picker —
+     genre picks are a filter (the "Tune your feed" chip) and never a profile
+     fact, so nothing is asked upfront and dro_tastes_seen is gone. */
   function startFirstVisitFlow() {
-    const after = function () {
-      renderRecRow();
-      setTimeout(maybeShowSpotlight, 1200);
-    };
-    if (window.DroboardTastePicker && typeof DroboardTastePicker.maybeShow === 'function') {
-      DroboardTastePicker.maybeShow({ onDone: after });
-    } else {
-      setTimeout(after, 100);
-    }
+    renderRecRow();
+    setTimeout(maybeShowSpotlight, 1200);
   }
 
   function buildComplete() {
@@ -402,18 +441,24 @@
       { title: 'Night of the Rogues', author: '@CampusQueen', genre: 'Werewolf', preview: 'The border fell at midnight.', img: c(8) },
       { title: 'His Cold Empire', author: '@Dami_Cole', genre: 'Mafia', preview: 'He built an empire on silence and fear.', img: c(0) },
       { title: 'When She Stopped Waiting', author: '@Ada_Writes', genre: 'Heartbreak', preview: 'Five years of waiting. One letter that never came.', img: c(3) },
-    ];
+    ].map((s, i) => Object.assign({ rating: (4.2 + (i % 6) * 0.13).toFixed(1), chapters: 5 + (i % 18) }, s));
+    /* Demo only — live /api/discover/stories already returns real rating + chapters. */
   }
 
   async function fetchDiscoverData() {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/discover`);
+      /* credentials: the feed personalizes recommended + continue-reading from
+         the reader's tastes/history, so /discover needs the access cookie. */
+      const key = tasteKey();
+      const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Discover API failed');
-      return res.json();
+      const j = await res.json();
+      LAST_DISCOVER = j; LAST_TASTE = key;
+      return j;
     }
     await new Promise(r => setTimeout(r, 100));
     return {
-      heroes: buildHeroes(), continueReading: buildContinueReading(),
+      heroes: buildHeroes(), topRated: buildTopRated(),
       topRomance: buildTopRomance(), trending: buildTrending(),
       collections: buildCollections(), newReleases: buildNewReleases(),
       editorsPicks: buildEditorsPicks(), recommended: buildRecommended(),
@@ -445,7 +490,7 @@
 
   async function fetchMoreStories(page, limit) {
     if (USE_API) {
-      const res = await fetch(`${API_BASE}/discover/stories?page=${page}&limit=${limit}`);
+      const res = await fetch(`${API_BASE}/discover/stories?page=${page}&limit=${limit}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Stories API failed');
       return res.json();
     }
@@ -580,15 +625,25 @@
     else if (heroes.length) startHero();
   });
 
-  function buildTopWriters(stories) {
-    const seen = new Set(), out = [];
-    stories.forEach((s, i) => {
-      const handle = (s.author || '').replace('@', '');
-      if (!handle || seen.has(handle) || out.length >= 6) return;
-      seen.add(handle);
-      out.push({ name: handle.replace(/_/g, ' '), handle, avatar: `https://i.pravatar.cc/100?img=${(i * 7 + 11) % 70}` });
-    });
-    return out;
+  /* The Top Writers row is the backend's ranking, delivered as
+     data.topWriters[] by GET /api/feed/discover (total reads across the
+     writer's live books, followers as tiebreaker). Nothing is ranked, named
+     or pictured here: with no live row yet (USE_API off, or the request
+     failed) the shared demo directory in people-service.js supplies the
+     lineup. loadWriters() prefetches the real status slides so the rings on
+     this row come from the live store, not from a seed. */
+  async function buildTopWriters(data) {
+    const rows = (data && data.topWriters) || [];
+    if (rows.length && window.DroboardPeople && DroboardPeople.setLiveWriters) {
+      DroboardPeople.setLiveWriters(rows);
+    }
+    if (!window.DroboardPeople) return [];
+    const live = typeof DroboardPeople.liveWriters === 'function' ? DroboardPeople.liveWriters() : [];
+    const list = live.length ? live.slice(0, 6) : DroboardPeople.writersFor('all', 6);
+    if (window.DroboardStatus && typeof DroboardStatus.loadWriters === 'function') {
+      try { await DroboardStatus.loadWriters(list.map(w => w.handle)); } catch (e) { /* row renders ringless */ }
+    }
+    return list;
   }
 
   function interleaveExtras(items) {
@@ -755,26 +810,32 @@
     if (window.DroboardNav) DroboardNav.setTheme(next);
   }
   async function init() {
+    if (window.DroboardNav) DroboardNav.configure({ active: 'discover' });
     if (window.ScrollKeep) ScrollKeep.arm();
     initTheme();
     const pageLoader = document.getElementById('pageLoader');
     let data;
-    try { data = await fetchDiscoverData(); } catch (e) { data = { heroes: [], continueReading: [], topRomance: [], trending: [], collections: [], newReleases: [], editorsPicks: [], recommended: [], complete: [], recentlyUpdated: [], moreStories: [] }; }
-    try {
-      const lr = await fetch('/api/collections?limit=12&sort=popular', { credentials: 'include' });
-      if (lr.ok) { const lj = await lr.json(); if (Array.isArray(lj) && lj.length) data.collections = lj; }
-    } catch (e) { /* demo row stands */ }
+    try { data = await fetchDiscoverData(); } catch (e) { data = { heroes: [], topRated: [], topRomance: [], trending: [], collections: [], newReleases: [], editorsPicks: [], recommended: [], complete: [], recentlyUpdated: [], moreStories: [] }; }
+    // Collections are part of this module's live gate like every other row:
+    // with USE_API off the whole page is demo, and one live row must not
+    // quietly replace the demo grid.
+    if (USE_API) {
+      try {
+        const lr = await fetch('/api/collections?limit=12&sort=popular', { credentials: 'include' });
+        if (lr.ok) { const lj = await lr.json(); if (Array.isArray(lj) && lj.length) data.collections = lj; }
+      } catch (e) { /* demo row stands */ }
+    }
     try { ADS = await fetchDiscoverAds(); } catch (e) { ADS = { platformAds: [], bookAds: [] }; }
     ADS.platformAds = ADS.platformAds || [];
     ADS.bookAds = ADS.bookAds || [];
 
-    TOP_WRITERS = buildTopWriters(data.moreStories || []);
+    TOP_WRITERS = await buildTopWriters(data);
     heroes = data.heroes || [];
     document.getElementById('heroDots').innerHTML = heroes.map((_, i) => `<div class="dot${i === 0 ? ' on' : ''}"></div>`).join('');
     document.querySelectorAll('#heroDots .dot').forEach((d, i) => d.addEventListener('click', () => { goHero(i); startHero(); }));
     if (heroes.length) { goHero(0); startHero(); }
 
-    DiscoverCard.renderRow('continueRow', data.continueReading, 'No books in progress yet.');
+    DiscoverCard.renderRow('topRatedRow', data.topRated, 'No top rated stories yet.');
     DiscoverCard.renderRow('romanceRow', data.topRomance, 'No romance picks right now.');
     DiscoverCard.renderRow('trendingRow', data.trending, 'Nothing trending right now.');
     DiscoverCard.renderRow('newRow', data.newReleases, 'No new releases yet.');

@@ -1232,7 +1232,7 @@ function goBackOrExit(){
   if (isNewChapterMode()){ location.href = '../author/book-workspace.html?book=' + encodeURIComponent(getNewChapterBookId()); return; }
   saveDraft(false);
   toast('Draft saved · exiting…');
-  setTimeout(()=>{ history.back(); }, 700);
+  setTimeout(()=>{ if (history.length > 1) history.back(); else location.href = 'feed.html'; }, 700);
 }
 
 setInterval(()=>saveDraft(false), 15000);

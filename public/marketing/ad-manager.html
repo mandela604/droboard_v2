@@ -253,6 +253,11 @@ body{font-family:'Inter',system-ui,sans-serif}
         <label class="pl-check"><input type="checkbox" id="plSlotEveryNth" checked/> Every-Nth slot</label>
         <label class="pl-check"><input type="checkbox" id="plSlotThreadTop" checked/> Thread-top slot</label>
       </div>
+      <div class="pl-card">
+        <div class="pl-name"><i class="fas fa-bolt" style="color:var(--amber)"></i> Trending <span style="font-weight:600;color:var(--text-faint);font-size:10px">— Trending in hubs list</span></div>
+        <label class="pl-check"><input type="checkbox" id="plTrendOn" checked/> Ads in this list</label>
+        <label class="pl-lbl">Every N cards</label><input class="pl-inp" id="plTrendInt" type="number" min="1" value="4"/>
+      </div>
       <div class="pl-card" id="plProgCard" style="grid-column:1/-1">
         <div class="pl-name"><i class="fas fa-crosshairs" style="color:var(--amber)"></i> Slot programming <span style="font-weight:600;color:var(--text-faint);font-size:10px">— pin ad types or specific ads to a slot</span></div>
         <div class="pl-hint">Pin a slot to only serve certain ad formats, or list ad ids to force specific ads to the front of that slot. Leave both empty to serve any eligible ad.</div>
@@ -268,6 +273,20 @@ body{font-family:'Inter',system-ui,sans-serif}
         </div>
         <label class="pl-lbl">Pinned ad ids (comma separated, top = first)</label>
         <textarea class="pl-inp pl-adids" id="plProgAdIds" rows="2" placeholder="e.g. plat_premium, book_betrayal"></textarea>
+        <label class="pl-lbl">Frequency cap per visitor (empty = unlimited)</label>
+        <div class="pl-freq-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select class="pl-inp" id="plProgCap" style="flex:1;min-width:150px">
+            <option value="">No cap (unlimited)</option>
+            <option value="session">Per session</option>
+            <option value="daily">Per day</option>
+          </select>
+          <input class="pl-inp" id="plProgCapN" type="number" min="1" max="100" step="1" placeholder="1" style="width:80px" />
+          <select class="pl-inp" id="plProgCapScope" style="flex:1;min-width:170px">
+            <option value="slot">…in this slot</option>
+            <option value="target">…per board/post</option>
+            <option value="global">…anywhere on the site</option>
+          </select>
+        </div>
         <button class="btn-ghost" id="plProgClear">Clear programming for this slot</button>
       </div>
     </div>
@@ -383,14 +402,14 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="../services/currency-service.js?v=8"></script>
 <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/ad-pricing-service.js?v=1"></script>
-<script src="shared/ad-setup-data.js?v=8"></script>
+<script src="shared/ad-setup-data.js?v=11"></script>
 <script src="shared/marketing-sidebar.js"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="shared/marketing-data.js"></script>
 <script src="../services/spotlight-board-service.js"></script>
 <script src="../component/spotlight-ad.js?v=8"></script>
 <script src="../services/league-service.js"></script>
-<script src="shared/ad-manager.js?v=13"></script>
+<script src="shared/ad-manager.js?v=15"></script>
 <script>AdManagerPage.init();</script>
 </body>
 </html>

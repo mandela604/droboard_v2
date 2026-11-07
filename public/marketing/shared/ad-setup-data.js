@@ -43,6 +43,7 @@
     { id: 'notifications', label: 'Notifications' },
     { id: 'search', label: 'Search Results' },
     { id: 'status', label: 'Status Viewer' },
+    { id: 'trending', label: 'Trending' },
   ];
 
   /* Slot registry per surface (mirrors the backend slot ids). An ad with an
@@ -72,7 +73,7 @@
       { id: 'discover:banner-bottom', label: 'Inline banner (above More Stories)' },
       { id: 'discover:spotlight', label: 'Full-screen spotlight' },
     ],
-    genreHub: [{ id: 'genreHub:strip', label: 'Strip' }],
+    genreHub: [{ id: 'genreHub:strip', label: 'Strip' }, { id: 'genreHub:popup', label: 'Network popup (overlay)' }],
     library: [{ id: 'library:slider', label: 'Slider' }],
     store: [{ id: 'store:below-packs', label: 'Below the coin packs' }],
     droboardPage: [{ id: 'droboardPage:feed', label: 'Feed' }],
@@ -101,6 +102,9 @@
     notifications: [{ id: 'notifications:in-feed', label: 'Above the list' }],
     search: [{ id: 'search:banner', label: 'Results banner' }],
     status: [{ id: 'status:every-3rd', label: 'Between stories (every Nth)' }],
+    /* Cross-hub "See all" list — ads drop after every N cards (the N lives
+       in placements.trending.interval, set in the Ad Manager). */
+    trending: [{ id: 'trending:in-feed', label: 'In-feed (every N cards)' }],
   }; /* profile has page-level targeting only — no ad slot renders there */
 
   function pageSlots(pageId) { return PAGE_SLOTS[pageId] || []; }
@@ -319,6 +323,7 @@
     collection: 'fa-layer-group', followers: 'fa-user-group', profile: 'fa-circle-user',
     genreStories: 'fa-list-ol', leaderboard: 'fa-ranking-star', blog: 'fa-blog',
     notifications: 'fa-bell', search: 'fa-magnifying-glass', status: 'fa-circle-notch',
+    trending: 'fa-bolt',
   };
   var CAMPAIGN_SURFACES = PAGES.map(function (p) {
     var slots = pageSlots(p.id);

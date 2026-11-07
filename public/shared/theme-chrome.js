@@ -77,6 +77,14 @@
       s.id = 'socket-client-script';
       document.body.appendChild(s);
     }
+
+    // One bell painter per page: the count chip goes blue on an unread chat.
+    if (!window.NotifService && !document.getElementById('notif-service-script')) {
+      var b = document.createElement('script');
+      b.src = '/services/notification-service.js';
+      b.id = 'notif-service-script';
+      document.body.appendChild(b);
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

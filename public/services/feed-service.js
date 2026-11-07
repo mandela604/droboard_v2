@@ -219,7 +219,15 @@
   }
 
   /* ── Community ── */
-  function collectCommunityPosts() {
+  function bucketCommunity(all) {
+    const byHot = all.slice().sort((a, b) => (b.score || 0) - (a.score || 0) || ((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0)));
+    const n = byHot.length;
+    if (n >= 9) return { hot: byHot.slice(0, 4), mid: byHot.slice(4, 8), more: byHot.slice(8, 12) };
+    if (n >= 6) return { hot: byHot.slice(0, 3), mid: byHot.slice(3, 6), more: byHot.slice(0, 3).reverse() };
+    return { hot: byHot.slice(), mid: byHot.slice().reverse(), more: byHot.slice() };
+  }
+
+  function communityFromSeed() {
     const seed = window.GenreDemoSeed;
     if (!seed || !seed.DEMO_DISCUSSIONS) return { hot: [], mid: [], more: [] };
     const all = [];
@@ -232,11 +240,25 @@
         all.push({ ...rest, id: 'fc_' + gId + '_' + (p.id || i), _genreId: gId, _genreName: gName, time: (p.time || '') + ' · ' + gName });
       });
     });
-    const byHot = all.slice().sort((a, b) => (b.score || 0) - (a.score || 0) || ((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0)));
-    const n = byHot.length;
-    if (n >= 9) return { hot: byHot.slice(0, 4), mid: byHot.slice(4, 8), more: byHot.slice(8, 12) };
-    if (n >= 6) return { hot: byHot.slice(0, 3), mid: byHot.slice(3, 6), more: byHot.slice(0, 3).reverse() };
-    return { hot: byHot.slice(), mid: byHot.slice().reverse(), more: byHot.slice() };
+    return bucketCommunity(all);
+  }
+
+  // Live first (FeedData.getCommunityPosts → GET /discussions/feed), demo/seed
+  // on any failure or empty. Both paths feed the same bucketing + card shape.
+  async function collectCommunityPosts() {
+    let live = [];
+    try { if (window.FeedData && FeedData.getCommunityPosts) live = (await FeedData.getCommunityPosts()) || []; } catch (e) { live = []; }
+    if (live.length) {
+      const all = live.map(p => {
+        const { media, story, trope, participants, extra, ...rest } = p;
+        return Object.assign({}, rest, {
+          id: String(rest.id),
+          time: (rest.time || '') + (rest._genreName ? ' · ' + rest._genreName : ''),
+        });
+      });
+      return bucketCommunity(all);
+    }
+    return communityFromSeed();
   }
 
   function renderCommSlides(posts) {
@@ -328,12 +350,16 @@
         return DroboardReactionPicker.renderTrigger(String(post.id), { liked: !!post.liked, likeCount: post.likes || 0 });
       },
       onLike: (post) => { post.liked = !post.liked; post.likes = (post.likes || 0) + (post.liked ? 1 : -1); if (window.DroboardGenreCard) DroboardGenreCard.update(post); },
-      onThread: (post) => openHubComments(post),
+      /* Title / "… See more" and the comments button all open the full
+         discussion page (same as the hub pages). The feed's own comment
+         sheet (openHubComments) is left in place but no longer the target. */
+      onThread: (post) => openHubDiscussion(post),
       onComment: (post) => openHubDiscussion(post),
       onShare: (post) => shareHubPost(post),
       onDots: (post, el) => { try { window._lastDotsAnchor = el || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, el); else toast('More…'); },
       onStory: (post) => openStoryGuarded(post && (post.story || post.storyRef)),
       onAvatar: (post) => openAuthorAvatar(post),
+      onGenre: (post, genreId) => { location.href = 'genre-hub.html?genre=' + encodeURIComponent(genreId || (post && post._genreId) || 'fantasy'); },
       onNameClick: (post, name) => { location.href = 'profile.html?u=' + encodeURIComponent(name || (post && post.name) || ''); },
       onPinned: () => toast('Hub rules…'),
     };
@@ -354,9 +380,11 @@
       const comment = e.target.closest('[data-dgc-comment]');
       if (comment) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(comment.dataset.dgcComment)); if (p) openHubDiscussion(p); return; }
       const thread = e.target.closest('[data-dgc-thread]');
-      if (thread) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(thread.dataset.dgcThread)); if (p) openHubComments(p); return; }
+      if (thread) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(thread.dataset.dgcThread)); if (p) openHubDiscussion(p); return; }
       const share = e.target.closest('[data-dgc-share]');
       if (share) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(share.dataset.dgcShare)); if (p) shareHubPost(p); return; }
+      const gen = e.target.closest('[data-dgc-genre]');
+      if (gen) { e.stopPropagation(); location.href = 'genre-hub.html?genre=' + encodeURIComponent(gen.dataset.dgcGenre || 'fantasy'); return; }
       const av = e.target.closest('[data-dgc-av]');
       if (av) { e.stopPropagation(); const p = posts.find(x => String(x.id) === String(av.dataset.dgcAv)); if (p) openAuthorAvatar(p); return; }
       const nm = e.target.closest('[data-dgc-name]');
@@ -382,7 +410,7 @@
     if (document.getElementById('commSecMid')) return;
     const sec = document.createElement('section');
     sec.className = 'comm-sec'; sec.id = 'commSecMid';
-    sec.innerHTML = `<div class="comm-sec-head"><div class="comm-sec-title"><i class="fas fa-bolt"></i> Trending in hubs</div><button type="button" class="comm-sec-link" onclick="FeedPage.goToHubs()">See all ›</button></div><div class="comm-row" id="commRowMid"></div>`;
+    sec.innerHTML = `<div class="comm-sec-head"><div class="comm-sec-title"><i class="fas fa-bolt"></i> Trending in hubs</div><button type="button" class="comm-sec-link" onclick="FeedPage.goToTrending()">See all ›</button></div><div class="comm-row" id="commRowMid"></div>`;
     const kids = Array.from(list.children);
     const midIdx = kids.length ? Math.max(1, Math.floor(kids.length / 2)) : 0;
     if (kids[midIdx]) list.insertBefore(sec, kids[midIdx]); else list.appendChild(sec);
@@ -394,9 +422,9 @@
     bindCommunityRowFallback(row, posts);
   }
 
-  function mountCommunitySections() {
+  async function mountCommunitySections() {
     if (!window.DroboardGenreCard) return;
-    const { hot, mid, more } = collectCommunityPosts();
+    const { hot, mid, more } = await collectCommunityPosts();
     COMM_POSTS_A = hot; COMM_POSTS_MID = mid; COMM_POSTS_B = more;
     mountCommunityRow('commRow1', 'commSec1', COMM_POSTS_A);
     if (COMM_POSTS_B.length) {
@@ -814,51 +842,6 @@
     }catch(e){}
     return { joined:FALLBACK_COLLS.slice(0,3), rest:FALLBACK_COLLS.slice(3), all:FALLBACK_COLLS };
   }
-  function openBoardsExplorer(){
-    const data=getMyBoards();
-    if(window.BoardsOverlay){ BoardsOverlay.open(data); return; }
-    let ov=document.getElementById('boardsExplorerOv');
-    if(!ov){
-      ov=document.createElement('div');
-      ov.id='boardsExplorerOv';
-      ov.style.cssText='position:fixed;inset:0;z-index:4000;background:var(--bg,#fff);display:none;flex-direction:column;max-width:420px;margin:0 auto;left:50%;transform:translateX(-50%);box-shadow:0 0 50px rgba(0,0,0,.1)';
-      ov.innerHTML=`
-        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border,#f1f1f1);background:var(--bg,#fff)">
-          <button id="boardsExBack" style="width:36px;height:36px;border-radius:50%;border:1px solid var(--border,#f1f1f1);background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="fas fa-arrow-left"></i></button>
-          <div style="font-weight:800;font-size:16px">My Boards</div>
-        </div>
-        <div style="flex:1;overflow-y:auto;padding:16px" id="boardsExScroll"></div>
-      `;
-      document.body.appendChild(ov);
-      ov.querySelector('#boardsExBack').addEventListener('click', ()=>{ ov.style.display='none'; document.body.style.overflow=''; });
-      ov.addEventListener('click', e=>{ if(e.target===ov){ ov.style.display='none'; document.body.style.overflow=''; } });
-    }
-    const scrollEl=ov.querySelector('#boardsExScroll');
-    const joined=data.joined;
-    const rest=data.rest && data.rest.length? data.rest : (data.all && data.all.length? data.all.filter(g=>!joined.some(j=>j.id===g.id)) : []);
-    const allBoards = [
-      ...joined.map(g=> ({...g, _section:'joined'})),
-      ...rest.slice(0,12).map(g=> ({...g, _section:'explore'}))
-    ];
-    // interleave ads every 6 boards
-    const adHtml = (i)=> `<div style="border:1px solid var(--border,#f1f1f1);border-radius:12px;padding:12px;margin-bottom:8px;background:linear-gradient(135deg,rgba(255,0,80,.06),rgba(167,139,250,.04));display:flex;gap:10px;align-items:center"><div style="width:48px;height:48px;border-radius:8px;background:var(--acc,#ff0050);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0"><i class="fas fa-bullhorn"></i></div><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;color:var(--acc,#ff0050);text-transform:uppercase">Sponsored</div><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Discover Premium Boards</div><div style="font-size:11px;color:var(--tx-muted,#6b7280)">Unlock exclusive hubs & features</div></div><button onclick="location.href='store.html'" style="background:var(--acc,#ff0050);color:#fff;border:none;padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0">View</button></div>`;
-    let html = `<div style="font-size:11px;font-weight:800;color:var(--tx-muted,#6b7280);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Joined hubs</div>`;
-    let count=0;
-    joined.forEach(g=>{
-      html += `<a href="genre-hub.html?genre=${encodeURIComponent(g.id)}" style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border,#f1f1f1);border-radius:10px;margin-bottom:8px;text-decoration:none;color:inherit"><div style="width:36px;height:36px;border-radius:8px;background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;color:var(--acc,#ff0050)"><i class="fas ${g.icon||'fa-hashtag'}"></i></div><div style="flex:1"><div style="font-weight:700;font-size:13px">${g.name}</div><div style="font-size:11px;color:var(--tx-muted,#6b7280)">${g.members||'1.2K'} members</div></div><i class="fas fa-chevron-right" style="font-size:11px;color:var(--tx-muted,#6b7280)"></i></a>`;
-      count++; if(count%6===0) html+=adHtml(count);
-    });
-    if(!joined.length) html+= '<div style="font-size:12px;color:var(--tx-muted)">No hubs joined yet</div>';
-    html += `<div style="font-size:11px;font-weight:800;color:var(--tx-muted,#6b7280);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">Explore more hubs</div>`;
-    rest.slice(0,12).forEach((g, idx)=>{
-      html += `<a href="genre-hub.html?genre=${encodeURIComponent(g.id)}" style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border,#f1f1f1);border-radius:10px;margin-bottom:8px;text-decoration:none;color:inherit"><div style="width:36px;height:36px;border-radius:8px;background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;color:var(--tx-muted,#6b7280)"><i class="fas ${g.icon||'fa-hashtag'}"></i></div><div style="flex:1"><div style="font-weight:700;font-size:13px">${g.name}</div><div style="font-size:11px;color:var(--tx-muted,#6b7280)">${g.tagline||''}</div></div><span style="font-size:11px;font-weight:700;color:var(--acc,#ff0050)">Join</span></a>`;
-      count++; if(count%6===0) html+=adHtml(count);
-    });
-    if(!rest.length) html+= '<div style="font-size:12px;color:var(--tx-muted)">No more hubs</div>';
-    scrollEl.innerHTML = html;
-    ov.style.display='flex';
-    document.body.style.overflow='hidden';
-  }
   // Droboard official handle always → droboard-page.html (even from demo data)
   function toDroboardPage(h){
     var v = String(h||'').replace(/^@/,'').toLowerCase();
@@ -903,7 +886,12 @@
       onSelect: (item) => {
         if (item.id === 'new-post') { openPostComposer('text'); return; }
         if (item.id === 'boards-viewall') {
-          openBoardsExplorer();
+          if (window.BoardsOverlay) {
+            const bd = getMyBoards();
+            BoardsOverlay.open({ joined: bd.joined, rest: bd.rest });
+          } else {
+            location.href = 'trending.html';
+          }
           return;
         }
         if (item.id === 'collections-viewall') {
@@ -1008,7 +996,7 @@
       stampFeedPins(BASE_POSTS);
       FEED_POSTS = interleaveAds(BASE_POSTS, AD_POOLS, AD_GAP);
       renderStories(STORIES_CACHE);
-      mountCommunitySections();
+      await mountCommunitySections();
       if (!FEED_POSTS.length) {
         document.getElementById('emptyState').style.display = 'block';
         injectMidCommunity(COMM_POSTS_MID);
@@ -1046,7 +1034,7 @@
     if (window.ScrollKeep) ScrollKeep.restore();
   }
 
-  function goToHubs() { location.href = 'genre-hub.html'; }
+  function goToTrending() { location.href = 'trending.html'; }
 
-  window.FeedPage = { init, toast, toggleTheme, openPostComposer, closePostComposer, submitPost, goToHubs, closeComments };
+  window.FeedPage = { init, toast, toggleTheme, openPostComposer, closePostComposer, submitPost, goToTrending, closeComments };
 })();

@@ -77,7 +77,7 @@
 <body>
 
 <div class="topbar">
-  <div class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+  <div class="tb-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
   <div class="tb-titles">
     <div class="tb-h" id="tbTitle">Insights</div>
     <div class="tb-sub" id="tbSub"></div>
@@ -96,8 +96,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="../data/genre-demo-seed.js"></script>
-<script src="../shared/insights-tracker.js"></script>
-  <script src="../services/insights-service.js?v=3"></script>
+<script src="../shared/insights-tracker.js?v=3"></script>
+  <script src="../services/insights-service.js?v=6"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

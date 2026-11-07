@@ -2,7 +2,7 @@
  * boards-overlay.js — Droboard Boards Explorer Overlay (full page)
  * ─────────────────────────────────────────────────────────────────
  * Self-contained component for "View all boards" from My Circles.
- * Shows Joined hubs + Explore more hubs, with ad slots every 6 boards.
+ * Shows Joined hubs + Explore more hubs.
  * Full page overlay (covers feed), not a side drawer.
  *
  * Usage:
@@ -19,7 +19,7 @@
     .bbo-root{position:fixed;inset:0;z-index:4000;background:var(--bg,#fff);display:none;flex-direction:column;}
     .bbo-root.open{display:flex}
     .bbo-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border,#f1f1f1);background:var(--bg,#fff);flex-shrink:0}
-    .bbo-back{width:36px;height:36px;border-radius:50%;border:1px solid var(--border,#f1f1f1);background:var(--l1,#f8f9fa);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .bbo-back{width:36px;height:36px;border-radius:50%;border:1px solid var(--border,#f1f1f1);background:var(--l1,#f8f9fa);color:var(--tx,#1a1a2e);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .bbo-back:active{transform:scale(.92)}
     .bbo-title{font-size:16px;font-weight:800;color:var(--tx,#1a1a2e);flex:1}
     .bbo-head .bbo-back:last-child{margin-left:auto}
@@ -31,18 +31,11 @@
     .bbo-card-body{flex:1;min-width:0}
     .bbo-card-title{font-size:13px;font-weight:700;color:var(--tx,#1a1a2e);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .bbo-card-sub{font-size:11px;color:var(--tx-muted,#6b7280);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .bbo-ad{border:1px solid var(--border,#f1f1f1);border-radius:12px;padding:12px;margin-bottom:8px;background:linear-gradient(135deg,rgba(255,0,80,.06),rgba(167,139,250,.04));display:flex;gap:10px;align-items:center}
-    .bbo-ad-icon{width:48px;height:48px;border-radius:8px;background:var(--acc,#ff0050);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0}
-    .bbo-ad-body{flex:1;min-width:0}
-    .bbo-ad-tag{font-size:9px;font-weight:800;color:var(--acc,#ff0050);text-transform:uppercase}
-    .bbo-ad-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .bbo-ad-sub{font-size:11px;color:var(--tx-muted,#6b7280)}
-    .bbo-ad-cta{background:var(--acc,#ff0050);color:#fff;border:none;padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;cursor:pointer}
     [data-theme="dark"] .bbo-root{background:#000}
     [data-theme="dark"] .bbo-head{background:#000;border-color:rgba(255,255,255,.08)}
+    [data-theme="dark"] .bbo-back{background:#1a1b22;border-color:rgba(255,255,255,.1);color:#f5f5f7}
     [data-theme="dark"] .bbo-card{background:#0e0f13;border-color:rgba(255,255,255,.08)}
     [data-theme="dark"] .bbo-card-icon{background:#1a1b22}
-    [data-theme="dark"] .bbo-ad{background:linear-gradient(135deg,rgba(255,0,80,.08),rgba(167,139,250,.06));border-color:rgba(255,255,255,.08)}
   `;
 
   let _built=false, _root=null;
@@ -75,52 +68,6 @@
     document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _root.classList.contains('open')) close(); });
   }
 
-  function storyAdHtml(){
-    // try ad component + service first, fallback to simple
-    try{
-      if(window.DroboardAdCard && window.AdService){
-        // attempt to get a book ad from AdService pools (sync fallback)
-        // AdService.getAds is async, so use a static book ad shape that matches ad-card's listBook
-        const bookAd = { id:'story-ad-boards', title:'Crowned in Sin', author:'@Nkemdilim_R', genre:'mafia', rating:'4.9', chapters:32, cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg', cta:'Read Now' };
-        if(typeof DroboardAdCard.renderListBook === 'function'){
-          return `<div style="margin-bottom:8px">${DroboardAdCard.renderListBook(bookAd)}</div>`;
-        }
-      }
-    }catch(e){}
-    return `<div class="bbo-ad" style="background:rgba(240,168,0,.08);border-color:rgba(240,168,0,.2)">
-      <div class="bbo-ad-icon" style="background:#f59e0b"><i class="fas fa-book-open"></i></div>
-      <div class="bbo-ad-body">
-        <div class="bbo-ad-tag" style="color:#f59e0b">Story Ad</div>
-        <div class="bbo-ad-title">Crowned in Sin</div>
-        <div class="bbo-ad-sub">Mafia romance — trending now</div>
-      </div>
-      <button class="bbo-ad-cta" style="background:#f59e0b" onclick="location.href='bridge.html?id=s1'">Read</button>
-    </div>`;
-  }
-  function platformAdHtml(i){
-    try{
-      if(window.DroboardAdCard){
-        // platform ad via ad-card if available
-        const platAd = { id:'plat-boards-'+i, title:'DroBoard Premium — Read Ad-Free', sponsor:'DroBoard', cta:'Upgrade Now', img:'https://picsum.photos/seed/dropremium/800/200' };
-        if(typeof DroboardAdCard.renderPlatform === 'function'){
-          return `<div style="margin-bottom:8px">${DroboardAdCard.renderPlatform(platAd)}</div>`;
-        }
-        if(typeof DroboardAdCard.renderNative === 'function'){
-          return `<div style="margin-bottom:8px">${DroboardAdCard.renderNative({id:'native-boards-'+i, title:'DroBoard Premium', sponsor:'DroBoard', body:'Unlock every chapter', cta:'Go Premium'})}</div>`;
-        }
-      }
-    }catch(e){}
-    return `<div class="bbo-ad">
-      <div class="bbo-ad-icon"><i class="fas fa-bullhorn"></i></div>
-      <div class="bbo-ad-body">
-        <div class="bbo-ad-tag">Sponsored</div>
-        <div class="bbo-ad-title">Discover Premium Boards</div>
-        <div class="bbo-ad-sub">Unlock exclusive hubs & features</div>
-      </div>
-      <button class="bbo-ad-cta" onclick="location.href='store.html'">View</button>
-    </div>`;
-  }
-
   function open(data){
     ensureDom();
     // apply theme from settings
@@ -132,22 +79,16 @@
     let html='';
     html += `<div class="bbo-section-label">Joined boards</div>`;
     if(joined.length){
-      let count=0;
       joined.forEach(g=>{
         html += `<a href="genre-hub.html?genre=${encodeURIComponent(g.id)}" class="bbo-card"><div class="bbo-card-icon"><i class="fas ${g.icon||'fa-hashtag'}"></i></div><div class="bbo-card-body"><div class="bbo-card-title">${esc(g.name)}</div><div class="bbo-card-sub">${esc(g.members||'1.2K')} members</div></div><i class="fas fa-chevron-right" style="font-size:11px;color:var(--tx-muted,#6b7280)"></i></a>`;
-        count++; if(count%6===0) html+=platformAdHtml(count);
       });
     } else {
       html += `<div style="font-size:12px;color:var(--tx-muted,#6b7280);padding:8px 0">No boards joined yet</div>`;
     }
-    // story ad before explore (as requested)
-    html += storyAdHtml();
     html += `<div class="bbo-section-label" style="margin-top:16px">Explore more boards</div>`;
     if(rest.length){
-      let count2=joined.length;
       rest.slice(0,12).forEach(g=>{
         html += `<a href="genre-hub.html?genre=${encodeURIComponent(g.id)}" class="bbo-card"><div class="bbo-card-icon" style="color:var(--tx-muted,#6b7280)"><i class="fas ${g.icon||'fa-hashtag'}"></i></div><div class="bbo-card-body"><div class="bbo-card-title">${esc(g.name)}</div><div class="bbo-card-sub">${esc(g.tagline||'')}</div></div><span style="font-size:11px;font-weight:700;color:var(--acc,#ff0050)">Join</span></a>`;
-        count2++; if(count2%6===0) html+=platformAdHtml(count2);
       });
     } else {
       html += `<div style="font-size:12px;color:var(--tx-muted,#6b7280);padding:8px 0">No more boards</div>`;

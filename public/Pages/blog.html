@@ -26,15 +26,15 @@ body{font-family:var(--font-body);background:var(--divider);display:flex;justify
 <script src="../services/store-service.js?v=6"></script>
 <script src="../component/img-guard.js"></script>
 <script src="../component/app-nav.js?v=7"></script>
-<script src="../component/ad-card.js?v=6"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../component/ad-card.js?v=10"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/ad-slot.js?v=2"></script>
+<script src="../component/ad-slot.js?v=3"></script>
 </head>
 <body>
 <div class="phone">
   <div class="topbar">
-    <div class="icon-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    <div class="icon-btn" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
     <div style="font-family:var(--font-display);font-weight:800">Blog & Earn</div>
     <div class="icon-btn" onclick="location.href='store.html'"><i class="fas fa-coins"></i></div>
   </div>
@@ -57,3 +57,5 @@ body{font-family:var(--font-body);background:var(--divider);display:flex;justify
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

@@ -10,19 +10,25 @@
 <!-- Reusable components: search overlay turns any [data-search-trigger] element
      into a search-opening control, bottom nav builds + appends itself to <body>.
      See component/search-overlay.js and component/bottom-nav.js. -->
-<script src="../component/search-overlay.js?v=4"></script>
-<script src="../component/browse-overlay.js?v=13"></script>
+<script src="../component/search-overlay.js?v=5"></script>
+<script src="../component/browse-overlay.js?v=16"></script>
 <script src="../component/bottom-nav.js"></script>
+<script src="../services/notification-store.js"></script>
 <script src="../services/notification-service.js"></script>
 <style>
   :root{
     --pink:#E91E63; --pink-deep:#C2185B; --pink-soft:#FCE7F3;
+    --acc:#ff0050; --acc2:#ff4d7a; --glow-sm:rgba(255,0,80,.12); --bd-acc:rgba(255,0,80,.25);
     --purple:#7C3AED; --purple-deep:#6D28D9; --purple-soft:#F1EBFF;
     --blue:#3B82F6; --blue-soft:#EAF2FE;
     --green:#10B981; --green-soft:#E7FBF3;
     --orange:#F59E0B; --orange-soft:#FEF3E2;
+    --gold:#fbbf24;
     --ink:#161620; --ink-2:#3A3650; --gray-600:#65627a; --gray-400:#9793a8;
-    --line:#EDEDF2; --divider:#F0F1F5; --white:#FFFFFF; --card:#ffffff;
+    --line:#EDEDF2; --divider:#F0F1F5; --bg:#F0F1F5; --white:#FFFFFF; --card:#ffffff;
+    --l1:#ffffff; --l2:#f1f1f1;
+    --bd:rgba(0,0,0,.10); --bd2:rgba(0,0,0,.05);
+    --tx-high:#161620; --tx-body:#3a3a3a; --tx-muted:#666666;
     --grid-gap:10px;
     --font-display:'Manrope',sans-serif;
     --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -32,7 +38,10 @@
     --purple-soft:rgba(124,58,237,.2); --blue-soft:rgba(59,130,246,.18);
     --green-soft:rgba(16,185,129,.16); --orange-soft:rgba(245,158,11,.16);
     --ink:#f0f0f5; --ink-2:#c9c8d8; --gray-600:#a09eb5; --gray-400:#8a89a0;
-    --line:rgba(255,255,255,.08); --divider:#101016; --white:#0b0b10; --card:#08090c;
+    --line:rgba(255,255,255,.12); --divider:#000000; --bg:#000000; --white:#000000; --card:#15161d;
+    --l1:#0e0f13; --l2:#15161d;
+    --bd:rgba(255,255,255,.12); --bd2:rgba(255,255,255,.08); --bd-acc:rgba(255,0,80,.20);
+    --tx-high:#e0e0e0; --tx-body:#c0c0c0; --tx-muted:#71717a;
   }
   [data-theme="dark"] .view-btn.active{background:#1a1a24}
   [data-theme="dark"] .lib-act{background:#1a1a24}
@@ -253,6 +262,8 @@
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
@@ -261,7 +272,7 @@
     <div class="logo">Dro<span>Board</span></div>
     <div class="top-actions">
       <div class="icon-btn" id="search-btn" data-search-trigger></div>
-      <a href="notifications.html" class="icon-btn" id="bell-btn" style="text-decoration:none;color:inherit"></a>
+      <a href="notifications.html" class="dro-icon-btn" id="bell-btn" aria-label="Notifications"><i class="fas fa-bell"></i><span class="dro-icon-btn__badge" id="notifCount" style="display:none"></span></a>
       <a href="store.html" class="icon-btn pink" id="gift-btn" style="text-decoration:none;color:inherit"></a>
 
     </div>
@@ -387,19 +398,23 @@
 <script src="../services/auth-session.js?v=3"></script>
 <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/audience-service.js?v=3"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
+<script src="../component/ad-card.js?v=10"></script>
 <script src="../component/promo-slider.js?v=2"></script>
 <script src="../services/search-service.js"></script>
-<script src="../component/discover-card.js?v=4"></script>
-<script src="../component/status-viewer.js?v=15"></script>
+<script src="../component/discover-card.js?v=10"></script>
+<script src="../component/status-viewer.js?v=16"></script>
 <script src="../component/status-ring.js?v=4"></script>
 <script src="../shared/status-loader.js"></script>
-<script src="../services/people-service.js"></script>
-<script src="../services/status-service.js?v=7"></script>
-<script src="../component/writers-row.js?v=1"></script>
+<script src="../services/people-service.js?v=1"></script>
+<script src="../services/status-service.js?v=8"></script>
+<script src="../component/writers-row.js?v=2"></script>
 <script src="../component/more-like-this.js"></script>
 <script src="../component/guest-gate.js"></script>
+<!-- The Saved tab lists posts, so it renders them with the feed's own card
+     component. Must load before library-service.js, which mounts it. -->
+<script src="../component/post-card.js"></script>
 <script src="../services/library-service.js"></script>
 <script src="../component/library-card.js"></script>
 <script>(function(){var sk=document.getElementById('loadingState');function hideSk(){if(sk)sk.classList.add('hidden');}LibraryPage.init().then(hideSk,hideSk);})();</script>

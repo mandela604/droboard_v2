@@ -3,11 +3,10 @@
    ONE surface per page (no tabs) + period filter:
    Today / 7D / Month / All-time, each with a delta vs the
    previous equal-length window and a bar chart for the period.
-   Live visit counts come from InsightsTracker (timestamped,
-   localStorage demo); other numbers are seeded demo data scaled
-   per period — shaped like the API payload you'll get live.
-   DATA LAYER: loadInsights(surface, id, period) — at cutover swap
-   for GET /api/insights/:surface?period=…&id=…, keep render.
+   Numbers come from GET /api/insights/:surface (real counters); if that
+   call fails the seeded demo set paints the page instead and the note under
+   the hero says "Demo stats".
+   DATA LAYER: loadInsights(surface, id, period) — live fetch, demo fallback.
    URL: insights.html?surface=hub&genre=fantasy | ?surface=droboard | ?surface=profile
           &period=today|7d|month|all   (default 7d)
 ══════════════════════════════════════════════════════════════ */
@@ -157,6 +156,25 @@
     if (!code) return '';
     return '<img class="li-flag" src="https://flagcdn.com/w40/' + code + '.png" alt="" loading="lazy" onerror="this.style.display=\'none\'"/>';
   }
+  /* The server sends the edge geo header (2-letter code); the demo names
+     above are what the renderer flags by, so codes are mapped back. */
+  const COUNTRY_NAME = {};
+  Object.keys(COUNTRY_CODE).forEach(function (name) { COUNTRY_NAME[COUNTRY_CODE[name].toUpperCase()] = name; });
+  function mapLiveCountries(list) {
+    // Codes (from the edge header) and names (client fallback) are folded
+    // into one bucket per country so the list never shows Nigeria twice.
+    const totals = {};
+    (list || []).forEach(function (c) {
+      if (!c) return;
+      const raw = String(c.country || '');
+      if (!raw || raw === 'Unknown') return;
+      const name = COUNTRY_NAME[raw.toUpperCase()] || raw;
+      totals[name] = (totals[name] || 0) + (Number(c.n) || 0);
+    });
+    return Object.keys(totals).map(function (k) { return { country: k, n: totals[k] }; })
+      .sort(function (a, b) { return b.n - a.n; })
+      .slice(0, 5);
+  }
   /* Demo visit volume per period (stable per surface) — blended with
      real page-open counts so the hero never looks empty. */
   const VISIT_BASE = { today: 48, '7d': 310, month: 1240, all: 9800 };
@@ -235,7 +253,30 @@
   }
 
   /* ══ DATA LAYER ══ */
+  /* Live first: GET /api/insights/:surface?period=… (real counters from the
+     server). When that call fails the demo set below paints the page, so the
+     UI is never empty — the note under the hero says which one you got. */
+  function fetchLive(sfc, id, p) {
+    let url = '/api/insights/' + encodeURIComponent(sfc) + '?period=' + encodeURIComponent(p);
+    if (sfc === 'hub' && id) url += '&genre=' + encodeURIComponent(id);
+    if (sfc === 'collection' && id) url += '&id=' + encodeURIComponent(id);
+    if (sfc === 'profile' && id) url += '&handle=' + encodeURIComponent(id);
+    return fetch(url, { credentials: 'include' }).then(function (r) {
+      if (!r.ok) throw new Error('api_' + r.status);
+      return r.json();
+    }).then(function (data) {
+      if (!data || !Array.isArray(data.series) || !data.series.length) throw new Error('empty');
+      data.countries = mapLiveCountries(data.countries);
+      data.demo = false;
+      return data;
+    });
+  }
   function loadInsights(sfc, id, p) {
+    return fetchLive(sfc, id, p).catch(function () {
+      return demoInsights(sfc, id, p).then(function (d) { d.demo = true; return d; });
+    });
+  }
+  function demoInsights(sfc, id, p) {
     // Live swap: return fetch(API_BASE + '/insights/' + sfc + '?period=' + p + (id ? '&id=' + id : ''), {credentials:'include'}).then(r => r.json());
     const T = window.InsightsTracker;
     const start = periodStart(p);
@@ -254,6 +295,19 @@
     const base = PERIOD_BASE[p];
     const n = PERIOD_N[p];
 
+    /* Unique visits — one count per reader per 20 minutes, the same rule
+       tracking.service.js applies server-side. This device's own hits are
+       deduped for real; the synthetic base keeps a 70% share, so reload
+       inflation shows up as the gap to total visits and unique never exceeds
+       it. */
+    const uniqLocal = T ? T.readUnique(sfc, id, start) : 0;
+    const uniqPrevLocal = pStart < 0 ? -1 : (T ? T.readUnique(sfc, id, pStart) : 0);
+    const uniq = Math.min(visits, uniqLocal + Math.round(demoV * 0.7));
+    const uniqPrev = pStart < 0 ? -1 : Math.min(Math.max(0, visitsPrev), uniqPrevLocal + Math.round(demoVPrev * 0.7));
+    function uniqCard() {
+      return { label: 'Unique visits', v: fmtK(uniq), s: cardNote(deltaPct(uniq, uniqPrev), '20-min rule') };
+    }
+
     if (sfc === 'hub') {
       const seed = window.GenreDemoSeed;
       const g = (seed && seed.DEMO_GENRES && (seed.DEMO_GENRES[id] || seed.DEMO_GENRES[seed.DEFAULT_GENRE_ID])) || { name: id, members: '0', discussions: '0', stories: '0' };
@@ -268,7 +322,7 @@
         title: g.name + ' hub',
         sub: 'Hub insights · ' + pLabel(p),
         hero: {
-          label: 'Page visits',
+          label: 'Board views',
           v: String(visits),
           delta: deltaPct(visits, visitsPrev),
           sub: p === 'all' ? 'since tracking began' : 'this ' + pLabel(p),
@@ -277,6 +331,7 @@
         chartNote: peakNote(devSeries, act),
         series: devSeries.map(function (v, i) { return v + act[i]; }),
         cards: [
+          uniqCard(),
           { label: 'Posts', v: String(newThreads), s: cardNote(deltaPct(newThreads, newThreadsPrev)) },
           { label: 'Replies', v: String(Math.round(newThreads * 3.2)), s: cardNote(deltaPct(newThreads, newThreadsPrev)) },
           { label: 'New stories', v: String(newStories), s: cardNote(deltaPct(newStories, newStoriesPrev)) },
@@ -307,6 +362,7 @@
         chartNote: peakNote(devSeries, act),
         series: devSeries.map(function (v, i) { return v + act[i]; }),
         cards: [
+          uniqCard(),
           { label: 'Posts', v: String(posts), s: cardNote(deltaPct(posts, postsPrev)) },
           { label: 'Active readers', v: fmtK(readers), s: cardNote(deltaPct(readers, readersPrev)) },
           { label: 'Engagements', v: fmtK(sum(act) * 4), s: cardNote(deltaPct(sum(act), sum(actPrev))) },
@@ -335,6 +391,7 @@
       chartNote: peakNote(devSeries, act),
       series: devSeries.map(function (v, i) { return v + act[i]; }),
       cards: [
+        uniqCard(),
         { label: 'Reads', v: fmtK(reads), s: cardNote(deltaPct(reads, readsPrev)) },
         { label: 'Likes', v: fmtK(sum(act) * 2.4), s: cardNote(deltaPct(sum(act), sum(actPrev))) },
         { label: 'Followers', v: '2.1K', s: { t: 'total', cls: 'flat' } },
@@ -366,6 +423,7 @@
       chartNote: peakNote(devSeries, act),
       series: devSeries.map(function (v, i) { return v + act[i]; }),
       cards: [
+        uniqCard(),
         { label: 'Followers', v: '340', s: { t: 'total', cls: 'flat' } },
         { label: 'Stories', v: '12', s: { t: 'in collection', cls: 'flat' } },
       ],
@@ -392,6 +450,14 @@
     total.forEach(function (v, i) { if (v > total[mi]) mi = i; });
     return 'Peak: ' + chartBuckets(period).labels[mi];
   }
+  /* Live series carry their own peak — the server has no demo series to add. */
+  function peakOfSeries(series) {
+    if (!series || !series.length || !series.some(function (v) { return v > 0; })) return '';
+    let mi = 0;
+    series.forEach(function (v, i) { if (v > series[mi]) mi = i; });
+    const labels = chartBuckets(period).labels;
+    return labels[mi] ? 'Peak: ' + labels[mi] : '';
+  }
 
   /* ══ RENDER ══ */
   function render(data) {
@@ -399,12 +465,15 @@
     document.getElementById('tbSub').textContent = data.sub;
     document.title = data.title + ' · Insights · DroBoard';
     const max = Math.max.apply(null, data.series.concat([1]));
-    let html = '<div class="surface-note"><i class="fas fa-database"></i> Demo stats · page visits counted on open · compare vs previous period</div>';
+    const note = data.chartNote || peakOfSeries(data.series);
+    let html = data.demo === false
+      ? '<div class="surface-note"><i class="fas fa-circle-check"></i> Live stats · real counters from the server · compare vs previous period</div>'
+      : '<div class="surface-note"><i class="fas fa-database"></i> Demo stats · page visits counted on open · compare vs previous period</div>';
     html += '<div class="hero"><div class="hero-l">' + data.hero.label + '</div>' +
       '<div class="hero-row"><div class="hero-v">' + data.hero.v + '</div>' + deltaHtml(data.hero.delta) + '</div>' +
       '<div class="hero-sub">' + data.hero.sub + '</div></div>';
     html += '<div class="chart-card"><div class="chart-hd"><div class="chart-t">' + data.chartTitle + '</div>' +
-      (data.chartNote ? '<div class="chart-peak"><i class="fas fa-bolt"></i> ' + data.chartNote + '</div>' : '') + '</div>' +
+      (note ? '<div class="chart-peak"><i class="fas fa-bolt"></i> ' + note + '</div>' : '') + '</div>' +
       '<div class="bars">' + data.series.map(function (v, i) {
         const pct = Math.round((v / max) * 100);
         const isPeak = v === max && v > 0;

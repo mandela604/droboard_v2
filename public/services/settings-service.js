@@ -108,11 +108,9 @@ async function initDrawer(profile){
 }
 
 async function init(){
-  // Settings is account-only; signed-out visitors go to login.
-  if(global.AuthSession && AuthSession.isGuest && AuthSession.isGuest()){
-    location.replace(AuthSession.loginUrl('settings.html'));
-    return;
-  }
+  // Demo mode: settings is accessible without login (same as feed/discover).
+  // Guests see the page with empty profile fields; account-specific rows
+  // (email, password, logout) just show demo/no-op behaviour.
   setTheme(getTheme());
   window.setTheme=setTheme;
   window.toast=toast;

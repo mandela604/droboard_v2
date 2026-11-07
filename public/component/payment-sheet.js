@@ -37,50 +37,103 @@
     const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
   }
 
+  // Demo mode: simulate a successful purchase without hitting a payment provider.
+  // Used when no live keys are configured (development / pre-launch).
+  function isDemoMode() {
+    if (!window.PaymentService) return true;
+    try {
+      var m = PaymentService.methods();
+      // If the only method is a native store placeholder, stay in demo on web
+      if (!m.length) return true;
+      // If config has not resolved yet we are still in demo
+      return false;
+    } catch (e) { return true; }
+  }
+
   function open(opts) {
     opts = opts || {};
     ensureStyle();
     close();
     const methods = (window.PaymentService ? PaymentService.methods() : []);
-    // No keys on the server = no channel can take money; say so in the sheet
-    // instead of rendering a button that 503s on tap.
-    const ready = methods.length > 0;
-    let method = ready ? methods[0].id : null;
+    const demo = isDemoMode();
+    // No keys on the server = no channel can take money; show demo flow instead.
+    const ready = !demo && methods.length > 0;
+    let method = ready ? methods[0].id : (demo ? 'demo' : null);
+
     const ov = document.createElement('div');
     ov.className = 'dps-ov'; ov.id = 'dpsOv';
+
+    const coinsLabel = opts.isSub
+      ? ''
+      : '<div class="dps-item"><div class="dps-coins">' + esc(String(opts.coins || '')) + ' <small>coins</small></div>'
+        + '<div class="dps-price">' + esc(opts.price || '') + '</div></div>';
+
+    const methodsHtml = ready
+      ? methods.map(function (m, i) {
+          return '<button class="dps-m' + (i === 0 ? ' on' : '') + '" data-m="' + m.id + '">'
+            + '<i class="' + m.icon + '"></i><span style="flex:1">' + m.name
+            + '<small>' + (m.hint || '') + '</small></span></button>';
+        }).join('')
+      : demo
+        ? '<button class="dps-m on" data-m="demo" style="justify-content:center;color:var(--acc,#ff0050)">'
+          + '<i class="fas fa-flask"></i><span style="flex:1">Demo Purchase<small>Simulated · no real charge</small></span></button>'
+        : '';
+
+    const payLabel = ready
+      ? 'Pay ' + esc(opts.price || '')
+      : demo
+        ? '🎉 Confirm Demo Purchase'
+        : 'Payments not enabled yet';
+
     ov.innerHTML = '<div class="dps-sheet">'
       + '<div class="dps-handle"></div>'
       + '<div class="dps-title">' + esc(opts.title || 'Checkout') + '</div>'
       + '<div class="dps-sub">' + esc(opts.sub || '') + '</div>'
-      + '<div class="dps-item"><div class="dps-coins">' + esc(String(opts.coins || '')) + ' <small>coins</small></div>'
-      + '<div class="dps-price">' + esc(opts.price || '') + '</div></div>'
-      + '<div id="dpsMethods">' + methods.map(function (m, i) {
-        return '<button class="dps-m' + (i === 0 ? ' on' : '') + '" data-m="' + m.id + '">'
-          + '<i class="' + m.icon + '"></i><span style="flex:1">' + m.name + '<small>' + (m.hint || '') + '</small></span>'
-          + '</button>';
-      }).join('') + '</div>'
-      + '<button class="dps-pay" id="dpsPay"' + (ready ? '' : ' disabled') + '>'
-      + (ready ? 'Pay ' + esc(opts.price || '') : 'Payments not enabled yet') + '</button>'
+      + coinsLabel
+      + '<div id="dpsMethods">' + methodsHtml + '</div>'
+      + '<button class="dps-pay" id="dpsPay">' + payLabel + '</button>'
       + '<button class="dps-cancel" id="dpsCancel">Cancel</button>'
-      + '<div class="dps-note">' + (ready ? 'Secured checkout · coins credit after verification.' : 'No payment provider is configured on this server yet.') + '</div>'
+      + '<div class="dps-note">'
+      + (ready ? 'Secured checkout · coins credit after verification.'
+          : demo ? 'Demo mode — no real payment is processed.'
+          : 'No payment provider is configured on this server yet.')
+      + '</div>'
       + '</div>';
+
     document.body.appendChild(ov);
     requestAnimationFrame(function () { ov.classList.add('open'); });
 
     function done() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
-    ov.addEventListener('click', function (e) { if (e.target === ov) { if (cancelHook) cancelHook(); done(); } });
-    ov.querySelector('#dpsCancel').addEventListener('click', function () { if (cancelHook) cancelHook(); done(); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) { done(); } });
+    ov.querySelector('#dpsCancel').addEventListener('click', function () { done(); });
     ov.querySelectorAll('[data-m]').forEach(function (b) {
       b.addEventListener('click', function () {
         method = b.dataset.m;
         ov.querySelectorAll('[data-m]').forEach(function (x) { x.classList.toggle('on', x === b); });
       });
     });
-    let cancelHook = null;
+
     ov.querySelector('#dpsPay').addEventListener('click', function () {
       const btn = ov.querySelector('#dpsPay');
       btn.disabled = true;
       btn.innerHTML = '<span class="dps-spin"></span>Processing…';
+
+      // Demo path — fake a 1.5s network delay then call onSuccess
+      if (method === 'demo' || demo) {
+        setTimeout(function () {
+          done();
+          if (opts.onSuccess) opts.onSuccess({
+            demo: true,
+            reference: 'DEMO-' + Date.now(),
+            coins: opts.coins || 0,
+            plan: opts.isSub ? (opts.packCode || 'sub') : null,
+            amount: 0,
+          });
+        }, 1500);
+        return;
+      }
+
+      // Live path
       const p = { title: opts.title, price: opts.price, coins: opts.coins, method: method,
         packCode: opts.packCode, amountNGN: opts.amountNGN, email: opts.email };
       window.PaymentService.checkout(p).then(function (receipt) {

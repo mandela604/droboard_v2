@@ -76,21 +76,33 @@
     }
   }, false);
 
+  /* ── ROOT PAGES — pressing back here exits the app ── */
+  var ROOT_PAGES = ['discover.html', 'feed.html', 'index.html'];
+  function isRootPage() {
+    try {
+      var p = location.pathname.split('/').pop() || '';
+      return ROOT_PAGES.indexOf(p) !== -1;
+    } catch (e) { return false; }
+  }
+
   /* ── 1) back button ── */
   function goBack() {
     stack = loadStack();
-    if (stack.length > 1 && history.length > 1) {
+
+    // Always go back in history if there is somewhere to go
+    if (history.length > 1) {
       stack.pop();
       saveStack(stack);
       history.back();
       return;
     }
+
+    // history is fully exhausted — only exit if we're on a root page
     if (!isNative()) { history.back(); return; }
-    /* At the logical root, back means leave — the platform default. The old
-       "press back again to exit" guard is what made the landing page feel like
-       it needed two presses (plus one wasted on the redirect stub) to close. */
-    var App = appPlugin();
-    if (App && App.exitApp) { try { App.exitApp(); return; } catch (e) {} }
+    if (isRootPage()) {
+      var App = appPlugin();
+      if (App && App.exitApp) { try { App.exitApp(); return; } catch (e) {} }
+    }
     history.back();
   }
   function bindBack() {
@@ -314,9 +326,7 @@
     if (Math.abs(dy) > Math.abs(dx) * 0.6) return;
     if (inField(e.target) || inHScroll(e.target)) return;
     if (edge === 'left' && dx > 80) {
-      stack = loadStack();
-      if (stack.length > 1) { stack.pop(); saveStack(stack); }
-      history.back();
+      goBack();
     } else if (edge === 'right' && dx < -80) {
       history.forward();
     }

@@ -38,16 +38,20 @@ img{display:block;object-fit:cover}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../services/notification-store.js"></script>
+<script src="../services/notification-service.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
   <div class="topbar">
-    <button class="back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+    <button class="back-btn" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-arrow-left"></i></button>
     <div class="title-wrap"><div class="page-title" id="followersTitle">Following</div><div class="page-sub" id="followersSub">@user</div></div>
     <div class="top-actions">
       <button class="icon-btn" data-search-trigger aria-label="Search"><i class="fas fa-search"></i></button>
-      <button class="icon-btn" onclick="location.href='notifications.html'"><i class="fas fa-bell"></i></button>
+      <button class="dro-icon-btn" onclick="location.href='notifications.html'" aria-label="Notifications"><i class="fas fa-bell"></i></button>
     </div>
   </div>
   <div class="search-wrap">
@@ -72,11 +76,11 @@ img{display:block;object-fit:cover}
 <script src="../services/profile-data.js?v=3"></script>
 <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/audience-service.js?v=3"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/ad-card.js?v=6"></script>
-<script src="../component/follow-list.js?v=3"></script>
-<script src="../component/search-overlay.js?v=4"></script>
+<script src="../component/ad-card.js?v=10"></script>
+<script src="../component/follow-list.js?v=5"></script>
+<script src="../component/search-overlay.js?v=5"></script>
 <script src="../component/status-ring.js?v=4"></script>
 <script src="../services/search-service.js"></script>
 <script src="../services/followers-service.js?v=2"></script>
@@ -86,3 +90,5 @@ img{display:block;object-fit:cover}
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

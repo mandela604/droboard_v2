@@ -189,6 +189,18 @@
     });
   }
 
+  // Dashboards available per console role. This is the whole lookup: hold a
+  // role that's in here and its dashboard is added to the menu — add a role,
+  // get its dashboard, no other wiring needed. Roles without a dashboard
+  // page (reader, writer, support_agent) simply aren't listed.
+  var ROLE_DASHBOARDS = {
+    admin: { label: 'Super Admin Dashboard', sub: 'Platform overview', href: '../super-admin/dashboard.html' },
+    chief_editor: { label: 'Chief Editor Dashboard', sub: 'Editors, contracts & flags', href: '../chief-editor/dashboard.html' },
+    senior_editor: { label: 'Senior Editor Dashboard', sub: 'Reviews, authors & reports', href: '../senior-editor/dashboard.html' },
+    finance: { label: 'Finance Dashboard', sub: 'Payouts & revenue', href: '../finance/dashboard.html' },
+    marketing: { label: 'Marketing Dashboard', sub: 'Campaigns & growth', href: '../marketing/dashboard.html' },
+  };
+
   // Staff dashboards for the signed-in owner, read from the stored session.
   // Readers see nothing here — no dashboard is ever forced on anyone.
   function _staffDashboards() {
@@ -205,18 +217,11 @@
       } catch (e) {}
       roles = roles.map(function (r) { return String(r).toLowerCase().replace(/[\s-]+/g, '_'); });
     }
-    var has = function () {
-      for (var i = 0; i < arguments.length; i++) {
-        if (roles.indexOf(arguments[i]) !== -1) return true;
-      }
-      return false;
-    };
-    var out = [];
-    if (has('admin')) out.push({ label: 'Super Admin Dashboard', sub: 'Platform overview', href: '../super-admin/dashboard.html' });
-    if (has('chief_editor')) out.push({ label: 'Chief Editor Dashboard', sub: 'Editors, contracts & flags', href: '../chief-editor/dashboard.html' });
-    if (has('senior_editor')) out.push({ label: 'Senior Editor Dashboard', sub: 'Reviews, authors & reports', href: '../senior-editor/dashboard.html' });
-    if (has('finance')) out.push({ label: 'Finance Dashboard', sub: 'Payouts & revenue', href: '../finance/dashboard.html' });
-    if (has('marketing')) out.push({ label: 'Marketing Dashboard', sub: 'Campaigns & growth', href: '../marketing/dashboard.html' });
+    var seen = {}, out = [];
+    roles.forEach(function (r) {
+      var d = ROLE_DASHBOARDS[r];
+      if (d && !seen[r]) { seen[r] = true; out.push(d); }
+    });
     return out;
   }
 

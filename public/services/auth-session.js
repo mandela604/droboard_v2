@@ -61,8 +61,9 @@
   const ROLE_ALIASES = {
     superadmin: 'admin', super_admin: 'admin', administrator: 'admin',
     chief: 'chief_editor', chiefeditor: 'chief_editor',
+    ce: 'chief_editor', 'chief_editor_(ce)': 'chief_editor',
     senior: 'senior_editor', senior_editor: 'senior_editor', senior_editor_dashboard: 'senior_editor',
-    senioreditor: 'senior_editor',
+    senioreditor: 'senior_editor', se: 'senior_editor', 'senior_editor_(se)': 'senior_editor',
     editors: 'editor', content_editor: 'editor',
     finance_manager: 'finance', marketing_manager: 'marketing',
   };
@@ -103,7 +104,35 @@
   }
 
   async function getCurrentUserHandle() {
-    return account().handle;
+    var acc = account();
+    if (acc && acc.handle) return acc.handle;
+    // Demo mode fallback: return the seeded demo user
+    return 'You_Reader';
+  }
+
+  /* ── Session bootstrap ─────────────────────────────────────────────
+     A session can exist without a stored user row (a login path that only
+     returned tokens, or a row that got cleared). Handle and roles — and so
+     owner detection and the role dashboards — all read that row, so restore
+     it once from the API when it's missing. Safe on demo servers: if the
+     endpoint isn't reachable, nothing changes. */
+  let _restore = null;
+  function ensureAccount() {
+    const stored = getStoredUser();
+    if (stored || !isSignedIn()) return Promise.resolve(stored);
+    if (!_restore) {
+      _restore = fetch('/api/users/me', { credentials: 'same-origin' })
+        .then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
+        .then(function (u) {
+          if (u && u.id) {
+            try { localStorage.setItem(USER_KEY, JSON.stringify(u)); } catch (e) {}
+          }
+          _restore = null;
+          return u || null;
+        })
+        .catch(function () { _restore = null; return null; });
+    }
+    return _restore;
   }
 
   async function logout() {
@@ -137,5 +166,6 @@
     loginUrl,
     getRoles,
     hasRole,
+    ensureAccount,
   };
 })(window);

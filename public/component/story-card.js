@@ -79,7 +79,6 @@
     .sr-stat i{font-size:7px}
     .sr-stat span{color:#8e8e93}
   `;
-  `;
 
   let _hrefs = {
     storyHref: function (s) {

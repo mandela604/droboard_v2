@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="../shared/theme.css"/>
 <style>
 :root{
-  --nav-h:64px;--safe-b:env(safe-area-inset-bottom,12px);
+  --nav-h:0px;--safe-b:env(safe-area-inset-bottom,12px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{min-height:100%;background:var(--bg);color:var(--tx-body);
@@ -76,7 +76,9 @@ a{color:inherit;text-decoration:none}
 
 .tabs{
   display:flex;gap:0;padding:0 8px;border-bottom:1px solid var(--bd);background:var(--l1);
-  position:sticky;top:57px;z-index:150;overflow-x:auto;
+  /* Not sticky: the tab + filter rows scroll away with the page; only
+     .top-bar stays pinned. */
+  overflow-x:auto;
 }
 .tabs.is-stuck{box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .tab{
@@ -98,10 +100,15 @@ a{color:inherit;text-decoration:none}
 
 .sort-row{
   display:flex;gap:7px;padding:10px 14px;overflow-x:auto;border-bottom:1px solid var(--bd);background:var(--l1);
-  position:sticky;top:101px;z-index:140;will-change:transform;align-self:stretch;width:100%;
+  /* Static, so the filters scroll up and out of view instead of pinning
+     under the header. */
+  align-self:stretch;width:100%;
 }
 .sort-row.is-stuck{box-shadow:0 2px 8px rgba(0,0,0,.06);border-bottom-color:var(--bd);}
-.floating-filters{position:fixed;top:101px;left:50%;transform:translateX(-50%);width:100%;max-width:420px;z-index:145;display:none;gap:7px;padding:10px 14px;overflow-x:auto;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);box-shadow:0 4px 12px rgba(0,0,0,.08);}
+/* No longer a fixed overlay — it sits in normal flow with the rest of the
+   page so it scrolls away like every other row (and is simply out of view
+   when the deep-scroll "show" toggle fires). */
+.floating-filters{width:100%;max-width:420px;display:none;gap:7px;padding:10px 14px;overflow-x:auto;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);box-shadow:0 4px 12px rgba(0,0,0,.08);}
 .floating-filters.show{display:flex}
 .sort-chip{
   flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:20px;
@@ -145,20 +152,24 @@ a{color:inherit;text-decoration:none}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../services/notification-store.js"></script>
+<script src="../services/notification-service.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
 <div class="phone">
 
   <div class="top-bar">
-    <button type="button" class="top-icon-btn" onclick="history.back()" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <button type="button" class="top-icon-btn" onclick="history.length>1?history.back():location.href='feed.html'" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
     <div class="top-center">
       <div class="top-title" id="pageTitle">Genre</div>
       <div class="top-sub">Genre Hub · Discussions</div>
     </div>
     <div style="display:flex;gap:8px">
-      <button type="button" class="top-icon-btn" onclick="location.href='notifications.html'" aria-label="Alerts">
-        <i class="fas fa-bell"></i><span class="notif-dot">3</span>
+      <button type="button" class="dro-icon-btn" onclick="location.href='notifications.html'" aria-label="Notifications">
+        <i class="fas fa-bell"></i><span class="dro-icon-btn__badge" id="notifDot" style="display:none">3</span>
       </button>
 
     </div>
@@ -222,7 +233,13 @@ a{color:inherit;text-decoration:none}
   </div>
 
   <div id="hubPromoMount"></div>
-  <div data-ad-slot="genreHub:strip" style="padding:0 14px 8px"></div>
+  <!-- Deferred: the board id only exists after the hub loads, and a frequency
+       cap scoped to 'target' counts per board, so it must be filled knowing
+       which board this is. See genre-hub-service.js mountHubAd(). -->
+  <div data-ad-slot="genreHub:strip" data-ad-defer style="padding:0 14px 8px"></div>
+  <!-- Network overlay zone: takes no space (the tag paints its own popup), so it
+       lives in a zero-height host div instead of stealing the strip's house card. -->
+  <div data-ad-slot="genreHub:popup" data-ad-format="embed" data-ad-defer style="height:0;overflow:hidden"></div>
 
   <!-- GenreCard renders discussions; page injects ad slots around them -->
   <div class="feed" id="feed"></div>
@@ -233,32 +250,33 @@ a{color:inherit;text-decoration:none}
 <div class="toast" id="toast"></div>
 
 <script src="../data/genre-demo-seed.js"></script>
-<script src="../component/genre-card.js?v=10"></script>
-<script src="../component/book-card.js?v=1"></script>
-<script src="../component/reaction-picker.js?v=4"></script>
-<script src="../component/ad-card.js?v=6"></script>
+<script src="../component/genre-card.js?v=13"></script>
+<script src="../component/book-card.js?v=4"></script>
+<script src="../component/reaction-picker.js?v=5"></script>
+<script src="../component/ad-card.js?v=10"></script>
 <script src="../component/promo-slider.js?v=2"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/dots-menu.js"></script>
-<script src="../component/follow-list.js?v=2"></script>
-<script src="../component/share-modal.js"></script>
-<script src="../component/bottom-nav.js"></script>
+<script src="../component/dots-menu.js?v=2"></script>
+<script src="../component/follow-list.js?v=5"></script>
+<script src="../component/share-modal.js?v=5"></script>
 <script src="../data/central-demo-data.js"></script>
 <script src="../marketing/shared/marketing-data.js"></script>
 <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/audience-service.js?v=3"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/ad-slot.js?v=2"></script>
+<script src="../component/ad-slot.js?v=3"></script>
 <script src="../services/search-service.js"></script>
 <script src="../component/expiry-chips.js?v=8"></script>
-<script src="../component/post-composer.js?v=25"></script>
+<script src="../component/post-composer.js?v=26"></script>
   <script src="../services/reading-history.js"></script>
 <script src="../shared/ui-helpers.js"></script>
-<script src="../shared/insights-tracker.js"></script>
-<script src="../services/genre-hub-service.js?v=30"></script>
+<script src="../shared/insights-tracker.js?v=3"></script>
+<script src="../services/genre-hub-service.js?v=35"></script>
 
 <script>GenreHubPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

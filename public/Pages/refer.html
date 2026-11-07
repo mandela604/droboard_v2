@@ -92,7 +92,7 @@ a.ref-name:active{opacity:.7}
 <body>
 <div class="phone">
   <div class="top-bar">
-    <button class="tb-back" onclick="history.back()"><i class="fas fa-chevron-left"></i></button>
+    <button class="tb-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></button>
     <img src="../assets/droboard-icon.png" alt="Droboard" style="width:32px;height:32px;border-radius:9px;flex-shrink:0"/>
     <div class="tb-title">Refer a Friend</div>
   </div>
@@ -156,3 +156,5 @@ a.ref-name:active{opacity:.7}
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

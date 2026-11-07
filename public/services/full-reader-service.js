@@ -240,7 +240,7 @@
       document.body.className = theme;
       document.documentElement.setAttribute('data-theme', theme === 'theme-white' ? 'light' : 'dark');
       document.querySelectorAll(".theme-opt").forEach(x => {
-        const on = (x.getAttribute('onclick') || '').indexOf("'" + theme + "'") !== -1;
+        const on = (x.getAttribute('data-theme') || '') === theme;
         x.classList.toggle("on", on);
       });
     }
@@ -905,7 +905,7 @@
     const allowed = ADST.adsEnabled !== false && slotOn('fullReader:top')
       && !chapterAdFree(curSeasonIdx, curChIdx);
     if (!allowed || !window.DroboardAdSlot) { wrap.style.display = "none"; return; }
-    DroboardAdSlot.mount(slot, { slot: 'fullReader:top', page: 'full-reader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
+    DroboardAdSlot.mount(slot, { slot: 'fullReader:top', page: 'fullReader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
       wrap.style.display = filled ? "" : "none";
     });
   }
@@ -918,7 +918,7 @@
     const allowed = ADST.adsEnabled !== false && slotOn('fullReader:bottom')
       && !chapterAdFree(curSeasonIdx, curChIdx);
     if (!allowed || !window.DroboardAdSlot) { host.style.display = 'none'; return; }
-    DroboardAdSlot.mount(host, { slot: 'fullReader:bottom', page: 'full-reader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
+    DroboardAdSlot.mount(host, { slot: 'fullReader:bottom', page: 'fullReader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
       host.style.display = filled ? '' : 'none';
       if (filled) host.dataset.filled = '1';
     });
@@ -1039,7 +1039,7 @@
     qa('[data-act="fs-inc"]').forEach(function (b) { b.addEventListener("click", function () { changeFontSize(1); }); });
     qa('[data-lh]').forEach(function (el) { el.addEventListener("click", function () { setLH(el, el.getAttribute("data-lh")); }); });
     qa('[data-ff]').forEach(function (el) { el.addEventListener("click", function () { setFF(el, el.getAttribute("data-ff")); }); });
-    qa('[data-theme]').forEach(function (el) { el.addEventListener("click", function () { setTheme(el, el.getAttribute("data-theme")); }); });
+    qa('.theme-opt').forEach(function (el) { el.addEventListener("click", function () { setTheme(el, el.getAttribute("data-theme")); }); });
   }
 
   /* ══ INIT ══ */

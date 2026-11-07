@@ -87,6 +87,21 @@
     return (window.DroboardReportSheet && window.DroboardReportSheet.REPORT_TYPES) || FALLBACK_REPORT_TYPES;
   }
 
+  /* Human label for the auth wall: "Sign in to follow @Ada_Writes…". */
+  function _wallLabelFor(action, post) {
+    const who = '@' + ((post && post.name) || 'this user');
+    switch (action) {
+      case 'Follow': return 'follow ' + who;
+      case 'Mute': return 'mute ' + who;
+      case 'Less': return 'see less of this';
+      case 'Report': return 'report this post';
+      case 'Edit': return 'edit this post';
+      case 'Delete': return 'delete this post';
+      case 'Pin': case 'Unpin': return 'pin this post';
+      default: return 'do that';
+    }
+  }
+
   function _ensureDom() {
     if (_menuEl) return;
     const style = document.createElement('style');
@@ -111,11 +126,16 @@
       if (action === '__reportBack') { _menuEl.innerHTML = _renderItems(post); _position(_positionAnchor); return; }
       if (action && action.indexOf('report:') === 0) {
         const typeId = action.slice(7);
+        if (window.RequireAuth && !RequireAuth.ensure('report this post')) return;
         close();
         if (typeof _hooks.onReportType === 'function') _hooks.onReportType(post, typeId);
         else if (typeof _hooks.onReport === 'function') _hooks.onReport(post);
         return;
       }
+      /* Anything that changes server or profile state needs an account —
+         follow / mute / see-less / report / edit / delete / pin. Share and
+         Copy link are reads, so they stay open to guests. */
+      if (action !== 'Share' && action !== 'CopyLink' && window.RequireAuth && !RequireAuth.ensure(_wallLabelFor(action, post))) return;
       close();
       const fn = _hooks['on' + action];
       if (typeof fn === 'function') fn(post);

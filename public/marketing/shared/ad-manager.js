@@ -190,7 +190,7 @@
      words…). Every other page in the registry gets a generic on/off card
      rendered from AdSetupData.PAGES — add a page to the registry and it
      appears here with no further wiring. */
-  const BESPOKE_PAGES = ['discover', 'feed', 'genreHub', 'home', 'fullReader', 'scrollReader', 'library', 'droboardPage', 'comments'];
+  const BESPOKE_PAGES = ['discover', 'feed', 'genreHub', 'home', 'fullReader', 'scrollReader', 'library', 'droboardPage', 'comments', 'trending'];
   const GEN_ICONS = {
     story: ['fa-book', 'var(--blue)'], bookReader: ['fa-book-open', 'var(--blue)'], debate: ['fa-scale-balanced', 'var(--accent)'],
     discussion: ['fa-comments', 'var(--purple)'], collection: ['fa-layer-group', 'var(--green)'],
@@ -276,6 +276,9 @@
     on('plSlotListTop', slotOn(cslots['comments:list-top']));
     on('plSlotEveryNth', slotOn(cslots['comments:every-nth']));
     on('plSlotThreadTop', slotOn(cslots['comments:thread-top']));
+    /* Trending in hubs list (trending.html) — cadence is cards per ad. */
+    on('plTrendOn', (p.trending || {}).enabled);
+    set('plTrendInt', (p.trending || {}).interval || 4);
     renderGenericSurfaces();
     renderSlotProgram();
   }
@@ -290,8 +293,15 @@
     if (!meta) return null;
     const raw = ((INV.placements || {})[meta.page] || {}).slots || {};
     const v = raw[slotId];
-    if (v && typeof v === 'object') return { enabled: v.enabled !== false, formats: v.formats || [], adIds: v.adIds || [] };
-    return { enabled: v !== false, formats: [], adIds: [] };
+    const base = (v && typeof v === 'object') ? v : { enabled: v !== false };
+    return {
+      enabled: base.enabled !== false,
+      formats: base.formats || [],
+      adIds: base.adIds || [],
+      cap: base.cap || '',
+      capCount: base.capCount || 1,
+      capScope: base.capScope || 'slot',
+    };
   }
   function persistSlotForm() {
     if (!_curSlotId) return;
@@ -300,17 +310,33 @@
     const fmts = [];
     if (sel) sel.querySelectorAll('input[type=checkbox]:checked').forEach(c => fmts.push(c.value));
     const adIds = adInp ? adInp.value.split(',').map(s => s.trim()).filter(Boolean) : [];
-    _slotProg[_curSlotId] = { formats: fmts, adIds };
+    const capEl = document.getElementById('plProgCap');
+    const capN = document.getElementById('plProgCapN');
+    const capScope = document.getElementById('plProgCapScope');
+    _slotProg[_curSlotId] = {
+      formats: fmts,
+      adIds,
+      cap: capEl ? capEl.value : '',
+      capCount: capN ? (Math.min(100, Math.max(1, parseInt(capN.value, 10) || 1))) : 1,
+      capScope: capScope ? capScope.value : 'slot',
+    };
   }
   function loadSlotForm(slotId) {
     _curSlotId = slotId;
     const cfg = readSlotCfg(slotId) || { formats: [], adIds: [] };
-    const fmts = (_slotProg[slotId] ? _slotProg[slotId].formats : cfg.formats) || [];
-    const adIds = (_slotProg[slotId] ? _slotProg[slotId].adIds : cfg.adIds) || [];
+    const p = _slotProg[slotId] || cfg;
+    const fmts = p.formats || [];
+    const adIds = p.adIds || [];
     const sel = document.getElementById('plProgFmts');
     if (sel) sel.querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = fmts.indexOf(c.value) !== -1; });
     const adInp = document.getElementById('plProgAdIds');
     if (adInp) adInp.value = adIds.join(', ');
+    const capEl = document.getElementById('plProgCap');
+    if (capEl) capEl.value = p.cap || '';
+    const capN = document.getElementById('plProgCapN');
+    if (capN) capN.value = p.capCount || '';
+    const capScope = document.getElementById('plProgCapScope');
+    if (capScope) capScope.value = p.capScope || 'slot';
   }
   function renderSlotProgram() {
     const selSlot = document.getElementById('plProgSlot');
@@ -336,6 +362,10 @@
       fmtBox.addEventListener('change', persistSlotForm);
       const adInp = document.getElementById('plProgAdIds');
       if (adInp) adInp.addEventListener('change', persistSlotForm);
+      ['plProgCap', 'plProgCapN', 'plProgCapScope'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', persistSlotForm);
+      });
       const clearBtn = document.getElementById('plProgClear');
       if (clearBtn) clearBtn.addEventListener('click', () => {
         if (!_curSlotId) return;
@@ -355,11 +385,15 @@
     const chk = (id) => { const el = document.getElementById(id); return !!el && el.checked; };
     const words = (id) => Math.min(5000, Math.max(50, parseInt(get(id), 10) || 300));
     /* Merge a slot's on/off state with any programming (formats / pinned
-       adIds). Bare boolean when no programming — matches slotCfg()'s shape. */
+       adIds / frequency cap). Bare boolean when no programming — matches
+       slotCfg()'s shape. */
     const progFor = (slotId) => _slotProg[slotId] || null;
     const slotVal = (slotId, enabled) => {
       const p = progFor(slotId);
-      if (p && (p.formats.length || p.adIds.length)) return { enabled: !!enabled, formats: p.formats, adIds: p.adIds };
+      if (!p) return !!enabled;
+      const out = { enabled: !!enabled, formats: p.formats, adIds: p.adIds };
+      if (p.cap) { out.cap = p.cap; out.capCount = p.capCount || 1; out.capScope = p.capScope || 'slot'; }
+      if (out.formats.length || out.adIds.length || out.cap) return out;
       return !!enabled;
     };
     const slDays = Array.from(document.querySelectorAll('#plSlDays [data-sl-day]:checked')).map(el => +el.dataset.slDay);
@@ -389,6 +423,7 @@
       library: { promoSlider: !!document.getElementById('plLibSlider').checked },
       droboardPage: { interval: num(get('plDrbInt'), 4), enabled: !!document.getElementById('plDrbOn').checked },
       comments: { interval: num(get('plCommentsInt'), 5), enabled: !!document.getElementById('plCommentsOn').checked, slots: { 'comments:list-top': slotVal('comments:list-top', chk('plSlotListTop')), 'comments:every-nth': slotVal('comments:every-nth', chk('plSlotEveryNth')), 'comments:thread-top': slotVal('comments:thread-top', chk('plSlotThreadTop')) } },
+      trending: { enabled: chk('plTrendOn'), interval: num(get('plTrendInt'), 4) },
     };
     /* Every registered page must land in the patch, or its on/off is
        silently dropped on save. Bespoke cards above already set theirs;

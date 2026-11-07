@@ -69,7 +69,7 @@ async function fetchPosts(){
   return { posts: posts, morePosts: more };
 }
 async function fetchCollections(){
-  if(USE_API){ const r=await fetch(API_BASE+'/collections',{credentials:'include'}); if(r.ok){ const j=await r.json(); return j.data||j; } }
+  if(USE_API){ const r=await fetch('/api/collections',{credentials:'include'}); if(r.ok){ const j=await r.json(); return j.data||j; } }
   return (_seed().DROBOARD_COLLECTIONS||[]).slice();
 }
 function getHero(){ return Object.assign({}, _seed().DROBOARD_HERO||{}); }

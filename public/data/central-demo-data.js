@@ -1113,39 +1113,39 @@
      (demo) or /api/ads (live). marketing/ad-manager.html edits them. */
   const AD_POOLS = {
     platform: [
-      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments', 'debate', 'collection', 'genreStories', 'leaderboard', 'blog', 'notifications', 'search', 'story'] },
-      { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub', 'store', 'fullReader', 'scrollReader', 'debate'] },
-      { id: 'plat_studio', sponsor: 'DroBoard Studio', title: 'Write Your Own Story Today', cta: 'Start Writing', img: c(4), pages: ['discover', 'feed', 'genreHub', 'debate'] },
+      { id: 'plat_premium', sponsor: 'DroBoard', title: 'DroBoard Premium — Read Ad-Free', cta: 'Upgrade Now', img: c(2), pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'comments', 'debate', 'collection', 'genreStories', 'leaderboard', 'blog', 'notifications', 'search', 'story', 'trending'] },
+      { id: 'plat_coins', sponsor: 'DroBoard Coins', title: 'Get 3 Months of Unlimited Coins', cta: 'Claim Offer', img: c(3), pages: ['discover', 'feed', 'genreHub', 'store', 'fullReader', 'scrollReader', 'debate', 'trending'] },
+      { id: 'plat_studio', sponsor: 'DroBoard Studio', title: 'Write Your Own Story Today', cta: 'Start Writing', img: c(4), pages: ['discover', 'feed', 'genreHub', 'debate', 'trending'] },
     ],
     book: [
-      { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'debate', 'collection'], campaign: 'CMP-010' },
-      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate', 'status', 'genreStories'], campaign: 'CMP-002' },
-      { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate'], campaign: 'CMP-004' },
-      { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'], campaign: 'CMP-001' },
-      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'genreStories'] },
-      { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader'], campaign: 'CMP-004' },
+      { id: 'book_betrayal', isBook: true, title: 'Season of Betrayal', author: 'Ada_Writes', authorName: 'Ada_Writes', authorAv: 'https://i.pravatar.cc/100?img=32', genre: 'Romance', cat: 'Romance', cover: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', desc: 'Featured in this hub.', views: '820k', likes: '94k', chapters: 62, rating: '4.9', tags: ['Featured', 'Romance'], cta: 'Read Now', pages: ['discover', 'feed', 'genreHub', 'discussion', 'store', 'fullReader', 'scrollReader', 'droboardPage', 'debate', 'collection', 'trending'], campaign: 'CMP-010' },
+      { id: 'book_crowned', isBook: true, title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'Mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts.', img: c(7), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate', 'status', 'genreStories', 'trending'], campaign: 'CMP-002' },
+      { id: 'book_werewolf', isBook: true, title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'Werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance.', img: c(8), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'debate', 'trending'], campaign: 'CMP-004' },
+      { id: 'book_billionaire', isBook: true, title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'Billionaire', rating: '4.7', chapters: 24, preview: 'A slow-burn billionaire romance.', img: c(9), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'trending'], campaign: 'CMP-001' },
+      { id: 'book_campus', isBook: true, title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'Campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.', img: c(0), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'genreStories', 'trending'] },
+      { id: 'book_fangs', isBook: true, title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'Fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author.', img: c(1), pages: ['discover', 'feed', 'genreHub', 'fullReader', 'scrollReader', 'trending'], campaign: 'CMP-004' },
     ],
     native: [
       { id: 'nat_status_1', brand: 'DroBoard Premium', heading: 'Read ad-free, anywhere', body: 'Unlimited coins, zero interruptions across stories and statuses.', cta: 'Go Premium', image: c(2), pages: ['status'], slots: ['status:every-3rd'] },
-      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['discover', 'feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion', 'genreStories', 'leaderboard', 'blog', 'search'] },
-      { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'comments'] },
-      { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments', 'status'] },
+      { id: 'nat_ai_1', brand: 'SkillPath AI', heading: 'Learn AI automation in 7 days', body: 'No coding. Build workflows that save hours every week.', cta: 'Start free lesson', likes: 842, liked: false, comments: 63, image: 'https://picsum.photos/seed/aiauto/800/420', pages: ['discover', 'feed', 'fullReader', 'scrollReader', 'store', 'droboardPage', 'comments', 'discussion', 'genreStories', 'leaderboard', 'blog', 'search', 'trending'] },
+      { id: 'nat_pdf_1', brand: 'GuideForge', heading: 'Build a PDF guide with AI', body: 'Turn your notes into a polished digital guide in minutes.', cta: 'Make my guide', likes: 519, liked: false, comments: 41, image: 'https://picsum.photos/seed/pdfguide/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'comments', 'trending'] },
+      { id: 'nat_biz_1', brand: 'HustleClass', heading: 'Business training for creators', body: 'Pricing, funnels, and first sales for writers.', cta: 'Browse courses', likes: 1204, liked: false, comments: 98, image: 'https://picsum.photos/seed/biztrain/800/420', pages: ['feed', 'fullReader', 'scrollReader', 'comments', 'status', 'trending'] },
     ],
     follow: [
-      { id: 'demo_follow_1', userName: 'Amina Okoro', name: 'Amina Okoro', handle: 'aminaokoro', avatar: 'https://i.pravatar.cc/150?img=32', tagline: 'Romance & family drama · 120k readers', cta: 'Follow', pages: ['feed'] },
+      { id: 'demo_follow_1', userName: 'Amina Okoro', name: 'Amina Okoro', handle: 'aminaokoro', avatar: 'https://i.pravatar.cc/150?img=32', tagline: 'Romance & family drama · 120k readers', cta: 'Follow', pages: ['feed', 'trending'] },
     ],
     /* Third-party network embeds (raw script/HTML pasted in ad-manager).
        Empty by default — marketers add them; served wherever targeted. */
     embed: [],
     banner: [
-      { id: 'demo_ban_1', brand: 'DroBoard Coins', headline: 'Top up coins — unlock bonus chapters', sub: 'Support writers instantly', cta: 'Get Coins', pages: ['feed', 'fullReader', 'scrollReader', 'store'] },
+      { id: 'demo_ban_1', brand: 'DroBoard Coins', headline: 'Top up coins — unlock bonus chapters', sub: 'Support writers instantly', cta: 'Get Coins', pages: ['feed', 'fullReader', 'scrollReader', 'store', 'trending'] },
     ],
     /* Compact horizontal image banners (~74px leaderboards between sections).
         Slots dedupe by ad id, so each creative fills one slot per page load. */
     minibanner: [
-      { id: 'mb_novapay_1', brand: 'NovaPay', headline: 'Transfer with CONFIDENCE', sub: 'Fast, secure money transfers', cta: 'Try Free', img: 'https://picsum.photos/seed/drombnova/800/180', pages: ['discover', 'feed', 'genreHub', 'comments', 'discussion', 'debate', 'droboardPage', 'genreStories', 'leaderboard', 'blog', 'notifications', 'search', 'story'], campaign: 'CMP-021' },
-      { id: 'mb_sale_1', brand: 'Super Sale', headline: 'Bonus coins on every top-up', sub: 'Limited time — this week only', cta: 'Shop Now', img: 'https://picsum.photos/seed/drombsale/800/180', pages: ['discover', 'feed', 'store', 'fullReader', 'scrollReader'], campaign: 'CMP-022' },
-      { id: 'mb_studio_1', brand: 'DroBoard Studio', headline: 'Write your own story today', sub: 'Publish chapter 1 in minutes', cta: 'Start Writing', img: 'https://picsum.photos/seed/drombstudio/800/180', pages: ['discover', 'feed', 'genreHub', 'library'], campaign: 'CMP-023' },
+      { id: 'mb_novapay_1', brand: 'NovaPay', headline: 'Transfer with CONFIDENCE', sub: 'Fast, secure money transfers', cta: 'Try Free', img: 'https://picsum.photos/seed/drombnova/800/180', pages: ['discover', 'feed', 'genreHub', 'comments', 'discussion', 'debate', 'droboardPage', 'genreStories', 'leaderboard', 'blog', 'notifications', 'search', 'story', 'trending'], campaign: 'CMP-021' },
+      { id: 'mb_sale_1', brand: 'Super Sale', headline: 'Bonus coins on every top-up', sub: 'Limited time — this week only', cta: 'Shop Now', img: 'https://picsum.photos/seed/drombsale/800/180', pages: ['discover', 'feed', 'store', 'fullReader', 'scrollReader', 'trending'], campaign: 'CMP-022' },
+      { id: 'mb_studio_1', brand: 'DroBoard Studio', headline: 'Write your own story today', sub: 'Publish chapter 1 in minutes', cta: 'Start Writing', img: 'https://picsum.photos/seed/drombstudio/800/180', pages: ['discover', 'feed', 'genreHub', 'library', 'trending'], campaign: 'CMP-023' },
     ],
     /* Promo slider slides (library / genre-hub / feed top sliders). `pages`
        decides where a slide shows; `genre` narrows hub slides. */
@@ -1509,68 +1509,51 @@ const SERIES_CATALOG = {
       { id: 'c', icon: '🔥', name: 'Team Leave Him', color: '#34d399', count: 5100 },
       { id: 'd', icon: '👀', name: 'Team Watching', color: '#a78bfa', count: 1800 },
     ],
+    // Team the current viewer already joined (set while reading; read-only here)
+    myTeam: 'a',
     tips: [
       { from: 'Sarah_Odum', amount: 150, note: 'That wardrobe scene!', time: '1d' },
       { from: 'Zara_M', amount: 75, note: 'Team Ada forever.', time: '4d' },
     ],
+    // Book-wide engagement only — ONE poll, ONE prediction, ONE debate (no chapter field)
     polls: [
       {
-        id: 'p1', season: 1, chapter: 3,
-        question: "Did Ada's husband truly love Adaeze, or was it obsession? ",
+        id: 'poll_s1_bookwide',
+        question: "Is Ada worth forgiving?",
         options: [
-          { text: '💔 True love — just buried', votes: 9200 },
-          { text: '🔒 Unhealthy obsession', votes: 4100 },
-          { text: '🌊 Complicated grief', votes: 7300 },
-        ],
-        voted: -1
-      },
-      {
-        id: 'p2', season: 2, chapter: 3,
-        question: 'Should Ada confront the truth publicly or keep it within the marriage?',
-        options: [
-          { text: '📢 Speak out — she deserves the world to know', votes: 6800 },
-          { text: '🤫 Keep it private — protect the family', votes: 3200 },
-          { text: '🚪 Leave quietly, no confrontation', votes: 5400 },
+          { text: '💔 No — trust broken forever', votes: 12400 },
+          { text: '🤝 Yes — therapy and time', votes: 8200 },
+          { text: '🎭 Only in court', votes: 3100 },
         ],
         voted: -1
       }
     ],
     predictions: [
       {
-        id: 'pr1', season: 2, chapter: 7,
-        question: 'How does Season 2 end for Ada?',
+        id: 'pred_s1_bookwide',
+        question: 'What will happen when the sister finds out about the photo?',
         options: [
-          { em: '💪', text: 'She rebuilds alone, stronger', sub: '9.4k predict this', votes: 9400, picked: false },
-          { em: '💍', text: 'They reconcile after therapy', sub: '4.2k predict this', votes: 4200, picked: false },
-          { em: '🔥', text: 'A major twist changes everything', sub: '7.8k predict this', votes: 7800, picked: false },
-          { em: '❓', text: 'Cliffhanger — season 3 needed', sub: '5.1k predict this', votes: 5100, picked: false },
+          { em: '😡', text: 'She confronts him immediately', sub: '15k predict', votes: 15000, picked: false },
+          { em: '🤐', text: 'She stays silent to protect Ada', sub: '6k predict', votes: 6000, picked: false },
+          { em: '⚖️', text: 'She sues for emotional distress', sub: '4k predict', votes: 4000, picked: false },
         ]
       }
     ],
     debates: [
       {
-        id: 'deb1', season: 1, chapter: 4,
-        motion: 'Ada should leave her husband immediately — emotional betrayal is still betrayal.',
-        forText: 'Yes — if he could hide it this long, he can hide worse.',
-        againstText: 'No — marriage means staying through the hard parts.',
-        forV: 14800, agV: 8200,
+        id: 'deb_s1_bookwide',
+        motion: 'The photograph was a cruel joke played by the dead sister.',
+        forText: 'Yes — she knew they were together and did nothing.',
+        againstText: 'No — grief twisted his perception of her image.',
+        forV: 18200, agV: 11800,
         userVote: null,
         comments: [
-          { id: 'dc1', name: 'Chiamaka_N', avatar: 'https://i.pravatar.cc/100?img=47', side: 'for', text: 'You cannot mourn someone in secret while lying next to their sister. That is not grief — that is a choice.', time: '2h', likes: 341, liked: false },
-          { id: 'dc2', name: 'Efe_O', avatar: 'https://i.pravatar.cc/100?img=22', side: 'against', text: 'Grief does not follow the rules we write in books. He never cheated with a living person. It deserves nuance.', time: '3h', likes: 212, liked: false },
-          { id: 'dc3', name: 'Kemi_A', avatar: 'https://i.pravatar.cc/100?img=28', side: 'for', text: 'The cruelty is that she placed the photograph herself. She loved her sister. And he used that grief against her without knowing it.', time: '4h', likes: 489, liked: false },
-        ]
-      },
-      {
-        id: 'deb2', season: 1, chapter: 8,
-        motion: 'The sister Adaeze is the true protagonist of this series.',
-        forText: 'Her choices drive every twist in the story.',
-        againstText: "We follow Ada's pain — she carries the plot.",
-        forV: 7600, agV: 9400,
-        userVote: null,
-        comments: [
-          { id: 'dc4', name: 'Ada_Writes', avatar: 'https://i.pravatar.cc/100?img=32', side: 'against', text: 'Adaeze exists in memory, not chapters. But I will say: she shapes every single decision Ada makes. 👀', time: '1h', likes: 1200, liked: false },
-          { id: 'dc5', name: 'Zara_M', avatar: 'https://i.pravatar.cc/100?img=16', side: 'for', text: 'The dead character controls all the living ones. She is absolutely the centre of this story.', time: '2h', likes: 341, liked: false },
+          { id: 'rv_s1_1', name: 'Chioma_R', avatar: 'https://i.pravatar.cc/100?img=47', side: 'for', time: '2h', text: 'This chapter destroyed me. The way she found the photo — everything about it hits different.', likes: 1200, liked: false },
+          { id: 'rv_s1_2', name: 'Emeka_T', avatar: 'https://i.pravatar.cc/100?img=15', side: 'against', time: '4h', text: 'This is why I love Droboard — stories that hit different. Ada deserves so much better.', likes: 640, liked: false },
+          { id: 'rv_s1_3', name: 'CampusQueen', avatar: 'https://i.pravatar.cc/100?img=12', side: 'for', time: '5h', text: 'Cried on the train reading this. This is everything.', likes: 410, liked: true },
+          { id: 'rv_s1_4', name: 'Ada_Writes', avatar: 'https://i.pravatar.cc/100?img=32', side: 'against', time: '6h', text: 'Thank you all for reading. This story is close to my heart.', likes: 890, liked: false },
+          { id: 'rv_s1_5', name: 'Ifeanyi_Story', avatar: 'https://i.pravatar.cc/100?img=53', side: 'against', time: '8h', text: 'The way you handle family secrets is unmatched. Beautiful work.', likes: 320, liked: false },
+          { id: 'rv_s1_6', name: 'Efe_O', avatar: 'https://i.pravatar.cc/100?img=22', side: 'for', time: '10h', text: 'I had to put my phone down after chapter 3. Too real.', likes: 275, liked: false },
         ]
       }
     ],
@@ -1625,41 +1608,43 @@ const SERIES_CATALOG = {
     tips: [
       { from: 'Ada_Writes', amount: 100, note: 'The giggle heard round the world.', time: '2d' },
     ],
+    // Book-wide engagement only — ONE poll, ONE prediction, ONE debate (no chapter field)
     polls: [
       {
-        id: 'p3', season: 1, chapter: 2,
-        question: 'Who was more wrong — the boyfriend or Bisi?',
+        id: 'poll_s2_bookwide',
+        question: 'Was walking out in silence more powerful than saying something?',
         options: [
-          { text: '💍 The boyfriend — he planned it', votes: 8400 },
-          { text: '😂 Bisi — the giggle sealed it', votes: 6200 },
-          { text: '🤝 Both equally', votes: 4100 },
+          { text: '💪 Silence was her power', votes: 8400 },
+          { text: '🗣️ Words would have changed everything', votes: 6200 },
+          { text: '🎭 Both are strategies', votes: 4100 },
         ],
         voted: -1
       }
     ],
     predictions: [
       {
-        id: 'pr2', season: 1, chapter: 3,
-        question: 'What does the novel she writes become?',
+        id: 'pred_s2_bookwide',
+        question: 'What does Kemi\'s novel become after publication?',
         options: [
-          { em: '🏆', text: 'A bestseller that exposes them', sub: '6.1k predict', votes: 6100, picked: false },
-          { em: '💔', text: 'She never finishes it', sub: '1.2k predict', votes: 1200, picked: false },
-          { em: '🎬', text: 'It gets adapted — they see themselves', sub: '8.4k predict', votes: 8400, picked: false },
-          { em: '✨', text: 'Something better than revenge', sub: '4.9k predict', votes: 4900, picked: false },
+          { em: '🏆', text: 'A global bestseller exposing them', sub: '6.1k predict', votes: 6100, picked: false },
+          { em: '💔', text: 'She regrets writing it', sub: '1.2k predict', votes: 1200, picked: false },
+          { em: '🎬', text: 'Hollywood buys the rights', sub: '8.4k predict', votes: 8400, picked: false },
+          { em: '✨', text: 'It heals her family', sub: '4.9k predict', votes: 4900, picked: false },
         ]
       }
     ],
     debates: [
       {
-        id: 'deb3', season: 1, chapter: 1,
-        motion: 'Walking out of the restaurant without a word was the bravest thing she did.',
-        forText: 'Silence was her power — words would have weakened it.',
-        againstText: 'Brave would have been saying it to his face.',
+        id: 'deb_s2_bookwide',
+        motion: 'Kemi was right to walk away without explanation.',
+        forText: 'Yes — some battles are won by refusing to fight.',
+        againstText: 'No — silence lets liars spin the story.',
         forV: 11200, agV: 3400,
         userVote: null,
         comments: [
-          { id: 'dc6', name: 'Ada_Writes', avatar: 'https://i.pravatar.cc/100?img=32', side: 'for', text: "Kemi didn't give them the satisfaction of a scene. She preserved her dignity in the most dignified way possible. ICON. ", time: '3h', likes: 892, liked: false },
-          { id: 'dc7', name: 'Efe_O', avatar: 'https://i.pravatar.cc/100?img=22', side: 'against', text: 'She deserved to say more. Silence protected them from accountability.', time: '4h', likes: 144, liked: false },
+          { id: 'rv_s2_1', name: 'Luna_Grey', avatar: 'https://i.pravatar.cc/100?img=5', side: 'for', time: '1h', text: 'Walking out in silence was the most powerful thing she could have done.', likes: 560, liked: false },
+          { id: 'rv_s2_2', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', side: 'against', time: '3h', text: 'Silence lets liars spin the story. She should have said something.', likes: 420, liked: false },
+          { id: 'rv_s2_3', name: 'Zara_M', avatar: 'https://i.pravatar.cc/100?img=16', side: 'for', time: '5h', text: 'Some battles are won by refusing to fight. Period.', likes: 310, liked: false },
         ]
       }
     ],
@@ -1700,42 +1685,40 @@ const SERIES_CATALOG = {
       { id: 'b', icon: '🕊️', name: 'Team Forgive & Move', color: '#38bdf8', count: 2100 },
       { id: 'c', icon: '🔥', name: 'Team Burn It All', color: '#34d399', count: 4800 },
     ],
+    myTeam: 'c',
+    // Book-wide engagement only — ONE poll, ONE prediction, ONE debate (no chapter field)
     polls: [
       {
-        id: 'p4', season: 3, chapter: 7,
-        question: 'Will the grandfather testify in court in Season 3 finale?',
+        id: 'poll_s3_bookwide',
+        question: 'Did Maiya fight for her inheritance or for justice?',
         options: [
-          { text: '✅ Yes — he will speak', votes: 7800 },
-          { text: '❌ No — fear keeps him silent', votes: 3200 },
-          { text: '💀 He dies before he can', votes: 2100 },
+          { text: '⚖️ Both — justice through inheritance', votes: 6800 },
+          { text: '💰 Inheritance first, justice second', votes: 5200 },
+          { text: '👑 She wants the title, not just land', votes: 7100 },
         ],
         voted: -1
       }
     ],
     predictions: [
       {
-        id: 'pr3', season: 3, chapter: 7,
-        question: 'How does the inheritance story end?',
+        id: 'pred_s3_bookwide',
+        question: 'Will Grandpa testify in Season 3 finale?',
         options: [
-          { em: '🏆', text: 'She wins in court completely', sub: '8.8k predict', votes: 8800, picked: false },
-          { em: '🤝', text: 'Family compromises out of court', sub: '4.4k predict', votes: 4400, picked: false },
-          { em: '💸', text: 'She loses but rebuilds elsewhere', sub: '2.1k predict', votes: 2100, picked: false },
-          { em: '🔥', text: 'Uncle confesses — plot twist', sub: '5.6k predict', votes: 5600, picked: false },
+          { em: '✅', text: 'Yes — he breaks his silence', sub: '12k predict', votes: 12000, picked: false },
+          { em: '❌', text: 'No — too scared', sub: '4k predict', votes: 4000, picked: false },
+          { em: '💀', text: 'He dies before speaking', sub: '2k predict', votes: 2000, picked: false },
         ]
       }
     ],
     debates: [
       {
-        id: 'deb4', season: 3, chapter: 5,
-        motion: 'The aunts who stayed silent are more guilty than the uncle who acted.',
+        id: 'deb_s3_bookwide',
+        motion: 'The aunts who stayed silent are more guilty than the uncle.',
         forText: 'Silence protects the wicked — they chose comfort.',
-        againstText: "They were afraid too — don't punish the victims.",
+        againstText: "They were afraid — fear is not guilt.",
         forV: 9800, agV: 6200,
         userVote: null,
-        comments: [
-          { id: 'dc8', name: 'Chiamaka_N', avatar: 'https://i.pravatar.cc/100?img=47', side: 'for', text: 'Silence is always a vote. They chose the uncle by not choosing the truth.', time: '1h', likes: 445, liked: false },
-          { id: 'dc9', name: 'Dami_Cole', avatar: 'https://i.pravatar.cc/100?img=64', side: 'against', text: 'In many Nigerian families, women speaking out against male elders costs them everything. Fear is not the same as guilt.', time: '2h', likes: 312, liked: false },
-        ]
+        comments: []
       }
     ],
     seasonData: [

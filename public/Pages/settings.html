@@ -86,6 +86,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .toast.show{opacity:1}
 </style>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
@@ -184,10 +185,27 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
         </div>
         <i class="fas fa-chevron-right setting-chevron"></i>
       </div>
-      <div class="setting-row" onclick="window.location.href='terms.html'">
-        <div class="setting-icon" style="background:rgba(22,163,74,.08);color:var(--green)"><i class="fas fa-file-lines"></i></div>
+      <div class="setting-row" onclick="window.location.href='faq.html'">
+        <div class="setting-icon" style="background:rgba(236,72,153,.08);color:#ec4899"><i class="fas fa-comments"></i></div>
         <div class="setting-info">
-          <div class="setting-label">Terms & Privacy Policy</div>
+          <div class="setting-label">FAQ</div>
+          <div class="setting-desc">Common questions answered</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row" onclick="window.location.href='terms-of-service.html'">
+        <div class="setting-icon" style="background:rgba(255,0,80,.08);color:var(--accent)"><i class="fas fa-file-contract"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Terms of Service</div>
+          <div class="setting-desc">Legal agreement for Droboard</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
+      <div class="setting-row" onclick="window.location.href='privacy-policy.html'">
+        <div class="setting-icon" style="background:rgba(0,123,255,.08);color:var(--blue)"><i class="fas fa-user-shield"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Privacy Policy</div>
+          <div class="setting-desc">Your data protection rights</div>
         </div>
         <i class="fas fa-chevron-right setting-chevron"></i>
       </div>
@@ -289,7 +307,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 <script src="../data/central-demo-data.js"></script>
 <script src="../data/profile-demo-seed.js"></script>
 <script src="../services/profile-data.js?v=3"></script>
-<script src="../component/profile-menu.js?v=3"></script>
+<script src="../component/profile-menu.js?v=4"></script>
 <script src="../services/settings-service.js?v=2"></script>
 <script>SettingsPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>

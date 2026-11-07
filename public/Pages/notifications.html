@@ -170,6 +170,8 @@ a{color:inherit;text-decoration:none}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
+<script src="../component/top-icon-btn.js"></script>
+<script src="../component/auth-wall.js?v=1"></script>
 <script src="../component/app-nav.js?v=7"></script>
 </head>
 <body>
@@ -177,7 +179,7 @@ a{color:inherit;text-decoration:none}
 <div class="topbar">
   <div class="top-row">
     <div class="top-left">
-      <button class="back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
+      <button class="back-btn" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-arrow-left"></i></button>
       <div class="title-wrap">
         <div class="page-title">Notifications</div>
         <div class="page-sub" id="pageSub">Stay updated with what matters</div>
@@ -247,19 +249,21 @@ a{color:inherit;text-decoration:none}
 </div>
 
 <script src="../data/central-demo-data.js"></script>
-<script src="../component/ad-card.js?v=6"></script>
-<script src="../services/ad-service.js?v=4"></script>
+<script src="../component/ad-card.js?v=10"></script>
+<script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/ad-slot.js?v=2"></script>
+<script src="../component/ad-slot.js?v=3"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../component/notification-item.js?v=2"></script>
 <script src="../services/league-service.js"></script>
 <script src="../services/status-service.js"></script>
 <script src="../super-admin/data/admin-demo-data.js"></script>
 <script src="../super-admin/awards-service.js"></script>
-<script src="../services/notification-store.js?v=6"></script>
+<script src="../services/notification-store.js?v=7"></script>
 <script src="../services/notification-page-service.js?v=9"></script>
 <script>NotifPageService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>
+
+

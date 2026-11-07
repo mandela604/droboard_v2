@@ -604,6 +604,9 @@
   // Open / close — compose sheet
   // ════════════════════════════════════════════════════════════════════════
   function openCompose(type) {
+    /* Posting to Status/Profile writes — guests get the shared login wall.
+       Sharing to an app (copy/X/…) below stays open: it's a read. */
+    if (window.RequireAuth && !RequireAuth.ensure(type === 'status' ? 'post to your status' : 'post to your profile')) return;
     _destType = type;
     _audience = 'everyone';
     _posting  = false;
@@ -670,6 +673,8 @@
   // Post — production API with demo fallback
   // ════════════════════════════════════════════════════════════════════════
   async function _doPost() {
+    /* Second line of defence if the compose sheet was opened another way. */
+    if (window.RequireAuth && !RequireAuth.ensure(_destType === 'status' ? 'post to your status' : 'post to your profile')) return;
     if (_posting) return;
     _posting = true;
 

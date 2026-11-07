@@ -33,25 +33,15 @@
     document.head.appendChild(el);
   }
 
-  function render(opts) {
-    opts = opts || {};
-    _injectStyles();
+  /* The row is a synchronous string builder, but a writer's ring is only known
+     once GET /api/statuses/writers answers. So the first paint is honest-but-dim
+     and this remembers how to rebuild it: when the batch lands, every row still
+     in the document is re-decorated from the now-warm cache. Without this the
+     live rings stay off and a click falls through to the profile, because the
+     viewer's writer group was captured while it held zero slides. */
 
-    var people = opts.people;
-    if (!people && window.DroboardPeople && typeof window.DroboardPeople.writersFor === 'function') {
-      people = window.DroboardPeople.writersFor(opts.key || 'all', opts.limit || 10);
-    }
-    people = people || [];
-    if (!people.length) return '';
-
-    var list = (window.DroboardStatus && typeof window.DroboardStatus.decorateWriters === 'function')
-      ? window.DroboardStatus.decorateWriters(people)
-      : people;
-
-    var title = opts.title || 'Top Writers';
-    var card = opts.variant === 'card' ? ' dwr-card' : '';
-
-    return '<div class="dwr-row' + card + '">' +
+  function _markup(list, title, card, key) {
+    return '<div class="dwr-row' + card + '" data-dwr-key="' + _esc(key) + '">' +
       '<div class="dwr-head">' + _esc(title) + '</div>' +
       '<div class="dwr-scroll">' +
       list.map(function (w) {
@@ -69,6 +59,45 @@
         '</div>';
       }).join('') +
       '</div></div>';
+  }
+
+  function _repaint(key, people, title, card) {
+    var node = document.querySelector('.dwr-row[data-dwr-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+    if (!node || !node.parentNode) return;
+    var st = window.DroboardStatus;
+    if (!st || typeof st.decorateWriters !== 'function') return;
+    node.outerHTML = _markup(st.decorateWriters(people), title, card, key);
+  }
+
+  function render(opts) {
+    opts = opts || {};
+    _injectStyles();
+
+    var people = opts.people;
+    if (!people && window.DroboardPeople && typeof window.DroboardPeople.writersFor === 'function') {
+      people = window.DroboardPeople.writersFor(opts.key || 'all', opts.limit || 10);
+    }
+    people = people || [];
+    if (!people.length) return '';
+
+    var handles = people.map(function (p) { return p.handle || p.id; });
+    var title = opts.title || 'Top Writers';
+    var card = opts.variant === 'card' ? ' dwr-card' : '';
+    var key = title + '|' + handles.join(',');
+
+    var list = (window.DroboardStatus && typeof window.DroboardStatus.decorateWriters === 'function')
+      ? window.DroboardStatus.decorateWriters(people)
+      : people;
+
+    if (window.DroboardStatus && typeof window.DroboardStatus.loadWriters === 'function') {
+      try {
+        Promise.resolve(window.DroboardStatus.loadWriters(handles)).then(function () {
+          _repaint(key, people, title, card);
+        }).catch(function () { /* the dim first paint stands */ });
+      } catch (e) { /* row renders with the slides already known */ }
+    }
+
+    return _markup(list, title, card, key);
   }
 
   window.DroboardWritersRow = { render: render };

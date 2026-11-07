@@ -189,7 +189,9 @@
     if (_forcedActive) return _forcedActive;
     const path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
     const match = NAV_ITEMS.find(it => it.href.toLowerCase() === path);
-    return match ? match.key : 'home';
+    // root path (/) and the redirect stub both open discover
+    if (!match || path === 'index.html' || path === '') return 'discover';
+    return match.key;
   }
 
   function configure(options) {
