@@ -814,6 +814,9 @@
     if (window.ScrollKeep) ScrollKeep.arm();
     initTheme();
     const pageLoader = document.getElementById('pageLoader');
+    // Keep status bar black while the loader is covering the screen
+    const _tc = document.querySelector('meta[name="theme-color"]');
+    if (_tc) _tc.content = '#000000';
     let data;
     try { data = await fetchDiscoverData(); } catch (e) { data = { heroes: [], topRated: [], topRomance: [], trending: [], collections: [], newReleases: [], editorsPicks: [], recommended: [], complete: [], recentlyUpdated: [], moreStories: [] }; }
     // Collections are part of this module's live gate like every other row:
@@ -858,7 +861,12 @@
 
     if (window.ScrollKeep) ScrollKeep.restore();
     pageLoader.classList.add('hidden');
-    setTimeout(() => pageLoader.remove(), 400);
+    setTimeout(() => {
+      pageLoader.remove();
+      // Let theme-chrome.js re-sync status bar to the actual page theme
+      if (window.DroboardThemeChrome && typeof DroboardThemeChrome.sync === 'function') DroboardThemeChrome.sync();
+      else { const e = document.createEvent('Event'); e.initEvent('pageshow', true, true); window.dispatchEvent(e); }
+    }, 400);
   }
 
   window.DiscoverPage = { init, toggleTheme, renderRecRow, maybeShowSpotlight, renderTuneChip };

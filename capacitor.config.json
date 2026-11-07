@@ -17,7 +17,7 @@
       "insetsHandling": "native"
     },
     "SplashScreen": {
-      "launchShowDuration": 1500,
+      "launchShowDuration": 5000,
       "backgroundColor": "#000000",
       "splashFullScreen": true,
       "splashImmersive": true,
