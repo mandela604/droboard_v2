@@ -11,19 +11,16 @@
   var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api/author' };
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms || 150); }); }
 
-  /* Backend-ready API (preserved) */
+  /* Backend-ready API */
   Svc.listBooks = Svc.listBooks || async function () {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books'); if (r.ok) return await r.json(); } catch (e) {} }
-    await delay(); return BOOKS.map(clone);
+    var r = await fetch(CFG.API_BASE + '/books', { credentials: 'include' });
+    if (!r.ok) throw new Error('Books API failed: ' + r.status);
+    return await r.json();
   };
   Svc.submit = Svc.submit || async function (bookId, payload) {
-    if (CFG.USE_API) {
-      try {
-        var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/change-requests', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (r.ok) return await r.json();
-      } catch (e) {}
-    }
-    await delay(250); return { ok: true, id: 'be' + Date.now().toString(36) };
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/change-requests', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) throw new Error('Submit failed: ' + r.status);
+    return await r.json();
   };
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 

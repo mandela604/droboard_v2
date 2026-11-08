@@ -10,15 +10,16 @@
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms || 150); }); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
-  /* Backend-ready API (preserved) */
+  /* Backend-ready API */
   Svc.getPlot = Svc.getPlot || async function (bookId) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/plot'); if (r.ok) return await r.json(); } catch (e) {} }
-    await delay();
-    return clone({ acts: [{ n: 1, title: 'Setup' }, { n: 2, title: 'Confrontation' }, { n: 3, title: 'Resolution' }], roadmap: [], turningPoints: [] });
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/plot', { credentials: 'include' });
+    if (!r.ok) throw new Error('Plot API failed: ' + r.status);
+    return await r.json();
   };
   Svc.savePlot = Svc.savePlot || async function (bookId, plot) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/plot', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(plot) }); if (r.ok) return await r.json(); } catch (e) {} }
-    await delay(200); return { ok: true };
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/plot', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(plot) });
+    if (!r.ok) throw new Error('Save plot failed: ' + r.status);
+    return await r.json();
   };
 
   /* ── Demo data (moved from inline) ── */

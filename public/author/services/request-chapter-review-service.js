@@ -6,9 +6,17 @@
   var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api/author' };
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms || 150); }); }
 
-  /* Backend-ready API (preserved) */
-  Svc.listBooks = Svc.listBooks || async function () { if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books'); if (r.ok) return await r.json(); } catch (e) {} } await delay(); return []; };
-  Svc.submit = Svc.submit || async function (d) { if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/chapter-reviews', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); if (r.ok) return await r.json(); } catch (e) {} } await delay(250); return { ok: true }; };
+  /* Backend-ready API */
+  Svc.listBooks = Svc.listBooks || async function () {
+    var r = await fetch(CFG.API_BASE + '/books', { credentials: 'include' });
+    if (!r.ok) throw new Error('Books API failed: ' + r.status);
+    return await r.json();
+  };
+  Svc.submit = Svc.submit || async function (d) {
+    var r = await fetch(CFG.API_BASE + '/chapter-reviews', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+    if (!r.ok) throw new Error('Submit failed: ' + r.status);
+    return await r.json();
+  };
 
   /* ── Demo data (moved from inline) ── */
   var BOOKS = [

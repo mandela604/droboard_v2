@@ -11,7 +11,7 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   async function callBackend(path, opts) {
     var c = new AbortController(); var t = setTimeout(function () { c.abort(); }, CFG.TIMEOUT_MS);
-    try { var res = await fetch(CFG.API_BASE + path, Object.assign({ signal: c.signal }, opts || {})); clearTimeout(t); if (!res.ok) throw new Error(res.status); return await res.json(); }
+    try { var res = await fetch(CFG.API_BASE + path, Object.assign({ signal: c.signal, credentials: 'include' }, opts || {})); clearTimeout(t); if (!res.ok) throw new Error(res.status); return await res.json(); }
     catch (e) { clearTimeout(t); throw e; }
   }
 
@@ -90,10 +90,6 @@
 
   function onCreated(book, item) {
     book.engagements = (book.engagements || []).concat([item]);
-    if (!CFG.USE_API) {
-      if (window.AuthorDrawer) window.AuthorDrawer.toast('Demo only — not saved to a server.');
-      return;
-    }
     if (window.AuthorDrawer) window.AuthorDrawer.toast('Live on ' + book.title + '.');
   }
 
@@ -116,33 +112,23 @@
   function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); }
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 
-  // Live books replace the demo list; a rejected manuscript (draft + editor
-  // feedback) reads as "Needs Changes" so the author can act on it.
+  // Live books replace the demo list
   async function hydrate() {
-    // Demo mode: nothing to load, use inline BOOKS (lines 34-43 above)
-    if (!CFG.USE_API) return;
-    try {
-      var live = await api.getBooks();
-      if (!Array.isArray(live)) { BOOKS.length = 0; BOOKS.push(...clone(demoBooks())); renderBooks(); return; }
-      BOOKS.length = 0;
-      live.forEach(function (b) {
-        var rejected = b.status === 'draft' && b.reviewFeedback;
-        BOOKS.push({
-          id: b.id, title: b.title || 'Untitled',
-          genre: b.genre || '', cover: b.cover || '',
-          reads: fmtNum(b.reads), likes: fmtNum(b.likes),
-          chapters: b.chapterCount || 0,
-          status: rejected ? 'rejected' : (b.status || 'draft'),
-          statusLabel: rejected ? 'Needs Changes' : undefined,
-          statusClass: rejected ? 'rejected' : (b.status || 'draft')
-        });
+    var live = await api.getBooks();
+    BOOKS.length = 0;
+    live.forEach(function (b) {
+      var rejected = b.status === 'draft' && b.reviewFeedback;
+      BOOKS.push({
+        id: b.id, title: b.title || 'Untitled',
+        genre: b.genre || '', cover: b.cover || '',
+        reads: fmtNum(b.reads), likes: fmtNum(b.likes),
+        chapters: b.chapterCount || 0,
+        status: rejected ? 'rejected' : (b.status || 'draft'),
+        statusLabel: rejected ? 'Needs Changes' : undefined,
+        statusClass: rejected ? 'rejected' : (b.status || 'draft')
       });
-      renderBooks();
-    } catch (e) { 
-      // Network error or 500 — fall back to demo list
-      BOOKS.length = 0; BOOKS.push(...clone(demoBooks()));
-      renderBooks();
-    }
+    });
+    renderBooks();
   }
   function fmtNum(n) {
     n = Number(n) || 0;
@@ -168,8 +154,8 @@
   }
 
   var api = window.AuthorCenterService || {};
-  api.getStats = api.getStats || async function () { if (CFG.USE_API) { try { return await callBackend('/dashboard'); } catch (e) {} } await delay(); return demoStats(); };
-  api.getBooks = api.getBooks || async function () { if (CFG.USE_API) { try { return await callBackend('/books'); } catch (e) {} } await delay(); return clone(demoBooks()); };
+  api.getStats = api.getStats || async function () { return await callBackend('/dashboard'); };
+  api.getBooks = api.getBooks || async function () { return await callBackend('/books'); };
   api.init = init;
   api._STATS = STATS;
   api._BOOKS = BOOKS;

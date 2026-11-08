@@ -9,7 +9,7 @@
   if (window.__authorFinanceService) return;
   window.__authorFinanceService = true;
 
-  const USE_API = false;
+  const USE_API = true;
   const API_BASE = '/api/author/finance';
   const TIMEOUT_MS = 2500;
   /* Demo author identity — matches AdRevenue.STORIES book authors. */
@@ -54,7 +54,7 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal }, opts || {}));
+      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal, credentials: 'include' }, opts || {}));
       clearTimeout(timer);
       if (!res.ok) throw new Error('Bad response: ' + res.status);
       return await res.json();
@@ -96,42 +96,12 @@
 
     /* ── Earnings ── */
     async getEarnings() {
-      if (USE_API) { try { return await callBackend('/earnings'); } catch (e) { /* fallthrough */ } }
-      await delay();
-      var earnings = getDemo().earnings;
-      /* Ad share (30% of story-owned ad revenue) accumulates into the same
-         by-book totals as every other income source. */
-      try {
-        if (window.AdRevenue && AdRevenue.getSummary) {
-          var s = await AdRevenue.getSummary(30);
-          var total = 0;
-          (s.byStory || []).forEach(function (r) {
-            if (r.authorId !== CURRENT_AUTHOR_ID) return;
-            var share = Number(r.authorShare) || 0;
-            if (!share) return;
-            total += share;
-            var b = null;
-            for (var i = 0; i < earnings.byBook.length; i++) {
-              if (String(earnings.byBook[i].id) === String(r.storyId)) { b = earnings.byBook[i]; break; }
-            }
-            if (b) b.earnings = Math.round((b.earnings + share) * 100) / 100;
-          });
-          if (total > 0) {
-            total = Math.round(total * 100) / 100;
-            earnings.balance = Math.round((earnings.balance + total) * 100) / 100;
-            earnings.lifetime = Math.round((earnings.lifetime + total) * 100) / 100;
-            earnings.thisMonth = Math.round((earnings.thisMonth + total) * 100) / 100;
-          }
-        }
-      } catch (e) {}
-      return earnings;
+      return await callBackend('/earnings');
     },
 
     /* ── Transactions ── */
     async getTransactions() {
-      if (USE_API) { try { return await callBackend('/transactions'); } catch (e) { /* fallthrough */ } }
-      await delay();
-      return getDemo().transactions;
+      return await callBackend('/transactions');
     },
 
     async getTransactionKPIs(list) {
@@ -147,121 +117,41 @@
 
     /* ── Payment Methods ── */
     async getPaymentMethods() {
-      if (USE_API) { try { return await callBackend('/payment-methods'); } catch (e) { /* fallthrough */ } }
-      await delay();
-      return loadMethods();
+      return await callBackend('/payment-methods');
     },
 
     async addPaymentMethod(data) {
-      if (USE_API) { try { return await callBackend('/payment-methods', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) { /* fallthrough */ } }
-      await delay(200);
-      const methods = loadMethods();
-      const newMethod = Object.assign({ id: 'PM-' + String(methods.length + 1).padStart(2, '0'), verified: false, isDefault: methods.length === 0 }, data);
-      methods.push(newMethod);
-      saveMethods(methods);
-      return clone(newMethod);
+      return await callBackend('/payment-methods', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     },
 
     async deletePaymentMethod(id) {
-      if (USE_API) { try { return await callBackend('/payment-methods/' + id, { method: 'DELETE' }); } catch (e) { /* fallthrough */ } }
-      await delay(150);
-      const methods = loadMethods();
-      const idx = methods.findIndex(m => m.id === id);
-      if (idx === -1) throw new Error('Method not found');
-      const wasDefault = methods[idx].isDefault;
-      methods.splice(idx, 1);
-      if (wasDefault && methods.length > 0) methods[0].isDefault = true;
-      saveMethods(methods);
-      return { ok: true };
+      return await callBackend('/payment-methods/' + id, { method: 'DELETE' });
     },
 
     async updatePaymentMethod(id, data) {
-      if (USE_API) { try { return await callBackend('/payment-methods/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); } catch (e) { /* fallthrough */ } }
-      await delay(200);
-      const methods = loadMethods();
-      const idx = methods.findIndex(m => m.id === id);
-      if (idx === -1) throw new Error('Method not found');
-      methods[idx] = Object.assign({}, methods[idx], data, { id });
-      saveMethods(methods);
-      return clone(methods[idx]);
+      return await callBackend('/payment-methods/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     },
 
     async setDefaultMethod(id) {
-      if (USE_API) { try { return await callBackend('/payment-methods/' + id + '/default', { method: 'PUT' }); } catch (e) { /* fallthrough */ } }
-      await delay(100);
-      const methods = loadMethods();
-      methods.forEach(m => m.isDefault = (m.id === id));
-      saveMethods(methods);
-      return { ok: true };
+      return await callBackend('/payment-methods/' + id + '/default', { method: 'PUT' });
     },
 
     /* ── Withdrawals ── */
     async getWithdrawals() {
-      if (USE_API) { try { return await callBackend('/withdrawals'); } catch (e) { /* fallthrough */ } }
-      await delay();
-      return getDemo().withdrawals;
+      return await callBackend('/withdrawals');
     },
 
     async requestWithdrawal(amount, methodId) {
-      if (USE_API) { try { return await callBackend('/withdrawals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, methodId }) }); } catch (e) { /* fallthrough */ } }
-      await delay(250);
-      const demo = getDemo();
-      const methods = loadMethods();
-      const method = methods.find(m => m.id === methodId) || demo.methods.find(m => m.id === methodId);
-      if (!method) throw new Error('Payment method not found');
-      if (amount < demo.minWithdrawal) throw new Error('Minimum withdrawal is ' + fmtCurrency(demo.minWithdrawal));
-      if (amount > demo.earnings.balance) throw new Error('Insufficient balance');
-      const accountLabel = method.type === 'bank' ? method.bankName + ' •••• ' + method.accountNumber.slice(-4) :
-                           method.type === 'paypal' ? method.email :
-                           method.phoneNumber;
-      const withdrawal = {
-        id: 'WD-' + String(demo.withdrawals.length + 6001).padStart(4, '0'),
-        amount: amount,
-        method: method.type === 'bank' ? 'Bank Transfer' : method.type === 'paypal' ? 'PayPal' : 'Mobile Money',
-        account: accountLabel,
-        accountName: method.accountName || '',
-        requested: new Date().toISOString(),
-        status: 'pending',
-        processed: null,
-      };
-      demo.withdrawals.unshift(withdrawal);
-      demo.earnings.balance -= amount;
-      demo.earnings.pending += amount;
-      return clone(withdrawal);
+      return await callBackend('/withdrawals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, methodId }) });
     },
 
     /* ── Disputes ── */
     async getDisputes() {
-      if (USE_API) { try { return await callBackend('/disputes'); } catch (e) { /* fallthrough */ } }
-      await delay();
-      return getDemo().disputes;
+      return await callBackend('/disputes');
     },
 
     async fileDispute(transactionId, reason) {
-      if (USE_API) { try { return await callBackend('/disputes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transactionId, reason }) }); } catch (e) { /* fallthrough */ } }
-      await delay(200);
-      const demo = getDemo();
-      const txn = demo.transactions.find(t => t.id === transactionId);
-      // Same store the finance Payment Disputes page reads.
-      if (window.DroboardDisputes) {
-        return DroboardDisputes.add({
-          who: 'Luna Vale', role: 'author', amount: txn ? Math.abs(txn.amount) : 0,
-          reason: reason, txnId: transactionId, item: txn ? txn.type : '',
-        });
-      }
-      const dispute = {
-        id: 'DSP-' + String(demo.disputes.length + 1).padStart(3, '0'),
-        transactionId: transactionId,
-        type: txn ? txn.type : 'other',
-        amount: txn ? Math.abs(txn.amount) : 0,
-        reason: reason,
-        status: 'open',
-        filed: new Date().toISOString(),
-        resolutionNote: '',
-        adminReply: '',
-      };
-      demo.disputes.unshift(dispute);
-      return clone(dispute);
+      return await callBackend('/disputes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transactionId, reason }) });
     },
 
     /* ── Helpers ── */

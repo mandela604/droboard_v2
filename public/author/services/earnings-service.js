@@ -75,7 +75,12 @@
   }
 
   var api = window.AuthorEarningsService || {};
-  api.getEarnings = api.getEarnings || async function () { return window.AuthorFinance ? window.AuthorFinance.getEarnings() : { balance: 0, pending: 0, lifetime: 0, thisMonth: 0, lastMonth: 0, byBook: [] }; };
+  // Backend-ready: uses /api/wallet/author/:userId or falls back to AuthorFinance
+  api.getEarnings = api.getEarnings || async function () {
+    var r = await fetch(CFG.API_BASE + '/earnings', { credentials: 'include' });
+    if (!r.ok) throw new Error('Earnings API failed: ' + r.status);
+    return await r.json();
+  };
   api.fmtCurrency = api.fmtCurrency || function (n) { return window.AuthorFinance ? window.AuthorFinance.fmtCurrency(n) : '$' + n; };
   api.init = init;
   api._renderBookPage = renderBookPage;

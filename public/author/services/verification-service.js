@@ -28,11 +28,9 @@
   }
 
   function checkStatus() {
-    if (!CFG.USE_API) { loadDemo(); return Promise.resolve(state); }
     return fetch(CFG.API_BASE + '/verification', { credentials: 'include' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (v) { if (v && v.status) state = v; return state; })
-      .catch(function () { return state; });
+      .then(function (r) { if (!r.ok) throw new Error('Verification API failed: ' + r.status); return r.json(); })
+      .then(function (v) { if (v && v.status) state = v; return state; });
   }
 
   function render() {
@@ -94,7 +92,6 @@
 
   function finish(out, kycType) {
     state = { status: (out && out.status) || 'pending', kycType: kycType || null };
-    if (!CFG.USE_API) saveDemo();
     KycForm.setBusy(false);
     close();
     render();
@@ -107,11 +104,6 @@
     KycForm.showError('');
     KycForm.setBusy(true);
     var files = KycForm.files();
-
-    if (!CFG.USE_API) {
-      setTimeout(function () { finish({ status: 'pending' }, v.kyc.type); }, 700);
-      return;
-    }
     var fd = new FormData();
     fd.append('data', JSON.stringify({ kyc: v.kyc }));
     fd.append('idFront', files.front, files.front.name);
@@ -123,7 +115,10 @@
           return body;
         });
       })
-      .then(function (out) { finish(out, v.kyc.type); })
+      .then(function (out) { 
+        state.status = (out && out.status) || 'pending';
+        finish(out, v.kyc.type); 
+      })
       .catch(function (e) {
         KycForm.setBusy(false);
         KycForm.showError((e && e.error) || 'Could not submit. Try again.');

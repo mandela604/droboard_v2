@@ -239,11 +239,22 @@
   }
 
   var api = window.CharactersService || {};
-  api.list = api.list || async function (bookId) { if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters'); if (r.ok) return await r.json(); } catch (e) {} } await delay(); return clone(DEMO); };
-  api.getRelationships = api.getRelationships || async function (bookId) { await delay(80); return [{ from: 'Aria Cole', to: 'Darius Kane', type: 'Complicated' }]; };
+  api.list = api.list || async function (bookId) {
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters', { credentials: 'include' });
+    if (!r.ok) throw new Error('Characters API failed: ' + r.status);
+    return await r.json();
+  };
+  api.getRelationships = api.getRelationships || async function (bookId) {
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters/relationships', { credentials: 'include' });
+    if (!r.ok) return [];
+    return await r.json();
+  };
   api.save = api.save || async function (bookId, data) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/characters', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (r.ok) return await r.json(); } catch (e) {} }
-    await delay(200); return Object.assign({ id: 'c' + Date.now() }, data);
+    var method = data.id ? 'PUT' : 'POST';
+    var path = data.id ? '/books/' + bookId + '/characters/' + data.id : '/books/' + bookId + '/characters';
+    var r = await fetch(CFG.API_BASE + path, { method: method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!r.ok) throw new Error('Save character failed: ' + r.status);
+    return await r.json();
   };
   api.init = init;
   api._CHARACTERS = CHARACTERS;

@@ -9,14 +9,16 @@
   var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api/author' };
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms || 150); }); }
 
-  /* Backend-ready API (preserved) */
+  /* Backend-ready API */
   Svc.get = Svc.get || async function (bookId, num) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/chapters/' + num); if (r.ok) return await r.json(); } catch (e) {} }
-    await delay(); return { bookId: bookId, num: num, title: 'Chapter ' + num, content: '' };
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/chapters/' + num, { credentials: 'include' });
+    if (!r.ok) throw new Error('Chapter API failed: ' + r.status);
+    return await r.json();
   };
   Svc.save = Svc.save || async function (bookId, num, payload) {
-    if (CFG.USE_API) { try { var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/chapters/' + num, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (r.ok) return await r.json(); } catch (e) {} }
-    await delay(250); return { ok: true };
+    var r = await fetch(CFG.API_BASE + '/books/' + bookId + '/chapters/' + num, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) throw new Error('Save chapter failed: ' + r.status);
+    return await r.json();
   };
 
   /* ── Demo data (moved from inline) ── */

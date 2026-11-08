@@ -17,7 +17,7 @@
     var earnings = await window.AuthorFinance.getEarnings();
     methods = await window.AuthorFinance.getPaymentMethods();
     balance = earnings.balance;
-    minWithdrawal = (window.DemoData && window.DemoData.WITHDRAWAL_MIN) || 100;
+    minWithdrawal = (earnings.minWithdrawal) || 100;
 
     document.getElementById('balanceMini').innerHTML =
       '<div><div class="bal-label">Available Balance</div><div class="bal-amount">'+window.AuthorFinance.fmtCurrency(balance)+'</div><div class="bal-min">Minimum withdrawal: '+window.AuthorFinance.fmtCurrency(minWithdrawal)+'</div></div>'+
