@@ -108,74 +108,21 @@
     var params = new URLSearchParams(location.search);
     DEBATE_ID = params.get('id') || params.get('d') || 'deb_default';
 
-    if (window.FeedData && FeedData.getFeedPosts) {
-      try {
-        var posts = await FeedData.getFeedPosts();
-        var post = posts.find(function (p) { return p.id === DEBATE_ID && p.debateData; });
-        if (post) {
-          var d = post.debateData;
-          return {
-            id: DEBATE_ID,
-            question: d.question || d.motion || 'Join the debate.',
-            prompt: d.prompt || '',
-            forText: d.forText || 'For',
-            againstText: d.againstText || 'Against',
-            forV: d.forV || 0,
-            agV: d.agV || 0,
-            expiresAt: post.expiresAt || null,
-            poster: posterFrom(post),
-          };
-        }
-      } catch (e) {}
-    }
-
-    /* @droboard official-page debates live in the page seed, not the feed */
-    if (window.DroboardPageSeed) {
-      var seedPosts = (window.DroboardPageSeed.DROBOARD_POSTS || []).concat(window.DroboardPageSeed.DROBOARD_MORE_POSTS || []);
-      var dp = seedPosts.find(function (p) { return p && p.id === DEBATE_ID && p.debateData; });
-      if (dp) {
-        return {
-          id: DEBATE_ID,
-          question: dp.debateData.motion || dp.debateData.question || dp.title || 'Join the debate.',
-          prompt: '',
-          forText: dp.debateData.forText || 'For',
-          againstText: dp.debateData.againstText || 'Against',
-          forV: dp.debateData.forV || 0,
-          agV: dp.debateData.agV || 0,
-          expiresAt: dp.expiresAt || null,
-          poster: posterFrom(dp, dp.time, true),
-        };
-      }
-    }
-
-    if (window.DemoData && DemoData.STORY_RECORDS) {
-      for (var i = 0; i < DemoData.STORY_RECORDS.length; i++) {
-        if (DemoData.STORY_RECORDS[i].debates) {
-          var deb = DemoData.STORY_RECORDS[i].debates.find(function (x) { return x.id === DEBATE_ID; });
-          if (deb) {
-            return {
-              id: DEBATE_ID,
-              question: deb.motion || 'Join the debate.',
-              prompt: '',
-              forText: 'For',
-              againstText: 'Against',
-              forV: deb.forV || 0,
-              agV: deb.agV || 0,
-              expiresAt: deb.expiresAt || null,
-            };
-          }
-        }
-      }
-    }
-
+    // Fetch the debate post from backend
+    var res = await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID), { credentials: 'include' });
+    if (!res.ok) throw new Error('Debate API failed: ' + res.status);
+    var post = await res.json();
+    var d = (post && post.debateData) || {};
     return {
       id: DEBATE_ID,
-      question: 'Should villains get redemption?',
-      prompt: 'Share your thoughts and join the debate!',
-      forText: 'Yes, everyone deserves a second chance.',
-      againstText: 'No, some actions are unforgivable.',
-      forV: 264,
-      agV: 164,
+      question: d.question || d.motion || post.title || 'Join the debate.',
+      prompt: d.prompt || '',
+      forText: d.forText || 'For',
+      againstText: d.againstText || 'Against',
+      forV: d.forV || 0,
+      agV: d.agV || 0,
+      expiresAt: post.expiresAt || null,
+      poster: posterFrom(post),
     };
   }
 
@@ -246,7 +193,7 @@
 
   /* ── init ── */
   async function init() {
-    try { DEBATE = await resolveDebate(); } catch (e) { DEBATE = { id: DEBATE_ID || 'deb_default', question: 'Should villains get redemption?', prompt: 'Share your thoughts and join the debate!', forText: 'For', againstText: 'Against', forV: 264, agV: 164 }; }
+    DEBATE = await resolveDebate();
     S = loadState();
 
     if (window.DroboardDotsMenu) {

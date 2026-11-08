@@ -317,16 +317,22 @@
       return out;
     }
     if (_mode === 'collections') {
-      var cols = (window.CollectionData && typeof CollectionData.getCollections === 'function')
-        ? null // async — handled in _reset via async fetch
-        : (window.DemoData && DemoData.COLLECTIONS ? DemoData.COLLECTIONS : []);
-      if (cols) return withFollowingFlag(cols);
+      // Handled in _reset via async CollectionData.getCollections()
       return [];
     }
-    // continueReading mode: pool is CONTINUE_READING with progress
+    // continueReading mode: pool from live library
     if (_mode === 'continueReading') {
-      var cr = (window.DemoData && DemoData.CONTINUE_READING ? DemoData.CONTINUE_READING : []);
-      if (cr && cr.length) return cr.map(function(it){ return Object.assign({ type:'continue' }, it); });
+      if (window.LibraryData && typeof LibraryData.getContinueReading === 'function') {
+        LibraryData.getContinueReading().then(function(cr) {
+          _pool = (cr || []).map(function(it){ return Object.assign({ type:'continue' }, it); });
+          _hasMore = false;
+          _afterPool();
+        });
+        _pool = []; _hasMore = false;
+        _loaderEl.classList.remove('hidden');
+        _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading…';
+        return [];
+      }
       return [];
     }
     let expanded = [];

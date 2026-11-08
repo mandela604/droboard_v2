@@ -27,29 +27,19 @@
      {target:'discussion', targetId:post.id, reason:typeId, title}.
      Same record + same toast as the feed's report flow (feed-service.js
      onReportType) — no demo wording leaks into the UI. */
-  const USE_API_REPORTS = false;
   const REPORTS_API = '/api/reports';
 
   async function fileReport(post, typeId) {
-    if (USE_API_REPORTS) {
-      try {
-        const res = await fetch(REPORTS_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            target: 'discussion', targetId: String(post.id || ''),
-            reason: typeId, title: String(post.title || '').slice(0, 160),
-          }),
-        });
-        if (!res.ok) throw new Error('api_' + res.status);
-      } catch (e) { /* offline — the local record below still stands */ }
-    }
-    try {
-      const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
-      reports.push({ postId: post && post.id, typeId, at: Date.now() });
-      localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
-    } catch (e) {}
+    const res = await fetch(REPORTS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        target: 'discussion', targetId: String(post.id || ''),
+        reason: typeId, title: String(post.title || '').slice(0, 160),
+      }),
+    });
+    if (!res.ok) throw new Error('Report API failed: ' + res.status);
     toast('🚩 Report filed. Our team will review it.');
   }
 
@@ -150,41 +140,24 @@
   function writeAboutOverride(id, patch) {
     try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}'); m[id] = Object.assign({}, m[id] || {}, patch); localStorage.setItem(ABOUT_KEY, JSON.stringify(m)); } catch (e) {}
   }
-  function loadGenre() {
-    const seed = window.GenreDemoSeed;
-    const demo = window.DemoData;
+  const API_BASE = '/api';
+
+  async function loadGenre() {
     const params = new URLSearchParams(location.search);
-    const rawId = params.get('genre') || (seed && seed.DEFAULT_GENRE_ID) || 'fantasy';
-    GENRE_ID = (rawId||'fantasy').toLowerCase();
-    let base = null;
-    if (seed && seed.DEMO_GENRES) base = seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[rawId] || seed.DEMO_GENRES[seed.DEFAULT_GENRE_ID];
-    if (!base && demo && demo.GENRES) {
-      const g = demo.GENRES.find(x => (x.id||'').toLowerCase() === GENRE_ID);
-      if (g) base = { id:g.id, name:g.name, tagline:g.tagline, icon:'fa-book', cover:g.cover||'', members:g.members, discussions:g.discussions, stories:g.stories, blurb:g.tagline };
-    }
-    if (!base) { base = { id:'fantasy', name:'Fantasy', tagline:'Where imagination becomes legend.', icon:'fa-hat-wizard', cover:'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&h=400&fit=crop', members:'45.7K', discussions:'3.2K', stories:'1.8K', blurb:'Discuss tropes, argue theories.' }; GENRE_ID='fantasy'; }
-    const ov = readAboutOverride(GENRE_ID);
-    GENRE = Object.assign({}, base, ov || {});
-    GENRE_ID = (GENRE.id||GENRE_ID).toLowerCase();
-    if (seed && seed.DEMO_DISCUSSIONS && seed.DEMO_DISCUSSIONS[GENRE_ID]) {
-      ALL_POSTS = [seed.DEMO_PINNED[GENRE_ID], ...seed.DEMO_DISCUSSIONS[GENRE_ID]].filter(Boolean);
-    } else if (seed && seed.DEMO_DISCUSSIONS && seed.DEMO_DISCUSSIONS[rawId]) {
-      ALL_POSTS = [seed.DEMO_PINNED[rawId], ...seed.DEMO_DISCUSSIONS[rawId]].filter(Boolean);
-    } else {
-      ALL_POSTS = (demo && demo.COMMENTS ? demo.COMMENTS.slice(0,12).map(c=>({id:'c'+c.id,title:c.text,body:c.text,likes:c.likes,comments:2,score:c.likes})) : []);
-      if (!ALL_POSTS.length) ALL_POSTS = [{id:'pinned-fallback',pinned:true,title:'Welcome to '+GENRE.name,desc:'Start a discussion.',likes:0,comments:0}];
-    }
+    const rawId = params.get('genre') || 'fantasy';
+    GENRE_ID = rawId.toLowerCase();
+    // Fetch genre hub info from backend
+    const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Genre API failed: ' + res.status);
+    const data = await res.json();
+    GENRE = data.genre || data;
+    GENRE_ID = (GENRE.id || GENRE.slug || GENRE_ID).toLowerCase();
+    // Fetch discussions for this hub
+    const dRes = await fetch(`${API_BASE}/discussions?genre=${encodeURIComponent(GENRE_ID)}&limit=30`, { credentials: 'include' });
+    if (!dRes.ok) throw new Error('Discussions API failed: ' + dRes.status);
+    const dData = await dRes.json();
+    ALL_POSTS = Array.isArray(dData) ? dData : (dData.items || []);
     PROMO_SLIDES = [];
-    attachDemoTropes();
-    loadHubPins();
-    // Rules override from the hub edit page (dro_hub_rules_<id>)
-    try {
-      const rulesOv = JSON.parse(localStorage.getItem('dro_hub_rules_' + GENRE_ID) || 'null');
-      if (Array.isArray(rulesOv) && rulesOv.length) {
-        const pinned = ALL_POSTS.find(p => p && p.pinned);
-        if (pinned) pinned.desc = rulesOv.join('  •  ');
-      }
-    } catch (e) {}
     return true;
   }
 
@@ -453,13 +426,12 @@
     }
     if(changed) setNewDropState(dropState);
   }
-  function renderStories() {
-    const seed = window.GenreDemoSeed;
-    let stories = [];
-    if (seed && seed.DEMO_STORIES && seed.DEMO_STORIES[GENRE_ID]) stories = seed.DEMO_STORIES[GENRE_ID].slice(0,4);
-    else if (window.DemoData && DemoData.STORIES) stories = DemoData.STORIES.filter(s=> (s.genre||'').toLowerCase().includes(GENRE_ID)).slice(0,4);
-    else stories = [];
-    if (!stories.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No stories in this hub yet.</div>'; clearMemberPager(); return; }
+  async function renderStories() {
+    const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}/stories?limit=10`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Genre stories API failed: ' + res.status);
+    const data = await res.json();
+    const stories = Array.isArray(data) ? data : (data.items || []);
+    if (!stories.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No stories in this hub yet.</div>'; return; }
     // attach new-drop badge state (2hr window)
     const now = Date.now();
     const dropState = getNewDropState();
@@ -976,14 +948,12 @@
   /* ── Boot ── */
   async function init() {
     if (window.ScrollKeep) ScrollKeep.arm();
-    try {
-      initTheme();
-      window.toast = toast;
-      window.toggleTheme = toggleTheme;
-      loadGenre();
-      if (!GENRE) { GENRE={id:'fantasy',name:'Fantasy',tagline:'Where imagination becomes legend.',icon:'fa-hat-wizard',cover:'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&h=400&fit=crop',members:'45.7K',discussions:'3.2K',stories:'1.8K',blurb:'Discuss tropes.'}; GENRE_ID='fantasy'; ALL_POSTS=[{id:'pinned-fallback',pinned:true,title:'Welcome to Fantasy',desc:'Start a discussion.',likes:0,comments:0}]; }
-      await loadHubAds();
-      mountHubAd();
+    initTheme();
+    window.toast = toast;
+    window.toggleTheme = toggleTheme;
+    await loadGenre();
+    await loadHubAds();
+    mountHubAd();
     wireComponents();
     initFilters();
     initTropeFilter();
@@ -1009,7 +979,6 @@
       });
     }
     if (window.DroboardNav) DroboardNav.configure({ active: 'none' });
-    } catch(e){ console.error(e); toast('Hub load failed'); }
   }
 
   window.GenreHubPage = { init, toast, toggleTheme, renderFeed, toggleMember: toggleMemberFollow, renderAbout, renderMembers, renderStories, renderHot, setActiveTab };

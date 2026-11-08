@@ -96,64 +96,28 @@
       _genreId: null, _genreName: null, _feed: true,
     };
   }
+  const API_BASE = '/api';
+
   async function loadThread() {
     const params = new URLSearchParams(location.search);
-    const seed = window.GenreDemoSeed;
-    if (!seed) return false;
-    GENRE_EXPLICIT = !!params.get('genre');
-    GENRE_ID = params.get('genre') || seed.DEFAULT_GENRE_ID;
     let postId = params.get('id') || params.get('d');
-    // Feed community cards link with prefixed ids ('fc_<genre>_<id>') —
-    // unwrap to the original hub post id before pool lookup.
-    if (typeof postId === 'string' && postId.indexOf('fc_') === 0) {
-      const rest = postId.slice(3);
-      const gids = Object.keys(seed.DEMO_GENRES || {}).sort((a, b) => b.length - a.length);
-      for (const gid of gids) {
-        if (rest.indexOf(gid + '_') === 0) { postId = rest.slice(gid.length + 1); break; }
-      }
-    }
-    GENRE = seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[seed.DEFAULT_GENRE_ID];
-    const pool = genrePool(seed);
-    POST = postId ? pool.find(p => String(p.id) === String(postId)) : null;
-    if (POST && POST._genreId) {
-      GENRE_ID = POST._genreId;
-      GENRE = seed.DEMO_GENRES[GENRE_ID] || GENRE;
-    }
-    if (!POST && window.FeedData && window.FeedData.getFeedPosts) {
-      try {
-        const feed = await window.FeedData.getFeedPosts();
-        const hit = (feed || []).find(p => String(p.id) === String(postId));
-        if (hit) POST = adaptFeedPost(hit);
-      } catch (e) {}
-    }
-    if (!POST) {
-      const users = (window.DemoData && window.DemoData.USERS) || {};
-      for (const handle of Object.keys(users)) {
-        const up = (users[handle].posts || []).find(p => String(p.id) === String(postId));
-        if (up) {
-          POST = adaptFeedPost(Object.assign({ name: users[handle].name, avatar: users[handle].avatar }, up));
-          break;
-        }
-      }
-    }
-    /* Official Droboard page posts (d1..): resolved from the page seed so
-       See-more / view-replies links from anywhere land on a real thread. */
-    if (!POST && window.DroboardPageSeed) {
-      const all = [].concat(window.DroboardPageSeed.DROBOARD_POSTS || [], window.DroboardPageSeed.DROBOARD_MORE_POSTS || []);
-      try {
-        const extra = JSON.parse(localStorage.getItem('drb_posts_extra') || '[]');
-        if (Array.isArray(extra) && extra.length) extra.forEach(p => { if (p && p.id) all.unshift(p); });
-      } catch (e) {}
-      const hit = all.find(p => String(p.id) === String(postId));
-      if (hit) POST = adaptDroboardPost(hit);
-    }
-    /* No silent fallback: unknown ids show the not-found state,
-       exactly as production will. */
-    document.getElementById('hubSub').textContent = (GENRE && GENRE.name && (GENRE_EXPLICIT || (POST && !POST._feed)))
-      ? GENRE.name + ' Hub' : 'Discussion';
+    if (!postId) throw new Error('No discussion id in URL');
+    // Fetch the discussion post from backend
+    const res = await fetch(`${API_BASE}/discussions/${encodeURIComponent(postId)}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Discussion API failed: ' + res.status);
+    POST = await res.json();
+    GENRE_ID = POST.genre || POST._genreId || 'general';
+    GENRE = { name: POST.genreName || POST.genre || 'Discussion' };
+    document.getElementById('hubSub').textContent = GENRE.name + ' Hub';
     return true;
   }
 
+  async function threadComments() {
+    const res = await fetch(`${API_BASE}/comments?scope=discussion&targetId=${encodeURIComponent(POST.id)}&limit=50`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Comments API failed: ' + res.status);
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.items || []);
+  }
   /* ── OP render ── */
   function profileHref(name) { return 'profile.html?u=' + encodeURIComponent(name || ''); }
 
@@ -321,28 +285,12 @@
     })(list);
     return list;
   }
-  function threadComments() {
-    if (POST && POST._droboard && window.COMMENTS_DATA) {
-      return JSON.parse(JSON.stringify(window.COMMENTS_DATA));
-    }
-    const seed = (window.GenreDemoSeed && window.GenreDemoSeed.DEMO_THREAD_COMMENTS) || [];
-    const list = JSON.parse(JSON.stringify(seed));
-    if (POST && !POST.pinned) {
-      list.forEach(c => (c.replies || []).forEach(r => {
-        if (r.name === '@OP') {
-          r.name = POST.name || 'OP';
-          r.avatar = POST.avatar || '';
-          r.verified = POST.badge === 'Author' ? 'writer' : false;
-        }
-      }));
-    }
-    return enrichThreadStatuses(list);
-  }
-  function mountComments() {
+  async function mountComments() {
     if (window.DroboardComments && POST && !(POST.pinned && !POST._droboard)) {
+      const comments = await threadComments();
       DroboardComments.attach('#commentsPlaceholder', {
         title: 'Replies',
-        comments: threadComments(),
+        comments: comments,
         currentUser: { name: 'You', avatar: 'https://i.pravatar.cc/100?img=32' },
         collapsible: false,
         startOpen: true,

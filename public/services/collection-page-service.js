@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const USE_API = false, API_BASE = '/api';
+  const USE_API = true, API_BASE = '/api';
 
   let currentCollection = null;
   let collStories = []; let collPage = 1; const COLL_PER = 10; let collSort = 'latest';
@@ -31,12 +31,10 @@
       : '<i class="fas fa-plus"></i> Follow Collection';
   }
   async function syncLiveState() {
-    try {
-      const j = await liveReq('GET', '/collections/' + encodeURIComponent(collId()));
-      if (!j || !j.id) return;
-      if (typeof j.following === 'boolean') { following = j.following; paintFollow(); }
-      if (j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
-    } catch (e) { /* demo/anonymous stands */ }
+    const j = await liveReq('GET', '/collections/' + encodeURIComponent(collId()));
+    if (!j || !j.id) return;
+    if (typeof j.following === 'boolean') { following = j.following; paintFollow(); }
+    if (j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
   }
 
   function renderCollPage() {
