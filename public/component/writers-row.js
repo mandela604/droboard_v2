@@ -69,6 +69,8 @@
     node.outerHTML = _markup(st.decorateWriters(people), title, card, key);
   }
 
+  var _pendingSeq = 0;
+
   function render(opts) {
     opts = opts || {};
     _injectStyles();
@@ -78,7 +80,28 @@
       people = window.DroboardPeople.writersFor(opts.key || 'all', opts.limit || 10);
     }
     people = people || [];
-    if (!people.length) return '';
+    if (!people.length) {
+      /* Cold directory (a page that never loaded Discover): hold the slot and
+         fill it with the real ranking when the one-shot fetch lands. An
+         explicit empty people list means "no writers" — never retried. */
+      if (opts.people || !window.DroboardPeople || typeof window.DroboardPeople.fetchLiveWriters !== 'function') return '';
+      var pkey = 'dwr-pending-' + (++_pendingSeq);
+      var pcard = opts.variant === 'card' ? ' dwr-card' : '';
+      var ptitle = opts.title || 'Top Writers';
+      Promise.resolve(window.DroboardPeople.fetchLiveWriters()).then(function () {
+        var node = document.querySelector('[data-dwr-pending="' + pkey + '"]');
+        if (!node || !node.parentNode) return;
+        var list = window.DroboardPeople.writersFor(opts.key || 'all', opts.limit || 10);
+        if (!list.length) { node.parentNode.removeChild(node); return; }
+        node.outerHTML = render({ people: list, variant: opts.variant, title: opts.title });
+      }).catch(function () {
+        var node = document.querySelector('[data-dwr-pending="' + pkey + '"]');
+        if (node && node.parentNode) node.parentNode.removeChild(node);
+      });
+      return '<div class="dwr-row' + pcard + '" data-dwr-pending="' + pkey + '">' +
+        '<div class="dwr-head">' + _esc(ptitle) + '</div>' +
+        '<div class="dwr-scroll" style="color:#8e8e93;font-size:12px;padding:8px 0">Loading writers…</div></div>';
+    }
 
     var handles = people.map(function (p) { return p.handle || p.id; });
     var title = opts.title || 'Top Writers';

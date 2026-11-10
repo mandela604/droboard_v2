@@ -1,8 +1,6 @@
 /**
  * services/book-management-service.js — Book Management page logic.
- * Pure call-and-render: book-management.html only loads this + init().
- * Backend-ready: set USE_API=true; endpoints in senior.routes.js:
- *   GET    /api/senior-editor/books            list
+ * Pure call-and-render: book-management.html only loads this + init(). *   GET    /api/senior-editor/books            list
  *   GET    /api/senior-editor/books/:id        read one
  *   PUT    /api/senior-editor/books/:id        update meta
  *   DELETE /api/senior-editor/books/:id        delete

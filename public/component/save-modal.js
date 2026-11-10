@@ -11,15 +11,16 @@
  *   closeSaveModal()       — closes it
  *   isSaved()              — returns true if anything is saved for current story
  *
- * Production API hooks (optional — set before the script tag):
+ * Production API hooks (set before the script tag):
  *   window.DroboardSaveAPI = {
  *     getSaveState:       async (storyId) => { ok, state:{library,save}, collections:[{id,name,icon,count,saved}] }
  *     toggleQuickSave:    async (storyId, key, value) => { ok }   // key: 'library' | 'save'
  *     toggleCollection:   async (storyId, collId, value) => { ok, count }
  *   }
- *   If DroboardSaveAPI is not defined, falls back to in-memory demo state.
- *   Demo collections come from CollectionData (live inventory) with a
- *   bundled fallback list. "Create new collection" always routes to
+ *   DroboardSaveAPI is required — services/saves-bridge.js provides it on
+ *   every page that loads this sheet. Without it the sheet reports the
+ *   failure instead of pretending the write succeeded.
+ *   "Create new collection" always routes to
  *   profile.html?tab=collections&create=1 — all creation lives there.
  *
  * onSaveChange callback (optional):
@@ -311,30 +312,6 @@
     { key: 'save',    optId: 'dsvOptSave',    chkId: 'dsvChkSave'    },
   ];
 
-  // Demo collections (shown until backend integration lands).
-  const DEMO_COLLECTIONS = [
-    { id: 'c1', name: 'Romance Reads',       icon: '💕', count: 14 },
-    { id: 'c2', name: 'Weekend Binge',        icon: '📺', count: 8  },
-    { id: 'c3', name: 'Tear-jerkers',         icon: '😭', count: 22 },
-    { id: 'c4', name: 'Nigerian Narratives',  icon: '🇳🇬', count: 31 },
-  ];
-
-  // ════════════════════════════════════════════════════════════════════════
-  // Demo in-memory state
-  // Keyed by storyId so state is independent per story
-  // ════════════════════════════════════════════════════════════════════════
-  const _demoState = {};
-
-  function _getDemoState(storyId) {
-    if (!_demoState[storyId]) {
-      _demoState[storyId] = {
-        quickSave: { library: false, save: false },
-        collections: DEMO_COLLECTIONS.map(c => ({ ...c, saved: false })),
-      };
-    }
-    return _demoState[storyId];
-  }
-
   // ════════════════════════════════════════════════════════════════════════
   // Module state
   // ════════════════════════════════════════════════════════════════════════
@@ -343,6 +320,11 @@
   let _collections     = [];
   let _loading         = false;
   let _posting         = false;
+
+  function _api() {
+    return (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.getSaveState === 'function')
+      ? window.DroboardSaveAPI : null;
+  }
 
   function _itemType() {
     const t = String((_data && _data.type) || 'story').toLowerCase();
@@ -450,56 +432,24 @@
     document.getElementById('dsvBg').classList.add('open');
     document.body.style.overflow = 'hidden';
 
-    // Load state: live API first, demo on any failure (no backend yet —
-    // a failed fetch must never surface as an error here).
+    // Load state from the live save API. A failed read is a real error — the
+    // sheet must not invent a state the server never confirmed.
     try {
-      let result = null;
-      if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.getSaveState === 'function') {
-        try {
-          result = await window.DroboardSaveAPI.getSaveState(_data.storyId);
-        } catch (e) { result = null; }
-      }
-      if (result && result.ok) {
-        // ── Production ─────────────────────────────────────────────────
-        _quickSave   = { library: !!result.state?.library, save: !!result.state?.save };
-        _collections = result.collections || [];
-      } else {
-        // ── Demo ───────────────────────────────────────────────────────
-        await new Promise(r => setTimeout(r, 400)); // simulate network
-        const demo = _getDemoState(_data.storyId || 'default');
-        _quickSave   = { ...demo.quickSave };
-        _collections = await _demoCollections();
-        // keep per-item saved flags across opens (demo)
-        const flagged = {};
-        demo.collections.forEach(c => { if (c.saved) flagged[c.id] = true; });
-        _collections.forEach(c => { if (flagged[c.id]) c.saved = true; });
-      }
+      const api = _api();
+      if (!api) throw new Error('Save service unavailable');
+      const result = await api.getSaveState(_data.storyId);
+      if (!result || !result.ok) throw new Error('Could not load save state');
+      _quickSave   = { library: !!result.state?.library, save: !!result.state?.save };
+      _collections = result.collections || [];
     } catch (err) {
+      _quickSave = { library: false, save: false };
+      _collections = [];
       _toast('❌ ' + (err.message || 'Could not load save state'));
     }
 
     _loading = false;
     _renderQuickSave();
     _renderCollections();
-  }
-
-  // Demo collections: live inventory first, bundled demo list as fallback.
-  async function _demoCollections() {
-    try {
-      if (window.CollectionData && typeof window.CollectionData.getCollections === 'function') {
-        const live = await window.CollectionData.getCollections();
-        if (Array.isArray(live) && live.length) {
-          return live.map((c, i) => ({
-            id: c.id || ('coll_' + i),
-            name: c.name || c.title || 'Collection',
-            icon: c.icon || c.emoji || '📁',
-            count: c.count || c.stories || 0,
-            saved: false,
-          }));
-        }
-      }
-    } catch (e) {}
-    return DEMO_COLLECTIONS.map(c => ({ ...c, saved: false }));
   }
 
   function closeSaveModal() {
@@ -510,22 +460,6 @@
   // ════════════════════════════════════════════════════════════════════════
   // Toggle quick save option
   // ════════════════════════════════════════════════════════════════════════
-  // Demo: mirror the toggle into DemoData so the Library page reflects
-  // it immediately in-session (Library row → Library section, Save row
-  // → Saved section).
-  function _syncLibraryStore(key, on) {
-    try {
-      const d = window.DemoData;
-      if (!d || !_data.storyId) return;
-      const item = { id: _data.storyId, title: _data.title, sub: _data.sub, img: _data.img };
-      const listName = key === 'save' ? 'SAVED' : 'LIBRARY';
-      d[listName] = d[listName] || [];
-      const i = d[listName].findIndex(s => s.id === item.id);
-      if (on && i === -1) d[listName].unshift(item);
-      if (!on && i !== -1) d[listName].splice(i, 1);
-    } catch (e) {}
-  }
-
   async function _toggleQuickSave(key) {
     if (_posting) return;
     _posting = true;
@@ -538,22 +472,13 @@
     _notifyChange();
 
     try {
-      let ok = false;
-      if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.toggleQuickSave === 'function') {
-        try {
-          const result = await window.DroboardSaveAPI.toggleQuickSave(_data.storyId, key, newVal);
-          ok = !!(result && result.ok);
-        } catch (e) { ok = false; }
-      }
-      if (!ok) {
-        // Demo: persist in memory
-        await new Promise(r => setTimeout(r, 200));
-        const demo = _getDemoState(_data.storyId || 'default');
-        demo.quickSave[key] = newVal;
-      }
+      const api = _api();
+      if (!api) throw new Error('Save service unavailable');
+      const result = await api.toggleQuickSave(_data.storyId, key, newVal);
+      if (!result || !result.ok) throw new Error('Could not save');
+      if (result.state) _quickSave = { library: !!result.state.library, save: !!result.state.save };
 
       const labels = { library: 'Library', save: 'Saved' };
-      _syncLibraryStore(key, newVal);
       _toast(newVal ? (key === 'library' ? `📌 Saved to Library!` : `📌 Saved! Find it in Library → Saved.`) : `Removed from ${labels[key]}`);
     } catch (err) {
       // Rollback
@@ -585,54 +510,12 @@
     _notifyChange();
 
     try {
-      let ok = false;
-      let refusal = null;
-      let expired = false;
-      if (window.DroboardSaveAPI && typeof window.DroboardSaveAPI.toggleCollection === 'function') {
-        try {
-          const result = await window.DroboardSaveAPI.toggleCollection(_data.storyId, collId, newVal);
-          if (result && result.ok) {
-            ok = true;
-            if (result.count !== undefined) coll.count = result.count;
-            _renderCollections();
-          }
-        } catch (e) {
-          // A 403 from the server is an ANSWER, not a dead backend: the reader
-          // has not read enough of this story. Falling through to the demo
-          // path here would toast "Added" on a write that will never persist.
-          if (e && (e.required != null || e.chaptersRead != null ||
-              /insufficient_reading/.test(String(e && e.message || '')))) refusal = e;
-          // 401 = the session expired mid-scroll. Same problem: the demo path
-          // would claim a save that the server rejected.
-          if (e && e.status === 401) expired = true;
-          ok = false;
-        }
-      }
-      if (expired) {
-        coll.saved  = !newVal;
-        coll.count -= newVal ? 1 : -1;
-        _renderCollections();
-        _notifyChange();
-        _toast('🔒 Your session expired — sign in again to save to collections');
-        _posting = false;
-        return;
-      }
-      if (refusal) {
-        coll.saved  = !newVal;
-        coll.count -= newVal ? 1 : -1;
-        _renderCollections();
-        _notifyChange();
-        const left = Math.max(1, (Number(refusal.required) || 0) - (Number(refusal.chaptersRead) || 0));
-        _toast(`📖 Read ${left} more chapter${left === 1 ? '' : 's'} of this story before adding it to a collection`);
-        _posting = false;
-        return;
-      }
-      if (!ok) {
-        await new Promise(r => setTimeout(r, 200));
-        const demo = _getDemoState(_data.storyId || 'default');
-        const dc = demo.collections.find(c => c.id === collId);
-        if (dc) { dc.saved = newVal; dc.count = coll.count; }
-      }
+      const api = _api();
+      if (!api) throw new Error('Save service unavailable');
+      const result = await api.toggleCollection(_data.storyId, collId, newVal);
+      if (!result || !result.ok) throw new Error('Could not update collection');
+      if (result.count !== undefined) coll.count = result.count;
+      _renderCollections();
 
       _toast(newVal ? `📌 Added to "${coll.name}"!` : `Removed from "${coll.name}"`);
     } catch (err) {
@@ -641,7 +524,16 @@
       coll.count -= newVal ? 1 : -1;
       _renderCollections();
       _notifyChange();
-      _toast('❌ ' + (err.message || 'Something went wrong'));
+      // A refused collection write says HOW MUCH more reading is required;
+      // the sheet shows that number instead of a generic failure.
+      if (err && (err.required != null || err.chaptersRead != null)) {
+        const left = Math.max(1, (Number(err.required) || 0) - (Number(err.chaptersRead) || 0));
+        _toast(`📖 Read ${left} more chapter${left === 1 ? '' : 's'} of this story before adding it to a collection`);
+      } else if (err && err.status === 401) {
+        _toast('🔒 Your session expired — sign in again to save to collections');
+      } else {
+        _toast('❌ ' + (err.message || 'Something went wrong'));
+      }
     }
 
     _posting = false;

@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    HOME PAGE SERVICE — call-and-render only for Pages/index.html
    Pages/index.html owns markup only. This file owns fetch + render.
-   Demo data lives in data/central-demo-data.js (via HomeData).
+   Data comes from the API via HomeData (GET /api/feed/home).
    Ads render via component/ad-card.js + services/ad-service.js.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
@@ -116,10 +116,9 @@
     if (typeof window.openPostComposer !== 'function') { toast('✏️ Add to your story'); return; }
     openPostComposer({
       type: 'status',
-      onStatusSlide: function (slide) {
-        if (window.DroboardStatus && typeof window.DroboardStatus.post === 'function') {
-          try { window.DroboardStatus.post(slide); } catch (e) {}
-        }
+      onStatusSlide: async function (slide) {
+        if (!window.DroboardStatus) throw new Error('Status service missing');
+        await window.DroboardStatus.post(slide);
         window.__homeStatuses = mergeMyStatuses(window.__homeStatuses || []);
         renderStatusRow(window.__homeStatuses);
         toast('🟢 Status posted to your story!');
@@ -221,7 +220,11 @@
   async function init() {
     if (window.DroboardNav) DroboardNav.configure({ active: 'home', localTheme: 'dark' });
     var data = await HomeData.getHomeData();
-    window.__homeStatuses = mergeMyStatuses(data.statuses || []);
+    var mineReady = false;
+    try {
+      if (window.DroboardStatus) { await window.DroboardStatus.refreshMine(); mineReady = true; }
+    } catch (e) { toast('Could not load your story ring — refresh to retry.'); }
+    window.__homeStatuses = mineReady ? mergeMyStatuses(data.statuses || []) : (data.statuses || []);
     window.__homeHero = data.heroStories || [];
     renderStatusRow(window.__homeStatuses);
     renderHero(window.__homeHero);

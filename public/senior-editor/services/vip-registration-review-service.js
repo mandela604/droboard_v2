@@ -1,12 +1,9 @@
 /**
- * vip-registration-review-service.js — VIP Registration Review page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * vip-registration-review-service.js — VIP Registration Review page logic (pure call-and-render). */
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
@@ -67,10 +64,7 @@ function attachShell(){
 }
 
 function init(){
-  attachShell();
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/vip-registrations').then(function (data) { if (data && data.items) { render(); } });
-  callBackend('/vip-registrations');
+  attachShell();  callBackend('/vip-registrations');
   bindEvents();
   render();
 }

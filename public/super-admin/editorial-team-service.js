@@ -17,7 +17,7 @@
  *   → { items:[{ id,name,email,avatar,roles[],status,joinedAt, metrics:{...} }], total, page, limit }
  */
 (function(){
-const USE_API = false, API_BASE = '/api/super-admin';
+const USE_API = true, API_BASE = '/api/super-admin';
 'use strict';
 const shell = SuperAdminSidebar.attach('#editorialRoot', {
   activeItem: 'editorial-team',
@@ -114,72 +114,27 @@ const ROLE_META = {
   },
 };
 
-/* ── Roster (demo). Mirrors public/chief-editor/shared/chief-editor-data.js
-   DEMO.seniorEditors verbatim for the 14 SEs; chief/marketing/finance rows
-   reconcile with their own module demos. ── */
-const TEAM = [
-  { id:'SE-01', name:'Chioma Reddy', avatar:'https://i.pravatar.cc/100?img=5', email:'chioma.reddy@droboard.io',
-    joined:'Mar 12, 2024', account:'active', roles:['senior_editor','marketing'],
-    se:{ authors:24, target:50, invited:41, quota:'on-track', openReports:0, payUsd:3200, payType:'fixed', share:'', ytdUsd:28800, deadline:'Jul 31, 2026' },
-    mkt:{ campaigns:3, live:2, impressions:572000, spendUsd:0, openItems:1 } },
-  { id:'SE-02', name:'Daniel Carter', avatar:'https://i.pravatar.cc/100?img=13', email:'daniel.carter@droboard.io',
-    joined:'Jan 08, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:19, target:50, invited:22, quota:'behind', openReports:1, payUsd:3200, payType:'fixed', share:'', ytdUsd:25600, deadline:'Jul 31, 2026' } },
-  { id:'SE-03', name:'Sophia Bennett', avatar:'https://i.pravatar.cc/100?img=48', email:'sophia.bennett@droboard.io',
-    joined:'Jun 02, 2023', account:'active', roles:['senior_editor'],
-    se:{ authors:31, target:50, invited:53, quota:'ahead', openReports:0, payUsd:3400, payType:'revenue-share', share:'12%', ytdUsd:40800, deadline:'Jul 31, 2026' } },
-  { id:'SE-04', name:'Marcus Ihejirika', avatar:'https://i.pravatar.cc/100?img=59', email:'marcus.ihejirika@droboard.io',
-    joined:'Sep 21, 2023', account:'active', roles:['senior_editor'],
-    se:{ authors:22, target:50, invited:37, quota:'on-track', openReports:0, payUsd:3200, payType:'fixed', share:'', ytdUsd:32000, deadline:'Jul 31, 2026' } },
-  { id:'SE-05', name:'Priya Nair', avatar:'https://i.pravatar.cc/100?img=45', email:'priya.nair@droboard.io',
-    joined:'Nov 14, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:14, target:50, invited:18, quota:'behind', openReports:1, payUsd:3000, payType:'revenue-share', share:'10%', ytdUsd:15000, deadline:'Jul 31, 2026' } },
-  { id:'SE-06', name:'Elias Thornton', avatar:'https://i.pravatar.cc/100?img=15', email:'elias.thornton@droboard.io',
-    joined:'Feb 27, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:27, target:50, invited:48, quota:'on-track', openReports:0, payUsd:3300, payType:'fixed', share:'', ytdUsd:29700, deadline:'Jul 31, 2026' } },
-  { id:'SE-07', name:'Amara Okafor', avatar:'https://i.pravatar.cc/100?img=32', email:'amara.okafor@droboard.io',
-    joined:'Apr 03, 2023', account:'active', roles:['senior_editor'],
-    se:{ authors:35, target:50, invited:56, quota:'ahead', openReports:0, payUsd:3500, payType:'revenue-share', share:'15%', ytdUsd:45500, deadline:'Jul 31, 2026' } },
-  { id:'SE-08', name:'Jonas Whitfield', avatar:'https://i.pravatar.cc/100?img=52', email:'jonas.whitfield@droboard.io',
-    joined:'Aug 19, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:11, target:50, invited:15, quota:'behind', openReports:0, payUsd:2900, payType:'fixed', share:'', ytdUsd:11600, deadline:'Jul 31, 2026' } },
-  { id:'SE-09', name:'Nadia Petrova', avatar:'https://i.pravatar.cc/100?img=28', email:'nadia.petrova@droboard.io',
-    joined:'Dec 05, 2023', account:'active', roles:['senior_editor'],
-    se:{ authors:20, target:50, invited:34, quota:'on-track', openReports:0, payUsd:3100, payType:'revenue-share', share:'11%', ytdUsd:27900, deadline:'Jul 31, 2026' } },
-  { id:'SE-10', name:'Tobias Adeyemi', avatar:'https://i.pravatar.cc/100?img=51', email:'tobias.adeyemi@droboard.io',
-    joined:'Jul 30, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:9, target:50, invited:12, quota:'behind', openReports:2, payUsd:2900, payType:'fixed', share:'', ytdUsd:8700, deadline:'Jul 31, 2026' } },
-  { id:'SE-11', name:'Freya Lindqvist', avatar:'https://i.pravatar.cc/100?img=25', email:'freya.lindqvist@droboard.io',
-    joined:'May 16, 2023', account:'active', roles:['senior_editor'],
-    se:{ authors:33, target:50, invited:50, quota:'ahead', openReports:0, payUsd:3400, payType:'revenue-share', share:'14%', ytdUsd:44200, deadline:'Jul 31, 2026' } },
-  { id:'SE-12', name:'Kwame Asante', avatar:'https://i.pravatar.cc/100?img=60', email:'kwame.asante@droboard.io',
-    joined:'Oct 09, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:16, target:50, invited:26, quota:'on-track', openReports:0, payUsd:3000, payType:'fixed', share:'', ytdUsd:18000, deadline:'Jul 31, 2026' } },
-  { id:'SE-13', name:'Isla Fitzgerald', avatar:'https://i.pravatar.cc/100?img=47', email:'isla.fitzgerald@droboard.io',
-    joined:'Mar 22, 2024', account:'active', roles:['senior_editor'],
-    se:{ authors:23, target:50, invited:39, quota:'on-track', openReports:0, payUsd:3200, payType:'revenue-share', share:'13%', ytdUsd:28800, deadline:'Jul 31, 2026' } },
-  { id:'SE-14', name:'Rahul Mehta', avatar:'https://i.pravatar.cc/100?img=33', email:'rahul.mehta@droboard.io',
-    joined:'Jan 30, 2025', account:'active', roles:['senior_editor'],
-    se:{ authors:6, target:50, invited:9, quota:'behind', openReports:0, payUsd:2800, payType:'fixed', share:'', ytdUsd:5600, deadline:'Jul 31, 2026' } },
+/* ── Roster — loaded live from API ── */
+const API_BASE_TEAM = '/api/super-admin/editorial-team';
 
-  { id:'CE-01', name:'Adaeze Bello', avatar:'https://i.pravatar.cc/100?img=21', email:'adaeze.bello@droboard.io',
-    joined:'Feb 08, 2023', account:'active', roles:['chief_editor'],
-    ce:{ editors:8, contractsToSign:3, escalated:4, policies:2, partnerships:2, submissions:487 } },
-  { id:'CE-02', name:'Tobenna Achebe', avatar:'https://i.pravatar.cc/100?img=68', email:'tobenna.achebe@droboard.io',
-    joined:'Nov 21, 2022', account:'active', roles:['chief_editor'],
-    ce:{ editors:6, contractsToSign:1, escalated:3, policies:1, partnerships:1, submissions:360 } },
+async function callTeamApi(path, opts){
+  const res = await fetch(API_BASE_TEAM + (path||''), { credentials:'include', ...opts });
+  if(!res.ok) throw new Error('API error ' + res.status);
+  return res.json();
+}
 
-  { id:'MK-01', name:'Tari Benson', avatar:'https://i.pravatar.cc/100?img=47', email:'tari.benson@droboard.io',
-    joined:'Apr 14, 2024', account:'active', roles:['marketing'],
-    mkt:{ campaigns:7, live:4, impressions:2356000, spendUsd:9270, openItems:2 } },
+let TEAM = [];
 
-  { id:'FN-01', name:'Ngozi Falade', avatar:'https://i.pravatar.cc/100?img=20', email:'ngozi.falade@droboard.io',
-    joined:'Jan 09, 2023', account:'active', roles:['finance'],
-    fin:{ queue:6, volumeUsd:142400, disputes:3, coins:9 } },
-  { id:'FN-02', name:'Rita Chen', avatar:'https://i.pravatar.cc/100?img=44', email:'rita.chen@droboard.io',
-    joined:'Jun 22, 2024', account:'active', roles:['finance'],
-    fin:{ queue:3, volumeUsd:40000, disputes:1, coins:5 } },
-];
+async function loadTeam(){
+  try {
+    const data = await callTeamApi('');
+    TEAM = Array.isArray(data) ? data : (data.items || []);
+    renderStatCards();
+    applyFilters();
+  } catch(e){
+    document.getElementById('teamTable').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> Failed to load editorial team: ${e.message}</td></tr>`;
+  }
+}
 
 const TABS = [
   { key:'all',          label:'All staff',    icon:'fa-users' },
@@ -700,7 +655,7 @@ document.getElementById('pwConfirmBtn').addEventListener('click', function(){
 });
 
 document.getElementById('sortFilter').value = 'metric';
-renderAll();
+loadTeam();
 
 /* No window exports: every handler is addEventListener; the only inline onclick
  * in the shell is native event.stopPropagation(). */

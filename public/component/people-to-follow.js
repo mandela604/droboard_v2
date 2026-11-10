@@ -4,9 +4,11 @@
   /* ─── CONFIG ─────────────────────────────────────────────── */
 
   /**
-   * Default people data.
-   * Replace this array — or pass your own via options.people — to feed
-   * real data from your API. Each object supports:
+   * People are always supplied by the host via options.people — from the
+   * live backend (e.g. the ranked writer directory in people-service.js).
+   * There is no built-in default lineup: with no people the row renders
+   * empty instead of showing fake writers.
+   * Each object supports:
    *   id         {string}  unique id — REQUIRED if you want status-ring / viewer support
    *   name       {string}  display name / handle (without @)
    *   av         {string}  avatar image URL (alias: `avatar` also accepted)
@@ -26,16 +28,6 @@
    *                        If present and non-empty, tapping the avatar opens
    *                        openStatusViewer() instead of navigating to a profile.
    */
-  const DEFAULT_PEOPLE = [
-    { name:'Ada_Writes',   av:'https://i.pravatar.cc/100?img=32', verified:true,  rank:'#1 This Week', following:false, profileUrl:'profile.html' },
-    { name:'Ifeanyi_Story',av:'https://i.pravatar.cc/100?img=53', verified:true,  rank:'#2 This Week', following:false, profileUrl:'profile.html' },
-    { name:'Chiamaka_N',   av:'https://i.pravatar.cc/100?img=43', verified:false, rank:'Rising',        following:false, profileUrl:'profile.html' },
-    { name:'Efe_O',        av:'https://i.pravatar.cc/100?img=22', verified:true,  rank:'Top Elegy',     following:false, profileUrl:'profile.html' },
-    { name:'Zara_M',       av:'https://i.pravatar.cc/100?img=16', verified:false, rank:'🔥 Hot',         following:false, profileUrl:'profile.html' },
-    { name:'CampusQueen',  av:'https://i.pravatar.cc/100?img=12', verified:false, rank:'Campus',         following:false, profileUrl:'profile.html' },
-    { name:'Dami_Cole',    av:'https://i.pravatar.cc/100?img=64', verified:false, rank:'New',            following:false, profileUrl:'profile.html' },
-    { name:'Kemi_A',       av:'https://i.pravatar.cc/100?img=28', verified:false, rank:'💔 Heartbreak',  following:false, profileUrl:'profile.html' },
-  ];
 
   /* ─── STYLES ──────────────────────────────────────────────── */
   const CSS = `
@@ -282,7 +274,7 @@
       return null;
     }
 
-    let people = (options.people || DEFAULT_PEOPLE).map(p => Object.assign({}, p));
+    let people = (options.people || []).map(p => Object.assign({}, p));
 
     // Decorate with the shared writer identity + per-status seen state so a
     // person viewed anywhere on the platform shows the same ring here.
@@ -343,7 +335,7 @@
   }
 
   /* ─── PUBLIC API ──────────────────────────────────────────── */
-  window.DroboardPeopleToFollow = { render, DEFAULT_PEOPLE };
+  window.DroboardPeopleToFollow = { render };
 
   /*
   ─── USAGE ────────────────────────────────────────────────────

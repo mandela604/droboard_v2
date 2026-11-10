@@ -15,14 +15,7 @@
 'use strict';
 
 function seDirectory(){
-  var map = {};
-  try {
-    var D = window.ChiefEditorData && window.ChiefEditorData.DEMO;
-    if (D && Array.isArray(D.seniorEditors)) {
-      D.seniorEditors.forEach(function(s){ map[s.id] = s.avatar; });
-    }
-  } catch (e){}
-  return map;
+  return {};
 }
 
 function statCard(n, l, ico, bg, color){

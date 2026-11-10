@@ -1,7 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    PROFILE SERVICE
    Profile page orchestration. HTML calls ProfilePage.init().
-   When going live: set USE_API = false → true, update API_BASE.
+   Live only: every render reads the profile from GET /api/users/:handle
+   (posts arrive card-ready via posts.service shape) and every write
+   goes through ProfileData's real endpoints. Failures surface as the
+   page's error state — nothing falls back to seed data.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -60,18 +63,38 @@
     return REAL_IS_WRITER;
   }
 
-  const GENRES_ALL = window.ProfileData ? ProfileData.GENRES_ALL : [];
-  const BOOK_STATUSES = ['ongoing', 'completed', 'paused'];
   const STATUS_LABEL = { ongoing: 'Ongoing', completed: 'Completed', paused: 'Paused' };
 
-  /* Two handles refer to the same account. Handles are case-insensitive and
-     may arrive with a leading '@'; the backend stores usernames lowercased
-     while demo seeds keep display casing ("You_Reader" vs "you_reader"), so a
-     strict === here would mark your own profile as someone else's. */
-  function sameHandle(a, b) {
-    const norm = (h) => String(h || '').trim().replace(/^@/, '').toLowerCase();
-    const na = norm(a);
-    return !!na && na === norm(b);
+  /* ── Live transport (same contract as feed-service) ─────────────── */
+  const API_BASE = '/api';
+  async function api(method, path, body) {
+    const res = await fetch(API_BASE + path, {
+      method: method,
+      credentials: 'include',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let json = null;
+    try { json = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) {
+      const err = new Error((json && (json.error || json.message)) || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
+      throw err;
+    }
+    return json;
+  }
+
+  /* Genre catalogue for label pills — GET /api/genres (the Chief's
+     catalogue). A failed load is a failed enrichment, not a failed page:
+     the pills simply render without labels rather than inventing any. */
+  let GENRES_ALL = [];
+  async function loadGenres() {
+    try {
+      const r = await fetch(API_BASE + '/genres?limit=100', { credentials: 'include' });
+      if (!r.ok) throw new Error('Genres API failed: ' + r.status);
+      const j = await r.json();
+      GENRES_ALL = ((j && (j.items || j.data)) || []).map(g => ({ id: g.id || g.slug, label: g.name, icon: g.icon || '', members: g.members || '' }));
+    } catch (e) { GENRES_ALL = []; }
   }
 
   function fmtN(n) { if (typeof n === 'string') return n; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
@@ -87,8 +110,10 @@
   }
 
   function bookStatus(b, i) {
-    if (b.status && STATUS_LABEL[b.status]) return b.status;
-    return BOOK_STATUSES[i % BOOK_STATUSES.length];
+    /* The backend owns book status; anything it doesn't vouch for reads as
+       ongoing (the server's own default) — never a rotated guess. */
+    if (b && b.status && STATUS_LABEL[b.status]) return b.status;
+    return 'ongoing';
   }
 
   /* ── Theme ── */
@@ -146,71 +171,39 @@
     ];
   }
 
-  /* ── Coin balance (gold) ── */
+  /* ── Coin balance (gold) — live wallet via StoreService ── */
   async function loadCoinBalance(){
     let coins=0;
     try{
-      if(window.StoreService && StoreService.getBalance) coins = StoreService.getBalance().coins;
-      else if(window.DemoData && DemoData.USER_COIN_BALANCE) coins = DemoData.USER_COIN_BALANCE;
-      else if(window.FinanceData && FinanceData.getDashboard) { const d=await FinanceData.getDashboard(); coins = parseInt(String(d.coinBalance||'0').replace(/[^0-9]/g,''))||0; }
+      if(window.StoreService){
+        if (StoreService.syncBalance) await StoreService.syncBalance();
+        if (StoreService.getBalance) coins = StoreService.getBalance().coins;
+      }
     }catch(e){}
     const el=document.getElementById('coinBalance');
     if(el) el.textContent = coins>=1000 ? (coins/1000).toFixed(1)+'K' : String(coins||0);
   }
 
-  /* ── My Circle helpers (same as feed) ── */
+  /* ── My Circle helpers (same as feed) ──
+     Boards are the live genre catalogue (GET /api/genres, loaded by
+     loadGenres); "joined" is the reader's own genre row on the User —
+     both straight from the API, no seeded lineup. */
   function getMyBoardsForProfile(){
-    const FALLBACK_ALL=[
-      {id:'fantasy',name:'Fantasy',icon:'fa-hat-wizard',members:'45.7K'},
-      {id:'romance',name:'Romance',icon:'fa-heart',members:'92.1K'},
-      {id:'werewolf',name:'Werewolf',icon:'fa-moon',members:'31.2K'},
-      {id:'mafia',name:'Mafia',icon:'fa-gun',members:'18.4K'},
-      {id:'campus',name:'Campus',icon:'fa-graduation-cap',members:'22.1K'},
-      {id:'revenge',name:'Revenge',icon:'fa-fire',members:'15.3K'},
-      {id:'drama',name:'Drama',icon:'fa-masks-theater',members:'28.9K'},
-      {id:'billionaire',name:'Billionaire',icon:'fa-briefcase',members:'34.5K'},
-    ];
-    try{
-      const seed=window.GenreDemoSeed;
-      if(seed && seed.DEMO_GENRES){
-        const all=Object.values(seed.DEMO_GENRES);
-        const map={}; FALLBACK_ALL.forEach(g=> map[g.id]=g); all.forEach(g=> map[g.id]=Object.assign({}, map[g.id]||{}, g));
-        const allArr=Object.values(map);
-        const joinedIds=['fantasy','romance','werewolf'];
-        return { joined: allArr.filter(g=> joinedIds.includes(g.id)).slice(0,3), rest: allArr.filter(g=> !joinedIds.includes(g.id)), all: allArr };
-      }
-    }catch(e){}
-    return { joined:FALLBACK_ALL.slice(0,3), rest:FALLBACK_ALL.slice(3), all:FALLBACK_ALL };
+    const all = GENRES_ALL.map(g => ({
+      id: g.id, name: g.label,
+      icon: g.icon || 'fa-layer-group',
+      members: g.members || '',
+    }));
+    const joinedIds = new Set((PROFILE && PROFILE.genres) || []);
+    return {
+      joined: all.filter(g => joinedIds.has(g.id)).slice(0, 3),
+      rest: all.filter(g => !joinedIds.has(g.id)),
+      all: all,
+    };
   }
   function getMyCollectionsForProfile(){
-    const FALLBACK=[
-      {id:'coll_1', name:'Midnight Reads', count:12},
-      {id:'coll_2', name:'Tear-jerkers', count:8},
-      {id:'coll_3', name:'Weekend Binge', count:15},
-      {id:'coll_4', name:'Dark Romance Essentials', count:32},
-    ];
-    try{
-      if (typeof PROFILE !== 'undefined' && PROFILE && Array.isArray(PROFILE.collections) && PROFILE.collections.length) {
-        const mine = PROFILE.collections.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||'Collection', count:c.count||0}));
-        return { joined: mine.slice(0,2), rest: mine.slice(2), all: mine };
-      }
-    }catch(e){}
-    try{
-      const cached = JSON.parse(localStorage.getItem('dro_live_collections') || '[]');
-      if (Array.isArray(cached) && cached.length) {
-        const all = cached.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||c.title||'Collection', count:c.count||c.stories||0}));
-        return { joined: all.slice(0,2), rest: all.slice(2), all };
-      }
-    }catch(e){}
-    try{
-      const d=window.DemoData;
-      if(d && (d.COLLECTIONS||d.COLLECTIONS_DATA)){
-        const allRaw=d.COLLECTIONS||d.COLLECTIONS_DATA;
-        const all=allRaw.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||c.title||'Collection', count:c.count||0}));
-        return { joined: all.slice(0,2), rest: all.slice(2), all };
-      }
-    }catch(e){}
-    return { joined:FALLBACK.slice(0,2), rest:FALLBACK.slice(2), all:FALLBACK };
+    const mine = ((PROFILE && PROFILE.collections) || []).map((c,i)=> ({id:c.id||('coll_'+i), name:c.name||'Collection', count:c.count||0}));
+    return { joined: mine.slice(0,2), rest: mine.slice(2), all: mine };
   }
 
   /* ── Render header / actions / stats ── */
@@ -244,8 +237,9 @@
     if (pill) pill.addEventListener('click', openGenreEdit);
   }
 
-  function handleStatusSlide(slide) {
-    try { if (window.DroboardStatus) window.DroboardStatus.post(slide); } catch (e) {}
+  async function handleStatusSlide(slide) {
+    if (!window.DroboardStatus) throw new Error('Status service missing');
+    await window.DroboardStatus.post(slide);
     try { refreshStoryRing(PROFILE); } catch (e) {}
     toast('🟢 Status posted to your story!');
   }
@@ -397,7 +391,8 @@
       });
       return;
     }
-    const startedFollowing = (PROFILE.following || []).some(f => f.name === ME_HANDLE && f.following);
+    /* The server carries the viewer's follow flag on the profile payload. */
+    const startedFollowing = !!PROFILE.isFollowing;
     el.innerHTML = `<button class="pact follow${startedFollowing ? ' ing' : ''}" id="followBtn">${startedFollowing ? '✓ Following' : '+ Follow'}</button>`;
     document.getElementById('followBtn').addEventListener('click', () => {
       /* In the visitor preview this is a look, not the real thing — don't
@@ -412,14 +407,17 @@
     const btn = document.getElementById('followBtn');
     const willFollow = !_following;
     btn.disabled = true;
-    const call = willFollow ? ProfileData.followUser : ProfileData.unfollowUser;
-    const result = await call(ME_HANDLE, VIEW_HANDLE);
+    try {
+      const call = willFollow ? ProfileData.followUser : ProfileData.unfollowUser;
+      await call(ME_HANDLE, VIEW_HANDLE);
+      _following = willFollow;
+      btn.textContent = _following ? '✓ Following' : '+ Follow';
+      btn.className = 'pact follow' + (_following ? ' ing' : '');
+      toast(_following ? `✅ Following @${PROFILE.handle}` : `Unfollowed @${PROFILE.handle}`);
+    } catch (e) {
+      toast('❌ ' + (e.message || 'Could not update follow — try again.'));
+    }
     btn.disabled = false;
-    if (!result) { toast('Something went wrong — try again.'); return; }
-    _following = willFollow;
-    btn.textContent = _following ? '✓ Following' : '+ Follow';
-    btn.className = 'pact follow' + (_following ? ' ing' : '');
-    toast(_following ? `✅ Following @${PROFILE.handle}` : `Unfollowed @${PROFILE.handle}`);
   }
 
   function renderStats(p) {
@@ -437,13 +435,11 @@
     });
   }
   function renderAchievements(p) {
-    var awarded = [];
-    if(window.AwardsEngine && typeof AwardsEngine.grantedFor === 'function'){
-      try{ awarded = AwardsEngine.grantedFor(p.handle || p.username) || []; }catch(e){}
-    }
-    var list = awarded.length ? awarded.map(function(a){
-      return { label:a.name, icon:a.icon, color:a.color || a.cls };
-    }) : (p.achievements || []);
+    /* Chips come from the awards console via the profile payload
+       (achievements[]) plus the reader's live league badges. */
+    var list = (p.achievements || []).map(function(a){
+      return { label:a.label || a.name, icon:a.icon, color:a.color || a.cls };
+    });
     try {
       var lb = (window.ReaderLeague && typeof ReaderLeague.myBadges === 'function') ? ReaderLeague.myBadges() : [];
       lb.forEach(function (b) { list.unshift({ label: b.label, icon: b.icon, color: b.color }); });
@@ -462,34 +458,17 @@
     if (!el) return;
     if (!canSeeOwnerUI() || p.isWriter) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
-    let flow = null;
-    try { flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null'); } catch (e) {}
-
-    let icon, title, sub, btn = '';
-    if (flow && flow.status === 'pending') {
-      icon = 'fa-hourglass-half';
-      title = 'Book in review';
-      sub = (flow.title ? '"' + flow.title + '" is ' : 'Your submission is ') +
-            'with our editors. Your reader tools stay on until it\u2019s approved.';
-    } else if (flow && flow.status === 'rejected') {
-      icon = 'fa-rotate-left';
-      title = 'Book needs changes';
-      sub = (flow.feedback || 'The editor left feedback.') + ' Edit and resubmit to earn writer status.';
-      btn = '<button class="upgrade-strip-btn" onclick="location.href=\'create.html\'">Edit &amp; resubmit</button>';
-    } else {
-      icon = 'fa-feather-pointed';
-      title = 'Ready to publish?';
-      sub = 'Create your first book \u2014 once an editor approves it, you become a writer.';
-      btn = '<button class="upgrade-strip-btn" onclick="location.href=\'create.html\'">Create a book</button>';
-    }
-
+    /* Writer promotion is decided server-side (SE approval → grantWriterRole);
+       per-submission review state lives in the Author Center, not on this
+       page. Here: one honest call to action for readers, nothing staged. */
     el.style.display = 'flex';
     el.innerHTML =
-      '<i class="fas ' + icon + '"></i>' +
+      '<i class="fas fa-feather-pointed"></i>' +
       '<div class="upgrade-strip-text">' +
-      '  <div class="upgrade-strip-title">' + esc(title) + '</div>' +
-      '  <div class="upgrade-strip-sub">' + esc(sub) + '</div>' +
-      '</div>' + btn;
+      '  <div class="upgrade-strip-title">Ready to publish?</div>' +
+      '  <div class="upgrade-strip-sub">Create your first book \u2014 once an editor approves it, you become a writer.</div>' +
+      '</div>' +
+      '<button class="upgrade-strip-btn" onclick="location.href=\'create.html\'">Create a book</button>';
   }
 
   /* ── Tabs ── */
@@ -582,14 +561,7 @@
     if (!el) return;
     // Use FollowList if available, else fallback to inline (so tab never breaks)
     if (window.FollowList) {
-      let list = (p.following || []).map(f => ({ handle: f.name, name: f.name, avatar: f.av, av: f.av, meta: f.meta, following: !!f.following }));
-      if (list.length && list.length < 12) {
-        const extra = ['Alex_Jones','Mira_Lee','Sam_Wilson','Nina_Patel','Leo_King','Ivy_Chen','Omar_Farouk','Tara_Singh','Yuna_Kim','Jude_Obi'];
-        let i=0; while(list.length < 12 && i < extra.length) {
-          const h = extra[i++]; if (list.find(x=>x.handle===h)) continue;
-          list.push({ handle:h, name:h, avatar:'https://i.pravatar.cc/100?img='+(10+i), av:'https://i.pravatar.cc/100?img='+(10+i), meta:'Reader · demo follow', following: Math.random() > 0.5 });
-        }
-      }
+      const list = (p.following || []).map(f => ({ handle: f.name, name: f.name, avatar: f.av, av: f.av, meta: f.meta, following: !!f.following }));
       if (!followApi) {
         followApi = FollowList.attach('#followingList', {
           perPage: 8,
@@ -599,18 +571,20 @@
             if (!item) return;
             btn.disabled = true;
             const idx = PROFILE.following.findIndex(x=>x.name===handle);
-            if (idx===-1) {
-              item.following = !item.following;
-              const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = item.following;
-              followApi.render(); btn.disabled=false; toast(item.following ? `Following @${handle}` : `Unfollowed @${handle}`); return;
+            const row = idx !== -1 ? PROFILE.following[idx] : item;
+            try {
+              const call = row.following ? ProfileData.unfollowUser : ProfileData.followUser;
+              await call(ME_HANDLE, row.name);
+              row.following = !row.following;
+              item.following = row.following;
+              const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = row.following;
+              followApi.render();
+              toast(row.following ? `Following @${handle}` : `Unfollowed @${handle}`);
+            } catch (e) {
+              /* keep the row as-is and say why it failed */
+              toast('❌ ' + (e.message || 'Could not update follow — try again.'));
             }
-            const row = PROFILE.following[idx];
-            try { const call = row.following ? ProfileData.unfollowUser : ProfileData.followUser; await call(ME_HANDLE, row.name); } catch(e){}
-            row.following = !row.following;
-            item.following = row.following;
-            const cur = followApi.getData(); const cItem = cur.find(x=>x.handle===handle); if(cItem) cItem.following = row.following;
-            followApi.render(); btn.disabled=false;
-            toast(row.following ? `Following @${handle}` : `Unfollowed @${handle}`);
+            btn.disabled = false;
           }
         });
       }
@@ -651,32 +625,34 @@
   function findReactPost(id) {
     return _FEED_POSTS.find(x => String(x.id) === String(id)) || null;
   }
-  /* attachCounters hooks — picker owns all toggle math; host supplies
-     initial counts + persists result back onto the post. */
+  /* attachCounters hooks — picker owns all toggle math; host supplies the
+     server's reaction buckets (post.reactions) and persists the choice to
+     the API. Mirrors feed-service's counterHooks so the multi-emoji buckets
+     + top-3 badges behave identically here. */
   function counterHooks() {
     return {
       getCounts: (id) => {
         const p = findReactPost(id);
         if (!p) return null; // unknown id → picker stays inert
-        const likes = p.likes || 0;
-        const buckets = ['crying', 'shocked', 'emotional'];
-        let h = 0;
-        String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-        const secondId = buckets[h];
-        const second = Math.min(5, Math.max(0, likes));
-        const counts = { love: Math.max(0, likes - second) };
-        counts[secondId] = second;
-        return { userRx: (p.userRx || (p.liked ? 'love' : null)) || null, ...counts };
+        const counts = Object.assign({}, p.reactions || {});
+        return { userRx: (p.userRx || null), ...counts };
       },
       save: (id, state) => {
         const p = findReactPost(id);
         if (!p) return;
-        p.userRx = state.userRx;
-        p.liked = state.userRx === 'love';
-        let total = 0;
-        Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
-        p.likes = total;
-        if (window.DroboardPostCard) DroboardPostCard.update(p);
+        const rid = state.userRx || null;
+        const write = rid
+          ? api('POST', '/posts/' + encodeURIComponent(p.id) + '/react', { rid: rid })
+          : api('DELETE', '/posts/' + encodeURIComponent(p.id) + '/react');
+        write.then(r => {
+          p.reactions = r.counts || {};
+          p.userRx = r.userRx || null;
+          p.likes = Object.keys(p.reactions).reduce((n, k) => n + (p.reactions[k] || 0), 0);
+          if (window.DroboardReactionPicker && DroboardReactionPicker.update) {
+            DroboardReactionPicker.update(p.id, Object.assign({ userRx: p.userRx }, p.reactions));
+          }
+          if (window.DroboardPostCard) DroboardPostCard.update(p);
+        }).catch(e => toast(e.message || 'Could not save your reaction'));
       },
     };
   }
@@ -697,33 +673,41 @@
               const patch = Object.assign({}, updated);
               // keep original id/time if composer generated new id
               patch.id = post.id;
-              const res = await ProfileData.updatePost(VIEW_HANDLE, post.id, patch);
-              if(res){ PROFILE = res; renderFeed(PROFILE); toast('✅ Post updated'); }
+              try {
+                const res = await ProfileData.updatePost(VIEW_HANDLE, post.id, patch);
+                PROFILE = res; renderFeed(PROFILE); toast('✅ Post updated');
+              } catch (e) { toast('❌ ' + (e.message || 'Could not update the post')); }
             }
           });
         },
-        onDelete: async (post) => { const updated = await ProfileData.deletePost(VIEW_HANDLE, post.id); if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('🗑️ Post deleted'); } },
+        onDelete: async (post) => {
+          try {
+            const updated = await ProfileData.deletePost(VIEW_HANDLE, post.id);
+            PROFILE = updated; renderFeed(PROFILE); toast('🗑️ Post deleted');
+          } catch (e) { toast('❌ ' + (e.message || 'Could not delete the post')); }
+        },
         onPin: async (post) => {
           if (!IS_OWNER) { toast('Only the profile owner can pin.'); return; }
-          const updated = await ProfileData.pinPost(VIEW_HANDLE, post.id, true);
-          if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('📌 Pinned to top'); }
+          try {
+            const updated = await ProfileData.pinPost(VIEW_HANDLE, post.id, true);
+            PROFILE = updated; renderFeed(PROFILE); toast('📌 Pinned to top');
+          } catch (e) { toast('❌ ' + (e.message || 'Could not pin the post')); }
         },
         onUnpin: async (post) => {
           if (!IS_OWNER) { toast('Only the profile owner can unpin.'); return; }
-          const updated = await ProfileData.pinPost(VIEW_HANDLE, post.id, false);
-          if (updated) { PROFILE = updated; renderFeed(PROFILE); toast('Unpinned'); }
+          try {
+            const updated = await ProfileData.pinPost(VIEW_HANDLE, post.id, false);
+            PROFILE = updated; renderFeed(PROFILE); toast('Unpinned');
+          } catch (e) { toast('❌ ' + (e.message || 'Could not unpin the post')); }
         },
         onReport: (post) => {
           if (window.DroboardDotsMenu && DroboardDotsMenu.openReportTypes) DroboardDotsMenu.openReportTypes(post, window._lastDotsAnchor || null);
           else toast('🚩 Reported. Thanks for flagging.');
         },
         onReportType: (post, typeId) => {
-          try {
-            const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
-            reports.push({ postId: post.id, typeId, at: Date.now() });
-            localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
-          } catch(e) {}
-          toast('🚩 Report filed. Our team will review it.');
+          api('POST', '/reports', { target: 'post', targetId: post.id, reason: typeId })
+            .then(() => toast('🚩 Report filed. Our team will review it.'))
+            .catch(e => toast(e.message || 'Could not file the report'));
         },
         onLess: () => toast('Got it — showing less of this.'),
         onFollow: (post) => toast('Following @' + post.name),
@@ -750,8 +734,28 @@
         onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id, type: 'post' }); },
         onDots: (post, anchorEl) => { try { window._lastDotsAnchor = anchorEl || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
         onJoinAma: () => toast('🎙️ Joining AMA…'),
-        onPollVote: (post, i) => { if (!post.poll) return; if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; } post.poll.opts[i].v = (post.poll.opts[i].v || 0) + 1; post.poll.voted = i; post.poll.total = (post.poll.total || 0) + 1; DroboardPostCard.update(post); toast('✅ Vote cast!'); },
-        onDebateVote: (post, side) => { if (!post.debateData) return; if (post.debateData.userVote) { toast('✅ Already voted!'); return; } post.debateData.userVote = side; if (side === 'for') post.debateData.forV = (post.debateData.forV || 0) + 1; else post.debateData.agV = (post.debateData.agV || 0) + 1; DroboardPostCard.update(post); toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!'); },
+        onPollVote: (post, i) => {
+          if (!post.poll) return;
+          if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; }
+          api('POST', '/posts/' + encodeURIComponent(post.id) + '/poll/vote', { option: i })
+            .then(card => {
+              post.poll = card.poll;
+              if (window.DroboardPostCard) DroboardPostCard.update(post);
+              toast('✅ Vote cast!');
+            })
+            .catch(e => toast(e.message || 'Could not cast your vote'));
+        },
+        onDebateVote: (post, side) => {
+          if (!post.debateData) return;
+          if (post.debateData.userVote) { toast('✅ Already voted!'); return; }
+          api('POST', '/posts/' + encodeURIComponent(post.id) + '/debate/vote', { side: side })
+            .then(card => {
+              post.debateData = card.debateData;
+              if (window.DroboardPostCard) DroboardPostCard.update(post);
+              toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!');
+            })
+            .catch(e => toast(e.message || 'Could not cast your vote'));
+        },
         onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onOpenLink: (post) => {
           const ref = (post && (post.storyRef || post.chapterRef)) || null;
@@ -763,7 +767,13 @@
         },
       });
     }
-    window.onDroboardSaveChange = (storyId, isSaved) => { if (!storyId) return; ProfileData.savePost(VIEW_HANDLE, storyId, isSaved); };
+    /* The save modal persists through /api/saves (saves-bridge); this hook
+       only mirrors the new saved flag onto the card. */
+    window.onDroboardSaveChange = (storyId, isSaved) => {
+      if (!storyId) return;
+      const post = findReactPost(storyId);
+      if (post) { post.saved = isSaved; if (window.DroboardPostCard) DroboardPostCard.update(post); }
+    };
   }
   function renderFeed(p) {
     ensureFeedComponents();
@@ -780,18 +790,19 @@
     closeDrawer();
     if (!window.DroboardPostComposer) { toast('Composer failed to load.'); return; }
     const bookStories = (PROFILE.books || []).map(b => ({ id: b.id, title: b.title, author: PROFILE.name || '', cat: b.cat, cover: b.cover }));
-    const demoStories = (window.DemoData && DemoData.STORIES) || [];
-    const seen = new Set(bookStories.map(s => s.id));
-    const pool = bookStories.concat(demoStories.filter(s => !seen.has(s.id)));
     DroboardPostComposer.open({
       author: { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified },
-      stories: pool,
+      stories: bookStories,
       draftKey: 'dro_profile_composer_draft',
       defaultType: 'text',
       onStatusSlide: handleStatusSlide,
       onSubmit: async (post) => {
-        if (post && post.type === 'status') { handleStatusSlide(post.statusSlide); return; }
-        const updated = await ProfileData.createPost(VIEW_HANDLE, post); if (!updated) { toast('Something went wrong — try again.'); return; } PROFILE = updated; renderFeed(PROFILE); switchTab('feed'); },
+        if (post && post.type === 'status') { await handleStatusSlide(post.statusSlide); return; }
+        try {
+          const updated = await ProfileData.createPost(VIEW_HANDLE, post);
+          PROFILE = updated; renderFeed(PROFILE); switchTab('feed');
+        } catch (e) { toast('❌ ' + (e.message || 'Could not create the post — try again.')); }
+      },
     });
   }
 
@@ -808,13 +819,16 @@
   function closeGenreEdit() { document.getElementById('genreEditOv').classList.remove('open'); document.body.style.overflow = ''; }
   async function saveGenres() {
     const ids = [...document.querySelectorAll('#genreTogGrid .genre-tog.on')].map(el => el.dataset.gid);
-    const updated = await ProfileData.updateGenres(VIEW_HANDLE, ids);
-    if (!updated) { toast('Something went wrong — try again.'); return; }
-    PROFILE = updated;
-    renderHeader(PROFILE);
-    if (RENDERED.about) renderAbout(PROFILE);
-    closeGenreEdit();
-    toast('✅ Genres saved!');
+    try {
+      const updated = await ProfileData.updateGenres(VIEW_HANDLE, ids);
+      PROFILE = updated;
+      renderHeader(PROFILE);
+      if (RENDERED.about) renderAbout(PROFILE);
+      closeGenreEdit();
+      toast('✅ Genres saved!');
+    } catch (e) {
+      toast('❌ ' + (e.message || 'Could not save genres — try again.'));
+    }
   }
 
   /* ── COLLECTION STORY PICKER — books + library, shared by the
@@ -947,7 +961,6 @@
       return;
     }
     btn.disabled = false; btn.textContent = 'Create Collection ✓';
-    if (!updated) { toast('Something went wrong — try again.'); return; }
     PROFILE = updated;
     closeNewCollection();
     renderCollections(PROFILE);
@@ -970,7 +983,6 @@
     let updated = null;
     try { updated = await ProfileData.deleteCollection(VIEW_HANDLE, col.id); }
     catch (e) { toast('❌ ' + (e.message || 'Could not delete')); return; }
-    if (!updated) { toast('Something went wrong — try again.'); return; }
     PROFILE = updated;
     renderCollections(PROFILE);
     refreshCollectionCounts();
@@ -1006,9 +1018,12 @@
     btn.textContent = 'Saving…'; btn.disabled = true;
     let updated = null;
     try { updated = await ProfileData.updateCollection(VIEW_HANDLE, MC_COLL_ID, patch); }
-    catch (e) { updated = null; }
+    catch (e) {
+      btn.disabled = false; btn.textContent = 'Save Changes ✓';
+      toast('❌ ' + (e.message || 'Could not update the collection'));
+      return;
+    }
     btn.disabled = false; btn.textContent = 'Save Changes ✓';
-    if (!updated) { toast('Something went wrong — try again.'); return; }
     PROFILE = updated;
     closeManageCollection();
     renderCollections(PROFILE);
@@ -1067,20 +1082,18 @@
   /* ── Top-level render + boot ── */
   function renderProfile(p) {
     if (!p) {
-      /* No profile at all — only reachable if the data layer itself failed,
-         since init() resolves a demo reader for guests before calling this.
+      /* No profile at all — only reachable if the data layer itself failed
+         (init() shows the real error state before this could run).
          Must stay synchronous: rerenderProfile() calls it after a role preview. */
       document.getElementById('emptyState').style.display = 'flex';
       return;
     }
     if (window.DroboardGuestGate) DroboardGuestGate.unmount();
-    /* Ownership: I didn't ask for anyone else's profile (no ?u=) → this IS my
-       profile, full stop. Don't try to prove it by comparing handles — when a
-       stored account has no handle field, both sides come back null and a
-       strict compare would wrongly turn my own page into a stranger's (no
-       menu, no "View as", a Follow button instead of Edit Profile). With an
-       explicit ?u=, it's mine only if that handle is actually me. */
-    IS_OWNER = !IS_GUEST && (REQ_HANDLE ? sameHandle(REQ_HANDLE, ME_HANDLE) : true);
+    /* Ownership is the server's call: GET /api/users/:handle compares the
+       session viewer to the profile row and returns isOwner. No client-side
+       handle comparison — a stored account with a missing handle field once
+       turned the owner's own page into a stranger's. */
+    IS_OWNER = !IS_GUEST && !!p.isOwner;
     /* Remember the true role once, before any preview override, so exiting a
        preview can always restore the real profile. */
     if (!REAL_IS_WRITER_SET) { REAL_IS_WRITER = !!p.isWriter; REAL_IS_WRITER_SET = true; }
@@ -1163,17 +1176,53 @@
   }
 
   async function loadNotifCount() {
-    if (window.FeedData && FeedData.getNotifCount) {
-      const count = await FeedData.getNotifCount();
-      showNotif(count);
-      return;
-    }
-    try { const res = await fetch('/api/notifications/unread-count', { credentials: 'include' }); if (!res.ok) throw 0; const d = await res.json(); showNotif(d.count || 0); } catch (e) { showNotif(0); }
+    try {
+      const res = await fetch('/api/notifications/unread-count', { credentials: 'include' });
+      if (!res.ok) throw new Error('Notifications API failed: ' + res.status);
+      const d = await res.json();
+      showNotif(d.count || 0);
+    } catch (e) { showNotif(0); }
   }
   function showNotif(count) {
     const badge = document.getElementById('notifCount');
     if (count > 0) { badge.textContent = count > 99 ? '99+' : String(count); badge.style.display = 'flex'; }
     else badge.style.display = 'none';
+  }
+
+  /* Explicit error empty-state: the failure message is part of the UI —
+     the page never falls back to seeded content. */
+  function showErrorState(err) {
+    document.getElementById('loadingState').style.display = 'none';
+    const box = document.getElementById('emptyState');
+    if (!box) return;
+    box.style.display = 'flex';
+    const title = box.querySelector('.empty-title');
+    const sub = box.querySelector('.empty-sub');
+    if (err && err.status === 404) {
+      if (title) title.textContent = 'Profile not found';
+      if (sub) sub.textContent = "This account doesn't exist or may have been removed.";
+    } else {
+      if (title) title.textContent = 'Could not load profile';
+      if (sub) sub.textContent = (err && err.message) ? ('The profile API failed — ' + err.message) : 'The profile API failed.';
+    }
+  }
+
+  /* Logged-out "my profile" visit: the guest gate owns the screen (account
+     CTA + perks). There is no demo persona behind it. */
+  function mountGuestGate() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    if (!window.DroboardGuestGate) return;
+    let loginHref = 'login.html?next=' + encodeURIComponent('profile.html');
+    try { if (window.AuthSession && AuthSession.loginUrl) loginHref = AuthSession.loginUrl('profile.html'); } catch (e) {}
+    DroboardGuestGate.mount({
+      anchor: '#profileRoot',
+      variant: 'profile',
+      cta: [
+        { label: 'Create account', href: 'signup.html', primary: true },
+        { label: 'Log in', href: loginHref },
+      ],
+    });
   }
 
   async function init() {
@@ -1212,40 +1261,44 @@
     if (mcSearch) mcSearch.addEventListener('input', () => paintStoryGrid('mcStoryGrid'));
     const params = new URLSearchParams(location.search);
     /* If the session exists but the stored user row is missing (a login path
-       that only returned tokens), restore it first — the handle and roles
-       that follow depend on it. */
+       that only returned tokens), restore it first — ownership on the payload
+       depends on the session being complete. */
     if (window.AuthSession && AuthSession.ensureAccount) {
-      /* Bounded: this is a bonus restore for signed-in readers, never a gate.
-         If the API is down or slow, the demo seed still paints the page. */
-      try {
-        await Promise.race([
-          AuthSession.ensureAccount(),
-          new Promise(r => setTimeout(r, 1500)),
-        ]);
-      } catch (e) {}
+      try { await AuthSession.ensureAccount(); } catch (e) { /* keep going — the fetch below reports the truth */ }
     }
+    await loadGenres();
     ME_HANDLE = await ProfileData.getCurrentUserHandle();
     const requested = params.get('u');
     REQ_HANDLE = requested;
     VIEW_HANDLE = requested || ME_HANDLE;
 
-    /* Browsing someone else's profile (?u=handle) stays public — anyone
-       can look. Only "my profile" (no ?u=) needs an account: without one
-       there's no profile to show, so the guest gate takes over. */
+    /* Browsing someone else's profile (?u=handle) stays public — anyone can
+       look. Only "my profile" (no ?u=) needs an account: without one there's
+       no profile to show, so the guest gate takes over instead of a demo
+       reader pretending to be you. */
     const signedIn = !!(window.AuthSession && AuthSession.isSignedIn && AuthSession.isSignedIn());
     IS_GUEST = !signedIn && !requested;
+    if (IS_GUEST) { mountGuestGate(); return; }
+    if (!VIEW_HANDLE) {
+      showErrorState(new Error('No signed-in account to load a profile for.'));
+      return;
+    }
 
-    /* No session and no ?u= is not a locked screen. In demo the page renders the
-       seeded demo reader as its own profile, so the owner chrome and every tab
-       work with no account. Flipping IS_GUEST here is what makes that happen —
-       it has to happen before the fetch, because renderProfile is synchronous
-       and cannot go and get a profile of its own. */
-    if (IS_GUEST) { VIEW_HANDLE = 'You_Reader'; IS_GUEST = false; }
-
-    let data = await ProfileData.getProfile(VIEW_HANDLE);
-    if (!data) data = await ProfileData.getProfile('You_Reader');
+    let data;
+    try {
+      data = await ProfileData.getProfile(VIEW_HANDLE);
+    } catch (e) {
+      showErrorState(e);
+      return;
+    }
     document.getElementById('loadingState').style.display = 'none';
     PROFILE = data;
+    if (window.DroboardStatus) {
+      await Promise.all([
+        window.DroboardStatus.refreshMine().catch(function () { toast('Could not load your story ring.'); }),
+        window.DroboardStatus.loadWriters([VIEW_HANDLE]).catch(function () {}),
+      ]);
+    }
     renderProfile(PROFILE);
     // The profile being viewed is the counter target — the owner's own
     // Insights page reads these hits back.
@@ -1264,10 +1317,7 @@
       } catch (e) {}
     }
     if (window.DroboardSearch) {
-      let searchData;
-      if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }
       DroboardSearch.configure({
-        data: searchData,
         onOpenStory: (s) => { location.href = 'bridge.html?id=' + encodeURIComponent((s && s.id) || ''); },
         onOpenWriter: (w) => { location.href = 'profile.html?u=' + encodeURIComponent((w.handle || w.name || '').replace('@', '')); },
         onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },

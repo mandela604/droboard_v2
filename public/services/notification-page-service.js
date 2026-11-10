@@ -29,6 +29,8 @@
     weekly_earnings: '../author/earnings.html',
     payout: '../author/transaction-history.html',
     contract_update: '../author/apply-contract.html',
+    completion_result: '../author/apply-completion.html',
+    book_flagged: '../author/author-center.html',
     review_result: '../author/request-chapter-review.html',
     book_change_result: '../author/request-book-change.html',
     chapter_live: '../author/book-workspace.html',
@@ -140,7 +142,7 @@
       '<div class="settings-desc" id="permDesc">' + permText() + '</div></div>' +
       '<button class="perm-btn" id="permBtn">' + permLabel() + '</button></div>' +
       '<div class="settings-row"><div class="settings-info"><div class="settings-name">Reset feed</div>' +
-      '<div class="settings-desc">Clears every notification on this device.</div></div>' +
+      '<div class="settings-desc">Deletes every notification on your account.</div></div>' +
       '<button class="perm-btn danger" id="resetBtn"><i class="fas fa-rotate-left"></i> Reset</button></div>' +
       '</div>';
 
@@ -241,9 +243,32 @@
     window.addEventListener('dro:notification', function () { render(); });
   }
 
+  /* No account → no inbox. The visitor is told so instead of being shown
+     an empty feed that looks like bad news. */
+  function renderGuest() {
+    const feed = document.getElementById('feed');
+    if (!feed) return;
+    const href = (window.AuthSession && AuthSession.loginUrl) ? AuthSession.loginUrl('notifications.html') : 'login.html';
+    feed.innerHTML = '<div class="empty">Sign in to see your notifications.'
+      + '<br><a href="' + href + '" style="display:inline-block;margin-top:14px;padding:10px 22px;border-radius:22px;background:var(--pink,#ff2d55);color:#fff;font-weight:800;text-decoration:none">Log in</a></div>';
+    const sub = document.getElementById('pageSub');
+    if (sub) sub.textContent = 'Your activity, milestones and stats land here';
+    document.querySelectorAll('#roleRow .role-tab, #filterRow .filter-chip, #markAllBtn, #settingsBtn').forEach(function (el) { el.style.display = 'none'; });
+  }
+
   async function init() {
     if (!window.DroboardNotifStore) { document.getElementById('feed').innerHTML = '<div class="empty">Store failed to load.</div>'; return; }
-    Store().seed();
+    if (window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
+      renderGuest();
+      return;
+    }
+    try {
+      await Store().hydrate();
+    } catch (e) {
+      const feed = document.getElementById('feed');
+      if (feed) feed.innerHTML = '<div class="empty">Could not load notifications — ' + (e && e.message ? e.message : 'request failed') + '</div>';
+      return;
+    }
     const q = new URLSearchParams(location.search);
     const wanted = q.get('role');
     if (wanted === 'author' || wanted === 'reader') role = wanted;

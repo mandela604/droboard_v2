@@ -27,7 +27,7 @@
   'use strict';
   if (window.Acquisition && window.Acquisition.__ready) return;
 
-  var USE_API = false;
+  var USE_API = true;
   var API_BASE = '/api/acquisition';
 
   /* ── Config ── */
@@ -256,138 +256,12 @@
     return true;
   }
 
-  /* ── Seed: deterministic 30-day cohorts (demo before first campaign) ── */
-  function mulberry32(a) {
-    return function () {
-      a |= 0; a = a + 0x6D2B79F5 | 0;
-      var t = Math.imul(a ^ a >>> 15, 1 | a);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-  /* Per-campaign behaviour profile — story wins on quality (the hypothesis
-     under test); discover brings volume cheaply; bridge leaks the extra step. */
-  var PROFILES = {
-    story_romance: { perDay: 42, spendDay: 8.0,  regRate: 0.19, readRate: 0.15, meanRate: 0.12, d1: 0.41, d7: 0.23, d30: 0.14, buyRate: 0.048, avgBuy: 9.8,  pages: 5.8, impPer: 3.4 },
-    story_fantasy: { perDay: 34, spendDay: 7.5,  regRate: 0.17, readRate: 0.14, meanRate: 0.11, d1: 0.38, d7: 0.21, d30: 0.12, buyRate: 0.041, avgBuy: 10.4, pages: 5.2, impPer: 3.1 },
-    discover_push: { perDay: 58, spendDay: 7.0,  regRate: 0.12, readRate: 0.09, meanRate: 0.07, d1: 0.29, d7: 0.11, d30: 0.06, buyRate: 0.021, avgBuy: 8.2,  pages: 7.4, impPer: 4.6 },
-    bridge_intro:  { perDay: 16, spendDay: 4.0,  regRate: 0.09, readRate: 0.06, meanRate: 0.045, d1: 0.25, d7: 0.08, d30: 0.04, buyRate: 0.015, avgBuy: 7.5,  pages: 3.1, impPer: 1.9 },
-  };
-  function seedIfEmpty() {
-    try { if (localStorage.getItem(COHORT_KEY)) return; } catch (e) { return; }
-    var rand = mulberry32(20261020);
-    var cohorts = [];
-    var spend = [];
-    var now = new Date(); now.setHours(0, 0, 0, 0);
-    DEFAULT_CAMPAIGNS.forEach(function (c) {
-      var pr = PROFILES[c.id];
-      if (!pr) return;
-      for (var d = 29; d >= 0; d--) {
-        var day = new Date(now.getTime());
-        day.setDate(day.getDate() - d);
-        var date = todayStr(day.getTime());
-        var dow = day.getDay();
-        var boost = (dow === 0 || dow === 6) ? 1.2 : 1;
-        spend.push({ id: 'sp_seed_' + c.id + '_' + date, date: date, campaignId: c.id, amount: round2(pr.spendDay * boost * (0.9 + rand() * 0.2)), note: 'seed', addedAt: day.toISOString() });
-        var n = Math.max(3, Math.round(pr.perDay * boost * (0.85 + rand() * 0.3)));
-        for (var i = 0; i < n; i++) {
-          var registered = rand() < pr.regRate;
-          var firstRead = registered && rand() < (pr.readRate / pr.regRate);
-          var meaningful = firstRead && rand() < (pr.meanRate / pr.readRate);
-          var buys = rand() < pr.buyRate;
-          cohorts.push({
-            visitorId: 'sv_' + c.id + '_' + date + '_' + i,
-            campaignId: c.id,
-            firstDate: date,
-            firstTs: day.getTime() + Math.floor(rand() * 86400000),
-            registered: registered,
-            firstRead: firstRead,
-            meaningfulRead: meaningful,
-            pages: Math.max(1, Math.round(pr.pages * (0.6 + rand() * 0.9))),
-            impressions: Math.round(pr.impPer * (0.5 + rand())),
-            d1: rand() < pr.d1,
-            d7: rand() < pr.d7,
-            d30: rand() < pr.d30,
-            purchase: buys ? round2(pr.avgBuy * (0.6 + rand() * 0.9)) : 0,
-          });
-        }
-      }
-    });
-    write(COHORT_KEY, cohorts);
-    write(SPEND_KEY, spend);
-  }
-
   /* ── Summary: the five questions per campaign ── */
-  function cutoff(days) {
-    var d = new Date(); d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - (days - 1));
-    return todayStr(d.getTime());
-  }
-  function campaignMeta(id) {
-    var list = getCampaigns();
-    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
-    return { id: id, label: id, destination: 'other' };
-  }
   async function getSummary(days) {
     days = days || 30;
-    try {
-      if (USE_API) {
-        var r = await fetch(API_BASE + '/summary?days=' + days, { credentials: 'include' }).then(function (x) { return x.json(); });
-        if (r && r.campaigns) return r;
-      }
-    } catch (e) {}
-    seedIfEmpty();
-    var cut = cutoff(days);
-    var cohorts = read(COHORT_KEY, []).filter(function (v) { return v.firstDate >= cut; });
-    var spendRows = getSpend().filter(function (s) { return s.date >= cut; });
-    var out = { days: days, campaigns: [], totals: null };
-    var t = { spend: 0, visitors: 0, registrations: 0, firstReaders: 0, meaningful: 0, pages: 0, impressions: 0, coinRevenue: 0, adEarnings: 0, d7Returned: 0, d7Cohort: 0, contribution: 0 };
-    getCampaigns().forEach(function (c) {
-      var vs = cohorts.filter(function (v) { return v.campaignId === c.id; });
-      var spend = spendRows.filter(function (s) { return s.campaignId === c.id; })
-        .reduce(function (a, s) { return a + (Number(s.amount) || 0); }, 0);
-      var regs = vs.filter(function (v) { return v.registered; }).length;
-      var reads = vs.filter(function (v) { return v.firstRead; }).length;
-      var means = vs.filter(function (v) { return v.meaningfulRead; }).length;
-      var pages = vs.reduce(function (a, v) { return a + (v.pages || 0); }, 0);
-      var imps = vs.reduce(function (a, v) { return a + (v.impressions || 0); }, 0);
-      var coins = round2(vs.reduce(function (a, v) { return a + (v.purchase || 0); }, 0));
-      var adEst = round2(imps * CONFIG.adECPM);
-      var netCoins = round2(coins * (1 - CONFIG.writerShare) * (1 - CONFIG.paymentFee));
-      var contribution = round2(netCoins + adEst - spend);
-      var d7Pool = vs.filter(function (v) { return v.firstDate <= todayStr(Date.now() - 7 * 86400000); });
-      var d7Ret = d7Pool.filter(function (v) { return v.d7; }).length;
-      out.campaigns.push({
-        campaignId: c.id, label: c.label, destination: c.destination, storyId: c.storyId,
-        spend: round2(spend),
-        visitors: vs.length,
-        registrations: regs,
-        firstReaders: reads,
-        meaningfulReaders: means,
-        costPerRegistration: regs ? round2(spend / regs) : null,
-        costPerReader: reads ? round2(spend / reads) : null,
-        avgPages: vs.length ? Math.round((pages / vs.length) * 10) / 10 : 0,
-        impressions: imps,
-        adEarnings: adEst,
-        coinRevenue: coins,
-        coinNet: netCoins,
-        d7Retention: d7Pool.length ? Math.round((d7Ret / d7Pool.length) * 1000) / 10 : null,
-        contribution: contribution,
-        winner: contribution > 0,
-      });
-      t.spend += spend; t.visitors += vs.length; t.registrations += regs;
-      t.firstReaders += reads; t.meaningful += means; t.pages += pages;
-      t.impressions += imps; t.coinRevenue += coins; t.adEarnings += adEst;
-      t.d7Returned += d7Ret; t.d7Cohort += d7Pool.length; t.contribution += contribution;
-    });
-    t.spend = round2(t.spend); t.coinRevenue = round2(t.coinRevenue);
-    t.adEarnings = round2(t.adEarnings); t.contribution = round2(t.contribution);
-    t.costPerReader = t.firstReaders ? round2(t.spend / t.firstReaders) : null;
-    t.costPerRegistration = t.registrations ? round2(t.spend / t.registrations) : null;
-    t.d7Retention = t.d7Cohort ? Math.round((t.d7Returned / t.d7Cohort) * 1000) / 10 : null;
-    t.avgPages = t.visitors ? Math.round((t.pages / t.visitors) * 10) / 10 : 0;
-    out.totals = t;
-    return out;
+    var r = await fetch(API_BASE + '/summary?days=' + days, { credentials: 'include' });
+    if (!r.ok) throw new Error('API error ' + r.status);
+    return r.json();
   }
 
   /* Auto-capture on load (landing pages carry the UTMs). */

@@ -1595,7 +1595,68 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     };
   }
 
-  window.DroboardComments = { attach };
+  // ── live API ──────────────────────────────────────────────────────────
+  // One transport for every page that shows comments. The component owns
+  // the mapper, so a row looks the same in the reader and on comments.html.
+  const COMMENTS_API = '/api';
+
+  function shapeComment(c) {
+    const replies = (c.replies || []).map(shapeComment);
+    return {
+      id: c.id, name: c.name, handle: c.handle || c.name,
+      avatar: c.avatar || '', verified: !!c.verified, wid: c.wid,
+      time: c.time || '', edited: !!c.edited,
+      text: c.text || '', likes: c.likes || 0, liked: !!c.liked,
+      reactions: c.reactions || {},
+      team: c.team || null, mine: !!c.mine,
+      statusRing: (c.statusRing || 'none').replace('ring-', ''),
+      statuses: c.statuses || [],
+      repliesCount: c.repliesCount || replies.length,
+      replies,
+    };
+  }
+
+  async function fetchComments(opts) {
+    const o = opts || {};
+    const scope = o.chapterId ? 'chapter' : 'story';
+    let url = COMMENTS_API + '/comments?scope=' + scope + '&storyId=' + encodeURIComponent(o.storyId || '');
+    if (o.chapterId) url += '&chapterId=' + encodeURIComponent(o.chapterId);
+    url += '&limit=' + (o.limit || 50);
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error('Comments failed (' + res.status + ')');
+    const data = await res.json();
+    return (data.items || data || []).map(shapeComment);
+  }
+
+  async function postComment(opts) {
+    const o = opts || {};
+    const body = { scope: o.chapterId ? 'chapter' : 'story', storyId: o.storyId, text: o.text };
+    if (o.chapterId) body.chapterId = String(o.chapterId);
+    if (o.parentId) body.parentId = o.parentId;
+    if (o.team) body.team = o.team;
+    const res = await fetch(COMMENTS_API + '/comments', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('Post failed (' + res.status + ')');
+    return shapeComment(await res.json());
+  }
+
+  async function editComment(id, text) {
+    const res = await fetch(COMMENTS_API + '/comments/' + encodeURIComponent(id), {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text }),
+    });
+    if (!res.ok) throw new Error('Edit failed (' + res.status + ')');
+    return true;
+  }
+
+  window.DroboardComments = {
+    attach,
+    api: { shapeComment: shapeComment, fetchComments: fetchComments, postComment: postComment, editComment: editComment },
+  };
 
 })();
 

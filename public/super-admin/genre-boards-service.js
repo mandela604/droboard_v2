@@ -14,7 +14,7 @@
  */
 (function(){
 'use strict';
-const USE_API = false, API_BASE = '/api';
+const USE_API = true, API_BASE = '/api';
 
 SuperAdminSidebar.attach('#boardsRoot', {
   activeItem: 'genre-boards',
@@ -29,62 +29,27 @@ const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', pu
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
 
 /* ── DEMO DATASET — live swap: GET /api/super-admin/boards ── */
-function mod(name, img, role){ return { name:name, avatar:'https://i.pravatar.cc/100?img='+img, role:role }; }
+const API_BASE = '/api/super-admin/genre-boards';
 
-const BOARDS = [
-  { id:'romance', name:'Romance', icon:'fa-heart', color:'red', status:'active',
-    mods:[mod('Zara_M',16,'Admin'), mod('Ife Solarin',44,'Mod'), mod('Lena Okafor',5,'Mod')],
-    members:412300, newWeek:3120, postsWeek:1840, repliesPerPost:6.4, returningPct:42,
-    visits:{d:9800,w:62400,m:251000}, threads:15600, reportsOpen:2, growth:4.2, lastActiveMin:2 },
-  { id:'fantasy', name:'Fantasy', icon:'fa-hat-wizard', color:'purple', status:'active',
-    mods:[mod('Kelo Writes',11,'Admin'), mod('Priya Nandan',25,'Mod')],
-    members:298700, newWeek:2210, postsWeek:1320, repliesPerPost:5.1, returningPct:38,
-    visits:{d:7400,w:48200,m:196000}, threads:11400, reportsOpen:0, growth:3.1, lastActiveMin:4 },
-  { id:'thriller', name:'Thriller', icon:'fa-user-secret', color:'blue', status:'growing',
-    mods:[mod('R.K. Vance',52,'Admin'), mod('Chidi Blackwood',60,'Mod'), mod('Aminah Cole',31,'Mod')],
-    members:187400, newWeek:1980, postsWeek:980, repliesPerPost:7.2, returningPct:47,
-    visits:{d:5600,w:36800,m:142000}, threads:7200, reportsOpen:4, growth:6.8, lastActiveMin:6 },
-  { id:'scifi', name:'Sci-Fi', icon:'fa-rocket', color:'blue', status:'active',
-    mods:[mod('Diego Marsh',15,'Admin'), mod('TJ Rourke',33,'Mod')],
-    members:156200, newWeek:1140, postsWeek:760, repliesPerPost:4.3, returningPct:35,
-    visits:{d:4100,w:27500,m:110000}, threads:5400, reportsOpen:1, growth:2.4, lastActiveMin:9 },
-  { id:'horror', name:'Horror', icon:'fa-ghost', color:'red', status:'active',
-    mods:[mod('Nadia Cross',9,'Admin'), mod('Marcus Webb Jr.',59,'Mod')],
-    members:132800, newWeek:980, postsWeek:690, repliesPerPost:3.8, returningPct:31,
-    visits:{d:3900,w:25100,m:98400}, threads:4600, reportsOpen:0, growth:1.9, lastActiveMin:11 },
-  { id:'drama', name:'Drama', icon:'fa-masks-theater', color:'amber', status:'active',
-    mods:[mod('Ada_Writes',32,'Admin'), mod('Chiamaka_N',47,'Mod')],
-    members:221500, newWeek:1760, postsWeek:1150, repliesPerPost:8.1, returningPct:51,
-    visits:{d:6200,w:40300,m:161000}, threads:9100, reportsOpen:3, growth:3.8, lastActiveMin:3 },
-  { id:'werewolf', name:'Werewolf', icon:'fa-paw', color:'purple', status:'growing',
-    mods:[mod('Fated Luna',24,'Admin'), mod('Alpha Ridge',56,'Mod'), mod('Moon Cast',36,'Mod')],
-    members:264900, newWeek:2640, postsWeek:1480, repliesPerPost:9.3, returningPct:55,
-    visits:{d:8100,w:52700,m:208000}, threads:10800, reportsOpen:6, growth:7.4, lastActiveMin:2 },
-  { id:'teen', name:'Teen Fiction', icon:'fa-star', color:'green', status:'active',
-    mods:[mod('Aminah Cole',31,'Admin'), mod('TJ Rourke',33,'Mod')],
-    members:98600, newWeek:860, postsWeek:540, repliesPerPost:3.2, returningPct:28,
-    visits:{d:2800,w:18600,m:74200}, threads:3300, reportsOpen:1, growth:2.2, lastActiveMin:14 },
-  { id:'mystery', name:'Mystery', icon:'fa-magnifying-glass', color:'gold', status:'growing',
-    mods:[mod('Marcus Webb Jr.',59,'Admin'), mod('R.K. Vance',52,'Mod')],
-    members:143700, newWeek:1520, postsWeek:820, repliesPerPost:6.9, returningPct:44,
-    visits:{d:4700,w:30900,m:121000}, threads:6100, reportsOpen:2, growth:5.6, lastActiveMin:7 },
-  { id:'poetry', name:'Poetry', icon:'fa-feather', color:'green', status:'quiet',
-    mods:[mod('Ife Solarin',44,'Admin')],
-    members:54300, newWeek:320, postsWeek:310, repliesPerPost:2.4, returningPct:22,
-    visits:{d:1200,w:8100,m:33500}, threads:1900, reportsOpen:0, growth:-0.8, lastActiveMin:42 },
-  { id:'action', name:'Action', icon:'fa-fist-raised', color:'red', status:'active',
-    mods:[mod('Diego Marsh',15,'Admin'), mod('Chidi Blackwood',60,'Mod')],
-    members:119800, newWeek:940, postsWeek:610, repliesPerPost:4.7, returningPct:36,
-    visits:{d:3400,w:22300,m:88700}, threads:4100, reportsOpen:1, growth:2.7, lastActiveMin:10 },
-  { id:'adventure', name:'Adventure', icon:'fa-compass', color:'blue', status:'quiet',
-    mods:[mod('Lena Okafor',5,'Admin'), mod('Kelo Writes',11,'Mod')],
-    members:67200, newWeek:290, postsWeek:280, repliesPerPost:2.1, returningPct:19,
-    visits:{d:1100,w:7400,m:30100}, threads:1700, reportsOpen:0, growth:-0.3, lastActiveMin:55 },
-];
+async function callApi(path, opts){
+  const res = await fetch(API_BASE + (path||''), { credentials:'include', ...opts });
+  if(!res.ok) throw new Error('API error ' + res.status);
+  return res.json();
+}
 
-/* ── Flag flow — mirrors the senior editor's book flag: reason required,
-   optional details, password confirm; flagged boards show the reason and
-   can be unflagged (password only). ── */
+let BOARDS = [];
+
+async function loadBoards(){
+  try {
+    const data = await callApi('');
+    BOARDS = Array.isArray(data) ? data : (data.items || []);
+    renderStatCards();
+    renderBoards();
+  } catch(e){
+    document.getElementById('boardGrid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> Failed to load genre boards: ${e.message}</div>`;
+  }
+}
+
 const FLAG_REASONS = [
   'Hate speech or harassment',
   'Adult / NSFW content',
@@ -408,7 +373,7 @@ function submitFlag(){
 }
 
 function init(){
-  renderStatCards();
+  loadBoards();
   document.getElementById('sortFilter').value = 'members';
   applyFilters();
 }

@@ -18,14 +18,9 @@
 (function(global){
 'use strict';
 
-/* Demo-data self-load for the direct AdminDemo fallback path (primary reads
-   come via window.__usersAPI). Page HTML no longer includes the data script;
-   delete these 3 lines at go-live. */
-if(typeof global.AdminDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="data/admin-demo-data.js"><\/script>');
-}
+/* user-insights-service.js — User Insights page */
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/super-admin/insights';
 
 const SUB_PRICE = 5; // USD/month assumed for MRR demo math
@@ -53,14 +48,14 @@ function dayDiff(a, b){
 function readUsers(){
   try {
     if (global.__usersAPI && typeof global.__usersAPI.users === 'function') {
+function readUsers(){
+  try {
+    if (global.__usersAPI && typeof global.__usersAPI.users === 'function') {
       var list = global.__usersAPI.users();
       if (list && list.length) return list;
     }
   } catch (e){}
-  try {
-    var D = global.AdminDemo || {};
-    return (D.PLATFORM_USERS || []).slice();
-  } catch (e){ return []; }
+  return [];
 }
 function readGenreColors(){
   try {

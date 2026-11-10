@@ -77,7 +77,7 @@ a{color:inherit;text-decoration:none}
 .content{padding:8px 16px 20px}
 .day-label{font-size:13px;font-weight:700;color:var(--text);padding:14px 0 10px;letter-spacing:-.01em}
 
-/* rows, milestones, digests and menus are owned by component/notification-item.js */
+/* rows, milestones, digests and menus are owned by component/notification-item.js?v=3 */
 .role-row{display:flex;gap:6px;padding:12px 16px 0}
 .role-tab{
   flex:1;text-align:center;padding:9px 4px;border-radius:11px;background:var(--card);
@@ -231,6 +231,10 @@ a{color:inherit;text-decoration:none}
     <div class="fi"><i class="fas fa-shield-halved"></i><span class="badge" id="b-system">0</span></div>
     <span>System</span>
   </div>
+  <div class="filter-chip" data-f="messages">
+    <div class="fi" style="color:#3b82f6"><i class="fas fa-message"></i><span class="badge" id="b-messages">0</span></div>
+    <span>Chat</span>
+  </div>
 </div>
 
 <div data-ad-slot="notifications:in-feed" data-ad-format="minibanner" style="padding:0 16px;max-width:560px;margin:0 auto"></div>
@@ -254,13 +258,12 @@ a{color:inherit;text-decoration:none}
 <script src="../services/ad-revenue-service.js?v=10"></script>
 <script src="../component/ad-slot.js?v=3"></script>
 <script src="../component/bottom-nav.js"></script>
-<script src="../component/notification-item.js?v=2"></script>
+<script src="../component/notification-item.js?v=3"></script>
+<script src="../services/auth-session.js?v=3"></script>
 <script src="../services/league-service.js"></script>
 <script src="../services/status-service.js"></script>
-<script src="../super-admin/data/admin-demo-data.js"></script>
-<script src="../super-admin/awards-service.js"></script>
-<script src="../services/notification-store.js?v=7"></script>
-<script src="../services/notification-page-service.js?v=9"></script>
+<script src="../services/notification-store.js?v=8"></script>
+<script src="../services/notification-page-service.js?v=10"></script>
 <script>NotifPageService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

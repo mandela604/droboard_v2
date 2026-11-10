@@ -1,333 +1,187 @@
 /**
  * book-management-service.js — Book Management page logic
- * Reads data from window.EditorDemo.BOOKS (or DroboardAPI fallback).
- * Backend-wired: GET /api/senior-editor/books returns {items,total,page,limit}.
+ * Live API only, no demo fallbacks.
  */
 (function () {
   'use strict';
 
-/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="../data/editor-demo-data.js"><\/script>');
-}
+  const API_BASE = '/api/senior-editor/books';
+  let books = [];
+  let activeTab = 'all';
+  let currentPage = 1;
+  const PER_PAGE = 8;
+  let genres = [];
 
-/* ── Backend call (demo fallback retained) ── */
-const API_BASE = '/api/senior-editor';
-async function callBackend(path, options){
-  try {
-    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
-    if (!res.ok) throw new Error('backend error: ' + res.status);
-    return await res.json();
-  } catch (e) {
-    console.warn('[BookManagement] backend unavailable, using demo data', e);
-    return null;
-  }
-}
-
-function resyncDemo(){
-  var D = window.EditorDemo || {};
-  if(D.BOOKS && D.BOOKS.length && !books.length) books = D.BOOKS.slice();
-}
-
-  var D = window.EditorDemo || {};
-  var books = (D.BOOKS || []).slice();
-  var activeTab = 'all';
-  var currentPage = 1;
-  var PER_PAGE = 8;
-
-  /* Genre / category background colors — pulled from the CATEGORIES + GENRES data */
-  var GENRE_COLORS = {};
-  (D.CATEGORIES || []).forEach(function (c) { GENRE_COLORS[c.name] = { bg: c.bg, fg: c.color }; });
-  (D.GENRES || []).forEach(function (g) { if (!GENRE_COLORS[g.name]) GENRE_COLORS[g.name] = { bg: g.bg, fg: g.color }; });
-  GENRE_COLORS['Billionaire Romance'] = { bg: '#ece3fd', fg: '#7c5cfc' };
-  GENRE_COLORS['Werewolf Romance'] = { bg: '#eef0f2', fg: '#5b6470' };
-  GENRE_COLORS['Mafia Romance'] = { bg: '#e7e7ea', fg: '#26262b' };
-  GENRE_COLORS['Vampire Romance'] = { bg: '#fde3e3', fg: '#e0384d' };
-  GENRE_COLORS['Royal Romance'] = { bg: '#ece3fd', fg: '#7c5cfc' };
-  GENRE_COLORS['Second Chance'] = { bg: '#ffe1eb', fg: '#ff0050' };
-  GENRE_COLORS['Revenge'] = { bg: '#fde3e3', fg: '#e0384d' };
-  GENRE_COLORS['Family Drama'] = { bg: '#fef3d8', fg: '#d97706' };
-  GENRE_COLORS['Twist'] = { bg: '#ffe1eb', fg: '#ff0050' };
-  GENRE_COLORS['Betrayal'] = { bg: '#ffe1eb', fg: '#ff0050' };
-  GENRE_COLORS['Campus'] = { bg: '#e3ecfd', fg: '#2f7de1' };
-  GENRE_COLORS['Elegy'] = { bg: '#fde3e3', fg: '#e0384d' };
-
-  /* ── Init ── */
-  async function init() {
-    if (!document.getElementById('tableBody')) return;
-    resyncDemo();
-    bindEvents();
-    await loadFromBackend();
-    refresh();
+  function showError(msg) {
+    const el = document.getElementById('tableBody');
+    if(el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> ${msg}</td></tr>`;
+    
+    const statsEl = document.getElementById('statCards');
+    if(statsEl) statsEl.innerHTML = `<div class="error-state">${msg}</div>`;
   }
 
-  function getBooks() {
-    return books;
+  function showLoading() {
+    const el = document.getElementById('tableBody');
+    if(el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading books...</td></tr>`;
   }
 
-  /* ── Status helpers ── */
-  function statusClass(s) {
-    return { Published:'published', Draft:'draft', 'Under Review':'review', Flagged:'flagged' }[s] || 'draft';
-  }
-  function statusPillHtml(s) {
-    return '<span class="status-pill ' + statusClass(s) + '"><span class="dot"></span>' + s + '</span>';
-  }
-
-  /* ── Refresh (filter + render) ── */
-  async function refresh() {
-    var q = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
-    var cat = document.getElementById('fCategory').value;
-    var genre = document.getElementById('fGenre').value;
-    var stat = document.getElementById('fStatus').value;
-
-    var filtered = books.filter(function (b) {
-      if (activeTab !== 'all' && b.status !== activeTab) return false;
-      if (cat !== 'All Categories' && b.cat !== cat) return false;
-      if (genre !== 'All Genres' && b.genre !== genre) return false;
-      if (stat !== 'All Status' && b.status !== stat) return false;
-      if (q && b.title.toLowerCase().indexOf(q) === -1 && b.author.toLowerCase().indexOf(q) === -1 && b.id.toLowerCase().indexOf(q) === -1) return false;
-      return true;
-    });
-
-    renderTable(filtered);
-    renderStats();
-    renderTabs();
+  async function callApi(path, opts) {
+    try {
+      const res = await fetch(API_BASE + path, { credentials:'include', ...opts });
+      if(!res.ok) throw new Error(`API error ${res.status}`);
+      return await res.json();
+    } catch(e) {
+      console.error('Book management API error:', e);
+      throw e;
+    }
   }
 
-  async function loadFromBackend(){
-    var qs = new URLSearchParams();
-    if (activeTab !== 'all') qs.set('status', activeTab);
-    if (cat !== 'All Categories' && cat) qs.set('tab', cat);
-    if (genre !== 'All Genres' && genre) qs.set('q', genre);
-    if (stat !== 'All Status' && stat) qs.set('status', stat);
-    if (q) qs.set('q', q);
-    qs.set('page', String(currentPage));
-    qs.set('limit', String(PER_PAGE));
-    var data = await callBackend('/books?' + qs.toString());
-    if (data && Array.isArray(data.items)) {
-      books = data.items.map(function(b){
-        return {
-          id: b.id, title: b.title || 'Untitled', author: b.authorName || b.author || '—',
-          avatar: b.avatar || '', img: b.cover || b.img || '', cat: b.cat || b.genre || '',
-          genre: b.genre || '', status: b.status || 'Draft', views: b.reads != null ? b.reads : '—',
-          added: b.createdAt || '—', authorId: b.authorId || '', cover: b.cover || ''
-        };
-      });
+  async function loadBooks() {
+    showLoading();
+    try {
+      const data = await callApi(`?page=${currentPage}&limit=${PER_PAGE}`);
+      books = data.items || [];
+      const total = data.total || 0;
       renderTable(books);
-      renderStats();
-      renderTabs();
+      renderPagination(total);
+      return books;
+    } catch(e) {
+      showError('Failed to load books: ' + e.message);
+      return [];
     }
   }
 
-  /* ── Render table ── */
-  function renderTable(list) {
-    var body = document.getElementById('tableBody');
-    var total = list.length;
-    var totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-    if (currentPage > totalPages) currentPage = totalPages;
-    var start = (currentPage - 1) * PER_PAGE;
-    var page = list.slice(start, start + PER_PAGE);
-
-    if (!page.length) {
-      body.innerHTML = '<tr class="empty-row"><td colspan="7"><i class="fas fa-inbox"></i> No books match this filter.</td></tr>';
-    } else {
-      body.innerHTML = page.map(function (b) {
-        var gc = GENRE_COLORS[b.genre] || GENRE_COLORS[b.cat] || { bg: 'var(--table-head)', fg: 'var(--text-muted)' };
-        return '<tr>' +
-          '<td data-label="Book Details"><div class="book-cell"><div class="book-cover"><img src="' + b.img + '" alt=""/></div><div><div class="book-title">' + b.title + '</div><div class="book-id">ID: ' + b.id + '</div></div></div></td>' +
-          '<td data-label="Author"><div class="author-cell"><img src="' + b.avatar + '" alt=""/><span class="author-name">' + b.author + '</span></div></td>' +
-          '<td data-label="Category / Genre"><div class="cat-main"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:' + gc.bg + ';color:' + gc.fg + '">' + b.cat + '</span></div><div class="cat-sub">' + b.genre + '</div></td>' +
-          '<td data-label="Status">' + statusPillHtml(b.status) + '</td>' +
-          '<td data-label="Views" class="' + (b.views === '\u2014' ? 'muted-cell' : 'views-cell') + '">' + b.views + '</td>' +
-          '<td data-label="Added On" class="muted-cell">' + b.added + '</td>' +
-          '<td data-label="Actions"><div class="actions-cell">' +
-            '<button class="act-btn" title="View" onclick="BookManagement.viewBook(\'' + b.id + '\')"><i class="fas fa-eye"></i></button>' +
-            '<button class="act-btn" title="Edit" onclick="BookManagement.editBook(\'' + b.id + '\')"><i class="fas fa-pen"></i></button>' +
-            '<button class="act-btn" title="Delete" onclick="BookManagement.deleteBook(\'' + b.id + '\')"><i class="fas fa-trash"></i></button>' +
-          '</div></td></tr>';
-      }).join('');
+  async function loadGenres() {
+    try {
+      const data = await callApi('/genres');
+      genres = data || [];
+      populateGenreFilter();
+      return genres;
+    } catch(e) {
+      console.error('Failed to load genres:', e);
+      return [];
     }
-
-    var pageInfo = document.getElementById('pageInfo');
-    pageInfo.innerHTML = total
-      ? 'Showing <b>' + (start + 1) + '</b> to <b>' + Math.min(start + PER_PAGE, total) + '</b> of <b>' + total.toLocaleString() + '</b> books'
-      : 'No books found';
-    renderPagination(totalPages);
   }
 
-  /* ── Pagination ── */
-  function renderPagination(tp) {
-    var w = document.getElementById('pageBtns');
-    if (tp <= 1) { w.innerHTML = ''; return; }
-    var h = '<button class="pg-btn"' + (currentPage <= 1 ? ' disabled' : '') + ' onclick="BookManagement.goPage(' + (currentPage - 1) + ')"><i class="fas fa-chevron-left"></i></button>';
-    var sP = Math.max(1, currentPage - 2);
-    var eP = Math.min(tp, currentPage + 2);
-    if (sP > 1) h += '<button class="pg-btn" onclick="BookManagement.goPage(1)">1</button>' + (sP > 2 ? '<span class="pg-dots">\u2026</span>' : '');
-    for (var i = sP; i <= eP; i++) {
-      h += '<button class="pg-btn' + (i === currentPage ? ' active' : '') + '" onclick="BookManagement.goPage(' + i + ')">' + i + '</button>';
-    }
-    if (eP < tp) h += (eP < tp - 1 ? '<span class="pg-dots">\u2026</span>' : '') + '<button class="pg-btn" onclick="BookManagement.goPage(' + tp + ')">' + tp + '</button>';
-    h += '<button class="pg-btn"' + (currentPage >= tp ? ' disabled' : '') + ' onclick="BookManagement.goPage(' + (currentPage + 1) + ')"><i class="fas fa-chevron-right"></i></button>';
-    w.innerHTML = h;
-  }
-
-  function goPage(p) {
-    currentPage = p;
-    refresh();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  /* ── Stats ── */
   function renderStats() {
-    var t = books.length;
-    var p = books.filter(function (x) { return x.status === 'Published'; }).length;
-    var d = books.filter(function (x) { return x.status === 'Draft'; }).length;
-    var f = books.filter(function (x) { return x.status === 'Flagged'; }).length;
-    var r = books.filter(function (x) { return x.status === 'Under Review'; }).length;
-    document.getElementById('statsGrid').innerHTML =
-      '<div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-book"></i></div></div><div class="stat-num">' + t + '</div><div class="stat-lbl">Total Books</div></div>' +
-      '<div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-circle-check"></i></div></div><div class="stat-num">' + p + '</div><div class="stat-lbl">Published</div></div>' +
-      '<div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-clock"></i></div></div><div class="stat-num">' + d + '</div><div class="stat-lbl">Drafts</div></div>' +
-      '<div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div></div><div class="stat-num">' + f + '</div><div class="stat-lbl">Flagged</div></div>' +
-      '<div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-hourglass-half"></i></div></div><div class="stat-num">' + r + '</div><div class="stat-lbl">Under Review</div></div>';
+    const el = document.getElementById('statCards');
+    if(!el) return;
+    
+    const published = books.filter(b => b.status === 'published').length;
+    const draft = books.filter(b => b.status === 'draft').length;
+    const review = books.filter(b => b.status === 'review').length;
+    const flagged = books.filter(b => b.status === 'flagged').length;
+    const totalRevenue = books.reduce((sum, b) => sum + (b.revenue || 0), 0);
+    
+    const stats = [
+      { value: books.length, label:'Total Books', icon:'fa-book-open', color:'blue' },
+      { value: published, label:'Published', icon:'fa-circle-check', color:'green' },
+      { value: draft, label:'Drafts', icon:'fa-file-lines', color:'amber' },
+      { value: review, label:'Under Review', icon:'fa-eye', color:'purple' },
+      { value: flagged, label:'Flagged', icon:'fa-flag', color:'red' },
+      { value: '$' + fmtNum(totalRevenue), label:'Total Revenue', icon:'fa-sack-dollar', color:'pink' },
+    ];
+    
+    el.innerHTML = stats.map(s => `
+      <div class="stat-card">
+        <div class="stat-ico ${s.color}"><i class="fas ${s.icon}"></i></div>
+        <div class="stat-num">${fmtNum(s.value)}</div>
+        <div class="stat-lbl">${s.label}</div>
+      </div>
+    `).join('');
   }
 
-  /* ── Tabs ── */
-  function renderTabs() {
-    var counts = { all: books.length };
-    ['Published', 'Draft', 'Under Review', 'Flagged'].forEach(function (s) {
-      counts[s] = books.filter(function (b) { return b.status === s; }).length;
-    });
-    document.getElementById('countAll').textContent = counts.all;
-    document.querySelectorAll('.tab-item').forEach(function (t) {
-      var k = t.dataset.tab;
-      var c = t.querySelector('.tab-count');
-      if (c && counts[k] !== undefined) c.textContent = counts[k];
-    });
+  function populateGenreFilter() {
+    const el = document.getElementById('fCategory');
+    if(!el) return;
+    
+    const uniqueGenres = [...new Set(books.map(b => b.genre).filter(Boolean))];
+    el.innerHTML = '<option value="">All Genres</option>' + 
+      uniqueGenres.map(g => `<option value="${g}">${g}</option>`).join('');
   }
 
-  /* ── View book — link to workspace ── */
-  function viewBook(id) {
-    window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id);
-  }
-
-  /* ── Edit book — link to workspace ── */
-  function editBook(id) {
-    window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id) + '&mode=edit';
-  }
-
-  /* ── Delete book — popup for reason, send to admin ── */
-  function deleteBook(id) {
-    var b = books.find(function (x) { return x.id === id; });
-    if (!b) return;
-
-    var modal = document.getElementById('deleteModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'deleteModal';
-      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)';
-      modal.innerHTML =
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.4)">' +
-          '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px">Delete Book</div>' +
-          '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">You are about to delete <strong id="delBookTitle"></strong>. Please provide a reason:</div>' +
-          '<textarea id="delReason" rows="3" placeholder="Reason for deletion..." style="width:100%;padding:10px 12px;border:1px solid var(--input-border);border-radius:10px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>' +
-          '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">' +
-            '<button onclick="BookManagement.closeDeleteModal()" style="padding:9px 18px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>' +
-            '<button onclick="BookManagement.confirmDelete()" style="padding:9px 18px;border-radius:10px;border:none;background:var(--red);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Send to Admin</button>' +
-          '</div>' +
-        '</div>';
-      document.body.appendChild(modal);
-    }
-
-    document.getElementById('delBookTitle').textContent = b.title;
-    document.getElementById('delReason').value = '';
-    modal.style.display = 'flex';
-    modal._bookId = id;
-    modal._bookTitle = b.title;
-  }
-
-  function closeDeleteModal() {
-    var modal = document.getElementById('deleteModal');
-    if (modal) modal.style.display = 'none';
-  }
-
-  function confirmDelete() {
-    var modal = document.getElementById('deleteModal');
-    var reason = document.getElementById('delReason').value.trim();
-    if (!reason) {
-      toast('Please provide a reason for deletion');
+  function renderTable(booksToShow) {
+    const el = document.getElementById('tableBody');
+    if(!el) return;
+    
+    if(!booksToShow || !booksToShow.length) {
+      el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:40px">No books found</td></tr>`;
       return;
     }
-    var id = modal._bookId;
-    var title = modal._bookTitle;
-
-    // Remove from local array
-    books = books.filter(function (b) { return b.id !== id; });
-
-    // Store deletion request for admin confirmation
-    var requests = JSON.parse(localStorage.getItem('BOOK_DELETE_REQUESTS') || '[]');
-    requests.push({
-      id: id,
-      title: title,
-      reason: reason,
-      requestedBy: 'Reina Morgan',
-      date: new Date().toISOString(),
-      status: 'pending'
-    });
-    localStorage.setItem('BOOK_DELETE_REQUESTS', JSON.stringify(requests));
-
-    closeDeleteModal();
-    toast('Delete request sent to admin for confirmation');
-    refresh();
+    
+    el.innerHTML = booksToShow.map(b => `
+      <tr>
+        <td><div class="book-cell"><img class="book-thumb" src="${b.cover || ''}" alt=""/><div><div class="book-title">${b.title || ''}</div><div class="book-author">by ${b.author || ''}</div></div></div></td>
+        <td><span class="genre-chip" style="background:${b.bg || '#e3ecfd'};color:${b.color || '#2f7de1'}">${b.genre || ''}</span></td>
+        <td>${statusPillHtml(b.status || 'draft')}</td>
+        <td>${fmtNum(b.reads || 0)}</td>
+        <td>${fmtNum(b.likes || 0)}</td>
+        <td>${fmtNum(b.comments || 0)}</td>
+        <td><div class="action-buttons">
+          <button class="action-btn view" title="View"><i class="fas fa-eye"></i></button>
+          <button class="action-btn edit" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+        </div></td>
+      </tr>
+    `).join('');
+    
+    renderStats();
   }
 
-  /* ── Bind events ── */
-  function bindEvents() {
-    document.querySelectorAll('.tab-item').forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        document.querySelectorAll('.tab-item').forEach(function (t) { t.classList.remove('active'); });
-        tab.classList.add('active');
-        activeTab = tab.dataset.tab;
-        currentPage = 1;
-        refresh();
+  function renderPagination(total) {
+    const el = document.getElementById('pagination');
+    if(!el) return;
+    
+    const totalPages = Math.ceil(total / PER_PAGE);
+    if(totalPages <= 1) {
+      el.innerHTML = '';
+      return;
+    }
+    
+    let html = `<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} data-page="prev"><i class="fas fa-chevron-left"></i></button>`;
+    
+    for(let i = 1; i <= Math.min(totalPages, 5); i++) {
+      html += `<button class="page-btn ${currentPage === i ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    
+    html += `<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} data-page="next"><i class="fas fa-chevron-right"></i></button>`;
+    
+    el.innerHTML = html;
+    
+    el.querySelectorAll('.page-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const page = btn.dataset.page;
+        if(page === 'prev' && currentPage > 1) currentPage--;
+        else if(page === 'next' && currentPage < totalPages) currentPage++;
+        else if(page) currentPage = parseInt(page);
+        
+        loadBooks();
       });
     });
-
-    ['tableSearch', 'fCategory', 'fGenre', 'fStatus'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.addEventListener(id === 'tableSearch' ? 'input' : 'change', function () {
-        currentPage = 1;
-        refresh();
-      });
-    });
   }
 
-  /* ── Toast helper ── */
-  function toast(m) {
-    var d = 2200;
-    var t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = m;
-    t.classList.add('show');
-    clearTimeout(t._t);
-    t._t = setTimeout(function () { t.classList.remove('show'); }, d);
+  function statusPillHtml(s) {
+    const cls = s.toLowerCase().replace(/ /g, '-');
+    return `<span class="status-pill ${cls}"><span class="dot"></span>${s}</span>`;
   }
 
-  /* ── Public API ── */
-  window.BookManagement = {
-    init: init,
-    refresh: refresh,
-    goPage: goPage,
-    viewBook: viewBook,
-    editBook: editBook,
-    deleteBook: deleteBook,
-    closeDeleteModal: closeDeleteModal,
-    confirmDelete: confirmDelete,
-  };
+  function fmtNum(n) {
+    n = Number(n || 0);
+    if(n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if(n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return String(n);
+  }
 
-  /* Auto-init */
-  if (document.readyState === 'loading') {
+  async function init() {
+    try {
+      await Promise.all([loadBooks(), loadGenres()]);
+    } catch(e) {
+      console.error('Failed to initialize book management:', e);
+    }
+  }
+
+  // Initialize when DOM is ready
+  if(document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();

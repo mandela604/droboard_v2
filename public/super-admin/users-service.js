@@ -1,37 +1,14 @@
 /**
- * users-service.js — Data layer for Users page
- * Reads from window.AdminDemo.PLATFORM_USERS / PLATFORM_ROLES
- * Backend-ready: set USE_API=true and point API_BASE at real endpoints; no HTML change.
- */
-/* Backend-ready flags (no behavior change while USE_API=false) */
-const USE_API = false;
-const API_BASE = '/api';
+/* users-service.js — Data layer for Users page */
 (function(){
 'use strict';
 if(window.__usersService) return;
 window.__usersService = true;
 
-/* Demo-data self-load: page HTML no longer includes data/admin-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.AdminDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="data/admin-demo-data.js"><\/script>');
-}
-
 var _users = [];
 var _roles = [];
 var _genres = [];
 var _genreColors = {};
-
-function loadFromDemo(){
-  var D = window.AdminDemo || {};
-  _users = JSON.parse(JSON.stringify(D.PLATFORM_USERS || []));
-  _roles = D.PLATFORM_ROLES || ['Reader','Writer','Senior Editor','Chief Editor','Marketing','Finance'];
-  _genres = D.USERS_GENRES || [];
-  _genreColors = D.USERS_GENRE_COLORS || {};
-}
-loadFromDemo();
-/* Data script self-injected above executes after this file — re-sync once parsed. */
-if(!_users.length) window.addEventListener('DOMContentLoaded', function(){ loadFromDemo(); renderStatCards(); applyFilters(); });
 
 function users(){ return _users; }
 function roles(){ return _roles; }

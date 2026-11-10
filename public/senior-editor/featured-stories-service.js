@@ -18,7 +18,7 @@ var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/featured-stories'
 var TIMEOUT_MS = 2500;
 
 /* ── Backend-ready header (USE_API/callBackend added; existing API_BASE kept byte-identical) ── */
-var USE_API = false;
+var USE_API = true;
 async function callBackend(path, opts){
   if(!USE_API) return null;
   return timeoutFetch(API_BASE + path, opts);

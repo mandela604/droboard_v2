@@ -291,31 +291,9 @@
       return _request('/books', { method: 'POST', body: JSON.stringify(data) }, b);
     },
 
-    // Live-first status update: persist to the API when reachable; keep demo
-    // behavior offline. A real 4xx refusal (e.g. 'flagged' is not PATCH-able —
-    // flagging goes through Book Management with reason + password) reports
-    // { success:false } instead of faking success. 401/403 → demo fallback.
     async updateBook(id, data) {
-      const idx = STORE.books.findIndex(b => b.id === id);
-      if (idx >= 0) Object.assign(STORE.books[idx], data);
-      _saveStore();
-      const statusValue = { 'Draft': 'draft', 'Ongoing': 'ongoing', 'Under Review': 'under_review', 'Published': 'published', 'Completed': 'completed', 'Paused': 'paused', 'Flagged': 'flagged' };
-      const body = Object.assign({}, data);
-      if (body.status && statusValue[body.status]) body.status = statusValue[body.status];
-      try {
-        const res = await fetch('/api/books/' + encodeURIComponent(id), {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (res.ok) return await res.json();
-        if (res.status !== 401 && res.status !== 403) {
-          console.warn('[DroboardAPI] updateBook rejected by API: HTTP ' + res.status);
-          return { success: false, status: res.status };
-        }
-      } catch (e) { /* offline / demo mode → demo store */ }
-      return _request(`/books/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, { success: true, id });
+      console.warn('[DroboardAPI] updateBook is not available for senior editors — books are owned by authors.');
+      return { success: false, reason: 'not_permitted' };
     },
 
     deleteBook(id) {

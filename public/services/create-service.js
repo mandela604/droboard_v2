@@ -1,20 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════
    CREATE SERVICE — call-and-render for public/Pages/create.html
-   create.html is markup only; ALL page logic lives here, moved VERBATIM.
-   Backend-ready pattern: USE_API=false, API_BASE='/api'. Demo shapes load
-   through the DATA LAYER functions (loadBooks/loadStocks/loadAccountStatus/
-   recordSubmission); live paths already POST via postJSON. Going live: flip
-   USE_API=true and swap the data-layer function bodies for fetch calls.
+   create.html is markup only; ALL page logic lives here.
+   Live: uses /api/author/books for existing books, /api/books/batch for creation,
+   /api/author/books/:id/submit for submissions. All data loaded via fetch.
    Wiring: <script src="../services/create-service.js"></script> placed
-   synchronously (no defer/async) exactly where the inline block was, so
-   parse-time execution order/timing is unchanged. Self-boots on load;
-   no init() call needed. Window globals below preserve the onclick contract.
+   synchronously (no defer/async). Self-boots on load; no init() call needed.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
 
-/* Backend-ready pattern only: USE_API=false, API_BASE='/api' (demo paths run,
-   live paths POST to the backend). Flip USE_API=true when going live. */
-const USE_API=false, API_BASE='/api';
+/* Live: uses /api/author/books for author's books, /api/books/batch for creation */
+const API_BASE = '/api';
+let USE_API = true;
 const SHORT_MAX = 25; // must match backend books.service SHORT_MAX
 
 /* ══════════════════════════════════════════════════════
@@ -94,16 +90,18 @@ let STOCKS = [];     // stock cover images
 let accountStatus = { flow:null };
 
 function loadBooks(){
-  // Live swap:
-  //   return fetch(API_BASE+'/author/books',{credentials:'include'})
-  //     .then(r=>r.json()).then(list=>{ MY_BOOKS=list; });
-  MY_BOOKS = [
-    {id:'s1',title:'His Secret and Her Shadow',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=75',category:'💔 Betrayal',lastChapter:7},
-    {id:'s2',title:'The Lagos Wives',cover:'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75',category:'💍 Marriage',lastChapter:14},
-    {id:'s3',title:'Campus Confessions',cover:'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75',category:'🎓 Campus',lastChapter:4},
-    {id:'s4',title:'Midnight Revenge',cover:'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75',category:'🔥 Revenge',lastChapter:12},
-  ];
-  return Promise.resolve();
+  return fetch(API_BASE + '/author/books?limit=50', { credentials: 'include' })
+    .then(r => r.ok ? r.json() : { items: [] })
+    .then(data => {
+      MY_BOOKS = (data.items || data.data || []).map(b => ({
+        id: b.id,
+        title: b.title,
+        cover: b.cover,
+        category: b.category,
+        lastChapter: b.chapters?.length || 0
+      }));
+    })
+    .catch(() => { MY_BOOKS = []; });
 }
 function loadStocks(){
   // Live swap: fetch covers library, or keep static CDN list.
@@ -118,15 +116,15 @@ function loadStocks(){
   return Promise.resolve();
 }
 function loadAccountStatus(){
-  // Live swap:
-  //   return fetch(API_BASE+'/account/status',{credentials:'include'})
-  //     .then(r=>r.json()).then(s=>{ accountStatus=s; });
-  try {
-    accountStatus = {
-      flow: JSON.parse(localStorage.getItem('dro_writer_flow') || 'null'),
-    };
-  } catch (e) { accountStatus = { flow:null }; }
-  return Promise.resolve();
+  return fetch(API_BASE + '/users/me', { credentials: 'include' })
+    .then(r => r.ok ? r.json() : { user: {} })
+    .then(data => {
+      accountStatus = {
+        isWriter: !!(data.user && data.user.isWriter),
+        flow: null // Writer flow status comes from submissions, not this endpoint
+      };
+    })
+    .catch(() => { accountStatus = { isWriter: false, flow: null }; });
 }
 function recordSubmission(){
   // Writer-flow flag — demo handoff to the senior-editor review queue.
@@ -1091,9 +1089,8 @@ function renderReview(){
 
 /* ══════════════════════════════════════════════════════
    DRAFT SAVE / SUBMIT
-   Demo (USE_API=false): localStorage draft + success screen, so the full
-   flow is visible. Live (USE_API=true): POST /api/books/batch (new story)
-   or POST /api/books/:id/chapters (new-chapter mode), then success screen.
+   Live: POST /api/books/batch (new story) or POST /api/books/:id/chapters
+   (new-chapter mode), then POST /api/author/books/:id/submit for review.
    ══════════════════════════════════════════════════════ */
 function syncReviewControls(){
   // Read the schedule control the review stage renders (was dropped before).
@@ -1196,10 +1193,6 @@ async function submitStory(){
   if (!stageIsValid('review')){ flagInvalid('review'); return; }
   saveDraft(false);
   syncReviewControls();
-  if (!USE_API){
-    recordSubmission();
-    showSuccess(); localStorage.removeItem('droboard_create_story_draft'); return;
-  }
   const btn = document.getElementById('wnavNext');
   if (btn) { btn.classList.add('disabled'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
   try {

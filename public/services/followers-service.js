@@ -1,12 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    FOLLOWERS SERVICE — full page for /Pages/followers.html
-   Call-and-render only. Demo: DemoData.USERS + ProfileData
    Live: GET /api/users/:handle/followers?page=&q=&filter=
    Shows Following / Followers with search, filter chips, pagination via FollowList + 1-2 ads.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-  const USE_API = false;
   const API_BASE = '/api';
   const PER_PAGE = 20;
 
@@ -20,7 +18,7 @@
 
   function getHandle() {
     const p = new URLSearchParams(location.search);
-    return p.get('u') || p.get('handle') || (window.DemoData && DemoData.USERS && Object.keys(DemoData.USERS)[0]) || 'You_Reader';
+    return p.get('u') || p.get('handle') || '';
   }
   function getTab() {
     const p = new URLSearchParams(location.search);
@@ -28,46 +26,27 @@
     return t==='followers' ? 'followers' : 'following';
   }
   async function fetchList(handle, tab) {
-    if (USE_API) {
-      const url = `${API_BASE}/users/${encodeURIComponent(handle)}/${tab}?q=${encodeURIComponent(QUERY)}&filter=${FILTER}`;
-      const r = await fetch(url, {credentials:'include'});
-      if (!r.ok) throw new Error('Followers API failed');
-      const j = await r.json();
-      return j.items || j.data || [];
-    }
-    await new Promise(r=> setTimeout(r, 80));
-    // demo: build from central DemoData + ProfileData
-    let base = [];
-    try {
-      const d = window.DemoData;
-      if (d && d.USERS && d.USERS[handle] && d.USERS[handle].following) {
-        // following list is stored as following array for that user
-        const src = tab==='following' ? d.USERS[handle].following : d.USERS[handle].followers;
-        if (Array.isArray(src) && src.length) base = src.map(f=> ({ handle:f.name||f.handle, name:f.name||f.handle, avatar:f.av||f.avatar, meta:f.meta||'', role: f.role||'', following: !!f.following, isWriter: !!f.isWriter }));
-      }
-      // fallback: if no followers data, synthesize from USERS directory + pad to 1k demo
-      if (!base.length) {
-        const allHandles = d ? Object.keys(d.USERS) : [];
-        const pool = allHandles.map(h=> d.USERS[h]).filter(u=> u.handle!==handle);
-        // pad to ~24 for demo, but support 1k via generation
-        const need = Math.min(1000, Math.max(24, pool.length * 3));
-        while (base.length < need) {
-          const u = pool[base.length % pool.length];
-          if (!u) break;
-          base.push({ handle:u.handle, name:u.name, avatar:u.avatar, meta:(u.isWriter?'Writer':'Reader')+' · '+(u.stats?u.stats.followers:''), role: u.isWriter?'Writer':'Reader', following: Math.random()>0.5, isWriter: !!u.isWriter });
-        }
-        if (tab==='followers') base = base.slice(0, Math.min(base.length, 1000));
-      }
-    } catch(e){ base=[]; }
-    // demo pad to at least 24 to show pagination/search
-    if (base.length && base.length < 24) {
-      const extra = ['Alex_Jones','Mira_Lee','Sam_Wilson','Nina_Patel','Leo_King','Ivy_Chen','Omar_Farouk','Tara_Singh','Yuna_Kim','Jude_Obi','Aisha_Bello','Chinedu_Okafor','Fatima_Ali','Emeka_Nwosu','Zainab_Musa'];
-      let i=0; while(base.length < 24 && i<extra.length) {
-        const h=extra[i++]; if(base.find(x=>x.handle===h)) continue;
-        base.push({ handle:h, name:h, avatar:'https://i.pravatar.cc/100?img='+(10+base.length), meta:'Reader · demo', role:'Reader', following: Math.random()>0.5, isWriter:false });
-      }
-    }
-    return base;
+    const url = `${API_BASE}/users/${encodeURIComponent(handle)}/${tab}?limit=${PER_PAGE}&q=${encodeURIComponent(QUERY)}&filter=${FILTER}`;
+    const r = await fetch(url, {credentials:'include'});
+    if (!r.ok) throw new Error('Followers API failed: ' + r.status);
+    const j = await r.json();
+    return j.items || j.data || [];
+  }
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#161616;color:#fff;padding:10px 16px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:300;max-width:min(360px,90vw);box-shadow:0 8px 24px rgba(0,0,0,.25)';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2800);
+  }
+  /* Explicit error empty-state: the failure message is rendered, the page
+     never falls back to canned data. */
+  function renderError(err) {
+    const listEl = document.getElementById('followersList');
+    const pg = document.getElementById('followersPager');
+    if (pg) pg.innerHTML = '';
+    if (listEl) listEl.innerHTML = '<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)"><i class="fas fa-triangle-exclamation" style="display:block;font-size:20px;margin-bottom:8px;opacity:.6"></i>Could not load ' + esc(TAB) + ' — ' + esc((err && err.message) || 'request failed') + '</div>';
   }
   function applyFilters() {
     let out = ALL_ITEMS.slice();
@@ -112,15 +91,23 @@
         emptyText: 'No users found.',
         onProfileClick: h=> location.href='profile.html?u='+encodeURIComponent(h),
         onToggle: async (handle, item)=>{
-          // demo toggle locally
-          item.following = !item.following;
-          const cur = followApi.getData(); const c=cur.find(x=>x.handle===handle); if(c) c.following=item.following;
-          followApi.render();
+          const isFollowing = item.following;
+          const method = isFollowing ? 'POST' : 'DELETE';
           try {
-            const isFollowing = item.following;
-            const call = isFollowing ? (window.ProfileData && ProfileData.followUser) : (window.ProfileData && ProfileData.unfollowUser);
-            if(call) await call(HANDLE, handle);
-          } catch(e){}
+            const r = await fetch(`${API_BASE}/users/${encodeURIComponent(handle)}/follow`, {
+              method,
+              credentials: 'include'
+            });
+            if (!r.ok) throw new Error('Follow failed (' + r.status + ')');
+            item.following = isFollowing;
+            const cur = followApi.getData(); const c=cur.find(x=>x.handle===handle); if(c) c.following=item.following;
+            followApi.render();
+          } catch(e) {
+            // revert on failure and say why
+            item.following = !isFollowing;
+            followApi.render();
+            toast('❌ ' + (e.message || 'Could not update follow — try again.'));
+          }
         }
       });
     }
@@ -182,7 +169,14 @@
   async function initList() {
     document.getElementById('followersTitle').textContent = TAB==='followers' ? 'Followers' : 'Following';
     document.getElementById('followersSub').textContent = HANDLE;
-    ALL_ITEMS = await fetchList(HANDLE, TAB);
+    try {
+      ALL_ITEMS = await fetchList(HANDLE, TAB);
+    } catch (e) {
+      ALL_ITEMS = [];
+      FILTERED = [];
+      renderError(e);
+      return;
+    }
     applyFilters();
     render();
   }
@@ -192,6 +186,10 @@
     // set active tab UI
     document.querySelectorAll('.f-tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===TAB));
     bindEvents();
+    if (!HANDLE) {
+      renderError(new Error('no ?u= handle in the URL'));
+      return;
+    }
     await initList();
   }
   window.FollowersPage = { init };

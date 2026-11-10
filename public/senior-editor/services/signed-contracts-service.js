@@ -1,12 +1,9 @@
 /**
- * signed-contracts-service.js — Contract Details page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * signed-contracts-service.js — Contract Details page logic (pure call-and-render). */
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
@@ -27,10 +24,7 @@ function attachShell(){
 }
 
 function init(){
-  attachShell();
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/signed-contracts').then(function(data){ if(data){ /* render detail */ } });
-  callBackend('/signed-contracts');
+  attachShell();  callBackend('/signed-contracts');
 }
 
 window.SignedContractsService={init:init};

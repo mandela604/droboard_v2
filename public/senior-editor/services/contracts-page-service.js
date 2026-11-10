@@ -1,14 +1,12 @@
 /**
  * services/contracts-page-service.js — Contracts page logic (contracts + templates + signed tabs).
  * Pure call-and-render: contracts.html only loads this + init().
- * Data layer: window.ContractsService (services/contracts-service.js, backend-first).
- * Backend-ready: set USE_API=true and implement endpoints below.
- */
+ * Data layer: window.ContractsService (services/contracts-service.js, backend-first). */
 (function () {
 'use strict';
 if (window.ContractsPageService) return;
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {

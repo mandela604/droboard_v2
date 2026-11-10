@@ -502,72 +502,20 @@
   function toggleTheme() { _applyTheme(_theme === 'dark' ? 'light' : 'dark'); }
 
   // ══════════════════════════════════════════════════════════════════
-  // Default demo data — identical content to the original search.html.
-  // Overridable wholesale (or per-key) via DroboardSearch.configure({data:...})
+  // Live data only. The overlay reads GET /api/search/index — the browse
+  // sections (trending, categories, featured, writers, boards, debates) and
+  // the search pools. Nothing here is seeded; an empty section means the
+  // backend has no rows for it.
   // ══════════════════════════════════════════════════════════════════
   const DEFAULT_DATA = {
-    trending: [
-      { q: 'Ada_Writes', meta: '12.4k searches · Writer', fire: true },
-      { q: 'betrayal stories', meta: '9.1k searches this week', fire: true },
-      { q: 'The Runaway Bride', meta: '8.7k searches', fire: false },
-      { q: 'campus romance 2025', meta: '7.2k searches', fire: false },
-      { q: 'Chiamaka_N', meta: '6.8k searches · Writer', fire: false },
-      { q: 'family drama books', meta: '5.9k searches', fire: false },
-      { q: 'revenge arc', meta: '5.3k searches', fire: false },
-      { q: 'best elegy stories', meta: '4.1k searches', fire: false },
-    ],
-    categories: [
-      { label: '💔 Betrayal', count: '1.2k stories', bg: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg' },
-      { label: '🎓 Campus', count: '890 stories', bg: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg' },
-      { label: '👑 Family', count: '740 stories', bg: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg' },
-      { label: '🔥 Revenge', count: '620 stories', bg: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg' },
-      { label: '✨ Twist', count: '580 stories', bg: 'https://i.postimg.cc/tY7KnJyr/images.jpg' },
-      { label: '🌙 Elegy', count: '310 stories', bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg' },
-      { label: '💍 Romance', count: '950 stories', bg: 'https://i.postimg.cc/WF1j4Pnh/6.jpg' },
-      { label: '😂 Comedy', count: '420 stories', bg: 'https://i.postimg.cc/cgLZJNmC/8.jpg' },
-    ],
-    featured: [
-      { img: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', cat: '💔 Betrayal', title: 'I came home early and caught my husband kissing her photograph', author: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', views: '171k', badge: 'hot' },
-      { img: 'https://i.postimg.cc/tY7KnJyr/images.jpg', cat: '✨ Twist', title: 'The runaway bride in her socked feet', author: 'Ifeanyi_Story', av: 'https://i.pravatar.cc/100?img=53', views: '312k', badge: 'hot' },
-      { img: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', cat: '👑 Family', title: "My grandmother's will revealed I wasn't her blood", author: 'Chiamaka_N', av: 'https://i.pravatar.cc/100?img=47', views: '204k', badge: 'free' },
-      { img: 'https://i.postimg.cc/N9jY0w4m/5.jpg', cat: '🌙 Elegy', title: 'The letter he never sent', author: 'Efe_O', av: 'https://i.pravatar.cc/100?img=22', views: '218k', badge: '' },
-      { img: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', cat: '🔥 Revenge', title: 'I became his boss before telling him who I was', author: 'Zara_M', av: 'https://i.pravatar.cc/100?img=16', views: '192k', badge: 'new' },
-      { img: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', cat: '🎓 Campus', title: 'The richest boy started sitting beside me every morning', author: 'CampusQueen', av: 'https://i.pravatar.cc/100?img=12', views: '134k', badge: 'new' },
-    ],
-    writers: [
-      { name: 'Ada_Writes', handle: '@ada_writes', genre: '💔 Betrayal', av: 'https://i.pravatar.cc/100?img=32', followers: '12.4k', verified: true, following: false },
-      { name: 'Ifeanyi_Story', handle: '@ifeanyi_story', genre: '✨ Twist', av: 'https://i.pravatar.cc/100?img=53', followers: '31.7k', verified: true, following: false },
-      { name: 'Chiamaka_N', handle: '@chiamaka_n', genre: '👑 Family', av: 'https://i.pravatar.cc/100?img=47', followers: '19.2k', verified: false, following: false },
-      { name: 'Efe_O', handle: '@efe_o', genre: '🌙 Elegy', av: 'https://i.pravatar.cc/100?img=22', followers: '22.3k', verified: true, following: false },
-      { name: 'Zara_M', handle: '@zara_m', genre: '🔥 Revenge', av: 'https://i.pravatar.cc/100?img=16', followers: '14.8k', verified: false, following: false },
-    ],
-    boards: [
-      { id: 'top-writers-week', type: 'board', name: 'Top Writers This Week', description: 'Ada Writes · Ifeanyi Story · Luna Grey', people: ['Ada_Writes', 'Ifeanyi_Story', 'Luna_Grey'], icon: 'fa-trophy', keywords: ['top writers', 'weekly leaders', 'trending writers'] },
-      { id: 'top-readers-month', type: 'board', name: 'Top Readers This Month', description: 'Blessing O · Nneka Reads · Amara_Reads', people: ['Blessing_O', 'Nneka_Reads', 'Amara_Reads'], icon: 'fa-book-reader', keywords: ['top readers', 'monthly leaders', 'active readers'] },
-      { id: 'top-writers-month', type: 'board', name: 'Top Writers This Month', description: 'Chiamaka N · Ada Writes · Zara M', people: ['Chiamaka_N', 'Ada_Writes', 'Zara_M'], icon: 'fa-star', keywords: ['top writers', 'monthly leaders', 'best authors'] },
-      { id: 'top-readers-week', type: 'board', name: 'Top Readers This Week', description: 'Praise Unending · Chapter Chaser · Blessing O', people: ['PraiseUnending', 'ChapterChaser', 'Blessing_O'], icon: 'fa-fire', keywords: ['top readers', 'weekly leaders', 'hottest readers'] },
-    ],
+    trending: [],
+    categories: [],
+    featured: [],
+    writers: [],
+    boards: [],
     debates: [],
-    poolStories: [
-      { type: 'story', img: 'https://i.postimg.cc/MXBR6bfY/wolf3.jpg', cat: '💔 Betrayal', title: "I came home early and caught my husband kissing my late sister's photograph", author: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32', views: '171k', likes: '24.3k', badge: 'hot', keywords: ['betrayal', 'husband', 'sister', 'photograph', 'ada'] },
-      { type: 'story', img: 'https://i.postimg.cc/tY7KnJyr/images.jpg', cat: '✨ Twist', title: 'The runaway bride — I left at the altar in my socked feet', author: 'Ifeanyi_Story', av: 'https://i.pravatar.cc/100?img=53', views: '312k', likes: '45k', badge: 'hot', keywords: ['twist', 'bride', 'altar', 'runaway', 'ifeanyi'] },
-      { type: 'story', img: 'https://i.postimg.cc/xqmHfyNR/wolf2.jpg', cat: '👑 Family', title: "My grandmother's will revealed I wasn't her blood", author: 'Chiamaka_N', av: 'https://i.pravatar.cc/100?img=47', views: '204k', likes: '31k', badge: 'free', keywords: ['family', 'grandmother', 'will', 'blood', 'chiamaka'] },
-      { type: 'story', img: 'https://i.postimg.cc/N9jY0w4m/5.jpg', cat: '🌙 Elegy', title: 'The letter folded inside his jacket pocket — he died before sending it', author: 'Efe_O', av: 'https://i.pravatar.cc/100?img=22', views: '218k', likes: '36.5k', badge: '', keywords: ['elegy', 'letter', 'death', 'grief', 'efe'] },
-      { type: 'story', img: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', cat: '🔥 Revenge', title: 'My stepmother stole my university fund — so I uncovered her entire secret life', author: 'Zara_M', av: 'https://i.pravatar.cc/100?img=16', views: '192k', likes: '28k', badge: 'hot', keywords: ['revenge', 'stepmother', 'fund', 'zara'] },
-      { type: 'story', img: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', cat: '🎓 Campus', title: 'The richest boy in school suddenly started sitting beside me every morning', author: 'CampusQueen', av: 'https://i.pravatar.cc/100?img=12', views: '134k', likes: '18.1k', badge: 'new', keywords: ['campus', 'rich', 'school', 'romance'] },
-      { type: 'story', img: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', cat: '💔 Heartbreak', title: "He proposed with my best friend's ring — she giggled before he even knelt", author: 'Kemi_A', av: 'https://i.pravatar.cc/100?img=28', views: '96k', likes: '19.2k', badge: 'new', keywords: ['heartbreak', 'proposal', 'ring', 'kemi'] },
-      { type: 'story', img: 'https://i.postimg.cc/fkdXzjSj/wife.jpg', cat: '🏙️ Urban Love', title: "She rejected me 3 times. Now we share a mortgage and a dog named 'Finally'", author: 'Dami_Cole', av: 'https://i.pravatar.cc/100?img=64', views: '22.4k', likes: '22.4k', badge: '', keywords: ['romance', 'urban', 'love', 'dog', 'dami'] },
-    ],
-    poolWriters: [
-      { type: 'writer', name: 'Ada_Writes', handle: '@ada_writes', genre: '💔 Betrayal', av: 'https://i.pravatar.cc/100?img=32', followers: '12.4k', verified: true, following: false, keywords: ['ada', 'ada_writes', 'betrayal', 'writer'] },
-      { type: 'writer', name: 'Ifeanyi_Story', handle: '@ifeanyi_story', genre: '✨ Twist', av: 'https://i.pravatar.cc/100?img=53', followers: '31.7k', verified: true, following: false, keywords: ['ifeanyi', 'twist', 'writer'] },
-      { type: 'writer', name: 'Chiamaka_N', handle: '@chiamaka_n', genre: '👑 Family', av: 'https://i.pravatar.cc/100?img=47', followers: '19.2k', verified: false, following: false, keywords: ['chiamaka', 'family', 'writer'] },
-      { type: 'writer', name: 'Efe_O', handle: '@efe_o', genre: '🌙 Elegy', av: 'https://i.pravatar.cc/100?img=22', followers: '22.3k', verified: true, following: false, keywords: ['efe', 'elegy', 'writer'] },
-      { type: 'writer', name: 'Zara_M', handle: '@zara_m', genre: '🔥 Revenge', av: 'https://i.pravatar.cc/100?img=16', followers: '14.8k', verified: false, following: false, keywords: ['zara', 'revenge', 'writer'] },
-      { type: 'writer', name: 'CampusQueen', handle: '@campusqueen', genre: '🎓 Campus', av: 'https://i.pravatar.cc/100?img=12', followers: '8.1k', verified: false, following: false, keywords: ['campus', 'queen', 'writer'] },
-      { type: 'writer', name: 'Kemi_A', handle: '@kemi_a', genre: '💔 Heartbreak', av: 'https://i.pravatar.cc/100?img=28', followers: '6.5k', verified: false, following: false, keywords: ['kemi', 'heartbreak', 'writer'] },
-      { type: 'writer', name: 'Dami_Cole', handle: '@dami_cole', genre: '🏙️ Urban Love', av: 'https://i.pravatar.cc/100?img=64', followers: '9.4k', verified: false, following: false, keywords: ['dami', 'urban', 'love', 'writer'] },
-    ],
+    poolStories: [],
+    poolWriters: [],
     poolDebates: [],
     poolBoards: [],
   };
@@ -581,7 +529,6 @@
     onOpenWriter: () => { location.href = 'profile.html'; },
     onOpenDebate: (d) => { location.href = 'debate.html?id=' + encodeURIComponent((d && d.id) || ''); },
     onOpenBoard: (b) => { location.href = 'discover.html?board=' + encodeURIComponent((b && b.id) || ''); },
-    onFollowToggle: null,
     onAdClick: (ad) => { _toast('Opening ' + (ad.brand || 'ad') + '…'); },
   };
   let _built = false;
@@ -590,6 +537,10 @@
   let _currentFilter = 'all';
   let _debounceTimer = null;
   let _isOpen = false;
+  let _indexLoaded = false;
+  let _indexError = '';
+  let _liveHits = null;
+  let _searchSeq = 0;
 
   function configure(options) {
     options = options || {};
@@ -599,7 +550,7 @@
     if (options.theme) {
       _applyTheme(options.theme);
     }
-    ['onOpenStory', 'onOpenWriter', 'onOpenDebate', 'onOpenBoard', 'onFollowToggle', 'onAdClick'].forEach(k => {
+    ['onOpenStory', 'onOpenWriter', 'onOpenDebate', 'onOpenBoard', 'onAdClick'].forEach(k => {
       if (typeof options[k] === 'function') _hooks[k] = options[k];
     });
   }
@@ -714,15 +665,6 @@
     _emptyView = _root.querySelector('[data-view="empty"]');
 
     bindStaticEvents();
-    // Debates come from the shared demo store (central-demo-data.js →
-    // DemoData.DEBATE_POSTS) — the same composer-shaped posts the feed
-    // shows. Built lazily so this component can load before the demo
-    // store parses.
-    try {
-      const deb = debatesFromShared();
-      _data.debates = deb;
-      _data.poolDebates = deb.map(d => Object.assign({ type: 'debate' }, d));
-    } catch (e) {}
     renderRecent();
     renderTrending();
     renderCategories();
@@ -730,41 +672,6 @@
     renderWriters();
     renderDebates();
     renderAd();
-    // No shared store on this page → pull the feed's debates instead.
-    if (!_data.debates.length && window.FeedData && typeof FeedData.getFeedPosts === 'function') {
-      FeedData.getFeedPosts()
-        .then(posts => {
-          const list = (posts || []).filter(p => p && p.type === 'debate');
-          if (!list.length) return;
-          const mapped = list.map(p => {
-            const d = p.debateData || {};
-            const question = d.motion || d.question || '';
-            return {
-              id: p.id, type: 'debate', name: p.name || '', avatar: p.avatar || '', time: p.time || '',
-              question: question, motion: question, prompt: d.prompt || '',
-              forText: d.forText || 'For', againstText: d.againstText || 'Against',
-              forV: d.forV || 0, agV: d.agV || 0, userVote: d.userVote || null,
-              likes: p.likes || 0, comments: p.comments || 0,
-              keywords: ['debate', question.toLowerCase(), String(p.name || '').toLowerCase()].filter(Boolean),
-            };
-          });
-          _data.debates = mapped;
-          _data.poolDebates = mapped.map(d => Object.assign({ type: 'debate' }, d));
-          renderDebates();
-        })
-        .catch(() => {});
-    }
-    // Opportunistic: swap demo trending for live 7d SearchLog terms when
-    // the API is up; any failure keeps the demo list untouched.
-    fetch('/api/search/trending?limit=8', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && Array.isArray(d.items) && d.items.length) {
-          _data.trending = d.items;
-          renderTrending();
-        }
-      })
-      .catch(() => {});
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -835,14 +742,6 @@
         const slides = DroboardStatus.writerStatuses(w.handle || w.name);
         if (slides && slides.length) return { id: 'wr:' + String(w.handle || w.name).replace(/^@/, '').toLowerCase(), statuses: slides };
       }
-      const list = (window.DemoData && window.DemoData.STATUSES) || [];
-      const name = String(w.name || '').replace(/^@/, '').toLowerCase();
-      for (let i = 0; i < list.length; i++) {
-        const s = list[i];
-        if (!s || s.isYou) continue;
-        if (!s.statuses || !s.statuses.length) continue;
-        if (String(s.name || '').replace(/^@/, '').toLowerCase() === name) return s;
-      }
     } catch (e) {}
     return null;
   }
@@ -889,26 +788,6 @@ function renderDebates() {
     if (head) head.style.display = list.length ? '' : 'none';
   }
 
-  // Debates are the same composer-shaped posts the feed shows — they live in
-  // the shared demo store (central-demo-data.js → DemoData.DEBATE_POSTS).
-  // The story-reader debates (SERIES_CATALOG[*].debates) are NOT used here:
-  // nothing in the composer can produce them.
-  function debatesFromShared() {
-    const src = (window.DemoData && window.DemoData.DEBATE_POSTS) || [];
-    return src.map(p => {
-      const d = p.debateData || {};
-      const question = d.motion || d.question || '';
-      return {
-        id: p.id, type: 'debate',
-        name: p.name || '', avatar: p.avatar || '', time: p.time || '',
-        question: question, motion: question, prompt: d.prompt || '',
-        forText: d.forText || 'For', againstText: d.againstText || 'Against',
-        forV: d.forV || 0, agV: d.agV || 0, userVote: d.userVote || null,
-        likes: p.likes || 0, comments: p.comments || 0,
-        keywords: ['debate', question.toLowerCase(), String(p.name || '').toLowerCase()].filter(Boolean),
-      };
-    });
-  }
 
   function debateCardHtml(d) {
     const q = d.motion || d.question || '';
@@ -981,6 +860,7 @@ function renderDebates() {
     _searchInp.value = '';
     _clearBtn.classList.remove('show');
     _filterBar.classList.remove('show');
+    _liveHits = null;
     switchView('default');
   }
 
@@ -997,21 +877,25 @@ function renderDebates() {
     _filterBar.classList.add('show');
     _addRecent(q);
     renderRecent();
-    displayResults(q);
+    _liveSearch(q);
   }
 
   function allPool() {
     return [].concat(_data.poolStories || [], _data.poolWriters || [], _data.poolBoards || [], _data.poolDebates || []);
   }
 
-  function displayResults(q) {
-    const qLow = q.toLowerCase();
-    let hits = allPool().filter(item => {
-      const inKw = (item.keywords || []).some(k => k.includes(qLow) || qLow.includes(k));
-      const inTitle = (item.title || item.motion || item.name || '').toLowerCase().includes(qLow);
-      const inAuthor = (item.author || item.handle || '').toLowerCase().includes(qLow);
-      return inKw || inTitle || inAuthor;
-    });
+  // `hits` comes from the backend (the pools are already filtered server-side).
+  // Without it the overlay falls back to matching the local pools.
+  function displayResults(q, hits) {
+    if (!hits) {
+      const qLow = q.toLowerCase();
+      hits = allPool().filter(item => {
+        const inKw = (item.keywords || []).some(k => k.includes(qLow) || qLow.includes(k));
+        const inTitle = (item.title || item.motion || item.name || '').toLowerCase().includes(qLow);
+        const inAuthor = (item.author || item.handle || '').toLowerCase().includes(qLow);
+        return inKw || inTitle || inAuthor;
+      });
+    }
 
     if (_currentFilter === 'stories') hits = hits.filter(h => h.type === 'story');
     else if (_currentFilter === 'writers') hits = hits.filter(h => h.type === 'writer');
@@ -1022,9 +906,11 @@ function renderDebates() {
     if (!hits.length) {
       switchView('empty');
       _root.querySelector('[data-dso-emptytitle]').textContent = `Nothing for "${q}"`;
-      _root.querySelector('[data-dso-emptytry]').innerHTML =
-        ['betrayal', 'campus', 'Ada_Writes', 'elegy', 'romance'].map(s =>
-          `<div class="dso-empty-try-pill" data-dso-run="${_esc(s)}">${s}</div>`).join('');
+      const tries = (_data.categories || []).slice(0, 5)
+        .map(c => String(c.label || '').replace(/[^a-zA-Z ]/g, '').trim())
+        .filter(Boolean);
+      _root.querySelector('[data-dso-emptytry]').innerHTML = tries.map(s =>
+        `<div class="dso-empty-try-pill" data-dso-run="${_esc(s)}">${_esc(s)}</div>`).join('');
       return;
     }
 
@@ -1116,7 +1002,7 @@ function renderDebates() {
         _currentFilter = p.dataset.f;
         _filterBar.querySelectorAll('.dso-fpill').forEach(x => x.classList.toggle('on', x === p));
         const q = _searchInp.value.trim();
-        if (q) displayResults(q);
+        if (q) _liveSearch(q);
       });
     });
 
@@ -1147,11 +1033,7 @@ function renderDebates() {
         const w = _data.writers[i];
         if (!w) return;
         if (window.RequireAuth && !RequireAuth.ensure((w.following ? 'unfollow @' : 'follow @') + (w.name || 'this writer'))) return;
-        w.following = !w.following;
-        followBtn.textContent = w.following ? '✓ Following' : '+ Follow';
-        followBtn.classList.toggle('ing', w.following);
-        _toast(w.following ? `✅ Following @${w.name}` : `Unfollowed @${w.name}`);
-        if (_hooks.onFollowToggle) _hooks.onFollowToggle(w, w.following);
+        _toggleFollow(w, followBtn);
         return;
       }
       const followResultBtn = e.target.closest('[data-dso-followresult]');
@@ -1159,11 +1041,7 @@ function renderDebates() {
         e.stopPropagation();
         const w = JSON.parse(followResultBtn.dataset.dsoFollowresult);
         if (window.RequireAuth && !RequireAuth.ensure((w.following ? 'unfollow @' : 'follow @') + (w.name || 'this writer'))) return;
-        w.following = !w.following;
-        followResultBtn.textContent = w.following ? '✓ Following' : '+ Follow';
-        followResultBtn.classList.toggle('ing', w.following);
-        _toast(w.following ? `✅ Following @${w.name}` : `Unfollowed @${w.name}`);
-        if (_hooks.onFollowToggle) _hooks.onFollowToggle(w, w.following);
+        _toggleFollow(w, followResultBtn);
         return;
       }
 
@@ -1204,12 +1082,107 @@ function renderDebates() {
     } catch (e) {}
   }
 
+  // ── Live index ────────────────────────────────────────────────────────
+  // One contract for the whole overlay: GET /api/search/index. The browse
+  // sections come back with no query; a query narrows the four pools.
+  function _apiBase() {
+    return (typeof globalThis !== 'undefined' && globalThis.DROBOARD_API_BASE) || '/api';
+  }
+
+  function _fetchIndex(q, type) {
+    const qs = [];
+    if (q) qs.push('q=' + encodeURIComponent(String(q).slice(0, 80)));
+    if (type && type !== 'all') qs.push('type=' + encodeURIComponent(type));
+    qs.push('limit=20');
+    return fetch(_apiBase() + '/search/index?' + qs.join('&'), { credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('Search index failed (' + r.status + ')');
+        return r.json();
+      });
+  }
+
+  function _applyIndex(j) {
+    if (!j || typeof j !== 'object') return;
+    ['trending', 'categories', 'featured', 'writers', 'boards', 'debates'].forEach(function (k) {
+      if (Array.isArray(j[k])) _data[k] = j[k];
+    });
+    if (Array.isArray(j.poolStories)) _data.poolStories = j.poolStories;
+    if (Array.isArray(j.poolWriters)) _data.poolWriters = j.poolWriters;
+    if (Array.isArray(j.poolBoards)) _data.poolBoards = j.poolBoards;
+    if (Array.isArray(j.poolDebates)) _data.poolDebates = j.poolDebates;
+  }
+
+  function _renderBrowse() {
+    renderTrending();
+    renderCategories();
+    renderFeatured();
+    renderWriters();
+    renderDebates();
+  }
+
+  function _ensureIndex() {
+    if (_indexLoaded) return Promise.resolve();
+    return _fetchIndex('', '').then(function (j) {
+      _applyIndex(j);
+      _indexLoaded = true;
+      _indexError = '';
+      _renderBrowse();
+    }).catch(function (e) {
+      _indexError = (e && e.message) || 'Search is unavailable right now';
+    });
+  }
+
+  // Live search — the backend filters, the overlay renders what it returns.
+  function _liveSearch(q) {
+    const seq = ++_searchSeq;
+    const type = _currentFilter === 'all' ? '' : _currentFilter;
+    return _fetchIndex(q, type).then(function (j) {
+      if (seq !== _searchSeq) return;
+      _liveHits = []
+        .concat(j.poolStories || [], j.poolWriters || [], j.poolBoards || [], j.poolDebates || []);
+      displayResults(q, _liveHits);
+    }).catch(function (e) {
+      if (seq !== _searchSeq) return;
+      _liveHits = [];
+      switchView('empty');
+      const t = _root.querySelector('[data-dso-emptytitle]');
+      if (t) t.textContent = 'Search failed — ' + ((e && e.message) || 'request failed');
+    });
+  }
+
+  // Follow is a real write: POST/DELETE /api/users/:handle/follow. The button
+  // only flips once the server accepted it.
+  function _toggleFollow(w, btn) {
+    if (!w) return;
+    const handle = String(w.handle || w.name || '').replace(/^@/, '');
+    if (!handle) return;
+    const next = !w.following;
+    const url = _apiBase() + '/users/' + encodeURIComponent(handle) + '/follow';
+    fetch(url, { method: next ? 'POST' : 'DELETE', credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('http_' + r.status);
+        return r.json();
+      })
+      .then(function () {
+        w.following = next;
+        if (btn) {
+          btn.textContent = next ? '✓ Following' : '+ Follow';
+          btn.classList.toggle('ing', next);
+        }
+        _toast(next ? '✅ Following @' + (w.name || handle) : 'Unfollowed @' + (w.name || handle));
+      })
+      .catch(function (e) {
+        _toast('Follow failed — ' + ((e && e.message) || 'request failed'));
+      });
+  }
+
   function open(prefillQuery) {
     build();
     _root.classList.add('open');
     document.body.style.overflow = 'hidden';
     _isOpen = true;
     _syncPlatformNav(true);
+    _ensureIndex();
     if (prefillQuery) {
       runSearch(prefillQuery);
     } else if (!_searchInp.value) {
@@ -1278,7 +1251,6 @@ function renderDebates() {
        onOpenWriter: (writer) => location.href = `profile.html?u=${writer.handle}`,
        onOpenDebate: (debate) => location.href = `debate.html?id=${debate.id}`,
        onOpenBoard:  (board)   => location.href = `discover.html?board=${board.id}`,
-       onFollowToggle: (writer, isFollowing) => api.follow(writer.handle, isFollowing),
        data: { poolStories: MY_REAL_STORY_INDEX, poolWriters: MY_REAL_WRITERS, poolBoards: MY_REAL_BOARDS, ... },
        theme: 'light', // optional — force a starting theme (default is 'light' regardless)
      });

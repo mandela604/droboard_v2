@@ -1,143 +1,166 @@
 /**
- * contracts-service.js — Shared data layer for the Contracts module
- * ──────────────────────────────────────────────────────────────
- * Every function tries the real backend first and falls back to
- * demo data from ContractsDemo.
+ * contracts-service.js — Contract management for Senior Editor
+ * Live API only, no demo fallbacks.
  */
 (function(){
 'use strict';
-if(window.__contractsService) return;
-window.__contractsService = true;
 
-/* Demo-data self-load: page HTML no longer includes data/contracts-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.ContractsDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="data/contracts-demo-data.js"><\/script>');
+const API_BASE = '/api/senior-editor/contracts';
+const TIMEOUT_MS = 5000;
+
+function showError(msg) {
+  console.error('Contracts service error:', msg);
 }
 
-var USE_API = false;
-var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/contracts';
-var TIMEOUT_MS = 2500;
-
-function delay(ms){ return new Promise(function(r){ setTimeout(r, ms || 200 + Math.random()*200); }); }
-
-function getDemo(){
-  if(window.ContractsDemo) return JSON.parse(JSON.stringify(window.ContractsDemo));
-  return { contracts:[], templates:[], signedContracts:[] };
+async function callApi(path, opts) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(API_BASE + path, { signal: c.signal, credentials:'include', ...opts });
+    clearTimeout(t);
+    if(!res.ok) throw new Error(`API error ${res.status}`);
+    return await res.json();
+  } catch(e) {
+    clearTimeout(t);
+    throw e;
+  }
 }
 
-function findIn(arr, id){
-  var item = arr.find(function(x){ return x.id === id || x.id === Number(id); });
-  if(!item) throw new Error('Not found: ' + id);
-  return item;
+async function loadContracts() {
+  try {
+    const data = await callApi('');
+    return data.items || data.contracts || [];
+  } catch(e) {
+    showError('Failed to load contracts: ' + e.message);
+    return [];
+  }
+}
+
+async function getContract(id) {
+  try {
+    return await callApi(`/${id}`);
+  } catch(e) {
+    throw new Error('Failed to load contract: ' + e.message);
+  }
+}
+
+async function sendContract(payload) {
+  try {
+    return await callApi('', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    throw new Error('Failed to send contract: ' + e.message);
+  }
+}
+
+async function approveContract(id) {
+  try {
+    return await callApi(`/${id}/approve`, { method: 'POST' });
+  } catch(e) {
+    throw new Error('Failed to approve contract: ' + e.message);
+  }
+}
+
+async function rejectContract(id, note) {
+  try {
+    return await callApi(`/${id}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note })
+    });
+  } catch(e) {
+    throw new Error('Failed to reject contract: ' + e.message);
+  }
+}
+
+async function replyToContract(id, message) {
+  try {
+    return await callApi(`/${id}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+  } catch(e) {
+    throw new Error('Failed to reply to contract: ' + e.message);
+  }
+}
+
+async function loadTemplates() {
+  try {
+    const data = await callApi('/templates');
+    return data.items || data.templates || [];
+  } catch(e) {
+    showError('Failed to load templates: ' + e.message);
+    return [];
+  }
+}
+
+async function getTemplate(id) {
+  try {
+    return await callApi(`/templates/${id}`);
+  } catch(e) {
+    throw new Error('Failed to load template: ' + e.message);
+  }
+}
+
+async function createTemplate(payload) {
+  try {
+    return await callApi('/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    throw new Error('Failed to create template: ' + e.message);
+  }
+}
+
+async function updateTemplate(id, payload) {
+  try {
+    return await callApi(`/templates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    throw new Error('Failed to update template: ' + e.message);
+  }
+}
+
+async function loadSignedContracts() {
+  try {
+    const data = await callApi('/signed');
+    return data.items || data.signedContracts || [];
+  } catch(e) {
+    showError('Failed to load signed contracts: ' + e.message);
+    return [];
+  }
+}
+
+async function getSignedContract(id) {
+  try {
+    return await callApi(`/signed/${id}`);
+  } catch(e) {
+    throw new Error('Failed to load signed contract: ' + e.message);
+  }
 }
 
 window.ContractsService = {
-
-  /* ── Contracts ── */
-  async getContracts(){
-    try {
-      if(!USE_API) throw new Error('demo');
-      var res = await fetch(API_BASE, {signal:AbortSignal.timeout(TIMEOUT_MS)});
-      if(!res.ok) throw new Error(res.status);
-      return await res.json();
-    } catch(e){
-      await delay();
-      return getDemo().contracts;
-    }
-  },
-
-  async getContract(id){
-    await delay(100);
-    var demo = getDemo();
-    return findIn(demo.contracts, id);
-  },
-
-  async sendContract(payload){
-    await delay(200);
-    var demo = getDemo();
-    var newContract = Object.assign({
-      id: 'CNTR-2026-' + String(demo.contracts.length + 1).padStart(3,'0'),
-      authorAv: 'https://i.pravatar.cc/100?img=' + Math.floor(Math.random()*50+1),
-      status: 'awaiting',
-      dateSent: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-      signedDate: '—',
-      replies: []
-    }, payload);
-    demo.contracts.unshift(newContract);
-    return newContract;
-  },
-
-  async approveContract(id){
-    await delay(150);
-    var demo = getDemo();
-    var c = findIn(demo.contracts, id);
-    c.status = 'signed';
-    c.signedDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    return c;
-  },
-
-  async rejectContract(id, note){
-    await delay(150);
-    var demo = getDemo();
-    var c = findIn(demo.contracts, id);
-    c.status = 'rejected';
-    c.notes = note || c.notes;
-    return c;
-  },
-
-  async replyToContract(id, message){
-    await delay(150);
-    var demo = getDemo();
-    var c = findIn(demo.contracts, id);
-    return c;
-  },
-
-  /* ── Templates ── */
-  async getTemplates(){
-    await delay();
-    return getDemo().templates;
-  },
-
-  async getTemplate(id){
-    await delay(100);
-    var demo = getDemo();
-    return findIn(demo.templates, id);
-  },
-
-  async createTemplate(payload){
-    await delay(200);
-    var demo = getDemo();
-    var newTpl = Object.assign({
-      id: demo.templates.length + 1,
-      status: 'draft',
-      updated: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-      by: 'Reina Morgan',
-      clauses: 6
-    }, payload);
-    demo.templates.unshift(newTpl);
-    return newTpl;
-  },
-
-  async updateTemplate(id, payload){
-    await delay(150);
-    var demo = getDemo();
-    var t = findIn(demo.templates, id);
-    Object.assign(t, payload);
-    t.updated = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    return t;
-  },
-
-  /* ── Signed Contracts ── */
-  async getSignedContracts(){
-    await delay();
-    return getDemo().signedContracts;
-  },
-
-  async getSignedContract(id){
-    await delay(100);
-    var demo = getDemo();
-    return findIn(demo.signedContracts, id);
-  }
+  loadContracts,
+  getContract,
+  sendContract,
+  approveContract,
+  rejectContract,
+  replyToContract,
+  loadTemplates,
+  getTemplate,
+  createTemplate,
+  updateTemplate,
+  loadSignedContracts,
+  getSignedContract
 };
+
 })();

@@ -47,6 +47,29 @@
     return res.json();
   }
 
+  /* ── Writes ──────────────────────────────────────────────────────
+     Every library write goes to the server; the page re-reads the
+     affected list afterwards so the shelf matches the backend. */
+  async function togglePostSave(postId) {
+    const res = await fetch(`${API_BASE}/posts/${encodeURIComponent(postId)}/save`, {
+      method: 'POST', credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Save failed: ' + res.status);
+    return res.json();
+  }
+
+  async function clearSaved() {
+    const res = await fetch(`${API_BASE}/posts/saved`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) throw new Error('Clear saved failed: ' + res.status);
+    return res.json();
+  }
+
+  async function clearHistory() {
+    const res = await fetch(`${API_BASE}/library/history`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) throw new Error('Clear history failed: ' + res.status);
+    return res.json();
+  }
+
   window.LibraryData = {
     USE_API,
     getStats,
@@ -55,6 +78,9 @@
     getLibrary,
     getSaved,
     getHistory,
+    togglePostSave,
+    clearSaved,
+    clearHistory,
   };
 })();
 
@@ -87,6 +113,24 @@
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function toast(msg) {
+    let t = document.getElementById('libToast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'libToast';
+      t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(14px);background:#111118;color:#f5f5f7;padding:8px 16px;border-radius:999px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.09);box-shadow:0 4px 20px rgba(0,0,0,.35)';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(-50%) translateY(14px)';
+    }, 2500);
   }
 
   let CONTINUE = [], PROMO = [], LIBRARY = [], SAVED = [], HISTORY = [];
@@ -176,14 +220,18 @@
     DroboardPostCard.setPosts(SAVED);
   }
 
-  function toggleSaveStatus(id, saved) {
-    // Toggle the local SAVED array while USE_API is off
-    if (!saved) {
+  async function toggleSaveStatus(id, saved) {
+    if (!window.LibraryData) return;
+    try {
+      const r = await LibraryData.togglePostSave(id);
+      const nowSaved = !!(r && r.saved);
       SAVED = SAVED.filter(p => p.id !== id);
-    } else {
-      // fetch to add to savedBy could be done via API later
+      if (nowSaved) SAVED = await LibraryData.getSaved();
+      renderSaved();
+    } catch (e) {
+      console.error('[library] save toggle failed:', e);
+      toast('Could not update saved posts.');
     }
-    renderSaved();
   }
 
   function renderHistory() {
@@ -344,7 +392,17 @@
       openModal(
         `Clear ${n} ${n === 1 ? 'story' : 'stories'}?`,
         `This will remove ${n} ${n === 1 ? 'story' : 'stories'} from your history. Can't be undone.`,
-        () => { HISTORY = []; renderHistory(); }
+        async () => {
+          try {
+            await LibraryData.clearHistory();
+            HISTORY = await LibraryData.getHistory();
+            renderHistory();
+            toast('History cleared');
+          } catch (e) {
+            console.error('[library] clear history failed:', e);
+            toast('Could not clear history.');
+          }
+        }
       );
     });
   }
@@ -358,7 +416,17 @@
       openModal(
         `Clear ${n} ${n === 1 ? 'post' : 'posts'}?`,
         `This will remove ${n} ${n === 1 ? 'post' : 'posts'} from your saved. Can't be undone.`,
-        () => { SAVED = []; renderSaved(); }
+        async () => {
+          try {
+            await LibraryData.clearSaved();
+            SAVED = await LibraryData.getSaved();
+            renderSaved();
+            toast('Saved posts cleared');
+          } catch (e) {
+            console.error('[library] clear saved failed:', e);
+            toast('Could not clear saved posts.');
+          }
+        }
       );
     });
   }
@@ -470,10 +538,7 @@
       console.error('[library] init() failed:', err);
     }
     if (window.DroboardSearch) {
-      let searchData;
-      if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }
       DroboardSearch.configure({
-        data: searchData,
         onOpenStory: (s) => { location.href = 'bridge.html?id=' + encodeURIComponent((s && s.id) || ''); },
         onOpenWriter: (w) => { location.href = 'profile.html?u=' + encodeURIComponent(((w && (w.handle || w.name)) || '').replace('@', '')); },
         onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },

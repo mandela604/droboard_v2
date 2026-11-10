@@ -1,9 +1,9 @@
-/** request-chapter-review-service.js — Data + UI for request-chapter-review.html. TODO: GET/POST /api/author/chapter-reviews */
+/** request-chapter-review-service.js — Data + UI for request-chapter-review.html. Uses /api/author/chapter-reviews. */
 (function () {
   'use strict';
   if (window.ChapterReviewService && window.ChapterReviewService.init) return;
   var Svc = window.ChapterReviewService || {};
-  var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api/author' };
+  var CFG = window.AuthorApiConfig || { USE_API: true, API_BASE: '/api/author' };
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms || 150); }); }
 
   /* Backend-ready API */
@@ -18,129 +18,93 @@
     return await r.json();
   };
 
-  /* ── Demo data (moved from inline) ── */
-  var BOOKS = [
-    {id:'b1',title:'The Midnight Protocol',cover:'https://picsum.photos/seed/book1/80/112',chapters:[
-      {num:3,title:'Late Night Call',words:2410,status:'pending',date:'Submitted 2 hours ago',
-        authorNotes:'Focused on pacing and the phone call scene. Let me know if the dialogue feels natural.',
-        editorNotes:''},
-      {num:4,title:'The Door She Finally Opened',words:2250,status:'revision',date:'Revision requested 1 day ago',
-        authorNotes:'Rewrote the ending based on your last feedback. Added more tension.',
-        editorNotes:'The pacing in the middle section drags. Cut paragraphs 4-6 and tighten the dialogue between Luna and Marcus. Also, the twist at the end needs better setup — add a foreshadowing line in the opening scene.'}
-    ]},
-    {id:'b2',title:'Echoes of Yesterday',cover:'https://picsum.photos/seed/book2/80/112',chapters:[
-      {num:2,title:'Old Friends',words:2320,status:'pending',date:'Submitted 1 day ago',
-        authorNotes:'Tightened the dialogue and added more emotional beats. Please check the pacing.',
-        editorNotes:''}
-    ]}
-  ];
+  var openBooks = {};
+  var currentBookId = null;
+  var currentChNum = null;
 
-  var openBooks={b1:true};
-  var currentBookId=null;
-  var currentChNum=null;
+  function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2400); }
 
-  function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
-
-  function renderBooks(){
-    var el=document.getElementById('bookList');
-    var hasAny=false;
-    el.innerHTML=BOOKS.map(function(book){
-      if(!book.chapters.length)return '';
-      hasAny=true;
-      var isOpen=openBooks[book.id];
-      var chCount=book.chapters.length;
-      var totalWords=book.chapters.reduce(function(sum,ch){return sum+(ch.words||0);},0);
-      var needsRev=book.chapters.some(function(ch){return ch.status==='revision';});
-      return '<div class="book-section'+(isOpen?' open':'')+'" data-bid="'+book.id+'">'
-        +DroboardBookCard.render({
-          id:book.id, cover:book.cover, title:book.title,
-          genre:chCount+' chapter'+(chCount>1?'s':'')+' under review',
-          stats:[{icon:'fas fa-list-ul',text:chCount+' chapters'},{icon:'fas fa-file-word',text:totalWords.toLocaleString()+' words'}],
-          statusLabel:needsRev?'Needs revision':'Under review',
-          statusClass:needsRev?'revision':'pending',
-          chevron:'down', open:!!isOpen
-        })
-        +'<div class="chapter-list" style="display:'+(isOpen?'flex':'none')+'">'
-        +book.chapters.map(function(ch){
-          var statusClass=ch.status==='pending'?'pending':'revision';
-          var statusLabel=ch.status==='pending'?'Under Review':'Revision Needed';
-          return '<div class="chapter-item" onclick="openDetail(\''+book.id+'\','+ch.num+')">'
-            +'<span class="ch-num">'+ch.num+'</span>'
-            +'<div class="ch-info"><div class="ch-name">'+ch.title+'</div>'
-            +'<div class="ch-meta">'+ch.words.toLocaleString()+' words · '+ch.date+'</div></div>'
-            +'<span class="ch-status '+statusClass+'">'+statusLabel+'</span></div>';
-        }).join('')+'</div></div>';
+  function renderBooks(books) {
+    var el = document.getElementById('bookList');
+    el.innerHTML = '';
+    if (!Array.isArray(books) || books.length === 0) {
+      el.innerHTML = '<div class="empty">No books available.</div>';
+      return;
+    }
+    var hasAny = false;
+    el.innerHTML = books.map(function(book){
+      if (!book.chapters || !book.chapters.length) return '';
+      hasAny = true;
+      var isOpen = openBooks[book.id];
+      var chCount = book.chapters.length;
+      var totalWords = book.chapters.reduce(function(sum, ch) { return sum + (ch.words || 0); }, 0);
+      var needsRev = book.chapters.some(function(ch) { return ch.status === 'revision'; });
+      return '<div class="book-section' + (isOpen ? ' open' : '') + '" data-bid="' + book.id + '">'
+        + (book.cover ? '<div class="dbc-cover" style="background-image:url(\'' + book.cover + '\')"></div>' : '')
+        + '<div class="dbc-body"><div class="dbc-title">' + book.title + '</div>'
+        + '<div class="dbc-meta">' + chCount + ' chapter' + (chCount > 1 ? 's' : '') + '</div></div></div>';
     }).join('');
-    el.querySelectorAll('.dbc-card').forEach(function(card){
-      card.addEventListener('click', function(){ toggleBook(card.getAttribute('data-book-id')); });
+  }
+
+  function renderChapters(chapters, isOpen) {
+    document.getElementById('chapterList').innerHTML = chapters.map(function(ch, i) {
+      return '<div class="chapter-row' + (i === 0 ? ' first' : '') + '" data-num="' + ch.num + '">'
+        + '<div class="ch-num">Ch. ' + ch.num + '</div>'
+        + '<div class="ch-title">' + ch.title + '</div>'
+        + '<div class="ch-status ' + ch.status + '">' + ch.status + '</div>'
+        + '<div class="ch-datetime">' + ch.date + '</div>'
+        + '<div class="ch-more"><i class="fas fa-ellipsis"></i></div>'
+        + '</div>';
+    }).join('');
+    document.getElementById('emptyState').classList.toggle('show', chapters.length === 0);
+  }
+
+  function bindChapterRows() {
+    document.querySelectorAll('.chapter-row').forEach(function(row) {
+      row.addEventListener('click', function() {
+        var num = this.dataset.num;
+        currentChNum = parseInt(num);
+        var chapter = currentBook.chapters.find(function(ch) { return ch.num === currentChNum; });
+        if (chapter) showChapterModal(chapter);
+      });
     });
-    if(!hasAny){
-      el.innerHTML='<div class="empty"><i class="fas fa-clipboard-check"></i><p>No chapters under review.</p></div>';
-    }
   }
 
-  function toggleBook(bid){
-    openBooks[bid]=!openBooks[bid];
-    renderBooks();
+  function showChapterModal(chapter) {
+    var modal = document.getElementById('chapterModal');
+    if (!modal) return;
+    modal.innerHTML = '<div class="cm-header"><h3>' + chapter.title + '</h3><button class="cm-close" onclick="closeChapterModal()"><i class="fas fa-times"></i></button></div>'
+      + '<div class="cm-content"><div class="cm-author-notes"><h4>Author notes</h4><p>' + (chapter.authorNotes || 'No notes.') + '</p></div>'
+      + '<div class="cm-editor-notes"><h4>Editor notes</h4><p>' + (chapter.editorNotes || 'No notes yet.') + '</p></div></div>'
+      + '<div class="cm-actions"><button class="btn btn-primary" onclick="requestRevision(' + currentChNum + ')">Request Revision</button><button class="btn" onclick="closeChapterModal()">Close</button></div>';
+    modal.classList.add('open');
   }
 
-  function openDetail(bid,chNum){
-    var book=BOOKS.find(function(b){return b.id===bid;});
-    if(!book)return;
-    var ch=book.chapters.find(function(c){return c.num===chNum;});
-    if(!ch)return;
-    currentBookId=bid;
-    currentChNum=chNum;
-    var statusClass=ch.status==='pending'?'pending':'revision';
-    var statusLabel=ch.status==='pending'?'Under Review':'Revision Needed';
-    var body=document.getElementById('detailBody');
-    body.innerHTML='<div class="detail-chapter">Ch. '+ch.num+' — '+ch.title+'</div>'
-      +'<div class="detail-book">'+book.title+'</div>'
-      +'<div class="detail-meta">'+ch.words.toLocaleString()+' words · '+ch.date+'</div>'
-      +'<div class="detail-status '+statusClass+'">'+statusLabel+'</div>'
-      +'<div class="note-section">'
-      +'<div class="note-label"><i class="fas fa-pen"></i> Your Notes</div>'
-      +'<div class="note-box'+(ch.authorNotes?'':' empty-note')+'">'+(ch.authorNotes||'No notes submitted.')+'</div>'
-      +'</div>'
-      +'<div class="note-section">'
-      +'<div class="note-label"><i class="fas fa-comment-dots"></i> Editor Feedback</div>'
-      +'<div class="note-box editor'+(ch.editorNotes?'':' empty-note')+'">'+(ch.editorNotes||'Awaiting editor review.')+'</div>'
-      +'</div>';
-    var footer=document.getElementById('detailFooter');
-    if(ch.status==='revision'){
-      footer.innerHTML='<button class="modal-btn close-modal" onclick="closeDetail()">Close</button>'
-        +'<button class="modal-btn edit" onclick="editChapter('+ch.num+')"><i class="fas fa-pen"></i> Edit Chapter</button>';
-    }else{
-      footer.innerHTML='<button class="modal-btn close-modal" onclick="closeDetail()" style="flex:1">Close</button>';
-    }
-    document.getElementById('detailModal').classList.add('open');
+  function closeChapterModal() {
+    var modal = document.getElementById('chapterModal');
+    if (modal) modal.classList.remove('open');
   }
 
-  function closeDetail(){
-    document.getElementById('detailModal').classList.remove('open');
+  function init() {
+    // Load books from API
+    Svc.listBooks()
+      .then(function(books) {
+        if (!Array.isArray(books) || books.length === 0) {
+          document.getElementById('bookList').innerHTML = '<div class="empty">No books available.</div>';
+          return;
+        }
+        renderBooks(books);
+        // Open first book by default
+        openBooks[books[0].id] = true;
+        currentBookId = books[0].id;
+        renderChapters(books[0].chapters || [], true);
+        bindChapterRows();
+      })
+      .catch(function(e) {
+        document.getElementById('bookList').innerHTML = '<div class="empty">Failed to load books. Please try again.</div>';
+      });
   }
 
-  function editChapter(num){
-    window.location.href='edit-chapter.html?book='+(currentBookId||'b1')+'&chapter='+num;
-  }
-
-  function init(){
-    if (window.AuthorDrawer) { try { window.AuthorDrawer.setTheme(window.AuthorDrawer.getTheme()); } catch (e) {} }
-    renderBooks();
-    document.getElementById('detailClose').onclick=closeDetail;
-    document.getElementById('detailModal').onclick=function(e){if(e.target===this)closeDetail();};
-    document.getElementById('backBtn').addEventListener('click',function(){if(window.history.length>1)window.history.back();else window.location.href='author-center.html';});
-    if (window.AuthorDrawer) {
-      try { window.AuthorDrawer.render('request-chapter-review.html'); } catch (e) {}
-      try { window.AuthorDrawer.bind(); } catch (e) {}
-    }
-  }
-
-  Svc.init = init;
-  Svc.renderBooks = renderBooks;
   window.ChapterReviewService = Svc;
-  /* onclick refs in markup + generated HTML */
-  window.openDetail = openDetail;
-  window.closeDetail = closeDetail;
-  window.editChapter = editChapter;
+  window.ChapterReviewService.init = init;
 })();

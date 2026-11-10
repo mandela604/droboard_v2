@@ -8,14 +8,13 @@ if(window.__authorContractsService) return;
 window.__authorContractsService = true;
 
 /* ── Backend-ready header ── */
-var USE_API = false;
+var USE_API = true;
 var API_BASE = window.DROBOARD_API_BASE || '/api/chief';
 /* Contract values are dollar figures ('$18,400'); restated in the currency
    Super Admin set. Chapter prices stay coin counts — not money. */
 function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 var TIMEOUT_MS = 2500;
 async function callBackend(path, opts){
-  if(!USE_API) return null;
   return timeoutFetch(API_BASE + path, opts);
 }
 function timeoutFetch(url, opts){

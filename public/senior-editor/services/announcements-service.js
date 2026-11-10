@@ -4,7 +4,7 @@
 /* ── Backend-ready header (for future API use; demo paths keep working) ──
    NOTE: API_BASE is defined below (window.DROBOARD_API_BASE || '/api/senior-editor');
    USE_API/callBackend wrap future live calls while demo fallback paths keep working. */
-const USE_API = false;
+const USE_API = true;
 /* Announcement bodies are prose that can carry a dollar figure ("… win $5,000").
    usdProse restates just the number into the currency Super Admin set. */
 function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }

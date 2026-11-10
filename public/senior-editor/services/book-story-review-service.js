@@ -1,7 +1,5 @@
 /**
- * book-story-review-service.js — Book Story Review page logic (pure call-and-render)
- * Backend-ready: set USE_API=true; endpoints in senior.routes.js:
- *   GET  /api/senior-editor/book-edits           list
+ * book-story-review-service.js — Book Story Review page logic (pure call-and-render) *   GET  /api/senior-editor/book-edits           list
  *   POST /api/senior-editor/book-edits/:id/approve
  *   POST /api/senior-editor/book-edits/:id/reject   { note }
  */

@@ -23,6 +23,10 @@
   let _adTurn = 0;
   let memberApi = null;
 
+  // In-flight GET deduplication
+  const _pending = new Map();
+  let _genreCache = null;
+
   /* Reports. Live: POST /api/reports
      {target:'discussion', targetId:post.id, reason:typeId, title}.
      Same record + same toast as the feed's report flow (feed-service.js
@@ -132,32 +136,29 @@
   }
 
   /* ── Genre ── */
-  const ABOUT_KEY = 'dro_genre_about_override';
-  const MEMBER_KEY = 'dro_genre_members_override';
-  function readAboutOverride(id) {
-    try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}'); return m[id] || null; } catch (e) { return null; }
-  }
-  function writeAboutOverride(id, patch) {
-    try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}'); m[id] = Object.assign({}, m[id] || {}, patch); localStorage.setItem(ABOUT_KEY, JSON.stringify(m)); } catch (e) {}
-  }
   const API_BASE = '/api';
 
   async function loadGenre() {
     const params = new URLSearchParams(location.search);
     const rawId = params.get('genre') || 'fantasy';
     GENRE_ID = rawId.toLowerCase();
-    // Fetch genre hub info from backend
-    const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Genre API failed: ' + res.status);
-    const data = await res.json();
+
+    // Fetch genre hub info and discussions in parallel
+    const [genreRes, discRes] = await Promise.all([
+      fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}`, { credentials: 'include' }),
+      fetch(`${API_BASE}/discussions?genre=${encodeURIComponent(GENRE_ID)}&limit=30`, { credentials: 'include' })
+    ]);
+
+    if (!genreRes.ok) throw new Error('Genre API failed: ' + genreRes.status);
+    if (!discRes.ok) throw new Error('Discussions API failed: ' + discRes.status);
+
+    const [data, dData] = await Promise.all([genreRes.json(), discRes.json()]);
+
     GENRE = data.genre || data;
     GENRE_ID = (GENRE.id || GENRE.slug || GENRE_ID).toLowerCase();
-    // Fetch discussions for this hub
-    const dRes = await fetch(`${API_BASE}/discussions?genre=${encodeURIComponent(GENRE_ID)}&limit=30`, { credentials: 'include' });
-    if (!dRes.ok) throw new Error('Discussions API failed: ' + dRes.status);
-    const dData = await dRes.json();
     ALL_POSTS = Array.isArray(dData) ? dData : (dData.items || []);
     PROMO_SLIDES = [];
+    _genreCache = GENRE;
     return true;
   }
 
@@ -196,39 +197,10 @@
       || String(p.tag || '').toLowerCase() === 'controversial';
   }
   function isStaff() {
-    try {
-      if (window.canModerate ? window.canModerate() : false) return true;
-      const mods = JSON.parse(localStorage.getItem(hubModsKey()) || '[]');
-      const me = demoMe();
-      return mods.some(m => (m.handle || '') === me.handle);
-    } catch (e) { return false; }
-  }
-  function hubModsKey() { return 'dro_hub_mods_' + (GENRE_ID || 'hub'); }
-  function demoMe() {
-    try {
-      if (localStorage.getItem('droboard_demo_as') === 'writer') return { handle: 'Ada_Writes', name: 'Ada_Writes', av: 'https://i.pravatar.cc/100?img=32' };
-    } catch (e) {}
-    return { handle: 'You_Reader', name: 'You (Reader)', av: 'https://i.pravatar.cc/100?img=68' };
-  }
-  function hubPinKey() { return 'dro_hub_pins_' + (GENRE_ID || 'hub'); }
-  /* Mod pins persist per hub; pinnable is stamped so only staff ever see
-     the Pin/Unpin menu entry (`pinned` stays reserved for hub rules). */
-  function loadHubPins() {
-    let ids = [];
-    try { ids = JSON.parse(localStorage.getItem(hubPinKey()) || '[]') || []; } catch (e) { ids = []; }
-    (ALL_POSTS || []).forEach(p => {
-      if (!p || p.pinned) return;
-      p.pinnable = isStaff();
-      if (ids.indexOf(String(p.id)) > -1) p.pinTop = true;
-    });
-  }
-  function saveHubPins() {
-    try {
-      localStorage.setItem(hubPinKey(), JSON.stringify((ALL_POSTS || []).filter(p => p && p.pinTop).map(p => String(p.id))));
-    } catch (e) {}
+    try { return window.canModerate ? window.canModerate() : false; } catch (e) { return false; }
   }
   /* Every filter works like the Hot tab: a real subset in a real order
-     (not a silent re-sort of the same list). Mod-pinned threads lead. */
+     (not a silent re-sort of the same list). API-pinned threads (p.pinned) lead. */
   function visibleDiscussions() {
     let list = ALL_POSTS.filter(p => !p.pinned);
     if (tropeFilter) list = list.filter(p => (p.trope || '') === tropeFilter);
@@ -240,8 +212,6 @@
     else if (sort === 'new') list.sort((a, b) => timeMins(a.time) - timeMins(b.time));
     else if (sort === 'top') list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     else if (sort === 'hot' || activeTab === 'hot') list.sort((a, b) => (b.score || 0) - (a.score || 0));
-    const top = list.filter(p => p.pinTop);
-    if (top.length) list = top.concat(list.filter(p => !p.pinTop));
     return list;
   }
 
@@ -319,56 +289,65 @@
     else if (tab==='about') renderAbout();
   }
 
-  /* ── About inline CRUD ── */
+  /* ── About inline CRUD — saves via API ── */
   function renderAbout() {
     const feed = document.getElementById('feed');
-    feed.innerHTML = '<div style="padding:14px"><div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:14px">About '+GENRE.name+'</b><button id="aboutEditBtn" style="font-size:11px;font-weight:700;color:var(--acc);background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);padding:6px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div><div style="font-size:12px;line-height:1.6;color:var(--tx-body)" id="aboutBlurbView">'+(GENRE.blurb||'')+'</div><div id="aboutForm" style="display:none;margin-top:10px"><input id="aboutName" value="'+(GENRE.name||'').replace(/"/g,'&quot;')+'" placeholder="Genre name" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><input id="aboutTagline" value="'+(GENRE.tagline||'').replace(/"/g,'&quot;')+'" placeholder="Tagline" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><textarea id="aboutBlurb" rows="3" placeholder="About this hub" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:8px">'+(GENRE.blurb||'')+'</textarea><input id="aboutCover" value="'+(GENRE.cover||'').replace(/"/g,'&quot;')+'" placeholder="Cover image URL" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px"/><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--acc);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutDelete" style="flex:1;background:var(--l2);border:1px solid var(--bd);padding:10px;border-radius:10px;font-weight:700">Reset</button><button id="aboutCancel" style="flex:1;background:transparent;border:1px solid var(--bd);padding:10px;border-radius:10px">Cancel</button></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.members||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Members</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.stories||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Stories</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.discussions||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Threads</div></div></div></div>';
+    feed.innerHTML = '<div style="padding:14px"><div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:14px">About '+GENRE.name+'</b><button id="aboutEditBtn" style="font-size:11px;font-weight:700;color:var(--acc);background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);padding:6px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div><div style="font-size:12px;line-height:1.6;color:var(--tx-body)" id="aboutBlurbView">'+(GENRE.blurb||'')+'</div><div id="aboutForm" style="display:none;margin-top:10px"><input id="aboutName" value="'+(GENRE.name||'').replace(/"/g,'&quot;')+'" placeholder="Genre name" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><input id="aboutTagline" value="'+(GENRE.tagline||'').replace(/"/g,'&quot;')+'" placeholder="Tagline" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><textarea id="aboutBlurb" rows="3" placeholder="About this hub" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:8px">'+(GENRE.blurb||'')+'</textarea><input id="aboutCover" value="'+(GENRE.cover||'').replace(/"/g,'&quot;')+'" placeholder="Cover image URL" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px"/><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--acc);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutCancel" style="flex:1;background:transparent;border:1px solid var(--bd);padding:10px;border-radius:10px">Cancel</button></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.members||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Members</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.stories||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Stories</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.discussions||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Threads</div></div></div></div>';
     document.getElementById('aboutEditBtn').onclick = () => { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE_ID) + '#details'; };
     document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutBlurbView').style.display='block'; };
-    document.getElementById('aboutSave').onclick = () => {
+    document.getElementById('aboutSave').onclick = async () => {
       const patch = { name: document.getElementById('aboutName').value.trim()||GENRE.name, tagline: document.getElementById('aboutTagline').value.trim(), blurb: document.getElementById('aboutBlurb').value.trim(), cover: document.getElementById('aboutCover').value.trim() };
-      writeAboutOverride(GENRE_ID, patch); Object.assign(GENRE, patch); applyGenre(); renderAbout(); toast('About saved');
+      try {
+        await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}`, {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch)
+        }).then(r => { if (!r.ok) throw new Error(r.status); });
+        Object.assign(GENRE, patch); applyGenre(); renderAbout(); toast('About saved');
+      } catch(e) { toast('Failed to save. Please try again.'); }
     };
-    document.getElementById('aboutDelete').onclick = () => { try { const m = JSON.parse(localStorage.getItem(ABOUT_KEY)||'{}'); delete m[GENRE_ID]; localStorage.setItem(ABOUT_KEY, JSON.stringify(m)); } catch(e){} location.reload(); };
   }
-  function getMembers() {
-    let list = [];
-    try { const ov = JSON.parse(localStorage.getItem(MEMBER_KEY)||'{}'); if (ov[GENRE_ID] && ov[GENRE_ID].length) list = ov[GENRE_ID].map(m=> Object.assign({ handle:m.handle||m.name, name:m.name||m.handle, avatar:m.av||m.avatar||m.avatar, av:m.av||m.avatar||m.av, meta: m.meta || ((m.role||'Member')+' · '+(m.posts||0)+' posts'), following:!!m.following })); } catch(e){}
-    if (!list.length) {
-      const seed = window.GenreDemoSeed;
-      if (seed && seed.DEMO_MEMBERS && seed.DEMO_MEMBERS[GENRE_ID]) list = seed.DEMO_MEMBERS[GENRE_ID].map(m=> Object.assign({ handle:m.handle, name:m.name, avatar:m.av||m.avatar, av:m.av||m.avatar, meta:(m.role||'Member')+' · '+(m.posts||0)+' posts', following:!!m.following }));
-    }
-    // pad to 12 for demo pagination
-    if (list.length && list.length < 12) {
-      const extra = ['Alex_Jones','Mira_Lee','Sam_Wilson','Nina_Patel','Leo_King','Ivy_Chen','Omar_Farouk','Tara_Singh','Yuna_Kim','Jude_Obi'];
-      let i=0; while(list.length < 12 && i < extra.length) {
-        const h=extra[i++]; if (list.find(x=> (x.handle||x.name)===h)) continue;
-        list.push({ handle:h, name:h, avatar:'https://i.pravatar.cc/100?img='+(20+i), av:'https://i.pravatar.cc/100?img='+(20+i), meta:'Member · '+(5+i)+' posts', following: Math.random()>0.5 });
-      }
-    }
-    return list;
-  }
-  function toggleMemberFollow(handle) {
+  /* ── Members — fetched from API ── */
+  async function fetchMembers() {
     try {
-      const m = JSON.parse(localStorage.getItem(MEMBER_KEY)||'{}');
-      if (!m[GENRE_ID] || !m[GENRE_ID].length) m[GENRE_ID] = getMembers();
-      const mem = m[GENRE_ID].find(x=> (x.handle||x.name)===handle);
-      if (mem) mem.following = !mem.following;
-      localStorage.setItem(MEMBER_KEY, JSON.stringify(m));
+      const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}/members?limit=50`, { credentials: 'include' });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.items || []);
+      return list.map(m => ({
+        handle: m.handle || m.name,
+        name: m.name || m.handle,
+        avatar: m.avatar || m.av || '',
+        av: m.avatar || m.av || '',
+        meta: m.meta || ((m.role || 'Member') + ' · ' + (m.posts || 0) + ' posts'),
+        following: !!m.following
+      }));
+    } catch (e) { return []; }
+  }
+  async function toggleMemberFollow(handle) {
+    try {
+      const res = await fetch(`${API_BASE}/users/${encodeURIComponent(handle)}/follow`, {
+        method: 'POST', credentials: 'include'
+      });
+      if (!res.ok) throw new Error(res.status);
+      const j = await res.json();
+      const following = j.following !== undefined ? j.following : !j.unfollowed;
+      toast(following ? 'Following @' + handle : 'Unfollowed @' + handle);
       if (memberApi) {
-        const cur = memberApi.getData(); const c = cur.find(x=> (x.handle||x.name)===handle); if(c) c.following = mem ? mem.following : !c.following;
+        const cur = memberApi.getData();
+        const c = cur.find(x => (x.handle || x.name) === handle);
+        if (c) c.following = following;
         memberApi.render();
-      } else renderMembers();
-      toast(mem && mem.following ? 'Following @'+handle : 'Unfollowed @'+handle);
-    } catch(e){}
+      }
+    } catch(e) { toast('Action failed. Please try again.'); }
   }
   function clearMemberPager() {
     const feed = document.getElementById('feed');
     const pg = feed ? feed.nextElementSibling : null;
     if (pg && pg.classList.contains('fl-pager')) pg.remove();
   }
-  function renderMembers() {
-    const members = getMembers();
+  async function renderMembers() {
+    const members = await fetchMembers();
     const feed = document.getElementById('feed');
     if (!window.FollowList) { feed.innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">FollowList component missing</div>'; return; }
     if (!memberApi) {
@@ -382,125 +361,74 @@
     clearMemberPager();
     memberApi.setData(members);
   }
-  const NEW_DROP_KEY = 'dro_genre_newdrops';
-  function getNewDropState(){
-    try { return JSON.parse(localStorage.getItem(NEW_DROP_KEY)||'{}'); } catch(e){ return {}; }
-  }
-  function setNewDropState(m){ try { localStorage.setItem(NEW_DROP_KEY, JSON.stringify(m)); } catch(e){} }
-  function updateStoryTabBadge(){
-    const now = Date.now();
-    const st = getNewDropState();
-    let cnt = 0;
-    Object.keys(st).forEach(k=>{
-      if (!k.startsWith(GENRE_ID+':')) return;
-      const v = st[k];
-      if (v && v.count && (now - v.at < 2*60*60*1000)) cnt++;
-    });
+  function updateStoryTabBadge(newCount) {
     const tab = document.querySelector('[data-tab="stories"]');
     if (!tab) return;
     let badge = tab.querySelector('.tab-badge');
-    if (!badge) { badge = document.createElement('span'); badge.className='tab-badge'; badge.style.cssText='margin-left:6px;background:var(--acc);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle'; tab.appendChild(badge); }
-    if (cnt>0) { badge.textContent = cnt; badge.style.display='inline-flex'; } else badge.style.display='none';
-  }
-  function ensureNewDrops(){
-    const now=Date.now();
-    const dropState=getNewDropState();
-    const seed=window.GenreDemoSeed;
-    let stories=[];
-    if(seed && seed.DEMO_STORIES && seed.DEMO_STORIES[GENRE_ID]) stories=seed.DEMO_STORIES[GENRE_ID].slice(0,10);
-    else if(window.DemoData && DemoData.STORIES) stories=DemoData.STORIES.filter(s=> (s.genre||'').toLowerCase().includes(GENRE_ID)).slice(0,10);
-    let changed=false;
-    stories.forEach(s=>{
-      const key=GENRE_ID+':'+s.id;
-      if(dropState[key]===undefined){
-        if(Math.random()<0.3){ dropState[key]={count:1+(Math.random()>0.5?1:0), at: now - Math.floor(Math.random()*3*60*60*1000)}; } else dropState[key]=null;
-        changed=true;
-      }
-    });
-    let curNew=Object.keys(dropState).filter(k=> k.startsWith(GENRE_ID+':') && dropState[k] && (now - dropState[k].at < 2*60*60*1000)).length;
-    if(curNew===0 && stories.length){
-      for(let i=0;i<Math.min(2, stories.length); i++){
-        const k=GENRE_ID+':'+stories[i].id;
-        dropState[k]={count:1, at: now - 30*60*1000}; changed=true;
-      }
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.style.cssText = 'margin-left:6px;background:var(--acc);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle';
+      tab.appendChild(badge);
     }
-    if(changed) setNewDropState(dropState);
+    if (newCount > 0) { badge.textContent = newCount; badge.style.display = 'inline-flex'; }
+    else badge.style.display = 'none';
   }
   async function renderStories() {
-    const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}/stories?limit=10`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Genre stories API failed: ' + res.status);
-    const data = await res.json();
-    const stories = Array.isArray(data) ? data : (data.items || []);
-    if (!stories.length) { document.getElementById('feed').innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No stories in this hub yet.</div>'; return; }
-    // attach new-drop badge state (2hr window)
-    const now = Date.now();
-    const dropState = getNewDropState();
-    stories.forEach(s=>{
-      const key = GENRE_ID+':'+s.id;
-      if (dropState[key] === undefined) {
-        if (Math.random() < 0.3) {
-          dropState[key] = { count: 1 + (Math.random()>0.5?1:0), at: now - Math.floor(Math.random()* 3*60*60*1000) };
-        } else dropState[key] = null;
-      }
-    });
-    // ensure at least 2 new for demo so badge always shows
-    let curNew = Object.keys(dropState).filter(k=> k.startsWith(GENRE_ID+':') && dropState[k] && (now - dropState[k].at < 2*60*60*1000)).length;
-    if (curNew === 0) {
-      for(let i=0;i<Math.min(2, stories.length); i++){
-        const k = GENRE_ID+':'+stories[i].id;
-        dropState[k] = { count: 1, at: now - 30*60*1000 };
-      }
-    }
-    setNewDropState(dropState);
-    updateStoryTabBadge();
-    // filter to only those within 2h and not yet cleared (count>0)
     const feedEl = document.getElementById('feed');
-    // use book-card component like profile
-    if (window.DroboardBookCard) {
-      // map stories to book-card shape with status
-      const books = stories.map(s=>{
-        const key = GENRE_ID+':'+s.id;
-        const nd = dropState[key];
-        const isNew = nd && nd.count && (now - nd.at < 2*60*60*1000);
-        return {
-          id: s.id, title: s.title, genre: s.genre||GENRE.name, cover: s.cover||s.img||'',
-          reads: s.reads||'', likes: s.likes||'', chapters: s.chapters|| s.ch || s.chaptersCount || 12,
-          status: isNew ? 'new' : (s.status||'ongoing'),
-          _newDrop: isNew ? nd.count : 0
-        };
-      });
-      DroboardBookCard.renderList('#feed', books, {
-        onOpen: (book)=>{
-          // clear badge on click
-          const key = GENRE_ID+':'+book.id;
-          const st = getNewDropState();
-          if (st[key]) { delete st[key]; setNewDropState(st); updateStoryTabBadge(); }
-          location.href='bridge.html?id='+encodeURIComponent(book.id);
-        }
-      });
-      // inject count badges after render
-      setTimeout(()=>{
-        document.querySelectorAll('#feed .dbc-card').forEach((card, i)=>{
-          const book = books[i]; if (!book || !book._newDrop) return;
-          const cover = card.querySelector('.dbc-cover');
-          if (!cover) return;
-          const badge = document.createElement('div');
-          badge.textContent = book._newDrop + ' new';
-          badge.style.cssText='position:absolute;top:6px;right:6px;background:var(--acc);color:#fff;font-size:9px;font-weight:800;padding:3px 7px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)';
-          cover.style.position='relative'; cover.appendChild(badge);
-          // auto-clear after 2h is handled by time check on next render; also clear on click already
+    feedEl.innerHTML = '<div style="padding:30px 14px;text-align:center;color:var(--tx-muted)">Loading…</div>';
+    try {
+      const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(GENRE_ID)}/stories?limit=20`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Genre stories API failed: ' + res.status);
+      const data = await res.json();
+      const stories = Array.isArray(data) ? data : (data.items || []);
+
+      // Update tab badge with count returned by API (field: newCount or similar)
+      updateStoryTabBadge(data.newCount || 0);
+
+      if (!stories.length) {
+        feedEl.innerHTML = '<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">No stories in this hub yet.</div>';
+        return;
+      }
+
+      if (window.DroboardBookCard) {
+        const books = stories.map(s => ({
+          id: s.id, title: s.title, genre: s.genre || GENRE.name, cover: s.cover || s.img || '',
+          reads: s.reads || '', likes: s.likes || '',
+          chapters: s.chapters || s.ch || s.chaptersCount || 0,
+          status: s.status || 'ongoing',
+          _newDrop: s.newChapters || 0
+        }));
+        DroboardBookCard.renderList('#feed', books, {
+          onOpen: (book) => { location.href = 'bridge.html?id=' + encodeURIComponent(book.id); }
         });
-      }, 30);
-    } else {
-      // fallback inline
-      feedEl.innerHTML = stories.map(s => '<div class="story-hit" data-bid="'+(s.id||'').replace(/"/g,'&quot;')+'" style="display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--bd);background:var(--l1);cursor:pointer"><div style="width:76px;height:102px;border-radius:9px;overflow:hidden;flex-shrink:0;background:var(--l2)"><img src="'+(s.cover||s.img||'')+'" style="width:100%;height:100%;object-fit:cover"/></div><div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;color:var(--acc);text-transform:uppercase">'+(s.genre||GENRE.name)+'</div><div style="font-size:13.5px;font-weight:700;line-height:1.3;margin:2px 0">'+s.title+'</div></div></div>').join('');
-      feedEl.querySelectorAll('.story-hit').forEach(el=> el.addEventListener('click', ()=> {
-        const key = GENRE_ID+':'+el.dataset.bid; const st=getNewDropState(); if(st[key]){ delete st[key]; setNewDropState(st); updateStoryTabBadge(); }
-        location.href='bridge.html?id='+encodeURIComponent(el.dataset.bid);
-      }));
-    }
-    // View All -> full stories page (call-and-render).
-    (function mountViewAll(){
+        // Inject new-chapter badge if the API says so
+        setTimeout(() => {
+          document.querySelectorAll('#feed .dbc-card').forEach((card, i) => {
+            const book = books[i];
+            if (!book || !book._newDrop) return;
+            const cover = card.querySelector('.dbc-cover');
+            if (!cover) return;
+            const badge = document.createElement('div');
+            badge.textContent = book._newDrop + ' new';
+            badge.style.cssText = 'position:absolute;top:6px;right:6px;background:var(--acc);color:#fff;font-size:9px;font-weight:800;padding:3px 7px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)';
+            cover.style.position = 'relative';
+            cover.appendChild(badge);
+          });
+        }, 30);
+      } else {
+        feedEl.innerHTML = stories.map(s =>
+          '<div class="story-hit" data-bid="' + (s.id || '').replace(/"/g, '&quot;') + '" style="display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--bd);background:var(--l1);cursor:pointer">' +
+          '<div style="width:76px;height:102px;border-radius:9px;overflow:hidden;flex-shrink:0;background:var(--l2)"><img src="' + (s.cover || s.img || '') + '" style="width:100%;height:100%;object-fit:cover"/></div>' +
+          '<div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:800;color:var(--acc);text-transform:uppercase">' + (s.genre || GENRE.name) + '</div>' +
+          '<div style="font-size:13.5px;font-weight:700;line-height:1.3;margin:2px 0">' + s.title + '</div></div></div>'
+        ).join('');
+        feedEl.querySelectorAll('.story-hit').forEach(el => el.addEventListener('click', () => {
+          location.href = 'bridge.html?id=' + encodeURIComponent(el.dataset.bid);
+        }));
+      }
+
+      // View All button
       const old = document.getElementById('hubViewAllStories');
       if (old) old.remove();
       const btn = document.createElement('button');
@@ -508,13 +436,12 @@
       btn.type = 'button';
       btn.textContent = 'View all stories';
       btn.style.cssText = 'width:100%;margin:2px 0 10px;padding:12px;border-radius:12px;background:var(--l2);border:1px solid var(--bd);font-size:13px;font-weight:800;color:var(--tx-high)';
-      btn.addEventListener('click', () => {
-        location.href = 'genre-stories.html?genre=' + encodeURIComponent(GENRE_ID);
-      });
-      const feed = document.getElementById('feed');
-      if (feed && feed.parentNode) feed.parentNode.insertBefore(btn, feed.nextSibling);
-    })();
-    clearMemberPager();
+      btn.addEventListener('click', () => { location.href = 'genre-stories.html?genre=' + encodeURIComponent(GENRE_ID); });
+      if (feedEl.parentNode) feedEl.parentNode.insertBefore(btn, feedEl.nextSibling);
+      clearMemberPager();
+    } catch(e) {
+      feedEl.innerHTML = '<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">Failed to load stories.</div>';
+    }
   }
   function renderHot() {
     const hot = visibleDiscussions().slice(0,12);
@@ -621,15 +548,15 @@
         onDelete: () => toast('🗑️ Delete'),
         onPin: (post) => {
           if (!isStaff()) { toast('Only moderators can pin.'); return; }
-          post.pinTop = true; saveHubPins();
-          setActiveTab(activeTab);
-          toast('📌 Pinned to top');
+          fetch(`${API_BASE}/discussions/${encodeURIComponent(post.id)}/pin`, { method: 'POST', credentials: 'include' })
+            .then(() => { post.pinned = true; setActiveTab(activeTab); toast('📌 Pinned to top'); })
+            .catch(() => toast('Pin failed.'));
         },
         onUnpin: (post) => {
           if (!isStaff()) { toast('Only moderators can unpin.'); return; }
-          post.pinTop = false; saveHubPins();
-          setActiveTab(activeTab);
-          toast('Unpinned');
+          fetch(`${API_BASE}/discussions/${encodeURIComponent(post.id)}/pin`, { method: 'DELETE', credentials: 'include' })
+            .then(() => { post.pinned = false; setActiveTab(activeTab); toast('Unpinned'); })
+            .catch(() => toast('Unpin failed.'));
         },
       });
     }
@@ -770,50 +697,36 @@
       }
     } catch(e){}
   }
-  function hubStoryLibrary() {
-    const out = [];
-    const seen = new Set();
-    const push = (s) => {
-      if(!s) return;
-      const key = String(s.id || s.title || '').toLowerCase();
-      if(!key || seen.has(key)) return;
-      seen.add(key);
-      out.push(s);
-    };
-    try { ((window.DemoData && DemoData.STORIES) || []).forEach(push); } catch(e){}
-    try {
-      const seed = window.GenreDemoSeed;
-      if(seed && seed.DEMO_STORIES) Object.keys(seed.DEMO_STORIES).forEach(gid => { (seed.DEMO_STORIES[gid] || []).forEach(push); });
-    } catch(e){}
-    return out;
-  }
-  function renderGhcStoryHits(q) {
+  function hubStoryLibrary() { return []; } // Story search is now live via API
+  async function renderGhcStoryHits(q) {
     const box = document.getElementById('ghcStoryHits');
     if (!box) return;
-    q = (q || '').trim().toLowerCase();
-    const pool = hubStoryLibrary();
-    const hits = (!q ? pool.slice(0, 6) : pool.filter(s =>
-      ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.author || '').toLowerCase().indexOf(q) !== -1)
-    ).slice(0, 6));
-    box.innerHTML = hits.length ? hits.map((s, i) =>
-      `<button type="button" class="ghc-story-hit" data-hit="${i}">` +
-      (s.cover ? `<img src="${s.cover}" loading="lazy" alt=""/>` : '') +
-      `<div style="flex:1;min-width:0"><div class="ghc-story-hit-t">${s.title}</div><div class="ghc-story-hit-a">${s.author || ''}</div></div></button>`
-    ).join('') : `<div style="font-size:11.5px;color:var(--tx-muted,#666);padding:6px 2px">No stories match.</div>`;
-    box._hits = hits;
-    box.querySelectorAll('[data-hit]').forEach(btn => btn.addEventListener('click', () => {
-      const s = (box._hits || [])[+btn.dataset.hit];
-      if (!s) return;
-      // Recommending bar: 3+ chapters and 12+ minutes on the story.
-      if (window.ReadingHistory && !ReadingHistory.guardRecommend(s.id, s.title)) return;
-      const inp = document.getElementById('ghcStory');
-      inp.value = s.title;
-      inp.dataset.storyId = s.id || '';
-      inp.dataset.storyCover = s.cover || '';
-      inp.dataset.storyAuthor = s.author || '';
-      inp.dataset.storyCat = s.cat || s.genre || GENRE.name || '';
-      box.innerHTML = '';
-    }));
+    q = (q || '').trim();
+    if (!q) { box.innerHTML = ''; return; }
+    try {
+      const res = await fetch(`${API_BASE}/stories/search?q=${encodeURIComponent(q)}&limit=6`, { credentials: 'include' });
+      if (!res.ok) { box.innerHTML = ''; return; }
+      const data = await res.json();
+      const hits = Array.isArray(data) ? data : (data.items || []);
+      box.innerHTML = hits.length ? hits.map((s, i) =>
+        `<button type="button" class="ghc-story-hit" data-hit="${i}">` +
+        (s.cover ? `<img src="${s.cover}" loading="lazy" alt=""/>` : '') +
+        `<div style="flex:1;min-width:0"><div class="ghc-story-hit-t">${s.title}</div><div class="ghc-story-hit-a">${s.author || ''}</div></div></button>`
+      ).join('') : `<div style="font-size:11.5px;color:var(--tx-muted,#666);padding:6px 2px">No stories match.</div>`;
+      box._hits = hits;
+      box.querySelectorAll('[data-hit]').forEach(btn => btn.addEventListener('click', () => {
+        const s = (box._hits || [])[+btn.dataset.hit];
+        if (!s) return;
+        if (window.ReadingHistory && !ReadingHistory.guardRecommend(s.id, s.title)) return;
+        const inp = document.getElementById('ghcStory');
+        inp.value = s.title;
+        inp.dataset.storyId = s.id || '';
+        inp.dataset.storyCover = s.cover || '';
+        inp.dataset.storyAuthor = s.author || '';
+        inp.dataset.storyCat = s.cat || s.genre || GENRE.name || '';
+        box.innerHTML = '';
+      }));
+    } catch(e) { box.innerHTML = ''; }
   }
   function refreshTropeOptions(){
     const sel=document.getElementById('ghcTrope');
@@ -828,41 +741,69 @@
     if(btn){ btn.style.opacity = ok? '1':'.45'; btn.style.pointerEvents = ok? 'auto':'none'; }
   }
   function closeHubComposer(){ saveGhcDraft(); const ov=document.getElementById('ghcOv'); if(ov) ov.classList.remove('open'); document.body.style.overflow=''; }
-  function submitHubPost(){
-    const title=document.getElementById('ghcTitle').value.trim();
-    const body=document.getElementById('ghcBody').value.trim();
-    if(!title || !body) return;
-    const tagEl=document.querySelector('#ghcTags .ghc-tag.on');
-    const tag=tagEl ? tagEl.dataset.tag : 'Discussion';
-    const tagCls=tagEl ? tagEl.dataset.cls : 'discussion';
-    let media=''; const prevImgEl=document.getElementById('ghcMediaPrevImg'); if(prevImgEl && prevImgEl.src && prevImgEl.src.startsWith('data:')) media=prevImgEl.src; else media=document.getElementById('ghcMedia').value.trim() || '';
-    const storyTitle=document.getElementById('ghcStory').value.trim();
-    const storyEl=document.getElementById('ghcStory');
-    const storyId=storyEl.dataset.storyId || '';
-    const storyCover=storyEl.dataset.storyCover || '';
-    const storyAuthor=storyEl.dataset.storyAuthor || '';
-    const storyCat=storyEl.dataset.storyCat || GENRE.name || '';
-    const tropeSel=document.getElementById('ghcTrope');
-    const trope=tropeSel ? tropeSel.value : '';
-    // Recommending a story requires real reading: 3+ chapters, 12+ minutes.
+  async function submitHubPost() {
+    const title = document.getElementById('ghcTitle').value.trim();
+    const body = document.getElementById('ghcBody').value.trim();
+    if (!title || !body) return;
+    const tagEl = document.querySelector('#ghcTags .ghc-tag.on');
+    const tag = tagEl ? tagEl.dataset.tag : 'Discussion';
+    const tagCls = tagEl ? tagEl.dataset.cls : 'discussion';
+    let media = '';
+    const prevImgEl = document.getElementById('ghcMediaPrevImg');
+    if (prevImgEl && prevImgEl.src && prevImgEl.src.startsWith('data:')) media = prevImgEl.src;
+    else media = document.getElementById('ghcMedia').value.trim() || '';
+    const storyEl = document.getElementById('ghcStory');
+    const storyTitle = storyEl.value.trim();
+    const storyId = storyEl.dataset.storyId || '';
+    const storyCover = storyEl.dataset.storyCover || '';
+    const storyAuthor = storyEl.dataset.storyAuthor || '';
+    const storyCat = storyEl.dataset.storyCat || GENRE.name || '';
+    const tropeSel = document.getElementById('ghcTrope');
+    const trope = tropeSel ? tropeSel.value : '';
+
     if ((tag === 'Recommendation' || tagCls === 'recommendation') && storyId && window.ReadingHistory) {
       if (!ReadingHistory.guardRecommend(storyId, storyTitle)) return;
     }
-    const post={
-      id:'gh_'+Date.now(), name: (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] ? 'You_Reader' : 'You'), avatar: (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] ? DemoData.USERS['You_Reader'].avatar : 'https://i.pravatar.cc/100?img=12'),
-      time:'Just now', title, body, tag, tagClass:tagCls, likes:0, comments:0, liked:false, score:Date.now()
+
+    const payload = {
+      genre: GENRE_ID, title, body, tag, tagClass: tagCls,
+      ...(trope && { trope }),
+      ...(media && { media }),
+      ...(storyTitle && { story: { id: storyId, title: storyTitle, writer: storyAuthor, cover: storyCover, cat: storyCat } })
     };
-    if(trope) post.trope=trope;
-    if(media) post.media=media;
-    if(storyTitle) post.story={ id:storyId, title:storyTitle, writer:storyAuthor, author:storyAuthor, cover:storyCover, cat:storyCat, genre:storyCat };
-    ALL_POSTS.unshift(post);
-    closeHubComposer();
-    if (activeTab !== 'discussions') setActiveTab('discussions'); else renderFeed();
-    toast('Posted to '+GENRE.name+'!');
-    window.scrollTo({top:0, behavior:'smooth'});
-    // clear form
-    document.getElementById('ghcTitle').value=''; document.getElementById('ghcBody').value=''; document.getElementById('ghcMedia').value=''; const fe=document.getElementById('ghcMediaFile'); if(fe) fe.value=''; const pv=document.getElementById('ghcMediaPrev'); if(pv) pv.style.display='none'; const pi=document.getElementById('ghcMediaPrevImg'); if(pi) pi.src='';     const gsEl=document.getElementById('ghcStory'); gsEl.value=''; gsEl.dataset.storyId=''; gsEl.dataset.storyCover=''; gsEl.dataset.storyAuthor=''; gsEl.dataset.storyCat=''; const ts=document.getElementById('ghcTrope'); if(ts) ts.value=''; validateHubComposer();
-    try { localStorage.removeItem(ghcDraftKey()); } catch(e){}
+
+    const btn = document.getElementById('ghcPost');
+    if (btn) { btn.style.opacity = '.45'; btn.style.pointerEvents = 'none'; }
+
+    try {
+      const res = await fetch(`${API_BASE}/discussions`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(res.status);
+      const newPost = await res.json();
+      ALL_POSTS.unshift(newPost);
+      closeHubComposer();
+      if (activeTab !== 'discussions') setActiveTab('discussions'); else renderFeed();
+      toast('Posted to ' + GENRE.name + '!');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // clear form
+      document.getElementById('ghcTitle').value = '';
+      document.getElementById('ghcBody').value = '';
+      document.getElementById('ghcMedia').value = '';
+      const fe = document.getElementById('ghcMediaFile'); if (fe) fe.value = '';
+      const pv = document.getElementById('ghcMediaPrev'); if (pv) pv.style.display = 'none';
+      const pi = document.getElementById('ghcMediaPrevImg'); if (pi) pi.src = '';
+      storyEl.value = ''; storyEl.dataset.storyId = ''; storyEl.dataset.storyCover = '';
+      storyEl.dataset.storyAuthor = ''; storyEl.dataset.storyCat = '';
+      if (tropeSel) tropeSel.value = '';
+      validateHubComposer();
+      try { localStorage.removeItem(ghcDraftKey()); } catch(e) {}
+    } catch(e) {
+      toast('Failed to post. Please try again.');
+      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+    }
   }
   function openComposer() {
     /* Posting needs an account — guests get the shared login wall. */
@@ -963,16 +904,12 @@
     initFilterFab();
     applyGenre();
     if (window.InsightsTracker) InsightsTracker.hit('hub', GENRE_ID);
-    ensureNewDrops();
-    updateStoryTabBadge();
+    updateStoryTabBadge(0);
     setActiveTab('discussions');
     mountPromo();
     if (window.ScrollKeep) ScrollKeep.restore();
     if (window.DroboardSearch) {
-      let searchData;
-      if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }
       DroboardSearch.configure({
-        data: searchData,
         onOpenStory: (s) => { location.href = 'bridge.html?id=' + encodeURIComponent((s && s.id) || ''); },
         onOpenWriter: (w) => { location.href = 'profile.html?u=' + encodeURIComponent(((w && (w.handle || w.name)) || '').replace('@', '')); },
         onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },

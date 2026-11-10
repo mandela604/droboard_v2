@@ -8,3 +8,6 @@ dist/
 backend/postman/dev.env.json
 backend/dev-console/env.json
 backend/test-report/
+backend/test-results/
+# Windows device-name artifact created by some tooling — never commit it.
+nul

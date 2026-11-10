@@ -4,20 +4,14 @@
 'use strict';
 
 /* ── Backend-ready header ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/chief';   // backend mounts the chief routers here
 async function callBackend(path, opts){
-  if(!USE_API) return null;
-  try{
-    const res = await fetch(API_BASE + path, opts);
-    if(!res.ok) throw new Error('Backend error: ' + res.status);
-    return await res.json();
-  }catch(e){ return null; }
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+  if(!res.ok) throw new Error('Backend error: ' + res.status);
+  return res.json();
 }
-// Unlike callBackend, this THROWS on failure — used for writes that must not
-// silently appear to succeed.
 async function apiFetch(path, opts){
-  if(!USE_API) return { demo: true };
   const res = await fetch(API_BASE + path, opts);
   if(!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
@@ -68,7 +62,7 @@ function loadAuthorPool(){
       });
     }
     return ChiefEditorData.getAuthorPool();
-  }).catch(function(){ return ChiefEditorData.getAuthorPool(); });
+  });
 }
 
 function loadData(){
@@ -80,22 +74,17 @@ function loadData(){
     renderStats();applyFilters();bindToolbar();renderQueue();
   }).catch(function(e){
     console.error(e);
-    document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load.</div>';
+    document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load: ' + (e && e.message || 'network error') + '</div>';
   });
 }
 
-// Always re-read assignments before opening the sheet / saving — a writer can
-// sign up with an editor's invite code while this page sits open, and a stale
-// save would silently drop them.
 function reloadAssignments(){
   return Crud.listAssignments().then(function(rows){
-    if(rows && rows.length !== undefined && !rows.demo){
+    if(rows && rows.length !== undefined){
       assignments = mapAssignments(rows);
       return assignments;
     }
-    return ChiefEditorData.getAssignments().then(function(a){ assignments = a; return assignments; });
-  }).catch(function(){
-    return ChiefEditorData.getAssignments().then(function(a){ assignments = a; return assignments; });
+    throw new Error('no_assignments');
   });
 }
 

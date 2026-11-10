@@ -1,11 +1,13 @@
 /**
  * settings-service.js — Data + controller for Settings page
  * All logic lives here. settings.html is HTML only + SettingsPage.init().
- * DEMO: localStorage for visibility/readingActivity, auth-session for logout.
- * Going live: swap demoStore with API calls.
+ * Live: /api/users/me for profile, /api/users/me/settings for preferences
+ * (GET/PATCH), /api/users/me/password to change the password.
  */
 (function(global){
 'use strict';
+
+const API_BASE = '/api';
 
 const THEME_KEY='droboardTheme';
 function getTheme(){ try{ return localStorage.getItem(THEME_KEY)||'light';}catch(e){ return 'light'; } }
@@ -26,22 +28,64 @@ function toast(msg){
   el._t=setTimeout(function(){ el.classList.remove('show'); }, 2200);
 }
 
+let currentSettings = {};
+let currentProfile = {};
+
 async function getProfile(){
-  try{
-    if(global.AuthSession && AuthSession.getSession){
-      var s=await AuthSession.getSession();
-      if(s && s.handle){
-        var u=(AuthSession.getStoredUser&&AuthSession.getStoredUser())||{};
-        return { name:s.name||s.handle, handle:s.handle, email:u.email||'', avatar:s.avatar||'' };
-      }
-    }
-  }catch(e){}
-  return { name:'', handle:'', email:'', avatar:'' };
+  const res = await fetch(API_BASE + '/users/me', { credentials: 'include' });
+  if (!res.ok) throw new Error('Profile API failed: ' + res.status);
+  const data = await res.json();
+  currentProfile = data.user || data.data || data;
+  return {
+    name: currentProfile.name || currentProfile.handle || '',
+    handle: currentProfile.handle || '',
+    email: currentProfile.email || '',
+    avatar: currentProfile.avatar || ''
+  };
 }
 
-const STORE_KEYS={ vis:'droboard_visibility', reading:'droboard_reading_activity' };
-function loadVis(){ try{ return localStorage.getItem(STORE_KEYS.vis)||'public';}catch(e){ return 'public'; } }
-function saveVis(v){ try{ localStorage.setItem(STORE_KEYS.vis, v);}catch(e){} }
+async function loadSettings(){
+  const res = await fetch(API_BASE + '/users/me/settings', { credentials: 'include' });
+  if (!res.ok) throw new Error('Settings API failed: ' + res.status);
+  const data = await res.json();
+  currentSettings = data.settings || data.data || data;
+  return currentSettings;
+}
+
+/* The server owns one settings row: { theme, notifications, privacy,
+   readingActivity }. Unknown keys are rejected, so only real fields are
+   ever sent. */
+async function saveSettings(patch){
+  try{
+    const res = await fetch(API_BASE + '/users/me/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(patch)
+    });
+    if (!res.ok) {
+      let msg = 'save failed (' + res.status + ')';
+      try { const j = await res.json(); if (j && j.error) msg = j.error; } catch(e){}
+      return { ok: false, message: msg };
+    }
+    const data = await res.json().catch(function(){ return null; });
+    currentSettings = Object.assign({}, currentSettings, (data && data.settings) || patch);
+    return { ok: true };
+  } catch(e){
+    return { ok: false, message: (e && e.message) || 'network error' };
+  }
+}
+
+/* Explicit load-failure state — never a silent page of defaults. */
+function renderLoadError(msg){
+  const content=document.querySelector('.content');
+  if(!content) return;
+  const el=document.createElement('div');
+  el.className='load-error';
+  el.style.cssText='background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:16px;font-size:12.5px;color:var(--tx-body);text-align:center';
+  el.innerHTML='<b style="color:var(--tx-high)">Could not load your settings</b><br>'+msg;
+  content.prepend(el);
+}
 
 function renderProfile(p){
   var pa=document.querySelector('.profile-avatar'); if(pa) pa.src=p.avatar;
@@ -55,43 +99,36 @@ function renderProfile(p){
 async function initDrawer(profile){
   renderProfile(profile);
   if(!global.DroboardProfileMenu) return;
-  // pull the full profile so menu counts match profile page exactly
-  var full = null;
-  try {
-    if (global.ProfileData && profile && profile.handle) full = await ProfileData.getProfile(profile.handle);
-  } catch (e) {}
-  var src = full || {};
-  // build a profile-shaped object the component expects
-  var menuProfile={
-    name: src.name || profile.name, handle: src.handle || profile.handle, avatar: src.avatar || profile.avatar,
-    isWriter: !!(src.isWriter || profile.isWriter),
-    books: src.books || profile.books || [], library: src.library || profile.library || [],
-    collections: src.collections || profile.collections || [],
-    stats: src.stats || profile.stats || { following: 0 },
+  
+  // Build profile from currentProfile (loaded via /api/users/me)
+  var menuProfile = {
+    name: currentProfile.name || profile.name,
+    handle: currentProfile.handle || profile.handle,
+    avatar: currentProfile.avatar || profile.avatar,
+    isWriter: !!(currentProfile.isWriter || profile.isWriter),
+    books: currentProfile.books || [],
+    library: currentProfile.library || [],
+    collections: currentProfile.collections || [],
+    stats: currentProfile.stats || { following: 0 },
     following: []
   };
-  var boards=[
-    {id:'fantasy',name:'Fantasy',icon:'fa-hat-wizard',members:'45.7K'},
-    {id:'romance',name:'Romance',icon:'fa-heart',members:'92.1K'},
-    {id:'werewolf',name:'Werewolf',icon:'fa-moon',members:'31.2K'}
-  ];
-  var joinedColls=[
-    {id:'coll_1', name:'Midnight Reads', count:12},
-    {id:'coll_2', name:'Tear-jerkers', count:8},
-    {id:'coll_3', name:'Weekend Binge', count:15}
-  ];
-  try{
-    var cached = JSON.parse(localStorage.getItem('dro_live_collections') || '[]');
-    if (Array.isArray(cached) && cached.length) {
-      var mine = cached.filter(function(c){ return c.isOwner === true; });
-      var fol = cached.filter(function(c){ return c.following === true && !c.isOwner; });
-      var both = mine.concat(fol).slice(0, 8);
-      if (both.length) joinedColls = both.map(function(c){ return { id: c.id, name: c.name || c.title, count: c.count || c.stories || 0 }; });
+  
+  // Load user's collections from API
+  var joinedColls = [];
+  try {
+    const collRes = await fetch(API_BASE + '/collections?limit=20', { credentials: 'include' });
+    if (collRes.ok) {
+      const collData = await collRes.json();
+      const colls = collData.collections || collData.data || [];
+      const mine = colls.filter(c => c.isOwner);
+      const fol = colls.filter(c => c.following && !c.isOwner);
+      joinedColls = mine.concat(fol).slice(0, 8).map(c => ({ id: c.id, name: c.name || c.title, count: c.stories || 0 }));
     }
-  }catch(e){}
+  } catch(e) {}
+  
   DroboardProfileMenu.configure({
     profile: menuProfile, isOwner: true,
-    boards: boards, collections: joinedColls,
+    boards: [], collections: joinedColls,
     onTab: function(tab){
       if(tab==='books') location.href='profile.html#books';
       else if(tab==='library') location.href='library.html';
@@ -108,29 +145,59 @@ async function initDrawer(profile){
 }
 
 async function init(){
-  // Demo mode: settings is accessible without login (same as feed/discover).
-  // Guests see the page with empty profile fields; account-specific rows
-  // (email, password, logout) just show demo/no-op behaviour.
   setTheme(getTheme());
   window.setTheme=setTheme;
   window.toast=toast;
 
-  // theme options (markup carries no inline handlers)
+  // No account → nothing to configure. The visitor is told so instead of
+  // staring at a settings page that cannot save anything.
+  if(global.AuthSession && AuthSession.isGuest && AuthSession.isGuest()){
+    const content=document.querySelector('.content');
+    if(content){
+      const href=(AuthSession.loginUrl)?AuthSession.loginUrl('settings.html'):'login.html?next=settings.html';
+      content.innerHTML='<div style="text-align:center;padding:60px 20px;font-size:13px;color:var(--tx-muted)">'
+        +'Sign in to manage your account settings.<br>'
+        +'<a href="'+href+'" style="display:inline-block;margin-top:14px;padding:10px 22px;border-radius:22px;background:var(--acc);color:#fff;font-weight:800;text-decoration:none">Log in</a></div>';
+    }
+    return;
+  }
+
+  // theme options (markup carries no inline handlers): applied instantly,
+  // then persisted to the account row so the choice survives devices.
   document.querySelectorAll('.theme-option').forEach(function(opt){
-    opt.addEventListener('click', function(){ setTheme(opt.getAttribute('data-theme')); });
+    opt.addEventListener('click', function(){
+      const t=opt.getAttribute('data-theme');
+      setTheme(t);
+      saveSettings({ theme: t }).then(function(r){
+        if(!r.ok) toast('Theme saved on this device only — '+r.message);
+      });
+    });
   });
 
-  var profile=await getProfile();
-  renderProfile(profile);
-  initDrawer(profile);
+  let profile=null, settings=null, loadErr=null;
+  try {
+    profile=await getProfile();
+  } catch(e){ loadErr=(e&&e.message)||'profile request failed'; }
+  try {
+    settings=await loadSettings();
+  } catch(e){ loadErr=loadErr?loadErr+' · '+((e&&e.message)||'settings request failed'):((e&&e.message)||'settings request failed'); }
+  if(loadErr) renderLoadError(loadErr);
+
+  // The server's theme wins once it has answered (same key the toggle writes).
+  if(settings && settings.theme){ setTheme(settings.theme); }
+  if(profile) renderProfile(profile);
+  initDrawer(profile||{name:'',handle:'',email:'',avatar:''});
 
   document.getElementById('backBtn').addEventListener('click',function(){
     if(window.history.length>1) window.history.back();
     else window.location.href='profile.html';
   });
 
-  // ── Visibility (demo, persisted) ──
-  var isPublic=loadVis()==='public';
+  // ── Visibility (server field: settings.privacy 'public'|'private') ──
+  var isPublic = !settings || settings.privacy !== 'private';
+  var readingOn = !settings || settings.readingActivity !== false;
+
+  // ── Visibility ──
   var visRow=document.getElementById('visibilityRow');
   var visDesc=document.getElementById('visibilityDesc');
   var visOv=document.getElementById('visOverlay');
@@ -148,22 +215,32 @@ async function init(){
   document.getElementById('visClose').addEventListener('click', closeVis);
   document.getElementById('visCancel').addEventListener('click', closeVis);
   if(visOv) visOv.addEventListener('click', function(e){ if(e.target===visOv) closeVis(); });
-  toggleBtn.addEventListener('click', function(){
+  toggleBtn.addEventListener('click', async function(){
     isPublic=!isPublic;
-    saveVis(isPublic?'public':'private');
-    syncVis(); closeVis();
-    toast('Profile is now '+(isPublic?'Public':'Private'));
+    const saved = await saveSettings({ privacy: isPublic ? 'public' : 'private' });
+    if (saved.ok) {
+      syncVis(); closeVis();
+      toast('Profile is now '+(isPublic?'Public':'Private'));
+    } else {
+      isPublic=!isPublic;
+      toast('Failed to update visibility — '+saved.message);
+    }
   });
 
   // ── Reading activity toggle ──
   var readingToggle=document.getElementById('readingToggle');
   if(readingToggle){
-    try{ var saved=localStorage.getItem(STORE_KEYS.reading); if(saved==='off') readingToggle.classList.remove('on'); }catch(e){}
-    readingToggle.addEventListener('click', function(){
+    if(!readingOn) readingToggle.classList.remove('on');
+    readingToggle.addEventListener('click', async function(){
       this.classList.toggle('on');
       var on=this.classList.contains('on');
-      try{ localStorage.setItem(STORE_KEYS.reading, on?'on':'off');}catch(e){}
-      toast(on?'Reading activity visible':'Reading activity hidden');
+      const saved = await saveSettings({ readingActivity: on });
+      if (saved.ok) {
+        toast(on?'Reading activity visible':'Reading activity hidden');
+      } else {
+        this.classList.toggle('on', !on);
+        toast('Failed to update — '+saved.message);
+      }
     });
   }
 
@@ -208,18 +285,35 @@ async function init(){
     newPw.addEventListener('input',check);
     confirmPw.addEventListener('input',check);
   })();
-  document.getElementById('pwSave').addEventListener('click',function(){
+  document.getElementById('pwSave').addEventListener('click',async function(){
     var cur=document.getElementById('pwCurrent').value, nw=document.getElementById('pwNew').value, cf=document.getElementById('pwConfirm').value;
     if(!cur||!nw||!cf){ toast('Fill all fields'); return; }
     if(nw!==cf){ toast('Passwords do not match'); return; }
-    toast('Password updated (demo)');
-    document.getElementById('pwCurrent').value='';document.getElementById('pwNew').value='';document.getElementById('pwConfirm').value='';
-    var hint=document.getElementById('pwMatch'); if(hint) hint.style.display='none';
-    document.getElementById('pwConfirm').style.borderColor='';
-    closePw();
+    
+    try {
+      const res = await fetch(API_BASE + '/users/me/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ oldPassword: cur, newPassword: nw })
+      });
+      if (!res.ok) {
+        let msg='Failed to update password ('+res.status+')';
+        try { const j = await res.json(); if (j && j.error) msg = j.error; } catch(e){}
+        toast(msg);
+        return;
+      }
+      toast('Password updated');
+      document.getElementById('pwCurrent').value='';document.getElementById('pwNew').value='';document.getElementById('pwConfirm').value='';
+      var hint=document.getElementById('pwMatch'); if(hint) hint.style.display='none';
+      document.getElementById('pwConfirm').style.borderColor='';
+      closePw();
+    } catch(e) {
+      toast('Failed to update password');
+    }
   });
 
-  // ── Logout (confirm → demo logout → redirect) ──
+  // ── Logout (confirm → revoke session server-side → redirect) ──
   var loOv=document.getElementById('logoutOverlay');
   function openLogout(){ loOv.classList.add('open'); }
   function closeLogout(){ loOv.classList.remove('open'); }
@@ -230,15 +324,13 @@ async function init(){
   if(loOv) loOv.addEventListener('click', function(e){ if(e.target===loOv) closeLogout(); });
   document.getElementById('logoutConfirm').addEventListener('click', async function(){
     try{ if(global.AuthSession && AuthSession.logout) await AuthSession.logout(); }catch(e){}
-    try{ localStorage.removeItem('droboard_session'); }catch(e){}
     toast('Logged out');
     setTimeout(function(){
-      // demo: back to feed/index
       location.href='../Pages/index.html';
     }, 600);
   });
 }
 
-global.SettingsPage={ init:init, setTheme:setTheme, getTheme:getTheme, toast:toast };
+global.SettingsPage={ init:init, setTheme:setTheme, getTheme:getTheme, toast:toast, getProfile:getProfile, loadSettings:loadSettings };
 
 })(window);

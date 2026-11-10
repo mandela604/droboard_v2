@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    DISCUSSION SERVICE
    Thread page orchestration. HTML calls DiscussionPage.init().
-   OP + comments come from data/genre-demo-seed.js; the mid-page ad
-   from the central inventory (ad-service). No hardcoded content.
-   When going live: swap seed reads for API calls.
+   OP = GET /api/discussions/:id — the ONE flat toFlatCard card the
+   hub list and the feed trending row render. Replies =
+   GET /api/comments?scope=discussion. Mid-page ad from the central
+   inventory (ad-service). No demo content, no fallbacks.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -13,6 +14,13 @@
   let GENRE = null;
   let GENRE_ID = 'fantasy';
   let POST = null;
+
+  // Cache for API requests and computed data
+  const cache = {
+    thread: null,
+    comments: null,
+    pending: new Map()
+  };
 
   function toast(msg, dur) {
     const t = document.getElementById('toast');
@@ -51,72 +59,50 @@
     document.body.classList.toggle('theme-white', light);
   }
 
-  /* ── Thread load: genre hub threads first, then feed posts, so ANY
-     post id from any card opens here with ?id=. ── */
-  let GENRE_EXPLICIT = false;
-  function genrePool(seed) {
-    if (!seed || !seed.DEMO_GENRES) return [];
-    const out = [];
-    Object.keys(seed.DEMO_GENRES).forEach(gid => {
-      const g = seed.DEMO_GENRES[gid];
-      if (seed.DEMO_PINNED && seed.DEMO_PINNED[gid]) out.push(Object.assign({ _genreId: gid, _genreName: g.name }, seed.DEMO_PINNED[gid]));
-      ((seed.DEMO_DISCUSSIONS[gid]) || []).forEach(p =>
-        out.push(Object.assign({ _genreId: gid, _genreName: g.name }, p)));
-    });
-    return out;
-  }
-  /* Official Droboard post → discussion OP shape (avatar from asset seed). */
-  function adaptDroboardPost(p) {
-    const hero = (window.DroboardPageSeed && window.DroboardPageSeed.DROBOARD_HERO) || {};
-    const text = p.text || p.note || p.title || '';
-    const motion = (p.debateData && p.debateData.motion) || '';
-    const pollQ = (p.poll && p.poll.q) || '';
-    return {
-      id: p.id, title: p.title || text.slice(0, 70) || 'Droboard post',
-      body: text || motion || pollQ,
-      name: 'Droboard', avatar: hero.avatar || '../assets/droboard-icon.png', time: p.time || '',
-      likes: p.likes || 0, liked: !!p.liked, comments: p.comments || 0,
-      media: p.image || null,
-      story: p.storyRef ? { title: p.storyRef.title, cover: p.storyRef.cover, writer: p.storyRef.writer } : null,
-      _genreId: null, _genreName: null, _feed: false, _droboard: true,
-      tag: p.type === 'announcement' ? 'Announcement' : p.type === 'debate' ? 'Debate' : p.type === 'shoutout' ? 'Shoutout' : null,
-      tagClass: 'discussion',
-    };
-  }
-  function adaptFeedPost(p) {
-    const text = p.text || p.quote || p.caption || p.note || (p.amaData && p.amaData.title) || '';
-    return {
-      id: p.id, title: text.slice(0, 70) || 'Post',
-      body: text,
-      name: p.name, avatar: p.avatar, time: p.time,
-      likes: p.likes, liked: p.liked, comments: p.comments,
-      media: p.image || null,
-      story: p.chapterRef ? { title: p.chapterRef.title, cover: p.chapterRef.cover } :
-             p.storyRef ? { title: p.storyRef.title, cover: p.storyRef.cover } : null,
-      _genreId: null, _genreName: null, _feed: true,
-    };
-  }
   const API_BASE = '/api';
 
   async function loadThread() {
     const params = new URLSearchParams(location.search);
     let postId = params.get('id') || params.get('d');
     if (!postId) throw new Error('No discussion id in URL');
-    // Fetch the discussion post from backend
-    const res = await fetch(`${API_BASE}/discussions/${encodeURIComponent(postId)}`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Discussion API failed: ' + res.status);
-    POST = await res.json();
-    GENRE_ID = POST.genre || POST._genreId || 'general';
-    GENRE = { name: POST.genreName || POST.genre || 'Discussion' };
-    document.getElementById('hubSub').textContent = GENRE.name + ' Hub';
-    return true;
+    
+    // Check cache first
+    if (cache.thread && cache.thread.id === postId) {
+      POST = cache.thread.data;
+      GENRE_ID = POST._genreId || 'general';
+      GENRE = { name: POST._genreName || POST._genreId || 'Discussion' };
+      document.getElementById('hubSub').textContent = GENRE.name + ' Hub';
+      return true;
+    }
+    
+    // Deduplicate concurrent requests
+    const cacheKey = `thread:${postId}`;
+    if (cache.pending.has(cacheKey)) {
+      return cache.pending.get(cacheKey);
+    }
+    
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/discussions/${encodeURIComponent(postId)}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Discussion API failed: ' + res.status);
+      POST = await res.json();
+      GENRE_ID = POST._genreId || 'general';
+      GENRE = { name: POST._genreName || POST._genreId || 'Discussion' };
+      document.getElementById('hubSub').textContent = GENRE.name + ' Hub';
+      
+      cache.thread = { id: postId, data: POST };
+      return true;
+    })().finally(() => cache.pending.delete(cacheKey));
+    
+    cache.pending.set(cacheKey, promise);
+    return promise;
   }
 
   async function threadComments() {
-    const res = await fetch(`${API_BASE}/comments?scope=discussion&targetId=${encodeURIComponent(POST.id)}&limit=50`, { credentials: 'include' });
+    // The comments API filters on discussionId (strict query schema).
+    const res = await fetch(`${API_BASE}/comments?scope=discussion&discussionId=${encodeURIComponent(POST.id)}&limit=50`, { credentials: 'include' });
     if (!res.ok) throw new Error('Comments API failed: ' + res.status);
     const data = await res.json();
-    return Array.isArray(data) ? data : (data.items || []);
+    return (data && data.items) || [];
   }
   /* ── OP render ── */
   function profileHref(name) { return 'profile.html?u=' + encodeURIComponent(name || ''); }
@@ -136,14 +122,6 @@
     const mount = document.getElementById('opMount');
     if (!POST) {
       mount.innerHTML = '<div class="empty">Discussion not found. <a href="genre-hub.html">Back to hub</a></div>';
-      return;
-    }
-    if (POST.pinned && !POST._droboard) {
-      mount.innerHTML = `<div class="op">
-        <div class="op-title">${esc(POST.title)}</div>
-        <div class="op-body">${esc(POST.desc || POST.body || '')}</div>
-      </div>`;
-      document.title = 'Hub rules · DroBoard';
       return;
     }
     let tags = '';
@@ -253,45 +231,20 @@
     }
   }
 
-  /* ── Comments: droboard OPs reuse the page comment seed; everything
-     else keeps the genre demo thread. ── */
-  function normThreadRing(r) {
-    const s = String(r || '').replace(/^ring-/, '');
-    return (s === 'has' || s === 'viewed') ? s : 'none';
-  }
-  /* A commenter's ring comes from THEIR OWN statuses (canonical lineup, or
-     the seed's own slides). Dealing someone else's statuses round-robin gave
-     avatars a ring whose slides belonged to another author, so "viewed"
-    never landed. No statuses of their own → no border. */
-  function enrichThreadStatuses(list) {
-    const byName = {};
-    try {
-      (window.COMMENTS_DATA || []).forEach(p => {
-        if (p && p.name && p.statuses && p.statuses.length && !byName[p.name]) byName[p.name] = p;
-      });
-    } catch (e) {}
-    (function walk(arr) {
-      (arr || []).forEach(c => {
-        const hit = byName[c.name];
-        if ((!c.statuses || !c.statuses.length) && hit) c.statuses = hit.statuses;
-        if (c.statuses && c.statuses.length) {
-          // Seed value is cosmetic only — DroboardStatusRing reads the store.
-          c.statusRing = 'has';
-        } else {
-          c.statusRing = 'none';
-        }
-        walk(c.replies || []);
-      });
-    })(list);
-    return list;
-  }
+  /* ── Comments: live from GET /api/comments?scope=discussion. ── */
   async function mountComments() {
-    if (window.DroboardComments && POST && !(POST.pinned && !POST._droboard)) {
+    const mount = document.getElementById('commentsPlaceholder');
+    if (!window.DroboardComments) {
+      mount.innerHTML = '<div class="empty">comment-section.js missing</div>';
+      return;
+    }
+    try {
       const comments = await threadComments();
+      const me = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
       DroboardComments.attach('#commentsPlaceholder', {
         title: 'Replies',
         comments: comments,
-        currentUser: { name: 'You', avatar: 'https://i.pravatar.cc/100?img=32' },
+        currentUser: { name: me.name || 'You', avatar: me.avatar || '' },
         collapsible: false,
         startOpen: true,
         requireTeam: false,
@@ -301,12 +254,8 @@
         onEdit: () => toast('✏️ Updated'),
         onProfileClick: (c) => { if (c && c.name) location.href = profileHref(c.name); },
       });
-    } else if (!POST || (POST.pinned && !POST._droboard)) {
-      document.getElementById('commentsPlaceholder').innerHTML =
-        '<div class="empty" style="padding:24px 0">No thread on hub rules.</div>';
-    } else {
-      document.getElementById('commentsPlaceholder').innerHTML =
-        '<div class="empty">comment-section.js missing</div>';
+    } catch (e) {
+      mount.innerHTML = '<div class="empty">Could not load replies — ' + esc((e && e.message) || 'network error') + '</div>';
     }
   }
 
@@ -331,7 +280,6 @@
   function initWiring() {
     document.getElementById('backBtn').addEventListener('click', () => {
       if (history.length > 1) history.back();
-      else if (GENRE_EXPLICIT) location.href = 'genre-hub.html?genre=' + encodeURIComponent(GENRE_ID);
       else location.href = 'feed.html';
     });
     document.getElementById('shareBtn').addEventListener('click', () => {
@@ -379,11 +327,23 @@
     initTheme();
     window.toast = toast;
     window.toggleTheme = toggleTheme;
-    if (!(await loadThread())) { toast('GenreDemoSeed missing'); return; }
+    try {
+      await loadThread();
+    } catch (err) {
+      const msg = (err && err.message) || 'network error';
+      const op = document.getElementById('opMount');
+      if (op) op.innerHTML = '<div class="empty">Could not load this discussion — ' + esc(msg) + '</div>';
+      const cm = document.getElementById('commentsPlaceholder');
+      if (cm) cm.innerHTML = '';
+      const sub = document.getElementById('hubSub');
+      if (sub) sub.textContent = 'Discussion';
+      toast('Could not load discussion');
+      return;
+    }
     initWiring();
     renderOp();
     await mountAd();
-    mountComments();
+    await mountComments();
     scrollToComment();
   }
 

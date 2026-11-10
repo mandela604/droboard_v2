@@ -1,270 +1,68 @@
+/**
+ * super-admin-data.js — Data layer for Super Admin pages.
+ * All methods call /api/super-admin directly. Errors propagate to the caller.
+ */
 (function () {
   'use strict';
   if (window.__superAdminData) return;
   window.__superAdminData = true;
 
-  const USE_API = false;
   const API_BASE = window.DROBOARD_API_BASE || '/api/super-admin';
-  const TIMEOUT_MS = 2500;
+  const TIMEOUT_MS = 8000;
 
-  async function callBackend(path, opts) {
-    if (!USE_API) throw new Error('demo');
+  async function api(path, opts) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal }, opts || {}));
+      const res = await fetch(API_BASE + path, Object.assign({ signal: controller.signal, credentials: 'include' }, opts || {}));
       clearTimeout(timer);
-      if (!res.ok) throw new Error('Bad response: ' + res.status);
-      return await res.json();
+      if (!res.ok) throw new Error('Request failed: ' + res.status);
+      return res.status === 204 ? null : await res.json();
     } catch (e) { clearTimeout(timer); throw e; }
   }
-  function delay(ms) { return new Promise(r => setTimeout(r, ms || 200 + Math.random() * 200)); }
 
-  const DEMO = {
-    dashboard: {
-      totalUsers: 2847,
-      activeUsers: 1923,
-      totalAuthors: 142,
-      totalEditors: 14,
-      totalReaders: 2691,
-      mrr: '$47,280',
-      arr: '$567,360',
-      platformRevenue: '$1.2M',
-      pendingVerifications: 8,
-      openTickets: 3,
-      systemUptime: '99.98%',
-      storageUsed: '2.4TB',
-      quickActions: [
-        { label: 'Run System Backup', icon: 'fa-server', cls: 'blue', href: 'system-logs.html' },
-        { label: 'Review Pending Verifications', icon: 'fa-user-check', cls: 'amber', count: 8, href: 'user-management.html' },
-        { label: 'Check Security Alerts', icon: 'fa-shield-halved', cls: 'red', count: 3, href: 'security.html' },
-        { label: 'Update Feature Flags', icon: 'fa-toggle-on', cls: 'purple', href: 'feature-flags.html' },
-      ],
-      recentActivity: [
-        { icon: 'fa-user-plus', color: 'blue', text: 'New Super Admin <b>Adaeze Bello</b> logged in from a new device', time: '5m ago' },
-        { icon: 'fa-shield-alt', color: 'green', text: 'Security scan completed — <b>0 critical vulnerabilities</b> found', time: '1h ago' },
-        { icon: 'fa-toggle-on', color: 'purple', text: '<b>New Feature Flag</b> "audio-books" activated for 10% of users', time: '3h ago' },
-        { icon: 'fa-server', color: 'amber', text: 'Scheduled maintenance window set for <b>Aug 2, 2026</b>', time: '5h ago' },
-        { icon: 'fa-piggy-bank', color: 'green', text: 'Monthly revenue target of <b>$50K</b> reached', time: '1d ago' },
-      ],
-    },
-
-    users: [
-      { id: 'USR-001', name: 'Adaeze Bello', email: 'adaeze.bello@droboard.io', role: 'Super Admin', status: 'active', joined: 'Jan 2023', lastLogin: '5m ago', avatar: 'https://i.pravatar.cc/100?img=49' },
-      { id: 'USR-002', name: 'Chioma Reddy', email: 'chioma.reddy@droboard.io', role: 'Chief Editor', status: 'active', joined: 'Mar 2024', lastLogin: '2h ago', avatar: 'https://i.pravatar.cc/100?img=5' },
-      { id: 'USR-003', name: 'Daniel Carter', email: 'daniel.carter@droboard.io', role: 'Senior Editor', status: 'active', joined: 'Jan 2024', lastLogin: '1h ago', avatar: 'https://i.pravatar.cc/100?img=13' },
-      { id: 'USR-004', name: 'Sophia Bennett', email: 'sophia.bennett@droboard.io', role: 'Senior Editor', status: 'active', joined: 'Jun 2023', lastLogin: '3h ago', avatar: 'https://i.pravatar.cc/100?img=48' },
-      { id: 'USR-005', name: 'Marcus Ihejirika', email: 'marcus.ihejirika@droboard.io', role: 'Senior Editor', status: 'suspended', joined: 'Sep 2023', lastLogin: '2d ago', avatar: 'https://i.pravatar.cc/100?img=59' },
-      { id: 'USR-006', name: 'Luna Skye', email: 'luna.skye@droboard.io', role: 'Author', status: 'active', joined: 'Mar 2025', lastLogin: '4h ago', avatar: 'https://i.pravatar.cc/100?img=24' },
-      { id: 'USR-007', name: 'Elena Vasquez', email: 'elena.vasquez@droboard.io', role: 'Author', status: 'active', joined: 'Jan 2024', lastLogin: '6h ago', avatar: 'https://i.pravatar.cc/100?img=31' },
-      { id: 'USR-008', name: 'Isabelle Moreau', email: 'isabelle.moreau@droboard.io', role: 'Author', status: 'active', joined: 'Sep 2023', lastLogin: '1d ago', avatar: 'https://i.pravatar.cc/100?img=44' },
-      { id: 'USR-009', name: 'BookLover92', email: 'booklover92@gmail.com', role: 'Reader', status: 'active', joined: 'Apr 2024', lastLogin: '12h ago', avatar: 'https://i.pravatar.cc/100?img=36' },
-      { id: 'USR-010', name: 'ChapterChaser', email: 'chapterchaser@yahoo.com', role: 'Reader', status: 'active', joined: 'Nov 2023', lastLogin: '1d ago', avatar: 'https://i.pravatar.cc/100?img=19' },
-    ],
-
-    roles: [
-      { id: 'ROL-001', name: 'Super Admin', description: 'Full platform access — all features, settings, and user management.', permissions: ['all'], userCount: 1, isEditable: false },
-      { id: 'ROL-002', name: 'Chief Editor', description: 'Manage senior editors, contracts, reports, and platform content.', permissions: ['manage_senior_editors', 'manage_contracts', 'view_reports', 'manage_content'], userCount: 1, isEditable: true },
-      { id: 'ROL-003', name: 'Senior Editor', description: 'Review submissions, manage authors, and curate content.', permissions: ['review_submissions', 'manage_authors', 'curate_content'], userCount: 12, isEditable: true },
-      { id: 'ROL-004', name: 'Author', description: 'Write, publish, and manage their own stories.', permissions: ['write_stories', 'publish_own', 'view_analytics'], userCount: 142, isEditable: true },
-      { id: 'ROL-005', name: 'Reader', description: 'Read stories, leave reviews, and participate in community.', permissions: ['read_stories', 'leave_reviews', 'join_community'], userCount: 2691, isEditable: true },
-    ],
-
-    platformSettings: {
-      general: {
-        platformName: 'Droboard',
-        tagline: 'Where Stories Come Alive',
-        registrationEnabled: true,
-        authorApplicationRequired: true,
-        minAuthorAge: 16,
-        contentRating: 'Mature',
-        defaultLanguage: 'English',
-        supportedLanguages: ['English', 'Spanish', 'French', 'German', 'Portuguese'],
-      },
-      content: {
-        maxChapterWords: 5000,
-        minChapterWords: 2000,
-        maxTitleLength: 100,
-        matureContentTag: true,
-        plagiarismCheck: true,
-        aiContentDetection: true,
-        autoTranslation: true,
-      },
-      notifications: {
-        emailNotifications: true,
-        pushNotifications: true,
-        weeklyDigest: true,
-        systemAnnouncements: true,
-        authorReminders: true,
-      },
-    },
-
-    finance: {
-      monthlyRevenue: '$47,280',
-      annualRevenue: '$567,360',
-      totalPayouts: '$342,100',
-      pendingPayouts: '$18,240',
-      platformFee: '20%',
-      mrrGrowth: '+12.4%',
-      revenueByGenre: [
-        { genre: 'Billionaire & CEO', revenue: '$84,200' },
-        { genre: 'Werewolf & Fantasy', revenue: '$67,800' },
-        { genre: 'Mafia & Urban', revenue: '$52,300' },
-        { genre: 'Romance & Betrayal', revenue: '$48,900' },
-        { genre: 'Historical & Regency', revenue: '$39,100' },
-        { genre: 'Campus & Revenge', revenue: '$28,700' },
-      ],
-      payoutQueue: [
-        { name: 'Isabelle Moreau', role: 'Author', amount: '$2,140', due: 'Jul 31, 2026', status: 'due' },
-        { name: 'Elena Vasquez', role: 'Author', amount: '$980', due: 'Jul 31, 2026', status: 'due' },
-        { name: 'Chioma Reddy', role: 'Senior Editor', amount: '$3,200', due: 'Aug 1, 2026', status: 'scheduled' },
-        { name: 'Luna Skye', role: 'Author', amount: '$1,510', due: 'Jul 31, 2026', status: 'due' },
-      ],
-    },
-
-    analytics: {
-      totalReads: '2.4M',
-      totalWords: '847M',
-      avgSession: '18m 32s',
-      bounceRate: '23.4%',
-      topCountries: [
-        { country: 'United States', reads: '842K' },
-        { country: 'United Kingdom', reads: '321K' },
-        { country: 'Nigeria', reads: '298K' },
-        { country: 'India', reads: '256K' },
-        { country: 'Canada', reads: '187K' },
-      ],
-      dailyActive: [
-        { day: 'Mon', users: 42800 },
-        { day: 'Tue', users: 45200 },
-        { day: 'Wed', users: 47800 },
-        { day: 'Thu', users: 46100 },
-        { day: 'Fri', users: 52300 },
-        { day: 'Sat', users: 38900 },
-        { day: 'Sun', users: 35600 },
-      ],
-      genrePerformance: [
-        { genre: 'Billionaire & CEO', reads: '520K', completion: 62 },
-        { genre: 'Werewolf & Fantasy', reads: '480K', completion: 58 },
-        { genre: 'Mafia & Urban', reads: '390K', completion: 55 },
-        { genre: 'Romance & Betrayal', reads: '350K', completion: 67 },
-        { genre: 'Historical & Regency', reads: '280K', completion: 74 },
-        { genre: 'Campus & Revenge', reads: '210K', completion: 49 },
-      ],
-    },
-
-    security: {
-      twoFactorEnabled: true,
-      lastSecurityScan: '2h ago',
-      vulnerabilities: 0,
-      criticalAlerts: 0,
-      warnings: 2,
-      loginAttempts: { successful: 1247, failed: 3, blocked: 0 },
-      recentEvents: [
-        { type: 'login', severity: 'info', text: 'New device login — Super Admin Adaeze Bello from San Francisco', time: '5m ago' },
-        { type: 'scan', severity: 'info', text: 'Automated security scan completed — 0 critical vulnerabilities', time: '2h ago' },
-        { type: 'warning', severity: 'warning', text: 'Multiple failed login attempts on account USR-005 (Marcus Ihejirika)', time: '1d ago' },
-        { type: 'blocked', severity: 'warning', text: 'Suspicious API request pattern detected and blocked', time: '2d ago' },
-      ],
-      apiKey: 'sk_live_7f3a9b2c1e8d4f6a5b0c3e7d9f1a2b4c',
-    },
-
-    systemLogs: [
-      { id: 'LOG-001', level: 'info', source: 'auth-service', message: 'User login: adaeze.bello@droboard.io', timestamp: '2026-07-29 04:55:22', ip: '192.168.1.42' },
-      { id: 'LOG-002', level: 'info', source: 'api-gateway', message: 'Request processed: GET /api/v1/stories/featured', timestamp: '2026-07-29 04:55:18', ip: '10.0.3.15' },
-      { id: 'LOG-003', level: 'warning', source: 'payment-service', message: 'Payment retry triggered for transaction TX-8847', timestamp: '2026-07-29 04:54:55', ip: '10.0.2.8' },
-      { id: 'LOG-004', level: 'error', source: 'content-service', message: 'Plagiarism check timeout for story ST-142', timestamp: '2026-07-29 04:53:31', ip: '10.0.5.22' },
-      { id: 'LOG-005', level: 'info', source: 'notification-service', message: 'Batch email sent: 2,847 recipients', timestamp: '2026-07-29 04:50:00', ip: '10.0.1.3' },
-      { id: 'LOG-006', level: 'info', source: 'backup-service', message: 'Daily backup completed successfully', timestamp: '2026-07-29 02:00:00', ip: '10.0.0.1' },
-      { id: 'LOG-007', level: 'warning', source: 'auth-service', message: 'Rate limit exceeded for IP 203.0.113.45', timestamp: '2026-07-28 23:45:12', ip: '203.0.113.45' },
-      { id: 'LOG-008', level: 'error', source: 'storage-service', message: 'Disk usage above 85% threshold on node-3', timestamp: '2026-07-28 22:10:00', ip: '10.0.0.3' },
-    ],
-
-    integrations: [
-      { id: 'INT-001', name: 'Stripe', type: 'Payment', status: 'connected', lastSync: '2h ago', icon: 'fa-credit-card' },
-      { id: 'INT-002', name: 'SendGrid', type: 'Email', status: 'connected', lastSync: '5m ago', icon: 'fa-envelope' },
-      { id: 'INT-003', name: 'Cloudflare', type: 'CDN', status: 'connected', lastSync: '1h ago', icon: 'fa-cloud' },
-      { id: 'INT-004', name: 'AWS S3', type: 'Storage', status: 'connected', lastSync: '3h ago', icon: 'fa-database' },
-      { id: 'INT-005', name: 'Google Analytics', type: 'Analytics', status: 'connected', lastSync: '1d ago', icon: 'fa-chart-line' },
-      { id: 'INT-006', name: 'Slack', type: 'Messaging', status: 'disconnected', lastSync: '2d ago', icon: 'fa-slack' },
-      { id: 'INT-007', name: 'GitHub', type: 'Deployment', status: 'connected', lastSync: '4h ago', icon: 'fa-github' },
-    ],
-
-    featureFlags: [
-      { id: 'FF-001', name: 'audio-books', description: 'Enable audiobook production and distribution', enabled: true, rollout: 10, created: 'Jul 15, 2026', lastModified: 'Jul 28, 2026' },
-      { id: 'FF-002', name: 'ai-content-detection', description: 'Detect AI-generated content in submissions', enabled: true, rollout: 100, created: 'Jun 20, 2026', lastModified: 'Jul 20, 2026' },
-      { id: 'FF-003', name: 'dark-mode', description: 'Dark mode theme for all users', enabled: true, rollout: 100, created: 'May 10, 2026', lastModified: 'May 10, 2026' },
-      { id: 'FF-004', name: 'beta-reading', description: 'Allow readers to sign up as beta readers', enabled: false, rollout: 0, created: 'Jul 1, 2026', lastModified: 'Jul 25, 2026' },
-      { id: 'FF-005', name: 'subscription-tier', description: 'Premium subscription tier with exclusive content', enabled: false, rollout: 0, created: 'Jul 20, 2026', lastModified: 'Jul 28, 2026' },
-      { id: 'FF-006', name: 'offline-reading', description: 'Download stories for offline reading', enabled: true, rollout: 50, created: 'Jul 18, 2026', lastModified: 'Jul 27, 2026' },
-    ],
-
-  };
+  function post(path, body) {
+    return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  }
+  function patch(path, body) {
+    return api(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  }
+  function put(path, body) {
+    return api(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  }
+  function del(path) {
+    return api(path, { method: 'DELETE' });
+  }
 
   window.SuperAdminData = {
-    async getDashboard() {
-      try { return await callBackend('/dashboard/summary'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.dashboard)); }
-    },
-    async getUsers() {
-      try { return await callBackend('/users'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.users)); }
-    },
-    async updateUser(id, data) {
-      try { return await callBackend('/users/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
-      catch (e) { await delay(200); const u = DEMO.users.find(x => x.id === id); if (u) Object.assign(u, data); return { ok: true }; }
-    },
-    async deleteUser(id) {
-      try { return await callBackend('/users/' + id, { method: 'DELETE' }); }
-      catch (e) { await delay(200); DEMO.users = DEMO.users.filter(x => x.id !== id); return { ok: true }; }
-    },
-    async getRoles() {
-      try { return await callBackend('/roles'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.roles)); }
-    },
-    async updateRole(id, data) {
-      try { return await callBackend('/roles/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
-      catch (e) { await delay(200); const r = DEMO.roles.find(x => x.id === id); if (r) Object.assign(r, data); return { ok: true }; }
-    },
-    async getPlatformSettings() {
-      try { return await callBackend('/settings'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.platformSettings)); }
-    },
-    async updatePlatformSettings(data) {
-      try { return await callBackend('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
-      catch (e) { await delay(200); Object.assign(DEMO.platformSettings, data); return { ok: true }; }
-    },
-    async getFinance() {
-      try { return await callBackend('/finance'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.finance)); }
-    },
-    async getAnalytics() {
-      try { return await callBackend('/analytics'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.analytics)); }
-    },
-    async getSecurity() {
-      try { return await callBackend('/security'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.security)); }
-    },
-    async getSystemLogs() {
-      try { return await callBackend('/system-logs'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.systemLogs)); }
-    },
-    async getIntegrations() {
-      try { return await callBackend('/integrations'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.integrations)); }
-    },
-    async updateIntegration(id, data) {
-      try { return await callBackend('/integrations/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
-      catch (e) { await delay(200); const i = DEMO.integrations.find(x => x.id === id); if (i) Object.assign(i, data); return { ok: true }; }
-    },
-    async getFeatureFlags() {
-      try { return await callBackend('/feature-flags'); }
-      catch (e) { await delay(); return JSON.parse(JSON.stringify(DEMO.featureFlags)); }
-    },
-    async updateFeatureFlag(id, data) {
-      try { return await callBackend('/feature-flags/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
-      catch (e) { await delay(200); const f = DEMO.featureFlags.find(x => x.id === id); if (f) Object.assign(f, data); return { ok: true }; }
-    },
+    getDashboard()                  { return api('/dashboard/summary'); },
+
+    getUsers()                      { return api('/users'); },
+    updateUser(id, data)            { return patch('/users/' + id, data); },
+    deleteUser(id)                  { return del('/users/' + id); },
+
+    getRoles()                      { return api('/roles'); },
+    updateRole(id, data)            { return put('/roles/' + id, data); },
+
+    getPlatformSettings()           { return api('/settings'); },
+    updatePlatformSettings(data)    { return put('/settings', data); },
+
+    getAnalytics()                  { return api('/analytics/summary'); },
+    getEarnings()                   { return api('/earnings'); },
+
+    getSystemLogs()                 { return api('/audit'); },
+    getEmailTemplates()             { return api('/email-templates'); },
+    createEmailTemplate(data)       { return post('/email-templates', data); },
+    updateEmailTemplate(id, data)   { return put('/email-templates/' + id, data); },
+    deleteEmailTemplate(id)         { return del('/email-templates/' + id); },
+
+    broadcastNotification(data)     { return post('/notifications/broadcast', data); },
+
+    getSystemPages()                { return api('/system-pages'); },
+    createSystemPage(data)          { return post('/system-pages', data); },
+
+    getEditorialTeam()              { return api('/editorial-team'); },
+    getAuthors()                    { return api('/authors'); },
+    getBooks()                      { return api('/books'); },
   };
 })();

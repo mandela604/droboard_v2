@@ -1,151 +1,33 @@
 /* ===============================================================
-   BOOK READER SERVICE
+   BOOK READER SERVICE — live
    Book hub orchestration. HTML calls StoryReaderPage.init().
-   Data: central-demo-data.js (+ profile books). Ads: ad-service.
-   Share/save via shared components. No hardcoded content.
-   When going live: swap seed reads for API calls.
+   All content comes from the backend:
+     GET /api/books/:id                                   → story detail
+     GET /api/stories/:id/engagement                      → book-level polls/predictions/debates
+     POST /api/stories/:id/engagement/vote                → book-level votes (via ReaderEngagement)
+     GET /api/stories/:id/ratings                         → reviews (server-sorted, paginated)
+     POST|DELETE /api/stories/:id/ratings/:rid/helpful    → review helpful marks
+     GET /api/stories/:id/read-state                      → per-user progress + unlocks
+     POST|DELETE /api/users/:handle/follow                → follow
+   Writer status rings come from window.DroboardStatus (live status
+   service) — never from a local pool. Any backend failure renders an
+   error empty-state carrying the failure message.
 =============================================================== */
 (function () {
   "use strict";
 
-
-/* ══════════════════════════════════════════════
-   DATA — Full story catalogue
-══════════════════════════════════════════════ */
-
-/* ══ PARAMS (+ profile-book lookup so writer books open here too) ══ */
+/* ══ PARAMS ══ */
 const params = new URLSearchParams(location.search);
-const storyId = params.get('id') || 's1';
-function synthFromBook(p, b) {
-  const n = Math.max(1, +b.chapters || 1);
-  const chapters = [];
-  for (let i = 1; i <= n; i++) {
-    chapters.push({
-      n: i, title: 'Chapter ' + i, reads: '–', time: '4 min',
-      state: i <= Math.min(3, n) ? 'done' : (i === Math.min(4, n) && n > 3 ? 'current' : 'locked'),
-      badges: i === 1 ? ['free'] : (i === Math.min(4, n) && n > 3 ? ['new'] : []),
-    });
-  }
-  return {
-    id: b.id, title: b.title, cat: b.cat, status: 'ongoing', isContest: false, cover: b.cover,
-    synopsis: `${b.title} — ${b.cat}. Full synopsis coming soon from the author.`,
-    writer: { id: p.handle, name: p.name, handle: '@' + p.handle, avatar: p.avatar, followers: fmtN(p.stats.followers), isFollowed: false },
-    stats: { reads: b.reads, likes: b.likes, comments: '0', saves: '0', shares: '0' },
-    totalChapters: n,
-    currentProgress: { chapter: 1, chapterTitle: 'Chapter 1', percent: 5 },
-    genres: [b.cat], startDate: '', lastUpdated: 'Recently', completedDate: null,
-    avgReadTime: '4 min/chapter', wordCount: '',
-    hasTeams: false, teams: [], polls: [], predictions: [], debates: [],
-    chapters,
-  };
-}
-/* Catalogue: central demo data in demo, API live. Go-live = USE_API. */
-const USE_API = false;
+const storyId = params.get('id') || '';
 const API_BASE = '/api';
-let CATALOG = {};
-async function fetchCatalog() {
-  if (USE_API) {
-    const res = await fetch(`${API_BASE}/books`);
-    if (!res.ok) throw new Error('Story API failed');
-    const payload = await res.json();
-    const list = Array.isArray(payload) ? payload : (payload.items || []);
-    const map = {};
-    list.forEach(s => { map[s.id] = s; });
-    return map;
-  }
-  await new Promise(r => setTimeout(r, 60));
-  const d = window.DemoData || {};
-  return d.SERIES_CATALOG || {};
-}
-function resolveStory(id) {
-  if (id && CATALOG[id]) return CATALOG[id];
-  try {
-    const seed = window.ProfileDemoSeed;
-    if (seed && seed.DEMO_PROFILES) {
-      for (const handle of Object.keys(seed.DEMO_PROFILES)) {
-        const p = seed.DEMO_PROFILES[handle];
-        const b = (p.books || []).find(x => String(x.id) === String(id));
-        if (b) {
-          // Books tagged with a catalogue id open the rich story record
-          // (polls, predictions, debates, teams) instead of a bare synth.
-          if (b.catalogId && CATALOG[b.catalogId]) {
-            const rec = CATALOG[b.catalogId];
-            rec._bookId = b.id; // keep original id for back-navigation
-            return rec;
-          }
-          return synthFromBook(p, b);
-        }
-      }
-    }
-  } catch (e) {}
-  /* No id = entry default; unknown id = not found (like production). */
-  if (!id) return CATALOG['s1'] || null;
-  return null;
-}
-/* Live: backend book detail (GET /api/books/:id) → rich record shape. */
-function normalizeLive(b) {
-  if (!b) return null;
-  const rows = (b.chapters || []).length ? b.chapters : [];
-  const totalCh = Math.max(1, rows.length || b.chapterCount || 1);
-  const chapters = rows.map((c, i) => ({
-    n: c.n, title: c.title,
-    reads: c.views != null && c.views > 0 ? fmtN(c.views) : '–',
-    time: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min' : '4 min',
-    state: c.price > 0 ? 'locked' : (i === 0 ? 'current' : 'done'),
-    badges: c.price > 0 ? [] : (i === 0 ? ['free'] : []),
-  }));
-  const w = b.writer || {};
-  return {
-    id: b.id, title: b.title, cover: b.cover || '',
-    cat: b.genre || '', status: b.status === 'completed' ? 'completed' : 'ongoing',
-    isContest: false, synopsis: b.synopsis || '',
-    writer: {
-      id: w.id, name: w.name || w.username || 'Unknown',
-      handle: '@' + (w.username || 'unknown'), avatar: w.avatar || '',
-      followers: '0', isFollowed: false,
-    },
-    stats: {
-      reads: fmtN(b.reads || 0), likes: fmtN(b.likes || 0),
-      comments: '0', saves: '0', shares: '0',
-    },
-    totalChapters: totalCh,
-    currentProgress: { chapter: 1, chapterTitle: (rows[0] && rows[0].title) || 'Chapter 1', percent: 5 },
-    genres: [b.genre].filter(Boolean),
-    startDate: '', lastUpdated: 'Recently', completedDate: null,
-    avgReadTime: '4 min/chapter', wordCount: b.wordCount ? fmtN(b.wordCount) + ' words' : '',
-    hasTeams: false, teams: [],
-    polls: ((b.engagement && b.engagement.polls) || []).map(p => ({
-      id: p.id, season: 1, chapter: p.chapter || 1,
-      question: p.q, options: (p.opts || []).map(o => ({ text: o.t, votes: o.v })),
-      voted: -1,
-    })),
-    predictions: ((b.engagement && b.engagement.predictions) || []).map(p => ({
-      id: p.id, season: 1, chapter: p.chapter || 1,
-      question: p.q, options: (p.opts || []).map(o => ({ em: '', text: o.t, votes: o.v, picked: false })),
-    })),
-    debates: ((b.engagement && b.engagement.debates) || []).map(d => ({
-      id: d.id, season: 1, chapter: d.chapter || 1,
-      motion: d.motion, forText: d.forText || 'For', againstText: d.againstText || 'Against',
-      forV: d.forV || 0, agV: d.agV || 0, userVote: null, comments: [],
-    })),
-    chapters,
-  };
-}
-async function fetchStoryDetail(id) {
-  if (!USE_API) return null;
-  const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`);
-  if (!res.ok) return null;
-  return normalizeLive(await res.json());
-}
 let STORY = null;
 
 /* ══ STATE ══ */
 let isSaved = false;
 let isFollowing = false;
+let followBusy = false;
 let synExpanded = false;
 const chPerPage = 25; // paginate when a story has more than this many chapters
-const debateUserVotes = {}; // debateId → 'for'|'against'
-const debateCms = {}; // built from STORY.debates
 
 /* ══ UTILS ══ */
 function toast(msg, dur=2400) {
@@ -157,7 +39,19 @@ function toast(msg, dur=2400) {
 }
 function fmtN(n) {
   if (typeof n === 'string') return n;
+  n = Number(n) || 0;
   return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n);
+}
+function esc0(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+function timeAgo(ts) {
+  const n = Number(ts);
+  if (!n) return '';
+  const s = Math.max(0, Date.now() - n) / 1000;
+  if (s < 60) return 'Just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+  return Math.floor(s / 604800) + 'w ago';
 }
 function switchTab(tab) {
   document.querySelectorAll('.stab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -165,31 +59,95 @@ function switchTab(tab) {
   document.getElementById('panel-' + tab).classList.add('active');
 }
 
+/* ══ STORY FETCH — GET /api/books/:id ══ */
+async function fetchStoryDetail(id) {
+  const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include' });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).error || ''; } catch (e) {}
+    throw new Error('Story not found (' + res.status + ')' + (detail ? ' — ' + detail : ''));
+  }
+  return normalizeLive(await res.json());
+}
+/* Live backend detail → rich record shape (one mapper for this page). */
+function normalizeLive(b) {
+  if (!b) return null;
+  const rows = b.chapters || [];
+  const totalCh = Math.max(1, rows.length || b.chapterCount || 1);
+  const chapters = rows.map((c, i) => ({
+    cid: c.id, price: c.price || 0, n: c.n, title: c.title,
+    reads: c.views != null && c.views > 0 ? fmtN(c.views) : '–',
+    time: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min' : '—',
+    state: c.price > 0 ? 'locked' : (i === 0 ? 'current' : 'done'),
+    badges: c.price > 0 ? [] : (i === 0 ? ['free'] : []),
+  }));
+  const w = b.writer || {};
+  const stats = b.stats || {};
+  // continueReading from backend → currentProgress
+  const cr = b.continueReading || null;
+  const continueChN = cr && cr.chapterId
+    ? (rows.find(c => c.id === cr.chapterId || String(c.n) === String(cr.chapterId)) || rows[0] || {}).n || 1
+    : 1;
+  const continueChTitle = (rows.find(c => c.n === continueChN) || rows[0] || {}).title || 'Chapter 1';
+  const continuePct = cr ? Math.round(cr.pct || 0) : 0;
+  // similar from backend response
+  const similar = (b.similar || []).map(x => ({
+    id: x.id, img: x.cover || '', title: x.title || '',
+    author: (x.author && (x.author.name || x.author.handle)) || '',
+  }));
+  const wordTotal = rows.reduce((s, c) => s + (c.words || 0), 0);
+  const avgMin = rows.length && wordTotal ? Math.max(1, Math.round(wordTotal / rows.length / 200)) : 0;
+  return {
+    id: b.id, title: b.title, cover: b.cover || '',
+    cat: b.genre || '', status: b.status === 'completed' ? 'completed' : 'ongoing',
+    isContest: false, synopsis: b.synopsis || '',
+    writer: {
+      id: w.id, username: w.username || w.name || 'unknown',
+      name: w.name || w.username || 'Unknown',
+      handle: '@' + (w.username || 'unknown'), avatar: w.avatar || '',
+      followers: fmtN(w.followers || 0), isFollowed: !!w.following,
+    },
+    stats: {
+      reads: fmtN(stats.reads || b.reads || 0),
+      likes: fmtN(stats.likes || b.likes || 0),
+      comments: fmtN(stats.comments || 0),
+      shares: fmtN(stats.shares || 0),
+      rating: stats.rating ? String(Math.round(stats.rating * 10) / 10) : '–',
+    },
+    totalChapters: totalCh,
+    currentProgress: { chapter: continueChN, chapterTitle: continueChTitle, percent: continuePct, cid: cr ? cr.chapterId : null },
+    genres: [b.genre].filter(Boolean),
+    startDate: '—',
+    lastUpdated: b.updatedAt ? timeAgo(b.updatedAt) : '—',
+    completedDate: b.status === 'completed' ? b.updatedAt || null : null,
+    avgReadTime: avgMin ? avgMin + ' min/chapter' : '—',
+    wordCount: b.wordCount ? fmtN(b.wordCount) + ' words' : '—',
+    similar: similar,
+    chapters,
+    polls: [], predictions: [], debates: [], // filled from book-level engagement
+  };
+}
+
 /* ══ WRITER PROFILE + STATUS RING (bridge parity) ══
    Red ring ONLY when the writer actually has statuses; gray after the
-   status has been viewed; no border at all for a statusless avatar. */
+   status has been viewed; no border at all for a statusless avatar.
+   Statuses resolve live from the status service by author name. */
 function writer() { return (STORY && STORY.writer) || {}; }
 function attachWriterStatus() {
   const w = writer();
   if (!w || w._stWired) return;
   w._stWired = true;
   try {
-    const pool = (window.DemoData && window.DemoData.STATUSES) || [];
-    const name = String(w.name || '').replace(/^@/, '');
-    const hit = pool.find(p => !p.isYou && (
-      (w.id != null && String(p.id) === String(w.id)) ||
-      String(p.name || '').replace(/^@/, '') === name));
-    if (hit && hit.statuses && hit.statuses.length) {
-      w.statuses = hit.statuses;
-      w.statusId = hit.id;
-      w.statusRing = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
-    }
-  } catch (e) {}
+    const name = String(w.username || w.handle || w.name || '').replace(/^@/, '');
+    const statuses = (window.DroboardStatus && DroboardStatus.writerStatuses(name)) || [];
+    w.statuses = statuses;
+    w.statusRing = statuses.length ? 'has' : 'none';
+  } catch (e) { w.statuses = []; w.statusRing = 'none'; }
 }
 function writerPerson() {
   const w = writer();
   return {
-    id: w.statusId || w.id, name: w.name, avatar: w.avatar,
+    id: w.id, name: w.name, avatar: w.avatar,
     statuses: w.statuses,
     ring: w.statusRing === 'viewed' ? 'ring-viewed' : (w.statusRing === 'none' ? 'ring-none' : 'ring-has'),
   };
@@ -211,7 +169,7 @@ function applyWriterRing() {
 }
 function goProfile() {
   const w = writer();
-  goProfileFor(w.handle || w.name);
+  goProfileFor(w.username || w.handle || w.name);
 }
 /* Viewer queue for THIS page only — the writer plus any comment/review
    avatar that has statuses. People not shown on the page are never queued,
@@ -228,7 +186,7 @@ function statusViewQueue(fallback) {
   const w = writer();
   if (w && w.statuses && w.statuses.length) {
     push({
-      id: w.statusId || 'br_writer', name: w.name, avatar: w.avatar,
+      id: w.id || 'br_writer', name: w.name, avatar: w.avatar,
       ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
       likes: 0, threads: 0, statuses: w.statuses,
     });
@@ -254,7 +212,7 @@ function openWriterStatus() {
   const w = writer();
   if (!(w.statuses && w.statuses.length)) return false;
   const q = statusViewQueue({
-    id: w.statusId || 'br_writer', name: w.name, avatar: w.avatar,
+    id: w.id || 'br_writer', name: w.name, avatar: w.avatar,
     ring: w.statusRing === 'viewed' ? 'ring-viewed' : 'ring-has',
     likes: 0, threads: 0, statuses: w.statuses,
   });
@@ -292,7 +250,7 @@ function wireStatusRing() {
       }
     });
     const w = writer();
-    if (w && samePerson({ id: w.statusId, name: w.name || w.handle }) && newRing !== 'none') {
+    if (w && samePerson({ id: w.id, name: w.name || w.handle }) && newRing !== 'none') {
       w.statusRing = newRing; changed = true;
     }
     if (changed) paintStatusRings();
@@ -300,10 +258,10 @@ function wireStatusRing() {
   };
 }
 
-/* ══ ANY USER AVATAR / NAME (reviews, debate comments, …) ══
+/* ══ ANY USER AVATAR / NAME (reviews, …) ══
    Same contract as the bridge: red ring ONLY when that author actually has
-   statuses (resolved from DemoData.STATUSES by name/avatar), gray after
-   viewing, no border otherwise; names open the profile. */
+   statuses (resolved live from the status service by author name), gray
+   after viewing, no border otherwise; names open the profile. */
 const userStatus = {};   // 'name|avatar' → { id, name, avatar, statuses, ring }
 function uKey(name, avatar) { return String(name || '') + '|' + String(avatar || ''); }
 function uAttr(s) { return esc0(s).replace(/"/g, '&quot;'); }
@@ -316,23 +274,8 @@ function userStatusFor(name, avatar) {
     statuses: null, ring: 'none',
   };
   try {
-    const pool = (window.DemoData && window.DemoData.STATUSES) || [];
-    const hit = pool.find(p => !p.isYou && (
-      String(p.name || '').replace(/^@/, '') === rec.name ||
-      (rec.avatar && p.avatar === rec.avatar)));
-    if (hit && hit.statuses && hit.statuses.length) {
-      rec.statuses = hit.statuses;
-      rec.id = hit.id;
-      rec.ring = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
-    } else {
-      // Feed-row authors have their lineup in the status service, not in the
-      // STATUSES pool. Ask it, or the ring would promise a status the tap
-      // can't deliver.
-      try {
-        const canon = (window.DroboardStatus && DroboardStatus.writerStatuses(rec.name)) || [];
-        if (canon.length) { rec.statuses = canon; rec.ring = 'has'; }
-      } catch (e) {}
-    }
+    const canon = (window.DroboardStatus && DroboardStatus.writerStatuses(rec.name)) || [];
+    if (canon.length) { rec.statuses = canon; rec.ring = 'has'; }
   } catch (e) {}
   userStatus[key] = rec;
   return rec;
@@ -385,16 +328,21 @@ function paintStatusRings() {
 
 /* ══ INIT ══ */
 async function init() {
-  try { CATALOG = await fetchCatalog(); } catch (e) { CATALOG = {}; }
-  STORY = resolveStory(storyId);
-  if (USE_API && STORY && !STORY.writer) STORY = await fetchStoryDetail(storyId) || STORY;
-  isFollowing = STORY && STORY.writer ? !!STORY.writer.isFollowed : false;
+  try {
+    STORY = await fetchStoryDetail(storyId);
+  } catch (e) {
+    document.getElementById('tbStoryName').textContent = 'Story not found';
+    document.getElementById('chaptersContent').innerHTML =
+      '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + esc0(e.message || 'Failed to load story.') + '</p></div>';
+    return;
+  }
   if (!STORY || !STORY.writer) {
     document.getElementById('tbStoryName').textContent = 'Story not found';
     document.getElementById('chaptersContent').innerHTML =
-      '<div class="empty-state"><i class="fas fa-book-open"></i><p>Story data failed to load. Check that data files are reachable.</p></div>';
+      '<div class="empty-state"><i class="fas fa-book-open"></i><p>Story not available.</p></div>';
     return;
   }
+  isFollowing = !!STORY.writer.isFollowed;
   // Top bar — only short story / long story types (no seasons)
   document.getElementById('tbStoryName').textContent = STORY.title;
   var _chTotal = STORY.totalChapters || 0;
@@ -405,9 +353,7 @@ async function init() {
   document.getElementById('heroCover').style.backgroundImage = `url('${STORY.cover}')`;
   document.getElementById('heroTitle').textContent = STORY.title;
   document.getElementById('hwName').textContent = `@${STORY.writer.name}`;
-  const fBtn = document.getElementById('hwFollow');
-  fBtn.textContent = isFollowing ? '✓ Following' : '+ Follow';
-  if (isFollowing) fBtn.classList.add('ing');
+  paintFollowButton();
 
   // Badges
   const statusBadge = STORY.status === 'ongoing'
@@ -415,7 +361,7 @@ async function init() {
     : `<span class="hbadge hb-complete">✓ Complete</span>`;
   const contestBadge = STORY.isContest ? `<span class="hbadge hb-contest">🏆 Contest</span>` : '';
   document.getElementById('heroBadges').innerHTML = `
-    <span class="hbadge hb-cat">${STORY.cat}</span>
+    <span class="hbadge hb-cat">${esc0(STORY.cat)}</span>
     ${statusBadge}
     <span class="hbadge hb-complete">${_storyType} · ${STORY.totalChapters} chapter${STORY.totalChapters === 1 ? '' : 's'}</span>
     ${contestBadge}
@@ -426,7 +372,7 @@ async function init() {
     { num: STORY.stats.reads, label: 'Reads', cls: 'r' },
     { num: STORY.stats.likes, label: 'Likes', cls: 'r' },
     { num: STORY.stats.comments, label: 'Comments', cls: 'b' },
-    { num: STORY.stats.saves, label: 'Saves', cls: 'g' },
+    { num: STORY.stats.rating, label: 'Rating', cls: 'g' },
     { num: STORY.stats.shares, label: 'Shares', cls: '' },
   ];
   document.getElementById('quickStats').innerHTML = qs.map(q =>
@@ -434,15 +380,7 @@ async function init() {
   ).join('');
 
   // Continue banner (no seasons — chapter only)
-  const cp = STORY.currentProgress;
-  document.getElementById('cbChName').textContent = `Ch${cp.chapter} — ${cp.chapterTitle}`;
-  document.getElementById('cbChMeta').textContent = `${cp.percent}% through this chapter`;
-  document.getElementById('cbProgress').style.width = cp.percent + '%';
-
-  // Teams tab visibility
-  if (STORY.hasTeams && STORY.teams.length > 0) {
-    document.getElementById('teamsTab').style.display = '';
-  }
+  paintContinueBanner();
 
   // Writer → profile (name) + status ring (avatar) — same contract as the
   // bridge page: red ring only when the writer actually has statuses.
@@ -452,7 +390,7 @@ async function init() {
   wireStatusRing();
   document.getElementById('hwName').addEventListener('click', goProfile);
   // One delegated handler covers every user avatar/name rendered later
-  // (reviews, debate comments, re-renders) without rebinding.
+  // (reviews, re-renders) without rebinding.
   document.addEventListener('click', function (e) {
     const t = e.target;
     if (!t || !t.closest) return;
@@ -465,11 +403,9 @@ async function init() {
   // Render panels
   renderChapters();
   renderOverview();
-  renderReviews();
+  loadReviews();
   renderMoreLike();
-  if (STORY.hasTeams) renderTeams();
-  renderPolls();
-  renderDebates();
+  loadEngagementRows();
   window.onDroboardSaveChange = function (sid, saved) {
     if (String(sid) === String(STORY.id)) {
       syncSaveIcon(saved);
@@ -477,6 +413,10 @@ async function init() {
     }
   };
   mountAdStrip();
+
+  // Signed-in refinement of chapter states + continue banner (guests keep
+  // the price-based default state — no invented progress).
+  loadReadState();
 
   /* Deep link: book-reader.html?id=…&view=reviews → open Overview and
      scroll to the reviews block (used by the bridge's "View all reviews"). */
@@ -487,6 +427,19 @@ async function init() {
       if (rv) rv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
   }
+}
+
+function paintContinueBanner() {
+  const cp = STORY.currentProgress || {};
+  document.getElementById('cbChName').textContent = cp.chapter ? `Ch${cp.chapter} — ${cp.chapterTitle}` : 'Start reading';
+  document.getElementById('cbChMeta').textContent = cp.percent > 0 ? `${cp.percent}% through this chapter` : 'Not started yet';
+  document.getElementById('cbProgress').style.width = (cp.percent || 0) + '%';
+}
+function paintFollowButton() {
+  const btn = document.getElementById('hwFollow');
+  if (!btn) return;
+  btn.textContent = isFollowing ? '✓ Following' : '+ Follow';
+  btn.classList.toggle('ing', isFollowing);
 }
 
 function trackAd(id, ev, ctx) { try { if (id && window.AdService) AdService.track(id, ev, ctx || { page: 'bookReader', slot: 'bookReader:top', storyId: storyId }); } catch (e) {} }
@@ -500,82 +453,83 @@ async function mountAdStrip() {
   } catch (e) { el.style.display = "none"; }
 }
 
-window.StoryReaderPage = { init: init, toast: toast, switchTab: switchTab, toggleSeason: toggleSeason, votePoll: votePoll, pickPrediction: pickPrediction, voteDebate: voteDebate, postDebCm: postDebCm, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
+window.StoryReaderPage = { init: init, toast: toast, switchTab: switchTab, votePoll: ReaderEngagementVote, pickPrediction: ReaderEngagementVote, voteDebate: ReaderEngagementVote, toggleSave: toggleSave, toggleFollow: toggleFollow, openShare: openShare, toggleSynopsis: toggleSynopsis, openChapter: openChapter, continueReading: continueReading, moreEng: moreEng, helpfulTake: helpfulTake, goProfile: goProfile, onWriterAvatar: onWriterAvatar, onUserAvatar: onUserAvatar };
+/* Votes are handled inside the shared ReaderEngagement component (its card
+   onclicks call ReaderEngagement.votePoll/votePred/voteDebate directly).
+   This stub only guards against stale inlined markup calling the old
+   StoryReaderPage vote exports. */
+function ReaderEngagementVote() {}
 
-/* ══ REVIEWS — sorted + paginated (12 per page) ══ */
+/* ══ REVIEWS — live ratings list (server-sorted + paginated) ══
+   GET /api/stories/:id/ratings?page&limit&sort=helpful|newest|rating
+   → { items:[{id,name,avatar,stars,text,spoiler,createdAt,helpful,mineHelpful}], total } */
 const REV_PER_PAGE = 12;
-const helpfulPicks = {};   // review id → marked helpful
 let revSort = 'helpful';   // helpful | newest | rating
-let revPage = 0;
+let revPage = 1;           // 1-based server page
+let revTotal = 0;
+const revMarked = {};      // rating id → mineHelpful (server truth from last load)
 
-function reviewList() {
-  const takes = [];
-  (STORY.debates || []).forEach(d => (d.comments || []).forEach((c, i) =>
-    takes.push({
-      id: c.id || ('rv_' + takes.length + '_' + i),
-      motion: d.motion, side: c.side, name: c.name, avatar: c.avatar,
-      text: c.text, time: c.time, likes: c.likes || 0,
-    })
-  ));
-  return takes;
-}
-/* '2h' | '3h' | '1d' | '2w' → hours, so relative times can be ordered */
-function timeToH(t) {
-  const m = /^(\d+)\s*([hdwm])$/i.exec(String(t || '').trim());
-  if (!m) return 1e9;
-  return +m[1] * ({ h: 1, d: 24, w: 168, m: 1 / 60 }[m[2].toLowerCase()]);
-}
-function sortedReviews() {
-  const list = reviewList();
-  if (revSort === 'newest') list.sort((a, b) => timeToH(a.time) - timeToH(b.time));
-  else if (revSort === 'rating') list.sort((a, b) => takeRating(b) - takeRating(a) || b.likes - a.likes);
-  else list.sort((a, b) => b.likes - a.likes); // Most helpful (default)
-  return list;
+async function loadReviews() {
+  const el = document.getElementById('reviewsContent');
+  if (!el) return;
+  el.innerHTML = `<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading reviews…</p></div>`;
+  try {
+    const res = await fetch(`${API_BASE}/stories/${encodeURIComponent(storyId)}/ratings?page=${revPage}&limit=${REV_PER_PAGE}&sort=${encodeURIComponent(revSort)}`, { credentials: 'include' });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).error || ''; } catch (e) {}
+      throw new Error('Ratings failed (' + res.status + ')' + (detail ? ' — ' + detail : ''));
+    }
+    const j = await res.json();
+    revTotal = j.total || 0;
+    renderReviews(j.items || []);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Could not load reviews — ${esc0(e.message || 'request failed')}</p></div>`;
+  }
 }
 function setRevSort(s) {
   if (revSort === s) return;
-  revSort = s; revPage = 0;
-  renderReviews();
+  revSort = s; revPage = 1;
+  loadReviews();
 }
 function revGoPage(p) {
-  const pages = Math.max(1, Math.ceil(sortedReviews().length / REV_PER_PAGE));
-  revPage = Math.min(Math.max(0, p), pages - 1);
-  renderReviews();
+  const pages = Math.max(1, Math.ceil(revTotal / REV_PER_PAGE));
+  revPage = Math.min(Math.max(1, p), pages);
+  loadReviews();
   const head = document.getElementById('reviewsHead');
   if (head) head.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function renderReviews() {
+function renderReviews(items) {
   const el = document.getElementById('reviewsContent');
   if (!el) return;
-  const list = sortedReviews();
-  if (!list.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-star"></i><p>No reviews yet — debates are where takes live.</p></div>`; return; }
-  const pages = Math.max(1, Math.ceil(list.length / REV_PER_PAGE));
-  if (revPage > pages - 1) revPage = pages - 1;
-  const page = list.slice(revPage * REV_PER_PAGE, (revPage + 1) * REV_PER_PAGE);
+  if (!items.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-star"></i><p>No reviews yet.</p></div>`; return; }
+  items.forEach(t => { revMarked[String(t.id)] = !!t.mineHelpful; });
+  const pages = Math.max(1, Math.ceil(revTotal / REV_PER_PAGE));
+  if (revPage > pages) revPage = pages;
 
   const sortOpts = [['helpful', 'Most helpful'], ['newest', 'Newest'], ['rating', 'Top rated']];
   let html = '<div class="rev-sort">' + sortOpts.map(([k, l]) =>
     `<button type="button" class="rev-chip${revSort === k ? ' on' : ''}" data-revsort="${k}">${l}</button>`).join('') + '</div>';
 
-  html += page.map(t => {
-    const h = !!helpfulPicks[t.id];
+  html += items.map(t => {
+    const h = !!t.mineHelpful;
     return `
     <div class="rev-card">
       <div class="rev-head">
         ${userAvHtml(t.name, t.avatar, 34)}
-        <div>${userNameHtml(t.name, 'rev-name')}<div class="rev-meta">${esc0(t.time)} · ${t.side === 'for' ? 'For' : 'Against'} the motion</div></div>
-        <div class="rev-stars">${starHtml(t)}</div>
+        <div>${userNameHtml(t.name, 'rev-name')}<div class="rev-meta">${esc0(timeAgo(t.createdAt))}${t.spoiler ? ' · <span style="color:#f59e0b;font-weight:800">⚠ Spoiler</span>' : ''}</div></div>
+        <div class="rev-stars">${starHtml(t.stars)}</div>
       </div>
       <div class="rev-text">${esc0(t.text)}</div>
-      <div class="rev-foot rev-helpful${h ? ' on' : ''}" data-rev="${esc0(t.id)}"><i class="${h ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.likes + (h ? 1 : 0))})</div>
+      <div class="rev-foot rev-helpful${h ? ' on' : ''}" data-rev="${uAttr(t.id)}"><i class="${h ? 'fas' : 'far'} fa-thumbs-up"></i> Helpful (${fmtN(t.helpful || 0)})</div>
     </div>`;
   }).join('');
 
   if (pages > 1) {
     html += `<div class="rev-pager">
-      <button type="button" class="rev-pg" data-revpg="${revPage - 1}" ${revPage === 0 ? 'disabled' : ''}>‹ Prev</button>
-      <span class="rev-pg-info">Page ${revPage + 1} of ${pages}</span>
-      <button type="button" class="rev-pg" data-revpg="${revPage + 1}" ${revPage >= pages - 1 ? 'disabled' : ''}>Next ›</button>
+      <button type="button" class="rev-pg" data-revpg="${revPage - 1}" ${revPage === 1 ? 'disabled' : ''}>‹ Prev</button>
+      <span class="rev-pg-info">Page ${revPage} of ${pages}</span>
+      <button type="button" class="rev-pg" data-revpg="${revPage + 1}" ${revPage >= pages ? 'disabled' : ''}>Next ›</button>
     </div>`;
   }
 
@@ -584,46 +538,32 @@ function renderReviews() {
   el.querySelectorAll('[data-revpg]').forEach(b => b.addEventListener('click', () => { if (!b.disabled) revGoPage(+b.dataset.revpg); }));
   el.querySelectorAll('[data-rev]').forEach(b => b.addEventListener('click', () => helpfulTake(b.dataset.rev)));
 }
+/* POST / DELETE …/ratings/:ratingId/helpful — the server response is the
+   only state; on failure we surface the error and never toggle locally. */
 async function helpfulTake(id) {
   id = String(id);
-  const currently = !!helpfulPicks[id];
-  const wantMark = !currently;
-
-  /* ── Backend (live) ──
-     POST /api/stories/:bookId/ratings/:ratingId/helpful   → mark
-     DELETE /api/stories/:bookId/ratings/:ratingId/helpful → unmark
-     Falls back to local-only toggle when guest, offline, or API errors. */
-  if (window.AuthSession && AuthSession.isSignedIn()) {
-    try {
-      const method = wantMark ? 'POST' : 'DELETE';
-      const res = await fetch(`${API_BASE}/stories/${storyId}/ratings/${id}/helpful`, {
-        method,
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('helpful api failed');
-      const data = await res.json();
-      helpfulPicks[id] = !!data.mineHelpful;
-    } catch (e) {
-      helpfulPicks[id] = wantMark;
+  if (window.RequireAuth && !RequireAuth.ensure('mark reviews helpful')) return;
+  const wantMark = !revMarked[id];
+  try {
+    const res = await fetch(`${API_BASE}/stories/${encodeURIComponent(storyId)}/ratings/${encodeURIComponent(id)}/helpful`, {
+      method: wantMark ? 'POST' : 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).error || ''; } catch (e) {}
+      throw new Error(detail || res.status);
     }
-  } else {
-    helpfulPicks[id] = wantMark;
+    const j = await res.json().catch(() => ({}));
+    revMarked[id] = !!j.mineHelpful;
+    toast(j.mineHelpful ? '👍 Marked helpful' : 'Helpful removed');
+    loadReviews(); // re-paint from server truth (updated helpful counts)
+  } catch (e) {
+    toast('Could not save — ' + (e.message || 'request failed'));
   }
-
-  renderReviews();
-  toast(helpfulPicks[id] ? '👍 Marked helpful' : 'Helpful removed');
 }
-/* Deterministic demo rating: explicit t.rating if seeded, else hash the
-   take text → stable 3.5–5 stars (mostly high, feels real). */
-function takeRating(t) {
-  if (t.rating != null) return t.rating;
-  let h = 0; const s = String(t.text || '');
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return 3.5 + (h % 4) * 0.5; // 3.5, 4, 4.5, 5
-}
-function starHtml(t) {
-  const r = takeRating(t);
+function starHtml(rating) {
+  const r = Number(rating) || 0;
   const full = Math.floor(r);
   const half = r - full >= 0.5;
   let out = '';
@@ -632,28 +572,15 @@ function starHtml(t) {
     else if (i === full && half) out += '<i class="fas fa-star-half-alt"></i>';
     else out += '<i class="far fa-star"></i>';
   }
-  return `<span class="rev-stars" title="${r} out of 5">${out}<span class="rev-star-num">${r.toFixed(1)}</span></span>`;
+  return `<span class="rev-stars" title="${r} out of 5">${out}<span class="rev-star-num">${r ? r.toFixed(1) : '—'}</span></span>`;
 }
-function esc0(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+
 function moreLikeItems() {
-  const items = [], seen = {};
-  function push(id, cover, title, author) {
-    if (id == null || String(id) === String(STORY.id) || seen[id]) return;
-    seen[id] = 1;
-    items.push({ id: id, img: cover, title: title, author: author || '' });
+  // Backend-provided similar books array
+  if (STORY && Array.isArray(STORY.similar) && STORY.similar.length) {
+    return STORY.similar.slice(0, 8);
   }
-  Object.values(CATALOG).forEach(s =>
-    push(s.id, s.cover, s.title,
-      (s.writer && String(s.writer.name || '').replace(/^@/, '')) || s.author || ''));
-  // Top up with profile books (same 4-card row the bridge/discover show)
-  try {
-    const seed = window.ProfileDemoSeed;
-    if (seed && seed.DEMO_PROFILES) {
-      Object.values(seed.DEMO_PROFILES).forEach(p =>
-        (p.books || []).forEach(b => push(b.id, b.cover, b.title, String(p.name || '').replace(/^@/, ''))));
-    }
-  } catch (e) {}
-  return items.slice(0, 8);
+  return [];
 }
 function renderMoreLike() {
   const el = document.getElementById('moreRow');
@@ -670,9 +597,9 @@ function renderMoreLike() {
     return;
   }
   el.innerHTML = items.map(s => `
-    <div class="more-card" data-id="${s.id}">
-      <div class="more-cover"><img src="${s.cover}" loading="lazy" alt=""/></div>
-      <div class="more-title">${s.title}</div>
+    <div class="more-card" data-id="${uAttr(s.id)}">
+      <div class="more-cover"><img src="${uAttr(s.img)}" loading="lazy" alt=""/></div>
+      <div class="more-title">${esc0(s.title)}</div>
     </div>`).join('');
   el.querySelectorAll('.more-card').forEach(c => c.addEventListener('click', () => {
     location.href = 'book-reader.html?id=' + encodeURIComponent(c.dataset.id);
@@ -681,18 +608,15 @@ function renderMoreLike() {
 
 /* ══ CHAPTERS — flat list (no seasons: short story vs long story only) ══ */
 function allChaptersFlat() {
-  if (Array.isArray(STORY.chapters) && STORY.chapters.length) return STORY.chapters;
-  const out = [];
-  (STORY.seasonData || []).forEach(s => (s.chapters || []).forEach(c => { c._s = s.season; out.push(c); }));
-  return out;
+  return Array.isArray(STORY.chapters) ? STORY.chapters : [];
 }
-/* Chapter → engagement icons (poll 🔮📊 / debate ⚔️) from the
-   chapter refs on STORY.polls / predictions / debates. */
+/* Chapter → engagement icons (poll 📊 / prediction 🔮 / debate ⚔️) from the
+   chapter refs on the live book-level engagement rows. */
 function engMap() {
   const m = {};
   const add = (item, key) => {
     if (!item || item.chapter == null) return;
-    const k = item.chapter;
+    const k = String(item.chapter);
     (m[k] = m[k] || []).push(key);
   };
   (STORY.polls || []).forEach(p => add(p, '📊'));
@@ -700,12 +624,8 @@ function engMap() {
   (STORY.debates || []).forEach(d => add(d, '⚔️'));
   return m;
 }
-function engChipHtml(season, chapter, label) {
-  if (chapter == null) return '';
-  return `<span class="eng-chip" onclick="event.stopPropagation();StoryReaderPage.openChapter(${chapter})" title="Opens Ch.${chapter}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;background:rgba(255,0,80,.1);border:1px solid var(--bd-acc);color:var(--acc3);border-radius:20px;padding:3px 9px;font-size:9.5px;font-weight:800;flex-shrink:0">📖 ${label || ('Ch. ' + chapter)}</span>`;
-}
 function openChapter(n) {
-  location.href = 'full-reader.html?story=' + encodeURIComponent(STORY && (STORY._bookId || STORY.id) || storyId) + '&ch=' + n;
+  location.href = 'full-reader.html?story=' + encodeURIComponent(storyId) + '&ch=' + n;
 }
 /* Continue banner → jump straight into the full reader at saved progress. */
 function continueReading() {
@@ -715,24 +635,65 @@ function continueReading() {
 function renderChapters() {
   const container = document.getElementById('chaptersContent');
   const chapters = allChaptersFlat();
-  container.innerHTML = renderChapterList(chapters, 0);
+  container.innerHTML = renderChapterList(chapters);
+}
+/* Signed-in refinement: GET /api/stories/:id/read-state →
+   { unlocked[chapterIds], progress{cid:{pct,finished}}, lastChapterId } */
+function loadReadState() {
+  if (!(window.AuthSession && AuthSession.isSignedIn())) return;
+  fetch(`${API_BASE}/stories/${encodeURIComponent(storyId)}/read-state`, { credentials: 'include' })
+    .then(r => r.ok ? r.json() : null)
+    .then(rs => {
+      if (!rs) return;
+      applyReadState(rs);
+      renderChapters();
+      paintContinueBanner();
+    })
+    .catch(() => {});
+}
+function applyReadState(rs) {
+  if (!STORY || !Array.isArray(STORY.chapters) || !STORY.chapters.length) return;
+  const unlocked = new Set((rs.unlocked || []).map(String));
+  const prog = rs.progress || {};
+  const crId = STORY.currentProgress && STORY.currentProgress.cid != null ? String(STORY.currentProgress.cid) : null;
+  const lastId = rs.lastChapterId != null ? String(rs.lastChapterId) : crId;
+  let currentSet = false;
+  const rows = STORY.chapters;
+  rows.forEach(c => {
+    const id = String(c.cid);
+    if (c.price > 0 && !unlocked.has(id)) { c.state = 'locked'; return; }
+    if (lastId && id === lastId) { c.state = 'current'; currentSet = true; return; }
+    const p = prog[c.cid] || prog[id];
+    if (p && (p.finished || (p.pct || 0) > 0)) { c.state = 'done'; return; }
+    c.state = '';
+  });
+  if (!currentSet) {
+    const first = rows.find(c => c.state === '');
+    if (first) { first.state = 'current'; currentSet = true; }
+  }
+  rows.forEach(c => { if (c.state === '') c.state = 'done'; });
+  if (lastId) {
+    const ch = rows.find(c => String(c.cid) === lastId);
+    if (ch) {
+      const p = prog[ch.cid] || prog[String(ch.cid)] || {};
+      STORY.currentProgress = { chapter: ch.n, chapterTitle: ch.title, percent: Math.round(p.pct || 0), cid: ch.cid };
+    }
+  }
 }
 
-function renderChapterList(chapters, si) {
+function renderChapterList(chapters) {
   const em = engMap();
-  return chapters.map((ch, ci) => {
+  return chapters.map((ch) => {
     const numCls = ch.state === 'done' ? 'done' : ch.state === 'current' ? 'current' : 'locked';
     const numIcon = ch.state === 'done'
       ? `<i class="fas fa-check" style="font-size:9px"></i>`
       : ch.state === 'locked'
         ? `<i class="fas fa-lock" style="font-size:9px"></i>`
         : ch.n;
-    const badges = (ch.badges || []).map(b => {
-      if (b === 'new') return `<span class="ch-badge crb-new">NEW</span>`;
-      if (b === 'free') return `<span class="ch-badge crb-free">FREE</span>`;
-      return '';
-    }).join('');
-    const eng = (em[(ch._s || 1) + ':' + ch.n] || []).map(icon =>
+    const badges = (ch.badges || []).map(b =>
+      b === 'free' ? `<span class="ch-badge crb-free">FREE</span>` : ''
+    ).join('');
+    const eng = (em[String(ch.n)] || []).map(icon =>
       `<span title="Engagement in this chapter" style="font-size:10px">${icon}</span>`
     ).join('');
     const rightEl = ch.state === 'current'
@@ -745,7 +706,7 @@ function renderChapterList(chapters, si) {
       <div class="ch-row${ch.state === 'current' ? ' current-ch' : ''}" onclick="StoryReaderPage.openChapter(${ch.n})">
         <div class="ch-num-badge ${numCls}">${numIcon}</div>
         <div class="ch-info">
-          <div class="ch-title">Ch.${ch.n} — ${ch.title}</div>
+          <div class="ch-title">Ch.${ch.n} — ${esc0(ch.title)}</div>
           <div class="ch-meta">
             ${ch.reads !== '–' ? `<span><i class="far fa-eye" style="font-size:8px"></i> ${ch.reads}</span>` : ''}
             <span>⏱ ${ch.time}</span>
@@ -756,11 +717,6 @@ function renderChapterList(chapters, si) {
         <div class="ch-right">${rightEl}</div>
       </div>`;
   }).join('');
-}
-
-function toggleSeason(si) {
-  // deprecated: chapters are flat (no seasons) — kept so old onclicks don't throw
-  return;
 }
 
 /* ══ OVERVIEW ══ */
@@ -784,23 +740,26 @@ function renderOverview() {
       <div class="info-icon">${r.icon}</div>
       <div>
         <div class="info-label">${r.label}</div>
-        ${r.val ? `<div class="info-val">${r.val}</div>` : ''}
-        ${r.pills ? `<div class="tag-row">${r.pills.map(p => `<span class="genre-pill">${p}</span>`).join('')}</div>` : ''}
+        ${r.val ? `<div class="info-val">${esc0(r.val)}</div>` : ''}
+        ${r.pills ? `<div class="tag-row">${r.pills.map(p => `<span class="genre-pill">${esc0(p)}</span>`).join('')}</div>` : ''}
       </div>
     </div>`).join('');
 
   // Stats deep
-  const topReads = allChaptersFlat().filter(c => c.reads !== '–').sort((a,b) => parseInt((b.reads||'0').replace('k','000')) - parseInt((a.reads||'0').replace('k','000'))).slice(0,3);
+  const topReads = allChaptersFlat()
+    .filter(c => c.reads !== '–')
+    .sort((a, b) => (b.readsNum || 0) - (a.readsNum || 0))
+    .slice(0, 3);
   document.getElementById('statsDeep').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
       ${[
         { n: STORY.stats.reads, l: 'Total Reads', c: '#ff0050' },
         { n: STORY.stats.likes, l: 'Total Likes', c: '#ff0050' },
-        { n: STORY.stats.saves, l: 'Saves', c: '#38bdf8' },
+        { n: STORY.stats.shares, l: 'Shares', c: '#38bdf8' },
       ].map(s => `<div style="background:var(--l2);border:1px solid var(--bd);border-radius:11px;padding:10px;text-align:center"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${s.c}">${s.n}</div><div style="font-size:8px;color:var(--tx-muted);margin-top:2px">${s.l}</div></div>`).join('')}
     </div>
     ${topReads.length ? `<div style="font-size:9px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🏆 Most-read chapters</div>
-    ${topReads.map((c,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);cursor:pointer" onclick="StoryReaderPage.openChapter(${c.n})"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${i===0?'#fbbf24':i===1?'#a0a0b0':'#a07040'};width:20px">${i+1}</div><div style="flex:1;font-size:11px;color:var(--tx-high);font-weight:600"><span style="display:inline-block;font-size:8.5px;font-weight:800;color:var(--acc3);background:rgba(255,0,80,.09);border:1px solid var(--bd-acc);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:middle">CH.${c.n}</span>${c.title}</div><div style="font-size:11px;font-weight:800;color:var(--acc)">${c.reads}</div><i class="fas fa-chevron-right" style="font-size:9px;color:var(--tx-faint)"></i></div>`).join('')}` : ''}`;
+    ${topReads.map((c, i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);cursor:pointer" onclick="StoryReaderPage.openChapter(${c.n})"><div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:${i===0?'#fbbf24':i===1?'#a0a0b0':'#a07040'};width:20px">${i+1}</div><div style="flex:1;font-size:11px;color:var(--tx-high);font-weight:600"><span style="display:inline-block;font-size:8.5px;font-weight:800;color:var(--acc3);background:rgba(255,0,80,.09);border:1px solid var(--bd-acc);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:middle">CH.${c.n}</span>${esc0(c.title)}</div><div style="font-size:11px;font-weight:800;color:var(--acc)">${c.reads}</div><i class="fas fa-chevron-right" style="font-size:9px;color:var(--tx-faint)"></i></div>`).join('')}` : ''}`;
 }
 
 function toggleSynopsis() {
@@ -809,92 +768,12 @@ function toggleSynopsis() {
   document.getElementById('synToggle').textContent = synExpanded ? 'Show less ‹' : 'Read more ›';
 }
 
-/* ══ TEAMS ══
-   Read-only on this page. Joining happens while reading, never here. */
-function myTeamId() {
-  return STORY.myTeam || null;
-}
-
-function renderTeams() {
-  const container = document.getElementById('teamsSection');
-  const teams = STORY.teams;
-  const tot = teams.reduce((a, t) => a + t.count, 0) || 1;
-  const mine = myTeamId();
-
-  const colsClass = teams.length === 2 ? 'grid-template-columns:1fr 1fr' :
-                    teams.length === 3 ? 'grid-template-columns:1fr 1fr 1fr' :
-                    'grid-template-columns:1fr 1fr';
-
-  const teamBtns = teams.map(t => `
-    <div class="team-btn${mine === t.id ? ' selected' : ''}" data-team="${t.id}">
-      <div class="team-icon">${t.icon}</div>
-      <div class="team-info">
-        <div class="team-name">${t.name}</div>
-        <div class="team-count" id="tc-${t.id}">${fmtN(t.count)} readers</div>
-      </div>
-      <div class="team-check" id="tck-${t.id}">
-        <i class="${mine === t.id ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
-      </div>
-    </div>`).join('');
-
-  const barSegs = teams.map(t =>
-    `<div class="team-bar-seg" data-team="${t.id}" style="width:${Math.round(t.count/tot*100)}%;background:${t.color}"></div>`
-  ).join('');
-
-  const barLabels = teams.map(t => {
-    const pct = Math.round(t.count/tot*100);
-    return `<div class="tbl-item" style="flex:${pct} 1 0"><span class="tbl-dot" style="background:${t.color}"></span><span style="color:${t.color}">${t.icon} ${pct}%</span></div>`;
-  }).join('');
-
-  const topTeam = [...teams].sort((a,b) => b.count - a.count)[0];
-
-  container.innerHTML = `
-    <div style="margin-bottom:14px">
-      <div class="sh" style="margin-bottom:4px">
-        <div class="sh-title">Your Side</div>
-        <div style="font-size:9px;color:var(--tx-muted);font-weight:600">${fmtN(tot)} readers have picked</div>
-      </div>
-      <div style="font-size:11px;color:var(--tx-muted);margin-bottom:12px">
-        Leading: <strong style="color:${topTeam.color}">${topTeam.icon} ${topTeam.name}</strong> with ${Math.round(topTeam.count/tot*100)}%
-      </div>
-      <div class="team-grid" style="${colsClass}" id="teamBtnsWrap">${teamBtns}</div>
-      <div class="team-bars" id="teamBarsEl">${barSegs}</div>
-      <div class="team-bar-labels">${barLabels}</div>
-    </div>
-
-    ${mine ? `
-    <div style="background:rgba(255,0,80,.06);border:1px solid var(--bd-acc);border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--tx-body);line-height:1.6;text-align:center">
-      You're on <strong style="color:${teams.find(t=>t.id===mine)?.color}">${teams.find(t=>t.id===mine)?.icon} ${teams.find(t=>t.id===mine)?.name}</strong>.
-      Head to Debates to argue your case 👇
-    </div>` : `
-    <div style="background:var(--l1);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--tx-muted);line-height:1.6;text-align:center">
-      You haven't picked a side yet. Join a team while reading to appear here.
-    </div>`}
-
-    <div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px">
-      <div class="sh-title" style="margin-bottom:10px">Team Breakdown</div>
-      ${teams.sort((a,b) => b.count-a.count).map((t,i) => {
-        const pct = Math.round(t.count/tot*100);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd2)">
-          <div style="font-size:18px;width:26px;text-align:center">${t.icon}</div>
-          <div style="flex:1">
-            <div style="font-size:11px;font-weight:700;color:${t.color};margin-bottom:3px">${t.name}</div>
-            <div style="height:3px;background:var(--bd);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${t.color};border-radius:3px;transition:width .5s ease"></div></div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:11px;font-weight:800;color:${t.color}">${pct}%</div>
-            <div style="font-size:9px;color:var(--tx-faint)">${fmtN(t.count)}</div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
-}
-
-/* ══ POLLS & PREDICTIONS ══
-   Rendered with the shared ReaderEngagement accordion component —
-   same collapsed-by-default cards as full-reader / scroll-reader.
-   Each item shows its chapter in the accordion title.
-   Paginated 10 per page. */
+/* ══ BOOK-LEVEL ENGAGEMENT (polls / predictions / debates) ══
+   Rows are read through the shared ReaderEngagement component, which loads
+   GET /api/stories/:bookId/engagement and votes via
+   POST /api/stories/:bookId/engagement/vote (requireAuth — guests hit the
+   login gate). Nothing is invented here: a story with no engagement rows
+   shows the honest empty state. Paginated 10 per page. */
 function chLabel(item) {
   if (item.chapter == null) return '';
   return 'Ch. ' + item.chapter;
@@ -910,37 +789,57 @@ function engMoreBtn(kind, total) {
   const left = total - engShown[kind];
   return `<button onclick="StoryReaderPage.moreEng('${kind}')" style="width:100%;margin-top:10px;padding:11px;border-radius:12px;background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);font-size:12px;font-weight:700;cursor:pointer">Show more (${left} remaining)</button>`;
 }
+/* One shared read of the book-level engagement feeds both the listing and
+   the per-row mounts (the component caches per book). */
+function loadEngagementRows() {
+  if (!(window.ReaderEngagement && ReaderEngagement.bookEngagement)) {
+    STORY.polls = []; STORY.predictions = []; STORY.debates = [];
+    renderPolls(); renderDebates();
+    return;
+  }
+  ReaderEngagement.bookEngagement(storyId).then(eng => {
+    STORY.polls = eng.polls || [];
+    STORY.predictions = eng.predictions || [];
+    STORY.debates = eng.debates || [];
+    renderPolls();
+    renderDebates();
+  }).catch(e => {
+    STORY.polls = []; STORY.predictions = []; STORY.debates = [];
+    const msg = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Could not load engagement — ${esc0(e.message || 'request failed')}</p></div>`;
+    const pc = document.getElementById('pollsContent');
+    const dc = document.getElementById('debatesContent');
+    if (pc) pc.innerHTML = msg;
+    if (dc) dc.innerHTML = msg;
+  });
+}
 function renderPolls() {
   const container = document.getElementById('pollsContent');
-  let html = '';
+  const polls = STORY.polls || [];
+  const preds = STORY.predictions || [];
 
-  if (!STORY.polls.length && !STORY.predictions.length) {
-    html = `<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet for this story</p></div>`;
-    container.innerHTML = html;
+  if (!polls.length && !preds.length) {
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-poll"></i><p>No polls or predictions yet for this story</p></div>`;
     return;
   }
 
-  const polls = STORY.polls.slice(0, engShown.poll);
-  const preds = STORY.predictions.slice(0, engShown.pred);
+  const pShow = polls.slice(0, engShown.poll);
+  const dShow = preds.slice(0, engShown.pred);
+  let html = '';
 
-  if (polls.length) {
+  if (pShow.length) {
     html += `<div class="sh" style="margin-bottom:10px"><div class="sh-title">📊 Reader Polls</div></div>`;
-    polls.forEach(poll => {
-      html += `<div id="eng-${STORY.id}-poll-${poll.id}"></div>`;
-    });
-    html += engMoreBtn('poll', STORY.polls.length);
+    pShow.forEach(poll => { html += `<div id="eng-${STORY.id}-poll-${poll.id}"></div>`; });
+    html += engMoreBtn('poll', polls.length);
   }
-  if (preds.length) {
+  if (dShow.length) {
     html += `<div class="sh" style="margin:14px 0 10px"><div class="sh-title">🔮 Predictions</div></div>`;
-    preds.forEach(pred => {
-      html += `<div id="eng-${STORY.id}-pred-${pred.id}"></div>`;
-    });
-    html += engMoreBtn('pred', STORY.predictions.length);
+    dShow.forEach(pred => { html += `<div id="eng-${STORY.id}-pred-${pred.id}"></div>`; });
+    html += engMoreBtn('pred', preds.length);
   }
   container.innerHTML = html;
 
   if (!window.ReaderEngagement) return;
-  polls.forEach(poll => {
+  pShow.forEach(poll => {
     const mount = document.getElementById(`eng-${STORY.id}-poll-${poll.id}`);
     if (!mount) return;
     ReaderEngagement.renderInto(
@@ -949,17 +848,13 @@ function renderPolls() {
       mount,
       '',   // NO author note for polls
       {
-        poll: {
-          q: poll.question,
-          opts: poll.options.map(o => ({ t: o.text, v: o.votes })),
-          voted: poll.voted != null ? poll.voted : -1
-        },
         kinds: { poll: true, pred: false, deb: false },
-        chapterLabel: poll.chapter == null ? '' : chLabel(poll)
+        chapterLabel: chLabel(poll),
+        live: { bookId: STORY.id, bookLevel: true, rowId: poll.id, kind: 'poll' },
       }
     );
   });
-  preds.forEach(pred => {
+  dShow.forEach(pred => {
     const mount = document.getElementById(`eng-${STORY.id}-pred-${pred.id}`);
     if (!mount) return;
     ReaderEngagement.renderInto(
@@ -968,87 +863,45 @@ function renderPolls() {
       mount,
       '',   // NO author note for predictions
       {
-        prediction: {
-          q: pred.question,
-          opts: pred.options.map(o => ({ t: (o.em ? o.em + ' ' : '') + o.text, v: o.votes })),
-          voted: predPickedMap[pred.id] != null ? predPickedMap[pred.id] : -1
-        },
         kinds: { poll: false, pred: true, deb: false },
-        chapterLabel: pred.chapter == null ? '' : chLabel(pred)
+        chapterLabel: chLabel(pred),
+        live: { bookId: STORY.id, bookLevel: true, rowId: pred.id, kind: 'pred' },
       }
     );
   });
 }
 
-function votePoll(pollId, oi) {
-  const poll = STORY.polls.find(p => p.id === pollId);
-  if (!poll || poll.voted >= 0) { toast('✅ Already voted!'); return; }
-  poll.options[oi].votes++;
-  poll.voted = oi;
-  toast('✅ Vote recorded!');
-  renderPolls();
-}
-
-let predPickedMap = {};
-function pickPrediction(predId, oi) {
-  const pred = STORY.predictions.find(p => p.id === predId);
-  if (!pred) return;
-  if (predPickedMap[predId] === oi) {
-    pred.options[oi].votes--;
-    pred.options[oi].picked = false;
-    predPickedMap[predId] = null;
-  } else {
-    if (predPickedMap[predId] != null) {
-      pred.options[predPickedMap[predId]].votes--;
-      pred.options[predPickedMap[predId]].picked = false;
-    }
-    pred.options[oi].votes++;
-    pred.options[oi].picked = true;
-    predPickedMap[predId] = oi;
-    toast(`🔮 Prediction locked: "${pred.options[oi].text}"`);
-  }
-  renderPolls();
-}
-
 /* ══ DEBATES ══
-   Same accordion debate card as the reader pages — both boxes carry
-   argument text (forText / againstText). Full threads live on
+   Same accordion debate card as the reader pages — book-wide debates
+   (chapter: null) first, then chapter-scoped. Full threads live on
    debate.html (View full debate →). Paginated 10 per page. */
 function renderDebates() {
   const container = document.getElementById('debatesContent');
-  
-  // Book-wide debates first (chapter: null), then chapter-scoped
-  const bookWideDebs = STORY.debates.filter(d => d.chapter == null);
-  const chapterDebs = STORY.debates.filter(d => d.chapter != null);
-  const debits = [...bookWideDebs, ...chapterDebs].slice(0, engShown.deb);
-  
-  if (!debits.length) {
+  const debates = STORY.debates || [];
+
+  if (!debates.length) {
     container.innerHTML = `<div class="empty-state"><i class="fas fa-comments"></i><p>No debates yet for this story</p></div>`;
     return;
   }
 
-  const userTeam = STORY.teams.find(t => t.id === myTeamId()) || null;
+  // Book-wide debates first (chapter: null), then chapter-scoped
+  const bookWideDebs = debates.filter(d => d.chapter == null);
+  const chapterDebs = debates.filter(d => d.chapter != null);
+  const debits = bookWideDebs.concat(chapterDebs).slice(0, engShown.deb);
 
   let html = '';
-  if (userTeam) {
-    html += `<div style="background:rgba(255,0,80,.06);border:1px solid var(--bd-acc);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--tx-body);display:flex;align-items:center;gap:8px">
-      <span style="font-size:18px">${userTeam.icon}</span>
-      Debating as <strong style="color:${userTeam.color}">${userTeam.name}</strong>
-    </div>`;
-  }
   debits.forEach(deb => {
     html += `<div id="eng-${STORY.id}-deb-${deb.id}"></div>`;
   });
-  html += engMoreBtn('deb', STORY.debates.length);
+  html += engMoreBtn('deb', debates.length);
   container.innerHTML = html;
 
   if (!window.ReaderEngagement) return;
   debits.forEach(deb => {
     const mount = document.getElementById(`eng-${STORY.id}-deb-${deb.id}`);
     if (!mount) return;
-    const uv = debateUserVotes[deb.id] || deb.userVote;
-    
-    // Book-wide engagement (chapter: null) — no "Ch." label, no author notes
+
+    // Book-wide engagement (chapter: null) — no "Ch." label
     const isBookWide = deb.chapter == null;
     ReaderEngagement.renderInto(
       `${STORY.id}-deb-${deb.id}`,
@@ -1056,96 +909,12 @@ function renderDebates() {
       mount,
       '',   // NO author note for book-wide engagement
       {
-        debate: {
-          motion: deb.motion,
-          forText: deb.forText || 'For',
-          againstText: deb.againstText || 'Against',
-          forV: deb.forV,
-          agV: deb.agV,
-          voted: uv === 'for' ? 0 : uv === 'against' ? 1 : -1
-        },
         kinds: { poll: false, pred: false, deb: true },
         chapterLabel: isBookWide ? '' : chLabel(deb), // only show "Ch. X" for chapter-scoped
-        debateId: deb.id
+        debateId: deb.id,
+        live: { bookId: STORY.id, bookLevel: true, rowId: deb.id, kind: 'deb' },
       }
     );
-  });
-}
-
-function renderDebCm(c) {
-  const av = userAvHtml(c.name, c.avatar, 26);
-  return `
-    <div class="deb-cm-item" id="debcm-${c.id}">
-      ${av}
-      <div class="deb-cm-body">
-        <div class="deb-cm-name">
-          ${userNameHtml(c.name, 'deb-cm-uname')}
-          <span class="deb-side-tag dst-${c.side}">${c.side === 'for' ? '✅ FOR' : '❌ AGAINST'}</span>
-        </div>
-        <div class="deb-cm-txt">${c.text}</div>
-        <div class="deb-cm-meta">
-          <span class="deb-cm-time">${c.time}</span>
-          <span class="deb-cm-like${c.liked ? ' liked' : ''}" data-cmid="${c.id}">
-            <i class="${c.liked ? 'fas' : 'far'} fa-heart"></i> ${c.likes}
-          </span>
-        </div>
-      </div>
-    </div>`;
-}
-
-function voteDebate(debId, side) {
-  if (debateUserVotes[debId]) { toast('✅ Already voted!'); return; }
-  const deb = STORY.debates.find(d => d.id === debId);
-  if (!deb) return;
-  debateUserVotes[debId] = side;
-  if (side === 'for') deb.forV++;
-  else deb.agV++;
-  try { if (window.ReaderLeague) ReaderLeague.track('debate'); } catch (e) {}
-  toast(side === 'for' ? '✅ You\'re FOR!' : '❌ You\'re AGAINST!');
-  renderDebates();
-}
-
-function postDebCm(debId) {
-  const inp = document.getElementById('debinp-' + debId);
-  const text = inp?.value.trim();
-  if (!text) { toast('✍️ Write your argument!'); return; }
-  const uv = debateUserVotes[debId];
-  if (!uv) { toast('Pick a side first!'); return; }
-  const newCm = {
-    id: 'dc_' + Date.now(),
-    name: 'You',
-    avatar: null,
-    side: uv,
-    text,
-    time: 'Just now',
-    likes: 0,
-    liked: false
-  };
-  if (!debateCms[debId]) debateCms[debId] = [];
-  debateCms[debId].push(newCm);
-  inp.value = '';
-  const list = document.getElementById('debcms-' + debId);
-  if (list) list.insertAdjacentHTML('beforeend', renderDebCm(newCm));
-  attachDebateLikes();
-  toast('💬 Argument posted!');
-}
-
-function attachDebateLikes() {
-  document.querySelectorAll('.deb-cm-like').forEach(el => {
-    el.onclick = () => {
-      const cmId = el.dataset.cmid;
-      // find across all debates
-      for (const debId in debateCms) {
-        const c = debateCms[debId].find(x => x.id === cmId);
-        if (c) {
-          c.liked = !c.liked;
-          c.likes += c.liked ? 1 : -1;
-          el.classList.toggle('liked', c.liked);
-          el.innerHTML = `<i class="${c.liked ? 'fas' : 'far'} fa-heart"></i> ${c.likes}`;
-          return;
-        }
-      }
-    };
   });
 }
 
@@ -1165,15 +934,33 @@ function syncSaveIcon(saved) {
   if (!btn) return;
   isSaved = !!saved;
   btn.classList.toggle("active", isSaved);
-  btn.innerHTML = "<i class=\"" + (isSaved ? "fas" : "far") + "\ fa-bookmark></i>";
+  btn.innerHTML = '<i class="' + (isSaved ? "fas" : "far") + ' fa-bookmark"></i>';
 }
-function toggleFollow() {
+/* POST / DELETE /api/users/:handle/follow — server truth only. */
+async function toggleFollow() {
+  if (followBusy) return;
   if (window.RequireAuth && !RequireAuth.ensure('follow this writer')) return;
-  isFollowing = !isFollowing;
-  const btn = document.getElementById('hwFollow');
-  btn.textContent = isFollowing ? '✓ Following' : '+ Follow';
-  btn.classList.toggle('ing', isFollowing);
-  toast(isFollowing ? `✅ Following @${STORY.writer.name}` : `Unfollowed @${STORY.writer.name}`);
+  const handle = String(STORY.writer.username || STORY.writer.name || '').replace(/^@/, '');
+  if (!handle) { toast('Writer profile unavailable'); return; }
+  followBusy = true;
+  const wantFollow = !isFollowing;
+  try {
+    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(handle)}/follow`, {
+      method: wantFollow ? 'POST' : 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).error || ''; } catch (e) {}
+      throw new Error(detail || res.status);
+    }
+    isFollowing = wantFollow;
+    paintFollowButton();
+    toast(isFollowing ? `✅ Following @${STORY.writer.name}` : `Unfollowed @${STORY.writer.name}`);
+  } catch (e) {
+    toast('Could not update follow — ' + (e.message || 'request failed'));
+  }
+  followBusy = false;
 }
 
 /* ══ SHARE ══ */
@@ -1186,7 +973,5 @@ function openShare() {
     url: "https://droboard.app/story/" + STORY.id,
   });
 }
-
-
 
 })();

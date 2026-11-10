@@ -1,12 +1,24 @@
 /* ═══════════════════════════════════════════════════════════════
    DISCOVER SERVICE
    Data + orchestration in one file. HTML calls DiscoverPage.init().
-   When going live: set USE_API = true, update API_BASE.
+   Live: stories/writers come from GET /api/feed/discover and friends.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
   const API_BASE = '/api';
+
+  /* Hosted backends sleep: a request during a cold start can hang until the
+     browser gives up, and the old boot path left the loader up forever. Every
+     read now has a deadline, and Discover retries once before showing a card
+     that asks the reader to try again. */
+  const FETCH_TIMEOUT_MS = 25000;
+  function fetchWithTimeout(url, opts, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms || FETCH_TIMEOUT_MS);
+    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+      .finally(() => clearTimeout(timer));
+  }
 
   const GENRES = [
     { icon: 'fa-heart', name: 'Romance', bg: '#ffe4ec', color: '#ff2d55', filter: 'romance' },
@@ -32,152 +44,8 @@
   let moreGlobalIndex = 0, moreAdCounter = 0, writersRowInserted = false;
 
   /* ═══════════════════════════════════════════════════════════
-     DATA LAYER — fetch from API or build from DemoData
+     DATA LAYER — all data comes from backend API (GET /api/discover)
   ═══════════════════════════════════════════════════════════ */
-
-  function buildHeroes() {
-    const d = window.DemoData, covers = d.COVERS;
-    const staticHeroes = [
-      { id: 'st1', img: covers[0], title: 'HIS <em>Sweet</em><br>REVENGE', author: 'By Luna Grey', tags: ['Mafia', 'Romance'] },
-      { id: 'st2', img: covers[1], title: 'UNTIL YOU<br>REGRET', author: 'By Ada Writes', tags: ['Revenge', 'Romance'] },
-      { id: 'st3', img: covers[2], title: 'CLAIMING HIS<br>LUNA', author: 'By Ifeanyi Story', tags: ['Werewolf', 'Romance'] },
-      { id: 'st4', img: covers[3], title: 'BOUND<br>BY HER', author: 'By Efe O', tags: ['Romance', 'Drama'] },
-    ];
-    /* Featured placements set in the chief editor module — up to five stories
-       in the slider. Saved placements (localStorage) keep feature/unfeature
-       actions working across pages without a backend. */
-    try {
-      const ed = window.EditorDemo;
-      if (ed && Array.isArray(ed.FEATURED_PLACEMENTS)) {
-        const lib = ed.FEATURED_LIBRARY || [];
-        let placements = ed.FEATURED_PLACEMENTS;
-        try {
-          const raw = localStorage.getItem('droboard_ce_featured_placements');
-          if (raw) { const saved = JSON.parse(raw); if (Array.isArray(saved)) placements = saved; }
-        } catch (e) {}
-        const heroes = placements.slice()
-          .sort((a, b) => String(b.start || '').localeCompare(String(a.start || '')))
-          .filter(p => (p.tags || []).includes('featured'))
-          .map(p => lib.find(s => s.id === p.id))
-          .filter(Boolean)
-          .slice(0, 5)
-          .map(s => ({
-            id: s.id,
-            img: s.cover,
-            title: s.title,
-            author: 'By ' + s.author,
-            tags: String(s.genre || '').split(' & ').filter(Boolean),
-          }));
-        if (heroes.length) return heroes;
-      }
-    } catch (e) {}
-    return staticHeroes;
-  }
-
-  function buildContinueReading() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(2), title: "The Alpha's Obsession", author: '@Ifeanyi_Story', ch: 'Chapter 18', pct: 43 },
-      { img: c(0), title: 'Falling for My Fake Husband', author: '@Ada_Writes', ch: 'Chapter 12', pct: 25 },
-      { img: c(1), title: "The Mafia's Secret Wife", author: '@Chiamaka_N', ch: 'Chapter 24', pct: 60 },
-      { img: c(3), title: 'His Ruthless Obsession', author: '@Zara_M', ch: 'Chapter 31', pct: 78 },
-      { img: c(4), title: 'Bound by Her Silence', author: '@Kemi_A', ch: 'Chapter 9', pct: 15 },
-      { img: c(5), title: 'Claimed at Midnight', author: '@Efe_O', ch: 'Chapter 42', pct: 55 },
-      { img: c(6), title: 'The Contract Bride', author: '@CampusQueen', ch: 'Chapter 16', pct: 33 },
-      { img: c(7), title: 'Luna of the North', author: '@Dami_Cole', ch: 'Chapter 28', pct: 70 },
-    ];
-  }
-
-  function buildTopRomance() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(0), title: "The CEO's Hidden Heir", author: '@Ada_Writes', badge: 'new' },
-      { img: c(1), title: 'Devil in a Suit', author: '@Zara_M', badge: 'hot' },
-      { img: c(2), title: 'Protected by the Billionaire', author: '@Chiamaka_N', badge: 'new' },
-      { img: c(3), title: 'Broken Vows', author: '@Kemi_A', badge: 'new' },
-      { img: c(4), title: 'His Second Chance', author: '@Efe_O' },
-      { img: c(5), title: 'Married for Revenge', author: '@Ifeanyi_Story', badge: 'hot' },
-      { img: c(6), title: 'The Billionaire Next Door', author: '@CampusQueen' },
-      { img: c(7), title: 'Love in Disguise', author: '@Dami_Cole', badge: 'new' },
-      { img: c(8), title: 'Her Secret Admirer', author: '@Ada_Writes' },
-      { img: c(9), title: 'Twisted Hearts', author: '@Zara_M', badge: 'hot' },
-    ];
-  }
-
-  function buildTopRated() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(1), title: 'Until You Regret', author: '@Ada_Writes', rating: '4.9' },
-      { img: c(3), title: "The Alpha King's Captive", author: '@Chiamaka_N', rating: '4.9' },
-      { img: c(0), title: 'His Dark Promise', author: '@Ifeanyi_Story', rating: '4.8' },
-      { img: c(5), title: 'Married for Revenge', author: '@Ifeanyi_Story', rating: '4.8' },
-      { img: c(7), title: 'Crown of Thorns', author: '@Dami_Cole', rating: '4.8' },
-      { img: c(2), title: "The Mafia Lord's Bride", author: '@Zara_M', rating: '4.7' },
-      { img: c(4), title: 'Bound by Her Silence', author: '@Kemi_A', rating: '4.7' },
-      { img: c(6), title: 'The Forbidden Alpha', author: '@CampusQueen', rating: '4.7' },
-      { img: c(8), title: 'Blood and Roses', author: '@Ada_Writes', rating: '4.6' },
-      { img: c(9), title: 'Twisted Hearts', author: '@Efe_O', rating: '4.6' },
-    ];
-  }
-
-  function buildTrending() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(0), title: 'The Ruthless Billionaire', author: '@Ada_Writes', rank: 1 },
-      { img: c(2), title: 'Second Chance for the Luna', author: '@Ifeanyi_Story', rank: 2 },
-      { img: c(1), title: "Mafia's Little Angel", author: '@Chiamaka_N', rank: 3 },
-      { img: c(3), title: 'Entangled Hearts', author: '@Kemi_A', rank: 4 },
-      { img: c(4), title: 'The Forbidden Alpha', author: '@Zara_M', rank: 5 },
-      { img: c(5), title: 'She Was His Weakness', author: '@Efe_O', rank: 6 },
-      { img: c(6), title: 'Vengeance & Vows', author: '@CampusQueen', rank: 7 },
-      { img: c(7), title: 'The Silent Bride', author: '@Dami_Cole', rank: 8 },
-      { img: c(8), title: 'Blood and Roses', author: '@Ada_Writes', rank: 9 },
-      { img: c(9), title: 'His Dark Promise', author: '@Ifeanyi_Story', rank: 10 },
-    ];
-  }
-
-  function buildCollections() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { name: 'Stories That Wrecked Me', count: 14, covers: [c(1), c(0), c(4), c(2)] },
-      { name: 'Best Plot Twists 2026', count: 8, covers: [c(5), c(3), c(6), c(7)] },
-      { name: '2am Crying Material', count: 11, covers: [c(4), c(0), c(8), c(1)] },
-      { name: 'Campus & CEO Classics', count: 6, covers: [c(6), c(9), c(3), c(5)] },
-      { name: 'Revenge Arc Masterclass', count: 9, covers: [c(1), c(2), c(0), c(4)] },
-    ];
-  }
-
-  function buildNewReleases() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(4), title: 'Untouchable Desire', author: '@Zara_M', badge: 'new' },
-      { img: c(5), title: "Fate's Revenge", author: '@Ada_Writes', badge: 'new' },
-      { img: c(6), title: 'Not Your Princess', author: '@CampusQueen', badge: 'new' },
-      { img: c(7), title: 'Married to the Enemy', author: '@Chiamaka_N', badge: 'new' },
-      { img: c(8), title: 'The Last Confession', author: '@Efe_O', badge: 'new' },
-      { img: c(9), title: 'Whispers of Betrayal', author: '@Kemi_A', badge: 'new' },
-      { img: c(0), title: 'Crown of Thorns', author: '@Ifeanyi_Story', badge: 'new' },
-      { img: c(1), title: 'Her Hidden Truth', author: '@Dami_Cole', badge: 'new' },
-      { img: c(2), title: 'The Stranger at Midnight', author: '@Zara_M', badge: 'new' },
-      { img: c(3), title: 'Love After Ruin', author: '@Ada_Writes', badge: 'new' },
-    ];
-  }
-
-  function buildEditorsPicks() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(1), title: 'Until You Regret', author: '@Ada_Writes' },
-      { img: c(0), title: 'I Will Never Be Yours', author: '@Chiamaka_N' },
-      { img: c(2), title: "Carrying The Mafia Lord's Baby", author: '@Zara_M' },
-      { img: c(3), title: 'Reclaimed by My Alpha', author: '@Ifeanyi_Story' },
-      { img: c(4), title: 'The Night She Returned', author: '@Kemi_A' },
-      { img: c(5), title: 'His Untamed Luna', author: '@Efe_O' },
-      { img: c(6), title: 'Broken by Him', author: '@CampusQueen' },
-      { img: c(7), title: 'The Price of Love', author: '@Dami_Cole' },
-      { img: c(8), title: 'Shadows of Desire', author: '@Ada_Writes' },
-      { img: c(9), title: 'When Hearts Collide', author: '@Zara_M' },
-    ];
-  }
 
   /* Taste filter from the "Tune your feed" chip (localStorage).
      Live swap: send it as ?taste=a,b on GET /api/feed/discover. */
@@ -192,55 +60,9 @@
     return g.slice(0, 4).join(',');
   }
 
-  function staticRecommended() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(4), title: "His Choice Wasn't Me", author: '@Kemi_A' },
-      { img: c(0), title: 'Bound by Obsession', author: '@Ada_Writes' },
-      { img: c(1), title: 'The Wife He Threw Away', author: '@Chiamaka_N' },
-      { img: c(2), title: "My Sister's Best Friend", author: '@Zara_M' },
-      { img: c(5), title: 'The Man She Left Behind', author: '@Efe_O' },
-      { img: c(6), title: 'Stolen Moments', author: '@CampusQueen' },
-      { img: c(7), title: 'Her Ruthless King', author: '@Ifeanyi_Story' },
-      { img: c(8), title: 'A Love Like Fire', author: '@Dami_Cole' },
-      { img: c(9), title: 'Never Look Back', author: '@Ada_Writes' },
-      { img: c(3), title: 'The Softest Rejection', author: '@Kemi_A' },
-    ];
-  }
-
-  /* Personalized picks: STORIES matching selected genres first (cat may
-     carry a mojibake emoji prefix - lowercase include still matches),
-     then the rest of the pool, padded with the static list.
-     Demo only — live recommendations are ranked by the backend, which owns
-     the catalogue, the reader's history and the taste filter. */
-  function buildRecommended() {
-    const t = readTastes();
-    const d = window.DemoData;
-    if (!t || !Array.isArray(t.genres) || !t.genres.length || !d || !Array.isArray(d.STORIES)) return staticRecommended();
-    const want = t.genres.map(g => String(g).toLowerCase());
-    const scored = (d.STORIES || []).map(s => {
-      const cat = String(s.cat || '').toLowerCase();
-      let score = 0;
-      want.forEach(g => { if (cat.indexOf(g) !== -1) score += 1; });
-      return { id: s.id, img: s.cover, title: s.title, author: '@' + s.author, score };
-    });
-    const matched = scored.filter(x => x.score > 0).sort((a, b) => b.score - a.score);
-    const rest = scored.filter(x => x.score === 0);
-    const out = matched.concat(rest).slice(0, 10);
-    const seen = {};
-    out.forEach(s => { seen[String(s.title).toLowerCase()] = 1; });
-    staticRecommended().forEach(s => {
-      if (out.length >= 10) return;
-      if (seen[String(s.title).toLowerCase()]) return;
-      out.push(s);
-    });
-    return out;
-  }
-
-  /* The recommended row has one source per mode. Live, it is the backend's
-     ranking for the current taste filter — the picker re-asks the API instead
-     of re-scoring DemoData locally, so "tune your feed" changes what the
-     server returns rather than only what the browser shuffles. */
+  /* The recommended row has one source: the backend's ranking for the current
+     taste filter — the picker re-asks the API instead of re-scoring locally,
+     so "tune your feed" changes what the server returns. */
   async function renderRecRow() {
     let rows = null;
     const key = tasteKey();
@@ -332,29 +154,16 @@
         try { localStorage.setItem('dro_spotlight_rot', String((idx + 1) % pool.length)); } catch (e) {}
       }
     } catch (e) {}
-    const tastes = readTastes();
-    let story = null, href = null;
-    if (ad) {
-      story = window.DroboardSpotlight.fromAd
-        ? DroboardSpotlight.fromAd(ad)
-        : { kind: 'story', id: ad.id, title: ad.title, author: ad.author || ad.authorName, genre: ad.genre, chapters: ad.chapters, reads: ad.reads, preview: ad.preview, img: ad.img || ad.cover, cta: ad.cta || 'Read now' };
-      if (ad.url) href = ad.url;
-      else if (story.kind === 'user') href = 'profile.html?u=' + encodeURIComponent(story.handle || story.name || '');
-      else if (story.kind === 'board') href = 'leaderboard.html';
-      else if (story.kind === 'promo') href = 'refer.html';
-      else href = window.DiscoverCard ? DiscoverCard.storyHref({ id: ad.storyId || ad.id, title: ad.title }) : null;
-    } else {
-      const pool = (window.DemoData && DemoData.STORIES) || [];
-      let pick = null;
-      if (tastes && Array.isArray(tastes.genres) && tastes.genres.length) {
-        const want = tastes.genres.map(g => String(g).toLowerCase());
-        pick = pool.find(s => want.some(g => String(s.cat || '').toLowerCase().indexOf(g) !== -1));
-      }
-      if (!pick) pick = pool[0];
-      if (!pick) return;
-      story = { kind: 'story', id: pick.id, title: pick.title, author: '@' + pick.author, genre: String(pick.cat || '').replace(/[^A-Za-z ]/g, '').trim(), chapters: pick.chapters, reads: pick.reads, preview: pick.desc, img: pick.cover, cta: 'Read now' };
-      href = window.DiscoverCard ? DiscoverCard.storyHref(story) : null;
-    }
+    if (!ad) return; // no creative configured in Marketing → no spotlight
+    const story = window.DroboardSpotlight.fromAd
+      ? DroboardSpotlight.fromAd(ad)
+      : { kind: 'story', id: ad.id, title: ad.title, author: ad.author || ad.authorName, genre: ad.genre, chapters: ad.chapters, reads: ad.reads, preview: ad.preview, img: ad.img || ad.cover, cta: ad.cta || 'Read now' };
+    let href = null;
+    if (ad.url) href = ad.url;
+    else if (story.kind === 'user') href = 'profile.html?u=' + encodeURIComponent(story.handle || story.name || '');
+    else if (story.kind === 'board') href = 'leaderboard.html';
+    else if (story.kind === 'promo') href = 'refer.html';
+    else href = window.DiscoverCard ? DiscoverCard.storyHref({ id: ad.storyId || ad.id, title: ad.title }) : null;
     try {
       sessionStorage.setItem('dro_spotlight_v', '1');
       localStorage.setItem('dro_spotlight_last', String(Date.now()));
@@ -363,8 +172,8 @@
       story: story,
       seconds: parseInt(cfg.seconds, 10) || 6,
       allowSkip: cfg.allowSkip !== false,
-      sponsored: !!ad,
-      trackId: ad ? ad.id : null,
+      sponsored: true,
+      trackId: ad.id,
       href: href,
     });
   }
@@ -377,88 +186,33 @@
     setTimeout(maybeShowSpotlight, 1200);
   }
 
-  function buildComplete() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(2), title: 'Alpha Stefano', author: '@Ifeanyi_Story' },
-      { img: c(0), title: 'The Secret Heir', author: '@Ada_Writes' },
-      { img: c(1), title: 'Bound by Darkness', author: '@Zara_M' },
-      { img: c(3), title: "The Billionaire's Contract", author: '@Chiamaka_N' },
-      { img: c(4), title: 'Complete Surrender', author: '@Kemi_A' },
-      { img: c(5), title: 'The Final Vow', author: '@Efe_O' },
-      { img: c(6), title: 'Ends With Us', author: '@CampusQueen' },
-      { img: c(7), title: 'Forever His', author: '@Dami_Cole' },
-      { img: c(8), title: 'The Last Chapter', author: '@Ada_Writes' },
-      { img: c(9), title: 'Home at Last', author: '@Ifeanyi_Story' },
-    ];
-  }
-
-  function buildRecentlyUpdated() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { img: c(1), title: 'Ruthless Desires', author: '@Ada_Writes', badge: 'update', meta: 'Ch. 86' },
-      { img: c(2), title: 'Claimed by The Alpha', author: '@Ifeanyi_Story', badge: 'update', meta: 'Ch. 72' },
-      { img: c(0), title: "The CEO's Obsession", author: '@Zara_M', badge: 'update', meta: 'Ch. 54' },
-      { img: c(3), title: 'Hidden Truths Unveiled', author: '@Chiamaka_N', badge: 'update', meta: 'Ch. 97' },
-      { img: c(4), title: 'Her Silent War', author: '@Kemi_A', badge: 'update', meta: 'Ch. 41' },
-      { img: c(5), title: 'Bloodline Secrets', author: '@Efe_O', badge: 'update', meta: 'Ch. 63' },
-      { img: c(6), title: 'The Pack Divided', author: '@CampusQueen', badge: 'update', meta: 'Ch. 29' },
-      { img: c(7), title: 'Empire of Lies', author: '@Dami_Cole', badge: 'update', meta: 'Ch. 105' },
-      { img: c(8), title: 'After the Fall', author: '@Ada_Writes', badge: 'update', meta: 'Ch. 18' },
-      { img: c(9), title: 'Rise of the Luna', author: '@Ifeanyi_Story', badge: 'update', meta: 'Ch. 77' },
-    ];
-  }
-
-  function buildMoreStories() {
-    const d = window.DemoData, c = d.c;
-    return [
-      { title: 'The Letter Never Sent', author: '@Efe_O', genre: 'Drama', preview: 'She found the letter in his drawer three years after he left.', img: c(8) },
-      { title: 'Socks at the Altar', author: '@Ifeanyi_Story', genre: 'Romance', preview: 'The bride ran in socks. The groom followed.', img: c(5) },
-      { title: "Grandmother's Hidden Will", author: '@Chiamaka_N', genre: 'Family', preview: 'The will named someone no one had ever heard of.', img: c(5) },
-      { title: 'Stepmother Stole My Future', author: '@Zara_M', genre: 'Revenge', preview: 'She took the scholarship, the inheritance, and the man.', img: c(3) },
-      { title: 'Kissing Her Photograph', author: '@Ada_Writes', genre: 'Betrayal', preview: 'He kissed the photo every night. She thought it was devotion.', img: c(4) },
-      { title: 'Richest Boy in Class', author: '@CampusQueen', genre: 'Campus', preview: 'He owned half the campus before he turned twenty.', img: c(6) },
-      { title: 'Deleted on Our Anniversary', author: '@Kemi_A', genre: 'Heartbreak', preview: 'Every photo, every message, gone.', img: c(7) },
-      { title: 'Three Times She Said No', author: '@Dami_Cole', genre: 'Romance', preview: 'He asked three times. She said no three times.', img: c(9) },
-      { title: 'The House on Willow Lane', author: '@Efe_O', genre: 'Horror', preview: 'The house had been empty for twelve years.', img: c(8) },
-      { title: 'Scholarship Girl Rising', author: '@CampusQueen', genre: 'Campus', preview: 'One scholarship. One secret. One boy who knew both.', img: c(6) },
-      { title: 'Boss Before Revealing', author: '@Zara_M', genre: 'Revenge', preview: 'She worked under him for two years. He never knew.', img: c(0) },
-      { title: 'Left Everything Behind', author: '@Ada_Writes', genre: 'Drama', preview: 'Passport. One bag. No goodbye.', img: c(1) },
-      { title: 'The Softest Goodbye', author: '@Kemi_A', genre: 'Romance', preview: 'They agreed it was over. No fighting. No blame.', img: c(3) },
-      { title: 'Blood in the Boardroom', author: '@Chiamaka_N', genre: 'Mafia', preview: 'The deal was clean on paper. In the room, nothing was.', img: c(2) },
-      { title: 'Moonlight Betrayal', author: '@Ifeanyi_Story', genre: 'Werewolf', preview: 'The pack called her luna. The alpha called her his.', img: c(2) },
-      { title: 'Contract Without Love', author: '@Dami_Cole', genre: 'Billionaire', preview: 'A one-year marriage. No feelings. No questions.', img: c(0) },
-      { title: 'Her Name Was Vengeance', author: '@Zara_M', genre: 'Revenge', preview: 'They took her family. They took her name.', img: c(1) },
-      { title: 'The Quiet Twin', author: '@Efe_O', genre: 'Mystery', preview: 'One twin died. One twin lived.', img: c(5) },
-      { title: 'Fire in the Rain', author: '@Ada_Writes', genre: 'Romance', preview: 'They met in a storm. She needed a ride.', img: c(4) },
-      { title: 'Alpha Without a Pack', author: '@Ifeanyi_Story', genre: 'Werewolf', preview: 'He lost everything in one night.', img: c(2) },
-      { title: 'The Heiress Who Ran', author: '@Chiamaka_N', genre: 'Drama', preview: 'Billions waiting. A wedding planned.', img: c(7) },
-      { title: 'Paper Rings & Lies', author: '@Kemi_A', genre: 'Romance', preview: 'Paper rings in a parking lot.', img: c(9) },
-      { title: 'Night of the Rogues', author: '@CampusQueen', genre: 'Werewolf', preview: 'The border fell at midnight.', img: c(8) },
-      { title: 'His Cold Empire', author: '@Dami_Cole', genre: 'Mafia', preview: 'He built an empire on silence and fear.', img: c(0) },
-      { title: 'When She Stopped Waiting', author: '@Ada_Writes', genre: 'Heartbreak', preview: 'Five years of waiting. One letter that never came.', img: c(3) },
-    ].map((s, i) => Object.assign({ rating: (4.2 + (i % 6) * 0.13).toFixed(1), chapters: 5 + (i % 18) }, s));
-    /* Demo only — live /api/discover/stories already returns real rating + chapters. */
-  }
-
   async function fetchDiscoverData() {
     const key = tasteKey();
-    const res = await fetch(`${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Discover API failed: ' + res.status);
-    const j = await res.json();
-    LAST_DISCOVER = j; LAST_TASTE = key;
-    return j;
+    const url = `${API_BASE}/discover${key ? '?taste=' + encodeURIComponent(key) : ''}`;
+    let lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetchWithTimeout(url, { credentials: 'include' });
+        if (!res.ok) throw new Error('Discover API failed: ' + res.status);
+        const j = await res.json();
+        LAST_DISCOVER = j; LAST_TASTE = key;
+        return j;
+      } catch (e) {
+        lastErr = e;
+        if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    throw lastErr;
   }
 
   async function fetchDiscoverAds() {
-    const res = await fetch(`${API_BASE}/discover/ads`, { credentials: 'include' });
+    const res = await fetchWithTimeout(`${API_BASE}/discover/ads`, { credentials: 'include' });
     if (!res.ok) throw new Error('Ads API failed: ' + res.status);
     return res.json();
   }
 
   async function fetchMoreStories(page, limit) {
-  async function fetchMoreStories(page, limit) {
-    const res = await fetch(`${API_BASE}/discover/stories?page=${page}&limit=${limit}`, { credentials: 'include' });
+    const res = await fetchWithTimeout(`${API_BASE}/discover/stories?page=${page}&limit=${limit}`, { credentials: 'include' });
     if (!res.ok) throw new Error('Stories API failed: ' + res.status);
     return res.json();
   }
@@ -583,18 +337,18 @@
   /* The Top Writers row is the backend's ranking, delivered as
      data.topWriters[] by GET /api/feed/discover (total reads across the
      writer's live books, followers as tiebreaker). Nothing is ranked, named
-     or pictured here: with no live row yet (USE_API off, or the request
-     failed) the shared demo directory in people-service.js supplies the
-     lineup. loadWriters() prefetches the real status slides so the rings on
-     this row come from the live store, not from a seed. */
+     or pictured here: when the live row is empty the row renders empty (its
+     empty-state) — there is no demo directory to fall back to.
+     loadWriters() prefetches the real status slides so the rings on
+     this row come from the live store. */
   async function buildTopWriters(data) {
     const rows = (data && data.topWriters) || [];
-    if (rows.length && window.DroboardPeople && DroboardPeople.setLiveWriters) {
+    if (window.DroboardPeople && DroboardPeople.setLiveWriters) {
       DroboardPeople.setLiveWriters(rows);
     }
     if (!window.DroboardPeople) return [];
     const live = typeof DroboardPeople.liveWriters === 'function' ? DroboardPeople.liveWriters() : [];
-    const list = live.length ? live.slice(0, 6) : DroboardPeople.writersFor('all', 6);
+    const list = live.slice(0, 6);
     if (window.DroboardStatus && typeof DroboardStatus.loadWriters === 'function') {
       try { await DroboardStatus.loadWriters(list.map(w => w.handle)); } catch (e) { /* row renders ringless */ }
     }
@@ -703,10 +457,7 @@
       });
     }
     if (window.DroboardSearch) {
-      let searchData;
-      if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }
       DroboardSearch.configure({
-        data: searchData || { poolStories: pool.map(s => ({ type: 'story', img: s.img, cat: s.cat, title: s.title, author: s.author.replace('@', ''), av: s.av, views: s.views, likes: s.likes, badge: s.badge, keywords: s.keywords })) },
         onOpenStory: story => { location.href = `bridge.html?id=${encodeURIComponent(story.id || '')}`; },
         onOpenWriter: writer => { location.href = `profile.html?u=${encodeURIComponent((writer.handle || writer.name || '').replace('@', ''))}`; },
       });
@@ -765,6 +516,15 @@
     if (window.DroboardNav) DroboardNav.setTheme(next);
   }
   async function init() {
+    try {
+      await boot();
+    } catch (err) {
+      console.error('[discover] load failed:', err);
+      showBootError();
+    }
+  }
+
+  async function boot() {
     if (window.DroboardNav) DroboardNav.configure({ active: 'discover' });
     if (window.ScrollKeep) ScrollKeep.arm();
     initTheme();
@@ -776,10 +536,12 @@
     data = await fetchDiscoverData();
     // Always fetch live collections
     try {
-      const lr = await fetch('/api/collections?limit=12&sort=popular', { credentials: 'include' });
-      if (lr.ok) { const lj = await lr.json(); if (Array.isArray(lj) && lj.length) data.collections = lj; }
-    } catch (e) { data.collections = data.collections || []; }
-    ADS = await fetchDiscoverAds();
+      const collRes = await fetchWithTimeout('/api/collections?limit=12&sort=popular', { credentials: 'include' });
+      if (collRes.ok) { const collJ = await collRes.json(); if (Array.isArray(collJ) && collJ.length) data.collections = collJ; }
+    } catch (e) {
+      // Collections are a nicety: keep the rest of Discover usable without them.
+    }
+    try { ADS = await fetchDiscoverAds(); } catch (e) { ADS = { platformAds: [], bookAds: [] }; }
     ADS.platformAds = ADS.platformAds || [];
     ADS.bookAds = ADS.bookAds || [];
 
@@ -803,7 +565,7 @@
     initTabs();
     await wireComponents(data);
     initAdClicks();
-    await loadMoreBatch();
+    try { await loadMoreBatch(); } catch (e) { /* scroll can retry the next batch */ }
     new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMoreBatch(); }, { root: null, rootMargin: '0px 0px 24px 0px', threshold: 0 }).observe(document.getElementById('scrollSentinel'));
     initToTop();
     initContentProtection();
@@ -818,6 +580,30 @@
       if (window.DroboardThemeChrome && typeof DroboardThemeChrome.sync === 'function') DroboardThemeChrome.sync();
       else { const e = document.createEvent('Event'); e.initEvent('pageshow', true, true); window.dispatchEvent(e); }
     }, 400);
+  }
+
+  /* The loader must never be the last thing a reader sees. If the very first
+     read fails (a sleeping host, a network drop), hide it and offer a retry. */
+  function showBootError() {
+    const loader = document.getElementById('pageLoader');
+    if (loader) {
+      loader.classList.add('hidden');
+      setTimeout(() => { if (loader.parentNode) loader.remove(); }, 400);
+    }
+    if (document.getElementById('discoverBootError')) return;
+    const box = document.createElement('div');
+    box.id = 'discoverBootError';
+    box.style.cssText = 'position:fixed;inset:0;z-index:6000;display:flex;flex-direction:column;'
+      + 'align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;'
+      + 'background:var(--bg,#fff);color:var(--text,#111)';
+    box.innerHTML = '<div style="font-size:17px;font-weight:700">Discover could not load</div>'
+      + '<div style="font-size:14px;opacity:.7;max-width:320px">The server may still be waking up. '
+      + 'Give it a moment, then try again.</div>'
+      + '<button id="discoverRetry" style="border:0;border-radius:10px;padding:11px 22px;font:inherit;'
+      + 'font-weight:600;background:#ff2d55;color:#fff;cursor:pointer">Try again</button>';
+    document.body.appendChild(box);
+    const btn = document.getElementById('discoverRetry');
+    if (btn) btn.addEventListener('click', () => window.location.reload());
   }
 
   window.DiscoverPage = { init, toggleTheme, renderRecRow, maybeShowSpotlight, renderTuneChip };

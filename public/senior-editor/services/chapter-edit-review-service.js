@@ -1,7 +1,5 @@
 /**
- * chapter-edit-review-service.js — Chapter Edit Review page logic (pure call-and-render)
- * Backend-ready: set USE_API=true; endpoints in senior.routes.js:
- *   GET  /api/senior-editor/chapter-edits           list
+ * chapter-edit-review-service.js — Chapter Edit Review page logic (pure call-and-render) *   GET  /api/senior-editor/chapter-edits           list
  *   POST /api/senior-editor/chapter-edits/:id/approve
  *   POST /api/senior-editor/chapter-edits/:id/reject   { note }
  */

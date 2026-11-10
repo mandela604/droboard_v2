@@ -1,8 +1,5 @@
 /**
- * author-messages-service.js — Author Messages page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * author-messages-service.js — Author Messages page logic (pure call-and-render). */
 (function () {
 'use strict';
 /* Money can appear inside sentences (activity lines, chat text, config
@@ -84,7 +81,7 @@ async function loadThread(conv) {
 }
 
 /* All CRUD writes go through these helpers: try the API first, fall back to
-   the in-memory demo list when USE_API=false or the endpoint is down. */
+   the in-memory demo list when USE_API = true or the endpoint is down. */
 async function writeConv(id, patch, demoFn) {
   if (LIVE) {
     try {

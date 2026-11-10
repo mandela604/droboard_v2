@@ -1,10 +1,6 @@
 /* ===============================================================
    FULL READER SERVICE
    Full-chapter reader orchestration. Page calls FullReader.init().
-   Data: DemoData.FULL_STORY, DemoData.READER_TEAMS, etc.
-   All UI via shared components: reaction-picker, share-modal,
-   save-modal, tip-picker, comment-section, ad-card.
-   When going live: swap DemoData reads for API calls.
 =============================================================== */
 (function () {
   "use strict";
@@ -21,27 +17,15 @@
   function fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); }
   function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-  /* ══ CENTRAL DATA ══ */
-  const D = window.DemoData || {};
-  const FS = D.FULL_STORY || { id: "", title: "", chapters: [], unlockedThrough: 0, author: {}, similar: [], comments: [], shares: 0, tips: 0 };
-  const TEAMS = D.READER_TEAMS || [];
-  const currentStoryId = FS.id || "";
-  const AUTHOR = FS.author || { name: "Writer", avatar: "", handle: "@writer" };
+  /* ══ CENTRAL DATA — populated by bootLive() ══ */
+  let FS = { id: '', title: '', chapters: [], unlockedThrough: 0, author: {}, similar: [], shares: 0, tips: 0 };
+  let TEAMS = [];
+  let currentStoryId = '';
+  let AUTHOR = { name: 'Writer', avatar: '', handle: '@writer' };
 
-  /* ══ SEASONS + CHAPTER CONTENT ══ */
-  const SEASONS_DATA = [{
-    label: "Season 1",
-    chs: (FS.chapters || []).map((c, i) => ({
-      n: c.n, title: c.title,
-      meta: Math.max(1, Math.round((c.words || 600) / 200)) + " min",
-      badge: c.n === 1 ? "free" : (i === (FS.unlockedThrough - 1) ? "new" : null),
-      state: i < (FS.unlockedThrough - 1) ? "done" : (i === (FS.unlockedThrough - 1) ? "current" : "locked"),
-    })),
-  }];
+  /* ══ SEASONS + CHAPTER CONTENT — populated by bootLive() ══ */
+  const SEASONS_DATA = [{ label: 'Season 1', chs: [] }];
   const CHAPTER_CONTENT = {};
-  (FS.chapters || []).forEach((c) => {
-    if (c.paras && c.paras.length) CHAPTER_CONTENT["s1c" + c.n] = c.paras;
-  });
   function genericParas(title) {
     return [
       'This chapter continues the story — "' + esc(title) + '." The details replay in fragments: a door left ajar, a name spoken too carefully, a silence that says more than the sentence that follows it.',
@@ -267,30 +251,43 @@
   }
   async function bootLive() {
     const sid = urlStoryId();
-    if (!sid || sid === currentStoryId) return;
+    if (!sid) throw new Error('No story ID in URL (?story=)');
+    const [bRes, cRes] = await Promise.all([
+      fetch('/api/books/' + encodeURIComponent(sid), { credentials: 'include' }),
+      fetch('/api/books/' + encodeURIComponent(sid) + '/chapters', { credentials: 'include' }),
+    ]);
+    if (!bRes.ok) throw new Error('Story not found (' + bRes.status + ')');
+    if (!cRes.ok) throw new Error('Chapters failed (' + cRes.status + ')');
+    const book = await bRes.json();
+    const cj = await cRes.json();
+    const raw = Array.isArray(cj) ? cj : (cj.items || cj.chapters || []);
+    const live = (raw || []).filter(c => ['live', 'published'].includes(String(c.status || '')));
+    if (!book || !book.id) throw new Error('Invalid story data');
+    if (!live.length) throw new Error('No published chapters yet');
+    let state = {};
     try {
-      const [bRes, cRes] = await Promise.all([
-        fetch('/api/books/' + encodeURIComponent(sid), { credentials: 'include' }),
-        fetch('/api/books/' + encodeURIComponent(sid) + '/chapters', { credentials: 'include' }),
-      ]);
-      if (!bRes.ok || !cRes.ok) return;
-      const book = await bRes.json();
-      const cj = await cRes.json();
-      const raw = Array.isArray(cj) ? cj : (cj.items || cj.chapters || []);
-      const live = (raw || []).filter(c => ['live', 'published'].includes(String(c.status || 'live')));
-      if (!book || !book.id || !live.length) return;
-      let state = null;
-      try {
-        const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
-        if (sRes.ok) state = await sRes.json();
-      } catch (e) {}
-      applyLiveBook(book, live, state || {});
-      LIVE_BOOK = book;
+      const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
+      if (sRes.ok) state = await sRes.json();
     } catch (e) {}
+    applyLiveBook(book, live, state);
+    LIVE_BOOK = book;
   }
   function applyLiveBook(book, live, state) {
-    FS.id = book.id; FS.title = book.title || FS.title;
-    FS.category = book.genre || ''; FS.cover = book.cover || FS.cover;
+    // Populate FS + AUTHOR from real backend data
+    currentStoryId = book.id;
+    FS.id = book.id;
+    FS.title = book.title || '';
+    FS.category = book.genre || '';
+    FS.cover = book.cover || '';
+    FS.synopsis = book.synopsis || '';
+    FS.shares = (book.stats && book.stats.shares) || book.sharesCount || 0;
+    FS.tips = book.tipCount || 0;
+    FS.similar = (book.similar || []).map(x => ({ id: x.id, cover: x.cover, title: x.title, author: (x.author && x.author.name) || '' }));
+    const w = book.writer || {};
+    AUTHOR.name = w.name || w.username || 'Writer';
+    AUTHOR.handle = w.handle || ('@' + (w.username || 'writer'));
+    AUTHOR.avatar = w.avatar || '';
+
     const unlocked = new Set((state.unlocked || []).map(String));
     const prog = state.progress || {};
     const chs = live.map(c => {
@@ -298,13 +295,16 @@
       const p = prog[key] || prog[String(c.n)] || null;
       const done = !!(p && p.finished);
       const open = !book.vipLocked || +c.n <= 3 || unlocked.has(key) || unlocked.has(String(c.n)) || done;
-      return { n: c.n, title: c.title, words: c.words || 0, liveId: c.id, state: done ? 'done' : (open ? 'current' : 'locked') };
+      return {
+        n: c.n, title: c.title, words: c.words || 0, liveId: c.id,
+        meta: Math.max(1, Math.round((c.words || 600) / 200)) + ' min',
+        state: done ? 'done' : (open ? 'current' : 'locked'),
+      };
     });
     live.forEach(c => { CHAPTER_CONTENT['s1c' + c.n] = htmlToParas(c.content).slice(0, 60); });
     SEASONS_DATA.length = 0;
     SEASONS_DATA.push({ label: 'Season 1', chs });
     FS.unlockedThrough = chs.filter(c => c.state !== 'locked').length || 1;
-    // initial position: URL ?ch= wins (applyReaderDeepLink), else continue point
     try {
       const urlCh = parseInt(new URLSearchParams(location.search).get('ch'), 10) || 0;
       if (!urlCh && state.lastChapterId) {
@@ -557,7 +557,10 @@
       const anchor = document.getElementById('chBottomAd') || storyTextEl;
       anchor.insertAdjacentHTML("afterend", '<div id="readerEngMount" style="max-width:680px;margin:0 auto;padding:0"></div>');
       engMount = document.getElementById("readerEngMount");
-      try { window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || ""); } catch (e) {}
+      try {
+        const live = (ch.liveId && storyIdNow()) ? { bookId: storyIdNow(), chapterId: ch.liveId } : null;
+        window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || "", live ? { live: live } : null);
+      } catch (e) {}
     }
     if (locked) {
       storyTextEl.insertAdjacentHTML("afterend", renderUnlockCard(seasonIdx, chIdx));
@@ -577,6 +580,8 @@
       try { fillBottomSlot(); } catch (e) {}
     }
     if (!locked) { try { syncThreadAds(); } catch (e) {} }
+    // Comments belong to the chapter on screen — reload them on every chapter.
+    if (!locked) { try { initComments(); } catch (e) {} }
     document.getElementById("chEndSection").style.display = locked ? "none" : "";
     if (!locked) {
       document.getElementById("chEndTitle").textContent = "Chapter " + ch.n + " complete";
@@ -768,12 +773,6 @@
   }
 
   /* ══ COMMENTS — via component ══ */
-  function mapSeedComment(c) {
-    return Object.assign({}, c, {
-      statusRing: (c.statusRing || "none").replace("ring-", ""),
-      replies: (c.replies || []).map(mapSeedComment),
-    });
-  }
   function initComments() {
     const mount = document.getElementById("commentsPlaceholder");
     const fail = (msg) => {
@@ -784,37 +783,43 @@
     };
     if (!window.DroboardComments) { fail('Comments failed to load — hard-refresh (Ctrl+Shift+R).'); return; }
     if (!mount) { fail('Comment mount missing on this page.'); return; }
-    const raw = (typeof COMMENTS_DATA !== 'undefined' && COMMENTS_DATA.length) ? COMMENTS_DATA : (FS.comments || []);
-    const SEED_COMMENTS = raw.map(mapSeedComment);
-    const trueTotal = (function countAll(list) {
-      return (list || []).reduce(function (n, c) { return n + 1 + countAll(c.replies || []); }, 0);
-    })(SEED_COMMENTS); // same math as the component's own counter
-    try {
-      DroboardComments.attach("#commentsPlaceholder", {
-      storyId: currentStoryId,
-      title: fmtN(trueTotal) + " comments",
-      comments: SEED_COMMENTS,
-      teams: TEAMS,
-      currentUser: { name: "You", avatar: null, team: null },
-      requireTeam: false,
-      collapsible: true,
-      startOpen: false,
-        adsRepeat: false, // no repeating slots, same as scroll reader
-        adsFirst: false, // reading comments never start with an ad
-        scrollBox: 420, // bounded inner-scroll list + pinned composer
-      fullCommentsUrl: function () {
-        return 'comments.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + currentChNum();
-      },
-      ads: (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)) ? false : undefined,
-      getCommentUrl: (c) => "https://droboard.app/story/" + currentStoryId + "#comment-" + c.id,
-      onPost: (c) => console.log("posted", c),
-      onReply: (parentId, c) => console.log("replied to", parentId, c),
-      onEdit: (c, oldText, newText) => console.log("edited", c.id, oldText, "->", newText),
-      onDotsAction: (action) => { if (action === "delete") toast("Comment deleted."); },
+    const storyId = storyIdNow();
+    const ch = ((SEASONS_DATA[curSeasonIdx] || {}).chs || [])[curChIdx] || {};
+    const chapterId = ch.liveId || (ch.n ? String(ch.n) : '');
+    if (!storyId) { fail('No story loaded yet.'); return; }
+    mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i> Loading comments…</div>';
+    const API = window.DroboardComments.api;
+    API.fetchComments({ storyId: storyId, chapterId: chapterId })
+      .then(function (live) {
+        const trueTotal = (function countAll(list) {
+          return (list || []).reduce(function (n, c) { return n + 1 + countAll(c.replies || []); }, 0);
+        })(live);
+        DroboardComments.attach("#commentsPlaceholder", {
+          storyId: storyId,
+          title: fmtN(trueTotal) + " comments",
+          comments: live,
+          teams: TEAMS,
+          currentUser: { name: "You", avatar: null, team: null },
+          requireTeam: false,
+          collapsible: true,
+          startOpen: false,
+          adsRepeat: false, // no repeating slots, same as scroll reader
+          adsFirst: false, // reading comments never start with an ad
+          scrollBox: 420, // bounded inner-scroll list + pinned composer
+          fullCommentsUrl: function () {
+            return 'comments.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + currentChNum();
+          },
+          ads: (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)) ? false : undefined,
+          getCommentUrl: (c) => "comments.html?story=" + encodeURIComponent(storyIdNow()) + "&ch=" + currentChNum() + "#comment-" + (c && c.id),
+          onPost: (c) => API.postComment({ storyId: storyId, chapterId: chapterId, text: c.text, team: c.team }),
+          onReply: (parentId, c) => API.postComment({ storyId: storyId, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
+          onEdit: (c, oldText, newText) => API.editComment(c.id, newText),
+          onDotsAction: (action) => { if (action === "delete") toast("Comment deleted."); },
+        });
+      })
+      .catch(function (err) {
+        fail('Could not load comments (' + ((err && err.message) || err) + ').');
       });
-    } catch (err) {
-      fail('Comments crashed on load (' + ((err && err.message) || err) + ').');
-    }
   }
 
   /* ══ SPONSORED AD — via component ══
@@ -1051,17 +1056,24 @@
       const sb0 = document.getElementById('scrollBody');
       if (sb0) sb0.scrollTop = 0;
     } catch (e) {}
-    // Shared coin sheet owns the wallet now — attach once (demo starts at 45).
     if (window.DroboardReader) {
       DroboardReader.attach({ onBalanceChange: updateCoinPill, onBuyCoins: buyCoinsViaSheet });
-      DroboardReader.setBalance(45);
     }
-    // top slot lives above the chapter: move the wrap up once (no HTML change)
     try {
       const wrap = document.getElementById('adSlotWrap'), st = document.getElementById('storyText');
       if (wrap && st && st.parentNode) st.parentNode.insertBefore(wrap, st);
     } catch (e) {}
     wireStaticChrome();
+    // Boot from live API — no demo fallback
+    try {
+      await bootLive();
+    } catch (err) {
+      const sb = document.getElementById('scrollBody');
+      if (sb) sb.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--muted,#888);font-size:14px"><i class="fas fa-exclamation-circle" style="font-size:32px;margin-bottom:12px;display:block;color:var(--acc,#ff0050)"></i>' + (err.message || 'Failed to load story') + '</div>';
+      hidePageSkeleton();
+      return;
+    }
+    if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
     renderTeams();
     renderSeasonTabs();
     wireScroll();
@@ -1072,8 +1084,6 @@
     initCommunities();
     initAdSlot();
     updateCoinPill();
-    try { await bootLive(); } catch (e) {}
-    if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
     applyReaderDeepLink();
     renderChapterView(curSeasonIdx, curChIdx);
     hidePageSkeleton();

@@ -157,7 +157,7 @@ button{font-family:inherit;cursor:pointer}
   padding:8px 0 4px;letter-spacing:.04em;text-transform:uppercase;
 }
 .msg-row{
-  display:flex;gap:8px;max-width:78%;animation:msgIn .2s ease;
+  display:flex;gap:8px;max-width:72%;animation:msgIn .2s ease;
   position:relative;
 }
 .msg-row.out{align-self:flex-end;flex-direction:row-reverse}
@@ -166,11 +166,12 @@ button{font-family:inherit;cursor:pointer}
   display:flex;align-items:center;justify-content:center;
   background:var(--l2);color:var(--tx-muted);font-size:11px;font-weight:800;
 }
-.msg-content{position:relative}
+.msg-content{position:relative;min-width:0;max-width:100%}
 .msg-bub{
   background:var(--l1);border:1px solid var(--bd);border-radius:16px 16px 16px 4px;
   padding:10px 14px;font-size:13px;line-height:1.5;color:var(--tx-body);
   box-shadow:0 1px 3px rgba(0,0,0,.04);word-break:break-word;
+  box-sizing:border-box;
 }
 .msg-row.out .msg-bub{
   background:var(--acc);color:#fff;border-color:var(--acc);
@@ -180,6 +181,18 @@ button{font-family:inherit;cursor:pointer}
   display:block;border-radius:10px;max-width:220px;max-height:280px;
   object-fit:cover;margin-bottom:4px;width:100%;
 }
+.msg-quote{
+  background:rgba(0,0,0,.06);border-left:3px solid var(--acc);border-radius:6px;
+  padding:8px 10px;margin-bottom:8px;cursor:pointer;font-size:12px;
+  transition:.15s;overflow:hidden;
+}
+.msg-quote:active{background:rgba(0,0,0,.1)}
+.msg-row.out .msg-quote{background:rgba(255,255,255,.15);border-left-color:rgba(255,255,255,.6)}
+.msg-quote-sender{font-weight:700;color:var(--tx-high);font-size:11px;margin-bottom:3px}
+.msg-row.out .msg-quote-sender{color:#fff}
+.msg-quote-text{color:var(--tx-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+.msg-row.out .msg-quote-text{color:rgba(255,255,255,.9)}
+.msg-quote-img{font-size:10px;color:var(--tx-faint);margin-bottom:2px}
 .msg-time{font-size:9.5px;color:var(--tx-faint);margin-top:4px;display:block}
 .msg-row.out .msg-time{color:rgba(255,255,255,.6);text-align:right}
 .msg-edited{
@@ -269,6 +282,17 @@ button{font-family:inherit;cursor:pointer}
   padding:12px 14px;
   background:var(--l1);border-top:1px solid var(--bd);flex-shrink:0;
 }
+.reply-preview{
+  display:none;padding:10px 14px 8px;border-left:3px solid var(--acc);
+  background:var(--l2);font-size:12px;line-height:1.4;color:var(--tx-muted);
+}
+.reply-preview.show{display:block}
+.reply-preview-name{color:var(--tx-high);font-weight:700;margin-bottom:2px;font-size:11px}
+.reply-preview-text{color:var(--tx-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reply-preview-close{
+  display:inline-flex;margin-left:8px;color:var(--tx-faint);cursor:pointer;
+  font-size:10px;align-items:center;gap:3px;
+}
 [data-theme="dark"] .compose-bar{background:var(--l1)}
 .attach-btn{
   width:40px;height:40px;border-radius:50%;background:var(--l2);border:none;
@@ -357,6 +381,12 @@ button{font-family:inherit;cursor:pointer}
       <button class="img-remove" id="imgRemoveBtn"><i class="fas fa-xmark"></i></button>
     </div>
 
+    <div class="reply-preview" id="replyPreview">
+      <div class="reply-preview-name" id="replyName"></div>
+      <div class="reply-preview-text" id="replyText"></div>
+      <span class="reply-preview-close" id="clearReplyBtn"><i class="fas fa-xmark"></i></span>
+    </div>
+
     <div class="compose-bar">
       <button class="attach-btn" id="attachBtn" title="Send image"><i class="fas fa-image"></i></button>
       <textarea class="compose-input" id="composeInput" rows="1" placeholder="Type a message..."></textarea>
@@ -370,6 +400,7 @@ button{font-family:inherit;cursor:pointer}
 <div class="ctx-overlay" id="ctxOverlay">
   <div class="ctx-menu" id="ctxMenu">
     <div class="ctx-preview" id="ctxPreview"></div>
+    <button class="ctx-btn" id="ctxReply"><i class="fas fa-reply"></i> Reply</button>
     <button class="ctx-btn" id="ctxEdit"><i class="fas fa-pen"></i> Edit message</button>
     <button class="ctx-btn delete" id="ctxDelete"><i class="fas fa-trash"></i> Delete message</button>
   </div>

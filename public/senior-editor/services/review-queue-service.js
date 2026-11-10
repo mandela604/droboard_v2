@@ -20,9 +20,8 @@ async function callBackend(path, options){
 /* Demo handoff: review outcomes feed the reader -> writer UI on the profile.
    Backend replaces this once the API owns submissions. Returns true if this
    queue item was the current reader's pending book. */
-let LIVE = false;
+let LIVE = true;
 async function decideReview(id, status, feedback, contract){
-  if (!LIVE) return { ok: true, demo: true };
   const body = { action: status, feedback: feedback || undefined };
   if (contract) body.contract = contract;
   return callBackend('/review-queue/' + encodeURIComponent(id), {
@@ -32,7 +31,7 @@ async function decideReview(id, status, feedback, contract){
   });
 }
 function recordFlowOutcome(s, status, feedback){
-  if (LIVE) return false;
+  // Record outcome to localStorage for writer-flow tracking (this is a legitimate UX bridge, not demo data)
   try {
     const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
     if (!flow || flow.status !== 'pending') return false;
@@ -45,10 +44,8 @@ function recordFlowOutcome(s, status, feedback){
   } catch (e) { return false; }
 }
 
-/* Demo handoff: surface the current reader's pending book at the top of the
-   queue so an editor can review it (the API serves this later). */
+/* Surface the current reader's pending book at the top of the queue */
 function ownPendingSubmission(){
-  if (LIVE) return null;
   try {
     const flow = JSON.parse(localStorage.getItem('dro_writer_flow') || 'null');
     if (!flow || flow.status !== 'pending' || !flow.title) return null;
@@ -138,16 +135,21 @@ let allSubs = [], filtered = [], activeStat = 'all', currentPg = 1;
 let acceptTargetId = null;
 
 async function loadQueue(){
-  try{
-    const d = await callBackend('/review-queue');
-    if (d && Array.isArray(d.items)) { LIVE = true; return d; }
-  }catch(err){ /* fall through to demo */ }
-  return SeniorEditorData.getReviewQueue();
+  const d = await callBackend('/review-queue');
+  if (d && Array.isArray(d.items)) { LIVE = true; return d; }
+  throw new Error('Review queue returned unexpected data');
 }
 
 async function init(){
   await loadContracts();
-  const d = await loadQueue();
+  let d;
+  try {
+    d = await loadQueue();
+  } catch(err) {
+    document.getElementById('subList').innerHTML = `<div class="empty-msg" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load review queue: ${err.message}</div>`;
+    document.getElementById('statRow').innerHTML = '';
+    return;
+  }
   const rows = Array.isArray(d) ? d : (d.items || []);
   allSubs = rows.map((it, i) => {
     const title = cleanTitle(it.title || it.book || 'Untitled');
@@ -469,7 +471,7 @@ let totalChaptersForBook = 5;
 
 function updateContractHint(){
   const c = CONTRACTS.find(x => x.id === document.getElementById('contractType').value);
-  document.getElementById('contractHint').textContent = c ? c.detail + (CONTRACTS_LIVE ? '' : ' · demo list') : '';
+  document.getElementById('contractHint').textContent = c ? c.detail : '';
 }
 
 /* monetization table lives in shared/contract-monetization.js (mzMonet) */

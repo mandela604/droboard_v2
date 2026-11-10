@@ -5,8 +5,8 @@
    author center and the staff consoles all include this one file.
 
    Numbers come from GET /api/notifications/unread-count → {count, chats}.
-   With no reachable API the local demo log answers; with neither, the
-   chip stays hidden. A bell never invents a count.
+   The API is the only source: when it is unreachable or the visitor is
+   signed out, the chip stays hidden. A bell never invents a count.
 
    The chip turns BLUE while an unread chat is part of the total. Every
    other notification keeps the accent its page already gave it.
@@ -23,43 +23,25 @@
 
   const API = '/api/notifications/unread-count';
   const POLL_INTERVAL = 60000;
-  const LOG_KEY = 'dro_notif_log';
   const BLUE = '#2563eb';
   const CHIPS = '.notif-dot, .notif-count, [data-notif-count], .dro-icon-btn__badge';
   const DOTS = '[data-notif-dot]';
 
   let _timer = null;
-  let _storage = null;
   let _observer = null;
   let _started = false;
-  let _live = false;
   let _count = 0;
   let _chats = 0;
 
   /* ── where the numbers come from ─────────────────────────── */
-  function localCounts() {
-    const S = window.DroboardNotifStore;
-    if (S && typeof S.unread === 'function') {
-      const cats = typeof S.unreadByCat === 'function' ? S.unreadByCat() : {};
-      return { count: S.unread(), chats: cats.messages || 0 };
-    }
-    try {
-      const items = (JSON.parse(localStorage.getItem(LOG_KEY) || '{}').items) || [];
-      return {
-        count: items.reduce((n, i) => n + (i.unread ? 1 : 0), 0),
-        chats: items.reduce((n, i) => n + (i.unread && i.type === 'direct_message' ? 1 : 0), 0),
-      };
-    } catch (e) { return { count: 0, chats: 0 }; }
-  }
-
   function readCounts() {
     return fetch(API, { credentials: 'include' })
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
-        if (d && d.count != null) { _live = true; return { count: d.count | 0, chats: d.chats | 0 }; }
-        return localCounts();
+        if (d && d.count != null) return { count: d.count | 0, chats: d.chats | 0 };
+        return { count: 0, chats: 0 };
       })
-      .catch(localCounts);
+      .catch(() => ({ count: 0, chats: 0 }));
   }
 
   /* ── one painter ─────────────────────────────────────────── */
@@ -113,20 +95,16 @@
     poll();
     watch();
     _timer = setInterval(poll, POLL_INTERVAL);
-    /* a server event owns the numbers; a demo emit only repaints the log */
+    /* the server owns the numbers: any notification event re-reads them */
     window.addEventListener('dro:notification', poll);
-    window.addEventListener('dro:notification-count', () => { if (_live) poll(); else { const n = localCounts(); _count = n.count; _chats = n.chats; paint(); } });
+    window.addEventListener('dro:notification-count', poll);
     window.addEventListener('focus', poll);
     window.addEventListener('pageshow', poll);
-    /* another tab marked things read */
-    _storage = e => { if (e.key === LOG_KEY) poll(); };
-    window.addEventListener('storage', _storage);
     return Promise.resolve(_count);
   }
 
   function stop() {
     if (_timer) { clearInterval(_timer); _timer = null; }
-    if (_storage) { window.removeEventListener('storage', _storage); _storage = null; }
     if (_observer) { _observer.disconnect(); _observer = null; }
     _started = false;
   }

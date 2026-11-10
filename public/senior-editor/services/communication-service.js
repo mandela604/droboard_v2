@@ -2,7 +2,7 @@
 'use strict';
 
 /* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
@@ -12,41 +12,6 @@ async function callBackend(path, options){
 }
 
 let shell = null;
-
-/* Email + avatar mapped per author — matches the Authors page so the same
-   person looks the same everywhere in the dashboard. */
-const AUTHOR_INFO = {
-  'Luna Skye':       { email: 'luna.skye@mail.com',      avatar: 'https://i.pravatar.cc/100?img=45' },
-  'Elena Vasquez':   { email: 'elena.vasquez@mail.com',  avatar: 'https://i.pravatar.cc/100?img=47' },
-  'Marcus Webb Jr.': { email: 'marcus.webbjr@mail.com',  avatar: 'https://i.pravatar.cc/100?img=12' },
-  'Wren Okonkwo':    { email: 'wren.okonkwo@mail.com',   avatar: 'https://i.pravatar.cc/100?img=15' },
-  'Isabelle Moreau': { email: 'isabelle.moreau@mail.com',avatar: 'https://i.pravatar.cc/100?img=25' },
-};
-const EDITOR_EMAIL = 'chioma.reddy@droboard.com';
-const EDITOR_INBOX = 'editors@droboard.com';
-
-/* Full thread bodies + tags, keyed by the message id from the data file.
-   The base list only gives a short preview — this fills in the rest so the
-   sheet reads like a real email thread. */
-const THREAD_EXTRA = {
-  'MSG-001': { tag: 'question', status: 'unread', messages: [
-    { from: 'author', time: '2h ago', body: "Hi Chioma, I wanted to ask about the word count requirement for Chapter 24 of The CEO's Hidden Son. My draft is sitting at 3,450 words — is that enough to submit, or should I pad it out closer to 5k before sending it in? Don't want to get flagged for being short." },
-  ]},
-  'MSG-002': { tag: 'feedback', status: 'unread', messages: [
-    { from: 'author', time: '5h ago', body: "Thanks for the notes on chapter 11. I've made the revisions and tightened up the pacing in the pack council scene like you suggested. Let me know if it reads better now — happy to do another pass if needed." },
-  ]},
-  'MSG-003': { tag: 'dispute', status: 'unread', messages: [
-    { from: 'author', time: '1d ago', body: "I don't agree with the rejection of chapter 6. The content flagged as explicit is no more graphic than what's already published in similar mafia-genre stories on the platform. Can we revisit this or get a second opinion? I'd like to understand exactly which lines triggered the flag." },
-  ]},
-  'MSG-004': { tag: 'idea', status: 'awaiting-reply', messages: [
-    { from: 'author', time: '2d ago', body: "I have an idea for a new series set in a dystopian college where scholarships are awarded through a brutal survival-style competition. Loosely Hunger-Games-meets-campus-drama. Would love your thoughts before I start drafting — is this something Droboard would want in the Campus & Revenge category, or does it need its own tag?" },
-    { from: 'editor', time: '1d ago', body: "This sounds like a strong hook — I'd lean toward filing it under Campus & Revenge with a 'dark academia' tag rather than a new category. Send over a synopsis and first-chapter outline whenever you're ready and I'll take a proper look." },
-  ]},
-  'MSG-005': { tag: 'update', status: 'replied', messages: [
-    { from: 'author', time: '3d ago', body: "Just wanted to let you know I'm planning to wrap up The Duke's Secret within the next 4-5 chapters. Been such a fun series to write — thank you for all the editorial support along the way." },
-    { from: 'editor', time: '2d ago', body: "So glad to hear it's coming together well — it's been one of our strongest performers this quarter. Let's plan a proper send-off: I'll flag the final chapter for a Homepage Banner feature when it goes live. Congrats on finishing the series!" },
-  ]},
-};
 
 const PER_PAGE = 4;
 let allMsgs = [], filtered = [], activeStat = 'all', currentPg = 1;
@@ -61,18 +26,25 @@ async function init(){
     onSearch: v => { document.getElementById('mailSearch').value = v; currentPg = 1; applyFilters(); }
   });
 
-  const d = await SeniorEditorData.getMessages();
+  let d;
+  try {
+    d = await callBackend('/communication');
+    if (!d) throw new Error('Empty response');
+  } catch(err) {
+    document.getElementById('messagesList').innerHTML = `<div class="empty-msg" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load messages: ${err.message}</div>`;
+    return;
+  }
 
-  allMsgs = d.messages.map(m => {
-    const info = AUTHOR_INFO[m.from] || { email: m.from.toLowerCase().replace(/\s+/g,'.') + '@mail.com', avatar: 'https://i.pravatar.cc/100?img=1' };
-    const extra = THREAD_EXTRA[m.id] || { tag: 'update', status: m.unread ? 'unread' : 'awaiting-reply', messages: [{ from: 'author', time: m.date, body: m.preview }] };
+  allMsgs = (d.messages || []).map(m => {
+    const avatar = m.avatar || '../assets/droboard-icon.png';
+    const email = m.email || (m.from || '').toLowerCase().replace(/\s+/g, '.') + '@mail.com';
     return {
       ...m,
-      email: info.email,
-      avatar: info.avatar,
-      tag: extra.tag,
-      status: extra.status,
-      thread: extra.messages,
+      email,
+      avatar,
+      tag: m.tag || 'update',
+      status: m.status || (m.unread ? 'unread' : 'awaiting-reply'),
+      thread: m.thread || [{ from: 'author', time: m.date, body: m.preview }],
     };
   });
 
@@ -80,7 +52,7 @@ async function init(){
   buildFilterPills();
   applyFilters();
 
-  document.getElementById('teamChat').innerHTML = d.teamChat.map(c => `
+  document.getElementById('teamChat').innerHTML = (d.teamChat || []).map(c => `
     <div class="chat-msg"><div class="cm-from">${c.from}</div>${c.text}<div class="cm-time">${c.time}</div></div>`).join('');
 
   document.getElementById('mailSearch').addEventListener('input', () => { currentPg = 1; applyFilters(); });

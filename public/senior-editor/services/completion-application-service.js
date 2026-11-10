@@ -1,8 +1,5 @@
 /**
- * completion-application-service.js — Completion Application page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * completion-application-service.js — Completion Application page logic (pure call-and-render). */
 (function () {
 'use strict';
 

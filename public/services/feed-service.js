@@ -1,7 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    FEED SERVICE
    Feed page orchestration. HTML calls FeedPage.init().
-   When going live: set USE_API = false → true, update API_BASE.
+   Stories + posts: GET /api/feed/home (FeedData). "Trending in hubs"
+   rows: GET /api/discussions/feed (FeedData). Writes go through
+   /api/posts. No demo fallback — any failure surfaces the API error
+   in the feed's error empty-state.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -15,56 +18,61 @@
   let BASE_POSTS = []; // organic posts, original order (sort source of truth)
   let AD_POOLS = {}, AD_GAP = 3;
 
-  /* ── Following (feed-local set, persisted; feeds the menu filter) ── */
-  const FOLLOW_KEY = 'dro_following';
-  let FOLLOWING = new Set();
-  function loadFollowing() {
-    FOLLOWING = new Set();
-    try { (JSON.parse(localStorage.getItem(FOLLOW_KEY) || '[]') || []).forEach(h => FOLLOWING.add(String(h))); } catch (e) {}
-  }
-  function followName(name) {
-    if (!name) return;
-    FOLLOWING.add(String(name));
-    try { localStorage.setItem(FOLLOW_KEY, JSON.stringify([...FOLLOWING])); } catch (e) {}
+  /* ── Live transport ─────────────────────────────────────────────────── */
+  const API_BASE = '/api';
+  async function api(method, path, body) {
+    const res = await fetch(API_BASE + path, {
+      method: method,
+      credentials: 'include',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let json = null;
+    try { json = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) {
+      const err = new Error((json && (json.error || json.message)) || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
+      throw err;
+    }
+    return json;
   }
 
-  /* ── Mod pins (staff only; persisted; pinned posts lead) ── */
-  const PIN_KEY = 'dro_pinned_posts';
-  function staffOK() { try { return window.canModerate ? window.canModerate() : false; } catch (e) { return false; } }
-  function loadPinIds() { try { return JSON.parse(localStorage.getItem(PIN_KEY) || '[]') || []; } catch (e) { return []; } }
-  function savePinId(id, on) {
+  /* ── Following (live: the reader's own follow edges) ──────────────── */
+  let FOLLOWING = new Set();          // lowercased usernames
+  function isFollowing(name) { return FOLLOWING.has(String(name || '').toLowerCase()); }
+  async function loadFollowing() {
+    FOLLOWING = new Set();
+    try { if (window.AuthSession && AuthSession.ensureAccount) await AuthSession.ensureAccount(); } catch (e) {}
+    const me = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || null;
+    const handle = me && me.handle ? String(me.handle).replace(/^@/, '') : '';
+    if (!handle) return;
     try {
-      const ids = loadPinIds().filter(x => String(x) !== String(id));
-      if (on) ids.push(String(id));
-      localStorage.setItem(PIN_KEY, JSON.stringify(ids));
-    } catch (e) {}
+      const r = await api('GET', '/users/' + encodeURIComponent(handle) + '/following?limit=50');
+      (r.items || []).forEach(u => FOLLOWING.add(String(u.name || '').toLowerCase()));
+    } catch (e) { /* no follow edges yet, or the reader is a guest */ }
+  }
+  async function setFollowing(name, on) {
+    const handle = String(name || '').replace(/^@/, '');
+    if (!handle) throw new Error('That account has no handle');
+    await api(on ? 'POST' : 'DELETE', '/users/' + encodeURIComponent(handle) + '/follow');
+    if (on) FOLLOWING.add(handle.toLowerCase());
+    else FOLLOWING.delete(handle.toLowerCase());
+  }
+
+  /* ── Pins ───────────────────────────────────────────────────────────
+     The server owns `pinned` (Post.pinned) and already returns the feed
+     pinned-first, so nothing is stamped from local storage here. Only the
+     menu entry is decided client-side: pinning is a staff action. */
+  function canPin() {
+    try { return !!(window.AuthSession && AuthSession.hasRole && AuthSession.hasRole('admin')); }
+    catch (e) { return false; }
   }
   function stampFeedPins(posts) {
-    const ids = loadPinIds();
-    const staff = staffOK();
     (posts || []).forEach(p => {
       if (!p || p.type === 'sponsored') return;
-      if (!p.pinned && ids.indexOf(String(p.id)) > -1) p.pinned = true;
-      if (!p.pinnable) p.pinnable = staff;
+      p.pinnable = canPin();
+      p.following = isFollowing(p.name);
     });
-    const top = posts.filter(p => p && p.pinned);
-    if (top.length) {
-      const rest = posts.filter(p => !p.pinned);
-      posts.length = 0; top.concat(rest).forEach(p => posts.push(p));
-    }
-  }
-
-  /* ── Debate comment count = total arguments posted (seeds + user posts) ── */
-  function debateArgCount(post) {
-    try {
-      if (post && post.type === 'debate' && window.DroboardDebateArgs && DroboardDebateArgs.countFor) {
-        return DroboardDebateArgs.countFor(post.id);
-      }
-    } catch (e) {}
-    return (post && post.comments) || 0;
-  }
-  function stampDebateCounts(posts) {
-    (posts || []).forEach(p => { if (p && p.type === 'debate') p.comments = debateArgCount(p); });
   }
 
   /* ── Hamburger sort/filter — actually re-orders the rendered feed ── */
@@ -78,12 +86,15 @@
     } else if (FEED_SORT === 'trending') {
       organic.sort((a, b) => ((b.comments || 0) - (a.comments || 0)) || ((b.likes || 0) - (a.likes || 0)));
     } else if (FEED_SORT === 'following') {
-      const keep = organic.filter(p => p.type !== 'sponsored' && FOLLOWING.has(p.name));
+      const keep = organic.filter(p => p.type !== 'sponsored' && isFollowing(p.name));
       if (!keep.length) toast('You are not following anyone yet — showing everything');
       else organic = keep;
     } else if (FEED_SORT === 'debates') {
       organic = organic.filter(p => p.type === 'debate');
     }
+    // Pinned posts always lead, whatever the sort is.
+    const pinned = organic.filter(p => p.pinned);
+    if (pinned.length) organic = pinned.concat(organic.filter(p => !p.pinned));
     FEED_POSTS = interleaveAds(organic, AD_POOLS, AD_GAP);
     if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
     const empty = document.getElementById('emptyState');
@@ -142,9 +153,12 @@
     document.getElementById('storiesRow').innerHTML = stories.map(s => {
       const n = s.statuses ? s.statuses.length : 0;
       const ringKey = s.you ? 'you' : (s.name || s.handle || s.id);
+      const avatarHtml = s.avatar
+        ? `<img class="story-avatar" src="${escAttr(s.avatar)}" alt="${escAttr(s.name)}">`
+        : `<div class="story-avatar" style="display:flex;align-items:center;justify-content:center;background:rgba(255,0,80,.25);color:#fff;font-weight:800">${escAttr((s.name || '?').charAt(0).toUpperCase())}</div>`;
       const innerHtml = s.you
-        ? (n ? `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">` : `<div class="story-add">+</div>`)
-        : `<img class="story-avatar" src="${s.avatar}" alt="${escAttr(s.name)}">`;
+        ? (n ? avatarHtml : `<div class="story-add">+</div>`)
+        : avatarHtml;
       return `
       <div class="story-item" data-story-id="${s.id}" data-you="${!!s.you}">
         ${DroboardStatusRing.html(s, { size: 62, key: ringKey, own: !!s.you && !n, isMine: !!s.you, innerHtml })}
@@ -227,38 +241,20 @@
     return { hot: byHot.slice(), mid: byHot.slice().reverse(), more: byHot.slice() };
   }
 
-  function communityFromSeed() {
-    const seed = window.GenreDemoSeed;
-    if (!seed || !seed.DEMO_DISCUSSIONS) return { hot: [], mid: [], more: [] };
-    const all = [];
-    Object.keys(seed.DEMO_DISCUSSIONS).forEach(gid => {
-      const genre = (seed.DEMO_GENRES && seed.DEMO_GENRES[gid]) || { name: gid, id: gid };
-      (seed.DEMO_DISCUSSIONS[gid] || []).forEach((p, i) => {
-        const gName = genre.name || gid;
-        const gId = genre.id || gid;
-        const { media, story, participants, extra, ...rest } = p;
-        all.push({ ...rest, id: 'fc_' + gId + '_' + (p.id || i), _genreId: gId, _genreName: gName, time: (p.time || '') + ' · ' + gName });
+  // Live only — FeedData.getCommunityPosts → GET /discussions/feed. Any
+  // failure throws so init() paints the feed's error empty-state with the
+  // real message; seed rows never substitute for a failed call.
+  async function collectCommunityPosts() {
+    if (!window.FeedData || !FeedData.getCommunityPosts) throw new Error('FeedData is not defined — check feed-data script path');
+    const live = (await FeedData.getCommunityPosts()) || [];
+    const all = live.map(p => {
+      const { media, story, trope, participants, extra, ...rest } = p;
+      return Object.assign({}, rest, {
+        id: String(rest.id),
+        time: (rest.time || '') + (rest._genreName ? ' · ' + rest._genreName : ''),
       });
     });
     return bucketCommunity(all);
-  }
-
-  // Live first (FeedData.getCommunityPosts → GET /discussions/feed), demo/seed
-  // on any failure or empty. Both paths feed the same bucketing + card shape.
-  async function collectCommunityPosts() {
-    let live = [];
-    try { if (window.FeedData && FeedData.getCommunityPosts) live = (await FeedData.getCommunityPosts()) || []; } catch (e) { live = []; }
-    if (live.length) {
-      const all = live.map(p => {
-        const { media, story, trope, participants, extra, ...rest } = p;
-        return Object.assign({}, rest, {
-          id: String(rest.id),
-          time: (rest.time || '') + (rest._genreName ? ' · ' + rest._genreName : ''),
-        });
-      });
-      return bucketCommunity(all);
-    }
-    return communityFromSeed();
   }
 
   function renderCommSlides(posts) {
@@ -273,58 +269,6 @@
     if (sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
     if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
     toast('📖 ' + ttl);
-  }
-  const hubCommentSeeds = {};
-  let hubCommentsCS = null;
-  function seedHubComments(id) {
-    if (!hubCommentSeeds[id]) {
-      try {
-        hubCommentSeeds[id] = (window.COMMENTS_DATA && COMMENTS_DATA.length)
-          ? JSON.parse(JSON.stringify(COMMENTS_DATA))
-          : [{ id: 'demo1', name: 'MayaReads', time: '2h ago', text: 'This thread is so good — demo comments for now.', likes: 12, replies: [] }];
-      } catch (e) {
-        hubCommentSeeds[id] = [];
-      }
-    }
-    return hubCommentSeeds[id];
-  }
-  function closeComments() {
-    const o = document.getElementById('commentOverlay');
-    if (o) o.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  function openHubComments(post) {
-    if (!post) return;
-    const overlay = document.getElementById('commentOverlay');
-    const mount = document.getElementById('commentMount');
-    if (!overlay || !mount || !window.DroboardComments) {
-      location.href = 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id);
-      return;
-    }
-    if (hubCommentsCS && hubCommentsCS.destroy) { try { hubCommentsCS.destroy(); } catch (e) {} hubCommentsCS = null; }
-    mount.innerHTML = '';
-    hubCommentsCS = DroboardComments.attach(mount, {
-      storyId: post.id,
-      title: 'Comments',
-      comments: seedHubComments(post.id),
-      currentUser: { name: 'You', avatar: null },
-      collapsible: false,
-      threadSheet: true,
-      placeholder: 'Add a comment…',
-      fullCommentsUrl: function () {
-        return 'discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id);
-      },
-      onPost: function () {
-        post.comments = (post.comments || 0) + 1;
-        if (window.DroboardGenreCard) DroboardGenreCard.update(post);
-      },
-      onReply: function () {
-        post.comments = (post.comments || 0) + 1;
-        if (window.DroboardGenreCard) DroboardGenreCard.update(post);
-      },
-    });
-    overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
   }
   function openHubDiscussion(post) {
     if (!post) return;
@@ -351,8 +295,7 @@
       },
       onLike: (post) => { post.liked = !post.liked; post.likes = (post.likes || 0) + (post.liked ? 1 : -1); if (window.DroboardGenreCard) DroboardGenreCard.update(post); },
       /* Title / "… See more" and the comments button all open the full
-         discussion page (same as the hub pages). The feed's own comment
-         sheet (openHubComments) is left in place but no longer the target. */
+         discussion page (same as the hub pages). */
       onThread: (post) => openHubDiscussion(post),
       onComment: (post) => openHubDiscussion(post),
       onShare: (post) => shareHubPost(post),
@@ -522,30 +465,45 @@
       },
       onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id }); },
       onSave: (post) => {
-        if(post.type === 'ama'){
-          if(window.openSaveModal) openSaveModal({ title: (post.amaData && post.amaData.title) || 'AMA', sub: (post.amaData && post.amaData.meta) || '@' + post.name, img: post.avatar || '', storyId: post.id, type: 'post' });
-          else { post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved AMA!' : 'Removed AMA'); }
-          return;
-        }
+        /* A post that carries a story saves the STORY (the save sheet owns
+           the story/collection lists); every other post is saved as a post
+           row, which is what the library's Saved tab reads. */
         const ref = storyRefFor(post);
-        if (window.openSaveModal) {
-          if (ref) { openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: post.id }); return; }
-          /* plain posts (text/poll/photo/debate/…) — same save modal as everything else */
-          openSaveModal({
-            title: (post.heading || (post.text ? String(post.text).slice(0, 60) : '')) || (post.name + "'s post"),
-            sub: '@' + post.name,
-            img: post.image || (post.storyRef && post.storyRef.cover) || (post.chapterRef && post.chapterRef.cover) || post.avatar || '',
-            storyId: post.id, type: 'post',
-          });
+        if (ref && ref.id && window.openSaveModal) {
+          openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: ref.id });
           return;
         }
-        post.saved = !post.saved; DroboardPostCard.update(post); toast(post.saved ? '🔖 Saved!' : 'Removed from saved');
+        api('POST', '/posts/' + encodeURIComponent(post.id) + '/save')
+          .then(r => {
+            post.saved = !!r.saved;
+            if (window.DroboardPostCard) DroboardPostCard.update(post);
+            toast(post.saved ? '🔖 Saved!' : 'Removed from saved');
+          })
+          .catch(e => toast(e.message || 'Could not save this post'));
       },
       onDots: (post, anchor) => { try { window._lastDotsAnchor = anchor || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
       onOpenLink: (post) => openStoryGuarded(storyRefFor(post) || (post && (post.storyRef || post.chapterRef))),
-      onPollVote: (post, i) => { if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; } post.poll.opts[i].v++; post.poll.voted = i; post.poll.total = (post.poll.total || 0) + 1; DroboardPostCard.update(post); toast('✅ Vote cast!'); },
-      onDebateVote: (post, side) => { if (post.debateData.userVote) { toast('✅ Already voted!'); return; } post.debateData.userVote = side; if (side === 'for') post.debateData.forV = (post.debateData.forV || 0) + 1; else post.debateData.agV = (post.debateData.agV || 0) + 1; DroboardPostCard.update(post); toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!'); },
+      onPollVote: (post, i) => {
+        if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; }
+        api('POST', '/posts/' + encodeURIComponent(post.id) + '/poll/vote', { option: i })
+          .then(card => {
+            post.poll = card.poll;
+            if (window.DroboardPostCard) DroboardPostCard.update(post);
+            toast('✅ Vote cast!');
+          })
+          .catch(e => toast(e.message || 'Could not cast your vote'));
+      },
+      onDebateVote: (post, side) => {
+        if (post.debateData.userVote) { toast('✅ Already voted!'); return; }
+        api('POST', '/posts/' + encodeURIComponent(post.id) + '/debate/vote', { side: side })
+          .then(card => {
+            post.debateData = card.debateData;
+            if (window.DroboardPostCard) DroboardPostCard.update(post);
+            toast(side === 'for' ? '✅ Voted FOR!' : '❌ Voted AGAINST!');
+          })
+          .catch(e => toast(e.message || 'Could not cast your vote'));
+      },
       onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
     });
   }
@@ -596,34 +554,33 @@
     return null;
   }
   /* attachCounters hooks — the picker owns all toggle math (love/switch/
-     deselect + total-preserving bucket moves). This host only supplies
-     the initial counts and persists the result back onto the post. */
+     deselect + total-preserving bucket moves). This host supplies the
+     server's reaction buckets and persists the choice to the API. */
   function counterHooks() {
     return {
       getCounts: (id) => {
         const p = findReactPost(id);
         if (!p) return null; // unknown id → picker stays inert
-        const likes = p.likes || 0;
-        const buckets = ['crying', 'shocked', 'emotional'];
-        let h = 0;
-        String(id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-        const secondId = buckets[h];
-        const second = Math.min(5, Math.max(0, likes));
-        // seed: love carries most of the total, one secondary bucket for variety
-        const counts = { love: Math.max(0, likes - second) };
-        counts[secondId] = second;
-        return { userRx: (p.userRx || (p.liked ? 'love' : null)) || null, ...counts };
+        const counts = Object.assign({}, p.reactions || {});
+        return { userRx: (p.userRx || null), ...counts };
       },
       save: (id, state) => {
         const p = findReactPost(id);
         if (!p) return;
-        p.userRx = state.userRx;
-        p.liked = state.userRx === 'love';
-        let total = 0;
-        Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
-        p.likes = total;
-        if (FEED_POSTS.includes(p)) { if (window.DroboardPostCard) DroboardPostCard.update(p); }
-        else if (window.DroboardGenreCard) DroboardGenreCard.update(p);
+        const rid = state.userRx || null;
+        const write = rid
+          ? api('POST', '/posts/' + encodeURIComponent(p.id) + '/react', { rid: rid })
+          : api('DELETE', '/posts/' + encodeURIComponent(p.id) + '/react');
+        write.then(r => {
+          p.reactions = r.counts || {};
+          p.userRx = r.userRx || null;
+          p.likes = Object.keys(p.reactions).reduce((n, k) => n + (p.reactions[k] || 0), 0);
+          if (window.DroboardReactionPicker && DroboardReactionPicker.update) {
+            DroboardReactionPicker.update(p.id, Object.assign({ userRx: p.userRx }, p.reactions));
+          }
+          if (FEED_POSTS.includes(p)) { if (window.DroboardPostCard) DroboardPostCard.update(p); }
+          else if (window.DroboardGenreCard) DroboardGenreCard.update(p);
+        }).catch(() => { /* keep the optimistic state until the next load */ });
       },
     };
   }
@@ -652,8 +609,53 @@
   }
 
   /* ── Post Composer (reusable component) ── */
+  /* The composer builds a UI-shaped post; the API wants a content payload.
+     This is the one place the two dialects meet. */
+  function postBody(post) {
+    const b = { type: post.type === 'text' ? 'post' : post.type };
+    if (post.title) b.title = post.title;
+    if (post.text) b.text = post.text;
+    if (post.heading) b.heading = post.heading;
+    if (post.note) b.note = post.note;
+    if (post.image) b.image = post.image;
+    if (post.quote) b.quote = post.quote;
+    if (post.caption) b.caption = post.caption;
+    if (post.quoteBg) b.quoteBg = post.quoteBg;
+    if (post.quoteBgCss) b.quoteBgCss = post.quoteBgCss;
+    if (post.expiresAt) b.expiresAt = post.expiresAt;
+    if (post.poll) {
+      b.poll = {
+        q: post.poll.question || post.poll.q || '',
+        opts: (post.poll.opts || []).map(o => (typeof o === 'string' ? o : (o.label || o.t || ''))).filter(Boolean),
+      };
+    }
+    if (post.debateData) {
+      const d = post.debateData;
+      b.debateData = {
+        motion: d.motion || d.question || '',
+        question: d.motion || d.question || '',
+        prompt: d.prompt || '',
+        forText: d.forText || 'For',
+        againstText: d.againstText || 'Against',
+      };
+    }
+    if (post.amaData) {
+      b.amaData = {
+        isLive: post.amaData.isLive !== false,
+        viewers: post.amaData.viewers || 0,
+        title: post.amaData.title || '',
+        meta: post.amaData.meta || '',
+      };
+    }
+    if (post.storyRef) b.storyRef = post.storyRef;
+    if (post.chapterRef) b.chapterRef = post.chapterRef;
+    return b;
+  }
   function pushPost(post, isEdit){
-    if (post && post.type === 'debate') post.comments = debateArgCount(post);
+    if (post) {
+      post.pinnable = canPin();
+      if (post.following === undefined) post.following = isFollowing(post.name);
+    }
     if(isEdit){
       [BASE_POSTS, FEED_POSTS].forEach(arr => {
         const idx=arr.findIndex(p=> String(p.id)===String(post.id));
@@ -669,178 +671,103 @@
     if(empty) empty.style.display = 'none';
   }
   function openPostComposer(type) {
-    if(window.DroboardPostComposer){
-      DroboardPostComposer.open(type||'text');
-      return;
-    }
-    const el=document.getElementById('postComposerOv');
-    if(el){ el.classList.add('open'); document.body.style.overflow = 'hidden'; }
-    if (type) document.querySelectorAll('.ctype').forEach(t => t.classList.toggle('active', t.dataset.ct === type));
+    if (!window.DroboardPostComposer) { toast('Composer unavailable — post-composer.js failed to load'); return; }
+    DroboardPostComposer.open(type || 'text');
   }
   function closePostComposer() {
-    if(window.DroboardPostComposer){ DroboardPostComposer.close(); return; }
-    const el=document.getElementById('postComposerOv');
-    if(el) el.classList.remove('open');
-    document.body.style.overflow = '';
+    if (window.DroboardPostComposer) DroboardPostComposer.close();
   }
-  function composerStories() {
-    const out = [];
-    const seen = new Set();
-    const push = (s) => {
-      if(!s) return;
-      const key = String(s.id || s.title || '').toLowerCase();
-      if(!key || seen.has(key)) return;
-      seen.add(key);
-      out.push(s);
-    };
-    try { ((window.DemoData && DemoData.STORIES) || []).forEach(push); } catch(e){}
+  /* The composer's story picker (recommendation / chapter drop) offers the
+     real catalogue — GET /api/feed/discover/stories. */
+  async function composerStories() {
     try {
-      const seed = window.GenreDemoSeed;
-      if(seed && seed.DEMO_STORIES) Object.keys(seed.DEMO_STORIES).forEach(gid => { (seed.DEMO_STORIES[gid] || []).forEach(push); });
-    } catch(e){}
-    return out;
+      const r = await api('GET', '/feed/discover/stories?limit=30');
+      const items = Array.isArray(r) ? r : (r.items || []);
+      return items.map(s => ({
+        id: s.id,
+        title: s.title,
+        author: s.author || s.authorName || '',
+        cover: s.cover || s.img || '',
+        cat: s.cat || s.genre || '',
+      }));
+    } catch (e) {
+      return [];
+    }
   }
-  function initComposer() {
-    if(window.DroboardPostComposer){
-      DroboardPostComposer.attach(null, {
-        getUser: ()=> ({ name:'You', avatar:(window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5' }),
-        draftKey: 'dro_feed_composer_draft',
-        stories: composerStories(),
-        onStatusSlide: (slide)=>{
-          if(window.DroboardStatus){ try { window.DroboardStatus.post(slide); } catch (e) {} }
-          STORIES_CACHE = window.DroboardStatus ? window.DroboardStatus.mergeStories(STORIES_CACHE) : STORIES_CACHE;
+  function currentUser() {
+    const s = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+    return { name: s.name || 'You', avatar: s.avatar || '' };
+  }
+  async function initComposer() {
+    if (!window.DroboardPostComposer) { toast('Composer unavailable — post-composer.js failed to load'); return; }
+    DroboardPostComposer.attach(null, {
+      getUser: currentUser,
+      draftKey: 'dro_feed_composer_draft',
+      stories: await composerStories(),
+      onStatusSlide: async (slide)=>{
+        if(!window.DroboardStatus) throw new Error('Status service missing');
+        await window.DroboardStatus.post(slide);
+        STORIES_CACHE = window.DroboardStatus.mergeStories(STORIES_CACHE);
+        renderStories(STORIES_CACHE);
+        toast('🟢 Status posted to your story!');
+      },
+      onSubmit: async (post, isEdit)=>{
+        if(post && post.type==='status'){
+          if(!window.DroboardStatus) throw new Error('Status service missing');
+          await window.DroboardStatus.post(post.statusSlide);
+          STORIES_CACHE = window.DroboardStatus.mergeStories(STORIES_CACHE);
           renderStories(STORIES_CACHE);
           toast('🟢 Status posted to your story!');
-        },
-        onSubmit: (post, isEdit)=>{
-          if(post && post.type==='status'){
-            if(window.DroboardStatus){ try { window.DroboardStatus.post(post.statusSlide); } catch (e) {} }
-            STORIES_CACHE = window.DroboardStatus ? window.DroboardStatus.mergeStories(STORIES_CACHE) : STORIES_CACHE;
-            renderStories(STORIES_CACHE);
-            toast('🟢 Status posted to your story!');
-            return;
-          }
-          pushPost(post, isEdit);
-          if(isEdit) toast('✅ Post updated!');
-          else {
-            const label={text:'Post', post:'Post', poll:'Poll', debate:'Debate', ama:'AMA', quote:'Quote', recommendation:'Recommendation', 'chapter-drop':'Chapter drop'}[post.type]||'Post';
-            toast(post.type==='ama' ? '🎙️ AMA posted!' : `✅ ${label} published!`);
-          }
+          return;
         }
-      });
-      return;
-    }
-    document.querySelectorAll('.ctype').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.ctype').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
+        const body = postBody(post);
+        const card = isEdit
+          ? await api('PATCH', '/posts/' + encodeURIComponent(post.id), body)
+          : await api('POST', '/posts', body);
+        pushPost(card, isEdit);
+        if(isEdit) toast('✅ Post updated!');
+        else {
+          const label={text:'Post', post:'Post', poll:'Poll', debate:'Debate', ama:'AMA', quote:'Quote', recommendation:'Recommendation', 'chapter-drop':'Chapter drop'}[post.type]||'Post';
+          toast(post.type==='ama' ? '🎙️ AMA posted!' : `✅ ${label} published!`);
+        }
+      }
     });
   }
-  function submitPost() {
-    if(window.DroboardPostComposer){
-      // handled inside component
-      return;
-    }
-    const text = document.getElementById('composerText').value.trim();
-    if (!text) { toast('✍️ Write something first!'); return; }
-    const av = (window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5';
-    const activeCt = document.querySelector('.composer-tools .ctype.active');
-    const ct = activeCt ? activeCt.dataset.ct : 'text';
-    if(ct === 'status'){
-      if(window.DroboardStatus){ try { window.DroboardStatus.post({ quote: text ? '"'+text+'"' : '', caption: '' }); } catch (e) {} }
-      STORIES_CACHE = window.DroboardStatus ? window.DroboardStatus.mergeStories(STORIES_CACHE) : STORIES_CACHE;
-      renderStories(STORIES_CACHE);
-      closePostComposer();
-      const el=document.getElementById('composerText'); if(el) el.value='';
-      toast('🟢 Status posted to your story!');
-      return;
-    }
-    let newPost;
-    if(ct === 'ama'){
-      newPost = { id: 'p_' + Date.now(), type: 'ama', name: 'You', avatar: av, time: 'Just now', amaData: { isLive: true, viewers: Math.floor(Math.random()*200+20), title: text.slice(0,60) || 'Ask Me Anything', meta: text.slice(0,120) }, likes: 0, liked: false, comments: 0 };
-    } else if(ct === 'poll'){
-      newPost = { id: 'p_' + Date.now(), type: 'poll', name: 'You', avatar: av, time: 'Just now', poll: { question: text, opts: [{label:'Yes', v:0},{label:'No', v:0}], total:0, voted:-1 }, likes:0, liked:false, comments:0 };
-    } else if(ct === 'debate'){
-      newPost = { id: 'p_' + Date.now(), type: 'debate', name: 'You', avatar: av, time: 'Just now', debateData: { motion: text, question: text, prompt:'Share your thoughts', forText:'For', againstText:'Against', forV:0, agV:0, userVote:null }, likes:0, liked:false, comments:0 };
-    } else if(ct === 'image'){
-      newPost = { id: 'p_' + Date.now(), type: 'post', name: 'You', avatar: av, time: 'Just now', text, image: 'https://picsum.photos/seed/'+Date.now()+'/900/500', likes: 0, liked: false, comments: 0 };
-    } else {
-      newPost = { id: 'p_' + Date.now(), type: 'post', name: 'You', avatar: av, time: 'Just now', text, likes: 0, liked: false, comments: 0 };
-    }
-    pushPost(newPost);
-    closePostComposer();
-    const el=document.getElementById('composerText'); if(el) el.value='';
-    toast(ct === 'ama' ? '🎙️ AMA posted!' : '✅ Post published!');
-  }
 
-  /* ── Menu — My Circle accordion ── */
-  function getMyBoards(){
-    const FALLBACK_ALL = [
-      {id:'fantasy',name:'Fantasy',icon:'fa-hat-wizard',members:'45.7K',tagline:'Where imagination becomes legend.'},
-      {id:'romance',name:'Romance',icon:'fa-heart',members:'92.1K',tagline:'Hearts, heat, and happy endings.'},
-      {id:'werewolf',name:'Werewolf',icon:'fa-moon',members:'31.2K',tagline:'Packs, mates, and moonlit chaos.'},
-      {id:'mafia',name:'Mafia',icon:'fa-gun',members:'18.4K',tagline:'Power, loyalty and betrayal.'},
-      {id:'campus',name:'Campus',icon:'fa-graduation-cap',members:'22.1K',tagline:'Youth, drama and first loves.'},
-      {id:'revenge',name:'Revenge',icon:'fa-fire',members:'15.3K',tagline:'Payback is a story.'},
-      {id:'drama',name:'Drama',icon:'fa-masks-theater',members:'28.9K',tagline:'Everyday chaos and twists.'},
-      {id:'billionaire',name:'Billionaire',icon:'fa-briefcase',members:'34.5K',tagline:'Wealth, power, love.'},
-      {id:'mystery',name:'Mystery',icon:'fa-magnifying-glass',members:'19.7K',tagline:'Clues, secrets, whodunit.'},
-      {id:'horror',name:'Horror',icon:'fa-ghost',members:'12.8K',tagline:'Fear lives here.'},
-      {id:'adventure',name:'Adventure',icon:'fa-compass',members:'16.2K',tagline:'Journeys beyond.'},
-      {id:'scifi',name:'Sci-Fi',icon:'fa-rocket',members:'21.4K',tagline:'Future and beyond.'},
-    ];
-    try{
-      const seed = window.GenreDemoSeed;
-      if(seed && seed.DEMO_GENRES){
-        const seedAll = Object.values(seed.DEMO_GENRES);
-        const allMap={}; FALLBACK_ALL.forEach(g=> allMap[g.id]=g); seedAll.forEach(g=> allMap[g.id]=Object.assign({}, allMap[g.id]||{}, g));
-        const all = Object.values(allMap);
-        const joinedIds = ['fantasy','romance','werewolf'];
-        const joined = all.filter(g=> joinedIds.includes(g.id)).slice(0,5);
-        const rest = all.filter(g=> !joinedIds.includes(g.id));
-        return { joined, rest, all };
-      }
-    }catch(e){}
-    const joinedIds2=['fantasy','romance','werewolf'];
-    return { joined:FALLBACK_ALL.filter(g=>joinedIds2.includes(g.id)), rest:FALLBACK_ALL.filter(g=>!joinedIds2.includes(g.id)), all:FALLBACK_ALL };
+  /* ── Menu — My Circle accordion (live: the reader's own boards + collections) ── */
+  async function getMyBoards(){
+    try {
+      const r = await api('GET', '/categories?limit=50');
+      const all = (r.items || []).map(b => ({
+        id: b.slug || b.id, name: b.name,
+        icon: b.icon || 'fa-hashtag', members: b.members || '0',
+        tagline: b.tagline || b.blurb || '', joined: !!b.isJoined,
+      }));
+      return { joined: all.filter(b => b.joined), rest: all.filter(b => !b.joined), all };
+    } catch (e) { return { joined: [], rest: [], all: [] }; }
   }
-  function getMyCollections(){
-    const FALLBACK_COLLS=[
-      {id:'coll_1', name:'Midnight Reads', count:12, cover:'https://i.postimg.cc/vDn9YLx5/wife2.jpg'},
-      {id:'coll_2', name:'Tear-jerkers', count:8, cover:'https://i.postimg.cc/N9jY0w4m/5.jpg'},
-      {id:'coll_3', name:'Weekend Binge', count:15, cover:'https://i.postimg.cc/RqtfSQJJ/wife3.jpg'},
-      {id:'coll_4', name:'Dark Romance Essentials', count:32, cover:'https://i.postimg.cc/WF1j4Pnh/6.jpg'},
-      {id:'coll_5', name:'Heartfelt Romance', count:24, cover:'https://i.postimg.cc/fkdXzjSj/wife.jpg'},
-      {id:'coll_6', name:'Best of 2025', count:18, cover:'https://i.postimg.cc/xqmHfyNR/wolf2.jpg'},
-      {id:'coll_7', name:'Family Secrets', count:15, cover:'https://i.postimg.cc/fkdXzjS8/wolf.jpg'},
-      {id:'coll_8', name:'Crowned in Sin', count:22, cover:'https://i.postimg.cc/0MyxNqfz/7.jpg'},
-      {id:'coll_9', name:'Fangs & Fortune', count:19, cover:'https://i.postimg.cc/cgLZJNmC/8.jpg'},
-      {id:'coll_10', name:'The Billionaire Never Forgets', count:27, cover:'https://i.postimg.cc/DJwFzKgd/4.jpg'},
-    ];
-    try{
-      const cached = JSON.parse(localStorage.getItem('dro_live_collections') || '[]');
-      if (Array.isArray(cached) && cached.length) {
-        const all = cached.map(c => ({ id: c.id, name: c.name || c.title || 'Collection', count: c.count || c.stories || 0, cover: (c.covers && c.covers[0]) || c.cover || '', _following: c.following === true }));
-        const joined = all.filter(c => c._following);
-        const rest = all.filter(c => !c._following);
-        return { joined: joined.length ? joined.slice(0, 5) : all.slice(0, 3), rest: joined.length ? rest : all.slice(3), all };
-      }
-    }catch(e){}
-    try{
-      const d=window.DemoData;
-      if(d && (d.COLLECTIONS||d.COLLECTIONS_DATA)){
-        const allRaw=d.COLLECTIONS||d.COLLECTIONS_DATA;
-        const all=allRaw.map((c,i)=> ({id:c.id||'coll_'+i, name:c.name||c.title||'Collection', count:c.count||c.stories||0, cover:(c.covers&&c.covers[0])||c.cover||FALLBACK_COLLS[i%FALLBACK_COLLS.length].cover}));
-        const joinedIds=['coll_1','coll_2','coll_3'];
-        const joined=all.filter(c=> joinedIds.includes(c.id)).slice(0,5);
-        const rest=all.filter(c=> !joinedIds.includes(c.id));
-        const finalJoined=joined.length?joined:FALLBACK_COLLS.slice(0,3);
-        const finalRest=rest.length?rest:FALLBACK_COLLS.slice(3);
-        return { joined:finalJoined, rest:finalRest, all: all.length?all:FALLBACK_COLLS };
-      }
-    }catch(e){}
-    return { joined:FALLBACK_COLLS.slice(0,3), rest:FALLBACK_COLLS.slice(3), all:FALLBACK_COLLS };
+  async function getMyCollections(){
+    const map = (r) => {
+      const rows = (r && r.items) || (Array.isArray(r) ? r : []);
+      return rows.map(c => ({
+        id: c.id, name: c.name || c.title || 'Collection',
+        count: c.count || c.stories || 0,
+        cover: c.cover || (c.covers && c.covers[0]) || '',
+      }));
+    };
+    try {
+      const [mine, followed, allRows] = await Promise.all([
+        api('GET', '/collections?owner=me&limit=50'),
+        api('GET', '/collections?followed=1&limit=50'),
+        api('GET', '/collections?limit=50'),
+      ]);
+      const mineRows = map(mine), folRows = map(followed), every = map(allRows);
+      const seen = new Set(), joined = [];
+      mineRows.concat(folRows).forEach(c => {
+        if (!seen.has(c.id)) { seen.add(c.id); joined.push(c); }
+      });
+      return { joined, rest: every.filter(c => !seen.has(c.id)), all: every };
+    } catch (e) { return { joined: [], rest: [], all: [] }; }
   }
   // Droboard official handle always → droboard-page.html (even from demo data)
   function toDroboardPage(h){
@@ -851,11 +778,12 @@
     if(toDroboardPage(h)) location.href='droboard-page.html';
     else location.href='profile.html?handle='+encodeURIComponent(String(h||'').replace(/^@/,'')); 
   }
-  function configureMenu() {
+  async function configureMenu() {
     if (!window.DroboardMenu) return;
-    const user = { name: 'You', handle: 'you', avatar: (window.FeedData && FeedData.YOU_AV) || 'https://i.pravatar.cc/150?img=5' };
-    const boards = getMyBoards();
-    const collData = getMyCollections();
+    const s = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+    const user = { name: s.name || s.fullName || 'You', handle: String(s.handle || s.username || '').replace(/^@/, ''), avatar: s.avatar || '' };
+    const boards = await getMyBoards();
+    const collData = await getMyCollections();
     const myCirclesChildren = [
       { isHeader:true, label:'My Boards' },
       ...boards.joined.slice(0,2).map(g=> ({ id:'board-'+g.id, label:g.name, icon:g.icon||'fa-hashtag', sub:(g.members||'1.2K')+' members', href:'genre-hub.html?genre='+encodeURIComponent(g.id) })),
@@ -887,8 +815,7 @@
         if (item.id === 'new-post') { openPostComposer('text'); return; }
         if (item.id === 'boards-viewall') {
           if (window.BoardsOverlay) {
-            const bd = getMyBoards();
-            BoardsOverlay.open({ joined: bd.joined, rest: bd.rest });
+            getMyBoards().then(bd => BoardsOverlay.open({ joined: bd.joined, rest: bd.rest }));
           } else {
             location.href = 'trending.html';
           }
@@ -929,43 +856,90 @@
           if(window.DroboardPostComposer) DroboardPostComposer.open({editPost: post});
           else toast('✏️ Edit · ' + (post.name || ''));
         },
-        onDelete: (post) => { const i = BASE_POSTS.findIndex(p => p.id === post.id); if (i >= 0) { BASE_POSTS.splice(i, 1); applySort(false); toast('🗑️ Post deleted'); } },
+        onDelete: (post) => {
+          api('DELETE', '/posts/' + encodeURIComponent(post.id))
+            .then(() => {
+              const i = BASE_POSTS.findIndex(p => String(p.id) === String(post.id));
+              if (i >= 0) BASE_POSTS.splice(i, 1);
+              applySort(false);
+              toast('🗑️ Post deleted');
+            })
+            .catch(e => toast(e.message || 'Could not delete this post'));
+        },
         onReport: (post) => {
           if (window.DroboardDotsMenu && DroboardDotsMenu.openReportTypes) DroboardDotsMenu.openReportTypes(post, window._lastDotsAnchor || null);
           else toast('🚩 Reported. Thanks for flagging.');
         },
         onReportType: (post, typeId) => {
-          try {
-            const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
-            reports.push({ postId: post.id, typeId, at: Date.now() });
-            localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
-          } catch(e) {}
-          toast('🚩 Report filed. Our team will review it.');
+          api('POST', '/reports', { target: 'post', targetId: post.id, reason: typeId })
+            .then(() => toast('🚩 Report filed. Our team will review it.'))
+            .catch(e => toast(e.message || 'Could not file the report'));
         },
-        onLess: () => toast('Got it — showing less of this.'),
-        onFollow: (post) => { followName(post && post.name); toast('Following @' + (post.name || 'user')); },
-          onMute: (post) => toast('Muted @' + (post.name || 'user')),
-          onPin: (post) => {
-            if (!staffOK()) { toast('Only moderators can pin.'); return; }
-            post.pinned = true; savePinId(post.id, true);
-            const i = FEED_POSTS.findIndex(p => p.id === post.id);
-            if (i > 0) { FEED_POSTS.splice(i, 1); FEED_POSTS.unshift(post); }
-            if (window.DroboardPostCard) DroboardPostCard.setPosts(FEED_POSTS);
-            toast('📌 Pinned to top');
-          },
-          onUnpin: (post) => {
-            if (!staffOK()) { toast('Only moderators can unpin.'); return; }
-            post.pinned = false; savePinId(post.id, false);
-            if (window.DroboardPostCard) DroboardPostCard.update(post);
-            toast('Unpinned');
-          },
+        onLess: (post) => {
+          api('POST', '/posts/' + encodeURIComponent(post.id) + '/hide')
+            .then(() => {
+              const i = BASE_POSTS.findIndex(p => String(p.id) === String(post.id));
+              if (i >= 0) BASE_POSTS.splice(i, 1);
+              applySort(false);
+              toast('Got it — showing less of this.');
+            })
+            .catch(e => toast(e.message || 'Could not hide this post'));
+        },
+        onFollow: (post) => {
+          setFollowing(post && post.name, true)
+            .then(() => {
+              if (post) post.following = true;
+              toast('Following @' + (post.name || 'user'));
+            })
+            .catch(e => toast(e.message || 'Could not follow this account'));
+        },
+        onUnfollow: (post) => {
+          setFollowing(post && post.name, false)
+            .then(() => {
+              if (post) post.following = false;
+              toast('Unfollowed @' + (post.name || 'user'));
+            })
+            .catch(e => toast(e.message || 'Could not unfollow this account'));
+        },
+        onMute: (post) => {
+          const handle = String((post && post.name) || '').replace(/^@/, '');
+          if (!handle) { toast('Could not mute this account'); return; }
+          api('POST', '/users/' + encodeURIComponent(handle) + '/mute')
+            .then(() => {
+              const keep = BASE_POSTS.filter(p => String(p.name || '').toLowerCase() !== handle.toLowerCase());
+              BASE_POSTS.length = 0; keep.forEach(p => BASE_POSTS.push(p));
+              applySort(false);
+              toast('Muted @' + handle);
+            })
+            .catch(e => toast(e.message || 'Could not mute this account'));
+        },
+        onPin: (post) => {
+          if (!canPin()) { toast('Only moderators can pin.'); return; }
+          api('PATCH', '/posts/' + encodeURIComponent(post.id), { pinned: true })
+            .then(() => {
+              post.pinned = true;
+              applySort(false);
+              toast('📌 Pinned to top');
+            })
+            .catch(e => toast(e.message || 'Could not pin this post'));
+        },
+        onUnpin: (post) => {
+          if (!canPin()) { toast('Only moderators can unpin.'); return; }
+          api('PATCH', '/posts/' + encodeURIComponent(post.id), { pinned: false })
+            .then(() => {
+              post.pinned = false;
+              if (window.DroboardPostCard) DroboardPostCard.update(post);
+              toast('Unpinned');
+            })
+            .catch(e => toast(e.message || 'Could not unpin this post'));
+        },
         onCopyLink: (post) => { const url = 'https://droboard.app/post/' + post.id; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied')).catch(() => toast('🔗 ' + url)); else toast('🔗 ' + url); },
       });
     }
     bindStories();
     initTabs();
-    initComposer();
-    configureMenu();
+    await initComposer();
+    await configureMenu();
     await mountPromo();
      // global @droboard tap → droboard-page (catches post-card inline handles)
     document.addEventListener('click', function(e){
@@ -978,7 +952,9 @@
     try {
       if (!window.FeedData) throw new Error('FeedData is not defined — check feed-data script path');
       let [stories, posts] = await Promise.all([FeedData.getStories(), FeedData.getFeedPosts()]);
-      try { if (window.DroboardStatus) stories = window.DroboardStatus.mergeStories(stories); } catch (e) {}
+      let mineReady = false;
+      try { if (window.DroboardStatus) { await window.DroboardStatus.refreshMine(); mineReady = true; } } catch (e) { toast('Could not load your story ring — refresh to retry.'); }
+      if (mineReady) { try { stories = window.DroboardStatus.mergeStories(stories); } catch (e) {} }
       let adPools = {}, adGap = 3;
       if (window.AdService) {
         try {
@@ -991,8 +967,7 @@
       STORIES_CACHE = stories;
       BASE_POSTS = posts;
       AD_POOLS = adPools; AD_GAP = adGap;
-      loadFollowing();
-      stampDebateCounts(BASE_POSTS);
+      await loadFollowing();
       stampFeedPins(BASE_POSTS);
       FEED_POSTS = interleaveAds(BASE_POSTS, AD_POOLS, AD_GAP);
       renderStories(STORIES_CACHE);
@@ -1018,10 +993,7 @@
       console.error('[feed] init() failed:', err);
     }
     if (window.DroboardSearch) {
-      let searchData;
-      if (window.SearchIndex) { try { searchData = await SearchIndex.build(); } catch (e) {} }
       DroboardSearch.configure({
-        data: searchData,
         onOpenStory: (s) => { location.href = 'bridge.html?id=' + encodeURIComponent((s && s.id) || ''); },
         onOpenWriter: (w) => {
           const h = (w && (w.handle || w.name)) || '';
@@ -1036,5 +1008,5 @@
 
   function goToTrending() { location.href = 'trending.html'; }
 
-  window.FeedPage = { init, toast, toggleTheme, openPostComposer, closePostComposer, submitPost, goToTrending, closeComments };
+  window.FeedPage = { init, toast, toggleTheme, openPostComposer, closePostComposer, goToTrending };
 })();

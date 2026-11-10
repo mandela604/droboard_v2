@@ -109,18 +109,11 @@ async function loadAuthors(){
     const remote = await callBackend('/authors?limit=200');
     if (!remote || !Array.isArray(remote.items)) throw new Error('no authors endpoint');
     assigned = remote.items.map(mapBackendAuthor);
-    usingDemoData = false;
   }catch(err){
-    console.warn('Authors live data unavailable, using demo:', err.message);
-    usingDemoData = true;
-    try{
-      const data = await SeniorEditorData.getAuthors();
-      assigned = (Array.isArray(data) ? data : (data.authors || []))
-        .map(a => Object.assign({}, a, { source: a.source || 'assigned' }));
-    }catch(e){ assigned = []; }
+    document.getElementById('authorList').innerHTML = `<div class="empty-msg" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load authors: ${err.message}</div>`;
+    return;
   }
-  const extra = usingDemoData ? referredWriters().map(mapReferredWriter) : [];
-  AUTHORS = mergeAuthors(assigned, extra);
+  AUTHORS = assigned;
   populateGenreFilter();
   renderStats();
   renderAuthors();

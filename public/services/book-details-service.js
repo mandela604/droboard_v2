@@ -1,14 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════
    BOOK DETAILS SERVICE (story landing page)
-   HTML calls BookDetailsPage.init(). Demo assembles from
-   central-demo-data.js STORY (+ profile books for writer catalogs).
-   When going live: set USE_API = true, point API_BASE at the backend.
-   API contract: GET /api/books/:id → normalized story record.
+   HTML calls BookDetailsPage.init(). LIVE ONLY: the story, its
+   chapters, the reviews grid and the more-like-this row all come
+   from the backend:
+     GET /api/books/:id            → story + chapters + writer + similar
+     GET /api/stories/:id/ratings  → reader reviews (paginated)
+   On API failure the page shows its explicit empty-state with the
+   failure message — no demo assembly anywhere.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const USE_API = false;
   const API_BASE = '/api';
   const THEME_KEY = 'droboardTheme';
 
@@ -26,6 +28,7 @@
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  function fmtN(n) { n = +n || 0; return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? (n / 1e3).toFixed(1) + 'k' : String(n); }
   /* ── Theme ── */
   function applyThemeIcon(t) {
     const icon = document.getElementById('themeIcon');
@@ -45,89 +48,77 @@
     try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
   }
 
-  /* ── Demo assembly ── */
-  function profileBooks() {
-    const out = [];
-    try {
-      const seed = window.ProfileDemoSeed;
-      if (!seed || !seed.DEMO_PROFILES) return out;
-      Object.keys(seed.DEMO_PROFILES).forEach(handle => {
-        const p = seed.DEMO_PROFILES[handle];
-        (p.books || []).forEach(b => out.push({
-          id: b.id, title: b.title, cover: b.cover, cat: b.cat,
-          author: p.name, authorHandle: p.handle,
-          reads: b.reads, likes: b.likes, rating: b.rating,
-          chapterCount: b.chapters, source: 'profile',
-        }));
-      });
-    } catch (e) {}
-    return out;
-  }
-  function synthChapters(book) {
-    const n = Math.max(1, +book.chapterCount || 1);
-    const list = [];
-    for (let i = 1; i <= n; i++) {
-      list.push({
-        id: book.id + '_ch' + i, num: i,
-        title: 'Chapter ' + i,
-        date: 'Ch. ' + i + ' of ' + n,
-        reads: 0, locked: i > 3,
-      });
+  /* ── Live fetch ── */
+  async function fetchStory(id) {
+    const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include' });
+    let j = null;
+    try { j = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) {
+      const detail = (j && (j.error || j.message)) || '';
+      throw new Error('Story not found (' + res.status + ')' + (detail ? ' — ' + detail : ''));
     }
-    return list;
+    return normalizeStory(j);
   }
-  function normalizeStory(rec) {
-    if (!rec) return null;
-    if (rec.source === 'profile') {
-      return {
-        id: rec.id, title: rec.title, cover: rec.cover, cat: rec.cat,
-        author: rec.author, authorHandle: rec.authorHandle,
-        tagline: '', status: 'ongoing', seasons: 1,
-        reads: rec.reads || '0', likes: rec.likes || '0',
-        rating: rec.rating || '—', comments: '', saves: '',
-        chapters: synthChapters(rec),
-      };
-    }
+
+  // GET /api/books/:id → page shape. No synthesis: missing fields stay
+  // empty and the renderers show honest empty states.
+  function normalizeStory(b) {
+    if (!b) return null;
+    const w = b.writer || {};
+    const stats = b.stats || {};
+    const rows = Array.isArray(b.chapters) ? b.chapters : [];
     return {
-      id: rec.id, title: rec.title, cover: rec.cover, cat: rec.cat,
-      author: rec.author || rec.authorName || '', authorHandle: rec.authorHandle || rec.author || '',
-      tagline: rec.tagline || rec.desc || '', status: rec.status || 'ongoing',
-      seasons: rec.seasons || 1,
-      reads: rec.reads || '0', likes: rec.likes || '0',
-      rating: rec.rating || '—', comments: rec.comments || '', saves: rec.saves || '',
-      chapters: (rec.chapters || []).map(c => ({
-        id: c.id, num: c.num, title: c.title, date: c.date,
-        reads: c.reads || 0, locked: c.status !== 'published',
+      id: b.id, title: b.title || 'Untitled', cover: b.cover || '',
+      cat: b.genre || '',
+      author: w.name || w.username || '', authorHandle: w.username || '',
+      tagline: b.synopsis || '', status: b.status || 'ongoing',
+      reads: fmtN(stats.reads || 0), likes: fmtN(stats.likes || 0),
+      rating: stats.rating ? stats.rating.toFixed ? Number(stats.rating).toFixed(1) : String(stats.rating) : '—',
+      comments: stats.comments ? fmtN(stats.comments) : '',
+      saves: '',
+      chapters: rows.map(c => ({
+        id: c.id, num: c.n, title: c.title || ('Chapter ' + c.n),
+        date: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min read' : '',
+        reads: c.views || 0,
+        locked: (c.price || 0) > 0,
+      })),
+      similar: (b.similar || []).map(x => ({
+        id: x.id, title: x.title || '', cover: x.cover || '',
       })),
     };
   }
-  function findDemo(id) {
-    const d = window.DemoData || {};
-    const hit = (d.STORY_RECORDS || []).find(s => String(s.id) === String(id));
-    if (hit) return normalizeStory(hit);
-    const pb = profileBooks().find(b => String(b.id) === String(id));
-    if (pb) return normalizeStory(pb);
-    return normalizeStory((d.STORY_RECORDS || [])[0]);
+
+  /* ── Reviews — GET /api/stories/:id/ratings (paginated BookRating rows) ── */
+  function timeAgo(ts) {
+    const s = Math.max(1, Math.round((Date.now() - ts) / 1000));
+    if (s < 3600) return Math.round(s / 60) + 'm ago';
+    if (s < 86400) return Math.round(s / 3600) + 'h ago';
+    if (s < 604800) return Math.round(s / 86400) + 'd ago';
+    return Math.round(s / 604800) + 'w ago';
   }
-  async function fetchStory(id) {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error('Story API failed');
-      return normalizeStory(await res.json());
-    }
-    await new Promise(r => setTimeout(r, 120));
-    return findDemo(id);
+  async function fetchReviews() {
+    const res = await fetch(`${API_BASE}/stories/${encodeURIComponent(STORY.id)}/ratings?limit=6&sort=helpful`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Reviews failed (' + res.status + ')');
+    const j = await res.json();
+    return j.items || [];
   }
-  function demoReviews() {
-    const d = window.DemoData || {};
-    return ((d.COMMENTS || []).slice(0, 3)).map(c => ({
-      name: c.name, avatar: c.avatar, time: c.time,
-      text: c.text, likes: c.likes,
-    }));
-  }
-  function moreLike() {
-    const d = window.DemoData || {};
-    return (d.STORY_RECORDS || []).filter(s => !STORY || String(s.id) !== String(STORY.id)).slice(0, 4);
+  function renderReviews(revs) {
+    const el = document.getElementById('revList');
+    if (!el) return;
+    if (!revs.length) { el.innerHTML = `<div class="panel-empty"><i class="fas fa-star"></i>No reviews yet.</div>`; return; }
+    el.innerHTML = revs.map(r => `
+      <div class="rev-card">
+        <div class="rev-head">
+          <div class="rev-av">${esc((r.name || '?')[0].toUpperCase())}</div>
+          <div class="rev-info">
+            <div class="rev-name">${esc(r.name || '')}</div>
+            <div class="rev-time">${esc(timeAgo(r.createdAt || Date.now()))}</div>
+          </div>
+          <div class="rev-stars">${'★'.repeat(r.stars || 0)}${'☆'.repeat(5 - (r.stars || 0))}</div>
+        </div>
+        <div class="rev-text">${esc(r.text || '')}</div>
+        <div class="rev-foot"><i class="far fa-thumbs-up"></i> Helpful (${esc(String(r.helpful || 0))})</div>
+      </div>`).join('');
   }
 
   /* ── Render ── */
@@ -183,12 +174,10 @@
   function renderDetails(s) {
     const rows = [
       ['Status', statusLabel(s.status)],
-      ['Seasons', String(s.seasons || 1)],
       ['Genre', s.cat || '—'],
       ['Chapters', String((s.chapters || []).length)],
     ];
     if (s.comments) rows.push(['Comments', s.comments]);
-    if (s.saves) rows.push(['Saved by', s.saves]);
     document.getElementById('detGrid').innerHTML = rows.map(([k, v]) =>
       `<div class="det-item"><div class="det-k">${k}</div><div class="det-v">${esc(v)}</div></div>`
     ).join('');
@@ -208,25 +197,8 @@
       location.href = 'profile.html?u=' + encodeURIComponent(s.authorHandle || s.author);
     }, { once: true });
   }
-  function renderReviews() {
-    const revs = demoReviews();
-    const el = document.getElementById('revList');
-    if (!revs.length) { el.innerHTML = `<div class="panel-empty"><i class="fas fa-star"></i>No reviews yet.</div>`; return; }
-    el.innerHTML = revs.map(r => `
-      <div class="rev-card">
-        <div class="rev-head">
-          <div class="rev-av">${esc((r.name || '?')[0].toUpperCase())}</div>
-          <div class="rev-info">
-            <div class="rev-name">${esc(r.name || '')}</div>
-            <div class="rev-time">${esc(r.time || '')}</div>
-          </div>
-        </div>
-        <div class="rev-text">${esc(r.text || '')}</div>
-        <div class="rev-foot"><i class="far fa-thumbs-up"></i> Helpful (${esc(String(r.likes || 0))})</div>
-      </div>`).join('');
-  }
   function renderMore() {
-    const items = moreLike();
+    const items = STORY.similar || [];
     const sec = document.getElementById('moreSec');
     if (!items.length) { sec.style.display = 'none'; return; }
     sec.style.display = 'block';
@@ -270,22 +242,34 @@
     document.getElementById('btnRead').addEventListener('click', goReader);
     document.getElementById('btnLib').addEventListener('click', openSave);
     document.getElementById('btnShare').addEventListener('click', openShare);
+    let failMsg = '';
     try {
       STORY = await fetchStory(id || '');
     } catch (err) {
       console.error('[book-details] init() failed:', err);
       STORY = null;
+      failMsg = (err && err.message) || 'Failed to load story.';
     }
     document.getElementById('loadingState').style.display = 'none';
-    if (!STORY) { document.getElementById('emptyState').style.display = 'block'; return; }
+    if (!STORY) {
+      // Explicit error empty-state carrying the backend failure message —
+      // demo content is never substituted.
+      const empty = document.getElementById('emptyState');
+      if (empty) empty.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size:28px;display:block;margin-bottom:10px;color:var(--acc,#ff0050)"></i>Could not load this story — ' + esc(failMsg);
+      document.getElementById('emptyState').style.display = 'block';
+      return;
+    }
     document.getElementById('detailsRoot').style.display = 'block';
     renderHero(STORY);
     renderSynopsis(STORY);
     renderChapters(STORY);
     renderDetails(STORY);
     renderAuthor(STORY);
-    renderReviews();
     renderMore();
+    fetchReviews().then(renderReviews).catch(err => {
+      const el = document.getElementById('revList');
+      if (el) el.innerHTML = `<div class="panel-empty"><i class="fas fa-exclamation-circle"></i>Could not load reviews — ${esc((err && err.message) || 'request failed')}</div>`;
+    });
     window.onDroboardSaveChange = function (storyId, saved) {
       if (String(storyId) === String(STORY.id)) toast(saved ? 'Saved to library' : 'Removed from library');
     };

@@ -2,7 +2,7 @@
 const { z } = require('zod');
 const base = require('../controllers/base.controller');
 const notifications = require('../services/notifications.service');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { validate, generalLimiter, writeLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -57,8 +57,15 @@ router.post('/', requireAuth, writeLimiter,
     userId: req.user.id, body: req.valid.body,
   })));
 
-router.get('/unread-count', requireAuth, generalLimiter,
-  async (req, res) => base.wrap(res, async () => notifications.unreadCount(req.user.id)));
+// The bell polls this on every page. For a signed-out visitor the answer is a
+// valid zero, not a 401: the count really is zero, and a 401 made every public
+// page log an auth error in the browser console.
+router.get('/unread-count', optionalAuth, generalLimiter,
+  async (req, res) => base.wrap(res, async () => (
+    req.user
+      ? notifications.unreadCount(req.user.id)
+      : { count: 0, chats: 0 }
+  )));
 
 router.post('/read', requireAuth, writeLimiter,
   validate(z.object({ body: z.object({ id: z.string().max(40).optional() }).strict() })),

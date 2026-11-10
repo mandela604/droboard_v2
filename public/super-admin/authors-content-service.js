@@ -1,42 +1,22 @@
 /**
- * authors-content-service.js — Data layer for Authors & Content page
- * Reads from window.AdminDemo.AUTHORS_*
- * Falls back to empty arrays if demo data is missing.
- * Backend-ready: swap USE_API=true, no HTML change.
- */
+/* authors-content-service.js — Data layer for Authors & Content page */
 (function(){
 'use strict';
 if(window.__authorsContentService) return;
 window.__authorsContentService = true;
 
-/* Demo-data self-load: page HTML no longer includes data/admin-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.AdminDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="data/admin-demo-data.js"><\/script>');
-}
-
-var USE_API = false;
+var USE_API = true;
 var API_BASE = window.DROBOARD_API_BASE || '/api/super-admin/authors';
 var TIMEOUT_MS = 2500;
 function timeoutFetch(url, opts){
   var c = new AbortController();
   var t = setTimeout(function(){ c.abort(); }, TIMEOUT_MS);
-  return fetch(url, Object.assign({signal:c.signal}, opts||{})).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error(r.status); return r.json(); }).catch(function(e){ clearTimeout(t); throw e; });
+  return fetch(url, Object.assign({signal:c.signal, credentials:'include'}, opts||{})).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error(r.status); return r.json(); }).catch(function(e){ clearTimeout(t); throw e; });
 }
 
 var _authors = [];
 var _genreColors = {};
 var _genres = [];
-
-function loadFromDemo(){
-  var D = window.AdminDemo || {};
-  _authors = JSON.parse(JSON.stringify(D.AUTHORS_AUTHORS || []));
-  _genreColors = D.AUTHORS_GENRE_COLORS || {};
-  _genres = D.AUTHORS_GENRES || [];
-}
-loadFromDemo();
-/* Data script self-injected above executes after this file — re-sync once parsed (renders only, no re-bind). */
-if(!_authors.length) window.addEventListener('DOMContentLoaded', function(){ loadFromDemo(); renderStatCards(); applyFilters(); renderGenreBreakdown(); });
 
 function authors(){ return _authors; }
 function genreColors(){ return _genreColors; }

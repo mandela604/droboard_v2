@@ -4,15 +4,12 @@
 'use strict';
 
 /* ── Backend-ready header ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/chief';
 async function callBackend(path, opts){
-  if(!USE_API) return null;
-  try{
-    const res = await fetch(API_BASE + path, opts);
-    if(!res.ok) throw new Error('Backend error: ' + res.status);
-    return await res.json();
-  }catch(e){ return null; }
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+  if(!res.ok) throw new Error('Backend error: ' + res.status);
+  return res.json();
 }
 
 /* Live loader: GET /books (paged {items,total,...}) → demo BOOKS field names.
@@ -20,8 +17,7 @@ async function callBackend(path, opts){
    createdAt→dateAdded. This page only renders books, so only /books is wired. */
 async function loadLiveBooks(){
   const d = await callBackend('/books?limit=50');
-  if(!d || !Array.isArray(d.items)) return null;
-  return d.items.map(b => ({
+  return (d && (Array.isArray(d) ? d : d.items) || []).map(b => ({
     id: b.id,
     title: b.title || '',
     author: b.authorId || '',

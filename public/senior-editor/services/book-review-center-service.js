@@ -1,12 +1,9 @@
 /**
- * book-review-center-service.js — Book Review Center page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false (uses DroboardAPI demo layer).
- */
+ * book-review-center-service.js — Book Review Center page logic (pure call-and-render). */
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
@@ -43,9 +40,7 @@ function applyFilters() {
 }
 
 async function refresh() {
-  try {
-    // Backend swap point: when USE_API=true, prefer callBackend over DroboardAPI demo layer.
-    const backend = await callBackend('/book-reviews');
+  try {    const backend = await callBackend('/book-reviews');
     fullReviews = (backend && backend.items) ? backend.items : (await DroboardAPI.getReviews()).items;
     applyFilters();
     renderTable(); renderStats(); renderTabs();

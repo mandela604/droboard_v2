@@ -18,8 +18,14 @@ async function callBackend(path, options){
 let LOGS=[];
 function toast(m){ if(typeof window.toast==='function'){ try{ window.toast(m); return; }catch(e){} } }
 async function loadLogs(){
-  const d=await SeniorEditorData.getActivityLogs();
-  LOGS=Array.isArray(d)?d:(d&&Array.isArray(d.items)?d.items:[]);
+  try {
+    const d = await callBackend('/activity-logs');
+    LOGS = Array.isArray(d) ? d : (d && Array.isArray(d.items) ? d.items : []);
+    if (!LOGS.length && d && !Array.isArray(d)) throw new Error('Unexpected response format');
+  } catch(err) {
+    document.getElementById('tableBody').innerHTML = `<tr class="empty-row"><td colspan="6" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load activity logs: ${err.message}</td></tr>`;
+    return;
+  }
   refresh();
   renderPagination();
 }

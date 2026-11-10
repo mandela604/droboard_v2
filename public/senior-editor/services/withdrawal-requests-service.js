@@ -1,8 +1,5 @@
 /**
- * withdrawal-requests-service.js — Withdrawal Requests page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * withdrawal-requests-service.js — Withdrawal Requests page logic (pure call-and-render). */
 (function () {
 'use strict';
 

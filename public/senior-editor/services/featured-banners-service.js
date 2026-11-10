@@ -1,14 +1,12 @@
 /**
  * featured-banners-service.js — Page UI layer for Featured & Banners page
- * Pure call-and-render: HTML loads this service, then calls init().
- * Backend-ready: set USE_API=true and implement callBackend when API exists.
- */
+ * Pure call-and-render: HTML loads this service, then calls init(). */
 (function(){
 'use strict';
 if(window.FeaturedBannersService && window.FeaturedBannersService.__ready) return;
 
 /* ── Backend-ready header ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, opts){
   if(!USE_API) return null;

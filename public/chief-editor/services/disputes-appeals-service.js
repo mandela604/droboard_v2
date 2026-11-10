@@ -8,11 +8,10 @@ if(window.__disputesAppealsService) return;
 window.__disputesAppealsService = true;
 
 /* ── Backend-ready header ── */
-var USE_API = false;
+var USE_API = true;
 var API_BASE = window.DROBOARD_API_BASE || '/api/chief';
 var TIMEOUT_MS = 2500;
 async function callBackend(path, opts){
-  if(!USE_API) return null;
   return timeoutFetch(API_BASE + path, opts);
 }
 function timeoutFetch(url, opts){

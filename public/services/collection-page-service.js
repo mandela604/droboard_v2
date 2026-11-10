@@ -1,28 +1,46 @@
 /* ═══════════════════════════════════════════════════════════════
-   COLLECTION PAGE SERVICE (call-and-render)
-   Page-inline logic moved verbatim from Pages/collection.html.
-   Backend-ready: set USE_API=true and point API_BASE at the live API;
-   demo behavior stays (CollectionData/DemoData fallback) while USE_API=false.
+   COLLECTION PAGE SERVICE
+   All data comes from the live API. No demo fallbacks.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const USE_API = true, API_BASE = '/api';
+  const API_BASE = '/api';
 
   let currentCollection = null;
-  let collStories = []; let collPage = 1; const COLL_PER = 10; let collSort = 'latest';
+  let collStories = [];
+  let collPage = 1;
+  const COLL_PER = 10;
+  let collSort = 'latest';
   let following = false;
 
-  function collId() { return (currentCollection && currentCollection.id) || new URLSearchParams(location.search).get('id'); }
+  // In-flight GET deduplication
+  const _pending = new Map();
+
+  function collId() {
+    return (currentCollection && currentCollection.id) || new URLSearchParams(location.search).get('id');
+  }
+
   async function liveReq(method, path, body) {
-    const res = await fetch(API_BASE + path, {
-      method, credentials: 'include',
+    const cacheKey = method === 'GET' ? `${method}:${path}` : null;
+    if (cacheKey && _pending.has(cacheKey)) return _pending.get(cacheKey);
+
+    const promise = fetch(API_BASE + path, {
+      method,
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
+    }).then(async res => {
+      if (!res.ok) throw new Error('api_' + res.status);
+      return res.json();
+    }).finally(() => {
+      if (cacheKey) _pending.delete(cacheKey);
     });
-    if (!res.ok) throw new Error('api_' + res.status);
-    return res.json();
+
+    if (cacheKey) _pending.set(cacheKey, promise);
+    return promise;
   }
+
   function paintFollow() {
     const btn = document.getElementById('followBtn');
     if (!btn) return;
@@ -30,26 +48,36 @@
       ? '<i class="fas fa-check"></i> Following'
       : '<i class="fas fa-plus"></i> Follow Collection';
   }
+
   async function syncLiveState() {
-    const j = await liveReq('GET', '/collections/' + encodeURIComponent(collId()));
-    if (!j || !j.id) return;
-    if (typeof j.following === 'boolean') { following = j.following; paintFollow(); }
-    if (j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
+    try {
+      const j = await liveReq('GET', '/collections/' + encodeURIComponent(collId()));
+      if (!j || !j.id) return;
+      if (typeof j.following === 'boolean') { following = j.following; paintFollow(); }
+      if (j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
+    } catch (e) {}
   }
 
   function renderCollPage() {
-    const total = collStories.length; const tp = Math.max(1, Math.ceil(total / COLL_PER));
+    const total = collStories.length;
+    const tp = Math.max(1, Math.ceil(total / COLL_PER));
     if (collPage > tp) collPage = tp;
-    const start = (collPage - 1) * COLL_PER; const slice = collStories.slice(start, start + COLL_PER);
-    document.getElementById('storyList').innerHTML = slice.map(renderBookCard).join('') || '<div style="padding:30px 14px;text-align:center;color:var(--gray-400)">No stories in this collection yet.</div>';
+    const start = (collPage - 1) * COLL_PER;
+    const slice = collStories.slice(start, start + COLL_PER);
+    document.getElementById('storyList').innerHTML =
+      slice.map(renderBookCard).join('') ||
+      '<div style="padding:30px 14px;text-align:center;color:var(--gray-400)">No stories in this collection yet.</div>';
     const pager = document.getElementById('collPager');
     if (tp <= 1) { pager.innerHTML = ''; return; }
-    let h = '<button class="sort-btn" data-p="prev" '+(collPage===1?'style="opacity:.4;pointer-events:none"':'')+'><i class="fas fa-chevron-left"></i></button>';
-    for (let i=1;i<=tp;i++) h += '<button class="sort-btn" data-p="'+i+'" style="'+(i===collPage?'background:var(--pink);color:#fff;border-color:var(--pink)':'')+'">'+i+'</button>';
-    h += '<button class="sort-btn" data-p="next" '+(collPage===tp?'style="opacity:.4;pointer-events:none"':'')+'><i class="fas fa-chevron-right"></i></button>';
+    let h = '<button class="sort-btn" data-p="prev" ' + (collPage === 1 ? 'style="opacity:.4;pointer-events:none"' : '') + '><i class="fas fa-chevron-left"></i></button>';
+    for (let i = 1; i <= tp; i++) h += '<button class="sort-btn" data-p="' + i + '" style="' + (i === collPage ? 'background:var(--pink);color:#fff;border-color:var(--pink)' : '') + '">' + i + '</button>';
+    h += '<button class="sort-btn" data-p="next" ' + (collPage === tp ? 'style="opacity:.4;pointer-events:none"' : '') + '><i class="fas fa-chevron-right"></i></button>';
     pager.innerHTML = h;
-    pager.querySelectorAll('[data-p]').forEach(b=> b.addEventListener('click', ()=>{
-      const p=b.dataset.p; if(p==='prev') collPage--; else if(p==='next') collPage++; else collPage=parseInt(p); renderCollPage(); document.getElementById('storyList').scrollIntoView({behavior:'smooth',block:'start'});
+    pager.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => {
+      const p = b.dataset.p;
+      if (p === 'prev') collPage--; else if (p === 'next') collPage++; else collPage = parseInt(p);
+      renderCollPage();
+      document.getElementById('storyList').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
   }
 
@@ -74,25 +102,41 @@
   }
 
   async function loadCollection() {
-    const params = new URLSearchParams(location.search);
-    const colId = params.get('id') || 'col1';
-    let ov = null; try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); ov = m[colId]||null; } catch(e){}
-    currentCollection = ov || await CollectionData.getCollection(colId);
-    if (!currentCollection) {
+    const colId = new URLSearchParams(location.search).get('id');
+    if (!colId) {
+      document.getElementById('heroSection').innerHTML =
+        '<div style="padding:40px 20px;text-align:center;color:var(--tx-muted)">No collection specified.</div>';
+      return;
+    }
+
+    try {
+      currentCollection = await liveReq('GET', '/collections/' + encodeURIComponent(colId));
+    } catch (e) {
       document.getElementById('heroSection').innerHTML =
         '<div style="padding:40px 20px;text-align:center;color:var(--tx-muted)">Collection not found.</div>';
       return;
     }
+
+    if (!currentCollection || !currentCollection.id) {
+      document.getElementById('heroSection').innerHTML =
+        '<div style="padding:40px 20px;text-align:center;color:var(--tx-muted)">Collection not found.</div>';
+      return;
+    }
+
     renderHero(currentCollection);
     renderStats(currentCollection);
     renderAbout(currentCollection);
     renderCurated(currentCollection);
 
-    collStories = currentCollection.storyList && currentCollection.storyList.length ? currentCollection.storyList : await CollectionData.getCollectionStories(colId);
-    if (ov && ov.storyList) collStories = ov.storyList;
-    renderCollPage();
-    syncLiveState();
+    if (typeof currentCollection.following === 'boolean') {
+      following = currentCollection.following;
+      paintFollow();
+    } else {
+      syncLiveState();
+    }
 
+    collStories = Array.isArray(currentCollection.storyList) ? currentCollection.storyList : [];
+    renderCollPage();
     initTabs();
     initButtons();
     initReportModal();
@@ -131,9 +175,20 @@
     const panel = document.getElementById('panel-about');
     panel.innerHTML = `
       <div class="about-block">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><div class="about-label" style="margin-bottom:0">About this collection</div><button id="editAboutBtn" style="font-size:11px;font-weight:700;color:var(--pink);background:rgba(255,0,80,.08);border:1px solid var(--pink-line);padding:5px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+          <div class="about-label" style="margin-bottom:0">About this collection</div>
+          <button id="editAboutBtn" style="font-size:11px;font-weight:700;color:var(--pink);background:rgba(255,0,80,.08);border:1px solid var(--pink-line);padding:5px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button>
+        </div>
         <div class="about-text" id="aboutView">${col.about || ''}</div>
-        <div id="aboutForm" style="display:none;margin-top:10px"><textarea id="aboutInput" rows="3" style="width:100%;background:var(--divider);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:10px">${col.about || ''}</textarea><div class="about-label">Genres (from Chief Editor)</div><div id="genreChecks" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px"></div><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--pink);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutCancel" style="flex:1;background:var(--divider);border:1px solid var(--line);padding:10px;border-radius:10px;font-weight:700">Cancel</button></div></div>
+        <div id="aboutForm" style="display:none;margin-top:10px">
+          <textarea id="aboutInput" rows="3" style="width:100%;background:var(--divider);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:10px">${col.about || ''}</textarea>
+          <div class="about-label">Genres</div>
+          <div id="genreChecks" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <button id="aboutSave" style="flex:1;background:var(--pink);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button>
+            <button id="aboutCancel" style="flex:1;background:var(--divider);border:1px solid var(--line);padding:10px;border-radius:10px;font-weight:700">Cancel</button>
+          </div>
+        </div>
       </div>
       <div class="about-block">
         <div class="about-label">Curated by</div>
@@ -146,20 +201,40 @@
         <div class="about-label">Genres</div>
         <div class="about-tags">${genreTags || '<span style="font-size:12px;color:var(--gray-400)">No genres yet</span>'}</div>
       </div>`;
-    const allGenres = (window.DemoData && DemoData.GENRES ? DemoData.GENRES.map(g=>g.name) : ['Romance','Betrayal','Mafia','Werewolf','Fantasy','Campus','Revenge','Drama']);
-    const checks = document.getElementById('genreChecks');
-    if (checks) {
-      checks.innerHTML = allGenres.map(g => '<label style="display:inline-flex;align-items:center;gap:5px;background:var(--divider);padding:6px 10px;border-radius:16px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent"><input type="checkbox" value="'+g.replace(/"/g,'&quot;')+'" '+( (col.genres||[]).includes(g) ? 'checked' : '' )+' style="accent-color:var(--pink)"> '+g+'</label>').join('');
-    }
-    document.getElementById('editAboutBtn').onclick = () => { document.getElementById('aboutForm').style.display='block'; document.getElementById('aboutView').style.display='none'; };
-    document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutView').style.display='block'; };
+
+    // Fetch genre list from API for the edit form
+    liveReq('GET', '/genres?limit=50').then(data => {
+      const list = Array.isArray(data) ? data : (data.items || data.genres || []);
+      const names = list.map(g => g.name || g);
+      const checks = document.getElementById('genreChecks');
+      if (checks && names.length) {
+        checks.innerHTML = names.map(g =>
+          '<label style="display:inline-flex;align-items:center;gap:5px;background:var(--divider);padding:6px 10px;border-radius:16px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent">' +
+          '<input type="checkbox" value="' + g.replace(/"/g, '&quot;') + '" ' + ((col.genres || []).includes(g) ? 'checked' : '') + ' style="accent-color:var(--pink)"> ' + g + '</label>'
+        ).join('');
+      }
+    }).catch(() => {});
+
+    document.getElementById('editAboutBtn').onclick = () => {
+      document.getElementById('aboutForm').style.display = 'block';
+      document.getElementById('aboutView').style.display = 'none';
+    };
+    document.getElementById('aboutCancel').onclick = () => {
+      document.getElementById('aboutForm').style.display = 'none';
+      document.getElementById('aboutView').style.display = 'block';
+    };
     document.getElementById('aboutSave').onclick = async () => {
       const about = document.getElementById('aboutInput').value.trim();
-      const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(i=>i.value);
-      try { await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { about, genres }); } catch (e) {}
-      currentCollection.about = about; currentCollection.genres = genres;
-      try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); m[currentCollection.id]=currentCollection; localStorage.setItem('dro_collections_override', JSON.stringify(m)); } catch(e){}
-      renderAbout(currentCollection); showToast('About updated');
+      const genres = Array.from(document.querySelectorAll('#genreChecks input:checked')).map(i => i.value);
+      try {
+        await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { about, genres });
+        currentCollection.about = about;
+        currentCollection.genres = genres;
+        renderAbout(currentCollection);
+        showToast('About updated');
+      } catch (e) {
+        showToast('Failed to save. Please try again.');
+      }
     };
   }
 
@@ -188,7 +263,8 @@
     const followBtn = document.getElementById('followBtn');
     followBtn.addEventListener('click', async () => {
       const want = !following;
-      following = want; paintFollow();
+      following = want;
+      paintFollow();
       try {
         const j = await liveReq(want ? 'POST' : 'DELETE', '/collections/' + encodeURIComponent(collId()) + '/follow');
         if (j && j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
@@ -198,24 +274,18 @@
     function doShare() {
       if (typeof openShareModal === 'function') {
         openShareModal({ title: currentCollection.title, sub: currentCollection.sub, img: currentCollection.cover, url: location.href });
-      } else { showToast('Share: '+location.href); }
-      try { liveReq('POST', '/collections/' + encodeURIComponent(collId()) + '/share', { channel: 'page' }).catch(() => {}); } catch (e) {}
+      } else { showToast('Share: ' + location.href); }
+      liveReq('POST', '/collections/' + encodeURIComponent(collId()) + '/share', { channel: 'page' }).catch(() => {});
     }
     document.getElementById('topShareBtn')?.addEventListener('click', doShare);
     document.getElementById('bottomShareBtn')?.addEventListener('click', doShare);
 
     const menuDots = document.getElementById('menuDots');
     const dropdown = document.getElementById('dropdownMenu');
-    menuDots.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdown.classList.toggle('show');
-    });
+    menuDots.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.toggle('show'); });
     document.addEventListener('click', () => dropdown.classList.remove('show'));
 
-    document.getElementById('reportBtn').addEventListener('click', () => {
-      dropdown.classList.remove('show');
-      openReportModal();
-    });
+    document.getElementById('reportBtn').addEventListener('click', () => { dropdown.classList.remove('show'); openReportModal(); });
     document.getElementById('collStatsBtn')?.addEventListener('click', () => {
       dropdown.classList.remove('show');
       location.href = 'insights.html?surface=collection&id=' + encodeURIComponent(collId());
@@ -239,7 +309,7 @@
 
   function initReportModal() {
     document.getElementById('reportCloseBtn').addEventListener('click', closeReportModal);
-    document.getElementById('reportOverlay').addEventListener('click', function(e) {
+    document.getElementById('reportOverlay').addEventListener('click', function (e) {
       if (e.target === this) closeReportModal();
     });
 
@@ -259,30 +329,16 @@
           target: 'collection', targetId: collId(),
           reason: selectedReason || 'other', details,
         });
+        document.getElementById('reportBody').innerHTML = `
+          <div class="report-success">
+            <i class="fas fa-check-circle"></i>
+            <h4>Report Submitted</h4>
+            <p>Thank you for your report. Our team will review it and take appropriate action.</p>
+          </div>`;
+        setTimeout(closeReportModal, 2200);
       } catch (e) {
-        const report = {
-          type: 'collection',
-          collectionId: currentCollection.id,
-          collectionTitle: currentCollection.title,
-          collectionAuthor: currentCollection.author,
-          reason: selectedReason,
-          details: details,
-          reportedBy: 'Current User',
-          date: new Date().toISOString(),
-          status: 'pending'
-        };
-        const reports = JSON.parse(localStorage.getItem('COLLECTION_REPORTS') || '[]');
-        reports.push(report);
-        localStorage.setItem('COLLECTION_REPORTS', JSON.stringify(reports));
+        showToast('Failed to submit report. Please try again.');
       }
-
-      document.getElementById('reportBody').innerHTML = `
-        <div class="report-success">
-          <i class="fas fa-check-circle"></i>
-          <h4>Report Submitted</h4>
-          <p>Thank you for your report. Our team will review it and take appropriate action.</p>
-        </div>`;
-      setTimeout(closeReportModal, 2200);
     });
   }
 
@@ -299,85 +355,111 @@
     setTimeout(() => { t.style.opacity = '0'; }, 2000);
   }
 
-  /* ── Add Story via ⋯ menu (with live search; picks survive filtering) ── */
+  /* ── Add Story ── */
   let addSelected = new Set();
   let addStories = [];
+
   function paintAddGrid(query) {
     const grid = document.getElementById('addStoryGrid');
     if (!grid) return;
     const q = (query || '').trim().toLowerCase();
     const hits = !q ? addStories.slice(0, 30) : addStories.filter(s =>
       ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.author || '').toLowerCase().indexOf(q) !== -1));
-    if (!addStories.length) { grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No more stories to add.</div>'; }
-    else if (!hits.length) { grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No stories match your search.</div>'; }
-    else {
-      grid.innerHTML = hits.map(s=> '<div class="add-pick" data-id="'+s.id+'" style="border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;background:var(--divider)"><img src="'+s.cover+'" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"/><div style="font-size:9px;font-weight:700;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(s.title||'')+'</div><div style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;opacity:0" class="pick-check"><i class="fas fa-check"></i></div></div>').join('');
-      // make picks position relative + restore picked state
-      grid.querySelectorAll('.add-pick').forEach(el=>{ el.style.position='relative';
+    if (!addStories.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No more stories to add.</div>';
+    } else if (!hits.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--gray-400)">No stories match your search.</div>';
+    } else {
+      grid.innerHTML = hits.map(s =>
+        '<div class="add-pick" data-id="' + s.id + '" style="border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;background:var(--divider)">' +
+        '<img src="' + s.cover + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"/>' +
+        '<div style="font-size:9px;font-weight:700;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (s.title || '') + '</div>' +
+        '<div style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;opacity:0" class="pick-check"><i class="fas fa-check"></i></div></div>'
+      ).join('');
+      grid.querySelectorAll('.add-pick').forEach(el => {
+        el.style.position = 'relative';
         const id = String(el.dataset.id);
-        if (addSelected.has(id)) { el.style.borderColor='var(--pink)'; el.querySelector('.pick-check').style.opacity='1'; el.querySelector('.pick-check').style.background='var(--pink)'; }
-        el.addEventListener('click', ()=>{
-          if(addSelected.has(id)){ addSelected.delete(id); el.style.borderColor='transparent'; el.querySelector('.pick-check').style.opacity='0'; } else { addSelected.add(id); el.style.borderColor='var(--pink)'; el.querySelector('.pick-check').style.opacity='1'; el.querySelector('.pick-check').style.background='var(--pink)'; }
+        if (addSelected.has(id)) {
+          el.style.borderColor = 'var(--pink)';
+          el.querySelector('.pick-check').style.opacity = '1';
+          el.querySelector('.pick-check').style.background = 'var(--pink)';
+        }
+        el.addEventListener('click', () => {
+          if (addSelected.has(id)) {
+            addSelected.delete(id); el.style.borderColor = 'transparent'; el.querySelector('.pick-check').style.opacity = '0';
+          } else {
+            addSelected.add(id); el.style.borderColor = 'var(--pink)'; el.querySelector('.pick-check').style.opacity = '1'; el.querySelector('.pick-check').style.background = 'var(--pink)';
+          }
         });
       });
     }
   }
+
   async function openAddStory() {
-    let stories = [];
     try {
       const res = await fetch(API_BASE + '/collections/eligible-stories', { credentials: 'include' });
-      if (res.ok) {
-        const j = await res.json();
-        if (j && Array.isArray(j.items)) stories = j.items.filter(s => s.eligible !== false).map(s => ({ id: s.id, title: s.title, cover: s.cover, author: s.author || '' }));
-      }
-    } catch (e) {}
-    if (!stories.length) {
-      const d = window.DemoData; stories = d ? (d.STORIES || d.COLLECTIONS?.[0]?.storyList || []) : [];
+      if (!res.ok) throw new Error('api_' + res.status);
+      const j = await res.json();
+      addStories = Array.isArray(j.items)
+        ? j.items.filter(s => s.eligible !== false).map(s => ({ id: s.id, title: s.title, cover: s.cover, author: s.author || '' }))
+        : [];
+    } catch (e) {
+      showToast('Could not load stories. Please try again.');
+      return;
     }
-    const existing = new Set((currentCollection?.storyList || []).map(s=>String(s.id || s)));
-    addStories = stories.filter(s=> !existing.has(String(s.id)));
+    const existing = new Set((currentCollection?.storyList || []).map(s => String(s.id || s)));
+    addStories = addStories.filter(s => !existing.has(String(s.id)));
     addSelected.clear();
     const searchEl = document.getElementById('addStorySearch');
     if (searchEl) searchEl.value = '';
     paintAddGrid('');
     document.getElementById('addStoryOverlay').classList.add('open');
   }
-  function closeAddStory(){ document.getElementById('addStoryOverlay').classList.remove('open'); }
-  document.getElementById('addStoryBtn').addEventListener('click', ()=>{ document.getElementById('dropdownMenu').classList.remove('show'); openAddStory(); });
+
+  function closeAddStory() { document.getElementById('addStoryOverlay').classList.remove('open'); }
+
+  document.getElementById('addStoryBtn').addEventListener('click', () => { document.getElementById('dropdownMenu').classList.remove('show'); openAddStory(); });
   document.getElementById('addStoryClose').addEventListener('click', closeAddStory);
-  document.getElementById('addStoryOverlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAddStory(); });
-  document.getElementById('addStorySearch').addEventListener('input', e=> paintAddGrid(e.target.value));
-  document.getElementById('addStoryConfirm').addEventListener('click', async ()=>{
+  document.getElementById('addStoryOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeAddStory(); });
+  document.getElementById('addStorySearch').addEventListener('input', e => paintAddGrid(e.target.value));
+
+  document.getElementById('addStoryConfirm').addEventListener('click', async () => {
     if (!addSelected.size) { showToast('Select at least one story'); return; }
-    const d = window.DemoData; const all = d ? (d.STORIES||[]) : [];
-    const toAdd = all.filter(s=> addSelected.has(String(s.id)));
-    const fullIds = [...(currentCollection.storyList||[]).map(s => s.id || s), ...toAdd.map(s => s.id)].filter(Boolean);
-    try { await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { stories: fullIds }); } catch (e) {}
-    currentCollection.storyList = [...(currentCollection.storyList||[]), ...toAdd];
-    currentCollection.stories = (currentCollection.storyList||[]).length;
-    collStories = currentCollection.storyList;
-    collPage = Math.ceil(collStories.length / COLL_PER);
-    // persist demo override
-    try { const m = JSON.parse(localStorage.getItem('dro_collections_override')||'{}'); m[currentCollection.id]=currentCollection; localStorage.setItem('dro_collections_override', JSON.stringify(m)); } catch(e){}
-    renderCollPage();
-    closeAddStory(); showToast('Added '+toAdd.length+' story'+(toAdd.length>1?'ies':''));
+    const ids = Array.from(addSelected);
+    const fullIds = [...(currentCollection.storyList || []).map(s => s.id || s), ...ids].filter(Boolean);
+    try {
+      const updated = await liveReq('PATCH', '/collections/' + encodeURIComponent(collId()), { stories: fullIds });
+      // Use server-returned list if available, else optimistically update
+      collStories = Array.isArray(updated && updated.storyList) ? updated.storyList : fullIds.map(id => addStories.find(s => String(s.id) === String(id)) || { id });
+      currentCollection.storyList = collStories;
+      currentCollection.stories = collStories.length;
+      collPage = Math.ceil(collStories.length / COLL_PER);
+      renderCollPage();
+      closeAddStory();
+      showToast('Added ' + ids.length + ' stor' + (ids.length > 1 ? 'ies' : 'y'));
+    } catch (e) {
+      showToast('Failed to add stories. Please try again.');
+    }
   });
 
-  function applyCollSort(){
+  function applyCollSort() {
     if (!collStories.length) return;
-    if (collSort==='likes') collStories.sort((a,b)=> (parseInt(String(b.likes||0).replace(/[^0-9]/g,''))||0) - (parseInt(String(a.likes||0).replace(/[^0-9]/g,''))||0));
-    else if (collSort==='reads') collStories.sort((a,b)=> (parseInt(String(b.reads||0).replace(/[^0-9]/g,''))||0) - (parseInt(String(a.reads||0).replace(/[^0-9]/g,''))||0));
-    else if (collSort==='title') collStories.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-    else { /* latest — restore original order from currentCollection.storyList order */ collStories = [...(currentCollection.storyList||[])]; }
-    collPage=1; renderCollPage();
+    const sorted = collStories.slice();
+    if (collSort === 'likes') sorted.sort((a, b) => (parseInt(String(b.likes || 0).replace(/[^0-9]/g, '')) || 0) - (parseInt(String(a.likes || 0).replace(/[^0-9]/g, '')) || 0));
+    else if (collSort === 'reads') sorted.sort((a, b) => (parseInt(String(b.reads || 0).replace(/[^0-9]/g, '')) || 0) - (parseInt(String(a.reads || 0).replace(/[^0-9]/g, '')) || 0));
+    else if (collSort === 'title') sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    else sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    collStories = sorted;
+    collPage = 1;
+    renderCollPage();
   }
-  document.getElementById('sortBtn')?.addEventListener('click', ()=> document.getElementById('sortOverlay').classList.add('open'));
-  document.getElementById('sortClose')?.addEventListener('click', ()=> document.getElementById('sortOverlay').classList.remove('open'));
-  document.getElementById('sortOverlay')?.addEventListener('click', e=>{ if(e.target.id==='sortOverlay') e.currentTarget.classList.remove('open'); });
-  document.querySelectorAll('#sortOptions .report-reason').forEach(el=> el.addEventListener('click', ()=>{
-    collSort=el.dataset.sort;
-    const label = el.textContent.trim();
-    document.getElementById('sortBtn').innerHTML = label+' <i class="fas fa-chevron-down"></i>';
+
+  document.getElementById('sortBtn')?.addEventListener('click', () => document.getElementById('sortOverlay').classList.add('open'));
+  document.getElementById('sortClose')?.addEventListener('click', () => document.getElementById('sortOverlay').classList.remove('open'));
+  document.getElementById('sortOverlay')?.addEventListener('click', e => { if (e.target.id === 'sortOverlay') e.currentTarget.classList.remove('open'); });
+  document.querySelectorAll('#sortOptions .report-reason').forEach(el => el.addEventListener('click', () => {
+    collSort = el.dataset.sort;
+    document.getElementById('sortBtn').innerHTML = el.textContent.trim() + ' <i class="fas fa-chevron-down"></i>';
     document.getElementById('sortOverlay').classList.remove('open');
     applyCollSort();
   }));
@@ -392,8 +474,6 @@
     });
   }
 
-  // Expose identical window globals the HTML expects (no inline onclick on this
-  // page, but keep parity for debugging / future markup).
   window.renderCollPage = renderCollPage;
   window.renderBookCard = renderBookCard;
   window.loadCollection = loadCollection;

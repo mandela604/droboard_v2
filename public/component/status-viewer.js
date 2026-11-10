@@ -1094,9 +1094,6 @@
       viewsEl.classList.toggle('show', mine);
       viewsDiv.classList.toggle('show', mine);
       let vn = slide.views != null ? slide.views : (w.views || 0);
-      if (mine && !_isLiveStatusId(slide.id) && window.DroboardStatus && DroboardStatus.viewsOf) {
-        try { vn = Math.max(vn, DroboardStatus.viewsOf(slide)); } catch (e) {}
-      }
       document.getElementById('dsv2ViewCount').textContent = _fmtN(vn);
     }
 

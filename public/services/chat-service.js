@@ -2,13 +2,9 @@
    CHAT SERVICE
    1:1 messaging for public/Pages/chat.html.
 
-   One render path. Live rows from /api/messages and the demo rows are
-   normalised into the SAME shape before anything is painted, so there is
-   exactly one place where a contact card or a bubble is built.
-
-   Live-first: the API is tried first and the demo set only paints when the
-   backend is unreachable (static hosting) or there is no session. The header
-   then says DEMO, because a demo inbox must not look like a real one.
+   One render path. Every row comes from /api/messages; there is no
+   local or seeded inbox. If the API fails the user sees an error
+   state, never fabricated conversations.
 
    Shapes (backend/src/services/messages.service.js):
      thread   { id, peer:{ id, handle, name, avatar, verified, role, online },
@@ -21,7 +17,6 @@
 
   const API_BASE = '/api';
   const MSG = API_BASE + '/messages';
-  var LIVE = true;                       // flips false when /api is unreachable
   var PAGE = 50;                         // matches the backend default page size
 
   /* ── Theme ── */
@@ -71,6 +66,7 @@
   var pendingImagePreview = null; // data URL, local preview only, never sent
   var longPressTimer = null;
   var ctxMsgId = null;
+  var replyingTo = null;        // message ID being replied to
 
   function shapeThread(row) {
     return {
@@ -87,55 +83,14 @@
   }
 
   function shapeMessage(m) {
-    return {
+    var out = {
       id: String(m.id), text: m.text || '', image: m.image || '', edited: !!m.edited,
       read: !!m.read, isMine: !!m.isMine, fromRole: m.fromRole || 'user',
       sender: m.sender || null, createdAt: asDate(m.createdAt),
     };
-  }
-
-  /* ── Demo set — same field names as live, and honest: no bot replies ── */
-  function demoThreads() {
-    var now = Date.now(), MIN = 6e4, HR = 36e5, DAY = 864e5;
-    function m(id, isMine, text, at, extra) {
-      var o = { id: 'demo_' + id, text: text, image: '', edited: false, read: !isMine, isMine: isMine, fromRole: isMine ? 'author' : 'editor', sender: null, createdAt: new Date(at) };
-      if (extra) Object.keys(extra).forEach(function (k) { o[k] = extra[k]; });
-      return o;
-    }
-    return [
-      {
-        id: 'demo_ed_morgan',
-        peer: { id: 'demo_u_editor', handle: 'reina_morgan', name: 'Reina Morgan', avatar: 'https://i.pravatar.cc/100?img=47', verified: true, role: 'Senior Editor', online: true },
-        preview: 'Love this! The direction is really coming together.', unread: 2, updatedAt: new Date(now - 20 * MIN), loaded: true,
-        messages: [
-          m(1, false, "Hi! I'm your assigned editor. Feel free to reach out anytime about your writing, contracts, or anything else.", now - 2 * DAY - 9 * HR),
-          m(2, false, 'I reviewed your latest chapter — the pacing in the second half is really strong. Great work.', now - 2 * DAY - 8 * HR),
-          m(3, true, "Thank you so much! I rewrote that part three times, so I'm glad it landed.", now - 2 * DAY - 7.5 * HR),
-          m(4, false, 'It shows. Quick note — the cliffhanger at the end could be sharper. Want to brainstorm?', now - 2 * DAY - 7 * HR),
-          m(5, true, 'Yes please! I was thinking maybe she finds the letter earlier?', now - DAY - 9 * HR),
-          m(6, false, 'Love that. Or she overhears a conversation — adds more tension. Let me know what you think.', now - DAY - 8 * HR),
-          m(7, false, 'Love this! The direction is really coming together.', now - 20 * MIN),
-        ],
-      },
-      {
-        id: 'demo_admin_chief',
-        peer: { id: 'demo_u_chief', handle: 'jasmine_cole', name: 'Jasmine Cole', avatar: 'https://i.pravatar.cc/100?img=44', verified: true, role: 'Chief Editor', online: false },
-        preview: 'Your quarterly review is due by Friday.', unread: 0, updatedAt: new Date(now - DAY), loaded: true,
-        messages: [
-          m(11, false, "Hi! I'm the Chief Editor. Just a heads-up — your quarterly review is due by Friday.", now - DAY),
-          m(12, true, "Got it, I'll submit it on time. Thanks for the reminder!", now - DAY + 10 * MIN),
-        ],
-      },
-      {
-        id: 'demo_admin_super',
-        peer: { id: 'demo_u_support', handle: 'droboard_support', name: 'Droboard Support', avatar: 'https://i.pravatar.cc/100?img=12', verified: true, role: 'Admin', online: true },
-        preview: 'Your payout has been processed.', unread: 0, updatedAt: new Date(now - 3 * DAY), loaded: true,
-        messages: [
-          m(21, false, 'Hello! Your payout for last month has been processed. You should see it within 24 hours.', now - 3 * DAY),
-          m(22, true, 'Great, thank you!', now - 3 * DAY + 5 * MIN),
-        ],
-      },
-    ];
+    if (m.quoted) out.quoted = m.quoted;
+    if (m.replyTo) out.replyTo = m.replyTo;
+    return out;
   }
 
   /* ═══════════════════════════════════
@@ -152,42 +107,21 @@
     if (!res.ok) {
       var e = new Error((json && json.error) || ('http_' + res.status));
       e.status = res.status; e.code = json && json.error;
-      // A 404 that isn't even JSON is a host with no API behind it (static
-      // hosting), not a backend failure — that is the demo fallback case.
-      e.noBackend = !json && res.status === 404;
       throw e;
     }
     return json;
   }
 
   async function loadThreads() {
-    if (LIVE) {
-      try {
-        var j = await req('GET', MSG + '/conversations');
-        THREADS = (j.items || []).map(shapeThread);
-        paintSource(); renderContacts(currentFilter());
-        return;
-      } catch (e) {
-        // No session (401) or no backend reachable at all (network error, or a
-        // non-API 404) -> demo inbox, labelled. A real API error stays an error.
-        if (e.status && e.status !== 401 && !e.noBackend) {
-          paintSource();
-          renderEmpty('Could not load your messages. Pull to try again.');
-          return;
-        }
-        LIVE = false;
-      }
+    try {
+      var j = await req('GET', MSG + '/conversations');
+      THREADS = (j.items || []).map(shapeThread);
+    } catch (e) {
+      THREADS = [];
+      renderEmpty(e.status === 401 ? 'Sign in to see your messages.' : 'Could not load your messages. Pull to try again.');
+      return;
     }
-    THREADS = demoThreads();
-    paintSource(); renderContacts(currentFilter());
-  }
-
-  function paintSource() {
-    // Labels the fake inbox wherever fake data is visible: the list and the open thread.
-    document.querySelectorAll('.chat-source-tag').forEach(function (el) {
-      el.textContent = LIVE ? '' : 'DEMO';
-      el.style.display = LIVE ? 'none' : 'inline-block';
-    });
+    renderContacts(currentFilter());
   }
 
   /* ═══════════════════════════════════
@@ -273,7 +207,7 @@
     if (thread.unread) {
       thread.unread = 0;
       renderContacts(currentFilter());
-      if (LIVE) { try { await req('POST', MSG + '/conversations/' + encodeURIComponent(thread.id) + '/read'); } catch (e) {} }
+      try { await req('POST', MSG + '/conversations/' + encodeURIComponent(thread.id) + '/read'); } catch (e) {}
     }
   }
 
@@ -319,6 +253,15 @@
         ? '<img class="msg-av" src="' + esc(src) + '" alt=""/>'
         : '<div class="msg-av msg-av-initial">' + (who ? esc(String(who).charAt(0).toUpperCase()) : '<i class="fas fa-user"></i>') + '</div>';
       var bub = '';
+      if (m.quoted && typeof m.quoted === 'object') {
+        var qtext = m.quoted.text || '[Image]';
+        if (qtext.length > 100) qtext = qtext.substring(0, 100) + '…';
+        bub += '<div class="msg-quote" data-qid="' + esc(m.quoted.id || '') + '">'
+          + '<div class="msg-quote-sender">' + esc(m.quoted.sender || 'User') + '</div>'
+          + (m.quoted.image ? '<div class="msg-quote-img"><i class="fas fa-image"></i></div>' : '')
+          + '<div class="msg-quote-text">' + esc(qtext) + '</div>'
+          + '</div>';
+      }
       if (m.image) bub += '<img class="msg-img" src="' + esc(m.image) + '" alt=""/>';
       if (m.text) bub += '<span>' + esc(m.text) + '</span>';
       html += '<div class="msg-row ' + (mine ? 'out' : 'in') + '" data-mid="' + esc(m.id) + '">'
@@ -330,7 +273,30 @@
     });
     wrap.innerHTML = html;
     bindLongPress();
+    bindQuoteClicks();
     wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function bindQuoteClicks() {
+    document.querySelectorAll('.msg-quote').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var qid = el.getAttribute('data-qid');
+        if (!qid) return;
+        var row = document.querySelector('.msg-row[data-mid="' + qid + '"]');
+        if (row) {
+          row.style.animation = 'none';
+          setTimeout(function () {
+            row.style.animation = 'msgIn .3s ease';
+            row.style.backgroundColor = 'rgba(255,0,80,.1)';
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(function () { row.style.backgroundColor = ''; }, 800);
+          }, 10);
+        } else {
+          toast('Original message not found');
+        }
+      });
+    });
   }
 
   /* ── Long press: edit/delete own only ── */
@@ -372,6 +338,23 @@
     ctxMsgId = null;
   }
 
+  function showReplyPreview(mid) {
+    var msg = findMsg(mid);
+    if (!msg) return;
+    replyingTo = mid;
+    document.getElementById('replyName').textContent = msg.isMine ? 'You' : (msg.sender && msg.sender.name) || 'User';
+    var text = msg.image ? '[Image]' : (msg.text || '');
+    if (text.length > 60) text = text.substring(0, 60) + '…';
+    document.getElementById('replyText').textContent = text;
+    document.getElementById('replyPreview').classList.add('show');
+    document.getElementById('composeInput').focus();
+  }
+
+  function clearReply() {
+    replyingTo = null;
+    document.getElementById('replyPreview').classList.remove('show');
+  }
+
   function startEdit(mid) {
     var msg = findMsg(mid);
     var row = document.querySelector('.msg-row[data-mid="' + mid + '"]');
@@ -391,7 +374,7 @@
       if (!val) { doDelete(mid); return; }
       if (val === msg.text) { renderMessages(); return; }
       msg.text = val; msg.edited = true;   // the server sets edited too; this keeps the paint instant
-      if (LIVE) req('PATCH', MSG + '/' + encodeURIComponent(mid), { text: val }).catch(function (e) { toast(e.message || 'Could not edit'); loadThreads(); });
+      req('PATCH', MSG + '/' + encodeURIComponent(mid), { text: val }).catch(function (e) { toast(e.message || 'Could not edit'); loadThreads(); });
       renderMessages();
     }
     ta.addEventListener('keydown', function (e) {
@@ -405,7 +388,7 @@
     var msg = findMsg(mid);
     if (!msg || !msg.isMine) return;
     activeThread.messages = activeThread.messages.filter(function (x) { return x.id !== mid; });
-    if (LIVE) req('DELETE', MSG + '/' + encodeURIComponent(mid)).catch(function (e) { toast(e.message || 'Could not delete'); openThread(activeThread); });
+    req('DELETE', MSG + '/' + encodeURIComponent(mid)).catch(function (e) { toast(e.message || 'Could not delete'); openThread(activeThread); });
     renderMessages();
   }
 
@@ -437,8 +420,7 @@
       var sendBtn = document.getElementById('sendBtn');
       if (sendBtn) sendBtn.disabled = true;
       try {
-        if (LIVE) pendingImage = await uploadImage(file);
-        else pendingImage = 'demo://image/' + encodeURIComponent(file.name); // demo keeps it local; nothing is sent
+        pendingImage = await uploadImage(file);
         var reader = new FileReader();
         reader.onload = function (ev) {
           pendingImagePreview = ev.target.result;
@@ -474,25 +456,18 @@
     if (!activeThread) return;
     var text = (input && input.value || '').trim();
     if (!text && !pendingImage) return;
-    if (!LIVE) {
-      if (pendingImage && !pendingImagePreview) return;
-      pushLocal({ text: text, image: pendingImagePreview || '', isMine: true });
-      input.value = ''; input.style.height = 'auto';
-      pendingImage = null; pendingImagePreview = null;
-      document.getElementById('imgPreviewBar').classList.remove('show');
-      syncSendEnabled();
-      return;
-    }
     if (sendBtn) sendBtn.disabled = true;
     var body = {};
     if (text) body.text = text;
     if (pendingImage) body.image = pendingImage;
+    if (replyingTo) body.replyTo = replyingTo;
     try {
       var row = await req('POST', MSG + '/conversations/' + encodeURIComponent(activeThread.id) + '/messages', body);
       pushLocal(shapeMessage(row));
       input.value = ''; input.style.height = 'auto';
       pendingImage = null; pendingImagePreview = null;
       document.getElementById('imgPreviewBar').classList.remove('show');
+      clearReply();
       activeThread.preview = row.text || '[Image]';
       activeThread.updatedAt = asDate(row.createdAt);
       renderContacts(currentFilter());
@@ -505,11 +480,13 @@
   function pushLocal(msg) {
     if (!activeThread) return;
     var id = msg.id || ('local_' + Date.now() + '_' + Math.floor(Math.random() * 1e4));
-    activeThread.messages.push({
+    var entry = {
       id: id, text: msg.text || '', image: msg.image || '', edited: !!msg.edited,
       read: true, isMine: msg.isMine !== false, fromRole: msg.fromRole || 'author',
       sender: msg.sender || null, createdAt: asDate(msg.createdAt || new Date()),
-    });
+    };
+    if (msg.quoted) entry.quoted = msg.quoted;
+    activeThread.messages.push(entry);
     activeThread.preview = (msg.text || '[Image]').slice(0, 80);
     activeThread.updatedAt = new Date();
     renderMessages();
@@ -535,7 +512,7 @@
       pushLocal(shapeMessage(row));
       renderContacts(currentFilter());
       // It arrived while the thread is on screen, so it is read immediately.
-      if (LIVE) req('POST', MSG + '/conversations/' + encodeURIComponent(activeThread.id) + '/read').catch(function () {});
+      req('POST', MSG + '/conversations/' + encodeURIComponent(activeThread.id) + '/read').catch(function () {});
     });
     socket.on('presence', function (p) {
       if (!p || !p.userId) return;
@@ -559,8 +536,10 @@
   document.getElementById('backBtn').addEventListener('click', closeChat);
   document.getElementById('contactSearchInput').addEventListener('input', function () { renderContacts(this.value); });
   document.getElementById('ctxOverlay').addEventListener('click', function (e) { if (e.target === this) closeCtx(); });
+  document.getElementById('ctxReply').addEventListener('click', function (e) { e.stopPropagation(); var id = ctxMsgId; closeCtx(); if (id) showReplyPreview(id); });
   document.getElementById('ctxEdit').addEventListener('click', function (e) { e.stopPropagation(); var id = ctxMsgId; closeCtx(); if (id) startEdit(id); });
   document.getElementById('ctxDelete').addEventListener('click', function (e) { e.stopPropagation(); var id = ctxMsgId; closeCtx(); if (id) doDelete(id); });
+  document.getElementById('clearReplyBtn').addEventListener('click', clearReply);
   document.getElementById('sendBtn').addEventListener('click', sendMessage);
   document.getElementById('composeInput').addEventListener('input', function () {
     syncSendEnabled();
@@ -579,6 +558,6 @@
 
   global.ChatPage = {
     reload: loadThreads, openThread: openThread, closeChat: closeChat,
-    sendMessage: sendMessage, isLive: function () { return LIVE; },
+    sendMessage: sendMessage,
   };
 })(window);

@@ -1,12 +1,9 @@
 /**
- * earnings-overview-service.js — Earnings Overview page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * earnings-overview-service.js — Earnings Overview page logic (pure call-and-render). */
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
@@ -47,10 +44,7 @@ function renderStatCards(){const el=document.getElementById('overviewStats');if(
   el.innerHTML=OVERVIEW_STATS.map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${money(s.v)}</div><div class="lbl">${s.l}</div><div class="delta ${s.up?'up':'down'}"><i class="fas fa-arrow-${s.up?'up':'down'}" style="font-size:8px"></i> ${s.up?'+':'-'}${s.d} from last month</div></div>`).join('')}
 
 function init(){
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/earnings-overview').then(function (data) { if (data) { renderChart(); renderTopEarners(); } });
-  callBackend('/earnings-overview');
+  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});  callBackend('/earnings-overview');
   renderChart();renderTopEarners();renderStatCards();
 }
 

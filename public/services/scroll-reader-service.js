@@ -1,9 +1,6 @@
 /* ===============================================================
    SCROLL READER SERVICE
    Continuous-scroll reader orchestration. HTML calls ScrollReader.init().
-   Data: data/story.js (ES module) with fallback. Ads: ad-service.
-   Comments/share/save/tip via shared components.
-   When going live: swap story.js import for API calls.
 =============================================================== */
 (function () {
   "use strict";
@@ -22,7 +19,7 @@
 
   /* ══ PARAMS ══ */
   const params = new URLSearchParams(location.search);
-  const STORY_ID = params.get("story") || "story-8";
+  const STORY_ID = params.get('story') || '';
 
   /* ══ TEAMS ══ */
   const TEAMS = [
@@ -32,15 +29,7 @@
     { id: "d", icon: "\u{1F440}", name: "Team Watching", col: "#a78bfa" },
   ];
 
-  /* ══ FALLBACK ══ */
-  const FALLBACK_DEMO = {
-    id: STORY_ID, title: "Untitled Story", category: "\u{1F4D6} Story",
-    author: { name: "Droboard Writer", avatar: "https://i.pravatar.cc/100?img=1", handle: "@writer" },
-    unlockedThrough: 1, coinsBalance: 0,
-    chapters: [{ n: 1, title: "Chapter One", words: 100, paras: ["This story could not be loaded. Please check that data/story.js is reachable."] }],
-    comments: [], shares: 0, tips: 0, similar: [],
-    exitAd: { bg: "", headline: "Wait \u2014 before you go\u2026", sub: "", cta: "Explore" },
-  };
+  /* ══ FALLBACK ══ — removed, no demo fallback */
 
   let DATA = null;
 
@@ -239,37 +228,56 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     return t.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
   }
   async function bootLiveScroll() {
-    if (!STORY_ID || STORY_ID === 'story-8') return;
+    if (!STORY_ID) throw new Error('No story ID in URL (?story=)');
+    const [bRes, cRes] = await Promise.all([
+      fetch('/api/books/' + encodeURIComponent(STORY_ID), { credentials: 'include' }),
+      fetch('/api/books/' + encodeURIComponent(STORY_ID) + '/chapters', { credentials: 'include' }),
+    ]);
+    if (!bRes.ok) throw new Error('Story not found (' + bRes.status + ')');
+    if (!cRes.ok) throw new Error('Chapters failed (' + cRes.status + ')');
+    const book = await bRes.json();
+    const cj = await cRes.json();
+    const raw = Array.isArray(cj) ? cj : (cj.items || cj.chapters || []);
+    const live = (raw || []).filter(c => ['live', 'published'].includes(String(c.status || '')));
+    if (!book || !book.id) throw new Error('Invalid story data');
+    if (!live.length) throw new Error('No published chapters yet');
+    let state = {};
     try {
-      const [bRes, cRes] = await Promise.all([
-        fetch('/api/books/' + encodeURIComponent(STORY_ID), { credentials: 'include' }),
-        fetch('/api/books/' + encodeURIComponent(STORY_ID) + '/chapters', { credentials: 'include' }),
-      ]);
-      if (!bRes.ok || !cRes.ok) return;
-      const book = await bRes.json();
-      const cj = await cRes.json();
-      const raw = Array.isArray(cj) ? cj : (cj.items || cj.chapters || []);
-      const live = (raw || []).filter(c => ['live', 'published'].includes(String(c.status || 'live')));
-      if (!book || !book.id || !live.length) return;
-      let state = null;
-      try {
-        const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
-        if (sRes.ok) state = await sRes.json();
-      } catch (e) {}
-      const unlocked = new Set(((state && state.unlocked) || []).map(String));
-      const prog = (state && state.progress) || {};
-      DATA.id = book.id; DATA.title = book.title || DATA.title;
-      DATA.category = book.genre || DATA.category; DATA.cover = book.cover || DATA.cover;
-      DATA.chapters = live.map(c => {
+      const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
+      if (sRes.ok) state = await sRes.json();
+    } catch (e) {}
+    const unlocked = new Set(((state && state.unlocked) || []).map(String));
+    const prog = (state && state.progress) || {};
+    DATA = {
+      id: book.id,
+      title: book.title || 'Untitled',
+      category: book.genre || '',
+      cover: book.cover || '',
+      author: {
+        name: (book.writer && book.writer.name) || 'Writer',
+        avatar: (book.writer && book.writer.avatar) || '',
+        handle: (book.writer && book.writer.handle) || '@writer',
+      },
+      shares: (book.stats && book.stats.shares) || book.sharesCount || 0,
+      tips: book.tipCount || 0,
+      similar: (book.similar || []).map(x => ({ id: x.id, cover: x.cover, title: x.title })),
+      exitAd: {},
+      chapters: live.map(c => {
         const key = String(c.id || c.n);
         const p = prog[key] || prog[String(c.n)] || null;
         const done = !!(p && p.finished);
         const open = !book.vipLocked || +c.n <= 3 || unlocked.has(key) || unlocked.has(String(c.n)) || done;
-        return { n: c.n, title: c.title, paras: htmlToParas(c.content).slice(0, 80), liveId: c.id, words: c.words || 0, locked: !open };
-      });
-      DATA.unlockedThrough = DATA.chapters.filter(c => !c.locked).length || 3;
-      LIVE = true;
-    } catch (e) {}
+        return {
+          n: c.n, title: c.title,
+          paras: htmlToParas(c.content).slice(0, 80),
+          liveId: c.id,
+          words: c.words || 0,
+          locked: !open,
+        };
+      }),
+    };
+    DATA.unlockedThrough = DATA.chapters.filter(c => !c.locked).length || 3;
+    LIVE = true;
   }
   function TrackLeave() { try { if (TrackSession) TrackSession.stop(); } catch (e) {} TrackSession = null; TrackN = null; }
   function TrackStart(el) {
@@ -298,7 +306,10 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
         const key = mount.getAttribute('data-eng-mount');
         const chN = mount.getAttribute('data-ch');
         const note = mount.getAttribute('data-note') || '';
-        try { window.ReaderEngagement.renderInto(key, chN, mount, note); } catch (e) {}
+        const sec = mount.closest('[data-cid]');
+        const chapterId = (sec && sec.getAttribute('data-cid')) || chN;
+        const live = (LIVE && STORY_ID) ? { bookId: STORY_ID, chapterId: chapterId } : null;
+        try { window.ReaderEngagement.renderInto(key, chN, mount, note, live ? { live: live } : null); } catch (e) {}
       });
     }
   }
@@ -457,53 +468,57 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   function initCommunities() { paintChapterCommunities(); }
 
   /* ══ COMPONENTS ══ */
-  function mapSeedComment(c) {
-    return Object.assign({}, c, {
-      statusRing: (c.statusRing || "none").replace("ring-", ""),
-      replies: (c.replies || []).map(mapSeedComment),
-    });
-  }
-  function getSeedComments() {
-    const raw = (typeof COMMENTS_DATA !== "undefined" && COMMENTS_DATA.length) ? COMMENTS_DATA : (DATA.comments || []);
-    return raw.map(mapSeedComment);
-  }
-
   function countAllReplies(list) {
     return (list || []).reduce((n, c) => n + 1 + countAllReplies(c.replies || []), 0);
   }
   function wireComponents() {
-    const seedComments = getSeedComments();
-    const trueTotal = countAllReplies(seedComments); // same math as the component's own counter
     if (!window.DroboardComments) {
       try { console.error('[ScrollReader] comments: component missing — hard-refresh (Ctrl+Shift+R).'); } catch (e) {}
     }
+    const API = window.DroboardComments ? window.DroboardComments.api : null;
     DATA.chapters.forEach(ch => {
       if (ch.n > ST.unlockedThrough) return;
       const mount = document.getElementById("commentsMount-" + ch.n);
       if (!mount || !window.DroboardComments) return;
-      try {
-        mount.innerHTML = "";
-        DroboardComments.attach(mount, {
-          storyId: STORY_ID + "-ch" + ch.n,
-          title: fmtN(trueTotal) + " comments",
-          comments: seedComments.map(c => Object.assign({}, c)),
-          teams: TEAMS,
-          currentUser: { name: "You", avatar: null, team: null },
-          requireTeam: false,
-          collapsible: true,
-          startOpen: false,
+      const chapterId = ch.liveId || String(ch.n);
+      const paint = (comments) => {
+        const trueTotal = countAllReplies(comments); // same math as the component's own counter
+        try {
+          mount.innerHTML = "";
+          DroboardComments.attach(mount, {
+            storyId: STORY_ID,
+            chapterId: chapterId,
+            title: fmtN(trueTotal) + " comments",
+            comments: comments,
+            teams: TEAMS,
+            currentUser: { name: "You", avatar: null, team: null },
+            requireTeam: false,
+            collapsible: true,
+            startOpen: false,
             adsRepeat: false, // no repeating slots in reader chapters
             adsFirst: false, // reading comments never start with an ad
             scrollBox: 420, // bounded inner-scroll list + pinned composer
-          fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n,
-          ads: (ST.adsEnabled === false || chapterAdFree(ch.n)) ? false : undefined, // paid unlock / page-off = ad-free thread
+            fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n,
+            ads: (ST.adsEnabled === false || chapterAdFree(ch.n)) ? false : undefined, // paid unlock / page-off = ad-free thread
+            getCommentUrl: (c) => 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n + '#comment-' + (c && c.id),
+            onPost: (c) => API.postComment({ storyId: STORY_ID, chapterId: chapterId, text: c.text, team: c.team }),
+            onReply: (parentId, c) => API.postComment({ storyId: STORY_ID, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
+            onEdit: (c, oldText, newText) => API.editComment(c.id, newText),
+          });
+        } catch (e) {
+          try {
+            mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)">💬 Comments crashed on load (' + ((e && e.message) || e) + ').</div>';
+            console.error("[ScrollReader] comments failed for ch" + ch.n, e);
+          } catch (e2) {}
+        }
+      };
+      if (!API) return;
+      mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i> Loading comments…</div>';
+      API.fetchComments({ storyId: STORY_ID, chapterId: chapterId })
+        .then(paint)
+        .catch(function (err) {
+          mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)">💬 Could not load comments (' + ((err && err.message) || err) + ').</div>';
         });
-      } catch (e) {
-        try {
-          mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)">💬 Comments crashed on load (' + ((e && e.message) || e) + ').</div>';
-          console.error("[ScrollReader] comments failed for ch" + ch.n, e);
-        } catch (e2) {}
-      }
     });
 
     if (window.DroboardAdCard) {
@@ -744,36 +759,32 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
 
   /* ══ INIT ══ */
   async function init() {
-    let story = null;
-    try {
-      if (window.DemoData && window.DemoData.FULL_STORY) {
-        story = window.DemoData.FULL_STORY;
-      }
-    } catch (err) { console.warn("[Droboard] Could not load FULL_STORY from central-demo-data", err); }
-    DATA = story || FALLBACK_DEMO;
-    try { await bootLiveScroll(); } catch (e) {}
-    if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
-
-    ST.unlockedThrough = DATA.unlockedThrough;
-    await loadReaderAds();
     applyStoredTheme();
-    // Shared coin sheet owns the wallet now — attach once, start at zero.
     if (window.DroboardReader) {
       DroboardReader.attach({ onBalanceChange: updateCoinDisplays, onBuyCoins: buyCoinsViaSheet });
-      DroboardReader.setBalance(0);
     }
-
-    document.getElementById("loadingState").style.display = "none";
-    document.getElementById("storyTop").style.display = "";
-    document.getElementById("storyTop").innerHTML =
-      '<div class="story-top-cat">' + esc(DATA.category) + "</div>" +
-      '<div class="story-top-title">' + esc(DATA.title) + "</div>" +
-      '<div class="story-top-author">by ' + esc(DATA.author.name) + "</div>";
-
+    // Boot from live API — no demo fallback
+    try {
+      await bootLiveScroll();
+    } catch (err) {
+      document.getElementById('loadingState').style.display = 'none';
+      const col = document.getElementById('readerCol');
+      if (col) col.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--muted,#888);font-size:14px"><i class="fas fa-exclamation-circle" style="font-size:32px;margin-bottom:12px;display:block;color:var(--acc,#ff0050)"></i>' + (err.message || 'Failed to load story') + '</div>';
+      hidePageSkeleton();
+      return;
+    }
+    if (window.ReaderTrack) { try { ReaderTrack.entitlements().catch(function () {}); } catch (e) {} }
+    ST.unlockedThrough = DATA.unlockedThrough;
+    await loadReaderAds();
     updateCoinDisplays();
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('storyTop').style.display = '';
+    document.getElementById('storyTop').innerHTML =
+      '<div class="story-top-cat">' + esc(DATA.category) + '</div>' +
+      '<div class="story-top-title">' + esc(DATA.title) + '</div>' +
+      '<div class="story-top-author">by ' + esc(DATA.author.name) + '</div>';
     buildReaderColumn();
     fillChapterEdges();
-    // Impressions already tracked per-render in renderAdSlot — no batch re-track here.
     buildChaptersPanel();
     wireComponents();
     initCommunities();

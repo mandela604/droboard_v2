@@ -2,7 +2,7 @@
 'use strict';
 
 /* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
@@ -13,7 +13,7 @@ async function callBackend(path, options){
 
 var shell = null;
 
-/* ── Covers ── */
+/* ── Covers — fallback if API doesn't return cover ── */
 var COVER_MAP = {
   'Bound by the Ruthless Alpha':  'https://i.postimg.cc/xqmHfyNR/wolf2.jpg',
   "The CEO's Hidden Son":         'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
@@ -39,35 +39,6 @@ var AVATARS = {
   'Isabelle Moreau': 'https://i.pravatar.cc/40?img=44'
 };
 
-/* ── Extra data keyed by story id ─ NOTE: no "chapters" key here to avoid collision ── */
-var EXTRA = {
-  'ST-001': { reads: 52100, wordGoal: 150000, synopsis: 'Alpha Kade never expected his ex-mate to return — pregnant with his child and bound by a ruthless pact made in blood.', recentChs: [
-    { n: 31, title: "The Alpha's Command", words: 3800, status: 'published', date: '2d ago' },
-    { n: 30, title: 'No Escape',           words: 4100, status: 'published', date: '5d ago' },
-    { n: 32, title: 'Untitled Draft',      words: 1200, status: 'draft',     date: 'In progress' }
-  ]},
-  'ST-002': { reads: 28400, wordGoal: 120000, synopsis: 'When CEO Damian Cole discovers the orphan child on his doorstep shares his blood, his carefully built world starts to crack.', recentChs: [
-    { n: 24, title: 'The Hidden Truth',      words: 3450, status: 'published', date: '2h ago' },
-    { n: 23, title: 'Boardroom Lies',        words: 4200, status: 'published', date: '3d ago' },
-    { n: 22, title: "The Assistant's Secret",words: 3900, status: 'published', date: '5d ago' }
-  ]},
-  'ST-003': { reads: 12300, wordGoal: 100000, synopsis: 'Wolf King Lucian made a vow in the old tongue — a vow that cannot be broken, even by death.', recentChs: [
-    { n: 12, title: "Moon's Edge",    words: 5200, status: 'published', date: '4h ago' },
-    { n: 11, title: 'The Pack Council',words: 4700, status: 'published', date: '8d ago' },
-    { n: 10, title: 'Blood Oath',     words: 4900, status: 'published', date: '15d ago' }
-  ]},
-  'ST-004': { reads: 9800, wordGoal: 80000, synopsis: 'Betrayal runs in the Ricci bloodline — but Aria never expected it to come from the man she loved.', recentChs: [
-    { n: 7, title: "The Don's Offer", words: 2800, status: 'published', date: '6h ago' },
-    { n: 6, title: 'Silk & Smoke',    words: 3100, status: 'published', date: '14d ago' },
-    { n: 5, title: 'Guns & Roses',    words: 2950, status: 'published', date: '28d ago' }
-  ]},
-  'ST-005': { reads: 67800, wordGoal: 155000, synopsis: 'The Duke of Ashford keeps one secret that could undo everything — and Lady Elara is dangerously close to finding it.', recentChs: [
-    { n: 31, title: 'Epilogue: A New Season', words: 3600, status: 'published', date: '1w ago' },
-    { n: 30, title: 'The Revelation Ball',    words: 4400, status: 'published', date: '2w ago' },
-    { n: 29, title: 'Letters Never Sent',     words: 4100, status: 'published', date: '3w ago' }
-  ]}
-};
-
 var PER_PAGE   = 4;
 var allStories = [];
 var filtered   = [];
@@ -85,31 +56,33 @@ async function init() {
     onSearch: function(v) { document.getElementById('searchInput').value = v; currentPg = 1; applyFilters(); }
   });
 
-  // Future backend path (disabled by default; demo path keeps working):
-  // const remote = await callBackend('/story-management');
-  // if (remote) { /* map remote payload to allStories */ }
+  let storiesData;
+  try {
+    storiesData = await callBackend('/story-management');
+    if (!storiesData || !Array.isArray(storiesData.stories)) throw new Error('Invalid response');
+  } catch(err) {
+    document.getElementById('storyList').innerHTML = `<div class="empty-msg" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load stories: ${err.message}</div>`;
+    return;
+  }
 
-  var d = await SeniorEditorData.getStories();
-
-  /* Build allStories — keep original "chapters" (count) as chapterCount to avoid collision */
-  allStories = d.stories.map(function(s, i) {
-    var ex = EXTRA[s.id] || {};
+  /* Build allStories */
+  allStories = storiesData.stories.map(function(s, i) {
     return {
       id:           s.id,
       title:        s.title,
       author:       s.author,
       genre:        s.genre,
-      chapterCount: s.chapters,   /* renamed from "chapters" */
+      chapterCount: s.chapters,
       status:       s.status,
       lastUpdated:  s.lastUpdated,
       words:        s.words,
       rating:       s.rating,
-      cover:        coverFor(s.title, i),
-      avatar:       AVATARS[s.author] || null,
-      reads:        ex.reads    || Math.floor(Math.random() * 20000 + 3000),
-      wordGoal:     ex.wordGoal || Math.round(s.words * 1.25),
-      synopsis:     ex.synopsis || 'No synopsis available.',
-      recentChs:    ex.recentChs || []
+      cover:        s.cover || coverFor(s.title, i),
+      avatar:       s.avatar || AVATARS[s.author] || null,
+      reads:        s.reads || 0,
+      wordGoal:     s.wordGoal || Math.round(s.words * 1.25),
+      synopsis:     s.synopsis || 'No synopsis available.',
+      recentChs:    s.recentChs || []
     };
   });
 

@@ -1,13 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    DEBATE SERVICE
-   Standalone debate page. Uses DroboardDebateArgs for arguments.
-   Resolves ?id= from FeedData debates → DemoData.STORY_RECORDS debates.
-   State persisted in localStorage.
+   Standalone debate page. All vote state lives in the backend.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const LS_KEY = 'dro_debate_state';
   let DEBATE = null;
   let DEBATE_ID = null;
   let S = { userVote: null, side: null };
@@ -25,19 +22,14 @@
     t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
   }
 
-  /* ── localStorage ── */
-  function loadState() {
+  /* ── Vote state: read from API response, written back to API ── */
+  async function persistVote(side) {
     try {
-      var all = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {};
-      var s = all[DEBATE_ID] || {};
-      return { userVote: s.userVote || null, side: s.side || null };
-    } catch (e) { return { userVote: null, side: null }; }
-  }
-  function saveState() {
-    try {
-      var all = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {};
-      all[DEBATE_ID] = { userVote: S.userVote, side: S.side };
-      localStorage.setItem(LS_KEY, JSON.stringify(all));
+      await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID) + '/vote', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ side })
+      });
     } catch (e) {}
   }
 
@@ -103,16 +95,21 @@
     };
   }
 
-  /* ── resolve debate ── */
+  /* ── resolve debate — all data from API ── */
   async function resolveDebate() {
     var params = new URLSearchParams(location.search);
-    DEBATE_ID = params.get('id') || params.get('d') || 'deb_default';
+    DEBATE_ID = params.get('id') || params.get('d');
+    if (!DEBATE_ID) throw new Error('No debate id in URL');
 
-    // Fetch the debate post from backend
     var res = await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID), { credentials: 'include' });
     if (!res.ok) throw new Error('Debate API failed: ' + res.status);
     var post = await res.json();
     var d = (post && post.debateData) || {};
+
+    // Restore user's prior vote from API response
+    S.userVote = post.userVote || null;
+    S.side = post.userSide || S.userVote || null;
+
     return {
       id: DEBATE_ID,
       question: d.question || d.motion || post.title || 'Join the debate.',
@@ -176,7 +173,7 @@
     if (side === 'for') DEBATE.forV++;
     else DEBATE.agV++;
     if (!S.side) S.side = side;
-    saveState();
+    persistVote(side);
     renderSides();
     if (ARGS) ARGS.setUserSide(S.side);
     try { if (window.ReaderLeague) ReaderLeague.track('debate'); } catch (e) {}
@@ -194,18 +191,18 @@
   /* ── init ── */
   async function init() {
     DEBATE = await resolveDebate();
-    S = loadState();
+    // S already populated from API in resolveDebate
 
     if (window.DroboardDotsMenu) {
       DroboardDotsMenu.configure({
         onFollow: function (post) { toast('✅ Following @' + post.name + '!'); },
         onReport: function (post) { DroboardDotsMenu.openReportTypes(post); },
         onReportType: function (post, typeId) {
-          try {
-            var reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
-            reports.push({ target: 'debate_arg', targetId: post.id, targetType: post.name, reason: typeId, time: Date.now() });
-            localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
-          } catch (e) {}
+          fetch('/api/reports', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: 'debate_arg', targetId: post.id, reason: typeId })
+          }).catch(() => {});
           toast('🚩 Report submitted. Thank you.');
         },
         onCopyLink: function () { toast('🔗 Link copied'); },

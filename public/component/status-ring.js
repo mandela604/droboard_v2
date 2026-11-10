@@ -208,6 +208,37 @@
     try { if (window.StatusStore && StatusStore.applyAll) StatusStore.applyAll(root); } catch (e) {}
   }
 
+  /* A surface may render an avatar before its lineup has been fetched. When
+     the answer lands, stamp the (now bordered) ring with a working tap built
+     from the cached slides + the avatar the surface already painted. */
+  function upgradeLateRings() {
+    try {
+      if (!window.DroboardStatus) return;
+      document.querySelectorAll('[data-status-ring]:not([data-status-open])').forEach(function (el) {
+        var key = el.getAttribute('data-status-ring');
+        var norm = (window.StatusStore && StatusStore.key) ? StatusStore.key(key) : String(key || '').toLowerCase();
+        if (!norm || norm === 'you') return;
+        var slides = DroboardStatus.writerStatuses(norm);
+        if (!slides || !slides.length) return;
+        var info = (DroboardStatus.writerInfo && DroboardStatus.writerInfo(norm)) || {};
+        var img = el.querySelector('.dring-inner img');
+        _openers[key] = {
+          id: key, name: info.name || key, handle: info.handle || norm,
+          avatar: (img && img.getAttribute('src')) || info.avatar || '',
+          statuses: slides, ring: 'ring-has', isLive: false, isMine: false,
+          likes: 0, threads: slides.length,
+        };
+        el.setAttribute('data-status-open', key);
+        el.style.cursor = 'pointer';
+      });
+      bindClicks();
+    } catch (e) {}
+  }
+  document.addEventListener('droboard:statuses-ready', function () {
+    apply();
+    upgradeLateRings();
+  });
+
   /* Single open path: recover a missing viewer, then open at `key`. */
   function open(list, key, opts) {
     opts = opts || {};

@@ -7,7 +7,7 @@
  */
 (function(){
 'use strict';
-var USE_API = false;
+var USE_API = true;
 var API_BASE = window.DROBOARD_API_BASE || '/api/super-admin/analytics';
 
 var shell = SuperAdminSidebar.attach('#analyticsRoot',{

@@ -1,30 +1,17 @@
 /**
  * verification-service.js — writer identity badge on the Author Center.
  * Reads GET /api/author/verification, submits the shared KycForm (multipart).
- * Demo fallback: keeps the status in localStorage when USE_API is off.
  */
 (function () {
   'use strict';
   if (window.VerificationService) return;
 
-  var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api/author' };
-  var DEMO_KEY = 'droWriterVerification';
+  var CFG = window.AuthorApiConfig || { USE_API: true, API_BASE: '/api/author' };
   var state = { status: 'none', kycType: null };
   var mounted = false;
 
   function toast(m) {
     if (window.AuthorDrawer && window.AuthorDrawer.toast) return window.AuthorDrawer.toast(m);
-  }
-
-  function loadDemo() {
-    try {
-      var s = localStorage.getItem(DEMO_KEY);
-      if (s) state = JSON.parse(s);
-    } catch (e) {}
-  }
-
-  function saveDemo() {
-    try { localStorage.setItem(DEMO_KEY, JSON.stringify({ status: state.status, kycType: state.kycType })); } catch (e) {}
   }
 
   function checkStatus() {

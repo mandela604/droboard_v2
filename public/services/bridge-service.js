@@ -1,17 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════
    BRIDGE SERVICE
    Story detail page data + rendering. HTML calls BridgePage.init().
-   When going live: set USE_API = true, update API_BASE.
+   LIVE ONLY: every number, row and card comes from the backend
+   (GET /api/books/:id and the /api/stories engagement routes).
+   On any API failure the page shows an explicit error empty-state —
+   demo content is never substituted.
 ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const USE_API = false;
   const API_BASE = '/api';
 
   let DATA = null;
   let STORY_ID = null;
-  const S = { heroFollow: false, debateVote: null, pollVoted: -1, predVoted: -1, synExp: false, engOpen: null };
+  const S = { heroFollow: false, synExp: false, engOpen: null, busy: {} };
 
   function fmtN(n) { n = +n || 0; if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'; if (n >= 1000) return (n / 1000).toFixed(1) + 'k'; return String(n); }
   function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -32,365 +34,173 @@
     t._t = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(14px)'; }, 2500);
   }
 
+  /* Shared live-fetch helper: surfaces the backend's own error message
+     (e.g. the 404 'not_found' for an unknown story id) — never a silent
+     fallback. */
+  async function apiJson(res, label) {
+    let j = null;
+    try { j = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) {
+      const detail = (j && (j.error || j.message)) || '';
+      throw new Error(label + ' failed (' + res.status + ')' + (detail ? ' — ' + detail : ''));
+    }
+    return j;
+  }
+  async function getJSON(url, label) {
+    return apiJson(await fetch(url, { credentials: 'include' }), label);
+  }
+  async function postJSON(url, body, label, method) {
+    return apiJson(await fetch(url, {
+      method: method || 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    }), label);
+  }
+
   async function fetchStory(id) {
-    if (USE_API) {
-      const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error('Story API failed');
-      return res.json();
+    const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include' });
+    let j = null;
+    try { j = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) {
+      const detail = (j && (j.error || j.message)) || '';
+      throw new Error('Story not found (' + res.status + ')' + (detail ? ' — ' + detail : ''));
     }
-    if (window.DemoData && window.DemoData.STORIES) {
-      return window.DemoData.STORIES.find(s => s.id === id) || null;
-    }
-    return null;
+    return j;
   }
 
-  function parseCount(v) {
-    if (typeof v === 'number') return v;
-    const m = String(v || '').trim().match(/^([\d.]+)\s*([MK])?$/i);
-    if (!m) return 0;
-    return Math.round(parseFloat(m[1]) * (m[2] ? (m[2].toUpperCase() === 'M' ? 1000000 : 1000) : 1));
-  }
-  function splitCat(cat) {
-    const parts = String(cat || '').trim().split(/\s+/);
-    if (!parts.length) return { emoji: '📖', name: 'Story' };
-    const first = parts[0];
-    const isEmoji = /\p{Extended_Pictographic}/u.test(first);
-    return isEmoji
-      ? { emoji: first, name: parts.slice(1).join(' ') || 'Story' }
-      : { emoji: '📖', name: parts.join(' ') || 'Story' };
+  function catOf(s) {
+    const board = (s.hubs && s.hubs.board) || null;
+    const name = s.genre || (board && board.name) || 'Story';
+    return { emoji: (board && board.icon) || '📖', name: name };
   }
 
-  // Deterministic demo richness: stable per-story numbers derived from
-  // the id (same every visit, no data files). Default story keeps its
-  // handcrafted content; only normalized catalog records use this.
-  function hashStr(s) {
-    let h = 2166136261;
-    const str = String(s || '');
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h >>> 0;
-  }
-  function rng(seed) {
-    let a = seed >>> 0;
-    return function () {
-      a |= 0; a = (a + 0x6D2B79F5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  const GENRE_BY_CATEGORY = {
-    betrayal: 'Romance', romance: 'Romance', fantasy: 'Fantasy', revenge: 'Revenge',
-    mafia: 'Mafia', urban: 'Mafia', billionaire: 'Billionaire', ceo: 'Billionaire',
-    werewolf: 'Werewolf', horror: 'Horror', heartbreak: 'Heartbreak', elegy: 'Elegy',
-    twist: 'Twist', drama: 'Drama', comedy: 'Comedy', campus: 'Campus',
-  };
-  const TROPES_BY_GENRE = {
-    Romance: ['Second Chance', 'Secret Baby', 'Forced Proximity', 'Fake Dating'],
-    Fantasy: ['Chosen One', 'Hidden Magic', 'Prophecy', 'Reluctant Hero'],
-    Revenge: ['Sweet Revenge', 'Hidden Identity', 'Downfall', 'Justice Served'],
-    Mafia: ['Mafia Bride', 'Power Couple', 'Underworld Heir', 'Loyalty Test'],
-    Billionaire: ['Secret Billionaire', 'Contract Marriage', 'Office Romance', 'Hidden Heir'],
-    Default: ['Slow Burn', 'Plot Twist', 'Hidden Truth', 'Second Chance'],
-  };
-  function genreFor(catName) {
-    const key = Object.keys(GENRE_BY_CATEGORY).find(k => (catName || '').toLowerCase().includes(k));
-    return key ? GENRE_BY_CATEGORY[key] : 'Drama';
-  }
-  function tropesFor(genre, r) {
-    const pool = (TROPES_BY_GENRE[genre] || TROPES_BY_GENRE.Default).slice();
-    const out = [];
-    while (out.length < 3 && pool.length) {
-      out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-    }
-    return out;
-  }
-  const TAG_POOL = {
-    betrayal: ['#betrayal', '#grief', '#marriage', '#secrets', '#redemption', '#nigeria'],
-    romance: ['#romance', '#love', '#drama', '#slowburn', '#nigeria'],
-    fantasy: ['#fantasy', '#magic', '#werewolf', '#adventure'],
-    revenge: ['#revenge', '#drama', '#betrayal', '#justice'],
-    mafia: ['#mafia', '#urban', '#power', '#crime'],
-    billionaire: ['#billionaire', '#romance', '#ceo', '#drama'],
-  };
-  function tagsFor(genreName, r) {
-    const key = Object.keys(TAG_POOL).find(k => (genreName || '').toLowerCase().includes(k)) || null;
-    const pool = key ? TAG_POOL[key] : ['#drama', '#love', '#secrets', '#nigeria', '#trending'];
-    const n = 4 + Math.floor(r() * 2);
-    const out = [];
-    for (let i = 0; i < n && pool.length; i++) {
-      out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-    }
-    return out;
-  }
-  // gentle=true fills only missing/empty fields (passthrough data keeps
-  // its real numbers); gentle=false seeds everything (built objects).
-  function enrichDemo(d, gentle) {
-    const r = rng(hashStr(d.id));
-    const pick = (a, b) => Math.round(a + r() * (b - a));
-    d.stats = d.stats || {};
-    d.engagement = d.engagement || {};
-    d.engagement.poll = d.engagement.poll || { q: '', opts: [] };
-    d.engagement.debate = d.engagement.debate || { q: '', dFor: 0, dAg: 0 };
-    d.engagement.pred = d.engagement.pred || { q: '', opts: [] };
-    d.hubs = d.hubs || {};
-    d.hubs.genre = d.hubs.genre || {};
-    d.hubs.circle = d.hubs.circle || {};
-    d.reactions = d.reactions || { userRx: null };
-    d.writer = d.writer || {};
-    const setN = (obj, key, val) => { if (!gentle || obj[key] == null) obj[key] = val; };
-    const setS = (obj, key, val) => { if (!gentle || obj[key] == null || obj[key] === '') obj[key] = val; };
-    const setA = (obj, key, val) => { if (!gentle || !Array.isArray(obj[key]) || !obj[key].length) obj[key] = val; };
-    setN(d.stats, 'comments', pick(800, 9000));
-    setN(d.stats, 'shares', pick(8000, 70000));
-    setN(d.stats, 'rating', (42 + Math.floor(r() * 8)) / 10);
-    setA(d, 'tags', tagsFor(d.category && d.category.name, r));
-    const pv = (a, b) => pick(a, b);
-    if (!gentle || !d.engagement.poll.opts.length) {
-      d.engagement.poll.opts = [{ t: '❤️ Loving it', v: 0 }, { t: '🤷 Still deciding', v: 0 }];
-    }
-    d.engagement.poll.opts.forEach(o => { if (!gentle || !(o.v > 0)) o.v = pv(400, 5200); });
-    setN(d.engagement.debate, 'dFor', pv(1500, 4200));
-    setN(d.engagement.debate, 'dAg', pv(1500, 5200));
-    if (!gentle || !d.engagement.pred.opts.length) {
-      d.engagement.pred.opts = [{ t: '🔥 A twist', v: 0 }, { t: '💔 Heartbreak', v: 0 }];
-    }
-    d.engagement.pred.opts.forEach(o => { if (!gentle || !(o.v > 0)) o.v = pv(300, 2600); });
-    setN(d.hubs.genre, 'members', pick(20000, 380000));
-    setN(d.hubs.circle, 'members', pick(800, 9200));
-    setN(d, 'tipCount', pick(200, 2400));
-    [['love', 2000, 12000], ['crying', 1000, 7000], ['shocked', 300, 2500], ['broken', 500, 4500],
-     ['emotional', 300, 2200], ['savage', 200, 1200], ['sus', 100, 800], ['twist', 100, 900]
-    ].forEach(([k, a, b]) => setN(d.reactions, k, pick(a, b)));
-    setN(d.writer, 'followers', pick(3000, 60000));
-    setN(d.writer, 'reads', d.stats.reads || pick(40000, 900000));
-    setN(d.writer, 'rating', d.stats.rating);
-    setN(d.writer, 'stories', pick(1, 12));
-    setS(d.writer, 'bio', 'Telling stories that live in your chest long after you close the tab.');
-    setS(d.engagement.poll, 'q', 'What do you think so far?');
-    setS(d.engagement.debate, 'q', 'Join the debate.');
-    setS(d.engagement.pred, 'q', 'What happens next?');
-    return d;
-  }
-
-  // Flat catalog records (DemoData.STORIES) → full bridge shape so every
-  // renderer below gets the fields it expects. Short = 25 chapters max.
+  // Maps GET /api/books/:id response → bridge DATA shape. No synthesis:
+  // missing fields stay empty and the renderers show honest empty states.
   function normalizeStory(s) {
     if (!s) return null;
-    // Backend book detail (GET /api/books/:id): chapters array of rows +
-    // writer {id, username, name, avatar}. Map into the bridge shape.
-    if (s.writer && Array.isArray(s.chapters) && s.chapters.length && typeof s.chapters[0] === 'object' && s.chapters[0].title !== undefined) {
-      const rows = s.chapters;
-      const first = rows[0];
-      const cat = splitCat(s.genre || '');
-      const genre = genreFor(cat.name);
-      const stories = (window.DemoData && window.DemoData.STORIES) || [];
-      const _r = rng(hashStr('tropes:' + (s.id || '')));
-      const tropes = tropesFor(genre, _r);
-      const totalCh = rows.length;
-      const totalWords = rows.reduce((a, c) => a + (c.words || 0), 0);
-      return enrichDemo({
-        id: s.id, title: s.title || 'Untitled', cover: s.cover || '',
-        category: cat, genre: genre, tropes: tropes, length: totalCh <= 25 ? 'short' : 'long',
-        chapterLabel: 'Ch ' + (s.lastChapterId || 1),
-        writer: {
-          name: s.writer.name || 'Unknown', handle: '@' + (s.writer.username || 'unknown'),
-          avatar: s.writer.avatar || '', followers: 0, following: false,
-          verified: false, stories: 0, reads: 0, rating: 0, bio: '',
-        },
-        stats: { comments: 0, reads: parseCount(s.reads), shares: 0, rating: s.rating || 0 },
-        likes: parseCount(s.likes),
-        continue: { chapterId: 1, chapterTitle: first.title || 'Chapter 1', progress: 0, timeLeft: '' },
-        synopsis: { short: s.synopsis || '', more: '' },
-        engagement: {
-          poll: {
-            q: (s.engagement && s.engagement.polls && s.engagement.polls[0] && s.engagement.polls[0].q) || 'What do you think so far?',
-            opts: ((s.engagement && s.engagement.polls && s.engagement.polls[0] && s.engagement.polls[0].opts) || []).map(o => ({ t: o.t, v: o.v })),
-            voted: -1,
-          },
-          debate: {
-            q: (s.engagement && s.engagement.debates && s.engagement.debates[0] && s.engagement.debates[0].motion) || 'Debate opens after Chapter 3.',
-            dFor: (s.engagement && s.engagement.debates && s.engagement.debates[0] && s.engagement.debates[0].forV) || 0,
-            dAg: (s.engagement && s.engagement.debates && s.engagement.debates[0] && s.engagement.debates[0].agV) || 0,
-          },
-          pred: {
-            q: (s.engagement && s.engagement.predictions && s.engagement.predictions[0] && s.engagement.predictions[0].q) || 'What happens next?',
-            opts: ((s.engagement && s.engagement.predictions && s.engagement.predictions[0] && s.engagement.predictions[0].opts) || []).map(o => ({ t: o.t, v: o.v })),
-          },
-        },
-        hubs: {
-          genre: { name: (cat.name || 'Story') + ' Hub', icon: cat.emoji, members: 0, joined: false },
-          circle: { name: (s.writer.name || 'Writer') + "'s Inner Circle", members: 0, joined: false, perks: 'Early chapters, behind-the-scenes, live Q&As' },
-        },
-        details: [
-          { icon: '📚', lbl: 'Type', val: (totalCh <= 25 ? 'Short' : 'Long') + ' story · ' + (s.status === 'completed' ? 'Completed' : 'Ongoing') },
-          { icon: '🏷️', lbl: 'Category', val: cat.emoji + ' ' + cat.name, acc: true },
-          { icon: '🎭', lbl: 'Genre', val: genre, acc: true },
-          { icon: '✨', lbl: 'Trope', val: tropes.slice(0, 2).join(' · ') },
-          { icon: '📅', lbl: 'Chapters', val: totalCh + ' Chapter' + (totalCh === 1 ? '' : 's') },
-          { icon: '⏱️', lbl: 'Read time', val: totalWords ? Math.max(1, Math.round(totalWords / 200 / totalCh)) + ' min/chapter' : '~4 min/chapter' },
-          { icon: '📝', lbl: 'Word count', val: totalWords ? totalWords.toLocaleString() + ' words' : '—' },
-          { icon: '✅', lbl: 'Status', val: s.status === 'completed' ? 'Completed' : 'Ongoing', acc: true },
-        ],
-        tags: [],
-        similar: stories.filter(x => String(x.id) !== String(s.id)).slice(0, 4),
-        reactions: { userRx: null, love: 0, crying: 0, angry: 0, shocked: 0, broken: 0, emotional: 0, savage: 0, sus: 0, twist: 0, laughing: 0 },
-        tipCount: 0,
-        chapters: rows.map((c, i) => ({
-          n: c.n, title: c.title,
-          meta: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min · ' + c.words + ' words' : '~4 min',
-          badge: c.price > 0 ? 'paid' : (i === 0 ? 'free' : null),
-          state: c.price > 0 ? 'locked' : (i === 0 ? 'current' : 'done'),
-        })),
-      });
-    }
-    // Already bridge-shaped: complete any missing pieces instead of
-    // trusting it blindly (an empty chapters list must never render).
-    if (s.writer && Array.isArray(s.chapters)) {
-      if (!s.length) s.length = (s.chapters.length || 0) <= 25 ? 'short' : 'long';
-      if (!s.genre && s.category) s.genre = genreFor(s.category.name || s.category);
-      if (!Array.isArray(s.tropes) || !s.tropes.length) {
-        try { s.tropes = tropesFor(s.genre || 'Drama', rng(hashStr('tropes:' + (s.id || '')))); } catch (e) { s.tropes = []; }
-      }
-      if (s.likes == null) {
-        try {
-          const rx = s.reactions || {};
-          s.likes = Object.keys(rx).reduce((sum, k) => sum + (k === 'userRx' ? 0 : (+rx[k] || 0)), 0);
-        } catch (e) { s.likes = 0; }
-      }
-      return enrichDemo(s, true);
-    }
-    const totalCh = Math.max(1, parseInt(s.chapters, 10) || 1);
-    const cat = splitCat(s.cat || s.category);
-    const chapters = [];
-    for (let n = 1; n <= totalCh; n++) {
-      chapters.push({ n, title: 'Chapter ' + n, meta: '~4 min', badge: n === 1 ? 'free' : null, state: n === 1 ? 'current' : 'done' });
-    }
-    const genreName = (cat.name || 'Story') + ' Hub';
-    const genre = genreFor(cat.name);
-    const stories = (window.DemoData && window.DemoData.STORIES) || [];
-    const _r = rng(hashStr('tropes:' + (s.id || '')));
-    const tropes = tropesFor(genre, _r);
-    return enrichDemo({
+    const rows = Array.isArray(s.chapters) ? s.chapters : [];
+    const totalCh = rows.length || s.chapterCount || 0;
+    const totalWords = rows.reduce((a, c) => a + (c.words || 0), 0);
+    const cat = catOf(s);
+    const genre = s.genre || cat.name;
+
+    // engagement: backend sends { polls[], predictions[], debates[] } —
+    // rows only exist when the author created them (id === null → none).
+    const eng = s.engagement || {};
+    const poll0 = (eng.polls || [])[0] || null;
+    const pred0 = (eng.predictions || [])[0] || null;
+    const deb0  = (eng.debates || [])[0] || null;
+
+    // reactions: backend sends { counts: { love, crying, ... }, userRx }
+    const rxCounts = (s.reactions && s.reactions.counts) ? s.reactions.counts : {};
+    const userRx   = (s.reactions && s.reactions.userRx) || null;
+
+    // continue reading from backend continueReading object
+    const cr = s.continueReading || null;
+    const firstFreeChapter = rows.find(c => !c.price || c.price === 0) || rows[0] || {};
+    const continueChId = cr ? (cr.chapterId || firstFreeChapter.n || 1) : (firstFreeChapter.n || 1);
+    const continueRow = rows.find(c => String(c.n) === String(continueChId) || c.id === continueChId);
+    const continueChTitle = continueRow ? (continueRow.title || 'Chapter ' + continueChId) : (firstFreeChapter.title || (totalCh ? 'Chapter 1' : '—'));
+    const continuePct = cr ? Math.round(cr.pct || 0) : 0;
+
+    // hubs: backend sends hubs.board (null when the story has no category
+    // board) and circle: null until a membership model ships.
+    const board = (s.hubs && s.hubs.board) || null;
+
+    // similar: backend sends similar[{ id, title, cover, author: {name,handle,avatar} }]
+    const similar = (s.similar || []).map(x => ({
+      id: x.id, img: x.cover || '', title: x.title || '',
+      author: (x.author && (x.author.name || x.author.handle)) || '',
+    }));
+
+    const stats = s.stats || {};
+    const w = s.writer || {};
+
+    return {
       id: s.id, title: s.title || 'Untitled', cover: s.cover || '',
-      category: cat, genre: genre, tropes: tropes, length: totalCh <= 25 ? 'short' : 'long',
-      chapterLabel: 'Ch 1',
+      category: cat, genre: genre,
+      tropes: (Array.isArray(s.tropes) ? s.tropes : []).slice(0, 3),
+      length: totalCh <= 25 ? 'short' : 'long',
+      chapterLabel: s.lastChapterN ? 'Ch ' + s.lastChapterN : (totalCh ? 'Ch ' + totalCh : 'Ch 1'),
       writer: {
-        name: s.author || 'Unknown', handle: '@' + String(s.author || 'writer').replace('@', ''),
-        avatar: s.authorAv || '', followers: 0, following: false,
-        verified: !!s.verified, stories: 0, reads: 0, rating: 0, bio: '',
+        id: w.id, name: w.name || w.username || 'Unknown',
+        handle: w.handle || (w.username ? '@' + w.username : '@unknown'),
+        username: w.username || '',
+        avatar: w.avatar || '',
+        followers: w.followers || 0,
+        following: !!w.following,
+        verified: !!w.verified,
+        stories: w.stories || 0,
+        reads: w.reads || 0,
+        rating: w.rating || 0,
+        bio: w.bio || '',
       },
-      stats: { comments: 0, reads: parseCount(s.reads), shares: 0, rating: 0 },
-      likes: parseCount(s.likes),
-      likes: parseCount(s.likes),
-      continue: { chapterId: 1, chapterTitle: 'Chapter 1', progress: 0, timeLeft: '' },
-      synopsis: { short: s.desc || '', more: '' },
+      stats: {
+        comments: stats.comments || 0,
+        reads: stats.reads || s.reads || 0,
+        shares: stats.shares || 0,
+        rating: stats.rating || s.rating || 0,
+        ratingCount: stats.ratingCount || s.ratingCount || 0,
+      },
+      likes: s.likes || stats.likes || 0,
+      continue: { chapterId: continueChId, chapterTitle: continueChTitle, progress: continuePct, timeLeft: cr && cr.secondsSpent ? fmtN(cr.secondsSpent) + 's read' : '' },
+      synopsis: { short: s.synopsis || '' },
       engagement: {
-        poll: { q: 'What do you think so far?', opts: [{ t: '❤️ Loving it', v: 0 }, { t: '🤷 Still deciding', v: 0 }] },
-        debate: { q: 'Debate opens after Chapter 3.', dFor: 0, dAg: 0 },
-        pred: { q: 'What happens next?', opts: [{ t: '🔥 A twist', v: 0 }, { t: '💔 Heartbreak', v: 0 }] },
+        poll: poll0 ? {
+          id: poll0.id,
+          q: poll0.q || '',
+          opts: (poll0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
+          voted: poll0.myVote != null ? poll0.myVote : -1,
+        } : null,
+        debate: deb0 ? {
+          id: deb0.id,
+          q: deb0.motion || '',
+          dFor: deb0.forV || 0,
+          dAg: deb0.agV || 0,
+          voted: deb0.myVote != null ? deb0.myVote : -1,
+        } : null,
+        pred: pred0 ? {
+          id: pred0.id,
+          q: pred0.q || '',
+          opts: (pred0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
+          voted: pred0.myVote != null ? pred0.myVote : -1,
+        } : null,
       },
       hubs: {
-        genre: { name: genreName, icon: cat.emoji, members: 0, joined: false },
-        circle: { name: (s.author || 'Writer') + "'s Inner Circle", members: 0, joined: false, perks: 'Early chapters, behind-the-scenes, live Q&As' },
+        board: board,
+        genre: board
+          ? { name: board.name, slug: board.slug || '', icon: board.icon || cat.emoji, members: board.members || 0, joined: !!board.joined }
+          : null,
+        circle: null,
       },
       details: [
-        { icon: '📚', lbl: 'Type', val: (totalCh <= 25 ? 'Short' : 'Long') + ' story · Ongoing' },
+        { icon: '📚', lbl: 'Type', val: (totalCh <= 25 ? 'Short' : 'Long') + ' story · ' + (s.status === 'completed' ? 'Completed' : 'Ongoing') },
         { icon: '🏷️', lbl: 'Category', val: cat.emoji + ' ' + cat.name, acc: true },
         { icon: '🎭', lbl: 'Genre', val: genre, acc: true },
-        { icon: '✨', lbl: 'Trope', val: tropes.slice(0, 2).join(' · ') },
-        { icon: '📅', lbl: 'Chapters', val: totalCh + ' Chapter' + (totalCh === 1 ? '' : 's') },
-        { icon: '⏱️', lbl: 'Read time', val: '~4 min/chapter' },
-        { icon: '✅', lbl: 'Status', val: 'Ongoing', acc: true },
+        ...(totalCh ? [{ icon: '📅', lbl: 'Chapters', val: totalCh + ' Chapter' + (totalCh === 1 ? '' : 's') }] : []),
+        { icon: '⏱️', lbl: 'Read time', val: totalWords && totalCh ? Math.max(1, Math.round(totalWords / 200 / totalCh)) + ' min/chapter' : '—' },
+        { icon: '📝', lbl: 'Word count', val: totalWords ? totalWords.toLocaleString() + ' words' : '—' },
+        { icon: '✅', lbl: 'Status', val: s.status === 'completed' ? 'Completed' : 'Ongoing', acc: true },
       ],
-      tags: [],
-      similar: stories.filter(x => String(x.id) !== String(s.id)).slice(0, 4),
-      reactions: { userRx: null, love: 0, crying: 0, angry: 0, shocked: 0, broken: 0, emotional: 0, savage: 0, sus: 0, twist: 0, laughing: 0 },
-      tipCount: 0,
-    });
-  }
-
-  function getDefaultStory(id) {
-    const defRx = { userRx: null, love: 9000, crying: 6000, angry: 0, shocked: 2000, broken: 4000, emotional: 1500, savage: 900, sus: 500, twist: 400, laughing: 0 };
-    const defLikes = Object.keys(defRx).reduce((s, k) => s + (k === 'userRx' ? 0 : (defRx[k] || 0)), 0);
-    return {
-      id: id,
-      title: "I came home early and caught my husband kissing my late sister's photograph",
-      cover: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=900&q=85',
-      category: { emoji: '💔', name: 'Betrayal' },
-      genre: 'Romance',
-      tropes: ['Second Chance', 'Secret Baby', 'Forced Proximity'],
-      length: 'long',
-      chapterLabel: 'Ch 15',
-      writer: {
-        name: 'Ada_Writes', handle: '@ada_writes', avatar: 'https://i.pravatar.cc/100?img=32',
-        followers: 12400, following: false, verified: true, stories: 8, reads: 171000, rating: 4.7,
-        bio: "Telling stories that live in your chest long after you close the tab. Betrayal · Family · Redemption. Lagos-based, always online at 2am."
+      tags: (Array.isArray(s.tags) ? s.tags : []).slice(0, 8),
+      similar: similar,
+      reactions: {
+        userRx: userRx,
+        love: rxCounts.love || 0, crying: rxCounts.crying || 0,
+        angry: rxCounts.angry || 0, shocked: rxCounts.shocked || 0,
+        broken: rxCounts.broken || 0, emotional: rxCounts.emotional || 0,
+        savage: rxCounts.savage || 0, sus: rxCounts.sus || 0,
+        twist: rxCounts.twist || 0, laughing: rxCounts.laughing || 0,
       },
-      stats: { comments: 4100, reads: 171000, shares: 34000, rating: 4.7 },
-      likes: defLikes,
-      continue: { chapterId: 15, chapterTitle: 'Chapter 15 — The night she asked him to be honest', progress: 62, timeLeft: '~3 min left' },
-      synopsis: {
-        short: "A woman returns home early to find her husband in an intimate moment with a photograph of her deceased sister. What follows is not a fight — it is the slow unravelling of a marriage built on two griefs that never met.",
-        more: " Ada_Writes' most read story explores betrayal, grief, and the love that hides inside silence. It picks up a year after Ada moved back home — the husband has a new therapist, and Ada has a new question. Neither of them is ready for the answers."
-      },
-      engagement: {
-        poll: { q: 'Who was truly at fault in this situation?', opts: [
-          { t: "💔 His grief doesn't excuse the betrayal", v: 4812 },
-          { t: "🕊️ He was grieving — it's complicated", v: 2344 },
-          { t: '🤷 Nobody is fully right here', v: 1044 },
-        ]},
-        debate: { q: '"Ada should stay and fight for her marriage, not leave."', dFor: 2341, dAg: 3819 },
-        pred: { q: 'What happens in Chapter 5?', opts: [
-          { t: '💔 Ada confronts him and leaves', v: 2201 },
-          { t: '🕊️ They start couples therapy', v: 1888 },
-          { t: '📸 A secret about the sister is revealed', v: 987 },
-          { t: '🏠 Ada moves out quietly', v: 574 },
-        ]},
-      },
-      // Flat chapter list — stories are short (25 chapters max) or long.
-      chapters: [
-        { n: 1, title: 'The knock on the door', meta: '3 min · 640 words', badge: 'free', state: 'done' },
-        { n: 2, title: 'The photograph he kept', meta: '4 min · 820 words', badge: null, state: 'done' },
-        { n: 3, title: 'She asked him nothing that night', meta: '3 min · 700 words', badge: null, state: 'done' },
-        { n: 4, title: 'The anniversary dinner', meta: '4 min · 790 words', badge: null, state: 'done' },
-        { n: 5, title: 'What the neighbours heard', meta: '4 min · 810 words', badge: null, state: 'done' },
-        { n: 6, title: "Her mother knew", meta: '3 min · 670 words', badge: null, state: 'done' },
-        { n: 7, title: 'Two sleepless mornings', meta: '4 min · 830 words', badge: null, state: 'done' },
-        { n: 8, title: 'She packed the small bag first', meta: '5 min · 960 words', badge: null, state: 'done' },
-        { n: 9, title: 'The last Sunday meal', meta: '4 min · 800 words', badge: null, state: 'done' },
-        { n: 10, title: 'She left the key under the mat', meta: '5 min · 980 words', badge: null, state: 'done' },
-        { n: 11, title: 'One year later', meta: '6 min · 1100 words', badge: null, state: 'done' },
-        { n: 12, title: 'New apartment, same nightmares', meta: '4 min · 800 words', badge: null, state: 'done' },
-        { n: 13, title: 'He texted. She waited.', meta: '3 min · 650 words', badge: null, state: 'done' },
-        { n: 14, title: "The therapist asked about her sister", meta: '4 min · 820 words', badge: null, state: 'done' },
-        { n: 15, title: 'The night she asked him to be honest', meta: '5 min · 940 words', badge: 'new', state: 'current', progress: 62 },
-        { n: 16, title: 'What he finally told her', meta: '5 min · 950 words', badge: null, state: 'locked' },
-        { n: 17, title: 'The choice she almost made', meta: '4 min · 880 words', badge: null, state: 'locked' },
-      ],
-      reactions: defRx,
-      hubs: {
-        genre: { name: 'Betrayal Hub', icon: '💔', members: 84200, joined: false },
-        circle: { name: "Ada_Writes' Inner Circle", members: 3200, joined: false, perks: 'Early chapters, behind-the-scenes, live Q&As' },
-      },
-      details: [
-        { icon: '📚', lbl: 'Type', val: 'Long story · Ongoing' },
-        { icon: '🏷️', lbl: 'Category', val: '💔 Betrayal', acc: true },
-        { icon: '🎭', lbl: 'Genre', val: 'Romance', acc: true },
-        { icon: '✨', lbl: 'Trope', val: 'Second Chance · Secret Baby' },
-        { icon: '📅', lbl: 'Chapters', val: '17 Chapters · Long' },
-        { icon: '⏱️', lbl: 'Read time', val: '~4 min/chapter' },
-        { icon: '📅', lbl: 'Started', val: 'Jan 2025' },
-        { icon: '✅', lbl: 'Status', val: 'Ongoing · Ch16 soon', acc: true },
-      ],
-      tags: ['#betrayal', '#grief', '#marriage', '#secrets', '#redemption', '#nigeria'],
-      similar: [
-        { cover: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=400&q=75', cat: '💔 Heartbreak', title: "He proposed with my best friend's ring", author: 'Kemi_A' },
-        { cover: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=400&q=75', cat: '🔥 Revenge', title: 'My stepmother stole my university fund', author: 'Zara_M' },
-        { cover: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&q=75', cat: '👑 Family', title: "Grandmother's will revealed I wasn't blood", author: 'Chiamaka_N' },
-        { cover: 'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=400&q=75', cat: '🌙 Elegy', title: 'The letter he never sent', author: 'Efe_O' },
-        { cover: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=400&q=75', cat: '✨ Twist', title: 'The runaway bride in her socked feet', author: 'Ifeanyi_Story' },
-      ],
-      tipCount: 1240,
+      tipCount: s.tipCount || 0,
+      save: s.save || null,
+      chapters: rows.map((c, i) => ({
+        n: c.n, title: c.title || 'Chapter ' + c.n,
+        meta: c.words ? Math.max(1, Math.round(c.words / 200)) + ' min · ' + c.words + ' words' : '—',
+        badge: c.price > 0 ? 'paid' : (i === 0 ? 'free' : null),
+        state: c.price > 0 ? 'locked' : (i === 0 ? 'current' : 'done'),
+      })),
     };
   }
 
@@ -428,12 +238,11 @@
     setupScrollListener();
   }
 
-  /* ── RATING ── */
-  /* ── RATING (in-memory only, no localStorage) ──
+  /* ── RATING — live: GET /api/stories/:id/rating { ok, mine, avg, count }.
      Stars persist across open/close toggles via myRating. */
   let myRating = 0;
   function goToDebate() {
-    location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || 'deb_default');
+    location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || '');
   }
   function toggleRate() {
     const box = document.getElementById('rateBox');
@@ -443,6 +252,15 @@
       const wrap = document.getElementById('rateStars');
       if (wrap) [...wrap.querySelectorAll('.rate-star')].forEach((s, i) => s.classList.toggle('lit', i < myRating));
     } catch (e) {}
+  }
+  async function loadRating() {
+    try {
+      const r = await getJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/rating`, 'Rating API');
+      myRating = (r.mine && r.mine.stars) || 0;
+      DATA.stats.rating = r.avg || 0;
+      DATA.stats.ratingCount = r.count || 0;
+    } catch (e) { /* rating strip falls back to the story payload numbers */ }
+    renderRating();
   }
   function renderRating() {
     const wrap = document.getElementById('rateStars');
@@ -462,36 +280,32 @@
       });
     }
     function updateAvg() {
-      avgEl.innerHTML = `<b>${base.toFixed(1)}★</b> · ${fmtN(1247)} ratings`;
+      avgEl.innerHTML = `<b>${base.toFixed(1)}★</b> · ${fmtN(DATA.stats.ratingCount)} ratings`;
       const rc = document.getElementById('rateRevCount');
-      if (rc) rc.textContent = fmtN(1247);
+      if (rc) rc.textContent = fmtN(DATA.stats.ratingCount);
     }
     function syncText() {
       if (myRating) {
         label.textContent = ['Terrible', 'Bad', 'Okay', 'Good', 'Great!'][myRating - 1];
         yoursEl.textContent = '✓ You rated ' + myRating + ' star' + (myRating > 1 ? 's' : '');
         yoursEl.classList.add('show');
-        hint.textContent = 'Tap to see details';
+        hint.textContent = 'Tap to edit your review';
       } else {
-        label.textContent = myRating ? '' : 'Tap a star to rate';
-          yoursEl.classList.remove('show');
-          hint.textContent = 'Tap to rate this story';
+        label.textContent = 'Tap a star to rate';
+        yoursEl.classList.remove('show');
+        hint.textContent = 'Tap to rate this story';
       }
     }
     paint(myRating);
     syncText();
     updateAvg();
-
-      // Display-only summary — tapping the box opens the rate modal
-      // (see openRateModal). No inline star handlers.
-      const hintTxt = document.getElementById('rateHint');
-      if (hintTxt) hintTxt.textContent = myRating ? 'Tap to edit your review' : 'Tap to rate this story';
-    }
+  }
 
   /* ── PROFILE NAV + STATUS RING ──
      Same contract as comments/debate: the avatar gets a red ring ONLY when
-     the writer actually has statuses, gray after the status has been viewed,
-     and no ring/border at all for a statusless avatar. */
+     the writer actually has statuses (live from the status service, which
+     reads GET /api/statuses/writers by handle), gray after the status has
+     been viewed, and no ring at all for a statusless avatar. */
   function writerRing(w, size) {
     return DroboardStatusRing.html(w || {}, {
       size: size, key: (w && (w.name || w.handle || w.id)) || '',
@@ -502,22 +316,18 @@
   }
   function goProfile() {
     const w = DATA.writer || {};
-    location.href = 'profile.html?u=' + encodeURIComponent(String(w.handle || w.name || '').replace(/^@/, ''));
+    location.href = 'profile.html?u=' + encodeURIComponent(String(w.username || w.handle || w.name || '').replace(/^@/, ''));
   }
   function attachWriterStatus() {
     const w = DATA && DATA.writer;
     if (!w || w._stWired) return;
     w._stWired = true;
     try {
-      const pool = (window.DemoData && window.DemoData.STATUSES) || [];
-      const name = String(w.name || '').replace(/^@/, '');
-      const hit = pool.find(p => !p.isYou && String(p.name || '').replace(/^@/, '') === name);
-      if (hit && hit.statuses && hit.statuses.length) {
-        w.statuses = hit.statuses;
-        w.statusId = hit.id;
-        w.statusRing = hit.ring === 'ring-viewed' ? 'viewed' : (hit.ring === 'ring-none' ? 'none' : 'has');
-      }
-    } catch (e) {}
+      const name = String(w.username || w.handle || w.name || '').replace(/^@/, '');
+      const statuses = (window.DroboardStatus && DroboardStatus.writerStatuses(name)) || [];
+      w.statuses = statuses;
+      w.statusRing = statuses.length ? 'has' : 'none';
+    } catch (e) { w.statuses = []; w.statusRing = 'none'; }
   }
   function openWriterStatus() {
     const w = DATA.writer || {};
@@ -531,8 +341,7 @@
   }
   function onWriterAvatar() {
     if (openWriterStatus()) return;
-    const w = DATA.writer || {};
-    toast('👤 @' + String(w.handle || w.name || '').replace(/^@/, ''));
+    goProfile();
   }
   /* Status viewed → gray the ring (chained so any other handler still runs) */
   function wireStatusRing() {
@@ -575,7 +384,7 @@
             <div class="hw-name" onclick="BridgePage.goProfile()">${esc(d.writer.name)}</div>
             <div class="hw-handle">${esc(d.writer.handle)} · ${fmtN(d.writer.followers)} followers</div>
           </div>
-          <button class="hw-follow" id="heroFollow" onclick="BridgePage.toggleHeroFollow()">+ Follow</button>
+          <button class="hw-follow${d.writer.following ? ' ing' : ''}" id="heroFollow" onclick="BridgePage.toggleFollow()">${d.writer.following ? '✓ Following' : '+ Follow'}</button>
         </div>
       </div>`;
   }
@@ -588,7 +397,7 @@
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.comments)}</div><div class="sl">Comments</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.reads)}</div><div class="sl">Reads</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.shares)}</div><div class="sl">Shares</div></div>
-      <div class="stat-cell"><div class="sn gold">${d.stats.rating}★</div><div class="sl">Rating</div></div>`;
+      <div class="stat-cell"><div class="sn gold">${d.stats.rating ? d.stats.rating + '★' : '—'}</div><div class="sl">Rating</div></div>`;
   }
 
   function renderContinue() {
@@ -596,32 +405,40 @@
     document.getElementById('rpTitle').textContent = c.chapterTitle;
     document.getElementById('rpBarFill').style.width = c.progress + '%';
     document.getElementById('rpPct').textContent = c.progress + '% complete';
-    document.getElementById('rpLeft').textContent = c.timeLeft;
+    document.getElementById('rpLeft').textContent = c.timeLeft || '—';
   }
 
   function renderSynopsis() {
-    document.getElementById('synText').innerHTML = `${esc(DATA.synopsis.short)}<span id="synExt" style="display:none">${esc(DATA.synopsis.more)}</span>`;
+    document.getElementById('synText').innerHTML = esc(DATA.synopsis.short) || '<span style="color:var(--muted)">No synopsis yet.</span>';
     const btn = document.getElementById('synBtn');
-    if (btn) btn.style.display = (DATA.synopsis.more || '').trim() ? '' : 'none';
+    if (btn) btn.style.display = (DATA.synopsis.short || '').length > 300 ? '' : 'none';
   }
 
   function renderEngagement() {
     const e = DATA.engagement;
-    document.getElementById('pollSub').textContent = fmtN(e.poll.opts.reduce((s, o) => s + o.v, 0)) + ' votes';
-    document.getElementById('debateSub').textContent = fmtN(e.debate.dFor + e.debate.dAg) + ' live';
-    document.getElementById('predSub').textContent = fmtN(e.pred.opts.reduce((s, o) => s + o.v, 0)) + ' locked';
-    document.getElementById('pollQ').textContent = e.poll.q;
-    document.getElementById('debateQ').textContent = e.debate.q;
-    document.getElementById('predQ').textContent = e.pred.q;
+    document.getElementById('pollSub').textContent = e.poll ? fmtN(e.poll.opts.reduce((s, o) => s + o.v, 0)) + ' votes' : 'No poll yet';
+    document.getElementById('debateSub').textContent = e.debate ? fmtN(e.debate.dFor + e.debate.dAg) + ' live' : 'No debate yet';
+    document.getElementById('predSub').textContent = e.pred ? fmtN(e.pred.opts.reduce((s, o) => s + o.v, 0)) + ' locked' : 'No prediction yet';
     renderPoll();
     renderDebate();
     renderPred();
   }
 
   function renderPoll() {
-    const opts = DATA.engagement.poll.opts;
+    const p = DATA.engagement.poll;
+    const el = document.getElementById('pollOpts');
+    if (!p) {
+      el.innerHTML = '<div style="padding:14px;text-align:center;font-size:11px;color:var(--muted)">The writer hasn\u2019t posted a poll yet.</div>';
+      document.getElementById('pollQ').textContent = 'Poll';
+      document.getElementById('pollTotal').textContent = '';
+      S.pollVoted = -1;
+      return;
+    }
+    S.pollVoted = p.voted;
+    document.getElementById('pollQ').textContent = p.q;
+    const opts = p.opts;
     const tot = opts.reduce((s, o) => s + o.v, 0) || 1;
-    document.getElementById('pollOpts').innerHTML = opts.map((o, i) => {
+    el.innerHTML = opts.map((o, i) => {
       const pct = Math.round(o.v / tot * 100);
       return `<div class="ec-opt${S.pollVoted === i ? ' voted' : ''}" onclick="BridgePage.votePoll(${i})"><div class="ec-opt-bar" style="width:${pct}%"></div><div class="ec-opt-inner"><span class="ec-opt-text">${esc(o.t)}</span><span class="ec-opt-pct">${pct}%</span></div></div>`;
     }).join('');
@@ -630,6 +447,19 @@
 
   function renderDebate() {
     const db = DATA.engagement.debate;
+    const qEl = document.getElementById('debateQ');
+    const sides = document.getElementById('dFor');
+    if (!db) {
+      if (sides) sides.parentElement.style.display = 'none';
+      qEl.textContent = 'No debate yet';
+      document.getElementById('debateLiveTotal').textContent = '0';
+      document.getElementById('debateVoicesTotal').textContent = '0 voices';
+      S.debateVote = null;
+      return;
+    }
+    if (sides) sides.parentElement.style.display = '';
+    S.debateVote = db.voted === 0 ? 'for' : db.voted === 1 ? 'against' : null;
+    qEl.textContent = db.q;
     const tot = db.dFor + db.dAg || 1;
     const fp = Math.round(db.dFor / tot * 100);
     document.getElementById('forBar').style.width = fp + '%';
@@ -638,14 +468,27 @@
     document.getElementById('agPct').textContent = (100 - fp) + '%';
     document.getElementById('forCnt').textContent = fmtN(db.dFor) + ' readers';
     document.getElementById('agCnt').textContent = fmtN(db.dAg) + ' readers';
+    document.getElementById('dFor').classList.toggle('chosen', S.debateVote === 'for');
+    document.getElementById('dAg').classList.toggle('chosen', S.debateVote === 'against');
     document.getElementById('debateLiveTotal').textContent = fmtN(db.dFor + db.dAg);
     document.getElementById('debateVoicesTotal').textContent = fmtN(db.dFor + db.dAg) + ' voices';
   }
 
   function renderPred() {
-    const opts = DATA.engagement.pred.opts;
+    const p = DATA.engagement.pred;
+    const el = document.getElementById('predOpts');
+    if (!p) {
+      el.innerHTML = '<div style="padding:14px;text-align:center;font-size:11px;color:var(--muted)">The writer hasn\u2019t posted a prediction yet.</div>';
+      document.getElementById('predQ').textContent = 'Prediction';
+      document.getElementById('predTotal').textContent = '';
+      S.predVoted = -1;
+      return;
+    }
+    S.predVoted = p.voted;
+    document.getElementById('predQ').textContent = p.q;
+    const opts = p.opts;
     const tot = opts.reduce((s, o) => s + o.v, 0) || 1;
-    document.getElementById('predOpts').innerHTML = opts.map((o, i) => {
+    el.innerHTML = opts.map((o, i) => {
       const pct = Math.round(o.v / tot * 100);
       return `<div class="ec-opt${S.predVoted === i ? ' voted' : ''}" onclick="BridgePage.votePred(${i})"><div class="ec-opt-bar" style="width:${pct}%"></div><div class="ec-opt-inner"><span class="ec-opt-text">${esc(o.t)}</span><span class="ec-opt-pct">${pct}%</span></div></div>`;
     }).join('');
@@ -653,22 +496,12 @@
   }
 
   function chapterCountTotal() {
-    const direct = (DATA.chapters || []).length;
-    if (direct > 0) return direct;
-    // Last resort: the catalog record's own count (never render bare 0).
-    try {
-      const all = (window.DemoData && window.DemoData.STORIES) || [];
-      const hit = all.find(s => String(s.id) === String(STORY_ID));
-      const n = hit && parseInt(hit.chapters, 10);
-      if (n > 0) return n;
-    } catch (e) {}
-    return 0;
+    return (DATA.chapters || []).length;
   }
   function renderChapterCount() {
     const totalCh = chapterCountTotal();
     const kind = DATA.length === 'short' ? 'Short story' : 'Long story';
-    try { console.info('[Bridge] chapters:', totalCh, 'story:', STORY_ID); } catch (e) {}
-    document.getElementById('chCountN').textContent = totalCh > 0 ? totalCh + ' Chapters' : '—';
+    document.getElementById('chCountN').textContent = totalCh > 0 ? totalCh + ' Chapters' : 'No chapters yet';
     document.getElementById('chCountSub').textContent = totalCh > 0 ? totalCh + ' chapters · ' + kind : kind;
   }
 
@@ -690,12 +523,18 @@
   }
 
   function renderHubs() {
-    const h = DATA.hubs || {};
+    const h = (DATA.hubs || {}).genre;
+    const wrap = document.getElementById('hubsWrap');
+    if (!wrap) return;
+    // No backend board → no hub card. A fabricated hub promises a join the
+    // backend cannot honour.
+    if (!h) { wrap.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--muted);padding:12px 0">No community board for this story yet.</div>'; return; }
     if (!window.DroboardCommunityCards) return;
-    DroboardCommunityCards.mount('#hubsWrap', {
-      genre: h.genre,
-      circle: Object.assign({}, h.circle, { avatar: DATA.writer && DATA.writer.avatar }),
-      onJoin: (type, joined) => joinHub(type, joined),
+    DroboardCommunityCards.mount(wrap, {
+      genre: h,
+      circle: null,
+      showCircle: false,
+      onJoin: (type, joined) => joinHub(joined),
     });
   }
 
@@ -704,7 +543,7 @@
     document.getElementById('writerBody').innerHTML = `
       <div class="wc-av-row">
         ${writerRing(w, 48)}
-        <button class="wc-follow${w.following ? ' ing' : ''}" id="wcFollow" onclick="BridgePage.toggleWcFollow()">${w.following ? '✓ Following' : '+ Follow'}</button>
+        <button class="wc-follow${w.following ? ' ing' : ''}" id="wcFollow" onclick="BridgePage.toggleFollow()">${w.following ? '✓ Following' : '+ Follow'}</button>
       </div>
       <div class="wc-name" style="cursor:pointer" onclick="BridgePage.goProfile()">${esc(w.name)}</div>
       <div class="wc-handle">${esc(w.handle)} ${w.verified ? '<span class="wc-vbadge">✓ Verified</span>' : ''}</div>
@@ -718,13 +557,46 @@
       <div class="wc-view-btn" onclick="BridgePage.goProfile()"><i class="fas fa-arrow-right" style="font-size:11px"></i> View Full Profile</div>`;
   }
 
+  /* ── COMMENTS — live thread via the shared comment component
+     (GET/POST /api/comments, scope=story). */
   function renderComments() {
-    document.getElementById('commentsPlaceholder').innerHTML = `
-      <div style="text-align:center;padding:20px;color:var(--muted)">
-        <i class="fas fa-comment" style="font-size:24px;color:var(--acc);margin-bottom:8px;display:block"></i>
-        <div style="font-size:12px;font-weight:700">${fmtN(DATA.stats.comments)} comments</div>
-        <div style="font-size:11px;margin-top:4px">Join the conversation</div>
-      </div>`;
+    const mount = document.getElementById('commentsPlaceholder');
+    if (!mount) return;
+    const fail = (msg) => {
+      mount.innerHTML = '<div class="empty" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Could not load comments — ' + esc(msg) + '</div>';
+    };
+    if (!window.DroboardComments) { fail('comment component missing — hard refresh'); return; }
+    mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i> Loading comments…</div>';
+    const API = window.DroboardComments.api;
+    API.fetchComments({ storyId: STORY_ID })
+      .then(function (live) {
+        const trueTotal = (function countAll(list) {
+          return (list || []).reduce(function (n, c) { return n + 1 + countAll(c.replies || []); }, 0);
+        })(live);
+        window.DroboardComments.attach(mount, {
+          storyId: STORY_ID,
+          title: fmtN(trueTotal) + ' comments',
+          comments: live,
+          teams: [],
+          currentUser: { name: 'You', avatar: null, team: null },
+          requireTeam: false,
+          collapsible: true,
+          startOpen: false,
+          adsFirst: false,
+          adsRepeat: false,
+          scrollBox: 420,
+          fullCommentsUrl: function () { return 'comments.html?story=' + encodeURIComponent(STORY_ID); },
+          getCommentUrl: (c) => 'comments.html?story=' + encodeURIComponent(STORY_ID) + '#comment-' + (c && c.id),
+          onPost: (c) => API.postComment({ storyId: STORY_ID, text: c.text }),
+          onReply: (parentId, c) => API.postComment({ storyId: STORY_ID, text: c.text, parentId: parentId }),
+          onEdit: (c, oldText, newText) => API.editComment(c.id, newText),
+        });
+        const lbl = document.getElementById('cmViewAllLbl');
+        if (lbl) lbl.textContent = 'View full comment thread';
+      })
+      .catch(function (err) {
+        fail((err && err.message) || err);
+      });
   }
 
   function renderDetails() {
@@ -738,16 +610,18 @@
     if (!el) return;
     const tropes = (DATA.tropes || []).slice(0, 2);
     if (!tropes.length) { el.innerHTML = ''; return; }
-    const gid = (DATA.genre || DATA.category && DATA.category.name || 'drama').toLowerCase().replace(/[^a-z]+/g, '');
+    const gid = encodeURIComponent((DATA.genre || '').toLowerCase().replace(/[^a-z]+/g, ''));
     el.innerHTML = tropes.map(t =>
-      `<div class="tag" onclick="location.href='genre-hub.html?genre=${encodeURIComponent(gid)}'">✨ ${esc(t)}</div>`
+      `<div class="tag" onclick="location.href='genre-hub.html?genre=${gid}'">✨ ${esc(t)}</div>`
     ).join('');
   }
 
   function renderTags() {
-    document.getElementById('tagsRow').innerHTML = DATA.tags.map(t => {
-      const gid = t.replace('#','').toLowerCase();
-      return `<div class="tag" onclick="location.href='genre-hub.html?genre=${gid}'">${esc(t)}</div>`;
+    const el = document.getElementById('tagsRow');
+    if (!el) return;
+    el.innerHTML = (DATA.tags || []).map(t => {
+      const gid = String(t).replace('#', '').toLowerCase();
+      return `<div class="tag" onclick="location.href='genre-hub.html?genre=${encodeURIComponent(gid)}'">${esc(t)}</div>`;
     }).join('');
   }
 
@@ -756,9 +630,10 @@
     // cards come from DiscoverCard, same as discover + book reader.
     const el = document.getElementById('simScroll');
     if (!el) return;
-    const items = DATA.similar.slice(0, 8).map(s => ({
-      id: s.title, img: s.cover, title: s.title, author: s.author,
+    const items = (DATA.similar || []).slice(0, 8).map(s => ({
+      id: s.id, img: s.img, title: s.title, author: s.author,
     }));
+    if (!items.length) { el.innerHTML = ''; return; }
     if (window.DroboardMoreLikeThis) {
       DroboardMoreLikeThis.mount(el, items, { title: 'More Like This', icon: '✨' });
       return;
@@ -781,23 +656,20 @@
     if (!window.DroboardTip) return;
     DroboardTip.attach({
       getWriter: () => ({ name: DATA.writer.name, avatar: DATA.writer.avatar, handle: DATA.writer.handle }),
-      onSend: (id, amount, note, mode) => {
-        DATA.tipCount = (DATA.tipCount || 0) + 1;
-        renderTipLine();
+      onSend: () => {
         /* Cash tips are paid in the reader's own currency, same symbol the
            picker used to render the amounts — never the staff currency. */
         const symbol = (window.DroboardCurrency && DroboardCurrency.readerSymbol) ? DroboardCurrency.readerSymbol() : '$';
-        const label = mode === 'cash' ? symbol + fmtN(amount) : '🪙 ' + amount;
-        toast(label + ' sent to ' + DATA.writer.name + '!');
-      }
+        return symbol;
+      },
     });
   }
 
   function openTip() {
-    if (!window.DroboardTip) { 
+    if (!window.DroboardTip) {
       console.error('[Bridge] DroboardTip not loaded — check ../component/tip-picker.js path');
-      toast('Tip component not loaded — hard refresh (Ctrl+Shift+R)'); 
-      return; 
+      toast('Tip component not loaded — hard refresh (Ctrl+Shift+R)');
+      return;
     }
     DroboardTip.open(STORY_ID, { name: DATA.writer.name, avatar: DATA.writer.avatar, handle: DATA.writer.handle });
   }
@@ -822,36 +694,73 @@
     }
   }
 
+  /* ── LIVE VOTES — POST /api/stories/:bookId/engagement/vote, then the
+     totals are re-read from the server (GET …/engagement) so the numbers
+     on screen are never a local guess. */
+  async function refreshEngagement() {
+    const j = await getJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/engagement`, 'Engagement API');
+    const eng = j.engagement || {};
+    const poll0 = (eng.polls || [])[0] || null;
+    const pred0 = (eng.predictions || [])[0] || null;
+    const deb0  = (eng.debates || [])[0] || null;
+    DATA.engagement.poll = poll0 ? {
+      id: poll0.id, q: poll0.q || '',
+      opts: (poll0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
+      voted: poll0.myVote != null ? poll0.myVote : -1,
+    } : null;
+    DATA.engagement.pred = pred0 ? {
+      id: pred0.id, q: pred0.q || '',
+      opts: (pred0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
+      voted: pred0.myVote != null ? pred0.myVote : -1,
+    } : null;
+    DATA.engagement.debate = deb0 ? {
+      id: deb0.id, q: deb0.motion || '',
+      dFor: deb0.forV || 0, dAg: deb0.agV || 0,
+      voted: deb0.myVote != null ? deb0.myVote : -1,
+    } : null;
+    renderEngagement();
+  }
+
+  async function bookVote(body, label) {
+    if (window.RequireAuth && !RequireAuth.ensure(label)) return false;
+    try {
+      await postJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/engagement/vote`, body, 'Vote API');
+      await refreshEngagement();
+      return true;
+    } catch (e) {
+      const msg = (e && e.message) || 'Vote failed';
+      toast(/already_voted/i.test(msg) ? '✅ Already voted!' : 'Vote failed — ' + msg);
+      try { await refreshEngagement(); } catch (e2) { /* keep current paint */ }
+      return false;
+    }
+  }
+
   function votePoll(i) {
-    if (S.pollVoted >= 0) return;
-    DATA.engagement.poll.opts[i].v++;
-    S.pollVoted = i;
-    renderPoll();
-    toast('✅ Voted!');
+    const p = DATA.engagement.poll;
+    if (!p || !p.id) return;
+    if (S.pollVoted >= 0) { toast('✅ Already voted!'); return; }
+    bookVote({ id: p.id, kind: 'poll', option: i }, 'vote in this poll');
   }
 
   function voteDebate(side) {
-    if (S.debateVote) return;
-    S.debateVote = side;
-    if (side === 'for') DATA.engagement.debate.dFor++;
-    else DATA.engagement.debate.dAg++;
-    document.getElementById(side === 'for' ? 'dFor' : 'dAg').classList.add('chosen');
-    renderDebate();
-    toast(side === 'for' ? "✅ You're FOR this!" : "❌ You're AGAINST this!");
+    const db = DATA.engagement.debate;
+    if (!db || !db.id) return;
+    if (S.debateVote) { toast('✅ Already voted!'); return; }
+    bookVote({ id: db.id, kind: 'debate', side: side }, 'take a side');
   }
 
   function votePred(i) {
-    if (S.predVoted >= 0) return;
-    DATA.engagement.pred.opts[i].v++;
-    S.predVoted = i;
-    renderPred();
-    toast('🔮 Prediction locked!');
+    const p = DATA.engagement.pred;
+    if (!p || !p.id) return;
+    if (S.predVoted >= 0) { toast('✅ Already locked!'); return; }
+    bookVote({ id: p.id, kind: 'prediction', option: i }, 'lock this prediction');
   }
 
   function toggleSyn() {
     S.synExp = !S.synExp;
-    document.getElementById('synExt').style.display = S.synExp ? 'inline' : 'none';
-    document.getElementById('synBtn').innerHTML = S.synExp
+    document.getElementById('synText').classList.toggle('open');
+    const btn = document.getElementById('synBtn');
+    if (btn) btn.innerHTML = S.synExp
       ? '<i class="fas fa-chevron-up" style="font-size:9px"></i> Show less'
       : '<i class="fas fa-chevron-down" style="font-size:9px"></i> Read more';
   }
@@ -874,40 +783,56 @@
     }
   }
 
-  function toggleHeroFollow() {
-    S.heroFollow = !S.heroFollow;
-    const b = document.getElementById('heroFollow');
-    if (b) {
-      b.textContent = S.heroFollow ? '✓ Following' : '+ Follow';
-      b.classList.toggle('ing', S.heroFollow);
+  /* ── FOLLOW — POST/DELETE /api/users/:handle/follow (server truth), then
+     both follow buttons repaint from DATA.writer.following. */
+  async function toggleFollow() {
+    if (S.busy.follow) return;
+    if (window.RequireAuth && !RequireAuth.ensure('follow this writer')) return;
+    const w = DATA.writer;
+    const handle = String(w.username || w.handle || '').replace(/^@/, '');
+    if (!handle) { toast('Follow unavailable'); return; }
+    S.busy.follow = true;
+    const wantFollow = !w.following;
+    try {
+      await postJSON(`${API_BASE}/users/${encodeURIComponent(handle)}/follow`, {}, 'Follow API', wantFollow ? 'POST' : 'DELETE');
+      w.following = wantFollow;
+      paintFollowButtons();
+      toast(wantFollow ? `✅ Following ${w.handle}` : `Unfollowed ${w.handle}`);
+    } catch (e) {
+      toast('Follow failed — ' + ((e && e.message) || 'try again'));
+    } finally {
+      S.busy.follow = false;
     }
-    const wc = document.getElementById('wcFollow');
-    if (wc) {
-      wc.textContent = S.heroFollow ? '✓ Following' : '+ Follow';
-      wc.classList.toggle('ing', S.heroFollow);
-    }
-    toast(S.heroFollow ? `✅ Following ${DATA.writer.handle}` : 'Unfollowed');
+  }
+  function paintFollowButtons() {
+    const on = !!(DATA.writer && DATA.writer.following);
+    ['heroFollow', 'wcFollow'].forEach(id => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.textContent = on ? '✓ Following' : '+ Follow';
+      b.classList.toggle('ing', on);
+    });
   }
 
-  function toggleWcFollow() {
-    S.heroFollow = !S.heroFollow;
-    const wc = document.getElementById('wcFollow');
-    if (wc) {
-      wc.textContent = S.heroFollow ? '✓ Following' : '+ Follow';
-      wc.classList.toggle('ing', S.heroFollow);
+  /* ── HUB JOIN — POST/DELETE /api/categories/:slug/join (the backend board
+     row carries the slug + real member count). No board → nothing to join. */
+  async function joinHub(joined) {
+    const h = (DATA.hubs || {}).genre;
+    if (!h || !h.slug) { toast('No board to join'); return; }
+    if (S.busy.hub) return;
+    if (window.RequireAuth && !RequireAuth.ensure('join this community')) return;
+    S.busy.hub = true;
+    try {
+      await postJSON(`${API_BASE}/categories/${encodeURIComponent(h.slug)}/join`, {}, 'Join API', joined ? 'POST' : 'DELETE');
+      h.joined = !!joined;
+      h.members = Math.max(0, (h.members || 0) + (joined ? 1 : -1));
+      renderHubs();
+      toast(h.joined ? `✅ Joined ${h.name}` : `Left ${h.name}`);
+    } catch (e) {
+      toast('Could not update membership — ' + ((e && e.message) || 'try again'));
+    } finally {
+      S.busy.hub = false;
     }
-    const hf = document.getElementById('heroFollow');
-    if (hf) {
-      hf.textContent = S.heroFollow ? '✓ Following' : '+ Follow';
-      hf.classList.toggle('ing', S.heroFollow);
-    }
-    toast(S.heroFollow ? `✅ Following ${DATA.writer.handle}` : 'Unfollowed');
-  }
-
-  function joinHub(type, joined) {
-    DATA.hubs[type].joined = (joined !== undefined) ? joined : !DATA.hubs[type].joined;
-    renderHubs();
-    toast(DATA.hubs[type].joined ? `✅ Joined ${DATA.hubs[type].name}` : `Left ${DATA.hubs[type].name}`);
   }
 
   function goToReader() {
@@ -922,41 +847,46 @@
   async function init(id) {
     applySiteTheme();
     STORY_ID = id || new URLSearchParams(location.search).get('id') || new URLSearchParams(location.search).get('story');
-    // No id: rotate through the demo catalog so every load renders a
-    // complete demo-data story (same story all day, different tomorrow).
     if (!STORY_ID) {
-      const all = (window.DemoData && window.DemoData.STORIES) || [];
-      STORY_ID = all.length
-        ? String(all[Math.floor(Date.now() / 86400000) % all.length].id || 'st1')
-        : 'st1';
+      showError('No story ID provided.');
+      return;
     }
     document.getElementById('tbTitle').textContent = 'Loading...';
-    let data = null;
     try {
-      data = await fetchStory(STORY_ID);
+      const raw = await fetchStory(STORY_ID);
+      DATA = normalizeStory(raw);
+      if (!DATA) throw new Error('Story data was empty');
     } catch (err) {
-      console.warn('[Bridge] API failed, using default story', err);
+      showError(err.message || 'Failed to load story.');
+      return;
     }
-    DATA = normalizeStory(data) || getDefaultStory(STORY_ID);
     document.getElementById('tbTitle').textContent = DATA.title;
     attachWriterStatus();
     renderAll();
     wireStatusRing();
+    loadRating();
   }
 
-  /* Rate modal — 12-chapter gate mirrors the recommendation rule.
+  function showError(msg) {
+    document.getElementById('tbTitle').textContent = 'Error';
+    const body = document.getElementById('scrollBody');
+    if (body) body.innerHTML = '<div class="empty" style="padding:60px 20px;text-align:center;color:var(--muted);font-size:14px"><i class="fas fa-exclamation-circle" style="font-size:32px;margin-bottom:12px;display:block;color:var(--acc)"></i>Could not load this story — ' + esc(msg) + '</div>';
+  }
+
+  /* Rate modal — opens the shared rate-modal; the 12-chapter gate is
+     enforced server-side from ReadingProgress rows.
      presetStar: the star tapped on the inline box, pre-lit in the modal. */
   function openRateModal(presetStar) {
     if (!window.openRateModal) { toast('Rate modal not loaded'); return; }
-    const chRead = DATA.continue ? (DATA.continue.chapterId || 1) : 1;
     window.openRateModal({
       storyId: STORY_ID,
       title: DATA.title,
       img: DATA.cover || '',
-      chaptersRead: chRead,
       presetStars: typeof presetStar === 'number' ? presetStar : 0,
       onDone: (r) => {
-        myRating = r.stars;
+        myRating = (r && r.mine && r.mine.stars) || myRating;
+        if (r && r.avg != null) DATA.stats.rating = r.avg;
+        if (r && r.count != null) DATA.stats.ratingCount = r.count;
         renderRating();
       }
     });
@@ -969,13 +899,9 @@
   }
 
   /* "View all reviews" → book reader, Overview tab, scrolled to reviews.
-     The bridge and the reader use different demo id spaces (bridge ids are
-     STORIES "stN"; the reader resolves SERIES_CATALOG "sN" + profile books),
-     so forwarding the bridge id 404s the reader. In demo let the reader open
-     its own default story (which carries the debates/reviews); once live, the
-     ids share one space and we forward STORY_ID. */
+     Live ids share one space (real book ids), so the bridge id forwards. */
   function openAllReviews() {
-    location.href = 'book-reader.html?view=reviews' + (USE_API && STORY_ID ? '&id=' + encodeURIComponent(STORY_ID) : '');
+    location.href = 'book-reader.html?view=reviews&id=' + encodeURIComponent(STORY_ID || '');
   }
 
   window.BridgePage = {
@@ -986,8 +912,7 @@
     votePred,
     toggleSyn,
     toggleEng,
-    toggleHeroFollow,
-    toggleWcFollow,
+    toggleFollow,
     joinHub,
     goToReader,
     goToAllComments,

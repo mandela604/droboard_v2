@@ -1,28 +1,22 @@
 /* ═══════════════════════════════════════════════════════════════
    BOARD EDIT SERVICE — call-and-render for board-edit.html
-   Full board editor: details, rules CRUD, moderators (staff assigns
-   from existing members — no invite links). Demo storage is
-   localStorage behind DATA LAYER functions (loadHub/saveDetails/
-   loadRules/saveRules/loadMods/saveMods/seedDemoMods/resetHub) —
-   at cutover swap those bodies for API calls, nothing else changes.
+   Full board editor: details, rules CRUD, moderators.
+   Live: uses /api/chief/categories/:id for CRUD, /api/users for user search.
    URL: board-edit.html?board=<id>
 ══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
+  const API_BASE = '/api';
   const params = new URLSearchParams(location.search);
-  const DEFAULT_ID = (window.GenreDemoSeed && window.GenreDemoSeed.DEFAULT_GENRE_ID) || 'fantasy';
+  const DEFAULT_ID = 'fantasy';
   const GENRE_ID = (params.get('board') || DEFAULT_ID).toLowerCase();
 
-  const ABOUT_KEY = 'dro_genre_about_override'; // same key the hub page reads
-  const RULES_KEY = 'dro_hub_rules_' + GENRE_ID;
-  const MODS_KEY = 'dro_hub_mods_' + GENRE_ID;
-
-  let GENRE = null;      // base seed + about override
+  let GENRE = null;      // genre data from API
   let RULES = [];        // ['rule text', …]
   let MODS = [];         // [{handle,name,av,role:'Moderator',at}]
   let COVER_DATA = '';   // uploaded cover dataURL (replaces URL field)
-  let USER_POOL = [];    // every demo user on the site, for mod search
+  let USER_POOL = [];    // user search results
 
   function toast(msg, dur) {
     const t = document.getElementById('toast');
@@ -31,88 +25,129 @@
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-  /* ══ DATA LAYER — demo now, API later ══ */
-  function loadHub() {
-    // Live swap: GET board (Category) card — /api/genres/:slug
-    const seed = window.GenreDemoSeed;
-    let base = (seed && seed.DEMO_GENRES && (seed.DEMO_GENRES[GENRE_ID] || seed.DEMO_GENRES[DEFAULT_ID])) || null;
-    if (!base) base = { id: 'fantasy', name: 'Fantasy', tagline: 'Where imagination becomes legend.', icon: 'fa-hat-wizard', cover: '', blurb: 'Discuss tropes, argue theories.' };
-    let ov = null;
-    try { ov = (JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}'))[GENRE_ID] || null; } catch (e) {}
-    GENRE = Object.assign({}, base, ov || {});
-    return Promise.resolve();
-  }
-  function loadRules() {
-    // Live swap: rules[] on the board card — /api/genres/:slug
+  /* ══ DATA LAYER — Live API ══ */
+  async function loadHub() {
     try {
-      const r = JSON.parse(localStorage.getItem(RULES_KEY) || 'null');
-      if (Array.isArray(r)) { RULES = r; return Promise.resolve(); }
-    } catch (e) {}
-    // Fallback: split the seed rules-post prose into rule lines
-    const seed = window.GenreDemoSeed;
-    const pinned = (seed && seed.DEMO_PINNED && (seed.DEMO_PINNED[GENRE_ID] || seed.DEMO_PINNED[DEFAULT_ID])) || null;
-    RULES = (pinned && pinned.desc ? pinned.desc.split('.') : [])
-      .map(function (s) { return s.trim(); }).filter(Boolean);
-    return Promise.resolve();
+      const r = await fetch(API_BASE + '/genres/' + encodeURIComponent(GENRE_ID), { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        GENRE = data.genre || data.data || data;
+      } else {
+        GENRE = { id: GENRE_ID, name: GENRE_ID.charAt(0).toUpperCase() + GENRE_ID.slice(1), tagline: '', icon: 'fa-star', cover: '', blurb: '' };
+      }
+    } catch (e) {
+      GENRE = { id: GENRE_ID, name: GENRE_ID.charAt(0).toUpperCase() + GENRE_ID.slice(1), tagline: '', icon: 'fa-star', cover: '', blurb: '' };
+    }
   }
-  function saveDetails() {
-    // Live swap: PATCH /api/chief/categories/:id (cover: upload to storage first)
-    const patch = {
-      name: document.getElementById('dName').value.trim() || GENRE.name,
-      tagline: document.getElementById('dTagline').value.trim(),
-      icon: document.getElementById('dIcon').value.trim() || GENRE.icon,
-      cover: COVER_DATA || GENRE.cover || '',
-      blurb: document.getElementById('dBlurb').value.trim(),
-    };
+
+  async function loadRules() {
     try {
-      const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}');
-      m[GENRE_ID] = Object.assign({}, m[GENRE_ID] || {}, patch);
-      localStorage.setItem(ABOUT_KEY, JSON.stringify(m));
+      const r = await fetch(API_BASE + '/genres/' + encodeURIComponent(GENRE_ID), { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        RULES = (data.genre && data.genre.rules) || [];
+      }
     } catch (e) {}
-    Object.assign(GENRE, patch);
-    document.getElementById('tbSub').textContent = GENRE.name + ' · hub editor';
-    toast('Hub details saved');
   }
-  function saveRules() {
-    // Live swap: PATCH /api/chief/categories/:id { rules }
-    RULES = RULES.map(function (r) { return String(r).trim(); }).filter(Boolean);
-    try { localStorage.setItem(RULES_KEY, JSON.stringify(RULES)); } catch (e) {}
-    renderRules();
-    toast('Rules saved');
-  }
-  function loadMods() {
-    // Live swap: moderatorIds on the board card — /api/genres/:slug
-    try { MODS = JSON.parse(localStorage.getItem(MODS_KEY) || 'null') || null; } catch (e) { MODS = null; }
-    if (!MODS) MODS = seedDemoMods();
-    buildUserPool();
-    return Promise.resolve();
-  }
-  /* Demo seed: first two hub members become moderators until the
-     store exists. Live: the server seeds via the admin module. */
-  function seedDemoMods() {
-    const seed = window.GenreDemoSeed;
-    const members = (seed && seed.DEMO_MEMBERS && (seed.DEMO_MEMBERS[GENRE_ID] || seed.DEMO_MEMBERS[DEFAULT_ID])) || [];
-    const mods = members.slice(0, 2).map(function (m) {
-      return { handle: m.handle, name: m.name, av: m.av, role: 'Moderator', at: Date.now() };
-    });
-    try { localStorage.setItem(MODS_KEY, JSON.stringify(mods)); } catch (e) {}
-    return mods;
-  }
-  function saveMods() {
-    // Live swap: PUT /api/admin/boards/:id/crew
-    try { localStorage.setItem(MODS_KEY, JSON.stringify(MODS)); } catch (e) {}
-  }
-  function resetHub() {
-    // Live swap: DELETE the override set for this hub
+
+  async function saveDetails() {
+    const name = document.getElementById('dName').value.trim() || GENRE.name;
+    const tagline = document.getElementById('dTagline').value.trim();
+    const icon = document.getElementById('dIcon').value.trim() || GENRE.icon;
+    const blurb = document.getElementById('dBlurb').value.trim();
+    
+    const patch = { name, tagline, icon, blurb };
+    if (COVER_DATA) patch.cover = COVER_DATA;
+
     try {
-      const m = JSON.parse(localStorage.getItem(ABOUT_KEY) || '{}');
-      delete m[GENRE_ID];
-      localStorage.setItem(ABOUT_KEY, JSON.stringify(m));
+      const r = await fetch(API_BASE + '/chief/genres/' + encodeURIComponent(GENRE_ID), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(patch)
+      });
+      if (!r.ok) throw new Error('Failed to save');
+      GENRE = { ...GENRE, ...patch };
+      document.getElementById('tbSub').textContent = GENRE.name + ' · hub editor';
+      toast('Hub details saved');
+    } catch (e) {
+      toast('Failed to save details');
+    }
+  }
+
+  async function saveRules() {
+    const cleanRules = RULES.map(function (r) { return String(r).trim(); }).filter(Boolean);
+    try {
+      const r = await fetch(API_BASE + '/chief/genres/' + encodeURIComponent(GENRE_ID), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ rules: cleanRules })
+      });
+      if (!r.ok) throw new Error('Failed to save rules');
+      RULES = cleanRules;
+      renderRules();
+      toast('Rules saved');
+    } catch (e) {
+      toast('Failed to save rules');
+    }
+  }
+
+  async function loadMods() {
+    // Get genre details which includes moderators
+    try {
+      const r = await fetch(API_BASE + '/genres/' + encodeURIComponent(GENRE_ID), { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        MODS = (data.genre && data.genre.moderators) || [];
+      }
+    } catch (e) {
+      MODS = [];
+    }
+    return loadUserPool('');
+  }
+
+  async function loadUserPool(q) {
+    try {
+      const url = API_BASE + '/users?q=' + encodeURIComponent(q || '') + '&limit=20';
+      const r = await fetch(url, { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        USER_POOL = (data.users || data.items || data.data || []).map(function(u) {
+          return { handle: u.handle, name: u.name || u.handle, av: u.avatar || '' };
+        });
+      }
+    } catch (e) {
+      USER_POOL = [];
+    }
+  }
+
+  async function addMod(user) {
+    const exists = MODS.some(function(m) { return m.handle === user.handle; });
+    if (exists) return;
+    MODS.push({ handle: user.handle, name: user.name, av: user.av, role: 'Moderator', at: Date.now() });
+    await syncMods();
+  }
+
+  async function removeModByHandle(handle) {
+    MODS = MODS.filter(function(m) { return m.handle !== handle; });
+    await syncMods();
+  }
+
+  async function syncMods() {
+    try {
+      const r = await fetch(API_BASE + '/chief/genres/' + encodeURIComponent(GENRE_ID), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ moderatorIds: MODS.map(function(m) { return m.handle; }) })
+      });
+      if (!r.ok) throw new Error('Failed to update moderators');
     } catch (e) {}
-    localStorage.removeItem(RULES_KEY);
-    localStorage.removeItem(MODS_KEY);
-    toast('Hub edits reset');
-    setTimeout(function () { location.reload(); }, 700);
+  }
+
+  async function resetHub() {
+    toast('Reset not available in live mode');
   }
 
   /* ══ RENDER ══ */
@@ -251,23 +286,24 @@
       confirmText: 'Remove',
     }).then(function (ok) {
       if (!ok) return;
-      MODS.splice(i, 1);
-      saveMods();
-      renderMods();
-      const q = document.getElementById('modSearch').value;
-      if (q) renderPicker(q);
-      toast((m.name || m.handle) + ' is no longer a moderator');
+      removeModByHandle(m.handle).then(function() {
+        renderMods();
+        const q = document.getElementById('modSearch').value;
+        if (q) { loadUserPool(q).then(function() { renderPicker(q); }); }
+        toast((m.name || m.handle) + ' is no longer a moderator');
+      });
     });
   };
-  window.searchMods = function (q) { renderPicker(q); };
-  window.addModByHandle = function (handle) {
+  window.searchMods = function (q) { 
+    loadUserPool(q).then(function() { renderPicker(q); }); 
+  };
+  window.addModByHandle = async function (handle) {
     const m = USER_POOL.find(function (x) { return x.handle === handle; });
     if (!m) return;
-    MODS.push({ handle: m.handle, name: m.name, av: m.av, role: 'Moderator', at: Date.now() });
-    saveMods();
+    await addMod(m);
     renderMods();
     const q = document.getElementById('modSearch').value;
-    if (q) renderPicker(q);
+    if (q) { await loadUserPool(q); renderPicker(q); }
     toast(m.name + ' is now a moderator');
   };
   window.resetHub = resetHub;

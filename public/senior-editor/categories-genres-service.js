@@ -14,7 +14,7 @@ if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' &
 }
 
 /* ── Backend-ready header ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, opts){
   if(!USE_API) return null;

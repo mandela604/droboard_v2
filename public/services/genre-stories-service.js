@@ -1,18 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════
    GENRE STORIES SERVICE
    Full-page story list for a genre. HTML calls GenreStoriesPage.init().
-   Call-and-render only: init() parses ?genre=, calls API, renders cards.
-   Swap USE_API to true when backend is live — no other change needed.
-   API: GET /api/genres/:slug/stories?sort=top|new|rising&page=&limit=
+   Live: GET /api/genres/:slug/stories?sort=top|new|rising&page=&limit=
    top = most reads. new = newest books. rising = reads velocity
    (reads per day since creation). Fully automatic, no manual picks.
-   Demo fallback mirrors the same three orders.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const USE_API = false;
-  const API_BASE = '/api/genres';
+  const API_BASE = '/api';
   const PAGE_SIZE = 10;
 
   let GENRE_SLUG = 'fantasy';
@@ -22,7 +18,7 @@
   let total = 0;
   let items = [];
 
-  const SORT_TO_API = { top: 'top', new: 'new', rising: 'rising' };
+  const SORT_TO_API = { top: 'reads', new: 'new', rising: 'rising' };
 
   async function callBackend(path) {
     const res = await fetch(path, { credentials: 'include' });
@@ -45,79 +41,23 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  /* ── Demo fallback (fake, same card shape as API) ── */
-  function demoPool() {
-    const seed = window.GenreDemoSeed;
-    const demo = window.DemoData;
-    const base = (seed && seed.DEMO_STORIES && (seed.DEMO_STORIES[GENRE_SLUG] || seed.DEMO_STORIES.fantasy)) || [];
-    const extra = (demo && demo.STORIES) || [];
-    const pool = base.concat(
-      extra.slice(0, 12).map((s, i) => ({
-        id: 'demo-' + GENRE_SLUG + '-' + i,
-        title: s.title || ('Untitled ' + (i + 1)),
-        author: s.author || s.writer || 'Droboard',
-        cover: s.cover || s.img || '',
-        reads: s.reads || ((900 - i * 57) + 'k'),
-        rating: s.rating || (4.9 - (i % 5) * 0.1).toFixed(1),
-      }))
-    );
-    // Expand to 10 rows so Top-10 demo is real.
-    const out = [];
-    for (let i = 0; i < 10; i++) {
-      const b = pool[i % Math.max(pool.length, 1)] || { title: 'Untitled ' + (i + 1) };
-      out.push({
-        id: b.id || ('g-' + GENRE_SLUG + '-' + i),
-        title: b.title || ('Untitled ' + (i + 1)),
-        author: b.author || 'Droboard',
-        genre: GENRE_NAME,
-        cover: b.cover || b.img || '',
-        img: b.cover || b.img || '',
-        reads: b.reads || ((1000 - i * 63) + 'k'),
-        likes: b.likes || (4200 - i * 311),
-        rating: b.rating || (4.9 - (i % 4) * 0.1).toFixed(1),
-        chapters: b.chapters || b.ch || (12 - (i % 5)),
-        ch: b.chapters || b.ch || (12 - (i % 5)),
-        status: i < 2 ? 'ongoing' : (i % 3 === 0 ? 'completed' : 'ongoing'),
-        _rank: i,
-        _fresh: i % 3,
-      });
-    }
-    return out;
-  }
-
-  function demoFetch() {
-    const pool = demoPool();
-    const sorted = pool.slice();
-    if (sort === 'new') sorted.sort((a, b) => a._fresh - b._fresh || a._rank - b._rank);
-    else if (sort === 'rising') sorted.sort((a, b) => (b.likes % 997) - (a.likes % 997));
-    // top: keep seed order (already reads-descending)
-    total = sorted.length;
-    return { items: sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total };
-  }
-
-  /* ── Fetch (call) ── */
+  /* ── Fetch from API ── */
   async function fetchStories() {
-    if (USE_API) {
-      const apiSort = SORT_TO_API[sort] || 'reads';
-      const data = await callBackend(
-        API_BASE + '/' + encodeURIComponent(GENRE_SLUG) +
-        '/stories?sort=' + apiSort + '&page=' + page + '&limit=' + PAGE_SIZE
-      );
-      return { items: data.items || [], total: data.total || 0, genre: data.genre || null };
-    }
-    return demoFetch();
+    const apiSort = SORT_TO_API[sort] || 'reads';
+    const data = await callBackend(
+      API_BASE + '/genres/' + encodeURIComponent(GENRE_SLUG) + 
+      '/stories?sort=' + apiSort + '&page=' + page + '&limit=' + PAGE_SIZE
+    );
+    return { items: data.items || data.data || [], total: data.total || 0, genre: data.genre || null };
   }
 
   function resolveGenre() {
     const params = new URLSearchParams(location.search);
     const raw = (params.get('genre') || 'fantasy').toLowerCase();
     GENRE_SLUG = raw;
-    const seed = window.GenreDemoSeed;
-    if (seed && seed.DEMO_GENRES && seed.DEMO_GENRES[raw]) {
-      GENRE_NAME = seed.DEMO_GENRES[raw].name || raw;
-    } else {
-      GENRE_NAME = raw.charAt(0).toUpperCase() + raw.slice(1);
-    }
+    // Display placeholder from the slug until GET /genres/:slug/stories
+    // answers with the real genre name (load() applies data.genre.name).
+    GENRE_NAME = raw.charAt(0).toUpperCase() + raw.slice(1);
   }
 
   /* ── Render ── */
@@ -209,6 +149,7 @@
   /* ── Controller ── */
   async function load(reset) {
     if (reset) { page = 1; items = []; }
+    const feed = document.getElementById('feed');
     try {
       const data = await fetchStories();
       total = data.total || 0;
@@ -217,6 +158,13 @@
       items = reset ? rows : items.concat(rows);
       render(!reset);
     } catch (e) {
+      // Real failure → real error empty-state (never seed content).
+      items = [];
+      total = 0;
+      const msg = (e && e.message) || 'network error';
+      if (feed) feed.innerHTML = '<div class="empty">Could not load stories — ' + esc(msg) + '</div>';
+      const moreBtn = document.getElementById('moreBtn');
+      if (moreBtn) { moreBtn.disabled = true; moreBtn.textContent = 'Load more'; }
       toast('Could not load stories');
     }
   }

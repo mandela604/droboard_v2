@@ -1,135 +1,155 @@
 /* ═══════════════════════════════════════════════════════════════
    DROBOARD-PAGE SERVICE — call-and-render only
-   Use: DroboardOfficial.init(). No fallback compute in HTML.
-   When API exists: set USE_API=true — no HTML change.
+   Use: DroboardOfficial.init(). Everything below is live:
+
+     Feed        GET  /api/droboard-page/posts        (listPosts alias; page+limit)
+     Create/edit POST /api/posts · PATCH /api/posts/:id
+     Delete      DELETE /api/posts/:id
+     Pin         PATCH /api/posts/:id  { pinned }
+     Like        POST  /api/posts/:id/like
+     Save        POST  /api/posts/:id/save
+     Poll vote   POST  /api/posts/:id/poll/vote  { option }
+     Debate vote POST  /api/posts/:id/debate/vote { side }
+     Reactions   POST/DELETE /api/posts/:id/react  { rid }
+     Comments    GET/POST /api/comments?scope=post&postId=…
+     Page follow GET /api/users/droboard · POST/DELETE /api/users/:handle/follow
+     Collections GET /api/collections
+     Status rings GET /api/statuses/writers?handles=…
+     Reports     POST /api/reports { target:'post', … }
+
+   Page-manager roles have NO backend route yet: DroboardPageData.
+   getManagers/addManager/updateManagerRole/removeManager throw instead
+   of rendering fake data. Page info (bio/links/rules) saving also has
+   no route, so the about editor is disabled — the panel renders the
+   page's static copy only.
    ═══════════════════════════════════════════════════════════════ */
 (function(global){
 'use strict';
-const USE_API = false;
-const API_BASE = '/api/droboard-page';
+const API_BASE = '/api';
+const PAGE_SIZE = 20; // feed row cap — the page never ranks or batches beyond this
 const RP = global.DroboardReactionPicker; // loaded from component/reaction-picker.js before this service
 
-function _seed(){ return global.DroboardPageSeed || {}; }
-
-const LS_MANAGERS='drb_managers';
-function getManagers(){
-  try{ const v=localStorage.getItem(LS_MANAGERS); if(v){ const j=JSON.parse(v); if(Array.isArray(j)) return j; }}catch(e){}
-  return ((_seed().DROBOARD_MANAGERS||[]).slice());
+async function api(path, opts){
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+  let j = null; try { j = await res.json(); } catch(e) {}
+  if (!res.ok) { const e = new Error((j && j.error) || ('API failed: ' + res.status)); e.status = res.status; throw e; }
+  return j;
 }
-function saveManagers(list){ try{ localStorage.setItem(LS_MANAGERS, JSON.stringify(list)); }catch(e){} }
-function canManage(handle, need){ // need: 'post' | 'manage_roles'
-  const role=(getManagers().find(function(m){return m.handle===handle})||{}).role;
-  if(need==='post') return role==='admin'||role==='editor';
-  if(need==='manage_roles') return role==='admin';
+
+async function getCurrentUser(){
+  try {
+    const data = await api('/users/me');
+    return data.user || data.data || data;
+  } catch(e) { return null; }
+}
+
+function rolesOf(user){
+  if (Array.isArray(user && user.roles)) return user.roles.map(String);
+  if (user && user.role) return [String(user.role)];
+  return [];
+}
+async function canManage(handle, need){
+  const user = await getCurrentUser();
+  if (!user) return false;
+  const roles = rolesOf(user);
+  if (need === 'post') return roles.indexOf('admin') !== -1 || roles.indexOf('senior_editor') !== -1 || roles.indexOf('chief_editor') !== -1;
+  if (need === 'manage_roles') return roles.indexOf('admin') !== -1;
   return false;
 }
-async function addManager(handle, role){ const list=getManagers(); if(list.find(function(m){return m.handle===handle})) return list; list.push({handle:handle, role:role||'editor'}); saveManagers(list); return list; }
-async function updateManagerRole(handle, role){ const list=getManagers(); const m=list.find(function(x){return x.handle===handle}); if(m) m.role=role; saveManagers(list); return list; }
-async function removeManager(handle){ let list=getManagers(); list=list.filter(function(m){return m.handle!==handle}); saveManagers(list); return list; }
 
+let editingId = null; // post id being edited through the composer (null = new post)
 async function createPost(payload){
-  // demo: validate + push to POSTS, persist via localStorage
-  const allowed=(_seed().DROBOARD_ALLOWED_TYPES||['announcement','post','debate','shoutout','repost','forum-poll','ama']);
-  if(!payload || !payload.type || allowed.indexOf(payload.type)===-1) throw new Error('Invalid post type');
-  if(!payload.text && !payload.title && !payload.shoutout && !payload.storyRef && !payload.debateData && !payload.poll) throw new Error('Post needs content');
-  const p={ id:'d'+Date.now(), time:'now', likes:0, comments:0, liked:false, ...payload };
-  // insert at top — visible after re-render
-  return p;
-}
-
-async function fetchPosts(){
-  if(USE_API){
-    const r=await fetch(API_BASE+'/posts?limit=50',{credentials:'include'}); if(r.ok){ const j=await r.json();
-      // GET /posts answers the posts.service ensemble ({items,total,page,limit});
-      // this page consumes {posts,morePosts}, so translate at the boundary.
-      return { posts: j.items||[], morePosts: [] };
-    }
+  const allowed = ['announcement','post','debate','shoutout','repost','forum-poll','ama'];
+  if (!payload || !payload.type || allowed.indexOf(payload.type) === -1) throw new Error('Invalid post type');
+  if (!payload.text && !payload.title && !payload.shoutout && !payload.storyRef && !payload.debateData && !payload.poll) throw new Error('Post needs content');
+  if (editingId){
+    // The composer always "creates"; while an edit is open we redirect the
+    // same call to PATCH so nothing is duplicated and nothing is faked.
+    const id = editingId;
+    const j = await api('/posts/' + encodeURIComponent(id), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return Object.assign({ _editedId: id }, j);
   }
-  const s=_seed();
-  // merge any locally created posts on top (LS)
-  let extra=[]; try{ extra=JSON.parse(localStorage.getItem('drb_posts_extra')||'[]'); }catch(e){}
-  let posts=(extra.length? extra.concat(s.DROBOARD_POSTS||[]) : (s.DROBOARD_POSTS||[]).slice());
-  let more=(s.DROBOARD_MORE_POSTS||[]).slice();
-  // overlay persisted manager actions (edits / deletes / pins) so they
-  // survive reloads; seed data itself is never rewritten.
-  let edits={}, deleted=[], pins={};
-  try{ edits=JSON.parse(localStorage.getItem('drb_posts_edits')||'{}')||{}; }catch(e){}
-  try{ deleted=JSON.parse(localStorage.getItem('drb_posts_deleted')||'[]')||[]; }catch(e){}
-  try{ pins=JSON.parse(localStorage.getItem('drb_posts_pins')||'{}')||{}; }catch(e){}
-  const applyMeta=function(p){
-    if(!p) return null;
-    if(deleted.indexOf(String(p.id))!==-1) return null;
-    let o=p;
-    if(edits[p.id]) o=Object.assign({}, o, edits[p.id]);
-    if(pins[p.id]!==undefined) o=Object.assign({}, o, { pinned:!!pins[p.id] });
-    return o;
-  };
-  posts=posts.map(applyMeta).filter(Boolean);
-  more=more.map(applyMeta).filter(Boolean);
-  return { posts: posts, morePosts: more };
+  return await api('/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }
-async function fetchCollections(){
-  if(USE_API){ const r=await fetch('/api/collections',{credentials:'include'}); if(r.ok){ const j=await r.json(); return j.data||j; } }
-  return (_seed().DROBOARD_COLLECTIONS||[]).slice();
-}
-function getHero(){ return Object.assign({}, _seed().DROBOARD_HERO||{}); }
 
-global.DroboardPageData = { fetchPosts, fetchCollections, getHero, USE_API, API_BASE };
+async function fetchPosts(page){
+  const j = await api('/droboard-page/posts?page=' + (parseInt(page, 10) || 1) + '&limit=' + PAGE_SIZE);
+  const items = Array.isArray(j) ? j : (j.items || []);
+  const total = (j && j.total) != null ? Number(j.total) : items.length;
+  return { posts: items, total: total };
+}
+
+async function fetchCollections(){
+  const j = await api('/collections?limit=20');
+  return Array.isArray(j) ? j : (j.items || []);
+}
+
+// Page managers: no backend route exists — fail loudly instead of faking a roster.
+function getManagers(){ throw new Error('Page managers API is not available yet (no backend route)'); }
+function addManager(){ throw new Error('Page managers API is not available yet (no backend route)'); }
+function updateManagerRole(){ throw new Error('Page managers API is not available yet (no backend route)'); }
+function removeManager(){ throw new Error('Page managers API is not available yet (no backend route)'); }
+
+global.DroboardPageData = { fetchPosts, fetchCollections, canManage, canCurrentManage, createPost, getManagers, addManager, updateManagerRole, removeManager, API_BASE };
 
 // ── Page controller ──
-let POSTS=[], MORE_POSTS=[], allCache=[], currentTab='all', moreLoaded=false, writersFeatured=0;
-let FOLLOW_STATE = JSON.parse(localStorage.getItem('drb_shout_follows')||'{}');
-const BASE_FOLLOWERS=12400;
-let following = localStorage.getItem('drb_following')==='1';
-let notifyOn  = localStorage.getItem('drb_notify')==='1';
+let _pageSettings={}; // in-memory UI preference (support strip visibility)
+let POSTS=[], feedTotal=0, currentTab='all';
+let FOLLOW_STATE = {}; // shoutout author id -> following (loaded from live profiles)
+let followersCount = 0;
+let following = false;
+let notifyOn = false;
 const inlineOpen = {}; // postId -> bool (inline comments expanded)
 const inlineCS = {};   // postId -> DroboardComments instance
-let mountInlineRef = null; // set by attachPostCard; used by renderFeed to restore open threads
+let mountInlineRef = null; // set by attachPostCard; used to restore open threads
 
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function nl(s){return (s||'').replace(/\n/g,'<br>')}
 function fmtN(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n||0)}
 const DROBOARD_LOGO='../assets/droboard-icon.png';
 
-  function getWriterPool(){
-    var pool=[];
-    try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_USERS) pool=global.DroboardPageSeed.DROBOARD_COMPOSER_USERS.slice(); }catch(e){}
-    if(!pool.length) pool=(typeof WRITER_STATUSES!=='undefined') ? WRITER_STATUSES.filter(function(w){return !w.isYou}) : [];
-    try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_READERS) pool=pool.concat(global.DroboardPageSeed.DROBOARD_COMPOSER_READERS.slice()); }catch(e){}
-    return pool;
-  }
-function writerById(id){
-  const pool=getWriterPool();
-  return pool.find(function(w){return w.id===id || w.handle===id})||null;
-}
 function mapPost(p){
   // Remap repost → recommendation so story picks render as story cards,
-  // not repost cards. Matches feed-service.js and profile-data.js behavior.
+  // not repost cards. Matches feed-service.js behavior.
   const mapped = Object.assign({}, p);
   if (mapped.type === 'repost') mapped.type = 'recommendation';
   if(mapped.type==='shoutout' && mapped.shoutout && mapped.shoutout.id){
-    const w=writerById(mapped.shoutout.id);
-    const name = mapped.shoutout.name || (w&&w.name) || 'Droboard Writer';
-    const av   = mapped.shoutout.avatar || (w&&w.avatar) || DROBOARD_LOGO;
-    const stats= mapped.shoutout.stats || (w&&w.stats) || null;
-    return Object.assign({}, mapped, { avatar: DROBOARD_LOGO, name: mapped.name || 'Droboard', mine: true, pinnable: true, shoutout:Object.assign({}, mapped.shoutout, { name:name, avatar:av, stats:stats, following:!!FOLLOW_STATE[mapped.shoutout.id], _writer:w||{name:name,avatar:av,stats:stats}, _writerId:mapped.shoutout.id }) });
+    const s = mapped.shoutout;
+    const name = s.name || 'Droboard Writer';
+    const av   = s.avatar || DROBOARD_LOGO;
+    return Object.assign({}, mapped, { avatar: DROBOARD_LOGO, name: mapped.name || 'Droboard', shoutout:Object.assign({}, s, { name:name, avatar:av, following:!!FOLLOW_STATE[s.id], _writerId:s.id }) });
   }
-  return Object.assign({ avatar: DROBOARD_LOGO, name: 'Droboard', mine: true, pinnable: true }, mapped);
+  return Object.assign({ avatar: DROBOARD_LOGO, name: 'Droboard' }, mapped);
+}
+function findPostAnywhere(id){
+  return POSTS.find(function(p){return String(p.id)===String(id)}) || null;
+}
+function replaceInPOSTS(card){
+  const i=POSTS.findIndex(function(x){return String(x.id)===String(card.id)});
+  if(i>-1) POSTS[i]=card; else POSTS.unshift(card);
+}
+function updateCard(post){
+  DroboardPostCard.update(mapPost(post));
+  if(inlineOpen[post.id] && mountInlineRef) mountInlineRef(post);
 }
 function currentList(){
-  const base=moreLoaded? allCache : POSTS;
-  const list=(currentTab==='all') ? base.slice() : base.filter(function(p){return p.type===currentTab});
+  const list=(currentTab==='all') ? POSTS.slice() : POSTS.filter(function(p){return p.type===currentTab});
   const pinned=list.filter(function(p){return p.pinned});
   const rest=list.filter(function(p){return !p.pinned});
   return pinned.concat(rest); // pinned always on top, stable order otherwise
 }
 function pinnedCountExcept(id){
   const seen={}; let n=0;
-  [allCache, MORE_POSTS].forEach(function(arr){
-    (arr||[]).forEach(function(p){
-      if(!p || seen[p.id] || String(p.id)===String(id)) return;
-      seen[p.id]=1; if(p.pinned) n++;
-    });
+  POSTS.forEach(function(p){
+    if(!p || seen[p.id] || String(p.id)===String(id)) return;
+    seen[p.id]=1; if(p.pinned) n++;
   });
   return n;
 }
@@ -138,10 +158,18 @@ function renderFollowUI(){
   const btn=document.getElementById('followBtn'); if(!btn) return;
   btn.innerHTML = following ? '<i class="fas fa-check"></i> Following' : '<i class="fas fa-plus"></i> Follow';
   btn.classList.toggle('ing', following);
-  const count=BASE_FOLLOWERS+(following?1:0);
+  const count=followersCount+(following?1:0);
   const sf=document.getElementById('statFollowers'); if(sf) sf.textContent=fmtN(count);
   const tf=document.getElementById('topFollowerCount'); if(tf) tf.textContent=fmtN(count)+' followers';
   const nb=document.getElementById('notifBtn'); if(nb) nb.classList.toggle('on', notifyOn && following);
+}
+async function loadPageProfile(){
+  try {
+    const data = await api('/users/droboard');
+    const u = data.profile || data.user || data.data || data;
+    if (u && u.followers != null) followersCount = Number(u.followers) || 0;
+    if (u && u.isFollowing != null) following = !!u.isFollowing;
+  } catch(e) { /* the follow strip keeps its last known live value */ }
 }
 
 function initTabs(){
@@ -159,7 +187,7 @@ function switchTab(tab){
 
 function renderFeed(){
   const area=document.getElementById('feedArea'); if(!area) return;
-  if(window.DroboardExpiry){ [POSTS, MORE_POSTS].forEach(function(a){ DroboardExpiry.sweep(a, { isMine: p => p.mine || p.name === 'You' }); }); }
+  if(window.DroboardExpiry){ DroboardExpiry.sweep(POSTS, { isMine: p => p.mine || p.name === 'You' }); }
   const list=currentList();
   if(!list.length){
     area.innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i><h4>Nothing here yet</h4><p>No posts in this category right now — check back soon.</p></div>';
@@ -253,13 +281,32 @@ function renderSponsoredPost(post){
   return '<div style="padding:14px 16px;background:var(--l1);border-bottom:8px solid var(--bg)">'+inner+'</div>';
 }
 
-function loadMore(){
-  if(moreLoaded){ toast('✅ All posts loaded!'); return; }
-  moreLoaded=true;
-  allCache = POSTS.concat(MORE_POSTS);
-  renderFeed();
-  const b=document.getElementById('loadMoreBtn'); if(b) b.innerHTML='<i class="fas fa-check"></i> All posts loaded';
-  toast('✨ More posts loaded!');
+let loadingMore=false;
+function hasMorePosts(){ return POSTS.length < feedTotal; }
+function paintLoadMoreBtn(){
+  const b=document.getElementById('loadMoreBtn'); if(!b) return;
+  b.style.display = hasMorePosts() ? '' : 'none';
+  if(!hasMorePosts()) b.innerHTML='<i class="fas fa-check"></i> All posts loaded';
+}
+async function loadMore(){
+  const b=document.getElementById('loadMoreBtn'); if(!b || loadingMore) return;
+  if(!hasMorePosts()){ toast('All posts loaded'); return; }
+  loadingMore=true;
+  const old=b.innerHTML;
+  b.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Loading…';
+  try{
+    const page = Math.floor(POSTS.length / PAGE_SIZE) + 1;
+    const j = await fetchPosts(page);
+    const fresh=(j.posts||[]).filter(function(p){ return !findPostAnywhere(p.id); });
+    POSTS=POSTS.concat(fresh);
+    feedTotal=j.total||feedTotal;
+    renderFeed();
+    toast(fresh.length ? 'More posts loaded' : 'All posts loaded');
+  }catch(e){
+    toast('Could not load more posts — try again');
+  }
+  paintLoadMoreBtn();
+  loadingMore=false;
 }
 
 function toast(msg, dur){ dur=dur||2500; const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show')},dur); }
@@ -267,62 +314,34 @@ function toast(msg, dur){ dur=dur||2500; const t=document.getElementById('toast'
 function openSupport(){ if(global.DroboardTip) DroboardTip.open('droboard-page', { name:'Droboard', handle:'@droboard · Official page', avatar:DROBOARD_LOGO }); }
 
 /* Support Droboard is platform revenue, not a writer tip: the wallet posts it
-   with the 'platform' sentinel and debits paid coins only. With no backend the
-   amount comes off the demo balance and is mirrored into dro_platform_tips,
-   which the awards demo reads for the Supporter badge. */
-var PLATFORM_TIPS_KEY='dro_platform_tips';
-function viewerIdentity(){
-  try{ if(global.PROFILE_ME && global.PROFILE_ME.handle) return { userId:String(global.PROFILE_ME.id||''), handle:global.PROFILE_ME.handle }; }catch(e){}
-  try{ var me=JSON.parse(localStorage.getItem('drb_me')||'null'); if(me && me.handle) return { userId:String(me.id||''), handle:me.handle }; }catch(e){}
-  return { userId:'', handle:'Ada_Writes' };
-}
-function recordPlatformTip(coins, giftCode){
-  try{
-    var list=JSON.parse(localStorage.getItem(PLATFORM_TIPS_KEY)||'[]'); if(!Array.isArray(list)) list=[];
-    var me=viewerIdentity();
-    list.unshift({ userId:me.userId, handle:me.handle, coins:Number(coins)||0, giftCode:giftCode||'', at:new Date().toISOString() });
-    localStorage.setItem(PLATFORM_TIPS_KEY, JSON.stringify(list.slice(0,200)));
-  }catch(e){}
-}
-function demoSpendCoins(coins){
-  if(global.StoreService && typeof StoreService.spendCoins==='function'){ try{ return StoreService.spendCoins(coins); }catch(e){} }
-  try{
-    var cur=parseInt(localStorage.getItem('dro_store_balance'),10); if(isNaN(cur)) cur=350;
-    if(cur<coins) return false;
-    localStorage.setItem('dro_store_balance', String(cur-coins));
-    return true;
-  }catch(e){ return false; }
-}
-function sendPlatformTip(coins, giftCode){
-  var body={ authorId:'platform', coins:Number(coins), giftCode:String(giftCode||''), requestId:'support:'+Date.now()+':'+Math.random().toString(36).slice(2,8) };
-  return fetch('/api/wallet/tip',{ method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
-    .then(function(res){
-      if(res.status===404||res.status===502||res.status===504) return {demo:true};
-      return res.json().catch(function(){return {};}).then(function(j){ return {server:true, ok:res.ok, status:res.status, j:j||{}}; });
-    }).catch(function(){ return {demo:true}; })
-    .then(function(out){
-      if(out.demo){
-        if(!demoSpendCoins(coins)) return {ok:false, message:'Not enough coins — top up in Store'};
-        recordPlatformTip(coins, giftCode);
-        return {ok:true};
-      }
-      if(!out.ok){
-        if(out.status===402) return {ok:false, message: out.j.error==='bonus_no_tip' ? "Bonus coins read stories, they can't tip — top up to support" : 'Not enough coins — top up in Store'};
-        if(out.status===401||out.status===403) return {ok:false, message:'Sign in to support Droboard'};
-        return {ok:false, message:'Support not sent — try again'};
-      }
-      try{ if(out.j.balance && out.j.balance.coins!=null) localStorage.setItem('dro_store_balance', String(out.j.balance.coins)); }catch(e){}
-      recordPlatformTip(coins, giftCode);
-      return {ok:true};
+   with the 'platform' sentinel and debits paid coins only. Gifts are posted
+   by the picker itself; coin support goes through /api/wallet/tip here. */
+async function sendPlatformTip(coins, giftCode){
+  const body = { authorId: 'platform', coins: Number(coins), giftCode: String(giftCode || '') };
+  try {
+    const res = await fetch(API_BASE + '/wallet/tip', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
+    const j = await res.json();
+    if (!res.ok) {
+      if (res.status === 402) return { ok: false, message: 'Not enough coins — top up in Store' };
+      if (res.status === 401 || res.status === 403) return { ok: false, message: 'Sign in to support Droboard' };
+      return { ok: false, message: 'Support not sent — try again' };
+    }
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, message: 'Support not sent — try again' };
+  }
 }
 function attachSupportTips(){
   if(!global.DroboardTip || typeof DroboardTip.attach!=='function') return;
   DroboardTip.attach({
     getTargetId:function(){ return 'platform'; },
     onSend:function(id, amount, note, mode, giftId){
-      // Gifts were already posted by the picker (through getTargetId); only the local mirror is missing here.
-      if(mode==='gift'){ recordPlatformTip(amount, giftId); return {ok:true}; }
+      if(mode==='gift'){ return {ok:true}; } // the picker already posted the gift
       if(mode!=='coin') return {ok:false, message:'Card support is coming soon — use coins for now'};
       return sendPlatformTip(amount, '');
     },
@@ -330,35 +349,111 @@ function attachSupportTips(){
 }
 function sharePage(){ if(global.openShareModal) window.openShareModal({ title:'Droboard — Official Page', sub:'@droboard · Announcements, debates & story picks', img:DROBOARD_LOGO, url:'https://droboard.app/droboard' }); }
 
+/* ── Live post actions ── */
+async function toggleLikeAPI(post){
+  const prevLiked=!!post.liked, prevLikes=post.likes||0;
+  post.liked=!prevLiked; post.likes=Math.max(0,prevLikes+(post.liked?1:-1));
+  updateCard(post);
+  try{
+    const j=await api('/posts/'+encodeURIComponent(post.id)+'/like', { method:'POST' });
+    post.liked=!!j.liked; post.likes=j.likesCount||0;
+  }catch(e){
+    post.liked=prevLiked; post.likes=prevLikes;
+    toast(e.status===401?'Sign in to react':('Could not save like — '+e.message));
+  }
+  updateCard(post);
+}
+async function toggleSaveAPI(post){
+  const prev=!!post.saved;
+  post.saved=!prev; updateCard(post);
+  try{
+    const j=await api('/posts/'+encodeURIComponent(post.id)+'/save', { method:'POST' });
+    post.saved=!!j.saved;
+  }catch(e){
+    post.saved=prev;
+    toast(e.status===401?'Sign in to save':('Could not save — '+e.message));
+  }
+  updateCard(post);
+}
+async function pollVoteAPI(post, oi){
+  if(post.poll.voted>=0) return toast('You already voted');
+  const prevV=post.poll.opts[oi].v||0, prevTotal=post.poll.total||0, prevVoted=post.poll.voted;
+  post.poll.opts[oi].v=prevV+1; post.poll.voted=oi; post.poll.total=prevTotal+1;
+  updateCard(post);
+  try{
+    const card=await api('/posts/'+encodeURIComponent(post.id)+'/poll/vote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ option: oi }) });
+    replaceInPOSTS(card); updateCard(findPostAnywhere(card.id)||card);
+    toast('✅ Vote cast!');
+  }catch(e){
+    post.poll.opts[oi].v=prevV; post.poll.voted=prevVoted; post.poll.total=prevTotal;
+    updateCard(post);
+    toast(e.status===401?'Sign in to vote':(e.message==='already_voted'?'You already voted':'Vote failed — '+e.message));
+  }
+}
+async function debateVoteAPI(post, side){
+  if(post.debateData.userVote) return toast('You already voted');
+  const prevFor=post.debateData.forV||0, prevAg=post.debateData.agV||0, prevVote=post.debateData.userVote;
+  if(side==='for') post.debateData.forV=prevFor+1; else post.debateData.agV=prevAg+1;
+  post.debateData.userVote=side;
+  updateCard(post);
+  try{
+    const card=await api('/posts/'+encodeURIComponent(post.id)+'/debate/vote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ side: side }) });
+    replaceInPOSTS(card); updateCard(findPostAnywhere(card.id)||card);
+    toast(side==='for'?'✅ Voted FOR!':'❌ Voted AGAINST!');
+  }catch(e){
+    post.debateData.forV=prevFor; post.debateData.agV=prevAg; post.debateData.userVote=prevVote;
+    updateCard(post);
+    toast(e.status===401?'Sign in to vote':(e.message==='already_voted'?'You already voted':'Vote failed — '+e.message));
+  }
+}
+async function reportPostAPI(post){
+  try{
+    await api('/reports', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ target:'post', targetId:String(post.id), reason:'other' }) });
+    toast('🚩 Report submitted — our team will review it');
+  }catch(e){
+    toast(e.status===401?'Sign in to report':('Could not submit report — '+e.message));
+  }
+}
+
 function attachPostCard(){
   const area=document.getElementById('feedArea'); if(!area || typeof DroboardPostCard==='undefined') return;
   // ── attachCounters hooks — picker owns all toggle math; host supplies
-  //    initial counts + persists result back onto the post. ──
-  function findReactPost(id){ return allCache.find(function(p){return String(p.id)===String(id)}) || POSTS.find(function(p){return String(p.id)===String(id)}) || (MORE_POSTS||[]).find(function(p){return String(p.id)===String(id)}) || null; }
+  //    the server's reaction buckets and persists via POST/DELETE /react. ──
   function counterHooks(){
     return {
       getCounts: function(id){
-        const post = findReactPost(id);
+        const post = findPostAnywhere(id);
         if (!post) return null; // unknown id → picker stays inert
-        const likes = post.likes || 0;
-        const buckets = ['crying', 'shocked', 'emotional'];
-        let h = 0; String(id).split('').forEach(function(ch){ h = (h + ch.charCodeAt(0)) % buckets.length; });
-        const secondId = buckets[h];
-        const second = Math.min(5, Math.max(0, likes));
-        const counts = { love: Math.max(0, likes - second) };
-        counts[secondId] = second;
-        return { userRx: (post.userRx || (post.liked ? 'love' : null)) || null, ...counts };
+        const r = post.reactions || {};
+        return {
+          userRx: post.userRx || null,
+          love: r.love || 0, crying: r.crying || 0, shocked: r.shocked || 0, emotional: r.emotional || 0,
+        };
       },
       save: function(id, state){
-        const post = findReactPost(id);
+        const post = findPostAnywhere(id);
         if (!post) return;
-        post.userRx = state.userRx;
-        post.liked = state.userRx === 'love';
-        let total = 0;
-        Object.keys(state).forEach(function(k){ if (k !== 'userRx') total += state[k] || 0; });
-        post.likes = total;
-        DroboardPostCard.update(mapPost(post));
-        if (inlineOpen[post.id]) mountInline(post);
+        const prevRx = post.userRx || null;
+        const prevReactions = post.reactions || {};
+        const rid = state.userRx || null;
+        post.userRx = rid;
+        const next = {}; Object.keys(prevReactions).forEach(function(k){ next[k]=prevReactions[k]||0; });
+        if(prevRx) next[prevRx]=Math.max(0,(next[prevRx]||0)-1);
+        if(rid) next[rid]=(next[rid]||0)+1;
+        post.reactions = next;
+        post.liked = rid === 'love';
+        updateCard(post);
+        const req = rid
+          ? api('/posts/'+encodeURIComponent(post.id)+'/react', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ rid: rid }) })
+          : api('/posts/'+encodeURIComponent(post.id)+'/react', { method:'DELETE' });
+        req.then(function(j){
+          post.reactions = j.counts || next; post.userRx = j.userRx || null; post.liked = post.userRx === 'love';
+          updateCard(post);
+        }).catch(function(e){
+          post.userRx = prevRx; post.reactions = prevReactions; post.liked = prevRx === 'love';
+          updateCard(post);
+          toast(e.status===401?'Sign in to react':('Could not save reaction — '+e.message));
+        });
       },
     };
   }
@@ -371,14 +466,59 @@ function attachPostCard(){
       if(s) s.textContent=fmtN(post.comments);
     }catch(e){}
   }
-  function mountInline(post){
+  function shapeComments(items){
+    const shape=(global.DroboardComments && DroboardComments.api && DroboardComments.api.shapeComment) || function(c){return c;};
+    return (items||[]).map(shape);
+  }
+  function fetchPostComments(postId){
+    return api('/comments?scope=post&postId='+encodeURIComponent(postId)+'&limit=50').then(function(j){
+      return shapeComments(Array.isArray(j)?j:(j.items||[]));
+    });
+  }
+  // Persist an optimistically-inserted comment to POST /api/comments and
+  // swap in the server ids/counts; on failure pull the bubble back out.
+  function attachCommentSurface(box, post, list){
+    function deepRemove(lst, c){
+      return (lst||[]).filter(function(x){
+        if(x===c) return false;
+        if(x.replies && x.replies.length) x.replies=deepRemove(x.replies, c);
+        return true;
+      });
+    }
+    function persist(c, parentId){
+      const body={ scope:'post', postId:String(post.id), text:c.text };
+      if(parentId) body.parentId=parentId;
+      if(c.team) body.team=c.team;
+      api('/comments', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+        .then(function(card){
+          const shaped=shapeComments([card])[0];
+          if(c){ c.id=shaped.id; c.time=shaped.time||c.time; c.likes=shaped.likes||0; c.liked=false; c.mine=!!shaped.mine; if(shaped.reactions) c.reactions=shaped.reactions; }
+          try{ inst.setComments(inst.getComments()); }catch(e){}
+        })
+        .catch(function(e){
+          toast(e.status===401?'Sign in to comment':('Could not post comment — '+e.message));
+          try{ inst.setComments(deepRemove(inst.getComments(), c)); }catch(e2){}
+        });
+    }
+    const inst=DroboardComments.attach(box, { postId:String(post.id), title:'Comments', comments:list||[], currentUser:{name:'You', avatar:null}, collapsible:false, threadSheet:true, fullCommentsUrl:function(){ return 'discussion.html?id='+encodeURIComponent(post.id); }, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(c){ bumpComments(post); persist(c,null); }, onReply:function(parentId,c){ bumpComments(post); persist(c,parentId); } });
+    return inst;
+  }
+  async function mountInline(post){
     let card=null;
     try{ card=area.querySelector('[data-pcc-id="'+(CSS.escape?CSS.escape(post.id):post.id)+'"]'); }catch(e){}
     if(!card) return;
     let box=card.querySelector('.drb-inline-comments');
     if(!box){ box=document.createElement('div'); box.className='drb-inline-comments'; const acts=card.querySelector('.pcc-actions'); if(acts) acts.after(box); else card.appendChild(box); }
+    box.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--tx-muted)"><i class="fas fa-circle-notch fa-spin"></i> Loading comments…</div>';
+    let list;
+    try{ list=await fetchPostComments(post.id); }
+    catch(e){
+      box.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--tx-muted)">'+esc('Could not load comments — '+(e.message||'try again'))+'</div>';
+      return;
+    }
+    if(!inlineOpen[post.id]) return; // reader collapsed it while loading
     if(inlineCS[post.id] && inlineCS[post.id].destroy){ try{ inlineCS[post.id].destroy(); }catch(e){} }
-    inlineCS[post.id]=DroboardComments.attach(box, { storyId:post.id, title:'', comments:seedCommentsFor(post.id), currentUser:{name:'You', avatar:null}, collapsible:false, threadSheet:true, fullCommentsUrl:function(){ return 'discussion.html?id='+encodeURIComponent(post.id); }, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(){bumpComments(post)}, onReply:function(){bumpComments(post)} });
+    inlineCS[post.id]=attachCommentSurface(box, post, list);
   }
   function toggleInline(post){
     if(inlineOpen[post.id]){
@@ -405,48 +545,49 @@ function attachPostCard(){
     DroboardPostCard.registerType('announcement', function(post){
       return '<div class="dpc-body"><div class="drb-badge drb-badge-ann"><i class="fas fa-bullhorn"></i> Announcement</div>'+(post.title?'<div class="dpc-title">'+esc(post.title)+'</div>':'')+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+(post.image?'<img class="pcc-image" src="'+esc(post.image)+'" alt="" loading="lazy" data-image-open="1"/>':'')+'</div>';
     });
+    // Shoutout facts come only from the post's server payload (set when the
+    // manager composed it) — there is no client-side writer directory.
     DroboardPostCard.registerType('shoutout', function(post){
       const s=post.shoutout||{};
-      const w=s._writer||writerById(s.id);
-      const role=s.role||(w&&w.role)||'Writer';
+      const role=s.role||'Writer';
       let statBits='';
+      const st=s.stats||{};
       if(role==='Reader'){
         statBits='<span><b style="color:var(--tx-high)">'+esc(String(s.readingHours||0))+'</b>h read</span><span><b style="color:var(--tx-high)">'+esc(String(s.chaptersRead||0))+'</b> chapters</span><span><b style="color:var(--tx-high)">'+esc(String(s.streak||0))+'</b> day streak</span>';
       } else {
-        const reads=w&&w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '';
-        const followers=w&&w.stats&&w.stats.followers!=null? w.stats.followers : '';
-        const books=w&&w.books? w.books.length : '';
+        const reads=st.reads!=null? (st.reads>=1000? (st.reads/1000|0)+'k' : st.reads) : '';
+        const followers=st.followers!=null? st.followers : '';
+        const books=st.books!=null? (Array.isArray(st.books)?st.books.length:st.books) : '';
         if(reads!=='' || followers!=='' || books!=='') statBits='<span><b style="color:var(--tx-high)">'+esc(String(reads))+'</b> reads</span><span><b style="color:var(--tx-high)">'+esc(String(followers))+'</b> followers</span><span><b style="color:var(--tx-high)">'+esc(String(books))+'</b> books</span>';
       }
-      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+(s.avatar||(w&&w.avatar)||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||(w&&w.name)||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
+      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+esc(s.avatar||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+esc(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
     });
   }catch(e){}
 
   DroboardPostCard.attach(area, {
     getReactionHTML:function(post){ return RP ? RP.renderTrigger(post.id, {}) : undefined; },
     renderSponsored:function(post){ return renderSponsoredPost(post); },
-    onLike:function(post){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig) return; orig.liked=!orig.liked; orig.likes+=(orig.liked?1:-1); DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); },
+    onLike:function(post){ const orig=findPostAnywhere(post.id); if(orig) toggleLikeAPI(orig); },
     onComment:function(post){ openComments(post); },
     onOpenPost:function(post){ goDiscussion(post.id); },
     onSave:function(post){
-      const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig) return;
+      const orig=findPostAnywhere(post.id); if(!orig) return;
       if(window.openSaveModal){ window.openSaveModal({ title:orig.title||(orig.text?orig.text.substring(0,60):'Droboard post'), sub:'@droboard · Official Page', img:orig.image||(orig.storyRef&&orig.storyRef.cover)||DROBOARD_LOGO, storyId:orig.id, type:'post' }); }
-      else { orig.saved=!orig.saved; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast(orig.saved?'🔖 Saved!':'Removed from saved'); }
+      else { toggleSaveAPI(orig); }
     },
     onShare:function(post){ window.openShareModal({ title:post.title||post.quote||(post.text?post.text.substring(0,60):'Droboard'), sub:'@droboard · Official Page', img:post.image||(post.storyRef&&post.storyRef.cover)||DROBOARD_LOGO, url:'https://droboard.app/droboard/post/'+post.id }); },
     onDotsAction:function(action, post){
-      if(action==='report') return toast('🚩 Reported.');
+      if(action==='report') return reportPostAPI(post);
       if(action==='less') return toast("👁️ You'll see less of this.");
       if(action==='follow') return toast('✅ You already follow @droboard!');
       if(action==='share'){ window.openShareModal({ title:post.title||'Droboard', sub:'@droboard', img:DROBOARD_LOGO, url:'https://droboard.app/droboard/post/'+post.id }); return; }
       if(action==='save'){ window.openSaveModal({ title:post.title||post.quote||'Droboard post', sub:'@droboard', img:post.image||DROBOARD_LOGO, storyId:post.id, type:'post' }); return; }
     },
-    onPollVote:function(post, oi){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.poll) return; if(orig.poll.voted>=0) return toast('✅ Already voted!'); orig.poll.opts[oi].v++; orig.poll.voted=oi; orig.poll.total++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast('✅ Vote cast!'); },
-    onDebateVote:function(post, side){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig||!orig.debateData) return; if(orig.debateData.userVote) return toast('✅ Already voted!'); orig.debateData.userVote=side; if(side==='for') orig.debateData.forV++; else orig.debateData.agV++; DroboardPostCard.update(mapPost(orig)); if(inlineOpen[orig.id]) mountInline(orig); toast(side==='for'?'✅ Voted FOR!':'❌ Voted AGAINST!'); },
+    onPollVote:function(post, oi){ const orig=findPostAnywhere(post.id); if(orig&&orig.poll) pollVoteAPI(orig, oi); },
+    onDebateVote:function(post, side){ const orig=findPostAnywhere(post.id); if(orig&&orig.debateData) debateVoteAPI(orig, side); },
     onOpenDebate:function(post){ location.href='debate.html?id='+encodeURIComponent(post.id); },
     onAvatarClick:function(){ window.scrollTo({top:0,behavior:'smooth'}); },
-    onDots:function(post, anchor){ if(window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); },
-    onReplySend:function(post){ const orig=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(!orig) return; orig.comments++; DroboardPostCard.update(mapPost(orig)); toast('💬 Reply posted!'); }
+    onDots:function(post, anchor){ if(window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); }
   });
 
   if(RP){ RP.attachCounters(area, counterHooks()); }
@@ -461,9 +602,25 @@ function attachPostCard(){
     if(ot){ const card=e.target.closest('.pcc-post'); if(card&&card.dataset.pccId) goDiscussion(card.dataset.pccId); return; }
   });
 
-  area.addEventListener('click', function(e){
+  area.addEventListener('click', async function(e){
     const fb=e.target.closest('[data-shout-follow]');
-    if(fb){ const wid=fb.dataset.shoutFollow; FOLLOW_STATE[wid]=!FOLLOW_STATE[wid]; localStorage.setItem('drb_shout_follows', JSON.stringify(FOLLOW_STATE)); const w=writerById(wid); toast(FOLLOW_STATE[wid] ? '✅ Following @'+(w?w.name:'writer')+'!' : 'Unfollowed @'+(w?w.name:'writer')); renderFeed(); return; }
+    if(fb){
+      const wid=fb.dataset.shoutFollow;
+      const isFollowing = FOLLOW_STATE[wid];
+      const method = isFollowing ? 'DELETE' : 'POST';
+      try {
+        const r = await fetch(API_BASE + '/users/' + encodeURIComponent(wid) + '/follow', {
+          method: method,
+          credentials: 'include'
+        });
+        if (r.ok) {
+          FOLLOW_STATE[wid] = !isFollowing;
+          toast(FOLLOW_STATE[wid] ? '✅ Following!' : 'Unfollowed');
+          renderFeed();
+        } else { toast(r.status===401?'Sign in to follow':'Failed to update follow'); }
+      } catch(err) { toast('Failed to update follow'); }
+      return;
+    }
     if(e.target.closest('[data-shout-open]')){ toast('👤 Opening profile…'); return; }
     if(e.target.closest('[data-story-chip]')){ toast('📖 Opening story…'); return; }
     if(e.target.closest('[data-ama-open]')){ toast('🎙 Joining Droboard Live…'); return; }
@@ -471,47 +628,80 @@ function attachPostCard(){
   });
 }
 
-let cs=null; const postCommentsCache={};
-  function normStatusRing(r) {
-    const s = String(r || '').replace(/^ring-/, '');
-    return (s === 'has' || s === 'viewed') ? s : 'none';
-  }
-  function prepareCommentSeed(list){
-    return (list||[]).map(function(c){
-      const ws=c.wid ? writerById(c.wid) : null;
-      // Keep the seed's own statuses when present; supplement from the
-      // writer record only as fallback. Rings use component values so they
-      // actually render (raw 'ring-*' strings would show no ring).
-      const st = (c.statuses && c.statuses.length) ? c.statuses : (ws ? ws.statuses : null);
-      return Object.assign({}, c, { rx:c.reactions||null, statuses: st,
-        statusRing: (st && st.length) ? normStatusRing((c.statusRing && c.statusRing !== 'none') ? c.statusRing : (ws && ws.ring)) : 'none',
-        replies: prepareCommentSeed(c.replies) });
-    });
-  }
-function seedCommentsFor(postId){
-  if(!postCommentsCache[postId]){
-    const raw=typeof COMMENTS_DATA!=='undefined' ? JSON.parse(JSON.stringify(COMMENTS_DATA)) : [];
-    postCommentsCache[postId]=prepareCommentSeed(raw);
-  }
-  return postCommentsCache[postId];
-}
-function openComments(post){
+let cs=null;
+async function openComments(post){
   const overlay=document.getElementById('commentOverlay');
   const mount=document.getElementById('commentMount'); if(!overlay||!mount) return;
   if(cs && cs.destroy){ try{cs.destroy();}catch(e){} cs=null; }
-  mount.innerHTML='';
-  cs = DroboardComments.attach(mount, { storyId:post.id, title:'Comments', comments: seedCommentsFor(post.id), currentUser:{name:'You', avatar:null}, collapsible:false, threadSheet:true, fullCommentsUrl:function(){ return 'discussion.html?id='+encodeURIComponent(post.id); }, placeholder:'Add a comment…', getCommentUrl:function(c){return 'https://droboard.app/droboard/post/'+post.id+'#comment-'+c.id}, onPost:function(){ const o=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(o){o.comments++; DroboardPostCard.update(mapPost(o));}}, onReply:function(){ const o=allCache.find(function(p){return p.id===post.id})||POSTS.find(function(p){return p.id===post.id}); if(o){o.comments++; DroboardPostCard.update(mapPost(o));}} });
+  mount.innerHTML='<div class="empty-state" style="padding:28px"><i class="fas fa-circle-notch fa-spin"></i><p>Loading comments…</p></div>';
   overlay.classList.add('open'); document.body.style.overflow='hidden';
+  let list;
+  try{ list=await fetchPostCommentsFor(post.id); }
+  catch(e){
+    mount.innerHTML='<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><h4>Could not load comments</h4><p>'+esc(e.message||'Try again later.')+'</p></div>';
+    return;
+  }
+  mount.innerHTML='';
+  cs=attachCommentSurface(mount, post, list);
+}
+function fetchPostCommentsFor(postId){
+  return api('/comments?scope=post&postId='+encodeURIComponent(postId)+'&limit=50').then(function(j){
+    return shapeComments(Array.isArray(j)?j:(j.items||[]));
+  });
 }
 function closeComments(){ const o=document.getElementById('commentOverlay'); if(o) o.classList.remove('open'); document.body.style.overflow=''; }
 
-function initSpotlight(){
-  const pool=getWriterPool();
-  const people=pool.map(function(w){
-    return { id:w.id, name:w.name, av:w.avatar, ring:w.ring, isLive:w.isLive||false, statuses:w.statuses, verified:['w1','w5','w6'].indexOf(w.id)!==-1, rank: w.isLive?'🔴 Live now':null, following:!!FOLLOW_STATE[w.id], profileUrl:'profile.html' };
+/* Spotlight ("People to follow") — the writers shouted out on this page,
+   with follow state from their live profiles and rings from live statuses. */
+async function initSpotlight(){
+  if(typeof DroboardPeopleToFollow==='undefined') return;
+  const seen={}; const authors=[];
+  POSTS.forEach(function(p){
+    if(p.type==='shoutout' && p.shoutout && p.shoutout.id && !seen[p.shoutout.id]){
+      seen[p.shoutout.id]=1;
+      authors.push({ id:String(p.shoutout.id), handle:String(p.shoutout.handle||p.shoutout.id||'').replace(/^@/,''), name:p.shoutout.name||'Writer', av:p.shoutout.avatar||'', verified:!!p.shoutout.verified });
+    }
   });
-  if(!people.length || typeof DroboardPeopleToFollow==='undefined') return;
-  DroboardPeopleToFollow.render('#ptfMount', { people:people, title:'', maxVisible:8, onFollow:function(o){ FOLLOW_STATE[o.id]=o.following; localStorage.setItem('drb_shout_follows', JSON.stringify(FOLLOW_STATE)); toast(o.following ? '✅ Following @'+o.name : 'Unfollowed @'+o.name); } });
+  if(!authors.length) return;
+  const people = await Promise.all(authors.slice(0,8).map(async function(a){
+    let isFollowing=false;
+    try{
+      const data=await api('/users/'+encodeURIComponent(a.id));
+      const u=data.profile||data.user||data.data||data;
+      if(u && u.isFollowing!=null) isFollowing=!!u.isFollowing;
+    }catch(e){}
+    FOLLOW_STATE[a.id]=isFollowing;
+    return { id:a.id, name:a.name, av:a.av, ring:'none', isLive:false, statuses:null, verified:a.verified, rank:null, following:isFollowing, profileUrl:'profile.html?handle='+encodeURIComponent(a.handle) };
+  }));
+  // Status rings come from the live status store (by handle) — never seeded.
+  const handles=people.map(function(p){ const a=authors.find(function(a2){return a2.id===p.id}); return a&&a.handle; }).filter(Boolean);
+  if(handles.length){
+    try{
+      const rows=await api('/statuses/writers?handles='+encodeURIComponent(handles.join(',')));
+      (Array.isArray(rows)?rows:[]).forEach(function(row){
+        const st=row.statuses||[];
+        if(!st.length) return;
+        const p=people.find(function(x){ const a=authors.find(function(a2){return a2.id===x.id}); return a && String(a.handle).toLowerCase()===String(row.handle||'').toLowerCase(); });
+        if(p){ p.statuses=st; p.ring=st.every(function(s){return s.viewed;})?'viewed':'has'; p.isLive=st.some(function(s){return s.isLive;}); p.rank=p.isLive?'🔴 Live now':null; }
+      });
+    }catch(e){ /* rings stay off — never seeded */ }
+  }
+  DroboardPeopleToFollow.render('#ptfMount', {
+    people:people, title:'', maxVisible:8,
+    onFollow: async function(o){
+      const method = o.following ? 'DELETE' : 'POST';
+      try {
+        const r = await fetch(API_BASE + '/users/' + encodeURIComponent(o.id) + '/follow', {
+          method: method,
+          credentials: 'include'
+        });
+        if (r.ok) {
+          FOLLOW_STATE[o.id] = !o.following;
+          toast(!o.following ? '✅ Following @' + o.name : 'Unfollowed @' + o.name);
+        } else { toast(r.status===401?'Sign in to follow':'Failed to update follow'); }
+      } catch(err) { toast('Failed to update follow'); }
+    }
+  });
 }
 function initCollections(){
   if(typeof DroboardCollectionCard==='undefined') return;
@@ -520,51 +710,23 @@ function initCollections(){
     onOpen:function(c){ toast('📂 Opening "'+c.name+'"…'); },
     onShare:function(c){ window.openShareModal({ title:c.name, sub:(c.count||0)+' stories · Curated by @droboard', img:(c.covers&&c.covers[0])||DROBOARD_LOGO, url:'https://droboard.app/collection/'+c.id }); }
   });
-  fetchCollections().then(function(cols){ DroboardCollectionCard.setCollections(cols); });
+  fetchCollections().then(function(cols){ DroboardCollectionCard.setCollections(cols); }).catch(function(){ toast('Could not load collections'); });
 }
 
-  /* ── Page info (bio / links / guidelines) — manager-editable ── */
-  const ABOUT_KEY='drb_about_info';
-  /* ── Page settings (support strip visibility) — manager-editable ── */
-  const SETTINGS_KEY='drb_page_settings';
-  function getPageSettings(){
-    let s={ showSupport:true };
-    try{ s=Object.assign(s, JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{}); }catch(e){}
-    return s;
-  }
-  function savePageSettings(patch){
-    const next=Object.assign(getPageSettings(), patch||{});
-    try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); }catch(e){}
-    return next;
-  }
+  /* ── Page info (bio / links / guidelines) ──
+     No backend route exists for page-info saves, so this panel renders the
+     page's static copy and the edit entry point stays hidden. */
   const DEFAULT_RULES=['Be kind — debate the story, not the person.','Tag spoilers so everyone gets to feel the twist.','No harassment of writers or fellow readers.','Shoutouts and story picks are curated by the team, not paid placements.'];
-  const SOCIAL_NETWORKS=['instagram','x','facebook','tiktok','youtube','linkedin','threads','snapchat','whatsapp','telegram','website'];
   const SOCIAL_ICONS={ instagram:'fab fa-instagram', x:'fab fa-x-twitter', facebook:'fab fa-facebook', tiktok:'fab fa-tiktok', youtube:'fab fa-youtube', linkedin:'fab fa-linkedin', threads:'fab fa-threads', snapchat:'fab fa-snapchat', whatsapp:'fab fa-whatsapp', telegram:'fab fa-telegram', website:'fas fa-globe' };
-  function defaultLinks(hero){
-    const links=(hero&&hero.links)||{};
-    return [
-      { network:'instagram', handle:links.instagram||'@droboard.app' },
-      { network:'x', handle:links.x||'@droboard' }
-    ];
-  }
   function getAbout(){
-    const hero=getHero();
-    let ov={}; try{ ov=JSON.parse(localStorage.getItem(ABOUT_KEY)||'{}')||{}; }catch(e){}
-    let links=Array.isArray(ov.links)&&ov.links.length ? ov.links : null;
-    if(!links){
-      // migrate legacy single fields, else seed defaults
-      const ig = ov.instagram || ((hero.links&&hero.links.instagram)||'@droboard.app');
-      const x = ov.x || ((hero.links&&hero.links.x)||'@droboard');
-      links=[{ network:'instagram', handle:ig }, { network:'x', handle:x }];
-      if(ov.links && !ov.links.length) links=[];
-    }
+    // Static page copy — there is no droboard-page hero API to read from.
     return {
-      bio: ov.bio!==undefined ? ov.bio : (hero.bio||''),
-      blurb: ov.blurb || null,
-      email: ov.email || ((hero.links&&hero.links.email)||'hello@droboard.app'),
-      support: ov.support || ((hero.links&&hero.links.support)||'support.droboard.app'),
-      links: links.filter(function(l){ return l && l.handle; }),
-      rules: (Array.isArray(ov.rules)&&ov.rules.length) ? ov.rules : DEFAULT_RULES.slice()
+      bio: null, // null keeps the markup's static bio
+      blurb: null,
+      email: 'hello@droboard.app',
+      support: 'support.droboard.app',
+      links: [ { network:'instagram', handle:'@droboard.app' }, { network:'x', handle:'@droboard' } ],
+      rules: DEFAULT_RULES.slice()
     };
   }
   function setText(id, v){ const el=document.getElementById(id); if(el && v!==undefined && v!==null) el.textContent=v; }
@@ -579,9 +741,10 @@ function initCollections(){
       return '<span style="color:var(--blue);font-size:12px;white-space:nowrap"><i class="'+icon+'"></i> '+esc(l.handle)+'</span>';
     }).join('') || '<span style="font-size:11px;color:var(--tx-faint)">No links yet</span>';
     const ul=document.getElementById('aboutRules'); if(ul) ul.innerHTML=a.rules.map(function(r){return '<li>'+esc(r)+'</li>'}).join('');
-    const eb=document.getElementById('aboutEditBtn'); if(eb) eb.style.display=canCurrentManage('post')?'block':'none';
+    const eb=document.getElementById('aboutEditBtn'); if(eb) eb.style.display='none'; // page-info saving has no backend route yet
   }
-  function closeAboutEditor(){ const o=document.getElementById('aboutEditorOv'); if(o) o.remove(); }
+  function getPageSettings(){ return Object.assign({showSupport:true}, _pageSettings||{}); }
+  function savePageSettings(patch){ _pageSettings=Object.assign({},getPageSettings(),patch||{}); return _pageSettings; }
   function renderMainSupport(){
     const mount=document.getElementById('composerMount'); if(!mount) return;
     let strip=document.getElementById('mainSupportStrip');
@@ -598,9 +761,9 @@ function initCollections(){
       +'<button class="support-btn" onclick="event.stopPropagation();DroboardOfficial.openSupport()">Support</button></div>';
   }
   function closePageMenu(){ const o=document.getElementById('pageMenuOv'); if(o) o.remove(); }
-  function openPageMenu(){
+  async function openPageMenu(){
     closePageMenu();
-    const isManager=canCurrentManage('post');
+    const isManager=await canCurrentManage('post');
     const showSupport=getPageSettings().showSupport;
     const ov=document.createElement('div');
     ov.id='pageMenuOv';
@@ -624,83 +787,25 @@ function initCollections(){
       toast(next.showSupport?'✅ Support strip showing':'Support strip hidden');
     });
   }
-  function openAboutEditor(){
-    if(!canCurrentManage('post')){ toast('Only page managers can edit this'); return; }
-    closeAboutEditor();
-    const a=getAbout();
-    const curBlurb=((document.getElementById('aboutBlurb')||{}).textContent||'').trim();
-    const ov=document.createElement('div');
-    ov.id='aboutEditorOv';
-    ov.style.cssText='position:fixed;inset:0;z-index:1800;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
-    function fld(id, label, val, rows){
-      const input = rows
-        ? '<textarea id="'+id+'" rows="'+rows+'" style="width:100%;padding:9px 11px;border:1px solid var(--bd);border-radius:10px;background:var(--l2);color:var(--tx-high);font-size:12.5px;font-family:inherit;resize:vertical">'+esc(val||'')+'</textarea>'
-        : '<input id="'+id+'" value="'+esc(val||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:9px 11px;border:1px solid var(--bd);border-radius:10px;background:var(--l2);color:var(--tx-high);font-size:12.5px;font-family:inherit"/>';
-      return '<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;margin-bottom:5px">'+label+'</div>'+input+'</div>';
-    }
-    ov.innerHTML='<div style="width:100%;max-width:520px;background:var(--l1,#fff);border-radius:20px 20px 0 0;padding:16px;max-height:88vh;overflow-y:auto">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><b style="font-size:14px">Edit page info</b><button id="abClose" style="width:28px;height:28px;border-radius:50%;background:var(--l2);border:none;color:var(--tx-muted);cursor:pointer">✕</button></div>'
-      +fld('abBio','Page bio (under the name)',a.bio,3)
-      +fld('abBlurb','About section text',a.blurb||curBlurb,4)
-      +fld('abEmail','Contact email',a.email)
-      +fld('abSupport','Support line',a.support)
-      +'<div style="font-size:11px;font-weight:700;margin:12px 0 5px">Social links (any network — all added appear on the page)</div><div id="abLinks"></div>'
-      +'<button id="abAddLink" style="width:100%;padding:9px;border:1.5px dashed var(--bd);border-radius:10px;background:transparent;color:var(--tx-muted);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px">+ Add social link</button>'
-      +fld('abRules','Community guidelines (one per line)',a.rules.join('\n'),5)
-      +'<button id="abSave" style="width:100%;padding:11px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;margin-top:4px">Save changes</button></div>';
-    document.body.appendChild(ov);
-    ov.addEventListener('click', function(e){ if(e.target===ov) closeAboutEditor(); });
-    document.getElementById('abClose').addEventListener('click', closeAboutEditor);
-    function linkRow(l){
-      l = l || { network:'instagram', handle:'' };
-      const opts = SOCIAL_NETWORKS.map(function(n){ return '<option value="'+n+'"'+(n===l.network?' selected':'')+'>'+n+'</option>'; }).join('');
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
-      row.innerHTML = '<select data-socnet style="flex:0 0 118px;padding:9px 8px;border:1px solid var(--bd);border-radius:10px;background:var(--l2);color:var(--tx-high);font-size:12px">'+opts+'</select>'
-        + '<input data-sochandle value="'+esc(l.handle||'').replace(/"/g,'&quot;')+'" placeholder="@handle or URL" style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--bd);border-radius:10px;background:var(--l2);color:var(--tx-high);font-size:12px;font-family:inherit"/>'
-        + '<button data-socx style="flex-shrink:0;width:36px;border-radius:10px;border:1px solid var(--bd);background:var(--l2);color:var(--tx-muted);cursor:pointer">✕</button>';
-      row.querySelector('[data-socx]').addEventListener('click', function(){ row.remove(); });
-      return row;
-    }
-    const linksBox = document.getElementById('abLinks');
-    a.links.forEach(function(l){ linksBox.appendChild(linkRow(l)); });
-    document.getElementById('abAddLink').addEventListener('click', function(){ linksBox.appendChild(linkRow(null)); });
-    document.getElementById('abSave').addEventListener('click', function(){
-      const gv=function(id){ const el=document.getElementById(id); return el?el.value.trim():''; };
-      const rules=gv('abRules').split('\n').map(function(s){return s.trim()}).filter(Boolean);
-      const links=Array.from(linksBox.children).map(function(row){
-        const sel=row.querySelector('[data-socnet]'), inp=row.querySelector('[data-sochandle]');
-        return { network: sel?sel.value:'website', handle: inp?inp.value.trim():'' };
-      }).filter(function(l){ return l.handle; });
-      const patch={ bio:gv('abBio'), blurb:gv('abBlurb'), email:gv('abEmail'), support:gv('abSupport'), links:links, rules:rules.length?rules:DEFAULT_RULES.slice() };
-      try{ localStorage.setItem(ABOUT_KEY, JSON.stringify(patch)); }catch(e){}
-      renderAbout(); closeAboutEditor(); toast('✅ Page info updated');
-    });
-  }
 
-function canCurrentManage(need){
-  // current viewer handle — from auth-session if available, fallback demo
-  let h=null; try{ if(global.AuthSession && AuthSession.getSession){ /* sync cache */ } }catch(e){}
-  // sync path: read demo ME from profile demo seed global if present
-  try{ if(global.PROFILE_ME) h=global.PROFILE_ME.handle; }catch(e){}
-  if(!h) try{ h=JSON.parse(localStorage.getItem('drb_me')||'null')?.handle || 'Ada_Writes'; }catch(e){ h='Ada_Writes'; }
-  return canManage(h, need);
+async function canCurrentManage(need){
+  return canManage(null, need);
 }
-function persistExtra(post){ try{ const a=JSON.parse(localStorage.getItem('drb_posts_extra')||'[]'); a.unshift(post); localStorage.setItem('drb_posts_extra', JSON.stringify(a.slice(0,50))); }catch(e){} }
-function rewriteExtras(list){ try{ localStorage.setItem('drb_posts_extra', JSON.stringify((list||[]).slice(0,50))); }catch(e){} }
-function readExtras(){ try{ const a=JSON.parse(localStorage.getItem('drb_posts_extra')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
-function removeExtraFromLS(id){ rewriteExtras(readExtras().filter(function(x){ return String(x.id)!==String(id); })); }
-function upsertExtra(post){ const a=readExtras(); const i=a.findIndex(function(x){ return String(x.id)===String(post.id); }); if(i>-1) a[i]=post; else a.unshift(post); rewriteExtras(a); }
-function saveEditPatch(id, patch){ try{ const m=JSON.parse(localStorage.getItem('drb_posts_edits')||'{}')||{}; m[id]=Object.assign({}, m[id], patch); localStorage.setItem('drb_posts_edits', JSON.stringify(m)); }catch(e){} }
-function recordDelete(id){ try{ const d=JSON.parse(localStorage.getItem('drb_posts_deleted')||'[]')||[]; if(d.indexOf(String(id))===-1) d.push(String(id)); localStorage.setItem('drb_posts_deleted', JSON.stringify(d)); }catch(e){} }
-function recordPin(id, pinned){ try{ const m=JSON.parse(localStorage.getItem('drb_posts_pins')||'{}')||{}; m[id]=!!pinned; localStorage.setItem('drb_posts_pins', JSON.stringify(m)); }catch(e){} }
-let editingId=null; // post id being edited through the composer (null = new post)
-function findPostAnywhere(id){
-  return allCache.find(function(p){return String(p.id)===String(id)}) || POSTS.find(function(p){return String(p.id)===String(id)}) || (MORE_POSTS||[]).find(function(p){return String(p.id)===String(id)}) || null;
+
+// Post moderation — real API; the caller surfaces errors.
+async function updatePostAPI(id, patch){
+  return api('/posts/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch)
+  });
 }
+async function deletePostAPI(id){
+  return api('/posts/' + encodeURIComponent(id), { method: 'DELETE' });
+}
+
 function dropPostEverywhere(id){
-  const pred=function(p){ return String(p.id)!==String(id); };
-  POSTS=POSTS.filter(pred); MORE_POSTS=MORE_POSTS.filter(pred); allCache=allCache.filter(pred);
+  POSTS=POSTS.filter(function(p){ return String(p.id)!==String(id); });
 }
 
   /* ── Dots menu (Edit / Delete / Pin / Unpin) ── */
@@ -722,20 +827,36 @@ function dropPostEverywhere(id){
     if(cancel) cancel.addEventListener('click', function(){ editingId=null; }, { once:true });
     toast('✏️ Editing — update and hit Save');
   }
-  function onDeletePost(post){
+  async function onDeletePost(post){
     const orig=findPostAnywhere(post.id); if(!orig){ toast('Post no longer exists'); return; }
+    const snapshot=POSTS.slice();
     dropPostEverywhere(orig.id);
-    removeExtraFromLS(orig.id); recordDelete(orig.id);
-    renderFeed(); toast('🗑️ Post deleted');
+    renderFeed();
+    try{
+      await deletePostAPI(orig.id);
+      toast('🗑️ Post deleted');
+    }catch(e){
+      POSTS=snapshot;
+      renderFeed();
+      toast(e.status===401||e.status===403?'You can delete your own posts only':('Delete failed — '+e.message));
+    }
   }
-  function onPinPost(post, pinned){
+  async function onPinPost(post, pinned){
     const orig=findPostAnywhere(post.id); if(!orig){ toast('Post no longer exists'); return; }
     if(pinned && !orig.pinned && pinnedCountExcept(orig.id) >= 3){ toast('📌 Pin limit reached (3 max) — unpin one first'); return; }
-    [POSTS, MORE_POSTS, allCache].forEach(function(arr){ const it=arr.find(function(x){return String(x.id)===String(orig.id)}); if(it) it.pinned=!!pinned; });
-    if(readExtras().some(function(x){return String(x.id)===String(orig.id)})){
-      const a=readExtras(); const it=a.find(function(x){return String(x.id)===String(orig.id)}); if(it){ it.pinned=!!pinned; rewriteExtras(a); }
-    } else recordPin(orig.id, pinned);
-    renderFeed(); toast(pinned ? '📌 Post pinned to top' : 'Unpinned');
+    const prev=!!orig.pinned;
+    orig.pinned=!!pinned;
+    renderFeed();
+    try{
+      const card=await updatePostAPI(orig.id, { pinned: !!pinned });
+      replaceInPOSTS(card);
+      renderFeed();
+      toast(pinned ? '📌 Post pinned to top' : 'Unpinned');
+    }catch(e){
+      orig.pinned=prev;
+      renderFeed();
+      toast(e.status===401||e.status===403?'Only page managers can pin':('Pin failed — '+e.message));
+    }
   }
   function configureDotsMenu(){
     if(!window.DroboardDotsMenu) return;
@@ -786,7 +907,9 @@ async function init(){
   wirePageChrome();
   attachSupportTips();
   try{
-    const fp=await fetchPosts(); POSTS=fp.posts||[]; MORE_POSTS=fp.morePosts||[]; allCache=POSTS.slice();
+    const fp=await fetchPosts(1);
+    POSTS=fp.posts||[]; feedTotal=fp.total||POSTS.length;
+    loadPageProfile().then(renderFollowUI);
     if(!POSTS.length){
       if(ls) ls.style.display='none'; if(es) es.style.display='block'; return;
     }
@@ -796,32 +919,25 @@ async function init(){
     initTabs();
     configureDotsMenu();
     renderAbout();
-    const aeb=document.getElementById('aboutEditBtn'); if(aeb) aeb.addEventListener('click', openAboutEditor);
     attachPostCard();
     renderFeed();
     initSpotlight();
     initCollections();
-    const wf=document.getElementById('statWritersFeatured'); if(wf) wf.textContent = (function(){ const ids=new Set(); allCache.forEach(function(p){ if(p.type==='shoutout'&&p.shoutout&&p.shoutout.id) ids.add(p.shoutout.id); }); return ids.size; })();
-    // wire follow/notify/share already bound via onclick + renderFollowUI
+    const wf=document.getElementById('statWritersFeatured'); if(wf) wf.textContent = (function(){ const ids=new Set(); POSTS.forEach(function(p){ if(p.type==='shoutout'&&p.shoutout&&p.shoutout.id) ids.add(p.shoutout.id); }); return ids.size; })();
+    const sp=document.getElementById('statPosts'); if(sp) sp.textContent=fmtN(feedTotal);
     const lm=document.getElementById('loadMoreBtn'); if(lm) lm.addEventListener('click', loadMore);
-    // composer + role panel — manager-gated
+    paintLoadMoreBtn();
+    // composer — manager-gated server-side; the composer posts via
+    // DroboardPageData.createPost and hands the created card back here.
     try{ if(global.DroboardComposer) DroboardComposer.mount('#composerMount', { onPosted:function(p){
-      if(editingId){
-        const id=editingId; editingId=null;
-        const orig=findPostAnywhere(id);
-        if(!orig){ toast('Post no longer exists'); return; }
-        const patch=Object.assign({}, p);
-        delete patch.likes; delete patch.comments; delete patch.liked; delete patch.saved; delete patch.id;
-        const merged=Object.assign({}, orig, patch);
-        [POSTS, MORE_POSTS, allCache].forEach(function(arr){ const i=arr.findIndex(function(x){return String(x.id)===String(id)}); if(i>-1) arr[i]=merged; });
-        if(readExtras().some(function(x){return String(x.id)===String(id)})) upsertExtra(merged);
-        else saveEditPatch(id, patch);
+      if(p && p._editedId){
+        replaceInPOSTS(p);
         renderFeed(); toast('✅ Post updated!');
         return;
       }
-      persistExtra(p); POSTS.unshift(p); allCache.unshift(p); renderFeed(); toast('Posted to @droboard');
+      editingId=null; // fresh compose — never keep a stale edit target
+      if(p && p.id){ POSTS.unshift(p); renderFeed(); toast('Posted to @droboard'); }
     } }); }catch(e){}
-    try{ if(global.DroboardManagers) DroboardManagers.mount('#managersMount'); }catch(e){}
     renderMainSupport();
     const pmb=document.getElementById('pageMenuBtn'); if(pmb) pmb.addEventListener('click', openPageMenu);
     // expose for inline onclicks
@@ -833,18 +949,39 @@ async function init(){
   global.toast = toast;
 }
 
-  global.DroboardPageData.canManage=canManage; global.DroboardPageData.canCurrentManage=canCurrentManage; global.DroboardPageData.getManagers=getManagers; global.DroboardPageData.addManager=addManager; global.DroboardPageData.updateManagerRole=updateManagerRole; global.DroboardPageData.removeManager=removeManager; global.DroboardPageData.createPost=createPost;
   // Save-modal confirmations land here (same contract as feed): flip the card state.
   window.onDroboardSaveChange = function (storyId, saved) {
     if (!storyId) return;
-    const orig = allCache.find(function(p){return String(p.id)===String(storyId)}) || POSTS.find(function(p){return String(p.id)===String(storyId)});
+    const orig = findPostAnywhere(storyId);
     if (!orig) return;
     if (!!orig.saved === !!saved) return; // no-op: modal closed without changes
     orig.saved = !!saved;
-    if (window.DroboardPostCard) DroboardPostCard.update(mapPost(orig));
-    if (inlineOpen[orig.id] && mountInlineRef) mountInlineRef(orig);
+    updateCard(orig);
     toast(saved ? '🔖 Saved!' : 'Removed from saved');
   };
-global.DroboardOfficial = { init:init, switchTab:switchTab, loadMore:loadMore, toggleFollow:function(){ following=!following; localStorage.setItem('drb_following', following?'1':'0'); if(!following){notifyOn=false; localStorage.setItem('drb_notify','0');} renderFollowUI(); toast(following?'✅ Following @droboard!':'Unfollowed @droboard'); }, toggleNotify:function(){ if(!following) return toast('Follow @droboard first to get notified'); notifyOn=!notifyOn; localStorage.setItem('drb_notify', notifyOn?'1':'0'); renderFollowUI(); toast(notifyOn?'🔔 You’ll get notified about new posts':'Notifications turned off'); }, openSupport:openSupport, openPageMenu:openPageMenu, sharePage:sharePage, closeComments:closeComments, canManage:canManage, canCurrentManage:canCurrentManage };
+global.DroboardOfficial = {
+  init:init, switchTab:switchTab, loadMore:loadMore,
+  toggleFollow: async function(){
+    var method = following ? 'DELETE' : 'POST';
+    try {
+      var r = await fetch(API_BASE + '/users/droboard/follow', { method: method, credentials: 'include' });
+      if (r.ok) {
+        following = !following;
+        if (!following) notifyOn = false;
+        await loadPageProfile();
+        renderFollowUI();
+        toast(following ? 'Following @droboard!' : 'Unfollowed @droboard');
+      } else { toast(r.status===401?'Sign in to follow':'Failed to update follow'); }
+    } catch(e) { toast('Error updating follow'); }
+  },
+  toggleNotify: async function(){
+    if (!following) return toast('Follow @droboard first to get notified');
+    notifyOn = !notifyOn;
+    renderFollowUI();
+    toast(notifyOn ? 'Notifications on' : 'Notifications off');
+  },
+  openSupport:openSupport, openPageMenu:openPageMenu, sharePage:sharePage,
+  closeComments:closeComments, canManage:canManage, canCurrentManage:canCurrentManage
+};
 
 })(window);

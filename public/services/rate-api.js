@@ -15,11 +15,9 @@
 (function () {
   'use strict';
 
-  var USE_API = false;
   var BASE = '/api/stories';
 
   if (window.DroboardRateAPI) return;
-  if (!USE_API) return;
 
   function url(storyId) {
     return BASE + '/' + encodeURIComponent(storyId) + '/rating';

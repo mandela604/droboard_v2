@@ -1,79 +1,28 @@
 /* ===============================================================
-   REFER SERVICE — Refer-a-Friend program (5 coins per joined referral)
-   Demo: localStorage. Live: GET/POST /api/referrals.
-   Pages/refer.html owns markup. This file owns data + share helpers.
-   Attribution: invite link is signup.html?ref=CODE (signup-service
-   already picks up ?ref= and pre-fills the referral field).
+   REFER SERVICE — Refer-a-Friend program (window.ReferService)
+   Live only. Every number on the page comes from the backend:
+     GET /api/referrals/code   → { code, link }        (requireAuth)
+     GET /api/referrals/stats  → { invited, joined, earned }
+     GET /api/referrals        → { items: [{ name, handle, avatar, when,
+                                   status: 'joined'|'invited', earned }] }
+   Coins are credited server-side on invitee signup/reading — nothing is
+   ever added from the browser. Pages/refer.html owns markup; this file
+   owns data + share helpers. Attribution: the invite link points at
+   signup.html?ref=CODE (signup-service picks up ?ref= and pre-fills the
+   referral field).
 =============================================================== */
 (function () {
   'use strict';
   if (window.ReferService) return;
 
-  var CFG = window.AuthorApiConfig || { USE_API: false, API_BASE: '/api' };
-  // Referrals are mounted at the API root (/api/referrals/*), not under /api/author.
   var REFERRALS_BASE = '/api';
-  var REWARD_COINS = 5;
   var PAGE_SIZE = 10; // "Referred friends" paginates 10 per page
   var _view = { page: 1, list: [] };
 
-  function lsGet(k, fb) { try { var v = localStorage.getItem(k); return v == null ? fb : JSON.parse(v); } catch (e) { return fb; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  // v2 keys → reseeds the demo list/stats when the shape changed.
-  function codeKey(h) { return 'dro_refer_code_v2_' + (h || 'guest').toLowerCase(); }
-  function statsKey(h) { return 'dro_refer_stats_v2_' + (h || 'guest').toLowerCase(); }
-  function listKey(h) { return 'dro_refer_list_v2_' + (h || 'guest').toLowerCase(); }
-
-  function makeCode(handle) {
-    var base = String(handle || 'DRO').replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6) || 'DRO';
-    var rand = '';
-    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    for (var i = 0; i < 4; i++) rand += chars[Math.floor(Math.random() * chars.length)];
-    return base + '-' + rand;
-  }
-
-  // Demo rows: enough of them to exercise the 10-per-page pager.
-  var DEMO_ROWS = [
-    ['Chiamaka N', 'chiamaka_n', 47, '2d ago', 'joined'],
-    ['Efe O', 'efe_o', 22, '5d ago', 'invited'],
-    ['Adaeze C', 'adaeze_c', 32, '1d ago', 'joined'],
-    ['Tunde B', 'tunde_b', 12, '1w ago', 'joined'],
-    ['Ngozi E', 'ngozi_e', 44, '3d ago', 'joined'],
-    ['Bolu A', 'bolu_a', 15, '6d ago', 'joined'],
-    ['Yemi S', 'yemi_s', 5, '8d ago', 'invited'],
-    ['Kelechi M', 'kelechi_m', 58, '2w ago', 'joined'],
-    ['Zara O', 'zara_o', 16, '9d ago', 'joined'],
-    ['Damilola A', 'damilola_a', 64, '11d ago', 'joined'],
-    ['Ifeanyi K', 'ifeanyi_k', 8, '12d ago', 'invited'],
-    ['Oluwa T', 'oluwa_t', 26, '3w ago', 'joined'],
-    ['Amaka N', 'amaka_n', 41, '1mo ago', 'joined'],
-    ['Sade F', 'sade_f', 3, '1mo ago', 'joined']
-  ];
-
-  function demoList() {
-    return DEMO_ROWS.map(function (r) {
-      return {
-        name: r[0], handle: r[1], avatar: 'https://i.pravatar.cc/100?img=' + r[2],
-        when: r[3], status: r[4], earned: r[4] === 'joined' ? REWARD_COINS : 0
-      };
-    });
-  }
-
-  async function callBackend(path, opts) {
-    var c = new AbortController();
-    var t = setTimeout(function () { c.abort(); }, 3000);
-    var o = Object.assign({ signal: c.signal, headers: authHeaders() }, opts || {});
-    try {
-      var res = await fetch(REFERRALS_BASE + path, o);
-      clearTimeout(t);
-      if (!res.ok) throw new Error(res.status);
-      return await res.json();
-    } catch (e) { clearTimeout(t); throw e; }
-  }
-
-  function authHeaders() {
-    var h = { 'Content-Type': 'application/json' };
-    try { var t = localStorage.getItem('droboard_session'); if (t) h.Authorization = 'Bearer ' + t; } catch (e) {}
-    return h;
+  async function callBackend(path) {
+    var res = await fetch(REFERRALS_BASE + path, { credentials: 'include' });
+    if (!res.ok) throw new Error('Referrals API failed: ' + res.status);
+    return res.json();
   }
 
   function esc(s) {
@@ -104,17 +53,20 @@
   }
 
   window.ReferService = {
-    REWARD_COINS: REWARD_COINS,
 
-    async getCode(handle) {
-      if (CFG.USE_API) { try { var r = await callBackend('/referrals/code'); if (r && r.code) return r.code; } catch (e) {} }
-      var code = lsGet(codeKey(handle), null);
-      if (!code) { code = makeCode(handle); lsSet(codeKey(handle), code); }
-      return code;
+    /* The user's real code, minted server-side on first call. */
+    async getCode() {
+      var r = await callBackend('/referrals/code');
+      if (!r || !r.code) throw new Error('Referrals API returned no code');
+      return { code: r.code, link: r.link || '' };
     },
 
-    inviteLink: function (code) {
-      // absolute when possible so shared links work outside the app
+    /* Absolute share URL for a code. The server's link wins when present;
+       building signup.html?ref=… locally is plain URL math, not fake data. */
+    inviteLink: function (code, serverLink) {
+      if (serverLink) {
+        try { return new URL(serverLink, location.href).href; } catch (e) { return serverLink; }
+      }
       try {
         var u = new URL('signup.html', location.href);
         u.searchParams.set('ref', code);
@@ -122,39 +74,17 @@
       } catch (e) { return 'signup.html?ref=' + encodeURIComponent(code); }
     },
 
-    async getStats(handle) {
-      if (CFG.USE_API) { try { return await callBackend('/referrals/stats'); } catch (e) {} }
-      var s = lsGet(statsKey(handle), null);
-      if (!s) {
-        var list = demoList();
-        var joined = list.filter(function (x) { return x.status === 'joined'; }).length;
-        s = { invited: list.length, joined: joined, earned: joined * REWARD_COINS };
-        lsSet(statsKey(handle), s);
-        lsSet(listKey(handle), list);
-      }
-      if (!lsGet(listKey(handle), null)) lsSet(listKey(handle), demoList());
-      return s;
+    async getStats() {
+      var s = await callBackend('/referrals/stats');
+      if (!s || typeof s !== 'object') throw new Error('Referrals stats failed');
+      return { invited: Number(s.invited) || 0, joined: Number(s.joined) || 0, earned: Number(s.earned) || 0 };
     },
 
-    async getReferred(handle) {
-      if (CFG.USE_API) {
-        try {
-          var r = await callBackend('/referrals?limit=100');
-          if (r && Array.isArray(r.items)) return r.items;
-          if (Array.isArray(r)) return r;
-        } catch (e) {}
-      }
-      var list = lsGet(listKey(handle), null);
-      if (!list) { await this.getStats(handle); list = lsGet(listKey(handle), []); }
-      return list;
-    },
-
-    // credit coins locally (StoreService balance) until backend owns rewards
-    creditCoins: function (n) {
-      try {
-        if (window.StoreService && StoreService.addCoins) return StoreService.addCoins(n);
-      } catch (e) {}
-      return null;
+    async getReferred() {
+      var r = await callBackend('/referrals?limit=100');
+      if (r && Array.isArray(r.items)) return r.items;
+      if (Array.isArray(r)) return r;
+      return [];
     },
 
     async copyLink(link) {
@@ -189,15 +119,18 @@
     clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
   }
 
-  async function currentHandle() {
-    try {
-      if (window.AuthSession && AuthSession.getSession) {
-        var s = await AuthSession.getSession();
-        if (s && s.handle) return s.handle;
-      }
-      if (window.ProfileData && ProfileData.getCurrentUserHandle) return await ProfileData.getCurrentUserHandle();
-    } catch (e) {}
-    return 'Ada_Writes';
+  /* Explicit error empty-state: the page content is replaced so no stale
+     zeros can masquerade as real counts. */
+  function fatal(msg) {
+    var content = document.querySelector('.content');
+    if (!content) return;
+    var href = (window.AuthSession && AuthSession.loginUrl)
+      ? AuthSession.loginUrl('refer.html') : 'login.html?next=refer.html';
+    content.innerHTML = '<div class="empty" style="padding:48px 16px;text-align:center">'
+      + '<div style="font-size:14px;font-weight:800;color:var(--tx-high,#f0f0f2)">Could not load referrals</div>'
+      + '<div style="margin-top:6px">' + esc(msg || 'request failed') + '</div>'
+      + '<a href="' + href + '" style="display:inline-block;margin-top:14px;padding:10px 22px;border-radius:22px;background:var(--acc);color:#fff;font-weight:800;text-decoration:none">Log in</a>'
+      + '</div>';
   }
 
   function totalPages() {
@@ -228,10 +161,13 @@
         var name = href
           ? '<a class="ref-name" href="' + href + '">' + label + '</a>'
           : '<div class="ref-name">' + label + '</div>';
+        var badge = joined
+          ? '+' + (Number(r.earned) || 0) + ' coins'
+          : 'Invited';
         return '<div class="ref-row">'
           + '<img class="ref-av" src="' + esc(r.avatar || '') + '" loading="lazy" alt=""/>'
           + '<div>' + name + '<div class="ref-sub">@' + esc(r.handle || '') + ' · ' + esc(whenLabel(r.when)) + '</div></div>'
-          + '<div class="ref-badge ' + (joined ? 'joined' : 'invited') + '">' + (joined ? '+' + REWARD_COINS + ' coins' : 'Invited') + '</div>'
+          + '<div class="ref-badge ' + (joined ? 'joined' : 'invited') + '">' + esc(badge) + '</div>'
           + '</div>';
       }).join('');
     }
@@ -250,18 +186,33 @@
 
   async function init() {
     var RS = window.ReferService;
-    var handle = await currentHandle();
-    var code = await RS.getCode(handle);
-    var link = RS.inviteLink(code);
+    if (window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
+      fatal('Sign in to see your referral code, stats and invited friends.');
+      return;
+    }
+    var codeRow = { code: '', link: '' };
+    try {
+      codeRow = await RS.getCode();
+    } catch (e) {
+      fatal((e && e.message) || 'request failed');
+      return;
+    }
+    var code = codeRow.code;
+    var link = RS.inviteLink(code, codeRow.link);
     document.getElementById('refCode').textContent = code;
     document.getElementById('refLink').textContent = link;
-    var stats = await RS.getStats(handle);
-    document.getElementById('stInvited').textContent = stats.invited;
-    document.getElementById('stJoined').textContent = stats.joined;
-    document.getElementById('stEarned').textContent = stats.earned;
-    _view.list = (await RS.getReferred(handle)) || [];
-    _view.page = 1;
-    renderList();
+    try {
+      var stats = await RS.getStats();
+      document.getElementById('stInvited').textContent = stats.invited;
+      document.getElementById('stJoined').textContent = stats.joined;
+      document.getElementById('stEarned').textContent = stats.earned;
+      _view.list = (await RS.getReferred()) || [];
+      _view.page = 1;
+      renderList();
+    } catch (e) {
+      fatal((e && e.message) || 'request failed');
+      return;
+    }
     document.getElementById('copyCodeBtn').addEventListener('click', async function () {
       await RS.copyLink(link); toast('📋 Link copied!');
     });

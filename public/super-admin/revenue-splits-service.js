@@ -33,7 +33,7 @@
 'use strict';
 if (window.RevenueSplitsService && window.RevenueSplitsService.__ready) return;
 
-var USE_API = false;
+var USE_API = true;
 var API_BASE = '/api/super-admin/revenue';
 var TIMEOUT_MS = 2500;
 
@@ -89,16 +89,14 @@ function draftSum() { return (Number(draft.google) || 0) + (Number(draft.marketi
 
 /* ── Data load (backend-first, demo fallback) ── */
 async function loadAll() {
-  try {
-    var g = await callBackend('/config/active');
-    if (g) { GLOBAL = g; draft = { google: g.google, marketing: g.marketing, editors: g.editors, writerShare: g.writerShare }; }
-    var h = await callBackend('/config/history');
-    if (h && Array.isArray(h.versions)) HISTORY = h.versions;
-    var o = await callBackend('/config/author');
-    if (o && Array.isArray(o.overrides)) OVERRIDES = o.overrides;
-    var p = await callBackend('/pools');
-    if (p && Array.isArray(p.pools)) POOLS = p.pools;
-  } catch (e) { /* demo paths keep working */ }
+  var g = await callBackend('/config/active');
+  if (g) { GLOBAL = g; draft = { google: g.google, marketing: g.marketing, editors: g.editors, writerShare: g.writerShare }; }
+  var h = await callBackend('/config/history');
+  if (h && Array.isArray(h.versions)) HISTORY = h.versions;
+  var o = await callBackend('/config/author');
+  if (o && Array.isArray(o.overrides)) OVERRIDES = o.overrides;
+  var p = await callBackend('/pools');
+  if (p && Array.isArray(p.pools)) POOLS = p.pools;
 }
 
 /* ── Render: pool balances ── */
@@ -309,10 +307,8 @@ async function saveOverride() {
   function num(id) { return Math.max(0, Math.min(100, Number(document.getElementById(id).value) || 0)); }
   var payload = { google: GOOGLE_FIXED, marketing: num('oMarketing'), editors: num('oEditors'), writerShare: num('oWriter') };
   if (payload.marketing + payload.editors + payload.writerShare !== 70) { toast('Marketing + Editors + Writer must sum to 70% (Google is fixed at 30%).'); return; }
-  try {
-    var saved = await callBackend('/config/author/' + encodeURIComponent(pickedAuthor.id), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!(saved && (saved.authorId || (saved.data && saved.data.authorId)))) throw new Error('demo');
-  } catch (e) { /* demo path below */ }
+  var saved = await callBackend('/config/author/' + encodeURIComponent(pickedAuthor.id), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!saved) throw new Error('Failed to save override');
   var row = Object.assign({ authorId: pickedAuthor.id, name: pickedAuthor.name, handle: pickedAuthor.handle, updatedBy: 'You', updatedAt: 'Just now' }, payload);
   var i = OVERRIDES.findIndex(function (o) { return o.authorId === pickedAuthor.id; });
   if (i > -1) OVERRIDES[i] = row; else OVERRIDES.push(row);
@@ -325,7 +321,7 @@ async function saveOverride() {
   renderOverrides();
 }
 async function removeOverride(authorId) {
-  try { await callBackend('/config/author/' + encodeURIComponent(authorId), { method: 'DELETE' }); } catch (e) { /* demo path */ }
+  await callBackend('/config/author/' + encodeURIComponent(authorId), { method: 'DELETE' });
   var o = OVERRIDES.find(function (x) { return x.authorId === authorId; });
   OVERRIDES = OVERRIDES.filter(function (x) { return x.authorId !== authorId; });
   toast('Override removed' + (o ? ' for ' + o.name : '') + ' — back to global cuts.');

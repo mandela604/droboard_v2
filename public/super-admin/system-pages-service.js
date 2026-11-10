@@ -7,7 +7,7 @@
 'use strict';
 if (window.SystemPagesService && window.SystemPagesService.__ready) return;
 
-var USE_API = false;
+var USE_API = true;
 var API_BASE = '/api/super-admin/system-pages';
 function timeoutFetch(url, opts){
   return fetch(url, opts||{}).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });

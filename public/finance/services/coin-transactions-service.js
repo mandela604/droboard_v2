@@ -44,169 +44,26 @@ async function apiFetch(path, options){
     clearTimeout(t);
   }
 }
-let usingDemoConfig = false;
-
-const DEMO_PACKAGES = [
-  { id:'PKG-01', name:'Starter Pack',  coins:1000,  priceUsd:9.99,  bonusPercent:0,  icon:'fa-coins',    color:'#635F6E', status:'active',   createdAt:'2026-01-15' },
-  { id:'PKG-02', name:'Reader Bundle', coins:5000,  priceUsd:49.99, bonusPercent:5,  icon:'fa-book-open', color:'#FF2D6A', status:'active',   createdAt:'2026-02-01' },
-  { id:'PKG-03', name:'Power Pack',    coins:12000, priceUsd:99.99, bonusPercent:10, icon:'fa-bolt',     color:'#D6165A', status:'active',   createdAt:'2026-03-10' },
-  { id:'PKG-04', name:'Trial Pack',    coins:500,   priceUsd:5.99,  bonusPercent:0,  icon:'fa-seedling', color:'#22c55e', status:'inactive', createdAt:'2025-11-01' },
-];
-const DEMO_GIFTS = [
-  { id:'GFT-01', name:'Rose',    icon:'🌹', costCoins:50,   color:'#FF2D6A', status:'active',   createdAt:'2026-01-20' },
-  { id:'GFT-02', name:'Heart',   icon:'❤️', costCoins:100,  color:'#E11D48', status:'active',   createdAt:'2026-01-20' },
-  { id:'GFT-03', name:'Crown',   icon:'👑', costCoins:500,  color:'#F59E0B', status:'active',   createdAt:'2026-02-15' },
-  { id:'GFT-04', name:'Diamond', icon:'💎', costCoins:1000, color:'#3B82F6', status:'active',   createdAt:'2026-03-05' },
-  { id:'GFT-05', name:'Trophy',  icon:'🏆', costCoins:2000, color:'#A855F7', status:'inactive', createdAt:'2025-12-01' },
-];
-/* Subscriptions mirror the reader Store's subscription cards exactly:
-   name · price ladder · period · features · badge · icon · color.
-   Duration and "Save X% vs daily" lines are derived automatically. */
-const DEMO_SUBSCRIPTIONS = [
-  { id:'SUB-01', name:'Daily',   priceUsd:0.99,  prices:{ NGN:'₦600',    USD:'$0.99',  GBP:'£1.13'  }, period:'day',   features:['Access all stories'], badge:'',           color:'#635F6E', icon:'fa-clock',         status:'active',   createdAt:'2026-01-10' },
-  { id:'SUB-02', name:'Weekly',  priceUsd:4.99,  prices:{ NGN:'₦3,000',  USD:'$4.99',  GBP:'£5.69'  }, period:'week',  features:['Access all stories'], badge:'Popular',    color:'#FF2D6A', icon:'fa-calendar-week', status:'active',   createdAt:'2026-02-01' },
-  { id:'SUB-03', name:'Monthly', priceUsd:14.99, prices:{ NGN:'₦9,000',  USD:'$14.99', GBP:'£17.09' }, period:'month', features:['Access all stories'], badge:'Best Value', color:'#D6165A', icon:'fa-calendar',      status:'active',   createdAt:'2026-03-01' },
-  { id:'SUB-04', name:'Yearly',  priceUsd:99.99, prices:{ NGN:'₦60,000', USD:'$99.99', GBP:'£113.99'}, period:'year',  features:['Access all stories'], badge:'Best Deal',  color:'#16A34A', icon:'fa-crown',         status:'active',   createdAt:'2025-10-01' },
-];
-const DEMO_EARN = [
-  { id:'ad1', action:'Watch Ad', coins:10, cooldown:'5 min', icon:'fa-film', available:true, status:'active', createdAt:'2026-01-15', type:'watch_ad' },
-  { id:'ad2', action:'Daily Check-in', coins:25, cooldown:'24 hr', icon:'fa-calendar-check', available:true, status:'active', createdAt:'2026-01-16', type:'checkin' },
-  { id:'ad3', action:'Rate Story', coins:5, cooldown:'1 hr', icon:'fa-star', available:true, status:'active', createdAt:'2026-01-17', type:'rate' },
-  { id:'ad4', action:'Share Story', coins:15, cooldown:'2 hr', icon:'fa-share-nodes', available:true, status:'active', createdAt:'2026-01-18', type:'share' },
-  { id:'ad5', action:'Read Blog — Tech Niche (3 pages)', coins:25, cooldown:'24 hr', icon:'fa-microchip', available:true, status:'active', createdAt:'2026-01-19', type:'blog_read', pagesRequired:3, blogCategory:'tech', blogUrl:'Pages/blog.html?cat=tech' },
-  { id:'ad8', action:'Read Blog — Health Niche (3 pages)', coins:25, cooldown:'24 hr', icon:'fa-heart-pulse', available:true, status:'active', createdAt:'2026-01-22', type:'blog_read', pagesRequired:3, blogCategory:'health', blogUrl:'Pages/blog.html?cat=health' },
-  { id:'ad6', action:'Subscribe on YouTube', coins:30, cooldown:'30d', icon:'fa-youtube', available:true, status:'active', createdAt:'2026-01-20', type:'youtube_sub', channelId:'UCxxxxDroboard' },
-  { id:'ad7', action:'Watch YouTube Video', coins:15, cooldown:'24 hr', icon:'fa-circle-play', available:true, status:'active', createdAt:'2026-01-21', type:'youtube_watch', videoId:'dQw4w9WgXcQ', minWatchSec:60 },
-];
-const DEMO_BUNDLES = [
-  { id:'b1', name:'Starter Bundle', coins:500, bonus:50, price:'$3.99', icon:'fa-seedling', color:'#22c55e', status:'active', createdAt:'2026-02-01' },
-  { id:'b2', name:'Pro Bundle', coins:1500, bonus:300, price:'$9.99', icon:'fa-fire', color:'#FF2D6A', status:'active', createdAt:'2026-02-05' },
-  { id:'b3', name:'Elite Bundle', coins:5000, bonus:1500, price:'$29.99', icon:'fa-crown', color:'#D6165A', status:'active', createdAt:'2026-02-10' },
-];
-const DEMO_HISTORY = [
-  { id:'CFG-001', action:'created',    itemType:'package',      itemName:'Starter Pack',     actor:'Ngozi Falade', date:'2026-01-15T10:00:00', details:'1,000 coins for $9.99' },
-  { id:'CFG-002', action:'created',    itemType:'gift',         itemName:'Rose',             actor:'Ngozi Falade', date:'2026-01-20T09:30:00', details:'50 coins per gift' },
-  { id:'CFG-003', action:'created',    itemType:'gift',         itemName:'Heart',            actor:'Ngozi Falade', date:'2026-01-20T09:32:00', details:'100 coins per gift' },
-  { id:'CFG-004', action:'created',    itemType:'package',      itemName:'Reader Bundle',    actor:'Ngozi Falade', date:'2026-02-01T11:15:00', details:'5,000 coins for $49.99 (+5% bonus)' },
-  { id:'CFG-005', action:'created',    itemType:'gift',         itemName:'Crown',            actor:'Tari Benson',  date:'2026-02-15T14:00:00', details:'500 coins per gift' },
-  { id:'CFG-006', action:'created',    itemType:'package',      itemName:'Power Pack',       actor:'Ngozi Falade', date:'2026-03-10T08:45:00', details:'12,000 coins for $99.99 (+10% bonus)' },
-  { id:'CFG-007', action:'created',    itemType:'gift',         itemName:'Diamond',          actor:'Ngozi Falade', date:'2026-03-05T16:20:00', details:'1,000 coins per gift' },
-  { id:'CFG-008', action:'deactivated',itemType:'gift',         itemName:'Trophy',           actor:'Ngozi Falade', date:'2026-04-02T09:00:00', details:'Retired seasonal gift item' },
-  { id:'CFG-009', action:'created',    itemType:'subscription', itemName:'Daily',    actor:'Ngozi Falade', date:'2026-01-10T10:00:00', details:'$0.99/day · unlimited reading pass' },
-  { id:'CFG-010', action:'created',    itemType:'subscription', itemName:'Weekly',  actor:'Ngozi Falade', date:'2026-02-01T11:00:00', details:'$4.99/week · unlimited reading pass' },
-  { id:'CFG-011', action:'created',    itemType:'subscription', itemName:'Monthly',    actor:'Ngozi Falade', date:'2026-03-01T09:00:00', details:'$14.99/month · unlimited reading pass' },
-];
-
-let ALL = [];
-let PACKAGES = [], GIFTS = [], SUBSCRIPTIONS = [], EARN = [], BUNDLES = [], HISTORY = [];
-let activeTab = 'transactions';
-let activeType = 'all';
-let searchTerm = '', statusTerm = '', sortMode = 'recent';
-let page = 1, pkgPage = 1, bundlePage = 1, giftPage = 1, subPage = 1, earnPage = 1, histPage = 1;
-let activeHistFilter = 'all';
-
-function money(n){ const v = Number(n||0); if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return (v<0?'-':'') + DroboardCurrency.usdToMoney(Math.abs(v)); return (v<0?'-':'') + '$' + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function coinsFmt(n){ const v=Number(n||0); return (v>0?'+':'') + v.toLocaleString('en-US'); }
-function fmtDateTime(iso){ const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
-function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
-function isToday(iso){ const d=new Date(iso), t=new Date(); return d.toDateString()===t.toDateString(); }
-function extractYTId(u){
-  try{
-    if(!u) return u;
-    if(!u.includes('http')) return u;
-    const url=new URL(u);
-    if(url.searchParams.get('v')) return url.searchParams.get('v');
-    const path=url.pathname.split('/').filter(Boolean).pop();
-    return path||u;
-  }catch(e){ return u; }
-}
-
-function toast(msg){
-  var t=document.getElementById('toast');
-  if(!t) return;
-  t.textContent=msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer=setTimeout(function(){t.classList.remove('show');},2500);
-}
-
-async function init(){
-  if(window.FinanceSidebar && FinanceSidebar.attach){
-    FinanceSidebar.attach('#pageRoot',{
-      activeItem:'coin-transactions', title:'Coin Transactions', subtitle:'Monitor coin purchases, usage & balances',
-      user:{name:'Ngozi Falade',role:'Finance Lead',avatar:'https://i.pravatar.cc/100?img=47'}, notifCount:4,
-      searchPlaceholder:'Search anything…',
-    });
-  }
-  if(typeof window.toast!=='function') window.toast=toast;
-  ALL = await FinanceData.getCoinTransactions();
-  await loadConfig();
-  renderStatCards();
-  renderFilterPills();
-  render();
-  renderPricing();
-  renderHistFilterPills();
-  renderHistory();
-  wireStaticControls();
-}
-
-function wireStaticControls(){
-  document.querySelectorAll('#tabBar .tab-btn').forEach(function(btn){
-    if(btn._wired) return; btn._wired=true;
-    btn.addEventListener('click', function(){
-      activeTab = btn.dataset.tab;
-      document.querySelectorAll('#tabBar .tab-btn').forEach(function(b){ b.classList.toggle('active', b===btn); });
-      document.getElementById('tab-transactions').style.display = activeTab==='transactions' ? 'block':'none';
-      document.getElementById('tab-pricing').style.display = activeTab==='pricing' ? 'block':'none';
-      document.getElementById('tab-history').style.display = activeTab==='history' ? 'block':'none';
-    });
-  });
-  var si=document.getElementById('searchInput');
-  if(si && !si._wired){ si._wired=true; si.addEventListener('input', function(e){ searchTerm=e.target.value; page=1; render(); }); }
-  var sf=document.getElementById('statusFilter');
-  if(sf && !sf._wired){ sf._wired=true; sf.addEventListener('change', function(e){ statusTerm=e.target.value; page=1; render(); }); }
-  var ss=document.getElementById('sortSelect');
-  if(ss && !ss._wired){ ss._wired=true; ss.addEventListener('change', function(e){ sortMode=e.target.value; render(); }); }
-  var nib=document.getElementById('newItemBtn');
-  if(nib && !nib._wired){ nib._wired=true; nib.addEventListener('click', function(){
-    activeTab = 'pricing';
-    document.querySelectorAll('#tabBar .tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='pricing'); });
-    document.getElementById('tab-transactions').style.display = 'none';
-    document.getElementById('tab-pricing').style.display = 'block';
-    document.getElementById('tab-history').style.display = 'none';
-    openCreateModal('package');
-  }); }
-  var map=[['addPackageBtn','package'],['addBundleBtn','bundle'],['addGiftBtn','gift'],['addSubBtn','subscription'],['addEarnBtn','earn']];
-  map.forEach(function(pair){
-    var el=document.getElementById(pair[0]);
-    if(el && !el._wired){ el._wired=true; (function(kind){ el.addEventListener('click', function(){ openCreateModal(kind); }); })(pair[1]); }
-  });
-}
 
 async function loadConfig(){
-  try{
-    const [p,g,s,h] = await Promise.all([apiFetch('/coin-packages'), apiFetch('/coin-gifts'), apiFetch('/coin-subscriptions'), apiFetch('/coin-config-history')]);
-    PACKAGES = p; GIFTS = g; SUBSCRIPTIONS = s; HISTORY = h; usingDemoConfig = false;
-    try{ const er=await apiFetch('/coin-earn'); EARN=er; }catch(_){ EARN=JSON.parse(JSON.stringify(DEMO_EARN)); }
-    try{ const bl=await apiFetch('/coin-bundles'); BUNDLES=bl; }catch(_){ BUNDLES=JSON.parse(JSON.stringify(DEMO_BUNDLES)); }
-  }catch(e){
-    PACKAGES = JSON.parse(JSON.stringify(DEMO_PACKAGES));
-    GIFTS = JSON.parse(JSON.stringify(DEMO_GIFTS));
-    SUBSCRIPTIONS = JSON.parse(JSON.stringify(DEMO_SUBSCRIPTIONS));
-    HISTORY = JSON.parse(JSON.stringify(DEMO_HISTORY));
-    EARN = JSON.parse(JSON.stringify(DEMO_EARN));
-    BUNDLES = JSON.parse(JSON.stringify(DEMO_BUNDLES));
-    try{ const storedP=JSON.parse(localStorage.getItem('dro_finance_packs')||'null'); if(Array.isArray(storedP)&&storedP.length){ /* keep PACKAGES as demo, but store packs already there */ } }catch(_){}
-    try{ const storedR=JSON.parse(localStorage.getItem('dro_finance_rewards')||'null'); if(Array.isArray(storedR)&&storedR.length) EARN = storedR.map(r=>Object.assign({status:r.available?'active':'inactive', createdAt:new Date().toISOString().slice(0,10)}, r)); }catch(_){}
-    try{ const storedB=JSON.parse(localStorage.getItem('dro_finance_bundles')||'null'); if(Array.isArray(storedB)&&storedB.length) BUNDLES = storedB.map(b=>Object.assign({status:'active', createdAt:new Date().toISOString().slice(0,10)}, b)); }catch(_){}
-    usingDemoConfig = true;
-  }
+  const [p, g, s, h] = await Promise.all([
+    apiFetch('/coin-packages'),
+    apiFetch('/coin-gifts'),
+    apiFetch('/coin-subscriptions'),
+    apiFetch('/coin-config-history'),
+  ]);
+  PACKAGES = p; GIFTS = g; SUBSCRIPTIONS = s; HISTORY = h;
+  const er = await apiFetch('/coin-earn');
+  EARN = er;
+  const bl = await apiFetch('/coin-bundles');
+  BUNDLES = bl;
   syncPacksToStore(); syncEarnToStore(); syncBundlesToStore(); syncSubsToStore(); syncGiftsToStore();
 }
 function logHistory(action, itemType, itemName, details){
-  const entry = { id:'CFG-'+String(HISTORY.length+1).padStart(3,'0'), action, itemType, itemName, actor:'Ngozi Falade', date:new Date().toISOString(), details };
+  const entry = { id:'CFG-'+String((HISTORY||[]).length+1).padStart(3,'0'), action, itemType, itemName, actor:'Ngozi Falade', date:new Date().toISOString(), details };
+  if (!HISTORY) HISTORY = [];
   HISTORY.unshift(entry);
-  if(!usingDemoConfig) apiFetch('/coin-config-history', { method:'POST', body: JSON.stringify(entry) }).catch(()=>{});
+  apiFetch('/coin-config-history', { method:'POST', body: JSON.stringify(entry) }).catch(()=>{});
 }
 function syncPacksToStore(){
   try{
@@ -816,10 +673,8 @@ async function submitForm(){
     };
     if(editingItemId){
       const item = list.find(x=>x.id===editingItemId);
-      if(!usingDemoConfig){
-        try { await apiFetch(endpoint+'/'+editingItemId, { method:'PUT', body: JSON.stringify(payload) }); }
-        catch(e){ if(strict && e.status){ refused(e); return; } }
-      }
+      try { await apiFetch(endpoint+'/'+editingItemId, { method:'PUT', body: JSON.stringify(payload) }); }
+      catch(e){ if(strict && e.status){ refused(e); return; } }
       Object.assign(item, payload);
       if(formKind==='earn'){ item.status = payload.available?'active':'inactive'; }
       const dName = formKind==='earn' ? payload.action : name;
@@ -828,10 +683,8 @@ async function submitForm(){
       toast(`✏️ "${dName}" updated`);
     }else{
       let created = null;
-      if(!usingDemoConfig){
-        try { created = await apiFetch(endpoint, { method:'POST', body: JSON.stringify(payload) }); }
-        catch(e){ if(strict && e.status){ refused(e); return; } }
-      }
+      try { created = await apiFetch(endpoint, { method:'POST', body: JSON.stringify(payload) }); }
+      catch(e){ if(strict && e.status){ refused(e); return; } }
       if(!created){
         const prefix = formKind==='package' ? 'PKG-' : formKind==='bundle' ? 'BND-' : formKind==='gift' ? 'GFT-' : formKind==='earn' ? 'ad' : 'SUB-';
         const baseId = formKind==='earn' ? 'ad'+String(list.length+1) : prefix+String(list.length+1).padStart(2,'0');
@@ -863,7 +716,7 @@ async function toggleStatus(kind, id){
   const item = list.find(x=>x.id===id); if(!item) return;
   const newStatus = item.status==='active' ? 'inactive' : 'active';
   const endpoint = kind==='package' ? '/coin-packages' : kind==='bundle' ? '/coin-bundles' : kind==='gift' ? '/coin-gifts' : kind==='earn' ? '/coin-earn' : '/coin-subscriptions';
-  try{ if(!usingDemoConfig) await apiFetch(endpoint+'/'+id, { method:'PUT', body: JSON.stringify({ status:newStatus }) }); }catch(_){}
+  try{ await apiFetch(endpoint+'/'+id, { method:'PUT', body: JSON.stringify({ status:newStatus }) }); }catch(e){ throw e; }
   item.status = newStatus;
   if(kind==='earn') item.available = newStatus==='active';
   const dispName = kind==='earn' ? item.action : item.name;
@@ -892,7 +745,7 @@ async function submitDel(){
   if(!delTarget) return;
   const { kind, id, name } = delTarget;
   const endpoint = kind==='package' ? '/coin-packages' : kind==='bundle' ? '/coin-bundles' : kind==='gift' ? '/coin-gifts' : kind==='earn' ? '/coin-earn' : '/coin-subscriptions';
-  try{ if(!usingDemoConfig) await apiFetch(endpoint+'/'+id, { method:'DELETE' }); }catch(_){}
+  try{ await apiFetch(endpoint+'/'+id, { method:'DELETE' }); }catch(e){ throw e; }
   if(kind==='package') PACKAGES = PACKAGES.filter(x=>x.id!==id);
   else if(kind==='bundle') BUNDLES = BUNDLES.filter(x=>x.id!==id);
   else if(kind==='gift') GIFTS = GIFTS.filter(x=>x.id!==id);

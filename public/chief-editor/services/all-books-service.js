@@ -9,6 +9,15 @@
 'use strict';
 if(window.AllBooksService) return;
 
+/* ── Backend-ready header ── */
+const USE_API = true;
+const API_BASE = '/api/chief';
+async function callBackend(path, opts){
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+  if(!res.ok) throw new Error('Backend error: ' + res.status);
+  return res.json();
+}
+
 function __allBooksMain(){
 ChiefEditorSidebar.attach('#booksRoot',{
   activeItem:'all-books',
@@ -22,31 +31,28 @@ ChiefEditorSidebar.attach('#booksRoot',{
 (function(){
 'use strict';
 
-var D=window.EditorDemo||{};
-var books=(D.BOOKS||[]).slice();
+var books=[];
 var activeTab='all';
 var currentPage=1;
 var PER_PAGE=12;
 
 var GENRE_COLORS={};
-(D.CATEGORIES||[]).forEach(function(c){GENRE_COLORS[c.name]={bg:c.bg,fg:c.color};});
-(D.GENRES||[]).forEach(function(g){if(!GENRE_COLORS[g.name])GENRE_COLORS[g.name]={bg:g.bg,fg:g.color};});
-GENRE_COLORS['Billionaire Romance']={bg:'#ece3fd',fg:'#7c5cfc'};
-GENRE_COLORS['Werewolf Romance']={bg:'#eef0f2',fg:'#5b6470'};
-GENRE_COLORS['Mafia Romance']={bg:'#e7e7ea',fg:'#26262b'};
-GENRE_COLORS['Vampire Romance']={bg:'#fde3e3',fg:'#e0384d'};
-GENRE_COLORS['Royal Romance']={bg:'#ece3fd',fg:'#7c5cfc'};
-GENRE_COLORS['Second Chance']={bg:'#ffe1eb',fg:'#ff0050'};
-GENRE_COLORS['Revenge']={bg:'#fde3e3',fg:'#e0384d'};
-GENRE_COLORS['Family Drama']={bg:'#fef3d8',fg:'#d97706'};
-GENRE_COLORS['Twist']={bg:'#ffe1eb',fg:'#ff0050'};
-GENRE_COLORS['Betrayal']={bg:'#ffe1eb',fg:'#ff0050'};
-GENRE_COLORS['Campus']={bg:'#e3ecfd',fg:'#2f7de1'};
-GENRE_COLORS['Elegy']={bg:'#fde3e3',fg:'#e0384d'};
 
 function statusClass(s){return{Published:'published',Draft:'draft',Paused:'paused','Under Review':'review',Flagged:'flagged'}[s]||'draft';}
 function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><span class="dot"></span>'+s+'</span>';}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+async function loadBooks(){
+  const data = await callBackend('/books?limit=100');
+  books = (data && (Array.isArray(data) ? data : data.items)) || [];
+  // populate genre colours from categories/genres endpoints
+  try {
+    const [cats, genres] = await Promise.all([callBackend('/categories'), callBackend('/genres')]);
+    (Array.isArray(cats) ? cats : (cats && cats.items) || []).forEach(function(c){ GENRE_COLORS[c.name]={bg:c.bg||'#eee',fg:c.color||'#333'}; });
+    (Array.isArray(genres) ? genres : (genres && genres.items) || []).forEach(function(g){ if(!GENRE_COLORS[g.name]) GENRE_COLORS[g.name]={bg:g.bg||'#eee',fg:g.color||'#333'}; });
+  } catch(e) {}
+  renderStats(); render();
+}
 
 
 function renderStats(){

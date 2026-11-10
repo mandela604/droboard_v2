@@ -2,7 +2,7 @@
 'use strict';
 
 /* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
@@ -23,13 +23,14 @@ function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) re
 async function init(){
   shell = SeniorEditorSidebar.attach('#saRoot',{activeItem:'story-analytics',title:'Story Analytics',subtitle:'Performance metrics',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4});
 
-  // Future backend path (disabled by default; demo path keeps working):
-  // const remote = await callBackend('/story-analytics');
-  // if (remote) { allData = Array.isArray(remote) ? remote : (remote.stories || []); render(); return; }
-
-  const d = await SeniorEditorData.getStoryAnalytics();
-  allData = d.stories;
-  render();
+  try {
+    const d = await callBackend('/story-analytics');
+    if (!d) throw new Error('Empty response');
+    allData = Array.isArray(d) ? d : (d.stories || []);
+    render();
+  } catch(err) {
+    document.getElementById('analyticsTable').querySelector('tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> Failed to load analytics: ${err.message}</td></tr>`;
+  }
 }
 
 function render(){

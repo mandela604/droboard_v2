@@ -139,7 +139,7 @@ a{color:inherit;text-decoration:none}
   <div class="top-bar">
     <div class="top-left">
       <div class="back-btn" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-arrow-left"></i></div>
-      <div class="top-title"><b>Droboard <span class="mini-verified"><i class="fas fa-check"></i></span></b><span id="topFollowerCount">12.4k followers</span></div>
+      <div class="top-title"><b>Droboard <span class="mini-verified"><i class="fas fa-check"></i></span></b><span id="topFollowerCount"></span></div>
     </div>
     <div class="top-icon" onclick="DroboardOfficial.sharePage()"><i class="fas fa-share-nodes"></i></div>
     <div class="top-icon" id="pageMenuBtn" title="Page settings"><i class="fas fa-ellipsis"></i></div>
@@ -177,8 +177,8 @@ a{color:inherit;text-decoration:none}
       </div>
       <div class="page-bio" id="pageBio">The official Droboard account. Announcements, writer shoutouts, live debates and the best story picks from across the platform — straight from the team that builds it. 📤</div>
       <div class="pg-stats">
-        <div class="pg-stat"><div class="pg-stat-num r" id="statFollowers">12.4k</div><div class="pg-stat-label">Followers</div></div>
-        <div class="pg-stat"><div class="pg-stat-num b">312</div><div class="pg-stat-label">Posts</div></div>
+        <div class="pg-stat"><div class="pg-stat-num r" id="statFollowers"></div><div class="pg-stat-label">Followers</div></div>
+        <div class="pg-stat"><div class="pg-stat-num b" id="statPosts"></div><div class="pg-stat-label">Posts</div></div>
         <div class="pg-stat"><div class="pg-stat-num g" id="statWritersFeatured"></div><div class="pg-stat-label">Featured</div></div>
         <div class="pg-stat"><div class="pg-stat-num">2021</div><div class="pg-stat-label">Founded</div></div>
       </div>
@@ -216,7 +216,7 @@ a{color:inherit;text-decoration:none}
         </div>
         <div style="font-size:13px;color:var(--tx-body);line-height:1.65;padding:2px 0 12px" id="aboutBlurb">Droboard is a home for stories, debates and the readers who live for a good plot twist. This page is run by the Droboard team — we post announcements, feature standout writers, host community debates and recommend stories worth your 2am reading session.</div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-calendar-alt" style="color:var(--acc)"></i></div><div><div class="about-label">Founded</div><div class="about-val">March 2021 · Lagos, Nigeria 🇳🇬</div></div></div>
-        <div class="about-item"><div class="about-icon"><i class="fas fa-users" style="color:var(--acc)"></i></div><div><div class="about-label">Community</div><div class="about-val">12.4k followers · 89k active readers · 3.2k writers</div></div></div>
+        <div class="about-item"><div class="about-icon"><i class="fas fa-users" style="color:var(--acc)"></i></div><div><div class="about-label">Community</div><div class="about-val">Announcements, debates and story picks from the team</div></div></div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-envelope" style="color:var(--acc)"></i></div><div><div class="about-label">Contact</div><div class="about-val" id="aboutContact">hello@droboard.app · support.droboard.app</div></div></div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-link" style="color:var(--acc)"></i></div><div><div class="about-label">Links</div><div class="about-val" id="aboutLinks" style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap"></div></div></div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-gavel" style="color:var(--acc)"></i></div><div><div class="about-label">Community Guidelines</div><ul class="rules-list" id="aboutRules"><li>Be kind — debate the story, not the person.</li><li>Tag spoilers so everyone gets to feel the twist.</li><li>No harassment of writers or fellow readers.</li><li>Shoutouts and story picks are curated by the team, not paid placements.</li></ul></div></div>
@@ -234,19 +234,14 @@ a{color:inherit;text-decoration:none}
 
 <div class="toast" id="toast"></div>
 
-<!-- Editor / Admin modules: centralized demo data + page-scoped seed -->
-<script src="../data/central-demo-data.js"></script>
-<script src="../data/comments-data.js"></script>
-<script src="../data/droboard-page-seed.js"></script>
-
 <!-- Shared components -->
 <script src="../component/ad-card.js?v=10"></script>
 <script src="../services/saves-bridge.js?v=2"></script>
 <script src="../component/save-modal.js?v=2"></script>
 <script src="../component/share-modal.js?v=5"></script>
-<script src="../component/status-viewer.js?v=16"></script>
-<script src="../component/status-ring.js?v=4"></script>
-  <script src="../services/status-service.js?v=8"></script>
+<script src="../component/status-viewer.js?v=17"></script>
+<script src="../component/status-ring.js?v=5"></script>
+  <script src="../services/status-service.js?v=11"></script>
 <script src="../shared/status-loader.js"></script>
 <script src="../component/report-sheet.js"></script>
 <script src="../component/comment-section.js?v=13"></script>
@@ -264,7 +259,7 @@ a{color:inherit;text-decoration:none}
 <script src="../services/auth-session.js?v=3"></script>
 <script src="../services/league-service.js"></script>
 <script src="../component/expiry-chips.js?v=8"></script>
-<script src="../component/droboard-post-composer.js?v=9"></script>
+<script src="../component/droboard-post-composer.js?v=27"></script>
 <!-- canModerate() lives here; without it the staff stats button stays hidden. -->
 <script src="../shared/ui-helpers.js"></script>
 <script src="../shared/insights-tracker.js?v=3"></script>

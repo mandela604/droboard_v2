@@ -223,9 +223,231 @@
 .btn-cancel{background:var(--input-bg);color:var(--text);border:1px solid var(--input-border)}
 </style>
 
-<script src="../data/editor-demo-data.js"></script>
 <script src="shared/chief-editor-sidebar.js"></script>
 <script src="categories-genres-service.js"></script>
-<script>CategoriesGenresService.init();</script>
+<script>
+(async function(){
+'use strict';
+
+ChiefEditorSidebar.attach('#dashboardRoot',{
+  activeItem:'categories-genres',
+  title:'Categories & Genres',
+  subtitle:'Organize and manage all categories and genres',
+  user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},
+  notifCount:8,
+  searchPlaceholder:'Search by category or genre name...'
+});
+
+let CATEGORIES=[], GENRES=[], TROPES=[], POPULAR_GENRES=[];
+let currentView='categories';
+
+function toast(msg){
+  console.log('Toast:', msg);
+}
+
+function statusPillHtml(s){
+  const active=s==='active';
+  return `<span class="status-pill${active?'':' inactive'}"><span class="dot"></span>${active?'Active':'Inactive'}</span>`;
+}
+
+function showError(msg){
+  document.getElementById('tableBody').innerHTML=`<tr class="empty-row"><td colspan="6"><i class="fas fa-circle-exclamation" style="color:var(--red);margin-right:8px"></i>${msg}</td></tr>`;
+}
+
+function showLoading(){
+  document.getElementById('tableBody').innerHTML=`<tr class="empty-row"><td colspan="6"><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Loading...</td></tr>`;
+}
+
+async function loadData(){
+  try {
+    const data = await window.CategoriesGenresService.loadData();
+    CATEGORIES = data.categories;
+    GENRES = data.genres;
+    TROPES = data.tropes;
+    POPULAR_GENRES = data.popular;
+    renderStats();
+    renderPopularGenres();
+    refresh();
+  } catch(e) {
+    showError('Failed to load data: ' + e.message);
+  }
+}
+
+function renderStats(){
+  const totalCat = CATEGORIES.length;
+  const totalGen = GENRES.length;
+  const totalTro = TROPES.length;
+  const activeCat = CATEGORIES.filter(c=>c.status==='active').length;
+  const activeGen = GENRES.filter(g=>g.status==='active').length;
+  const activeTro = TROPES.filter(t=>t.status==='active').length;
+  const pct = totalCat+totalGen+totalTro>0 ? Math.round((activeCat+activeGen+activeTro)/(totalCat+totalGen+totalTro)*100) : 0;
+  
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico purple"><i class="fas fa-grip"></i></div></div><div class="stat-num">${totalCat}</div><div class="stat-lbl">Total Categories</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-book"></i></div></div><div class="stat-num">${totalGen}</div><div class="stat-lbl">Total Genres</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-wand-magic-sparkles"></i></div></div><div class="stat-num">${totalTro}</div><div class="stat-lbl">Total Tropes</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-shuffle"></i></div></div><div class="stat-num">${pct}%</div><div class="stat-lbl">Active</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-tag"></i></div></div><div class="stat-num">${CATEGORIES.reduce((a,c)=>a+parseInt((c.books||'0').replace(/,/g,''),10),0).toLocaleString()}</div><div class="stat-lbl">Books Assigned</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-eye"></i></div></div><div class="stat-num">${(CATEGORIES.length*1.4).toFixed(1)}M</div><div class="stat-lbl">Total Views</div></div>`;
+}
+
+function renderCategoriesTable(list){
+  document.getElementById('tableHead').innerHTML='<tr><th>Category Name</th><th>Description</th><th>Genres</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  const body=document.getElementById('tableBody');
+  if(!list.length){
+    body.innerHTML='<tr class="empty-row"><td colspan="6"><i class="fas fa-inbox"></i>No categories match this search.</td></tr>';
+    return;
+  }
+  body.innerHTML=list.map(function(c){
+    const idx=CATEGORIES.indexOf(c);
+    return `<tr>
+      <td data-label="Category Name"><div class="cat-cell"><div class="cat-icn" style="background:${c.bg};color:${c.color}"><i class="fas ${c.icon}"></i></div><div class="cat-name">${c.name}</div></div></td>
+      <td data-label="Description"><div class="cat-desc">${c.desc}</div></td>
+      <td data-label="Genres" class="genre-count">${c.genres} genres</td>
+      <td data-label="Books" class="plain-cell">${c.books}</td>
+      <td data-label="Status">${statusPillHtml(c.status)}</td>
+      <td data-label="Actions"><div class="actions-cell">
+        <button class="act-btn" title="Edit" data-action="edit" data-id="${c.id}"><i class="fas fa-pen"></i></button>
+        <button class="act-btn" title="Toggle Status" data-action="toggle" data-id="${c.id}"><i class="fas fa-toggle-on"></i></button>
+        <button class="act-btn" title="Delete" data-action="delete" data-id="${c.id}"><i class="fas fa-trash"></i></button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+function renderGenresTable(list){
+  document.getElementById('tableHead').innerHTML='<tr><th>Genre Name</th><th>Tropes</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  const body=document.getElementById('tableBody');
+  if(!list.length){
+    body.innerHTML='<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No genres match this search.</td></tr>';
+    return;
+  }
+  body.innerHTML=list.map(function(g){
+    const tr=TROPES.filter(t=>t.genre===g.name);
+    let tropesHtml;
+    if(!tr.length) tropesHtml='<span class="trope-chip">No tropes yet</span>';
+    else if(tr.length===1) tropesHtml=`<span class="trope-chip">${tr[0].name}</span>`;
+    else tropesHtml=`<span class="trope-chip">${tr[0].name}</span><span class="trope-more" title="${tr.slice(1).map(t=>t.name).join(' · ')}">+${tr.length-1} more</span>`;
+    
+    return `<tr>
+      <td data-label="Genre Name"><div class="cat-cell"><div class="cat-icn" style="background:${g.bg};color:${g.color}"><i class="fas ${g.icon}"></i></div><div class="cat-name">${g.name}</div></div></td>
+      <td data-label="Tropes"><div class="trope-cell">${tropesHtml}</div></td>
+      <td data-label="Books" class="plain-cell">${g.books}</td>
+      <td data-label="Status">${statusPillHtml(g.status)}</td>
+      <td data-label="Actions"><div class="actions-cell">
+        <button class="act-btn" title="Edit" data-action="edit" data-id="${g.id}"><i class="fas fa-pen"></i></button>
+        <button class="act-btn" title="Toggle Status" data-action="toggle" data-id="${g.id}"><i class="fas fa-toggle-on"></i></button>
+        <button class="act-btn" title="Delete" data-action="delete" data-id="${g.id}"><i class="fas fa-trash"></i></button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+function renderTropesTable(list){
+  document.getElementById('tableHead').innerHTML='<tr><th>Trope Name</th><th>Genre</th><th>Books</th><th>Status</th><th>Actions</th></tr>';
+  const body=document.getElementById('tableBody');
+  if(!list.length){
+    body.innerHTML='<tr class="empty-row"><td colspan="5"><i class="fas fa-inbox"></i>No tropes match this search.</td></tr>';
+    return;
+  }
+  body.innerHTML=list.map(function(t){
+    return `<tr>
+      <td data-label="Trope Name"><div class="cat-cell"><div class="cat-icn" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div><div class="cat-name">${t.name}</div></div></td>
+      <td data-label="Genre" class="plain-cell">${t.genre}</td>
+      <td data-label="Books" class="plain-cell">${t.books}</td>
+      <td data-label="Status">${statusPillHtml(t.status)}</td>
+      <td data-label="Actions"><div class="actions-cell">
+        <button class="act-btn" title="Edit" data-action="edit" data-id="${t.id}"><i class="fas fa-pen"></i></button>
+        <button class="act-btn" title="Toggle Status" data-action="toggle" data-id="${t.id}"><i class="fas fa-toggle-on"></i></button>
+        <button class="act-btn" title="Delete" data-action="delete" data-id="${t.id}"><i class="fas fa-trash"></i></button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+function currentFiltered(){
+  const q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();
+  const source=currentView==='categories'?CATEGORIES:(currentView==='genres'?GENRES:TROPES);
+  if(!q) return source;
+  return source.filter(function(x){
+    return x.name.toLowerCase().includes(q) ||
+           (x.desc&&x.desc.toLowerCase().includes(q)) ||
+           (x.cat&&x.cat.toLowerCase().includes(q)) ||
+           (x.genre&&x.genre.toLowerCase().includes(q));
+  });
+}
+
+function refresh(){
+  const list=currentFiltered();
+  if(currentView==='categories') renderCategoriesTable(list);
+  else if(currentView==='genres') renderGenresTable(list);
+  else renderTropesTable(list);
+  
+  const total=currentView==='categories'?CATEGORIES.length:(currentView==='genres'?GENRES.length:TROPES.length);
+  const shown=Math.min(list.length, total);
+  document.getElementById('pageInfo').innerHTML=`Showing <b>${list.length?1:0}</b> to <b>${shown}</b> of <b>${total}</b> ${currentView}`;
+}
+
+function renderPopularGenres(){
+  document.getElementById('genreGrid').innerHTML=POPULAR_GENRES.map(function(g){
+    return `<div class="genre-card">
+      <div class="genre-ico" style="background:${g.bg};color:${g.color}"><i class="fas ${g.icon}"></i></div>
+      <div class="genre-name">${g.name}</div>
+      <div class="genre-books">${g.books}</div>
+      ${statusPillHtml('active')}
+    </div>`;
+  }).join('');
+}
+
+/* ── Event Listeners ── */
+document.querySelectorAll('.top-tab').forEach(tab=>{
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.top-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView=tab.dataset.view;
+    const titles={categories:'All Categories',genres:'All Genres',tropes:'All Tropes'};
+    const adds={categories:'Add New Category',genres:'Add New Genre',tropes:'Add New Trope'};
+    const phs={categories:'Search categories...',genres:'Search genres...',tropes:'Search tropes...'};
+    document.getElementById('tableTitle').textContent=titles[currentView];
+    document.getElementById('addBtnLabel').textContent=adds[currentView];
+    document.getElementById('tableSearch').placeholder=phs[currentView];
+    refresh();
+  });
+});
+
+document.getElementById('tableSearch').addEventListener('input', refresh);
+
+document.getElementById('addBtn').addEventListener('click', ()=> {
+  toast('Add functionality would connect to live API');
+});
+
+document.getElementById('tableBody').addEventListener('click', async e=>{
+  const btn=e.target.closest('[data-action]');
+  if(!btn) return;
+  const action=btn.dataset.action;
+  const id=btn.dataset.id;
+  
+  if(action==='edit') {
+    toast(`Edit ${currentView.slice(0,-1)} ${id} - would connect to live API`);
+  } else if(action==='toggle') {
+    toast(`Toggle status for ${currentView.slice(0,-1)} ${id} - would connect to live API`);
+  } else if(action==='delete') {
+    if(confirm(`Delete this ${currentView.slice(0,-1)}?`)) {
+      try {
+        const svc = window.CategoriesGenresService;
+        if(currentView==='categories') await svc.deleteCategory(id);
+        else if(currentView==='genres') await svc.deleteGenre(id);
+        else await svc.deleteTrope(id);
+        toast('Deleted successfully');
+        await loadData();
+      } catch(e) {
+        toast('Failed to delete: ' + e.message);
+      }
+    }
+  }
+});
+
+// Initialize
+showLoading();
+loadData();
+})();
+</script>
 </body>
 </html>

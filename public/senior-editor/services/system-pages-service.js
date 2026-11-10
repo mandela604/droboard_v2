@@ -1,13 +1,10 @@
 /**
- * system-pages-service.js — System Pages page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * system-pages-service.js — System Pages page logic (pure call-and-render). */
 (function () {
 'use strict';
 if (window.SystemPagesService && window.SystemPagesService.__ready) return;
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if(!USE_API) return null;

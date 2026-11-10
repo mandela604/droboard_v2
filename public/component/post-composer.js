@@ -128,6 +128,9 @@
     return DroboardExpiry.expiresAt(kind, document.getElementById('dpcBody'));
   }
   function storyPool(){
+    /* Live only: the host page passes real catalogue rows (e.g. the feed's
+       GET /feed/discover/stories). No demo seed merge — an empty pool means
+       the picker shows nothing instead of fake stories. */
     const out = [];
     const seen = new Set();
     const push = (s) => {
@@ -138,13 +141,6 @@
       out.push(s);
     };
     ((_hooks.stories || []).forEach(push));
-    try { ((window.DemoData && DemoData.STORIES) || []).forEach(push); } catch(e){}
-    try {
-      const seed = window.GenreDemoSeed;
-      if(seed && seed.DEMO_STORIES){
-        Object.keys(seed.DEMO_STORIES).forEach(gid => { (seed.DEMO_STORIES[gid] || []).forEach(push); });
-      }
-    } catch(e){}
     return out;
   }
   function saveDraft(){
@@ -842,6 +838,7 @@
       else if(file && file.files[0]) image=URL.createObjectURL(file.files[0]);
       const post={...base, type:'post', text, heading: heading||undefined };
       if(image) post.image=image;
+      if(file && file.files && file.files[0]) post._file = file.files[0];
       return post;
     }
     if(_currentType==='poll'){
@@ -859,6 +856,7 @@
       const post={...base, type:'poll', poll:{ question:q, opts, total:0, voted:-1 }};
       const exp=_expAt('poll'); if(exp) post.expiresAt=exp;
       if(image) post.image=image;
+      if(pollFile && pollFile.files && pollFile.files[0]) post._file = pollFile.files[0];
       return post;
     }
     if(_currentType==='debate'){
@@ -928,35 +926,79 @@
     document.addEventListener('keydown', e=>{ if(e.key==='Escape' && document.getElementById('dpcOv').classList.contains('open')) close(); });
   }
 
-  function submit(){
+  async function submit(){
     const post=buildPost();
     if(!post){ toast('Fill required fields'); return; }
     const isEdit = !!_editingPost;
-    clearDraft();
-    /* Status type bypasses the feed — straight to the story row. */
+    /* Status type bypasses the feed — straight to the story row. The post is
+       a real API write (photo upload included), so keep the sheet open with a
+       busy button until it lands; a failure toasts and preserves the draft. */
     if(post.type==='status' && !isEdit){
-      if(typeof _hooks.onStatusSlide === 'function'){
-        _hooks.onStatusSlide(post.statusSlide);
-      } else if(window.DroboardStatus){
-        try { window.DroboardStatus.post(post.statusSlide); } catch (e) {}
-        toast('🟢 Status posted to your story!');
-      } else {
-        toast('Status service missing');
+      const btn=document.getElementById('dpcPost');
+      if(btn){ btn.disabled=true; btn.textContent='Posting…'; }
+      try {
+        if(typeof _hooks.onStatusSlide === 'function'){
+          await _hooks.onStatusSlide(post.statusSlide);
+        } else if(window.DroboardStatus){
+          await window.DroboardStatus.post(post.statusSlide);
+          toast('🟢 Status posted to your story!');
+        } else {
+          throw new Error('Status service missing');
+        }
+        clearDraft();
+        close();
+      } catch(e){
+        toast(e && e.message ? e.message : 'Could not post your status.');
+        if(btn){ btn.textContent='Post'; validate(); }
       }
-      close();
       return;
     }
-    if(typeof _hooks.onSubmit === 'function'){
-      _hooks.onSubmit(post, isEdit);
-    } else {
-      if(window.FeedData && window.DroboardPostCard && document.getElementById('feedList')){
+    clearDraft();
+    try {
+      await _resolveImage(post);
+      if(typeof _hooks.onSubmit === 'function'){
+        await _hooks.onSubmit(post, isEdit);
+      } else if(window.FeedData && window.DroboardPostCard && document.getElementById('feedList')){
         if(window.FeedPage && window.FeedPage._pushPost) window.FeedPage._pushPost(post, isEdit);
         else toast(isEdit ? '✅ Post updated!' : 'Posted! (demo)');
       } else {
         toast(isEdit ? '✅ Post updated (demo)' : '✅ Post created (demo)');
       }
+      close();
+    } catch(e){
+      toast(e && e.message ? e.message : 'Could not publish your post.');
     }
-    close();
+  }
+
+  /* The server stores a delivery URL, never a local blob/data URL. Any
+     image picked in this sheet is uploaded first (POST /api/uploads/image);
+     a failed upload is a real error and stops the post. */
+  async function _uploadImage(file){
+    const fd = new FormData();
+    fd.append('file', file, file.name || 'upload.png');
+    const res = await fetch('/api/uploads/image', { method: 'POST', credentials: 'include', body: fd });
+    let j = null;
+    try { j = await res.json(); } catch(e) {}
+    if (!res.ok) throw new Error((j && (j.error || j.message)) || ('Image upload failed (' + res.status + ')'));
+    if (!j || !j.url) throw new Error('Image upload failed — no URL returned');
+    return j.url;
+  }
+  function _dataUrlToBlob(dataUrl){
+    const parts = String(dataUrl).split(',');
+    const mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/png';
+    const bin = atob(parts[1] || '');
+    const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return new File([buf], 'upload.png', { type: mime });
+  }
+  async function _resolveImage(post){
+    if (!post) return post;
+    if (post._file) {
+      post.image = await _uploadImage(post._file);
+    } else if (typeof post.image === 'string' && post.image.indexOf('data:') === 0) {
+      post.image = await _uploadImage(_dataUrlToBlob(post.image));
+    }
+    return post;
   }
 
   function open(typeOrOpts){

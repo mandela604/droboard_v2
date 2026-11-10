@@ -1,10 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
    TRENDING ACROSS HUBS — the "See all" page for the feed's
    "Trending in hubs" row. Board-agnostic: it lists trending
-   discussion threads from EVERY hub, paged.
-   Cards render through component/genre-card.js (window.DroboardGenreCard),
-   the same renderer the feed row and hub pages use, so a card looks
-   and behaves identically here.
+   discussion threads from EVERY hub, paged, all from the live API
+   (GET /api/discussions/feed via feed-data.js). Reports file to
+   POST /api/reports. Cards render through component/genre-card.js
+   (window.DroboardGenreCard), the same renderer the feed row and
+   hub pages use, so a card looks and behaves identically here.
    HTML calls TrendingPage.init().
    ═══════════════════════════════════════════════════════════════ */
 (function () {
@@ -12,17 +13,17 @@
 
   const THEME_KEY = 'droboardTheme';
   const PAGE_SIZE = 12;
+  const REPORTS_API = '/api/reports';
 
   let posts = [];
   let page = 0;
   let hasMore = false;
   let loading = false;
-  let demoMode = false; // live unavailable → seed list, no paging
 
   /* Ad cadence is marketing config, never a page constant: Ad Manager →
      Placements → Trending ("Every N cards", default 4). Live reads
-     GET /api/ads/placements, demo reads the same store the console writes,
-     so a change in the marketing module lands here without a code change. */
+     GET /api/ads/placements, so a change in the marketing module lands
+     here without a code change. */
   let AD_GAP = 4;
   let ADS_ON = true;
   const AD_MARKER = '<div data-ad-slot="trending:in-feed" style="margin:0 14px 8px"></div>';
@@ -80,28 +81,20 @@
     });
   }
 
-  // Demo fallback: flatten the seed discussions across every genre, hottest
-  // first. One screen only — paging needs the live read.
-  function seedCards() {
-    const seed = window.GenreDemoSeed;
-    if (!seed || !seed.DEMO_DISCUSSIONS) return [];
-    const all = [];
-    Object.keys(seed.DEMO_DISCUSSIONS).forEach(gid => {
-      const genre = (seed.DEMO_GENRES && seed.DEMO_GENRES[gid]) || { name: gid, id: gid };
-      (seed.DEMO_DISCUSSIONS[gid] || []).forEach((p, i) => {
-        const gName = genre.name || gid;
-        const gId = genre.id || gid;
-        const { media, story, participants, extra, ...rest } = p;
-        all.push(Object.assign({}, rest, {
-          id: 'fc_' + gId + '_' + (p.id || i),
-          _genreId: gId, _genreName: gName,
-          time: (p.time || '') + ' · ' + gName,
-        }));
-      });
+  /* Reports land in the same desk the moderation consoles read:
+     POST /api/reports { target:'discussion', targetId, reason, title }. */
+  async function fileReport(post, typeId) {
+    const res = await fetch(REPORTS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        target: 'discussion', targetId: String(post.id || ''),
+        reason: typeId, title: String(post.title || '').slice(0, 160),
+      }),
     });
-    return all
-      .sort((a, b) => (b.score || 0) - (a.score || 0) || ((b.likes || 0) + (b.comments || 0)) - ((a.likes || 0) + (a.comments || 0)))
-      .map(toCard);
+    if (!res.ok) throw new Error('Report API failed: ' + res.status);
+    toast('🚩 Report filed. Our team will review it.');
   }
 
   function hooks() {
@@ -114,7 +107,7 @@
       },
       /* Same counter hooks the feed's "Trending in hubs" row uses: the picker
          owns the toggle math (love / switch / deselect, total preserved) and
-         this host only seeds the counts from the post and writes them back. */
+         this host only primes the counts from the post and writes them back. */
       counterHooks: () => ({
         getCounts: (id) => {
           const p = posts.find(x => String(x.id) === String(id));
@@ -171,6 +164,13 @@
     } else toast('Share · ' + (post.title || ''));
   }
 
+  function paintError(msg) {
+    const feed = document.getElementById('feed');
+    if (feed) feed.innerHTML = '<div class="empty">Could not load trending — ' + msg + '</div>';
+    const btn = document.getElementById('loadMore');
+    if (btn) btn.style.display = 'none';
+  }
+
   function paint() {
     const feed = document.getElementById('feed');
     if (!feed) return;
@@ -190,14 +190,14 @@
   function paintMore() {
     const btn = document.getElementById('loadMore');
     if (!btn) return;
-    if (demoMode || !hasMore) { btn.style.display = 'none'; return; }
+    if (!hasMore) { btn.style.display = 'none'; return; }
     btn.style.display = 'block';
     btn.disabled = loading;
     btn.textContent = loading ? 'Loading…' : 'Load more';
   }
 
   async function loadNext() {
-    if (loading || demoMode) return;
+    if (loading) return;
     loading = true;
     paintMore();
     try {
@@ -205,15 +205,19 @@
       page = d.page;
       hasMore = d.hasMore;
       posts = posts.concat((d.items || []).map(toCard));
-      if (!posts.length && page === 1) throw new Error('empty');
+      loading = false;
+      paint();
     } catch (e) {
-      // No live read (offline, or the hub has no threads yet) → seed, no paging.
-      demoMode = true;
+      loading = false;
       hasMore = false;
-      if (!posts.length) posts = seedCards();
+      if (!posts.length) {
+        // First read failed — nothing else exists to show, surface the real error.
+        paintError((e && e.message) ? e.message : 'request failed');
+      } else {
+        toast('Could not load more — ' + ((e && e.message) || 'request failed'));
+        paint();
+      }
     }
-    loading = false;
-    paint();
   }
 
   async function init() {
@@ -232,12 +236,9 @@
     if (window.DroboardReactionPicker) DroboardReactionPicker.attachCounters(document.getElementById('feed'), h.counterHooks());
     if (window.DroboardDotsMenu) DroboardDotsMenu.configure({
       onReportType: (post, typeId) => {
-        try {
-          const reports = JSON.parse(localStorage.getItem('DRO_REPORTS') || '[]');
-          reports.push({ postId: post && post.id, typeId, at: Date.now() });
-          localStorage.setItem('DRO_REPORTS', JSON.stringify(reports));
-        } catch (e) {}
-        toast('🚩 Report filed. Our team will review it.');
+        fileReport(post, typeId).catch((e) => {
+          toast('Could not file report — ' + ((e && e.message) || 'request failed'));
+        });
       },
     });
 

@@ -1,28 +1,21 @@
 /**
  * dashboard-service.js — Dashboard page controller (migrated from dashboard.html inline script).
- * Pure call-and-render: init() attaches the sidebar shell and renders from data.
- * Backend-ready: set USE_API=true and serve JSON under API_BASE;
- * demo paths (window.ChiefEditorData) keep working when USE_API=false.
+ * Pure call-and-render: init() attaches the sidebar shell and renders from data. * demo paths (window.ChiefEditorData) keep working when USE_API = true.
  */
 (function(){
 'use strict';
 if(window.DashboardService) return;
 
 /* ── Backend-ready header ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/chief';
 async function callBackend(path, opts){
-  if(!USE_API) return null;
   const res = await fetch(API_BASE + path, opts);
   if(!res.ok) throw new Error('Backend error ' + res.status);
   return res.json();
 }
 async function loadDashboard(){
-  try{
-    const d = await callBackend('/dashboard');
-    if(d) return d;
-  }catch(e){ /* fall through to demo data */ }
-  return window.ChiefEditorData.getDashboard();
+  return callBackend('/dashboard');
 }
 /* Local toast fallback (delegates to window.toast when present; the inline page relied on a global toast). */
 function toast(m){

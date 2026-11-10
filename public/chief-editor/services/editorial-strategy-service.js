@@ -2,10 +2,9 @@
 'use strict';
 
 /* ── Backend-ready header (thin init — demo path kept) ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/chief';
 async function callBackend(path, options){
-  if(!USE_API) return null;
   const res = await fetch(API_BASE + path, options);
   if(!res.ok) throw new Error('backend error ' + res.status);
   return res.json();

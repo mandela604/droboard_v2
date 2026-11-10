@@ -1,9 +1,7 @@
 /**
  * contracts-payments-service.js — Contracts & Payments page controller
  * (migrated from contracts-payments.html inline script).
- * Pure call-and-render: init() attaches the sidebar shell and renders from data.
- * Backend-ready: set USE_API=true and serve JSON under API_BASE;
- * demo paths (window.ChiefEditorData) keep working when USE_API=false.
+ * Pure call-and-render: init() attaches the sidebar shell and renders from data. * demo paths (window.ChiefEditorData) keep working when USE_API = true.
  */
 (function(){
 'use strict';
@@ -19,7 +17,6 @@ function authHeaders(base){
   return h;
 }
 async function callBackend(path, opts){
-  if(!USE_API) return null;
   const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}, {
     headers: authHeaders((opts && opts.headers) || {}),
   }));
@@ -59,9 +56,6 @@ async function loadContractTemplates(){
       created: t.created || '',
       lastEdited: t.lastEdited || t.updated || '',
     }));
-  }catch(e){
-    LIVE = false;
-    return window.ChiefEditorData.getContractTemplates();
   }
 }
 

@@ -1,16 +1,11 @@
 /**
- * all-books-service.js — All Books page controller (call-and-render).
- * Extracted VERBATIM from all-books.html inline <script>; NO renames, NO refactors, NO behavior changes.
- * Browse every title on the platform (2400-book generated catalog, filters, pagination).
- * Flagging and editing belong to the owning senior editor and the author; this
- * screen is read-only browse — the Flagged filter is how the SE-flagged set is seen.
- * Backend-ready (pattern only): flip USE_API to true and point API_BASE at the real
- * endpoint when the backend lands. No HTML change required.
+ * all-books-service.js — All Books page controller.
+ * All data from live API. No hardcoded book arrays.
  */
 (function(){
-/* Pattern-only backend switch — page currently renders from local data below. */
-const USE_API = false, API_BASE = '/api';
 'use strict';
+const API_BASE = '/api/super-admin/books';
+
 const shell = SuperAdminSidebar.attach('#booksRoot', {
   activeItem: 'all-books',
   title: 'All Books',
@@ -22,71 +17,44 @@ const shell = SuperAdminSidebar.attach('#booksRoot', {
 
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
-const GENRE_COLORS = { Romance:'red', Fantasy:'purple', Thriller:'blue', 'Sci-Fi':'blue', Horror:'red', 'Drama':'amber', 'Werewolf':'purple', 'Teen Fiction':'green', 'Mystery':'gold' };
+const GENRE_COLORS = { Romance:'red', Fantasy:'purple', Thriller:'blue', 'Sci-Fi':'blue', Horror:'red', Drama:'amber', Werewolf:'purple', 'Teen Fiction':'green', Mystery:'gold' };
 
-/* ─────────────────────────────────────────
-   MOCK DATASET GENERATOR — simulates a platform-scale catalog
-───────────────────────────────────────── */
-const GENRES = Object.keys(GENRE_COLORS);
-const STATUSES = ['published','published','published','published','draft','paused','flagged'];
-const TITLE_WORDS_A = ['Midnight','Broken','Silver','Wicked','Forbidden','Crimson','Shattered','Golden','Reckless','Fated','Stolen','Hollow','Velvet','Savage','Lost'];
-const TITLE_WORDS_B = ['Vow','Heart','Kingdom','Bride','Alpha','Duke','Bloodline','Contract','Obsession','Legacy','Promise','Throne','Rebellion','Whisper','Storm'];
-const AUTHORS = ['Zara_M','Marcus Webb Jr.','Nadia Cross','Kelo Writes','R.K. Vance','Ife Solarin','Diego Marsh','Lena Okafor','TJ Rourke','Aminah Cole','Chidi Blackwood','Priya Nandan'];
-
-function generateBooks(n){
-  const out = [];
-  for(let i=0;i<n;i++){
-    const title = `${TITLE_WORDS_A[i%TITLE_WORDS_A.length]} ${TITLE_WORDS_B[(i*7)%TITLE_WORDS_B.length]}`;
-    const genre = GENRES[i % GENRES.length];
-    const status = STATUSES[i % STATUSES.length];
-    const reads = Math.floor(Math.pow((i%500)+1, 2.1) * 3.7) + Math.floor(Math.random()*400);
-    const rating = (3.4 + ((i*13)%16)/10).toFixed(1);
-    const revenue = Math.round(reads * 0.012 * (0.5+Math.random()));
-    const daysAgo = i % 240;
-    out.push({
-      id: 'bk-'+(100000+i),
-      title, author: AUTHORS[i % AUTHORS.length], genre, status,
-      reads, rating: Math.min(5, parseFloat(rating)), revenue,
-      chapters: 12 + (i%180),
-      updatedDays: daysAgo,
-      cover: `https://picsum.photos/seed/book${i}/80/110`,
-    });
-  }
-  return out;
-}
-
-const ALL_BOOKS = generateBooks(2400); // simulated slice of a much larger (100k+) catalog
-let filtered = ALL_BOOKS.slice();
+let allBooks = [];
+let filtered = [];
 let page = 1;
-let pageSize = 12;
+const pageSize = 12;
 let density = 'normal';
 
 function fmtNum(n){
   if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
   if(n >= 1e3) return (n/1e3).toFixed(1)+'k';
-  return n.toString();
+  return String(n||0);
 }
-/* Book revenue is authored in dollars; staff screens show the currency Super
-   Admin set, so every money cell goes through this one wrapper. */
 function money(n){
   if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n);
   return '$' + fmtNum(Number(n) || 0);
 }
 function fmtDays(d){
+  if(!d && d!==0) return '—';
   if(d===0) return 'Today';
   if(d===1) return 'Yesterday';
   if(d<30) return d+'d ago';
   if(d<365) return Math.floor(d/30)+'mo ago';
   return Math.floor(d/365)+'y ago';
 }
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showError(msg){
+  document.getElementById('bookList').innerHTML='<div class="empty-state" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i>'+esc(msg)+'</div>';
+}
 
 function renderStatCards(){
-  const total = ALL_BOOKS.length;
-  const published = ALL_BOOKS.filter(b=>b.status==='published').length;
-  const flagged = ALL_BOOKS.filter(b=>b.status==='flagged').length;
-  const totalRevenue = ALL_BOOKS.reduce((s,b)=>s+b.revenue,0);
+  const total = allBooks.length;
+  const published = allBooks.filter(b=>b.status==='published').length;
+  const flagged = allBooks.filter(b=>b.status==='flagged').length;
+  const totalRevenue = allBooks.reduce((s,b)=>s+(b.revenue||0),0);
   const stats = [
-    { n: fmtNum(total)+'+', l:'Total Books', ico:'fa-book-open', cls:'gold' },
+    { n: fmtNum(total), l:'Total Books', ico:'fa-book-open', cls:'gold' },
     { n: fmtNum(published), l:'Published', ico:'fa-circle-check', cls:'green' },
     { n: flagged, l:'Flagged for Review', ico:'fa-flag', cls:'red' },
     { n: money(totalRevenue), l:'Total Revenue (est.)', ico:'fa-sack-dollar', cls:'blue' },
@@ -97,8 +65,9 @@ function renderStatCards(){
 }
 
 function populateGenreFilter(){
+  const genres = [...new Set(allBooks.map(b=>b.genre).filter(Boolean))].sort();
   document.getElementById('genreFilter').innerHTML = '<option value="">All Genres</option>' +
-    GENRES.map(g=>`<option value="${g}">${g}</option>`).join('');
+    genres.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');
 }
 
 function applyFilters(){
@@ -107,17 +76,17 @@ function applyFilters(){
   const status = document.getElementById('statusFilter').value;
   const sort = document.getElementById('sortFilter').value;
 
-  filtered = ALL_BOOKS.filter(b=>{
-    if(q && !(b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.id.includes(q))) return false;
+  filtered = allBooks.filter(b=>{
+    if(q && !(b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || (b.id||'').includes(q))) return false;
     if(genre && b.genre !== genre) return false;
     if(status && b.status !== status) return false;
     return true;
   });
 
-  if(sort==='reads') filtered.sort((a,b)=>b.reads-a.reads);
-  else if(sort==='recent') filtered.sort((a,b)=>a.updatedDays-b.updatedDays);
-  else if(sort==='title') filtered.sort((a,b)=>a.title.localeCompare(b.title));
-  else if(sort==='revenue') filtered.sort((a,b)=>b.revenue-a.revenue);
+  if(sort==='reads') filtered.sort((a,b)=>(b.reads||0)-(a.reads||0));
+  else if(sort==='recent') filtered.sort((a,b)=>(a.updatedDays||0)-(b.updatedDays||0));
+  else if(sort==='title') filtered.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  else if(sort==='revenue') filtered.sort((a,b)=>(b.revenue||0)-(a.revenue||0));
 
   page = 1;
   renderList();
@@ -129,24 +98,25 @@ function renderList(){
   const listEl = document.getElementById('bookList');
   listEl.className = density==='dense' ? 'dense' : '';
 
-  if(pageItems.length === 0){
+  if(!pageItems.length){
     listEl.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>No books match your filters.</div>`;
   } else {
+    const gc = GENRE_COLORS;
     listEl.innerHTML = pageItems.map(function(b){
+      const gcls = gc[b.genre] || 'blue';
       return '<div class="book-row">'
-        + '<div class="book-main"><img class="book-thumb" src="'+b.cover+'" alt=""/><div class="book-info"><div class="book-title">'+b.title+'</div><div class="book-meta">by <a href="#">'+b.author+'</a> · '+b.chapters+' ch · '+b.id+'</div></div></div>'
-        + '<div class="col-hide"><span class="genre-chip" style="background:'+BG_MAP[GENRE_COLORS[b.genre]]+';color:'+ICO_MAP[GENRE_COLORS[b.genre]]+'">'+b.genre+'</span></div>'
-        + '<div><span class="status-chip '+b.status+'"><i class="fas fa-circle"></i>'+b.status+'</span></div>'
-        + '<div class="col-hide num-cell">'+fmtNum(b.reads)+'</div>'
-        + '<div class="col-hide num-cell faint">\u2605 '+b.rating+'</div>'
-        + '<div class="num-cell">'+money(b.revenue)+'</div>'
+        + '<div class="book-main"><img class="book-thumb" src="'+esc(b.cover||'')+'" alt=""/><div class="book-info"><div class="book-title">'+esc(b.title||'')+'</div><div class="book-meta">by <a href="#">'+esc(b.author||'')+'</a> · '+(b.chapters||0)+' ch · '+esc(b.id||'')+'</div></div></div>'
+        + '<div class="col-hide"><span class="genre-chip" style="background:'+BG_MAP[gcls]+';color:'+ICO_MAP[gcls]+'">'+esc(b.genre||'')+'</span></div>'
+        + '<div><span class="status-chip '+(b.status||'')+'"><i class="fas fa-circle"></i>'+(b.status||'')+'</span></div>'
+        + '<div class="col-hide num-cell">'+fmtNum(b.reads||0)+'</div>'
+        + '<div class="col-hide num-cell faint">★ '+(b.rating||0)+'</div>'
+        + '<div class="num-cell">'+money(b.revenue||0)+'</div>'
         + '<div class="col-hide" style="font-size:11px;color:var(--text-faint)">'+fmtDays(b.updatedDays)+'</div>'
         + '<div class="row-actions">'
-        + '<a class="icon-btn" href="../author/book-workspace.html?book='+b.id+'" title="View book"><i class="fas fa-eye"></i></a>'
+        + '<a class="icon-btn" href="../author/book-workspace.html?book='+esc(b.id)+'" title="View book"><i class="fas fa-eye"></i></a>'
         + '</div></div>';
     }).join('');
   }
-
   renderFooter();
 }
 
@@ -195,14 +165,19 @@ document.querySelectorAll('#densitySeg button').forEach(function(btn){
   });
 });
 
-function init(){
-  renderStatCards();
-  populateGenreFilter();
-  document.getElementById('sortFilter').value = 'reads';
-  applyFilters();
+async function init(){
+  try {
+    const res = await fetch(API_BASE + '?limit=500', { credentials:'include' });
+    if(!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    allBooks = Array.isArray(data) ? data : (data.items || []);
+    renderStatCards();
+    populateGenreFilter();
+    document.getElementById('sortFilter').value = 'reads';
+    applyFilters();
+  } catch(e) {
+    showError('Failed to load books: ' + e.message);
+  }
 }
 init();
-/* Window exports: none required — no inline onclick in markup or generated templates
- * references page functions (all-posts.html uses only native event.stopPropagation();
- * all other wiring is via addEventListener/delegation). Nothing exported by design. */
 })();

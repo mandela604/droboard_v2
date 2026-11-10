@@ -2,7 +2,7 @@
 'use strict';
 
 /* ── Backend-ready header (for future API use; demo paths keep working) ── */
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
   if (!USE_API) return null;
@@ -18,16 +18,19 @@ var PP = 3;
 async function init(){
   shell = SeniorEditorSidebar.attach('#rcRoot',{activeItem:'reports-compliance',title:'Reports & Compliance',subtitle:'Content review & enforcement',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4});
 
-  // Future backend path (disabled by default; demo path keeps working):
-  // const remote = await callBackend('/reports-compliance');
-  // if (remote) { plag = remote.plagiarism || []; compl = remote.complaints || []; renderPlag(); renderComp(); /* violations */ return; }
-
-  const d = await SeniorEditorData.getReports();
-  plag = d.plagiarism;
-  compl = d.complaints;
+  let d;
+  try {
+    d = await callBackend('/reports-compliance');
+    if (!d) throw new Error('Empty response');
+  } catch(err) {
+    document.getElementById('plagiarismList').innerHTML = `<div class="case-card" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load reports: ${err.message}</div>`;
+    return;
+  }
+  plag = d.plagiarism || [];
+  compl = d.complaints || [];
   renderPlag();
   renderComp();
-  document.getElementById('violationsList').innerHTML=d.violations.map(v=>`<div class="case-card"><div class="cc-title">${v.story} — ${v.type} <span class="status-pill ${v.status}">${v.status}</span></div><div class="cc-meta"><span>📅 ${v.filed}</span><span>✅ ${v.action}</span></div></div>`).join('');
+  document.getElementById('violationsList').innerHTML=(d.violations||[]).map(v=>`<div class="case-card"><div class="cc-title">${v.story} — ${v.type} <span class="status-pill ${v.status}">${v.status}</span></div><div class="cc-meta"><span>📅 ${v.filed}</span><span>✅ ${v.action}</span></div></div>`).join('');
 }
 
 function renderPlag(){

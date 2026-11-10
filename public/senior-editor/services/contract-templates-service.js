@@ -1,12 +1,9 @@
 /**
- * contract-templates-service.js — Contract Templates page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * contract-templates-service.js — Contract Templates page logic (pure call-and-render). */
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
@@ -232,10 +229,7 @@ function attachShell() {
 function init() {
   attachShell();
   window.selectTemplate = selectTemplate;
-  window.refresh = refresh;
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/contract-templates').then(function (data) { if (data && data.items) { refresh(); } });
-  callBackend('/contract-templates');
+  window.refresh = refresh;  callBackend('/contract-templates');
   bindEvents();
   renderPagination();
   refresh();

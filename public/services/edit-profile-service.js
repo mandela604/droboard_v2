@@ -1,17 +1,14 @@
 /**
  * edit-profile-service.js — Page logic for edit-profile.html (call-and-render)
  * HTML is markup only; all logic lives here and runs on script load.
- * DEMO: uses window.ProfileData (services/profile-data.js) for load/save.
- * Backend-ready: const USE_API=false, API_BASE='/api' reserved for live swap;
- *   when live, replace ProfileData calls with fetch(API_BASE + '/users/...').
+ * Live: uses /api/users/me for profile, /api/genres for genre list.
  */
 (function(){
 'use strict';
 
-const USE_API = false;
 const API_BASE = '/api';
 
-const GENRES_ALL = (window.ProfileData && ProfileData.GENRES_ALL) || [];
+let GENRES_ALL = [];
 let ME = null;
 let PROFILE = null;
 let selectedGenres = new Set();
@@ -40,20 +37,28 @@ function syncCover(){
   const url = document.getElementById('fCover').value;
   document.getElementById('coverPreview').style.backgroundImage = url ? `url('${url}')` : 'none';
 }
-/* Image upload — no URL fields anywhere. FileReader → dataURL into the
-   hidden fAvatar/fCover inputs; saveAll already reads those inputs.
-   Live swap: upload the File to storage, then store the returned URL. */
-function handleImageFile(ev, which){
+/* Image upload — no URL fields anywhere. The File goes straight to the
+   backend (POST /api/uploads/image, Cloudflare Images) and the returned
+   delivery URL lands in the hidden fAvatar/fCover inputs; saveAll already
+   reads those inputs and PATCHes /api/users/me with the real URL. */
+async function handleImageFile(ev, which){
   const f = ev.target.files && ev.target.files[0];
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = function(){
-    if (which === 'avatar'){ document.getElementById('fAvatar').value = r.result; syncAvatar(); }
-    else { document.getElementById('fCover').value = r.result; syncCover(); }
-    toast(which === 'avatar' ? 'Photo updated — save changes' : 'Cover updated — save changes');
-  };
-  r.readAsDataURL(f);
   ev.target.value = '';
+  if (!f) return;
+  toast('Uploading ' + (which === 'avatar' ? 'photo' : 'cover') + '…');
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    const res = await fetch(API_BASE + '/uploads/image', { method: 'POST', credentials: 'include', body: fd });
+    let j = null;
+    try { j = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok || !j || !j.url) throw new Error((j && (j.error || j.message)) || ('Upload failed (' + res.status + ')'));
+    if (which === 'avatar'){ document.getElementById('fAvatar').value = j.url; syncAvatar(); }
+    else { document.getElementById('fCover').value = j.url; syncCover(); }
+    toast(which === 'avatar' ? 'Photo updated — save changes' : 'Cover updated — save changes');
+  } catch (err) {
+    toast('❌ ' + (err.message || 'Upload failed — try again.'));
+  }
 }
 
 function renderGenres(){
@@ -142,7 +147,7 @@ function collectExtras(){
 }
 
 async function saveAll(){
-  if (!PROFILE || !window.ProfileData){ toast('Profile service not loaded'); return; }
+  if (!PROFILE){ toast('Profile not loaded'); return; }
   const name = document.getElementById('fName').value.trim();
   const email = document.getElementById('fEmail').value.trim();
   if (!name){ toast('Display name is required'); return; }
@@ -155,24 +160,49 @@ async function saveAll(){
   try {
     const patch = {
       name,
-      email: email || undefined,
       bio: document.getElementById('fBio').value.trim(),
       location: document.getElementById('fLocation').value.trim(),
       avatar: document.getElementById('fAvatar').value.trim(),
       cover: document.getElementById('fCover').value.trim(),
+      genres: [...selectedGenres],
     };
 
     const extraList = collectExtras();
-    patch.about = {
-      favoriteGenres: [...selectedGenres],
-      extra: extraList,
-    };
+    if (extraList.length) {
+      patch.about = { extra: extraList };
+    }
 
-    let updated = await ProfileData.updateProfile(PROFILE.handle, patch);
-    updated = await ProfileData.updateGenres(PROFILE.handle, [...selectedGenres]);
-    PROFILE = updated || PROFILE;
-    toast('Profile saved');
-    setTimeout(() => { location.href = 'profile.html'; }, 500);
+    const res = await fetch(API_BASE + '/users/me', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    let saved = null;
+    try { saved = await res.json(); } catch (e) { /* empty body */ }
+    if (!res.ok) throw new Error((saved && (saved.error || saved.message)) || ('Save failed (' + res.status + ')'));
+
+    PROFILE = { ...PROFILE, ...patch };
+
+    /* Email changes run through the real request/confirm flow: the server
+       mails a confirmation token, nothing changes until it's confirmed. */
+    const newEmail = email && PROFILE.email && email !== PROFILE.email ? email : null;
+    if (newEmail) {
+      const mailRes = await fetch(API_BASE + '/users/me/email/request', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newEmail }),
+      });
+      let mailBody = null;
+      try { mailBody = await mailRes.json(); } catch (e) { /* empty body */ }
+      if (!mailRes.ok) {
+        throw new Error((mailBody && (mailBody.error || mailBody.message)) || ('Email change failed (' + mailRes.status + ')'));
+      }
+    }
+
+    toast(newEmail ? 'Profile saved — check your new inbox to confirm the email change' : 'Profile saved');
+    setTimeout(() => { location.href = 'profile.html'; }, newEmail ? 1200 : 500);
   } catch (err) {
     toast(err.message || 'Save failed');
     btn.disabled = false;
@@ -187,17 +217,25 @@ async function boot(){
       if(el){ el.focus(); el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.borderColor='var(--acc)'; setTimeout(function(){el.style.borderColor='';},1200); }
     },600);
   }
-  if (!window.ProfileData){
-    document.getElementById('loading').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>ProfileData not found. Include services/profile-data.js';
-    return;
-  }
+  
   try {
-    ME = await ProfileData.getCurrentUserHandle();
-    PROFILE = await ProfileData.getProfile(ME);
+    // Load genres list (favourite-genre picker source)
+    const genresRes = await fetch(API_BASE + '/genres?limit=100', { credentials: 'include' });
+    if (!genresRes.ok) throw new Error('Genres API failed: ' + genresRes.status);
+    const genresData = await genresRes.json();
+    GENRES_ALL = ((genresData.items || genresData.genres || genresData.data) || []).map(g => ({ id: g.id || g.slug, label: g.name }));
+    
+    // Load current user profile
+    const profileRes = await fetch(API_BASE + '/users/me', { credentials: 'include' });
+    if (!profileRes.ok) throw new Error(profileRes.status === 401 ? 'Please sign in to edit your profile.' : ('Profile API failed: ' + profileRes.status));
+    PROFILE = await profileRes.json();
+    PROFILE = PROFILE.user || PROFILE.data || PROFILE;
+    
     if (!PROFILE){
       document.getElementById('loading').innerHTML = '<i class="fa-solid fa-user-slash"></i>Could not load your profile.';
       return;
     }
+    
     fillForm(PROFILE);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('editor').style.display = 'block';

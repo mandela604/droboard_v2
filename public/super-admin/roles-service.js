@@ -31,7 +31,7 @@ function esc(s){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
   });
 }
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/super-admin/roles';
 
 const shell = SuperAdminSidebar.attach('#rolesRoot', {
@@ -191,26 +191,28 @@ function member(name, img){
   return { name:name, email:name.toLowerCase().replace(/ /g,'.') + '@droboard.io', avatar:'https://i.pravatar.cc/60?img=' + img };
 }
 
-let ROLES = [
-  { id:'admin', name:'Super Admin', desc:'Full platform control: users, roles, revenue splits, coin rate, awards, settings and audit.', icon:'fa-crown', color:'gold', system:true,
-    members:[member('Tobi Adenuga', 68)] },
-  { id:'chief_editor', name:'Chief Editor', desc:'Runs an editor pod: quotas, countersigning, moderation calls, policy and editorial strategy.', icon:'fa-crown', color:'red', system:true,
-    members:[member('Adaeze Bello', 21), member('Tobenna Achebe', 68)] },
-  { id:'senior_editor', name:'Senior Editor', desc:'Owns an author pod: review queue, contracts, author care, reports and their own earnings.', icon:'fa-user-tie', color:'blue', system:true,
-    members:SE_NAMES.map(function(n, i){ return member(n, [5,13,48,59,45,15,32,52,28,51,25,60,47,33][i]); }) },
-  { id:'marketing', name:'Marketing', desc:'Owns campaigns, ad creatives and placements, the rate card, audience segments and acquisition spend.', icon:'fa-bullhorn', color:'amber', system:true,
-    members:[member('Tari Benson', 47), member('Chioma Reddy', 5)] },
-  { id:'finance', name:'Finance', desc:'Owns withdrawals, payouts, payment methods, disputes, the coin store and financial reports.', icon:'fa-sack-dollar', color:'purple', system:true,
-    members:[member('Ngozi Falade', 20), member('Rita Chen', 44)] },
-  { id:'support_agent', name:'Support Agent', desc:'Custom role: reader-facing support with a read-only reports queue.', icon:'fa-headset', color:'green', system:false,
-    members:[], perms:{ view_reports:true } },
-];
-
-let activeRoleId = ROLES[0].id;
+let ROLES = [];
+let activeRoleId = null;
 let wizStep = 1;
 let editingRoleId = null;
 let draftPerms = {};
 let draftColor = 'gold';
+
+const API_BASE_ROLES = '/api/super-admin/roles';
+
+async function loadRoles(){
+  try {
+    const data = await fetch(API_BASE_ROLES, { credentials:'include' }).then(r => { if(!r.ok) throw new Error('API error '+r.status); return r.json(); });
+    ROLES = Array.isArray(data) ? data : (data.items || []);
+    if(ROLES.length) activeRoleId = ROLES[0].id;
+    renderStatCards();
+    renderRolesList();
+    renderDetail();
+    renderMembers();
+  } catch(e){
+    document.getElementById('rolesListEl').innerHTML = `<div style="color:var(--red);padding:20px"><i class="fas fa-circle-exclamation"></i> Failed to load roles: ${e.message}</div>`;
+  }
+}
 
 function permsFor(role){
   if (!role.system) return role.perms || {};
@@ -448,8 +450,7 @@ document.getElementById('roleModal').addEventListener('click', function(e){ if (
 document.getElementById('newRoleBtn').addEventListener('click', function(){ openModal(null); });
 
 function init(){
-  renderStatCards();
-  renderRolesList();
+  loadRoles();  renderRolesList();
   renderDetail();
   renderMembers();
 }

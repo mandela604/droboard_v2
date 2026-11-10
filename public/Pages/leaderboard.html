@@ -125,19 +125,18 @@ body{display:flex;justify-content:center}
 <div class="toast" id="toast"></div>
 
 <script src="../services/auth-session.js?v=3"></script>
-<script src="../data/central-demo-data.js"></script>
 <script src="../component/ad-card.js?v=10"></script>
 <script src="../services/ad-service.js?v=7"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
 <script src="../component/ad-slot.js?v=3"></script>
-<script src="../services/store-service.js?v=6"></script>
 <script src="../services/league-service.js"></script>
-<script src="../services/notification-store.js?v=7"></script>
+<script src="../services/notification-store.js?v=8"></script>
 <script src="../component/share-modal.js?v=5"></script>
 <script>
 (function () {
   'use strict';
   var scope = 'weekly';
+  var LAST_BOARD = null;
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function toast(m) {
     var t = document.getElementById('toast');
@@ -145,24 +144,22 @@ body{display:flex;justify-content:center}
     clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2600);
   }
   function av(e, cls) {
-    if (e.avatar) return '<img class="' + cls + '" src="' + e.avatar + '" loading="lazy" alt=""/>';
+    if (e.avatar) return '<img class="' + cls + '" src="' + esc(e.avatar) + '" loading="lazy" alt=""/>';
     return '<div class="' + cls + '-ph">' + esc((e.name || '?')[0].toUpperCase()) + '</div>';
   }
   function medal(i) { return ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1)); }
+  /* Ranks, points and gaps all come from the board payload — the client only
+     numbers what the server ordered. */
   function render() {
-    var b = ReaderLeague.board(scope);
-    if (b.enabled === false) {
-      document.getElementById('heroSub').textContent = 'League paused — back soon';
-      document.getElementById('rows').innerHTML = '<div class="card" style="margin:10px 0 0;text-align:center;font-size:12px;color:var(--tx-muted)">⏸ The league is paused this week. Your activity still counts.</div>';
-      return;
-    }
+    var b = LAST_BOARD;
+    if (!b) return;
     var champ = null;
     try { champ = ReaderLeague.reigning(); } catch (e) {}
-    var isChamp = function (e) { return !!(champ && champ.handle && e.handle === champ.handle); };
+    var isChamp = function (e) { return !!(champ && champ.handle && e.handle === champ.handle && !champ.preview); };
     document.getElementById('seasonSub').textContent = scope === 'weekly'
-      ? 'Week ' + b.season + ' · ' + b.endsIn
+      ? 'Week ' + b.season + ' · ' + (b.endsInLabel || '')
       : 'All-time legends';
-    document.getElementById('seasonPill').textContent = scope === 'weekly' ? b.endsIn : b.season;
+    document.getElementById('seasonPill').textContent = scope === 'weekly' ? (b.endsInLabel || b.season) : b.season;
     var top = b.entries.slice(0, 3), rest = b.entries.slice(3);
     var order = [top[1], top[0], top[2]].filter(Boolean);
     document.getElementById('podium').innerHTML = order.map(function (e) {
@@ -170,28 +167,40 @@ body{display:flex;justify-content:center}
       return '<div class="pod ' + cls + '"' + (isChamp(e) ? ' style="box-shadow:0 0 0 2px var(--gold,#f59e0b)"' : '') + '>' +
         '<div class="pod-medal">' + medal(e.rank - 1) + '</div>' + av(e, 'pod-av') +
         '<div class="pod-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
-        '<div class="pod-pts">' + e.points.toLocaleString() + ' pts</div></div>';
+        '<div class="pod-pts">' + (e.points || 0).toLocaleString() + ' pts</div></div>';
     }).join('');
-    var max = Math.max.apply(null, b.entries.map(function (e) { return e.points; }).concat([1]));
+    var max = Math.max.apply(null, b.entries.map(function (e) { return e.points || 0; }).concat([1]));
     document.getElementById('rows').innerHTML = rest.map(function (e) {
       return '<div class="row' + (e.isMe ? ' me' : '') + '"' + (isChamp(e) ? ' style="border-color:var(--gold,#f59e0b)"' : '') + '>' +
         '<div class="row-rank">' + e.rank + '</div>' + av(e, 'row-av') +
         '<div class="row-body"><div class="row-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
-        '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round(e.points / max * 100)) + '%"></div></div></div>' +
-        '<div class="row-pts"><b>' + e.points.toLocaleString() + '</b><span>' + (e.gap ? '+' + e.gap + ' to pass' : 'leader') + '</span></div></div>';
+        '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round((e.points || 0) / max * 100)) + '%"></div></div></div>' +
+        '<div class="row-pts"><b>' + (e.points || 0).toLocaleString() + '</b><span>' + (e.gap ? '+' + e.gap + ' to pass' : 'leader') + '</span></div></div>';
     }).join('');
     var mine = null;
     b.entries.forEach(function (e) { if (e.isMe) mine = e; });
+    if (!mine) {
+      // Not on the board yet (no tracked activity this season).
+      document.getElementById('myRankLbl').textContent = '#–';
+      document.getElementById('myPtsLbl').textContent = '0 pts';
+      document.getElementById('meRow').innerHTML =
+        '<div class="row-body"><div class="row-name">Not ranked yet this season</div>' +
+        '<div class="row-bar"><div class="row-fill" style="width:4%"></div></div></div>';
+      return;
+    }
     document.getElementById('myRankLbl').textContent = '#' + mine.rank;
-    document.getElementById('myPtsLbl').textContent = mine.points.toLocaleString() + ' pts';
+    document.getElementById('myPtsLbl').textContent = (mine.points || 0).toLocaleString() + ' pts';
     document.getElementById('meRow').innerHTML =
       '<div class="row-rank">#' + mine.rank + '</div>' + av(mine, 'row-av') +
       '<div class="row-body"><div class="row-name">' + esc(mine.name) + ' · you</div>' +
-      '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round(mine.points / max * 100)) + '%"></div></div></div>' +
-      '<div class="row-pts"><b>' + mine.points.toLocaleString() + '</b><span>' + (mine.rank > 1 ? '+' + mine.gap + ' to #' + (mine.rank - 1) : 'leader') + '</span></div>';
+      '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round((mine.points || 0) / max * 100)) + '%"></div></div></div>' +
+      '<div class="row-pts"><b>' + (mine.points || 0).toLocaleString() + '</b><span>' + (mine.rank > 1 ? '+' + mine.gap + ' to #' + (mine.rank - 1) : 'leader') + '</span></div>';
   }
-  function renderStatic() {
-    var W = ReaderLeague.WEIGHTS;
+  /* Weights, action labels and prizes come from the board payload (what
+     Marketing saved) once the first read lands; the built-in defaults only
+     cover the seconds before it. */
+  function renderStatic(cfg) {
+    var W = (cfg && cfg.weights) || ReaderLeague.WEIGHTS;
     var known = { chapter: '📖 Chapter', hour: '⏱ Hour read', reaction: '❤️ Reaction', comment: '💬 Comment', reply: '↩️ Reply', debate: '🗳 Debate vote', win: '🏆 Debate win', streak: '🔥 Streak day' };
     var pretty = function (k) {
       if (known[k]) return known[k];
@@ -207,31 +216,51 @@ body{display:flex;justify-content:center}
     document.getElementById('scoring').innerHTML = Object.keys(W).map(function (k) {
       return '<div class="score"><b>+' + W[k] + '</b> ' + pretty(k) + '</div>';
     }).join('');
+    var prizes = (cfg && cfg.prizes && cfg.prizes.length) ? cfg.prizes : ReaderLeague.PRIZES;
     var medalC = ['#f59e0b', '#a0a0b0', '#a07040'];
-    document.getElementById('prizes').innerHTML = ReaderLeague.PRIZES.map(function (p, i) {
-      var perks = (p.perks && p.perks.length ? p.perks.join(' · ') : p.badge);
-      return '<div class="prize"><div class="prize-ic" style="background:' + medalC[i] + '22;color:' + medalC[i] + '"><i class="fas ' + p.icon + '"></i></div>' +
-        '<div class="prize-body"><div class="prize-t">#' + p.place + ' · ' + perks + '</div>' +
-        '<div class="prize-s">' + p.badge + ' badge on your profile</div></div></div>';
+    document.getElementById('prizes').innerHTML = prizes.map(function (p, i) {
+      var perk = (p.perks && p.perks.length ? p.perks.join(' · ') : p.badge);
+      return '<div class="prize"><div class="prize-ic" style="background:' + (medalC[i] || '#a0a0b0') + '22;color:' + (medalC[i] || '#a0a0b0') + '"><i class="fas ' + esc(p.icon || 'fa-medal') + '"></i></div>' +
+        '<div class="prize-body"><div class="prize-t">#' + p.place + ' · ' + esc(perk) + '</div>' +
+        '<div class="prize-s">' + esc(p.badge || '') + ' badge on your profile</div></div></div>';
     }).join('');
+  }
+  function renderError(msg) {
+    document.getElementById('podium').innerHTML = '';
+    document.getElementById('rows').innerHTML =
+      '<div class="row" style="justify-content:center;text-align:center;font-size:12px;color:var(--tx-muted);display:block">Could not load the league — ' + esc(msg) + '</div>';
+    document.getElementById('seasonSub').textContent = 'Weekly season';
+    document.getElementById('seasonPill').textContent = '—';
+    document.getElementById('myRankLbl').textContent = '#–';
+    document.getElementById('myPtsLbl').textContent = '0 pts';
+    document.getElementById('meRow').innerHTML = '<div class="row-body"><div class="row-name">League unavailable</div></div>';
+  }
+  function renderPaused() {
+    document.getElementById('heroSub').textContent = 'League paused — back soon';
+    document.getElementById('podium').innerHTML = '';
+    document.getElementById('rows').innerHTML = '<div class="row" style="justify-content:center;text-align:center;font-size:12px;color:var(--tx-muted);display:block">⏸ The league is paused this week. Your activity still counts.</div>';
+    document.getElementById('seasonPill').textContent = 'paused';
+  }
+  async function refresh() {
     try {
-      var mc = ReaderLeague.monthlyLeader();
-      if (mc) {
-        document.getElementById('crownBanner').style.display = 'flex';
-        document.getElementById('crownTitle').textContent = '👑 ' + mc.handle + ' leads ' + mc.month;
-        document.getElementById('crownSub').textContent = mc.wins + ' weekly crown' + (mc.wins === 1 ? '' : 's') + ' this month';
-      }
-    } catch (e) {}
+      var b = await ReaderLeague.board(scope);
+      LAST_BOARD = b;
+      if (b.enabled === false) { renderPaused(); return; }
+      render();
+      renderStatic(b);
+    } catch (e) {
+      renderError((e && e.message) ? e.message : 'request failed');
+    }
   }
   document.getElementById('tabWeekly').addEventListener('click', function () {
     scope = 'weekly';
     this.classList.add('on'); document.getElementById('tabAlltime').classList.remove('on');
-    render();
+    refresh();
   });
   document.getElementById('tabAlltime').addEventListener('click', function () {
     scope = 'alltime';
     this.classList.add('on'); document.getElementById('tabWeekly').classList.remove('on');
-    render();
+    refresh();
   });
   document.getElementById('lbShareBtn').addEventListener('click', function () {
     if (typeof window.openShareModal !== 'function') { toast('Share unavailable'); return; }
@@ -243,11 +272,11 @@ body{display:flex;justify-content:center}
       img: '',
     });
   });
-  renderStatic();
-  render();
+  renderStatic(null);
+  refresh();
   try {
     var t = ReaderLeague.pendingToast();
-    if (t) setTimeout(function () { toast(t); render(); }, 800);
+    if (t) setTimeout(function () { toast(t); }, 800);
   } catch (e) {}
 })();
 </script>

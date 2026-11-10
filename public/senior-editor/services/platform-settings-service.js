@@ -1,12 +1,9 @@
 /**
- * platform-settings-service.js — Platform Settings page logic (pure call-and-render).
- * Backend-ready: set USE_API=true and implement endpoints to swap demo data for live API.
- * Demo paths keep working when USE_API=false.
- */
+ * platform-settings-service.js — Platform Settings page logic (pure call-and-render). */
 (function () {
 'use strict';
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
@@ -169,10 +166,7 @@ function attachShell() {
 }
 
 function init() {
-  attachShell();
-  // Backend swap point (demo paths keep working when USE_API=false):
-  // callBackend('/platform-settings').then(function (data) { if (data) { renderSection('general'); } });
-  callBackend('/platform-settings');
+  attachShell();  callBackend('/platform-settings');
   bindEvents();
   // ── Init ───────────────────────────────────────────────
   renderSection('general');

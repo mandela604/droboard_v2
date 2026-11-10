@@ -15,6 +15,7 @@
  *     onReportType:(post, typeId) => { ...POST /api/reports {target, targetId:post.id, reason:typeId}... },
  *     onLess:      (post) => toast('Got it — showing less of this.'),
  *     onFollow:    (post) => toast('Following @' + post.name),
+ *     onUnfollow:  (post) => toast('Unfollowed @' + post.name),
  *     onMute:      (post) => toast('Muted @' + post.name),
  *     onCopyLink:  (post) => { navigator.clipboard.writeText(...); toast('🔗 Link copied'); },
  *   });
@@ -92,6 +93,7 @@
     const who = '@' + ((post && post.name) || 'this user');
     switch (action) {
       case 'Follow': return 'follow ' + who;
+      case 'Unfollow': return 'unfollow ' + who;
       case 'Mute': return 'mute ' + who;
       case 'Less': return 'see less of this';
       case 'Report': return 'report this post';
@@ -151,7 +153,9 @@
       items.push({ action: 'Edit', icon: 'fa-pen', label: 'Edit post' });
       items.push({ action: 'Delete', icon: 'fa-trash', label: 'Delete post', danger: true });
     } else {
-      items.push({ action: 'Follow', icon: 'fa-user-plus', label: 'Follow @' + (post.name || 'user') });
+      items.push(post.following
+        ? { action: 'Unfollow', icon: 'fa-user-check', label: 'Following @' + (post.name || 'user') }
+        : { action: 'Follow', icon: 'fa-user-plus', label: 'Follow @' + (post.name || 'user') });
       if (!post.noMute) {
         items.push({ action: 'Mute', icon: 'fa-volume-xmark', label: 'Mute @' + (post.name || 'user') });
         items.push({ action: 'Less', icon: 'fa-eye-slash', label: 'See less of this' });

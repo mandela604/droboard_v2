@@ -1,13 +1,11 @@
 /**
  * services/notification-center-service.js — Notification Center page logic.
- * Pure call-and-render: notification-center.html only loads this + init().
- * Backend-ready: set USE_API=true and implement endpoints below.
- */
+ * Pure call-and-render: notification-center.html only loads this + init(). */
 (function () {
 'use strict';
 if (window.NotificationCenterService) return;
 
-const USE_API = false;
+const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
