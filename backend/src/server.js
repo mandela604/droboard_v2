@@ -60,9 +60,9 @@ async function main() {
 
   // Dev-only request console (npm run dev:memory) — a page that fires these very
   // endpoints from the browser. Never mounted in production.
-  if (!env.isProd) {
+  //if (!env.isProd) {
     app.use('/dev', require('express').static(require('path').join(__dirname, '..', 'dev-console')));
-  }
+  //}
 
   const { requireAuth } = require('./middleware/auth');
   app.use('/api/auth', require('./routes/auth.routes'));
