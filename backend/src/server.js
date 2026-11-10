@@ -125,8 +125,8 @@ async function main() {
 
 
 
-    app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
-  
+   // app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
+      app.use(require('express').static(require('path').join(process.cwd(), 'public')));
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => res.status(500).json({ error: 'error' }));
