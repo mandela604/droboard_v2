@@ -123,12 +123,10 @@ async function main() {
   app.use('/api/stories', require('./routes/engagement.routes'));
   app.use('/api/awards', require('./routes/awards.routes'));
 
-  // Dev-only: serve the frontend from the same origin as the API, so a browser
-  // test needs one URL and no proxy. Mounted after every /api router so a page
-  // path can never shadow an endpoint, and never mounted in production.
-  if (!env.isProd) {
+
+
     app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
-  }
+  
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => res.status(500).json({ error: 'error' }));
