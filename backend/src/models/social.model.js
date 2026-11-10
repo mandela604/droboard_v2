@@ -17,6 +17,9 @@ const postSchema = new mongoose.Schema({
   likedBy: [{ type: String, ref: 'User' }],
   commentsCount: { type: Number, default: 0 },
   savedBy: [{ type: String, ref: 'User' }],
+  // "See less of this" — the reader's own hide list. A post the reader hid
+  // is dropped from their feed; the post itself stays for everyone else.
+  hiddenBy: [{ type: String, ref: 'User' }],
   reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   sharesCount: { type: Number, default: 0 },
   sharesByChannel: { type: Map, of: Number, default: {} }, // channel -> count
@@ -196,6 +199,14 @@ const statusSchema = new mongoose.Schema({
   }],
   isLive: { type: Boolean, default: false },
   viewed: { type: Boolean, default: false },
+  // Linked story chip on the slide ("Read ›"). Optional; only the id is
+  // required to render it, cover is a validated delivery URL.
+  storyRef: {
+    id: { type: String, default: '' },
+    title: { type: String, default: '' },
+    author: { type: String, default: '' },
+    cover: { type: String, default: '' },
+  },
   // no index here: the TTL index below is the only one this field gets
   expiresAt: { type: Date, required: true },
 }, { timestamps: true });
@@ -220,6 +231,7 @@ const messageSchema = new mongoose.Schema({
   image: { type: String, default: '' },
   edited: { type: Boolean, default: false },
   read: { type: Boolean, default: false },
+  replyTo: { type: String, ref: 'Message', default: null },
 }, { timestamps: true });
 messageSchema.index({ conversationId: 1, createdAt: 1 });
 

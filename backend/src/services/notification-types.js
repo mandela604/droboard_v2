@@ -51,6 +51,8 @@ const TYPES = {
   review_result: { cat: 'system', kind: 'row', audience: 'author', push: true },
   book_change_result: { cat: 'system', kind: 'row', audience: 'author', push: true },
   contract_update: { cat: 'system', kind: 'row', audience: 'author', push: true },
+  completion_result: { cat: 'system', kind: 'row', audience: 'author', push: true },
+  book_flagged: { cat: 'system', kind: 'row', audience: 'author', push: true },
   verification: { cat: 'system', kind: 'row', audience: 'author', push: true },
   security: { cat: 'system', kind: 'row', audience: 'both', push: true },
   announcement: { cat: 'system', kind: 'row', audience: 'both', push: false },
@@ -77,4 +79,49 @@ const PAYLOAD_KEYS = [
   'iconName', 'tier', 'tierClass', 'color', 'count', 'linkLabel', 'time', 'typeLabel', 'key',
 ];
 
-module.exports = { TYPES, CATS, PAYLOAD_KEYS };
+// Default action label for a row's link chip. The renderer only draws the chip
+// when the label exists, so a server-raised row (a chapter drop, a comment)
+// would otherwise land without the "Read now" / "Reply" affordance. An
+// explicit linkLabel in the payload always wins.
+const LINK_LABELS = {
+  new_chapter: 'Read now',
+  chapter_live: 'Read it',
+  schedule_failed: 'Fix schedule',
+  like: 'View',
+  comment: 'Reply',
+  reply: 'View thread',
+  mention: 'See mention',
+  follow: 'See followers',
+  share: 'View post',
+  save: 'See saves',
+  repost: 'View post',
+  debate_reply: 'Answer them',
+  debate_verdict: 'Open debate',
+  poll_closed: 'See results',
+  prediction_settled: 'Open prediction',
+  direct_message: 'Reply',
+  tip: 'View tip',
+  payout: 'Transaction history',
+  coins: 'Open wallet',
+  trending_enter: 'See trending board',
+  top_ten: 'See trending board',
+  editor_pick: 'Open shelf',
+  featured: 'See placement',
+  league_finish: 'Open leaderboard',
+  reading_streak: 'Keep it going',
+  achievement: 'See my profile',
+  status_24h: 'See who viewed',
+  weekly_stats: 'Full breakdown',
+  weekly_earnings: 'Go to earnings',
+  reader_weekly: 'Open leaderboard',
+  review_result: 'Read result',
+  book_change_result: 'Track requests',
+  contract_update: 'Track application',
+  completion_result: 'See completion',
+  book_flagged: 'Review book',
+  verification: 'View verification',
+  security: 'Account security',
+  announcement: 'Read more',
+};
+
+module.exports = { TYPES, CATS, PAYLOAD_KEYS, LINK_LABELS };

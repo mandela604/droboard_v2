@@ -61,7 +61,7 @@ function tokensFor(user, mfaAt) {
 }
 function adminNeedsMfaSetup(user) {
   const roles = user.roles || [];
-  const privileged = roles.some(r => ['admin', 'finance', 'chief_editor', 'marketing'].includes(r));
+  const privileged = roles.some(r => ['admin', 'finance', 'chief_editor', 'senior_editor', 'marketing'].includes(r));
   return privileged && !user.mfaEnabled;
 }
 
@@ -202,7 +202,8 @@ async function login({ emailOrUsername, password, ip }) {
   }
   const refresh = await issueFamily(user.id, { ip });
   const out = Object.assign({ mfaRequired: false, refresh }, tokensFor(user, null));
-  out.mfaSetupRequired = adminNeedsMfaSetup(user);
+  // DISABLED until UI ready: out.mfaSetupRequired = adminNeedsMfaSetup(user);
+  out.mfaSetupRequired = false;
   // Frontend compat: legacy clients read token/user at top level (same as Google).
   out.token = out.access;
   out.user = {
@@ -448,7 +449,8 @@ async function issueSessionFor(user, { ip, ua }) {
   await full.save();
   const refresh = await issueFamily(full._id, { ip, ua });
   const out = Object.assign({ mfaRequired: false, refresh }, tokensFor(full, null));
-  out.mfaSetupRequired = adminNeedsMfaSetup(full);
+  // DISABLED until UI ready: out.mfaSetupRequired = adminNeedsMfaSetup(full);
+  out.mfaSetupRequired = false;
   return out;
 }
 

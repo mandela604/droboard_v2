@@ -1,9 +1,10 @@
 'use strict';
 // Status creation: multipart/form-data {file, quote?, caption?, isLive?, ttlHours?}
 // (photo uploaded server-side → Cloudflare URL becomes the bg) OR JSON
-// {bg: <uploaded media URL>, quote?, caption?, ttlHours?} for clients that
-// already uploaded via POST /api/uploads/image. bg URLs must pass
-// validateMediaUrl (Cloudflare Images delivery only) — no pasted hotlinks.
+// {bg: <uploaded media URL>, quote?, caption?, ttlHours?, storyRef?} for clients
+// that already uploaded via POST /api/uploads/image. bg URLs must pass
+// validateMediaUrl (Cloudflare Images delivery only) or match a composer
+// gradient preset — no pasted hotlinks.
 const multer = require('multer');
 const { z } = require('zod');
 const ctrl = require('../controllers/statuses.controller');
@@ -21,6 +22,12 @@ const statusFormBody = z.object({
   caption: z.string().max(500).optional(),
   isLive: z.coerce.boolean().optional(),
   ttlHours: z.coerce.number().int().min(1).max(72).optional(),
+  storyRef: z.object({
+    id: z.string().min(1).max(120),
+    title: z.string().max(200).optional(),
+    author: z.string().max(120).optional(),
+    cover: z.string().max(2800).optional(),
+  }).strict().optional(),
 }).strict();
 
 const MIME_OK = { 'image/png': true, 'image/jpeg': true, 'image/webp': true, 'image/gif': true };

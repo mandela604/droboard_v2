@@ -360,6 +360,11 @@ async function libraryRemove({ userId, storyId, list }) {
   const r = await LibraryItem.deleteMany(filter);
   return { ok: true, removed: r.deletedCount || 0 };
 }
+// Library page "Clear history" — the reader drops every history row at once.
+async function libraryClearHistory({ userId }) {
+  const r = await LibraryItem.deleteMany({ userId: String(userId), list: 'history' });
+  return { ok: true, cleared: r.deletedCount || 0 };
+}
 async function libraryMove({ userId, storyId, from, to }) {
   if (badList(from) || badList(to)) { const e = new Error('bad_list'); e.status = 400; throw e; }
   await LibraryItem.deleteMany({ userId: String(userId), storyId: String(storyId), list: from });
@@ -373,6 +378,6 @@ async function libraryMove({ userId, storyId, from, to }) {
 
 module.exports = {
   home, discoverData, discoverStories, libraryStats, libraryList,
-  libraryAdd, libraryRemove, libraryMove,
+  libraryAdd, libraryRemove, libraryMove, libraryClearHistory,
   storyDetail, cardShape, topBooks, topWriters,
 };

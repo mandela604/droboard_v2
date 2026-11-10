@@ -1,17 +1,17 @@
-mongod up: mongodb://127.0.0.1:51155/dro_notif
+mongod up: mongodb://127.0.0.1:55944/dro_notif
 PASS  GET /notifications -> 200  ::  status=200
 PASS  list returns {items,total,unreadCount,page,limit}  ::  {"total":3,"unreadCount":3}
 PASS  list returns the three seeded rows  ::  n=3
 PASS  list total matches items  ::  total=3
 PASS  list unreadCount is 3 before any read  ::  unreadCount=3
 PASS  bob sees an empty inbox (recipientId scoping)  ::  n=0
-PASS  GET /unread-count -> {count:3}  ::  {"count":3}
+PASS  GET /unread-count -> {count:3}  ::  {"count":3,"chats":0}
 PASS  list rows expose the frontend row fields (id,type,cat,audience,at,link,unread)  ::  present=["id","type","cat","kind","audience","pushEligible","unread","at","title","desc","link","key","icon"]
-PASS  list row id is a stable string the client can PATCH  ::  id=000001a1-ac82-797c-910b-11d367073831
+PASS  list row id is a stable string the client can PATCH  ::  id=000001a1-c3e2-75dd-a9ee-7e675cd55544
 PASS  list row carries `cat` for the filter chips  ::  cat=revenue
 PASS  list row carries `audience` for the reader/author role tabs  ::  audience=author
-PASS  list row carries `at` as a numeric timestamp for day-grouping  ::  at=1793895569629 (number)
-PASS  list row link is an object with href (page reads n.link.href)  ::  link={"href":"tx"}
+PASS  list row carries `at` as a numeric timestamp for day-grouping  ::  at=1794287747928 (number)
+PASS  list row link is an object with href (page reads n.link.href)  ::  link={"href":"tx","label":"Transaction history"}
 PASS  PATCH /:id {read:true} -> 200  ::  status=200
 PASS  PATCH read cleared unread on that row  ::  unread=false
 PASS  PATCH read dropped unreadCount to 2  ::  unreadCount=2
@@ -40,7 +40,22 @@ PASS  milestone row carries cover  ::  cover=https://x/cover.jpg
 PASS  milestone row carries metrics array  ::  [{"label":"Rank","value":"#7"},{"label":"24h reads","value":"48.2K"}]
 PASS  milestone row carries chips  ::  ["+15 ranks"]
 PASS  milestone row link is {href,label}  ::  {"href":"discover.html","label":"See trending board"}
-PASS  milestone row exposes a numeric at for day-grouping  ::  at=1793895572606
+PASS  milestone row exposes a numeric at for day-grouping  ::  at=1794287749797
 PASS  duplicate key is deduped (still one row)  ::  n=1
+PASS  POST / with a server-owned type -> 400 type_not_allowed  ::  status=400 {"error":"type_not_allowed"}
+PASS  POST / without title and desc -> 400 empty_notification  ::  status=400 {"error":"empty_notification"}
+PASS  POST / with an unknown body field -> 400 invalid_input  ::  status=400 {"error":"invalid_input","details":{"formErrors":[],"fieldErrors":{"body":["Unrecognized key(s) in object: 'bogus'"]}}}
+PASS  POST / with a hostile icon colour -> 400 invalid_input  ::  status=400 {"error":"invalid_input","details":{"formErrors":[],"fieldErrors":{"body":["Invalid"]}}}
+PASS  POST / without auth -> 401  ::  status=401
+PASS  POST / raises a row -> 2xx with an id  ::  status=200 {"id":"000001a1-c3e2-78cf-95c0-d46c7f2a5f2c","type":"poll_closed","cat":"stats","kind":"digest","audience":"both","pushEligible":false,"unread":true,"at":1794287750945,"title":"Your poll closed with 1
+PASS  POST / row is shaped for the renderer (cat/kind/audience/at/unread)  ::  {"cat":"stats","kind":"digest","audience":"both","unread":true,"at":1794287750945}
+PASS  POST / row keeps metrics + chips + medal  ::  {"metrics":[{"label":"Votes","value":"1,204"},{"label":"Tragic","value":"68%"}],"chips":["Settled"],"medal":"rank"}
+PASS  POST / row keeps the link label without an href  ::  {"href":"","label":"See results"}
+PASS  POST / row keeps the thumb next to the link  ::  https://x/thumb.jpg
+PASS  POST / with the same key -> the same row, no duplicate  ::  status=200 id=000001a1-c3e2-78cf-95c0-d46c7f2a5f2c
+PASS  POST / left exactly one row in the inbox  ::  n=1
+PASS  POST / row counts toward the unread badge  ::  {"count":1,"chats":0}
+PASS  POST / row can be deleted like any other  ::  status=200 n=0
+PASS  another account cannot see the raised row  ::  n=0
 
-===== 43/43 notification assertions passed =====
+===== 58/58 notification assertions passed =====

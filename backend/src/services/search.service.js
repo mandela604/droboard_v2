@@ -259,25 +259,48 @@ async function poolDebates(query, lim, type) {
   });
 }
 
+// Browse "Hot Debates" — the same shape as the search pool, but the newest
+// debates when there is no query yet.
+async function debatesSection(lim) {
+  const rows = await Post.find({ type: 'debate' }).sort({ createdAt: -1 }).limit(lim)
+    .select('id authorId text debateData likesCount commentsCount createdAt').lean();
+  const authors = await loadAuthors(rows.map(r => r.authorId));
+  return rows.map(p => {
+    const d = p.debateData || {};
+    const a = authors[String(p.authorId)] || {};
+    const question = d.motion || d.question || String(p.text || '').slice(0, 120);
+    return {
+      type: 'debate', id: p.id,
+      name: a.handle || a.name || '', avatar: a.photo || '',
+      time: p.createdAt ? new Date(p.createdAt).toISOString() : '',
+      question, motion: question, prompt: d.prompt || '',
+      forText: d.forText || 'For', againstText: d.againstText || 'Against',
+      forV: d.forV || 0, agV: d.agV || 0, userVote: null,
+      likes: p.likesCount || 0, comments: p.commentsCount || 0,
+      keywords: keywordList(question, a.name, a.handle, 'debate'),
+    };
+  });
+}
+
 async function index({ q, type, limit, viewerId } = {}) {
   const query = String(q || '').trim().slice(0, 80);
   const lim = Math.min(20, Math.max(1, parseInt(limit, 10) || 8));
 
   const sections = [
     trendingSection(lim), categoriesSection(8), featuredSection(6),
-    writersSection(8, viewerId), boardsSection(12),
+    writersSection(8, viewerId), boardsSection(12), debatesSection(6),
   ];
   const pools = query
     ? [poolStories(query, lim, type), poolWriters(query, lim, type, viewerId),
        poolBoards(query, lim, type), poolDebates(query, lim, type)]
     : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([]), Promise.resolve([])];
 
-  const [trending, categories, featured, writers, boards, st, wr, bd, dv] =
+  const [trending, categories, featured, writers, boards, hotDebates, st, wr, bd, dv] =
     await Promise.all(sections.concat(pools));
 
   return {
     trending, categories, featured, writers,
-    boards, debates: dv,
+    boards, debates: hotDebates,
     poolStories: st, poolWriters: wr, poolBoards: bd, poolDebates: dv,
   };
 }

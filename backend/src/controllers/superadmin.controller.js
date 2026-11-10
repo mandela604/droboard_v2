@@ -76,11 +76,14 @@ module.exports = {
   notificationBroadcast: async (req, res) => {
     try {
       const emitter = require('../services/notification-emitter');
+      const { TYPES } = require('../services/notification-types');
       const ids = req.valid.body.recipientIds || [];
       if (!Array.isArray(ids) || ids.length === 0) throw new Error('recipientIds required');
+      const type = req.valid.body.type || 'announcement';
+      if (!TYPES[type]) { const e = new Error('unknown_notification_type'); e.status = 400; throw e; }
       const result = await emitter.broadcast(ids, {
         actorId: String(req.user?.id || 'system'),
-        type: req.valid.body.type || 'announcement',
+        type,
         title: req.valid.body.title,
         desc: req.valid.body.desc || '',
         link: req.valid.body.link || '',

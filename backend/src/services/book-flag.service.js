@@ -77,7 +77,7 @@ async function flagBook(id, body, opts) {
 
   try {
     const { emit } = require('./notification-emitter');
-    await emit({ recipientId: b.authorId, type: 'moderation', title: 'Book flagged', desc: 'Your book "' + b.title + '" was flagged for review.' });
+    await emit({ recipientId: b.authorId, type: 'book_flagged', title: 'Book flagged', desc: 'Your book "' + b.title + '" was flagged for review.' });
   } catch (e) { /* the flag stands even if the notification does not send */ }
 
   return { id: b.id, status: b.status, flagReason: b.flagReason, reportId: report.id };

@@ -50,6 +50,8 @@ router.get('/library/continue', requireAuth, generalLimiter, ctrl.libraryList('c
 router.get('/library/items', requireAuth, generalLimiter, ctrl.libraryList('library'));
 router.get('/library/saved', requireAuth, generalLimiter, ctrl.libraryList('saved'));
 router.get('/library/history', requireAuth, generalLimiter, ctrl.libraryList('history'));
+// Library page "Clear history" — one write empties the reader's history list.
+router.delete('/library/history', requireAuth, writeLimiter, audit('library.clearHistory'), ctrl.libraryClearHistory);
 
 // library writes (library page add/remove/move)
 const listEnum = z.enum(['library', 'saved', 'history', 'continue', 'later']);

@@ -1,6 +1,6 @@
 'use strict';
 const { Notification } = require('../models/social.model');
-const { TYPES, CATS, PAYLOAD_KEYS } = require('./notification-types');
+const { TYPES, CATS, PAYLOAD_KEYS, LINK_LABELS } = require('./notification-types');
 
 // Project a stored row into exactly the object the frontend renderer
 // (component/notification-item.js) and store (services/notification-store.js)
@@ -24,7 +24,8 @@ function shape(doc) {
     desc: doc.desc || '',
     actorId: doc.actorId || undefined,
     thumb: doc.thumb || p.thumb || undefined,
-    link: doc.link ? { href: doc.link, label: p.linkLabel || undefined } : (p.link || null),
+    link: doc.link ? { href: doc.link, label: p.linkLabel || LINK_LABELS[doc.type] || undefined }
+      : (p.link || (p.linkLabel || LINK_LABELS[doc.type] ? { href: '', label: p.linkLabel || LINK_LABELS[doc.type] } : null)),
   };
   if (doc.key != null) out.key = doc.key;
   PAYLOAD_KEYS.forEach(k => { if (p[k] !== undefined) out[k] = p[k]; });
@@ -118,9 +119,10 @@ async function notify({ recipientId, actorId, type, title, desc, link, key, audi
   if (color) payload.color = color;
   if (count != null) payload.count = count;
   if (linkLabel) payload.linkLabel = linkLabel;
-  if (thumb && !link) payload.thumb = thumb;
+  if (thumb) payload.thumb = thumb;
   const n = await Notification.create({
     recipientId, actorId, type, title, desc: desc || '', link: link || '',
+    thumb: thumb || '',
     key: key || undefined,
     cat: t.cat, kind: t.kind, audience: audience || t.audience,
     payload,
@@ -132,4 +134,48 @@ async function notify({ recipientId, actorId, type, title, desc, link, key, audi
   return shape(n.toJSON());
 }
 
-module.exports = { list, unreadCount, markRead, patchOne, saveSettings, getSettings, notify };
+// Types a client may legitimately raise about ITSELF — deadlines it can
+// detect (a poll closed, a debate settled), milestones of the user's own
+// catalogue, and the account's own security events. Activity rows
+// (like/comment/reply/mention/follow/direct_message) are raised by the server
+// when the OTHER party acts, so a client can never fake them.
+const SELF_TYPES = new Set([
+  'debate_verdict', 'poll_closed', 'prediction_settled', 'status_24h', 'reading_streak',
+  'league_finish', 'reader_weekly', 'weekly_stats', 'weekly_earnings',
+  'trending_enter', 'top_ten', 'editor_pick', 'featured',
+  'new_chapter', 'chapter_live', 'schedule_failed',
+  'payout', 'tip', 'coins', 'save', 'share', 'repost',
+  'achievement', 'security', 'announcement',
+  'contract_update', 'book_change_result', 'review_result', 'verification',
+]);
+const URL_OK = /^https?:\/\//i;
+function _img(v) {
+  const s = String(v || '').trim();
+  return URL_OK.test(s) ? s.slice(0, 2800) : '';
+}
+
+// POST /api/notifications — the signed-in user raises a notification about
+// their own account. The recipient is always the caller.
+async function createSelf({ userId, body }) {
+  const b = body || {};
+  if (!SELF_TYPES.has(b.type)) { const e = new Error('type_not_allowed'); e.status = 400; throw e; }
+  if (!b.title && !b.desc) { const e = new Error('empty_notification'); e.status = 400; throw e; }
+  const t = TYPES[b.type] || {};
+  return notify({
+    recipientId: userId,
+    type: b.type,
+    title: String(b.title || '').slice(0, 300),
+    desc: String(b.desc || '').slice(0, 600),
+    link: String(b.link || '').slice(0, 400),
+    key: b.key ? String(b.key).slice(0, 160) : undefined,
+    audience: b.audience || t.audience,
+    metrics: b.metrics, chips: b.chips,
+    badge: b.badge, medal: b.medal, icon: b.icon,
+    cover: _img(b.cover), avatar: _img(b.avatar), thumb: _img(b.thumb),
+    rank: b.rank, rankNote: b.rankNote,
+    iconName: b.iconName, tier: b.tier, tierClass: b.tierClass, color: b.color,
+    count: b.count, linkLabel: b.linkLabel,
+  });
+}
+
+module.exports = { list, unreadCount, markRead, patchOne, saveSettings, getSettings, notify, createSelf };

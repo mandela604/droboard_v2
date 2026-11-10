@@ -1,21 +1,4 @@
-mongod up: mongodb://127.0.0.1:59383/dro_author_dash
-PASS  GET /api/author/dashboard (no token) -> 401  ::  status=401
-PASS  GET /api/author/dashboard (author) -> 200  ::  status=200
-PASS  response has stats{} + growth{}  ::  ["stats","growth"]
-PASS  stats carries every card field  ::  {"books":2,"contracts":0,"reads":1500,"followers":120,"earnings":8642,"completionRate":50,"pendingReviews":1}
-PASS  growth has reads/followers/earnings/completionRate keys  ::  {"reads":50,"followers":9.1,"earnings":100,"completionRate":null}
-PASS  stats.books = 2 (two authored books)  ::  2
-PASS  stats.reads = 1500 (1000 + 500 across books)  ::  1500
-PASS  stats.followers = 120 (User.followerCount)  ::  120
-PASS  stats.earnings = 8642 (Wallet.lifetimeEarned)  ::  8642
-PASS  stats.completionRate = 50 (1 published of 2)  ::  50
-PASS  stats.pendingReviews = 1 (pending ChapterReviewRequest)  ::  1
-PASS  growth.reads = 50 (300 last30 vs 200 prior)  ::  50
-PASS  growth.followers = 9.1 (120 vs base 110)  ::  9.1
-PASS  growth.earnings = 100 (1000 last30 vs 500 prior)  ::  100
-PASS  growth.completionRate is null (no historical ratio to diff)  ::  null
-PASS  empty author -> 200 with stats+growth  ::  status=200
-PASS  empty author stats are all zero  ::  {"books":0,"contracts":0,"reads":0,"followers":0,"earnings":0,"completionRate":0,"pendingReviews":0}
-PASS  empty author growth is all null (never fabricated)  ::  {"reads":null,"followers":null,"earnings":null,"completionRate":null}
-
-===== 18/18 author-dashboard assertions passed =====
+FATAL Error: Instance failed to start within 10000ms
+    at Timeout.<anonymous> (C:\Users\USER\OneDrive\Desktop\Droboard-V2\backend\node_modules\mongodb-memory-server-core\lib\util\MongoInstance.js:174:29)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)

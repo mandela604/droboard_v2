@@ -22,6 +22,7 @@ const { VipApplication } = require('../models/application.model');
 const { PlatformSetting } = require('../models/platform.model');
 const { User } = require('../models/user.model');
 const senior = require('./senior.service');
+const { TYPES } = require('./notification-types');
 
 const paged = senior.paged;
 const pg = senior.pg;
@@ -860,10 +861,11 @@ async function notifications(user, query) {
 }
 
 async function createNotification(data, user) {
+  const type = TYPES[data.type] ? data.type : 'announcement';
   const doc = await Notification.create({
     recipientId: String(user.id),
     actorId: String(user.id),
-    type: data.type || 'system',
+    type,
     title: data.title || 'Notification',
     desc: data.desc || data.content || '',
     link: data.link || '',

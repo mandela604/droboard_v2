@@ -12,7 +12,7 @@ PASS  own book passes with zero chapters read
 PASS  save-sheet create with an unread story -> 403 + numbers
 PASS  adding an unread story to an EXISTING collection -> 403
 PASS  quick-save "library" stays UNGATED on an unread book
-PASS  quick-save "fav" stays UNGATED on an unread book
+PASS  quick-save "save" stays UNGATED on an unread book
 PASS  quick-save "later" stays UNGATED on an unread book
 PASS  eligible-stories lists the read book as eligible
 PASS  a saved-but-unread book is offered with eligible:false + the real counts

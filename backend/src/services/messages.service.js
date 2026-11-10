@@ -119,7 +119,7 @@ async function loadConv(id, userId) {
 
 function toMessage(m, byId, userId) {
   const s = byId[String(m.senderId)] || {};
-  return {
+  const out = {
     id: m.id, conversationId: m.conversationId,
     text: m.text || '', image: m.image || '',
     edited: !!m.edited, read: !!m.read,
@@ -127,6 +127,8 @@ function toMessage(m, byId, userId) {
     isMine: String(m.senderId) === String(userId),
     sender: peerShape(s), createdAt: m.createdAt,
   };
+  if (m.replyTo) out.replyTo = m.replyTo;
+  return out;
 }
 
 async function listMessages({ userId, convId, page, limit }) {
@@ -137,8 +139,28 @@ async function listMessages({ userId, convId, page, limit }) {
       .skip((pg - 1) * lim).limit(lim).lean(),
     Message.countDocuments({ conversationId: conv.id }),
   ]);
+  // Load all quoted messages referenced in this page
+  const quotedIds = [...new Set(items.map(m => m.replyTo).filter(Boolean))];
+  let quotedMsgs = {};
+  if (quotedIds.length) {
+    const quoted = await Message.find({ id: { $in: quotedIds } }).lean();
+    quoted.forEach(q => { quotedMsgs[q.id] = q; });
+  }
   const byId = await loadUsers([userId, peerOf(conv, userId)]);
-  return { items: items.map(m => toMessage(m, byId, userId)), total, page: pg, limit: lim };
+  return {
+    items: items.map(m => {
+      const msg = toMessage(m, byId, userId);
+      if (m.replyTo && quotedMsgs[m.replyTo]) {
+        const q = quotedMsgs[m.replyTo];
+        msg.quoted = {
+          id: q.id, text: q.text, image: q.image,
+          sender: q.senderId === String(userId) ? 'You' : (byId[String(q.senderId)] && byId[String(q.senderId)].fullName) || 'User',
+        };
+      }
+      return msg;
+    }),
+    total, page: pg, limit: lim
+  };
 }
 
 // One unread notification per conversation, not one per message: the count
@@ -159,7 +181,7 @@ async function notifyPeer({ peerId, sender, conv, preview }) {
   });
 }
 
-async function sendMessage({ userId, convId, text, image }) {
+async function sendMessage({ userId, convId, text, image, replyTo }) {
   const conv = await loadConv(convId, userId);
   const me = await User.findOne({ id: String(userId) }).select('id username fullName avatar emailVerified roles primaryRole').lean();
   const msg = await Message.create({
@@ -167,6 +189,7 @@ async function sendMessage({ userId, convId, text, image }) {
     fromRole: fromRoleFor(me),
     text: String(text || '').slice(0, 4000),
     image: validateMediaUrl(image, 'image'),
+    replyTo: replyTo || null,
   });
   const peers = (conv.participants || []).map(String).filter(p => p !== String(userId));
   conv.preview = previewLabel(msg.toJSON());

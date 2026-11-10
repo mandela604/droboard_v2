@@ -162,7 +162,7 @@ async function main() {
   check('adding an unread story to an EXISTING collection -> 403',
     r.status === 403, 'status=' + r.status + ' body=' + JSON.stringify(r.json));
   r = await call('POST', '/api/posts', {}, readerToken); // unrelated call, keeps limiter warm
-  for (const key of ['library', 'fav', 'later']) {
+  for (const key of ['library', 'save', 'later']) {
     const q = await call('POST', '/api/saves/quick', { storyId: String(fresh.id), key, value: true }, readerToken);
     check('quick-save "' + key + '" stays UNGATED on an unread book', q.status === 200,
       'status=' + q.status + ' body=' + JSON.stringify(q.json).slice(0, 90));

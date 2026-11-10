@@ -10,7 +10,7 @@ const router = Router();
 
 const id = z.string().min(1).max(120);
 const storyId = z.string().min(1).max(40);
-const quickKey = z.enum(['library', 'fav', 'later']);
+const quickKey = z.enum(['library', 'save', 'later']);
 
 router.get('/state', requireAuth,
   validate(z.object({ query: z.object({ storyId }).strict() })), ctrl.state);

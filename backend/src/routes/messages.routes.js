@@ -29,6 +29,7 @@ router.post('/conversations/:id/messages', requireAuth, writeLimiter, audit('mes
     body: z.object({
       text: z.string().max(4000).optional(),
       image: z.string().max(2800000).optional(),
+      replyTo: z.string().min(1).max(120).optional(),
     }).strict().refine(v => (v.text && v.text.trim()) || v.image, { message: 'empty_message' }),
   })), ctrl.send);
 

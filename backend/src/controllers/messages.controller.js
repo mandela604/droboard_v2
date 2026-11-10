@@ -26,6 +26,7 @@ async function send(req, res) {
     const out = await svc.sendMessage({
       userId: req.user.id, convId: req.valid.params.id,
       text: req.valid.body.text, image: req.valid.body.image,
+      replyTo: req.valid.body.replyTo,
     });
     res.status(201);
     return out;

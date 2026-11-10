@@ -1,6 +1,7 @@
 'use strict';
-// Throwaway harness: exercises the LIVE frontend path (USE_API forced true)
-// against the exact response shapes the backend smoke run produced.
+// Throwaway harness: exercises the LIVE frontend path (status-service and
+// people-service are unconditionally live) against the exact response shapes
+// the backend smoke run produced.
 const fs = require('fs');
 const path = require('path');
 const ROOT = require('path').join(__dirname, '..', '..', 'public');
@@ -35,6 +36,7 @@ global.fetch = function (url, opts) {
 const listeners = {};
 global.document = {
   addEventListener: function (ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
+  dispatchEvent: function () { return true; },
   getElementById: function () { return null; },
   querySelectorAll: function () { return []; },
   createElement: function () { return { style: {}, appendChild() {}, setAttribute() {} }; },
@@ -42,6 +44,7 @@ global.document = {
   body: { appendChild() {} },
   documentElement: { setAttribute() {}, style: {} },
 };
+global.CustomEvent = function (type, opts) { return { type: type, detail: opts && opts.detail }; };
 global.localStorage = {
   _d: {},
   getItem(k) { return Object.prototype.hasOwnProperty.call(this._d, k) ? this._d[k] : null; },
@@ -72,8 +75,8 @@ function check(name, pass, detail) {
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? '  ::  ' + String(detail).slice(0, 220) : ''}`);
 }
 
-load('services/status-service.js', true);
-load('services/people-service.js', true);
+load('services/status-service.js');
+load('services/people-service.js');
 
 // StatusStore stand-in: the client owns viewed state, keyed like _hKey().
 const seen = {};
@@ -135,10 +138,10 @@ window.StatusStore = {
   check('an answered handle is served from cache with no second request', calls.length === 0, JSON.stringify(calls));
 
   const fresh = new Function('window', 'document', 'localStorage', 'fetch', 'location',
-    fs.readFileSync(path.join(ROOT, 'services/people-service.js'), 'utf8').replace('const USE_API = false;', 'const USE_API = true;'));
+    fs.readFileSync(path.join(ROOT, 'services/people-service.js'), 'utf8'));
   fresh(global.window, global.document, global.localStorage, global.fetch, global.location);
   const cold = window.DroboardPeople;
-  check('a page with no Discover visit starts from the demo pool', cold.writersFor('romance', 3).every(w => String(w.handle).length > 0), JSON.stringify(cold.writersFor('romance', 3).map(w => w.handle)));
+  check('a page with no Discover visit starts empty — never a demo pool', cold.writersFor('romance', 3).length === 0, JSON.stringify(cold.writersFor('romance', 3)));
   await new Promise(r => setTimeout(r, 30));
   check('writersFor triggers the one-shot directory fetch on a cold page',
     calls.some(u => u.indexOf('/feed/discover') !== -1), JSON.stringify(calls));

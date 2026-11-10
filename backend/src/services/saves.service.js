@@ -12,12 +12,12 @@ const { assertStoryEligible } = require('./collections.service');
 
 function err(status, message) { return Object.assign(new Error(message), { status }); }
 
-const QUICK_KEY_TO_LIST = { library: 'library', fav: 'saved', later: 'later' };
+const QUICK_KEY_TO_LIST = { library: 'library', save: 'saved', later: 'later' };
 
 async function quickState(userId, storyId) {
   const rows = await LibraryItem.find({ userId: String(userId), storyId: String(storyId) }).lean();
   const lists = new Set(rows.map(r => r.list));
-  return { library: lists.has('library'), fav: lists.has('saved'), later: lists.has('later') };
+  return { library: lists.has('library'), save: lists.has('saved'), later: lists.has('later') };
 }
 
 async function userCollections(userId, storyId) {

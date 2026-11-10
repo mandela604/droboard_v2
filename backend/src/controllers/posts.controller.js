@@ -18,6 +18,18 @@ async function saved(req, res) {
   return base.wrap(res, async () => posts.savedPosts({ userId: req.user.id, page: req.valid.query.page, limit: req.valid.query.limit }));
 }
 
+// Library page "Clear saved" — drops every saved post for this reader.
+async function clearSaved(req, res) {
+  return base.wrap(res, async () => posts.clearSaved({ userId: req.user.id }));
+}
+
+async function hide(req, res) {
+  return base.wrap(res, async () => {
+    const post = await posts.loadOr404(req.valid.params.id);
+    return posts.toggleHide({ post, userId: req.user.id });
+  });
+}
+
 async function get(req, res) {
   return base.wrap(res, async () => posts.getPost(req.valid.params.id, req.user && req.user.id));
 }
@@ -108,4 +120,4 @@ async function share(req, res) {
   });
 }
 
-module.exports = { create, list, saved, get, update, remove, like, save, pollVote, pollRetract, debateVote, debateRetract, react, unreact, reactions, share };
+module.exports = { create, list, saved, clearSaved, hide, get, update, remove, like, save, pollVote, pollRetract, debateVote, debateRetract, react, unreact, reactions, share };

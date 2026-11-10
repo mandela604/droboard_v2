@@ -183,7 +183,7 @@ async function signContract(req, res) {
     await c.save();
     try {
       const { emit } = require('../services/notification-emitter');
-      await emit({ recipientId: c.authorId, type: 'contract', title: 'Contract signed', desc: 'Your contract is now active.' });
+      await emit({ recipientId: c.authorId, type: 'contract_update', title: 'Contract signed', desc: 'Your contract is now active.' });
     } catch (e) {}
     return c.toJSON();
   });
@@ -418,7 +418,7 @@ async function contractCreate(req, res) {
     try {
       const { emit } = require('../services/notification-emitter');
       await emit({
-        recipientId: author.id, type: 'contract',
+        recipientId: author.id, type: 'contract_update',
         title: 'Contract offer ready',
         desc: 'Your editor sent a contract — review and sign it in Author Center.',
       });
@@ -678,7 +678,7 @@ async function contractApprove(req, res) {
     try {
       const { emit } = require('../services/notification-emitter');
       await emit({
-        recipientId: app.authorId, type: 'contract',
+        recipientId: app.authorId, type: 'contract_update',
         title: 'Contract offer ready',
         desc: 'Your editor sent a contract — review and sign it in Author Center.',
       });
@@ -722,7 +722,7 @@ async function contractAppReject(req, res) {
     try {
       const { emit } = require('../services/notification-emitter');
       await emit({
-        recipientId: app.authorId, type: 'contract',
+        recipientId: app.authorId, type: 'contract_update',
         title: 'Contract application not accepted',
         desc: reason,
       });

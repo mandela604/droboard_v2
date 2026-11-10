@@ -125,11 +125,12 @@ function toCard(p, author, viewerId, userRx) {
     comments: p.commentsCount || 0,
     liked: has(p.likedBy),
     saved: has(p.savedBy),
+    hidden: has(p.hiddenBy),
     mine: !!v && String(p.authorId) === v,
     reactions: reactionCounts(p),
     userRx: userRx || null,
   });
-  delete c.likedBy; delete c.savedBy;
+  delete c.likedBy; delete c.savedBy; delete c.hiddenBy;
   if (p.poll) {
     const mine = v && (p.poll.votes || []).find(x => String(x.user) === v);
     c.poll = Object.assign({}, p.poll, { voted: mine ? mine.opt : -1 });
@@ -171,6 +172,11 @@ async function listPosts({ tab, type, authorId, page, limit, viewerId }) {
   }
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+  // "See less of this": posts this reader hid never come back in their feed.
+  if (viewerId) {
+    const hidden = await Post.find({ hiddenBy: String(viewerId) }).select('id').lean();
+    if (hidden.length) filter.id = { $nin: hidden.map(h => h.id) };
+  }
   const [docs, total] = await Promise.all([
     Post.find(filter).sort({ pinned: -1, createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Post.countDocuments(filter),
@@ -247,6 +253,23 @@ async function toggleSave({ post, userId }) {
   else post.savedBy.splice(i, 1);
   await post.save();
   return { saved: i === -1 };
+}
+
+// "See less of this" — the reader's own hide list. The post row keeps the
+// reader id, so hiding is reversible and scoped to that one reader.
+async function toggleHide({ post, userId }) {
+  const i = (post.hiddenBy || []).map(String).indexOf(String(userId));
+  if (i === -1) post.hiddenBy.push(userId);
+  else post.hiddenBy.splice(i, 1);
+  await post.save();
+  return { hidden: i === -1 };
+}
+
+// "Clear saved" on the library page: the reader drops every saved post at once.
+async function clearSaved({ userId }) {
+  const rows = await Post.find({ savedBy: String(userId) }).select('id savedBy').lean();
+  await Promise.all(rows.map(r => Post.updateOne({ id: r.id }, { $pull: { savedBy: String(userId) } })));
+  return { ok: true, cleared: rows.length };
 }
 
 async function votePoll({ post, idx, userId }) {
@@ -371,6 +394,6 @@ async function sharePost({ post, channel, userId }) {
 module.exports = {
   POST_TYPES, createPost, listPosts, savedPosts, getPost, updatePost, deletePost,
   shape,
-  toggleLike, toggleSave, votePoll, retractPollVote, voteDebate, retractDebateVote, loadOr404, canWrite,
+  toggleLike, toggleSave, toggleHide, clearSaved, votePoll, retractPollVote, voteDebate, retractDebateVote, loadOr404, canWrite,
   reactToPost, unreactPost, reactionState, sharePost,
 };

@@ -61,4 +61,8 @@ async function libraryMove(req, res) {
   }));
 }
 
-module.exports = { home, discover, discoverStories, libraryStats, libraryList, storyDetail, libraryAdd, libraryRemove, libraryMove };
+async function libraryClearHistory(req, res) {
+  return base.wrap(res, async () => feed.libraryClearHistory({ userId: req.user.id }));
+}
+
+module.exports = { home, discover, discoverStories, libraryStats, libraryList, storyDetail, libraryAdd, libraryRemove, libraryMove, libraryClearHistory };

@@ -560,7 +560,7 @@ async function decideCompletion(user, id, action, note) {
     const { emit } = require('./notification-emitter');
     await emit({
       recipientId: app.authorId,
-      type: 'completion',
+      type: 'completion_result',
       title: action === 'approved' ? 'Book completion approved' : 'Book completion rejected',
       desc: action === 'approved'
         ? 'Your book is now marked complete.'
@@ -1077,7 +1077,7 @@ async function offerContract(user, { bookId, authorId, terms }) {
   try {
     const { emit } = require('./notification-emitter');
     await emit({
-      recipientId: String(authorId), type: 'contract',
+      recipientId: String(authorId), type: 'contract_update',
       title: 'Contract offer ready',
       desc: 'Your editor sent a contract — review and sign it in Author Center.',
     });

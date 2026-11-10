@@ -10,6 +10,25 @@ const DEFAULT_TTL_HOURS = 24;
 // Ceiling on the per-status view log; past this the oldest reads drop off.
 const MAX_VIEW_RECORDS = 2000;
 
+// The composer's "no photo needed" presets (post-composer.js STATUS_BGS).
+// Fixed constants, not user CSS — safe to store and render as backgrounds.
+const GRADIENT_BGS = new Set([
+  'linear-gradient(135deg,#000000,#1c1c1e)',
+  'linear-gradient(135deg,#2b2b2f,#101013)',
+  'linear-gradient(135deg,#1c1917,#0c0a09)',
+  'linear-gradient(135deg,#4b2e2b,#241414)',
+  'linear-gradient(135deg,#5b3a29,#241407)',
+  'linear-gradient(135deg,#3e2723,#160d0b)',
+  'linear-gradient(135deg,#b08968,#6b4a2f)',
+  'linear-gradient(135deg,#4c0519,#1c0208)',
+  'linear-gradient(135deg,#701a2e,#2b0a13)',
+  'linear-gradient(135deg,#7f1d1d,#220909)',
+  'linear-gradient(135deg,#172554,#0a0f1e)',
+  'linear-gradient(135deg,#14532d,#071a0e)',
+  'linear-gradient(135deg,#3b0764,#150427)',
+  'linear-gradient(135deg,#334155,#0b1220)',
+]);
+
 function toStatus(s, viewerId, opts) {
   const o = s.toJSON ? s.toJSON() : s;
   const ownerId = String(o.userId);
@@ -29,6 +48,9 @@ function toStatus(s, viewerId, opts) {
     // anybody else's ring.
     viewed: uid ? viewers.includes(uid) : false,
     isMine: isOwner,
+    storyRef: o.storyRef && o.storyRef.id
+      ? { id: String(o.storyRef.id), title: o.storyRef.title || '', author: o.storyRef.author || '', cover: o.storyRef.cover || '' }
+      : null,
     expiresAt: o.expiresAt, createdAt: o.createdAt,
   };
   if (isOwner) out.views = views;
@@ -125,7 +147,7 @@ async function statusRoster({ userId, scope = 'any', limit = 20 } = {}) {
         time: relTimeLabel(r.createdAt),
         ts: r.createdAt ? new Date(r.createdAt).getTime() : Date.now(),
         viewed: t.viewed, likes: t.likes, liked: t.liked, isLive: t.isLive,
-        views: t.views,
+        views: t.views, storyRef: t.storyRef,
       };
     });
     const unseen = slides.filter(s => !s.viewed).length;
@@ -149,7 +171,8 @@ async function myStatuses({ userId }) {
       return {
         id: o.id, bg: o.bg, quote: o.quote, caption: o.caption,
         time: relTimeLabel(o.createdAt), ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
-        likes: o.likes, views: o.views || 0, viewed: o.viewed, isLive: o.isLive, expiresAt: o.expiresAt,
+        likes: o.likes, views: o.views || 0, viewed: o.viewed, isLive: o.isLive,
+        storyRef: o.storyRef, expiresAt: o.expiresAt,
       };
     }),
   };
@@ -170,7 +193,7 @@ async function writersByHandles({ handles, userId }) {
     .collation({ locale: 'en', strength: 2 })
     .select('id username').lean();
   const handleOf = {};
-  users.forEach(u => { handleOf[String(u.id)] = String(u.username); });
+  users.forEach(u => { handleOf[String(u.id)] = String(u.username).toLowerCase(); });
   const ids = Object.keys(handleOf);
   const rows = ids.length
     ? await Status.find({ userId: { $in: ids }, expiresAt: { $gt: new Date() } })
@@ -187,7 +210,7 @@ async function writersByHandles({ handles, userId }) {
       time: relTimeLabel(o.createdAt),
       ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
       likes: o.likes, liked: o.liked, isLive: o.isLive, viewed: o.viewed,
-      expiresAt: o.expiresAt,
+      storyRef: o.storyRef, expiresAt: o.expiresAt,
     });
   });
   return wanted.map(handle => ({ handle, statuses: groups[handle] || [] }));
@@ -212,17 +235,33 @@ async function createStatus({ userId, file, data }) {
     const url = await uploadImageBuffer(file.buffer, file.mimetype, file.originalname);
     bg = validateMediaUrl(url, 'bg');
   } else if (data && data.bg) {
-    const { validateMediaUrl } = require('./media.service');
-    bg = validateMediaUrl(data.bg, 'bg');
-    if (!bg) { const e = new Error('bad_bg'); e.status = 400; throw e; }
+    const raw = String(data.bg).trim();
+    if (GRADIENT_BGS.has(raw)) {
+      bg = raw;
+    } else {
+      const { validateMediaUrl } = require('./media.service');
+      bg = validateMediaUrl(data.bg, 'bg');
+      if (!bg) { const e = new Error('bad_bg'); e.status = 400; throw e; }
+    }
   } else {
     const e = new Error('no_file'); e.status = 400; throw e;
   }
   const ttlH = Math.min(72, Math.max(1, (data && data.ttlHours) || DEFAULT_TTL_HOURS));
+  const storyRef = { id: '', title: '', author: '', cover: '' };
+  if (data && data.storyRef && data.storyRef.id) {
+    const { validateMediaUrl } = require('./media.service');
+    storyRef.id = String(data.storyRef.id).slice(0, 120);
+    storyRef.title = String(data.storyRef.title || '').slice(0, 200);
+    storyRef.author = String(data.storyRef.author || '').slice(0, 120);
+    // Chip cover is decorative: an untrusted URL drops the image, not the post.
+    try { storyRef.cover = validateMediaUrl(String(data.storyRef.cover || ''), 'cover') || ''; }
+    catch (e) { storyRef.cover = ''; }
+  }
   const doc = await Status.create({
     userId: String(userId), bg,
     quote: (data && data.quote) || '', caption: (data && data.caption) || '',
-    isLive: !!(data && data.isLive), expiresAt: new Date(Date.now() + ttlH * 3600000),
+    isLive: !!(data && data.isLive), storyRef,
+    expiresAt: new Date(Date.now() + ttlH * 3600000),
   });
   const out = toStatus(doc, userId);
   out.time = 'Just now';

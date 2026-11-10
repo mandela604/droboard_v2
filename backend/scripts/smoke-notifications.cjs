@@ -204,6 +204,62 @@ async function main() {
   await notifications.notify({ recipientId: String(cara.id), type: 'trending_enter', title: 'dup', key: 'trend:b7:1' });
   check('duplicate key is deduped (still one row)', (await call(cara, 'GET', N)).json.items.length === 1, `n=${(await call(cara, 'GET', N)).json.items.length}`);
 
+  /* ── 15. POST / — the signed-in user raises a row about their own account ──
+     The live notification-store.js posts here. Only the self-observable types
+     are accepted: activity rows are owned by the server. */
+  const dana = await mk('dana');
+  r = await call(dana, 'POST', N, { type: 'like', title: 'fake like' });
+  check('POST / with a server-owned type -> 400 type_not_allowed',
+    r.status === 400 && r.json && r.json.error === 'type_not_allowed', `status=${r.status} ${JSON.stringify(r.json)}`);
+  r = await call(dana, 'POST', N, { type: 'poll_closed' });
+  check('POST / without title and desc -> 400 empty_notification',
+    r.status === 400 && r.json && r.json.error === 'empty_notification', `status=${r.status} ${JSON.stringify(r.json)}`);
+  r = await call(dana, 'POST', N, { type: 'poll_closed', title: 'x', bogus: 1 });
+  check('POST / with an unknown body field -> 400 invalid_input',
+    r.status === 400 && r.json && r.json.error === 'invalid_input', `status=${r.status} ${JSON.stringify(r.json).slice(0, 160)}`);
+  r = await call(dana, 'POST', N, { type: 'poll_closed', title: 'x', icon: { name: 'fa-bell', bg: 'red;background-image:url(javascript:1)', color: '#fff' } });
+  check('POST / with a hostile icon colour -> 400 invalid_input',
+    r.status === 400 && r.json && r.json.error === 'invalid_input', `status=${r.status} ${JSON.stringify(r.json).slice(0, 160)}`);
+  r = await fetch(N, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'poll_closed', title: 'x' }) })
+    .then(x => ({ status: x.status }));
+  check('POST / without auth -> 401', r.status === 401, `status=${r.status}`);
+
+  r = await call(dana, 'POST', N, {
+    type: 'poll_closed', key: 'poll:dana-1',
+    title: 'Your poll closed with 1,204 votes', desc: 'Which ending did readers want?',
+    metrics: [{ label: 'Votes', value: '1,204' }, { label: 'Tragic', value: '68%' }],
+    chips: ['Settled'], medal: 'rank', thumb: 'https://x/thumb.jpg', linkLabel: 'See results',
+  });
+  const selfRow = r.json || {};
+  check('POST / raises a row -> 2xx with an id', r.status >= 200 && r.status < 300 && !!selfRow.id, `status=${r.status} ${JSON.stringify(r.json).slice(0, 200)}`);
+  check('POST / row is shaped for the renderer (cat/kind/audience/at/unread)',
+    selfRow.cat === 'stats' && selfRow.kind === 'digest' && selfRow.audience === 'both'
+      && selfRow.unread === true && typeof selfRow.at === 'number',
+    JSON.stringify({ cat: selfRow.cat, kind: selfRow.kind, audience: selfRow.audience, unread: selfRow.unread, at: selfRow.at }));
+  check('POST / row keeps metrics + chips + medal',
+    Array.isArray(selfRow.metrics) && selfRow.metrics[0].value === '1,204'
+      && Array.isArray(selfRow.chips) && selfRow.chips[0] === 'Settled' && selfRow.medal === 'rank',
+    JSON.stringify({ metrics: selfRow.metrics, chips: selfRow.chips, medal: selfRow.medal }));
+  check('POST / row keeps the link label without an href',
+    selfRow.link && selfRow.link.label === 'See results' && selfRow.link.href === '', JSON.stringify(selfRow.link));
+  check('POST / row keeps the thumb next to the link', selfRow.thumb === 'https://x/thumb.jpg', selfRow.thumb);
+  const danaId = String(selfRow.id || '');
+  r = await call(dana, 'POST', N, { type: 'poll_closed', key: 'poll:dana-1', title: 'dup' });
+  check('POST / with the same key -> the same row, no duplicate',
+    r.status >= 200 && r.status < 300 && String(r.json && r.json.id) === danaId, `status=${r.status} id=${r.json && r.json.id}`);
+  check('POST / left exactly one row in the inbox', (await call(dana, 'GET', N)).json.items.length === 1,
+    `n=${(await call(dana, 'GET', N)).json.items.length}`);
+  check('POST / row counts toward the unread badge', (await call(dana, 'GET', N + '/unread-count')).json.count === 1,
+    JSON.stringify((await call(dana, 'GET', N + '/unread-count')).json));
+  r = await call(dana, 'PATCH', N + '/' + danaId, { deleted: true });
+  check('POST / row can be deleted like any other', r.status === 200 && (await call(dana, 'GET', N)).json.items.length === 0,
+    `status=${r.status} n=${(await call(dana, 'GET', N)).json.items.length}`);
+
+  // A row raised by one account never lands in another account's inbox.
+  r = await call(dana, 'POST', N, { type: 'poll_closed', key: 'poll:dana-2', title: 'mine' });
+  check('another account cannot see the raised row',
+    (await call(bob, 'GET', N)).json.items.length === 0, `n=${(await call(bob, 'GET', N)).json.items.length}`);
+
   finish();
 }
 main().catch(e => { say('FATAL ' + (e && e.stack || e)); try { fs.writeFileSync(OUT, logLines.join('\n') + '\n'); } catch (x) {} process.exit(1); });

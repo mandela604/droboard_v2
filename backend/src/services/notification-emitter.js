@@ -18,7 +18,7 @@ async function emit(options) {
   }
 
   // Create notification row
-  const n = await notify({ recipientId, actorId, type, title, desc: desc || '', link: link || '' });
+  const n = await notify({ recipientId, actorId, type, title, desc: desc || '', link: link || '', key });
 
   // Broadcast over WebSocket if available
   try {
@@ -33,13 +33,12 @@ async function emit(options) {
   return { ok: true, id: n.id };
 }
 
-module.exports = { emit };
-
 // Platform broadcast: send same notification to multiple recipients (Admin console)
 async function broadcast(recipientIds, options) {
   const { actorId, type, title, desc, link } = options;
+  const ids = Array.isArray(recipientIds) ? recipientIds : [];
   const results = [];
-  for (const id of recipientIds) {
+  for (const id of ids) {
     try {
       const r = await emit({ recipientId: id, actorId, type, title, desc, link });
       results.push({ recipientId: id, ok: !!r.ok, error: null });
@@ -47,5 +46,7 @@ async function broadcast(recipientIds, options) {
       results.push({ recipientId: id, ok: false, error: e.message });
     }
   }
-  return { total: recipientIds.length, succeeded: results.filter(r => r.ok).length, failed: results.filter(r => !r.ok).length, results };
+  return { total: ids.length, succeeded: results.filter(r => r.ok).length, failed: results.filter(r => !r.ok).length, results };
 }
+
+module.exports = { emit, broadcast };

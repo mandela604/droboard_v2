@@ -143,11 +143,16 @@ async function main() {
     } } } },
   ]);
   const chs = await Chapter.insertMany([
-    { bookId: String(bkA.id), n: 1, title: 'The Other Side of the Wall', status: 'live', price: 0, words: 2100, views: 890, content: '<p>She smelled the cardamom before she saw the sign.</p>' },
+    { bookId: String(bkA.id), n: 1, title: 'The Other Side of the Wall', status: 'live', price: 0, words: 2100, views: 890, content: '<p>She smelled the cardamom before she saw the sign.</p>',
+      poll: { q: 'Who opens the bakery?', opts: [{ t: 'Amara', v: 42 }, { t: 'Tunde', v: 17 }] },
+      prediction: { q: 'What does the note say?', opts: [{ t: 'A confession', v: 9 }, { t: 'A bill', v: 31 }] },
+      debate: { motion: 'Should Amara tell him the truth?', forText: 'Yes, she owes it to him.', againstText: 'No, some things stay unsaid.', forV: 12, agV: 8 },
+      authorNote: 'This chapter took two rewrites to land.' },
     { bookId: String(bkA.id), n: 2, title: 'Flour on His Sleeve', status: 'live', price: 0, words: 1850, views: 410, content: '<p>He did not apologize for the sourdough.</p>' },
     { bookId: String(bkA.id), n: 3, title: 'The Last Tray', status: 'live', price: 60, words: 2400, views: 96, content: '<p>Paid readers only from here.</p>' },
     { bookId: String(bkB.id), n: 1, title: 'Signal', status: 'live', price: 0, words: 1600, views: 220, content: '<p>The lamp turned. So did she.</p>' },
   ]);
+  const bkA_ch1 = chs[0];
 
   // Daily read counts per book. The profile insights read window/previous-window
   // deltas from these rows, so without them the Reads card is always 0.
@@ -188,6 +193,12 @@ async function main() {
     authorId: String(a2.id), scope: 'story', storyId: String(bkA.id),
     text: 'The cardamom line got me too.',
   });
+  // Chapter-scoped row: the reader's comment thread is chapter-scoped, so the
+  // story row above never shows there.
+  await Comment.create({
+    authorId: String(a1.id), scope: 'chapter', storyId: String(bkA.id), chapterId: String(bkA_ch1.id),
+    text: 'Author here — the cardamom was the whole point of the chapter.',
+  });
   // Engagement rows the insights cards read (followers / active readers /
   // comments). Without them those cards can only ever render 0 and the live
   // numbers are untestable.
@@ -227,9 +238,9 @@ async function main() {
   await CollectionFollow.create({ userId: String(a1.id), collectionId: String(coll.id) });
   await CollectionFollow.create({ userId: String(a2.id), collectionId: String(coll.id) });
   await Notification.create({
-    recipientId: String(reader.id), actorId: String(a1.id), type: 'chapter',
+    recipientId: String(reader.id), actorId: String(a1.id), type: 'new_chapter',
     title: 'Ada Writer published "The Last Tray"', desc: 'Nine Lives, Twice, chapter 3',
-    link: '/read/nine-lives-twice/3',
+    link: 'full-reader.html?story=' + encodeURIComponent(String(bkA.id)) + '&ch=3',
   });
   await Genre.create({ name: 'Thriller', slug: 'thriller', categoryId: String(cat.id), booksCount: 0 });
 

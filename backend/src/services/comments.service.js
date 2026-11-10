@@ -5,10 +5,9 @@ const { userRefFilter } = require('./user-ref');
 const counters = require('./user-counters');
 const boards = require('./genres.service');
 
-// Reader card reaction strip. `comment-section.js` renders fire/cry/broken/
-// shock/mindblown/emo/sus/clap; the FE seed keys them the same way, and any
-// new rid in the DB must still project (the picker reads the object's keys).
-const CARD_RX = ['fire', 'cry', 'broken', 'shock', 'mindblown', 'emo', 'sus', 'clap'];
+// Reader card reaction strip. Must match the keys reaction-picker.js uses
+// (love/crying/angry/shocked/broken/emotional/savage/sus/twist/laughing).
+const CARD_RX = ['love', 'crying', 'angry', 'shocked', 'broken', 'emotional', 'savage', 'sus', 'twist', 'laughing'];
 
 function relTime(date) {
   if (!date) return '';

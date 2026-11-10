@@ -88,6 +88,9 @@ router.get('/saved', requireAuth, generalLimiter, validate(z.object({ query: z.o
   page: z.string().max(6).optional(), limit: z.string().max(6).optional(),
 }).strict() })), ctrl.saved);
 
+// Library page "Clear saved" — one write drops every saved post.
+router.delete('/saved', requireAuth, writeLimiter, audit('posts.clearSaved'), ctrl.clearSaved);
+
 router.get('/:id', generalLimiter, optionalAuth, validate(z.object({ params: z.object({ id }) })), ctrl.get);
 router.patch('/:id', requireAuth, writeLimiter, audit('posts.update'),
   validate(z.object({
@@ -106,6 +109,9 @@ router.delete('/:id', requireAuth, writeLimiter, audit('posts.delete'),
 
 router.post('/:id/like', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.like);
 router.post('/:id/save', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.save);
+// "See less of this" — the reader's own hide list.
+router.post('/:id/hide', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.hide);
+router.delete('/:id/hide', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.hide);
 router.post('/:id/poll/vote', requireAuth, writeLimiter, audit('posts.pollVote'),
   validate(z.object({ params: z.object({ id }), body: z.object({ option: z.number().int().min(0).max(10) }).strict() })), ctrl.pollVote);
 router.delete('/:id/poll/vote', requireAuth, writeLimiter, audit('posts.pollRetract'),

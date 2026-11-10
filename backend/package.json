@@ -28,6 +28,7 @@
     "smoke:feed": "node scripts/smoke-feed-live.cjs",
     "smoke:discover": "node scripts/smoke-discover.cjs",
     "smoke:writers": "node scripts/smoke-writers-live.cjs",
+    "smoke:statuses": "node scripts/smoke-statuses-live.cjs",
     "smoke:boards": "node scripts/smoke-boards-live.cjs",
     "smoke:insights": "node scripts/smoke-insights-live.cjs",
     "smoke:league": "node scripts/smoke-league-live.cjs",

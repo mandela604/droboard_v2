@@ -321,7 +321,7 @@ async function signContract({ userId, contractId }) {
     if (signed.editorId) {
       const { emit } = require('./notification-emitter');
       await emit({
-        recipientId: signed.editorId, type: 'contract',
+        recipientId: signed.editorId, type: 'contract_update',
         title: 'Contract signed by author',
         desc: 'The author signed — the platform signature is the last step.',
       });
@@ -353,7 +353,7 @@ async function declineContract({ userId, contractId, reason }) {
     if (declined.editorId) {
       const { emit } = require('./notification-emitter');
       await emit({
-        recipientId: declined.editorId, type: 'contract',
+        recipientId: declined.editorId, type: 'contract_update',
         title: 'Contract offer declined',
         desc: (reason || '').trim() || 'The author declined the offer.',
       });
