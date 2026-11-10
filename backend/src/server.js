@@ -60,6 +60,8 @@ async function main() {
 
   // Dev-only request console (npm run dev:memory) — a page that fires these very
   // endpoints from the browser. Never mounted in production.
+  console.log("MY STATIC PATH IS:", require('path').join(__dirname, '..', '..', 'public'));
+
   //if (!env.isProd) {
     app.use('/dev', require('express').static(require('path').join(__dirname, '..', 'dev-console')));
   //}
@@ -124,9 +126,9 @@ async function main() {
   app.use('/api/awards', require('./routes/awards.routes'));
 
 
-
-   // app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
-      app.use(require('express').static(require('path').join(process.cwd(), 'public')));
+    console.log("MY STATIC PATH IS:", require('path').join(__dirname, '..', '..', 'public'));
+    app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
+  
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => res.status(500).json({ error: 'error' }));
