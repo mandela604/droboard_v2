@@ -698,6 +698,56 @@
     };
 
     try {
+      // ── Wire DroboardAPI lazily from whatever services are on this page ──
+      if (!window.DroboardAPI) {
+        window.DroboardAPI = {
+          postToStatus: async (payload) => {
+            if (!window.DroboardStatus || typeof DroboardStatus.post !== 'function') {
+              throw new Error('Status service not available');
+            }
+            // Pick a default gradient bg if none provided
+            const bg = payload.bg || 'linear-gradient(135deg,#ff0050,#ff5080)';
+            const slide = await DroboardStatus.post({
+              bg,
+              quote: payload.caption || payload.title || '',
+              caption: payload.url || '',
+            });
+            return { ok: true, slide };
+          },
+          postToProfile: async (payload) => {
+            const api = window.ProfileData || (window.FeedPage && window.FeedPage._api);
+            if (!api) {
+              // Fall back to direct fetch if ProfileData not on this page
+              const res = await fetch('/api/posts', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'recommendation',
+                  note: payload.caption || '',
+                  storyRef: payload.title ? { title: payload.title, cover: payload.img || '', writer: '' } : undefined,
+                }),
+              });
+              if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.error || ('Post failed (' + res.status + ')'));
+              }
+              return { ok: true };
+            }
+            // ProfileData.createPost needs a handle — get current user's handle
+            let handle = '';
+            try { handle = await api.getCurrentUserHandle(); } catch (e) {}
+            if (!handle) throw new Error('Could not determine your profile handle');
+            await api.createPost(handle, {
+              type: 'recommendation',
+              note: payload.caption || '',
+              storyRef: payload.title ? { title: payload.title, cover: payload.img || '', writer: '' } : undefined,
+            });
+            return { ok: true };
+          },
+        };
+      }
+
       // ── Production path ──────────────────────────────────────────────
       if (window.DroboardAPI) {
         const fn = _destType === 'status'
