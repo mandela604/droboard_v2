@@ -663,7 +663,7 @@
   function adaptPost(post) {
     // No avatarRing: post-card asks the shared ring, which derives red/grey/
     // none from StatusStore for that author.
-    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type === 'repost' ? 'recommendation' : post.type, mine: canSeeOwnerUI(), pinnable: canSeeOwnerUI() });
+    return Object.assign({}, post, { name: PROFILE.name, avatar: PROFILE.avatar, verified: PROFILE.verified, type: post.type, mine: canSeeOwnerUI(), pinnable: canSeeOwnerUI() });
   }
   /* Shared picker hooks (component contract): getState reads the profile
      post, onReact mutates it. Mirrors feed-service's counterHooks so the
@@ -827,6 +827,7 @@
     const posts = (p.posts || []).map(adaptPost);
     posts.sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)));
     _FEED_POSTS = posts;
+    window._FEED_POSTS = _FEED_POSTS; // expose for share-modal optimistic insert
     if (!window.DroboardPostCard) { document.getElementById('feedList').innerHTML = `<div class="panel-empty" style="padding:40px 16px"><i class="fas fa-triangle-exclamation"></i>Post component failed to load.</div>`; return; }
     DroboardPostCard.setPosts(posts);
     if (!posts.length) document.getElementById('feedList').innerHTML = `<div class="panel-empty" style="padding:40px 16px"><i class="fas fa-inbox"></i>No posts yet.</div>`;
@@ -845,12 +846,14 @@
       onStatusSlide: handleStatusSlide,
       onSubmit: async (post) => {
         if (post && post.type === 'status') { await handleStatusSlide(post.statusSlide); return; }
-        console.log('[profile onSubmit] post object received:', JSON.stringify(post));
         try {
           const updated = await ProfileData.createPost(VIEW_HANDLE, post);
-          PROFILE = updated; renderFeed(PROFILE); switchTab('feed');
+          PROFILE = updated;
+          // Switch to feed tab first so the user sees their post
+          switchTab('feed');
+          // Re-render feed with updated posts — new post is at the top
+          renderFeed(PROFILE);
         } catch (e) {
-          console.error('[profile onSubmit] createPost threw:', e.status, e.message);
           toast('❌ ' + (e.message || 'Could not create the post — try again.'));
         }
       },

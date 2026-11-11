@@ -771,6 +771,19 @@
               const j = await res.json().catch(() => ({}));
               throw new Error(j.error || ('Post failed (' + res.status + ')'));
             }
+            const newPost = await res.json().catch(() => null);
+            // Push new post to feed without full reload (profile + feed pages)
+            if (newPost) {
+              try {
+                if (window.DroboardPostCard && window._FEED_POSTS) {
+                  const adapted = Object.assign({}, newPost, { mine: true });
+                  window._FEED_POSTS.unshift(adapted);
+                  DroboardPostCard.setPosts(window._FEED_POSTS);
+                } else if (window.FeedPage && typeof FeedPage._pushPost === 'function') {
+                  FeedPage._pushPost(newPost, false);
+                }
+              } catch (e) { /* non-critical */ }
+            }
             return { ok: true };
           },
         };
