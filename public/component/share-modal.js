@@ -263,9 +263,14 @@
       border-color: rgba(255,0,80,.3); color: #ff4d7a;
     }
 
+    /* Bg picker (status only) */
+    .dsc-bg-row { display:flex; align-items:center; justify-content:space-between; padding: 0 14px 12px; }
+    .dsc-bg-chips { display:flex; gap:8px; }
+    .dsc-bg-chip { width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent; flex-shrink:0; transition:.15s; }
+    .dsc-bg-chip.on { border-color:#fff; transform:scale(1.15); }
+
     /* Audience toggle */
-    .dsc-audience {
-      display: flex; align-items: center; justify-content: space-between;
+    .dsc-audience {      display: flex; align-items: center; justify-content: space-between;
       padding: 0 14px 14px;
     }
     .dsc-aud-lbl { font-size: 11px; color: #555; transition: color .25s ease; }
@@ -489,6 +494,19 @@
           <button class="dsc-chip" data-text="✨ Currently obsessed with this story">✨ Obsessed</button>
         </div>
 
+        <!-- Background picker (status only) -->
+        <div class="dsc-bg-row" id="dscBgRow" style="display:none">
+          <span class="dsc-aud-lbl">Background</span>
+          <div class="dsc-bg-chips" id="dscBgChips">
+            <div class="dsc-bg-chip on" data-bg="linear-gradient(135deg,#4c0519,#1c0208)" style="background:linear-gradient(135deg,#4c0519,#1c0208)"></div>
+            <div class="dsc-bg-chip" data-bg="linear-gradient(135deg,#172554,#0a0f1e)" style="background:linear-gradient(135deg,#172554,#0a0f1e)"></div>
+            <div class="dsc-bg-chip" data-bg="linear-gradient(135deg,#14532d,#071a0e)" style="background:linear-gradient(135deg,#14532d,#071a0e)"></div>
+            <div class="dsc-bg-chip" data-bg="linear-gradient(135deg,#3b0764,#150427)" style="background:linear-gradient(135deg,#3b0764,#150427)"></div>
+            <div class="dsc-bg-chip" data-bg="linear-gradient(135deg,#000000,#1c1c1e)" style="background:linear-gradient(135deg,#000000,#1c1c1e)"></div>
+            <div class="dsc-bg-chip" data-bg="linear-gradient(135deg,#334155,#0b1220)" style="background:linear-gradient(135deg,#334155,#0b1220)"></div>
+          </div>
+        </div>
+
         <!-- Audience -->
         <div class="dsc-audience">
           <span class="dsc-aud-lbl">Audience</span>
@@ -518,6 +536,7 @@
   // ════════════════════════════════════════════════════════════════════════
   let _data       = {};
   let _destType   = 'status';   // 'status' | 'profile'
+  let _selectedBg = 'linear-gradient(135deg,#4c0519,#1c0208)'; // default for status
   let _audience   = 'everyone';
   let _posting    = false;
 
@@ -525,13 +544,17 @@
   // Toast
   // ════════════════════════════════════════════════════════════════════════
   function _toast(msg) {
-    if (typeof window.toast === 'function') { window.toast(msg); return; }
+    // Always use the internal toast so it renders above the modal (z-index 2700).
+    // Don't delegate to window.toast which typically sits at z-index 900.
     const el = document.getElementById('dsmToast');
-    if (!el) return;
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('show'), 2400);
+    if (el) {
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 2400);
+      return;
+    }
+    if (typeof window.toast === 'function') window.toast(msg);
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -635,6 +658,16 @@
     // Reset chips
     document.querySelectorAll('.dsc-chip').forEach(c => c.classList.remove('on'));
 
+    // Show/hide bg picker for status
+    const bgRow = document.getElementById('dscBgRow');
+    if (bgRow) {
+      bgRow.style.display = type === 'status' ? 'flex' : 'none';
+      _selectedBg = 'linear-gradient(135deg,#4c0519,#1c0208)';
+      document.querySelectorAll('.dsc-bg-chip').forEach(c => {
+        c.classList.toggle('on', c.dataset.bg === _selectedBg);
+      });
+    }
+
     // Reset audience
     document.querySelectorAll('.dsc-aud-tab').forEach(t => {
       t.classList.toggle('on', t.dataset.aud === 'everyone');
@@ -705,44 +738,37 @@
             if (!window.DroboardStatus || typeof DroboardStatus.post !== 'function') {
               throw new Error('Status service not available');
             }
-            // Pick a default gradient bg if none provided
-            const bg = payload.bg || 'linear-gradient(135deg,#ff0050,#ff5080)';
             const slide = await DroboardStatus.post({
-              bg,
-              quote: payload.caption || payload.title || '',
-              caption: payload.url || '',
+              bg: _selectedBg,
+              quote: payload.caption || '',
+              caption: payload.title ? `📖 ${payload.title}` : '',
             });
             return { ok: true, slide };
           },
           postToProfile: async (payload) => {
-            const api = window.ProfileData || (window.FeedPage && window.FeedPage._api);
-            if (!api) {
-              // Fall back to direct fetch if ProfileData not on this page
-              const res = await fetch('/api/posts', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  type: 'recommendation',
-                  note: payload.caption || '',
-                  storyRef: payload.title ? { title: payload.title, cover: payload.img || '', writer: '' } : undefined,
-                }),
-              });
-              if (!res.ok) {
-                const j = await res.json().catch(() => ({}));
-                throw new Error(j.error || ('Post failed (' + res.status + ')'));
-              }
-              return { ok: true };
-            }
-            // ProfileData.createPost needs a handle — get current user's handle
-            let handle = '';
-            try { handle = await api.getCurrentUserHandle(); } catch (e) {}
-            if (!handle) throw new Error('Could not determine your profile handle');
-            await api.createPost(handle, {
-              type: 'recommendation',
-              note: payload.caption || '',
-              storyRef: payload.title ? { title: payload.title, cover: payload.img || '', writer: '' } : undefined,
+            const caption = payload.caption || '';
+            const body = {
+              type: 'repost',
+              note: caption,
+              original: {
+                name: _data.sub || '',
+                avatar: _data.img || '',
+                time: 'Just now',
+                text: caption,
+                cover: _data.img || '',
+                title: _data.title || '',
+              },
+            };
+            const res = await fetch('/api/posts', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
             });
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({}));
+              throw new Error(j.error || ('Post failed (' + res.status + ')'));
+            }
             return { ok: true };
           },
         };
@@ -873,9 +899,16 @@
       });
     });
 
+    // Bg chips
+    document.querySelectorAll('.dsc-bg-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        _selectedBg = chip.dataset.bg;
+        document.querySelectorAll('.dsc-bg-chip').forEach(c => c.classList.toggle('on', c === chip));
+      });
+    });
+
     // Audience tabs
-    document.querySelectorAll('.dsc-aud-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
+    document.querySelectorAll('.dsc-aud-tab').forEach(tab => {      tab.addEventListener('click', () => {
         _audience = tab.dataset.aud;
         document.querySelectorAll('.dsc-aud-tab').forEach(t =>
           t.classList.toggle('on', t === tab)
