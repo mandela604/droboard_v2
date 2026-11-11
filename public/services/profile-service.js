@@ -149,7 +149,7 @@
     tabs.push({ id: 'about', label: '✦ About' });
     return tabs;
   }
-  function getStatsForProfile(p) {
+  async function getStatsForProfile(p) {
     const s = p.stats || {};
     if (p.isWriter) return [
       { label: 'Following', value: s.following, cls: '' },
@@ -159,11 +159,17 @@
       { label: 'Likes', value: s.likes, cls: 'g' },
     ];
     var _rank = null;
-    try { _rank = (window.ReaderLeague && !p.isWriter) ? ReaderLeague.myRank() : null; } catch (e) {}
+    // ReaderLeague.myRank() is async — must be awaited, otherwise _rank is a
+    // Promise (truthy) and _rank.rank renders as "undefined".
+    try {
+      if (window.ReaderLeague && !p.isWriter && typeof ReaderLeague.myRank === 'function') {
+        _rank = await ReaderLeague.myRank();
+      }
+    } catch (e) { _rank = null; }
     return [
       { label: 'Following', value: s.following, cls: '' },
       { label: 'Followers', value: s.followers, cls: 'r' },
-      _rank
+      (_rank && _rank.rank)
         ? { label: 'Rank', value: '#' + _rank.rank, cls: 'gold', href: 'leaderboard.html', sub: _rank.endsIn }
         : { label: 'Saved', value: s.saved, cls: 'b' },
       { label: 'Time Spent', value: (Number(s.readingHours) || 0) + 'h', cls: 'g' },
@@ -420,9 +426,10 @@
     btn.disabled = false;
   }
 
-  function renderStats(p) {
+  async function renderStats(p) {
     const handle = p.handle || p.username || VIEW_HANDLE;
-    document.getElementById('statsRow').innerHTML = getStatsForProfile(p).map(s => {
+    const stats = await getStatsForProfile(p);
+    document.getElementById('statsRow').innerHTML = stats.map(s => {
       const isFollow = s.label === 'Following' || s.label === 'Followers';
       const tab = s.label.toLowerCase();
       const href = s.href || (isFollow ? `followers.html?u=${encodeURIComponent(handle)}&tab=${tab}` : '');
@@ -1151,28 +1158,10 @@
     renderDrawer(PROFILE);
   }
   function renderPreviewControl(p) {
+    // "View as" role preview is a debug tool and is disabled in live.
+    // The owner always sees their real effective role.
     const el = document.getElementById('rolePreview');
-    if (!el) return;
-    /* Previewing is a personal tool: never on someone else's profile.
-       Note this bar is deliberately NOT routed through ownerOnly() — it is
-       the one control you need in order to leave the visitor preview. */
-    if (!IS_OWNER) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    el.style.display = 'flex';
-    const view = PREVIEW_ROLE === null ? 'visitor'
-      : PREVIEW_ROLE === 'real' ? (REAL_IS_WRITER ? 'writer' : 'reader')
-        : PREVIEW_ROLE;
-    el.innerHTML =
-      `<span class="rp-label"><i class="fas fa-eye"></i> View as</span>` +
-      `<span class="rp-toggle">` +
-        `<button class="rp-opt${view === 'reader' ? ' on' : ''}" data-role="reader">📖 Reader</button>` +
-        `<button class="rp-opt${view === 'writer' ? ' on' : ''}" data-role="writer">✍️ Writer</button>` +
-        `<button class="rp-opt${view === 'visitor' ? ' on' : ''}" data-role="visitor" title="What a non-owner sees">👤 Visitor</button>` +
-      `</span>` +
-      (PREVIEW_ROLE !== 'real'
-        ? `<button class="rp-exit" onclick="ProfilePage.setRolePreview('real')">✕ Exit preview</button>`
-        : '');
-    el.querySelectorAll('.rp-opt').forEach(b =>
-      b.addEventListener('click', () => setRolePreview(b.dataset.role === 'visitor' ? null : b.dataset.role)));
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
   }
 
   async function loadNotifCount() {

@@ -225,6 +225,16 @@ el('googleBtn').addEventListener('click', googleStart);
   try{ history.replaceState(null, '', location.pathname + (q ? '?' + q : '')); }catch(e){}
 })();
 
+/* Expired session from another page (login.html?expired=1): say why we're here. */
+(function handleExpiredFlag(){
+  const p = new URLSearchParams(location.search);
+  if(!p.has('expired')) return;
+  toast('Your session ended. Please sign in again to continue.');
+  p.delete('expired');
+  const q = p.toString();
+  try{ history.replaceState(null, '', location.pathname + (q ? '?' + q : '')); }catch(e){}
+})();
+
 /* ── Links ───────────────────────────────────────────────────────── */
 el('forgotLink').addEventListener('click',function(e){
   e.preventDefault();

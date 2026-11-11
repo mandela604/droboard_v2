@@ -49,7 +49,7 @@ function setRefreshCookie(res, token) {
   const env = require('../config/env');
   res.cookie('dro_refresh', token, {
     httpOnly: true, secure: env.isProd, sameSite: 'lax',
-    domain: env.cookieDomain, maxAge: 30 * 86400000, path: '/api/auth',
+    domain: env.cookieDomain, maxAge: 30 * 86400000, path: '/',
   });
 }
 // Short-lived access cookie so credentials:include fetches work without an
@@ -73,7 +73,7 @@ function clearAccessCookie(res) {
 }
 function clearRefreshCookie(res) {
   const env = require('../config/env');
-  res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/api/auth' });
+  res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/' });
 }
 
 module.exports = { wrap, normalize, setRefreshCookie, clearRefreshCookie, setAccessCookie, clearAccessCookie };

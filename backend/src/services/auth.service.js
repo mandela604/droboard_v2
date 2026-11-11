@@ -27,9 +27,19 @@ function hashToken(t) {
 function signRefresh(familyId) {
   return jwt.sign({ fid: familyId }, env.jwtRefreshSecret, { expiresIn: '30d' });
 }
-// MFA secret encryption (AES-256-GCM, key from env)
+// MFA secret encryption (AES-256-GCM, key from env). The key is optional: a
+// deployment that has MFA turned off must still boot. Nothing is encrypted or
+// decrypted without it — callers get a clear 503 instead of a silent empty key.
+function mfaKey() {
+  if (!env.mfaSecretKey) {
+    const e = new Error('mfa_not_configured');
+    e.status = 503;
+    throw e;
+  }
+  return crypto.createHash('sha256').update(env.mfaSecretKey).digest();
+}
 function encSecret(plain) {
-  const key = crypto.createHash('sha256').update(env.mfaSecretKey).digest();
+  const key = mfaKey();
   const iv = crypto.randomBytes(12);
   const c = crypto.createCipheriv('aes-256-gcm', key, iv);
   const enc = Buffer.concat([c.update(String(plain), 'utf8'), c.final()]);
@@ -266,6 +276,21 @@ async function refresh({ token, ip }) {
   await fam.save();
   const user = await User.findOne({ id: fam.userId });
   return Object.assign({ refresh: next }, tokensFor(user, fam.mfaAt));
+}
+
+// Silent session keep-alive: confirm a refresh token is still backed by a
+// live family and return its owner — WITHOUT rotating. The middleware uses
+// this to mint a fresh 15-minute access token when the access cookie has
+// lapsed, so a browsing user is never signed out mid-session. No rotation =
+// no reuse-detection race when a page fires several requests in parallel.
+async function verifyRefreshSession(token) {
+  let p;
+  try { p = jwt.verify(token, env.jwtRefreshSecret); } catch (e) { const err = new Error('bad_token'); err.status = 401; throw err; }
+  const fam = await RefreshFamily.findOne({ familyId: p.fid }).lean();
+  if (!fam || fam.reused || !fam.expiresAt || fam.expiresAt < new Date()) { const e = new Error('bad_token'); e.status = 401; throw e; }
+  const h = hashToken(token);
+  if (h !== fam.currentHash && h !== fam.prevHash) { const e = new Error('bad_token'); e.status = 401; throw e; }
+  return { userId: fam.userId, mfaAt: fam.mfaAt || null };
 }
 
 async function logout({ token }) {
@@ -555,4 +580,4 @@ async function revokeAllSessions(userId) {
   return { ok: true };
 }
 
-module.exports = { register, registerWithVerify, verifyEmail, forgotPassword, resetPassword, login, verifyMfa, refresh, logout, enrollMfa, confirmMfa, resendVerification, disableMfa, mfaStatus, regenerateBackupCodes, listSessions, revokeSession, revokeOtherSessions, revokeAllSessions, googleConfigured, getGoogleAuthUrl, googleCallback };
+module.exports = { register, registerWithVerify, verifyEmail, forgotPassword, resetPassword, login, verifyMfa, refresh, verifyRefreshSession, logout, enrollMfa, confirmMfa, resendVerification, disableMfa, mfaStatus, regenerateBackupCodes, listSessions, revokeSession, revokeOtherSessions, revokeAllSessions, googleConfigured, getGoogleAuthUrl, googleCallback };

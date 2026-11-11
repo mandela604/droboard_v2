@@ -10,55 +10,79 @@ function signAccess(user) {
   );
 }
 
-// Express middleware: require valid access JWT (Bearer header or dro_access
-// httpOnly cookie set at login). Sets req.user {id, roles, mfaAt}.
-// Also enforces account standing on every request, so a ban/suspension
-// takes effect immediately even with a still-valid token.
-async function requireAuth(req, res, next) {
+/* Resolve the caller's identity, transparently renewing the short-lived
+   access token when it has lapsed but the long-lived refresh cookie is still
+   good. Returns { identity, renewed } — identity is null for a true guest.
+   Never throws: a dead/absent refresh token is simply "no session". */
+async function resolveSession(req, res) {
   const hdr = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ')
     ? hdr.slice(7)
     : (req.cookies && req.cookies.dro_access) || null;
-  if (!token) return res.status(401).json({ error: 'unauthorized' });
-  let p;
-  try {
-    p = jwt.verify(token, env.jwtAccessSecret);
-  } catch (e) {
-    return res.status(401).json({ error: 'unauthorized' });
+  let p = null;
+  if (token) {
+    try { p = jwt.verify(token, env.jwtAccessSecret); } catch (e) { p = null; }
   }
-  let freshRoles = p.roles || [];
+  if (p) return { identity: { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null }, renewed: false };
+
+  // Access token missing/expired → will we renew from the refresh cookie?
+  // (The refresh cookie now travels on every path, so it is present here.)
+  const rt = (req.cookies && req.cookies.dro_refresh) || null;
+  if (!rt) return { identity: null, renewed: false };
+  let s;
+  try { s = await require('../services/auth.service').verifyRefreshSession(rt); }
+  catch (e) { return { identity: null, renewed: false }; }
+  if (!s || !s.userId) return { identity: null, renewed: false };
+  return { identity: { id: s.userId, roles: [], mfaAt: s.mfaAt || null }, renewed: true };
+}
+
+// Express middleware: require valid access JWT (Bearer header or dro_access
+// httpOnly cookie set at login). Sets req.user {id, roles, mfaAt}.
+// When the access token has expired it is silently re-minted from the
+// refresh cookie, so browsing never signs the user out (15-min token, 30-day
+// session). Also enforces account standing on every request, so a ban or
+// suspension takes effect immediately even with a still-valid token.
+async function requireAuth(req, res, next) {
+  const sess = await resolveSession(req, res);
+  if (!sess.identity) return res.status(401).json({ error: 'unauthorized' });
+  let u;
   try {
     const { User } = require('../models/user.model');
-    const u = await User.findOne({ id: p.sub }).select('status deletedAt roles').lean();
-    if (!u || u.deletedAt) return res.status(401).json({ error: 'unauthorized' });
-    if (u.status === 'banned') return res.status(403).json({ error: 'banned' });
-    if (u.status === 'suspended') return res.status(403).json({ error: 'suspended' });
-    /* Roles come from the DB, not the token: the JWT is minted at sign-in,
-       so a grant/revocation (role add, $pull, ban-adjacent demotion) would
-       otherwise stay invisible until the access token refreshes. The DB row
-       is already fetched here for the status check, so this costs nothing
-       extra. Token roles remain the fallback for rows written before the
-       `roles` field existed. */
-    freshRoles = Array.isArray(u.roles) ? u.roles : (p.roles || []);
+    u = await User.findOne({ id: sess.identity.id }).select('status deletedAt roles').lean();
   } catch (e) {
     return res.status(503).json({ error: 'account_check_failed' });
   }
-  req.user = { id: p.sub, roles: freshRoles, mfaAt: p.mfaAt || null };
+  if (!u || u.deletedAt) return res.status(401).json({ error: 'unauthorized' });
+  if (u.status === 'banned') return res.status(403).json({ error: 'banned' });
+  if (u.status === 'suspended') return res.status(403).json({ error: 'suspended' });
+  /* Roles come from the DB, not the token: the JWT is minted at sign-in, so a
+     grant/revocation would otherwise stay invisible until it refreshes. */
+  const roles = Array.isArray(u.roles) ? u.roles : sess.identity.roles;
+  if (sess.renewed) {
+    try { require('../controllers/base.controller').setAccessCookie(res, signAccess({ id: u.id, roles, _mfaAt: sess.identity.mfaAt })); } catch (e) { /* keep going */ }
+  }
+  req.user = { id: u.id, roles, mfaAt: sess.identity.mfaAt };
   return next();
 }
 
 // Optional identity for public reads (feed/status rows/profile): a valid
-// token attaches req.user; anything else stays anonymous. Never rejects.
-async function optionalAuth(req, _res, next) {
-  const hdr = req.headers.authorization || '';
-  const token = hdr.startsWith('Bearer ')
-    ? hdr.slice(7)
-    : (req.cookies && req.cookies.dro_access) || null;
-  if (!token) { req.user = null; return next(); }
-  try {
-    const p = jwt.verify(token, env.jwtAccessSecret);
-    req.user = { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null };
-  } catch (e) { req.user = null; }
+// session attaches req.user; anything else stays anonymous. Never rejects.
+// Renews the access token from the refresh cookie like requireAuth so the
+// owner still sees their own controls on a public page.
+async function optionalAuth(req, res, next) {
+  const sess = await resolveSession(req, res);
+  if (!sess.identity) { req.user = null; return next(); }
+  let roles = sess.identity.roles;
+  if (sess.renewed) {
+    try {
+      const { User } = require('../models/user.model');
+      const u = await User.findOne({ id: sess.identity.id }).select('status deletedAt roles').lean();
+      if (!u || u.deletedAt || u.status === 'banned' || u.status === 'suspended') { req.user = null; return next(); }
+      roles = Array.isArray(u.roles) ? u.roles : roles;
+      require('../controllers/base.controller').setAccessCookie(res, signAccess({ id: u.id, roles, _mfaAt: sess.identity.mfaAt }));
+    } catch (e) { req.user = null; return next(); }
+  }
+  req.user = { id: sess.identity.id, roles, mfaAt: sess.identity.mfaAt };
   return next();
 }
 

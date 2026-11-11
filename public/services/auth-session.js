@@ -105,9 +105,7 @@
 
   async function getCurrentUserHandle() {
     var acc = account();
-    if (acc && acc.handle) return acc.handle;
-    // Demo mode fallback: return the seeded demo user
-    return 'You_Reader';
+    return (acc && acc.handle) ? acc.handle : '';
   }
 
   /* ── Session bootstrap ─────────────────────────────────────────────
@@ -144,15 +142,54 @@
     try {
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(USER_KEY);
-      // Legacy demo keys from before login was wired.
-      localStorage.removeItem('droboard_demo_as');
-      localStorage.removeItem('dro_staff_role');
-      localStorage.removeItem('aurum_user');
     } catch (e) {}
     return true;
   }
 
   function clearCache() {}
+
+  /* ── Dead-session honesty ──────────────────────────────────────────
+     The server silently renews the 15-minute access token from the 30-day
+     refresh cookie, so a browsing user is never signed out mid-session.
+     When both are truly gone (30-day session expired, revoked, or signed
+     out elsewhere) an API call returns 401 {error:'unauthorized'} while
+     this tab still believes it is signed in. Rather than silently degrade
+     to a guest — menus vanishing, "unauthorized" on save — clear the stale
+     local session and route the person back to a real sign-in, with a
+     reason. */
+  function sessionExpired() {
+    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(USER_KEY); } catch (e) {}
+    if (window.__droExpiryHandled) return;
+    window.__droExpiryHandled = true;
+    try { window.dispatchEvent(new CustomEvent('droboard:session-expired')); } catch (e) {}
+    if (/login\.html(\?|$)/.test(location.pathname)) return;
+    var next = location.pathname.split('/').pop() + (location.search || '');
+    setTimeout(function () { location.href = '/Pages/login.html?next=' + encodeURIComponent(next) + '&expired=1'; }, 400);
+  }
+
+  /* Only {error:'unauthorized'} means "signed out". Other 401s are wrong
+     credentials (MFA step-up, password re-confirmation), not a dead session. */
+  function isDeadSession(res) {
+    var ct = (res.headers && res.headers.get && res.headers.get('content-type')) || '';
+    if (ct.indexOf('application/json') === -1) return Promise.resolve(false);
+    return res.clone().json().then(function (b) { return !!(b && b.error === 'unauthorized'); })
+      .catch(function () { return false; });
+  }
+
+  (function installSessionGuard() {
+    if (!window.fetch || window.__droSessionGuard) return;
+    window.__droSessionGuard = true;
+    var native = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      var url = (typeof input === 'string') ? input : (input && input.url) || '';
+      var out = native(input, init);
+      if (url.indexOf('/api/') === -1 || url.indexOf('/api/auth/') !== -1) return out;
+      return out.then(function (res) {
+        if (!res || res.status !== 401 || !isSignedIn()) return res;
+        return isDeadSession(res).then(function (dead) { if (dead) sessionExpired(); return res; });
+      });
+    };
+  })();
 
   global.AuthSession = {
     getSession,
@@ -167,5 +204,6 @@
     getRoles,
     hasRole,
     ensureAccount,
+    sessionExpired,
   };
 })(window);

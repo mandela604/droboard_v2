@@ -15,7 +15,12 @@ module.exports = {
   jwtAccessTtl: process.env.JWT_ACCESS_TTL || '15m',
   mfaTicketTtl: process.env.MFA_TICKET_TTL || '5m',
   mfaStepUpMinutes: parseInt(process.env.MFA_STEPUP_MINUTES || '5', 10),
-  mfaSecretKey: required('MFA_SECRET_KEY'),
+  // MFA is optional per deployment. Without MFA_SECRET_KEY the API still boots;
+  // every MFA write returns 503 mfa_not_configured instead of encrypting with
+  // an empty key, and the status read reports mfaConfigured:false so the UI can
+  // hide the toggle rather than offering a dead switch.
+  mfaSecretKey: process.env.MFA_SECRET_KEY || '',
+  mfaConfigured: !!process.env.MFA_SECRET_KEY,
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
   isProd: process.env.NODE_ENV === 'production',

@@ -205,54 +205,15 @@
     { id: 'horror', label: '👻 Horror' },
   ];
 
-  const COVERS = [
-    'https://i.postimg.cc/vDn9YLx5/wife2.jpg', 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
-    'https://i.postimg.cc/ftRZbhKx/3.jpg', 'https://i.postimg.cc/N9jY0w4m/5.jpg',
-    'https://i.postimg.cc/JDzmhWqj/2.jpg', 'https://i.postimg.cc/DJwFzKgd/4.jpg',
-    'https://i.postimg.cc/cgLZJNmC/8.jpg', 'https://i.postimg.cc/0MyxNqfz/7.jpg',
-    'https://i.postimg.cc/WF1j4Pnh/6.jpg', 'https://i.postimg.cc/fkdXzjSj/wife.jpg',
-  ];
-  const c = i => COVERS[Math.abs(i) % COVERS.length];
+  /* No hardcoded demo content. Stories are injected by the host page via
+     configure({ stories }); ads + promo slides come from the live ad inventory
+     (AdService). An empty stories pool falls through to the real empty state. */
+  const STORIES_BASE = [];
 
-  // Base pool — 10 stories. Looped + reshuffled with new covers/ids to fill a page.
-  const STORIES_BASE = [
-    { id: 's1', title: 'His Sweet Revenge', author: '@Luna_Grey', genre: 'mafia', badge: 'hot', rating: '4.8', chapters: 21, preview: 'Everything changes when she discovers the truth he tried so hard to hide.' },
-    { id: 's2', title: 'The Runaway Bride', author: '@Ifeanyi_Story', genre: 'romance', badge: 'hot', rating: '4.9', chapters: 8, preview: 'Four hundred guests. One pastor. She chose to speak, and nothing was the same after.' },
-    { id: 's3', title: "The Alpha's Obsession", author: '@Ifeanyi_Story', genre: 'werewolf', badge: '', rating: '4.7', chapters: 18, preview: 'He claimed her as his mate. She refused to accept it — until the full moon.' },
-    { id: 's4', title: 'The Fantasy Kingdom', author: '@Chiamaka_N', genre: 'fantasy', badge: 'new', rating: '4.8', chapters: 27, preview: 'She had lived as a seamstress for twenty years. The soldiers recognized her instantly.' },
-    { id: 's5', title: 'The Campus Queen', author: '@CampusQueen', genre: 'campus', badge: 'new', rating: '4.5', chapters: 9, preview: 'Social hierarchy runs this campus like a government. So why was she always near me?' },
-    { id: 's6', title: 'Her Name Was Vengeance', author: '@Zara_M', genre: 'revenge', badge: '', rating: '4.8', chapters: 14, preview: 'They took her family and her name, but left her alive. Their first mistake.' },
-    { id: 's7', title: "Grandmother's Hidden Will", author: '@Kemi_A', genre: 'drama', badge: '', rating: '4.6', chapters: 13, preview: 'The lawyer said a name no one in the family recognized, then everything changed.' },
-    { id: 's8', title: 'Bound to the Ruthless CEO', author: '@Ava_Winters', genre: 'billionaire', badge: '', rating: '4.7', chapters: 14, preview: 'One year, no feelings. The contract was perfect — until neither wanted to leave.' },
-    { id: 's9', title: 'The Quiet Twin', author: '@Efe_O', genre: 'mystery', badge: '', rating: '4.7', chapters: 13, preview: 'One twin died. One twin lived. The living one started answering to her name.' },
-    { id: 's10', title: 'The House on Willow Lane', author: '@Dami_Cole', genre: 'horror', badge: 'new', rating: '4.4', chapters: 5, preview: 'The house had been empty for twelve years. The new tenants lasted three nights.' },
-  ];
-
-  // Platform (DroBoard house) ads — filled gold box, CTA button, no author/rating.
-  const PLATFORM_ADS = [
-    { title: 'DroBoard Premium — Read Ad-Free', sponsor: 'DroBoard', cta: 'Upgrade Now' },
-    { title: 'Get 3 Months of Unlimited Coins', sponsor: 'DroBoard Coins', cta: 'Claim Offer' },
-    { title: 'Write Your Own Story Today', sponsor: 'DroBoard Studio', cta: 'Start Writing' },
-  ];
-
-  // Book ads — a writer promoting their own book. Renders exactly like a normal
-  // story card (cover, title, author, rating, chapters) but with a gold border
-  // and a "Promoted" tag so it reads as sponsored, not organic.
-  const BOOK_ADS = [
-    { title: 'Crowned in Sin', author: '@Nkemdilim_R', genre: 'mafia', rating: '4.9', chapters: 32, preview: 'An indie mafia romance climbing the charts — read the debut everyone is talking about.' },
-    { title: 'Werewolf King, Human Queen', author: '@Tobenna_K', genre: 'werewolf', rating: '4.6', chapters: 19, preview: 'A new voice in werewolf romance. Chapter one is free for the next 48 hours.' },
-    { title: 'The Billionaire Never Forgets', author: '@Sarah_Odum', genre: 'billionaire', rating: '4.7', chapters: 24, preview: 'Self-published and rising fast — a slow-burn billionaire romance readers can\u2019t put down.' },
-    { title: 'Campus Chaos', author: '@Bode_Ilo', genre: 'campus', rating: '4.5', chapters: 16, preview: 'A campus rom-com getting buzz this month. New chapters every Friday.' },
-    { title: 'Fangs & Fortune', author: '@Ese_Uyi', genre: 'fantasy', rating: '4.8', chapters: 29, preview: 'Dark fantasy romance from an indie author breaking into the charts.' },
-  ];
-
-  // Promoted-story slider — same content shape as the Library page's promo slider.
-  const PROMO = [
-    { title: 'Bound to the Ruthless CEO', author: 'Ava Winters', cta: 'Read Now', img: c(3) },
-    { title: 'His Sweet Revenge', author: 'Luna Grey', cta: 'New Chapter', img: c(0) },
-    { title: "The Alpha's Obsession", author: 'Ifeanyi Story', cta: 'Trending', img: c(2) },
-    { title: 'Devil in a Suit', author: 'Zara M', cta: "Editor's Pick", img: c(8) },
-  ];
+  /* Live ad pools — populated from AdService on open(). Empty = no ads. */
+  let LIVE_PROMO = [];
+  let LIVE_BOOK_ADS = [];
+  let LIVE_PLATFORM_ADS = [];
 
   const PAGE_SIZE = 15;      // infinite-scroll page size
   const POOL_SIZE = 42;      // looped stories per open (~40-45)
@@ -336,9 +297,12 @@
       return [];
     }
     let expanded = [];
+    // Only loop stories if we actually have some; otherwise the pool stays
+    // empty and the real "No stories found" empty state is shown.
+    if (!_stories.length) return [];
     for (let i = 0; i < POOL_SIZE; i++) {
       const base = _stories[i % _stories.length];
-      expanded.push(Object.assign({ type: 'story' }, base, { id: base.id + '-' + i, img: c(i) }));
+      expanded.push(Object.assign({ type: 'story' }, base, { id: base.id + '-' + i, img: base.img || base.cover || '' }));
     }
     if (_mode === 'genre' && _filter !== 'all') {
       if (_filter === 'completed') {
@@ -381,12 +345,14 @@
 
       if ((i + 1) % AD_INTERVAL === 0) {
         const kind = AD_CYCLE[adI % AD_CYCLE.length];
-        if (kind === 'platform') {
-          const ad = PLATFORM_ADS[adI % PLATFORM_ADS.length];
-          withExtras.push(Object.assign({ type: 'platformAd', id: 'pad-' + adI, img: c(adI + 2) }, ad));
-        } else {
-          const ad = BOOK_ADS[adI % BOOK_ADS.length];
-          withExtras.push(Object.assign({ type: 'bookAd', id: 'bad-' + adI, img: c(adI + 7) }, ad));
+        // Pull from live ad inventory; skip the slot entirely when the pool is
+        // empty (no ads configured → no filler demo ads).
+        if (kind === 'platform' && LIVE_PLATFORM_ADS.length) {
+          const ad = LIVE_PLATFORM_ADS[adI % LIVE_PLATFORM_ADS.length];
+          withExtras.push(Object.assign({ type: 'platformAd', id: 'pad-' + adI }, ad));
+        } else if (kind !== 'platform' && LIVE_BOOK_ADS.length) {
+          const ad = LIVE_BOOK_ADS[adI % LIVE_BOOK_ADS.length];
+          withExtras.push(Object.assign({ type: 'bookAd', id: 'bad-' + adI }, ad));
         }
         adI++;
       }
@@ -462,29 +428,49 @@
   }
 
   /* ═══════════════════════ PROMO SLIDER ═══════════════════════ */
+  /* Promo slides come from the live ad inventory (AdService.getAds → pools.promo).
+     When there are none, the whole promo row is hidden — no hardcoded filler. */
   function _renderPromo() {
+    const row = _root.querySelector('.bro-promo-row');
+    if (!LIVE_PROMO.length) { if (row) row.style.display = 'none'; return; }
+    if (row) row.style.display = '';
     const track = _root.querySelector('#broPromoTrack');
     const dots = _root.querySelector('#broPromoDots');
-    track.innerHTML = PROMO.map(s => `
-      <div class="bro-promo-slide" style="background-image:url('${_esc(s.img)}')">
+    track.innerHTML = LIVE_PROMO.map(s => `
+      <div class="bro-promo-slide" style="background-image:url('${_esc(s.img || s.image || s.cover || '')}')">
         <div class="bro-promo-scrim"></div>
         <div class="bro-promo-text">
           <div class="bro-promo-eyebrow">Promoted</div>
-          <div class="bro-promo-title">${_esc(s.title)}</div>
-          <div class="bro-promo-author">by ${_esc(s.author)}</div>
+          <div class="bro-promo-title">${_esc(s.title || s.heading || '')}</div>
+          <div class="bro-promo-author">by ${_esc(s.author || s.authorName || s.writer || '')}</div>
         </div>
-        <div class="bro-promo-cta">${_esc(s.cta)}</div>
+        <div class="bro-promo-cta">${_esc(s.cta || 'Read Now')}</div>
       </div>`).join('');
-    dots.innerHTML = PROMO.map((_, i) => `<div class="bro-promo-dot${i === 0 ? ' on' : ''}"></div>`).join('');
+    dots.innerHTML = LIVE_PROMO.map((_, i) => `<div class="bro-promo-dot${i === 0 ? ' on' : ''}"></div>`).join('');
   }
   function _goPromo(i) {
-    const n = PROMO.length; if (!n) return;
+    const n = LIVE_PROMO.length; if (!n) return;
     _promoIndex = (i + n) % n;
     _root.querySelector('#broPromoTrack').style.transform = `translateX(-${_promoIndex * 100}%)`;
     _root.querySelectorAll('.bro-promo-dot').forEach((d, idx) => d.classList.toggle('on', idx === _promoIndex));
   }
-  function _startPromo() { _stopPromo(); _promoTimer = setInterval(() => _goPromo(_promoIndex + 1), 3400); }
+  function _startPromo() { _stopPromo(); if (LIVE_PROMO.length > 1) _promoTimer = setInterval(() => _goPromo(_promoIndex + 1), 3400); }
   function _stopPromo() { if (_promoTimer) clearInterval(_promoTimer); }
+
+  /* Load promo slides + in-feed ad pools from the live ad inventory.
+     Resolves silently (pools stay empty) when AdService is unavailable or
+     no ads are configured — the UI then shows only real user content. */
+  async function _loadLiveAds() {
+    LIVE_PROMO = []; LIVE_BOOK_ADS = []; LIVE_PLATFORM_ADS = [];
+    try {
+      if (!window.AdService) return;
+      const pools = await AdService.getAds({ page: 'discover' });
+      if (!pools) return;
+      LIVE_PROMO = Array.isArray(pools.promo) ? pools.promo : [];
+      LIVE_BOOK_ADS = Array.isArray(pools.book) ? pools.book : [];
+      LIVE_PLATFORM_ADS = Array.isArray(pools.platform) ? pools.platform : [];
+    } catch (e) { /* ignore — ad-free is the safe default */ }
+  }
 
   /* ═══════════════════════ BUILD (once) ═══════════════════════ */
   function _build() {
@@ -707,9 +693,15 @@
     document.body.style.overflow = 'hidden';
     _isOpen = true;
 
-    _goPromo(0);
-    _startPromo();
-    _reset();
+    // Load live promo + ad pools from the ad inventory, then render the promo
+    // slider and rebuild the story pool (ads interleave into the pool). No
+    // hardcoded demo ads ever — if the API returns empty, those slots stay blank.
+    _loadLiveAds().then(function () {
+      _renderPromo();
+      _goPromo(0);
+      _startPromo();
+      _reset();
+    });
   }
 
   function close() {
