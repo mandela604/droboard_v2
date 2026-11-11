@@ -123,6 +123,9 @@ button{font-family:inherit;cursor:pointer}
 .sh-more[href]{border-style:solid;text-decoration:none;display:inline-block}
 .panel-empty{padding:36px 10px;text-align:center;color:var(--tx-muted);font-size:12.5px}
 .panel-empty i{font-size:20px;display:block;margin-bottom:8px;opacity:.5}
+/* Owner-only UI: hidden by default, shown when JS confirms ownership */
+.owner-only-ui{display:none!important}
+body.is-owner .owner-only-ui{display:inline-flex!important}
 .book-card{display:flex;gap:12px;background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .book-cover{width:64px;height:88px;border-radius:9px;background-size:cover;background-position:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .book-info{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -298,7 +301,7 @@ button{font-family:inherit;cursor:pointer}
     <div class="tab-panel active" id="panel-feed"><div id="feedList"></div></div>
 
     <div class="tab-panel" id="panel-books">
-      <div class="sh"><div class="sh-title" id="booksCountTitle">Books</div><div class="sh-more" onclick="location.href='create.html'">+ Book</div></div>
+      <div class="sh"><div class="sh-title" id="booksCountTitle">Books</div><div class="sh-more owner-only-ui" onclick="location.href='create.html'">+ Book</div></div>
       <div id="booksList"></div>
     </div>
 
@@ -311,7 +314,7 @@ button{font-family:inherit;cursor:pointer}
     <div class="tab-panel" id="panel-collections">
       <div class="sh"><div class="sh-title" style="flex:1">Collections</div></div>
       <div id="collectionsList"></div>
-      <button class="new-coll-btn" id="newCollBtn"><i class="fas fa-plus-circle"></i> Create New Collection</button>
+      <button class="new-coll-btn owner-only-ui" id="newCollBtn"><i class="fas fa-plus-circle"></i> Create New Collection</button>
     </div>
 
     <div class="tab-panel" id="panel-following">

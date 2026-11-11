@@ -224,7 +224,7 @@ async function fileDispute(req, res) {
     if (!body.who) {
       // The finance queue shows a name, not a Mongo id, so resolve it here.
       const { User } = require('../models/user.model');
-      const u = await User.findOne({ id: String(req.user.id) }).select('fullName avatar').lean().catch(() => null);
+      const u = await User.findOne({ _id: req.user.id }).select('fullName avatar').lean().catch(() => null);
       body.who = (u && u.fullName) || '';
       if (u && u.avatar) body.avatar = u.avatar;
     }

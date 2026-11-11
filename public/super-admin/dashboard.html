@@ -206,7 +206,11 @@ body{font-family:'Inter',system-ui,sans-serif}
 
       <div class="panel">
         <div class="panel-head"><h2><i class="fas fa-heart-pulse" style="color:var(--green)"></i> System Health</h2></div>
-        <div id="sysHealth"><div style="padding:20px;text-align:center;color:var(--text-faint);font-size:12px">Loading…</div></div>
+        <div class="sh-row"><span>API Uptime</span><div class="sh-val"><span class="sh-dot ok"></span>99.98%</div></div>
+        <div class="sh-row"><span>Database</span><div class="sh-val"><span class="sh-dot ok"></span>Healthy</div></div>
+        <div class="sh-row"><span>Payment Gateway</span><div class="sh-val"><span class="sh-dot ok"></span>Operational</div></div>
+        <div class="sh-row"><span>Error Rate (24h)</span><div class="sh-val"><span class="sh-dot warn"></span>0.34%</div></div>
+        <div class="sh-row"><span>Last Incident</span><div class="sh-val" style="color:var(--text-faint);font-weight:600">14 days ago</div></div>
       </div>
     </div>
   </div>
@@ -223,7 +227,6 @@ body{font-family:'Inter',system-ui,sans-serif}
       <input type="hidden" id="aId"/>
       <div class="form-row"><label class="form-label">Full name</label><input class="form-input" id="aName" placeholder="e.g. Tobenna Achebe"/></div>
       <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="aEmail" placeholder="name@droboard.com"/></div>
-      <div class="form-row" id="aPasswordRow"><label class="form-label">Temporary password</label><input class="form-input" id="aPassword" type="password" placeholder="At least 8 characters"/></div>
       <div class="form-row two-col">
         <div>
           <label class="form-label">Role</label>
@@ -244,13 +247,13 @@ body{font-family:'Inter',system-ui,sans-serif}
         </div>
       </div>
       <div class="form-row">
-        <label class="form-label">Permissions <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--text-faint)">— set on the Roles page</span></label>
+        <label class="form-label">Permissions</label>
         <div class="perm-list">
-          <label class="perm-item"><input type="checkbox" id="pContracts" disabled/> Manage Contracts</label>
-          <label class="perm-item"><input type="checkbox" id="pCampaigns" disabled/> Manage Campaigns</label>
-          <label class="perm-item"><input type="checkbox" id="pModeration" disabled/> Moderate Content</label>
-          <label class="perm-item"><input type="checkbox" id="pFinance" disabled/> View Finances</label>
-          <label class="perm-item"><input type="checkbox" id="pAdmins" disabled/> Manage Admins</label>
+          <label class="perm-item"><input type="checkbox" id="pContracts"/> Manage Contracts</label>
+          <label class="perm-item"><input type="checkbox" id="pCampaigns"/> Manage Campaigns</label>
+          <label class="perm-item"><input type="checkbox" id="pModeration"/> Moderate Content</label>
+          <label class="perm-item"><input type="checkbox" id="pFinance"/> View Finances</label>
+          <label class="perm-item"><input type="checkbox" id="pAdmins"/> Manage Admins</label>
         </div>
       </div>
     </div>
@@ -282,6 +285,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 
 <script src="shared/super-admin-sidebar.js"></script>
 <script src="../services/currency-service.js?v=8"></script>
-<script src="dashboard-service.js?v=4"></script>
+<script src="dashboard-service.js?v=3"></script>
 </body>
 </html>

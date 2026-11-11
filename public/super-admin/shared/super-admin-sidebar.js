@@ -286,22 +286,7 @@
     const instId = 'sa' + (++_instanceCounter);
     const menuItems = options.navItems || MENU_ITEMS;
     const activeItem = options.activeItem || 'dashboard';
-    /* Identity always comes from the signed-in session. Page services still
-       pass a name/avatar for the static-file case, but a real login outranks
-       it so no console shows a placeholder person. */
-    function sessionIdentity() {
-      try {
-        const raw = localStorage.getItem('droboard_user');
-        if (!raw) return null;
-        const u = JSON.parse(raw) || {};
-        const name = u.name || u.fullName || u.username;
-        if (!name) return null;
-        return { name: name, avatar: u.avatar || '' };
-      } catch (e) { return null; }
-    }
-    const session = sessionIdentity();
     const user = Object.assign({ name: 'User', role: 'Super Admin', avatar: null }, options.user || {});
-    if (session) { user.name = session.name; user.avatar = session.avatar || null; }
     const notifCount = options.notifCount != null ? options.notifCount : 0;
     const existingContent = container.innerHTML;
 

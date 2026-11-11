@@ -26,6 +26,7 @@
     .fl-item:last-child{border-bottom:none}
     .fl-av{width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--l2,#f3f1f5)}
     .fl-av img{width:100%;height:100%;object-fit:cover;display:block}
+    .fl-av-init{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--acc,#ff0050);background:rgba(255,0,80,.1);border-radius:50%;}
     .fl-info{flex:1;min-width:0}
     .fl-name{font-size:13px;font-weight:700;color:var(--tx-high,#17151b);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .fl-meta{font-size:11px;color:var(--tx-muted,#635f6e);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -69,11 +70,15 @@
       el.innerHTML = slice.map(item => {
         const handle = item.handle || item.name || '';
         const name = item.name || handle;
-        const av = item.avatar || item.av || 'https://i.pravatar.cc/100?img=12';
+        const av = item.avatar || item.av || '';
+        const initials = (name || handle || '?')[0].toUpperCase();
+        const avHtml = av
+          ? '<img src="'+esc(av)+'" loading="lazy" alt=""/>'
+          : '<span class="fl-av-init">'+esc(initials)+'</span>';
         const meta = item.meta || (item.role ? (item.role + (item.posts!=null?' · '+item.posts+' posts':'')) : '');
         const following = !!item.following;
         return '<div class="fl-item" data-handle="'+esc(handle)+'">'
-          + '<div class="fl-av"><img src="'+esc(av)+'" loading="lazy" alt=""/></div>'
+          + '<div class="fl-av">'+avHtml+'</div>'
           + '<div class="fl-info"><div class="fl-name">@'+esc(name)+'</div><div class="fl-meta">'+esc(meta)+'</div></div>'
           + (opts.showButton===false ? '' : '<button class="fl-btn'+(following?' ing':'')+'" data-toggle="'+esc(handle)+'">'+(following?'Following':'Follow')+'</button>')
           + '</div>';

@@ -399,10 +399,9 @@
     }
     /* The server carries the viewer's follow flag on the profile payload. */
     const startedFollowing = !!PROFILE.isFollowing;
+    _following = startedFollowing;
     el.innerHTML = `<button class="pact follow${startedFollowing ? ' ing' : ''}" id="followBtn">${startedFollowing ? '✓ Following' : '+ Follow'}</button>`;
     document.getElementById('followBtn').addEventListener('click', () => {
-      /* In the visitor preview this is a look, not the real thing — don't
-         let the preview follow the very profile you're standing on. */
       if (PREVIEW_ROLE === null) { toast('👁 Visitor preview — following is disabled here.'); return; }
       toggleFollowOwner();
     });
@@ -410,8 +409,16 @@
 
   async function toggleFollowOwner() {
     if (window.RequireAuth && !RequireAuth.ensure('follow this profile')) return;
-    const btn = document.getElementById('followBtn');
     const willFollow = !_following;
+
+    // Confirm before unfollowing
+    if (!willFollow) {
+      const handle = (PROFILE && PROFILE.handle) ? '@' + PROFILE.handle : 'this person';
+      const confirmed = await showUnfollowConfirm(handle);
+      if (!confirmed) return;
+    }
+
+    const btn = document.getElementById('followBtn');
     btn.disabled = true;
     try {
       const call = willFollow ? ProfileData.followUser : ProfileData.unfollowUser;
@@ -424,6 +431,39 @@
       toast('❌ ' + (e.message || 'Could not update follow — try again.'));
     }
     btn.disabled = false;
+  }
+
+  function showUnfollowConfirm(handle) {
+    return new Promise((resolve) => {
+      // Remove any existing confirm modal
+      const existing = document.getElementById('unfollowConfirmModal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'unfollowConfirmModal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,6,25,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px';
+      modal.innerHTML = `
+        <div style="background:var(--card,#fff);border:1px solid var(--border,#e8e5f0);border-radius:18px;padding:24px 22px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
+          <div style="font-size:28px;margin-bottom:12px">👋</div>
+          <div style="font-size:15px;font-weight:800;color:var(--text,#17151b);margin-bottom:8px">Unfollow ${handle}?</div>
+          <div style="font-size:12.5px;color:var(--text-muted,#635f6e);margin-bottom:22px;line-height:1.5">Their posts won't appear in your feed anymore.</div>
+          <div style="display:flex;gap:10px">
+            <button id="unfollowCancelBtn" style="flex:1;padding:11px;border-radius:11px;border:1px solid var(--border,#e8e5f0);background:var(--input-bg,#f7f5fc);color:var(--text,#17151b);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>
+            <button id="unfollowConfirmBtn" style="flex:1;padding:11px;border-radius:11px;border:none;background:var(--red,#e0384d);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unfollow</button>
+          </div>
+        </div>`;
+
+      document.body.appendChild(modal);
+
+      function cleanup(result) {
+        modal.remove();
+        resolve(result);
+      }
+
+      document.getElementById('unfollowConfirmBtn').addEventListener('click', () => cleanup(true));
+      document.getElementById('unfollowCancelBtn').addEventListener('click', () => cleanup(false));
+      modal.addEventListener('click', (e) => { if (e.target === modal) cleanup(false); });
+    });
   }
 
   async function renderStats(p) {
@@ -1105,6 +1145,7 @@
        handle comparison — a stored account with a missing handle field once
        turned the owner's own page into a stranger's. */
     IS_OWNER = !IS_GUEST && !!p.isOwner;
+    document.body.classList.toggle('is-owner', IS_OWNER);
     /* Remember the true role once, before any preview override, so exiting a
        preview can always restore the real profile. */
     if (!REAL_IS_WRITER_SET) { REAL_IS_WRITER = !!p.isWriter; REAL_IS_WRITER_SET = true; }
