@@ -133,5 +133,186 @@ body{font-family:'Inter',system-ui,sans-serif}::-webkit-scrollbar{width:6px;heig
 
 <script src="shared/super-admin-sidebar.js"></script>
 <script src="awards-service.js?v=2"></script>
+<script>
+/* awards.html page controller — attaches the super-admin shell and renders
+   the awards catalog. The data layer lives in awards-service.js
+   (AwardsService). */
+(function () {
+  'use strict';
+  if (!window.SuperAdminSidebar) { console.error('super-admin-sidebar.js missing'); return; }
+
+  SuperAdminSidebar.attach('#dashRoot', {
+    activeItem: 'awards',
+    title: 'Awards',
+    subtitle: 'Catalog, criteria and auto-grant for platform badges',
+    searchPlaceholder: 'Search everything…',
+  });
+
+  const ICONS = ['fa-award','fa-trophy','fa-star','fa-crown','fa-medal','fa-fire',
+    'fa-bolt','fa-gem','fa-rocket','fa-heart','fa-thumbs-up','fa-book-open','fa-feather','fa-users'];
+
+  let editingId = null;
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  function iconGridHtml(){
+    return ICONS.map(function(ic){
+      return '<button type="button" class="icon-opt" data-icon="'+ic+'"><i class="fas '+ic+'"></i></button>';
+    }).join('');
+  }
+
+  async function render(){
+    const list = (await AwardsService.list()) || [];
+    const q = (document.getElementById('q').value || '').trim().toLowerCase();
+    const fStatus = document.getElementById('fStatus').value;
+    const fKind = document.getElementById('fKind').value;
+    const filtered = list.filter(function(a){
+      if (q && (a.name + ' ' + (a.desc||'')).toLowerCase().indexOf(q) === -1) return false;
+      if (fStatus !== 'all' && a.status !== fStatus) return false;
+      if (fKind === 'auto' && (!a.criteria || a.criteria.metric === 'manual')) return false;
+      if (fKind === 'manual' && a.criteria && a.criteria.metric !== 'manual') return false;
+      return true;
+    });
+    document.getElementById('countChip').textContent = filtered.length;
+    const s = await AwardsService.stats();
+    document.getElementById('statGrid').innerHTML = [
+      {n:s.total, l:'Total awards', ico:'fa-award', bg:'var(--gold-bg)', fg:'var(--gold)'},
+      {n:s.active, l:'Active', ico:'fa-circle-check', bg:'var(--green-bg)', fg:'var(--green)'},
+      {n:s.auto, l:'Auto-grant', ico:'fa-bolt', bg:'var(--purple-bg)', fg:'var(--purple)'},
+      {n:s.manual, l:'Manual', ico:'fa-hand-pointer', bg:'var(--blue-bg)', fg:'var(--blue)'},
+    ].map(function(c){
+      return '<div class="stat-card"><div class="stat-ico" style="background:'+c.bg+';color:'+c.fg+'"><i class="fas '+c.ico+'"></i></div><div><div class="stat-num">'+c.n+'</div><div class="stat-lbl">'+c.l+'</div></div></div>';
+    }).join('');
+    const listEl = document.getElementById('list');
+    if (!filtered.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--text-faint)"><i class="fas fa-award" style="font-size:26px;display:block;opacity:.5;margin-bottom:10px"></i>No awards match these filters.</div>';
+      return;
+    }
+    listEl.innerHTML = filtered.map(function(a){
+      const kind = a.criteria && a.criteria.metric !== 'manual' ? 'auto' : 'manual';
+      const criteriaLabel = a.criteria
+        ? (a.criteria.metric === 'manual' ? 'Manual grant only'
+          : (a.criteria.metric + ' ' + (a.criteria.op||'') + ' ' + (a.criteria.value||'') + (a.criteria.genre ? ' · ' + a.criteria.genre : '')).trim())
+        : 'Manual';
+      return '<div class="aw-card" data-id="'+esc(a.id)+'">'
+        + '<div class="aw-ico '+kind+'" style="color:'+esc(a.color||'var(--gold)')+'"><i class="fas '+(a.icon||'fa-award')+'"></i></div>'
+        + '<div class="aw-main"><div class="aw-name">'+esc(a.name)+'</div>'
+        + '<div class="aw-desc">'+esc(a.desc||'')+'</div>'
+        + '<div class="aw-criteria"><i class="fas fa-filter"></i> '+esc(criteriaLabel)+(a.criteria&&a.criteria.period?' · '+esc(a.criteria.period):'')+'</div></div>'
+        + '<div class="aw-badges"><span class="badge '+esc(a.status||'draft')+'">'+esc(a.status||'draft')+'</span>'
+        + '<span class="badge '+kind+'">'+kind+'</span></div>'
+        + '<div class="aw-actions">'
+        + '<button data-act="edit" data-id="'+esc(a.id)+'" title="Edit"><i class="fas fa-pen"></i></button>'
+        + '<button class="del" data-act="del" data-id="'+esc(a.id)+'" title="Delete"><i class="fas fa-trash"></i></button>'
+        + '</div></div>';
+    }).join('');
+    listEl.querySelectorAll('.aw-actions button').forEach(function(b){
+      b.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        const id = b.dataset.id;
+        if (b.dataset.act === 'edit') openModal(id);
+        else if (b.dataset.act === 'del') delAward(id);
+      });
+    });
+  }
+
+  function openModal(id){
+    editingId = id || null;
+    document.getElementById('modalTitle').textContent = id ? 'Edit award' : 'New award';
+    document.getElementById('iconGrid').innerHTML = iconGridHtml();
+    document.getElementById('iconGrid').querySelectorAll('.icon-opt').forEach(function(b){
+      b.addEventListener('click', function(){
+        document.querySelectorAll('#iconGrid .icon-opt').forEach(function(x){ x.classList.remove('on'); });
+        b.classList.add('on');
+      });
+    });
+    if (id) {
+      const a = (window.__cachedAwards || []).find(function(x){ return x.id === id; }) || {};
+      document.getElementById('fName').value = a.name || '';
+      document.getElementById('fDesc').value = a.desc || '';
+      document.getElementById('fStatus2').value = a.status || 'draft';
+      document.getElementById('fMetric').value = (a.criteria && a.criteria.metric) || 'manual';
+      document.getElementById('fValue').value = (a.criteria && a.criteria.value) || '';
+      document.getElementById('fGenre').value = (a.criteria && a.criteria.genre) || '';
+      document.getElementById('fPeriod').value = (a.criteria && a.criteria.period) || '';
+      const first = document.querySelector('#iconGrid .icon-opt');
+      if (first) first.classList.add('on');
+    } else {
+      document.getElementById('fName').value = '';
+      document.getElementById('fDesc').value = '';
+      document.getElementById('fStatus2').value = 'draft';
+      document.getElementById('fMetric').value = 'manual';
+      document.getElementById('fValue').value = '';
+      document.getElementById('fGenre').value = '';
+      document.getElementById('fPeriod').value = '';
+      const first = document.querySelector('#iconGrid .icon-opt');
+      if (first) first.classList.add('on');
+    }
+    document.getElementById('modalBg').classList.add('open');
+  }
+
+  function closeModal(){ document.getElementById('modalBg').classList.remove('open'); editingId = null; }
+
+  async function save(){
+    const name = document.getElementById('fName').value.trim();
+    if (!name) { alert('Name is required'); return; }
+    const iconEl = document.querySelector('#iconGrid .icon-opt.on');
+    const payload = {
+      name: name,
+      desc: document.getElementById('fDesc').value.trim(),
+      status: document.getElementById('fStatus2').value,
+      icon: iconEl ? iconEl.dataset.icon : 'fa-award',
+      criteria: {
+        metric: document.getElementById('fMetric').value,
+        op: document.getElementById('fMetric').value === 'manual' ? 'admin' : '>=',
+        value: Number(document.getElementById('fValue').value) || 0,
+        genre: document.getElementById('fGenre').value,
+        period: document.getElementById('fPeriod').value || null,
+      },
+    };
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    try {
+      if (editingId) await AwardsService.update(editingId, payload);
+      else await AwardsService.create(payload);
+      closeModal();
+      await render();
+    } catch (e) { alert(e.message); }
+    finally { btn.disabled = false; }
+  }
+
+  async function delAward(id){
+    if (!confirm('Delete this award?')) return;
+    try { await AwardsService.remove(id); await render(); }
+    catch (e) { alert(e.message); }
+  }
+
+  document.getElementById('btnNew').addEventListener('click', function(){ openModal(null); });
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('btnCancel').addEventListener('click', closeModal);
+  document.getElementById('modalBg').addEventListener('click', function(e){ if (e.target.id === 'modalBg') closeModal(); });
+  document.getElementById('btnSave').addEventListener('click', save);
+  document.getElementById('q').addEventListener('input', render);
+  document.getElementById('fStatus').addEventListener('change', render);
+  document.getElementById('fKind').addEventListener('change', render);
+  document.getElementById('btnRun').addEventListener('click', async function(){
+    const b = document.getElementById('btnRun'); b.disabled = true;
+    try { await AwardsService.runAutoGrant(); await render(); alert('Auto-grant run complete.'); }
+    catch (e) { alert(e.message); }
+    finally { b.disabled = false; }
+  });
+
+  // Cache the full list so the edit modal can read a row without a re-fetch.
+  const origList = AwardsService.list;
+  AwardsService.list = async function(){
+    const r = await origList();
+    window.__cachedAwards = r;
+    return r;
+  };
+
+  render();
+})();
+</script>
 </body>
 </html>

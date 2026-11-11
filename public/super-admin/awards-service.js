@@ -35,7 +35,9 @@ async function callApi(path, opts) {
 
 async function loadCatalog() {
   try {
-    catalog = await callApi('');
+    const data = await callApi('');
+    // Backend returns { items, total, page, ... } — flatten to the array.
+    catalog = Array.isArray(data) ? data : (data && data.items) || [];
     return catalog;
   } catch(e) {
     showError('Failed to load awards catalog: ' + e.message);
@@ -87,8 +89,8 @@ async function stats() {
     total: cat.length,
     active: cat.filter(a => a.status === 'active').length,
     draft: cat.filter(a => a.status === 'draft').length,
-    auto: cat.filter(a => a.criteria.metric !== 'manual').length,
-    manual: cat.filter(a => a.criteria.metric === 'manual').length,
+    auto: cat.filter(a => a.criteria && a.criteria.metric !== 'manual').length,
+    manual: cat.filter(a => a.criteria && a.criteria.metric === 'manual').length,
   };
 }
 

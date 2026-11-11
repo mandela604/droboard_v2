@@ -935,7 +935,7 @@ async function deleteRole(id) {
 /* ── editorial team (derived from platform roles) ── */
 async function editorialTeam(q) {
   const { page, limit, skip } = pageOf(q);
-  const filter = { roles: { $in: ['senior_editor', 'chief_editor'] }, deletedAt: null };
+  const filter = { roles: { $in: ['senior_editor', 'chief_editor', 'marketing', 'finance'] }, deletedAt: null };
   if (q.q) {
     const rx = new RegExp(q.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     filter.$or = [{ fullName: rx }, { email: rx }, { username: rx }];
@@ -1398,6 +1398,11 @@ async function collectionDelete(id) {
 
 /* ── posts admin ── */
 function toAdminPost(p, author) {
+  // Total reactions = sum of the per-rid counters on the Post.reactions map.
+  // The old likesCount/likedBy toggle is legacy; emoji reactions are what the
+  // feed displays, so the admin console must read the same source of truth.
+  const rxMap = p.reactions instanceof Map ? Object.fromEntries(p.reactions) : (p.reactions || {});
+  const likesTotal = Object.values(rxMap).reduce((s, n) => s + (Number(n) || 0), 0);
   const poll = p.poll && p.poll.q ? {
     question: p.poll.q,
     opts: (p.poll.opts || []).map(o => ({ label: o.t, v: o.v || 0 })),
@@ -1416,7 +1421,7 @@ function toAdminPost(p, author) {
     // with no fallback, so defaulting them here would hide the author's motion.
     debateData: p.debateData && p.debateData.motion ? { question: p.debateData.question || p.debateData.motion, forText: p.debateData.forText || 'For', againstText: p.debateData.againstText || 'Against', forV: p.debateData.forV || 0, agV: p.debateData.agV || 0 } : null,
     score: 0, reviewText: p.type === 'review' ? (p.text || '') : '',
-    likes: p.likesCount || 0, comments: p.commentsCount || 0, views: 0,
+    likes: likesTotal || p.likesCount || 0, comments: p.commentsCount || 0, views: p.views || 0,
     status: p.status || 'published', hoursAgo: hoursAgo(p.createdAt),
   };
 }

@@ -61,17 +61,46 @@
 
   const API_BASE = '/api';
 
+  // Apply the header labels for whatever resolved (thread vs post).
+  function applyThreadLabels() {
+    const sub = document.getElementById('hubSub');
+    if (!sub) return;
+    if (POST && POST._kind === 'post') { sub.textContent = 'Post'; GENRE_ID = ''; GENRE = null; return; }
+    GENRE_ID = (POST && POST._genreId) || 'general';
+    GENRE = { name: (POST && (POST._genreName || POST._genreId)) || 'Discussion' };
+    sub.textContent = GENRE.name + ' Hub';
+  }
+
+  /* The reader feed opens every non-debate post here too. Those rows are Post
+     docs, not Discussion docs, so shape one into the flat OP card the page
+     paints. `name` stays the display name; `handle` is the profile slug. */
+  function normalizePost(p) {
+    return {
+      id: p.id, _kind: 'post',
+      name: p.fullName || p.name || '',
+      handle: p.name || '',
+      avatar: p.avatar || '',
+      time: p.time || '',
+      title: p.heading || '',
+      body: p.text || '',
+      media: p.image || '',
+      likes: (p.likes != null ? p.likes : (p.likesCount || 0)),
+      liked: !!p.liked,
+      comments: (p.comments != null ? p.comments : (p.commentsCount || 0)),
+      userRx: p.userRx || null,
+      verified: !!p.verified,
+    };
+  }
+
   async function loadThread() {
     const params = new URLSearchParams(location.search);
-    let postId = params.get('id') || params.get('d');
+    let postId = params.get('id') || params.get('d') || params.get('post');
     if (!postId) throw new Error('No discussion id in URL');
     
     // Check cache first
     if (cache.thread && cache.thread.id === postId) {
       POST = cache.thread.data;
-      GENRE_ID = POST._genreId || 'general';
-      GENRE = { name: POST._genreName || POST._genreId || 'Discussion' };
-      document.getElementById('hubSub').textContent = GENRE.name + ' Hub';
+      applyThreadLabels();
       return true;
     }
     
@@ -83,12 +112,19 @@
     
     const promise = (async () => {
       const res = await fetch(`${API_BASE}/discussions/${encodeURIComponent(postId)}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Discussion API failed: ' + res.status);
-      POST = await res.json();
-      GENRE_ID = POST._genreId || 'general';
-      GENRE = { name: POST._genreName || POST._genreId || 'Discussion' };
-      document.getElementById('hubSub').textContent = GENRE.name + ' Hub';
-      
+      if (res.ok) {
+        POST = await res.json();
+        POST._kind = 'discussion';
+      } else if (res.status === 404) {
+        // Not a hub thread — a feed post opens here too, so read it from the
+        // posts API instead of dead-ending on "not found".
+        const pres = await fetch(`${API_BASE}/posts/${encodeURIComponent(postId)}`, { credentials: 'include' });
+        if (!pres.ok) throw new Error('not_found');
+        POST = normalizePost(await pres.json());
+      } else {
+        throw new Error('Discussion API failed: ' + res.status);
+      }
+      applyThreadLabels();
       cache.thread = { id: postId, data: POST };
       return true;
     })().finally(() => cache.pending.delete(cacheKey));
@@ -98,14 +134,18 @@
   }
 
   async function threadComments() {
-    // The comments API filters on discussionId (strict query schema).
-    const res = await fetch(`${API_BASE}/comments?scope=discussion&discussionId=${encodeURIComponent(POST.id)}&limit=50`, { credentials: 'include' });
+    // Threads filter on discussionId; posts on postId (strict query schema).
+    const isPost = POST && POST._kind === 'post';
+    const q = isPost
+      ? `scope=post&postId=${encodeURIComponent(POST.id)}`
+      : `scope=discussion&discussionId=${encodeURIComponent(POST.id)}`;
+    const res = await fetch(`${API_BASE}/comments?${q}&limit=50`, { credentials: 'include' });
     if (!res.ok) throw new Error('Comments API failed: ' + res.status);
     const data = await res.json();
     return (data && data.items) || [];
   }
   /* ── OP render ── */
-  function profileHref(name) { return 'profile.html?u=' + encodeURIComponent(name || ''); }
+  function profileHref(name, handle) { return 'profile.html?u=' + encodeURIComponent(handle || name || ''); }
 
   /* The OP's real lineup + ring come from the shared status service and
      StatusStore — same as every other avatar. No seed-derived guesses. */
@@ -195,9 +235,9 @@
         }], p.name);
         if (ok) return;
       }
-      location.href = profileHref(p.name);
+      location.href = profileHref(p.name, POST.handle);
     });
-    document.getElementById('opName')?.addEventListener('click', () => { location.href = profileHref(POST.name); });
+    document.getElementById('opName')?.addEventListener('click', () => { location.href = profileHref(POST.name, POST.handle); });
     document.getElementById('storyRef')?.addEventListener('click', () => toast('📖 Opening story…'));
     document.getElementById('opReplyBtn')?.addEventListener('click', () => {
       const inp = document.querySelector('#commentsPlaceholder .dcs-input, #commentsPlaceholder input[type="text"], #commentsPlaceholder textarea');
@@ -277,18 +317,20 @@
     }, 450);
   }
   /* ── Wiring ── */
-  function initWiring() {
-    document.getElementById('backBtn').addEventListener('click', () => {
+  /* Top-bar wiring is attached up-front so Back/Share keep working even when
+     the thread fails to load (they must never depend on the OP resolving). */
+  function initTopBar() {
+    document.getElementById('backBtn')?.addEventListener('click', () => {
       if (history.length > 1) history.back();
       else location.href = 'feed.html';
     });
-    document.getElementById('shareBtn').addEventListener('click', () => {
+    document.getElementById('shareBtn')?.addEventListener('click', () => {
       if (!POST) return;
       const url = location.href;
       if (window.openShareModal) {
         openShareModal({
           title: POST.title,
-          sub: '@' + (POST.name || '') + ' · ' + (GENRE && GENRE.name),
+          sub: '@' + (POST.name || '') + (GENRE ? ' · ' + GENRE.name : ''),
           img: POST.media || '',
           url,
         });
@@ -296,6 +338,9 @@
         navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied'));
       } else toast(url);
     });
+  }
+
+  function initWiring() {
     if (window.DroboardReactionPicker) {
       // attachCounters — picker owns all toggle math (love/switch/deselect,
       // total-preserving). Host only seeds initial counts + persists.
@@ -327,17 +372,19 @@
     initTheme();
     window.toast = toast;
     window.toggleTheme = toggleTheme;
+    initTopBar();
     try {
       await loadThread();
     } catch (err) {
       const msg = (err && err.message) || 'network error';
+      const notFound = msg === 'not_found' || msg === 'No discussion id in URL';
       const op = document.getElementById('opMount');
-      if (op) op.innerHTML = '<div class="empty">Could not load this discussion — ' + esc(msg) + '</div>';
+      if (op) op.innerHTML = '<div class="empty">' + (notFound ? 'This post could not be found.' : 'Could not load this discussion — ' + esc(msg)) + '</div>';
       const cm = document.getElementById('commentsPlaceholder');
       if (cm) cm.innerHTML = '';
       const sub = document.getElementById('hubSub');
       if (sub) sub.textContent = 'Discussion';
-      toast('Could not load discussion');
+      toast(notFound ? 'Post not found' : 'Could not load discussion');
       return;
     }
     initWiring();
