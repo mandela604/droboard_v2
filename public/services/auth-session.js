@@ -274,6 +274,22 @@
   // Keep the access token warm for the whole session.
   if (isSignedIn()) scheduleRefresh();
 
+  // Facebook-style seamless session: keep the token warm on any user activity,
+  // and refresh immediately when the tab regains focus. This prevents the
+  // "session expired while browsing" 401 — active users stay signed in.
+  (function attachKeepAlive() {
+    var _kaTimer = null;
+    function keepAliveDebounced() { if (_kaTimer) return; _kaTimer = setTimeout(function () { _kaTimer = null; keepAlive(); }, 2000); }
+    try {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') keepAlive();
+      }, { passive: true });
+      ['click', 'keydown', 'scroll', 'touchstart'].forEach(function (ev) {
+        document.addEventListener(ev, keepAliveDebounced, { passive: true });
+      });
+    } catch (e) {}
+  })();
+
   global.AuthSession = {
     getSession,
     getSync,
@@ -290,5 +306,6 @@
     sessionExpired,
     refresh: refreshAccess,
     scheduleRefresh,
+    keepAlive,
   };
 })(window);
