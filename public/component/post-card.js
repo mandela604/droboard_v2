@@ -406,10 +406,11 @@
     /* Repost — same horizontal shape as recommendation */
     'repost': (post) => {
       const o = post.original || {};
+      const coverSrc = o.cover || o.avatar || '';
       return `${_pill('repost')}
         ${post.note ? `<div class="pcc-text" data-pcc-openpost>${esc(post.note)}</div>` : ''}
         <div class="pcc-story-card repost" data-pcc-open>
-          <img class="pcc-story-cover" src="${o.cover || o.avatar || ''}" alt="">
+          ${coverSrc ? `<img class="pcc-story-cover" src="${esc(coverSrc)}" alt="">` : ''}
           <div class="pcc-story-body">
             <div class="pcc-story-badge rp">Repost</div>
             <div class="pcc-story-title">${esc(o.title || o.text || '')}</div>
