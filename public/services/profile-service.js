@@ -446,7 +446,7 @@
         <div style="background:var(--card,#fff);border:1px solid var(--border,#e8e5f0);border-radius:18px;padding:24px 22px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
           <div style="font-size:28px;margin-bottom:12px">👋</div>
           <div style="font-size:15px;font-weight:800;color:var(--text,#17151b);margin-bottom:8px">Unfollow ${handle}?</div>
-          <div style="font-size:12.5px;color:var(--text-muted,#635f6e);margin-bottom:22px;line-height:1.5">Their posts won't appear in your feed anymore.</div>
+          <div style="font-size:12.5px;color:var(--text-muted,#635f6e);margin-bottom:22px;line-height:1.5">You can always follow them back.</div>
           <div style="display:flex;gap:10px">
             <button id="unfollowCancelBtn" style="flex:1;padding:11px;border-radius:11px;border:1px solid var(--border,#e8e5f0);background:var(--input-bg,#f7f5fc);color:var(--text,#17151b);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>
             <button id="unfollowConfirmBtn" style="flex:1;padding:11px;border-radius:11px;border:none;background:var(--red,#e0384d);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unfollow</button>
