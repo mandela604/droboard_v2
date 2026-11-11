@@ -202,6 +202,75 @@ async function dashboardSummary() {
   };
 }
 
+/* ── dashboard panels ──
+   The dashboard page asks for five small shapes. They are views over the one
+   aggregate above, so the KPI strip, the chart, the story table, the activity
+   feed and the Admin Team panel can never disagree with each other. */
+async function dashboardKpis() { return (await dashboardSummary()).kpiCards; }
+async function dashboardRevenue() { return (await dashboardSummary()).revenueChart; }
+async function dashboardTopStories() { return (await dashboardSummary()).topStories; }
+async function dashboardActivity() { return (await dashboardSummary()).activityLog; }
+async function listAdmins() { return (await dashboardSummary()).adminTeam; }
+
+/* Create an admin from the dashboard's Add Admin modal. An admin must be able
+   to sign in, so a real password is required (min 8) — there is no invite mail
+   path yet. Username is derived from the email local part and de-duplicated. */
+async function createAdmin(data) {
+  const name = String((data && data.name) || '').trim();
+  if (!name) throw err(400, 'name_required');
+  const email = String((data && data.email) || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw err(400, 'valid_email_required');
+  const password = String((data && data.password) || '');
+  if (password.length < 8) throw err(400, 'password_min_8');
+  const dup = await User.findOne({ email: email, deletedAt: null }).select('id').lean();
+  if (dup) throw err(409, 'email_taken');
+  const base = String((data && data.username) || email.split('@')[0] || 'admin')
+    .toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 26) || 'admin';
+  let username = base;
+  for (let i = 2; i < 500; i++) {
+    const taken = await User.findOne({ username: username }).select('id').lean();
+    if (!taken) break;
+    username = base + i;
+  }
+  const role = backRole((data && data.role) || 'Admin');
+  // `admin` is the platform gate every super-admin route checks; the chosen
+  // label rides along as the role the console displays.
+  const roles = ['admin'];
+  if (role && role !== 'admin') roles.push(role);
+  return createUser({
+    name: name,
+    email: email,
+    username: username,
+    password: password,
+    roles: roles,
+    role: (data && data.role) || 'Admin',
+    status: (data && data.status) || 'active',
+  });
+}
+
+async function updateAdmin(id, patch) {
+  const body = patch || {};
+  const clean = {};
+  if (body.name !== undefined) clean.name = body.name;
+  if (body.email !== undefined) clean.email = body.email;
+  if (body.role !== undefined) clean.role = body.role;
+  if (body.status !== undefined) clean.status = body.status;
+  return updateUser(id, clean);
+}
+
+/* Removing an admin is a soft delete (same as the Users console). A super
+   admin cannot remove themselves, and the last remaining super admin stays. */
+async function removeAdmin(id, actorId) {
+  if (actorId && String(id) === String(actorId)) throw err(400, 'cannot_remove_self');
+  const target = await User.findOne({ id: String(id), deletedAt: null }).select('id roles').lean();
+  if (!target) throw err(404, 'user_not_found');
+  if ((target.roles || []).includes('admin')) {
+    const admins = await User.countDocuments({ roles: 'admin', deletedAt: null });
+    if (admins <= 1) throw err(400, 'last_super_admin');
+  }
+  return removeUser(id);
+}
+
 /* ── users ── */
 const FRONT_STATUS = { active: 'active', pending_verification: 'pending', suspended: 'suspended', banned: 'suspended' };
 const BACK_STATUS = { active: 'active', pending: 'pending_verification', suspended: 'suspended', banned: 'banned' };
@@ -1811,6 +1880,8 @@ async function previewSystemPage(id) {
 
 module.exports = {
   dashboardSummary,
+  dashboardKpis, dashboardRevenue, dashboardTopStories, dashboardActivity,
+  listAdmins, createAdmin, updateAdmin, removeAdmin,
   listUsers, getUser, createUser, updateUser, removeUser,
   listRoles, getRole, createRole, updateRole, deleteRole,
   ensureSystemRoles, permsBySlug, invalidatePermCache, syncRoleMembers, PERM_GROUPS,

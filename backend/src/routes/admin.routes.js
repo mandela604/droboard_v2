@@ -58,6 +58,33 @@ const PG = { page: z.string().max(6).optional(), limit: z.string().max(6).option
 
 // dashboard
 router.get('/dashboard/summary', ...A, sa.dashboardSummary);
+// The dashboard page asks for these five shapes individually; each is a view
+// over the same aggregate, so the panels cannot drift apart.
+router.get('/dashboard/kpis', ...A, sa.dashboardKpis);
+router.get('/dashboard/revenue', ...A, sa.dashboardRevenue);
+router.get('/dashboard/top-stories', ...A, sa.dashboardTopStories);
+router.get('/dashboard/activity', ...A, sa.dashboardActivity);
+
+// admin team (dashboard panel CRUD — creates/edits a real admin account)
+router.get('/admins', ...A, sa.listAdmins);
+router.post('/admins', ...A, require('../middleware/http').writeLimiter, audit('admin.admins.create'),
+  validate(z.object({ body: z.object({
+    name: z.string().min(1).max(120),
+    email: z.string().email().max(120),
+    username: z.string().max(40).optional(),
+    password: z.string().min(8).max(128),
+    role: z.string().max(40).optional(),
+    status: z.enum(['active', 'suspended']).optional(),
+  }).strict() })), sa.createAdmin);
+router.put('/admins/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.admins.update'),
+  validate(z.object({ params: z.object({ id: ID }), body: z.object({
+    name: z.string().min(1).max(120).optional(),
+    email: z.string().email().max(120).optional(),
+    role: z.string().max(40).optional(),
+    status: z.enum(['active', 'suspended']).optional(),
+  }).strict().refine(v => Object.keys(v).length > 0, { message: 'nothing_to_save' }) })), sa.updateAdmin);
+router.delete('/admins/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.admins.delete'),
+  validate(z.object({ params: z.object({ id: ID }) })), sa.removeAdmin);
 
 // users
 router.get('/users', ...A, validate(z.object({ query: z.object({
