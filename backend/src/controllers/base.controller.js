@@ -31,7 +31,7 @@ async function wrap(res, fn) {
   try {
     return res.json(normalize(await fn()));
   } catch (e) {
-    if (process.env.NODE_ENV === 'test' && process.env.SMOKE_DEBUG) console.error('WRAP', e && e.stack);
+    console.error('[wrap error]', e && e.message, e && e.stack);
     const body = { error: e.message || 'error' };
     // Retry/wait hints and field-level reasons are how the client shows an
     // honest message instead of a generic 4xx.
@@ -47,9 +47,13 @@ async function wrap(res, fn) {
 
 function setRefreshCookie(res, token) {
   const env = require('../config/env');
+  // The refresh cookie is scoped to /api/auth only: it reaches the refresh
+  // and logout endpoints but is never sent to /api/posts or any other route.
+  // Clear any legacy cookie scoped to '/' first so only one remains.
+  res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/' });
   res.cookie('dro_refresh', token, {
     httpOnly: true, secure: env.isProd, sameSite: 'lax',
-    domain: env.cookieDomain, maxAge: 30 * 86400000, path: '/',
+    domain: env.cookieDomain, maxAge: 30 * 86400000, path: '/api/auth',
   });
 }
 // Short-lived access cookie so credentials:include fetches work without an
@@ -73,6 +77,7 @@ function clearAccessCookie(res) {
 }
 function clearRefreshCookie(res) {
   const env = require('../config/env');
+  res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/api/auth' });
   res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/' });
 }
 

@@ -14,7 +14,6 @@
  */
 (function(){
 'use strict';
-const USE_API = true, API_BASE = '/api';
 
 SuperAdminSidebar.attach('#boardsRoot', {
   activeItem: 'genre-boards',
@@ -28,7 +27,6 @@ SuperAdminSidebar.attach('#boardsRoot', {
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
 
-/* ── DEMO DATASET — live swap: GET /api/super-admin/boards ── */
 const API_BASE = '/api/super-admin/genre-boards';
 
 async function callApi(path, opts){
@@ -354,7 +352,7 @@ function submitFlag(){
   var pass = document.getElementById('gbFlagPass').value;
   if(flagMode === 'flag' && !reason){ errEl.textContent = 'Select a reason for flagging.'; return; }
   if(!pass){ errEl.textContent = 'Enter your password to confirm.'; return; }
-  if(pass.length < 4){ errEl.textContent = 'Demo mode: password must be at least 4 characters.'; return; }
+  if(pass.length < 4){ errEl.textContent = 'Password must be at least 4 characters.'; return; }
 
   if(flagMode === 'flag'){
     b.flagReason = reason;

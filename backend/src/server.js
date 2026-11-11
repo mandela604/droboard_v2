@@ -54,7 +54,9 @@ async function main() {
   app.use('/api/payments/webhook', require('express').raw({ type: '*/*', limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
-  app.use(require('./middleware/http').generalLimiter);
+  // Rate limit only API routes — never static files (JS/CSS/HTML).
+  // The old global placement was hitting static file loads and causing 429s on page load.
+  app.use('/api', require('./middleware/http').generalLimiter);
 
   app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -131,7 +133,12 @@ async function main() {
   
 
   // eslint-disable-next-line no-unused-vars
-  app.use((err, req, res, next) => res.status(500).json({ error: 'error' }));
+  app.use((err, req, res, next) => {
+    console.error('[server error]', req.method, req.path, err && err.message, err && err.stack);
+    const status = (err && err.status) || 500;
+    const message = (err && err.message) || 'error';
+    res.status(status).json({ error: message });
+  });
 
   const server = http.createServer(app);
   require('./socket').init(server);

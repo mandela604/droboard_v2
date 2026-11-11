@@ -805,10 +805,14 @@
       onStatusSlide: handleStatusSlide,
       onSubmit: async (post) => {
         if (post && post.type === 'status') { await handleStatusSlide(post.statusSlide); return; }
+        console.log('[profile onSubmit] post object received:', JSON.stringify(post));
         try {
           const updated = await ProfileData.createPost(VIEW_HANDLE, post);
           PROFILE = updated; renderFeed(PROFILE); switchTab('feed');
-        } catch (e) { toast('❌ ' + (e.message || 'Could not create the post — try again.')); }
+        } catch (e) {
+          console.error('[profile onSubmit] createPost threw:', e.status, e.message);
+          toast('❌ ' + (e.message || 'Could not create the post — try again.'));
+        }
       },
     });
   }

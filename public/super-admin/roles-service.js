@@ -10,11 +10,12 @@
  *   finance.routes.js                                 → finance | admin
  *   admin.routes.js                                   → admin
  *
- * Demo data only. Grants for the six system roles are computed from `by`, so
- * they cannot drift from the guard; custom roles keep their stored perms and
- * the page says plainly that route guards read platform roles, not this page.
+ * Data loads live from the roles API. Grants for the six system roles are
+ * computed from `by`, so they cannot drift from the guard; custom roles keep
+ * their stored perms and the page says plainly that route guards read platform
+ * roles, not this page.
  *
- * API contract when USE_API flips (pattern only, no wiring yet):
+ * API contract:
  *   GET    /api/super-admin/roles        -> Role[]
  *   GET    /api/super-admin/roles/:id    -> Role + members
  *   POST   /api/super-admin/roles        body { name, desc, color, icon, perms, memberIds }

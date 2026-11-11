@@ -39,6 +39,7 @@
     if (!res.ok) {
       const err = new Error((json && (json.error || json.message)) || ('Request failed (' + res.status + ')'));
       err.status = res.status;
+      console.error('[profile-data api] FAILED', opts && opts.method || 'GET', path, res.status, json);
       throw err;
     }
     return json;
@@ -95,8 +96,6 @@
     const { type = 'post', text = '', quote = '', caption = '', note = '',
       chapterRef, storyRef, amaData, pinned = false,
       image = '', poll, debateData } = payload || {};
-    /* Only send what's there: the backend schema rejects explicit nulls on
-       its optional object fields. */
     const body = { type, pinned: !!pinned };
     if (text) body.text = text;
     if (quote) body.quote = quote;
@@ -108,8 +107,16 @@
     if (amaData) body.amaData = amaData;
     if (poll) body.poll = poll;
     if (debateData) body.debateData = debateData;
-    await api('/posts', { method: 'POST', body: JSON.stringify(body) });
-    return refetch(handle);
+
+    console.log('[createPost] sending to POST /api/posts', JSON.stringify(body));
+    try {
+      const result = await api('/posts', { method: 'POST', body: JSON.stringify(body) });
+      console.log('[createPost] success', result);
+      return refetch(handle);
+    } catch (e) {
+      console.error('[createPost] FAILED — status:', e.status, '— message:', e.message);
+      throw e;
+    }
   }
 
   async function pinPost(handle, postId, pinned) {
