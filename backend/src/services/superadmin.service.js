@@ -688,7 +688,19 @@ async function createUser(data, by) {
     status: data.status && BACK_STATUS[data.status] ? BACK_STATUS[data.status] : 'active',
     adminNotes: data.notes || '',
   });
+  await syncUserRoleMembership(doc.id, doc.roles).catch(() => {});
   return toAdminUser(doc.toJSON());
+}
+
+/* Users console and Roles page are two views of one fact. When a user is given
+   (or loses) a role here, mirror it onto AdminRole.memberIds so the Roles page
+   lists the same people. Unknown slugs (reader/writer) simply have no doc. */
+async function syncUserRoleMembership(userId, roles) {
+  const id = String(userId || '');
+  if (!id) return;
+  const slugs = [...new Set((roles || []).map(r => String(r)).filter(Boolean))];
+  await AdminRole.updateMany({ slug: { $nin: slugs } }, { $pull: { memberIds: id } });
+  if (slugs.length) await AdminRole.updateMany({ slug: { $in: slugs } }, { $addToSet: { memberIds: id } });
 }
 
 async function updateUser(id, patch) {
@@ -716,6 +728,11 @@ async function updateUser(id, patch) {
   if (patch.verified !== undefined) { u.emailVerified = !!patch.verified; if (patch.verified) u.emailVerifiedAt = u.emailVerifiedAt || new Date(); }
   if (patch.notes !== undefined) u.adminNotes = patch.notes;
   await u.save();
+  // A role granted here must also show on the Roles page, which reads
+  // AdminRole.memberIds. Keep the two views in one write.
+  if (patch.role !== undefined || patch.roles !== undefined) {
+    await syncUserRoleMembership(u.id, u.roles).catch(() => {});
+  }
   return toAdminUser(u.toJSON());
 }
 

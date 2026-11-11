@@ -303,6 +303,45 @@ async function main() {
   const goneDoc = newAdminId ? await User.findOne({ id: newAdminId }).select('deletedAt status').lean() : null;
   check('removed admin is soft-deleted', !!(goneDoc && goneDoc.deletedAt), `deletedAt=${goneDoc && goneDoc.deletedAt}`);
 
+  /* ── GIVING ROLES (Users console -> AdminRole membership -> perms) ── */
+  say('\n=== TESTING ROLE GRANTS: CHIEF / SENIOR EDITOR / FINANCE / MARKETING ===\n');
+  const roleList = await call('GET', `${SA}/roles`);
+  check('GET /roles -> 200 array', roleList.status === 200 && Array.isArray(roleList.json),
+    `status=${roleList.status} len=${(roleList.json || []).length}`);
+  const GRANTS = [
+    ['Chief Editor', 'chief_editor'],
+    ['Senior Editor', 'senior_editor'],
+    ['Finance', 'finance'],
+    ['Marketing', 'marketing'],
+  ];
+  for (const [label, slug] of GRANTS) {
+    const gr = await call('PATCH', `${SA}/users/${reader.id}`, { role: label });
+    check(`PATCH /users/:id role=${label} -> 200`, gr.status === 200, `status=${gr.status} ${JSON.stringify(gr.json && gr.json.error)}`);
+    check(`user row now shows ${label}`, gr.json && gr.json.role === label, `role=${gr.json && gr.json.role}`);
+
+    const doc = await User.findOne({ id: String(reader.id) }).select('roles primaryRole').lean();
+    check(`stored roles include ${slug}`, !!(doc && (doc.roles || []).includes(slug)),
+      `roles=${JSON.stringify((doc && doc.roles) || [])}`);
+
+    const rolesNow = await call('GET', `${SA}/roles`);
+    const roleDoc = (rolesNow.json || []).find(x => x.slug === slug) || {};
+    const members = await AdminRole.findOne({ slug }).select('memberIds').lean();
+    check(`${label} role lists this member on the Roles page`,
+      !!(members && (members.memberIds || []).map(String).includes(String(reader.id))),
+      `members=${(members && members.memberIds || []).length} roleDocMembers=${roleDoc.memberCount}`);
+  }
+
+  const revoked = await call('PATCH', `${SA}/users/${reader.id}`, { roles: ['reader'] });
+  check('PATCH /users/:id roles=[reader] -> 200', revoked.status === 200, `status=${revoked.status}`);
+  const afterRevoke = await User.findOne({ id: String(reader.id) }).select('roles').lean();
+  check('revoked roles are gone from the user',
+    !!(afterRevoke && !(afterRevoke.roles || []).some(r => GRANTS.some(g => g[1] === r))),
+    `roles=${JSON.stringify(afterRevoke && afterRevoke.roles)}`);
+  const staleDocs = await AdminRole.find({ slug: { $in: GRANTS.map(g => g[1]) } }).select('slug memberIds').lean();
+  check('revoked member is pulled from every role page',
+    staleDocs.every(d => !(d.memberIds || []).map(String).includes(String(reader.id))),
+    `docs=${staleDocs.length}`);
+
   /* ── USERS LIST ──────────────────────────────────────────── */
   say('\n=== TESTING USERS LIST ===\n');
   

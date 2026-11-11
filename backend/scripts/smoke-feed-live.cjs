@@ -191,13 +191,56 @@ async function main() {
     vhome.notifCount === 2, `notifCount=${vhome.notifCount}`);
 
   // ══════════════════════════════════════════════════════════════
+  // 1b) POST /:id/save — the feed bookmark must survive a reload
+  // ══════════════════════════════════════════════════════════════
+  r = await call('POST', '/api/posts', { type: 'post', text: 'save me, reload me' }, viewerToken);
+  const savePost = (r.json && (r.json.post || r.json)) || {};
+  check('S1 POST /posts (reader owns a post) -> 2xx + id',
+    r.status >= 200 && r.status < 300 && !!savePost.id, `${r.status} id=${savePost.id}`);
+
+  r = await call('GET', '/api/feed/home', undefined, viewerToken);
+  const beforeSave = (r.json.posts || []).find(p => String(p.id) === String(savePost.id)) || {};
+  check('S2 post starts unsaved for the viewer', beforeSave.saved === false, `saved=${beforeSave.saved}`);
+
+  r = await call('POST', `/api/posts/${encodeURIComponent(savePost.id)}/save`, {}, viewerToken);
+  check('S3 POST /posts/:id/save -> {saved:true}',
+    r.status === 200 && r.json && r.json.saved === true, `${r.status} ${JSON.stringify(r.json)}`);
+
+  // Reload = the exact request the page makes on refresh.
+  r = await call('GET', '/api/feed/home', undefined, viewerToken);
+  const afterSave = (r.json.posts || []).find(p => String(p.id) === String(savePost.id)) || {};
+  check('S4 SAVED STATE SURVIVES A RELOAD (feed card)', afterSave.saved === true, `saved=${afterSave.saved}`);
+
+  r = await call('GET', '/api/posts/saved?limit=20', undefined, viewerToken);
+  const savedIds = ((r.json && (r.json.items || r.json.posts || r.json)) || []).map(p => String(p.id));
+  check('S5 GET /posts/saved lists the saved post', r.status === 200 && savedIds.includes(String(savePost.id)),
+    `${r.status} ids=${savedIds.slice(0, 4).join(',')}`);
+
+  r = await call('GET', '/api/feed/home');
+  const anonSave = (r.json.posts || []).find(p => String(p.id) === String(savePost.id)) || {};
+  check('S6 anonymous viewer sees the post unsaved', anonSave.saved === false, `saved=${anonSave.saved}`);
+
+  r = await call('POST', `/api/posts/${encodeURIComponent(savePost.id)}/save`, {}, viewerToken);
+  check('S7 second toggle -> {saved:false}', r.status === 200 && r.json && r.json.saved === false,
+    `${r.status} ${JSON.stringify(r.json)}`);
+  r = await call('GET', '/api/posts/saved?limit=20', undefined, viewerToken);
+  const savedIds2 = ((r.json && (r.json.items || r.json.posts || r.json)) || []).map(p => String(p.id));
+  check('S8 unsaved post drops out of the library', !savedIds2.includes(String(savePost.id)),
+    `ids=${savedIds2.slice(0, 4).join(',')}`);
+
+  r = await call('POST', `/api/posts/${encodeURIComponent(savePost.id)}/save`, {});
+  check('S9 save without auth -> 401', r.status === 401, `${r.status}`);
+
+  // ══════════════════════════════════════════════════════════════
   // 2) /api/notifications/unread-count  — badge (auth)
   // ══════════════════════════════════════════════════════════════
   r = await call('GET', '/api/notifications/unread-count', undefined, viewerToken);
   check('N1 GET /notifications/unread-count -> {count:2}',
     r.status === 200 && r.json && r.json.count === 2, `${r.status} ${JSON.stringify(r.json)}`);
+  // Guests get zeros, not a 401 — the badge is rendered on every page.
   r = await call('GET', '/api/notifications/unread-count');
-  check('N2 unread-count without auth -> 401', r.status === 401, `${r.status}`);
+  check('N2 unread-count without auth -> {count:0} (guest badge, no 401)',
+    r.status === 200 && r.json && r.json.count === 0, `${r.status} ${JSON.stringify(r.json)}`);
 
   // ══════════════════════════════════════════════════════════════
   // 3) /api/ads?placement=feed  — sponsored + promo pools
