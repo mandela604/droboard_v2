@@ -1,6 +1,19 @@
 'use strict';
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const env = require('../config/env');
+
+/* Tokens carry our public `id` (uuidv7 / usr_…), never Mongo's `_id`. A query
+   keyed on `_id` with that value throws a CastError, which used to surface as
+   503 account_check_failed on every authenticated request. Match `id` first,
+   and fall back to the ObjectId only for genuinely ObjectId-shaped tokens. */
+function identityFilter(ident) {
+  const s = String(ident == null ? '' : ident);
+  if (!s) return null;
+  return (s.length === 24 && mongoose.Types.ObjectId.isValid(s))
+    ? { $or: [{ id: s }, { _id: s }] }
+    : { id: s };
+}
 
 function signAccess(user) {
   return jwt.sign(
@@ -49,10 +62,12 @@ async function resolveSession(req, res) {
 async function requireAuth(req, res, next) {
   const sess = await resolveSession(req, res);
   if (!sess.identity) return res.status(401).json({ error: 'unauthorized' });
+  const filter = identityFilter(sess.identity.id);
+  if (!filter) return res.status(401).json({ error: 'unauthorized' });
   let u;
   try {
     const { User } = require('../models/user.model');
-    u = await User.findOne({ _id: sess.identity.id }).select('_id status deletedAt roles').lean();
+    u = await User.findOne(filter).select('id _id status deletedAt roles').lean();
   } catch (e) {
     return res.status(503).json({ error: 'account_check_failed' });
   }
@@ -60,7 +75,7 @@ async function requireAuth(req, res, next) {
   if (u.status === 'banned') return res.status(403).json({ error: 'banned' });
   if (u.status === 'suspended') return res.status(403).json({ error: 'suspended' });
   const roles = Array.isArray(u.roles) ? u.roles : sess.identity.roles;
-  const userId = String(u._id);
+  const userId = String(u.id || u._id);
   if (sess.renewed) {
     try { require('../controllers/base.controller').setAccessCookie(res, signAccess({ id: userId, roles, _mfaAt: sess.identity.mfaAt })); } catch (e) { /* keep going */ }
   }
@@ -78,11 +93,13 @@ async function optionalAuth(req, res, next) {
   let roles = sess.identity.roles;
   try {
     const { User } = require('../models/user.model');
-    const u = await User.findOne({ _id: sess.identity.id }).select('_id status deletedAt roles').lean();
+    const filter = identityFilter(sess.identity.id);
+    const u = filter ? await User.findOne(filter).select('id _id status deletedAt roles').lean() : null;
     if (!u || u.deletedAt || u.status === 'banned' || u.status === 'suspended') { req.user = null; return next(); }
     roles = Array.isArray(u.roles) ? u.roles : roles;
+    sess.identity.id = String(u.id || u._id);
     if (sess.renewed) {
-      try { require('../controllers/base.controller').setAccessCookie(res, signAccess({ id: String(u._id), roles, _mfaAt: sess.identity.mfaAt })); } catch (e) { /* keep going */ }
+      try { require('../controllers/base.controller').setAccessCookie(res, signAccess({ id: String(u.id || u._id), roles, _mfaAt: sess.identity.mfaAt })); } catch (e) { /* keep going */ }
     }
   } catch (e) { /* DB error — still let them through as identity-only */ }
   req.user = { id: sess.identity.id, roles, mfaAt: sess.identity.mfaAt };
@@ -94,7 +111,9 @@ async function optionalAuth(req, res, next) {
 async function verifyPassword(userId, password) {
   const argon2 = require('argon2');
   const { User } = require('../models/user.model');
-  const u = await User.findOne({ _id: String(userId) }).select('+passwordHash');
+  const filter = identityFilter(userId);
+  if (!filter) { const e = new Error('no_user'); e.status = 404; throw e; }
+  const u = await User.findOne(filter).select('+passwordHash');
   if (!u || !u.passwordHash) { const e = new Error('oauth_only'); e.status = 400; throw e; }
   const ok = await argon2.verify(u.passwordHash, String(password || '')).catch(() => false);
   if (!ok) { const e = new Error('invalid_password'); e.status = 401; throw e; }
