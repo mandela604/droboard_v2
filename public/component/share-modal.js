@@ -747,14 +747,16 @@
           },
           postToProfile: async (payload) => {
             const caption = payload.caption || '';
+            // _data.sub = '@username', strip @ for original.name
+            const authorName = (_data.sub || '').replace(/^@/, '');
             const body = {
               type: 'repost',
               note: caption,
               original: {
-                name: _data.sub || '',
+                name: authorName,
                 avatar: _data.img || '',
                 time: 'Just now',
-                text: caption,
+                text: _data.title || '',
                 cover: _data.img || '',
                 title: _data.title || '',
               },

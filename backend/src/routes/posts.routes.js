@@ -67,7 +67,7 @@ const postBody = z.object({
   reviewText: z.string().max(600).optional(),
 }).passthrough().refine(
   d => d.title || d.text || d.note || d.image || d.poll || d.shoutout || d.storyRef
-    || d.debateData || d.quote || d.amaData || d.chapterRef || d.reviewText,
+    || d.debateData || d.quote || d.amaData || d.chapterRef || d.reviewText || d.original,
   { message: 'empty_post' },
 );
 
