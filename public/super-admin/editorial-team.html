@@ -169,12 +169,12 @@ body{font-family:'Inter',system-ui,sans-serif}
 
   <div class="panel">
     <div class="panel-head">
-      <h2><i class="fas fa-book-open" style="color:var(--gold)"></i> Staff Roster <span class="demo-chip">Demo data</span></h2>
+      <h2><i class="fas fa-book-open" style="color:var(--gold)"></i> Staff Roster</h2>
       <div class="role-tabs" id="roleTabs"></div>
     </div>
     <div class="panel-sub" id="panelSub"></div>
     <div class="toolbar">
-      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by name, email, or ID…"/></div>
+      <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="search" id="searchInput" name="search_staff" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Search by name, email, or ID…"/></div>
       <select class="select" id="statusFilter">
         <option value="">All Statuses</option>
         <option value="active">Active</option>
@@ -228,23 +228,27 @@ body{font-family:'Inter',system-ui,sans-serif}
       <h3><i class="fas fa-key" style="color:var(--gold)"></i> Reset Password</h3>
       <button class="ed-modal-close" id="pwModalClose"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="pw-modal-body" id="pwModalForm">
-      <div style="font-size:12px;color:var(--text-muted)">Set a new password for <strong id="pwEditorName"></strong></div>
-      <div class="pw-field">
-        <label>New Password</label>
-        <input type="password" id="pwNew" placeholder="Enter new password"/>
-        <small>Minimum 8 characters</small>
+    <form id="pwModalFormWrapper" autocomplete="off" onsubmit="event.preventDefault(); return false;">
+      <!-- Hidden dummy username to prevent browser autofill from grabbing search inputs -->
+      <input type="text" name="fake_username" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true"/>
+      <div class="pw-modal-body" id="pwModalForm">
+        <div style="font-size:12px;color:var(--text-muted)">Set a new password for <strong id="pwEditorName"></strong></div>
+        <div class="pw-field">
+          <label>New Password</label>
+          <input type="password" id="pwNew" name="pw_new" autocomplete="new-password" placeholder="Enter new password"/>
+          <small>Minimum 8 characters</small>
+        </div>
+        <div class="pw-field">
+          <label>Confirm Password</label>
+          <input type="password" id="pwConfirm" name="pw_confirm" autocomplete="new-password" placeholder="Confirm new password"/>
+        </div>
+        <div class="pw-err" id="pwErr"></div>
+        <div class="pw-actions">
+          <button type="button" class="pw-cancel" id="pwCancel">Cancel</button>
+          <button type="button" class="pw-confirm" id="pwConfirmBtn">Reset Password</button>
+        </div>
       </div>
-      <div class="pw-field">
-        <label>Confirm Password</label>
-        <input type="password" id="pwConfirm" placeholder="Confirm new password"/>
-      </div>
-      <div class="pw-err" id="pwErr"></div>
-      <div class="pw-actions">
-        <button class="pw-cancel" id="pwCancel">Cancel</button>
-        <button class="pw-confirm" id="pwConfirmBtn">Reset Password</button>
-      </div>
-    </div>
+    </form>
     <div class="pw-success" id="pwSuccess">
       <i class="fas fa-circle-check"></i>
       <p>Password reset successful</p>

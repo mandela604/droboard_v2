@@ -16,6 +16,14 @@ const created = (fn) => async (req, res) => {
 
 module.exports = {
   dashboardSummary: wrap(async () => sa.dashboardSummary()),
+  dashboardKpis: wrap(async () => sa.dashboardKpis()),
+  dashboardRevenue: wrap(async () => sa.dashboardRevenue()),
+  dashboardTopStories: wrap(async () => sa.dashboardTopStories()),
+  dashboardActivity: wrap(async () => sa.dashboardActivity()),
+  listAdmins: wrap(async () => sa.listAdmins()),
+  createAdmin: created(async (req) => sa.createAdmin(req.valid.body)),
+  updateAdmin: wrap(async (req) => sa.updateAdmin(req.valid.params.id, req.valid.body)),
+  removeAdmin: wrap(async (req) => sa.removeAdmin(req.valid.params.id, req.user && req.user.id)),
 
   // coin rate (unlock/tip face value lives in the single CoinRate doc)
   coinRateGet: wrap(async () => revenue.coinRateGet()),

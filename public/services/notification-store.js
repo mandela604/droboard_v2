@@ -303,6 +303,12 @@
   async function hydrate() {
     if (_hydrated) return _hydrated;
     _hydrated = (async function () {
+      // Ensure the access token is fresh before the first request.
+      // On pages where auth-session.js is also loaded, this is a no-op if
+      // the token is already valid; on a cold load it triggers a refresh.
+      if (window.AuthSession && typeof AuthSession.refresh === 'function') {
+        try { await AuthSession.refresh(); } catch (e) { /* non-fatal */ }
+      }
       let page = null;
       try {
         page = await _fetchPage(1);

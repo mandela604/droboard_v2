@@ -9,84 +9,121 @@ var _users = [];
 var _roles = [];
 var _genres = [];
 var _genreColors = {};
+var _total = 0;
+var API_BASE = '/api/super-admin';
+
+/* Live data layer. The page used to render an in-memory array that was never
+   filled, so a signed-in admin always saw "No users match your filters". */
+function api(method, path, body){
+  var token = null;
+  try { token = localStorage.getItem('droboard_session') || localStorage.getItem('dro_access'); } catch(e){}
+  var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+  var opts = { method: method, credentials: 'include', headers: headers };
+  if(body !== undefined){ opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  return fetch(API_BASE + path, opts).then(function(r){
+    if(!r.ok){
+      return r.json().catch(function(){ return null; }).then(function(b){
+        var e = new Error((b && b.error) || ('API error ' + r.status));
+        e.status = r.status;
+        throw e;
+      });
+    }
+    return r.json().catch(function(){ return null; });
+  });
+}
 
 function users(){ return _users; }
 function roles(){ return _roles; }
 function genres(){ return _genres; }
 function genreColors(){ return _genreColors; }
-function byId(id){ return _users.find(function(u){ return u.id === id; }); }
+function byId(id){ return _users.find(function(u){ return String(u.id) === String(id); }); }
 
 function stats(){
-  var total = _users.length;
-  var writers = _users.filter(function(u){ return u.role==='Writer'; }).length;
   var activeToday = _users.filter(function(u){
-    var d = new Date(u.lastActive); var now = new Date();
-    return Math.floor((now-d)/86400000) <= 0;
+    return u.lastActive && (Date.now() - new Date(u.lastActive).getTime()) < 86400000;
   }).length;
-  var flagged = _users.filter(function(u){ return u.status!=='active'; }).length;
-  return { total:total, writers:writers, activeToday:activeToday, flagged:flagged };
+  return {
+    total: _total || _users.length,
+    writers: _users.filter(function(u){ return u.role==='Writer'; }).length,
+    activeToday: activeToday,
+    flagged: _users.filter(function(u){ return u.status!=='active'; }).length
+  };
 }
 
 function search(query, role, status, sort){
   var q = (query||'').toLowerCase();
   var list = _users.filter(function(u){
-    var matchQ = !q || u.name.toLowerCase().indexOf(q)!==-1 || u.username.toLowerCase().indexOf(q)!==-1 || u.email.toLowerCase().indexOf(q)!==-1;
+    var matchQ = !q || String(u.name||'').toLowerCase().indexOf(q)!==-1 || String(u.username||'').toLowerCase().indexOf(q)!==-1 || String(u.email||'').toLowerCase().indexOf(q)!==-1;
     var matchR = !role || role==='all' || u.role===role;
     var matchS = !status || status==='all' || u.status===status;
     return matchQ && matchR && matchS;
   });
-  if(sort==='name') list.sort(function(a,b){ return a.name.localeCompare(b.name); });
-  else if(sort==='active') list.sort(function(a,b){ return new Date(b.lastActive)-new Date(a.lastActive); });
+  if(sort==='name') list.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+  else if(sort==='active') list.sort(function(a,b){ return new Date(b.lastActive||0)-new Date(a.lastActive||0); });
   else if(sort==='followers-desc') list.sort(function(a,b){ return b.followers-a.followers; });
   else if(sort==='reports-desc') list.sort(function(a,b){ return b.reports-a.reports; });
-  else list.sort(function(a,b){ return new Date(b.joined)-new Date(a.joined); });
+  else list.sort(function(a,b){ return new Date(b.joined||0)-new Date(a.joined||0); });
   return list;
 }
 
+function load(){
+  return api('GET', '/users?limit=100')
+    .then(function(res){
+      _users = (res && res.items) || [];
+      _total = (res && res.total) || _users.length;
+      return api('GET', '/roles').catch(function(){ return []; });
+    })
+    .then(function(rr){
+      _roles = (rr || []).map(function(r){ return r.name; }).filter(Boolean);
+      if(!_roles.length) _roles = ['Reader','Writer','Senior Editor','Chief Editor','Marketing','Finance'];
+      return _users;
+    });
+}
+
+/* Mutations write through to the API and update the local row from the response,
+   so the console never shows a state the server does not have. */
 function updateUser(id, changes){
   var u = byId(id);
-  if(!u) return null;
-  if(changes.name) u.name = changes.name;
-  if(changes.username) u.username = changes.username;
-  if(changes.email) u.email = changes.email;
-  if(changes.role) u.role = changes.role;
-  if(changes.status) u.status = changes.status;
-  if(changes.notes !== undefined) u.notes = changes.notes;
-  if(changes.platformRoles) u.platformRoles = changes.platformRoles;
-  return u;
+  if(!u) return Promise.resolve(null);
+  var body = {};
+  ['name','username','email','role','roles','status','notes','platformRoles'].forEach(function(k){
+    if(changes[k] !== undefined) body[k] = changes[k];
+  });
+  Object.assign(u, changes);            // optimistic paint
+  return api('PATCH', '/users/' + encodeURIComponent(u.id), body)
+    .then(function(saved){ if(saved && saved.id) Object.assign(u, saved); return u; })
+    .catch(function(e){ throw e; });
 }
 
 function deleteUser(id){
-  var idx = _users.findIndex(function(u){ return u.id === id; });
-  if(idx===-1) return null;
-  return _users.splice(idx,1)[0];
+  var u = byId(id);
+  if(!u) return Promise.resolve(null);
+  return api('DELETE', '/users/' + encodeURIComponent(u.id)).then(function(){
+    _users = _users.filter(function(x){ return String(x.id) !== String(id); });
+    if(_total > 0) _total -= 1;
+    return u;
+  });
 }
 
 function addUser(data){
-  var u = Object.assign({
-    id:'u'+(_users.length+1+Math.floor(Math.random()*90)),
-    avatar:'https://i.pravatar.cc/100?img='+Math.floor(Math.random()*70),
-    verified:false, joined:new Date().toISOString().slice(0,10), lastActive:new Date().toISOString().slice(0,10),
-    followers:0, stories:0, reads:0, payout:0, coinsSpent:0, following:0, comments:0, reports:0,
-    readingHours:0, avgSessionMin:0, streakDays:0, topGenres:[], likesGiven:0, sharesCount:0, savesCount:0, tipsCoins:0, tipsReceivedNGN:0, platformRoles:[]
-  }, data);
-  _users.unshift(u);
-  return u;
+  return api('POST', '/users', data).then(function(created){
+    if(created) { _users.unshift(created); _total += 1; }
+    return created;
+  });
 }
 
 function assignRole(userId, role){
   var u = byId(userId);
-  if(!u) return null;
-  if(!u.platformRoles) u.platformRoles = [];
-  if(u.platformRoles.indexOf(role)===-1) u.platformRoles.push(role);
-  return u;
+  if(!u) return Promise.resolve(null);
+  var next = (u.platformRoles||[]).slice();
+  if(next.indexOf(role)===-1) next.push(role);
+  return updateUser(userId, { platformRoles: next });
 }
 
 function removeRole(userId, role){
   var u = byId(userId);
-  if(!u) return null;
-  u.platformRoles = (u.platformRoles||[]).filter(function(r){ return r!==role; });
-  return u;
+  if(!u) return Promise.resolve(null);
+  return updateUser(userId, { platformRoles: (u.platformRoles||[]).filter(function(r){ return r!==role; }) });
 }
 
 window.__usersAPI = {
@@ -97,6 +134,7 @@ window.__usersAPI = {
   byId: byId,
   stats: stats,
   search: search,
+  load: load,
   updateUser: updateUser,
   deleteUser: deleteUser,
   addUser: addUser,
@@ -147,8 +185,8 @@ function moneyNGN(n){ if(window.DroboardCurrency && DroboardCurrency.ngnToMoney)
 // reader's balance is coins, so the console states them in coins. moneyNGN is
 // for the fiat side (earnings, funding) and the two must not be swapped.
 function coins(n){ if(window.DroboardCurrency && DroboardCurrency.coins) return DroboardCurrency.coins(n); return fmtNum(n)+' coins'; }
-function fmtDate(d){ const dt=new Date(d+'T00:00:00'); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return months[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear(); }
-function daysAgo(d){ return Math.round((new Date()-new Date(d+'T00:00:00'))/86400000); }
+function fmtDate(d){ const dt=new Date(d); if(isNaN(dt)) return '—'; const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return months[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear(); }
+function daysAgo(d){ if(!d) return 0; const dt=new Date(d); return isNaN(dt)?0:Math.round((Date.now()-dt.getTime())/86400000); }
 
 function toast(msg, icon){
   const host = document.getElementById('toastHost');
@@ -376,9 +414,9 @@ document.addEventListener('click', function(e){
       const u = API.byId(id);
       if(!u) return;
       const next = u.status==='active'?'suspended':'active';
-      API.updateUser(id, { status:next });
-      toast(u.name+' → '+next);
-      renderStatCards(); applyFilters();
+      API.updateUser(id, { status:next })
+        .then(function(){ toast(u.name+' → '+next); renderStatCards(); applyFilters(); })
+        .catch(function(err){ u.status = next==='active'?'suspended':'active'; toast(err.message||'Could not update user', 'fa-triangle-exclamation'); renderStatCards(); applyFilters(); });
     } else if(action==='remove'){
       pendingDeleteId = id;
       const u = API.byId(id);
@@ -392,11 +430,13 @@ document.addEventListener('click', function(e){
 
 document.getElementById('confirmDeleteBtn').addEventListener('click', function(){
   if(!pendingDeleteId) return;
-  const u = API.deleteUser(pendingDeleteId);
-  if(u) toast(u.name+' removed', 'fa-trash');
+  const id = pendingDeleteId;
+  const u = API.byId(id);
   pendingDeleteId = null;
   closeModal('confirmModal');
-  renderStatCards(); applyFilters();
+  API.deleteUser(id)
+    .then(function(){ if(u) toast(u.name+' removed', 'fa-trash'); renderStatCards(); applyFilters(); })
+    .catch(function(err){ toast(err.message||'Could not remove user', 'fa-triangle-exclamation'); });
 });
 
 /* ── Assign Role overlay ── */
@@ -404,7 +444,7 @@ function openRoleOverlay(id){
   roleTargetId = id;
   const u = API.byId(id);
   if(!u) return;
-  tempRoles = (u.platformRoles||[]).slice();
+  tempRoles = (u.roles || u.platformRoles || []).slice();
   document.getElementById('roleUser').innerHTML = `
     <img src="${u.avatar}" alt=""/>
     <div><b>${u.name}</b><span>@${u.username} · ${u.role}</span></div>`;
@@ -441,15 +481,42 @@ document.getElementById('roleOverlayClose').addEventListener('click', function()
 });
 document.getElementById('roleSaveBtn').addEventListener('click', function(){
   if(!roleTargetId) return;
-  API.updateUser(roleTargetId, { platformRoles: tempRoles });
-  const u = API.byId(roleTargetId);
-  document.getElementById('roleOverlay').classList.remove('open');
-  toast(u.name+' — roles updated', 'fa-user-shield');
-  renderList();
+  const id = roleTargetId;
+  const u = API.byId(id);
+  const btn = document.getElementById('roleSaveBtn');
+  if(btn) btn.disabled = true;
+  // Send `roles` (the set the route guards read), not just display labels.
+  API.updateUser(id, { roles: tempRoles.slice() })
+    .then(function(saved){
+      if(saved && saved.id) Object.assign(u, saved);
+      document.getElementById('roleOverlay').classList.remove('open');
+      toast((u && u.name ? u.name : 'User')+' — roles updated', 'fa-user-shield');
+      renderStatCards(); renderList();
+    })
+    .catch(function(err){
+      toast(err.message||'Could not update roles', 'fa-triangle-exclamation');
+    })
+    .then(function(){ if(btn) btn.disabled = false; });
 });
 
 /* ── Init ── */
+function showLoadError(e){
+  const box = document.getElementById('usrList');
+  if(!box) return;
+  const msg = e && (e.status === 403 || e.status === 401)
+    ? 'Your account is not authorized for the admin console (HTTP ' + e.status + ').'
+    : 'Could not load users: ' + ((e && e.message) || 'network error');
+  box.innerHTML = '<div class="empty-msg" style="color:var(--red)"><i class="fas fa-circle-exclamation" style="font-size:20px;margin-bottom:8px;display:block"></i>' + msg + '</div>';
+  const rc = document.getElementById('resultCount');
+  if(rc) rc.textContent = '0';
+}
 renderStatCards();
-applyFilters();
+(document.getElementById('usrList').innerHTML = '<div class="empty-msg">Loading users…</div>');
+API.load().then(function(){
+  var si = document.getElementById('searchInput');
+  if (si) si.value = '';
+  renderStatCards();
+  applyFilters();
+}).catch(showLoadError);
 
 })();

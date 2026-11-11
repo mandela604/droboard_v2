@@ -342,6 +342,7 @@ function reactionCounts(doc) {
 async function reactToPost({ post, userId, rid }) {
   const uid = String(userId);
   const prev = await Reaction.findOne({ userId: uid, targetType: 'post', targetId: post.id });
+  let isNew = false;
   if (prev && prev.rid === rid) return { counts: reactionCounts(post), userRx: rid };
   if (prev) {
     const pc = Math.max(0, (post.reactions.get(prev.rid) || 0) - 1);
@@ -350,9 +351,24 @@ async function reactToPost({ post, userId, rid }) {
     await prev.save();
   } else {
     await Reaction.create({ userId: uid, targetType: 'post', targetId: post.id, rid });
+    isNew = true;
   }
   post.reactions.set(rid, (post.reactions.get(rid) || 0) + 1);
   await post.save();
+  if (isNew && String(post.authorId) !== uid) {
+    try {
+      const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: String(post.authorId), actorId: uid, type: 'like',
+        title: (actor && (actor.fullName || actor.username)) || 'A user',
+        desc: (actor && (actor.fullName || actor.username)) || 'A user',
+        link: '/post/' + post.id,
+        key: 'like:' + uid + ':' + post.id,
+        avatar: actor && actor.avatar,
+      });
+    } catch (e) {}
+  }
   return { counts: reactionCounts(post), userRx: rid };
 }
 async function unreactPost({ post, userId }) {

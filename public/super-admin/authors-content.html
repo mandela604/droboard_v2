@@ -124,7 +124,7 @@ body{font-family:'Inter',system-ui,sans-serif}
         <button class="btn primary" id="exportBtn"><i class="fas fa-download"></i> Export CSV</button>
       </div>
       <div class="toolbar">
-        <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by author name or ID…"/></div>
+        <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="searchInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search by author name or ID…"/></div>
         <select class="select" id="statusFilter">
           <option value="">All Statuses</option>
           <option value="active">Active</option>
@@ -170,7 +170,6 @@ body{font-family:'Inter',system-ui,sans-serif}
 <div id="toastEl" style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:28px;font-size:12.5px;font-weight:700;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,.25)"></div>
 
 <script src="shared/super-admin-sidebar.js"></script>
-<script src="data/admin-demo-data.js"></script>
 <script src="../services/currency-service.js?v=8"></script>
 <script src="authors-content-service.js?v=4"></script>
 </body>

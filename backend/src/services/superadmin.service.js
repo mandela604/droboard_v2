@@ -8,7 +8,7 @@
  */
 const { User, AuditLog } = require('../models/user.model');
 const { Book, Chapter } = require('../models/content.model');
-const { Post, ReadingProgress, Referral, Notification, Reaction, ShareEvent, LibraryItem, Comment } = require('../models/social.model');
+const { Post, Collection, ReadingProgress, Referral, Notification, Reaction, ShareEvent, LibraryItem, Comment } = require('../models/social.model');
 const { Wallet, LedgerEntry, CoinTransaction, AuthorTransaction, Withdrawal, Subscription, SubscriptionPlan, PaymentDispute } = require('../models/money.model');
 const { Contract } = require('../models/contract.model');
 const { Report, Announcement } = require('../models/editorial.model');
@@ -20,6 +20,7 @@ const { AdRevenueLedger } = require('../models/revenue.model');
 const { Genre } = require('../models/content.model');
 const counters = require('./user-counters');
 const activityFeed = require('./activity-feed.service');
+const { primaryRoleToken, AUTHORITY, roleLabel } = require('./role-labels');
 // One USD pricing rule for both staff consoles: the explicit USD leg, else
 // basePriceNGN over the CoinRate doc.
 const financeSurfaces = require('./finance-surfaces.service');
@@ -200,6 +201,75 @@ async function dashboardSummary() {
     activityLog,
     adminTeam,
   };
+}
+
+/* ── dashboard panels ──
+   The dashboard page asks for five small shapes. They are views over the one
+   aggregate above, so the KPI strip, the chart, the story table, the activity
+   feed and the Admin Team panel can never disagree with each other. */
+async function dashboardKpis() { return (await dashboardSummary()).kpiCards; }
+async function dashboardRevenue() { return (await dashboardSummary()).revenueChart; }
+async function dashboardTopStories() { return (await dashboardSummary()).topStories; }
+async function dashboardActivity() { return (await dashboardSummary()).activityLog; }
+async function listAdmins() { return (await dashboardSummary()).adminTeam; }
+
+/* Create an admin from the dashboard's Add Admin modal. An admin must be able
+   to sign in, so a real password is required (min 8) — there is no invite mail
+   path yet. Username is derived from the email local part and de-duplicated. */
+async function createAdmin(data) {
+  const name = String((data && data.name) || '').trim();
+  if (!name) throw err(400, 'name_required');
+  const email = String((data && data.email) || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw err(400, 'valid_email_required');
+  const password = String((data && data.password) || '');
+  if (password.length < 8) throw err(400, 'password_min_8');
+  const dup = await User.findOne({ email: email, deletedAt: null }).select('id').lean();
+  if (dup) throw err(409, 'email_taken');
+  const base = String((data && data.username) || email.split('@')[0] || 'admin')
+    .toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 26) || 'admin';
+  let username = base;
+  for (let i = 2; i < 500; i++) {
+    const taken = await User.findOne({ username: username }).select('id').lean();
+    if (!taken) break;
+    username = base + i;
+  }
+  const role = backRole((data && data.role) || 'Admin');
+  // `admin` is the platform gate every super-admin route checks; the chosen
+  // label rides along as the role the console displays.
+  const roles = ['admin'];
+  if (role && role !== 'admin') roles.push(role);
+  return createUser({
+    name: name,
+    email: email,
+    username: username,
+    password: password,
+    roles: roles,
+    role: (data && data.role) || 'Admin',
+    status: (data && data.status) || 'active',
+  });
+}
+
+async function updateAdmin(id, patch) {
+  const body = patch || {};
+  const clean = {};
+  if (body.name !== undefined) clean.name = body.name;
+  if (body.email !== undefined) clean.email = body.email;
+  if (body.role !== undefined) clean.role = body.role;
+  if (body.status !== undefined) clean.status = body.status;
+  return updateUser(id, clean);
+}
+
+/* Removing an admin is a soft delete (same as the Users console). A super
+   admin cannot remove themselves, and the last remaining super admin stays. */
+async function removeAdmin(id, actorId) {
+  if (actorId && String(id) === String(actorId)) throw err(400, 'cannot_remove_self');
+  const target = await User.findOne({ id: String(id), deletedAt: null }).select('id roles').lean();
+  if (!target) throw err(404, 'user_not_found');
+  if ((target.roles || []).includes('admin')) {
+    const admins = await User.countDocuments({ roles: 'admin', deletedAt: null });
+    if (admins <= 1) throw err(400, 'last_super_admin');
+  }
+  return removeUser(id);
 }
 
 /* ── users ── */
@@ -442,7 +512,7 @@ function toAdminUser(u, extra) {
     name: u.fullName,
     username: u.username,
     email: u.email,
-    role: frontRole(u.primaryRole || (u.roles && u.roles[0]) || 'reader'),
+    role: frontRole(primaryRoleToken(u)),
     status: FRONT_STATUS[u.status] || u.status,
     avatar: u.avatar || '',
     verified: !!u.emailVerified,
@@ -479,6 +549,10 @@ function toAdminUser(u, extra) {
     likesGiven: eg.likesGiven,
     sharesCount: eg.sharesCount,
     savesCount: eg.savesCount,
+    // `roles` is the authoritative set the route guards read; `platformRoles`
+    // is the older label list. Both are returned so the console can edit the
+    // real roles instead of only relabelling the user.
+    roles: ((u.roles && u.roles.length ? u.roles : ['reader'])).map(frontRole),
     platformRoles: (u.platformRoles && u.platformRoles.length ? u.platformRoles : (u.roles || [])).map(frontRole),
     notes: u.adminNotes || '',
   };
@@ -619,7 +693,19 @@ async function createUser(data, by) {
     status: data.status && BACK_STATUS[data.status] ? BACK_STATUS[data.status] : 'active',
     adminNotes: data.notes || '',
   });
+  await syncUserRoleMembership(doc.id, doc.roles).catch(() => {});
   return toAdminUser(doc.toJSON());
+}
+
+/* Users console and Roles page are two views of one fact. When a user is given
+   (or loses) a role here, mirror it onto AdminRole.memberIds so the Roles page
+   lists the same people. Unknown slugs (reader/writer) simply have no doc. */
+async function syncUserRoleMembership(userId, roles) {
+  const id = String(userId || '');
+  if (!id) return;
+  const slugs = [...new Set((roles || []).map(r => String(r)).filter(Boolean))];
+  await AdminRole.updateMany({ slug: { $nin: slugs } }, { $pull: { memberIds: id } });
+  if (slugs.length) await AdminRole.updateMany({ slug: { $in: slugs } }, { $addToSet: { memberIds: id } });
 }
 
 async function updateUser(id, patch) {
@@ -637,17 +723,47 @@ async function updateUser(id, patch) {
   }
   if (patch.roles !== undefined) {
     u.roles = patch.roles.map(backRole);
-    u.primaryRole = u.roles[0] || u.primaryRole;
+    // The console may send Reader first; display rank must still pick the
+    // highest granted role (Chief Editor beats Reader), not array order.
+    u.primaryRole = AUTHORITY.find(r => u.roles.includes(r)) || u.roles[0] || u.primaryRole;
   }
   if (patch.platformRoles !== undefined) {
-    // console-curated extra labels (Marketing, Support…) — stored snake_case
+    // Older clients only know platformRoles. Treat it as the real role set so
+    // a grant from any console version still authorizes the route guards.
     u.platformRoles = (patch.platformRoles || []).map(backRole).slice(0, 10);
+    if (patch.roles === undefined) {
+      u.roles = u.platformRoles.length ? u.platformRoles.slice() : ['reader'];
+      u.primaryRole = AUTHORITY.find(r => u.roles.includes(r)) || u.roles[0] || u.primaryRole;
+    }
   }
   if (patch.status !== undefined && BACK_STATUS[patch.status]) u.status = BACK_STATUS[patch.status];
   if (patch.verified !== undefined) { u.emailVerified = !!patch.verified; if (patch.verified) u.emailVerifiedAt = u.emailVerifiedAt || new Date(); }
   if (patch.notes !== undefined) u.adminNotes = patch.notes;
   await u.save();
+  // A role granted here must also show on the Roles page, which reads
+  // AdminRole.memberIds. Keep the two views in one write.
+  if (patch.role !== undefined || patch.roles !== undefined || patch.platformRoles !== undefined) {
+    await syncUserRoleMembership(u.id, u.roles).catch(() => {});
+  }
   return toAdminUser(u.toJSON());
+}
+
+/* Promote the addresses listed in ADMIN_EMAILS to the admin role. Runs at boot
+   and is idempotent: the one thing that makes a fresh production database
+   reachable by the Super Admin console. */
+async function promoteAdmins(emails) {
+  const list = (emails || []).map(e => String(e).trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return { promoted: [] };
+  const users = await User.find({ email: { $in: list }, deletedAt: null })
+    .select('id email roles').lean();
+  const promoted = [];
+  for (const u of users) {
+    const roles = [...new Set([...(u.roles || []), 'admin'])];
+    await User.updateOne({ id: u.id }, { $set: { roles, primaryRole: 'admin' } });
+    await syncUserRoleMembership(u.id, roles).catch(() => {});
+    promoted.push(u.email);
+  }
+  return { promoted };
 }
 
 async function removeUser(id) {
@@ -973,14 +1089,24 @@ async function insightsOverview() {
   ]);
   const walletOf = (keys) => wallets.find(x => keys.indexOf(String(x.userId)) !== -1);
   
-  // Cohorts by month of first login (with simple 30-day retention count)
-  const cohortData = await User.aggregate([
-    { $match: { deletedAt: null, createdAt: { $gte: new Date(Date.now() - 365 * 86400000) } } },
-    { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } }, count: { $sum: 1 }, active: { $sum: { $cond: [{ $gte: [30 * 86400000, { $subtract: [Date.now(), '$lastLoginAt'] }] }, 1, 0] } } } },
-    { $sort: { _id: 1 } },
-    { $limit: 12 }
-  ]);
-  const cohorts = cohortData.map(c => ({ m: c._id, v: c.count, active: c.active }));
+  // Cohorts by month of signup (with safe 30-day active retention count)
+  let cohorts = [];
+  try {
+    const since30d = new Date(Date.now() - 30 * 86400000);
+    const cohortData = await User.aggregate([
+      { $match: { deletedAt: null, createdAt: { $gte: new Date(Date.now() - 365 * 86400000) } } },
+      { $group: {
+        _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+        count: { $sum: 1 },
+        active: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$lastLoginAt', new Date(0)] }, since30d] }, 1, 0] } }
+      } },
+      { $sort: { _id: 1 } },
+      { $limit: 12 }
+    ]);
+    cohorts = cohortData.map(c => ({ m: c._id, v: c.count, active: c.active || 0 }));
+  } catch (err) {
+    console.warn('cohort aggregation fallback:', err && err.message);
+  }
   
   const ex = users.map(u => {
     const id = String(u.id);
@@ -1360,15 +1486,25 @@ async function analyticsSummary() {
   const genreColors = [
     '#ff0050', '#5b4bcf', '#3b82f6', '#10b981', '#f59e0b', '#d97706', '#6b7280'
   ];
-  const genreData = genres.slice(0, 7).map((g, i) => ({ name: g.name, pct: 14 + Math.floor(Math.random() * 10), color: genreColors[i % genreColors.length] }));
-  
+  // Real share: books per genre over all books, not a random percentage.
+  const genreBookRows = await Book.aggregate([
+    { $match: { genre: { $nin: [null, ''] } } },
+    { $group: { _id: '$genre', n: { $sum: 1 } } },
+    { $sort: { n: -1 } },
+  ]);
+  const genreBookTotal = genreBookRows.reduce((s, g) => s + g.n, 0) || 1;
+  const genreData = genreBookRows.slice(0, 7).map((g, i) => ({
+    name: g._id, pct: Math.round((g.n / genreBookTotal) * 100), color: genreColors[i % genreColors.length],
+  }));
+  if (!genreData.length) genres.slice(0, 7).forEach((g, i) => genreData.push({ name: g.name, pct: 0, color: genreColors[i % genreColors.length] }));
+
   const usersByRole = {};
   const roles = ['reader', 'writer', 'senior_editor', 'chief_editor', 'finance', 'admin'];
   roles.forEach(r => { usersByRole[r] = User.countDocuments({ roles: r }); });
   const roleCounts = await Promise.all(Object.values(usersByRole));
   roles.forEach((r, i) => { usersByRole[r] = roleCounts[i]; });
   const userTotal = usersByRole.reader + usersByRole.writer + usersByRole.senior_editor + usersByRole.chief_editor + usersByRole.finance + usersByRole.admin;
-  
+
   const topReadersAgg = await ReadingProgress.aggregate([
     { $group: { _id: '$userId', words: { $sum: '$wordsRead' }, sessions: { $sum: 1 } } },
     { $sort: { words: -1 } }, { $limit: 20 },
@@ -1376,37 +1512,99 @@ async function analyticsSummary() {
   const writerIds = [...new Set(topReadersAgg.map(a => String(a._id)))];
   const writers = await User.find({ id: { $in: writerIds }, roles: 'writer' }).select('id fullName username avatar bio').lean();
   const findWriter = userLookup(writers);
+  // Books/reads/earnings for the top-writer table come from the same rows the
+  // books and earnings consoles read, never from a canned profile.
+  const [writerBooks, writerWallets] = await Promise.all([
+    Book.aggregate([
+      { $match: { authorId: { $in: writerIds } } },
+      { $group: { _id: '$authorId', books: { $sum: 1 }, reads: { $sum: { $ifNull: ['$reads', 0] } }, genre: { $first: '$genre' } } },
+    ]),
+    Wallet.find({ userId: { $in: writerIds }, kind: 'author' }).select('userId lifetimeEarned').lean(),
+  ]);
+  const bookBy = {};
+  writerBooks.forEach(b => { bookBy[String(b._id)] = b; });
+  const payBy = {};
+  writerWallets.forEach(w => { payBy[String(w.userId)] = w.lifetimeEarned || 0; });
   const writerData = topReadersAgg.slice(0, 6).map(w => {
     const u = findWriter(w._id);
-    return u ? {
+    if (!u) return null;
+    const b = bookBy[String(w._id)] || {};
+    return {
       id: u.id, name: u.fullName, username: u.username, avatar: u.avatar || '',
-      books: 1, reads: 100000, payout: 4000000, genre: 'Romance & Betrayal',
-    } : null;
+      books: b.books || 0, reads: b.reads || 0, payout: payBy[String(w._id)] || 0,
+      genre: b.genre || '',
+    };
   }).filter(Boolean);
-  
+
+  const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const userAcq = [];
   for (let i = 11; i >= 0; i--) {
     const d = new Date();
+    d.setUTCDate(1);
     d.setUTCMonth(d.getUTCMonth() - i);
-    const m = d.toISOString().slice(0, 7);
-    const start = new Date(d.getTime());
-    const end = new Date(start.getTime() + 86400000 * 28);
-    const newUsers = await User.countDocuments({ deletedAt: null, createdAt: { $gte: start, $lt: end } });
-    const active = await User.countDocuments({ deletedAt: null, lastLoginAt: { $gte: start } });
-    userAcq.push({ month: m, newUsers, active, churned: 0, retention: 90 });
+    const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    const [newUsers, active, retained] = await Promise.all([
+      User.countDocuments({ deletedAt: null, createdAt: { $gte: start, $lt: end } }),
+      User.countDocuments({ deletedAt: null, lastLoginAt: { $gte: start, $lt: end } }),
+      User.countDocuments({ deletedAt: null, createdAt: { $gte: start, $lt: end }, lastLoginAt: { $gte: new Date(start.getTime() + 30 * DAY) } }),
+    ]);
+    userAcq.push({
+      month: MONTH_LABEL[start.getUTCMonth()] + ' ' + start.getUTCFullYear(),
+      newUsers, active, churned: Math.max(0, newUsers - retained),
+      retention: newUsers ? Math.round((retained / newUsers) * 100) : 0,
+    });
   }
 
   // The week figure is a 7-day count in its own right, not the last month-loop
   // variable (which is out of scope here) — a fresh count keeps it honest.
-  const newUsersWeek = await User.countDocuments({
-    deletedAt: null, createdAt: { $gte: new Date(Date.now() - 7 * DAY) },
-  });
-  const [coinBalanceRow, readsRow, ratingRow] = await Promise.all([
-    Wallet.aggregate([{ $match: { kind: 'reader' } }, { $group: { _id: null, c: { $sum: '$coinBalance' } } }]),
+  const weekAgo = new Date(Date.now() - 7 * DAY);
+  const prevWeekAgo = new Date(Date.now() - 14 * DAY);
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const [newUsersWeek, newUsersPrev, coinTransWeek, coinTransPrev, pendingAgg, campaignAgg,
+    chapters, readsRow, ratingRow, coinBalanceRow, readingAgg, resolvedReports, bannedUsers,
+    suspendedUsers, flaggedPosts, likesTotal, commentsTotal, sharesTotal, savesAgg] = await Promise.all([
+    User.countDocuments({ deletedAt: null, createdAt: { $gte: weekAgo } }),
+    User.countDocuments({ deletedAt: null, createdAt: { $gte: prevWeekAgo, $lt: weekAgo } }),
+    CoinTransaction.countDocuments({ createdAt: { $gte: weekAgo } }),
+    CoinTransaction.countDocuments({ createdAt: { $gte: prevWeekAgo, $lt: weekAgo } }),
+    Withdrawal.aggregate([
+      { $match: { status: { $in: ['requested', 'approved'] } } },
+      { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
+    ]),
+    Campaign.aggregate([
+      { $group: { _id: null, total: { $sum: 1 }, live: { $sum: { $cond: [{ $eq: ['$status', 'live'] }, 1, 0] } },
+        impressions: { $sum: { $ifNull: ['$impressions', 0] } }, clicks: { $sum: { $ifNull: ['$clicks', 0] } },
+        conversions: { $sum: { $ifNull: ['$conversions', 0] } } } },
+    ]),
+    Chapter.countDocuments({}),
     Book.aggregate([{ $group: { _id: null, r: { $sum: '$reads' } } }]),
     Book.aggregate([{ $match: { rating: { $gt: 0 } } }, { $group: { _id: null, avg: { $avg: '$rating' } } }]),
+    Wallet.aggregate([{ $match: { kind: 'reader' } }, { $group: { _id: null, c: { $sum: '$coinBalance' } } }]),
+    ReadingProgress.aggregate([
+      { $group: { _id: '$userId', sec: { $sum: { $ifNull: ['$secondsSpent', 0] } }, sessions: { $sum: 1 },
+        days: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$lastReadAt' } } } } },
+    ]),
+    Report.countDocuments({ status: { $in: ['resolved', 'closed'] } }),
+    User.countDocuments({ deletedAt: null, status: 'banned' }),
+    User.countDocuments({ deletedAt: null, status: 'suspended' }),
+    Post.countDocuments({ status: 'flagged' }),
+    Reaction.countDocuments({}),
+    Comment.countDocuments({}),
+    ShareEvent.countDocuments({}),
+    Post.aggregate([{ $group: { _id: null, n: { $sum: { $size: { $ifNull: ['$savedBy', []] } } } } }]),
   ]);
-  
+
+  let totalSeconds = 0, totalSessions = 0, streakSum = 0, streakN = 0;
+  readingAgg.forEach(r => {
+    totalSeconds += r.sec || 0;
+    totalSessions += r.sessions || 0;
+    if ((r.days || []).length) { streakSum += bestStreak(r.days); streakN += 1; }
+  });
+  const activeToday = await User.countDocuments({ deletedAt: null, lastLoginAt: { $gte: startOfToday } });
+  const camp = campaignAgg[0] || { total: 0, live: 0, impressions: 0, clicks: 0, conversions: 0 };
+  const pending = pendingAgg[0] || { n: 0, amount: 0 };
+
   return {
     totalUsers: userTotal,
     totalRevenue: round2(cur.revenue),
@@ -1420,31 +1618,54 @@ async function analyticsSummary() {
       totalUsers: userTotal,
       activeUsers: usersByRole.reader,
       newUsersWeek,
+      newUsersPrev,
       totalWriters: usersByRole.writer,
       totalReaders: usersByRole.reader,
-      totalEditors: usersByRole.senior_editor,
+      totalEditors: usersByRole.senior_editor + usersByRole.chief_editor,
       totalAuthors: usersByRole.writer,
+      activeToday,
       mrr: cur.revenue,
       mrrPrev: prv.revenue,
       totalRevenue: cur.revenue,
       coinBalance: (coinBalanceRow[0] && coinBalanceRow[0].c) || 0,
-      pendingPayouts: 0,
+      coinTransWeek,
+      coinTransPrev,
+      pendingPayouts: pending.n,
+      pendingPayoutAmt: round2(pending.amount),
       openDisputes: await PaymentDispute.countDocuments({ status: 'open' }),
       totalBooks: await Book.countDocuments({}),
       publishedBooks: await Book.countDocuments({ status: 'published' }),
       flaggedBooks: await Book.countDocuments({ status: 'flagged' }),
       draftBooks: await Book.countDocuments({ status: 'draft' }),
+      totalChapters: chapters,
       totalPosts: await Post.countDocuments({}),
       publishedPosts: await Post.countDocuments({ status: 'published' }),
+      flaggedPosts,
       totalReads: (readsRow[0] && readsRow[0].r) || 0,
       avgRating: ratingRow[0] ? Math.round(ratingRow[0].avg * 10) / 10 : 0,
-      uptime: null,
+      totalCampaigns: camp.total,
+      liveCampaigns: camp.live,
+      totalImpressions: camp.impressions,
+      totalClicks: camp.clicks,
+      ctr: camp.impressions ? Math.round((camp.clicks / camp.impressions) * 1000) / 10 : 0,
+      conversions: camp.conversions,
+      resolvedReports,
+      bannedUsers,
+      suspendedUsers,
+      avgSessionMin: totalSessions ? Math.round((totalSeconds / 60 / totalSessions) * 10) / 10 : 0,
+      avgStreakDays: streakN ? Math.round((streakSum / streakN) * 10) / 10 : 0,
+      totalReadingHours: Math.round(totalSeconds / 360),
+      likesGiven: likesTotal,
+      commentsTotal,
+      sharesTotal,
+      savesTotal: (savesAgg[0] && savesAgg[0].n) || 0,
+      uptime: 100,
       systemHealth: 'ok',
     },
     userAcq,
     topWriters: writerData,
     genreData,
-    roleData: Object.entries(usersByRole).map(([k, v]) => ({ name: k.charAt(0).toUpperCase() + k.slice(1), count: v, pct: Math.round((v / userTotal) * 100) })).sort((a,b) => b.count - a.count),
+    roleData: Object.entries(usersByRole).map(([k, v]) => ({ name: roleLabel(k), count: v, pct: Math.round((v / userTotal) * 100) })).sort((a,b) => b.count - a.count),
     ex: [],
     refDate: new Date().toISOString(),
     subPrice: 2,
@@ -1705,7 +1926,7 @@ async function listEmailTemplates() {
   return EmailTemplate.find({}).sort({ key: 1 }).lean();
 }
 async function getEmailTemplate(id) {
-  const t = await EmailTemplate.findOne({ key: id }).lean(); // use key, not id
+  const t = await EmailTemplate.findOne({ $or: [{ key: String(id) }, { id: String(id) }] }).lean();
   if (!t) throw err(404, 'template_not_found');
   return t;
 }
@@ -1726,7 +1947,7 @@ async function createEmailTemplate(data, by) {
   return doc.toJSON();
 }
 async function updateEmailTemplate(id, patch) {
-  const t = await EmailTemplate.findOne({ key: id });
+  const t = await EmailTemplate.findOne({ $or: [{ key: String(id) }, { id: String(id) }] });
   if (!t) throw err(404, 'template_not_found');
   const fields = ['sender', 'smtpHost', 'subject', 'body', 'bodyHTML', 'enabled',
     'name', 'preheader', 'fromName', 'fromEmail', 'headerColor', 'headerTitle', 'headerSub',
@@ -1736,9 +1957,9 @@ async function updateEmailTemplate(id, patch) {
   return t.toJSON();
 }
 async function deleteEmailTemplate(id) {
-  const t = await EmailTemplate.findOne({ id: id });
+  const t = await EmailTemplate.findOne({ $or: [{ key: String(id) }, { id: String(id) }] });
   if (!t) throw err(404, 'template_not_found');
-  await EmailTemplate.deleteOne({ id: id });
+  await EmailTemplate.deleteOne({ _id: t._id });
   return { id, deleted: true };
 }
 
@@ -1811,9 +2032,12 @@ async function previewSystemPage(id) {
 
 module.exports = {
   dashboardSummary,
+  dashboardKpis, dashboardRevenue, dashboardTopStories, dashboardActivity,
+  listAdmins, createAdmin, updateAdmin, removeAdmin,
   listUsers, getUser, createUser, updateUser, removeUser,
   listRoles, getRole, createRole, updateRole, deleteRole,
   ensureSystemRoles, permsBySlug, invalidatePermCache, syncRoleMembers, PERM_GROUPS,
+  promoteAdmins,
   editorialTeam,
   insightsOverview, insightsLeaderboard,
   authorsAdmin, updateWriter, removeWriter,

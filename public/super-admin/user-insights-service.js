@@ -35,8 +35,20 @@ function dayDiff(a, b){
 }
 
 async function fetchInsights(){
-  var r = await fetch(API_BASE + '/overview', { credentials: 'include' });
-  if (!r.ok) throw new Error('insights API failed');
+  var token = null;
+  try {
+    token = localStorage.getItem('droboard_session') || localStorage.getItem('dro_access');
+  } catch (e) {}
+  var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+  var r = await fetch(API_BASE + '/overview', { credentials: 'include', headers: headers });
+  if (!r.ok) {
+    var body = null;
+    try { body = await r.json(); } catch (e) {}
+    var code = (body && (body.error || body.code)) || '';
+    var e2 = new Error('HTTP ' + r.status + (code ? ' · ' + code : ''));
+    e2.status = r.status;
+    throw e2;
+  }
   return r.json();
 }
 

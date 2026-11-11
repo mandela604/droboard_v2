@@ -273,6 +273,10 @@ async function refresh({ token, ip }) {
   const next = signRefresh(fam.familyId);
   fam.prevHash = fam.currentHash;
   fam.currentHash = hashToken(next);
+  // Sliding session: every successful refresh pushes the family expiry forward,
+  // so a user who keeps browsing never hits the 30-day wall. Only true
+  // inactivity lets the session die.
+  fam.expiresAt = new Date(Date.now() + 30 * 86400000);
   await fam.save();
   const user = await User.findOne({ id: fam.userId });
   return Object.assign({ refresh: next }, tokensFor(user, fam.mfaAt));

@@ -27,7 +27,7 @@ SuperAdminSidebar.attach('#boardsRoot', {
 const ICO_MAP = { red:'var(--red)', amber:'var(--amber)', blue:'var(--blue)', purple:'var(--purple)', green:'var(--green)', gold:'var(--gold)' };
 const BG_MAP  = { red:'var(--red-bg)', amber:'var(--amber-bg)', blue:'var(--blue-bg)', purple:'var(--purple-bg)', green:'var(--green-bg)', gold:'var(--gold-bg)' };
 
-const API_BASE = '/api/super-admin/genre-boards';
+const API_BASE = '/api/super-admin/boards';
 
 async function callApi(path, opts){
   const res = await fetch(API_BASE + (path||''), { credentials:'include', ...opts });
@@ -87,7 +87,7 @@ function renderStatCards(){
   const totalMembers = BOARDS.reduce(function(s,b){return s+b.members;},0);
   const postsWeek = BOARDS.reduce(function(s,b){return s+b.postsWeek;},0);
   const reportsOpen = BOARDS.reduce(function(s,b){return s+b.reportsOpen;},0);
-  const avgReplies = (BOARDS.reduce(function(s,b){return s+b.repliesPerPost;},0)/BOARDS.length).toFixed(1);
+  const avgReplies = BOARDS.length ? (BOARDS.reduce(function(s,b){return s+b.repliesPerPost;},0)/BOARDS.length).toFixed(1) : '0.0';
   const stats = [
     { n:String(BOARDS.length), l:'Boards', ico:'fa-th-large', cls:'gold' },
     { n:fmtNum(totalMembers), l:'Total Members', ico:'fa-users', cls:'blue' },

@@ -216,7 +216,7 @@ img{max-width:100%}
     <div class="panel-sub">Every reader and writer on Droboard. Tap a row to expand it, or use the menu for full profile, edit, and account actions.</div>
 
     <div class="toolbar">
-      <div class="tb-search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search by name, username, or email…"/></div>
+      <div class="tb-search"><i class="fas fa-search"></i><input type="search" id="searchInput" name="user_search_query" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Search by name, username, or email…"/></div>
       <select class="tb-select" id="roleFilter">
         <option value="all">All roles</option>
         <option value="Reader">Readers</option>
@@ -284,7 +284,6 @@ img{max-width:100%}
 
 <script src="shared/super-admin-sidebar.js"></script>
 <script src="../services/currency-service.js?v=8"></script>
-<script src="data/admin-demo-data.js?v=2"></script>
-<script src="users-service.js?v=7"></script>
+<script src="users-service.js?v=8"></script>
 </body>
 </html>

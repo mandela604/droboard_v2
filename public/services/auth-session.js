@@ -37,6 +37,7 @@
   }
 
   function isSignedIn() {
+    if (_stale) return false;
     try { return !!localStorage.getItem(SESSION_KEY); } catch (e) { return false; }
   }
 
@@ -157,6 +158,7 @@
      from an API call and then replays the original request. */
   let _refreshInFlight = null;
   let _refreshTimer = null;
+  let _stale = false;
 
   function accessToken() {
     try { return localStorage.getItem(SESSION_KEY); } catch (e) { return null; }
@@ -200,13 +202,23 @@
     if (!isSignedIn()) return;
     const expMs = decodeExpMs(accessToken());
     const delay = expMs
-      ? Math.min(Math.max(expMs - Date.now() - 60000, 5000), 14 * 60 * 1000)
+      ? Math.min(Math.max(expMs - Date.now() - 300000, 5000), 14 * 60 * 1000)
       : 13 * 60 * 1000; // unreadable exp → refresh well inside the 15-min window
     _refreshTimer = setTimeout(function () { refreshAccess(); }, delay);
   }
 
   function stopRefresh() {
     if (_refreshTimer) { clearTimeout(_refreshTimer); _refreshTimer = null; }
+  }
+
+  /* Proactive keep-alive: call on user activity so the access token stays warm
+     as long as the person is actively browsing. Safe to call often — refresh is
+     deduplicated via _refreshInFlight and only re-issues near expiry. */
+  function keepAlive() {
+    if (_stale || !isSignedIn()) return;
+    const expMs = decodeExpMs(accessToken());
+    if (expMs && expMs - Date.now() > 300000) return; // more than 5 min left — no-op
+    refreshAccess();
   }
 
   /* ── Dead-session honesty ──────────────────────────────────────────
@@ -223,9 +235,10 @@
     if (window.__droExpiryHandled) return;
     window.__droExpiryHandled = true;
     try { window.dispatchEvent(new CustomEvent('droboard:session-expired')); } catch (e) {}
-    if (/login\.html(\?|$)/.test(location.pathname)) return;
-    var next = location.pathname.split('/').pop() + (location.search || '');
-    setTimeout(function () { location.href = '/Pages/login.html?next=' + encodeURIComponent(next) + '&expired=1'; }, 400);
+    // Do not redirect mid-browse: mark the session stale so the next auth
+    // action (or the next 401) routes to login. A user idling on a page is not
+    // interrupted — they only hit the login wall when they act.
+    _stale = true;
   }
 
   /* Only {error:'unauthorized'} means "signed out". Other 401s are wrong

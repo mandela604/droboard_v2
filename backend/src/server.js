@@ -18,6 +18,15 @@ async function main() {
     const sa = require('./services/superadmin.service');
     const seeded = await sa.ensureSystemRoles();
     if (seeded.created) console.log('seeded system roles:', seeded.slugs.join(', '));
+    // Fresh databases have no admin. ADMIN_EMAILS is the documented way in;
+    // without it the console pages load but every API answers 403.
+    if (env.adminEmails.length) {
+      const { promoted } = await sa.promoteAdmins(env.adminEmails);
+      if (promoted.length) console.log('promoted admins:', promoted.join(', '));
+      else console.warn('ADMIN_EMAILS set but no account matched:', env.adminEmails.join(', '));
+    } else {
+      console.warn('ADMIN_EMAILS not set — set it to your login email to grant console access');
+    }
   } catch (e) { console.error('role seed failed:', e && e.message); }
 
   const app = express();

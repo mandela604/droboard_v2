@@ -243,6 +243,105 @@ async function main() {
     JSON.stringify(team.perms) === JSON.stringify({ contracts: true, campaigns: false, moderation: true, finance: false, admins: false }),
     `perms=${JSON.stringify(team.perms)}`);
 
+  /* ── DASHBOARD PANEL ENDPOINTS (the page fetches these individually) ── */
+  say('\n=== TESTING DASHBOARD PANEL ENDPOINTS ===\n');
+  const panels = [
+    ['kpis', 'kpiCards'], ['revenue', 'revenueChart'],
+    ['top-stories', 'topStories'], ['activity', 'activityLog'],
+  ];
+  for (const [path, field] of panels) {
+    const pr = await call('GET', `${SA}/dashboard/${path}`);
+    check(`GET /dashboard/${path} -> 200`, pr.status === 200, `status=${pr.status}`);
+    check(`/dashboard/${path} returns the summary's ${field}`, Array.isArray(pr.json),
+      `type=${Array.isArray(pr.json) ? 'array' : typeof pr.json}`);
+    check(`/dashboard/${path} matches /dashboard/summary`, JSON.stringify(pr.json) === JSON.stringify(ds2[field]),
+      `panel=${(pr.json || []).length} summary=${(ds2[field] || []).length}`);
+  }
+
+  r = await call('GET', `${SA}/admins`);
+  check('GET /admins -> 200', r.status === 200, `status=${r.status}`);
+  check('GET /admins returns the admin team', Array.isArray(r.json) && r.json.some(a => String(a.id) === String(admin.id)),
+    `len=${(r.json || []).length}`);
+
+  /* ── ADMIN TEAM CRUD (Add Admin modal) ── */
+  say('\n=== TESTING ADMIN TEAM CRUD ===\n');
+  const newAdminEmail = 'ops.lead@droboard.com';
+  const adminCreated = await call('POST', `${SA}/admins`, {
+    name: 'Ops Lead', email: newAdminEmail, password: 'Sup3rSecret!',
+    role: 'Chief Editor', status: 'active',
+  });
+  check('POST /admins -> 201', adminCreated.status === 201, `status=${adminCreated.status} ${JSON.stringify(adminCreated.json)}`);
+  check('new admin can be found by email', !!adminCreated.json && adminCreated.json.email === newAdminEmail, `email=${adminCreated.json && adminCreated.json.email}`);
+  const newAdminId = adminCreated.json && adminCreated.json.id;
+  check('new admin stores the admin role', !!newAdminId, `id=${newAdminId}`);
+
+  const newAdminDoc = newAdminId ? await User.findOne({ id: newAdminId }).select('roles passwordHash').lean() : null;
+  check('new admin is a real sign-in account (argon2 hash)', !!(newAdminDoc && /^\$argon2/.test(String(newAdminDoc.passwordHash || ''))),
+    `hash=${newAdminDoc ? String(newAdminDoc.passwordHash).slice(0, 10) : 'missing'}`);
+  check('new admin carries the admin gate role', !!(newAdminDoc && (newAdminDoc.roles || []).includes('admin')),
+    `roles=${newAdminDoc ? JSON.stringify(newAdminDoc.roles) : 'missing'}`);
+
+  const dupAdmin = await call('POST', `${SA}/admins`, {
+    name: 'Ops Lead Again', email: newAdminEmail, password: 'Sup3rSecret!', role: 'Chief Editor',
+  });
+  check('POST /admins rejects a duplicate email', dupAdmin.status === 409, `status=${dupAdmin.status}`);
+
+  const shortPw = await call('POST', `${SA}/admins`, {
+    name: 'No Password', email: 'nopw@droboard.com', password: 'short', role: 'Chief Editor',
+  });
+  check('POST /admins rejects a short password', shortPw.status === 400, `status=${shortPw.status} ${JSON.stringify(shortPw.json)}`);
+
+  const ua = await call('PUT', `${SA}/admins/${newAdminId}`, { name: 'Ops Lead II', role: 'Content Moderator', status: 'suspended' });
+  check('PUT /admins/:id -> 200', ua.status === 200, `status=${ua.status} ${JSON.stringify(ua.json)}`);
+  check('PUT /admins/:id applies the edit', ua.json && ua.json.name === 'Ops Lead II', `name=${ua.json && ua.json.name}`);
+
+  const selfRm = await call('DELETE', `${SA}/admins/${admin.id}`);
+  check('DELETE /admins/:id refuses removing yourself', selfRm.status === 400, `status=${selfRm.status} ${JSON.stringify(selfRm.json)}`);
+
+  const da = await call('DELETE', `${SA}/admins/${newAdminId}`);
+  check('DELETE /admins/:id -> 200', da.status === 200, `status=${da.status} ${JSON.stringify(da.json)}`);
+  const goneDoc = newAdminId ? await User.findOne({ id: newAdminId }).select('deletedAt status').lean() : null;
+  check('removed admin is soft-deleted', !!(goneDoc && goneDoc.deletedAt), `deletedAt=${goneDoc && goneDoc.deletedAt}`);
+
+  /* ── GIVING ROLES (Users console -> AdminRole membership -> perms) ── */
+  say('\n=== TESTING ROLE GRANTS: CHIEF / SENIOR EDITOR / FINANCE / MARKETING ===\n');
+  const roleList = await call('GET', `${SA}/roles`);
+  check('GET /roles -> 200 array', roleList.status === 200 && Array.isArray(roleList.json),
+    `status=${roleList.status} len=${(roleList.json || []).length}`);
+  const GRANTS = [
+    ['Chief Editor', 'chief_editor'],
+    ['Senior Editor', 'senior_editor'],
+    ['Finance', 'finance'],
+    ['Marketing', 'marketing'],
+  ];
+  for (const [label, slug] of GRANTS) {
+    const gr = await call('PATCH', `${SA}/users/${reader.id}`, { role: label });
+    check(`PATCH /users/:id role=${label} -> 200`, gr.status === 200, `status=${gr.status} ${JSON.stringify(gr.json && gr.json.error)}`);
+    check(`user row now shows ${label}`, gr.json && gr.json.role === label, `role=${gr.json && gr.json.role}`);
+
+    const doc = await User.findOne({ id: String(reader.id) }).select('roles primaryRole').lean();
+    check(`stored roles include ${slug}`, !!(doc && (doc.roles || []).includes(slug)),
+      `roles=${JSON.stringify((doc && doc.roles) || [])}`);
+
+    const rolesNow = await call('GET', `${SA}/roles`);
+    const roleDoc = (rolesNow.json || []).find(x => x.slug === slug) || {};
+    const members = await AdminRole.findOne({ slug }).select('memberIds').lean();
+    check(`${label} role lists this member on the Roles page`,
+      !!(members && (members.memberIds || []).map(String).includes(String(reader.id))),
+      `members=${(members && members.memberIds || []).length} roleDocMembers=${roleDoc.memberCount}`);
+  }
+
+  const revoked = await call('PATCH', `${SA}/users/${reader.id}`, { roles: ['reader'] });
+  check('PATCH /users/:id roles=[reader] -> 200', revoked.status === 200, `status=${revoked.status}`);
+  const afterRevoke = await User.findOne({ id: String(reader.id) }).select('roles').lean();
+  check('revoked roles are gone from the user',
+    !!(afterRevoke && !(afterRevoke.roles || []).some(r => GRANTS.some(g => g[1] === r))),
+    `roles=${JSON.stringify(afterRevoke && afterRevoke.roles)}`);
+  const staleDocs = await AdminRole.find({ slug: { $in: GRANTS.map(g => g[1]) } }).select('slug memberIds').lean();
+  check('revoked member is pulled from every role page',
+    staleDocs.every(d => !(d.memberIds || []).map(String).includes(String(reader.id))),
+    `docs=${staleDocs.length}`);
+
   /* ── USERS LIST ──────────────────────────────────────────── */
   say('\n=== TESTING USERS LIST ===\n');
   

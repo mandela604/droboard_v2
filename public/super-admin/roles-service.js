@@ -203,7 +203,10 @@ const API_BASE_ROLES = '/api/super-admin/roles';
 
 async function loadRoles(){
   try {
-    const data = await fetch(API_BASE_ROLES, { credentials:'include' }).then(r => { if(!r.ok) throw new Error('API error '+r.status); return r.json(); });
+    var token = null;
+    try { token = localStorage.getItem('droboard_session') || localStorage.getItem('dro_access'); } catch(e){}
+    var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+    const data = await fetch(API_BASE_ROLES, { credentials:'include', headers: headers }).then(r => { if(!r.ok) throw new Error('API error '+r.status); return r.json(); });
     ROLES = Array.isArray(data) ? data : (data.items || []);
     if(ROLES.length) activeRoleId = ROLES[0].id;
     renderStatCards();
@@ -211,7 +214,8 @@ async function loadRoles(){
     renderDetail();
     renderMembers();
   } catch(e){
-    document.getElementById('rolesListEl').innerHTML = `<div style="color:var(--red);padding:20px"><i class="fas fa-circle-exclamation"></i> Failed to load roles: ${e.message}</div>`;
+    var el = document.getElementById('rolesList') || document.getElementById('rolesListEl');
+    if (el) el.innerHTML = `<div style="color:var(--red);padding:20px"><i class="fas fa-circle-exclamation"></i> Failed to load roles: ${e.message}</div>`;
   }
 }
 

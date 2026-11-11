@@ -568,6 +568,18 @@ async function follow({ userId, target }) {
     edge = await Follow.create({ followerId: userId, followingId: t.id });
   } catch (e) { if (e.code !== 11000) throw e; }
   if (edge) await counters.hookFollows([edge]);
+  try {
+    const actor = await User.findOne({ id: userId }).select('username fullName avatar').lean();
+    const { notify } = require('./notifications.service');
+    await notify({
+      recipientId: t.id, actorId: userId, type: 'follow',
+      title: (actor && (actor.fullName || actor.username)) || 'A user',
+      desc: (actor && (actor.fullName || actor.username)) || 'A user',
+      link: '/profile/' + userId,
+      key: 'follow:' + userId + ':' + t.id,
+      avatar: actor && actor.avatar,
+    });
+  } catch (e) {}
   return { ok: true, following: true };
 }
 

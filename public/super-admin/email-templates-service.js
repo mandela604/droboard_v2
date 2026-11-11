@@ -1,141 +1,111 @@
 /**
- * email-templates-service.js — CRUD service for email templates
+ * email-templates-service.js — live CRUD over /api/super-admin/email-templates.
+ * Templates live in Mongo (EmailTemplate docs, keyed by `key`), never in
+ * localStorage and never seeded from a demo file.
  */
 (function () {
   'use strict';
 
-/* Demo-data self-load: page HTML no longer includes data/email-templates-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof EmailTemplatesData === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="data/email-templates-data.js"><\/script>');
-}
+  var API_BASE = '/api/super-admin/email-templates';
+  var _cache = [];
 
-  var STORAGE_KEY = 'droboard_email_templates';
-  var _memoryOnly = false; // localStorage blocked/poisoned: keep working in memory
-  var _memoryCache = null;
-
-  function delay(ms) { return new Promise(function(r) { setTimeout(r, ms || 200); }); }
-
-  function loadLocal() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); }
-    catch (e) { return null; }
-  }
-
-  function saveLocal(templates) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(templates)); }
-    catch (e) { _memoryOnly = true; }
-  }
-
-  function getSeedData() {
-    return typeof EmailTemplatesData !== 'undefined' ? JSON.parse(JSON.stringify(EmailTemplatesData)) : [];
-  }
-
-  function ensureLocalData() {
-    if (_memoryCache && _memoryCache.length) return _memoryCache;
-    var data = loadLocal();
-    if (!data || !data.length) {
-      data = getSeedData();
-      // Never persist an empty list: a missing seed + empty save is what
-      // wipes the UI permanently. Retry from seed on every load instead.
-      if (data && data.length) saveLocal(data);
+  function api(method, path, body) {
+    var opts = { method: method, credentials: 'include', headers: {} };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
     }
-    if (data && data.length) _memoryCache = data;
-    return data || [];
+    return fetch(API_BASE + (path || ''), opts).then(function (r) {
+      if (!r.ok) {
+        return r.json().catch(function () { return null; }).then(function (b) {
+          var e = new Error((b && b.error) || ('HTTP ' + r.status));
+          e.status = r.status;
+          throw e;
+        });
+      }
+      return r.json().catch(function () { return null; });
+    });
+  }
+
+  function normalize(t) {
+    if (!t) return t;
+    var out = Object.assign({}, t);
+    out.id = t.key || t.id;
+    if (Array.isArray(out.bullets)) out.bullets = out.bullets.join('\n');
+    return out;
+  }
+
+  function payload(data) {
+    var out = {};
+    Object.keys(data || {}).forEach(function (k) {
+      if (k === 'id' || k === '_id' || k === '__v') return;
+      out[k] = data[k];
+    });
+    if (typeof out.bullets === 'string') {
+      out.bullets = out.bullets.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    return out;
   }
 
   var EmailTemplates = {
     _local_data: [],
 
-    getAll: function() {
-      var self = this;
-      return delay().then(function() {
-        self._local_data = ensureLocalData();
-        return self._local_data;
+    getAll: function () {
+      return api('GET', '').then(function (rows) {
+        _cache = (Array.isArray(rows) ? rows : (rows && rows.items) || []).map(normalize);
+        this._local_data = _cache;
+        return _cache;
+      }.bind(this));
+    },
+
+    getById: function (id) {
+      return api('GET', '/' + encodeURIComponent(id)).then(normalize).catch(function () {
+        return _cache.find(function (t) { return String(t.id) === String(id); }) || null;
       });
     },
 
-    getById: function(id) {
-      var data = ensureLocalData();
-      return Promise.resolve(data.find(function(t) { return t.id === id; }) || null);
+    create: function (template) {
+      var body = payload(template);
+      body.key = template.id || template.key || ('tpl_' + Date.now());
+      return api('POST', '', body).then(function (created) {
+        var row = normalize(created);
+        _cache.push(row);
+        return row;
+      });
     },
 
-    create: function(template) {
-      var self = this;
-      var data = ensureLocalData();
-      var newTemplate = Object.assign({
-        id: 'tpl_' + Date.now(),
-        name: 'Untitled Template',
-        subject: '',
-        preheader: '',
-        fromName: 'Droboard Team',
-        fromEmail: 'noreply@droboard.app',
-        headerColor: '#ff0050',
-        headerTitle: '',
-        headerSub: '',
-        greeting: '',
-        body: '',
-        bullets: '',
-        btnText: '',
-        btnColor: '#ff0050',
-        btnLink: '',
-        footerNote: '',
-        unsub: 'Unsubscribe | Manage Preferences',
-        bodyHtml: '', // auto-generated
-        bodyText: '', // plain-text fallback
-        status: 'active',
-        lastEdited: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      }, template);
-      data.push(newTemplate);
-      saveLocal(data);
-      self._local_data = data;
-      return delay().then(function() { return newTemplate; });
+    update: function (id, updates) {
+      return api('PUT', '/' + encodeURIComponent(id), payload(updates)).then(function (saved) {
+        var row = normalize(saved);
+        var idx = _cache.findIndex(function (t) { return String(t.id) === String(id); });
+        if (idx >= 0) _cache[idx] = row; else _cache.push(row);
+        return row;
+      });
     },
 
-    update: function(id, updates) {
-      var self = this;
-      var data = ensureLocalData();
-      var idx = data.findIndex(function(t) { return t.id === id; });
-      if (idx === -1) return Promise.reject(new Error('Template not found'));
-      data[idx] = Object.assign({}, data[idx], updates, { lastEdited: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) });
-      saveLocal(data);
-      self._local_data = data;
-      return delay().then(function() { return data[idx]; });
+    remove: function (id) {
+      return api('DELETE', '/' + encodeURIComponent(id)).then(function () {
+        _cache = _cache.filter(function (t) { return String(t.id) !== String(id); });
+        return true;
+      });
     },
 
-    remove: function(id) {
-      var self = this;
-      var data = ensureLocalData();
-      data = data.filter(function(t) { return t.id !== id; });
-      saveLocal(data);
-      self._local_data = data;
-      return delay().then(function() { return true; });
+    /* There is no server-side "reset to defaults": templates are data, not a
+       local seed. Reload whatever the API currently holds. */
+    reset: function () {
+      return this.getAll();
     },
 
-    reset: function() {
-      var self = this;
-      localStorage.removeItem(STORAGE_KEY);
-      var data = getSeedData();
-      saveLocal(data);
-      self._local_data = data;
-      return delay().then(function() { return data; });
-    },
-
-    save: function(id, data) {
-      var templates = ensureLocalData();
-      var idx = templates.findIndex(function(t) { return t.id === id; });
-      var now = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      if (idx >= 0) {
-        templates[idx] = Object.assign({}, templates[idx], data, { lastEdited: now });
-      } else {
-        templates.push(Object.assign({}, data, { id: data.id || 'tpl_' + Date.now(), status: 'active', lastEdited: now }));
-      }
-      saveLocal(templates);
-      this._local_data = templates;
-      if (typeof toast === 'function') toast('Template saved!');
+    save: function (id, data) {
+      var exists = _cache.some(function (t) { return String(t.id) === String(id); });
+      var p = exists ? this.update(id, data) : this.create(Object.assign({ id: id }, data));
+      return p.then(function (saved) {
+        if (typeof window.toast === 'function') window.toast('Template saved!');
+        return saved;
+      });
     },
   };
 
   window.DroboardEmailTemplates = EmailTemplates;
-  window.DroboardEmailSeed = getSeedData;
-  try { console.info('[tpl-service] v4 loaded'); } catch (e) {}
+  window.DroboardEmailSeed = function () { return []; };
 })();

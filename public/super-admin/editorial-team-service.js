@@ -118,7 +118,11 @@ const ROLE_META = {
 const API_BASE_TEAM = '/api/super-admin/editorial-team';
 
 async function callTeamApi(path, opts){
-  const res = await fetch(API_BASE_TEAM + (path||''), { credentials:'include', ...opts });
+  opts = opts || {};
+  var token = null;
+  try { token = localStorage.getItem('droboard_session'); } catch (e) {}
+  var headers = Object.assign({}, opts.headers || {}, token ? { 'Authorization': 'Bearer ' + token } : {});
+  var res = await fetch(API_BASE_TEAM + (path||''), Object.assign({ credentials:'include' }, opts, { headers: headers }));
   if(!res.ok) throw new Error('API error ' + res.status);
   return res.json();
 }
@@ -654,6 +658,8 @@ document.getElementById('pwConfirmBtn').addEventListener('click', function(){
   }, 1200);
 });
 
+var _searchEl = document.getElementById('searchInput');
+if (_searchEl) { _searchEl.value = ''; }
 document.getElementById('sortFilter').value = 'metric';
 loadTeam();
 

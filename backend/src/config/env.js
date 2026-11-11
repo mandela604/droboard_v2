@@ -53,4 +53,8 @@ module.exports = {
   // Placeholder-safe: upload route returns 503 until configured.
   cfAccountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
   cfImagesToken: process.env.CLOUDFLARE_IMAGES_TOKEN || '',
+  // Bootstrap: comma-separated account emails promoted to the admin role at
+  // boot. Lets a fresh production database reach the Super Admin console
+  // without hand-editing Mongo. Safe to keep set; only listed emails match.
+  adminEmails: (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
 };
