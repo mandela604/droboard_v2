@@ -2,10 +2,7 @@
  * user-insights-service.js — Data + controller for User Insights page
  * user-insights.html is shell only + mounts; everything renders here.
  *
- * DEMO: reads window.__usersAPI (users-service.js) with AdminDemo fallback.
- * referrals / plans / funding / sessions-per-day are derived deterministically
- * from each user id (stable across reloads) until the backend supplies them.
- * Going live: set USE_API=true and implement fetchInsights() against:
+ * Live: fetchInsights() reads the backend against:
  *   GET /api/insights/overview  (kpis, genre affinity, sessions, money, referrals)
   *   GET /api/insights/leaderboard?type=tips|readtime|referrals|streaks&role=&extra=
  * Backend event taxonomy (to build first): session.start/end, read.chapter_finished,
@@ -23,14 +20,6 @@
 const USE_API = true;
 const API_BASE = '/api/super-admin/insights';
 
-const SUB_PRICE = 5; // USD/month assumed for MRR demo math
-
-function hashStr(s){
-  var h = 0;
-  s = String(s || '');
-  for (var i = 0; i < s.length; i++){ h = ((h << 5) - h + s.charCodeAt(i)) | 0; }
-  return Math.abs(h);
-}
 function fmtNum(n){
   n = +n || 0;
   if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
@@ -45,57 +34,10 @@ function dayDiff(a, b){
   try { return Math.floor((new Date(a) - new Date(b)) / 86400000); } catch (e){ return 9999; }
 }
 
-function readUsers(){
-  try {
-    if (global.__usersAPI && typeof global.__usersAPI.users === 'function') {
-function readUsers(){
-  try {
-    if (global.__usersAPI && typeof global.__usersAPI.users === 'function') {
-      var list = global.__usersAPI.users();
-      if (list && list.length) return list;
-    }
-  } catch (e){}
-  return [];
-}
-function readGenreColors(){
-  try {
-    if (global.__usersAPI && typeof global.__usersAPI.genreColors === 'function') return global.__usersAPI.genreColors() || {};
-  } catch (e){}
-  return {};
-}
-
-/* Demo derivation — deterministic per user id; replaced by backend fields. */
-function derive(u){
-  var h = hashStr(u.id);
-  var sent = h % 41;
-  var converted = Math.floor(sent * (0.10 + (h % 30) / 100));
-  var plan = 'free';
-  if (u.role === 'Reader') plan = (h % 10 < 2) ? 'premium' : ((h % 10 < 3) ? 'trial' : 'free');
-  return {
-    referralsSent: sent,
-    referralsConverted: converted,
-    plan: plan,
-    // Live field is fundedNGN — cash paid in, so the demo figure is naira too:
-    // the naira value of everything they spent, plus the top-up slack.
-    funded: Math.round((+u.coinsSpent || 0) * 15) + (h % 50000),
-    sessionsPerDay: 1 + (h % 6)
-  };
-}
-
 async function fetchInsights(){
-  if (USE_API) {
-    var r = await fetch(API_BASE + '/overview', { credentials: 'include' });
-    if (!r.ok) throw new Error('insights API failed');
-    return r.json();
-  }
-  var users = readUsers();
-  var ex = users.map(function(u){ return { u: u, x: derive(u) }; });
-  var maxActive = null;
-  users.forEach(function(u){
-    if (!u.lastActive) return;
-    if (!maxActive || u.lastActive > maxActive) maxActive = u.lastActive;
-  });
-  return { users: users, ex: ex, genreColors: readGenreColors(), refDate: maxActive, subPrice: SUB_PRICE };
+  var r = await fetch(API_BASE + '/overview', { credentials: 'include' });
+  if (!r.ok) throw new Error('insights API failed');
+  return r.json();
 }
 
 function topBy(ex, fn, n){
@@ -374,9 +316,16 @@ async function init(){
     notifCount: 9,
     searchPlaceholder: 'Search everything…'
   });
-  var d = await fetchInsights();
-  renderStats(d); renderBoard(d); renderGenres(d);
-  renderSessions(d); renderMoney(d); renderReferrals(d);
+  var d;
+  try {
+    d = await fetchInsights();
+    renderStats(d); renderBoard(d); renderGenres(d);
+    renderSessions(d); renderMoney(d); renderReferrals(d);
+  } catch (err) {
+    var sc = document.getElementById('statCards');
+    if (sc) sc.innerHTML = '<div class="empty-state" style="color:var(--red)"><i class="fas fa-circle-exclamation"></i> Failed to load insights: ' + esc(err.message) + '</div>';
+    return;
+  }
   document.getElementById('lbTabs').addEventListener('click', function(e){
     var btn = e.target.closest('[data-lb]');
     if (!btn) return;

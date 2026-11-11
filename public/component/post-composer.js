@@ -960,9 +960,9 @@
         await _hooks.onSubmit(post, isEdit);
       } else if(window.FeedData && window.DroboardPostCard && document.getElementById('feedList')){
         if(window.FeedPage && window.FeedPage._pushPost) window.FeedPage._pushPost(post, isEdit);
-        else toast(isEdit ? '✅ Post updated!' : 'Posted! (demo)');
+        else throw new Error('Could not publish your post.');
       } else {
-        toast(isEdit ? '✅ Post updated (demo)' : '✅ Post created (demo)');
+        throw new Error('Could not publish your post.');
       }
       close();
     } catch(e){

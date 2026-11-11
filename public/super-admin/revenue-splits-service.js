@@ -49,29 +49,12 @@ async function callBackend(path, options) {
   return timeoutFetch(API_BASE + path, options);
 }
 
-/* ── Demo state (replaced by endpoints above at go-live) ── */
-var GLOBAL = { version: 3, google: 30, marketing: 20, editors: 10, writerShare: 40, updatedBy: 'Tobi Adenuga', updatedAt: 'Sep 28, 2026', note: 'Launch values' };
-var HISTORY = [
-  { version: 3, google: 30, marketing: 20, editors: 10, writerShare: 40, updatedBy: 'Tobi Adenuga', updatedAt: 'Sep 28, 2026', note: 'Launch values' },
-  { version: 2, google: 30, marketing: 25, editors: 10, writerShare: 35, updatedBy: 'Tobi Adenuga', updatedAt: 'Aug 02, 2026', note: 'Pre-launch test: marketing push' },
-  { version: 1, google: 30, marketing: 20, editors: 10, writerShare: 40, updatedBy: 'System', updatedAt: 'Jun 01, 2026', note: 'Initial seed' }
-];
-var OVERRIDES = [
-  { authorId: 'au_1024', name: 'Amara Okafor', handle: '@amara_writes', google: 30, marketing: 15, editors: 10, writerShare: 45, updatedBy: 'Tobi Adenuga', updatedAt: 'Sep 20, 2026' }
-];
-var POOLS = [
-  { id: 'editors_pool', label: 'Editors Pool', balance: 1240500, recomputedAt: 'Today, 06:00' },
-  { id: 'platform', label: 'Platform Reserve', balance: 8940200, recomputedAt: 'Today, 06:00' },
-  { id: 'marketing', label: 'Marketing Pool', balance: 2310800, recomputedAt: 'Today, 06:00' },
-  { id: 'writers', label: 'Writers Payable', balance: 5620400, recomputedAt: 'Today, 06:00' }
-];
-var AUTHORS = [
-  { id: 'au_1024', name: 'Amara Okafor', handle: '@amara_writes', avatar: 'https://i.pravatar.cc/100?img=45' },
-  { id: 'au_2041', name: 'Luna Skye', handle: '@luna_skye', avatar: 'https://i.pravatar.cc/100?img=32' },
-  { id: 'au_3099', name: 'Tobi Adenuga', handle: '@tobi_adenuga', avatar: 'https://i.pravatar.cc/100?img=68' },
-  { id: 'au_4177', name: 'Sofia Lindqvist', handle: '@sofia_l', avatar: 'https://i.pravatar.cc/100?img=47' },
-  { id: 'au_5210', name: 'Marcus Chen', handle: '@marcus_chen', avatar: 'https://i.pravatar.cc/100?img=12' }
-];
+/* ── State (populated from the endpoints above) ── */
+var GLOBAL = { version: 0, google: 30, marketing: 0, editors: 0, writerShare: 0, updatedBy: '', updatedAt: '', note: '' };
+var HISTORY = [];
+var OVERRIDES = [];
+var POOLS = [];
+var AUTHORS = [];
 /* Google's 30% is contractual — never editable in UI (backend also rejects changes). */
 var GOOGLE_FIXED = 30;
 function authorProfile(a) {
@@ -87,7 +70,7 @@ function fmtN(n) { if(window.DroboardCurrency && DroboardCurrency.ngnToMoney) re
 function toast(m) { if (typeof window.toast === 'function') { try { window.toast(m); return; } catch (e) {} } }
 function draftSum() { return (Number(draft.google) || 0) + (Number(draft.marketing) || 0) + (Number(draft.editors) || 0) + (Number(draft.writerShare) || 0); }
 
-/* ── Data load (backend-first, demo fallback) ── */
+/* ── Data load ── */
 async function loadAll() {
   var g = await callBackend('/config/active');
   if (g) { GLOBAL = g; draft = { google: g.google, marketing: g.marketing, editors: g.editors, writerShare: g.writerShare }; }
@@ -286,12 +269,10 @@ async function saveConfig() {
     if (saved && (saved.version || saved.data)) {
       var row = saved.data || saved;
       GLOBAL = row; HISTORY.unshift(row);
-    } else throw new Error('demo');
+    }
   } catch (e) {
-    var next = (HISTORY.length ? HISTORY[0].version : 0) + 1;
-    var row2 = Object.assign({ version: next, updatedBy: 'You', updatedAt: 'Just now' }, payload);
-    GLOBAL = row2; HISTORY.unshift(row2);
-    toast('Global cuts saved as v' + next + '. Takes effect immediately.');
+    toast('Failed to save config: ' + (e && e.message ? e.message : e));
+    return;
   }
   var noteEl = document.getElementById('configNote');
   if (noteEl) noteEl.value = '';

@@ -27,8 +27,21 @@
 
     // The server verifies a JWT on the handshake; a socket without it is
     // rejected before it connects, so every realtime feature is dead.
+    // The stored token is the 15-minute access token, which goes stale while
+    // browsing — ask the server for a fresh one first (the long-lived refresh
+    // cookie travels with this call), and keep the stored copy as a fallback.
     var token = null;
     try { token = localStorage.getItem('droboard_session'); } catch (e) {}
+    try {
+      var r = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'same-origin' });
+      if (r.ok) {
+        var j = await r.json().catch(function () { return null; });
+        if (j && j.access) {
+          token = j.access;
+          try { localStorage.setItem('droboard_session', j.access); } catch (e) {}
+        }
+      }
+    } catch (e) { /* offline — fall back to the stored token */ }
     if (!token) return;
 
     var socket = io('/', { auth: { token: token } });

@@ -37,28 +37,14 @@
     const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
   }
 
-  // Demo mode: simulate a successful purchase without hitting a payment provider.
-  // Used when no live keys are configured (development / pre-launch).
-  function isDemoMode() {
-    if (!window.PaymentService) return true;
-    try {
-      var m = PaymentService.methods();
-      // If the only method is a native store placeholder, stay in demo on web
-      if (!m.length) return true;
-      // If config has not resolved yet we are still in demo
-      return false;
-    } catch (e) { return true; }
-  }
-
   function open(opts) {
     opts = opts || {};
     ensureStyle();
     close();
-    const methods = (window.PaymentService ? PaymentService.methods() : []);
-    const demo = isDemoMode();
-    // No keys on the server = no channel can take money; show demo flow instead.
-    const ready = !demo && methods.length > 0;
-    let method = ready ? methods[0].id : (demo ? 'demo' : null);
+    const methods = (window.PaymentService && typeof PaymentService.methods === 'function' ? PaymentService.methods() : []);
+    // No provider configured on the server = no channel can take money.
+    const ready = methods.length > 0;
+    let method = ready ? methods[0].id : null;
 
     const ov = document.createElement('div');
     ov.className = 'dps-ov'; ov.id = 'dpsOv';
@@ -74,16 +60,11 @@
             + '<i class="' + m.icon + '"></i><span style="flex:1">' + m.name
             + '<small>' + (m.hint || '') + '</small></span></button>';
         }).join('')
-      : demo
-        ? '<button class="dps-m on" data-m="demo" style="justify-content:center;color:var(--acc,#ff0050)">'
-          + '<i class="fas fa-flask"></i><span style="flex:1">Demo Purchase<small>Simulated · no real charge</small></span></button>'
-        : '';
+      : '';
 
     const payLabel = ready
       ? 'Pay ' + esc(opts.price || '')
-      : demo
-        ? '🎉 Confirm Demo Purchase'
-        : 'Payments not enabled yet';
+      : 'Payments not enabled yet';
 
     ov.innerHTML = '<div class="dps-sheet">'
       + '<div class="dps-handle"></div>'
@@ -95,7 +76,6 @@
       + '<button class="dps-cancel" id="dpsCancel">Cancel</button>'
       + '<div class="dps-note">'
       + (ready ? 'Secured checkout · coins credit after verification.'
-          : demo ? 'Demo mode — no real payment is processed.'
           : 'No payment provider is configured on this server yet.')
       + '</div>'
       + '</div>';
@@ -115,23 +95,14 @@
 
     ov.querySelector('#dpsPay').addEventListener('click', function () {
       const btn = ov.querySelector('#dpsPay');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="dps-spin"></span>Processing…';
-
-      // Demo path — fake a 1.5s network delay then call onSuccess
-      if (method === 'demo' || demo) {
-        setTimeout(function () {
-          done();
-          if (opts.onSuccess) opts.onSuccess({
-            demo: true,
-            reference: 'DEMO-' + Date.now(),
-            coins: opts.coins || 0,
-            plan: opts.isSub ? (opts.packCode || 'sub') : null,
-            amount: 0,
-          });
-        }, 1500);
+      if (!ready || !window.PaymentService || typeof window.PaymentService.checkout !== 'function') {
+        done();
+        const err = new Error('No payment provider is configured on this server yet.');
+        if (opts.onError) opts.onError(err);
         return;
       }
+      btn.disabled = true;
+      btn.innerHTML = '<span class="dps-spin"></span>Processing…';
 
       // Live path
       const p = { title: opts.title, price: opts.price, coins: opts.coins, method: method,

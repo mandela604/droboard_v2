@@ -3,10 +3,9 @@
    ONE surface per page (no tabs) + period filter:
    Today / 7D / Month / All-time, each with a delta vs the
    previous equal-length window and a bar chart for the period.
-   Numbers come from GET /api/insights/:surface (real counters); if that
-   call fails the seeded demo set paints the page instead and the note under
-   the hero says "Demo stats".
-   DATA LAYER: loadInsights(surface, id, period) — live fetch, demo fallback.
+   Numbers come from GET /api/insights/:surface (real counters). If that call
+   fails the page shows an explicit error state instead.
+   DATA LAYER: loadInsights(surface, id, period) — live fetch only.
    URL: insights.html?surface=hub&genre=fantasy | ?surface=droboard | ?surface=profile
           &period=today|7d|month|all   (default 7d)
 ══════════════════════════════════════════════════════════════ */
@@ -16,7 +15,7 @@
   const params = new URLSearchParams(location.search);
   let surface = params.get('surface') || 'hub';
   if (['hub', 'droboard', 'profile', 'collection'].indexOf(surface) === -1) surface = 'hub';
-  const genreId = (params.get('genre') || (window.GenreDemoSeed && window.GenreDemoSeed.DEFAULT_GENRE_ID) || 'fantasy').toLowerCase();
+  const genreId = (params.get('genre') || 'fantasy').toLowerCase();
   const collId = params.get('id') || 'c1';
   let period = params.get('period') || '7d';
   if (['today', '7d', 'month', 'all'].indexOf(period) === -1) period = '7d';
@@ -99,41 +98,6 @@
     }
     return { labels: labels, bounds: bounds, bucketMs: DAY * 30, start: bounds[0], end: Date.now() };
   }
-  /* Bucket page-open timestamps into the period's chart series. */
-  function visitSeries(surfaceName, id, buckets) {
-    if (!window.InsightsTracker) return buckets.labels.map(function () { return 0; });
-    const raw = (function () {
-      try { return JSON.parse(localStorage.getItem('dro_insights_hits') || '{}'); } catch (e) { return {}; }
-    })();
-    const key = id ? surfaceName + ':' + id : surfaceName;
-    let rec = raw[key];
-    if (typeof rec === 'number') rec = { total: rec, ts: [] };
-    if (!rec || !Array.isArray(rec.ts)) return buckets.labels.map(function () { return 0; });
-    const out = buckets.labels.map(function () { return 0; });
-    rec.ts.forEach(function (x) {
-      const t = typeof x === 'number' ? x : (x && x.t) || 0;
-      if (t < buckets.start || t >= buckets.end) return;
-      for (let i = buckets.bounds.length - 1; i >= 0; i--) {
-        if (t >= buckets.bounds[i]) { out[i]++; return; }
-      }
-    });
-    return out;
-  }
-
-  /* ── deterministic demo series (stable fake activity) ── */
-  function weekSeries(seedStr, base, n) {
-    let h = 0;
-    for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
-    const out = [];
-    for (let d = 0; d < n; d++) {
-      h = (h * 1103515245 + 12345) >>> 0;
-      out.push(Math.max(1, Math.round(base * (0.4 + ((h >>> 8) % 100) / 100))));
-    }
-    return out;
-  }
-  const PERIOD_BASE = { today: 6, '7d': 40, month: 120, all: 400 };
-  const PERIOD_N = { today: 6, '7d': 7, month: 10, all: 6 };
-
   /* Country name → ISO code for real flag images (flagcdn). */
   const COUNTRY_CODE = {
     'Nigeria':'ng','Ghana':'gh','United Kingdom':'gb','United States':'us','South Africa':'za',
@@ -175,87 +139,9 @@
       .sort(function (a, b) { return b.n - a.n; })
       .slice(0, 5);
   }
-  /* Demo visit volume per period (stable per surface) — blended with
-     real page-open counts so the hero never looks empty. */
-  const VISIT_BASE = { today: 48, '7d': 310, month: 1240, all: 9800 };
-  function demoVisits(sfc, id, p) {
-    let h = 0;
-    const s = sfc + (id || '');
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return Math.round(VISIT_BASE[p] * (0.75 + (h % 40) / 100));
-  }
-  /* Demo country mix (West-Africa-weighted, like the real audience)
-     padded on top of live tracker countries → always a full Top 5. */
-  function mergedCountries(seedStr, liveList) {
-    const pool = [
-      { country: 'Nigeria', w: 34 }, { country: 'Ghana', w: 13 }, { country: 'United Kingdom', w: 11 },
-      { country: 'United States', w: 10 }, { country: 'South Africa', w: 8 }, { country: 'Kenya', w: 7 },
-      { country: 'Canada', w: 5 }, { country: 'India', w: 4 }, { country: 'Germany', w: 3 }, { country: 'UAE', w: 2 },
-    ];
-    let h = 0;
-    for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
-    const total = Math.round(120 + (h % 80));
-    const wsum = pool.reduce(function (a, p) { return a + p.w; }, 0);
-    const map = {};
-    pool.forEach(function (p) { map[p.country] = Math.max(1, Math.round(total * p.w / wsum)); });
-    (liveList || []).forEach(function (c) {
-      if (!c || !c.country || c.country === 'Unknown') return;
-      map[c.country] = (map[c.country] || 0) + c.n * 3; // live hits count extra so moving around shows
-    });
-    return Object.keys(map).map(function (k) { return { country: k, n: map[k] }; })
-      .sort(function (a, b) { return b.n - a.n; })
-      .slice(0, 5);
-  }
-
-  /* ── top-content demo lists per surface ── */
-  function topThreads(genre) {
-    const seed = window.GenreDemoSeed;
-    const list = (seed && seed.DEMO_DISCUSSIONS && seed.DEMO_DISCUSSIONS[genre]) || [];
-    return list.map(function (p) {
-      return { n: p.title || 'Untitled', s: 'by ' + (p.name || p.author || p.by || 'someone'), v: (p.likes || 0) + ' likes', href: 'discussion.html?genre=' + encodeURIComponent(genre) + '&id=' + encodeURIComponent(p.id || '') };
-    }).sort(function (a, b) { return parseInt(b.v) - parseInt(a.v); }).slice(0, 5);
-  }
-  function topDroboardPosts() {
-    return [
-      { n: 'Writer shoutout: Ada_Writes hits 800k reads', s: 'Shoutout · 2d ago', v: '4.2K likes' },
-      { n: 'Live debate: is the mafia trope overdone?', s: 'Debate · 4d ago', v: '3.1K likes' },
-      { n: 'Announcement — Season of Betrayal finale', s: 'Announcement · 6d ago', v: '2.8K likes' },
-      { n: 'Friday pick: 5 slow-burn romances', s: 'Pick · 1w ago', v: '1.9K likes' },
-      { n: 'Community poll: next live debate topic', s: 'Poll · 1w ago', v: '1.4K likes' },
-    ].map(function (it) { it.href = 'droboard-page.html'; return it; });
-  }
-  function topProfileBooks() {
-    return [
-      { n: 'Season of Betrayal', s: 'Book 1 · Complete', v: '412K reads' },
-      { n: 'Contract of Hearts', s: 'Book 2 · Ongoing', v: '186K reads' },
-      { n: 'The Last Heir', s: 'Book 3 · Draft', v: '14K reads' },
-    ];
-  }
-  function topCollectionStories() {
-    // Live swap: top stories inside the collection by reads/saves
-    try {
-      const D = window.CollectionData;
-      const all = (D && (D.collection || D.data)) || null;
-      const stories = (all && all.stories) || (D && D.STORIES) || [];
-      if (stories.length) {
-        return stories.slice(0, 5).map(function (s) {
-          return { n: s.title || 'Untitled', s: 'by ' + (s.author || s.writer || 'someone'), v: (s.reads || s.saves || '—') + (String(s.reads || '').length ? ' reads' : '') };
-        });
-      }
-    } catch (e) {}
-    return [
-      { n: 'Season of Betrayal', s: 'by Ada_Writes', v: '820K reads' },
-      { n: 'The Billionaire Never Forgets', s: 'by Sarah_Odum', v: '1.4M reads' },
-      { n: 'Contract of Hearts', s: 'by Sarah_Odum', v: '620K reads' },
-      { n: 'Fangs & Fortune', s: 'by Ese_Uyi', v: '190K reads' },
-      { n: 'The Priory of the Orange Tree', s: 'by Samantha Shannon', v: '1.1M reads' },
-    ];
-  }
-
   /* ══ DATA LAYER ══ */
-  /* Live first: GET /api/insights/:surface?period=… (real counters from the
-     server). When that call fails the demo set below paints the page, so the
-     UI is never empty — the note under the hero says which one you got. */
+  /* Live only: GET /api/insights/:surface?period=… (real counters from the
+     server). A failure surfaces as an explicit error state on the page. */
   function fetchLive(sfc, id, p) {
     let url = '/api/insights/' + encodeURIComponent(sfc) + '?period=' + encodeURIComponent(p);
     if (sfc === 'hub' && id) url += '&genre=' + encodeURIComponent(id);
@@ -267,14 +153,11 @@
     }).then(function (data) {
       if (!data || !Array.isArray(data.series) || !data.series.length) throw new Error('empty');
       data.countries = mapLiveCountries(data.countries);
-      data.demo = false;
       return data;
     });
   }
   function loadInsights(sfc, id, p) {
-    return fetchLive(sfc, id, p).catch(function () {
-      return demoInsights(sfc, id, p).then(function (d) { d.demo = true; return d; });
-    });
+    return fetchLive(sfc, id, p);
   }
   function demoInsights(sfc, id, p) {
     // Live swap: return fetch(API_BASE + '/insights/' + sfc + '?period=' + p + (id ? '&id=' + id : ''), {credentials:'include'}).then(r => r.json());

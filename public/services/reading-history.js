@@ -7,23 +7,11 @@
   'use strict';
 
   var KEY = 'dro_read_hist';
-  var SEED_KEY = 'dro_read_hist_seeded';
   var MIN_CHAPTERS = 3;
   var MIN_SECONDS = 720; // 12 minutes
 
   var _lastId = null;
   var _lastTs = 0;
-
-  // Seed demo reading history once so recommendation gate is testable.
-  function seedDemo() {
-    try {
-      if (localStorage.getItem(SEED_KEY)) return;
-      var seeded = { st1: { ch: [1,2,3,4,5], sec: 900 }, st2: { ch: [1,2,3], sec: 800 }, st3: { ch: [1,2,3,4,5,6,7], sec: 1200 } };
-      localStorage.setItem(KEY, JSON.stringify(seeded));
-      localStorage.setItem(SEED_KEY, '1');
-    } catch (e) {}
-  }
-  seedDemo();
 
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }

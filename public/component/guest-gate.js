@@ -131,17 +131,8 @@
   /* Recommendation items — shaped for the shared more-like-this component
      (id, img, title, author, badge, cat). */
   function _storyItems() {
-    const d = window.DemoData || {};
-    const list = d.STORIES || [];
-    const badgeMap = { hot: 'hot', new: 'new', updated: 'update', update: 'update' };
-    return list.map(s => ({
-      id: s.id,
-      img: s.cover || s.img || '',
-      title: s.title || '',
-      author: s.author || '',
-      badge: badgeMap[s.gbadge] || badgeMap[String(s.badge || '').toLowerCase()] || '',
-      cat: _catName(s.cat || s.genre || ''),
-    }));
+    /* Recommendation source is a live source; no demo seed fallback. */
+    return [];
   }
 
   function _host(anchor) {

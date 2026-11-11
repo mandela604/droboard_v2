@@ -1229,9 +1229,9 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
           if (!res.ok) throw new Error('api_' + res.status);
           _toast('Reported: ' + reportTypeLabel(typeId) + '. Thanks — moderators will review.');
           return;
-        } catch (e) { /* fall through to demo confirmation */ }
+        } catch (e) { /* fall through to a real failure toast */ }
       }
-      _toast('Reported: ' + reportTypeLabel(typeId) + ' (demo)');
+      _toast('Could not file report.');
     }
     function openReportTypes(cid) {
       if (window.RequireAuth && !RequireAuth.ensure('report this comment')) return;

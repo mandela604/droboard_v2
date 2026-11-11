@@ -670,7 +670,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Post — production API with demo fallback
+  // Post — production API only
   // ════════════════════════════════════════════════════════════════════════
   async function _doPost() {
     /* Second line of defence if the compose sheet was opened another way. */
@@ -712,11 +712,8 @@
 
         _onSuccess();
 
-      // ── Demo fallback ─────────────────────────────────────────────────
       } else {
-        // Simulate a short network delay so the UI feels real
-        await new Promise(r => setTimeout(r, 900));
-        _onSuccess();
+        throw new Error('Posting service unavailable. Please try again.');
       }
 
     } catch (err) {

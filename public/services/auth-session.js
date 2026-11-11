@@ -143,21 +143,82 @@
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(USER_KEY);
     } catch (e) {}
+    stopRefresh();
     return true;
   }
 
   function clearCache() {}
 
+  /* ── Proactive access-token refresh ────────────────────────────────
+     The refresh cookie is scoped to /api/auth only, so it is never sent to
+     /api/posts and the server can no longer re-mint the 15-minute access
+     token on an ordinary API call. The client keeps the token fresh instead:
+     it refreshes shortly before expiry, and also refreshes once on any 401
+     from an API call and then replays the original request. */
+  let _refreshInFlight = null;
+  let _refreshTimer = null;
+
+  function accessToken() {
+    try { return localStorage.getItem(SESSION_KEY); } catch (e) { return null; }
+  }
+
+  function decodeExpMs(token) {
+    try {
+      const part = String(token || '').split('.')[1];
+      if (!part) return 0;
+      let b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      return (json && json.exp) ? json.exp * 1000 : 0;
+    } catch (e) { return 0; }
+  }
+
+  /* Ask the server for a new access token. The refresh cookie (scoped to
+     /api/auth) rides along; the server also re-mints the dro_access cookie.
+     Concurrent callers share one in-flight request. */
+  function refreshAccess() {
+    if (_refreshInFlight) return _refreshInFlight;
+    _refreshInFlight = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+      .then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
+      .then(function (b) {
+        const tok = b && (b.access || b.token);
+        if (tok) {
+          try { localStorage.setItem(SESSION_KEY, tok); } catch (e) {}
+          scheduleRefresh();
+          return true;
+        }
+        return false;
+      })
+      .catch(function () { return false; })
+      .then(function (ok) { _refreshInFlight = null; return ok; });
+    return _refreshInFlight;
+  }
+
+  /* Schedule the next refresh just before the access token expires. */
+  function scheduleRefresh() {
+    if (_refreshTimer) { clearTimeout(_refreshTimer); _refreshTimer = null; }
+    if (!isSignedIn()) return;
+    const expMs = decodeExpMs(accessToken());
+    const delay = expMs
+      ? Math.min(Math.max(expMs - Date.now() - 60000, 5000), 14 * 60 * 1000)
+      : 13 * 60 * 1000; // unreadable exp → refresh well inside the 15-min window
+    _refreshTimer = setTimeout(function () { refreshAccess(); }, delay);
+  }
+
+  function stopRefresh() {
+    if (_refreshTimer) { clearTimeout(_refreshTimer); _refreshTimer = null; }
+  }
+
   /* ── Dead-session honesty ──────────────────────────────────────────
-     The server silently renews the 15-minute access token from the 30-day
-     refresh cookie, so a browsing user is never signed out mid-session.
-     When both are truly gone (30-day session expired, revoked, or signed
-     out elsewhere) an API call returns 401 {error:'unauthorized'} while
-     this tab still believes it is signed in. Rather than silently degrade
-     to a guest — menus vanishing, "unauthorized" on save — clear the stale
-     local session and route the person back to a real sign-in, with a
-     reason. */
+     The client keeps the access token fresh (above), so a browsing user is
+     never signed out mid-session. When the 30-day refresh session is truly
+     gone (expired, revoked, or signed out elsewhere) the refresh call fails
+     and an API call returns 401 {error:'unauthorized'} while this tab still
+     believes it is signed in. Rather than silently degrade to a guest —
+     menus vanishing, "unauthorized" on save — clear the stale local session
+     and route the person back to a real sign-in, with a reason. */
   function sessionExpired() {
+    stopRefresh();
     try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(USER_KEY); } catch (e) {}
     if (window.__droExpiryHandled) return;
     window.__droExpiryHandled = true;
@@ -186,10 +247,19 @@
       if (url.indexOf('/api/') === -1 || url.indexOf('/api/auth/') !== -1) return out;
       return out.then(function (res) {
         if (!res || res.status !== 401 || !isSignedIn()) return res;
-        return isDeadSession(res).then(function (dead) { if (dead) sessionExpired(); return res; });
+        // The access token has most likely just expired. Refresh once, then
+        // replay the original request. Only if the refresh itself fails is the
+        // session actually dead.
+        return refreshAccess().then(function (ok) {
+          if (ok) { try { return native(input, init); } catch (e) { return res; } }
+          return isDeadSession(res).then(function (dead) { if (dead) sessionExpired(); return res; });
+        });
       });
     };
   })();
+
+  // Keep the access token warm for the whole session.
+  if (isSignedIn()) scheduleRefresh();
 
   global.AuthSession = {
     getSession,
@@ -205,5 +275,7 @@
     hasRole,
     ensureAccount,
     sessionExpired,
+    refresh: refreshAccess,
+    scheduleRefresh,
   };
 })(window);

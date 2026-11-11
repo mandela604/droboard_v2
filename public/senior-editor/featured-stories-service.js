@@ -1,18 +1,11 @@
 /**
  * featured-stories-service.js — Data layer for Featured Stories page
- * Reads from window.EditorDemo.FEATURED_* demo data.
- * Falls back to empty arrays if demo data is missing.
+ * Live API only.
  */
 (function(){
 'use strict';
 if(window.__featuredStoriesService) return;
 window.__featuredStoriesService = true;
-
-/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="../data/editor-demo-data.js"><\/script>');
-}
 
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/featured-stories';
 var TIMEOUT_MS = 2500;
@@ -30,25 +23,20 @@ function timeoutFetch(url, opts){
   return fetch(url, Object.assign({signal:c.signal}, opts||{})).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error(r.status); return r.json(); }).catch(function(e){ clearTimeout(t); throw e; });
 }
 
-function getTags(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_TAGS || {})); }
-function getSections(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_SECTIONS || [])); }
-function getLibrary(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_LIBRARY || [])); }
-function getPlacements(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_PLACEMENTS || [])); }
-function getHistory(){ return JSON.parse(JSON.stringify((window.EditorDemo||{}).FEATURED_HISTORY || [])); }
+function getTags(){ return {}; }
+function getSections(){ return []; }
+function getLibrary(){ return []; }
+function getPlacements(){ return []; }
+function getHistory(){ return []; }
 
-/* ── State stored in closure ── */
-var _tags, _sections, _library, _placements, _history;
-function loadFromDemo(){
-  _tags = getTags();
-  _sections = getSections();
-  _library = getLibrary();
-  _placements = getPlacements();
-  _history = getHistory();
-  _placements.forEach(function(f){
-    if(typeof f.start === 'string') f.start = new Date(f.start);
-    if(typeof f.end === 'string') f.end = new Date(f.end);
-  });
-}
+function getTags(){ return {}; }
+function getSections(){ return []; }
+function getLibrary(){ return []; }
+function getPlacements(){ return []; }
+function getHistory(){ return []; }
+
+/* ── State stored in closure (populated from the live API) ── */
+var _tags = {}, _sections = [], _library = [], _placements = [], _history = [];
 
 /* ── Public API ── */
 function loadAll(){
@@ -60,8 +48,8 @@ function loadAll(){
     _library = data.library || [];
     _placements = data.placements || [];
     _history = data.history || [];
-  }).catch(function(){
-    loadFromDemo();
+  }).catch(function(e){
+    console.error('[FeaturedStories] live load failed', e);
   });
 }
 
@@ -169,8 +157,6 @@ function fmtDate(d){
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return months[d.getMonth()] + ' ' + d.getDate();
 }
-
-loadFromDemo();
 
 window.__featuredStoriesAPI = {
   loadAll: loadAll,
