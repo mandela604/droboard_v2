@@ -1054,20 +1054,24 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
       const parent = findById(comments, threadOpenId);
       if (!parent) return;
-      const c = _normalize({
-        name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam,
-        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
-        time: 'Just now', text, likes: 0, liked: false, replies: [],
-      });
-      parent.replies = parent.replies || [];
-      parent.replies.push(c);
-      threadInputEl.value = ''; threadSendBtn.disabled = true;
+      threadInputEl.disabled = true; threadSendBtn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
-      syncAll();
-      if (typeof options.onReply === 'function') options.onReply(threadOpenId, c);
-      _toast('💬 Reply posted!');
-      setTimeout(() => document.getElementById(instId + '-tv-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      Promise.resolve()
+        .then(() => typeof options.onReply === 'function' ? options.onReply(threadOpenId, { text, team: pickedTeam }) : Promise.resolve())
+        .then((saved) => {
+          threadInputEl.value = ''; threadInputEl.disabled = false; threadSendBtn.disabled = true;
+          if (saved) {
+            parent.replies = parent.replies || [];
+            parent.replies.push(_normalize(_canonStatuses(saved)));
+          }
+          syncAll();
+          _toast('💬 Reply posted!');
+          if (saved) setTimeout(() => document.getElementById(instId + '-tv-ci-' + saved.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        })
+        .catch((e) => {
+          threadInputEl.disabled = false; threadSendBtn.disabled = false;
+          _toast(e.message || 'Reply failed — tap send to retry');
+        });
     }
     threadBackBtn.addEventListener('click', closeThread);
     const threadViewAllBtn = document.getElementById(instId + '-threadviewall');
@@ -1082,26 +1086,27 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (!text) return;
       if (window.RequireAuth && !RequireAuth.ensure('post a comment')) return;
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
-      const c = _normalize({
-        name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam,
-        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
-        time: 'Just now', text, likes: 0, liked: false, replies: [],
-      });
-      comments.push(c);
-      inputEl.value = ''; sendBtn.disabled = true;
+      // Disable input while saving — no optimistic insert
+      inputEl.disabled = true; sendBtn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('comment'); } catch (e) {}
-      syncAll();
       try {
-        if (typeof options.onPost === 'function') await options.onPost(c);
+        const saved = typeof options.onPost === 'function'
+          ? await options.onPost({ text, team: pickedTeam })
+          : null;
+        // Success — clear input, append real comment from server
+        inputEl.value = ''; inputEl.disabled = false;
+        if (saved) {
+          comments.push(_normalize(_canonStatuses(saved)));
+          syncAll();
+          setTimeout(() => document.getElementById(instId + '-ci-' + saved.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        } else {
+          syncAll();
+        }
         _toast('💬 Comment posted!');
-        setTimeout(() => document.getElementById(instId + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
       } catch (e) {
-        // rollback optimistic comment on API failure
-        const idx = comments.findIndex(x => x.id === c.id);
-        if (idx >= 0) comments.splice(idx, 1);
-        syncAll();
-        _toast(e.message || 'Comment failed to post');
+        // Failure — re-enable input with text intact so user can retry
+        inputEl.disabled = false; sendBtn.disabled = false;
+        _toast(e.message || 'Could not post — tap send to retry');
       }
     }
     async function submitReply(ns, parentId) {
@@ -1112,28 +1117,28 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (!parent) return;
       const text = inp.value.trim();
       const full = text.startsWith('@') ? text : `@${parent.name} ${text}`;
-      const c = _normalize({
-        name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam,
-        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
-        time: 'Just now', text: full, likes: 0, liked: false, replies: [],
-      });
-      parent.replies = parent.replies || [];
-      parent.replies.push(c);
-      inp.value = '';
+      const btn = document.getElementById(ns + '-crs-' + parentId) || inp.parentElement?.querySelector('[data-dcs-replysend]');
+      // Disable while saving — no optimistic insert
+      inp.disabled = true; if (btn) btn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
-      document.getElementById(ns + '-cra-' + parentId)?.classList.remove('open');
-      syncAll();
       try {
-        if (typeof options.onReply === 'function') await options.onReply(parentId, c);
-        _toast('💬 Reply posted!');
-        setTimeout(() => document.getElementById(ns + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
-      } catch (e) {
-        // rollback optimistic reply on API failure
-        const idx = parent.replies.findIndex(x => x.id === c.id);
-        if (idx >= 0) parent.replies.splice(idx, 1);
+        const saved = typeof options.onReply === 'function'
+          ? await options.onReply(parentId, { text: full, team: pickedTeam })
+          : null;
+        // Success — clear input, close reply area, append real reply
+        inp.value = ''; inp.disabled = false; if (btn) btn.disabled = true;
+        document.getElementById(ns + '-cra-' + parentId)?.classList.remove('open');
+        if (saved) {
+          parent.replies = parent.replies || [];
+          parent.replies.push(_normalize(_canonStatuses(saved)));
+        }
         syncAll();
-        _toast(e.message || 'Reply failed to post');
+        _toast('💬 Reply posted!');
+        if (saved) setTimeout(() => document.getElementById(ns + '-ci-' + saved.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      } catch (e) {
+        // Failure — re-enable input with text intact so user can retry
+        inp.disabled = false; if (btn) btn.disabled = false;
+        _toast(e.message || 'Could not post — tap send to retry');
       }
     }
 
