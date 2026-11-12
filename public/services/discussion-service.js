@@ -304,6 +304,12 @@
               parentId: c.parentId,
               team: c.team,
             });
+            // Update the visible comment count on the thread
+            if (POST) {
+              POST.commentsCount = (POST.commentsCount || 0) + 1;
+              const countEl = document.querySelector('[data-dcs-comment-count]');
+              if (countEl) countEl.textContent = POST.commentsCount;
+            }
             return saved;
           } catch (err) {
             toast(err.message || 'Could not post comment');
@@ -329,7 +335,9 @@
         },
         onReact: async (c, rid) => {
           try {
-            const method = c.rx && c.rx.userRx === rid ? 'DELETE' : 'POST';
+            // pickReaction already toggled c.rx.userRx. If it equals rid,
+            // the user just reacted → POST. If not, they un-reacted → DELETE.
+            const method = c.rx && c.rx.userRx === rid ? 'POST' : 'DELETE';
             const res = await fetch(`${API_BASE}/comments/${encodeURIComponent(c.id)}/react`, {
               method, credentials: 'include',
               headers: { 'Content-Type': 'application/json' },

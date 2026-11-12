@@ -834,14 +834,14 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     // ── Find helpers ──
     function findById(list, id) {
       for (const c of list) {
-        if (c.id === id) return c;
+        if (String(c.id) === String(id)) return c;
         const r = findById(c.replies || [], id);
         if (r) return r;
       }
       return null;
     }
     function removeById(list, id) {
-      const i = list.findIndex(x => x.id === id);
+      const i = list.findIndex(x => String(x.id) === String(id));
       if (i > -1) { list.splice(i, 1); return true; }
       for (const c of list) { if (removeById(c.replies || [], id)) return true; }
       return false;
@@ -1538,7 +1538,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
         const replybtn = e.target.closest('[data-dcs-replybtn]');
         if (replybtn) {
-          const cid = +replybtn.dataset.dcsReplybtn;
+          const cid = replybtn.dataset.dcsReplybtn;
           const area = document.getElementById(ns + '-cra-' + cid);
           const wasOpen = !!(area && area.classList.contains('open'));
           scopeEl.querySelectorAll('.dcs-reply-area').forEach(a => a.classList.remove('open'));
@@ -1547,16 +1547,16 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
         }
 
         const replysend = e.target.closest('[data-dcs-replysend]');
-        if (replysend) { submitReply(ns, +replysend.dataset.dcsReplysend); return; }
+        if (replysend) { submitReply(ns, replysend.dataset.dcsReplysend); return; }
 
         const editsave = e.target.closest('[data-dcs-editsave]');
-        if (editsave) { saveEdit(ns, +editsave.dataset.dcsEditsave); return; }
+        if (editsave) { saveEdit(ns, editsave.dataset.dcsEditsave); return; }
 
         const editcancel = e.target.closest('[data-dcs-editcancel]');
         if (editcancel) { cancelEdit(); return; }
 
         const dots = e.target.closest('[data-dcs-dots]');
-        if (dots) { e.stopPropagation(); openDots(+dots.dataset.dcsDots, dots); return; }
+        if (dots) { e.stopPropagation(); openDots(dots.dataset.dcsDots, dots); return; }
 
         if (!e.target.closest('.dcs-action-btn') && !e.target.closest('.dcs-rx-popup')) {
           scopeEl.querySelectorAll('.dcs-rx-popup.show').forEach(p => p.classList.remove('show'));
