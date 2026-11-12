@@ -777,7 +777,8 @@
         }).then((res) => {
           if (res.status === 401 || res.status === 403) {
             toast('Sign in to join this board');
-            location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search);
+            if (window.RequireAuth) RequireAuth.wall('join this board');
+            else location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search);
             return null;
           }
           if (!res.ok) throw new Error('HTTP ' + res.status);
