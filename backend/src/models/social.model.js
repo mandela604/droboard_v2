@@ -101,8 +101,9 @@ const discussionSchema = new mongoose.Schema({
   badge: { type: String, default: '' },
   badgeClass: { type: String, default: '' }, // 'author' → accent pill, else default
   controversy: { type: Number, default: 0 },
-  likes: { type: Number, default: 0 },
-  likedBy: [{ type: String, ref: 'User' }], // per-user like toggle state (matches Post/Comment)
+  likes: { type: Number, default: 0 }, // sum of reactions — kept in step on every reaction write
+  likedBy: [{ type: String, ref: 'User' }], // legacy simple like toggle
+  reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   commentsCount: { type: Number, default: 0 },
   // The hub's sticky house-rules card (discussion-service.js renders a
   // title+body-only OP when this is set) — a demo field, so a real column.

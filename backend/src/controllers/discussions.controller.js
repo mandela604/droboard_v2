@@ -57,4 +57,16 @@ async function like(req, res) {
   return base.wrap(res, async () => svc.toggleLike({ id: req.valid.params.id, user: req.user }));
 }
 
-module.exports = { list, feed, create, get, update, remove, like };
+async function react(req, res) {
+  return base.wrap(res, async () => svc.reactToDiscussion({ id: req.valid.params.id, userId: req.user.id, rid: req.valid.body.rid }));
+}
+
+async function unreact(req, res) {
+  return base.wrap(res, async () => svc.unreactDiscussion({ id: req.valid.params.id, userId: req.user.id }));
+}
+
+async function reactions(req, res) {
+  return base.wrap(res, async () => svc.reactionState({ id: req.valid.params.id, userId: req.user && req.user.id }));
+}
+
+module.exports = { list, feed, create, get, update, remove, like, react, unreact, reactions };

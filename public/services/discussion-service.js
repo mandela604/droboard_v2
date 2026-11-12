@@ -88,6 +88,7 @@
       liked: !!p.liked,
       comments: (p.comments != null ? p.comments : (p.commentsCount || 0)),
       userRx: p.userRx || null,
+      reactions: p.reactions || {},
       verified: !!p.verified,
     };
   }
@@ -396,41 +397,45 @@
 
   function initWiring() {
     if (window.DroboardReactionPicker) {
+      const isPost = POST && POST._kind === 'post';
+      const apiPath = isPost
+        ? `/posts/${encodeURIComponent(POST.id)}/react`
+        : `/discussions/${encodeURIComponent(POST.id)}/react`;
+      
       // attachCounters — picker owns all toggle math (love/switch/deselect,
       // total-preserving). Host only seeds initial counts + persists.
       DroboardReactionPicker.attachCounters(document.getElementById('opMount'), {
         getCounts: (id) => {
           if (!POST || String(id) !== String(POST.id)) return null;
-          const likes = POST.likes || 0;
-          const buckets = ['crying', 'shocked', 'emotional'];
-          let h = 0; String(POST.id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-          const secondId = buckets[h];
-          const second = Math.min(5, Math.max(0, likes));
-          const counts = { love: Math.max(0, likes - second) };
-          counts[secondId] = second;
-          return { userRx: (POST.userRx || (POST.liked ? 'love' : null)) || null, ...counts };
+          // Both posts and discussions now use full reaction buckets from backend
+          const counts = Object.assign({}, POST.reactions || {});
+          return { userRx: (POST.userRx || null), ...counts };
         },
         save: async (id, state) => {
           if (!POST || String(id) !== String(POST.id)) return;
-          const wasLiked = POST.liked;
-          const nowLiked = state.userRx === 'love';
-          if (wasLiked === nowLiked) return;
+          const wasUserRx = POST.userRx;
+          const nowUserRx = state.userRx || null;
+          if (wasUserRx === nowUserRx) return;
           
           // Persist to backend
           try {
-            const res = await fetch(`${API_BASE}/discussions/${encodeURIComponent(POST.id)}/like`, {
-              method: 'POST', credentials: 'include'
+            const rid = nowUserRx;
+            const method = rid ? 'POST' : 'DELETE';
+            const res = await fetch(`${API_BASE}${apiPath}`, {
+              method, credentials: 'include',
+              headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+              body: method === 'POST' ? JSON.stringify({ rid }) : undefined
             });
-            if (!res.ok) throw new Error('Like API failed: ' + res.status);
+            if (!res.ok) throw new Error('React API failed: ' + res.status);
             const data = await res.json();
-            POST.liked = data.liked;
-            POST.likes = data.likes;
-            POST.userRx = data.liked ? 'love' : null;
+            POST.reactions = data.counts || {};
+            POST.userRx = data.userRx || null;
+            POST.likes = Object.keys(POST.reactions).reduce((n, k) => n + (POST.reactions[k] || 0), 0);
+            POST.liked = POST.userRx === 'love';
           } catch (e) {
             // Revert on failure
-            POST.liked = wasLiked;
-            POST.userRx = wasLiked ? 'love' : null;
-            POST.likes = wasLiked ? (POST.likes || 0) : Math.max(0, (POST.likes || 0) - 1);
+            POST.userRx = wasUserRx;
+            POST.liked = wasUserRx === 'love';
             throw e;
           }
         },

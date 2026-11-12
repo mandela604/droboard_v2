@@ -71,11 +71,14 @@ async function withAuthors(rows) {
 
 function toCard(d, viewerId) {
   const uid = String(viewerId || '');
+  const rxMap = d.reactions instanceof Map ? Object.fromEntries(d.reactions) : (d.reactions || {});
+  const myRx = uid ? null : null; // viewer reaction fetched separately via reactionState
   return {
     id: d.id, genreId: d.genreId,
     title: d.title, body: d.body || '', tag: d.tag, media: d.media || '',
     trope: d.trope || '', story: d.story || null,
     likes: d.likes || 0, liked: uid ? (d.likedBy || []).map(String).includes(uid) : false,
+    reactions: rxMap,
     hot: !!d.hot, commentsCount: d.commentsCount || 0, score: d.score || 0,
     badge: d.badge || '', badgeClass: d.badgeClass || '', controversy: d.controversy || 0,
     pinned: !!d.pinned,
@@ -222,7 +225,13 @@ async function getThread({ id, viewerId }) {
   if (!d) err('not_found', 404);
   await withAuthors([d]);
   const gname = await genreNames([d]);
-  return toFlatCard(d, viewerId, { genreName: gname[String(d.genreId)] || '' });
+  const card = toFlatCard(d, viewerId, { genreName: gname[String(d.genreId)] || '' });
+  // Attach viewer's reaction state if logged in
+  if (viewerId) {
+    const rx = await Reaction.findOne({ userId: String(viewerId), targetType: 'discussion', targetId: d.id }).lean();
+    if (rx) card.userRx = rx.rid;
+  }
+  return card;
 }
 
 function canWrite(d, userId, isAdmin) {
@@ -264,4 +273,51 @@ async function toggleLike({ id, user }) {
   return { liked: i === -1, likes: d.likes };
 }
 
-module.exports = { listThreads, feedThreads, createThread, getThread, updateThread, deleteThread, toggleLike, resolveGenreIds, resolveThreadGenre, loadOr404, toCard, toFlatCard, withAuthors };
+function reactionCounts(doc) {
+  const m = doc.reactions instanceof Map ? Object.fromEntries(doc.reactions) : (doc.reactions || {});
+  const out = {};
+  Object.keys(m).forEach(k => { out[k] = m[k] || 0; });
+  return out;
+}
+
+async function reactToDiscussion({ id, userId, rid }) {
+  const d = await loadOr404(id);
+  // Reactions happen inside a board, so needs board membership.
+  await boards.assertBoardMember(userId, { genreId: d.genreId });
+  const uid = String(userId);
+  const prev = await Reaction.findOne({ userId: uid, targetType: 'discussion', targetId: d.id });
+  if (prev && prev.rid === rid) return { counts: reactionCounts(d), userRx: rid };
+  if (prev) {
+    const pc = Math.max(0, (d.reactions.get(prev.rid) || 0) - 1);
+    if (pc) d.reactions.set(prev.rid, pc); else d.reactions.delete(prev.rid);
+    prev.rid = rid;
+    await prev.save();
+  } else {
+    await Reaction.create({ userId: uid, targetType: 'discussion', targetId: d.id, rid });
+  }
+  d.reactions.set(rid, (d.reactions.get(rid) || 0) + 1);
+  // Keep likes in sync as sum of reactions
+  const total = Object.values(d.reactions.toObject()).reduce((a, v) => a + (v || 0), 0);
+  d.likes = total;
+  await d.save();
+  return { counts: reactionCounts(d), userRx: rid };
+}
+
+async function unreactDiscussion({ id, userId }) {
+  const d = await loadOr404(id);
+  const prev = await Reaction.findOneAndDelete({ userId: String(userId), targetType: 'discussion', targetId: d.id });
+  if (!prev) return { counts: reactionCounts(d), userRx: null };
+  const pc = Math.max(0, (d.reactions.get(prev.rid) || 0) - 1);
+  if (pc) d.reactions.set(prev.rid, pc); else d.reactions.delete(prev.rid);
+  d.likes = Object.values(d.reactions.toObject()).reduce((a, v) => a + (v || 0), 0);
+  await d.save();
+  return { counts: reactionCounts(d), userRx: null };
+}
+
+async function reactionState({ id, userId }) {
+  const d = await loadOr404(id);
+  const prev = await Reaction.findOne({ userId: String(userId), targetType: 'discussion', targetId: d.id });
+  return { counts: reactionCounts(d), userRx: prev ? prev.rid : null };
+}
+
+module.exports = { listThreads, feedThreads, createThread, getThread, updateThread, deleteThread, toggleLike, reactToDiscussion, unreactDiscussion, reactionState, resolveGenreIds, resolveThreadGenre, loadOr404, toCard, toFlatCard, withAuthors };

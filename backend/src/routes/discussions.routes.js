@@ -81,4 +81,13 @@ router.delete('/:id', requireAuth, writeLimiter, audit('discussions.delete'),
 router.post('/:id/like', requireAuth, writeLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.like);
 
+router.post('/:id/react', requireAuth, writeLimiter, audit('discussions.react'),
+  validate(z.object({ params: z.object({ id }), body: z.object({ rid: z.string().min(1).max(40) }).strict() })), ctrl.react);
+
+router.delete('/:id/react', requireAuth, writeLimiter, audit('discussions.unreact'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.unreact);
+
+router.get('/:id/reactions', generalLimiter, optionalAuth,
+  validate(z.object({ params: z.object({ id }) })), ctrl.reactions);
+
 module.exports = router;
