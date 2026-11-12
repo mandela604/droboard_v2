@@ -254,10 +254,15 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       category: book.genre || '',
       cover: book.cover || '',
       author: {
+        id: (book.writer && book.writer.id) || '',
         name: (book.writer && book.writer.name) || 'Writer',
         avatar: (book.writer && book.writer.avatar) || '',
         handle: (book.writer && book.writer.handle) || '@writer',
       },
+      /* The board this story belongs to, straight from the book payload:
+         { id, name, slug, icon, members, joined }. Null when the story has no
+         genre hub — the community card then falls back to its genre label. */
+      board: (book.hubs && book.hubs.board) || null,
       shares: (book.stats && book.stats.shares) || book.sharesCount || 0,
       tips: book.tipCount || 0,
       similar: (book.similar || []).map(x => ({ id: x.id, cover: x.cover, title: x.title })),
@@ -436,26 +441,66 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   }
 
   /* ══ COMMUNITIES — genre board + author circle in EVERY chapter,
-     right after that chapter's comment accordion. One shared join
-     state so all mounts stay in sync. ══ */
+     right after that chapter's comment accordion. Membership is the live
+     CategoryMembership row (`DATA.board`), so the button cannot claim
+     "Joined" while the board still refuses the reader's posts. ══ */
   const COMMSTATE = { genreJoined: false, circleJoined: false };
+  let _joinBusy = false;
+  function boardView() {
+    const b = DATA.board || {};
+    const g = window.DroboardCommunityCards.genreInfo(b.name || DATA.category);
+    return {
+      slug: b.slug || '',
+      name: b.name || g.name,
+      icon: b.icon || g.icon,
+      members: Number(b.members) || 0,
+      joined: !!(b.joined || COMMSTATE.genreJoined),
+    };
+  }
+  function joinBoard(slug, wantJoin) {
+    return fetch('/api/genres/' + encodeURIComponent(slug) + '/join', {
+      method: wantJoin ? 'POST' : 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    }).then(function (res) {
+      if (res.status === 401 || res.status === 403) {
+        toast('Sign in to join this board');
+        location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search);
+        return null;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
   function commOpts() {
-    const g = window.DroboardCommunityCards.genreInfo(DATA.category);
+    const b = boardView();
     const author = DATA.author || {};
     return {
-      genre: { name: g.name, icon: g.icon, members: window.DroboardCommunityCards.demoMembers(g.name, 20000, 380000), joined: COMMSTATE.genreJoined },
+      genre: b,
       circle: {
         name: (author.name || 'Writer') + "'s Inner Circle",
-        members: window.DroboardCommunityCards.demoMembers(author.name || author.handle, 800, 9200),
+        members: 0,
         perks: 'Early chapters, behind-the-scenes, live Q&As',
         joined: COMMSTATE.circleJoined, avatar: author.avatar,
       },
       showCircle: false, // genre board only — circle lives on the bridge page
       onJoin: (type, joined) => {
-        if (type === 'genre') COMMSTATE.genreJoined = joined;
-        else COMMSTATE.circleJoined = joined;
-        paintChapterCommunities();
-        toast(joined ? '✅ Joined!' : 'Left the community');
+        if (type !== 'genre') return;
+        if (_joinBusy) return;
+        if (!b.slug) { toast('This story has no board yet'); return; }
+        _joinBusy = true;
+        joinBoard(b.slug, joined).then(function (j) {
+          if (!j) return;
+          COMMSTATE.genreJoined = !!j.joined;
+          if (DATA.board) { DATA.board.joined = !!j.joined; DATA.board.members = j.membersCount != null ? j.membersCount : b.members; }
+          paintChapterCommunities();
+          toast(j.joined ? '✅ Joined ' + b.name : 'Left ' + b.name);
+        }).catch(function () {
+          toast('Could not update membership. Please try again.');
+        }).then(function () {
+          _joinBusy = false;
+        });
       },
     };
   }
@@ -545,15 +590,16 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     };
     if (window.DroboardTip) {
       DroboardTip.attach({
-        getWriter: () => ({ name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }),
-        onSend: () => { DATA.tips++; document.querySelectorAll(".eb-btn .eb-lbl").forEach(l => { if (l.textContent.includes("tips")) l.textContent = fmtN(DATA.tips) + " tips"; }); },
+        getWriter: () => ({ id: DATA.author.id, name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }),
+        getAuthorId: () => DATA.author.id || '',
+        onSent: () => { DATA.tips++; document.querySelectorAll(".eb-btn .eb-lbl").forEach(l => { if (l.textContent.includes("tips")) l.textContent = fmtN(DATA.tips) + " tips"; }); },
       });
     }
   }
 
   function doSave() { if (window.openSaveModal) window.openSaveModal({ title: DATA.title, sub: "by " + DATA.author.name, img: "", storyId: STORY_ID }); }
   function doShare(chN) { if (window.openShareModal) window.openShareModal({ title: DATA.title, sub: "by " + DATA.author.name + " \u00B7 Chapter " + chN, img: "", url: "https://droboard.app/story/" + STORY_ID + "#ch" + chN }); }
-  function doTip() { if (window.DroboardTip) DroboardTip.open(STORY_ID, { name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }); }
+  function doTip() { if (window.DroboardTip) DroboardTip.open(STORY_ID, { id: DATA.author.id, name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }); }
 
   /* ══ CHAPTERS PANEL ══ */
   function buildChaptersPanel() {

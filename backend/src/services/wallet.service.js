@@ -2,7 +2,8 @@
 const crypto = require('crypto');
 const rules = require('./earn-rules');
 const txn = require('./txn');
-const { Wallet, CoinTransaction, EarnClaim, Entitlement, AuthorTransaction, Withdrawal, PaymentMethod, PaymentDispute, CoinPack, CoinBundle, SubscriptionPlan, Subscription, Gift, EarnReward } = require('../models/money.model');
+const { Wallet, CoinTransaction, EarnClaim, Entitlement, AuthorTransaction, Withdrawal, PaymentMethod, PaymentDispute, CoinPack, CoinBundle, SubscriptionPlan, Subscription, Gift, EarnReward, LedgerEntry } = require('../models/money.model');
+const { User } = require('../models/user.model');
 const { PoolBalance, CoinRate, ContractPricing, AdImpression } = require('../models/revenue.model');
 const ledger = require('./ledger.service');
 const revenue = require('./revenue.service');
@@ -549,6 +550,50 @@ async function history({ userId, limit }) {
   };
 }
 
+// Who has tipped or gifted an author, newest first. The double-entry ledger is
+// the only place the reader→author relationship is stored: every author tip
+// posts a `wallet:<readerId> → pool:tips` leg stamped with the authorId.
+// CoinTransaction has no target-author column, so it cannot answer this.
+// Platform tips have authorId=null and never appear here.
+async function tipsFor({ authorId, limit } = {}) {
+  const id = String(authorId || '');
+  if (!id) return { total: 0, items: [] };
+  const lim = Math.min(50, Math.max(1, Number(limit) || 20));
+  const match = { authorId: id, kind: { $in: ['tip', 'gift'] }, coins: { $gt: 0 }, debitAcct: /^wallet:/ };
+  const [grouped, total] = await Promise.all([
+    LedgerEntry.aggregate([
+      { $match: match },
+      { $group: {
+        _id: '$debitAcct', coins: { $sum: '$coins' },
+        count: { $sum: 1 }, lastAt: { $max: '$createdAt' },
+      } },
+      { $sort: { lastAt: -1 } },
+      { $limit: lim },
+    ]),
+    LedgerEntry.distinct('debitAcct', match),
+  ]);
+  const readerIds = grouped.map(g => String(g._id || '').replace(/^wallet:/, '')).filter(Boolean);
+  const users = readerIds.length
+    ? await User.find({ id: { $in: readerIds } }).select('id username fullName avatar').lean()
+    : [];
+  const byId = {};
+  users.forEach(u => { byId[String(u.id)] = u; });
+  const items = grouped.map(g => {
+    const uid = String(g._id || '').replace(/^wallet:/, '');
+    const u = byId[uid] || {};
+    return {
+      id: uid,
+      name: u.fullName || u.username || 'Reader',
+      handle: u.username || '',
+      avatar: u.avatar || '',
+      coins: g.coins || 0,
+      count: g.count || 0,
+      at: g.lastAt,
+    };
+  });
+  return { total: total.length, items };
+}
+
 // Reader entitlements: current plan (daily/weekly/monthly/yearly/merge),
 // adsFree = any active plan (readers go ad-free),
 // adsFreeEverywhere = Merge Pass only (ad-free on every page but Discover).
@@ -572,4 +617,4 @@ async function entitlements(userId) {
   };
 }
 
-module.exports = { getOrCreateWallet, readerBalance, creditPurchase, unlockChapter, adUnlockStart, unlockByAd, sendTip, earnStart, earnClaim, history, entitlements };
+module.exports = { getOrCreateWallet, readerBalance, creditPurchase, unlockChapter, adUnlockStart, unlockByAd, sendTip, tipsFor, earnStart, earnClaim, history, entitlements };

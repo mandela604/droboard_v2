@@ -19,7 +19,8 @@
   let sort = 'all';
   let tropeFilter = '';
   let activeTab = 'discussions';
-  let joined = true;
+  let joined = false;
+  let _joinBusy = false;
   let _adTurn = 0;
   let memberApi = null;
 
@@ -47,23 +48,20 @@
     toast('🚩 Report filed. Our team will review it.');
   }
 
-  /* Tropes per hub (DEMO-ONLY). Live swap: GET /api/tropes?genre=<id>. */
-  const HUB_TROPES = {
-    fantasy: ['Chosen One', 'Magic Academy', 'Dragons', 'Royal Court', 'Dark Lord', 'Quest'],
-    romance: ['Billionaire Boss', 'Secret Baby', 'Enemies to Lovers', 'Fake Dating', 'Second Chance', 'Forced Proximity'],
-    werewolf: ['Fated Mates', 'Alpha Male', 'Rejected Mate', 'Pack Wars', 'Luna Rising', 'Rogue Wolf'],
-  };
-  function hubTropes() {
-    return HUB_TROPES[GENRE_ID] || HUB_TROPES.fantasy;
+  /* Tropes are the live CE catalog (GET /api/tropes). No seeded per-genre
+     lists: a board with no active tropes simply hides the filter. */
+  let HUB_TROPES = [];
+  async function loadTropes() {
+    try {
+      const res = await fetch(`${API_BASE}/tropes?limit=100`, { credentials: 'include' });
+      if (!res.ok) throw new Error(res.status);
+      const d = await res.json();
+      HUB_TROPES = (Array.isArray(d) ? d : (d.items || [])).map(t => t.name).filter(Boolean);
+    } catch (e) { HUB_TROPES = []; }
+    return HUB_TROPES;
   }
-  function attachDemoTropes() {
-    // DEMO-ONLY: seed posts carry no trope; deal them round-robin so the
-    // filter + pills have data. Live posts arrive with post.trope from API.
-    const pool = hubTropes();
-    let i = 0;
-    ALL_POSTS.forEach(p => {
-      if (!p.pinned && !p.trope) { p.trope = pool[i % pool.length]; i++; }
-    });
+  function hubTropes() {
+    return HUB_TROPES;
   }
 
   /* Ads: served ONLY by the central inventory (ad-service). Empty pool = no ads. */
@@ -149,37 +147,70 @@
       fetch(`${API_BASE}/discussions?genre=${encodeURIComponent(GENRE_ID)}&limit=30`, { credentials: 'include' })
     ]);
 
-    if (!genreRes.ok) throw new Error('Genre API failed: ' + genreRes.status);
-    if (!discRes.ok) throw new Error('Discussions API failed: ' + discRes.status);
+    if (!genreRes.ok) {
+      GENRE = null;
+      ALL_POSTS = [];
+      const el = document.getElementById('feed');
+      if (el) el.innerHTML = '<div style="padding:40px 14px;text-align:center;color:var(--tx-muted)">This board does not exist.</div>';
+      document.getElementById('pageTitle')?.textContent && (document.getElementById('pageTitle').textContent = 'Board not found');
+      return false;
+    }
+    if (!discRes.ok) {
+      ALL_POSTS = [];
+    } else {
+      const dData = await discRes.json();
+      ALL_POSTS = Array.isArray(dData) ? dData : (dData.items || []);
+    }
 
-    const [data, dData] = await Promise.all([genreRes.json(), discRes.json()]);
-
+    const data = await genreRes.json();
     GENRE = data.genre || data;
     GENRE_ID = (GENRE.id || GENRE.slug || GENRE_ID).toLowerCase();
-    ALL_POSTS = Array.isArray(dData) ? dData : (dData.items || []);
     PROMO_SLIDES = [];
     _genreCache = GENRE;
     return true;
   }
 
   function applyGenre() {
+    if (!GENRE) return;
     document.getElementById('pageTitle').textContent = GENRE.name;
     document.getElementById('heroName').textContent = GENRE.name;
     document.getElementById('heroTag').textContent = GENRE.tagline || '';
     document.getElementById('heroImg').src = GENRE.cover || '';
     document.getElementById('heroIcon').className = 'fas ' + (GENRE.icon || 'fa-book');
-    document.getElementById('statMembers').textContent = GENRE.members || '—';
-    document.getElementById('statDisc').textContent = GENRE.discussions || '—';
-    document.getElementById('statStories').textContent = GENRE.stories || '—';
+    document.getElementById('statMembers').textContent = GENRE.members || GENRE.membersCount || '0';
+    document.getElementById('statDisc').textContent = GENRE.discussions || GENRE.discussionsCount || '0';
+    document.getElementById('statStories').textContent = GENRE.stories || GENRE.storiesCount || '0';
     document.getElementById('blurbText').textContent = GENRE.blurb || '';
     document.getElementById('composerPh').textContent = 'Start a discussion in ' + GENRE.name + '…';
     document.title = GENRE.name + ' · Genre Hub · DroBoard';
     if (window.DroboardGenreCard) DroboardGenreCard.setGenreName(GENRE.name);
+    joined = !!GENRE.isJoined;
+    paintJoin();
     const eb = document.getElementById('hubEditBtn');
     if (eb) {
       if (isStaff()) eb.style.display = '';
-      eb.onclick = function () { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE_ID); };
+      eb.onclick = function () { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE.slug || GENRE_ID); };
     }
+    paintComposerAvatar();
+  }
+
+  function paintJoin() {
+    const btn = document.getElementById('joinBtn');
+    if (!btn) return;
+    btn.classList.toggle('on', !!joined);
+    btn.innerHTML = joined ? '<i class="fas fa-check"></i> Joined' : '<i class="fas fa-plus"></i> Join';
+    btn.disabled = !!_joinBusy;
+    btn.style.opacity = _joinBusy ? '.6' : '';
+  }
+
+  function paintComposerAvatar() {
+    const img = document.querySelector('#composerStrip .composer-av');
+    if (!img) return;
+    const acc = (window.AuthSession && AuthSession.getSync) ? AuthSession.getSync() : null;
+    const av = acc && acc.avatar ? String(acc.avatar) : '';
+    const isDemo = /pravatar\.cc|picsum\.photos|placeholder|example\.com|gravatar\.com\/avatar\?d=/.test(av);
+    if (av && !isDemo) { img.src = av; img.style.display = ''; }
+    else { img.removeAttribute('src'); img.style.display = 'none'; }
   }
 
   /* ── Feed ── */
@@ -229,6 +260,7 @@
   }
 
   function renderFeed() {
+    if (!GENRE) return;
     const pinned = ALL_POSTS.filter(p => p.pinned);
     const list = visibleDiscussions();
     if (!window.DroboardGenreCard) {
@@ -582,7 +614,14 @@
   /* ── Filters / tabs / join / composer ── */
   function initTropeFilter() {
     const row = document.getElementById('sortRow');
-    if (!row || document.getElementById('tropeFilterSel')) return;
+    if (!row) return;
+    if (!hubTropes().length) {
+      const old = document.getElementById('tropeFilterSel');
+      if (old) old.remove();
+      tropeFilter = '';
+      return;
+    }
+    if (document.getElementById('tropeFilterSel')) return;
     const sel = document.createElement('select');
     sel.id = 'tropeFilterSel';
     sel.setAttribute('aria-label', 'Filter by trope');
@@ -625,12 +664,45 @@
       t.addEventListener('click', (e) => { e.preventDefault(); setActiveTab(t.dataset.tab); });
     });
   }
+  /* Joining is a board action, so it goes to the API that owns membership
+     (POST/DELETE /api/genres/:slug/join). The button paints the server's
+     answer — never a local toggle — so a reader cannot "look joined" while
+     the board still refuses their posts. */
   function initJoin() {
-    document.getElementById('joinBtn').addEventListener('click', function () {
-      joined = !joined;
-      this.classList.toggle('on', joined);
-      this.innerHTML = joined ? '<i class="fas fa-check"></i> Joined' : '<i class="fas fa-plus"></i> Join';
-      toast(joined ? 'Joined ' + GENRE.name : 'Left hub');
+    const btn = document.getElementById('joinBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async function () {
+      if (_joinBusy) return;
+      if (window.RequireAuth && !RequireAuth.ensure(joined ? 'leave this board' : 'join this board')) return;
+      const slug = GENRE.slug || GENRE_ID;
+      const wantJoin = !joined;
+      _joinBusy = true;
+      paintJoin();
+      try {
+        const res = await fetch(`${API_BASE}/genres/${encodeURIComponent(slug)}/join`, {
+          method: wantJoin ? 'POST' : 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        if (!res.ok) throw new Error('Join API failed: ' + res.status);
+        const j = await res.json();
+        joined = (j && typeof j.joined === 'boolean') ? j.joined : wantJoin;
+        GENRE.isJoined = joined;
+        if (j && j.membersCount != null) {
+          GENRE.membersCount = j.membersCount;
+          GENRE.members = String(j.membersCount);
+          document.getElementById('statMembers').textContent = GENRE.members;
+        }
+        toast(joined ? 'Joined ' + GENRE.name : 'Left ' + GENRE.name);
+        clearMemberPager();
+        if (activeTab === 'members') renderMembers();
+      } catch (e) {
+        toast('Could not update membership. Please try again.');
+      } finally {
+        _joinBusy = false;
+        paintJoin();
+      }
     });
   }
   function ensureHubComposer() {
@@ -640,7 +712,7 @@
     const st2=document.createElement('style'); st2.id='ghc-story-style';
     st2.textContent='.ghc-story-hits{display:flex;flex-direction:column;gap:6px;margin-top:8px}.ghc-story-hit{display:flex;gap:10px;align-items:center;border:1px solid var(--bd,rgba(0,0,0,.08));border-radius:10px;padding:8px;cursor:pointer;text-align:left;width:100%;font-family:inherit;background:#fff;color:var(--tx-high,#161616)}.ghc-story-hit img{width:34px;height:46px;border-radius:6px;object-fit:cover;flex-shrink:0}.ghc-story-hit-t{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ghc-story-hit-a{font-size:10.5px;color:var(--tx-muted,#666);margin-top:1px}';
     document.head.appendChild(st2);
-    const html = `<div class="ghc-ov" id="ghcOv"><div class="ghc-sheet"><div class="ghc-head"><button id="ghcCancel" style="background:none;border:none;font-size:14px;color:var(--tx-muted);font-family:inherit;cursor:pointer">Cancel</button><div style="font-size:15px;font-weight:700">New in ${GENRE.name}</div><button id="ghcPost" style="background:var(--acc);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:.45;pointer-events:none">Post</button></div><div class="ghc-body"><label class="ghc-label">Title *</label><input id="ghcTitle" class="ghc-input" placeholder="What's the discussion about?"/><label class="ghc-label">Body *</label><textarea id="ghcBody" class="ghc-textarea" placeholder="Share details, ask a question, post a theory…"></textarea><label class="ghc-label">Tag</label><div class="ghc-tags" id="ghcTags"><button class="ghc-tag on" data-tag="Discussion" data-cls="discussion">Discussion</button><button class="ghc-tag" data-tag="Theory" data-cls="theory">Theory</button><button class="ghc-tag" data-tag="Recommendation" data-cls="recommendation">Recommendation</button><button class="ghc-tag" data-tag="Question" data-cls="question">Question</button><button class="ghc-tag" data-tag="Controversial" data-cls="controversial">Controversial</button></div><label class="ghc-label">Trope (optional)</label><select id="ghcTrope" class="ghc-input"><option value="">No trope</option></select><label class="ghc-label">Photo (optional)</label><input type="file" id="ghcMediaFile" accept="image/*" class="ghc-input"/><div id="ghcMediaPrev" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;max-height:180px"><img id="ghcMediaPrevImg" style="width:100%;max-height:180px;object-fit:cover;display:block"/></div><label class="ghc-label">Image URL (optional)</label><input id="ghcMedia" class="ghc-input" placeholder="https://..."/><label class="ghc-label">Story (optional)</label><input id="ghcStory" class="ghc-input" placeholder="Story title you are discussing"/><div id="ghcStoryHits"></div></div></div></div>`;
+    const html = `<div class="ghc-ov" id="ghcOv"><div class="ghc-sheet"><div class="ghc-head"><button id="ghcCancel" style="background:none;border:none;font-size:14px;color:var(--tx-muted);font-family:inherit;cursor:pointer">Cancel</button><div style="font-size:15px;font-weight:700">New in ${GENRE.name}</div><button id="ghcPost" style="background:var(--acc);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:.45;pointer-events:none">Post</button></div><div class="ghc-body"><label class="ghc-label" id="ghcGenreLabel" style="display:none">Post in</label><select id="ghcGenre" class="ghc-input" style="display:none"></select><label class="ghc-label">Title *</label><input id="ghcTitle" class="ghc-input" placeholder="What's the discussion about?"/><label class="ghc-label">Body *</label><textarea id="ghcBody" class="ghc-textarea" placeholder="Share details, ask a question, post a theory…"></textarea><label class="ghc-label">Tag</label><div class="ghc-tags" id="ghcTags"><button class="ghc-tag on" data-tag="Discussion" data-cls="discussion">Discussion</button><button class="ghc-tag" data-tag="Theory" data-cls="theory">Theory</button><button class="ghc-tag" data-tag="Recommendation" data-cls="recommendation">Recommendation</button><button class="ghc-tag" data-tag="Question" data-cls="question">Question</button><button class="ghc-tag" data-tag="Controversial" data-cls="controversial">Controversial</button></div><label class="ghc-label">Trope (optional)</label><select id="ghcTrope" class="ghc-input"><option value="">No trope</option></select><label class="ghc-label">Photo (optional)</label><input type="file" id="ghcMediaFile" accept="image/*" class="ghc-input"/><div id="ghcMediaPrev" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;max-height:180px"><img id="ghcMediaPrevImg" style="width:100%;max-height:180px;object-fit:cover;display:block"/></div><label class="ghc-label">Image URL (optional)</label><input id="ghcMedia" class="ghc-input" placeholder="https://..."/><label class="ghc-label">Story (optional)</label><input id="ghcStory" class="ghc-input" placeholder="Story title you are discussing"/><div id="ghcStoryHits"></div></div></div></div>`;
     const wrap=document.createElement('div'); wrap.innerHTML=html; while(wrap.firstChild) document.body.appendChild(wrap.firstChild);
     document.getElementById('ghcCancel').addEventListener('click', closeHubComposer);
     document.getElementById('ghcOv').addEventListener('click', e=>{ if(e.target.id==='ghcOv') closeHubComposer(); });
@@ -735,6 +807,25 @@
     sel.innerHTML='<option value="">No trope</option>'+hubTropes().map(t=>'<option value="'+t+'">'+t+'</option>').join('');
     sel.value=keep;
   }
+  /* A board can own several genres, and a thread attaches to ONE of them.
+     With more than one child the API needs `genreId`; with a single child it
+     can infer it. The composer mirrors that instead of failing with 400. */
+  function refreshGenreOptions(){
+    const sel=document.getElementById('ghcGenre');
+    const lbl=document.getElementById('ghcGenreLabel');
+    if(!sel||!lbl) return '';
+    const list=(GENRE && Array.isArray(GENRE.genres))?GENRE.genres:[];
+    if(list.length<=1){
+      sel.style.display='none'; lbl.style.display='none';
+      sel.innerHTML='';
+      return list[0]?(list[0].id||''):'';
+    }
+    const keep=sel.value;
+    sel.innerHTML=list.map(g=>'<option value="'+g.id+'">'+g.name+'</option>').join('');
+    if(keep && list.some(g=>String(g.id)===String(keep))) sel.value=keep;
+    sel.style.display=''; lbl.style.display='';
+    return sel.value;
+  }
   function validateHubComposer(){
     const t=document.getElementById('ghcTitle'), b=document.getElementById('ghcBody'), btn=document.getElementById('ghcPost');
     const ok = t && b && t.value.trim().length>=4 && b.value.trim().length>=6;
@@ -760,6 +851,9 @@
     const storyCat = storyEl.dataset.storyCat || GENRE.name || '';
     const tropeSel = document.getElementById('ghcTrope');
     const trope = tropeSel ? tropeSel.value : '';
+    const boardGenreId = (document.getElementById('ghcGenre') || {}).value || '';
+    const kids = (GENRE && Array.isArray(GENRE.genres)) ? GENRE.genres : [];
+    const genreId = boardGenreId || (kids.length === 1 ? kids[0].id : '');
 
     if ((tag === 'Recommendation' || tagCls === 'recommendation') && storyId && window.ReadingHistory) {
       if (!ReadingHistory.guardRecommend(storyId, storyTitle)) return;
@@ -767,6 +861,7 @@
 
     const payload = {
       genre: GENRE_ID, title, body, tag, tagClass: tagCls,
+      ...(genreId && { genreId }),
       ...(trope && { trope }),
       ...(media && { media }),
       ...(storyTitle && { story: { id: storyId, title: storyTitle, writer: storyAuthor, cover: storyCover, cat: storyCat } })
@@ -808,8 +903,18 @@
   function openComposer() {
     /* Posting needs an account — guests get the shared login wall. */
     if (window.RequireAuth && !RequireAuth.ensure('start a discussion')) return;
+    /* ...and it is a board action, so membership comes first. The Join button
+       above is the one path that writes CategoryMembership. */
+    if (!joined) {
+      toast('Join ' + GENRE.name + ' to start a discussion');
+      const jb = document.getElementById('joinBtn');
+      if (jb) { jb.classList.remove('on'); jb.focus(); }
+      return;
+    }
     ensureHubComposer();
     refreshTropeOptions();
+    refreshGenreOptions();
+    paintComposerAvatar();
     const h=document.querySelector('#ghcOv .ghc-head div'); if(h) h.textContent='New in '+GENRE.name;
     restoreGhcDraft();
     document.getElementById('ghcOv').classList.add('open'); document.body.style.overflow='hidden'; validateHubComposer();
@@ -893,7 +998,7 @@
     window.toast = toast;
     window.toggleTheme = toggleTheme;
     await loadGenre();
-    await loadHubAds();
+    await Promise.all([loadHubAds(), loadTropes()]);
     mountHubAd();
     wireComponents();
     initFilters();

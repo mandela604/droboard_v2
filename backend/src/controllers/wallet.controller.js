@@ -77,6 +77,15 @@ async function transactions(req, res) {
   return base.wrap(res, async () => wallet.history({ userId: req.user.id, limit: req.query.limit }));
 }
 
+// Supporters of an author for the tip sheet. Signed-in only: the sheet that
+// renders it is already gated, and who tipped whom is not public profile data.
+async function tips(req, res) {
+  return base.wrap(res, async () => wallet.tipsFor({
+    authorId: req.valid.params.authorId,
+    limit: req.query.limit,
+  }));
+}
+
 async function earnStart(req, res) {
   return base.wrap(res, async () => wallet.earnStart({ userId: req.user.id, code: req.valid.body.code }));
 }
@@ -88,4 +97,4 @@ async function earn(req, res) {
   });
 }
 
-module.exports = { balance, entitlements, storeData, unlock, adUnlockStart, adUnlock, tip, transactions, earnStart, earn };
+module.exports = { balance, entitlements, storeData, unlock, adUnlockStart, adUnlock, tip, tips, transactions, earnStart, earn };

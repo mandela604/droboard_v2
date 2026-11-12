@@ -1077,7 +1077,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     threadSendBtn.addEventListener('click', postThreadReply);
 
     // ── Post / reply ──
-    function postTop() {
+    async function postTop() {
       const text = inputEl.value.trim();
       if (!text) return;
       if (window.RequireAuth && !RequireAuth.ensure('post a comment')) return;
@@ -1092,11 +1092,19 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       inputEl.value = ''; sendBtn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('comment'); } catch (e) {}
       syncAll();
-      if (typeof options.onPost === 'function') options.onPost(c);
-      _toast('💬 Comment posted!');
-      setTimeout(() => document.getElementById(instId + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      try {
+        if (typeof options.onPost === 'function') await options.onPost(c);
+        _toast('💬 Comment posted!');
+        setTimeout(() => document.getElementById(instId + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      } catch (e) {
+        // rollback optimistic comment on API failure
+        const idx = comments.findIndex(x => x.id === c.id);
+        if (idx >= 0) comments.splice(idx, 1);
+        syncAll();
+        _toast(e.message || 'Comment failed to post');
+      }
     }
-    function submitReply(ns, parentId) {
+    async function submitReply(ns, parentId) {
       const inp = document.getElementById(ns + '-cri-' + parentId);
       if (!inp || !inp.value.trim()) return;
       if (window.RequireAuth && !RequireAuth.ensure('reply to this comment')) return;
@@ -1116,9 +1124,17 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
       document.getElementById(ns + '-cra-' + parentId)?.classList.remove('open');
       syncAll();
-      if (typeof options.onReply === 'function') options.onReply(parentId, c);
-      _toast('💬 Reply posted!');
-      setTimeout(() => document.getElementById(ns + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      try {
+        if (typeof options.onReply === 'function') await options.onReply(parentId, c);
+        _toast('💬 Reply posted!');
+        setTimeout(() => document.getElementById(ns + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      } catch (e) {
+        // rollback optimistic reply on API failure
+        const idx = parent.replies.findIndex(x => x.id === c.id);
+        if (idx >= 0) parent.replies.splice(idx, 1);
+        syncAll();
+        _toast(e.message || 'Reply failed to post');
+      }
     }
 
     // ── Edit ──
