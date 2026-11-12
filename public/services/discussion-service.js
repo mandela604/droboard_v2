@@ -184,7 +184,7 @@
       ? DroboardReactionPicker.renderTrigger(String(POST.id), { liked: !!POST.liked, likeCount: POST.likes || 0 })
       : `<span style="font-weight:700;color:var(--tx-muted)">${POST.likes || 0}</span>`;
     const actions = `${rx}
-      <button type="button" class="op-act" id="opReplyBtn"><i class="far fa-comment"></i> ${POST.comments || 0}</button>
+      <button type="button" class="op-act" id="opReplyBtn"><i class="far fa-comment"></i> <span id="opCommentCount">${POST.comments || 0}</span></button>
       <button type="button" class="op-act" id="opShareBtn"><i class="fas fa-share-nodes"></i> Share</button>`;
     mount.innerHTML = `<div class="op">
       <div class="op-head">
@@ -307,7 +307,7 @@
             // Update the visible comment count on the thread
             if (POST) {
               POST.commentsCount = (POST.commentsCount || 0) + 1;
-              const countEl = document.querySelector('[data-dcs-comment-count]');
+              const countEl = document.getElementById('opCommentCount');
               if (countEl) countEl.textContent = POST.commentsCount;
             }
             return saved;

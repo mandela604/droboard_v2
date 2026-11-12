@@ -196,7 +196,7 @@
     .dcs-input::placeholder{color:var(--dcs-muted2)}
     .dcs-send-btn{background:var(--dcs-acc);color:#fff;border:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;flex-shrink:0;transition:.15s}
     .dcs-send-btn:active{transform:scale(.9)}
-    .dcs-send-btn:disabled{background:var(--dcs-surface2);cursor:default}
+    .dcs-send-btn:disabled{background:var(--dcs-muted3,rgba(0,0,0,.12));color:var(--dcs-muted2);cursor:default}
 
     /* List — flows naturally so the whole page scrolls natively. */
     .dcs-list{display:flex;flex-direction:column;gap:9px;padding:6px 0}
@@ -274,7 +274,7 @@
     .dcs-reply-inp{flex:1;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:18px;padding:6px 11px;color:var(--dcs-tx);font-family:inherit;font-size:11px;outline:none;transition:border-color .2s}
     .dcs-reply-inp:focus{border-color:rgba(255,0,80,.35)}
     .dcs-reply-send{background:var(--dcs-acc);border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#fff;flex-shrink:0}
-    .dcs-reply-send:disabled{background:var(--dcs-card);cursor:default}
+    .dcs-reply-send:disabled{background:var(--dcs-muted3,rgba(0,0,0,.12));color:var(--dcs-muted2);cursor:default}
     .dcs-sep{height:1px;background:var(--dcs-bd);margin:0}
 
     .dcs-empty{text-align:center;padding:28px 14px;color:var(--dcs-muted2)}
@@ -934,7 +934,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
           </div>
           <div class="dcs-reply-area" id="${ns}-cra-${c.id}">
             <div class="dcs-reply-av-sm">${currentUser.avatar ? `<img src="${_esc(currentUser.avatar)}"/>` : (currentUser.name || 'Y')[0].toUpperCase()}</div>
-            <input class="dcs-reply-inp" id="${ns}-cri-${c.id}" placeholder="Replying to @${_esc(c.name)}…"/>
+            <input class="dcs-reply-inp" id="${ns}-cri-${c.id}" data-parent-id="${c.id}" placeholder="Replying to @${_esc(c.name)}…"/>
             <button class="dcs-reply-send" id="${ns}-crs-${c.id}" disabled data-dcs-replysend="${c.id}"><i class="fas fa-paper-plane"></i></button>
           </div>
           <div class="dcs-sep"></div>
@@ -992,10 +992,10 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
     function attachReplyInputListeners(ns, scopeEl) {
       scopeEl.querySelectorAll('[id^="' + ns + '-cri-"]').forEach(inp => {
-        const cid = parseInt(inp.id.split('-').pop(), 10);
-        const btn = document.getElementById(ns + '-crs-' + cid);
+        const rawId = inp.dataset.parentId || inp.id.replace(ns + '-cri-', '');
+        const btn = document.getElementById(ns + '-crs-' + rawId) || scopeEl.querySelector('[data-dcs-replysend="' + rawId + '"]');
         if (btn) inp.oninput = () => { btn.disabled = inp.value.trim().length < 1; };
-        inp.onkeydown = e => { if (e.key === 'Enter') submitReply(ns, cid); };
+        inp.onkeydown = e => { if (e.key === 'Enter') submitReply(ns, rawId); };
       });
     }
 
@@ -1548,7 +1548,6 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
         const replysend = e.target.closest('[data-dcs-replysend]');
         if (replysend) { submitReply(ns, replysend.dataset.dcsReplysend); return; }
-
         const editsave = e.target.closest('[data-dcs-editsave]');
         if (editsave) { saveEdit(ns, editsave.dataset.dcsEditsave); return; }
 
