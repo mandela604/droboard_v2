@@ -82,8 +82,10 @@
       avatar: p.avatar || '',
       time: p.time || '',
       title: p.heading || '',
-      body: p.text || '',
+      body: p.text || p.note || '',
       media: p.image || '',
+      original: p.original || null,
+      type: p.type || 'post',
       likes: (p.likes != null ? p.likes : (p.likesCount || 0)),
       liked: !!p.liked,
       comments: (p.comments != null ? p.comments : (p.commentsCount || 0)),
@@ -180,6 +182,15 @@
             <div class="op-story-by">by ${esc(POST.story.writer || '')}</div>
           </div>
         </div>` : '';
+    const repostCard = (POST.type === 'repost' && POST.original)
+      ? `<div class="op-story" style="border-color:rgba(56,189,248,.3);background:linear-gradient(135deg,rgba(56,189,248,.05),rgba(167,139,250,.04))">
+          ${POST.original.cover ? `<img class="op-story-cover" src="${esc(POST.original.cover)}" alt=""/>` : ''}
+          <div>
+            <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#0284c7;margin-bottom:4px">Repost</div>
+            <div class="op-story-title">${esc(POST.original.title || POST.original.text || '')}</div>
+            <div class="op-story-by">by @${esc(POST.original.name || '')}</div>
+          </div>
+        </div>` : '';
     const rx = window.DroboardReactionPicker
       ? DroboardReactionPicker.renderTrigger(String(POST.id), { liked: !!POST.liked, likeCount: POST.likes || 0 })
       : `<span style="font-weight:700;color:var(--tx-muted)">${POST.likes || 0}</span>`;
@@ -203,7 +214,7 @@
       <div class="op-title">${esc(POST.title || '')}</div>
       <div class="op-body">${esc(POST.body || '')}</div>
       ${tags ? `<div class="op-tags">${tags}</div>` : ''}
-      ${media}${story}
+      ${media}${story}${repostCard}
       <div class="op-actions" id="opActions">${actions}</div>
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';
@@ -304,12 +315,6 @@
               parentId: c.parentId,
               team: c.team,
             });
-            // Update the visible comment count on the thread
-            if (POST) {
-              POST.comments = (POST.comments || 0) + 1;
-              const countEl = document.getElementById('opCommentCount');
-              if (countEl) countEl.textContent = POST.comments;
-            }
             return saved;
           } catch (err) {
             toast(err.message || 'Could not post comment');
@@ -318,17 +323,23 @@
         },
         onReply: async (parentId, c) => {
           try {
-            return await DroboardComments.api.postComment({
+            const saved = await DroboardComments.api.postComment({
               scope: scope,
               [isPost ? 'postId' : 'discussionId']: scopeId,
               text: c.text,
               parentId: parentId,
               team: c.team,
             });
+            return saved;
           } catch (err) {
             toast(err.message || 'Could not post reply');
             throw err;
           }
+        },
+        onCountChange: (total) => {
+          if (POST) POST.comments = total;
+          const countEl = document.getElementById('opCommentCount');
+          if (countEl) countEl.textContent = total;
         },
         onEdit: (c, oldText, newText) => {
           DroboardComments.api.editComment(c.id, newText).catch(() => toast('Could not save edit'));

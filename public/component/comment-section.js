@@ -791,7 +791,9 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       return list.reduce((n, c) => n + 1 + countAll(c.replies || []), 0);
     }
     function refreshCount() {
-      if (countEl) countEl.textContent = _fmtN(countAll(comments));
+      const total = countAll(comments);
+      if (countEl) countEl.textContent = _fmtN(total);
+      if (typeof options.onCountChange === 'function') options.onCountChange(total);
     }
 
     // Flatten every descendant of a comment (any depth) into one array,
