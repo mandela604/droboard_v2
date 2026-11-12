@@ -281,6 +281,11 @@
     try {
       const comments = await threadComments();
       const me = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+
+      const isPost = POST && POST._kind === 'post';
+      const scope = isPost ? 'post' : 'discussion';
+      const scopeId = POST.id;
+
       DroboardComments.attach('#commentsPlaceholder', {
         title: 'Replies',
         comments: comments,
@@ -289,9 +294,38 @@
         startOpen: true,
         requireTeam: false,
         getCommentUrl: (c) => location.href.split('#')[0] + '#comment-' + (c && c.id),
-        onPost: () => toast('💬 Reply posted'),
-        onReply: () => toast('💬 Reply posted'),
-        onEdit: () => toast('✏️ Updated'),
+        onPost: async (c) => {
+          try {
+            const saved = await DroboardComments.api.postComment({
+              scope: scope,
+              [isPost ? 'postId' : 'discussionId']: scopeId,
+              text: c.text,
+              parentId: c.parentId,
+              team: c.team,
+            });
+            return saved;
+          } catch (err) {
+            toast(err.message || 'Could not post comment');
+            throw err;
+          }
+        },
+        onReply: async (parentId, c) => {
+          try {
+            return await DroboardComments.api.postComment({
+              scope: scope,
+              [isPost ? 'postId' : 'discussionId']: scopeId,
+              text: c.text,
+              parentId: parentId,
+              team: c.team,
+            });
+          } catch (err) {
+            toast(err.message || 'Could not post reply');
+            throw err;
+          }
+        },
+        onEdit: (c, oldText, newText) => {
+          DroboardComments.api.editComment(c.id, newText).catch(() => toast('Could not save edit'));
+        },
         onProfileClick: (c) => { if (c && c.name) location.href = profileHref(c.name); },
       });
     } catch (e) {

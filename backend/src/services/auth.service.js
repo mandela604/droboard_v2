@@ -84,9 +84,17 @@ async function register({ fullName, name, username, email, password, referralCod
   // first account on the system automatically becomes the first admin
   const existingCount = await User.countDocuments();
   const roles = existingCount === 0 ? ['admin', 'reader'] : ['reader'];
+  // ADMIN_EMAILS is the documented bootstrap for an existing database: a
+  // listed address is admin the moment it registers (and every boot after).
+  let primaryRole;
+  if (require('../config/env').adminEmails.indexOf(email.toLowerCase()) !== -1 && roles.indexOf('admin') === -1) {
+    roles.push('admin');
+    primaryRole = 'admin';
+  }
   const user = await User.create({
     fullName: displayName, username: username.toLowerCase(), email: email.toLowerCase(),
     passwordHash, authProvider: 'local', roles,
+    ...(primaryRole ? { primaryRole } : {}),
     country: country || '',
     referralCode: await referrals.mintUserCode(username),
   });
