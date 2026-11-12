@@ -253,16 +253,20 @@ async function reactToComment({ comment, userId, rid }) {
   if (isNew && String(comment.authorId) !== uid) {
     try {
       const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
+      const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+      const commentSnippet = (comment.text || '').slice(0, 60);
       const { notify } = require('./notifications.service');
       await notify({
         recipientId: String(comment.authorId),
         actorId: uid,
         type: 'like',
-        title: (actor && (actor.fullName || actor.username)) || 'Someone',
-        desc: 'reacted to your comment',
-        link: comment.postId ? '/post/' + comment.postId : '',
+        title: `<b>${actorName}</b> reacted to your comment`,
+        desc: commentSnippet ? `"${commentSnippet}${commentSnippet.length === 60 ? '…' : ''}"` : '',
+        link: comment.postId ? '/Pages/discussion.html?id=' + comment.postId : '',
+        linkLabel: 'View post',
         key: 'comment-react:' + uid + ':' + comment.id,
         avatar: actor && actor.avatar,
+        thumb: actor && actor.avatar,
       });
     } catch (e) { /* non-fatal */ }
   }

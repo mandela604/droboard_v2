@@ -358,14 +358,18 @@ async function reactToPost({ post, userId, rid }) {
   if (isNew && String(post.authorId) !== uid) {
     try {
       const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
+      const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+      const postSnippet = (post.text || post.quote || post.note || '').slice(0, 60);
       const { notify } = require('./notifications.service');
       await notify({
         recipientId: String(post.authorId), actorId: uid, type: 'like',
-        title: (actor && (actor.fullName || actor.username)) || 'A user',
-        desc: (actor && (actor.fullName || actor.username)) || 'A user',
-        link: '/post/' + post.id,
+        title: `<b>${actorName}</b> reacted to your post`,
+        desc: postSnippet ? `"${postSnippet}${postSnippet.length === 60 ? '…' : ''}"` : '',
+        link: '/Pages/discussion.html?id=' + post.id,
+        linkLabel: 'View post',
         key: 'like:' + uid + ':' + post.id,
         avatar: actor && actor.avatar,
+        thumb: actor && actor.avatar,
       });
     } catch (e) {}
   }
