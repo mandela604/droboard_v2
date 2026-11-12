@@ -24,10 +24,12 @@ function validateMediaUrl(v, field) {
 async function uploadImageBuffer(buffer, mimetype, name) {
   const env = require('../config/env');
   if (!env.cloudinaryCloudName || !env.cloudinaryApiKey || !env.cloudinaryApiSecret) {
+    console.error('[upload] Cloudinary not configured — cloudName:', !!env.cloudinaryCloudName, 'apiKey:', !!env.cloudinaryApiKey, 'apiSecret:', !!env.cloudinaryApiSecret);
     const e = new Error('images_not_configured');
     e.status = 503;
     throw e;
   }
+  console.log('[upload] Cloudinary configured — cloudName:', env.cloudinaryCloudName);
 
   const { v2: cloudinary } = require('cloudinary');
   cloudinary.config({
