@@ -74,8 +74,6 @@
     catch (e) { return fb; }
   }
   function _genres_() {
-    var g = (window.DemoData && window.DemoData.GENRES) || null;
-    if (g && g.length) return g.map(function (x) { return { id: x.id, name: x.name }; });
     return FALLBACK_GENRES.map(function (n) { return { id: n.toLowerCase(), name: n }; });
   }
   function _tropePool() {

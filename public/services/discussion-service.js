@@ -326,6 +326,26 @@
         onEdit: (c, oldText, newText) => {
           DroboardComments.api.editComment(c.id, newText).catch(() => toast('Could not save edit'));
         },
+        onReact: async (c, rid) => {
+          try {
+            const method = c.rx && c.rx.userRx === rid ? 'DELETE' : 'POST';
+            const res = await fetch(`${API_BASE}/comments/${encodeURIComponent(c.id)}/react`, {
+              method, credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: method === 'POST' ? JSON.stringify({ rid }) : undefined
+            });
+            if (!res.ok) throw new Error('React API failed: ' + res.status);
+            const data = await res.json();
+            // data = { counts: {...}, userRx: '...' }
+            c.rx = data.counts;
+            c.rx.userRx = data.userRx;
+            c.likes = Object.entries(data.counts).filter(([k]) => k !== 'userRx').reduce((a, [,v]) => a+v, 0);
+            c.liked = data.userRx === 'love';
+          } catch (e) {
+            toast(e.message || 'Could not save reaction');
+            throw e;
+          }
+        },
         onProfileClick: (c) => { if (c && c.name) location.href = profileHref(c.name); },
       });
     } catch (e) {
@@ -390,13 +410,29 @@
           counts[secondId] = second;
           return { userRx: (POST.userRx || (POST.liked ? 'love' : null)) || null, ...counts };
         },
-        save: (id, state) => {
+        save: async (id, state) => {
           if (!POST || String(id) !== String(POST.id)) return;
-          POST.userRx = state.userRx;
-          POST.liked = state.userRx === 'love';
-          let total = 0;
-          Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
-          POST.likes = total;
+          const wasLiked = POST.liked;
+          const nowLiked = state.userRx === 'love';
+          if (wasLiked === nowLiked) return;
+          
+          // Persist to backend
+          try {
+            const res = await fetch(`${API_BASE}/discussions/${encodeURIComponent(POST.id)}/like`, {
+              method: 'POST', credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Like API failed: ' + res.status);
+            const data = await res.json();
+            POST.liked = data.liked;
+            POST.likes = data.likes;
+            POST.userRx = data.liked ? 'love' : null;
+          } catch (e) {
+            // Revert on failure
+            POST.liked = wasLiked;
+            POST.userRx = wasLiked ? 'love' : null;
+            POST.likes = wasLiked ? (POST.likes || 0) : Math.max(0, (POST.likes || 0) - 1);
+            throw e;
+          }
         },
       });
     }

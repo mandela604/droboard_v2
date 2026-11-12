@@ -1,11 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    AD SERVICE
    Single source of ad inventory for all client pages.
-   Demo: central-demo-data.js pools, overlaid with ad-manager edits
-   stored in localStorage. Live: GET /api/ads?placement=<page>.
-
-   When going live: set USE_API = true, point API_BASE at the backend.
-   Pages and marketing/ad-manager.html keep working unchanged.
+   Live: GET /api/ads?placement=<page>.
 
    API contract (backend):
      GET  /api/ads?placement=discover|feed|genreHub
@@ -32,7 +28,7 @@
   }
 
   function demoInventory() {
-    const d = window.DemoData || {};
+    const d = {};
     const ov = readOverrides();
     let pools;
     if (ov.pools && Object.keys(ov.pools).length) {

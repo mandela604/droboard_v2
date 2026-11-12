@@ -2046,6 +2046,7 @@ module.exports = {
   editorialTeam,
   insightsOverview, insightsLeaderboard,
   authorsAdmin, updateWriter, removeWriter,
+  genresAdmin,
   booksAdmin, setBookStatus, deleteBook, bulkBooks,
   collectionsAdmin, collectionDelete, bulkCollections,
   postsAdmin, getPost, setPostStatus, deletePost,

@@ -707,8 +707,7 @@
     return out;
   }
   function storySource() {
-    var d = window.DemoData || {};
-    return Array.isArray(d.STORIES) ? d.STORIES : [];
+    return [];
   }
   function fillFromStory(s) {
     var set = function (key, val) {
@@ -744,21 +743,7 @@
     return String(n);
   }
   function userSource() {
-    var d = window.DemoData || {};
-    var users = d.USERS || {};
-    return Object.keys(users).map(function (k) {
-      var u = users[k] || {};
-      var st = u.stats || {};
-      return {
-        name: u.name || u.handle || k,
-        handle: u.handle || k,
-        avatar: u.avatar || '',
-        tagline: u.bio || '',
-        followers: st.followers ? compactN(st.followers) : '',
-        books: st.books || (Array.isArray(u.books) ? u.books.length : ''),
-        reads: st.reads ? compactN(st.reads) : '',
-      };
-    });
+    return [];
   }
   function fillFromUser(u) {
     var set = function (key, val) {

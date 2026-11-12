@@ -1,18 +1,11 @@
 /**
- * editors-picks-service.js — Data layer for Editor's Picks page
- * Reads from window.EditorDemo.EDITORS_PICKS / window.EditorDemo.EDITORS_PICKS_LOG
+ * editors-picks-service.js — Data layer for Editor's Picks page (API-backed)
  * Falls back to empty arrays if demo data is missing.
  */
 (function(){
 'use strict';
 if(window.__editorsPicksService) return;
 window.__editorsPicksService = true;
-
-/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="../data/editor-demo-data.js"><\/script>');
-}
 
 var API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/editors-picks';
 var TIMEOUT_MS = 2500;
@@ -33,13 +26,10 @@ var _picks = [];
 var _log = [];
 
 function loadFromDemo(){
-  var D = window.EditorDemo || {};
-  _picks = JSON.parse(JSON.stringify(D.EDITORS_PICKS || []));
-  _log = JSON.parse(JSON.stringify(D.EDITORS_PICKS_LOG || []));
+  _picks = [];
+  _log = [];
 }
 loadFromDemo();
-/* Injected data script executes after this file — re-sync once parsed (renders only, no re-bind). */
-if(!_picks.length) window.addEventListener('DOMContentLoaded', function(){ loadFromDemo(); renderAll(); });
 
 function picks(){ return _picks; }
 function log(){ return _log; }

@@ -1646,8 +1646,11 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
   async function postComment(opts) {
     const o = opts || {};
-    const body = { scope: o.chapterId ? 'chapter' : 'story', storyId: o.storyId, text: o.text };
+    const body = { scope: o.scope || 'story', text: o.text };
+    if (o.storyId) body.storyId = String(o.storyId);
     if (o.chapterId) body.chapterId = String(o.chapterId);
+    if (o.postId) body.postId = String(o.postId);
+    if (o.discussionId) body.discussionId = String(o.discussionId);
     if (o.parentId) body.parentId = o.parentId;
     if (o.team) body.team = o.team;
     const res = await fetch(COMMENTS_API + '/comments', {

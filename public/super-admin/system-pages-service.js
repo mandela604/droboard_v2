@@ -23,7 +23,7 @@ var PAGES=[
   {id:'faq',             title:'Frequently Asked Questions', url:'faq.html',              icon:'fa-circle-question', tone:'pink',   status:'active', statusLabel:'Published', updated:'Nov 1, 2026', svcId:'faq'}
 ];
 
-function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
 
 async function loadData(){
   try {

@@ -158,6 +158,9 @@ router.patch('/authors/:id', ...A, require('../middleware/http').writeLimiter, a
 router.delete('/authors/:id', ...A, require('../middleware/http').writeLimiter, audit('admin.authors.delete'),
   validate(z.object({ params: z.object({ id: ID }) })), sa.authorRemove);
 
+// genres for authors content filter
+router.get('/genres', ...A, sa.genresList);
+
 // books moderation
 router.get('/books', ...A, validate(z.object({ query: z.object({
   ...PG, q: z.string().max(80).optional(), genre: z.string().max(40).optional(),

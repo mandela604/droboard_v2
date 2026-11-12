@@ -63,7 +63,7 @@
 
   /* ── demo data from central ── */
   function getDemo() {
-    const D = window.DemoData || {};
+    const D = {};
     return {
       earnings: clone(D.AUTHOR_EARNINGS || { balance: 0, pending: 0, lifetime: 0, thisMonth: 0, lastMonth: 0, byBook: [], monthlyHistory: [] }),
       transactions: clone(D.AUTHOR_TRANSACTIONS || []),

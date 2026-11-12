@@ -383,8 +383,7 @@
   }
 
   /* ── Ads ── */
-  /* Ad creatives come ONLY from the central inventory (AdService ←
-     central-demo-data.js, editable in ad-manager). No local hardcodes,
+  /* Ad creatives come ONLY from the AdService API. No local hardcodes,
      no secondary sources. Empty pool = no ads. */
   function interleaveAds(posts, pools, every) {
     pools = pools || {};
