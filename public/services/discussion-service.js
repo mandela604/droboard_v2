@@ -306,9 +306,9 @@
             });
             // Update the visible comment count on the thread
             if (POST) {
-              POST.commentsCount = (POST.commentsCount || 0) + 1;
+              POST.comments = (POST.comments || 0) + 1;
               const countEl = document.getElementById('opCommentCount');
-              if (countEl) countEl.textContent = POST.commentsCount;
+              if (countEl) countEl.textContent = POST.comments;
             }
             return saved;
           } catch (err) {

@@ -121,6 +121,11 @@ async function createComment({ authorId, user, data }) {
   });
   await counters.bump(authorId, 'commentCount', 1);
   if (parentId) await Comment.updateOne({ id: parentId }, { $inc: { repliesCount: 1 } });
+  // Keep Post.commentsCount in sync for feed post comments
+  if (scope === 'post' && postId) {
+    const { Post } = require('../models/social.model');
+    await Post.updateOne({ id: postId }, { $inc: { commentsCount: 1 } });
+  }
   const [card] = await shapeForReader([comment.toObject()], authorId);
   return card;
 }
@@ -138,12 +143,18 @@ async function listComments({ scope, storyId, chapterId, postId, discussionId, p
     Comment.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Comment.countDocuments(filter),
   ]);
-  // Reply pass: fetch every child of this page in one query, then bucket.
+  // Reply pass: fetch two levels deep so replies-of-replies are included.
   const parentIds = top.map(c => String(c.id)).filter(Boolean);
   let byParent = {};
   if (parentIds.length) {
-    const kids = await Comment.find({ parentId: { $in: parentIds } }).sort({ createdAt: 1 }).lean();
-    kids.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
+    const level1 = await Comment.find({ parentId: { $in: parentIds } }).sort({ createdAt: 1 }).lean();
+    level1.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
+    // Second level — replies to replies
+    const level1Ids = level1.map(c => String(c.id)).filter(Boolean);
+    if (level1Ids.length) {
+      const level2 = await Comment.find({ parentId: { $in: level1Ids } }).sort({ createdAt: 1 }).lean();
+      level2.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
+    }
   }
   const allRows = top.concat(parentIds.reduce((acc, p) => acc.concat(byParent[p] || []), []));
   const shaped = await shapeForReader(allRows, viewerId);
