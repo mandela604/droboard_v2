@@ -101,6 +101,23 @@ async function submitRating(bookId, userId, { stars, text, spoiler }) {
   return { ok: true, mine: { stars, text: text || '', spoiler: !!spoiler }, avg, count };
 }
 
+/* Withdraw a rating: drop the row, recompute the denormalized avg/count from
+   the remaining rows, and remove the synced feed review post. Idempotent —
+   deleting a rating that is already gone still answers ok. */
+async function deleteRating(bookId, userId) {
+  const book = await loadLiveBook(bookId);
+  await BookRating.deleteOne({ bookId: book.id, userId: String(userId) });
+  const agg = await BookRating.aggregate([
+    { $match: { bookId: book.id } },
+    { $group: { _id: null, avg: { $avg: '$stars' }, count: { $sum: 1 } } },
+  ]);
+  const avg = agg.length ? Math.round(agg[0].avg * 10) / 10 : 0;
+  const count = agg.length ? agg[0].count : 0;
+  await Book.updateOne({ id: book.id }, { $set: { rating: avg, ratingCount: count } });
+  await syncReviewPost(book, userId, 0, '');
+  return { ok: true, deleted: true, mine: null, avg, count };
+}
+
 /* ── reviews list (the reader-facing grid under the story page) ──
    The page renders one card per reader review: author id/name/avatar (so the
    status ring can attach by id), the real stars, text, a helpful tally and the
@@ -181,4 +198,4 @@ async function setHelpful(bookId, ratingId, userId, on) {
   return { ok: true, helpful: fresh ? fresh.helpfulCount : 0, mineHelpful: !!on };
 }
 
-module.exports = { getRating, submitRating, listRatings, setHelpful, MIN_CHAPTERS };
+module.exports = { getRating, submitRating, deleteRating, listRatings, setHelpful, MIN_CHAPTERS };

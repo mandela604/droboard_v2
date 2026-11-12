@@ -885,7 +885,11 @@
       need: ratingGate && ratingGate.need,
       canRate: ratingGate && ratingGate.canRate,
       onDone: (r) => {
-        myRating = (r && r.mine && r.mine.stars) || (r && r.stars) || myRating;
+        if (r && (r.deleted || r.mine === null)) {
+          myRating = 0;
+        } else {
+          myRating = (r && r.mine && r.mine.stars) || (r && r.stars) || myRating;
+        }
         if (r && r.avg != null) DATA.stats.rating = r.avg;
         if (r && r.count != null) DATA.stats.ratingCount = r.count;
         if (r && typeof r.canRate === 'boolean') ratingGate = r;

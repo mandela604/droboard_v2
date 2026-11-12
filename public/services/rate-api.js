@@ -52,5 +52,16 @@
         });
       });
     },
+    deleteRating: function (storyId) {
+      return fetch(url(storyId), {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          return r.ok ? j : Object.assign({ ok: false }, j);
+        });
+      });
+    },
   };
 })();
