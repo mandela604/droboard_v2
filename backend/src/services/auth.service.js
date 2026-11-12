@@ -116,7 +116,10 @@ async function register({ fullName, name, username, email, password, referralCod
   // Token remains generated (for potential future gating) but never emailed.
   let emailed = false;
   let emailError = null;
-  const out = { id: user._id, username: user.username, email: user.email, referral, emailed, emailError };
+  // `id` must be the public UUID every other route keys on — returning the
+  // Mongo _id made the signup response unusable (chief editor assigning the
+  // brand-new author to an SE pod answered bad_author).
+  const out = { id: user.id, username: user.username, email: user.email, referral, emailed, emailError };
   if (require('./mail.service').cfg().provider === 'log') out.verifyToken = verifyToken;
   return out;
 }
