@@ -206,13 +206,13 @@ async function createThread({ user, genre, genreId, title, body, tag, media, tro
 }
 
 async function loadOr404(id) {
-  const d = await Discussion.findOne({ id: String(id) });
+  const d = await Discussion.findOne({ $or: [{ id: String(id) }, { _id: String(id) }] });
   if (!d) err('not_found', 404);
   return d;
 }
 
 async function getThread({ id, viewerId }) {
-  const d = await Discussion.findOne({ id: String(id) }).lean();
+  const d = await Discussion.findOne({ $or: [{ id: String(id) }, { _id: String(id) }] }).lean();
   if (!d) err('not_found', 404);
   await withAuthors([d]);
   const gname = await genreNames([d]);

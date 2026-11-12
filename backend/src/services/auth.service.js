@@ -84,9 +84,17 @@ async function register({ fullName, name, username, email, password, referralCod
   // first account on the system automatically becomes the first admin
   const existingCount = await User.countDocuments();
   const roles = existingCount === 0 ? ['admin', 'reader'] : ['reader'];
+  // ADMIN_EMAILS is the documented bootstrap for an existing database: a
+  // listed address is admin the moment it registers (and every boot after).
+  let primaryRole;
+  if (require('../config/env').adminEmails.indexOf(email.toLowerCase()) !== -1 && roles.indexOf('admin') === -1) {
+    roles.push('admin');
+    primaryRole = 'admin';
+  }
   const user = await User.create({
     fullName: displayName, username: username.toLowerCase(), email: email.toLowerCase(),
     passwordHash, authProvider: 'local', roles,
+    ...(primaryRole ? { primaryRole } : {}),
     country: country || '',
     referralCode: await referrals.mintUserCode(username),
   });
@@ -116,7 +124,10 @@ async function register({ fullName, name, username, email, password, referralCod
   // Token remains generated (for potential future gating) but never emailed.
   let emailed = false;
   let emailError = null;
-  const out = { id: user._id, username: user.username, email: user.email, referral, emailed, emailError };
+  // `id` must be the public UUID every other route keys on — returning the
+  // Mongo _id made the signup response unusable (chief editor assigning the
+  // brand-new author to an SE pod answered bad_author).
+  const out = { id: user.id, username: user.username, email: user.email, referral, emailed, emailError };
   if (require('./mail.service').cfg().provider === 'log') out.verifyToken = verifyToken;
   return out;
 }
