@@ -52,7 +52,12 @@ async function handleImageFile(ev, which){
     const res = await fetch(API_BASE + '/uploads/image', { method: 'POST', credentials: 'include', body: fd });
     let j = null;
     try { j = await res.json(); } catch (e) { /* empty body */ }
-    if (!res.ok || !j || !j.url) throw new Error((j && (j.error || j.message)) || ('Upload failed (' + res.status + ')'));
+    if (!res.ok || !j || !j.url) {
+      const errMsg = (j && j.error) === 'images_not_configured'
+        ? 'Image uploads are not configured yet — please contact support.'
+        : ((j && (j.error || j.message)) || ('Upload failed (' + res.status + ')'));
+      throw new Error(errMsg);
+    }
     if (which === 'avatar'){ document.getElementById('fAvatar').value = j.url; syncAvatar(); }
     else { document.getElementById('fCover').value = j.url; syncCover(); }
     toast(which === 'avatar' ? 'Photo updated — save changes' : 'Cover updated — save changes');

@@ -775,8 +775,14 @@
           location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle);
         },
         onNameClick: () => { location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle); },
-        onComment: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
-        onOpenPost: (post) => { location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || ''); },
+        onComment: (post) => {
+          if (post && post.type === 'debate') { location.href = 'debate.html?id=' + encodeURIComponent(post.id); return; }
+          location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || '');
+        },
+        onOpenPost: (post) => {
+          if (post && post.type === 'debate') { location.href = 'debate.html?id=' + encodeURIComponent(post.id); return; }
+          location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || '');
+        },
         onShare: (post) => { if (!window.openShareModal) return; openShareModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, url: 'https://droboard.app/post/' + post.id }); },
         onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id, type: 'post' }); },
         onDots: (post, anchorEl) => { try { window._lastDotsAnchor = anchorEl || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
@@ -1357,7 +1363,7 @@
       DroboardSearch.configure({
         onOpenStory: (s) => { location.href = 'bridge.html?id=' + encodeURIComponent((s && s.id) || ''); },
         onOpenWriter: (w) => { location.href = 'profile.html?u=' + encodeURIComponent((w.handle || w.name || '').replace('@', '')); },
-        onOpenDebate: (d) => { location.href = 'discussion.html?id=' + encodeURIComponent((d && d.id) || ''); },
+        onOpenDebate: (d) => { location.href = 'debate.html?id=' + encodeURIComponent((d && d.id) || ''); },
       });
     }
   }
