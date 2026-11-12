@@ -84,8 +84,24 @@
       title: p.heading || '',
       body: p.text || p.note || '',
       media: p.image || '',
-      original: p.original || null,
+      // rich-type fields — pass everything through so renderOp can use post-card renderers
       type: p.type || 'post',
+      original: p.original || null,
+      storyRef: p.storyRef || null,
+      chapterRef: p.chapterRef || null,
+      quote: p.quote || '',
+      caption: p.caption || '',
+      quoteBg: p.quoteBg || '',
+      quoteBgCss: p.quoteBgCss || '',
+      score: p.score || 0,
+      reviewText: p.reviewText || '',
+      poll: p.poll || null,
+      debateData: p.debateData || null,
+      amaData: p.amaData || null,
+      note: p.note || '',
+      text: p.text || '',
+      heading: p.heading || '',
+      image: p.image || '',
       likes: (p.likes != null ? p.likes : (p.likesCount || 0)),
       liked: !!p.liked,
       comments: (p.comments != null ? p.comments : (p.commentsCount || 0)),
@@ -191,6 +207,37 @@
             <div class="op-story-by">by @${esc(POST.original.name || '')}</div>
           </div>
         </div>` : '';
+    // For feed posts, delegate body rendering to post-card RENDERERS so every
+    // type (review, recommendation, chapter-drop, quote, poll, debate, ama,
+    // repost) renders exactly as it does in the feed — one renderer, one place.
+    let richBody = '';
+    if (POST._kind === 'post' && window.DroboardPostCard && window.DroboardPostCard.render) {
+      try {
+        // Create a temporary container, render the full card, then extract
+        // just the body (everything between head and actions)
+        const tmp = document.createElement('div');
+        tmp.style.display = 'none';
+        document.body.appendChild(tmp);
+        window.DroboardPostCard.attach(tmp, {});
+        window.DroboardPostCard.setPosts([Object.assign({}, POST, {
+          name: POST.name, avatar: POST.avatar, verified: POST.verified,
+          time: POST.time, fullName: POST.name,
+        })]);
+        const card = tmp.querySelector('.pcc-post');
+        if (card) {
+          // Remove head (pcc-head) and actions (pcc-actions) — keep the body
+          const clone = card.cloneNode(true);
+          clone.querySelector('.pcc-head')?.remove();
+          clone.querySelector('.pcc-actions')?.remove();
+          richBody = clone.innerHTML;
+        }
+        document.body.removeChild(tmp);
+      } catch (e) { richBody = ''; }
+    }
+    // Fallback for discussion posts or if post-card isn't loaded
+    const fallbackBody = richBody ? '' : `
+      <div class="op-body">${esc(POST.body || '')}</div>
+      ${media}${story}${repostCard}`;
     const rx = window.DroboardReactionPicker
       ? DroboardReactionPicker.renderTrigger(String(POST.id), { liked: !!POST.liked, likeCount: POST.likes || 0 })
       : `<span style="font-weight:700;color:var(--tx-muted)">${POST.likes || 0}</span>`;
@@ -212,9 +259,8 @@
         </div>
       </div>
       <div class="op-title">${esc(POST.title || '')}</div>
-      <div class="op-body">${esc(POST.body || '')}</div>
+      ${richBody || fallbackBody}
       ${tags ? `<div class="op-tags">${tags}</div>` : ''}
-      ${media}${story}${repostCard}
       <div class="op-actions" id="opActions">${actions}</div>
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';

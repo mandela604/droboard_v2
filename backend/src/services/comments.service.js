@@ -237,6 +237,7 @@ async function reactToComment({ comment, userId, rid }) {
   const uid = String(userId);
   const prev = await Reaction.findOne({ userId: uid, targetType: 'comment', targetId: comment.id });
   if (prev && prev.rid === rid) return { counts: commentReactionCounts(comment), userRx: rid };
+  let isNew = false;
   if (prev) {
     const pc = Math.max(0, (comment.reactions.get(prev.rid) || 0) - 1);
     if (pc) comment.reactions.set(prev.rid, pc); else comment.reactions.delete(prev.rid);
@@ -244,9 +245,27 @@ async function reactToComment({ comment, userId, rid }) {
     await prev.save();
   } else {
     await Reaction.create({ userId: uid, targetType: 'comment', targetId: comment.id, rid });
+    isNew = true;
   }
   comment.reactions.set(rid, (comment.reactions.get(rid) || 0) + 1);
   await comment.save();
+  // Notify the comment author (only on first reaction, not self)
+  if (isNew && String(comment.authorId) !== uid) {
+    try {
+      const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: String(comment.authorId),
+        actorId: uid,
+        type: 'like',
+        title: (actor && (actor.fullName || actor.username)) || 'Someone',
+        desc: 'reacted to your comment',
+        link: comment.postId ? '/post/' + comment.postId : '',
+        key: 'comment-react:' + uid + ':' + comment.id,
+        avatar: actor && actor.avatar,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return { counts: commentReactionCounts(comment), userRx: rid };
 }
 async function unreactComment({ comment, userId }) {
