@@ -27,10 +27,10 @@ function signAccess(user) {
    header or dro_access cookie). Returns { identity, renewed } — identity is
    null for a true guest. Never throws.
 
-   The refresh cookie is scoped to /api/auth only, so it is never present on
-   this route; the client keeps the access token warm by calling
-   POST /api/auth/refresh itself. The refresh-cookie fallback below therefore
-   only fires on /api/auth-scoped callers, and is a no-op for everyone else. */
+   The refresh cookie (path '/') rides along on every /api/ request. When the
+   access token is missing/expired, the server verifies the refresh session
+   and re-mints a fresh access token transparently — the user is never bounced
+   to login as long as the 30-day refresh session is valid. */
 async function resolveSession(req, res) {
   const hdr = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ')
@@ -42,8 +42,8 @@ async function resolveSession(req, res) {
   }
   if (p) return { identity: { id: p.sub, roles: p.roles || [], mfaAt: p.mfaAt || null }, renewed: false };
 
-  // Access token missing/expired. The refresh cookie is scoped to /api/auth,
-  // so it is normally absent here; renew only if a caller on that path has it.
+  // Access token missing/expired. The refresh cookie (path '/') is present on
+  // every request, so renew silently and transparently.
   const rt = (req.cookies && req.cookies.dro_refresh) || null;
   if (!rt) return { identity: null, renewed: false };
   let s;
