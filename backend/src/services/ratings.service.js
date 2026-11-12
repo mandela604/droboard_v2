@@ -4,14 +4,17 @@
  * Contract (public/component/rate-modal.js):
  *   getRating(storyId)    -> { ok, mine: {stars,text,spoiler}|null, avg, count }
  *   submitRate(storyId, { stars, text, spoiler }) -> { ok, ... }
- * Gate: 12 chapters read (rate-modal MIN_CHAPTERS) — enforced server-side
+ * Gate: chapters read (rate-modal MIN_CHAPTERS) — enforced server-side
  * from ReadingProgress rows, not the client-supplied chaptersRead.
  */
 const { Book } = require('../models/content.model');
 const { BookRating, RatingHelpful, ReadingProgress, Post } = require('../models/social.model');
 const { User } = require('../models/user.model');
 
-const MIN_CHAPTERS = 12;
+// Same gate as recommendations (posts.service RECOMMEND_MIN_CHAPTERS): a
+// reader needs a real reading history before judging a story. Capped by the
+// book's own chapter count so short books unlock at their full length.
+const MIN_CHAPTERS = 3;
 const READABLE = ['ongoing', 'published', 'completed'];
 // Sort keys the reviews list understands — the same three the page's revSort
 // chips use (helpful | newest | rating). Default is 'helpful'.
@@ -22,6 +25,13 @@ const REV_SORTS = {
 };
 
 function fail(msg, status) { const e = new Error(msg); e.status = status; throw e; }
+
+/* Gate: MIN_CHAPTERS read, but never more than the book actually has —
+   a 5- or 8-chapter book unlocks at its full length, not at 12. */
+function gateFor(book) {
+  const total = Number(book && book.chapterCount) || 0;
+  return total > 0 ? Math.min(MIN_CHAPTERS, total) : MIN_CHAPTERS;
+}
 
 async function loadLiveBook(bookId) {
   const book = await Book.findOne({ id: bookId });
@@ -56,18 +66,25 @@ async function getRating(bookId, userId) {
   const mine = userId
     ? await BookRating.findOne({ bookId: book.id, userId: String(userId) }).lean()
     : null;
+  const need = gateFor(book);
+  const chaptersRead = userId
+    ? await ReadingProgress.countDocuments({ userId: String(userId), storyId: book.id })
+    : 0;
   return {
     ok: true,
     mine: mine ? { stars: mine.stars, text: mine.text || '', spoiler: !!mine.spoiler } : null,
     avg: book.rating || 0,
     count: book.ratingCount || 0,
+    chaptersRead,
+    need,
+    canRate: chaptersRead >= need,
   };
 }
 
 async function submitRating(bookId, userId, { stars, text, spoiler }) {
   const book = await loadLiveBook(bookId);
   const read = await ReadingProgress.countDocuments({ userId: String(userId), storyId: book.id });
-  if (read < MIN_CHAPTERS) fail('not_enough_reading', 403);
+  if (read < gateFor(book)) fail('not_enough_reading', 403);
   await BookRating.findOneAndUpdate(
     { bookId: book.id, userId: String(userId) },
     { $set: { stars, text: text || '', spoiler: !!spoiler } },

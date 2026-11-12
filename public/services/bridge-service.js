@@ -241,6 +241,7 @@
   /* ── RATING — live: GET /api/stories/:id/rating { ok, mine, avg, count }.
      Stars persist across open/close toggles via myRating. */
   let myRating = 0;
+  let ratingGate = null;   // last GET /rating payload: {chaptersRead, need, canRate}
   function goToDebate() {
     location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || '');
   }
@@ -259,6 +260,7 @@
       myRating = (r.mine && r.mine.stars) || 0;
       DATA.stats.rating = r.avg || 0;
       DATA.stats.ratingCount = r.count || 0;
+      ratingGate = r;
     } catch (e) { /* rating strip falls back to the story payload numbers */ }
     renderRating();
   }
@@ -879,10 +881,14 @@
       title: DATA.title,
       img: DATA.cover || '',
       presetStars: typeof presetStar === 'number' ? presetStar : 0,
+      chaptersRead: ratingGate && ratingGate.chaptersRead,
+      need: ratingGate && ratingGate.need,
+      canRate: ratingGate && ratingGate.canRate,
       onDone: (r) => {
-        myRating = (r && r.mine && r.mine.stars) || myRating;
+        myRating = (r && r.mine && r.mine.stars) || (r && r.stars) || myRating;
         if (r && r.avg != null) DATA.stats.rating = r.avg;
         if (r && r.count != null) DATA.stats.ratingCount = r.count;
+        if (r && typeof r.canRate === 'boolean') ratingGate = r;
         renderRating();
       }
     });

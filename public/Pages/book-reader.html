@@ -428,7 +428,11 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
     <div id="statsDeep"></div>
   </div>
 
-  <div class="sh" style="margin:4px 0 10px;scroll-margin-top:104px" id="reviewsHead"><div class="sh-title">Top reviews</div></div>
+  <div class="sh" style="margin:4px 0 10px;scroll-margin-top:104px" id="reviewsHead">
+    <div class="sh-title">Top reviews</div>
+    <button type="button" id="rateBookBtn" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,0,80,.35);background:rgba(255,0,80,.1);color:#ff4d7a;font-size:10px;font-weight:800;cursor:pointer"><i class="fas fa-star"></i> Rate this book</button>
+  </div>
+  <div id="rateSummary"></div>
   <div id="reviewsContent"></div>
 
   <div id="moreRow" style="margin:14px 0 10px"></div>
@@ -470,7 +474,9 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
   <script src="../services/status-service.js?v=11"></script>
 <script src="../shared/status-loader.js"></script>
 <script src="../services/reader-engagement-service.js?v=4"></script>
-<script src="../services/book-reader-service.js?v=10"></script>
+<script src="../services/rate-api.js?v=2"></script>
+<script src="../component/rate-modal.js?v=4"></script>
+<script src="../services/book-reader-service.js?v=11"></script>
 <script>StoryReaderPage.init();</script>
 
 <script src="../shared/theme-chrome.js"></script>

@@ -28,7 +28,11 @@
       return fetch(url(storyId), {
         credentials: 'include',
         headers: { Accept: 'application/json' },
-      }).then(function (r) { return r.json(); });
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          return r.ok ? j : Object.assign({ ok: false }, j);
+        });
+      });
     },
     submitRate: function (storyId, payload) {
       return fetch(url(storyId), {
@@ -40,7 +44,13 @@
           text: payload.text || '',
           spoiler: !!payload.spoiler,
         }),
-      }).then(function (r) { return r.json(); });
+      }).then(function (r) {
+        // Normalize non-2xx: the error handler answers {error:'not_enough_reading'}
+        // with no ok flag, so callers must see ok:false to avoid a false success.
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          return r.ok ? j : Object.assign({ ok: false }, j);
+        });
+      });
     },
   };
 })();

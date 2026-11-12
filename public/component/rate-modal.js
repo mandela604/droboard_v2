@@ -7,9 +7,10 @@
  *   storyId      : string — used for demo storage + onDone payload
  *   title        : optional story title shown in the sheet
  *   img          : optional cover image (dataURL or URL)
- *   chaptersRead : optional number — set >= 12 to pass the 12-chapter gate
- *                  (ratings unlock after 12 chapters, same rule as recommendations)
- *   onDone       : optional fn({ stars, text, spoiler }) after submit
+ *   chaptersRead : optional number — informational; the server is the source
+ *                  of truth for the gate (GET …/rating → canRate/need).
+ *   onDone       : optional fn(result) after submit — the API response
+ *                  { ok, mine, avg, count } when live, else the payload.
  *
  * Exposes globals:
  *   openRateModal(data)  — opens the sheet
@@ -30,7 +31,7 @@
   if (window.__droboardRateModal) return;
   window.__droboardRateModal = true;
 
-  var MIN_CHAPTERS = 12; // same gate as recommendations
+  var MIN_CHAPTERS = 3; // same gate as recommendations (posts.service)
 
   // ══ CSS ══
   var CSS = [
@@ -167,12 +168,13 @@
         '</div>';
     }
     var read = cfg.chaptersRead || 0;
-    var pct = Math.min(100, Math.round(read / MIN_CHAPTERS * 100));
+    var need = cfg.need || MIN_CHAPTERS;
+    var pct = Math.min(100, Math.round(read / need * 100));
     return '<div class="drm-locked">' +
       '<div class="drm-lock-ico"><i class="fas fa-lock"></i></div>' +
-      '<div class="drm-lock-t">Ratings unlock at ' + MIN_CHAPTERS + ' chapters</div>' +
+      '<div class="drm-lock-t">Ratings unlock at ' + need + ' chapters</div>' +
       '<div class="drm-lock-s">Same rule as recommendations — only readers who stuck with the story can judge it.</div>' +
-      '<div class="drm-lock-n">' + read + ' / ' + MIN_CHAPTERS + ' chapters read</div>' +
+      '<div class="drm-lock-n">' + read + ' / ' + need + ' chapters read</div>' +
       '<div class="drm-bar"><i style="width:' + pct + '%"></i></div>' +
       '</div>';
   }
@@ -197,7 +199,7 @@
     el.innerHTML = starsHtml() + formHtml();
     var avg = $('drmAvg');
     if (avg && cfg.avg != null) {
-      avg.innerHTML = '<b>' + Number(cfg.avg).toFixed(1) + '</b> \u00b7 ' + (cfg.count || 1247) + ' ratings';
+      avg.innerHTML = '<b>' + Number(cfg.avg).toFixed(1) + '</b> \u00b7 ' + (cfg.count != null ? cfg.count : 0) + ' ratings';
     }
     var ta = $('drmText');
     if (ta) {
@@ -218,7 +220,7 @@
   }
 
   function render() {
-    if (cfg.chaptersRead != null && cfg.chaptersRead < MIN_CHAPTERS) {
+    if (cfg.canRate === false) {
       $('drmContent').innerHTML = lockedHtml();
     } else if (votes[cfg.storyId || 'demo'] && votes[cfg.storyId || 'demo'].stars) {
       $('drmContent').innerHTML = lockedHtml();
@@ -250,19 +252,33 @@
       if (!draft.stars) return;
       var payload = { stars: draft.stars, text: draft.text.trim(), spoiler: draft.spoiler };
       var id = cfg.storyId || 'demo';
-      votes[id] = payload;
       var btn = $('drmSubmit');
       if (btn) { btn.disabled = true; btn.textContent = 'Posting\u2026'; }
       var api = window.DroboardRateAPI;
-      var done = function (ok) {
+
+      // Only a confirmed server write counts as a rating — a 403/network
+      // error must not leave the modal showing "already rated" after a reload.
+      var succeed = function (res) {
+        votes[id] = payload;
         closeRateModal();
-        if (window.toast) toast(ok === false ? '\u2717 Could not post rating' : '\u2b50 Rating posted');
-        if (typeof cfg.onDone === 'function') cfg.onDone(payload);
+        if (window.toast) toast('\u2b50 Rating posted');
+        if (typeof cfg.onDone === 'function') cfg.onDone(res || payload);
       };
+      var fail = function (msg) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Post review'; }
+        if (window.toast) toast(msg || '\u2717 Could not post rating');
+      };
+
       if (api && api.submitRate) {
-        api.submitRate(id, payload).then(function (r) { done(!r || r.ok !== false); }).catch(function () { done(false); });
+        api.submitRate(id, payload).then(function (r) {
+          if (r && r.ok === false) {
+            fail(r.error === 'not_enough_reading' ? 'Read more chapters to rate' : 'Could not post rating');
+            return;
+          }
+          succeed(r);
+        }).catch(function () { fail(); });
       } else {
-        setTimeout(function () { done(true); }, 350);
+        setTimeout(function () { succeed(payload); }, 350);
       }
     }
   };
@@ -291,6 +307,11 @@
           if (r.mine && r.mine.stars) { votes[cfg.storyId || 'demo'] = r.mine; draft.stars = r.mine.stars; }
           if (r.avg != null) cfg.avg = r.avg;
           if (r.count != null) cfg.count = r.count;
+          // Server owns the gate (books shorter than MIN_CHAPTERS unlock at
+          // their full length) — never lock on the caller's guess.
+          if (typeof r.chaptersRead === 'number') cfg.chaptersRead = r.chaptersRead;
+          if (typeof r.need === 'number') cfg.need = r.need;
+          if (typeof r.canRate === 'boolean') cfg.canRate = r.canRate;
           render();
         }
       }).catch(function () {});
