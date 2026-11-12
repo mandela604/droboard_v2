@@ -36,20 +36,23 @@
  *   <script src="tip-picker.js"></script>
  *
  *   DroboardTip.attach({
- *     getWriter:      (id) => ({ name:'Ada_Writes', avatar:'...', handle:'@ada_writes' }), // optional
- *     getSupporters:  (id) => [{ id, name, avatar, time }, ...],                            // optional (no amount needed — the list never displays it)
+ *     getWriter:      (id) => ({ id, name:'Ada_Writes', avatar:'...', handle:'@ada_writes' }), // optional
+ *     getAuthorId:    (id) => 'usr_author_id',                                              // optional — the wallet target for this story
+ *     getSupporters:  (id) => [{ id, name, avatar, time }, ...],                            // optional — else GET /api/wallet/tips/:authorId
  *     getCurrency:    (id) => ({ symbol:'₦', code:'NGN' }),                                 // optional — defaults to Naira
- *     onSend:         (id, amount, note, mode) => { ... mode is 'coin' or 'cash' ... },      // optional — may return a promise resolving {ok:false, message} to keep the sheet open
- *     getTargetId:    (id) => 'platform',                                                   // optional — wallet id gifts are posted to (defaults to id)
+ *     onSent:         (id, amount, note, mode, giftId) => { ... },                          // optional — UI refresh AFTER the wallet accepted the tip
+ *     getTargetId:    (id) => 'platform',                                                   // optional — wallet id gifts are posted to (defaults to the author id)
  *     profileUrl:     (supporter) => `profile.html?u=${supporter.id}`,                      // optional
  *   });
  *
  *   // Wire any existing tip button to:
- *   DroboardTip.open('story-1', { name:'Ada_Writes', avatar:'https://...' });
+ *   DroboardTip.open('story-1', { id:'usr_author_id', name:'Ada_Writes', avatar:'https://...' });
  *
- * Without any hooks, the component runs entirely standalone with demo
- * supporters and a local toast, exactly like reaction-picker.js does when
- * no hooks are supplied.
+ * Tips are sent to the live wallet (`POST /api/wallet/tip`), the balance comes
+ * from `GET /api/wallet/balance`, gifts from `GET /api/wallet/store`, and the
+ * supporters list from `GET /api/wallet/tips/:authorId`. There is no local
+ * coin ledger and no demo supporters: with no backend answer the sheet shows
+ * the real empty state instead of inventing people or coins.
  */
 (function () {
   'use strict';
@@ -59,16 +62,14 @@
   const COIN_AMOUNTS = [15, 50, 100];
   const CASH_AMOUNTS = [100, 500, 1000];
   const DEFAULT_CURRENCY = { symbol: '$', code: 'USD' };
-  const GIFT_CATALOG = [
-    { id:'gift-rose', name:'Rose', price:10, faIcon:'fa-heart', color:'#FF2D6A' },
-    { id:'gift-heart', name:'Big Heart', price:50, faIcon:'fa-heart', color:'#E11D48' },
-    { id:'gift-diamond', name:'Diamond', price:100, faIcon:'fa-gem', color:'#0EA5E9' },
-    { id:'gift-crown', name:'Crown', price:250, faIcon:'fa-crown', color:'#F59E0B' },
-    { id:'gift-rocket', name:'Rocket', price:500, faIcon:'fa-rocket', color:'#7C3AED' },
-    { id:'gift-dragon', name:'Dragon', price:1000, faIcon:'fa-dragon', color:'#16A34A' },
-    { id:'gift-trophy', name:'Trophy', price:750, faIcon:'fa-trophy', color:'#FF8C00' },
-    { id:'gift-fireworks', name:'Fireworks', price:300, faIcon:'fa-wand-sparkles', color:'#EC4899' },
-  ];
+  /* No local catalog: gifts are whatever the store API serves. An empty list
+     means the store has no active gifts and the tab says so. */
+  const API_BASE = '/api';
+  const AVATAR_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">' +
+    '<rect width="80" height="80" rx="40" fill="#2a2a2a"/>' +
+    '<circle cx="40" cy="31" r="14" fill="#555"/>' +
+    '<path d="M12 72c3-16 14-24 28-24s25 8 28 24" fill="#555"/></svg>');
 
   // ══════════════════════════════════════════════════════════════════════
   // CSS (dtp- prefixed, self-contained, falls back gracefully if the
@@ -182,13 +183,21 @@
   let _hooks = {};
   let _built = false;
   let _curId = null;
+  let _curAuthorId = null;
+  let _curWriter = null;
   let _selectedAmount = null;
   let _customMode = false;
   let _mode = 'coin'; // 'coin' | 'cash' | 'gift'
   let _selectedGiftId = null;
   let _selectedGiftPrice = null;
   let _balanceVisible = true;
-  const _supportersCache = {}; // per-id demo supporters, so repeated opens stay stable
+  let _balance = null;      // { coins, bonus, paid } from GET /api/wallet/balance
+  let _supporters = [];     // live rows from GET /api/wallet/tips/:authorId
+  let _supportersTotal = 0;
+  let _supportersLoaded = false;
+  let _gifts = [];          // live catalog from GET /api/wallet/store
+  let _giftsLoaded = false;
+  let _requestId = null;    // one idempotency id per open sheet
 
   // ══════════════════════════════════════════════════════════════════════
   // Utils
@@ -229,27 +238,32 @@
     return false;
   }
 
-  const DEMO_NAMES = ['Chioma_R', 'Emeka_Writes', 'Ada_Lover', 'Zara_M', 'Dami_Cole', 'Efe_O', 'Kemi_A', 'Sade_Reads', 'CampusQueen', 'Chiamaka_N', 'Ifeanyi_Story', 'Anon_Reader'];
-  function _demoSupporters(id) {
-    if (_supportersCache[id]) return _supportersCache[id];
-    const count = 8 + Math.floor(Math.random() * 30);
-    const list = [];
-    for (let i = 0; i < count; i++) {
-      const name = DEMO_NAMES[Math.floor(Math.random() * DEMO_NAMES.length)] + (i > DEMO_NAMES.length ? '_' + i : '');
-      list.push({
-        id: 'u_' + i,
-        name,
-        avatar: `https://i.pravatar.cc/100?img=${(i * 7 + 3) % 70}`,
-        time: `${1 + Math.floor(Math.random() * 20)}h ago`,
+  /* ── Live data ─────────────────────────────────────────────────────
+     Every number and name in this sheet comes from the wallet API. There is
+     no local ledger and no generated supporters list: if the API has nothing
+     to say, the sheet shows its empty state. */
+  function _authHeaders() {
+    var h = { 'Content-Type': 'application/json' };
+    try {
+      var tok = localStorage.getItem('droboard_session');
+      if (tok) h.Authorization = 'Bearer ' + tok;
+    } catch (e) {}
+    return h;
+  }
+  function _apiGet(path) {
+    return fetch(API_BASE + path, { credentials: 'include', headers: _authHeaders() })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
       });
-    }
-    _supportersCache[id] = list;
-    return list;
   }
 
   function _getSupporters(id) {
-    if (typeof _hooks.getSupporters === 'function') return _hooks.getSupporters(id) || [];
-    return _demoSupporters(id);
+    if (typeof _hooks.getSupporters === 'function') {
+      var hooked = _hooks.getSupporters(id);
+      return Array.isArray(hooked) ? hooked : [];
+    }
+    return _supporters.slice();
   }
 
   function _getWriter(id, fallback) {
@@ -257,7 +271,9 @@
       const w = _hooks.getWriter(id);
       if (w) return w;
     }
-    return fallback || { name: 'this writer', avatar: 'https://i.pravatar.cc/100?img=32', handle: '' };
+    if (fallback) return fallback;
+    if (_curWriter) return _curWriter;
+    return { name: 'this writer', avatar: AVATAR_FALLBACK, handle: '' };
   }
 
   function _getCurrency(id) {
@@ -270,31 +286,83 @@
 
   function _profileUrl(supporter) {
     if (typeof _hooks.profileUrl === 'function') return _hooks.profileUrl(supporter);
-    return `profile.html?u=${encodeURIComponent(supporter.id || supporter.name)}`;
+    var key = supporter.handle || supporter.id || supporter.name;
+    return 'profile.html?u=' + encodeURIComponent(key);
   }
-  function _getGifts(){
-    if(window.StoreService && typeof window.StoreService.getGifts === 'function') return window.StoreService.getGifts();
-    return GIFT_CATALOG;
+  function _getGifts(){ return _gifts; }
+  function _getBalance(){ return _balance || { coins: 0, bonus: 0, paid: 0 }; }
+
+  function _loadBalance() {
+    return _apiGet('/wallet/balance').then(function (bal) {
+      if (bal && bal.coins != null) {
+        _balance = { coins: Number(bal.coins) || 0, bonus: Number(bal.bonus) || 0, paid: Number(bal.paid) || 0 };
+        if (window.StoreService && StoreService.setServerBalance) StoreService.setServerBalance(_balance);
+      }
+      _updateBalanceRow();
+      _renderGiftGridIfOpen();
+      return _balance;
+    }).catch(function () {
+      /* Signed-out or offline: leave the row at its loading placeholder. The
+         send path still refuses, because the server is the authority. */
+      _updateBalanceRow();
+      return null;
+    });
   }
-  function _getBalance(){
-    if(window.StoreService && typeof window.StoreService.getBalance === 'function') return window.StoreService.getBalance();
-    try{ const v=parseInt(localStorage.getItem('dro_store_balance'),10); const c=isNaN(v)?350:v; return {coins:c}; }catch(e){ return {coins:350}; }
+
+  function _loadGifts() {
+    if (_giftsLoaded) return Promise.resolve(_gifts);
+    var fetchStore = (window.StoreService && typeof StoreService.fetchStoreData === 'function')
+      ? StoreService.fetchStoreData().then(function () { return StoreService.getGifts(); })
+      : _apiGet('/wallet/store').then(function (d) { return d.gifts || []; });
+    return fetchStore.then(function (list) {
+      _gifts = Array.isArray(list) ? list : [];
+      _giftsLoaded = true;
+      _renderGiftGridIfOpen();
+      return _gifts;
+    }).catch(function () {
+      _gifts = [];
+      _giftsLoaded = true;
+      _renderGiftGridIfOpen();
+      return _gifts;
+    });
   }
-  function _spendCoins(amt){
-    if(window.StoreService && typeof window.StoreService.spendCoins === 'function') return window.StoreService.spendCoins(amt);
-    try{
-      const cur=_getBalance().coins;
-      if(cur < amt) return false;
-      localStorage.setItem('dro_store_balance', String(cur-amt));
-      return true;
-    }catch(e){ return false; }
+
+  function _loadSupporters(authorId) {
+    var target = String(authorId || '');
+    _supporters = [];
+    _supportersTotal = 0;
+    _supportersLoaded = false;
+    var requested = target;
+    var p = (target && target !== 'platform')
+      ? _apiGet('/wallet/tips/' + encodeURIComponent(target) + '?limit=50')
+      : Promise.resolve({ total: 0, items: [] });
+    return p.then(function (d) {
+      if (requested !== String(_curAuthorId || '')) return null; // sheet moved on
+      _supporters = Array.isArray(d && d.items) ? d.items : [];
+      _supportersTotal = Number(d && d.total) || _supporters.length;
+      _supportersLoaded = true;
+      if (_curId !== null) {
+        _renderSupportersRow(_curId);
+        var sheet = document.getElementById('dtp-sup-sheet');
+        if (sheet && sheet.classList.contains('open')) openSupporters(_curId);
+      }
+      return _supporters;
+    }).catch(function () {
+      if (requested !== String(_curAuthorId || '')) return null;
+      _supporters = [];
+      _supportersTotal = 0;
+      _supportersLoaded = true;
+      if (_curId !== null) _renderSupportersRow(_curId);
+      return [];
+    });
   }
+
   function _updateBalanceRow(){
     const el=document.getElementById('dtp-bal-val');
     const eye=document.getElementById('dtp-bal-eye');
     if(!el) return;
-    const bal=_getBalance();
-    el.textContent = _balanceVisible ? bal.coins.toLocaleString() + ' coins' : '••••';
+    var bal=_getBalance();
+    el.textContent = !_balance ? '…' : (_balanceVisible ? bal.coins.toLocaleString() + ' coins' : '••••');
     if(eye) eye.innerHTML = _balanceVisible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
   }
 
@@ -449,10 +517,17 @@
 
   function _renderGiftGrid(){
     const grid=document.getElementById('dtp-gift-grid');
+    if(!grid) return;
     const gifts=_getGifts();
+    if(!gifts.length){
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:18px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--tx-muted)">' +
+        (_giftsLoaded ? 'No gifts available right now.' : 'Loading gifts…') + '</div>';
+      _syncSendBtn();
+      return;
+    }
     const bal=_getBalance().coins;
     grid.innerHTML = gifts.map(g=>{
-      // Console-saved gifts carry only `icon`; the demo list carries `faIcon`.
+      // Console-saved gifts carry only `icon`; the store API also sends `faIcon`.
       const ico = g.faIcon || (/^fa-/.test(g.icon||'') ? g.icon : 'fa-gem');
       return `
       <div class="dtp-gift-card${bal < g.price ? ' disabled':''}${_selectedGiftId===g.id?' on':''}" data-gift="${g.id}" data-price="${g.price}">
@@ -477,6 +552,11 @@
         _updateSendBtnLabel(_curId);
       });
     });
+  }
+
+  function _renderGiftGridIfOpen() {
+    const grid = document.getElementById('dtp-gift-grid');
+    if (grid && _mode === 'gift' && grid.style.display !== 'none') _renderGiftGrid();
   }
 
   function _switchMode(mode, id) {
@@ -525,18 +605,22 @@
     const supporters = _getSupporters(id);
     const stack = document.getElementById('dtp-supp-stack');
     const text = document.getElementById('dtp-supp-text');
+    if (!stack || !text) return;
     const shown = supporters.slice(0, 3);
-    const overflow = supporters.length - shown.length;
+    const overflow = (typeof _hooks.getSupporters === 'function' ? supporters.length : _supportersTotal) - shown.length;
 
-    stack.innerHTML = shown.map(s => `<img class="dtp-supp-av" src="${s.avatar}" loading="lazy" alt=""/>`).join('')
+    stack.innerHTML = shown.map(s => `<img class="dtp-supp-av" src="${_esc(s.avatar) || AVATAR_FALLBACK}" loading="lazy" alt=""/>`).join('')
       + (overflow > 0
           ? `<div class="dtp-supp-more">+${overflow > 99 ? '99' : overflow}</div>`
           : (shown.length === 0 ? `<div class="dtp-supp-plus"><i class="fas fa-user-plus"></i></div>` : ''));
 
-    if (supporters.length === 0) {
+    if (!_supportersLoaded && typeof _hooks.getSupporters !== 'function') {
+      text.innerHTML = `Loading supporters…`;
+    } else if (supporters.length === 0) {
       text.innerHTML = `Be the <b>first</b> to support`;
     } else {
-      text.innerHTML = `<b>${_fmtN(supporters.length)}</b> ${supporters.length === 1 ? 'person has' : 'people have'} supported`;
+      const n = typeof _hooks.getSupporters === 'function' ? supporters.length : Math.max(_supportersTotal, supporters.length);
+      text.innerHTML = `<b>${_fmtN(n)}</b> ${n === 1 ? 'person has' : 'people have'} supported`;
     }
   }
 
@@ -590,144 +674,148 @@
     document.getElementById('dtp-sup-close').addEventListener('click', closeSupporters);
   }
 
-  /* Gift tips land in the reader's purchase log so the Store's
-     "Your Purchases → Report" flow can dispute an undelivered gift. */
-  function _logReceipt(giftName, coins, writerName){
-    try{
-      var KEY='dro_reader_receipts';
-      var list=JSON.parse(localStorage.getItem(KEY)||'[]');
-      if(!Array.isArray(list)) list=[];
-      list.unshift({ id:'GIFT-'+Date.now(), title:giftName, sub:'Gift to '+writerName, price:coins+' coins', usd:0, kind:'gift', at:new Date().toISOString() });
-      localStorage.setItem(KEY, JSON.stringify(list.slice(0,20)));
-    }catch(e){}
+  /* Everything below writes through the live wallet. `POST /api/wallet/tip`
+     takes { authorId, coins, giftCode?, requestId? } — the server debits the
+     reader, splits the author/platform share and writes the ledger row. No
+     local ledger, no demo mutation: a refused tip never shows success. */
+  function _targetId(){
+    if (typeof _hooks.getTargetId === 'function') return String(_hooks.getTargetId(_curId) || '');
+    return String(_curAuthorId || '');
   }
 
-  /* Gifts are coins, so they move through the wallet API when there is one:
-     POST /api/wallet/tip { authorId, coins, giftCode } debits the reader,
-     splits writer/platform and writes the ledger row + history entry.
-     server:false means "no backend answered" — only then does the demo keep
-     using the local coin balance. */
-  function _postGift(authorId, coins, giftCode){
-    var target = typeof _hooks.getTargetId === 'function' ? _hooks.getTargetId(authorId) : authorId;
-    var body = { authorId: String(target), coins: Number(coins), giftCode: String(giftCode || '') };
-    return fetch('/api/wallet/tip', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    }).then(function (res) {
-      if (res.status === 404 || res.status === 502 || res.status === 504) return { server: false };
-      return res.json().catch(function () { return {}; }).then(function (j) {
-        var out = { server: true, ok: res.ok, status: res.status, j: j || {} };
-        if (res.ok && j && j.balance != null && window.StoreService && StoreService.setServerBalance) {
-          StoreService.setServerBalance(j.balance);
-          _updateBalanceRow();
-        }
-        return out;
-      });
-    }).catch(function () { return { server: false }; });
-  }
-
-  function _finishGift(giftName, writer, note){
-    _logReceipt(giftName, _selectedGiftPrice, writer.name);
-    if(typeof _hooks.onSend === 'function'){
-      _hooks.onSend(_curId, _selectedGiftPrice, note, 'gift', _selectedGiftId);
-    } else {
-      const list=_demoSupporters(_curId);
-      list.unshift({ id:'you', name:'You', avatar:'https://i.pravatar.cc/100?img=1', time:'Just now · 🎁 '+giftName });
-    }
-    _toast(`🎁 ${giftName} sent to ${writer.name}!`);
+  function _applyBalance(bal){
+    if(!bal || bal.coins == null) return;
+    _balance = { coins: Number(bal.coins)||0, bonus: Number(bal.bonus)||0, paid: Number(bal.paid)||0 };
+    if(window.StoreService && StoreService.setServerBalance) StoreService.setServerBalance(_balance);
     _updateBalanceRow();
-    close();
   }
 
-  function _finishTip(writer, currency){
-    const amountLabel = _mode === 'cash' ? `${currency.symbol}${_fmtN(_selectedAmount)}` : `🪙 ${_selectedAmount}`;
-    _toast(`${amountLabel} sent to ${writer.name}!`);
-    close();
+  function _postTip(authorId, coins, giftCode){
+    var body = { authorId: String(authorId), coins: Number(coins) };
+    if (giftCode) body.giftCode = String(giftCode);
+    if (_requestId) body.requestId = String(_requestId);
+    return fetch(API_BASE + '/wallet/tip', {
+      method: 'POST', credentials: 'include', headers: _authHeaders(), body: JSON.stringify(body),
+    }).then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(j){
+        return { ok: res.ok, status: res.status, j: j || {} };
+      });
+    });
   }
 
-  function _sendTip() {    const writer = _getWriter(_curId);
+  function _tipError(res){
+    if (res && res.status === 402) {
+      return (res.j && res.j.error === 'bonus_no_tip')
+        ? "Bonus coins read stories, they can't tip — buy coins to gift"
+        : 'Not enough coins — buy more in Store';
+    }
+    if (res && (res.status === 401 || res.status === 403)) return 'Sign in to send a tip';
+    if (res && res.status === 404) return 'This writer cannot receive tips yet';
+    return 'Tip not sent — try again';
+  }
+
+  function _disableSend(off){
+    var btn = document.getElementById('dtp-send');
+    if(btn) btn.disabled = !!off;
+    if(!off) _syncSendBtn();
+  }
+
+  function _afterSent(writer, amountLabel, note, mode, giftId, bal){
+    if (bal) _applyBalance(bal);
+    /* The host may want to repaint its own tip counter. It runs AFTER the
+       server accepted the payment, so a failed write can never bump a count. */
+    if (typeof _hooks.onSent === 'function') {
+      try { _hooks.onSent(_curId, _selectedAmount || _selectedGiftPrice, note, mode, giftId); } catch (e) {}
+    }
+    _toast(amountLabel + ' sent to ' + writer.name + '!');
+    close();
+    if (_curAuthorId && _curAuthorId !== 'platform') _loadSupporters(_curAuthorId);
+  }
+
+  function _sendTip() {
+    const writer = _getWriter(_curId);
     /* Re-checked at send time: the sheet can outlive a sign-out. */
     if (_isGuest()) return _refuseForGuest();
     const note = document.getElementById('dtp-note').value.trim();
+    const target = _targetId();
+    if (!target) { _toast('Cannot tell which writer to tip'); return; }
+
     if(_mode==='gift'){
-      if(!_curId || !_selectedGiftId || !_selectedGiftPrice) return;
-      const bal=_getBalance().coins;
-      if(bal < _selectedGiftPrice){
-        _toast('Not enough coins — buy more in Store');
-        return;
-      }
+      if(!_selectedGiftId || !_selectedGiftPrice) return;
       const gift=_getGifts().find(g=>g.id===_selectedGiftId);
       const giftName=gift?gift.name:_selectedGiftId;
-      _postGift(_curId, _selectedGiftPrice, _selectedGiftId).then(function(res){
-        if(res.server){
-          if(!res.ok){
-            /* 402 means either out of coins or holding only bonus coins; the
-               backend names which, so the reader is never told the wrong thing. */
-            _toast(res.status===402 && res.j && res.j.error==='bonus_no_tip'
-                 ? 'Bonus coins read stories, they can\'t tip — buy coins to gift'
-                 : res.status===402 ? 'Not enough coins — buy more in Store'
-                 : (res.status===401||res.status===403) ? 'Sign in to send gifts'
-                 : 'Gift not sent — try again');
-            if(window.StoreService&&StoreService.syncBalance) StoreService.syncBalance().then(_updateBalanceRow);
-            return;
-          }
-          _finishGift(giftName, writer, note);
+      _disableSend(true);
+      _postTip(target, _selectedGiftPrice, _selectedGiftId).then(function(res){
+        _disableSend(false);
+        if(!res.ok){
+          _toast(_tipError(res));
+          if(res.status===402) _loadBalance();
           return;
         }
-        // No wallet API (pure demo): the local ledger is the only truth we have.
-        if(!_spendCoins(_selectedGiftPrice)){ _toast('Not enough coins'); return; }
-        _finishGift(giftName, writer, note);
+        _afterSent(writer, '🎁 ' + giftName, note, 'gift', _selectedGiftId, res.j.balance);
+      }).catch(function(){
+        _disableSend(false);
+        _toast('Tip not sent — check your connection');
       });
       return;
     }
-    if (!_curId || !_selectedAmount || _selectedAmount <= 0) return;
-    const currency = _getCurrency(_curId);
 
-    if (typeof _hooks.onSend === 'function') {
-      let result;
-      try { result = _hooks.onSend(_curId, _selectedAmount, note, _mode); } catch (e) { result = null; }
-      /* A host that returns a promise keeps the sheet open until the wallet
-         answers, so a refused tip (bonus-only coins, no balance) never shows
-         a success toast. Hosts that return nothing keep the old behaviour. */
-      if (result && typeof result.then === 'function') {
-        const btn = document.getElementById('dtp-send');
-        btn.disabled = true;
-        result.then(function (out) {
-          btn.disabled = false;
-          _syncSendBtn();
-          _updateBalanceRow();
-          if (out && out.ok === false) { _toast(out.message || 'Tip not sent — try again'); return; }
-          _finishTip(writer, currency);
-        }, function () {
-          btn.disabled = false;
-          _syncSendBtn();
-          _toast('Tip not sent — try again');
-        });
+    if (!_selectedAmount || _selectedAmount <= 0) return;
+    const currency = _getCurrency(_curId);
+    const amountLabel = _mode === 'cash' ? `${currency.symbol}${_fmtN(_selectedAmount)}` : `🪙 ${_selectedAmount}`;
+    _disableSend(true);
+    _postTip(target, _selectedAmount).then(function(res){
+      _disableSend(false);
+      if(!res.ok){
+        _toast(_tipError(res));
+        if(res.status===402) _loadBalance();
         return;
       }
-    } else {
-      const list = _demoSupporters(_curId);
-      list.unshift({ id: 'you', name: 'You', avatar: 'https://i.pravatar.cc/100?img=1', time: 'Just now' });
-    }
-
-    _finishTip(writer, currency);
+      _afterSent(writer, amountLabel, note, _mode, null, res.j.balance);
+    }).catch(function(){
+      _disableSend(false);
+      _toast('Tip not sent — check your connection');
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════
   // Supporters sheet
   // ══════════════════════════════════════════════════════════════════════
+  function _relTime(at) {
+    if (!at) return '';
+    var ms = Date.now() - new Date(at).getTime();
+    if (!isFinite(ms) || ms < 0) return '';
+    var m = Math.floor(ms / 60000);
+    if (m < 1) return 'Just now';
+    if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    var d = Math.floor(h / 24);
+    if (d < 7) return d + 'd ago';
+    return new Date(at).toLocaleDateString();
+  }
+
   function openSupporters(id) {
     const supporters = _getSupporters(id);
-    document.getElementById('dtp-sup-title').textContent = `Supporters (${supporters.length})`;
-    document.getElementById('dtp-sup-list').innerHTML = supporters.map(s => `
-      <div class="dtp-sup-item" data-uid="${_esc(s.id || s.name)}">
-        <img class="dtp-sup-item-av" src="${s.avatar}" loading="lazy" alt=""/>
-        <div class="dtp-sup-item-body">
-          <div class="dtp-sup-item-name">${_esc(s.name)}</div>
-          <div class="dtp-sup-item-time">${_esc(s.time || '')}</div>
-        </div>
-        <i class="fas fa-chevron-right" style="font-size:10px;color:var(--tx-muted,#444);flex-shrink:0"></i>
-      </div>`).join('');
+    const total = typeof _hooks.getSupporters === 'function' ? supporters.length : Math.max(_supportersTotal, supporters.length);
+    document.getElementById('dtp-sup-title').textContent = `Supporters (${total})`;
+    if (!supporters.length) {
+      document.getElementById('dtp-sup-list').innerHTML =
+        '<div style="padding:42px 16px;text-align:center;color:var(--tx-muted);font-size:12px;font-weight:600">' +
+        (_supportersLoaded || typeof _hooks.getSupporters === 'function'
+          ? 'No supporters yet — be the first.'
+          : 'Loading supporters…') + '</div>';
+    } else {
+      document.getElementById('dtp-sup-list').innerHTML = supporters.map(s => `
+        <div class="dtp-sup-item" data-uid="${_esc(s.id || s.name)}">
+          <img class="dtp-sup-item-av" src="${_esc(s.avatar) || AVATAR_FALLBACK}" loading="lazy" alt=""/>
+          <div class="dtp-sup-item-body">
+            <div class="dtp-sup-item-name">${_esc(s.name)}</div>
+            <div class="dtp-sup-item-time">${_esc(s.time || _relTime(s.at))}</div>
+          </div>
+          <i class="fas fa-chevron-right" style="font-size:10px;color:var(--tx-muted,#444);flex-shrink:0"></i>
+        </div>`).join('');
+    }
 
     document.querySelectorAll('#dtp-sup-list .dtp-sup-item').forEach((row, i) => {
       row.addEventListener('click', () => {
@@ -752,25 +840,38 @@
 
   /**
    * open(id, writerMeta)
-   *   id          — unique id for the writer/story being tipped
-   *   writerMeta  — optional { name, avatar, handle } used the first time
-   *                 (or whenever getWriter() isn't supplied)
+   *   id          — unique id for the story/writer surface being tipped
+   *   writerMeta  — { id, name, avatar, handle }; `id` is the author's public
+   *                 user id and is what the wallet actually pays. Without it
+   *                 the `getAuthorId`/`getTargetId` hook is used; if neither
+   *                 answers, the sheet refuses instead of guessing.
    */
   function open(id, writerMeta) {
     /* No account → no tip sheet at all. */
     if (_isGuest()) return _refuseForGuest();
     _build();
     _curId = id;
+    _curWriter = writerMeta || null;
+    _curAuthorId = (writerMeta && writerMeta.id)
+      || (typeof _hooks.getAuthorId === 'function' ? _hooks.getAuthorId(id) : null)
+      || (typeof _hooks.getTargetId === 'function' ? _hooks.getTargetId(id) : null)
+      || null;
+    _requestId = 'dtp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     _selectedAmount = null;
     _selectedGiftId = null;
     _selectedGiftPrice = null;
     _customMode = false;
     _mode = 'coin';
+    _balance = null;
+    _supporters = [];
+    _supportersTotal = 0;
+    _supportersLoaded = false;
 
     const writer = _getWriter(id, writerMeta);
     const currency = _getCurrency(id);
     document.getElementById('dtp-writer-name-hdr').textContent = writer.name;
-    document.getElementById('dtp-writer-av').src = writer.avatar;
+    document.getElementById('dtp-writer-av').src = writer.avatar || AVATAR_FALLBACK;
+    document.getElementById('dtp-writer-av').onerror = function () { this.onerror = null; this.src = AVATAR_FALLBACK; };
     document.getElementById('dtp-writer-name').textContent = writer.name;
     document.getElementById('dtp-writer-sub').textContent = writer.handle || 'Support this writer';
     var cashTab = document.getElementById('dtp-cash-tab-symbol');
@@ -796,6 +897,12 @@
     document.getElementById('dtp-overlay').classList.add('show');
     document.getElementById('dtp-sheet').classList.add('open');
     document.body.style.overflow = 'hidden';
+
+    /* Live reads run after the sheet is visible so a slow API never blocks the
+       open, and each one paints as soon as it answers. */
+    _loadBalance();
+    _loadGifts();
+    _loadSupporters(_curAuthorId);
   }
 
   function close() {

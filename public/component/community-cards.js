@@ -1,5 +1,5 @@
-/**
- * community-cards.js — Droboard reusable Communities cards
+﻿/**
+ * community-cards.js â€” Droboard reusable Communities cards
  * (genre hub + writer circle). Self-contained CSS injection.
  *
  * Drop one <script src="community-cards.js"></script> in any page, then:
@@ -13,9 +13,8 @@
  *     onJoin: (type, joined, state) => { ... },     // required for persistence
  *   });
  *
- *   DroboardCommunityCards.boardName('Romance')       → 'Romance Board'
- *   DroboardCommunityCards.boardName('Betrayal Hub')  → 'Betrayal Board'
- *   DroboardCommunityCards.demoMembers('romance')     → stable demo number
+ *   DroboardCommunityCards.boardName('Romance')       â†’ 'Romance Board'
+ *   DroboardCommunityCards.boardName('Betrayal Hub')  â†’ 'Betrayal Board'
  *
  * Re-mount with updated state to refresh (hosts own the data):
  *   DroboardCommunityCards.mount('#hubsWrap', nextOpts);
@@ -27,7 +26,7 @@
   window.__droboardCommunityCards = true;
 
   /* Every token below is owned by this component (dark default, light
-     override) — the card looks identical on every host page, whether or
+     override) â€” the card looks identical on every host page, whether or
      not that page defines theme variables. */
   const CSS = `
     :root{
@@ -69,31 +68,23 @@
   function _genreId(name) {
     return (name || '').toLowerCase().replace(/[^a-z]+/g, '').replace('hub', '').replace('board', '').trim() || 'betrayal';
   }
-  // "Romance" → "Romance Board", "Betrayal Hub" → "Betrayal Board".
-  // Emoji prefixes ("📖 Story") are stripped first.
+  // "Romance" â†’ "Romance Board", "Betrayal Hub" â†’ "Betrayal Board".
+  // Emoji prefixes ("ðŸ“– Story") are stripped first.
   function boardName(raw, word) {
     word = word || 'Board';
     let s = String(raw || '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').trim();
     s = s.replace(/\s+(hub|board)$/i, '').trim() || 'Story';
     return s + ' ' + word;
   }
-  // "💔 Betrayal" → { icon:'💔', name:'Betrayal' }; "Romance" → { icon:'📖', name:'Romance' }.
+  // "ðŸ’” Betrayal" â†’ { icon:'ðŸ’”', name:'Betrayal' }; "Romance" â†’ { icon:'ðŸ“–', name:'Romance' }.
   function genreInfo(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     const first = parts[0] || '';
     const isEmoji = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u.test(first);
     return isEmoji
       ? { icon: first, name: parts.slice(1).join(' ') || 'Story' }
-      : { icon: '📖', name: parts.join(' ') || 'Story' };
+      : { icon: 'ðŸ“–', name: parts.join(' ') || 'Story' };
   }
-  function demoMembers(key, min, max) {
-    let h = 2166136261;
-    const str = String(key || '');
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    const r = (h >>> 0) / 4294967296;
-    return Math.round((min || 800) + r * ((max || 9000) - (min || 800)));
-  }
-
   function mount(sel, opts) {
     _ensureStyle();
     const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
@@ -111,18 +102,18 @@
         <div class="dcc-icon">${_esc(genre.icon || '')}</div>
         <div class="dcc-body">
           <div class="dcc-name">${_esc(genreLabel)}</div>
-          <div class="dcc-sub"><i class="fas fa-users" style="font-size:9px"></i> ${_fmtN(genre.members)} members · Tap to open hub</div>
+          <div class="dcc-sub"><i class="fas fa-users" style="font-size:9px"></i> ${_fmtN(genre.members)} members Â· Tap to open hub</div>
         </div>
-        <button class="dcc-join-btn${genre.joined ? ' joined' : ''}" data-dcc-join="genre">${genre.joined ? '✓ Joined' : '+ Join'}</button>
+        <button class="dcc-join-btn${genre.joined ? ' joined' : ''}" data-dcc-join="genre">${genre.joined ? 'âœ“ Joined' : '+ Join'}</button>
       </div>` +
       (showCircle ? `
       <div class="dcc-card">
         <div class="dcc-icon circle-icon">${circle.avatar ? `<img src="${_esc(circle.avatar)}" alt=""/>` : ''}</div>
         <div class="dcc-body">
           <div class="dcc-name">${_esc(circle.name || '')}</div>
-          <div class="dcc-sub"><i class="fas fa-star" style="font-size:9px;color:var(--dcc-gold)"></i> ${_fmtN(circle.members)} members · ${ _esc(circle.perks || '')}</div>
+          <div class="dcc-sub"><i class="fas fa-star" style="font-size:9px;color:var(--dcc-gold)"></i> ${_fmtN(circle.members)} members Â· ${ _esc(circle.perks || '')}</div>
         </div>
-        <button class="dcc-join-btn circle-btn${circle.joined ? ' joined' : ''}" data-dcc-join="circle">${circle.joined ? '✓ Joined' : '+ Join'}</button>
+        <button class="dcc-join-btn circle-btn${circle.joined ? ' joined' : ''}" data-dcc-join="circle">${circle.joined ? 'âœ“ Joined' : '+ Join'}</button>
       </div>` : '');
 
     const go = el.querySelector('[data-dcc-go]');
@@ -137,5 +128,5 @@
     });
   }
 
-  window.DroboardCommunityCards = { mount, boardName, genreInfo, demoMembers };
+  window.DroboardCommunityCards = { mount, boardName, genreInfo };
 })();

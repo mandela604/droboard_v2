@@ -655,13 +655,9 @@
     renderTipLine();
     if (!window.DroboardTip) return;
     DroboardTip.attach({
-      getWriter: () => ({ name: DATA.writer.name, avatar: DATA.writer.avatar, handle: DATA.writer.handle }),
-      onSend: () => {
-        /* Cash tips are paid in the reader's own currency, same symbol the
-           picker used to render the amounts — never the staff currency. */
-        const symbol = (window.DroboardCurrency && DroboardCurrency.readerSymbol) ? DroboardCurrency.readerSymbol() : '$';
-        return symbol;
-      },
+      getWriter: () => ({ id: DATA.writer.id, name: DATA.writer.name, avatar: DATA.writer.avatar, handle: DATA.writer.handle }),
+      getAuthorId: () => DATA.writer.id || '',
+      onSent: () => { DATA.tipCount = (DATA.tipCount || 0) + 1; renderTipLine(); },
     });
   }
 
@@ -671,7 +667,7 @@
       toast('Tip component not loaded — hard refresh (Ctrl+Shift+R)');
       return;
     }
-    DroboardTip.open(STORY_ID, { name: DATA.writer.name, avatar: DATA.writer.avatar, handle: DATA.writer.handle });
+    DroboardTip.open(STORY_ID, { id: DATA.writer.id, name: DATA.writer.name, avatar: DATA.writer.avatar, handle: DATA.writer.handle });
   }
 
   function openSave() {

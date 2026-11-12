@@ -18,10 +18,10 @@
   function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
   /* ══ CENTRAL DATA — populated by bootLive() ══ */
-  let FS = { id: '', title: '', chapters: [], unlockedThrough: 0, author: {}, similar: [], shares: 0, tips: 0 };
+  let FS = { id: '', title: '', chapters: [], unlockedThrough: 0, author: {}, board: null, similar: [], shares: 0, tips: 0 };
   let TEAMS = [];
   let currentStoryId = '';
-  let AUTHOR = { name: 'Writer', avatar: '', handle: '@writer' };
+  let AUTHOR = { id: '', name: 'Writer', avatar: '', handle: '@writer' };
 
   /* ══ SEASONS + CHAPTER CONTENT — populated by bootLive() ══ */
   const SEASONS_DATA = [{ label: 'Season 1', chs: [] }];
@@ -280,10 +280,14 @@
     FS.category = book.genre || '';
     FS.cover = book.cover || '';
     FS.synopsis = book.synopsis || '';
+    /* Live genre membership from the book payload — see books.service.js
+       hubs.board. Null means this story has no board (no card to join). */
+    FS.board = (book.hubs && book.hubs.board) || null;
     FS.shares = (book.stats && book.stats.shares) || book.sharesCount || 0;
     FS.tips = book.tipCount || 0;
     FS.similar = (book.similar || []).map(x => ({ id: x.id, cover: x.cover, title: x.title, author: (x.author && x.author.name) || '' }));
     const w = book.writer || {};
+    AUTHOR.id = w.id || '';
     AUTHOR.name = w.name || w.username || 'Writer';
     AUTHOR.handle = w.handle || ('@' + (w.username || 'writer'));
     AUTHOR.avatar = w.avatar || '';
@@ -695,8 +699,9 @@
     // Tip picker
     if (window.DroboardTip) {
       DroboardTip.attach({
-        getWriter: () => ({ name: AUTHOR.name, avatar: AUTHOR.avatar, handle: AUTHOR.handle }),
-        onSend: (id, amount, note, mode) => { console.log("tip sent", id, amount, note, mode); },
+        getWriter: () => ({ id: AUTHOR.id, name: AUTHOR.name, avatar: AUTHOR.avatar, handle: AUTHOR.handle }),
+        getAuthorId: () => AUTHOR.id || '',
+        onSent: (id, amount, note, mode) => { console.log("tip sent", id, amount, note, mode); },
       });
     }
     // Save modal callback
@@ -739,6 +744,7 @@
   function openTip() {
     if (window.DroboardTip) {
       DroboardTip.open(currentStoryId, {
+        id: AUTHOR.id,
         name: AUTHOR.name,
         avatar: AUTHOR.avatar,
         handle: AUTHOR.handle,
@@ -746,27 +752,48 @@
     }
   }
 
-  /* ══ COMMUNITIES — genre board + author circle via component ══ */
+  /* ══ COMMUNITIES — genre board via component, painted from live data ══ */
+  let _joinBusy = false;
   function initCommunities() {
     if (!window.DroboardCommunityCards) return;
     const mount = document.getElementById("communitiesMount");
     if (!mount) return;
-    const g = DroboardCommunityCards.genreInfo(FS.category);
-    const state = { genreJoined: false, circleJoined: false };
+    const b = FS.board || {};
+    const g = DroboardCommunityCards.genreInfo(b.name || FS.category);
+    const state = { joined: !!b.joined, members: Number(b.members) || 0 };
+    const slug = b.slug || '';
     const paint = () => DroboardCommunityCards.mount(mount, {
-      genre: { name: g.name, icon: g.icon, members: DroboardCommunityCards.demoMembers(g.name, 20000, 380000), joined: state.genreJoined },
-      circle: {
-        name: AUTHOR.name + "'s Inner Circle",
-        members: DroboardCommunityCards.demoMembers(AUTHOR.name || AUTHOR.handle, 800, 9200),
-        perks: 'Early chapters, behind-the-scenes, live Q&As',
-        joined: state.circleJoined, avatar: AUTHOR.avatar,
-      },
+      genre: { name: b.name || g.name, icon: b.icon || g.icon, members: state.members, joined: state.joined },
       showCircle: false, // genre board only — circle lives on the bridge page
       onJoin: (type, joined) => {
-        if (type === 'genre') state.genreJoined = joined;
-        else state.circleJoined = joined;
-        paint();
-        toast(joined ? '✅ Joined!' : 'Left the community');
+        if (type !== 'genre' || _joinBusy) return;
+        if (!slug) { toast('This story has no board yet'); return; }
+        _joinBusy = true;
+        fetch('/api/genres/' + encodeURIComponent(slug) + '/join', {
+          method: joined ? 'POST' : 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        }).then((res) => {
+          if (res.status === 401 || res.status === 403) {
+            toast('Sign in to join this board');
+            location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search);
+            return null;
+          }
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        }).then((j) => {
+          if (!j) return;
+          state.joined = !!j.joined;
+          if (j.membersCount != null) state.members = Number(j.membersCount) || 0;
+          if (FS.board) { FS.board.joined = state.joined; FS.board.members = state.members; }
+          paint();
+          toast(j.joined ? '✅ Joined ' + (b.name || g.name) : 'Left ' + (b.name || g.name));
+        }).catch(() => {
+          toast('Could not update membership. Please try again.');
+        }).then(() => {
+          _joinBusy = false;
+        });
       },
     });
     paint();

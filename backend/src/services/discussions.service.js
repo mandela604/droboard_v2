@@ -206,13 +206,19 @@ async function createThread({ user, genre, genreId, title, body, tag, media, tro
 }
 
 async function loadOr404(id) {
-  const d = await Discussion.findOne({ id: String(id) });
+  // The public id is a uuidv7, and Mongo refuses an _id cast for a string that
+  // is not a 24-char hex ObjectId. Only try the _id form when it could match.
+  const or = [{ id: String(id) }];
+  if (/^[a-f0-9]{24}$/i.test(String(id))) or.push({ _id: String(id) });
+  const d = await Discussion.findOne({ $or: or });
   if (!d) err('not_found', 404);
   return d;
 }
 
 async function getThread({ id, viewerId }) {
-  const d = await Discussion.findOne({ id: String(id) }).lean();
+  const or = [{ id: String(id) }];
+  if (/^[a-f0-9]{24}$/i.test(String(id))) or.push({ _id: String(id) });
+  const d = await Discussion.findOne({ $or: or }).lean();
   if (!d) err('not_found', 404);
   await withAuthors([d]);
   const gname = await genreNames([d]);

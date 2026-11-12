@@ -40,6 +40,12 @@ router.post('/tip', requireAuth, moneyLimiter,
 
 // Reader's own coin history (store History tab + dispute itemization).
 router.get('/transactions', requireAuth, ctrl.transactions);
+// Supporters (people who tipped/gifted this author) for the tip sheet.
+router.get('/tips/:authorId', requireAuth,
+  validate(z.object({
+    params: z.object({ authorId: z.string().min(1).max(60) }),
+    query: z.object({ limit: z.string().max(6).optional() }).strict(),
+  })), ctrl.tips);
 // Earn tasks: coins come from the reward row, cooldown from the claim ledger —
 // never from whatever the client says it earned. Tasks that leave the app are
 // started first (/earn/start hands back a single-use token the claim needs).
