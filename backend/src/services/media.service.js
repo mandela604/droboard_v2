@@ -28,6 +28,7 @@ async function uploadImageBuffer(buffer, mimetype, name) {
     e.status = 503;
     throw e;
   }
+  console.log('[upload] cfAccountId length:', env.cfAccountId.length, 'tokenLength:', env.cfImagesToken.length);
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: mimetype }), name || 'upload');
   const res = await fetch(
@@ -36,7 +37,9 @@ async function uploadImageBuffer(buffer, mimetype, name) {
   );
   const data = await res.json().catch(() => null);
   if (!res.ok || !data || !data.success) {
-    const e = new Error((data && data.errors && data.errors[0] && data.errors[0].message) || 'images_upload_failed');
+    const cfError = (data && data.errors && data.errors[0] && data.errors[0].message) || 'images_upload_failed';
+    console.error('[upload] Cloudflare rejected — HTTP', res.status, '— error:', cfError, '— full:', JSON.stringify(data));
+    const e = new Error(cfError);
     e.status = res.status === 401 || res.status === 403 ? 503 : 502;
     throw e;
   }
