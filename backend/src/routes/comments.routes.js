@@ -40,4 +40,7 @@ router.delete('/:id/react', requireAuth, writeLimiter, audit('comments.unreact')
 router.delete('/:id', requireAuth, writeLimiter, audit('comments.delete'),
   validate(z.object({ params: z.object({ id }) })), ctrl.remove);
 
+// Admin-only: recalculate Post.commentsCount for all posts from actual Comment docs
+router.post('/recount', requireAuth, generalLimiter, ctrl.recount);
+
 module.exports = router;

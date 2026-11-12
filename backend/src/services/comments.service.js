@@ -143,28 +143,44 @@ async function listComments({ scope, storyId, chapterId, postId, discussionId, p
     Comment.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Comment.countDocuments(filter),
   ]);
-  // Reply pass: fetch two levels deep so replies-of-replies are included.
+  // Reply pass: fetch ALL levels recursively until no more children found.
   const parentIds = top.map(c => String(c.id)).filter(Boolean);
   let byParent = {};
   if (parentIds.length) {
-    const level1 = await Comment.find({ parentId: { $in: parentIds } }).sort({ createdAt: 1 }).lean();
-    level1.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
-    // Second level — replies to replies
-    const level1Ids = level1.map(c => String(c.id)).filter(Boolean);
-    if (level1Ids.length) {
-      const level2 = await Comment.find({ parentId: { $in: level1Ids } }).sort({ createdAt: 1 }).lean();
-      level2.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
+    let currentIds = parentIds;
+    const seen = new Set(parentIds);
+    while (currentIds.length) {
+      const batch = await Comment.find({ parentId: { $in: currentIds } }).sort({ createdAt: 1 }).lean();
+      if (!batch.length) break;
+      batch.forEach(k => {
+        const p = String(k.parentId);
+        (byParent[p] = byParent[p] || []).push(k);
+      });
+      // Next iteration: children we haven't visited yet
+      currentIds = batch.map(k => String(k.id)).filter(id => !seen.has(id));
+      currentIds.forEach(id => seen.add(id));
     }
   }
-  const allRows = top.concat(parentIds.reduce((acc, p) => acc.concat(byParent[p] || []), []));
+  const allByParentRows = Object.values(byParent).reduce((acc, arr) => acc.concat(arr), []);
+  const allRows = top.concat(allByParentRows);
   const shaped = await shapeForReader(allRows, viewerId);
   const byIdShaped = {};
   shaped.forEach(c => { byIdShaped[c.id] = c; });
+
+  // Build nested reply tree recursively
+  function nestReplies(commentId) {
+    return (byParent[commentId] || []).map(k => {
+      const card = byIdShaped[String(k.id)];
+      if (card) card.replies = nestReplies(String(k.id));
+      return card;
+    }).filter(Boolean);
+  }
+
   const items = top.map(t => {
     const card = byIdShaped[String(t.id)];
-    card.replies = (byParent[String(t.id)] || []).map(k => byIdShaped[String(k.id)]).filter(Boolean);
+    if (card) card.replies = nestReplies(String(t.id));
     return card;
-  });
+  }).filter(Boolean);
   return { items, total, page: pg, limit: lim };
 }
 
@@ -190,6 +206,10 @@ async function deleteComment({ comment }) {
   if (comment.scope === 'discussion' && comment.discussionId) {
     const { Discussion } = require('../models/social.model');
     await Discussion.updateOne({ id: comment.discussionId }, { $inc: { commentsCount: -(1 + replyRows.length) } });
+  }
+  if (comment.scope === 'post' && comment.postId) {
+    const { Post } = require('../models/social.model');
+    await Post.updateOne({ id: comment.postId }, { $inc: { commentsCount: -(1 + replyRows.length) } });
   }
   await comment.deleteOne();
   await Promise.all([
@@ -244,4 +264,21 @@ async function loadOr404(id) {
   return comment;
 }
 
-module.exports = { createComment, listComments, getReplies, toggleLike, deleteComment, updateComment, reactToComment, unreactComment, loadOr404, canWrite, shapeForReader, CARD_RX, relTime };
+module.exports = { createComment, listComments, getReplies, toggleLike, deleteComment, updateComment, reactToComment, unreactComment, loadOr404, canWrite, shapeForReader, CARD_RX, relTime, recountPostComments };
+
+// One-time recount: recalculates Post.commentsCount for every post from
+// the actual Comment docs. Call via POST /api/comments/recount (admin only).
+async function recountPostComments() {
+  const { Post } = require('../models/social.model');
+  // Get every distinct postId that has comments
+  const agg = await Comment.aggregate([
+    { $match: { scope: 'post', postId: { $ne: null } } },
+    { $group: { _id: '$postId', count: { $sum: 1 } } },
+  ]);
+  if (!agg.length) return { updated: 0 };
+  const ops = agg.map(r => ({
+    updateOne: { filter: { id: r._id }, update: { $set: { commentsCount: r.count } } },
+  }));
+  const result = await Post.bulkWrite(ops);
+  return { updated: result.modifiedCount };
+}
