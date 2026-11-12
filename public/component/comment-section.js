@@ -1532,7 +1532,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
         if (like && !e.target.closest('.dcs-rx-popup')) { toggleLike(+like.dataset.dcsLike); return; }
 
         const viewbtn = e.target.closest('[data-dcs-viewthread]');
-        if (viewbtn) { openThread(+viewbtn.dataset.dcsViewthread); return; }
+        if (viewbtn) { openThread(viewbtn.dataset.dcsViewthread); return; }
 
         const seemore = e.target.closest('[data-dcs-seemore]');
         if (seemore) {
