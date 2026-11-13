@@ -726,6 +726,12 @@ async function updateUser(id, patch) {
     // The console may send Reader first; display rank must still pick the
     // highest granted role (Chief Editor beats Reader), not array order.
     u.primaryRole = AUTHORITY.find(r => u.roles.includes(r)) || u.roles[0] || u.primaryRole;
+    /* The Users page and the Roles page are two views of one fact, so the
+       platform-role set must not drift away from the role set that the route
+       guards read. Mirror it unless the caller sent both. */
+    if (patch.platformRoles === undefined) {
+      u.platformRoles = u.roles.slice(0, 10);
+    }
   }
   if (patch.platformRoles !== undefined) {
     // Older clients only know platformRoles. Treat it as the real role set so

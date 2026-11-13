@@ -203,7 +203,22 @@
 
   // Staff dashboards for the signed-in owner, read from the stored session.
   // Readers see nothing here — no dashboard is ever forced on anyone.
-  function _staffDashboards() {
+  //
+  // Roles can change while a session is open: the console grants them, and
+  // the grant lands on the server immediately, but the stored session row is a
+  // snapshot from login time. So the menu asks the API who it is (GET
+  // /api/users/me, which the server answers from the live user row) and lists
+  // a dashboard for every role that is really held.
+  var _liveRoles = [];
+  var _liveRolesAt = 0;
+  var _liveRolesPromise = null;
+  var ROLE_CACHE_MS = 30000;
+
+  function _normRole(r) {
+    return String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  }
+
+  function _storedRoles() {
     var roles = [];
     if (window.AuthSession && typeof AuthSession.getRoles === 'function') {
       roles = AuthSession.getRoles();
@@ -213,14 +228,58 @@
         if (s) {
           if (Array.isArray(s.roles)) roles = s.roles;
           else if (s.role) roles = [s.role];
+          if (s.primaryRole) roles.push(s.primaryRole);
         }
       } catch (e) {}
-      roles = roles.map(function (r) { return String(r).toLowerCase().replace(/[\s-]+/g, '_'); });
     }
+    return roles.map(_normRole).filter(Boolean);
+  }
+
+  /* Live role set. Cached briefly so opening the menu twice in a row does
+     not call the API twice, but never cached long enough to hide a grant. */
+  function _refreshLiveRoles() {
+    if (!window.AuthSession || !AuthSession.isSignedIn()) return Promise.resolve(_liveRoles);
+    var now = Date.now();
+    if (_liveRoles.length && now - _liveRolesAt < ROLE_CACHE_MS) return Promise.resolve(_liveRoles);
+    if (_liveRolesPromise) return _liveRolesPromise;
+    _liveRolesPromise = fetch('/api/users/me', { credentials: 'include' })
+      .then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
+      .then(function (u) {
+        if (u && u.id) {
+          var roles = [];
+          if (Array.isArray(u.roles)) roles = roles.concat(u.roles);
+          if (u.role) roles.push(u.role);
+          if (u.primaryRole) roles.push(u.primaryRole);
+          var live = roles.map(_normRole).filter(Boolean);
+          if (live.length) {
+            _liveRoles = live;
+            _liveRolesAt = Date.now();
+            /* Keep the stored session row in step with the server, so every
+               other surface (nav, badges, role checks) sees the same roles. */
+            try {
+              var cur = JSON.parse(localStorage.getItem('droboard_user') || 'null');
+              if (cur && cur.id === u.id) {
+                cur.roles = Array.isArray(u.roles) ? u.roles : live;
+                if (u.primaryRole) cur.primaryRole = u.primaryRole;
+                localStorage.setItem('droboard_user', JSON.stringify(cur));
+              }
+            } catch (e) {}
+          }
+        }
+        return _liveRoles;
+      })
+      .catch(function () { return _liveRoles; })
+      .then(function (r) { _liveRolesPromise = null; return r; });
+    return _liveRolesPromise;
+  }
+
+  function _staffDashboards() {
+    var roles = _storedRoles().concat(_liveRoles || []);
     var seen = {}, out = [];
     roles.forEach(function (r) {
-      var d = ROLE_DASHBOARDS[r];
-      if (d && !seen[r]) { seen[r] = true; out.push(d); }
+      var key = _normRole(r);
+      var d = ROLE_DASHBOARDS[key];
+      if (d && !seen[key]) { seen[key] = true; out.push(d); }
     });
     return out;
   }
@@ -443,6 +502,13 @@
     _render();
     requestAnimationFrame(() => _overlay.classList.add('open'));
     document.body.style.overflow = 'hidden';
+    /* A role granted from the console must appear here without a re-login:
+       ask the API who we are and repaint if the dashboard list grew. */
+    var before = _staffDashboards().length;
+    _refreshLiveRoles().then(function () {
+      if (!_cfg.profile) return;
+      if (_staffDashboards().length !== before) _render();
+    });
   }
 
   function close() {
