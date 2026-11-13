@@ -67,11 +67,14 @@ function loadAuthorPool(){
 
 function loadData(){
   ChiefEditorData.getSeniorEditors().then(function(d){
-    ALL=d;return loadAuthorPool();
+    // Backend returns {items:[...]} or an array directly
+    ALL = Array.isArray(d) ? d : (d && d.items ? d.items : []);
+    return loadAuthorPool();
   }).then(function(d){
-    authorPool=d;return reloadAssignments();
+    authorPool = d;
+    return reloadAssignments();
   }).then(function(){
-    renderStats();applyFilters();bindToolbar();renderQueue();
+    renderStats(); applyFilters(); bindToolbar(); renderQueue();
   }).catch(function(e){
     console.error(e);
     document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load: ' + (e && e.message || 'network error') + '</div>';

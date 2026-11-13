@@ -242,7 +242,10 @@ let CATEGORIES=[], GENRES=[], TROPES=[], POPULAR_GENRES=[];
 let currentView='categories';
 
 function toast(msg){
-  console.log('Toast:', msg);
+  let t = document.getElementById('cgToast');
+  if(!t){ t = document.createElement('div'); t.id='cgToast'; t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#14142b;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:.25s;pointer-events:none'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity='1';
+  clearTimeout(t._t); t._t = setTimeout(()=>{ t.style.opacity='0'; }, 2400);
 }
 
 function statusPillHtml(s){
@@ -288,7 +291,7 @@ function renderStats(){
     <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-wand-magic-sparkles"></i></div></div><div class="stat-num">${totalTro}</div><div class="stat-lbl">Total Tropes</div></div>
     <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-shuffle"></i></div></div><div class="stat-num">${pct}%</div><div class="stat-lbl">Active</div></div>
     <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-tag"></i></div></div><div class="stat-num">${CATEGORIES.reduce((a,c)=>a+parseInt((c.books||'0').replace(/,/g,''),10),0).toLocaleString()}</div><div class="stat-lbl">Books Assigned</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-eye"></i></div></div><div class="stat-num">${(CATEGORIES.length*1.4).toFixed(1)}M</div><div class="stat-lbl">Total Views</div></div>`;
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-check-circle"></i></div></div><div class="stat-num">${activeCat+activeGen+activeTro}</div><div class="stat-lbl">Active Items</div></div>`;
 }
 
 function renderCategoriesTable(list){
@@ -415,7 +418,7 @@ document.querySelectorAll('.top-tab').forEach(tab=>{
 document.getElementById('tableSearch').addEventListener('input', refresh);
 
 document.getElementById('addBtn').addEventListener('click', ()=> {
-  toast('Add functionality would connect to live API');
+  openAddModal();
 });
 
 document.getElementById('tableBody').addEventListener('click', async e=>{
@@ -423,26 +426,112 @@ document.getElementById('tableBody').addEventListener('click', async e=>{
   if(!btn) return;
   const action=btn.dataset.action;
   const id=btn.dataset.id;
+  const svc = window.CategoriesGenresService;
   
   if(action==='edit') {
-    toast(`Edit ${currentView.slice(0,-1)} ${id} - would connect to live API`);
+    openEditModal(id);
   } else if(action==='toggle') {
-    toast(`Toggle status for ${currentView.slice(0,-1)} ${id} - would connect to live API`);
+    try {
+      const item = currentView==='categories' ? CATEGORIES.find(c=>c.id===id)
+        : currentView==='genres' ? GENRES.find(g=>g.id===id)
+        : TROPES.find(t=>t.id===id);
+      const newStatus = item && item.status==='active' ? 'inactive' : 'active';
+      if(currentView==='categories') await svc.updateCategory(id, {status:newStatus});
+      else if(currentView==='genres') await svc.updateGenre(id, {status:newStatus});
+      else await svc.updateTrope(id, {status:newStatus});
+      toast('Status updated');
+      await loadData();
+    } catch(e) { toast('Failed to update: ' + e.message); }
   } else if(action==='delete') {
     if(confirm(`Delete this ${currentView.slice(0,-1)}?`)) {
       try {
-        const svc = window.CategoriesGenresService;
         if(currentView==='categories') await svc.deleteCategory(id);
         else if(currentView==='genres') await svc.deleteGenre(id);
         else await svc.deleteTrope(id);
         toast('Deleted successfully');
         await loadData();
-      } catch(e) {
-        toast('Failed to delete: ' + e.message);
-      }
+      } catch(e) { toast('Failed to delete: ' + e.message); }
     }
   }
 });
+
+function openAddModal(){
+  const isCategory = currentView==='categories';
+  const isGenre = currentView==='genres';
+  const isTrope = currentView==='tropes';
+  const title = isCategory ? 'Add New Category' : isGenre ? 'Add New Genre' : 'Add New Trope';
+  
+  let extraFields = '';
+  if(isGenre) extraFields = `<div class="modal-field"><label>Category</label><select id="mfCatId"><option value="">Select category...</option>${CATEGORIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`;
+  if(isTrope) extraFields = `<div class="modal-field"><label>Genre</label><select id="mfGenreId"><option value="">Select genre...</option>${GENRES.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select></div>`;
+  
+  showModal(title, extraFields, async (data)=>{
+    const svc = window.CategoriesGenresService;
+    if(isCategory) await svc.addCategory(data);
+    else if(isGenre) await svc.addGenre({...data, categoryId: document.getElementById('mfCatId').value});
+    else await svc.addTrope({...data, genreId: document.getElementById('mfGenreId').value});
+    await loadData();
+  });
+}
+
+function openEditModal(id){
+  const item = currentView==='categories' ? CATEGORIES.find(c=>c.id===id)
+    : currentView==='genres' ? GENRES.find(g=>g.id===id)
+    : TROPES.find(t=>t.id===id);
+  if(!item) return;
+  
+  const isGenre = currentView==='genres';
+  const isTrope = currentView==='tropes';
+  let extraFields = '';
+  if(isGenre) extraFields = `<div class="modal-field"><label>Category</label><select id="mfCatId">${CATEGORIES.map(c=>`<option value="${c.id}"${c.id===item.categoryId?' selected':''}>${c.name}</option>`).join('')}</select></div>`;
+  if(isTrope) extraFields = `<div class="modal-field"><label>Genre</label><select id="mfGenreId">${GENRES.map(g=>`<option value="${g.id}"${g.name===item.genre?' selected':''}>${g.name}</option>`).join('')}</select></div>`;
+  
+  showModal(`Edit ${currentView.slice(0,-1)}`, extraFields, async (data)=>{
+    const svc = window.CategoriesGenresService;
+    if(currentView==='categories') await svc.updateCategory(id, data);
+    else if(currentView==='genres') await svc.updateGenre(id, {...data, categoryId: document.getElementById('mfCatId').value});
+    else await svc.updateTrope(id, {...data, genreId: document.getElementById('mfGenreId').value});
+    await loadData();
+  }, item);
+}
+
+function showModal(title, extraFields, onSave, prefill){
+  let ov = document.getElementById('cgModal');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'cgModal';
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `<div class="modal-box">
+      <div class="modal-head"><h3 id="cgModalTitle"></h3><button class="modal-close" id="cgModalClose"><i class="fas fa-xmark"></i></button></div>
+      <div class="modal-body" id="cgModalBody"></div>
+      <div class="modal-actions"><button class="btn-cancel" id="cgModalCancel">Cancel</button><button class="btn-send" id="cgModalSave">Save</button></div>
+    </div>`;
+    document.body.appendChild(ov);
+    document.getElementById('cgModalClose').addEventListener('click', ()=>ov.classList.remove('open'));
+    document.getElementById('cgModalCancel').addEventListener('click', ()=>ov.classList.remove('open'));
+    ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('open'); });
+  }
+  document.getElementById('cgModalTitle').textContent = title;
+  document.getElementById('cgModalBody').innerHTML = `
+    <div class="modal-field"><label>Name</label><input id="mfName" type="text" value="${prefill?prefill.name:''}"/></div>
+    <div class="modal-field"><label>Description</label><textarea id="mfDesc">${prefill?prefill.desc||'':''}</textarea></div>
+    ${extraFields}
+    <div class="modal-field"><label>Status</label><select id="mfStatus"><option value="active"${!prefill||prefill.status==='active'?' selected':''}>Active</option><option value="inactive"${prefill&&prefill.status==='inactive'?' selected':''}>Inactive</option></select></div>`;
+  
+  const saveBtn = document.getElementById('cgModalSave');
+  saveBtn.onclick = async ()=>{
+    const name = document.getElementById('mfName').value.trim();
+    if(!name){ toast('Name is required'); return; }
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      await onSave({ name, desc: document.getElementById('mfDesc').value.trim(), status: document.getElementById('mfStatus').value });
+      ov.classList.remove('open');
+      toast('Saved successfully');
+    } catch(e) { toast('Failed: ' + e.message); }
+    saveBtn.disabled = false; saveBtn.textContent = 'Save';
+  };
+  ov.classList.add('open');
+}
 
 // Initialize
 showLoading();

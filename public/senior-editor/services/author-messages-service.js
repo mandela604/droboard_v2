@@ -391,7 +391,8 @@ function bindEvents(){
 }
 
 function init(){
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'You',role:'Senior Editor',avatar:'../assets/droboard-icon.png'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
+  var me = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:me.name||me.username||'You',role:'Senior Editor',avatar:me.avatar||'../assets/droboard-icon.png'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
   document.addEventListener('click',function(){var m=document.getElementById('threadMenu');if(m)m.classList.remove('open');});
   bindEvents();
   loadConversations().then(function(){

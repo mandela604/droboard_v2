@@ -138,6 +138,18 @@ window.AuthorVerificationService = {
   },
 
   async init() {
+    // Attach sidebar first so the page has chrome
+    if (window.SeniorEditorSidebar) {
+      const me = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+      SeniorEditorSidebar.attach('#dashboardRoot', {
+        activeItem: 'author-verification',
+        title: 'Author Verification',
+        subtitle: 'Review and approve author identity requests',
+        user: { name: me.name || me.username || 'Editor', role: 'Senior Editor', avatar: me.avatar || '' },
+        notifCount: 0,
+        searchPlaceholder: 'Search by author name or email...',
+      });
+    }
     const tbody = document.getElementById('tableBody');
     const pageInfo = document.getElementById('pageInfo');
     const pendingCount = document.getElementById('pendingCount');

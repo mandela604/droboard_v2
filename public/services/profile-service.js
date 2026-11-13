@@ -393,7 +393,9 @@
     if (canSeeOwnerUI()) {
       el.innerHTML = `<a class="pact edit" href="edit-profile.html">Edit Profile</a><button class="pact msg" id="msgEditorBtn" title="Message your editor"><i class="fas fa-paper-plane"></i></button>`;
       document.getElementById('msgEditorBtn').addEventListener('click', () => {
-        window.location.href = 'chat.html?contact=ed_morgan';
+        // Try to get the assigned editor's handle from profile data, fall back to 'editor'
+        const editorHandle = (PROFILE && PROFILE.editorHandle) || 'editor';
+        window.location.href = 'chat.html?contact=' + encodeURIComponent(editorHandle);
       });
       return;
     }

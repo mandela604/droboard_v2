@@ -528,8 +528,32 @@
   async function checkUrlParam() {
     var cid = new URLSearchParams(location.search).get('contact');
     if (!cid) return;
-    var t = THREADS.find(function (x) { return x.id === cid || x.peer.handle === cid.replace(/^@/, '') || x.peer.name === cid; });
-    if (t) openThread(t);
+    // Try to find an existing thread first
+    var t = THREADS.find(function (x) {
+      return x.id === cid
+        || x.peer.handle === cid.replace(/^@/, '')
+        || x.peer.name === cid;
+    });
+    if (t) { openThread(t); return; }
+    // No existing thread — look up the user and start one
+    try {
+      // Find user by handle or id
+      var userRes = await req('GET', API_BASE + '/users/' + encodeURIComponent(cid.replace(/^@/, '')));
+      if (!userRes) return;
+      var userId = userRes.id || (userRes.user && userRes.user.id);
+      if (!userId) return;
+      // Open or create conversation
+      var conv = await req('POST', MSG + '/conversations', { userId: userId });
+      if (!conv) return;
+      // Add to threads and open
+      var newThread = shapeThread(conv);
+      THREADS.unshift(newThread);
+      renderContacts(currentFilter());
+      openThread(newThread);
+    } catch (e) {
+      // Could not start conversation — show contacts list anyway
+      console.warn('[chat] could not start conversation with', cid, e.message);
+    }
   }
 
   /* ── Boot ── */

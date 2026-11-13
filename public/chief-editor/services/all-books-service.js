@@ -43,15 +43,31 @@ function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 async function loadBooks(){
-  const data = await callBackend('/books?limit=100');
-  books = (data && (Array.isArray(data) ? data : data.items)) || [];
-  // populate genre colours from categories/genres endpoints
-  try {
-    const [cats, genres] = await Promise.all([callBackend('/categories'), callBackend('/genres')]);
-    (Array.isArray(cats) ? cats : (cats && cats.items) || []).forEach(function(c){ GENRE_COLORS[c.name]={bg:c.bg||'#eee',fg:c.color||'#333'}; });
-    (Array.isArray(genres) ? genres : (genres && genres.items) || []).forEach(function(g){ if(!GENRE_COLORS[g.name]) GENRE_COLORS[g.name]={bg:g.bg||'#eee',fg:g.color||'#333'}; });
-  } catch(e) {}
-  renderStats(); render();
+  const data = await callBackend('/books?limit=200&status=all');
+  books = Array.isArray(data) ? data : ((data && data.items) || []);
+  // Normalise field names (backend uses camelCase, table expects certain keys)
+  books = books.map(function(b){
+    return {
+      id: b.id,
+      title: b.title || '',
+      author: b.authorName || b.author || '',
+      avatar: b.authorAvatar || b.avatar || '',
+      img: b.cover || b.img || '',
+      genre: b.genre || b.category || '',
+      status: b.status || 'Draft',
+      views: fmtNum(b.reads || b.views || 0),
+      rating: b.rating != null ? Number(b.rating).toFixed(1) : null,
+      flagReason: b.flagReason || '',
+      flagNote: b.flagNote || ''
+    };
+  });
+}
+
+function fmtNum(n){
+  n = Number(n) || 0;
+  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if(n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return String(n);
 }
 
 
@@ -153,13 +169,15 @@ function goPage(p){currentPage=p;refresh();window.scrollTo({top:0,behavior:'smoo
 function viewBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id);}
 function editBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id)+'&mode=edit';}
 
-/* Populate genre filter */
-(function(){
+/* Populate genre filter after load */
+function populateGenreFilter(){
   var genres={};
   books.forEach(function(b){if(b.genre)genres[b.genre]=1;});
   var sel=document.getElementById('fGenre');
+  // clear old options except first
+  while(sel.options.length>1) sel.remove(1);
   Object.keys(genres).sort().forEach(function(g){var o=document.createElement('option');o.textContent=g;o.value=g;sel.appendChild(o);});
-})();
+}
 
 /* Bind events */
 document.querySelectorAll('.tab-item').forEach(function(tab){
@@ -180,10 +198,16 @@ window.goPage=goPage;
 window.viewBook=viewBook;
 window.editBook=editBook;
 
-/* Init */
-renderStats();
-renderTabs();
-refresh();
+/* Init — load from API first, then render */
+document.getElementById('tableBody').innerHTML='<tr class="empty-row"><td colspan="7"><i class="fas fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>Loading…</td></tr>';
+loadBooks().then(function(){
+  populateGenreFilter();
+  renderStats();
+  renderTabs();
+  refresh();
+}).catch(function(e){
+  document.getElementById('tableBody').innerHTML='<tr class="empty-row"><td colspan="7"><i class="fas fa-circle-exclamation" style="color:var(--red);font-size:20px;margin-bottom:8px;display:block"></i>Failed to load books: ' + (e && e.message || 'Network error') + '</td></tr>';
+});
 
 })();
 }
