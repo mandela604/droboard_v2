@@ -1,18 +1,15 @@
 (function(){
 'use strict';
 
-/* ── Backend header — live endpoints with demo fallbacks ── */
+/* ── Backend only — no demo fallbacks, no localStorage ── */
 const USE_API = true;
 const API_BASE = '/api/senior-editor';
 async function callBackend(path, options){
-  if (!USE_API) return null;
   const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
   if (!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
 }
-// Throwing variant — used for writes (regenerate) that must not look successful.
 async function apiFetch(path, options){
-  if (!USE_API) return { demo: true };
   const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
   if (!res.ok) throw new Error('backend error: ' + res.status);
   return res.json();
@@ -23,24 +20,16 @@ function authHeaders(){
   return Object.assign({ 'Content-Type': 'application/json' }, t ? { Authorization: 'Bearer ' + t } : {});
 }
 
-/* EditorAssignment-backed endpoints (live). Everything degrades to demo. */
 const Crud = {
-  // This editor's own writers + their invite provenance (invite | assigned).
   myAuthors: () => apiFetch('/my-authors?limit=100'),
   getCode: () => apiFetch('/referral-code'),
   rotateCode: () => apiFetch('/referral-code/regenerate', { method: 'POST', headers: authHeaders() }),
 };
 
-// Populated by syncFromBackend() when the backend is live; null ⇒ demo mode.
-var backendCode = null;
-var backendAuthors = null;
-
-var _inited = false;
+let _inited = false;
 
 const SE_ID = 'SE-01';
 const SE_NAME = 'Chioma Reddy';
-const LS_CODE = 'se_referral_code_'+SE_ID;
-const LS_AUTHORS = 'se_referred_authors_'+SE_ID;
 
 function attachShell(){
   SeniorEditorSidebar.attach('#inviteRoot',{
@@ -51,85 +40,49 @@ function attachShell(){
   });
 }
 
-function genCode(){
-  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s='SE-';
-  for(let i=0;i<6;i++) s+=chars[Math.floor(Math.random()*chars.length)];
-  return s;
-}
-// The editor's real invite code. Backend wins when live; localStorage is the
-// demo stand-in. Signup with this code ⇒ writer role + auto-assignment.
-function getCode(){
-  if (backendCode) return backendCode;
-  let c=localStorage.getItem(LS_CODE);
-  if(!c){ c=genCode(); localStorage.setItem(LS_CODE,c); }
-  return c;
-}
-function setCode(newCode){
-  backendCode = newCode;
-  localStorage.setItem(LS_CODE,newCode);
-  renderCode();
-}
-// Backend row → the shape the table/pager already expects.
 function mapBackendWriter(u){
   return {
     id: u.id, name: u.name || u.fullName || '', email: u.email || '', avatar: u.avatar || '../assets/droboard-icon.png',
-    code: u.code || getCode(),
-    via: u.via || 'assigned',
-    signedUp: u.signedUp || u.createdAt || new Date().toISOString(),
+    code: u.code || '', via: u.via || 'assigned', signedUp: u.signedUp || u.createdAt || new Date().toISOString(),
     status: u.status || 'active',
   };
 }
-// Live rows when synced, else the seeded demo list.
-function writers(){
-  return backendAuthors ? backendAuthors.map(mapBackendWriter) : authors;
-}
+
 function getLink(code){
-  // Support both /public/Pages/signup.html and /public/signup.html
   const base = window.location.origin + window.location.pathname.replace(/\/senior-editor\/.*/, '/Pages/signup.html');
   return base + '?ref=' + encodeURIComponent(code);
 }
 function getAltLink(code){
   return window.location.origin + '/public/signup.html?ref=' + encodeURIComponent(code);
 }
-function loadAuthors(){
-  try{ return JSON.parse(localStorage.getItem(LS_AUTHORS)||'[]'); }catch(e){ return []; }
-}
-function saveAuthors(list){
-  localStorage.setItem(LS_AUTHORS, JSON.stringify(list));
-}
-function seedIfEmpty(){
-  let list=loadAuthors();
-  const SEED_V='3';
-  const ver=localStorage.getItem(LS_AUTHORS+'_v');
-  if(list.length===0 || ver!==SEED_V){
-    const c=getCode();
-    const demo=[
-      {id:'WR-101', name:'Adaeze Cole', email:'adaeze.cole@example.com', avatar:'https://i.pravatar.cc/100?img=26', code:c, via:'link', signedUp:new Date(Date.now()-86400000*2).toISOString(), status:'active'},
-      {id:'WR-102', name:'Tunde Martins', email:'tunde.martins@example.com', avatar:'https://i.pravatar.cc/100?img=12', code:c, via:'code', signedUp:new Date(Date.now()-86400000*5).toISOString(), status:'active'},
-      {id:'WR-103', name:'Zainab Bello', email:'zainab.bello@example.com', avatar:'https://i.pravatar.cc/100?img=45', code:c, via:'link', signedUp:new Date(Date.now()-86400000*7).toISOString(), status:'active'},
-      {id:'WR-104', name:'Emeka Obi', email:'emeka.obi@example.com', avatar:'https://i.pravatar.cc/100?img=33', code:c, via:'code', signedUp:new Date(Date.now()-86400000*9).toISOString(), status:'active'},
-      {id:'WR-105', name:'Funke Adeyemi', email:'funke.adeyemi@example.com', avatar:'https://i.pravatar.cc/100?img=20', code:c, via:'link', signedUp:new Date(Date.now()-86400000*11).toISOString(), status:'active'},
-      {id:'WR-106', name:'Ibrahim Sule', email:'ibrahim.sule@example.com', avatar:'https://i.pravatar.cc/100?img=51', code:c, via:'code', signedUp:new Date(Date.now()-86400000*13).toISOString(), status:'active'},
-      {id:'WR-107', name:'Chidinma Eze', email:'chidinma.eze@example.com', avatar:'https://i.pravatar.cc/100?img=47', code:c, via:'link', signedUp:new Date(Date.now()-86400000*15).toISOString(), status:'active'},
-      {id:'WR-108', name:'Bola Adebayo', email:'bola.adebayo@example.com', avatar:'https://i.pravatar.cc/100?img=9', code:c, via:'code', signedUp:new Date(Date.now()-86400000*17).toISOString(), status:'active'},
-      {id:'WR-109', name:'Segun Oyelaran', email:'segun.oyelaran@example.com', avatar:'https://i.pravatar.cc/100?img=15', code:c, via:'link', signedUp:new Date(Date.now()-86400000*19).toISOString(), status:'active'},
-      {id:'WR-110', name:'Aisha Mohammed', email:'aisha.mohammed@example.com', avatar:'https://i.pravatar.cc/100?img=32', code:c, via:'code', signedUp:new Date(Date.now()-86400000*21).toISOString(), status:'active'},
-      {id:'WR-111', name:'Kelechi Nwosu', email:'kelechi.nwosu@example.com', avatar:'https://i.pravatar.cc/100?img=60', code:c, via:'link', signedUp:new Date(Date.now()-86400000*23).toISOString(), status:'active'},
-      {id:'WR-112', name:'Yusuf Danjuma', email:'yusuf.danjuma@example.com', avatar:'https://i.pravatar.cc/100?img=68', code:c, via:'code', signedUp:new Date(Date.now()-86400000*25).toISOString(), status:'active'},
-    ];
-    saveAuthors(demo);
-    localStorage.setItem(LS_AUTHORS+'_v', SEED_V);
-    list=demo;
+
+/* ── Error UI ── */
+function showError(msg){
+  const box=document.getElementById('writersBody');
+  const wrap=box.closest('.table-wrap');
+  const stat=document.getElementById('statCards');
+  const count=document.getElementById('referredCount');
+  const empty=document.getElementById('emptyState');
+  if(empty) empty.style.display='none';
+  if(box) box.innerHTML='';
+  if(wrap){
+    wrap.innerHTML='<div class="panel" style="padding:26px;text-align:center;color:var(--red,#e0384d)">' +
+      '<i class="fas fa-triangle-exclamation" style="font-size:26px;display:block;margin-bottom:10px"></i>' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:8px">Could not load authors</div>' +
+      '<div style="font-size:11.5px;color:var(--text-faint,#9694ac);max-width:420px;margin:0 auto 14px">'+msg+'</div>' +
+      '<button class="mini-btn primary" onclick="location.reload()"><i class="fas fa-rotate"></i> Refresh Page</button>' +
+    '</div>';
   }
-  return list;
+  if(stat) stat.innerHTML='';
+  if(count) count.textContent='0';
 }
-let authors = seedIfEmpty();
 
 /* ── Pagination (10 per page) ── */
 const PER_PAGE = 10;
 let currentPage = 1;
-let filteredList = [];   /* last filtered/sorted result, used by pager */
+let filteredList = [];
+let backendAuthors = null;
+let backendCode = '';
 
 function fmtDate(iso){
   const d=new Date(iso);
@@ -137,6 +90,7 @@ function fmtDate(iso){
 }
 function toast(msg){
   const t=document.getElementById('toast');
+  if(!t) return;
   t.textContent=msg; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
 }
@@ -149,12 +103,10 @@ function fallbackCopy(txt,msg){
 }
 function renderQR(code){
   const box=document.getElementById('qrBox');
-  // Simple fake QR using grid seeded by code
   let hash=0; for(let i=0;i<code.length;i++) hash=(hash*31 + code.charCodeAt(i))>>>0;
   let html='<div class="qr-grid">';
   for(let i=0;i<49;i++){
     const on = ((hash>> (i%24)) & 1) ^ (i%3===0?1:0);
-    // keep finder patterns in corners always on for look
     const r=Math.floor(i/7), c=i%7;
     const isFinder = (r<2&&c<2)||(r<2&&c>4)||(r>4&&c<2);
     html+=`<div class="qr-cell ${isFinder? 'on' : (on?'on':'off')}"></div>`;
@@ -163,7 +115,7 @@ function renderQR(code){
   box.innerHTML=html;
 }
 function renderCode(){
-  const code=getCode();
+  const code=backendCode;
   document.getElementById('codePill').textContent=code;
   const link=getLink(code);
   document.getElementById('linkInput').value=link;
@@ -171,7 +123,7 @@ function renderCode(){
   renderQR(code);
 }
 function renderStats(){
-  const list=writers();
+  const list=filteredList.length? filteredList : (backendAuthors||[]).map(mapBackendWriter);
   const total=list.length;
   const active=list.filter(a=>a.status==='active').length;
   const thisMonth=list.filter(a=> new Date(a.signedUp).getMonth()===new Date().getMonth()).length;
@@ -185,7 +137,7 @@ function renderStats(){
 function filterAndRender(){
   const q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
   const sort=document.getElementById('sortSelect').value;
-  let list=writers().slice();
+  let list=(backendAuthors||[]).map(mapBackendWriter);
   if(q) list=list.filter(a=> (a.name||'').toLowerCase().includes(q) || (a.email||'').toLowerCase().includes(q));
   if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name));
   else list.sort((a,b)=> new Date(b.signedUp)-new Date(a.signedUp));
@@ -214,7 +166,7 @@ function renderPager(){
     '<span style="display:inline-flex;gap:6px;align-items:center">'+
       '<button class="mini-btn" id="pagerPrev" '+(currentPage<=1?'disabled':'')+'><i class="fas fa-chevron-left"></i> Prev</button>'+
       '<span style="font-size:11.5px;font-weight:700;color:var(--text,#1a1730)">Page '+currentPage+' / '+totalPages+'</span>'+
-      '<button class="mini-btn" id="pagerNext" '+(currentPage>=totalPages?'disabled':'')+'>Next <i class="fas fa-chevron-right"></i></button>'+
+      '<button class="mini-btn" id="pagerNext" '+(currentPage>=totalPages?'disabled':'')+'>Next <i class="fas fa-arrow-right"></i></button>'+
     '</span>';
   const prev=document.getElementById('pagerPrev');
   const next=document.getElementById('pagerNext');
@@ -226,18 +178,15 @@ function renderTable(list){
   const empty=document.getElementById('emptyState');
   if(!list.length){
     body.innerHTML='';
-    empty.style.display='block';
+    if(empty) empty.style.display='block';
     renderPager();
     return;
   }
-  empty.style.display='none';
+  if(empty) empty.style.display='none';
   const totalPages=Math.max(1, Math.ceil(list.length/PER_PAGE));
   if(currentPage>totalPages) currentPage=totalPages;
   const slice=list.slice((currentPage-1)*PER_PAGE, currentPage*PER_PAGE);
   body.innerHTML=slice.map(a=>{
-    // 'invite'  = signed up with THIS editor's code/link
-    // 'assigned'= placed here by the Chief Editor
-    // ('link'/'code' are legacy demo values that also mean "via your invite")
     const viaInvite = a.via==='invite' || a.via==='link' || a.via==='code';
     const viaLabel = viaInvite
       ? '<div style="font-size:9.5px;color:var(--text-faint,#9694ac);margin-top:3px" title="Signed up with your referral code or link"><i class="fas fa-link" style="font-size:8.5px"></i> via your invite</div>'
@@ -249,15 +198,15 @@ function renderTable(list){
       <td style="white-space:nowrap">${fmtDate(a.signedUp)}</td>
       <td><span class="status-badge active">Active</span></td>
     </tr>
-  `;}).join('');
+    `;}).join('');
   renderPager();
 }
 
 function bindEvents(){
-  document.getElementById('copyCodeBtn').addEventListener('click',()=> copyText(getCode(),'Code copied!'));
+  document.getElementById('copyCodeBtn').addEventListener('click',()=> copyText(backendCode,'Code copied!'));
   document.getElementById('copyLinkBtn').addEventListener('click',()=> copyText(document.getElementById('linkInput').value,'Link copied!'));
   document.getElementById('shareBtn').addEventListener('click', async ()=>{
-    const code=getCode(); const link=getLink(code);
+    const code=backendCode; const link=getLink(code);
     const shareData={title:'Join Droboard — write with '+SE_NAME, text:'Sign up as a writer with my referral code '+code+' and start publishing today.', url:link};
     if(navigator.share){
       try{ await navigator.share(shareData); toast('Shared!'); }catch(e){}
@@ -268,36 +217,28 @@ function bindEvents(){
   document.getElementById('regenBtn').addEventListener('click',()=>{
     confirmDialog({
       title:'Regenerate referral code?',
-      body:'A new code will replace <b>'+getCode()+'</b>. Old links with the previous code will stop working, and writers you already referred stay in your list.',
+      body:'A new code will replace <b>'+backendCode+'</b>. Old links with the previous code will stop working, and writers you already referred stay in your list.',
       confirmText:'Regenerate',
       danger:true
     }).then(ok=>{
       if(!ok) return;
-      if(USE_API){
-        // Live: the server mints + stores the replacement (old code stops resolving).
-        const btn=document.getElementById('regenBtn');
-        const icon=btn.querySelector('i');
-        btn.disabled=true; if(icon) icon.className='fas fa-spinner fa-spin';
-        Crud.rotateCode()
-          .then(res=>{ setCode(res && res.code ? res.code : genCode()); toast('New code generated: '+getCode()); })
-          .catch(()=>{ toast('Could not reach the server — code unchanged','fa-triangle-exclamation'); })
-          .then(()=>{ btn.disabled=false; if(icon) icon.className='fas fa-rotate'; });
-        return;
-      }
-      const newCode=genCode();
-      setCode(newCode);
-      // keep referral history (authors keep the code they signed up with)
-      toast('New code generated: '+newCode);
+      const btn=document.getElementById('regenBtn');
+      const icon=btn.querySelector('i');
+      btn.disabled=true; if(icon) icon.className='fas fa-spinner fa-spin';
+      Crud.rotateCode()
+        .then(res=>{ backendCode = res && res.code ? res.code : backendCode; renderCode(); toast('New code generated: '+backendCode); })
+        .catch(()=>{ toast('Could not reach the server — code unchanged','fa-triangle-exclamation'); })
+        .then(()=>{ btn.disabled=false; if(icon) icon.className='fas fa-rotate'; });
     });
   });
   document.getElementById('searchInput').addEventListener('input', ()=>{ currentPage=1; filterAndRender(); });
   document.getElementById('sortSelect').addEventListener('change', ()=>{ currentPage=1; filterAndRender(); });
   document.getElementById('exportBtn').addEventListener('click',()=>{
-    const list=writers();
+    const list=filteredList.length? filteredList : (backendAuthors||[]).map(mapBackendWriter);
     if(!list.length) return toast('Nothing to export');
     const csv=['Name,Email,Code,SignedUp,Status'].concat(list.map(a=>`"${a.name}","${a.email}","${a.code}","${a.signedUp}","${a.status}"`)).join('\n');
     const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download='referred-writers-'+getCode()+'.csv'; a.click(); URL.revokeObjectURL(url);
+    const a=document.createElement('a'); a.href=url; a.download='referred-writers-'+backendCode+'.csv'; a.click(); URL.revokeObjectURL(url);
     toast('CSV downloaded');
   });
 }
@@ -308,7 +249,7 @@ function handleIncomingRef(){
   if(ref){ try{ localStorage.setItem('dro_pending_ref', ref); }catch(e){} }
 }
 
-/* ── Custom confirm modal (replaces browser confirm()) ── */
+/* ── Custom confirm modal ── */
 function ensureConfirmModal(){
   if(document.getElementById('iaConfirmOv')) return;
   const style=document.createElement('style');
@@ -371,34 +312,23 @@ function init(){
   if(_inited) return;
   _inited = true;
   attachShell();
-  // For demo: simulate a writer signup via this referral to test auto-assign
-  window._simulateWriterSignup = function(name,email){
-    const code=getCode();
-    const entry={id:'WR-'+Date.now(), name:name||'New Writer '+Math.floor(Math.random()*1000), email:email||'writer'+Date.now()+'@example.com', avatar:'https://i.pravatar.cc/100?img='+(Math.floor(Math.random()*70)+1), code:code, via:'invite', signedUp:new Date().toISOString(), status:'active'};
-    authors.unshift(entry); saveAuthors(authors); renderStats(); filterAndRender(); toast('Writer auto-assigned to you!');
-    return entry;
-  };
-  // Also handle if someone lands on signup with ?ref param — store for later assignment (demo helper)
   handleIncomingRef();
   bindEvents();
   renderCode();
-  renderStats();
-  filterAndRender();
-  syncFromBackend();
+  syncFromBackend().then(()=>{
+    renderStats(); filterAndRender();
+  }).catch((err)=>{
+    console.error('invite-authors backend failed:', err);
+    showError('The server is not reachable or your session expired. '+ (err && err.message ? err.message : 'Please refresh the page and try again.'));
+  });
 }
 
-// Pull the real code + writers when the backend is live. No-op in demo mode —
-// everything above keeps working off localStorage.
-function syncFromBackend(){
-  if(!USE_API) return Promise.resolve();
-  return Promise.all([Crud.getCode(), Crud.myAuthors()]).then(function(res){
-    const codeRes = res[0], authorsRes = res[1];
-    if(codeRes && codeRes.code) backendCode = codeRes.code;
-    if(authorsRes && authorsRes.items) backendAuthors = authorsRes.items;
-    renderCode(); renderStats(); filterAndRender();
-  }).catch(function(){ /* stay on demo data */ });
+async function syncFromBackend(){
+  const [codeRes, authorsRes] = await Promise.all([Crud.getCode(), Crud.myAuthors()]);
+  if(codeRes && codeRes.code) backendCode = codeRes.code;
+  if(authorsRes && authorsRes.items) backendAuthors = authorsRes.items;
 }
 
-window.InviteAuthorsService = { init: init, getWriters: writers };
+window.InviteAuthorsService = { init: init };
 
 })();
