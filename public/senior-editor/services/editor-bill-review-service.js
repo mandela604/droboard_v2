@@ -11,34 +11,7 @@ var FIN_BASE = '/api/finance';
 
 var LIVE = false;
 var SUMMARY = null;
-
-/* ── Demo fallback (backend offline) ── */
-var DEMO_SUMMARY = {
-  currency: 'USD', earned: 12480, available: 4850, withdrawn: 6780,
-  pendingPayout: 850, thisMonth: 2100, minWithdrawal: 100,
-};
-var txns=[
-  {id:'TXN-001',type:'earning',title:'The CEO\'s Hidden Son — Ch.24',book:'The CEO\'s Hidden Son',amount:'+ $180.00',num:180,date:'Jun 20, 2026',status:'completed',desc:'Chapter read revenue. 2,400 reads.'},
-  {id:'TXN-002',type:'earning',title:'The CEO\'s Hidden Son — Ch.23',book:'The CEO\'s Hidden Son',amount:'+ $145.00',num:145,date:'Jun 19, 2026',status:'completed',desc:'Chapter read revenue. 1,920 reads.'},
-  {id:'TXN-003',type:'withdrawal',title:'Withdrawal to GTBank',book:'',amount:'- $1,200.00',num:-1200,date:'Jun 18, 2026',status:'completed',desc:'Processed and paid to GTBank · · · · 4821.'},
-  {id:'TXN-004',type:'earning',title:'Billionaire\'s Forbidden Love — Bonus',book:'Billionaire\'s Forbidden Love',amount:'+ $500.00',num:500,date:'Jun 17, 2026',status:'completed',desc:'Completion bonus for finishing the series.'},
-  {id:'TXN-005',type:'earning',title:'The CEO\'s Hidden Son — Ch.22',book:'The CEO\'s Hidden Son',amount:'+ $165.00',num:165,date:'Jun 16, 2026',status:'completed',desc:'Chapter read revenue. 2,180 reads.'},
-  {id:'TXN-006',type:'withdrawal',title:'Withdrawal to PayPal',book:'',amount:'- $850.00',num:-850,date:'Jun 15, 2026',status:'processing',desc:'Processing. Will arrive in 1-2 business days.'},
-  {id:'TXN-007',type:'earning',title:'Billionaire\'s Forbidden Love — Ch.18',book:'Billionaire\'s Forbidden Love',amount:'+ $95.00',num:95,date:'Jun 14, 2026',status:'completed',desc:'Chapter read revenue. 1,260 reads.'},
-  {id:'TXN-008',type:'earning',title:'The CEO\'s Hidden Son — Ch.21',book:'The CEO\'s Hidden Son',amount:'+ $155.00',num:155,date:'Jun 13, 2026',status:'completed',desc:'Chapter read revenue. 2,050 reads.'},
-  {id:'TXN-009',type:'withdrawal',title:'Withdrawal to GTBank',book:'',amount:'- $1,500.00',num:-1500,date:'Jun 12, 2026',status:'completed',desc:'Processed and paid to GTBank · · · · 4821.'},
-  {id:'TXN-010',type:'earning',title:'Billionaire\'s Forbidden Love — Ch.17',book:'Billionaire\'s Forbidden Love',amount:'+ $88.00',num:88,date:'Jun 11, 2026',status:'completed',desc:'Chapter read revenue. 1,170 reads.'},
-  {id:'TXN-011',type:'earning',title:'The CEO\'s Hidden Son — Completion Bonus',book:'The CEO\'s Hidden Son',amount:'+ $750.00',num:750,date:'Jun 10, 2026',status:'completed',desc:'Book completion bonus. 35 chapters delivered.'},
-  {id:'TXN-012',type:'withdrawal',title:'Withdrawal to GTBank',book:'',amount:'- $2,000.00',num:-2000,date:'Jun 9, 2026',status:'completed',desc:'Processed and paid.'},
-  {id:'TXN-013',type:'earning',title:'The CEO\'s Hidden Son — Ch.20',book:'The CEO\'s Hidden Son',amount:'+ $140.00',num:140,date:'Jun 8, 2026',status:'completed',desc:'Chapter read revenue. 1,860 reads.'},
-  {id:'TXN-014',type:'earning',title:'Billionaire\'s Forbidden Love — Ch.16',book:'Billionaire\'s Forbidden Love',amount:'+ $72.00',num:72,date:'Jun 7, 2026',status:'completed',desc:'Chapter read revenue. 960 reads.'},
-  {id:'TXN-015',type:'withdrawal',title:'Withdrawal to PayPal',book:'',amount:'- $1,100.00',num:-1100,date:'Jun 6, 2026',status:'completed',desc:'Paid to PayPal.'},
-];
-var DEMO_COVERS={
-  "The CEO's Hidden Son":'https://i.postimg.cc/RqtfSQJJ/wife3.jpg',
-  "Billionaire's Forbidden Love":'https://i.postimg.cc/vDn9YLx5/wife2.jpg',
-};
-txns.forEach(function(t){if(!t.cover&&t.book)t.cover=DEMO_COVERS[t.book]||'';});
+var txns=[];
 var currentPage=1,PER_PAGE=6,openRowId=null;
 var _bound=false;
 
@@ -132,8 +105,15 @@ async function tryLive(){
     renderPM();render();
     setLedgerLabel('Live ledger · '+(rows.length?rows.length+' records':'no transactions yet'));
   }catch(e){
-    console.info('[MyEarnings] backend unavailable — demo data:',e.message);
-    setLedgerLabel('Demo data — backend not connected');
+    console.error('[MyEarnings] backend failed:',e);
+    setLedgerLabel('Backend not connected');
+    var box=document.getElementById('tableBody');
+    if(box) box.innerHTML='<div style="padding:40px 16px;text-align:center;color:var(--red)"><i class="fas fa-triangle-exclamation" style="font-size:24px;display:block;margin-bottom:8px"></i><div style="font-weight:700">Could not load earnings</div><div style="font-size:11.5px;color:var(--text-faint);margin-top:6px">'+ (e && e.message ? e.message : 'The server is not reachable.') +'</div><button class="mini-btn primary" onclick="location.reload()" style="margin-top:10px"><i class="fas fa-rotate"></i> Refresh Page</button></div>';
+    document.getElementById('balanceAmount').textContent='—';
+    document.getElementById('statEarned').textContent='—';
+    document.getElementById('statWithdrawn').textContent='—';
+    document.getElementById('statPending').textContent='—';
+    document.getElementById('statMonth').textContent='—';
   }
 }
 
