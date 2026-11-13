@@ -126,70 +126,65 @@ async function createComment({ authorId, user, data }) {
     const { Post } = require('../models/social.model');
     await Post.updateOne({ id: postId }, { $inc: { commentsCount: 1 } });
   }
-  // Notify parent comment author on reply (not self)
-  if (parent && String(parent.authorId) !== String(authorId)) {
-    try {
-      const actor = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
-      const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
-      const snippet = text.slice(0, 60);
-      let link = '';
-      if (scope === 'post' && postId) link = '/Pages/discussion.html?id=' + postId;
-      else if (scope === 'story' && storyId) link = '/Pages/full-reader.html?story=' + storyId;
-      else if (scope === 'chapter' && storyId) link = '/Pages/full-reader.html?story=' + storyId + (chapterId ? '&ch=' + chapterId : '');
-      else if (scope === 'discussion' && (discussionId || postId)) link = '/Pages/discussion.html?id=' + (discussionId || postId);
-      const { notify } = require('./notifications.service');
+  // ── Notifications ──────────────────────────────────────────────────────
+  // Rules:
+  //   1. If this is a REPLY → notify the person whose comment was replied to
+  //   2. ALWAYS → notify the post/story owner (every comment is activity on their content)
+  //   3. Never notify yourself
+  //   4. If the parent comment author IS the content owner → only send one notification
+  try {
+    const actor = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
+    const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+    const snippet = text.slice(0, 60);
+    const { notify } = require('./notifications.service');
+
+    // Build the link once — scope-aware
+    let link = '';
+    if (scope === 'post' && postId) link = '/Pages/discussion.html?id=' + postId;
+    else if (scope === 'story' && storyId) link = '/Pages/full-reader.html?story=' + storyId;
+    else if (scope === 'chapter' && storyId) link = '/Pages/full-reader.html?story=' + storyId + (chapterId ? '&ch=' + chapterId : '');
+    else if (scope === 'discussion' && (discussionId || postId)) link = '/Pages/discussion.html?id=' + (discussionId || postId);
+
+    const descSnippet = snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '';
+    const notifyOpts = { actorId: String(authorId), avatar: actor && actor.avatar, thumb: actor && actor.avatar, link, linkLabel: 'View' };
+
+    // 1. Notify parent comment author (reply notification)
+    const parentAuthorId = parent ? String(parent.authorId) : null;
+    if (parentAuthorId && parentAuthorId !== String(authorId)) {
       await notify({
-        recipientId: String(parent.authorId),
-        actorId: String(authorId),
+        ...notifyOpts,
+        recipientId: parentAuthorId,
         type: 'reply',
         title: `<b>${actorName}</b> replied to your comment`,
-        desc: snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '',
-        link,
+        desc: descSnippet,
         linkLabel: 'View reply',
         key: 'reply:' + authorId + ':' + comment.id,
-        avatar: actor && actor.avatar,
-        thumb: actor && actor.avatar,
-      });
-    } catch (e) { /* non-fatal */ }
-  }
-  // Notify post/story author on new top-level comment (not self, not a reply)
-  if (!parent && String(authorId) !== String(authorId)) { /* placeholder */ }
-  if (!parent) {
-    try {
-      let ownerIdToNotify = null;
-      if (scope === 'post' && postId) {
-        const { Post } = require('../models/social.model');
-        const p = await Post.findOne({ id: postId }).select('authorId').lean();
-        if (p && String(p.authorId) !== String(authorId)) ownerIdToNotify = String(p.authorId);
-      } else if ((scope === 'story' || scope === 'chapter') && storyId) {
-        const { Book } = require('../models/content.model');
-        const b = await Book.findOne({ id: storyId }).select('authorId').lean();
-        if (b && String(b.authorId) !== String(authorId)) ownerIdToNotify = String(b.authorId);
-      }
-      if (ownerIdToNotify) {
-        const actor2 = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
-        const actorName2 = (actor2 && (actor2.fullName || actor2.username)) || 'Someone';
-        const snippet2 = text.slice(0, 60);
-        let link2 = '';
-        if (scope === 'post' && postId) link2 = '/Pages/discussion.html?id=' + postId;
-        else if (scope === 'story' && storyId) link2 = '/Pages/full-reader.html?story=' + storyId;
-        else if (scope === 'chapter' && storyId) link2 = '/Pages/full-reader.html?story=' + storyId + (chapterId ? '&ch=' + chapterId : '');
-        const { notify } = require('./notifications.service');
-        await notify({
-          recipientId: ownerIdToNotify,
-          actorId: String(authorId),
-          type: 'comment',
-          title: `<b>${actorName2}</b> commented on your ${scope === 'post' ? 'post' : 'story'}`,
-          desc: snippet2 ? `"${snippet2}${snippet2.length === 60 ? '…' : ''}"` : '',
-          link: link2,
-          linkLabel: 'View',
-          key: 'comment:' + authorId + ':' + comment.id,
-          avatar: actor2 && actor2.avatar,
-          thumb: actor2 && actor2.avatar,
-        });
-      }
-    } catch (e) { /* non-fatal */ }
-  }
+      }).catch(() => {});
+    }
+
+    // 2. Notify content owner (post/story author) — for every comment at any depth
+    let ownerId = null;
+    if (scope === 'post' && postId) {
+      const { Post } = require('../models/social.model');
+      const p = await Post.findOne({ id: postId }).select('authorId').lean();
+      if (p) ownerId = String(p.authorId);
+    } else if ((scope === 'story' || scope === 'chapter') && storyId) {
+      const { Book } = require('../models/content.model');
+      const b = await Book.findOne({ id: storyId }).select('authorId').lean();
+      if (b) ownerId = String(b.authorId);
+    }
+    if (ownerId && ownerId !== String(authorId) && ownerId !== parentAuthorId) {
+      // Different person from the parent comment author — send separate notification
+      await notify({
+        ...notifyOpts,
+        recipientId: ownerId,
+        type: 'comment',
+        title: `<b>${actorName}</b> commented on your ${scope === 'post' ? 'post' : 'story'}`,
+        desc: descSnippet,
+        key: 'comment:' + authorId + ':' + comment.id,
+      }).catch(() => {});
+    }
+  } catch (e) { /* non-fatal — never break the comment save */ }
   const [card] = await shapeForReader([comment.toObject()], authorId);
   return card;
 }
