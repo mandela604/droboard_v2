@@ -575,7 +575,7 @@ async function follow({ userId, target }) {
     const { notify } = require('./notifications.service');
     await notify({
       recipientId: t.id, actorId: userId, type: 'follow',
-      title: `<b>${actorName}</b> started following you`,
+      title: `{@${actorHandle}|${actorName}} started following you`,
       desc: actorHandle ? `@${actorHandle}` : '',
       link: '/Pages/profile.html?u=' + encodeURIComponent(actorHandle || userId),
       linkLabel: 'View profile',

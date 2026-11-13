@@ -360,10 +360,11 @@ async function reactToPost({ post, userId, rid }) {
       const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
       const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
       const postSnippet = (post.text || post.quote || post.note || '').slice(0, 60);
+      const actorHandle = (actor && actor.username) || '';
       const { notify } = require('./notifications.service');
       await notify({
         recipientId: String(post.authorId), actorId: uid, type: 'like',
-        title: `<b>${actorName}</b> reacted to your post`,
+        title: `{@${actorHandle}|${actorName}} reacted to your post`,
         desc: postSnippet ? `"${postSnippet}${postSnippet.length === 60 ? '…' : ''}"` : '',
         link: '/Pages/discussion.html?id=' + post.id,
         linkLabel: 'View post',

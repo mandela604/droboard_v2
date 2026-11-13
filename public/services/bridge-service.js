@@ -399,7 +399,7 @@
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.comments)}</div><div class="sl">Comments</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.reads)}</div><div class="sl">Reads</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.shares)}</div><div class="sl">Shares</div></div>
-      <div class="stat-cell"><div class="sn gold">${d.stats.rating ? d.stats.rating + '★' : '—'}</div><div class="sl">Rating</div></div>`;
+      <div class="stat-cell"><div class="sn gold">${d.stats.rating ? parseFloat(d.stats.rating).toFixed(1) + '★' : '—'}</div><div class="sl">Rating</div></div>`;
   }
 
   function renderContinue() {
@@ -553,7 +553,7 @@
       <div class="wc-stats">
         <div class="ws"><div class="ws-n">${fmtN(w.stories)}</div><div class="ws-l">Stories</div></div>
         <div class="ws"><div class="ws-n">${fmtN(w.reads)}</div><div class="ws-l">Reads</div></div>
-        <div class="ws"><div class="ws-n">${w.rating}★</div><div class="ws-l">Rating</div></div>
+        <div class="ws"><div class="ws-n">${w.rating ? parseFloat(w.rating).toFixed(1) + '★' : '—'}</div><div class="ws-l">Rating</div></div>
         <div class="ws"><div class="ws-n">${fmtN(w.followers)}</div><div class="ws-l">Followers</div></div>
       </div>
       <div class="wc-view-btn" onclick="BridgePage.goProfile()"><i class="fas fa-arrow-right" style="font-size:11px"></i> View Full Profile</div>`;

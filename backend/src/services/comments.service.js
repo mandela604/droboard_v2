@@ -146,6 +146,7 @@ async function createComment({ authorId, user, data }) {
     else if (scope === 'discussion' && (discussionId || postId)) link = '/Pages/discussion.html?id=' + (discussionId || postId);
 
     const descSnippet = snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '';
+    const actorHandle = (actor && actor.username) || '';
     const notifyOpts = { actorId: String(authorId), avatar: actor && actor.avatar, thumb: actor && actor.avatar, link, linkLabel: 'View' };
 
     // 1. Notify parent comment author (reply notification)
@@ -155,7 +156,7 @@ async function createComment({ authorId, user, data }) {
         ...notifyOpts,
         recipientId: parentAuthorId,
         type: 'reply',
-        title: `<b>${actorName}</b> replied to your comment`,
+        title: `{@${actorHandle}|${actorName}} replied to your comment`,
         desc: descSnippet,
         linkLabel: 'View reply',
         key: 'reply:' + authorId + ':' + comment.id,
@@ -179,7 +180,7 @@ async function createComment({ authorId, user, data }) {
         ...notifyOpts,
         recipientId: ownerId,
         type: 'comment',
-        title: `<b>${actorName}</b> commented on your ${scope === 'post' ? 'post' : 'story'}`,
+        title: `{@${actorHandle}|${actorName}} commented on your ${scope === 'post' ? 'post' : 'story'}`,
         desc: descSnippet,
         key: 'comment:' + authorId + ':' + comment.id,
       }).catch(() => {});
