@@ -152,6 +152,44 @@ async function createComment({ authorId, user, data }) {
       });
     } catch (e) { /* non-fatal */ }
   }
+  // Notify post/story author on new top-level comment (not self, not a reply)
+  if (!parent && String(authorId) !== String(authorId)) { /* placeholder */ }
+  if (!parent) {
+    try {
+      let ownerIdToNotify = null;
+      if (scope === 'post' && postId) {
+        const { Post } = require('../models/social.model');
+        const p = await Post.findOne({ id: postId }).select('authorId').lean();
+        if (p && String(p.authorId) !== String(authorId)) ownerIdToNotify = String(p.authorId);
+      } else if ((scope === 'story' || scope === 'chapter') && storyId) {
+        const { Book } = require('../models/content.model');
+        const b = await Book.findOne({ id: storyId }).select('authorId').lean();
+        if (b && String(b.authorId) !== String(authorId)) ownerIdToNotify = String(b.authorId);
+      }
+      if (ownerIdToNotify) {
+        const actor2 = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
+        const actorName2 = (actor2 && (actor2.fullName || actor2.username)) || 'Someone';
+        const snippet2 = text.slice(0, 60);
+        let link2 = '';
+        if (scope === 'post' && postId) link2 = '/Pages/discussion.html?id=' + postId;
+        else if (scope === 'story' && storyId) link2 = '/Pages/full-reader.html?story=' + storyId;
+        else if (scope === 'chapter' && storyId) link2 = '/Pages/full-reader.html?story=' + storyId + (chapterId ? '&ch=' + chapterId : '');
+        const { notify } = require('./notifications.service');
+        await notify({
+          recipientId: ownerIdToNotify,
+          actorId: String(authorId),
+          type: 'comment',
+          title: `<b>${actorName2}</b> commented on your ${scope === 'post' ? 'post' : 'story'}`,
+          desc: snippet2 ? `"${snippet2}${snippet2.length === 60 ? '…' : ''}"` : '',
+          link: link2,
+          linkLabel: 'View',
+          key: 'comment:' + authorId + ':' + comment.id,
+          avatar: actor2 && actor2.avatar,
+          thumb: actor2 && actor2.avatar,
+        });
+      }
+    } catch (e) { /* non-fatal */ }
+  }
   const [card] = await shapeForReader([comment.toObject()], authorId);
   return card;
 }
