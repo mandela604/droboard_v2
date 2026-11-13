@@ -507,6 +507,23 @@
     document.getElementById('chCountSub').textContent = totalCh > 0 ? totalCh + ' chapters · ' + kind : kind;
   }
 
+  async function reactToStory(reactionKey) {
+    if (window.RequireAuth && !RequireAuth.ensure('react to this story')) return;
+    const isRemoving = DATA.reactions.userRx === reactionKey;
+    const method = isRemoving ? 'DELETE' : 'POST';
+    const url = `${API_BASE}/books/${encodeURIComponent(STORY_ID)}/reaction`;
+    try {
+      const res = await postJSON(url, isRemoving ? {} : { rid: reactionKey }, 'Reaction API', method);
+      if (res && res.reactions) {
+        DATA.reactions = res.reactions;
+        renderReactions();
+        toast(isRemoving ? '✅ Reaction removed' : '✅ Reacted!');
+      }
+    } catch (err) {
+      toast('Reaction failed — ' + ((err && err.message) || 'try again'));
+    }
+  }
+
   function renderReactions() {
     const rx = DATA.reactions;
     const items = [
@@ -519,8 +536,9 @@
       { emoji: '🔥', label: 'Savage', key: 'savage', count: rx.savage },
       { emoji: '🤨', label: 'Sus', key: 'sus', count: rx.sus },
     ];
-    document.getElementById('rxGrid').innerHTML = items.map(r =>
-      `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
+    const el = document.getElementById('rxGrid');
+    el.innerHTML = items.map(r =>
+      `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}" onclick="BridgePage.reactToStory('${r.key}')"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
     ).join('');
   }
 
@@ -680,7 +698,21 @@
 
   function openShare() {
     if (window.DroboardShare) DroboardShare.open(STORY_ID);
-    else if (window.openShareModal) openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href });
+    else if (window.openShareModal) {
+      // Post to backend to increment share count
+      fetch(`${API_BASE}/books/${encodeURIComponent(STORY_ID)}/share`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'link' }),
+      }).then(r => r.ok ? r.json() : null).then(d => {
+        if (d && d.sharesCount != null) {
+          DATA.shares = d.sharesCount;
+          renderStats();
+        }
+      }).catch(() => {});
+      openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href });
+    }
     else toast('Share unavailable');
   }
 
@@ -925,6 +957,7 @@
     openTip,
     openSave,
     openShare,
+    reactToStory,
     toggleRate,
     openRateModal,
     rateStar,
