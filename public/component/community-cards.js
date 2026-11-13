@@ -83,7 +83,7 @@
     const isEmoji = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u.test(first);
     return isEmoji
       ? { icon: first, name: parts.slice(1).join(' ') || 'Story' }
-      : { icon: 'ðŸ“–', name: parts.join(' ') || 'Story' };
+      : { icon: (parts.join(' ') || 'S')[0].toUpperCase(), name: parts.join(' ') || 'Story' };
   }
   function mount(sel, opts) {
     _ensureStyle();
