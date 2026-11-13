@@ -31,6 +31,29 @@
 
   const THEME_KEY = 'droboardTheme';
 
+  /* ── Global stale-session guard ──
+     Any 401/403 from the API means the session is gone or not authorized —
+     clear local state and send the user to login so nothing shows stale data. */
+  (function _installAuthGuard() {
+    const _origFetch = window.fetch;
+    window.fetch = function (input, init) {
+      return _origFetch(input, init).then(function (res) {
+        if (res && res.status === 401 || res && res.status === 403) {
+          try {
+            if (window.AuthSession && typeof window.AuthSession.logout === 'function') {
+              window.AuthSession.logout();
+            }
+          } catch (e) { /* ignore */ }
+          try {
+            const back = location.pathname.split('/').pop() || 'index.html';
+            location.replace('../Pages/login.html?next=' + encodeURIComponent(back));
+          } catch (e) { location.reload(); }
+        }
+        return res;
+      });
+    };
+  })();
+
   const MENU_ITEMS = [
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html',              section: 'Overview' },
 
@@ -225,7 +248,23 @@
 
     const instId = 'ses' + (++_instanceCounter);
     const activeItem = options.activeItem || 'dashboard';
-    const user = Object.assign({ name: 'User', role: 'Senior Editor', avatar: null }, options.user || {});
+    let user = options.user || null;
+    if (!user) {
+      try {
+        const raw = localStorage.getItem('droboard_user');
+        if (raw) {
+          const u = JSON.parse(raw) || {};
+          if (u && (u.id || u.handle || u.name || u.fullName || u.username || u.email)) {
+            user = {
+              name: u.fullName || u.name || u.handle || u.username || (u.email ? u.email.split('@')[0] : 'User'),
+              role: 'Senior Editor',
+              avatar: u.avatar || null,
+            };
+          }
+        }
+      } catch (e) { /* storage blocked — fall through */ }
+    }
+    user = Object.assign({ name: 'User', role: 'Senior Editor', avatar: null }, user || {});
     const existingContent = container.innerHTML;
 
     function navHtml() {
