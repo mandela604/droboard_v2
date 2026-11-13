@@ -1,30 +1,21 @@
 /**
- * author-messages-service.js — Author Messages page logic (pure call-and-render). */
+ * author-messages-service.js — Author Messages page logic (backend only, no demo). */
 (function () {
 'use strict';
-/* Money can appear inside sentences (activity lines, chat text, config
-   history, permission copy). usdProse restates only the "$" figures into the
-   currency Super Admin set and leaves the words alone. */
 function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 
 const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
-  if (!USE_API) return null;
   try {
     const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (e) {
-    console.warn('[AuthorMessagesService] backend unavailable, using demo data', e);
-    return null;
+    throw e;
   }
 }
-
-/* Live inbox replaces the demo list once the request succeeds. Threads are
-   fetched lazily per conversation and cached on the row. */
-var LIVE = false;
 
 async function uploadImage(file) {
   try {
@@ -62,106 +53,49 @@ function mapMessage(m) {
   };
 }
 
+var CONVERSATIONS = [];
+
 async function loadConversations() {
   var d = await callBackend('/author-messages?limit=50');
   if (d && Array.isArray(d.items)) {
-    LIVE = true;
     CONVERSATIONS = d.items.map(mapConversation);
+  } else {
+    CONVERSATIONS = [];
   }
+  return CONVERSATIONS;
 }
 
 async function loadThread(conv) {
-  if (!LIVE || !conv || conv.loaded) return;
+  if (!conv || conv.loaded) return;
   var d = await callBackend('/author-messages/' + encodeURIComponent(conv.id) + '/messages');
   if (d && Array.isArray(d.items)) {
     conv.messages = d.items.map(mapMessage);
     conv.loaded = true;
     conv.unread = 0;
   }
+  return conv;
 }
 
-/* All CRUD writes go through these helpers: try the API first, fall back to
-   the in-memory demo list when USE_API = true or the endpoint is down. */
-async function writeConv(id, patch, demoFn) {
-  if (LIVE) {
-    try {
-      return await callBackend('/author-messages/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
-    } catch (e) {
-      toast('Could not save — try again');
-      return { ok: false };
-    }
-  }
-  var conv = convById(id);
-  if (conv && demoFn) demoFn(conv);
-  return { ok: true, demo: true };
+async function writeConv(id, patch) {
+  return await callBackend('/author-messages/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
 }
 async function persistMessage(conv, msg) {
-  var r = null;
-  if (LIVE) {
-    var payload = { text: msg.text || '' };
-    if (msg.file && msg.file.url) payload.image = msg.file.url;
-    try {
-      r = await callBackend('/author-messages/' + encodeURIComponent(conv.id) + '/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    } catch (e) {
-      toast('Could not send — try again');
-      return { ok: false };
-    }
-  }
+  var payload = { text: msg.text || '' };
+  if (msg.file && msg.file.url) payload.image = msg.file.url;
+  var r = await callBackend('/author-messages/' + encodeURIComponent(conv.id) + '/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   if (r && r.id) msg.mid = String(r.id);
   conv.messages.push(msg);
   conv.time = 'Just now';
   conv.preview = (msg.text || (msg.file ? 'Image' : '')).slice(0, 140);
-  return r || { ok: true, demo: true };
+  return r;
 }
 
 var PERSPECTIVE='admin';
 var AVATAR_ME='https://i.pravatar.cc/100?img=5';
 
-var CONVERSATIONS=[
-  {id:1,name:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',role:'Verified Author',unread:2,flagged:false,time:'10m ago',messages:[
-    {mid:1,from:'author',text:"Hi, I wanted to check in about my contract — it's set to expire next month.",time:'2 days ago'},
-    {mid:2,from:'admin',text:'Hi Sofia! Thanks for reaching out. Let me check with the contracts team and get back to you.',time:'2 days ago'},
-    {mid:3,from:'author',text:'Great, thank you! Also wondering if there\u2019s flexibility on the royalty percentage for the renewal.',time:'1 day ago',replyTo:2},
-    {mid:4,from:'author',text:'Can we discuss extending my contract renewal deadline?',time:'10m ago'}
-  ]},
-  {id:2,name:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',role:'Verified Author',unread:0,flagged:false,time:'1h ago',messages:[
-    {mid:5,from:'author',text:'Just submitted the revised chapter 12 — fixed the pacing issue you flagged.',time:'3h ago'},
-    {mid:6,from:'admin',text:'Reviewed it, looks great. Approved and scheduled for publishing.',time:'2h ago',file:{name:'chapter-12-revised.pdf',size:'2.4 MB'}},
-    {mid:7,from:'author',text:'Thanks for approving my chapter revision!',time:'1h ago',replyTo:6}
-  ]},
-  {id:3,name:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',role:'Verified Author',unread:1,flagged:true,time:'3h ago',messages:[
-    {mid:8,from:'author',text:'My earnings dashboard is showing the wrong total again.',time:'1 day ago'},
-    {mid:9,from:'admin',text:'Sorry about that, Amara. Escalating to the finance team right now.',time:'22h ago'},
-    {mid:10,from:'author',text:'This is the third time. I need this resolved this week.',time:'3h ago',replyTo:9}
-  ]},
-  {id:4,name:'Daniel Reyes',avatar:'https://i.pravatar.cc/100?img=15',role:'Active Author',unread:0,flagged:false,time:'5h ago',messages:[
-    {mid:11,from:'admin',text:'Your latest chapter "The Fall" has been approved. Congrats!',time:'1d ago'},
-    {mid:12,from:'author',text:'Thank you! When will the next payout cycle be?',time:'5h ago',replyTo:11}
-  ]},
-  {id:5,name:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=44',role:'Verified Author',unread:3,flagged:false,time:'20m ago',messages:[
-    {mid:13,from:'author',text:'Hi, I need help with my book cover — can we discuss a redesign?',time:'1d ago'},
-    {mid:14,from:'admin',text:'Sure! I can connect you with our design team. What style are you thinking?',time:'20h ago'},
-    {mid:15,from:'author',text:'Something dark and moody, maybe a silhouette against a city skyline.',time:'6h ago',replyTo:14},
-    {mid:16,from:'author',text:'Also, can we talk about the marketing plan for the new release?',time:'20m ago',file:{name:'cover-concept.png',size:'1.8 MB'}}
-  ]},
-  {id:6,name:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',role:'Verified Author',unread:0,flagged:false,time:'2h ago',messages:[
-    {mid:17,from:'author',text:'My book "Wolf King\'s Vow" just hit 10,000 reads!',time:'3d ago'},
-    {mid:18,from:'admin',text:'Congratulations! You\u2019ve earned a $200 milestone bonus.',time:'2d ago',file:{name:'milestone-certificate.pdf',size:'340 KB'}},
-    {mid:19,from:'author',text:'That\u2019s amazing, thank you so much!',time:'2h ago',replyTo:18}
-  ]},
-  {id:7,name:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',role:'Active Author',unread:0,flagged:false,time:'1d ago',messages:[
-    {mid:20,from:'admin',text:'Your completion application was rejected. Needs 2-3 more chapters.',time:'5d ago'},
-    {mid:21,from:'author',text:'Got it, I\u2019ll add more chapters and resubmit.',time:'1d ago',replyTo:20}
-  ]},
-  {id:8,name:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',role:'Verified Author',unread:2,flagged:false,time:'45m ago',messages:[
-    {mid:22,from:'author',text:'Hey, I just saw my earnings dropped significantly this month.',time:'2d ago'},
-    {mid:23,from:'admin',text:'Let me check the analytics. I\u2019ll get back to you within 24 hours.',time:'2d ago'},
-    {mid:24,from:'author',text:'It\u2019s been 2 days now. Can you please update me?',time:'45m ago',replyTo:23}
-  ]}
-];
+var currentView='all',activeConvId=null,replyTarget=null,pendingFile=null;
 
-var currentView='all',activeConvId=CONVERSATIONS[0].id;
-var replyTarget=null,pendingFile=null;
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
 
 function filteredConversations(){
   var q=(document.getElementById('convSearch').value||'').trim().toLowerCase();
@@ -245,10 +179,8 @@ function renderThread(){
   }).join('');
 
   var isClosed=conv.status==='closed';
-  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+(isClosed?'<span class="closed-chip">Closed</span>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><div class="thread-menu-wrap"><button class="th-act-btn" id="threadMenuBtn" title="More options"><i class="fas fa-ellipsis-v"></i></button><div class="thread-menu" id="threadMenu"><button class="thread-menu-item" id="tmFlag"><i class="fas fa-flag"></i> <span>'+(conv.flagged?'Remove flag':'Flag conversation')+'</span></button><button class="thread-menu-item'+(isClosed?'':' is-close')+'" id="tmClose"><i class="fas fa-'+(isClosed?'rotate-right':'lock')+'"></i> <span>'+(isClosed?'Restart conversation':'Close conversation')+'</span></button></div></div></div></div>'+(isClosed?'<div class="closed-banner"><span><i class="fas fa-lock" style="margin-right:6px"></i>This conversation is closed.</span><button id="tmRestartBanner">Restart conversation</button></div>':'')+'<div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="'+(isClosed?'Conversation closed \u2014 restart to reply':'Type a reply to '+conv.name+'...')+'"'+(isClosed?' disabled':'')+'/><button class="compose-icon-btn" id="attachBtn" title="Attach file"'+(isClosed?' disabled':'')+'><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/></div><div id="fileBadge"></div></div><button class="send-btn" id="sendBtn"'+(isClosed?' disabled':'')+'><i class="fas fa-paper-plane"></i></button></div>';
-
-  var body=document.getElementById('threadBody');
-  body.scrollTop=body.scrollHeight;
+  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+(isClosed?'<span class="closed-chip">Closed</span>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><div class="thread-menu-wrap"><button class="th-act-btn" id="threadMenuBtn" title="More options"><i class="fas fa-ellipsis-v"></i></button><div class="thread-menu" id="threadMenu"><button class="thread-menu-item" id="tmFlag"><i class="fas fa-flag"></i> <span>'+(conv.flagged?'Remove flag':'Flag conversation')+'</span></button><button class="thread-menu-item'+(isClosed?'':' is-close')+'" id="tmClose"><i class="fas fa-'+(isClosed?'rotate-right':'lock')+'"></i> <span>'+(isClosed?'Restart conversation':'Close conversation')+'</span></button></div></div></div>'+(isClosed?'<div class="closed-banner"><span><i class="fas fa-lock" style="margin-right:6px"></i>This conversation is closed.</span><button id="tmRestartBanner">Restart conversation</button></div>':'')+'<div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="'+(isClosed?'Conversation closed \u2014 restart to reply':'Type a reply to '+conv.name+'...')+'"'+(isClosed?' disabled':'')+'/><button class="compose-icon-btn" id="attachBtn" title="Attach file"'+(isClosed?' disabled':'')+'><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/></div></div></div></div></div>';
+  document.getElementById('threadBody').scrollTop=document.getElementById('threadBody').scrollHeight;
 
   document.getElementById('threadBackBtn').addEventListener('click',function(){
     document.getElementById('inboxCard').classList.remove('thread-open');
@@ -261,27 +193,21 @@ function renderThread(){
     var msg={mid:String(Date.now()),from:PERSPECTIVE,time:'Just now'};
     if(text)msg.text=text;
     if(pendingFile){
-      if(LIVE){
-        if(!pendingFile.isImage){ toast('Only image attachments can be sent right now'); return; }
-        var btn=document.getElementById('sendBtn');
-        btn.disabled=true;
-        var url=await uploadImage(pendingFile.raw||pendingFile);
-        btn.disabled=false;
-        if(!url){ toast('Image upload failed — try again'); return; }
-        msg.image=url;
-        msg.file={name:pendingFile.name,size:pendingFile.size,url:url,isImage:true};
-      }else{
-        msg.file=pendingFile;
-      }
+      if(!pendingFile.isImage){ toast('Only image attachments can be sent right now'); return; }
+      var btn=document.getElementById('sendBtn');
+      btn.disabled=true;
+      var url=await uploadImage(pendingFile.raw||pendingFile);
+      btn.disabled=false;
+      if(!url){ toast('Image upload failed — try again'); return; }
+      msg.image=url;
+      msg.file={name:pendingFile.name,size:pendingFile.size,url:url,isImage:true};
       pendingFile=null;
     }
     if(replyTarget){msg.replyTo=replyTarget.mid;replyTarget=null;}
-    persistMessage(conv,msg).then(function(r){
-      if (r && r.ok === false) return;
-      input.value='';
-      renderThread();bindLongPress();renderConvList();renderStats();
-      toast('Message sent');
-    });
+    await persistMessage(conv,msg);
+    input.value='';
+    renderThread();bindLongPress();renderConvList();renderStats();
+    toast('Message sent');
   };
   document.getElementById('sendBtn').addEventListener('click',send);
   input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
@@ -329,17 +255,26 @@ function renderThread(){
 function toggleFlag(id){
   var conv=convById(id);if(!conv)return;
   var next=!conv.flagged;
-  writeConv(id,{flagged:next},function(c){c.flagged=next;}).then(function(){
+  awaitWrite(id,{flagged:next},function(c){c.flagged=next;}).then(function(){
     toast(next?'Conversation flagged':'Flag removed');
     renderConvList();renderThread();
   });
 }
 
 function setConvStatus(id,status){
-  writeConv(id,{status:status},function(c){c.status=status;}).then(function(){
+  awaitWrite(id,{status:status},function(c){c.status=status;}).then(function(){
     toast(status==='closed'?'Conversation closed':'Conversation restarted');
     renderConvList();renderThread();
   });
+}
+
+async function awaitWrite(id, patch, demoFn) {
+  try {
+    await writeConv(id, patch);
+  } catch (e) {
+    toast('Could not save — try again');
+    throw e;
+  }
 }
 
 var longPressTimer=null,ctxMsgId=null,ctxConvId=null;
@@ -367,7 +302,6 @@ function openCtx(row){
   document.getElementById('ctxReply').style.display='flex';
   document.getElementById('ctxOverlay').classList.add('open');
 }
-
 function closeCtx(){document.getElementById('ctxOverlay').classList.remove('open');ctxMsgId=null;ctxConvId=null;}
 
 function startEdit(mid,cid){
@@ -378,19 +312,17 @@ function startEdit(mid,cid){
   var originalText=msg.text||'';var saved=false;
   bub.innerHTML='<div class="edit-banner"><i class="fas fa-pen"></i> Editing</div><textarea class="edit-input" rows="1">'+originalText.replace(/</g,'&lt;')+'</textarea>';
   var ta=bub.querySelector('.edit-input');ta.focus();ta.style.height=ta.scrollHeight+'px';
-  function save(){if(saved)return;saved=true;var val=ta.value.trim();if(!val){doDelete(mid,cid);return;}writeConv(cid,{editMessage:{mid:mid,text:val}},function(c){var m=c.messages.find(function(x){return x.mid===mid});if(m){m.text=val;m.edited=true;}}).then(function(){renderThread();bindLongPress();toast('Message edited');});}
+  function save(){if(saved)return;saved=true;var val=ta.value.trim();if(!val){doDelete(mid,cid);return;}awaitWrite(cid,{editMessage:{mid:mid,text:val}},function(c){var m=c.messages.find(function(x){return x.mid===mid});if(m){m.text=val;m.edited=true;}}).then(function(){renderThread();bindLongPress();toast('Message edited');});}
   ta.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();save();}if(e.key==='Escape'){saved=true;renderThread();bindLongPress();}});
   ta.addEventListener('blur',function(){setTimeout(save,100);});
 }
 
 function doDelete(mid,cid){
-  writeConv(cid,{deleteMessage:mid},function(c){
+  awaitWrite(cid,{deleteMessage:mid},function(c){
     var idx=c.messages.findIndex(function(m){return String(m.mid)===String(mid)});if(idx===-1)return;
     c.messages.splice(idx,1);
   }).then(function(){renderThread();bindLongPress();renderConvList();toast('Message deleted');});
 }
-
-function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
 
 var _bound=false;
 function bindEvents(){
@@ -413,18 +345,16 @@ function bindEvents(){
     callBackend('/author-messages/read-all',{method:'POST'}).then(function(){
       CONVERSATIONS.forEach(function(c){c.unread=0});
       renderStats();renderConvList();toast('All messages marked as read');
-    });
+    }).catch(function(){ toast('Could not mark as read'); });
   });
   document.getElementById('convSearch').addEventListener('input',function(){renderConvList();});
 }
 
 function init(){
   SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
-  // Dismiss the thread kebab menu on any outside click:
   document.addEventListener('click',function(){var m=document.getElementById('threadMenu');if(m)m.classList.remove('open');});
   bindEvents();
   loadConversations().then(function(){
-    // Deep link from Authors page (?u=Author Name) — open that conversation if it exists:
     try{
       var u=(new URLSearchParams(window.location.search)).get('u');
       if(u){
@@ -436,6 +366,10 @@ function init(){
     renderConvList();renderStats();renderThread();bindLongPress();
     var conv=convById(activeConvId);
     if(conv)loadThread(conv).then(function(){renderConvList();renderStats();renderThread();bindLongPress();});
+  }).catch(function(err){
+    console.error('author-messages backend failed:', err);
+    var wrap=document.getElementById('convList');
+    if(wrap) wrap.innerHTML='<div style="padding:40px 16px;text-align:center;color:var(--red)"><i class="fas fa-triangle-exclamation" style="font-size:24px;display:block;margin-bottom:8px"></i><div style="font-weight:700">Could not load conversations</div><div style="font-size:11.5px;color:var(--text-faint);margin-top:6px">'+ (err && err.message ? err.message : 'The server is not reachable.') +'</div><button class="mini-btn primary" onclick="location.reload()" style="margin-top:10px"><i class="fas fa-rotate"></i> Refresh Page</button></div>';
   });
 }
 

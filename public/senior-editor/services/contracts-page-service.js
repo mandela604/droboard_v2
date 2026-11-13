@@ -34,13 +34,10 @@ function statusPill(s) {
   return '<span class="status-pill ' + (m[s] || '') + '"><span class="dot"></span> ' + (l[s] || s) + '</span>';
 }
 
-/* Identity (KYC) badge — three paths: self NIN verified, under-18 guardian consent,
-   adult pending NIN (alternate ID submitted). Backend rows carry c.kyc.type; demo
-   fallback below only for the seeded contracts. */
-var KYC_DEMO = { 'Layla Haddad': 'pending', 'Mia Carter': 'guardian' };
+/* Identity (KYC) badge — backend rows carry c.kyc.type. */
 function kycTypeOf(c) {
   if (c && c.kyc && c.kyc.type) return c.kyc.type;
-  return KYC_DEMO[c && c.author] || 'self';
+  return 'self';
 }
 function kycBadge(c) {
   var t = kycTypeOf(c);
@@ -60,27 +57,28 @@ function kycDetail(c) {
 function money(n) { if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + Number(n || 0).toLocaleString('en-US'); }
 
 async function init() {
-  SeniorEditorSidebar.attach('#pageRoot', {
+  try {
+    SeniorEditorSidebar.attach('#pageRoot', {
     activeItem: 'contracts', title: 'Contracts', subtitle: 'Manage contracts, templates & signed agreements',
     user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' }, notifCount: 8,
     searchPlaceholder: 'Search contracts…', mobileSearchTarget: '#searchInput',
     onSearch: function (v) { document.getElementById('searchInput').value = v; contractPage = 1; renderContracts(); }
   });
   var backend = await callBackend('/contracts/overview');
-  if (backend) {
-    allContracts = backend.contracts || [];
-    allTemplates = backend.templates || [];
-    allSigned = backend.signed || [];
-  } else {
-    allContracts = await ContractsService.getContracts();
-    allTemplates = await ContractsService.getTemplates();
-    allSigned = await ContractsService.getSignedContracts();
-  }
+  if (!backend) throw new Error('Could not load contracts from server');
+  allContracts = backend.contracts || [];
+  allTemplates = backend.templates || [];
+  allSigned = backend.signed || [];
   tplSelectedId = allTemplates[0] ? allTemplates[0].id : null;
   signedSelectedId = allSigned[0] ? allSigned[0].id : null;
   renderStats(); renderTabs(); renderContracts(); renderTemplateSelect();
   bindEvents();
   window.toast = toast;
+  } catch (err) {
+    console.error('contracts backend failed:', err);
+    var root = document.getElementById('pageRoot');
+    if (root) root.innerHTML = '<div style="padding:40px 26px;text-align:center;color:var(--red)"><i class="fas fa-triangle-exclamation" style="font-size:26px;display:block;margin-bottom:10px"></i><div style="font-weight:700">Could not load contracts</div><div style="font-size:11.5px;color:var(--text-faint);max-width:420px;margin:0 auto 14px">'+ (err && err.message ? err.message : 'The server is not reachable.') +'</div><button class="mini-btn primary" onclick="location.reload()"><i class="fas fa-rotate"></i> Refresh Page</button></div>';
+  }
 }
 
 /* ── Stats ── */
@@ -420,26 +418,27 @@ function bindEvents() {
     var author = document.getElementById('sendAuthor').value;
     var book = document.getElementById('sendBook').value;
     if (!author || !book) { toast('Please fill in author and book title'); return; }
-    allContracts.unshift({
-      id: 'CNTR-2026-' + String(allContracts.length + 1).padStart(3, '0'),
+    var payload = {
       author: author,
-      authorAv: 'https://i.pravatar.cc/100?img=' + Math.floor(Math.random() * 50 + 1),
       book: book,
       type: document.getElementById('sendType').value,
-      status: 'awaiting',
-      dateSent: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      signedDate: '—',
       duration: document.getElementById('sendDuration').value,
       revenue: +document.getElementById('sendRevenue').value || 70,
       advance: +document.getElementById('sendAdvance').value || 0,
       notes: document.getElementById('sendNotes').value,
-      replies: []
-    });
-    document.getElementById('sendModal').classList.remove('open');
-    document.getElementById('sendAuthor').value = ''; document.getElementById('sendBook').value = '';
-    document.getElementById('sendNotes').value = ''; document.getElementById('sendRevenue').value = ''; document.getElementById('sendAdvance').value = '';
-    toast('Contract sent to ' + author);
-    renderStats(); renderTabs(); renderContracts();
+    };
+    try {
+      var created = await callBackend('/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!created) throw new Error('No contract returned');
+      allContracts.unshift(created);
+      document.getElementById('sendModal').classList.remove('open');
+      document.getElementById('sendAuthor').value = ''; document.getElementById('sendBook').value = '';
+      document.getElementById('sendNotes').value = ''; document.getElementById('sendRevenue').value = ''; document.getElementById('sendAdvance').value = '';
+      toast('Contract sent to ' + author);
+      renderStats(); renderTabs(); renderContracts();
+    } catch (err) {
+      toast('Could not send contract: ' + (err && err.message ? err.message : 'server error'));
+    }
   });
 
   document.getElementById('viewModal').addEventListener('click', function (e) { if (e.target.id === 'viewModal') document.getElementById('viewModal').classList.remove('open'); });
