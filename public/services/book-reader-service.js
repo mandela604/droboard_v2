@@ -112,7 +112,7 @@ function normalizeLive(b) {
       likes: fmtN(stats.likes || b.likes || 0),
       comments: fmtN(stats.comments || 0),
       shares: fmtN(stats.shares || 0),
-      rating: stats.rating ? String(Math.round(stats.rating * 10) / 10) : '–',
+      rating: stats.rating ? parseFloat(stats.rating).toFixed(1) : '–',
     },
     totalChapters: totalCh,
     currentProgress: { chapter: continueChN, chapterTitle: continueChTitle, percent: continuePct, cid: cr ? cr.chapterId : null },
@@ -404,6 +404,9 @@ async function init() {
   renderChapters();
   renderOverview();
   loadReviews();
+  loadRatingSummary();
+  const rateBtn = document.getElementById('rateBookBtn');
+  if (rateBtn) rateBtn.addEventListener('click', openRateBook);
   renderMoreLike();
   loadEngagementRows();
   window.onDroboardSaveChange = function (sid, saved) {
@@ -487,6 +490,53 @@ async function loadReviews() {
     el.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Could not load reviews — ${esc0(e.message || 'request failed')}</p></div>`;
   }
 }
+/* ── RATE THIS BOOK — GET /api/stories/:id/rating (mine + avg/count + gate).
+   The modal owns the gate; the server decides it from ReadingProgress, so a
+   book shorter than the gate unlocks at its full length. */
+let ratingInfo = null;
+async function loadRatingSummary() {
+  try {
+    const res = await fetch(`${API_BASE}/stories/${encodeURIComponent(storyId)}/rating`, { credentials: 'include' });
+    if (!res.ok) throw new Error(String(res.status));
+    ratingInfo = await res.json();
+  } catch (e) { ratingInfo = null; }
+  paintRatingSummary();
+}
+function starRow(n) {
+  n = Math.max(0, Math.min(5, Math.round(n)));
+  return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+}
+function paintRatingSummary() {
+  const el = document.getElementById('rateSummary');
+  if (!el) return;
+  const r = ratingInfo || {};
+  const avg = Number(r.avg) || 0;
+  const count = Number(r.count) || 0;
+  const mine = (r.mine && r.mine.stars) || 0;
+  const btn = document.getElementById('rateBookBtn');
+  if (btn) btn.innerHTML = `<i class="fas fa-star"></i> ${mine ? 'Edit your rating' : 'Rate this book'}`;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--l1)">
+      <div style="color:#fbbf24;font-size:14px;letter-spacing:2px;white-space:nowrap">${starRow(avg)}</div>
+      <div style="font-size:11px;color:var(--tx-muted)"><b style="color:var(--tx-high)">${avg ? avg.toFixed(1) : '—'}</b> · ${count} rating${count === 1 ? '' : 's'}</div>
+      <div style="margin-left:auto;font-size:10px;font-weight:800;color:${mine ? '#ff4d7a' : 'var(--tx-muted)'}">${mine ? '✓ You rated ' + mine + '★' : 'Not rated yet'}</div>
+    </div>`;
+}
+function openRateBook() {
+  if (window.RequireAuth && !RequireAuth.ensure('rate this book')) return;
+  if (!window.openRateModal) { toast('Rate modal not loaded'); return; }
+  const s = STORY || {};
+  window.openRateModal({
+    storyId: s.id || storyId,
+    title: s.title || '',
+    img: s.cover || '',
+    chaptersRead: ratingInfo && ratingInfo.chaptersRead,
+    need: ratingInfo && ratingInfo.need,
+    canRate: ratingInfo && ratingInfo.canRate,
+    onDone: () => { loadRatingSummary(); loadReviews(); }
+  });
+}
+
 function setRevSort(s) {
   if (revSort === s) return;
   revSort = s; revPage = 1;

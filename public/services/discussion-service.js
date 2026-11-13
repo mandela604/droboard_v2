@@ -82,12 +82,31 @@
       avatar: p.avatar || '',
       time: p.time || '',
       title: p.heading || '',
-      body: p.text || '',
+      body: p.text || p.note || '',
       media: p.image || '',
+      // rich-type fields — pass everything through so renderOp can use post-card renderers
+      type: p.type || 'post',
+      original: p.original || null,
+      storyRef: p.storyRef || null,
+      chapterRef: p.chapterRef || null,
+      quote: p.quote || '',
+      caption: p.caption || '',
+      quoteBg: p.quoteBg || '',
+      quoteBgCss: p.quoteBgCss || '',
+      score: p.score || 0,
+      reviewText: p.reviewText || '',
+      poll: p.poll || null,
+      debateData: p.debateData || null,
+      amaData: p.amaData || null,
+      note: p.note || '',
+      text: p.text || '',
+      heading: p.heading || '',
+      image: p.image || '',
       likes: (p.likes != null ? p.likes : (p.likesCount || 0)),
       liked: !!p.liked,
       comments: (p.comments != null ? p.comments : (p.commentsCount || 0)),
       userRx: p.userRx || null,
+      reactions: p.reactions || {},
       verified: !!p.verified,
     };
   }
@@ -179,11 +198,51 @@
             <div class="op-story-by">by ${esc(POST.story.writer || '')}</div>
           </div>
         </div>` : '';
+    const repostCard = (POST.type === 'repost' && POST.original)
+      ? `<div class="op-story" style="border-color:rgba(56,189,248,.3);background:linear-gradient(135deg,rgba(56,189,248,.05),rgba(167,139,250,.04))">
+          ${POST.original.cover ? `<img class="op-story-cover" src="${esc(POST.original.cover)}" alt=""/>` : ''}
+          <div>
+            <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#0284c7;margin-bottom:4px">Repost</div>
+            <div class="op-story-title">${esc(POST.original.title || POST.original.text || '')}</div>
+            <div class="op-story-by">by @${esc(POST.original.name || '')}</div>
+          </div>
+        </div>` : '';
+    // For feed posts, delegate body rendering to post-card RENDERERS so every
+    // type (review, recommendation, chapter-drop, quote, poll, debate, ama,
+    // repost) renders exactly as it does in the feed — one renderer, one place.
+    let richBody = '';
+    if (POST._kind === 'post' && window.DroboardPostCard && window.DroboardPostCard.render) {
+      try {
+        // Create a temporary container, render the full card, then extract
+        // just the body (everything between head and actions)
+        const tmp = document.createElement('div');
+        tmp.style.display = 'none';
+        document.body.appendChild(tmp);
+        window.DroboardPostCard.attach(tmp, {});
+        window.DroboardPostCard.setPosts([Object.assign({}, POST, {
+          name: POST.name, avatar: POST.avatar, verified: POST.verified,
+          time: POST.time, fullName: POST.name,
+        })]);
+        const card = tmp.querySelector('.pcc-post');
+        if (card) {
+          // Remove head (pcc-head) and actions (pcc-actions) — keep the body
+          const clone = card.cloneNode(true);
+          clone.querySelector('.pcc-head')?.remove();
+          clone.querySelector('.pcc-actions')?.remove();
+          richBody = clone.innerHTML;
+        }
+        document.body.removeChild(tmp);
+      } catch (e) { richBody = ''; }
+    }
+    // Fallback for discussion posts or if post-card isn't loaded
+    const fallbackBody = richBody ? '' : `
+      <div class="op-body">${esc(POST.body || '')}</div>
+      ${media}${story}${repostCard}`;
     const rx = window.DroboardReactionPicker
       ? DroboardReactionPicker.renderTrigger(String(POST.id), { liked: !!POST.liked, likeCount: POST.likes || 0 })
       : `<span style="font-weight:700;color:var(--tx-muted)">${POST.likes || 0}</span>`;
     const actions = `${rx}
-      <button type="button" class="op-act" id="opReplyBtn"><i class="far fa-comment"></i> ${POST.comments || 0}</button>
+      <button type="button" class="op-act" id="opReplyBtn"><i class="far fa-comment"></i> <span id="opCommentCount">${POST.comments || 0}</span></button>
       <button type="button" class="op-act" id="opShareBtn"><i class="fas fa-share-nodes"></i> Share</button>`;
     mount.innerHTML = `<div class="op">
       <div class="op-head">
@@ -200,9 +259,8 @@
         </div>
       </div>
       <div class="op-title">${esc(POST.title || '')}</div>
-      <div class="op-body">${esc(POST.body || '')}</div>
+      ${richBody || fallbackBody}
       ${tags ? `<div class="op-tags">${tags}</div>` : ''}
-      ${media}${story}
       <div class="op-actions" id="opActions">${actions}</div>
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';
@@ -311,20 +369,48 @@
         },
         onReply: async (parentId, c) => {
           try {
-            return await DroboardComments.api.postComment({
+            const saved = await DroboardComments.api.postComment({
               scope: scope,
               [isPost ? 'postId' : 'discussionId']: scopeId,
               text: c.text,
               parentId: parentId,
               team: c.team,
             });
+            return saved;
           } catch (err) {
             toast(err.message || 'Could not post reply');
             throw err;
           }
         },
+        onCountChange: (total) => {
+          if (POST) POST.comments = total;
+          const countEl = document.getElementById('opCommentCount');
+          if (countEl) countEl.textContent = total;
+        },
         onEdit: (c, oldText, newText) => {
           DroboardComments.api.editComment(c.id, newText).catch(() => toast('Could not save edit'));
+        },
+        onReact: async (c, rid) => {
+          try {
+            // pickReaction already toggled c.rx.userRx. If it equals rid,
+            // the user just reacted → POST. If not, they un-reacted → DELETE.
+            const method = c.rx && c.rx.userRx === rid ? 'POST' : 'DELETE';
+            const res = await fetch(`${API_BASE}/comments/${encodeURIComponent(c.id)}/react`, {
+              method, credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: method === 'POST' ? JSON.stringify({ rid }) : undefined
+            });
+            if (!res.ok) throw new Error('React API failed: ' + res.status);
+            const data = await res.json();
+            // data = { counts: {...}, userRx: '...' }
+            c.rx = data.counts;
+            c.rx.userRx = data.userRx;
+            c.likes = Object.entries(data.counts).filter(([k]) => k !== 'userRx').reduce((a, [,v]) => a+v, 0);
+            c.liked = data.userRx === 'love';
+          } catch (e) {
+            toast(e.message || 'Could not save reaction');
+            throw e;
+          }
         },
         onProfileClick: (c) => { if (c && c.name) location.href = profileHref(c.name); },
       });
@@ -376,27 +462,47 @@
 
   function initWiring() {
     if (window.DroboardReactionPicker) {
+      const isPost = POST && POST._kind === 'post';
+      const apiPath = isPost
+        ? `/posts/${encodeURIComponent(POST.id)}/react`
+        : `/discussions/${encodeURIComponent(POST.id)}/react`;
+      
       // attachCounters — picker owns all toggle math (love/switch/deselect,
       // total-preserving). Host only seeds initial counts + persists.
       DroboardReactionPicker.attachCounters(document.getElementById('opMount'), {
         getCounts: (id) => {
           if (!POST || String(id) !== String(POST.id)) return null;
-          const likes = POST.likes || 0;
-          const buckets = ['crying', 'shocked', 'emotional'];
-          let h = 0; String(POST.id).split('').forEach(ch => { h = (h + ch.charCodeAt(0)) % buckets.length; });
-          const secondId = buckets[h];
-          const second = Math.min(5, Math.max(0, likes));
-          const counts = { love: Math.max(0, likes - second) };
-          counts[secondId] = second;
-          return { userRx: (POST.userRx || (POST.liked ? 'love' : null)) || null, ...counts };
+          // Both posts and discussions now use full reaction buckets from backend
+          const counts = Object.assign({}, POST.reactions || {});
+          return { userRx: (POST.userRx || null), ...counts };
         },
-        save: (id, state) => {
+        save: async (id, state) => {
           if (!POST || String(id) !== String(POST.id)) return;
-          POST.userRx = state.userRx;
-          POST.liked = state.userRx === 'love';
-          let total = 0;
-          Object.keys(state).forEach(k => { if (k !== 'userRx') total += state[k] || 0; });
-          POST.likes = total;
+          const wasUserRx = POST.userRx;
+          const nowUserRx = state.userRx || null;
+          if (wasUserRx === nowUserRx) return;
+          
+          // Persist to backend
+          try {
+            const rid = nowUserRx;
+            const method = rid ? 'POST' : 'DELETE';
+            const res = await fetch(`${API_BASE}${apiPath}`, {
+              method, credentials: 'include',
+              headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+              body: method === 'POST' ? JSON.stringify({ rid }) : undefined
+            });
+            if (!res.ok) throw new Error('React API failed: ' + res.status);
+            const data = await res.json();
+            POST.reactions = data.counts || {};
+            POST.userRx = data.userRx || null;
+            POST.likes = Object.keys(POST.reactions).reduce((n, k) => n + (POST.reactions[k] || 0), 0);
+            POST.liked = POST.userRx === 'love';
+          } catch (e) {
+            // Revert on failure
+            POST.userRx = wasUserRx;
+            POST.liked = wasUserRx === 'love';
+            throw e;
+          }
         },
       });
     }

@@ -38,7 +38,6 @@
     try {
       const raw = localStorage.getItem('droboard_premium') || localStorage.getItem('dro_premium');
       if (raw === 'true' || raw === '1') return true;
-      if (window.DemoData && DemoData.USERS && DemoData.USERS['You_Reader'] && DemoData.USERS['You_Reader'].isPremium) return true;
       if (DATA && DATA.isPremium) return true;
     } catch(e){}
     return false;

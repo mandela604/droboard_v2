@@ -631,7 +631,6 @@ function storyMatches(q, authorFilter){
   var libs=[];
   try{ if(global.StoryLibrary) libs=libs.concat(global.StoryLibrary); }catch(e){}
   try{ if(global.LaunchKitData) libs=libs.concat(global.LaunchKitData.map(function(k){ return { id:k.writerId||k.id, title:k.campaignName, cover:k.campaignImage, genre:'campaign', author:k.writerName, link:k.campaignLink }; })); }catch(e){}
-  try{ if(global.DemoData && global.DemoData.STORIES) libs=libs.concat(global.DemoData.STORIES.map(function(s){ return { id:s.id, title:s.title, cover:s.cover, genre:s.genre||s.cat||'', author:s.author||'', authorPhoto:s.authorAv||'', hook:s.hook||s.preview||s.desc||'' }; })); }catch(e){}
   if(!q) return [];
   var pool = authorFilter ? libs.filter(function(s){ return (s.author||'').toLowerCase().indexOf(authorFilter.toLowerCase())!==-1; }) : libs;
   if(!pool.length) pool=libs;
@@ -654,7 +653,6 @@ function authorPool(){
   var libs=[];
   try{ if(global.StoryLibrary) libs=libs.concat(global.StoryLibrary); }catch(e){}
   try{ if(global.LaunchKitData) libs=libs.concat(global.LaunchKitData.map(function(k){ return { author:k.writerName, photo:k.writerAvatar }; })); }catch(e){}
-  try{ if(global.DemoData && global.DemoData.STORIES) libs=libs.concat(global.DemoData.STORIES); }catch(e){}
   var seen={}, out=[];
   libs.forEach(function(s){
     var name=(s.author||s.writerName||'').trim(); if(!name||seen[name.toLowerCase()]) return;

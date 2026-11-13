@@ -26,7 +26,6 @@ function getWriterPool(){
 }
 function getStoryPool(){
   try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_STORIES) return global.DroboardPageSeed.DROBOARD_COMPOSER_STORIES.slice(); }catch(e){}
-  try{ if(global.DemoData && DemoData.STORIES) return DemoData.STORIES; }catch(e){}
   try{ if(global.STORIES) return global.STORIES; }catch(e){}
   try{
     var c=global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COLLECTIONS;

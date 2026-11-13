@@ -1,7 +1,7 @@
 /**
  * financial-reports-service.js — Financial Reports page renderer
  * ──────────────────────────────────────────────────────────────
- * Call-and-render only. All data comes from FinanceDemo (central demo data file).
+ * Call-and-render only. All data comes from the API (GET /api/finance/financial-reports).
  * Handles date-range filtering: KPIs, chart, expenses, and categories all
  * recalculate based on the selected date range.
  */
@@ -22,31 +22,26 @@ function pct(n){ return Number(n||0).toFixed(1)+'%'; }
 function toNum(v){ return Number(v||0); }
 
 function getDefaultData(){
-  if(window.FinanceDemo && window.FinanceDemo.financialReports) return JSON.parse(JSON.stringify(window.FinanceDemo.financialReports));
-  return {
-    summary:{ totalRevenue:182400, totalPayouts:96200, platformIncome:86200, coinSalesRevenue:142300, growthVsLastMonth:8.4 },
-    monthlyRevenue:[
-      {month:'Feb',revenue:128000},{month:'Mar',revenue:141500},{month:'Apr',revenue:135800},
-      {month:'May',revenue:158200},{month:'Jun',revenue:168900},{month:'Jul',revenue:182400}
-    ],
-    dailyRevenue:[],
-    dailyExpenses:[],
-    dailyCategoryRevenue:[],
-    expenseBreakdown:[
-      {label:'Author Payouts',amount:96200,color:'accent'},
-      {label:'Payment Processing Fees',amount:5460,color:'blue'},
-      {label:'Bonuses & Incentives',amount:4200,color:'purple'},
-      {label:'Marketing Spend',amount:12800,color:'amber'},
-      {label:'Infrastructure',amount:7100,color:'green'}
-    ],
-    topCategories:[
-      {genre:'Romance & Betrayal',revenue:41200},
-      {genre:'Werewolf & Fantasy',revenue:33800},
-      {genre:'Billionaire & CEO',revenue:28900},
-      {genre:'Mafia & Urban',revenue:22100},
-      {genre:'Historical & Regency',revenue:15600}
-    ]
-  };
+  return null; // replaced by API call in init()
+}
+
+async function fetchReports(){
+  try {
+    const res = await fetch('/api/finance/financial-reports', { credentials: 'include' });
+    if (!res.ok) throw new Error('Reports API failed: ' + res.status);
+    return await res.json();
+  } catch (e) {
+    toast('Could not load financial reports — ' + (e.message || 'network error'));
+    return {
+      summary:{ totalRevenue:0, totalPayouts:0, platformIncome:0, coinSalesRevenue:0, growthVsLastMonth:0 },
+      monthlyRevenue:[],
+      dailyRevenue:[],
+      dailyExpenses:[],
+      dailyCategoryRevenue:[],
+      expenseBreakdown:[],
+      topCategories:[]
+    };
+  }
 }
 
 /* ── Date-range filter ── */
@@ -333,7 +328,7 @@ async function init(){
     });
   }
   if(typeof window.toast!=='function') window.toast=toast;
-  RAW = getDefaultData();
+  RAW = await fetchReports();
   renderAll(null, null);
   wireDateFilter();
   var exportBtn = document.getElementById('exportBtn');

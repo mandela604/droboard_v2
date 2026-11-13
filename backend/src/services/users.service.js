@@ -570,14 +570,18 @@ async function follow({ userId, target }) {
   if (edge) await counters.hookFollows([edge]);
   try {
     const actor = await User.findOne({ id: userId }).select('username fullName avatar').lean();
+    const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+    const actorHandle = (actor && actor.username) || '';
     const { notify } = require('./notifications.service');
     await notify({
       recipientId: t.id, actorId: userId, type: 'follow',
-      title: (actor && (actor.fullName || actor.username)) || 'A user',
-      desc: (actor && (actor.fullName || actor.username)) || 'A user',
-      link: '/profile/' + userId,
+      title: `{@${actorHandle}|${actorName}} started following you`,
+      desc: actorHandle ? `@${actorHandle}` : '',
+      link: '/Pages/profile.html?u=' + encodeURIComponent(actorHandle || userId),
+      linkLabel: 'View profile',
       key: 'follow:' + userId + ':' + t.id,
       avatar: actor && actor.avatar,
+      thumb: actor && actor.avatar,
     });
   } catch (e) {}
   return { ok: true, following: true };

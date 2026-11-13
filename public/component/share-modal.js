@@ -661,7 +661,9 @@
     // Show/hide bg picker for status
     const bgRow = document.getElementById('dscBgRow');
     if (bgRow) {
-      bgRow.style.display = type === 'status' ? 'flex' : 'none';
+      // Hide bg color chips when sharing a story with a cover (cover becomes the bg)
+      const hasStoryCover = !!(type === 'status' && _data.img && /^https?:\/\//.test(_data.img));
+      bgRow.style.display = (type === 'status' && !hasStoryCover) ? 'flex' : 'none';
       _selectedBg = 'linear-gradient(135deg,#4c0519,#1c0208)';
       document.querySelectorAll('.dsc-bg-chip').forEach(c => {
         c.classList.toggle('on', c.dataset.bg === _selectedBg);
@@ -738,10 +740,21 @@
             if (!window.DroboardStatus || typeof DroboardStatus.post !== 'function') {
               throw new Error('Status service not available');
             }
+            // If sharing a story, use the story cover as bg image for a visual status
+            const storyImg = _data.img || '';
+            const isImageBg = !!(storyImg && /^https?:\/\//.test(storyImg));
+            const bg = isImageBg ? storyImg : _selectedBg;
             const slide = await DroboardStatus.post({
-              bg: _selectedBg,
+              bg,
               quote: payload.caption || '',
-              caption: payload.title ? `📖 ${payload.title}` : '',
+              caption: _data.title ? `📖 ${_data.title}` : '',
+              // If we have a story URL, attach it as a storyRef CTA
+              storyRef: (_data.url && _data.title) ? {
+                id: (new URLSearchParams((_data.url || '').split('?')[1] || '')).get('id') || '',
+                title: _data.title || '',
+                author: (_data.sub || '').replace(/^@/, ''),
+                cover: storyImg || '',
+              } : undefined,
             });
             return { ok: true, slide };
           },

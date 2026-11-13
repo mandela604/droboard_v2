@@ -36,6 +36,8 @@ function cardShape(b, author) {
 
 async function topBooks(sort, limit, viewerId, statuses) {
   const filter = { status: { $in: statuses || ['ongoing', 'completed', 'published'] } };
+  // When ranking by rating, only include books that actually have ratings
+  if (sort && sort.rating) filter.rating = { $gt: 0 };
   if (viewerId) {
     const usersSvc = require('./users.service');
     const [mutes, blocks] = await Promise.all([

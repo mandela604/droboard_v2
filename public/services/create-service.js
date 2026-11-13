@@ -15,16 +15,11 @@ const SHORT_MAX = 25; // must match backend books.service SHORT_MAX
 
 /* ══════════════════════════════════════════════════════
    CONFIG
-   Category / genre / trope taxonomy comes from the editors'
-   Categories & Genres page (window.EditorDemo, active entries
-   only). Legacy emoji lists stay as fallback if the data file
-   isn't loaded.
-══════════════════════════════════════════════════════ */
-const EDITOR_TAX = (function () {
-  const D = window.EditorDemo || {};
-  const active = list => (Array.isArray(list) ? list : []).filter(x => x && x.status !== 'inactive');
-  return { categories: active(D.CATEGORIES), genres: active(D.GENRES), tropes: active(D.TROPES) };
-})();
+   Category / genre / trope taxonomy is loaded from the API
+   via loadTaxonomy(). Legacy emoji lists serve as fallback
+   until the API responds.
+   ══════════════════════════════════════════════════════ */
+const EDITOR_TAX = { categories: [], genres: [], tropes: [] };
 // Display name → CE taxonomy id, filled by loadTaxonomy(). The payload sends
 // the id (categoryId) so a book is attached to the exact row the CE saved.
 const TAX_IDS = { categories: {}, genres: {}, tropes: {} };

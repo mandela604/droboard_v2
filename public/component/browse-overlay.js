@@ -260,7 +260,7 @@
   const AD_CYCLE = ['book', 'book', 'book', 'book', 'platform'];
 
   function _buildPool() {
-    // collections mode: pool is collections, no ads/writers, via CollectionData or DemoData — with Following vs Explore grouping
+    // collections mode: pool is collections, no ads/writers, via CollectionData — with Following vs Explore grouping
     const JOINED_COLLS = ['coll_1','coll_2','coll_3'];
     function withFollowingFlag(list){
       const flagged = list.map(function(col){ return Object.assign({ type:'collection' }, col, { isFollowing: col.following === true || JOINED_COLLS.indexOf(col.id) !== -1 }); });
@@ -392,7 +392,7 @@
   }
 
   function _collectionHTML(item) {
-    // covers comes from DemoData.COLLECTIONS.covers (array of 4 urls) — fallback to cover single
+    // covers comes from item.covers (array of 4 urls) — fallback to cover single
     var covers = item.covers || item.coverGrid || (item.cover ? [item.cover] : []);
     if (covers.length === 1 && item.covers && item.covers.length === 1) { /* keep single handling */ }
     var covHtml = '';

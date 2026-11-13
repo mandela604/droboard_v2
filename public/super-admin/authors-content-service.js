@@ -8,10 +8,10 @@ window.__authorsContentService = true;
 var USE_API = true;
 var API_BASE = window.DROBOARD_API_BASE || '/api/super-admin/authors';
 var TIMEOUT_MS = 2500;
-function timeoutFetch(url, opts){
+function apiFetch(path, opts){
   var c = new AbortController();
   var t = setTimeout(function(){ c.abort(); }, TIMEOUT_MS);
-  return fetch(url, Object.assign({signal:c.signal, credentials:'include'}, opts||{})).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error(r.status); return r.json(); }).catch(function(e){ clearTimeout(t); throw e; });
+  return fetch(API_BASE + path, Object.assign({signal:c.signal, credentials:'include'}, opts||{})).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error(r.status); return r.json(); }).catch(function(e){ clearTimeout(t); throw e; });
 }
 
 var _authors = [];
@@ -80,8 +80,21 @@ window.__authorsContentAPI = {
   search: search,
   updateAuthor: updateAuthor,
   deleteAuthor: deleteAuthor,
-  genreBreakdown: genreBreakdown
+  genreBreakdown: genreBreakdown,
+  load: load
 };
+
+function load(){
+  return apiFetch('?limit=100')
+    .then(function(res){
+      _authors = (res && res.items) || [];
+      return apiFetch('/genres').catch(function(){ return []; });
+    })
+    .then(function(rr){
+      _genres = (rr || []).map(function(g){ return g.name; }).filter(Boolean);
+      return _authors;
+    });
+}
 
 })();
 
@@ -265,7 +278,11 @@ document.getElementById('exportBtn').addEventListener('click', function(){
 
 function init(){
   renderStatCards();
-  applyFilters();
-  renderGenreBreakdown();
+  API.load().then(function(){
+    applyFilters();
+    renderGenreBreakdown();
+  }).catch(function(e){
+    console.error('Failed to load authors:', e);
+  });
 }
 init();

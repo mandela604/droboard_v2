@@ -81,7 +81,15 @@ async function loadAnalytics(){
 
 /* ── Renderers ── */
 var revPage=1, acqPage=1, readerPage=1;
+var activeRevenueView = 'monthly';
 var PAGE_SIZE=6;
+
+async function fetchRevenue(view){
+  var r = await fetch(API_BASE + '/revenue?view=' + encodeURIComponent(view), { credentials:'include' });
+  if(!r.ok){ var b=null; try{ b=await r.json(); }catch(e){} throw new Error('HTTP '+r.status+(b&&b.error?' · '+b.error:'')); }
+  return r.json();
+}
+
 function renderTopStats(){
   var mrrTrend = DATA.mrr > DATA.mrrPrev ? 'up' : 'down';
   var mrrPct = DATA.mrrPrev ? Math.round(((DATA.mrr-DATA.mrrPrev)/DATA.mrrPrev)*100) : 0;
@@ -101,25 +109,28 @@ function renderTopStats(){
 }
 
 function renderRevenueDetail(view){
+  activeRevenueView = view;
   var el=document.getElementById('revenueDetail');
-  if(view==='bySource'){
-    var sources=[
-      {name:'Coin Purchases',pct:66,color:'var(--gold)',amt:fmtMoney(31200)},
-      {name:'Ad Revenue',pct:23,color:'var(--blue)',amt:fmtMoney(10680)},
-      {name:'Subscriptions',pct:11,color:'var(--green)',amt:fmtMoney(5400)}
-    ];
-    el.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">'+sources.map(function(s){
-      return '<div style="text-align:center;padding:14px;background:var(--input-bg);border-radius:10px"><div style="font-size:22px;font-weight:800;color:'+s.color+'">'+s.pct+'%</div><div style="font-size:11px;color:var(--text-faint);font-weight:700;margin-top:2px">'+s.name+'</div><div style="font-size:13px;font-weight:800;margin-top:4px">'+s.amt+'</div></div>';
-    }).join('')+'</div>';
-    el.innerHTML+='<div style="font-size:11px;color:var(--text-faint);font-weight:700;text-align:center">Current month breakdown — Total: '+fmtMoney(47280)+'</div>';
-    return;
-  }
-  var rows=view==='quarterly'?[
-    {label:'Q3 2025',revenue:93000,coins:60700,ads:21400,subs:10900,prev:0,growth:'—'},
-    {label:'Q4 2025',revenue:115000,coins:76100,ads:26000,subs:12900,prev:93000,growth:'+23.7%'},
-    {label:'Q1 2026',revenue:135000,coins:89400,ads:30000,subs:15600,prev:115000,growth:'+17.4%'},
-    {label:'Q2 2026',revenue:133280,coins:87800,ads:29680,subs:15800,prev:135000,growth:'-1.3%'}
-  ]:REVENUE_MONTHLY;
+  el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+  
+  fetchRevenue(view).then(function(data){
+    var rows = data && data.rows ? data.rows : [];
+    if(view==='bySource'){
+      if(!rows.length){
+        el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:24px">No revenue source data available</div>';
+        return;
+      }
+      el.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">'+rows.map(function(s){
+        return '<div style="text-align:center;padding:14px;background:var(--input-bg);border-radius:10px"><div style="font-size:22px;font-weight:800;color:'+s.color+'">'+s.pct+'%</div><div style="font-size:11px;color:var(--text-faint);font-weight:700;margin-top:2px">'+s.name+'</div><div style="font-size:13px;font-weight:800;margin-top:4px">'+s.amt+'</div></div>';
+      }).join('')+'</div>';
+      var total = rows.reduce(function(s,r){ return s + (Number(r.amt?.replace?.(/[^0-9.]/g,'')) || 0); }, 0);
+      el.innerHTML+='<div style="font-size:11px;color:var(--text-faint);font-weight:700;text-align:center">Current month breakdown — Total: '+fmtMoney(total)+'</div>';
+      return;
+    }
+    if(!rows.length){
+      el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:24px">No revenue data available for this period</div>';
+      return;
+    }
   var total=rows.length;
   var start=(revPage-1)*PAGE_SIZE;
   var pageRows=rows.slice(start,start+PAGE_SIZE);
@@ -141,6 +152,9 @@ function renderRevenueDetail(view){
   html+='<button onclick="revPage=Math.min('+totalPages+',revPage+1);renderRevenueDetail(\''+view+'\')" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:11px;cursor:pointer;font-family:inherit"'+(revPage===totalPages?' disabled':'')+'><i class="fas fa-chevron-right"></i></button>';
   html+='</div></div>';
   el.innerHTML=html;
+  }).catch(function(e){
+    el.innerHTML = '<div style="text-align:center;color:var(--red);padding:24px"><i class="fas fa-circle-exclamation"></i> Failed to load: '+esc(e.message)+'</div>';
+  });
 }
 
 function renderUserAcquisition(){

@@ -40,7 +40,7 @@ var TIMEOUT_MS = 2500;
 function timeoutFetch(url, opts) {
   var c = new AbortController();
   var t = setTimeout(function () { c.abort(); }, TIMEOUT_MS);
-  return fetch(url, Object.assign({ signal: c.signal }, opts || {}))
+  return fetch(url, Object.assign({ signal: c.signal, credentials: 'include' }, opts || {}))
     .then(function (r) { clearTimeout(t); if (!r.ok) throw new Error(r.status); return r.json(); })
     .catch(function (e) { clearTimeout(t); throw e; });
 }

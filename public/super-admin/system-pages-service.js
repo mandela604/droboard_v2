@@ -10,7 +10,7 @@ if (window.SystemPagesService && window.SystemPagesService.__ready) return;
 var USE_API = true;
 var API_BASE = '/api/super-admin/system-pages';
 function timeoutFetch(url, opts){
-  return fetch(url, opts||{}).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });
+  return fetch(url, Object.assign({ credentials: 'include' }, opts||{})).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });
 }
 async function callBackend(path, options){
   if(!USE_API) return null;
@@ -23,7 +23,7 @@ var PAGES=[
   {id:'faq',             title:'Frequently Asked Questions', url:'faq.html',              icon:'fa-circle-question', tone:'pink',   status:'active', statusLabel:'Published', updated:'Nov 1, 2026', svcId:'faq'}
 ];
 
-function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
 
 async function loadData(){
   try {

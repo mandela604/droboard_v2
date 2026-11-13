@@ -2,6 +2,7 @@
 /* Thin wrappers: validation lives in routes (zod), logic in services. */
 const base = require('./base.controller');
 const sa = require('../services/superadmin.service');
+const chief = require('../services/chief-content.service');
 const revenue = require('../services/revenue.service');
 const track = require('../services/tracking.service');
 const adRev = require('../services/ad-revenue.service');
@@ -170,6 +171,9 @@ module.exports = {
   }),
   revenueAuthorDelete: wrap(async (req) => revenue.deleteAuthorOverride(req.valid.params.authorId)),
   revenueSubscriptions: wrap(async (req) => revenue.distributeSubscriptions(req.valid.query.period)),
+
+  // Genres for Authors & Content page filter (Chief Editor owns genre catalog)
+  genresList: wrap(async () => chief.listGenres({ status: 'active', limit: 200 })),
 
   // Admin Earnings Console — uses superadmin.service.adminEarnings()
   adminEarnings: wrap(async (req) => sa.adminEarnings(req.valid ? req.valid.query : req.query)),

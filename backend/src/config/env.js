@@ -49,10 +49,11 @@ module.exports = {
   referralStage2Coins: parseInt(process.env.REFERRAL_STAGE2_COINS || '2', 10),
   referralReadSeconds: parseInt(process.env.REFERRAL_READ_SECONDS || '1800', 10), // 30 min
   referralWindowDays: parseInt(process.env.REFERRAL_WINDOW_DAYS || '7', 10),
-  // Cloudflare Images (the ONLY production image store — no disk, no Mongo blobs).
-  // Placeholder-safe: upload route returns 503 until configured.
-  cfAccountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
-  cfImagesToken: process.env.CLOUDFLARE_IMAGES_TOKEN || '',
+  // Cloudinary image storage (replaces Cloudflare Images).
+  // Set these three env vars in Render: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
   // Bootstrap: comma-separated account emails promoted to the admin role at
   // boot. Lets a fresh production database reach the Super Admin console
   // without hand-editing Mongo. Safe to keep set; only listed emails match.

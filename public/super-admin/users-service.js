@@ -15,11 +15,9 @@ var API_BASE = '/api/super-admin';
 /* Live data layer. The page used to render an in-memory array that was never
    filled, so a signed-in admin always saw "No users match your filters". */
 function api(method, path, body){
-  var token = null;
-  try { token = localStorage.getItem('droboard_session') || localStorage.getItem('dro_access'); } catch(e){}
-  var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+  var headers = { 'Content-Type': 'application/json' };
   var opts = { method: method, credentials: 'include', headers: headers };
-  if(body !== undefined){ opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  if(body !== undefined){ opts.body = JSON.stringify(body); }
   return fetch(API_BASE + path, opts).then(function(r){
     if(!r.ok){
       return r.json().catch(function(){ return null; }).then(function(b){
@@ -75,7 +73,6 @@ function load(){
     })
     .then(function(rr){
       _roles = (rr || []).map(function(r){ return r.name; }).filter(Boolean);
-      if(!_roles.length) _roles = ['Reader','Writer','Senior Editor','Chief Editor','Marketing','Finance'];
       return _users;
     });
 }

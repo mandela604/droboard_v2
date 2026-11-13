@@ -121,6 +121,71 @@ async function createComment({ authorId, user, data }) {
   });
   await counters.bump(authorId, 'commentCount', 1);
   if (parentId) await Comment.updateOne({ id: parentId }, { $inc: { repliesCount: 1 } });
+  // Keep Post.commentsCount in sync for feed post comments
+  if (scope === 'post' && postId) {
+    const { Post } = require('../models/social.model');
+    await Post.updateOne({ id: postId }, { $inc: { commentsCount: 1 } });
+  }
+  // ── Notifications ──────────────────────────────────────────────────────
+  // Rules:
+  //   1. If this is a REPLY → notify the person whose comment was replied to
+  //   2. ALWAYS → notify the post/story owner (every comment is activity on their content)
+  //   3. Never notify yourself
+  //   4. If the parent comment author IS the content owner → only send one notification
+  try {
+    const actor = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
+    const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+    const snippet = text.slice(0, 60);
+    const { notify } = require('./notifications.service');
+
+    // Build the link once — scope-aware
+    let link = '';
+    if (scope === 'post' && postId) link = '/Pages/discussion.html?id=' + postId;
+    else if (scope === 'story' && storyId) link = '/Pages/full-reader.html?story=' + storyId;
+    else if (scope === 'chapter' && storyId) link = '/Pages/full-reader.html?story=' + storyId + (chapterId ? '&ch=' + chapterId : '');
+    else if (scope === 'discussion' && (discussionId || postId)) link = '/Pages/discussion.html?id=' + (discussionId || postId);
+
+    const descSnippet = snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '';
+    const actorHandle = (actor && actor.username) || '';
+    const notifyOpts = { actorId: String(authorId), avatar: actor && actor.avatar, thumb: actor && actor.avatar, link, linkLabel: 'View' };
+
+    // 1. Notify parent comment author (reply notification)
+    const parentAuthorId = parent ? String(parent.authorId) : null;
+    if (parentAuthorId && parentAuthorId !== String(authorId)) {
+      await notify({
+        ...notifyOpts,
+        recipientId: parentAuthorId,
+        type: 'reply',
+        title: `{@${actorHandle}|${actorName}} replied to your comment`,
+        desc: descSnippet,
+        linkLabel: 'View reply',
+        key: 'reply:' + authorId + ':' + comment.id,
+      }).catch(() => {});
+    }
+
+    // 2. Notify content owner (post/story author) — for every comment at any depth
+    let ownerId = null;
+    if (scope === 'post' && postId) {
+      const { Post } = require('../models/social.model');
+      const p = await Post.findOne({ id: postId }).select('authorId').lean();
+      if (p) ownerId = String(p.authorId);
+    } else if ((scope === 'story' || scope === 'chapter') && storyId) {
+      const { Book } = require('../models/content.model');
+      const b = await Book.findOne({ id: storyId }).select('authorId').lean();
+      if (b) ownerId = String(b.authorId);
+    }
+    if (ownerId && ownerId !== String(authorId) && ownerId !== parentAuthorId) {
+      // Different person from the parent comment author — send separate notification
+      await notify({
+        ...notifyOpts,
+        recipientId: ownerId,
+        type: 'comment',
+        title: `{@${actorHandle}|${actorName}} commented on your ${scope === 'post' ? 'post' : 'story'}`,
+        desc: descSnippet,
+        key: 'comment:' + authorId + ':' + comment.id,
+      }).catch(() => {});
+    }
+  } catch (e) { /* non-fatal — never break the comment save */ }
   const [card] = await shapeForReader([comment.toObject()], authorId);
   return card;
 }
@@ -138,22 +203,44 @@ async function listComments({ scope, storyId, chapterId, postId, discussionId, p
     Comment.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
     Comment.countDocuments(filter),
   ]);
-  // Reply pass: fetch every child of this page in one query, then bucket.
+  // Reply pass: fetch ALL levels recursively until no more children found.
   const parentIds = top.map(c => String(c.id)).filter(Boolean);
   let byParent = {};
   if (parentIds.length) {
-    const kids = await Comment.find({ parentId: { $in: parentIds } }).sort({ createdAt: 1 }).lean();
-    kids.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
+    let currentIds = parentIds;
+    const seen = new Set(parentIds);
+    while (currentIds.length) {
+      const batch = await Comment.find({ parentId: { $in: currentIds } }).sort({ createdAt: 1 }).lean();
+      if (!batch.length) break;
+      batch.forEach(k => {
+        const p = String(k.parentId);
+        (byParent[p] = byParent[p] || []).push(k);
+      });
+      // Next iteration: children we haven't visited yet
+      currentIds = batch.map(k => String(k.id)).filter(id => !seen.has(id));
+      currentIds.forEach(id => seen.add(id));
+    }
   }
-  const allRows = top.concat(parentIds.reduce((acc, p) => acc.concat(byParent[p] || []), []));
+  const allByParentRows = Object.values(byParent).reduce((acc, arr) => acc.concat(arr), []);
+  const allRows = top.concat(allByParentRows);
   const shaped = await shapeForReader(allRows, viewerId);
   const byIdShaped = {};
   shaped.forEach(c => { byIdShaped[c.id] = c; });
+
+  // Build nested reply tree recursively
+  function nestReplies(commentId) {
+    return (byParent[commentId] || []).map(k => {
+      const card = byIdShaped[String(k.id)];
+      if (card) card.replies = nestReplies(String(k.id));
+      return card;
+    }).filter(Boolean);
+  }
+
   const items = top.map(t => {
     const card = byIdShaped[String(t.id)];
-    card.replies = (byParent[String(t.id)] || []).map(k => byIdShaped[String(k.id)]).filter(Boolean);
+    if (card) card.replies = nestReplies(String(t.id));
     return card;
-  });
+  }).filter(Boolean);
   return { items, total, page: pg, limit: lim };
 }
 
@@ -179,6 +266,10 @@ async function deleteComment({ comment }) {
   if (comment.scope === 'discussion' && comment.discussionId) {
     const { Discussion } = require('../models/social.model');
     await Discussion.updateOne({ id: comment.discussionId }, { $inc: { commentsCount: -(1 + replyRows.length) } });
+  }
+  if (comment.scope === 'post' && comment.postId) {
+    const { Post } = require('../models/social.model');
+    await Post.updateOne({ id: comment.postId }, { $inc: { commentsCount: -(1 + replyRows.length) } });
   }
   await comment.deleteOne();
   await Promise.all([
@@ -206,6 +297,7 @@ async function reactToComment({ comment, userId, rid }) {
   const uid = String(userId);
   const prev = await Reaction.findOne({ userId: uid, targetType: 'comment', targetId: comment.id });
   if (prev && prev.rid === rid) return { counts: commentReactionCounts(comment), userRx: rid };
+  let isNew = false;
   if (prev) {
     const pc = Math.max(0, (comment.reactions.get(prev.rid) || 0) - 1);
     if (pc) comment.reactions.set(prev.rid, pc); else comment.reactions.delete(prev.rid);
@@ -213,9 +305,42 @@ async function reactToComment({ comment, userId, rid }) {
     await prev.save();
   } else {
     await Reaction.create({ userId: uid, targetType: 'comment', targetId: comment.id, rid });
+    isNew = true;
   }
   comment.reactions.set(rid, (comment.reactions.get(rid) || 0) + 1);
   await comment.save();
+  // Notify the comment author (only on first reaction, not self)
+  if (isNew && String(comment.authorId) !== uid) {
+    try {
+      const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
+      const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+      const commentSnippet = (comment.text || '').slice(0, 60);
+      // Build the correct link based on what the comment belongs to
+      let link = '';
+      if (comment.scope === 'post' && comment.postId) {
+        link = '/Pages/discussion.html?id=' + comment.postId;
+      } else if (comment.scope === 'story' && comment.storyId) {
+        link = '/Pages/full-reader.html?story=' + comment.storyId;
+      } else if (comment.scope === 'chapter' && comment.storyId) {
+        link = '/Pages/full-reader.html?story=' + comment.storyId + (comment.chapterId ? '&ch=' + comment.chapterId : '');
+      } else if (comment.scope === 'discussion' && comment.discussionId) {
+        link = '/Pages/discussion.html?id=' + comment.discussionId;
+      }
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: String(comment.authorId),
+        actorId: uid,
+        type: 'like',
+        title: `<b>${actorName}</b> reacted to your comment`,
+        desc: commentSnippet ? `"${commentSnippet}${commentSnippet.length === 60 ? '…' : ''}"` : '',
+        link,
+        linkLabel: 'View',
+        key: 'comment-react:' + uid + ':' + comment.id,
+        avatar: actor && actor.avatar,
+        thumb: actor && actor.avatar,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return { counts: commentReactionCounts(comment), userRx: rid };
 }
 async function unreactComment({ comment, userId }) {
@@ -233,4 +358,21 @@ async function loadOr404(id) {
   return comment;
 }
 
-module.exports = { createComment, listComments, getReplies, toggleLike, deleteComment, updateComment, reactToComment, unreactComment, loadOr404, canWrite, shapeForReader, CARD_RX, relTime };
+module.exports = { createComment, listComments, getReplies, toggleLike, deleteComment, updateComment, reactToComment, unreactComment, loadOr404, canWrite, shapeForReader, CARD_RX, relTime, recountPostComments };
+
+// One-time recount: recalculates Post.commentsCount for every post from
+// the actual Comment docs. Call via POST /api/comments/recount (admin only).
+async function recountPostComments() {
+  const { Post } = require('../models/social.model');
+  // Get every distinct postId that has comments
+  const agg = await Comment.aggregate([
+    { $match: { scope: 'post', postId: { $ne: null } } },
+    { $group: { _id: '$postId', count: { $sum: 1 } } },
+  ]);
+  if (!agg.length) return { updated: 0 };
+  const ops = agg.map(r => ({
+    updateOne: { filter: { id: r._id }, update: { $set: { commentsCount: r.count } } },
+  }));
+  const result = await Post.bulkWrite(ops);
+  return { updated: result.modifiedCount };
+}

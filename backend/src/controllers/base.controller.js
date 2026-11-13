@@ -47,13 +47,15 @@ async function wrap(res, fn) {
 
 function setRefreshCookie(res, token) {
   const env = require('../config/env');
-  // The refresh cookie is scoped to /api/auth only: it reaches the refresh
-  // and logout endpoints but is never sent to /api/posts or any other route.
-  // Clear any legacy cookie scoped to '/' first so only one remains.
-  res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/' });
+  // The refresh cookie rides on every /api/ request (path '/') so the server
+  // can silently renew the 15-minute access token the moment it expires. This
+  // is the session-lifetime guarantee: as long as the 30-day refresh cookie is
+  // valid and the user is active, they are never bounced to login. Clear any
+  // legacy cookie scoped to '/api/auth' first so only one remains.
+  res.clearCookie('dro_refresh', { domain: env.cookieDomain, path: '/api/auth' });
   res.cookie('dro_refresh', token, {
     httpOnly: true, secure: env.isProd, sameSite: 'lax',
-    domain: env.cookieDomain, maxAge: 30 * 86400000, path: '/api/auth',
+    domain: env.cookieDomain, maxAge: 30 * 86400000, path: '/',
   });
 }
 // Short-lived access cookie so credentials:include fetches work without an

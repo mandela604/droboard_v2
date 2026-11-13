@@ -11,21 +11,7 @@
 'use strict';
 if (window.BookManagementService) return;
 
-/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="../data/editor-demo-data.js?v=3"><\/script>');
-}
-
-function resyncDemo(){
-  var D = window.EditorDemo || {};
-  if(D.BOOKS && D.BOOKS.length && !books.length) books = D.BOOKS.slice();
-  var gc = {};
-  (D.CATEGORIES || []).forEach(function (c) { gc[c.name] = { bg: c.bg, fg: c.color }; });
-  (D.GENRES || []).forEach(function (g) { if (!gc[g.name]) gc[g.name] = { bg: g.bg, fg: g.color }; });
-  Object.keys(gc).forEach(function (k) { GENRE_COLORS[k] = gc[k]; });
-  buildGenreOptions();
-}
+function resyncDemo(){}
 
 var USE_API = true;
 var LIVE = false;
@@ -213,8 +199,7 @@ function fmtDate(d) {
 }
 
 /* ── State ── */
-var D = window.EditorDemo || {};
-var books = (D.BOOKS || []).slice();
+var books = [];
 var activeTab = 'all';
 var currentPage = 1;
 var PER_PAGE = 12;

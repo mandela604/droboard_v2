@@ -7,9 +7,10 @@
  *   storyId      : string — used for demo storage + onDone payload
  *   title        : optional story title shown in the sheet
  *   img          : optional cover image (dataURL or URL)
- *   chaptersRead : optional number — set >= 12 to pass the 12-chapter gate
- *                  (ratings unlock after 12 chapters, same rule as recommendations)
- *   onDone       : optional fn({ stars, text, spoiler }) after submit
+ *   chaptersRead : optional number — informational; the server is the source
+ *                  of truth for the gate (GET …/rating → canRate/need).
+ *   onDone       : optional fn(result) after submit — the API response
+ *                  { ok, mine, avg, count } when live, else the payload.
  *
  * Exposes globals:
  *   openRateModal(data)  — opens the sheet
@@ -30,7 +31,7 @@
   if (window.__droboardRateModal) return;
   window.__droboardRateModal = true;
 
-  var MIN_CHAPTERS = 12; // same gate as recommendations
+  var MIN_CHAPTERS = 3; // same gate as recommendations (posts.service)
 
   // ══ CSS ══
   var CSS = [
@@ -73,6 +74,8 @@
     '.drm-submit{width:calc(100% - 32px);margin:16px;padding:14px;border:none;border-radius:14px;background:#ff0050;color:#fff;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;transition:.15s;letter-spacing:.02em}',
     '.drm-submit:active{transform:scale(.98)}',
     '.drm-submit:disabled{opacity:.4;cursor:not-allowed}',
+    '.drm-remove{display:block;width:calc(100% - 32px);margin:0 16px 14px;padding:10px;border:none;border-radius:12px;background:transparent;color:rgba(255,255,255,.45);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;text-decoration:underline}',
+    '.drm-remove:disabled{opacity:.4;cursor:not-allowed}',
     '.drm-locked{padding:28px 24px 34px;text-align:center}',
     '.drm-lock-ico{width:52px;height:52px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#fbbf24;font-size:20px}',
     '.drm-lock-t{font-size:14px;font-weight:800;color:#f0f0f3;margin-bottom:6px}',
@@ -148,38 +151,24 @@
   }
 
   function lockedHtml() {
-    // Already rated → read-only card (no double rating)
-    var mine = votes[cfg.storyId || 'demo'];
-    if (mine && mine.stars) {
-      var starsOut = '';
-      for (var i = 1; i <= 5; i++) {
-        starsOut += '<span class="drm-star' + (i <= mine.stars ? ' lit' : '') + '" style="cursor:default;pointer-events:none;font-size:24px">\u2605</span>';
-      }
-      return '<div class="drm-locked">' +
-        '<div class="drm-lock-ico" style="background:rgba(255,0,80,.08);border-color:rgba(255,0,80,.25);color:#ff4d7a"><i class="fas fa-check"></i></div>' +
-        '<div class="drm-lock-t">You already rated this story</div>' +
-        '<div class="drm-stars-row" style="padding:12px 0 2px">' + starsOut + '</div>' +
-        '<div class="drm-word" style="margin-bottom:8px">' + WORDS[mine.stars] + '</div>' +
-        (mine.text ? '<div class="drm-lock-s" style="text-align:left;background:rgba(255,255,255,.04);border-radius:12px;padding:12px;margin-top:6px">' +
-          (mine.spoiler ? '<div style="font-size:9px;font-weight:800;color:#fbbf24;margin-bottom:6px"><i class="fas fa-eye-slash"></i> SPOILER REVIEW</div>' : '') +
-          esc(mine.text) + '</div>' : '') +
-        '<div class="drm-lock-s" style="margin-top:12px;font-size:10px">One rating per reader</div>' +
-        '</div>';
-    }
+    // Only the reading gate locks the sheet — an existing rating is edited
+    // in place (the form is pre-filled), never shown read-only.
     var read = cfg.chaptersRead || 0;
-    var pct = Math.min(100, Math.round(read / MIN_CHAPTERS * 100));
+    var need = cfg.need || MIN_CHAPTERS;
+    var pct = Math.min(100, Math.round(read / need * 100));
     return '<div class="drm-locked">' +
       '<div class="drm-lock-ico"><i class="fas fa-lock"></i></div>' +
-      '<div class="drm-lock-t">Ratings unlock at ' + MIN_CHAPTERS + ' chapters</div>' +
+      '<div class="drm-lock-t">Ratings unlock at ' + need + ' chapters</div>' +
       '<div class="drm-lock-s">Same rule as recommendations — only readers who stuck with the story can judge it.</div>' +
-      '<div class="drm-lock-n">' + read + ' / ' + MIN_CHAPTERS + ' chapters read</div>' +
+      '<div class="drm-lock-n">' + read + ' / ' + need + ' chapters read</div>' +
       '<div class="drm-bar"><i style="width:' + pct + '%"></i></div>' +
       '</div>';
   }
 
   function formHtml() {
+    var editing = !!(votes[cfg.storyId || 'demo'] && votes[cfg.storyId || 'demo'].stars);
     return '<div class="drm-body">' +
-      '<div class="drm-label">Your review <span class="drm-count" id="drmCount">' + draft.text.length + '/600</span></div>' +
+      '<div class="drm-label">' + (editing ? 'Edit your review' : 'Your review') + ' <span class="drm-count" id="drmCount">' + draft.text.length + '/600</span></div>' +
       '<textarea class="drm-text" id="drmText" maxlength="600" placeholder="What worked? What dragged? Would you tell a friend to read it?">' + esc(draft.text) + '</textarea>' +
         '<div class="drm-note"><i class="fas fa-exclamation-circle" style="font-size:9px"></i>Don\'t reveal twists or endings.</div>' +
       '<div class="drm-spoiler' + (draft.spoiler ? ' on' : '') + '" id="drmSpoiler" onclick="RateModal.spoiler()">' +
@@ -188,7 +177,8 @@
       '</div>' +
       '</div>' +
       '<button class="drm-submit" id="drmSubmit" onclick="RateModal.submit()"' + (draft.stars ? '' : ' disabled') + '>' +
-        (draft.stars ? 'Post review' : 'Tap a star to rate') + '</button>';
+        (draft.stars ? (editing ? 'Update review' : 'Post review') : 'Tap a star to rate') + '</button>' +
+      (editing ? '<button type="button" class="drm-remove" id="drmRemove" onclick="RateModal.remove()">Remove rating</button>' : '');
   }
 
   function renderForm() {
@@ -197,7 +187,7 @@
     el.innerHTML = starsHtml() + formHtml();
     var avg = $('drmAvg');
     if (avg && cfg.avg != null) {
-      avg.innerHTML = '<b>' + Number(cfg.avg).toFixed(1) + '</b> \u00b7 ' + (cfg.count || 1247) + ' ratings';
+      avg.innerHTML = '<b>' + Number(cfg.avg).toFixed(1) + '</b> \u00b7 ' + (cfg.count != null ? cfg.count : 0) + ' ratings';
     }
     var ta = $('drmText');
     if (ta) {
@@ -214,13 +204,12 @@
     var b = $('drmSubmit');
     if (!b) return;
     b.disabled = !draft.stars;
-    b.textContent = draft.stars ? 'Post review' : 'Tap a star to rate';
+    var editing = !!(votes[cfg.storyId || 'demo'] && votes[cfg.storyId || 'demo'].stars);
+    b.textContent = draft.stars ? (editing ? 'Update review' : 'Post review') : 'Tap a star to rate';
   }
 
   function render() {
-    if (cfg.chaptersRead != null && cfg.chaptersRead < MIN_CHAPTERS) {
-      $('drmContent').innerHTML = lockedHtml();
-    } else if (votes[cfg.storyId || 'demo'] && votes[cfg.storyId || 'demo'].stars) {
+    if (cfg.canRate === false) {
       $('drmContent').innerHTML = lockedHtml();
     } else {
       renderForm();
@@ -250,19 +239,60 @@
       if (!draft.stars) return;
       var payload = { stars: draft.stars, text: draft.text.trim(), spoiler: draft.spoiler };
       var id = cfg.storyId || 'demo';
-      votes[id] = payload;
+      var editing = !!(votes[id] && votes[id].stars);
       var btn = $('drmSubmit');
-      if (btn) { btn.disabled = true; btn.textContent = 'Posting\u2026'; }
+      if (btn) { btn.disabled = true; btn.textContent = editing ? 'Updating\u2026' : 'Posting\u2026'; }
       var api = window.DroboardRateAPI;
-      var done = function (ok) {
+
+      // Only a confirmed server write counts as a rating — a 403/network
+      // error must not leave the modal showing "already rated" after a reload.
+      var succeed = function (res) {
+        votes[id] = (res && res.mine) || payload;
         closeRateModal();
-        if (window.toast) toast(ok === false ? '\u2717 Could not post rating' : '\u2b50 Rating posted');
-        if (typeof cfg.onDone === 'function') cfg.onDone(payload);
+        if (window.toast) toast(editing ? '\u2b50 Review updated' : '\u2b50 Rating posted');
+        if (typeof cfg.onDone === 'function') cfg.onDone(res || payload);
       };
+      var fail = function (msg) {
+        if (btn) { btn.disabled = false; btn.textContent = editing ? 'Update review' : 'Post review'; }
+        if (window.toast) toast(msg || '\u2717 Could not post rating');
+      };
+
       if (api && api.submitRate) {
-        api.submitRate(id, payload).then(function (r) { done(!r || r.ok !== false); }).catch(function () { done(false); });
+        api.submitRate(id, payload).then(function (r) {
+          if (r && r.ok === false) {
+            fail(r.error === 'not_enough_reading' ? 'Read more chapters to rate' : 'Could not post rating');
+            return;
+          }
+          succeed(r);
+        }).catch(function () { fail(); });
       } else {
-        setTimeout(function () { done(true); }, 350);
+        setTimeout(function () { succeed(payload); }, 350);
+      }
+    },
+    remove: function () {
+      var id = cfg.storyId || 'demo';
+      var api = window.DroboardRateAPI;
+      var btn = $('drmRemove');
+      if (btn) { btn.disabled = true; btn.textContent = 'Removing\u2026'; }
+      var finish = function (res, ok) {
+        if (!ok) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Remove rating'; }
+          if (window.toast) toast('\u2717 Could not remove rating');
+          return;
+        }
+        delete votes[id];
+        draft = { stars: 0, text: '', spoiler: false };
+        closeRateModal();
+        if (window.toast) toast('Rating removed');
+        if (typeof cfg.onDone === 'function') cfg.onDone(res || { ok: true, deleted: true, mine: null });
+      };
+      if (api && api.deleteRating) {
+        api.deleteRating(id).then(function (r) {
+          if (r && r.ok === false) { finish(r, false); return; }
+          finish(r || { ok: true, deleted: true, mine: null }, true);
+        }).catch(function () { finish(null, false); });
+      } else {
+        setTimeout(function () { finish({ ok: true, deleted: true, mine: null }, true); }, 300);
       }
     }
   };
@@ -291,6 +321,11 @@
           if (r.mine && r.mine.stars) { votes[cfg.storyId || 'demo'] = r.mine; draft.stars = r.mine.stars; }
           if (r.avg != null) cfg.avg = r.avg;
           if (r.count != null) cfg.count = r.count;
+          // Server owns the gate (books shorter than MIN_CHAPTERS unlock at
+          // their full length) — never lock on the caller's guess.
+          if (typeof r.chaptersRead === 'number') cfg.chaptersRead = r.chaptersRead;
+          if (typeof r.need === 'number') cfg.need = r.need;
+          if (typeof r.canRate === 'boolean') cfg.canRate = r.canRate;
           render();
         }
       }).catch(function () {});

@@ -95,7 +95,7 @@ let extra = '';
     // Continue-reading is the only card that carries `ch`, and there the
     // progress bar is the whole point: rating must not win the branch.
     if (s.ch) extra = `<div class="dc-cont-ch">${esc(s.ch)}</div>${s.pct != null ? `<div class="dc-prog-track"><div class="dc-prog-fill" style="width:${s.pct}%"></div></div>` : ''}`;
-    else if (s.rating) extra = `<div class="dc-scard-rating">★ ${esc(s.rating)}</div>`;
+    else if (s.rating) extra = `<div class="dc-scard-rating">★ ${parseFloat(s.rating).toFixed(1)}</div>`;
     else if (s.cat) extra = `<div class="dc-scard-cat">${esc(s.cat)}</div>`;
     else if (s.meta) extra = `<div class="dc-scard-meta">${esc(s.meta)}</div>`;
     const author = s.author
@@ -178,7 +178,7 @@ let extra = '';
         ${s.preview ? `<div class="dc-list-preview">${esc(s.preview)}</div>` : ''}
         <div class="dc-list-foot">
           <a class="dc-list-stat dc-list-author" href="${profileHref(s.author)}" onclick="event.stopPropagation()">${esc(s.author || '')}</a>
-          ${s.rating ? `<div class="dc-list-stat"><i class="fas fa-star" style="color:#f59e0b"></i> ${esc(s.rating)}</div>` : ''}
+          ${s.rating ? `<div class="dc-list-stat"><i class="fas fa-star" style="color:#f59e0b"></i> ${parseFloat(s.rating).toFixed(1)}</div>` : ''}
           ${s.chapters ? `<div class="dc-list-stat"><i class="fas fa-book-open"></i> ${s.chapters} ch</div>` : ''}
         </div>
       </div>

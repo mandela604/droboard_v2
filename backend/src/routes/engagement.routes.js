@@ -53,6 +53,8 @@ router.post('/:id/rating', requireAuth, writeLimiter,
       spoiler: z.boolean().optional(),
     }).strict(),
   })), ctrl.ratingPost);
+router.delete('/:id/rating', requireAuth, writeLimiter, audit('ratings.delete'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.ratingDelete);
 
 // reviews list (reader-facing story page): paginated BookRating rows joined to
 // author {id,name,avatar} + helpful tally. sort = helpful|newest|rating.

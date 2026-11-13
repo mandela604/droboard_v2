@@ -1,17 +1,10 @@
 /**
- * categories-genres-service.js — Data layer for Categories & Genres page
- * Reads from window.EditorDemo.CATEGORIES / GENRES / POPULAR_GENRES
+ * categories-genres-service.js — Data layer for Categories & Genres page (API-backed)
  */
 (function(){
 'use strict';
 if(window.__catGenreService) return;
 window.__catGenreService = true;
-
-/* Demo-data self-load: page HTML no longer includes ../data/editor-demo-data.js.
-   Service pulls it during parse; delete these 3 lines at go-live. */
-if(typeof window.EditorDemo === 'undefined' && typeof document !== 'undefined' && document.readyState === 'loading'){
-  document.write('<script src="../data/editor-demo-data.js"><\/script>');
-}
 
 /* ── Backend-ready header ── */
 const USE_API = true;
@@ -24,13 +17,7 @@ async function callBackend(path, opts){
 }
 
 function getDemo(){
-  var D = window.EditorDemo || {};
-  return {
-    categories: JSON.parse(JSON.stringify(D.CATEGORIES || [])),
-    genres: JSON.parse(JSON.stringify(D.GENRES || [])),
-    tropes: JSON.parse(JSON.stringify(D.TROPES || [])),
-    popularGenres: JSON.parse(JSON.stringify(D.POPULAR_GENRES || []))
-  };
+  return { categories: [], genres: [], tropes: [], popularGenres: [] };
 }
 
 var ICON_OPTIONS = [

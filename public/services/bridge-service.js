@@ -241,6 +241,7 @@
   /* ── RATING — live: GET /api/stories/:id/rating { ok, mine, avg, count }.
      Stars persist across open/close toggles via myRating. */
   let myRating = 0;
+  let ratingGate = null;   // last GET /rating payload: {chaptersRead, need, canRate}
   function goToDebate() {
     location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || '');
   }
@@ -259,6 +260,7 @@
       myRating = (r.mine && r.mine.stars) || 0;
       DATA.stats.rating = r.avg || 0;
       DATA.stats.ratingCount = r.count || 0;
+      ratingGate = r;
     } catch (e) { /* rating strip falls back to the story payload numbers */ }
     renderRating();
   }
@@ -397,7 +399,7 @@
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.comments)}</div><div class="sl">Comments</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.reads)}</div><div class="sl">Reads</div></div>
       <div class="stat-cell"><div class="sn">${fmtN(d.stats.shares)}</div><div class="sl">Shares</div></div>
-      <div class="stat-cell"><div class="sn gold">${d.stats.rating ? d.stats.rating + '★' : '—'}</div><div class="sl">Rating</div></div>`;
+      <div class="stat-cell"><div class="sn gold">${d.stats.rating ? parseFloat(d.stats.rating).toFixed(1) : '—'}</div><div class="sl">Rating</div></div>`;
   }
 
   function renderContinue() {
@@ -551,7 +553,7 @@
       <div class="wc-stats">
         <div class="ws"><div class="ws-n">${fmtN(w.stories)}</div><div class="ws-l">Stories</div></div>
         <div class="ws"><div class="ws-n">${fmtN(w.reads)}</div><div class="ws-l">Reads</div></div>
-        <div class="ws"><div class="ws-n">${w.rating}★</div><div class="ws-l">Rating</div></div>
+        <div class="ws"><div class="ws-n">${w.rating ? parseFloat(w.rating).toFixed(1) : '—'}</div><div class="ws-l">Rating</div></div>
         <div class="ws"><div class="ws-n">${fmtN(w.followers)}</div><div class="ws-l">Followers</div></div>
       </div>
       <div class="wc-view-btn" onclick="BridgePage.goProfile()"><i class="fas fa-arrow-right" style="font-size:11px"></i> View Full Profile</div>`;
@@ -879,10 +881,18 @@
       title: DATA.title,
       img: DATA.cover || '',
       presetStars: typeof presetStar === 'number' ? presetStar : 0,
+      chaptersRead: ratingGate && ratingGate.chaptersRead,
+      need: ratingGate && ratingGate.need,
+      canRate: ratingGate && ratingGate.canRate,
       onDone: (r) => {
-        myRating = (r && r.mine && r.mine.stars) || myRating;
+        if (r && (r.deleted || r.mine === null)) {
+          myRating = 0;
+        } else {
+          myRating = (r && r.mine && r.mine.stars) || (r && r.stars) || myRating;
+        }
         if (r && r.avg != null) DATA.stats.rating = r.avg;
         if (r && r.count != null) DATA.stats.ratingCount = r.count;
+        if (r && typeof r.canRate === 'boolean') ratingGate = r;
         renderRating();
       }
     });

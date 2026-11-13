@@ -96,6 +96,13 @@ async function ratingPost(req, res) {
   });
 }
 
+async function ratingDelete(req, res) {
+  return base.wrap(res, async () => {
+    const ratings = require('../services/ratings.service');
+    return ratings.deleteRating(req.valid.params.id, req.user.id);
+  });
+}
+
 /* ── reviews list + helpful votes (reader-facing story page) ── */
 
 async function ratingsList(req, res) {
@@ -122,5 +129,5 @@ async function helpfulUnmark(req, res) {
 module.exports = {
   votePoll, votePrediction, voteDebate, retract, results, progress, readState,
   bookResults, bookVote, bookRetract,
-  ratingGet, ratingPost, ratingsList, helpfulMark, helpfulUnmark,
+  ratingGet, ratingPost, ratingDelete, ratingsList, helpfulMark, helpfulUnmark,
 };

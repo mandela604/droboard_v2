@@ -119,10 +119,7 @@ const API_BASE_TEAM = '/api/super-admin/editorial-team';
 
 async function callTeamApi(path, opts){
   opts = opts || {};
-  var token = null;
-  try { token = localStorage.getItem('droboard_session'); } catch (e) {}
-  var headers = Object.assign({}, opts.headers || {}, token ? { 'Authorization': 'Bearer ' + token } : {});
-  var res = await fetch(API_BASE_TEAM + (path||''), Object.assign({ credentials:'include' }, opts, { headers: headers }));
+  var res = await fetch(API_BASE_TEAM + (path||''), Object.assign({ credentials:'include' }, opts));
   if(!res.ok) throw new Error('API error ' + res.status);
   return res.json();
 }

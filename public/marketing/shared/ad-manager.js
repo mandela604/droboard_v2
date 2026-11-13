@@ -1040,7 +1040,7 @@
     document.getElementById('adCount').textContent = list.length + ' ad' + (list.length === 1 ? '' : 's');
     if (!list.length) {
       const missing = !window.MarketingData ? 'data layer (marketing-data.js) failed to load. Check script paths.'
-        : (!window.DemoData && !Object.keys(readOverrides()).length ? 'demo data (central-demo-data.js) failed to load. Check script paths.' : '');
+        : (!Object.keys(readOverrides()).length ? 'demo data failed to load. Check script paths.' : '');
       el.innerHTML = `<div class="empty-msg"><i class="fas fa-rectangle-ad"></i>${missing ? '⚠️ ' + missing : 'No ads here yet — create one to fill this slot.'}</div>`;
       document.getElementById('adPager').style.display = 'none';
       return;

@@ -73,4 +73,13 @@ async function unreact(req, res) {
   });
 }
 
-module.exports = { create, list, replies, like, remove, update, react, unreact };
+async function recount(req, res) {
+  return base.wrap(res, async () => {
+    if (!req.user || !(req.user.roles || []).includes('admin')) {
+      const e = new Error('forbidden'); e.status = 403; throw e;
+    }
+    return comments.recountPostComments();
+  });
+}
+
+module.exports = { create, list, replies, like, remove, update, react, unreact, recount };

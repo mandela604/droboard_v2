@@ -196,7 +196,7 @@
     .dcs-input::placeholder{color:var(--dcs-muted2)}
     .dcs-send-btn{background:var(--dcs-acc);color:#fff;border:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;flex-shrink:0;transition:.15s}
     .dcs-send-btn:active{transform:scale(.9)}
-    .dcs-send-btn:disabled{background:var(--dcs-surface2);cursor:default}
+    .dcs-send-btn:disabled{background:var(--dcs-muted3,rgba(0,0,0,.12));color:var(--dcs-muted2);cursor:default}
 
     /* List — flows naturally so the whole page scrolls natively. */
     .dcs-list{display:flex;flex-direction:column;gap:9px;padding:6px 0}
@@ -274,7 +274,7 @@
     .dcs-reply-inp{flex:1;background:var(--dcs-card);border:1.5px solid var(--dcs-bd);border-radius:18px;padding:6px 11px;color:var(--dcs-tx);font-family:inherit;font-size:11px;outline:none;transition:border-color .2s}
     .dcs-reply-inp:focus{border-color:rgba(255,0,80,.35)}
     .dcs-reply-send{background:var(--dcs-acc);border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#fff;flex-shrink:0}
-    .dcs-reply-send:disabled{background:var(--dcs-card);cursor:default}
+    .dcs-reply-send:disabled{background:var(--dcs-muted3,rgba(0,0,0,.12));color:var(--dcs-muted2);cursor:default}
     .dcs-sep{height:1px;background:var(--dcs-bd);margin:0}
 
     .dcs-empty{text-align:center;padding:28px 14px;color:var(--dcs-muted2)}
@@ -791,7 +791,9 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       return list.reduce((n, c) => n + 1 + countAll(c.replies || []), 0);
     }
     function refreshCount() {
-      if (countEl) countEl.textContent = _fmtN(countAll(comments));
+      const total = countAll(comments);
+      if (countEl) countEl.textContent = _fmtN(total);
+      if (typeof options.onCountChange === 'function') options.onCountChange(total);
     }
 
     // Flatten every descendant of a comment (any depth) into one array,
@@ -834,14 +836,14 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     // ── Find helpers ──
     function findById(list, id) {
       for (const c of list) {
-        if (c.id === id) return c;
+        if (String(c.id) === String(id)) return c;
         const r = findById(c.replies || [], id);
         if (r) return r;
       }
       return null;
     }
     function removeById(list, id) {
-      const i = list.findIndex(x => x.id === id);
+      const i = list.findIndex(x => String(x.id) === String(id));
       if (i > -1) { list.splice(i, 1); return true; }
       for (const c of list) { if (removeById(c.replies || [], id)) return true; }
       return false;
@@ -934,7 +936,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
           </div>
           <div class="dcs-reply-area" id="${ns}-cra-${c.id}">
             <div class="dcs-reply-av-sm">${currentUser.avatar ? `<img src="${_esc(currentUser.avatar)}"/>` : (currentUser.name || 'Y')[0].toUpperCase()}</div>
-            <input class="dcs-reply-inp" id="${ns}-cri-${c.id}" placeholder="Replying to @${_esc(c.name)}…"/>
+            <input class="dcs-reply-inp" id="${ns}-cri-${c.id}" data-parent-id="${c.id}" placeholder="Replying to @${_esc(c.name)}…"/>
             <button class="dcs-reply-send" id="${ns}-crs-${c.id}" disabled data-dcs-replysend="${c.id}"><i class="fas fa-paper-plane"></i></button>
           </div>
           <div class="dcs-sep"></div>
@@ -992,10 +994,10 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
     function attachReplyInputListeners(ns, scopeEl) {
       scopeEl.querySelectorAll('[id^="' + ns + '-cri-"]').forEach(inp => {
-        const cid = parseInt(inp.id.split('-').pop(), 10);
-        const btn = document.getElementById(ns + '-crs-' + cid);
+        const rawId = inp.dataset.parentId || inp.id.replace(ns + '-cri-', '');
+        const btn = document.getElementById(ns + '-crs-' + rawId) || scopeEl.querySelector('[data-dcs-replysend="' + rawId + '"]');
         if (btn) inp.oninput = () => { btn.disabled = inp.value.trim().length < 1; };
-        inp.onkeydown = e => { if (e.key === 'Enter') submitReply(ns, cid); };
+        inp.onkeydown = e => { if (e.key === 'Enter') submitReply(ns, rawId); };
       });
     }
 
@@ -1054,20 +1056,24 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
       const parent = findById(comments, threadOpenId);
       if (!parent) return;
-      const c = _normalize({
-        name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam,
-        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
-        time: 'Just now', text, likes: 0, liked: false, replies: [],
-      });
-      parent.replies = parent.replies || [];
-      parent.replies.push(c);
-      threadInputEl.value = ''; threadSendBtn.disabled = true;
+      threadInputEl.disabled = true; threadSendBtn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
-      syncAll();
-      if (typeof options.onReply === 'function') options.onReply(threadOpenId, c);
-      _toast('💬 Reply posted!');
-      setTimeout(() => document.getElementById(instId + '-tv-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      Promise.resolve()
+        .then(() => typeof options.onReply === 'function' ? options.onReply(threadOpenId, { text, team: pickedTeam }) : Promise.resolve())
+        .then((saved) => {
+          threadInputEl.value = ''; threadInputEl.disabled = false; threadSendBtn.disabled = true;
+          if (saved) {
+            parent.replies = parent.replies || [];
+            parent.replies.push(_normalize(_canonStatuses(saved)));
+          }
+          syncAll();
+          _toast('💬 Reply posted!');
+          if (saved) setTimeout(() => document.getElementById(instId + '-tv-ci-' + saved.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        })
+        .catch((e) => {
+          threadInputEl.disabled = false; threadSendBtn.disabled = false;
+          _toast(e.message || 'Reply failed — tap send to retry');
+        });
     }
     threadBackBtn.addEventListener('click', closeThread);
     const threadViewAllBtn = document.getElementById(instId + '-threadviewall');
@@ -1082,26 +1088,27 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (!text) return;
       if (window.RequireAuth && !RequireAuth.ensure('post a comment')) return;
       if (TEAMS.length && options.requireTeam && !pickedTeam) { _toast('Pick a side first'); return; }
-      const c = _normalize({
-        name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam,
-        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
-        time: 'Just now', text, likes: 0, liked: false, replies: [],
-      });
-      comments.push(c);
-      inputEl.value = ''; sendBtn.disabled = true;
+      // Disable input while saving — no optimistic insert
+      inputEl.disabled = true; sendBtn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('comment'); } catch (e) {}
-      syncAll();
       try {
-        if (typeof options.onPost === 'function') await options.onPost(c);
+        const saved = typeof options.onPost === 'function'
+          ? await options.onPost({ text, team: pickedTeam })
+          : null;
+        // Success — clear input, append real comment from server
+        inputEl.value = ''; inputEl.disabled = false;
+        if (saved) {
+          comments.push(_normalize(_canonStatuses(saved)));
+          syncAll();
+          setTimeout(() => document.getElementById(instId + '-ci-' + saved.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        } else {
+          syncAll();
+        }
         _toast('💬 Comment posted!');
-        setTimeout(() => document.getElementById(instId + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
       } catch (e) {
-        // rollback optimistic comment on API failure
-        const idx = comments.findIndex(x => x.id === c.id);
-        if (idx >= 0) comments.splice(idx, 1);
-        syncAll();
-        _toast(e.message || 'Comment failed to post');
+        // Failure — re-enable input with text intact so user can retry
+        inputEl.disabled = false; sendBtn.disabled = false;
+        _toast(e.message || 'Could not post — tap send to retry');
       }
     }
     async function submitReply(ns, parentId) {
@@ -1112,28 +1119,28 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       if (!parent) return;
       const text = inp.value.trim();
       const full = text.startsWith('@') ? text : `@${parent.name} ${text}`;
-      const c = _normalize({
-        name: currentUser.name, avatar: currentUser.avatar, avatarBg: currentUser.avatarBg,
-        verified: currentUser.verified || false, team: pickedTeam,
-        wid: currentUser.wid || null, statusRing: currentUser.statusRing || 'none', statuses: currentUser.statuses || null,
-        time: 'Just now', text: full, likes: 0, liked: false, replies: [],
-      });
-      parent.replies = parent.replies || [];
-      parent.replies.push(c);
-      inp.value = '';
+      const btn = document.getElementById(ns + '-crs-' + parentId) || inp.parentElement?.querySelector('[data-dcs-replysend]');
+      // Disable while saving — no optimistic insert
+      inp.disabled = true; if (btn) btn.disabled = true;
       try { if (window.ReaderLeague) ReaderLeague.track('reply'); } catch (e) {}
-      document.getElementById(ns + '-cra-' + parentId)?.classList.remove('open');
-      syncAll();
       try {
-        if (typeof options.onReply === 'function') await options.onReply(parentId, c);
-        _toast('💬 Reply posted!');
-        setTimeout(() => document.getElementById(ns + '-ci-' + c.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
-      } catch (e) {
-        // rollback optimistic reply on API failure
-        const idx = parent.replies.findIndex(x => x.id === c.id);
-        if (idx >= 0) parent.replies.splice(idx, 1);
+        const saved = typeof options.onReply === 'function'
+          ? await options.onReply(parentId, { text: full, team: pickedTeam })
+          : null;
+        // Success — clear input, close reply area, append real reply
+        inp.value = ''; inp.disabled = false; if (btn) btn.disabled = true;
+        document.getElementById(ns + '-cra-' + parentId)?.classList.remove('open');
+        if (saved) {
+          parent.replies = parent.replies || [];
+          parent.replies.push(_normalize(_canonStatuses(saved)));
+        }
         syncAll();
-        _toast(e.message || 'Reply failed to post');
+        _toast('💬 Reply posted!');
+        if (saved) setTimeout(() => document.getElementById(ns + '-ci-' + saved.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+      } catch (e) {
+        // Failure — re-enable input with text intact so user can retry
+        inp.disabled = false; if (btn) btn.disabled = false;
+        _toast(e.message || 'Could not post — tap send to retry');
       }
     }
 
@@ -1525,7 +1532,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
         if (like && !e.target.closest('.dcs-rx-popup')) { toggleLike(+like.dataset.dcsLike); return; }
 
         const viewbtn = e.target.closest('[data-dcs-viewthread]');
-        if (viewbtn) { openThread(+viewbtn.dataset.dcsViewthread); return; }
+        if (viewbtn) { openThread(viewbtn.dataset.dcsViewthread); return; }
 
         const seemore = e.target.closest('[data-dcs-seemore]');
         if (seemore) {
@@ -1538,7 +1545,7 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
         const replybtn = e.target.closest('[data-dcs-replybtn]');
         if (replybtn) {
-          const cid = +replybtn.dataset.dcsReplybtn;
+          const cid = replybtn.dataset.dcsReplybtn;
           const area = document.getElementById(ns + '-cra-' + cid);
           const wasOpen = !!(area && area.classList.contains('open'));
           scopeEl.querySelectorAll('.dcs-reply-area').forEach(a => a.classList.remove('open'));
@@ -1547,16 +1554,15 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
         }
 
         const replysend = e.target.closest('[data-dcs-replysend]');
-        if (replysend) { submitReply(ns, +replysend.dataset.dcsReplysend); return; }
-
+        if (replysend) { submitReply(ns, replysend.dataset.dcsReplysend); return; }
         const editsave = e.target.closest('[data-dcs-editsave]');
-        if (editsave) { saveEdit(ns, +editsave.dataset.dcsEditsave); return; }
+        if (editsave) { saveEdit(ns, editsave.dataset.dcsEditsave); return; }
 
         const editcancel = e.target.closest('[data-dcs-editcancel]');
         if (editcancel) { cancelEdit(); return; }
 
         const dots = e.target.closest('[data-dcs-dots]');
-        if (dots) { e.stopPropagation(); openDots(+dots.dataset.dcsDots, dots); return; }
+        if (dots) { e.stopPropagation(); openDots(dots.dataset.dcsDots, dots); return; }
 
         if (!e.target.closest('.dcs-action-btn') && !e.target.closest('.dcs-rx-popup')) {
           scopeEl.querySelectorAll('.dcs-rx-popup.show').forEach(p => p.classList.remove('show'));
@@ -1646,8 +1652,11 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
   async function postComment(opts) {
     const o = opts || {};
-    const body = { scope: o.chapterId ? 'chapter' : 'story', storyId: o.storyId, text: o.text };
+    const body = { scope: o.scope || 'story', text: o.text };
+    if (o.storyId) body.storyId = String(o.storyId);
     if (o.chapterId) body.chapterId = String(o.chapterId);
+    if (o.postId) body.postId = String(o.postId);
+    if (o.discussionId) body.discussionId = String(o.discussionId);
     if (o.parentId) body.parentId = o.parentId;
     if (o.team) body.team = o.team;
     const res = await fetch(COMMENTS_API + '/comments', {
