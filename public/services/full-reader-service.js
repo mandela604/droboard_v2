@@ -839,10 +839,15 @@
           },
           ads: (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)) ? false : undefined,
           getCommentUrl: (c) => "comments.html?story=" + encodeURIComponent(storyIdNow()) + "&ch=" + currentChNum() + "#comment-" + (c && c.id),
-          onPost: (c) => API.postComment({ storyId: storyId, chapterId: chapterId, text: c.text, team: c.team }),
-          onReply: (parentId, c) => API.postComment({ storyId: storyId, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
+          onPost: (c) => API.postComment({ scope: chapterId ? 'chapter' : 'story', storyId: storyId, chapterId: chapterId, text: c.text, team: c.team }),
+          onReply: (parentId, c) => API.postComment({ scope: chapterId ? 'chapter' : 'story', storyId: storyId, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
           onEdit: (c, oldText, newText) => API.editComment(c.id, newText),
           onDotsAction: (action) => { if (action === "delete") toast("Comment deleted."); },
+          onCountChange: (total) => {
+            // Update the toggle-label "N comments" text too
+            const lbl = document.querySelector('#commentsPlaceholder .dcs-toggle-label');
+            if (lbl) lbl.textContent = fmtN(total) + ' comment' + (total === 1 ? '' : 's');
+          },
         });
       })
       .catch(function (err) {

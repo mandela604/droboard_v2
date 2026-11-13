@@ -1,4 +1,4 @@
-﻿/**
+/**
  * community-cards.js â€” Droboard reusable Communities cards
  * (genre hub + writer circle). Self-contained CSS injection.
  *
