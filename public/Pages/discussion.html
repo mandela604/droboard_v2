@@ -95,11 +95,45 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/top-icon-btn.js"></script>
-<script src="../services/notification-store.js?v=8"></script>
-<script src="../services/notification-service.js?v=2"></script>
-<script src="../component/auth-wall.js?v=1"></script>
-<script src="../component/app-nav.js?v=7"></script>
+<!-- PAGE BUNDLE
+     The scripts this page used to load as ~20 individual <script src> tags are
+     now served as ONE file: /build/discussion.bundle.js. The server
+     concatenates them in exactly the order listed below, so they still execute
+     in the same order as before.
+
+     The list lives in this JSON block and the server reads it from THIS file,
+     so the bundle can never drift from the page and can never be stale.
+     To add or remove a script, edit this list. -->
+<script type="application/json" id="dro-bundle-sources">
+[
+  "../component/top-icon-btn.js",
+  "../services/notification-store.js",
+  "../services/notification-service.js",
+  "../component/auth-wall.js",
+  "../component/app-nav.js",
+  "../services/feed-data.js",
+  "../component/reaction-picker.js",
+  "../component/ad-card.js",
+  "../component/share-modal.js",
+  "../component/report-sheet.js",
+  "../component/status-viewer.js",
+  "../component/status-ring.js",
+  "../services/status-service.js",
+  "../shared/status-loader.js",
+  "../component/comment-section.js",
+  "../marketing/shared/marketing-data.js",
+  "../services/audience-rules.js",
+  "../services/audience-service.js",
+  "../services/ad-service.js",
+  "../services/ad-revenue-service.js",
+  "../component/ad-slot.js",
+  "../services/auth-session.js",
+  "../services/league-service.js",
+  "../services/discussion-service.js",
+  "../shared/theme-chrome.js"
+]
+</script>
+<script src="/build/discussion.bundle.js" defer></script>
 </head>
 <body>
 <div class="phone">
@@ -121,26 +155,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="../services/feed-data.js?v=3"></script>
-<script src="../component/reaction-picker.js?v=5"></script>
-<script src="../component/ad-card.js?v=10"></script>
-<script src="../component/share-modal.js?v=6"></script>
-<script src="../component/report-sheet.js"></script>
-<script src="../component/status-viewer.js?v=17"></script>
-<script src="../component/status-ring.js?v=5"></script>
-  <script src="../services/status-service.js?v=11"></script>
-<script src="../shared/status-loader.js"></script>
-<script src="../component/comment-section.js?v=19"></script>
-<script src="../marketing/shared/marketing-data.js"></script>
-<script src="../services/audience-rules.js?v=2"></script>
-<script src="../services/audience-service.js?v=3"></script>
-<script src="../services/ad-service.js?v=7"></script>
-<script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/ad-slot.js?v=3"></script>
-<script src="../services/auth-session.js?v=4"></script>
-<script src="../services/league-service.js"></script>
 <script src="../services/discussion-service.js?v=4"></script>
-<script>DiscussionPage.init();</script>
-<script src="../shared/theme-chrome.js"></script>
+<!-- The scripts this page used to load as 19 more <script src> tags now arrive
+     as the single /build/discussion.bundle.js declared in <head>. -->
+<script>
+// The bundle is deferred, so it has not executed yet at this point.
+// DOMContentLoaded fires after every deferred script has run, which is when
+// DiscussionPage exists.
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.DiscussionPage && DiscussionPage.init) DiscussionPage.init();
+  else console.error('[discussion] discussion-service.js did not load');
+});
+</script>
 </body>
 </html>

@@ -208,8 +208,11 @@ var modalBookId = null;   /* flag/unflag modal target */
 var modalMode = 'flag';   /* 'flag' | 'unflag' */
 
 var GENRE_COLORS = {};
-(D.CATEGORIES || []).forEach(function (c) { GENRE_COLORS[c.name] = { bg: c.bg, fg: c.color }; });
-(D.GENRES || []).forEach(function (g) { if (!GENRE_COLORS[g.name]) GENRE_COLORS[g.name] = { bg: g.bg, fg: g.color }; });
+// Demo data (window.EditorDemo) was removed — these lists are now empty
+// until the senior-editor books API returns its own category/genre palette.
+var _demo = (typeof window !== 'undefined' && window.EditorDemo) || {};
+(_demo.CATEGORIES || []).forEach(function (c) { GENRE_COLORS[c.name] = { bg: c.bg, fg: c.color }; });
+(_demo.GENRES || []).forEach(function (g) { if (!GENRE_COLORS[g.name]) GENRE_COLORS[g.name] = { bg: g.bg, fg: g.color }; });
 GENRE_COLORS['Billionaire Romance'] = { bg: '#ece3fd', fg: '#7c5cfc' };
 GENRE_COLORS['Werewolf Romance'] = { bg: '#eef0f2', fg: '#5b6470' };
 GENRE_COLORS['Mafia Romance'] = { bg: '#e7e7ea', fg: '#26262b' };

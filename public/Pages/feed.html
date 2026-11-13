@@ -137,12 +137,67 @@
   </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/img-guard.js"></script>
-<script src="../component/top-icon-btn.js"></script>
-<script src="../services/notification-store.js?v=8"></script>
-<script src="../services/notification-service.js?v=2"></script>
-<script src="../component/auth-wall.js?v=1"></script>
-<script src="../services/auth-session.js?v=4"></script>
-<script src="../component/app-nav.js?v=7"></script>
+<!-- PAGE BUNDLE
+     The scripts this page used to load as 40+ individual <script src> tags are
+     now served as ONE file: /build/feed.bundle.js. The server concatenates
+     them in exactly the order listed below, so they still execute in the same
+     order as before.
+
+     The list lives in this JSON block and the server reads it from THIS file,
+     which means two things:
+       • the bundle can never drift from the page (there is no second list);
+       • the bundle can never be stale — edit a source .js file and the next
+         request already serves the new code (its ETag changes with it).
+     To add or remove a script, edit this list.
+     `defer` lets the bundle download in parallel with the rest of the page and
+     execute once the DOM is parsed. -->
+<script type="application/json" id="dro-bundle-sources">
+[
+  "../component/top-icon-btn.js",
+  "../services/notification-store.js",
+  "../services/notification-service.js",
+  "../component/auth-wall.js",
+  "../services/auth-session.js",
+  "../component/app-nav.js",
+  "../services/feed-data.js",
+  "../component/expiry-chips.js",
+  "../component/post-composer.js",
+  "../services/reading-history.js",
+  "../component/boards-overlay.js",
+  "../component/discover-card.js",
+  "../component/browse-overlay.js",
+  "../component/status-viewer.js",
+  "../component/status-ring.js",
+  "../shared/status-loader.js",
+  "../component/promo-slider.js",
+  "../component/report-sheet.js",
+  "../component/dots-menu.js",
+  "../component/post-card.js",
+  "../component/reaction-picker.js",
+  "../component/comment-section.js",
+  "../component/share-modal.js",
+  "../services/saves-bridge.js",
+  "../component/save-modal.js",
+  "../component/genre-card.js",
+  "../component/ad-card.js",
+  "../component/bottom-nav.js",
+  "../component/hamburger-menu.js",
+  "../component/search-overlay.js",
+  "../marketing/shared/marketing-data.js",
+  "../services/audience-rules.js",
+  "../services/audience-service.js",
+  "../services/ad-service.js",
+  "../services/ad-revenue-service.js",
+  "../component/ad-slot.js",
+  "../services/people-service.js",
+  "../services/status-service.js",
+  "../component/writers-row.js",
+  "../shared/ui-helpers.js",
+  "../services/feed-service.js",
+  "../shared/theme-chrome.js"
+]
+</script>
+<script src="/build/feed.bundle.js" defer></script>
 </head>
 <body>
   <div class="safe"></div>
@@ -199,44 +254,18 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-  <script src="../services/feed-data.js?v=3"></script>
-<script src="../component/expiry-chips.js?v=8"></script>
-  <script src="../component/post-composer.js?v=27"></script>
-<script src="../services/reading-history.js"></script>
-  <script src="../component/boards-overlay.js"></script>
-  <script src="../component/discover-card.js?v=10"></script>
-  <script src="../component/browse-overlay.js?v=16"></script>
-  <script src="../component/status-viewer.js?v=17"></script>
-  <script src="../component/status-ring.js?v=5"></script>
-  <script src="../shared/status-loader.js"></script>
-  <script src="../component/promo-slider.js?v=2"></script>
-  <script src="../component/report-sheet.js"></script>
-  <script src="../component/dots-menu.js?v=2"></script>
-  <script src="../component/post-card.js?v=9"></script>
-  <script src="../component/reaction-picker.js?v=5"></script>
-  <script src="../component/comment-section.js?v=19"></script>
-  <script src="../component/share-modal.js?v=6"></script>
-  <script src="../services/saves-bridge.js?v=2"></script>
-  <script src="../component/save-modal.js?v=2"></script>
-  <script src="../component/genre-card.js?v=13"></script>
-  <script src="../component/ad-card.js?v=10"></script>
-  <script src="../component/bottom-nav.js"></script>
-  <script src="../component/hamburger-menu.js"></script>
-  <script src="../component/search-overlay.js?v=5"></script>
-  <script src="../marketing/shared/marketing-data.js"></script>
-  <script src="../services/audience-rules.js?v=2"></script>
-<script src="../services/audience-service.js?v=3"></script>
-  <script src="../services/ad-service.js?v=7"></script>
-<script src="../services/ad-revenue-service.js?v=10"></script>
-  <script src="../component/ad-slot.js?v=3"></script>
-  <script src="../services/people-service.js?v=4"></script>
-  <script src="../services/status-service.js?v=11"></script>
-  <script src="../component/writers-row.js?v=3"></script>
-  <script src="../shared/ui-helpers.js"></script>
   <script src="../services/feed-service.js?v=10"></script>
-  <script>FeedPage.init();</script>
-<script src="../shared/theme-chrome.js"></script>
+  <!-- The scripts this page used to load as 35 more <script src> tags — plus two
+     render-blocking CDN tags for GSAP, which no script on this page uses — now
+     arrive as the single /build/feed.bundle.js declared in <head>. -->
+<script>
+// The bundle is deferred, so it has not executed yet at this point.
+// DOMContentLoaded fires after every deferred script has run, which is when
+// FeedPage exists.
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.FeedPage && FeedPage.init) FeedPage.init();
+  else console.error('[feed] feed-service.js did not load');
+});
+</script>
 </body>
 </html>

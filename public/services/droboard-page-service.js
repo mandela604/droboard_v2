@@ -314,37 +314,13 @@ function toast(msg, dur){ dur=dur||2500; const t=document.getElementById('toast'
 function openSupport(){ if(global.DroboardTip) DroboardTip.open('droboard-page', { name:'Droboard', handle:'@droboard · Official page', avatar:DROBOARD_LOGO }); }
 
 /* Support Droboard is platform revenue, not a writer tip: the wallet posts it
-   with the 'platform' sentinel and debits paid coins only. Gifts are posted
-   by the picker itself; coin support goes through /api/wallet/tip here. */
-async function sendPlatformTip(coins, giftCode){
-  const body = { authorId: 'platform', coins: Number(coins), giftCode: String(giftCode || '') };
-  try {
-    const res = await fetch(API_BASE + '/wallet/tip', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const j = await res.json();
-    if (!res.ok) {
-      if (res.status === 402) return { ok: false, message: 'Not enough coins — top up in Store' };
-      if (res.status === 401 || res.status === 403) return { ok: false, message: 'Sign in to support Droboard' };
-      return { ok: false, message: 'Support not sent — try again' };
-    }
-    return { ok: true };
-  } catch(e) {
-    return { ok: false, message: 'Support not sent — try again' };
-  }
-}
+   with the 'platform' sentinel and debits paid coins only. The picker posts
+   to /api/wallet/tip itself, so all this page has to say is WHERE the money
+   goes — the sheet never posts on the host's behalf any more. */
 function attachSupportTips(){
   if(!global.DroboardTip || typeof DroboardTip.attach!=='function') return;
   DroboardTip.attach({
     getTargetId:function(){ return 'platform'; },
-    onSend:function(id, amount, note, mode, giftId){
-      if(mode==='gift'){ return {ok:true}; } // the picker already posted the gift
-      if(mode!=='coin') return {ok:false, message:'Card support is coming soon — use coins for now'};
-      return sendPlatformTip(amount, '');
-    },
   });
 }
 function sharePage(){ if(global.openShareModal) window.openShareModal({ title:'Droboard — Official Page', sub:'@droboard · Announcements, debates & story picks', img:DROBOARD_LOGO, url:'https://droboard.app/droboard' }); }

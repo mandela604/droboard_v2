@@ -365,9 +365,12 @@
     bindCommunityRowFallback(row, posts);
   }
 
-  async function mountCommunitySections() {
+  /* Mount the hub rows. The buckets are collected by init() in parallel with
+     everything else and handed in, so this only paints — it never waits on
+     the network. */
+  function mountCommunitySections(collected) {
     if (!window.DroboardGenreCard) return;
-    const { hot, mid, more } = await collectCommunityPosts();
+    const { hot, mid, more } = collected || { hot: [], mid: [], more: [] };
     COMM_POSTS_A = hot; COMM_POSTS_MID = mid; COMM_POSTS_B = more;
     mountCommunityRow('commRow1', 'commSec1', COMM_POSTS_A);
     if (COMM_POSTS_B.length) {
@@ -669,8 +672,19 @@
     const empty=document.getElementById('emptyState');
     if(empty) empty.style.display = 'none';
   }
+  /* The composer is prepared in the background (its story list is a network
+     call). If the reader taps "create" before that finishes, wait for it
+     instead of opening a composer that was never attached. */
+  let COMPOSER_READY = null;
   function openPostComposer(type) {
     if (!window.DroboardPostComposer) { toast('Composer unavailable — post-composer.js failed to load'); return; }
+    if (COMPOSER_READY) {
+      COMPOSER_READY.then(() => {
+        try { DroboardPostComposer.open(type || 'text'); }
+        catch (e) { toast('Could not open the composer'); }
+      }).catch(() => {});
+      return;
+    }
     DroboardPostComposer.open(type || 'text');
   }
   function closePostComposer() {
@@ -937,9 +951,14 @@
     }
     bindStories();
     initTabs();
-    await initComposer();
-    await configureMenu();
-    await mountPromo();
+    // The composer, the menu and the promo slider are NOT needed for the
+    // feed's first paint. They used to be awaited BEFORE /feed/home was even
+    // requested, which put three request groups in front of the posts. They
+    // now run in the background and land whenever they land.
+    const composerTask = initComposer().catch((e) => { console.warn('[feed] composer init failed', e); });
+    COMPOSER_READY = composerTask;
+    const menuTask = configureMenu().catch((e) => { console.warn('[feed] menu init failed', e); });
+    const promoTask = mountPromo().catch((e) => { console.warn('[feed] promo init failed', e); });
      // global @droboard tap → droboard-page (catches post-card inline handles)
     document.addEventListener('click', function(e){
       const a=e.target.closest('a[href*="profile.html?u=droboard"], a[href*="profile.html?u=Droboard"]');
@@ -950,30 +969,38 @@
      loadNotifCount();
     try {
       if (!window.FeedData) throw new Error('FeedData is not defined — check feed-data script path');
-      let [stories, posts] = await Promise.all([FeedData.getStories(), FeedData.getFeedPosts()]);
-      let mineReady = false;
-      try { if (window.DroboardStatus) { await window.DroboardStatus.refreshMine(); mineReady = true; } } catch (e) { toast('Could not load your story ring — refresh to retry.'); }
-      if (mineReady) { try { stories = window.DroboardStatus.mergeStories(stories); } catch (e) {} }
-      let adPools = {}, adGap = 3;
-      if (window.AdService) {
-        try {
-          const placement = await AdService.getPlacement('feed');
-          if (placement.interval) adGap = placement.interval;
-          adPools = await AdService.getAds({ page: 'feed' });
-        } catch (e) {}
+      /* Everything the feed needs for its first paint, in ONE parallel batch.
+         These used to run as a chain of serial stages — composer → menu →
+         promo → /feed/home → my status → ads → following → hubs — so the
+         first post card could only appear after all of them had answered. */
+      const [stories0, posts, mine, adPools, adPlacement, , community] = await Promise.all([
+        FeedData.getStories(),
+        FeedData.getFeedPosts(),
+        // 401/403 means "guest, no story of my own" — not a failure.
+        window.DroboardStatus
+          ? window.DroboardStatus.refreshMine().then(() => ({ ok: true })).catch(() => ({ ok: false }))
+          : Promise.resolve({ ok: false }),
+        window.AdService ? AdService.getAds({ page: 'feed' }).catch(() => ({})) : Promise.resolve({}),
+        window.AdService ? AdService.getPlacement('feed').catch(() => null) : Promise.resolve(null),
+        loadFollowing().catch(() => null),
+        collectCommunityPosts().catch(() => null),
+      ]);
+      let stories = stories0;
+      if (window.DroboardStatus) {
+        if (mine.ok) { try { stories = window.DroboardStatus.mergeStories(stories); } catch (e) {} }
+        else toast('Could not load your story ring — refresh to retry.');
       }
+      let adGap = 3;
+      if (adPlacement && adPlacement.interval) adGap = adPlacement.interval;
       document.getElementById('loadingState').style.display = 'none';
       STORIES_CACHE = stories;
       BASE_POSTS = posts;
-      AD_POOLS = adPools; AD_GAP = adGap;
-      await loadFollowing();
+      AD_POOLS = adPools || {}; AD_GAP = adGap;
       stampFeedPins(BASE_POSTS);
       FEED_POSTS = interleaveAds(BASE_POSTS, AD_POOLS, AD_GAP);
       renderStories(STORIES_CACHE);
-      await mountCommunitySections();
       if (!FEED_POSTS.length) {
         document.getElementById('emptyState').style.display = 'block';
-        injectMidCommunity(COMM_POSTS_MID);
       } else if (!window.DroboardPostCard) {
         throw new Error('DroboardPostCard is not defined — check component/post-card.js');
       } else {
@@ -982,8 +1009,12 @@
         bindAdCard();
         DroboardPostCard.setPosts(FEED_POSTS);
         FEED_POSTS.filter(p => p.type === 'sponsored' && p.ad && p.ad.id).forEach(p => trackAd(p.ad.id, 'impression'));
-        injectMidCommunity(COMM_POSTS_MID);
       }
+      // The hub rows land AFTER the posts are on screen — they are a
+      // secondary section and used to sit in front of them.
+      mountCommunitySections(community);
+      injectMidCommunity(COMM_POSTS_MID);
+      Promise.allSettled([composerTask, menuTask, promoTask]);
     } catch (err) {
       document.getElementById('loadingState').style.display = 'none';
       document.getElementById('emptyState').style.display = 'block';

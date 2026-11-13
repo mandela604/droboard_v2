@@ -20,7 +20,11 @@
   var _script = document.currentScript;
   var _iconSrc = '../assets/droboard-icon.png';
   try {
-    if (_script && _script.src) _iconSrc = new URL('../assets/droboard-icon.png', _script.src).href;
+    /* Resolve against the PAGE, not this script's own URL. The page bundles
+       serve their sources from /build/<page>.bundle.js, where the script URL
+       no longer sits next to /assets — document.baseURI gives the same
+       answer for a normal page load and still works inside a bundle. */
+    if (_script && _script.src) _iconSrc = new URL('../assets/droboard-icon.png', document.baseURI).href;
   } catch (e) {}
 
   var CSS = [
