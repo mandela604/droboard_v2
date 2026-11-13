@@ -1061,7 +1061,8 @@ function init(){
       renderStats();applyFilters();
       return;
     }
-    ChiefEditorData.addPendingEditor({name:name,email:email,target:target,pay:payVal,paymentType:pt,revenueShare:revShare,deadline:deadline,note:note}).then(function(editor){
+    ChiefEditorData.createInvite({name:name,email:email,target:target,monthlyPay:payVal,paymentType:pt,revenueShare:revShare,deadline:deadline,note:note}).then(function(editor){
+      editor.inviteToken = editor.token;
       ALL.push(editor);
       document.getElementById('inviteModal').classList.remove('show');
       var link=window.location.origin+'/public/senior-editor/accept-invite.html?token='+editor.inviteToken;
