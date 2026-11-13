@@ -64,6 +64,14 @@ postSchema.index({ type: 1, createdAt: -1 });
 // The library page's Saved tab reads "posts this reader saved", which is an
 // array match sorted by time — without this it collection-scans.
 postSchema.index({ savedBy: 1, createdAt: -1 });
+// The feed's main read: Post.find(filter).sort({ pinned: -1, createdAt: -1 }).
+// No index matched that sort, so Mongo collection-scanned the whole posts
+// collection and sorted it in memory on every feed load. This is the index the
+// feed actually needs.
+postSchema.index({ pinned: -1, createdAt: -1 });
+// "See less of this": Post.find({ hiddenBy: viewerId }) ran unindexed, so it
+// scanned every post on every feed load for a signed-in reader.
+postSchema.index({ hiddenBy: 1 });
 
 const commentSchema = new mongoose.Schema({
   authorId: { type: String, ref: 'User', required: true, index: true },
@@ -83,6 +91,11 @@ const commentSchema = new mongoose.Schema({
 }, { timestamps: true });
 commentSchema.index({ postId: 1, createdAt: -1 });
 commentSchema.index({ chapterId: 1, createdAt: -1 });
+// A thread page reads Comment.find({ scope, discussionId }).sort({ createdAt: -1 })
+// and the reply batch reads Comment.find({ parentId: { $in } }).sort({ createdAt: 1 }).
+// Both sorts were in-memory because only the single-column field index existed.
+commentSchema.index({ discussionId: 1, createdAt: -1 });
+commentSchema.index({ parentId: 1, createdAt: 1 });
 
 const discussionSchema = new mongoose.Schema({
   genreId: { type: String, ref: 'Genre', required: true, index: true },
@@ -109,6 +122,10 @@ const discussionSchema = new mongoose.Schema({
   // title+body-only OP when this is set) — a demo field, so a real column.
   pinned: { type: Boolean, default: false },
 }, { timestamps: true });
+// The reader feed's "Trending in hubs" row sorts by
+// { hot: -1, score: -1, likes: -1, createdAt: -1 } with NO genre filter, so a
+// { genreId, createdAt } index never applied to it — this is the one that does.
+discussionSchema.index({ hot: -1, score: -1, likes: -1, createdAt: -1 });
 
 const collectionSchema = new mongoose.Schema({
   ownerId: { type: String, ref: 'User', required: true, index: true },
@@ -143,6 +160,10 @@ const libraryItemSchema = new mongoose.Schema({
   pct: { type: Number, default: 0, min: 0, max: 100 },
 }, { timestamps: true });
 libraryItemSchema.index({ userId: 1, storyId: 1, list: 1 }, { unique: true });
+// The library page lists by (userId, list) — "Continue reading", "Saved",
+// "History". In the unique index above `list` is the THIRD key, so it could
+// not be used as a filter after the userId+storyId equality.
+libraryItemSchema.index({ userId: 1, list: 1 });
 
 const followSchema = new mongoose.Schema({
   followerId: { type: String, ref: 'User', required: true, index: true },

@@ -154,21 +154,28 @@ async function shape(docs, viewerId) {
   return list.map(p => toCard(p, am[String(p.authorId)], viewerId, rx[String(p.id)]));
 }
 
-async function listPosts({ tab, type, authorId, page, limit, viewerId }) {
+async function listPosts({ tab, type, authorId, page, limit, viewerId, excluded, skipTotal }) {
   const filter = {};
   if (type) filter.type = type;
   if (authorId) filter.authorId = authorId;
   // FIX 6: hide blocked/muted authors from feeds.
-  if (viewerId && !authorId) {
-    try {
-      const usersSvc = require('./users.service');
-      const [mutes, blocks] = await Promise.all([
-        usersSvc.mutedIds(viewerId).catch(() => new Set()),
-        usersSvc.blockedIds(viewerId).catch(() => new Set()),
-      ]);
-      const excluded = new Set([...mutes, ...blocks]);
-      if (excluded.size) filter.authorId = { $nin: [...excluded] };
-    } catch (e) { /* filtering best-effort */ }
+  // `excluded` is the mute+block set the caller already resolved for the whole
+  // request (the feed resolves it once and hands it to every query). Without
+  // it this helper resolves its own, which meant the same two queries ran a
+  // third time on every feed load.
+  if (!authorId) {
+    let hidden = excluded;
+    if (!hidden && viewerId) {
+      try {
+        const usersSvc = require('./users.service');
+        const [mutes, blocks] = await Promise.all([
+          usersSvc.mutedIds(viewerId).catch(() => new Set()),
+          usersSvc.blockedIds(viewerId).catch(() => new Set()),
+        ]);
+        hidden = new Set([...mutes, ...blocks]);
+      } catch (e) { hidden = new Set(); }
+    }
+    if (hidden && hidden.size) filter.authorId = { $nin: [...hidden] };
   }
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
@@ -179,7 +186,10 @@ async function listPosts({ tab, type, authorId, page, limit, viewerId }) {
   }
   const [docs, total] = await Promise.all([
     Post.find(filter).sort({ pinned: -1, createdAt: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
-    Post.countDocuments(filter),
+    // countDocuments is a full-collection scan on this filter. The paged
+    // /api/posts list needs it for pagination; the home feed only reads
+    // `.items`, so it asks us to skip it.
+    skipTotal ? Promise.resolve(0) : Post.countDocuments(filter),
   ]);
   return { items: await shape(docs, viewerId), total, page: pg, limit: lim };
 }

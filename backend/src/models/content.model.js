@@ -53,6 +53,14 @@ const bookSchema = new mongoose.Schema({
   // on Chapter below. Story-wide debate/polls are community Post 'debate'/'poll'
   // via /api/posts (feed/droboard composers).
 }, { timestamps: true });
+// The catalogue rows all read "live books, ordered by X": trending sorts by
+// reads, top-rated by rating, new releases by updatedAt — each with a
+// { status: $in [...] } filter. The single-column status index could serve the
+// filter but not the sort, so Mongo sorted every matching book in memory.
+// These three match the three orders the feed and discover pages ask for.
+bookSchema.index({ status: 1, reads: -1 });
+bookSchema.index({ status: 1, rating: -1 });
+bookSchema.index({ status: 1, updatedAt: -1 });
 
 const chapterSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },

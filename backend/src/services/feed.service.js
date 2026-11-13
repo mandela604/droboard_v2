@@ -18,6 +18,25 @@ async function authorMap(ids) {
   return m;
 }
 
+/* The reader's muted + blocked author ids. Every query in one response needs
+   the same set, so it is resolved ONCE per request and handed to each helper.
+   Before this, the same two queries ran three times over on a single feed
+   load (once per topBooks call, once more inside listPosts) — six round trips
+   where two would do. */
+async function excludedAuthors(viewerId) {
+  if (!viewerId) return new Set();
+  try {
+    const usersSvc = require('./users.service');
+    const [mutes, blocks] = await Promise.all([
+      usersSvc.mutedIds(viewerId).catch(() => new Set()),
+      usersSvc.blockedIds(viewerId).catch(() => new Set()),
+    ]);
+    return new Set([...mutes, ...blocks]);
+  } catch (e) {
+    return new Set();
+  }
+}
+
 function cardShape(b, author) {
   const handle = author ? '@' + (author.username || '') : '';
   return {
@@ -34,20 +53,17 @@ function cardShape(b, author) {
   };
 }
 
-async function topBooks(sort, limit, viewerId, statuses) {
+async function topBooks(sort, limit, viewerId, statuses, excluded) {
   const filter = { status: { $in: statuses || ['ongoing', 'completed', 'published'] } };
   // When ranking by rating, only include books that actually have ratings
   if (sort && sort.rating) filter.rating = { $gt: 0 };
   if (viewerId) {
-    const usersSvc = require('./users.service');
-    const [mutes, blocks] = await Promise.all([
-      usersSvc.mutedIds(viewerId).catch(() => new Set()),
-      usersSvc.blockedIds(viewerId).catch(() => new Set()),
-    ]);
-    const excluded = new Set([...mutes, ...blocks]);
-    if (excluded.size) {
+    // `excluded` is the caller's already-resolved mute+block set; without it
+    // this helper resolves its own (topBooks is also called from discover).
+    const excludedSet = excluded || await excludedAuthors(viewerId);
+    if (excludedSet && excludedSet.size) {
       filter.$or = [
-        { authorId: { $nin: [...excluded] } },
+        { authorId: { $nin: [...excludedSet] } },
         { authorId: viewerId }, // always see your own stories
       ];
     }
@@ -96,11 +112,16 @@ async function topWriters(limit) {
 }
 
 async function home(viewerId, scope) {
-  const [top, rated, promos, postsPage, statuses] = await Promise.all([
-    topBooks({ reads: -1 }, 8, viewerId),
-    topBooks({ rating: -1 }, 5, viewerId),
+  // One mute+block resolution, shared by every branch below. The branches wait
+  // on the SAME promise, so this costs one parallel stage — not a new serial
+  // step in front of the feed.
+  const excludedP = excludedAuthors(viewerId);
+  const [excluded, top, rated, promos, postsPage, statuses] = await Promise.all([
+    excludedP,
+    excludedP.then(ex => topBooks({ reads: -1 }, 8, viewerId, null, ex)),
+    excludedP.then(ex => topBooks({ rating: -1 }, 5, viewerId, null, ex)),
     AdInventory.find({ format: 'promo', active: true }).limit(5).lean(),
-    posts.listPosts({ viewerId, limit: 20 }),
+    excludedP.then(ex => posts.listPosts({ viewerId, limit: 20, excluded: ex, skipTotal: true })),
     // The top strip. scope='any' (default) is every role — the feed row;
     // scope='authors' is writers only — the homepage. Fill to 20, followed
     // authors first, then most-recent live status. Rings still come from
@@ -196,12 +217,14 @@ async function discoverData(viewerId, taste) {
   }
 
   // Base pools for other sections (topBooks already returns render-ready cards)
+  // One mute+block resolution shared by all four topBooks calls.
+  const excludedP = excludedAuthors(viewerId);
   const [trending, recent, completed, writers, rated] = await Promise.all([
-    topBooks({ reads: -1 }, 20, viewerId),
-    topBooks({ updatedAt: -1 }, 12, viewerId),
-    topBooks({ reads: -1 }, 10, viewerId, ['completed']),
+    excludedP.then(ex => topBooks({ reads: -1 }, 20, viewerId, null, ex)),
+    excludedP.then(ex => topBooks({ updatedAt: -1 }, 12, viewerId, null, ex)),
+    excludedP.then(ex => topBooks({ reads: -1 }, 10, viewerId, ['completed'], ex)),
     topWriters(10),
-    topBooks({ rating: -1 }, 10, viewerId),
+    excludedP.then(ex => topBooks({ rating: -1 }, 10, viewerId, null, ex)),
   ]);
 
   // Recommendation row: the reader's discover filter — a request query, never a
@@ -273,12 +296,7 @@ async function discoverStories({ page, limit, viewerId }) {
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
   const filter = { status: { $in: ['ongoing', 'completed', 'published'] } };
   if (viewerId) {
-    const usersSvc = require('./users.service');
-    const [mutes, blocks] = await Promise.all([
-      usersSvc.mutedIds(viewerId).catch(() => new Set()),
-      usersSvc.blockedIds(viewerId).catch(() => new Set()),
-    ]);
-    const excluded = new Set([...mutes, ...blocks]);
+    const excluded = await excludedAuthors(viewerId);
     if (excluded.size) {
       filter.$or = [
         { authorId: { $nin: [...excluded] } },

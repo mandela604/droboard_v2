@@ -3,7 +3,9 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const http = require('http');
+const path = require('path');
 const env = require('./config/env');
 const db = require('./config/db');
 const { generalLimiter } = require('./middleware/http');
@@ -59,6 +61,11 @@ async function main() {
     },
   }));
   app.use(cors({ origin: env.corsOrigins.length ? env.corsOrigins : true, credentials: true }));
+  // Gzip every text response (JSON, HTML, JS, CSS). The client bundle alone is
+  // ~900 KB of JS, so this is the single biggest byte win on a cold load.
+  // `threshold` keeps tiny JSON bodies uncompressed — the header cost is not
+  // worth it under 1 KB.
+  app.use(compression({ threshold: 1024 }));
   // Provider webhooks need EXACT raw bytes for HMAC — parse before json().
   app.use('/api/payments/webhook', require('express').raw({ type: '*/*', limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
@@ -136,9 +143,32 @@ async function main() {
   app.use('/api/stories', require('./routes/engagement.routes'));
   app.use('/api/awards', require('./routes/awards.routes'));
 
+  // Page bundles: /build/<page>.bundle.js serves that page's whole <script>
+  // list as ONE concatenated response. It is built from the page HTML at
+  // request time, so a bundle can never be stale — edit the source file and
+  // the next request already serves the new code. Mounted before the static
+  // handler so the bundle route wins over the file system.
+  app.use('/build', require('./routes/build.routes'));
+
 
     console.log("MY STATIC PATH IS:", require('path').join(__dirname, '..', '..', 'public'));
-    app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public')));
+    app.use(require('express').static(require('path').join(__dirname, '..', '..', 'public'), {
+      // The page pulls ~44 static files. Without a cache window every single
+      // one is re-requested (304) on every page load — 44 round trips before
+      // the feed can paint. These headers let the browser serve them from
+      // disk and revalidate in the background instead.
+      setHeaders(res, filePath) {
+        const ext = path.extname(filePath).toLowerCase();
+        if (ext === '.html') {
+          // Pages are tiny and change often — always revalidate (cheap 304).
+          res.setHeader('Cache-Control', 'no-cache');
+        } else if (ext === '.js' || ext === '.css') {
+          res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+        } else if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico', '.woff', '.woff2'].includes(ext)) {
+          res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        }
+      },
+    }));
   
 
   // eslint-disable-next-line no-unused-vars
