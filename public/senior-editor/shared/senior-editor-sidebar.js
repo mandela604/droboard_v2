@@ -249,22 +249,28 @@
     const instId = 'ses' + (++_instanceCounter);
     const activeItem = options.activeItem || 'dashboard';
     let user = options.user || null;
+
+    /* ── Resolve the signed-in editor from the backend session ──
+       A visitor cannot reach this module without a valid session, so we ask
+       the backend who they are rather than guessing from localStorage or
+       injecting any demo name/avatar. On failure we render nothing — no
+       fake "User", no pravatar, no stale demo identity. ── */
     if (!user) {
       try {
-        const raw = localStorage.getItem('droboard_user');
-        if (raw) {
-          const u = JSON.parse(raw) || {};
+        const res = await fetch('/api/senior-editor/me', { credentials: 'include' });
+        if (res.ok) {
+          const u = await res.json();
           if (u && (u.id || u.handle || u.name || u.fullName || u.username || u.email)) {
             user = {
-              name: u.fullName || u.name || u.handle || u.username || (u.email ? u.email.split('@')[0] : 'User'),
-              role: 'Senior Editor',
+              name: u.fullName || u.name || u.handle || u.username || '',
+              role: u.role || 'Senior Editor',
               avatar: u.avatar || null,
             };
           }
         }
-      } catch (e) { /* storage blocked — fall through */ }
+      } catch (e) { /* backend unreachable — render no user identity */ }
     }
-    user = Object.assign({ name: 'User', role: 'Senior Editor', avatar: null }, user || {});
+    user = Object.assign({ name: '', role: 'Senior Editor', avatar: null }, user || {});
     const existingContent = container.innerHTML;
 
     function navHtml() {

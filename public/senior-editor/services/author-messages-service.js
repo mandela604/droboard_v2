@@ -41,6 +41,8 @@ function mapConversation(c) {
     preview: c.preview || '',
     messages: [],
     loaded: false,
+    toUserId: c.toUserId || null,
+    isNew: !!c.isNew,
   };
 }
 function mapMessage(m) {
@@ -88,6 +90,19 @@ async function persistMessage(conv, msg) {
   conv.time = 'Just now';
   conv.preview = (msg.text || (msg.file ? 'Image' : '')).slice(0, 140);
   return r;
+}
+
+// Create a brand-new conversation (used when ?uid= is passed but no existing
+// conversation exists). Returns the created message doc which carries the
+// conversationId.
+async function createConversation(toUserId, text, image) {
+  var payload = { toUserId: String(toUserId), text: text || '' };
+  if (image) payload.image = image;
+  return await callBackend('/author-messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }
 
 var PERSPECTIVE='admin';
@@ -179,7 +194,7 @@ function renderThread(){
   }).join('');
 
   var isClosed=conv.status==='closed';
-  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+(isClosed?'<span class="closed-chip">Closed</span>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><div class="thread-menu-wrap"><button class="th-act-btn" id="threadMenuBtn" title="More options"><i class="fas fa-ellipsis-v"></i></button><div class="thread-menu" id="threadMenu"><button class="thread-menu-item" id="tmFlag"><i class="fas fa-flag"></i> <span>'+(conv.flagged?'Remove flag':'Flag conversation')+'</span></button><button class="thread-menu-item'+(isClosed?'':' is-close')+'" id="tmClose"><i class="fas fa-'+(isClosed?'rotate-right':'lock')+'"></i> <span>'+(isClosed?'Restart conversation':'Close conversation')+'</span></button></div></div></div>'+(isClosed?'<div class="closed-banner"><span><i class="fas fa-lock" style="margin-right:6px"></i>This conversation is closed.</span><button id="tmRestartBanner">Restart conversation</button></div>':'')+'<div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="'+(isClosed?'Conversation closed \u2014 restart to reply':'Type a reply to '+conv.name+'...')+'"'+(isClosed?' disabled':'')+'/><button class="compose-icon-btn" id="attachBtn" title="Attach file"'+(isClosed?' disabled':'')+'><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/></div></div></div></div></div>';
+  pane.innerHTML='<div class="thread-head"><button class="thread-back" id="threadBackBtn"><i class="fas fa-arrow-left"></i></button><img src="'+conv.avatar+'" alt=""/><div><div class="thread-head-name">'+conv.name+(conv.flagged?'<i class="fas fa-flag" style="color:var(--red);font-size:10px"></i>':'')+(isClosed?'<span class="closed-chip">Closed</span>':'')+'</div><div class="thread-head-sub">'+conv.role+'</div></div><div class="thread-head-right"><div class="thread-menu-wrap"><button class="th-act-btn" id="threadMenuBtn" title="More options"><i class="fas fa-ellipsis-v"></i></button><div class="thread-menu" id="threadMenu"><button class="thread-menu-item" id="tmFlag"><i class="fas fa-flag"></i> <span>'+(conv.flagged?'Remove flag':'Flag conversation')+'</span></button><button class="thread-menu-item'+(isClosed?'':' is-close')+'" id="tmClose"><i class="fas fa-'+(isClosed?'rotate-right':'lock')+'"></i> <span>'+(isClosed?'Restart conversation':'Close conversation')+'</span></button></div></div></div>'+(isClosed?'<div class="closed-banner"><span><i class="fas fa-lock" style="margin-right:6px"></i>This conversation is closed.</span><button id="tmRestartBanner">Restart conversation</button></div>':'')+'<div class="thread-body" id="threadBody">'+messagesHtml+'</div><div class="compose-row"><div class="compose-inputs"><div class="reply-preview" id="replyPreview"><button class="rp-close" id="replyClose"><i class="fas fa-times"></i></button><div class="rp-name" id="rpName"></div><div class="rp-text" id="rpText"></div></div><div class="compose-bar"><input id="composeInput" placeholder="'+(isClosed?'Conversation closed \u2014 restart to reply':'Type a reply to '+conv.name+'...')+'"'+(isClosed?' disabled':'')+'/><button class="compose-icon-btn" id="attachBtn" title="Attach file"'+(isClosed?' disabled':'')+'><i class="fas fa-paperclip"></i></button><input type="file" id="fileInput" style="display:none" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.txt,.csv,.xlsx"/><button class="send-btn" id="sendBtn" title="Send message"'+(isClosed?' disabled':'')+'><i class="fas fa-paper-plane"></i></button></div><div id="fileBadge"></div></div></div></div></div>';
   document.getElementById('threadBody').scrollTop=document.getElementById('threadBody').scrollHeight;
 
   document.getElementById('threadBackBtn').addEventListener('click',function(){
@@ -195,16 +210,41 @@ function renderThread(){
     if(pendingFile){
       if(!pendingFile.isImage){ toast('Only image attachments can be sent right now'); return; }
       var btn=document.getElementById('sendBtn');
-      btn.disabled=true;
+      if(btn){btn.disabled=true;}
       var url=await uploadImage(pendingFile.raw||pendingFile);
-      btn.disabled=false;
+      if(btn){btn.disabled=false;}
       if(!url){ toast('Image upload failed — try again'); return; }
       msg.image=url;
       msg.file={name:pendingFile.name,size:pendingFile.size,url:url,isImage:true};
       pendingFile=null;
     }
     if(replyTarget){msg.replyTo=replyTarget.mid;replyTarget=null;}
-    await persistMessage(conv,msg);
+
+    if(conv.isNew){
+      // First message in a fresh conversation — create it on the backend.
+      try{
+        var created=await createConversation(conv.toUserId, msg.text||'', msg.image||'');
+        if(created && created.conversationId){
+          var newId=String(created.conversationId);
+          conv.id=newId;
+          activeConvId=newId;
+          conv.isNew=false;
+          if(created.id) msg.mid=String(created.id);
+          conv.messages.push(msg);
+          conv.time='Just now';
+          conv.preview=(msg.text||(msg.file?'Image':'')).slice(0,140);
+        } else {
+          toast('Could not start conversation — try again');
+          return;
+        }
+      }catch(e){
+        toast('Could not start conversation — try again');
+        return;
+      }
+    } else {
+      await persistMessage(conv,msg);
+    }
+
     input.value='';
     renderThread();bindLongPress();renderConvList();renderStats();
     toast('Message sent');
@@ -356,13 +396,39 @@ function init(){
   bindEvents();
   loadConversations().then(function(){
     try{
-      var u=(new URLSearchParams(window.location.search)).get('u');
-      if(u){
-        var hit=CONVERSATIONS.find(function(c){return c.name.toLowerCase()===u.trim().toLowerCase();});
-        if(hit)activeConvId=hit.id;
+      var params = new URLSearchParams(window.location.search);
+      var u = params.get('u');
+      var uid = params.get('uid');
+      if (uid) {
+        var hit = CONVERSATIONS.find(function(c){ return (u ? c.name.toLowerCase() === u.trim().toLowerCase() : false) || c.toUserId === uid; });
+        if (!hit) {
+          // No existing conversation with this author — create a pending one
+          // that turns real the moment the editor sends the first message.
+          hit = {
+            id: 'new:' + uid,
+            name: u || 'Author',
+            avatar: '../assets/droboard-icon.png',
+            role: 'Author',
+            unread: 0,
+            flagged: false,
+            status: 'open',
+            time: 'Now',
+            preview: 'Start a conversation…',
+            messages: [],
+            loaded: true,
+            toUserId: uid,
+            isNew: true,
+          };
+          CONVERSATIONS.unshift(hit);
+        }
+        activeConvId = hit.id;
+      } else if (u) {
+        var nameHit = CONVERSATIONS.find(function(c){ return c.name.toLowerCase() === u.trim().toLowerCase(); });
+        if (nameHit) activeConvId = nameHit.id;
       }
     }catch(e){}
     if(!convById(activeConvId)) activeConvId=CONVERSATIONS.length?CONVERSATIONS[0].id:null;
+    if(activeConvId) document.getElementById('inboxCard').classList.add('thread-open');
     renderConvList();renderStats();renderThread();bindLongPress();
     var conv=convById(activeConvId);
     if(conv)loadThread(conv).then(function(){renderConvList();renderStats();renderThread();bindLongPress();});

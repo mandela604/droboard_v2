@@ -251,7 +251,12 @@ function onDocClick(e){
   const id = el.dataset.id;
 
   if(action==='toggle-row'){ expandedId = expandedId===id ? null : id; renderAuthors(); }
-  else if(action==='message'){ window.location.href='author-messages.html'+(el.dataset.name?'?u='+encodeURIComponent(el.dataset.name):''); }
+  else if(action==='message'){
+    var qs=[];
+    if(el.dataset.name) qs.push('u='+encodeURIComponent(el.dataset.name));
+    if(el.dataset.id) qs.push('uid='+encodeURIComponent(el.dataset.id));
+    window.location.href='author-messages.html'+(qs.length?'?'+qs.join('&'):'');
+  }
   else if(action==='goto-page'){ currentPage = parseInt(el.dataset.page,10); renderAuthors(); window.scrollTo({top:0,behavior:'smooth'}); }
   else if(action==='prev-page'){ if(currentPage>1){ currentPage--; renderAuthors(); } }
   else if(action==='next-page'){ currentPage++; renderAuthors(); }

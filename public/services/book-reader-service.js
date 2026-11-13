@@ -1016,6 +1016,18 @@ async function toggleFollow() {
 /* ══ SHARE ══ */
 function openShare() {
   if (!window.openShareModal) { toast("Share unavailable"); return; }
+  // Fire-and-forget share count increment to backend
+  fetch(`${API_BASE}/books/${encodeURIComponent(storyId)}/share`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel: 'link' }),
+  }).then(r => r.ok ? r.json() : null).then(d => {
+    if (d && d.sharesCount != null) {
+      STORY.stats.shares = fmtN(d.sharesCount);
+      const shareEls = document.querySelectorAll('[data-share-count]');
+      shareEls.forEach(el => el.textContent = STORY.stats.shares);
+    }
+  }).catch(() => {});
   openShareModal({
     title: STORY.title,
     sub: "by @" + STORY.writer.name + " " + STORY.stats.reads + " reads",
