@@ -44,34 +44,18 @@ var Crud={
     return items;
   },
   approve:async function(id){
-    if(USE_API){
-      try{
-        var res=await callBackend('/book-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
-        var a=items.find(function(x){return x.id===id;});
-        if(a)a.status='approved';
-        return res;
-      }catch(err){ if(LIVE) throw err; }
-    }
-    await sleep(700); /* demo: loader visible until "resolve" */
+    var res=await callBackend('/book-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
     var a=items.find(function(x){return x.id===id;});
     if(a)a.status='approved';
-    return a;
+    return res;
   },
   reject:async function(id,reason){
-    if(USE_API){
-      try{
-        var res=await callBackend('/book-edits/'+encodeURIComponent(id)+'/reject',{
-          method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
-        });
-        var a=items.find(function(x){return x.id===id;});
-        if(a){a.status='rejected';a.reviewNote=reason;}
-        return res;
-      }catch(err){ if(LIVE) throw err; }
-    }
-    await sleep(700); /* demo: loader visible until "resolve" */
+    var res=await callBackend('/book-edits/'+encodeURIComponent(id)+'/reject',{
+      method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
+    });
     var a=items.find(function(x){return x.id===id;});
     if(a){a.status='rejected';a.reviewNote=reason;}
-    return a;
+    return res;
   },
 };
 
@@ -96,24 +80,7 @@ function fromApiItem(d){
   };
 }
 
-var items=[
-  {id:'BSR-001',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Duke\'s Secret',editType:'Title Change',submitted:'12h ago',status:'approved',changeFrom:'The Duke\'s Hidden Past',changeTo:'The Duke\'s Secret',notes:'Title changed for better clarity. Approved.'},
-  {id:'BSR-002',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',editType:'Cover Update',submitted:'1d ago',status:'pending',changeFrom:'https://picsum.photos/seed/ceo-cover-old/240/320',changeTo:'https://picsum.photos/seed/ceo-cover-new/240/320',notes:'Author uploaded new cover art. Needs review for quality and guidelines compliance.'},
-  {id:'BSR-003',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',editType:'Description Edit',submitted:'2d ago',status:'pending',changeFrom:'A wolf shifter finds his fated mate in a human village.',changeTo:'When alpha warrior Kael discovers his fated mate is the one woman his pack has sworn to destroy, he must choose between duty and destiny.',notes:'Updated synopsis. Needs review for spoilers and accuracy.'},
-  {id:'BSR-004',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',editType:'Genre Change',submitted:'3d ago',status:'rejected',reviewNote:'Cannot change genre after publication without platform approval.',changeFrom:'Mafia Romance',changeTo:'Romantic Suspense',notes:'Cannot change genre after publication without platform approval. Rejected.'},
-  {id:'BSR-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',editType:'Story Name',submitted:'4d ago',status:'approved',changeFrom:'Standalone',changeTo:'Ivy League Revenge',notes:'Story name updated. Approved.'},
-  {id:'BSR-006',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'She Rejected Me 3 Times',editType:'Title Change',submitted:'5d ago',status:'pending',changeFrom:'She Rejected Me 3 Times',changeTo:'Three Times Rejected: A Love Story',notes:'Proposed new title under review.'},
-  {id:'BSR-007',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',editType:'Cover Update',submitted:'6d ago',status:'approved',changeFrom:'https://picsum.photos/seed/photo-cover-old/240/320',changeTo:'https://picsum.photos/seed/photo-cover-new/240/320',notes:'New cover matches brand guidelines. Approved.'},
-  {id:'BSR-008',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'My Grandmother\'s Will',editType:'Description Edit',submitted:'1w ago',status:'rejected',reviewNote:'Description contains major spoilers — resubmit without plot reveals.',changeFrom:'A family drama about inheritance and secrets.',changeTo:'When Amara\'s grandmother dies, she leaves behind a will that will tear the family apart and reveal secrets buried for decades.',notes:'Description contains major spoilers. Rejected with feedback.'},
-  {id:'BSR-009',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'The Billionaire\'s Guard',editType:'Title Change',submitted:'1w ago',status:'approved',changeFrom:'Bodyguard Romance',changeTo:'The Billionaire\'s Guard',notes:'Better title. More specific. Approved.'},
-  {id:'BSR-010',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Shadow of the Alpha',editType:'Genre Change',submitted:'1w ago',status:'pending',changeFrom:'Paranormal Romance',changeTo:'Paranormal Romance · Urban Fantasy',notes:'Adding Urban Fantasy subgenre. Needs review.'},
-  {id:'BSR-011',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',editType:'Story Name',submitted:'2w ago',status:'approved',changeFrom:'Standalone',changeTo:'Billionaire Hearts',notes:'Story name updated. Approved.'},
-  {id:'BSR-012',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',editType:'Cover Update',submitted:'2w ago',status:'pending',changeFrom:'https://picsum.photos/seed/underground-cover-old/240/320',changeTo:'https://picsum.photos/seed/underground-cover-new/240/320',notes:'New cover with improved typography. Under review.'},
-  {id:'BSR-013',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Princess Guard',editType:'Description Edit',submitted:'3w ago',status:'approved',changeFrom:'A princess falls for her guard.',changeTo:'Princess Elara has one rule: never fall for the guard. But when assassin shadows close in, the man sworn to protect her heart becomes the greatest danger of all.',notes:'Compelling description. Approved.'},
-  {id:'BSR-014',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Campus Queen',editType:'Title Change',submitted:'3w ago',status:'rejected',reviewNote:'Original title is stronger and already ranking — keep it.',changeFrom:'Campus Queen',changeTo:'Queen of Campus',notes:'Original title is stronger. Rejected.'},
-  {id:'BSR-015',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',editType:'Title + Cover',submitted:'3d ago',status:'pending',changes:[{type:'Title',from:'Lagos Love Story',to:'Lagos Nights: A Love Story'},{type:'Cover',from:'https://picsum.photos/seed/lagos-cover-old/240/320',to:'https://picsum.photos/seed/lagos-cover-new/240/320'}],notes:'Author wants to rebrand the book with a new title and cover for the relaunch.'},
-  {id:'BSR-016',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',editType:'Title + Cover + Description',submitted:'4d ago',status:'pending',changes:[{type:'Title',from:'The Teacher\'s Secret',to:'Behind Closed Doors: A Teacher\'s Story'},{type:'Cover',from:'https://picsum.photos/seed/teacher-cover-old/240/320',to:'https://picsum.photos/seed/teacher-cover-new/240/320'},{type:'Description',from:'A teacher hides a dangerous secret.',to:'When Elizabeth discovers her student\'s dark home life, she must choose between her career and doing what\'s right — even if it means losing everything.'}],notes:'Full rebrand request. Title, cover, and description all changed to match the new direction of the story.'},
-];
+var items=[];
 
 var currentPage=1,PER_PAGE=5,openRowId=null,busyId=null;
 var rejectTargetId=null,submitting=false;

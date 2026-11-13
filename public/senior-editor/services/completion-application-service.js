@@ -1,5 +1,5 @@
 /**
- * completion-application-service.js — Completion Application page logic (pure call-and-render). */
+ * completion-application-service.js — Completion Application page logic (backend only, no demo). */
 (function () {
 'use strict';
 
@@ -7,42 +7,29 @@ const USE_API = true;
 const API_BASE = '/api/senior-editor';
 
 async function callBackend(path, options) {
-  if (!USE_API) return null;
   try {
     const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options || {}));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (e) {
-    console.warn('[CompletionApplicationService] backend unavailable, using demo data', e);
-    return null;
+    throw e;
   }
 }
 
-var items = [
-  {id:'CMP-001',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',genre:'Mafia Romance',chapters:7,wordCount:'42,800',submitted:'8h ago',status:'approved',notes:'All 7 chapters are done and the arc closes exactly the way I planned it from chapter one. Ready to mark this one complete.'},
-  {id:'CMP-002',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Duke\'s Secret',genre:'Historical Romance',chapters:31,wordCount:'186,400',submitted:'1d ago',status:'approved',notes:'All 31 chapters are written and the ending landed exactly as I intended. Submitting for completion approval.'},
-  {id:'CMP-003',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',genre:'Paranormal Romance',chapters:12,wordCount:'78,200',submitted:'2d ago',status:'pending',notes:'The story is finished at 12 chapters — the final chapter ties off Ren and the Luna vow. Please review.'},
-  {id:'CMP-004',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',genre:'Contemporary Romance',chapters:9,wordCount:'54,100',submitted:'3d ago',status:'pending',notes:'Complete at 9 chapters. I know it\'s short, but the revenge arc lands as planned and this is the story I set out to tell.'},
-  {id:'CMP-005',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',genre:'Romantic Comedy',chapters:19,wordCount:'112,600',submitted:'4d ago',status:'rejected',notes:'I believe the story is finished at 19 chapters and the rom-com beat lands. Submitting for completion.'},
-  {id:'CMP-006',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'She Rejected Me 3 Times',genre:'Contemporary Romance',chapters:15,wordCount:'89,300',submitted:'5d ago',status:'approved',notes:'Story is complete at 15 chapters. The final confession scene wraps up the three-rejection arc.'},
-  {id:'CMP-007',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'The Billionaire\'s Guard',genre:'Suspense Romance',chapters:22,wordCount:'134,500',submitted:'6d ago',status:'pending',notes:'Final chapter draft submitted — 22 chapters total. Would appreciate a quick review so I can schedule the epilogue bonus.'},
-  {id:'CMP-008',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'My Grandmother\'s Will',genre:'Family Drama',chapters:28,wordCount:'167,200',submitted:'1w ago',status:'approved',notes:'The family saga is complete at 28 chapters and every clause in the will gets resolved in the finale.'},
-  {id:'CMP-009',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',genre:'Office Romance',chapters:35,wordCount:'210,800',submitted:'1w ago',status:'rejected',notes:'Submitting for completion at 35 chapters. I feel the story has found its ending and the son reveal pays off.'},
-  {id:'CMP-010',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Shadow of the Alpha',genre:'Paranormal Romance',chapters:42,wordCount:'252,100',submitted:'2w ago',status:'approved',notes:'Series finale is complete at 42 chapters. Every pack arc is closed — this one is ready.'},
-  {id:'CMP-011',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',genre:'Office Romance',chapters:18,wordCount:'108,400',submitted:'2w ago',status:'pending',notes:'Completed at 18 chapters. The forbidden-love arc resolves in the epilogue as promised.'},
-  {id:'CMP-012',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Princess Guard',genre:'Fantasy Romance',chapters:25,wordCount:'156,700',submitted:'2w ago',status:'approved',notes:'All 25 chapters are done. The guard\'s vow pays off in the last act, exactly as set up in chapter one.'},
-  {id:'CMP-013',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',genre:'Contemporary Romance',chapters:20,wordCount:'124,300',submitted:'3w ago',status:'pending',notes:'Story is complete at 20 chapters. The Lagos arc ends where I wanted it to — submitting for review.'},
-  {id:'CMP-014',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',genre:'Romantic Suspense',chapters:16,wordCount:'96,500',submitted:'3w ago',status:'rejected',notes:'Submitting the completed 16-chapter story. I believe the suspense beats resolve cleanly in the final chapters.'},
-  {id:'CMP-015',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',genre:'Mafia Romance',chapters:30,wordCount:'182,600',submitted:'3w ago',status:'approved',notes:'Sequel complete at 30 chapters. I carried the quality from book one all the way through to the finale.'},
-  {id:'CMP-016',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Campus Queen',genre:'New Adult Romance',chapters:14,wordCount:'84,200',submitted:'1mo ago',status:'approved',notes:'Campus story done at 14 chapters. The queen\'s arc comes full circle in the final act.'},
-  {id:'CMP-017',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'Blood Ties',genre:'Paranormal Romance',chapters:38,wordCount:'228,900',submitted:'1mo ago',status:'approved',notes:'Epic saga finished at 38 chapters. Submitting for completion — this is the story I\'m proudest of.'},
-  {id:'CMP-018',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'The Inheritance',genre:'Family Drama',chapters:24,wordCount:'144,100',submitted:'1mo ago',status:'rejected',notes:'Submitting the completed 24-chapter story. The inheritance mystery is fully resolved to my satisfaction.'},
-  {id:'CMP-019',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Midnight Omega',genre:'Paranormal Romance',chapters:26,wordCount:'156,400',submitted:'1mo ago',status:'approved',notes:'Omega-verse story is complete at 26 chapters. The bond arc closes in the finale — ready for approval.'},
-  {id:'CMP-020',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Her Fake Fiance',genre:'Romantic Comedy',chapters:21,wordCount:'126,800',submitted:'1mo ago',status:'approved',notes:'21 chapters, rom-com fully wrapped. The fake-dating arc ends exactly where my readers hoped it would.'}
-];
+function toast(m) { var t = document.getElementById('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2400); }
+
+function showError(msg) {
+  var body = document.getElementById('tableBody');
+  var info = document.getElementById('pageInfo');
+  var btns = document.getElementById('pageBtns');
+  if (body) body.innerHTML = '<div style="padding:40px 16px;text-align:center;color:var(--red)"><i class="fas fa-triangle-exclamation" style="font-size:24px;display:block;margin-bottom:8px"></i><div style="font-weight:700">Could not load completion applications</div><div style="font-size:11.5px;color:var(--text-faint);margin-top:6px">'+msg+'</div><button class="mini-btn primary" onclick="location.reload()" style="margin-top:10px"><i class="fas fa-rotate"></i> Refresh Page</button></div>';
+  if (info) info.innerHTML = '';
+  if (btns) btns.innerHTML = '';
+}
+
+var items = [];
 var currentPage = 1, PER_PAGE = 5, openRowId = null;
 var _bound = false;
-var LIVE = false;
 
 function mapBackendItem(a) {
   return {
@@ -61,7 +48,8 @@ function mapBackendItem(a) {
 
 async function loadItems() {
   var d = await callBackend('/completion-applications?limit=100');
-  if (d && Array.isArray(d.items)) { LIVE = true; items = d.items.map(mapBackendItem); }
+  items = (d && Array.isArray(d.items)) ? d.items.map(mapBackendItem) : [];
+  return items;
 }
 
 function filtered() {
@@ -84,6 +72,8 @@ function statusPill(s) {
   return '<span class="status-pill ' + s + '"><i class="fas ' + icons[s] + '"></i>' + s.charAt(0).toUpperCase() + s.slice(1) + '</span>';
 }
 
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
 function render() {
   updateStats();
   var list = filtered(), total = list.length, tp = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -100,8 +90,6 @@ function render() {
   document.getElementById('pageInfo').innerHTML = 'Showing <b>' + (start + 1) + '</b> – <b>' + Math.min(start + PER_PAGE, total) + '</b> of <b>' + total + '</b> applications';
   renderPag(tp);
 }
-
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function renderDetail(id) {
   var a = items.find(function (x) { return x.id === id; }); if (!a) return;
@@ -128,19 +116,20 @@ function renderPag(tp) {
 
 function go(p) { currentPage = p; render(); }
 
-function toast(m) { var t = document.getElementById('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2400); }
-
 async function decide(id, action) {
   var a = items.find(function (x) { return x.id === id; });
   if (!a || a.status !== 'pending') return;
-  // URL verb is approve/reject (backend routes); the UI status stays approved/rejected.
   var verb = action === 'approved' ? 'approve' : 'reject';
-  var r = await callBackend('/completion-applications/' + encodeURIComponent(id) + '/' + verb, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
-  });
-  if (!r && LIVE) { toast('Could not reach the server — try again'); return; }
+  try {
+    var r = await callBackend('/completion-applications/' + encodeURIComponent(id) + '/' + verb, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+  } catch (err) {
+    toast('Could not reach the server — try again');
+    return;
+  }
   a.status = action;
   if (r && r.id) Object.assign(a, mapBackendItem(r));
   openRowId = null;
@@ -167,8 +156,10 @@ function init() {
   window.approve = approve;
   window.reject = reject;
   bindEvents();
-  render();
-  loadItems().then(function () { render(); });
+  loadItems().then(function () { render(); }).catch(function (err) {
+    console.error('completion-application backend failed:', err);
+    showError('The server is not reachable or your session expired. '+ (err && err.message ? err.message : 'Please refresh the page and try again.'));
+  });
 }
 
 window.CompletionApplicationService = { init: init };

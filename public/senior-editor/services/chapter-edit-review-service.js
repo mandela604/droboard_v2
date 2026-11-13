@@ -44,34 +44,18 @@ var Crud={
     return items;
   },
   approve:async function(id){
-    if(USE_API){
-      try{
-        var res=await callBackend('/chapter-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
-        var a=items.find(function(x){return x.id===id;});
-        if(a)a.status='approved';
-        return res;
-      }catch(err){ if(LIVE) throw err; }
-    }
-    await sleep(700); /* demo: loader visible until "resolve" */
+    var res=await callBackend('/chapter-edits/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:authHeaders()});
     var a=items.find(function(x){return x.id===id;});
     if(a)a.status='approved';
-    return a;
+    return res;
   },
   reject:async function(id,reason){
-    if(USE_API){
-      try{
-        var res=await callBackend('/chapter-edits/'+encodeURIComponent(id)+'/reject',{
-          method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
-        });
-        var a=items.find(function(x){return x.id===id;});
-        if(a){a.status='rejected';a.reviewNote=reason;}
-        return res;
-      }catch(err){ if(LIVE) throw err; }
-    }
-    await sleep(700); /* demo: loader visible until "resolve" */
+    var res=await callBackend('/chapter-edits/'+encodeURIComponent(id)+'/reject',{
+      method:'POST',headers:authHeaders(),body:JSON.stringify({note:reason}),
+    });
     var a=items.find(function(x){return x.id===id;});
     if(a){a.status='rejected';a.reviewNote=reason;}
-    return a;
+    return res;
   },
 };
 
@@ -91,26 +75,7 @@ function fromApiItem(d){
   };
 }
 
-var items=[
-  {id:'CHP-001',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'The CEO\'s Hidden Son',chapter:'Ch.24',words:'1,200',editType:'Rewrite',submitted:'2h ago',status:'pending',authorNote:'Hi! I rewrote the ending of Ch.24 — the old dialogue felt flat and the twist was too predictable. The new version hits much harder, please let me know what you think!'},
-  {id:'CHP-002',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Wolf King\'s Vow',chapter:'Ch.11',words:'800',editType:'Minor Edit',submitted:'4h ago',status:'pending',authorNote:'Just cleaned up the fight scene in Ch.11 — fixed my grammar and tightened the pacing. No story changes at all!'},
-  {id:'CHP-003',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'Betrayed by the Mafia Prince',chapter:'Ch.6',words:'2,100',editType:'Major Rewrite',submitted:'6h ago',status:'pending',authorNote:'I restructured the whole of Ch.6 — it dragged in the middle and I know readers felt it too. The new flow reads much faster.'},
-  {id:'CHP-004',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Duke\'s Secret',chapter:'Ch.28',words:'450',editType:'Grammar Fix',submitted:'1d ago',status:'approved',authorNote:'Only grammar fixes in Ch.28 from my side, no story changes whatsoever!'},
-  {id:'CHP-005',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Revenge at the Ivy League',chapter:'Ch.3',words:'1,800',editType:'Rewrite',submitted:'2d ago',status:'rejected',reviewNote:'The rewrite changes plot beats that are locked under the exclusive contract — please resubmit only dialogue and grammar fixes.',authorNote:'Reworked the ending of Ch.3 — the original felt rushed and I want this arc to land properly for my readers.'},
-  {id:'CHP-006',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'Caught Kissing Her Photograph',chapter:'Ch.15',words:'950',editType:'Minor Edit',submitted:'3d ago',status:'approved',authorNote:'Polished the pacing and dialogue in Ch.15. Small changes but they make a big difference!'},
-  {id:'CHP-007',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'She Rejected Me 3 Times',chapter:'Ch.5',words:'600',editType:'Grammar Fix',submitted:'4d ago',status:'pending',authorNote:'Just grammar and punctuation fixes in Ch.5, nothing else touched.'},
-  {id:'CHP-008',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'My Grandmother\'s Will',chapter:'Ch.20',words:'1,400',editType:'Rewrite',submitted:'5d ago',status:'rejected',reviewNote:'Backstory expansion exceeds the approved edit scope for contracted books — resend as a minor edit.',authorNote:'Expanded Ch.20 with more backstory — my readers asked for it and I agree the chapter needed more weight.'},
-  {id:'CHP-009',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'The Billionaire\'s Guard',chapter:'Ch.18',words:'720',editType:'Minor Edit',submitted:'6d ago',status:'approved',authorNote:'Small dialogue touch-ups in Ch.18, nothing structural changed.'},
-  {id:'CHP-010',author:'Luna Skye',avatar:'https://i.pravatar.cc/100?img=45',book:'Billionaire\'s Forbidden Love',chapter:'Ch.12',words:'1,100',editType:'Rewrite',submitted:'1w ago',status:'pending',authorNote:'I want to redo the love confession scene in Ch.12 — it deserves a much bigger moment!'},
-  {id:'CHP-011',author:'Elena Vasquez',avatar:'https://i.pravatar.cc/100?img=47',book:'Shadow of the Alpha',chapter:'Ch.35',words:'900',editType:'Minor Edit',submitted:'1w ago',status:'approved',authorNote:'Tightened the climax pacing in Ch.35 — it reads so much better now.'},
-  {id:'CHP-012',author:'Marcus Webb Jr.',avatar:'https://i.pravatar.cc/100?img=12',book:'King of the Underground',chapter:'Ch.10',words:'2,400',editType:'Major Rewrite',submitted:'1w ago',status:'pending',authorNote:'Full restructure of Ch.10 — I moved the villain reveal earlier for more tension. Hope you love it!'},
-  {id:'CHP-013',author:'Isabelle Moreau',avatar:'https://i.pravatar.cc/100?img=25',book:'The Princess Guard',chapter:'Ch.8',words:'350',editType:'Grammar Fix',submitted:'2w ago',status:'approved',authorNote:'Typo and grammar corrections in Ch.8, all mine to fix!'},
-  {id:'CHP-014',author:'Wren Okonkwo',avatar:'https://i.pravatar.cc/100?img=15',book:'Campus Queen',chapter:'Ch.7',words:'1,600',editType:'Rewrite',submitted:'2w ago',status:'rejected',reviewNote:'Character voices drift from the established bible — revise using the approved style guide and resubmit.',authorNote:'Rewrote Ch.7 to stay true to my characters — the old draft felt off for them and I had to fix it.'},
-  {id:'CHP-015',author:'Ada_Writes',avatar:'https://i.pravatar.cc/100?img=28',book:'The Teacher\'s Secret',chapter:'Ch.22',words:'880',editType:'Minor Edit',submitted:'2w ago',status:'approved',authorNote:'Dialogue improvements in Ch.22 — my characters finally sound like themselves!'},
-  {id:'CHP-016',author:'Dami_Cole',avatar:'https://i.pravatar.cc/100?img=51',book:'Lagos Love Story',chapter:'Ch.14',words:'1,300',editType:'Rewrite',submitted:'3w ago',status:'pending',authorNote:'Added the plot twist in Ch.14 that my readers have been guessing at — so excited for this one!'},
-  {id:'CHP-017',author:'Chiamaka_N',avatar:'https://i.pravatar.cc/100?img=41',book:'The Inheritance',chapter:'Ch.16',words:'550',editType:'Grammar Fix',submitted:'3w ago',status:'approved',authorNote:'Grammar and formatting fixes in Ch.16, all cleaned up.'},
-  {id:'CHP-018',author:'Ifeanyi_Story',avatar:'https://i.pravatar.cc/100?img=8',book:'Blood Ties',chapter:'Ch.28',words:'1,900',editType:'Major Rewrite',submitted:'3w ago',status:'rejected',reviewNote:'Council-scene expansion collides with the finale NDA chapter — hold until publication, then resubmit.',authorNote:'Expanded Ch.28 with the council scene — it sets up my finale properly and my readers need this context.'},
-];
+var items=[];
 
 var currentPage=1,PER_PAGE=5,openRowId=null,busyId=null;
 var rejectTargetId=null, submitting=false;
