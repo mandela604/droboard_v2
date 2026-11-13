@@ -551,14 +551,17 @@
     document.querySelectorAll('#heroDots .dot').forEach((d, i) => d.addEventListener('click', () => { goHero(i); startHero(); }));
     if (heroes.length) { goHero(0); startHero(); }
 
+    // Strip rating from sections that should not display star ratings
+    const noRating = (arr) => (arr || []).map(s => Object.assign({}, s, { rating: 0 }));
+
     DiscoverCard.renderRow('topRatedRow', data.topRated, 'No top rated stories yet.');
-    DiscoverCard.renderRow('romanceRow', data.topRomance, 'No romance picks right now.');
-    DiscoverCard.renderRow('trendingRow', data.trending, 'Nothing trending right now.');
-    DiscoverCard.renderRow('newRow', data.newReleases, 'No new releases yet.');
-    DiscoverCard.renderRow('editorRow', data.editorsPicks, "No editor's picks yet.");
-    DiscoverCard.renderRow('recRow', data.recommended, 'No recommendations yet.');
-    DiscoverCard.renderRow('completeRow', data.complete, 'No completed stories yet.');
-    DiscoverCard.renderRow('updatedRow', data.recentlyUpdated, 'No recent updates.');
+    DiscoverCard.renderRow('romanceRow', noRating(data.topRomance), 'No romance picks right now.');
+    DiscoverCard.renderRow('trendingRow', noRating(data.trending), 'Nothing trending right now.');
+    DiscoverCard.renderRow('newRow', noRating(data.newReleases), 'No new releases yet.');
+    DiscoverCard.renderRow('editorRow', noRating(data.editorsPicks), "No editor's picks yet.");
+    DiscoverCard.renderRow('recRow', noRating(data.recommended), 'No recommendations yet.');
+    DiscoverCard.renderRow('completeRow', noRating(data.complete), 'No completed stories yet.');
+    DiscoverCard.renderRow('updatedRow', noRating(data.recentlyUpdated), 'No recent updates.');
     DiscoverCard.renderCollRow('collRow', data.collections, 'No collections yet.');
     renderGenreGrid();
 

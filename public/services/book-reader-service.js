@@ -112,7 +112,7 @@ function normalizeLive(b) {
       likes: fmtN(stats.likes || b.likes || 0),
       comments: fmtN(stats.comments || 0),
       shares: fmtN(stats.shares || 0),
-      rating: stats.rating ? String(Math.round(stats.rating * 10) / 10) : '–',
+      rating: stats.rating ? parseFloat(stats.rating).toFixed(1) : '–',
     },
     totalChapters: totalCh,
     currentProgress: { chapter: continueChN, chapterTitle: continueChTitle, percent: continuePct, cid: cr ? cr.chapterId : null },
