@@ -91,7 +91,7 @@ async function persistMessage(conv, msg) {
 }
 
 var PERSPECTIVE='admin';
-var AVATAR_ME='https://i.pravatar.cc/100?img=5';
+var AVATAR_ME='../assets/droboard-icon.png';
 
 var currentView='all',activeConvId=null,replyTarget=null,pendingFile=null;
 
@@ -351,7 +351,7 @@ function bindEvents(){
 }
 
 function init(){
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'author-messages',title:'Author Messages',subtitle:'Manage conversations with authors on your platform',user:{name:'You',role:'Senior Editor',avatar:'../assets/droboard-icon.png'},notifCount:4,searchPlaceholder:'Search conversations...',mobileSearchTarget:'#convSearch',onSearch:function(v){document.getElementById('convSearch').value=v;renderConvList();}});
   document.addEventListener('click',function(){var m=document.getElementById('threadMenu');if(m)m.classList.remove('open');});
   bindEvents();
   loadConversations().then(function(){

@@ -11,13 +11,13 @@ const API_BASE = window.DROBOARD_API_BASE || '/api/senior-editor/author-verifica
 const TIMEOUT_MS = 5000;
 
 function showError(msg) {
-  const el = document.getElementById('requestsTableBody');
-  if(el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> ${msg}</td></tr>`;
+  const el = document.getElementById('tableBody');
+  if(el) el.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> ${msg}</td></tr>`;
 }
 
 function showLoading() {
-  const el = document.getElementById('requestsTableBody');
-  if(el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading verification requests...</td></tr>`;
+  const el = document.getElementById('tableBody');
+  if(el) el.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading verification requests...</td></tr>`;
 }
 
 async function callApi(path, opts) {
@@ -134,6 +134,45 @@ window.AuthorVerificationService = {
     } catch(e) {
       console.error('Failed to load statement:', e);
       return '';
+    }
+  },
+
+  async init() {
+    const tbody = document.getElementById('tableBody');
+    const pageInfo = document.getElementById('pageInfo');
+    const pendingCount = document.getElementById('pendingCount');
+    try {
+      const requests = await this.getRequests();
+      if(tbody) {
+        if(!requests.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:40px"><i class="fas fa-inbox" style="font-size:24px;color:var(--text-faint);display:block;margin-bottom:8px"></i>No verification requests.</td></tr>';
+        } else {
+          tbody.innerHTML = requests.map(r => {
+            const statusClass = (r.status||'pending').toLowerCase();
+            return '<tr class="req-row"><td class="auth-cell"><img class="auth-avatar" src="'+(r.avatar||'../assets/droboard-icon.png')+'" alt=""/><div><div class="auth-name">'+(r.author||'—')+'</div><div class="auth-email">'+(r.email||'—')+'</div></div></td><td class="doc-cell"><i class="fas fa-file"></i> '+(r.document||'—')+'</td><td class="plain-cell">'+(r.submitted||'—')+'</td><td class="reviewer-cell"><img src="'+(r.reviewerAvatar||'../assets/droboard-icon.png')+'" alt=""/><span>'+(r.reviewer||'—')+'</span></td><td><span class="status-pill '+statusClass+'">'+(r.status||'Pending')+'</span></td><td class="actions-cell"><button class="act-btn approve" onclick="AuthorVerificationService.approveRequest('+requests.indexOf(r)+', requests)"><i class="fas fa-check"></i></button><button class="act-btn reject" onclick="AuthorVerificationService.rejectRequest('+requests.indexOf(r)+', requests)"><i class="fas fa-times"></i></button></td></tr>';
+          }).join('');
+        }
+      }
+      if(pageInfo && requests.length) pageInfo.textContent = 'Showing 1 to '+requests.length+' of '+requests.length+' requests';
+      if(pendingCount) {
+        const pending = requests.filter(r=>(r.status||'pending').toLowerCase()==='pending').length;
+        pendingCount.textContent = pending;
+      }
+    } catch(e) {
+      showError('Failed to load verification requests: ' + e.message);
+      if(pageInfo) pageInfo.textContent = 'Showing 0 to 0 of 0 requests';
+      if(pendingCount) pendingCount.textContent = '0';
+    }
+
+    const recentGrid = document.getElementById('authorGrid');
+    try {
+      const reviews = await this.getRecentReviews();
+      if(recentGrid) {
+        if(!reviews.length) recentGrid.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:20px">No recently reviewed requests.</div>';
+        else recentGrid.innerHTML = reviews.map(r => '<div class="author-card"><img src="'+(r.avatar||'../assets/droboard-icon.png')+'" alt=""/><div class="author-card-name">'+(r.author||'—')+'</div><div class="author-card-meta">'+(r.status||'Reviewed')+'</div></div>').join('');
+      }
+    } catch(e) {
+      console.error('Failed to load recent reviews:', e);
     }
   }
 };
