@@ -126,6 +126,32 @@ async function createComment({ authorId, user, data }) {
     const { Post } = require('../models/social.model');
     await Post.updateOne({ id: postId }, { $inc: { commentsCount: 1 } });
   }
+  // Notify parent comment author on reply (not self)
+  if (parent && String(parent.authorId) !== String(authorId)) {
+    try {
+      const actor = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
+      const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
+      const snippet = text.slice(0, 60);
+      let link = '';
+      if (scope === 'post' && postId) link = '/Pages/discussion.html?id=' + postId;
+      else if (scope === 'story' && storyId) link = '/Pages/full-reader.html?story=' + storyId;
+      else if (scope === 'chapter' && storyId) link = '/Pages/full-reader.html?story=' + storyId + (chapterId ? '&ch=' + chapterId : '');
+      else if (scope === 'discussion' && (discussionId || postId)) link = '/Pages/discussion.html?id=' + (discussionId || postId);
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: String(parent.authorId),
+        actorId: String(authorId),
+        type: 'reply',
+        title: `<b>${actorName}</b> replied to your comment`,
+        desc: snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '',
+        link,
+        linkLabel: 'View reply',
+        key: 'reply:' + authorId + ':' + comment.id,
+        avatar: actor && actor.avatar,
+        thumb: actor && actor.avatar,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   const [card] = await shapeForReader([comment.toObject()], authorId);
   return card;
 }
@@ -255,6 +281,17 @@ async function reactToComment({ comment, userId, rid }) {
       const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
       const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
       const commentSnippet = (comment.text || '').slice(0, 60);
+      // Build the correct link based on what the comment belongs to
+      let link = '';
+      if (comment.scope === 'post' && comment.postId) {
+        link = '/Pages/discussion.html?id=' + comment.postId;
+      } else if (comment.scope === 'story' && comment.storyId) {
+        link = '/Pages/full-reader.html?story=' + comment.storyId;
+      } else if (comment.scope === 'chapter' && comment.storyId) {
+        link = '/Pages/full-reader.html?story=' + comment.storyId + (comment.chapterId ? '&ch=' + comment.chapterId : '');
+      } else if (comment.scope === 'discussion' && comment.discussionId) {
+        link = '/Pages/discussion.html?id=' + comment.discussionId;
+      }
       const { notify } = require('./notifications.service');
       await notify({
         recipientId: String(comment.authorId),
@@ -262,8 +299,8 @@ async function reactToComment({ comment, userId, rid }) {
         type: 'like',
         title: `<b>${actorName}</b> reacted to your comment`,
         desc: commentSnippet ? `"${commentSnippet}${commentSnippet.length === 60 ? '…' : ''}"` : '',
-        link: comment.postId ? '/Pages/discussion.html?id=' + comment.postId : '',
-        linkLabel: 'View post',
+        link,
+        linkLabel: 'View',
         key: 'comment-react:' + uid + ':' + comment.id,
         avatar: actor && actor.avatar,
         thumb: actor && actor.avatar,
