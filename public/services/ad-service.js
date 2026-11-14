@@ -157,13 +157,48 @@
   }
 
   // Stub functions that were removed with demo cleanup but still referenced externally
-  function track() {}
+  // track() — POST to /api/ads/track for impression/click metrics
+  function track(id, event, ctx) {
+    if (!id) return;
+    try {
+      fetch('/api/ads/track', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: String(id), event: String(event), context: ctx || {} }),
+      }).catch(() => {}); // silently fail if backend is down
+    } catch (e) {}
+  }
+  
+  // observe() — no-op, called by ad-slot for IAB viewability tracking
   function observe() {}
+  
+  // newShowing() — no-op, called by ad-slot for showing metrics
   function newShowing() {}
-  function convert() {}
+  
+  // convert() — POST ad attribution on purchase (called by payment-service)
+  function convert(data) {
+    if (!data || !data.orderId) return;
+    try {
+      fetch('/api/ads/convert', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  
+  // getPerformance() — no-op stub, returns null
   function getPerformance() { return Promise.resolve(null); }
-  function readStats() { return Promise.resolve(null); }
+  
+  // readStats() — no-op stub, returns empty object (used by audience-service)
+  function readStats() { return {}; }
+  
+  // getViewerId() — no-op stub, returns null
   function getViewerId() { return null; }
-  function spotlightStats() { return Promise.resolve(null); }
+  
+  // spotlightStats() — no-op stub for platform analytics
+  function spotlightStats() { return Promise.resolve({ impressions: 0, clicks: 0, ctr: 0, viewers: 0, creatives: [] }); }
 
   window.AdService = { getPlacement, getSlotConfig, getAds, getPromoSlides, getInventory, track, observe, newShowing, convert, getPerformance, readStats, getViewerId, spotlightStats };
