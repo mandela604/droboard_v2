@@ -69,6 +69,10 @@ const chapterSchema = new mongoose.Schema({
   content: { type: String, default: '' }, // paragraphs HTML
   words: { type: Number, default: 0 },
   views: { type: Number, default: 0 },
+  // Per-chapter emoji reactions (love/crying/savage/...). One active rid per
+  // reader, tracked in Reaction{targetType:'chapter'}; these are display counts.
+  likes: { type: Number, default: 0 }, // sum of reactions — kept in step on every write
+  reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   status: { type: String, enum: ['draft', 'pending_review', 'revision_needed', 'scheduled', 'live', 'published'], default: 'draft', index: true },
   scheduledAt: { type: Date, default: null },
   version: { type: Number, default: 1 },

@@ -148,10 +148,29 @@ async function createChapter({ bookId, data }) {
   return ch.toJSON();
 }
 
-async function listChapters({ bookId, onlyLive }) {
+async function listChapters({ bookId, onlyLive, viewerId }) {
   const filter = { bookId };
   if (onlyLive) filter.status = { $in: ['live', 'published'] };
-  return Chapter.find(filter).sort({ n: 1 }).lean();
+  const rows = await Chapter.find(filter).sort({ n: 1 }).lean();
+  if (!rows.length) return rows;
+  // Display counts for the chapter-end reaction strip (one query per page),
+  // plus the viewer's own active reaction so the button paints correctly on
+  // first render. Anonymous readers still get the counts.
+  const engagement = require('./engagement.service');
+  const mine = {};
+  if (viewerId) {
+    const { Reaction } = require('../models/social.model');
+    const ids = rows.map(r => String(r.id));
+    const rx = await Reaction.find({
+      userId: String(viewerId), targetType: 'chapter', targetId: { $in: ids },
+    }).select('targetId rid').lean().catch(() => []);
+    (rx || []).forEach(x => { mine[String(x.targetId)] = x.rid; });
+  }
+  rows.forEach(r => {
+    r.reactionCounts = engagement.chapterRxCounts(r);
+    r.userRx = mine[String(r.id)] || null;
+  });
+  return rows;
 }
 
 async function getChapter({ bookId, key, onlyLive }) {

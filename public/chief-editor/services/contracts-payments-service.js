@@ -56,6 +56,9 @@ async function loadContractTemplates(){
       created: t.created || '',
       lastEdited: t.lastEdited || t.updated || '',
     }));
+  } catch(e) {
+    console.error('loadContractTemplates error:', e);
+    return [];
   }
 }
 
@@ -822,7 +825,7 @@ document.getElementById('statusFilter').addEventListener('change', applyFilters)
 document.getElementById('sortSelect').addEventListener('change', applyFilters);
 
 init();
-}
+} // END __contractsMain()
 
 var _cpInited = false;
 function init(){

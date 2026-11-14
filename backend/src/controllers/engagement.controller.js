@@ -36,6 +36,28 @@ async function results(req, res) {
     engagement.results({ chapter, userId: req.user ? req.user.id : null }));
 }
 
+/* ── per-chapter reactions (chapter end card) ── */
+async function chapterReactionGet(req, res) {
+  return base.wrap(res, async () => engagement.chapterReactionState({
+    bookId: req.valid.params.bookId, key: req.valid.params.key,
+    userId: req.user ? req.user.id : null,
+  }));
+}
+
+async function chapterReactionPost(req, res) {
+  return base.wrap(res, async () => engagement.reactChapter({
+    bookId: req.valid.params.bookId, key: req.valid.params.key,
+    userId: req.user.id, rid: req.valid.body.rid,
+  }));
+}
+
+async function chapterReactionDelete(req, res) {
+  return base.wrap(res, async () => engagement.unreactChapter({
+    bookId: req.valid.params.bookId, key: req.valid.params.key,
+    userId: req.user.id,
+  }));
+}
+
 async function progress(req, res) {
   return base.wrap(res, async () => {
     const b = req.valid.body || {};
@@ -128,6 +150,7 @@ async function helpfulUnmark(req, res) {
 
 module.exports = {
   votePoll, votePrediction, voteDebate, retract, results, progress, readState,
+  chapterReactionGet, chapterReactionPost, chapterReactionDelete,
   bookResults, bookVote, bookRetract,
   ratingGet, ratingPost, ratingDelete, ratingsList, helpfulMark, helpfulUnmark,
 };

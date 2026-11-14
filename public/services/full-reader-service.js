@@ -150,31 +150,44 @@
     }
   }
 
-  /* ══ REACTIONS — via shared reaction-picker component ══ */
+  /* ══ REACTIONS — story-level state from the live book payload ══
+     The reader's real per-chapter reaction surface lives at the chapter end
+     (component/chapter-reactions.js). This binding only keeps any story-level
+     trigger honest: no seeded counts, no ephemeral demo state. */
   function initReactions() {
     if (!window.DroboardReactionPicker) return;
-    const totalReactions = (FS.shares || 0) + (FS.tips || 0) + 33000;
     const phoneEl = document.querySelector(".phone");
     if (!phoneEl) return;
 
-    // Story-level reaction state (single story per page). attachCounters
-    // handles all toggle math; this host just seeds counts + persists.
     const sid = "story-" + currentStoryId;
+    const rxState = FS.reactions || { counts: {}, userRx: null };
+    const seed = { userRx: rxState.userRx || null };
+    Object.keys(rxState.counts || {}).forEach(k => { seed[k] = rxState.counts[k] || 0; });
 
     DroboardReactionPicker.attachCounters(phoneEl, {
-      getCounts: (id) => {
-        if (String(id) !== sid) return null;
-        return { userRx: null, love: totalReactions };
+      getCounts: (id) => String(id) === sid ? seed : null,
+      save: (_id, state) => {
+        const base = "/api/books/" + encodeURIComponent(currentStoryId) + "/reaction";
+        const req = state.userRx
+          ? fetch(base, {
+              method: "POST", credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ rid: state.userRx }),
+            })
+          : fetch(base, { method: "DELETE", credentials: "include" });
+        req.then((r) => r.ok ? r.json() : null)
+          .then((j) => { if (j) FS.reactions = { counts: j.counts || {}, userRx: j.userRx || null }; })
+          .catch(() => {});
       },
-      save: () => {}, // story-level reactions are ephemeral demo state
     });
 
-    // Replace bottom bar Like button with reaction-picker trigger
+    // Replace bottom bar Like button with reaction-picker trigger (when the
+    // host markup has one) using the real counts.
     const bbLike = document.getElementById("bbLike");
     if (bbLike) {
       bbLike.outerHTML = DroboardReactionPicker.renderTrigger(sid, {
-        liked: false,
-        likeCount: totalReactions,
+        liked: rxState.userRx === "love",
+        likeCount: Object.keys(seed).reduce((a, k) => k === "userRx" ? a : a + (Number(seed[k]) || 0), 0),
       });
     }
   }
@@ -285,6 +298,7 @@
     FS.board = (book.hubs && book.hubs.board) || null;
     FS.shares = (book.stats && book.stats.shares) || book.sharesCount || 0;
     FS.tips = book.tipCount || 0;
+    FS.reactions = book.reactions || { counts: {}, userRx: null };
     FS.similar = (book.similar || []).map(x => ({ id: x.id, cover: x.cover, title: x.title, author: (x.author && x.author.name) || '' }));
     const w = book.writer || {};
     AUTHOR.id = w.id || '';
@@ -303,6 +317,10 @@
         n: c.n, title: c.title, words: c.words || 0, liveId: c.id,
         meta: Math.max(1, Math.round((c.words || 600) / 200)) + ' min',
         state: done ? 'done' : (open ? 'current' : 'locked'),
+        // Chapter-end reaction strip: counts + this reader's active rid come
+        // from the chapters list, so switching chapters costs no extra call.
+        reactions: c.reactionCounts || {},
+        userRx: c.userRx || null,
       };
     });
     live.forEach(c => { CHAPTER_CONTENT['s1c' + c.n] = htmlToParas(c.content).slice(0, 60); });
@@ -589,6 +607,19 @@
     document.getElementById("chEndSection").style.display = locked ? "none" : "";
     if (!locked) {
       document.getElementById("chEndTitle").textContent = "Chapter " + ch.n + " complete";
+      // Per-chapter reaction strip — drives the chapter reaction, never the
+      // whole-book total. Counts/active rid arrived with the chapters list.
+      try {
+        if (window.DroboardChapterReactions) {
+          window.DroboardChapterReactions.mount(document.getElementById("chEndReactions"), {
+            storyId: storyIdNow(),
+            chapterId: ch.liveId || String(ch.n),
+            chapterN: ch.n,
+            counts: ch.reactions || {},
+            userRx: ch.userRx || null,
+          });
+        }
+      } catch (e) {}
       try {
         var shEl = document.getElementById("ebShareCount");
         if (shEl) shEl.textContent = fmtN(FS.shares || 0);

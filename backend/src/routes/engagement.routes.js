@@ -3,6 +3,7 @@ const { z } = require('zod');
 const ctrl = require('../controllers/engagement.controller');
 const { requireAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
+const { STORY_RX } = require('../services/engagement.service');
 
 function Router() { return require('express').Router(); }
 const router = Router({ mergeParams: true });
@@ -31,6 +32,19 @@ function attachViewer(req, _res, next) {
 // cannot see or undo the option they picked.
 router.get('/:bookId/chapters/:key/engagement', attachViewer, generalLimiter,
   validate(z.object({ params: z.object({ bookId: id, key }) })), ctrl.results);
+
+/* ── per-chapter reactions (chapter end card) ──
+   One active rid per reader per chapter. Re-sending the same rid is a no-op;
+   a different rid swaps it. Deleting removes the reader's reaction. */
+router.get('/:bookId/chapters/:key/reaction', attachViewer, generalLimiter,
+  validate(z.object({ params: z.object({ bookId: id, key }) })), ctrl.chapterReactionGet);
+router.post('/:bookId/chapters/:key/reaction', requireAuth, writeLimiter, audit('engagement.chapterReact'),
+  validate(z.object({
+    params: z.object({ bookId: id, key }),
+    body: z.object({ rid: z.enum(STORY_RX) }).strict(),
+  })), ctrl.chapterReactionPost);
+router.delete('/:bookId/chapters/:key/reaction', requireAuth, writeLimiter, audit('engagement.chapterUnreact'),
+  validate(z.object({ params: z.object({ bookId: id, key }) })), ctrl.chapterReactionDelete);
 
 // bridge + collection-story contract: GET /api/stories/:id (single segment, no clash)
 router.get('/:id', attachViewer, generalLimiter,

@@ -109,7 +109,7 @@ router.delete('/:id', requireAuth, writeLimiter, audit('books.delete'),
   validate(z.object({ params: z.object({ id }) })), ctrl.remove);
 
 // chapters nested (reorder BEFORE :key — else 'reorder' matches :key)
-router.get('/:id/chapters', generalLimiter, validate(z.object({ params: z.object({ id }) })), chCtrl.list);
+router.get('/:id/chapters', optionalAuth, generalLimiter, validate(z.object({ params: z.object({ id }) })), chCtrl.list);
 router.post('/:id/chapters', requireAuth, writeLimiter, audit('chapters.create'),
   validate(z.object({ params: z.object({ id }), body: chBody })), chCtrl.create);
 router.patch('/:id/chapters/reorder', requireAuth, writeLimiter, audit('chapters.reorder'),

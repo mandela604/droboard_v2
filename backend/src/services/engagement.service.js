@@ -106,18 +106,22 @@ async function readState({ userId, bookId }) {
 }
 
 // Record reading time. Upserts per (user, story, chapter), clamps deltas to
-// stop clock abuse. On finish-transition (first time this user finishes this
-// chapter) increments Chapter.views + Book.reads and writes today's
-// BookDailyStat snapshot (powers Rising = reads last 7d).
+// stop clock abuse. The FIRST time this reader opens a chapter credits it as a
+// read (Chapter.views +1, Book.reads +1, today's BookDailyStat.reads +1) —
+// opens and finishes used to credit separately, which meant a reader who
+// viewed a chapter but never scrolled to the end left Reads at zero. The
+// readCredited flag guarantees exactly one read per reader per chapter.
 async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent, pct, finished, wordsRead }) {
   const secs = Math.min(3600, Math.max(0, parseInt(secondsSpent, 10) || 0));
   const sid = String(storyId || bookId);
   const cid = String(chapterId || '');
-  const prev = await ReadingProgress.findOne({ userId: String(userId), storyId: sid, chapterId: cid }).select('finished').lean();
+  const prev = await ReadingProgress.findOne({ userId: String(userId), storyId: sid, chapterId: cid }).select('finished readCredited').lean();
+  const creditRead = !!cid && (!prev || !prev.readCredited);
   const update = {
     $inc: { secondsSpent: secs, wordsRead: Math.max(0, parseInt(wordsRead, 10) || 0) },
     $set: { lastReadAt: new Date() },
   };
+  if (creditRead) update.$set.readCredited = true;
   if (pct !== undefined) update.$set.pct = Math.min(100, Math.max(0, Number(pct) || 0));
   if (finished !== undefined) update.$set.finished = !!finished;
   const doc = await ReadingProgress.findOneAndUpdate(
@@ -125,8 +129,8 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
     update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).lean();
-  // First finish of this chapter by this user = one read.
-  if (finished && (!prev || !prev.finished)) {
+  // First open of this chapter by this user = one read.
+  if (creditRead) {
     try {
       const { Book, Chapter, BookDailyStat } = require('../models/content.model');
       const day = new Date().toISOString().slice(0, 10);
@@ -135,10 +139,22 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
         Book.updateOne({ id: sid }, { $inc: { reads: 1 } }).catch(() => {}),
         BookDailyStat.updateOne(
           { bookId: sid, day },
-          { $inc: { reads: 1, finishes: 1 } },
+          { $inc: { reads: 1 } },
           { upsert: true }
         ).catch(() => {}),
       ]);
+    } catch (e) { /* reads never break tracking */ }
+  }
+  // Finish counts are separate from read credit so finishes cannot inflate.
+  if (finished && (!prev || !prev.finished)) {
+    try {
+      const { BookDailyStat } = require('../models/content.model');
+      const day = new Date().toISOString().slice(0, 10);
+      await BookDailyStat.updateOne(
+        { bookId: sid, day },
+        { $inc: { finishes: 1 } },
+        { upsert: true }
+      ).catch(() => {});
     } catch (e) { /* reads never break tracking */ }
   }
   // Finishing the book's last chapter marks it finished in read history
@@ -385,6 +401,74 @@ async function storyReactionState(book, userId) {
   return { counts, userRx: mine ? mine.rid : null };
 }
 
+/* ── Per-chapter reactions ─────────────────────────────────────────────
+   The chapter end card is the reaction surface readers actually use. One
+   active reaction per reader per chapter, stored as
+   Reaction{targetType:'chapter', targetId:chapter.id}; the display counts
+   live on Chapter.reactions and Chapter.likes stays in step. */
+function chapterRxCounts(ch) {
+  const raw = ch.reactions instanceof Map
+    ? Object.fromEntries(ch.reactions)
+    : (ch.reactions || {});
+  const counts = {};
+  STORY_RX.forEach(rid => { counts[rid] = raw[rid] || 0; });
+  Object.keys(raw).forEach(rid => { if (!(rid in counts)) counts[rid] = raw[rid] || 0; });
+  return counts;
+}
+
+async function loadChapterReaction(bookId, key) {
+  const q = /^\d+$/.test(String(key)) ? { bookId, n: parseInt(key, 10) } : { bookId, id: String(key) };
+  q.status = { $in: ['live', 'published'] };
+  const ch = await Chapter.findOne(q);
+  if (!ch) { const e = new Error('not_found'); e.status = 404; throw e; }
+  // Chapters created before reactions existed have no Map yet.
+  if (!(ch.reactions instanceof Map)) ch.reactions = new Map(Object.entries(ch.reactions || {}));
+  return ch;
+}
+
+async function reactChapter({ bookId, key, userId, rid }) {
+  if (!STORY_RX.includes(rid)) { const e = new Error('bad_reaction'); e.status = 400; throw e; }
+  const ch = await loadChapterReaction(bookId, key);
+  const { Reaction } = require('../models/social.model');
+  const prev = await Reaction.findOne({ userId: String(userId), targetType: 'chapter', targetId: ch.id });
+  if (prev && prev.rid === rid) {
+    return { counts: chapterRxCounts(ch), userRx: rid, likes: ch.likes || 0 };
+  }
+  if (prev) {
+    const left = Math.max(0, (ch.reactions.get(prev.rid) || 0) - 1);
+    if (left) ch.reactions.set(prev.rid, left); else ch.reactions.delete(prev.rid);
+    await Reaction.deleteOne({ userId: String(userId), targetType: 'chapter', targetId: ch.id });
+  }
+  await Reaction.create({ userId: String(userId), targetType: 'chapter', targetId: ch.id, rid });
+  ch.reactions.set(rid, (ch.reactions.get(rid) || 0) + 1);
+  const counts = chapterRxCounts(ch);
+  ch.likes = rxTotal(counts);
+  await ch.save();
+  return { counts, userRx: rid, likes: ch.likes };
+}
+
+async function unreactChapter({ bookId, key, userId }) {
+  const ch = await loadChapterReaction(bookId, key);
+  const { Reaction } = require('../models/social.model');
+  const prev = await Reaction.findOneAndDelete({ userId: String(userId), targetType: 'chapter', targetId: ch.id });
+  if (prev) {
+    const left = Math.max(0, (ch.reactions.get(prev.rid) || 0) - 1);
+    if (left) ch.reactions.set(prev.rid, left); else ch.reactions.delete(prev.rid);
+    ch.likes = rxTotal(chapterRxCounts(ch));
+    await ch.save();
+  }
+  return { counts: chapterRxCounts(ch), userRx: null, likes: ch.likes || 0 };
+}
+
+async function chapterReactionState({ bookId, key, userId }) {
+  const ch = await loadChapterReaction(bookId, key);
+  const counts = chapterRxCounts(ch);
+  if (!userId) return { counts, userRx: null, likes: ch.likes || 0 };
+  const { Reaction } = require('../models/social.model');
+  const mine = await Reaction.findOne({ userId: String(userId), targetType: 'chapter', targetId: ch.id }).lean();
+  return { counts, userRx: mine ? mine.rid : null, likes: ch.likes || 0 };
+}
+
 // Share channels: must match the 8 data-platform values in share-modal.js (line 422-450).
 const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy'];
 
@@ -424,5 +508,6 @@ module.exports = {
   // mapper instead of growing a second one.
   shapeStoryEngagement, storyVotes, ENGAGEMENT_LISTS,
   reactStory, unreactStory, storyReactionState, STORY_RX,
+  chapterRxCounts, reactChapter, unreactChapter, chapterReactionState,
   shareStory, SHARE_CHANNELS,
 };

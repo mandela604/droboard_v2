@@ -277,6 +277,9 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           liveId: c.id,
           words: c.words || 0,
           locked: !open,
+          // Chapter-end reaction strip state (from the chapters list).
+          reactions: c.reactionCounts || {},
+          userRx: c.userRx || null,
         };
       }),
     };
@@ -368,6 +371,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       '<div class="story-text">' + htmlParas + "</div>" +
       '<div class="ch-edge-ad" id="chBottomAd-' + ch.n + '" style="display:none"></div>' +
       '<div data-eng-mount="s1c' + ch.n + '" data-ch="' + ch.n + '" data-note="' + esc(ch.authorNote || ch.note || "") + '"></div>' +
+      '<div class="dcr-wrap" data-cr-mount="' + ch.n + '"></div>' +
       renderCommentLine(ch) +
       renderEngageBar(ch) +
       '<div class="comm-chapter-mount" id="commMount-' + ch.n + '"></div>' +
@@ -570,6 +574,24 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)">💬 Could not load comments (' + ((err && err.message) || err) + ').</div>';
         });
     });
+
+    /* Per-chapter reaction strip. Counts + the reader's own active rid came
+       in with the chapters payload, so each strip paints without a request. */
+    if (window.DroboardChapterReactions) {
+      DATA.chapters.forEach(ch => {
+        const crEl = document.querySelector('[data-cr-mount="' + ch.n + '"]');
+        if (!crEl) return;
+        try {
+          window.DroboardChapterReactions.mount(crEl, {
+            storyId: STORY_ID,
+            chapterId: ch.liveId || String(ch.n),
+            chapterN: ch.n,
+            counts: ch.reactions || {},
+            userRx: ch.userRx || null,
+          });
+        } catch (e) {}
+      });
+    }
 
     if (window.DroboardAdCard) {
       DroboardAdCard.attach(document.getElementById("readerCol"), {

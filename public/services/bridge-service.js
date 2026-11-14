@@ -885,12 +885,21 @@
     wireStatusRing();
     loadRating();
     
-    // Always refetch data fresh when page comes into focus
-    window.addEventListener('pageshow', () => {
+    // Always refetch data fresh when page comes into focus. Counters move
+    // while the reader is away (comments, reads, shares), so both a bfcache
+    // restore (pageshow) and a tab return (visibilitychange) repaint stats.
+    let refreshing = false;
+    const refresh = () => {
+      if (refreshing) return;
+      refreshing = true;
       fetchStory(STORY_ID).then(raw => {
-        DATA = normalizeStory(raw);
-        renderAll();
-      }).catch(() => {});
+        const next = normalizeStory(raw);
+        if (next) { DATA = next; renderAll(); }
+      }).catch(() => {}).then(() => { refreshing = false; });
+    };
+    window.addEventListener('pageshow', refresh);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refresh();
     });
   }
 

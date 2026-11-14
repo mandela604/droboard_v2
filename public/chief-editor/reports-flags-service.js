@@ -1,27 +1,23 @@
 /**
  * reports-flags-service.js — Team story reports (Chief Editor scope)
- * READ-ONLY view of every book flagged by any senior editor, rendered as an
- * accordion via the shared ../component/reports-table.js (layout:'accordion').
- * Expanding a row reveals the editor who flagged it, the reason, type/
- * severity and the SE queue status. Resolution happens in the editor's own
- * module — the CE only watches. Senior-editor Book-Management flags mirror
- * into the same store, so they arrive here too.
- * reports-flags.html is shell only + ChiefStoryFlags.init().
- *
- * Going live: set USE_API=true in the component; endpoints:
- *   GET  /api/reports/story?scope=team
+ * Wired to backend: GET /api/chief/reports/story?seId=...&status=pending
+ * Single data source, no demo fallback.
  */
 (function(){
 'use strict';
 
-function seDirectory(){
-  return {};
+const API_BASE = '/api/chief';
+async function callBackend(path, opts){
+  const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+  if(!res.ok) throw new Error('Backend error: ' + res.status);
+  return res.json();
 }
 
 function statCard(n, l, ico, bg, color){
   return '<div class="stat-card"><div class="stat-ico" style="background:' + bg + ';color:' + color + '"><i class="fas ' + ico + '"></i></div>'
     + '<div><div class="stat-num">' + n + '</div><div class="stat-lbl">' + l + '</div></div></div>';
 }
+
 function renderStats(){
   if (!window.DroboardReportsTable) return;
   var list = window.DroboardReportsTable.getScoped('all').filter(function(r){ return r.status === 'pending'; });
@@ -49,7 +45,6 @@ function init(){
       seIds: 'all',
       layout: 'accordion',
       pendingOnly: true,
-      seAvatars: seDirectory(),
       canResolve: false,
       showSeFilter: true,
       pageSize: 8,

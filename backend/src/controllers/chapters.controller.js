@@ -30,7 +30,12 @@ async function list(req, res) {
   return base.wrap(res, async () => {
     const book = await chapters.books.loadBookOr404(req.valid.params.id);
     // Public list shows ONLY live chapters. Author preview lives under /api/author.
-    return chapters.listChapters({ bookId: book.id, onlyLive: true });
+    // optionalAuth lets a signed-in reader get their own chapter reaction in the
+    // same payload, so both readers need no extra per-chapter requests.
+    return chapters.listChapters({
+      bookId: book.id, onlyLive: true,
+      viewerId: req.user ? req.user.id : null,
+    });
   });
 }
 

@@ -368,16 +368,7 @@ async function init() {
   `;
 
   // Quick stats
-  const qs = [
-    { num: STORY.stats.reads, label: 'Reads', cls: 'r' },
-    { num: STORY.stats.likes, label: 'Likes', cls: 'r' },
-    { num: STORY.stats.comments, label: 'Comments', cls: 'b' },
-    { num: STORY.stats.rating, label: 'Rating', cls: 'g' },
-    { num: STORY.stats.shares, label: 'Shares', cls: '' },
-  ];
-  document.getElementById('quickStats').innerHTML = qs.map(q =>
-    `<div class="qs-item"><div class="qs-num ${q.cls}">${q.num}</div><div class="qs-label">${q.label}</div></div>`
-  ).join('');
+  paintQuickStats();
 
   // Continue banner (no seasons — chapter only)
   paintContinueBanner();
@@ -421,6 +412,16 @@ async function init() {
   // the price-based default state — no invented progress).
   loadReadState();
 
+  // Counters move while the reader is away (comments, reads, shares), so
+  // refresh the stats surfaces whenever this page is shown again.
+  if (!window.__bookReaderStatsBound) {
+    window.__bookReaderStatsBound = true;
+    window.addEventListener('pageshow', function () { refreshStats(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') refreshStats();
+    });
+  }
+
   /* Deep link: book-reader.html?id=…&view=reviews → open Overview and
      scroll to the reviews block (used by the bridge's "View all reviews"). */
   if (params.get('view') === 'reviews') {
@@ -430,6 +431,33 @@ async function init() {
       if (rv) rv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
   }
+}
+
+function paintQuickStats() {
+  const qs = [
+    { num: STORY.stats.reads, label: 'Reads', cls: 'r' },
+    { num: STORY.stats.likes, label: 'Likes', cls: 'r' },
+    { num: STORY.stats.comments, label: 'Comments', cls: 'b' },
+    { num: STORY.stats.rating, label: 'Rating', cls: 'g' },
+    { num: STORY.stats.shares, label: 'Shares', cls: '' },
+  ];
+  const el = document.getElementById('quickStats');
+  if (!el) return;
+  el.innerHTML = qs.map(q =>
+    `<div class="qs-item"><div class="qs-num ${q.cls}">${q.num}</div><div class="qs-label">${q.label}</div></div>`
+  ).join('');
+}
+
+/* Re-read the story's counters when the tab is restored (back from a reader,
+   after sharing, etc.) and repaint only the stats surfaces. */
+async function refreshStats() {
+  try {
+    const fresh = await fetchStoryDetail(storyId);
+    if (!fresh || !fresh.stats) return;
+    STORY.stats = fresh.stats;
+    paintQuickStats();
+    if (document.getElementById('statsDeep')) paintStatsDeep();
+  } catch (e) { /* a failed refresh keeps the last known numbers */ }
 }
 
 function paintContinueBanner() {
@@ -796,11 +824,17 @@ function renderOverview() {
     </div>`).join('');
 
   // Stats deep
+  paintStatsDeep();
+}
+
+function paintStatsDeep() {
+  const el = document.getElementById('statsDeep');
+  if (!el) return;
   const topReads = allChaptersFlat()
     .filter(c => c.reads !== '–')
     .sort((a, b) => (b.readsNum || 0) - (a.readsNum || 0))
     .slice(0, 3);
-  document.getElementById('statsDeep').innerHTML = `
+  el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
       ${[
         { n: STORY.stats.reads, l: 'Total Reads', c: '#ff0050' },

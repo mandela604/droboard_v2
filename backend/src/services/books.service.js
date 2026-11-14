@@ -127,7 +127,13 @@ async function getBookDetail(id, viewerId) {
       .select('id username fullName avatar bio emailVerified followerCount').lean() : Promise.resolve(null),
     engagement.storyVotes(book.id, viewer),
     engagement.storyReactionState(book, viewer),
-    Comment.countDocuments({ scope: 'story', storyId: book.id }),
+    Comment.countDocuments({
+      // Comments can live at story scope (bridge) or chapter scope (both
+      // readers). The story's total must include both — counting only
+      // scope:'story' made every in-chapter comment invisible here.
+      storyId: book.id,
+      scope: { $in: ['story', 'chapter'] },
+    }),
     ShareEvent.countDocuments({ targetType: 'story', targetId: book.id }),
     book.authorId ? LedgerEntry.countDocuments({ kind: 'tip', authorId: String(book.authorId) }) : 0,
     book.categoryId ? Category.findOne({ id: book.categoryId }).select('id name icon membersCount slug').lean()

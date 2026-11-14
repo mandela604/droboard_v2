@@ -281,6 +281,9 @@ const readingProgressSchema = new mongoose.Schema({
   chapterId: { type: String, ref: 'Chapter', index: true },
   pct: { type: Number, default: 0, min: 0, max: 100 },
   finished: { type: Boolean, default: false, index: true },
+  // True once this reader's first open of the chapter has been credited to
+  // Chapter.views / Book.reads. Guarantees one read per reader per chapter.
+  readCredited: { type: Boolean, default: false },
   wordsRead: { type: Number, default: 0 },
   secondsSpent: { type: Number, default: 0, min: 0 }, // accumulated read time
   lastReadAt: { type: Date, default: Date.now, index: true },
