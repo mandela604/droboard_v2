@@ -113,12 +113,18 @@ function fmtNum(n){
   if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K';
   return String(n);
 }
-function fmtUSD(n){ return '$' + (Number(n) || 0).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0}); }
+/* Contract amounts are ALWAYS in USD (form explicitly asks for USD input).
+   Display them as-is without admin currency conversion.
+   This differs from other money displays which follow admin's base currency. */
+function fmtContractUSD(n){ 
+  return '$' + (Number(n) || 0).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0}); 
+}
+function fmtUSD(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return '$' + (Number(n) || 0); }
 function fmtBonusRange(min, max){
   min = Number(min) || 0; max = Number(max) || 0;
   if (!min && !max) return null;
-  if (min === max) return fmtUSD(min);
-  return fmtUSD(min) + '–' + fmtUSD(max);
+  if (min === max) return fmtContractUSD(min);
+  return fmtContractUSD(min) + '–' + fmtContractUSD(max);
 }
 
 function toast(msg, icon){
@@ -354,7 +360,7 @@ function renderList(){
           <span class="ctr-chip"><strong>${c.termLength}</strong> term</span>
           ${bonus ? `<span class="ctr-chip bonus"><strong>${bonus}</strong> ${cfLabelFor(c, 'bonusMax').replace(/\s*\(\$\)$/, '').toLowerCase()}</span>` : ''}
           ${c.completionTarget ? `<span class="ctr-chip bonus"><strong>${fmtNum(c.completionTarget)}</strong> reads / ${c.completionWindowMonths || '?'} mo</span>` : ''}
-          ${c.profitShareThreshold != null ? `<span class="ctr-chip bonus">Bonus at <strong>${fmtUSD(c.profitShareThreshold)}</strong> profit</span>` : ''}
+          ${c.profitShareThreshold != null ? `<span class="ctr-chip bonus">Bonus at <strong>${fmtContractUSD(c.profitShareThreshold)}</strong> profit</span>` : ''}
           ${c.autoRenew ? `<span class="ctr-chip">${cfLabelFor(c, 'autoRenew')}</span>` : ''}
         </div>
       </div>
@@ -685,8 +691,8 @@ function openDetailsModal(id){
       <div class="dt-grid">
         ${c.completionTarget ? `<div class="dt-item"><span>${cfLabelFor(c, 'compTarget')}</span><b>${fmtNum(c.completionTarget)} reads</b></div>` : ''}
         ${c.completionWindowMonths ? `<div class="dt-item"><span>${cfLabelFor(c, 'compMonths')}</span><b>${c.completionWindowMonths} months</b></div>` : ''}
-        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitThresh').replace(/\s*\(\$\)$/, '')}</span><b>${fmtUSD(c.profitShareThreshold)}</b></div>` : ''}
-        ${c.profitShareBonus ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitBonus').replace(/\s*\(\$\)$/, '')}</span><b>${fmtUSD(c.profitShareBonus)}</b></div>` : ''}
+        ${c.profitShareThreshold != null ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitThresh').replace(/\s*\(\$\)$/, '')}</span><b>${fmtContractUSD(c.profitShareThreshold)}</b></div>` : ''}
+        ${c.profitShareBonus ? `<div class="dt-item"><span>${cfLabelFor(c, 'profitBonus').replace(/\s*\(\$\)$/, '')}</span><b>${fmtContractUSD(c.profitShareBonus)}</b></div>` : ''}
       </div>
     </div>` : ''}
 
