@@ -69,6 +69,7 @@ function loadData(){
   ChiefEditorData.getSeniorEditors().then(function(d){
     // Backend returns {items:[...]} or an array directly
     ALL = Array.isArray(d) ? d : (d && d.items ? d.items : []);
+    if(!Array.isArray(ALL)) ALL = [];  // Final safety check
     return loadAuthorPool();
   }).then(function(d){
     authorPool = d;
@@ -77,6 +78,7 @@ function loadData(){
     renderStats(); applyFilters(); bindToolbar(); renderQueue();
   }).catch(function(e){
     console.error(e);
+    ALL = [];  // Reset to empty array on error
     document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load: ' + (e && e.message || 'network error') + '</div>';
   });
 }
@@ -110,6 +112,7 @@ function mapAssignments(rows){
 }
 
 function renderStats(){
+  if(!ALL || !Array.isArray(ALL)) ALL = [];
   var behind=ALL.filter(function(e){return e.status==='behind'}).length;
   var pending=ALL.filter(function(e){return e.status==='pending'}).length;
   var totalA=ALL.reduce(function(s,e){return s+e.authorsManaged},0);
