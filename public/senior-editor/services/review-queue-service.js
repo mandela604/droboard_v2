@@ -68,7 +68,7 @@ const shell = SeniorEditorSidebar.attach('#queueRoot', {
   subtitle: 'Review full book submissions',
   user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
   notifCount: 4,
-  onSearch: v => { document.getElementById('searchInput').value = v; currentPg = 1; applyFilters(); }
+  onSearch: v => { document.getElementById('searchInput').value = ''; currentPg = 1; applyFilters(); }
 });
 
 /* Cover art pulled from the Discover page's story assets */
