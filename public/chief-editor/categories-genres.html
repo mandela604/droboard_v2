@@ -182,6 +182,9 @@
     <div class="modal-body">
       <div class="form-group"><label>Name</label><input id="formName" placeholder="e.g. Thriller"/></div>
       <div class="form-group" id="formDescGroup"><label>Description</label><textarea id="formDesc" placeholder="Short description…"></textarea></div>
+      <div class="form-group" id="formIconGroup"><label>Icon (Font Awesome class)</label><input id="formIcon" placeholder="e.g. fa-book, fa-heart"/></div>
+      <div class="form-group" id="formBgGroup"><label>Background Color</label><input type="color" id="formBg" value="#fde3ee"/></div>
+      <div class="form-group" id="formColorGroup"><label>Text Color</label><input type="color" id="formColor" value="#ff0050"/></div>
       <div class="form-group" id="formCatGroup"><label>Parent Category</label><select id="formCat"><option value="">Select category…</option></select></div>
       <div class="form-group" id="formTropeGroup" style="display:none"><label>Parent Genre</label><select id="formTropeGenre"><option value="">Select genre…</option></select></div>
       <div class="form-group"><label>Status</label><select id="formStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
@@ -515,6 +518,9 @@ function showModal(title, extraFields, onSave, prefill){
   document.getElementById('cgModalBody').innerHTML = `
     <div class="modal-field"><label>Name</label><input id="mfName" type="text" value="${prefill?prefill.name:''}"/></div>
     <div class="modal-field"><label>Description</label><textarea id="mfDesc">${prefill?prefill.desc||'':''}</textarea></div>
+    <div class="modal-field"><label>Icon (Font Awesome class)</label><input id="mfIcon" type="text" value="${prefill?prefill.icon||'fa-book':''}" placeholder="e.g. fa-book, fa-heart"/></div>
+    <div class="modal-field"><label>Background Color</label><input id="mfBg" type="color" value="${prefill?prefill.bg||'#fde3ee':'#fde3ee'}"/></div>
+    <div class="modal-field"><label>Text Color</label><input id="mfColor" type="color" value="${prefill?prefill.color||'#ff0050':'#ff0050'}"/></div>
     ${extraFields}
     <div class="modal-field"><label>Status</label><select id="mfStatus"><option value="active"${!prefill||prefill.status==='active'?' selected':''}>Active</option><option value="inactive"${prefill&&prefill.status==='inactive'?' selected':''}>Inactive</option></select></div>`;
   
@@ -524,7 +530,14 @@ function showModal(title, extraFields, onSave, prefill){
     if(!name){ toast('Name is required'); return; }
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      await onSave({ name, desc: document.getElementById('mfDesc').value.trim(), status: document.getElementById('mfStatus').value });
+      await onSave({ 
+        name, 
+        desc: document.getElementById('mfDesc').value.trim(),
+        icon: document.getElementById('mfIcon').value.trim(),
+        bg: document.getElementById('mfBg').value,
+        color: document.getElementById('mfColor').value,
+        status: document.getElementById('mfStatus').value 
+      });
       ov.classList.remove('open');
       toast('Saved successfully');
     } catch(e) { toast('Failed: ' + e.message); }
