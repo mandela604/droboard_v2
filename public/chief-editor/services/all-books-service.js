@@ -43,7 +43,7 @@ function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 async function loadBooks(){
-  const data = await callBackend('/books?limit=200&status=all');
+  const data = await callBackend('/books?limit=200&status=published');
   books = Array.isArray(data) ? data : ((data && data.items) || []);
   // Normalise field names (backend uses camelCase, table expects certain keys)
   books = books.map(function(b){
