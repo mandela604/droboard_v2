@@ -67,9 +67,33 @@ function loadAuthorPool(){
 
 function loadData(){
   ChiefEditorData.getSeniorEditors().then(function(d){
-    // Backend returns {items:[...]} or an array directly
-    ALL = Array.isArray(d) ? d : (d && d.items ? d.items : []);
-    if(!Array.isArray(ALL)) ALL = [];  // Final safety check
+    // Backend returns {items:[...], invites:[...]} or an array directly
+    let items = Array.isArray(d) ? d : (d && d.items ? d.items : []);
+    if(!Array.isArray(items)) items = [];
+    
+    // Transform backend fields to frontend fields
+    ALL = items.map(function(e){
+      return {
+        id: e.id,
+        name: e.fullName || e.username || '',
+        email: e.email || '',
+        avatar: e.avatar || '',
+        status: e.status || 'active',
+        authorsManaged: e.assignedAuthors || 0,
+        joined: e.createdAt ? e.createdAt.split('T')[0] : '',
+        openReports: e.openReports || 0,
+        // Invite/quota fields (from pending invite data, may be undefined for active editors)
+        target: (e.quota && e.quota.target) || 0,
+        invited: (e.quota && e.quota.invited) || 0,
+        deadline: (e.quota && e.quota.deadline) || '',
+        paymentType: (e.quota && e.quota.paymentType) || 'fixed',
+        monthlyPay: (e.quota && e.quota.monthlyPay) || '$0',
+        revenueShare: (e.quota && e.quota.revenueShare) || '',
+        ytdPaid: (e.quota && e.quota.ytdPaid) || 0,
+        invitedAt: e.createdAt || ''
+      };
+    });
+    
     return loadAuthorPool();
   }).then(function(d){
     authorPool = d;
@@ -115,10 +139,10 @@ function renderStats(){
   if(!ALL || !Array.isArray(ALL)) ALL = [];
   var behind=ALL.filter(function(e){return e.status==='behind'}).length;
   var pending=ALL.filter(function(e){return e.status==='pending'}).length;
-  var totalA=ALL.reduce(function(s,e){return s+e.authorsManaged},0);
+  var totalA=ALL.reduce(function(s,e){return s+(e.authorsManaged||0)},0);
   var h='';
   h+=statCard(ALL.length,'Senior Editors','fa-people-group','accent');
-  h+=statCard(ALL.length-behind-pending,'On Track or Ahead','fa-circle-check','blue');
+  h+=statCard(Math.max(0, ALL.length-behind-pending),'On Track or Ahead','fa-circle-check','blue');
   h+=statCard(behind,'Behind Quota','fa-triangle-exclamation','red');
   h+=statCard(pending,'Pending Invites','fa-clock','amber');
   document.getElementById('statCards').innerHTML=h;
@@ -1046,13 +1070,15 @@ function init(){
     var deadline=document.getElementById('invDeadline').value;
     var note=document.getElementById('invNote').value.trim();
     var pt=document.getElementById('invPayType').value;
-    var payVal='$0';
+    var monthlyPay=0;
     var revShare='';
     if(pt==='fixed'){
-      payVal=document.getElementById('invPay').value.trim()||'$0';
+      var payStr=document.getElementById('invPay').value.trim()||'0';
+      // Extract number from "$1000" format
+      monthlyPay=parseFloat(payStr.replace(/[^0-9.]/g,''))||0;
     } else {
       revShare=document.getElementById('invRevenueShare').value.trim()||'';
-      payVal=revShare?revShare+' share':'—';
+      monthlyPay=parseFloat(revShare.replace(/[^0-9.]/g,''))||0;
     }
     if(editingInviteId){
       var ex=ALL.find(function(x){return x.id===editingInviteId;});
@@ -1067,7 +1093,7 @@ function init(){
       renderStats();applyFilters();
       return;
     }
-    ChiefEditorData.createInvite({name:name,email:email,target:target,monthlyPay:payVal,paymentType:pt,revenueShare:revShare,deadline:deadline,note:note}).then(function(editor){
+    ChiefEditorData.createInvite({name:name,email:email,target:target,monthlyPay:monthlyPay,paymentType:pt,revenueShare:revShare,deadline:deadline,note:note}).then(function(editor){
       editor.inviteToken = editor.token;
       ALL.push(editor);
       document.getElementById('inviteModal').classList.remove('show');
