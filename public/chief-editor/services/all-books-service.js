@@ -86,9 +86,13 @@ function renderStats(){
 }
 
 function renderTabs(){
+  if(!books || !Array.isArray(books)) return;
   var counts={all:books.length};
-  ['Published','Paused','Under Review','Flagged'].forEach(function(s){
-    counts[s]=books.filter(function(b){return b.status===s;}).length;
+  // Map tab names to actual status values in database
+  var statusMap={'Published':'published', 'Paused':'paused', 'Under Review':'under_review', 'Flagged':'flagged'};
+  Object.keys(statusMap).forEach(function(tabName){
+    var dbStatus=statusMap[tabName];
+    counts[tabName]=books.filter(function(b){return b.status===dbStatus;}).length;
   });
   document.getElementById('countAll').textContent=counts.all;
   document.querySelectorAll('.tab-item').forEach(function(t){
@@ -105,11 +109,18 @@ function refresh(){
   var q=(document.getElementById('tableSearch').value||'').trim().toLowerCase();
   var genre=document.getElementById('fGenre').value;
   var stat=document.getElementById('fStatus').value;
+  
+  // Map tab display names to database status values
+  var tabToDbStatus={'Published':'published', 'Paused':'paused', 'Under Review':'under_review', 'Flagged':'flagged'};
+  var activeDbStatus=tabToDbStatus[activeTab] || null;
 
   var filtered=books.filter(function(b){
-    if(activeTab!=='all'&&b.status!==activeTab)return false;
+    if(activeTab!=='all' && activeDbStatus && b.status!==activeDbStatus) return false;
     if(genre!=='All Genres'&&b.genre!==genre)return false;
-    if(stat!=='All Status'&&b.status!==stat)return false;
+    if(stat!=='All Status'){
+      var statDbValue=tabToDbStatus[stat]||stat;
+      if(b.status!==statDbValue)return false;
+    }
     if(q&&b.title.toLowerCase().indexOf(q)===-1&&b.author.toLowerCase().indexOf(q)===-1&&b.id.toLowerCase().indexOf(q)===-1)return false;
     return true;
   });
@@ -132,14 +143,14 @@ function renderTable(list){
   }else{
     body.innerHTML=page.map(function(b){
       var gc=GENRE_COLORS[b.genre]||GENRE_COLORS[b.cat]||{bg:'var(--table-head)',fg:'var(--text-muted)'};
-      var isF=b.status==='Flagged';
+      var isF=b.status==='flagged';
       return'<tr>'+
         '<td data-label="Book Details"><div class="book-cell"><div class="book-cover"><img src="'+b.img+'" alt=""/></div><div><div class="book-title">'+b.title+'</div><div class="book-id">ID: '+b.id+'</div></div></div></td>'+
         '<td data-label="Author"><div class="author-cell"><img src="'+b.avatar+'" alt=""/><span class="author-name">'+b.author+'</span></div></td>'+
         '<td data-label="Genre"><div class="cat-main"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+gc.bg+';color:'+gc.fg+'">'+b.genre+'</span></div></td>'+
         '<td data-label="Status">'+statusPillHtml(b.status)+(isF&&b.flagReason?'<div style="font-size:10px;color:var(--red);font-weight:600;margin-top:4px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(b.flagNote||b.flagReason)+'"><i class="fas fa-flag"></i> '+esc(b.flagReason)+'</div>':'')+'</td>'+
-        '<td data-label="Reads" class="views-cell">'+b.views+'</td>'+
-        '<td data-label="Rating" class="muted-cell">★ '+(b.rating==null?'—':b.rating)+'</td>'+
+        '<td data-label="Reads" class="views-cell" style="color:var(--green);font-weight:700">'+b.views+'</td>'+
+        '<td data-label="Rating" class="muted-cell"><span style="color:var(--green);font-weight:700">★ '+(b.rating==null?'—':b.rating)+'</span></td>'+
         '<td data-label="Actions"><div class="actions-cell">'+
           '<button class="act-btn" title="View" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
           '<button class="act-btn" title="Edit" onclick="editBook(\''+b.id+'\')"><i class="fas fa-pen"></i></button>'+
