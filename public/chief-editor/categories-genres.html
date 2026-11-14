@@ -213,8 +213,13 @@
 .modal-hdr h3{font-size:15px;font-weight:800}
 .modal-close{width:30px;height:30px;border-radius:8px;background:var(--input-bg);border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text-muted);cursor:pointer;flex-shrink:0;transition:.15s}
 .modal-close:hover{color:var(--accent);border-color:var(--accent);background:rgba(255,0,80,.08)}
-.modal-body{padding:20px;background:var(--card);display:flex;flex-direction:column;gap:12px}
-.modal-field{display:flex;flex-direction:column;gap:6px}
+.modal-body{padding:20px;background:var(--card);display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow-y:auto}
+.modal-steps{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--border)}
+.modal-step{width:32px;height:32px;border-radius:50%;background:var(--input-bg);border:2px solid var(--input-border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text-muted);transition:.15s}
+.modal-step.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.modal-step.completed{background:var(--accent);color:#fff;border-color:var(--accent)}
+.modal-step-line{width:16px;height:2px;background:var(--input-border);transition:.15s}
+.modal-step.completed ~ .modal-step-line{background:var(--accent)}
 .modal-field label{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em}
 .modal-field input[type="color"]{width:50px;height:40px;padding:2px;cursor:pointer}
 .modal-field input[type="text"], .modal-field input[type="color"], .modal-field textarea, .modal-field select{background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:.15s}
@@ -482,7 +487,7 @@ function openAddModal(){
     const svc = window.CategoriesGenresService;
     if(isCategory) await svc.addCategory(data);
     else if(isGenre) await svc.addGenre({...data, categoryId: document.getElementById('mfCatId').value});
-    else await svc.addTrope({...data, genreId: document.getElementById('mfGenreId').value});
+    else await svc.addTrope({...data, genre: document.getElementById('mfGenreId').value ? GENRES.find(g=>g.id===document.getElementById('mfGenreId').value)?.name : ''});
     await loadData();
   });
 }
@@ -503,7 +508,7 @@ function openEditModal(id){
     const svc = window.CategoriesGenresService;
     if(currentView==='categories') await svc.updateCategory(id, data);
     else if(currentView==='genres') await svc.updateGenre(id, {...data, categoryId: document.getElementById('mfCatId').value});
-    else await svc.updateTrope(id, {...data, genreId: document.getElementById('mfGenreId').value});
+    else await svc.updateTrope(id, {...data, genre: document.getElementById('mfGenreId').value ? GENRES.find(g=>g.id===document.getElementById('mfGenreId').value)?.name : ''});
     await loadData();
   }, item);
 }

@@ -143,6 +143,8 @@ router.post('/genres/:id/toggle-status', ...guard, audit('chief.genres.toggle-st
 const tropeBody = z.object({
   name: z.string().min(1).max(80), genre: z.string().max(40).optional(),
   slug: z.string().max(80).optional(), desc: z.string().max(2000).optional(),
+  icon: z.string().max(200).optional(), bg: z.string().max(20).optional(),
+  color: z.string().max(20).optional(),
   status: z.enum(['active', 'inactive']).optional(),
 }).strict();
 
