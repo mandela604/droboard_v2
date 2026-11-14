@@ -85,6 +85,7 @@ const categoryBody = z.object({
   icon: z.string().max(200).optional(), bg: z.string().max(20).optional(),
   color: z.string().max(20).optional(), desc: z.string().max(2000).optional(),
   tagline: z.string().max(200).optional(), cover: z.string().max(2000).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   adminIds: z.array(z.string().max(120)).max(20).optional(),
   moderatorIds: z.array(z.string().max(120)).max(20).optional(),
   rules: z.array(z.string().max(300)).max(15).optional(),
@@ -115,6 +116,7 @@ const genreBody = z.object({
   about: z.any().optional(),
   icon: z.string().max(200).optional(), cover: z.string().max(2000).optional(),
   bg: z.string().max(20).optional(), color: z.string().max(20).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
 }).strict();
 
 router.get('/genres/popular', ...guard,
