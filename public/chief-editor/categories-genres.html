@@ -450,13 +450,9 @@ document.getElementById('tableBody').addEventListener('click', async e=>{
     openEditModal(id);
   } else if(action==='toggle') {
     try {
-      const item = currentView==='categories' ? CATEGORIES.find(c=>c.id===id)
-        : currentView==='genres' ? GENRES.find(g=>g.id===id)
-        : TROPES.find(t=>t.id===id);
-      const newStatus = item && item.status==='active' ? 'inactive' : 'active';
-      if(currentView==='categories') await svc.updateCategory(id, {status:newStatus});
-      else if(currentView==='genres') await svc.updateGenre(id, {status:newStatus});
-      else await svc.updateTrope(id, {status:newStatus});
+      if(currentView==='categories') await svc.toggleCategoryStatus(id);
+      else if(currentView==='genres') await svc.toggleGenreStatus(id);
+      else await svc.toggleTropeStatus(id);
       toast('Status updated');
       await loadData();
     } catch(e) { toast('Failed to update: ' + e.message); }

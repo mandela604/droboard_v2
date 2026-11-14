@@ -200,7 +200,7 @@ window.CategoriesGenresService = {
   async updateCategory(id, payload) {
     try {
       const res = await callBackend(`/categories/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -234,7 +234,7 @@ window.CategoriesGenresService = {
   async updateGenre(id, payload) {
     try {
       const res = await callBackend(`/genres/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -268,13 +268,49 @@ window.CategoriesGenresService = {
   async updateTrope(id, payload) {
     try {
       const res = await callBackend(`/tropes/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       return res;
     } catch(e) {
       throw new Error('Failed to update trope: ' + e.message);
+    }
+  },
+
+  async toggleCategoryStatus(id) {
+    try {
+      const res = await callBackend(`/categories/${id}/toggle-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return res;
+    } catch(e) {
+      throw new Error('Failed to toggle category status: ' + e.message);
+    }
+  },
+
+  async toggleGenreStatus(id) {
+    try {
+      const res = await callBackend(`/genres/${id}/toggle-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return res;
+    } catch(e) {
+      throw new Error('Failed to toggle genre status: ' + e.message);
+    }
+  },
+
+  async toggleTropeStatus(id) {
+    try {
+      const res = await callBackend(`/tropes/${id}/toggle-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return res;
+    } catch(e) {
+      throw new Error('Failed to toggle trope status: ' + e.message);
     }
   },
 
