@@ -507,39 +507,64 @@
     document.getElementById('chCountSub').textContent = totalCh > 0 ? totalCh + ' chapters · ' + kind : kind;
   }
 
-  async function reactToStory(reactionKey) {
-    if (window.RequireAuth && !RequireAuth.ensure('react to this story')) return;
-    const isRemoving = DATA.reactions.userRx === reactionKey;
-    const method = isRemoving ? 'DELETE' : 'POST';
-    const url = `${API_BASE}/books/${encodeURIComponent(STORY_ID)}/reaction`;
-    try {
-      const res = await postJSON(url, isRemoving ? {} : { rid: reactionKey }, 'Reaction API', method);
-      if (res && res.reactions) {
-        DATA.reactions = res.reactions;
-        renderReactions();
-        toast(isRemoving ? '✅ Reaction removed' : '✅ Reacted!');
-      }
-    } catch (err) {
-      toast('Reaction failed — ' + ((err && err.message) || 'try again'));
-    }
+  /* ══ REACTIONS — via shared reaction-picker component ══ */
+  function initReactions() {
+    if (!window.DroboardReactionPicker) return;
+    
+    // Bind reaction-picker at page level with hooks for bridge stories
+    window.DroboardReactionPicker.attach(document.body, {
+      getState(id) {
+        // id format: "story-{storyId}" from renderReactions
+        if (!String(id).startsWith('story-')) return null;
+        if (String(id) !== 'story-' + STORY_ID) return null;
+        
+        return DATA.reactions || { userRx: null, love: 0, crying: 0, angry: 0, shocked: 0, broken: 0, emotional: 0, savage: 0, sus: 0 };
+      },
+      onReact(id, rid) {
+        if (!String(id).startsWith('story-') || String(id) !== 'story-' + STORY_ID) return;
+        if (!window.RequireAuth || RequireAuth.ensure('react to this story')) {
+          postJSON(`/api/books/${encodeURIComponent(STORY_ID)}/reaction`, 
+            DATA.reactions.userRx === rid ? {} : { rid },
+            'Reaction API',
+            DATA.reactions.userRx === rid ? 'DELETE' : 'POST'
+          ).then(res => {
+            if (res && res.reactions) {
+              DATA.reactions = res.reactions;
+              // Re-render to update counts
+              const triggerId = 'story-' + STORY_ID;
+              window.DroboardReactionPicker.update(triggerId, DATA.reactions);
+            }
+          }).catch(() => {});
+        }
+      },
+    });
   }
 
   function renderReactions() {
-    const rx = DATA.reactions;
-    const items = [
-      { emoji: '❤️', label: 'Love', key: 'love', count: rx.love },
-      { emoji: '😭', label: 'Crying', key: 'crying', count: rx.crying },
-      { emoji: '😡', label: 'Angry', key: 'angry', count: rx.angry },
-      { emoji: '😱', label: 'Shocked', key: 'shocked', count: rx.shocked },
-      { emoji: '💔', label: 'Broken', key: 'broken', count: rx.broken },
-      { emoji: '🥺', label: 'Emotional', key: 'emotional', count: rx.emotional },
-      { emoji: '🔥', label: 'Savage', key: 'savage', count: rx.savage },
-      { emoji: '🤨', label: 'Sus', key: 'sus', count: rx.sus },
-    ];
+    const id = 'story-' + STORY_ID;
     const el = document.getElementById('rxGrid');
-    el.innerHTML = items.map(r =>
-      `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}" onclick="BridgePage.reactToStory('${r.key}')"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
-    ).join('');
+    if (!el) return;
+    
+    // Use reaction-picker's renderTrigger if available, otherwise show static cards
+    if (window.DroboardReactionPicker) {
+      el.innerHTML = window.DroboardReactionPicker.renderTop(id, 8);
+    } else {
+      // Fallback: static reaction display
+      const rx = DATA.reactions;
+      const items = [
+        { emoji: '❤️', label: 'Love', key: 'love', count: rx.love },
+        { emoji: '😭', label: 'Crying', key: 'crying', count: rx.crying },
+        { emoji: '😡', label: 'Angry', key: 'angry', count: rx.angry },
+        { emoji: '😱', label: 'Shocked', key: 'shocked', count: rx.shocked },
+        { emoji: '💔', label: 'Broken', key: 'broken', count: rx.broken },
+        { emoji: '🥺', label: 'Emotional', key: 'emotional', count: rx.emotional },
+        { emoji: '🔥', label: 'Savage', key: 'savage', count: rx.savage },
+        { emoji: '🤨', label: 'Sus', key: 'sus', count: rx.sus },
+      ];
+      el.innerHTML = items.map(r =>
+        `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
+      ).join('');
+    }
   }
 
   function renderHubs() {
@@ -698,21 +723,7 @@
 
   function openShare() {
     if (window.DroboardShare) DroboardShare.open(STORY_ID);
-    else if (window.openShareModal) {
-      // Post to backend to increment share count
-      fetch(`${API_BASE}/books/${encodeURIComponent(STORY_ID)}/share`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel: 'link' }),
-      }).then(r => r.ok ? r.json() : null).then(d => {
-        if (d && d.sharesCount != null) {
-          DATA.shares = d.sharesCount;
-          renderStats();
-        }
-      }).catch(() => {});
-      openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href });
-    }
+    else if (window.openShareModal) openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href, storyId: STORY_ID });
     else toast('Share unavailable');
   }
 
@@ -893,6 +904,7 @@
     document.getElementById('tbTitle').textContent = DATA.title;
     attachWriterStatus();
     renderAll();
+    initReactions();
     wireStatusRing();
     loadRating();
   }
@@ -957,7 +969,6 @@
     openTip,
     openSave,
     openShare,
-    reactToStory,
     toggleRate,
     openRateModal,
     rateStar,

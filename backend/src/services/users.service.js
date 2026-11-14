@@ -244,8 +244,9 @@ async function profile(handle, viewerId) {
     isBlocked = !!b;
   }
   // books (writers) — card shape the Books tab consumes
+  // Only show published/ongoing/completed books — never drafts or under-review
   const bookDocs = isWriter
-    ? await Book.find({ authorId: u.id }).sort({ createdAt: -1 }).limit(50)
+    ? await Book.find({ authorId: u.id, status: { $in: ['ongoing', 'completed', 'published'] } }).sort({ createdAt: -1 }).limit(50)
       .select('id title cover genre reads likes rating chapterCount status').lean()
     : [];
   const books = bookDocs.map(b => ({

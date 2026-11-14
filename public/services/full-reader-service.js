@@ -722,30 +722,13 @@
   }
 
   function openShare() {
-    // Post to backend to increment share count
-    fetch(`/api/books/${encodeURIComponent(currentStoryId)}/share`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel: 'link' }),
-    }).then(r => r.ok ? r.json() : null).then(d => {
-      if (d && d.sharesCount != null) {
-        FS.shares = d.sharesCount;
-        const shareEls = document.querySelectorAll('[id*="ShareCount"]');
-        shareEls.forEach(el => el.textContent = fmtN(FS.shares || 0));
-      }
-    }).catch(() => {});
-    
     if (window.openShareModal) {
       window.openShareModal({
         title: FS.title || "Story",
         sub: "by " + AUTHOR.name,
         img: "",
         url: "https://droboard.app/story/" + currentStoryId,
-      });
-    }
-  }
-        url: "https://droboard.app/story/" + currentStoryId,
+        storyId: currentStoryId,
       });
     }
   }

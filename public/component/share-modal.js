@@ -827,6 +827,17 @@
 
   function _onSuccess() {
     const label = _destType === 'status' ? 'Status' : 'Profile';
+    
+    // Increment share count on backend if storyId provided
+    if (_data.storyId) {
+      fetch(`/api/books/${encodeURIComponent(_data.storyId)}/share`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: _destType }),
+      }).catch(() => {});
+    }
+    
     closeCompose();
     closeShareModal();
     _toast(`✅ Posted to ${label}!`);

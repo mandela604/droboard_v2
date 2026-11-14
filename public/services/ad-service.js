@@ -156,4 +156,14 @@
     } catch (e) { return Promise.resolve(false); }
   }
 
+  // Stub functions that were removed with demo cleanup but still referenced externally
+  function track() {}
+  function observe() {}
+  function newShowing() {}
+  function convert() {}
+  function getPerformance() { return Promise.resolve(null); }
+  function readStats() { return Promise.resolve(null); }
+  function getViewerId() { return null; }
+  function spotlightStats() { return Promise.resolve(null); }
+
   window.AdService = { getPlacement, getSlotConfig, getAds, getPromoSlides, getInventory, track, observe, newShowing, convert, getPerformance, readStats, getViewerId, spotlightStats };
