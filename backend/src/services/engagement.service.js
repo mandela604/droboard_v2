@@ -375,9 +375,11 @@ async function reactStory({ bookId, userId, rid }) {
   await Reaction.create({ userId: String(userId), targetType: 'story', targetId: book.id, rid });
   book.reactions.set(rid, (book.reactions.get(rid) || 0) + 1);
   const counts = rxCounts(book);
-  book.likes = rxTotal(counts);
   await book.save();
-  return { counts, userRx: rid, likes: book.likes };
+  // Book.likes means "reactions across this book's chapters" — the story-level
+  // map is a separate legacy counter and must not overwrite that number.
+  const totals = await syncBookLikes(book.id);
+  return { counts, userRx: rid, likes: totals.total };
 }
 
 async function unreactStory({ bookId, userId }) {
@@ -387,10 +389,10 @@ async function unreactStory({ bookId, userId }) {
   if (prev) {
     const left = Math.max(0, (book.reactions.get(prev.rid) || 0) - 1);
     if (left) book.reactions.set(prev.rid, left); else book.reactions.delete(prev.rid);
-    book.likes = rxTotal(rxCounts(book));
     await book.save();
   }
-  return { counts: rxCounts(book), userRx: null, likes: book.likes || 0 };
+  const totals = await syncBookLikes(book.id);
+  return { counts: rxCounts(book), userRx: null, likes: totals.total };
 }
 
 async function storyReactionState(book, userId) {
@@ -414,6 +416,35 @@ function chapterRxCounts(ch) {
   STORY_RX.forEach(rid => { counts[rid] = raw[rid] || 0; });
   Object.keys(raw).forEach(rid => { if (!(rid in counts)) counts[rid] = raw[rid] || 0; });
   return counts;
+}
+
+/* The BOOK total is the sum of every live chapter's reaction map — never a
+   separate counter that can drift. The bridge's reaction grid and its "Likes"
+   number both read this. One query per call (books hold few chapters). */
+async function chapterReactionTotals(bookId) {
+  const rows = await Chapter.find({ bookId: String(bookId), status: { $in: ['live', 'published'] } })
+    .select('reactions')
+    .lean();
+  const counts = {};
+  STORY_RX.forEach(rid => { counts[rid] = 0; });
+  rows.forEach(r => {
+    const raw = r.reactions instanceof Map
+      ? Object.fromEntries(r.reactions)
+      : (r.reactions || {});
+    Object.keys(raw).forEach(rid => {
+      counts[rid] = (counts[rid] || 0) + (Number(raw[rid]) || 0);
+    });
+  });
+  const total = Object.keys(counts).reduce((a, k) => a + (counts[k] || 0), 0);
+  return { counts, total, likes: total, chapters: rows.length };
+}
+
+// Book.likes is the cached chapter-reaction total, so catalogue cards, search
+// sorting and the bridge stat all agree without each one re-aggregating.
+async function syncBookLikes(bookId) {
+  const totals = await chapterReactionTotals(bookId);
+  await Book.updateOne({ id: String(bookId) }, { $set: { likes: totals.total } });
+  return totals;
 }
 
 async function loadChapterReaction(bookId, key) {
@@ -444,7 +475,8 @@ async function reactChapter({ bookId, key, userId, rid }) {
   const counts = chapterRxCounts(ch);
   ch.likes = rxTotal(counts);
   await ch.save();
-  return { counts, userRx: rid, likes: ch.likes };
+  const totals = await syncBookLikes(ch.bookId);
+  return { counts, userRx: rid, likes: ch.likes, bookLikes: totals.total };
 }
 
 async function unreactChapter({ bookId, key, userId }) {
@@ -457,7 +489,8 @@ async function unreactChapter({ bookId, key, userId }) {
     ch.likes = rxTotal(chapterRxCounts(ch));
     await ch.save();
   }
-  return { counts: chapterRxCounts(ch), userRx: null, likes: ch.likes || 0 };
+  const totals = await syncBookLikes(ch.bookId);
+  return { counts: chapterRxCounts(ch), userRx: null, likes: ch.likes || 0, bookLikes: totals.total };
 }
 
 async function chapterReactionState({ bookId, key, userId }) {
@@ -470,7 +503,10 @@ async function chapterReactionState({ bookId, key, userId }) {
 }
 
 // Share channels: must match the 8 data-platform values in share-modal.js (line 422-450).
-const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy'];
+// `status` / `profile` are the in-app destinations the same sheet posts to.
+const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy', 'status', 'profile'];
+// Content families that can be shared through POST /api/share.
+const SHARE_TYPES = ['books', 'posts', 'collections'];
 
 function shareCounts(book) {
   return { sharesCount: book.sharesCount || 0 };
@@ -480,25 +516,81 @@ function shareChannelCounts(book) {
   const raw = book.sharesByChannel instanceof Map
     ? Object.fromEntries(book.sharesByChannel)
     : (book.sharesByChannel || {});
-  return { channelShares: raw };
+  return raw;
 }
 
 async function shareStory({ bookId, userId, channel }) {
   if (!SHARE_CHANNELS.includes(channel)) { const e = new Error('bad_channel'); e.status = 400; throw e; }
   const book = await storyBook(bookId);
-  // One share per user per hour per channel prevents burst spam.
   const { ShareEvent } = require('../models/social.model');
-  const recent = await ShareEvent.findOne({
-    userId: String(userId), targetType: 'story', targetId: String(book.id), channel,
-    createdAt: { $gte: new Date(Date.now() - 3600000) },
-  });
-  if (recent) { return { counts: shareCounts(book), channelShares: shareChannelCounts(book) }; }
+  // ShareEvent keeps ONE row per user per story (unique index) — it powers the
+  // "Sharers" audience, it is not the counter. The counter is Book.sharesCount,
+  // which every genuine share increments. Only a double-tap on the SAME channel
+  // inside 10s is collapsed, so a real second share always counts.
+  const prev = await ShareEvent.findOne({
+    userId: String(userId), targetType: 'story', targetId: String(book.id),
+  }).select('channel createdAt').lean();
+  if (prev && prev.channel === channel && prev.createdAt &&
+      new Date(prev.createdAt).getTime() >= Date.now() - 10000) {
+    return {
+      counted: false, channel,
+      counts: shareCounts(book), channelShares: shareChannelCounts(book),
+      sharesCount: book.sharesCount || 0,
+    };
+  }
   book.sharesCount = (book.sharesCount || 0) + 1;
   const byCh = book.sharesByChannel.get(channel) || 0;
   book.sharesByChannel.set(channel, byCh + 1);
   await book.save();
-  await ShareEvent.create({ userId: String(userId), targetType: 'story', targetId: String(book.id), channel });
-  return { counts: shareCounts(book), channelShares: shareChannelCounts(book) };
+  // Upsert (not create) so the unique per-user trail row never 500s the share.
+  await ShareEvent.updateOne(
+    { userId: String(userId), targetType: 'story', targetId: String(book.id) },
+    { $set: { channel }, $currentDate: { createdAt: true }, $setOnInsert: { userId: String(userId), targetType: 'story', targetId: String(book.id) } },
+    { upsert: true }
+  ).catch((e) => { console.error('[share] trail write failed', e && e.message); });
+  return {
+    counted: true, channel,
+    counts: shareCounts(book), channelShares: shareChannelCounts(book),
+    sharesCount: book.sharesCount,
+  };
+}
+
+/* One endpoint for every shareable thing: the client always sends the content
+   id + type, the server resolves that content and bumps its own counter. */
+async function shareContent({ contentType, contentId, userId, channel }) {
+  const type = String(contentType || '').toLowerCase();
+  const cid = String(contentId || '');
+  if (!cid) { const e = new Error('content_id_required'); e.status = 400; throw e; }
+  if (!SHARE_CHANNELS.includes(channel)) { const e = new Error('bad_channel'); e.status = 400; throw e; }
+
+  if (type === 'books' || type === 'book' || type === 'stories' || type === 'story') {
+    const r = await shareStory({ bookId: cid, userId, channel });
+    return {
+      contentType: 'books', contentId: cid, channel: r.channel,
+      counted: r.counted, sharesCount: r.sharesCount,
+      counts: r.counts, channelShares: r.channelShares,
+    };
+  }
+  if (type === 'posts' || type === 'post') {
+    const posts = require('./posts.service');
+    const post = await posts.loadOr404(cid);
+    const r = await posts.sharePost({ post, channel, userId });
+    return {
+      contentType: 'posts', contentId: cid, channel,
+      counted: r.counted !== false, sharesCount: r.sharesCount,
+      counts: { sharesCount: r.sharesCount }, channelShares: r.byChannel,
+    };
+  }
+  if (type === 'collections' || type === 'collection') {
+    const collections = require('./collections.service');
+    const r = await collections.shareCollection({ userId, id: cid, channel });
+    return {
+      contentType: 'collections', contentId: cid, channel,
+      counted: true, sharesCount: r.sharesCount,
+      counts: { sharesCount: r.sharesCount },
+    };
+  }
+  const e = new Error('bad_content_type'); e.status = 400; throw e;
 }
 
 module.exports = {
@@ -509,5 +601,6 @@ module.exports = {
   shapeStoryEngagement, storyVotes, ENGAGEMENT_LISTS,
   reactStory, unreactStory, storyReactionState, STORY_RX,
   chapterRxCounts, reactChapter, unreactChapter, chapterReactionState,
-  shareStory, SHARE_CHANNELS,
+  chapterReactionTotals, syncBookLikes,
+  shareStory, shareContent, SHARE_CHANNELS, SHARE_TYPES,
 };

@@ -15,17 +15,15 @@
     catch (e) { clearTimeout(t); throw e; }
   }
 
-  var STATS = [
-    { label: 'Total Reads', num: '18.7M', growth: '12.5%', icon: 'fa-chart-simple', bg: 'rgba(255,45,85,.08)', color: 'var(--pink)' },
-    { label: 'Followers', num: '128K', growth: '8.3%', icon: 'fa-users', bg: 'var(--purple-soft)', color: 'var(--purple)' },
-    { label: 'Earnings', num: '$8,642', growth: '15.2%', icon: 'fa-sack-dollar', bg: 'var(--warning-soft)', color: 'var(--warning)', href: 'earnings.html' },
-    { label: 'Completion Rate', num: '62%', growth: '6.1%', icon: 'fa-chart-line', bg: 'var(--blue-soft)', color: 'var(--blue)' }
-  ];
-
+  var STATS = [];
   var BOOKS = [];
 
 
   function renderStats() {
+    if (STATS.length === 0) {
+      document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Unable to load statistics</div>';
+      return;
+    }
     document.getElementById('statGrid').innerHTML = STATS.map(function (s) {
       return '<div class="stat-card"' + (s.href ? ' onclick="location.href=\'' + s.href + '\'" style="cursor:pointer"' : '') + '>'
         + '<div class="stat-icon" style="background:' + s.bg + ';color:' + s.color + '"><i class="fas ' + s.icon + '"></i></div>'
@@ -83,25 +81,53 @@
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 
   async function hydrate() {
-    var live = await api.getBooks();
-    BOOKS.length = 0;
-    if (!Array.isArray(live) || live.length === 0) {
-      document.getElementById('bookList').innerHTML = '<div class="empty">No books found. Create your first book to get started.</div>';
-      return;
+    try {
+      // Fetch stats from API
+      var statsRes = await api.getStats();
+      if (statsRes && statsRes.stats) {
+        STATS.length = 0;
+        statsRes.stats.forEach(function (s) {
+          STATS.push({
+            label: s.label || s.name || 'Unknown',
+            num: s.value || '0',
+            growth: s.growth || '0%',
+            icon: s.icon || 'fa-chart-simple',
+            bg: s.bg || 'rgba(200,200,200,.08)',
+            color: s.color || '#666',
+            href: s.href || ''
+          });
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load stats:', e);
+      document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load statistics. Please refresh the page.</div>';
     }
-    live.forEach(function (b) {
-      var rejected = b.status === 'draft' && b.reviewFeedback;
-      BOOKS.push({
-        id: b.id, title: b.title || 'Untitled',
-        genre: b.genre || '', cover: b.cover || '',
-        reads: fmtNum(b.reads), likes: fmtNum(b.likes),
-        chapters: b.chapterCount || 0,
-        status: rejected ? 'rejected' : (b.status || 'draft'),
-        statusLabel: rejected ? 'Needs Changes' : undefined,
-        statusClass: rejected ? 'rejected' : (b.status || 'draft')
+
+    try {
+      // Fetch books from API
+      var live = await api.getBooks();
+      BOOKS.length = 0;
+      if (!Array.isArray(live) || live.length === 0) {
+        document.getElementById('bookList').innerHTML = '<div class="empty">No books found. Create your first book to get started.</div>';
+        return;
+      }
+      live.forEach(function (b) {
+        var rejected = b.status === 'draft' && b.reviewFeedback;
+        BOOKS.push({
+          id: b.id, title: b.title || 'Untitled',
+          genre: b.genre || '', cover: b.cover || '',
+          reads: fmtNum(b.reads), likes: fmtNum(b.likes),
+          chapters: b.chapterCount || 0,
+          status: rejected ? 'rejected' : (b.status || 'draft'),
+          statusLabel: rejected ? 'Needs Changes' : undefined,
+          statusClass: rejected ? 'rejected' : (b.status || 'draft')
+        });
       });
-    });
-    renderBooks();
+      renderBooks();
+    } catch (e) {
+      console.error('Failed to load books:', e);
+      document.getElementById('bookList').innerHTML = '<div class="empty" style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load books. Please refresh the page.</div>';
+    }
   }
   function fmtNum(n) {
     n = Number(n) || 0;
@@ -111,10 +137,14 @@
   }
 
   function init() {
-    renderStats();
     wireEngagementCreator();
     renderBooks();
-    hydrate();
+    hydrate().then(function() {
+      renderStats();
+    }).catch(function(e) {
+      console.error('Hydration failed:', e);
+      document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load data. Please refresh the page.</div>';
+    });
     if (window.AuthorDrawer) { window.AuthorDrawer.render('author-center.html'); window.AuthorDrawer.bind(); }
     else {
       document.getElementById('menuBtn').addEventListener('click', openDrawer);

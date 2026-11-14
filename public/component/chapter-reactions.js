@@ -53,6 +53,12 @@
   }
   function chapterKey(o) { return String(o.chapterId || o.chapterN || ''); }
 
+  // A strip element is REUSED when the full reader moves between chapters.
+  // Every async callback must therefore prove it still owns the element before
+  // repainting it — otherwise chapter 1's response lands on chapter 2's strip
+  // (the "reaction highlights in the next chapter" bug).
+  function isCurrent(el, k) { return !!el && el.__dcrKey === k; }
+
   function normalizeCounts(c) {
     var out = {};
     if (c && typeof c === 'object') {
@@ -152,13 +158,16 @@
       return res.json();
     }).then(function (json) {
       applyServerState(o, json);
-      repaintCounts(el, o);
+      // Only repaint if this element still shows the chapter that was written.
+      if (isCurrent(el, k)) repaintCounts(el, o);
     }).catch(function (err) {
       // Revert the optimistic paint and surface the failure.
       var k2 = keyOf(o);
       STATES[k2] = before;
-      repaintCounts(el, o);
-      showError(el, err && err.status ? err.message : ((err && err.message) || 'Could not save reaction.'));
+      if (isCurrent(el, k)) {
+        repaintCounts(el, o);
+        showError(el, err && err.status ? err.message : ((err && err.message) || 'Could not save reaction.'));
+      }
     }).then(function () {
       BUSY[k] = false;
     });
@@ -204,6 +213,9 @@
       return;
     }
     var k = keyOf(o);
+    // Stamp the element with the chapter it currently represents. Any earlier
+    // in-flight request for another chapter checks this before painting.
+    el.__dcrKey = k;
     var haveCounts = opts && opts.counts && Object.keys(normalizeCounts(opts.counts)).length > 0;
     getState(o);
     paint(el, o);
@@ -217,7 +229,7 @@
         .then(function (json) {
           if (!json) return;
           applyServerState(o, json);
-          repaintCounts(el, o);
+          if (isCurrent(el, k)) repaintCounts(el, o);
         })
         .catch(function () { /* counts stay at whatever the list supplied */ });
     }

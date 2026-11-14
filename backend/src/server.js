@@ -93,6 +93,10 @@ async function main() {
   app.use('/api/categories', require('./routes/categories.routes'));
   app.use('/api/collections', require('./routes/collections.routes'));
   app.use('/api/posts', require('./routes/posts.routes'));
+  // Generic share: { contentId, contentType, channel } → server resolves the
+  // document and increments its persisted counter. Mounted before the catch-all
+  // /api router so it always wins.
+  app.use('/api/share', require('./routes/share.routes'));
   app.use('/api/comments', require('./routes/comments.routes'));
   app.use('/api', require('./routes/debate-args.routes'));
   app.use('/api/wallet', require('./routes/wallet.routes'));

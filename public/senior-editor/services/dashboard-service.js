@@ -42,7 +42,7 @@ function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse)
 function renderStats(s){
   const total = s && s.stats ? (s.stats.totalPending || 0) : 0;
   const urgent = s && s.stats ? (s.stats.urgentChapterEdits || 0) : 0;
-  const contracts = s && s.stats ? (s.stats.contracts || 0) : 0;
+  const contracts = s && s.queues ? (s.queues.contracts || 0) : 0;
   const approvalRate = s && s.stats && s.stats.approvalRate != null ? (s.stats.approvalRate + '%') : '0%';
   const avgTurnaround = s && s.stats ? (s.stats.avgTurnaround || '0h') : '0h';
   document.getElementById('statCards').innerHTML=[

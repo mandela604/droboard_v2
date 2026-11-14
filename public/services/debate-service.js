@@ -25,11 +25,21 @@
   /* ── Vote state: read from API response, written back to API ── */
   async function persistVote(side) {
     try {
-      await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID) + '/vote', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ side })
-      });
+      // Post-based debate vote
+      if (!DEBATE.bookId || !DEBATE.chapterId) {
+        await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID) + '/debate/vote', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ side })
+        });
+      } else {
+        // Chapter-scoped debate vote
+        await fetch('/api/stories/' + encodeURIComponent(DEBATE.bookId) + '/chapters/' + encodeURIComponent(DEBATE.chapterId) + '/debate/vote', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ option: side === 'for' ? 'for' : 'against' })
+        });
+      }
     } catch (e) {}
   }
 
@@ -95,31 +105,69 @@
     };
   }
 
-  /* ── resolve debate — all data from API ── */
+  /* ── resolve debate — all data from API ──
+     Two paths: (1) Post-based: /api/posts/:id (debate posts with threading)
+                (2) Chapter-based: /api/stories/:bookId/chapters/:chapterId/engagement (embedded debate)
+  */
   async function resolveDebate() {
     var params = new URLSearchParams(location.search);
     DEBATE_ID = params.get('id') || params.get('d');
-    if (!DEBATE_ID) throw new Error('No debate id in URL');
+    var bookId = params.get('book');
+    var chapterId = params.get('ch');
+    var sidePicked = params.get('side'); // pre-selected side from accordion click
+    
+    if (!DEBATE_ID && (!bookId || !chapterId)) throw new Error('No debate id or book/chapter in URL');
 
-    var res = await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID), { credentials: 'include' });
-    if (!res.ok) throw new Error('Debate API failed: ' + res.status);
-    var post = await res.json();
-    var d = (post && post.debateData) || {};
+    // Path 1: Post-based debate (from feed/droboard)
+    if (DEBATE_ID && !bookId && !chapterId) {
+      var res = await fetch('/api/posts/' + encodeURIComponent(DEBATE_ID), { credentials: 'include' });
+      if (!res.ok) throw new Error('Debate API failed: ' + res.status);
+      var post = await res.json();
+      var d = (post && post.debateData) || {};
 
-    // Restore user's prior vote from API response
-    S.userVote = post.userVote || null;
-    S.side = post.userSide || S.userVote || null;
+      // Restore user's prior vote from API response
+      S.userVote = post.userVote || null;
+      S.side = post.userSide || S.userVote || null;
+
+      return {
+        id: DEBATE_ID,
+        question: d.question || d.motion || post.title || 'Join the debate.',
+        prompt: d.prompt || '',
+        forText: d.forText || 'For',
+        againstText: d.againstText || 'Against',
+        forV: d.forV || 0,
+        agV: d.agV || 0,
+        expiresAt: post.expiresAt || null,
+        poster: posterFrom(post),
+      };
+    }
+
+    // Path 2: Chapter-scoped debate (from reader engagement)
+    var engRes = await fetch('/api/stories/' + encodeURIComponent(bookId) + '/chapters/' + encodeURIComponent(chapterId) + '/engagement', { credentials: 'include' });
+    if (!engRes.ok) throw new Error('Engagement API failed: ' + engRes.status);
+    var eng = await engRes.json();
+    var deb = (eng && eng.debate) || {};
+    
+    if (!deb.motion) throw new Error('No debate found in chapter');
+
+    // Restore user's prior vote
+    S.userVote = (eng.myVotes && eng.myVotes.debate !== undefined) ? (eng.myVotes.debate === 0 ? 'for' : 'against') : null;
+    S.side = sidePicked || S.userVote || null; // pre-select side if clicked from accordion
+    
+    DEBATE_ID = chapterId; // use chapter ID as the debate key
 
     return {
       id: DEBATE_ID,
-      question: d.question || d.motion || post.title || 'Join the debate.',
-      prompt: d.prompt || '',
-      forText: d.forText || 'For',
-      againstText: d.againstText || 'Against',
-      forV: d.forV || 0,
-      agV: d.agV || 0,
-      expiresAt: post.expiresAt || null,
-      poster: posterFrom(post),
+      question: deb.motion || deb.question || 'Join the debate.',
+      prompt: deb.prompt || '',
+      forText: deb.forText || 'For',
+      againstText: deb.againstText || 'Against',
+      forV: deb.forV || 0,
+      agV: deb.agV || 0,
+      expiresAt: null,
+      poster: null,
+      bookId: bookId,
+      chapterId: chapterId,
     };
   }
 

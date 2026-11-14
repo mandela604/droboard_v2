@@ -120,13 +120,16 @@ async function getBookDetail(id, viewerId) {
     }
   }
   const { CategoryMembership } = require('../models/content.model');
-  const [chapters, author, votes, reactions, comments, shares, tipCount, genreHub] = await Promise.all([
+  const [chapters, author, votes, reactions, chapterRx, comments, shares, tipCount, genreHub] = await Promise.all([
     Chapter.find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 })
       .select('n title words status views price authorNote poll prediction debate').lean(),
     book.authorId ? User.findOne({ id: book.authorId })
       .select('id username fullName avatar bio emailVerified followerCount').lean() : Promise.resolve(null),
     engagement.storyVotes(book.id, viewer),
     engagement.storyReactionState(book, viewer),
+    // The book's real reaction numbers are the sum of its chapters' reactions
+    // (each chapter is its own reaction surface). One query, never a fake total.
+    engagement.chapterReactionTotals(book.id),
     Comment.countDocuments({
       // Comments can live at story scope (bridge) or chapter scope (both
       // readers). The story's total must include both — counting only
@@ -134,7 +137,9 @@ async function getBookDetail(id, viewerId) {
       storyId: book.id,
       scope: { $in: ['story', 'chapter'] },
     }),
-    ShareEvent.countDocuments({ targetType: 'story', targetId: book.id }),
+    // Shares = the persisted counter every share increments. ShareEvent is the
+    // one-row-per-user trail, so counting it would cap the number at #sharers.
+    Promise.resolve(book.sharesCount || 0),
     book.authorId ? LedgerEntry.countDocuments({ kind: 'tip', authorId: String(book.authorId) }) : 0,
     book.categoryId ? Category.findOne({ id: book.categoryId }).select('id name icon membersCount slug').lean()
       : Genre.findOne({ name: book.genre }).select('categoryId').lean().then(g =>
@@ -156,8 +161,13 @@ async function getBookDetail(id, viewerId) {
     stats: {
       comments, reads: book.reads || 0, shares,
       rating: book.rating || 0, ratingCount: book.ratingCount || 0,
-      likes: book.likes || 0,
+      // Likes = every reaction on every chapter of this book, joined together.
+      likes: chapterRx.total,
     },
+    // Book-wide reaction display (bridge grid + Likes stat). Per-user state is
+    // per chapter, so this aggregate deliberately carries no `userRx`.
+    chapterReactions: chapterRx,
+    likes: chapterRx.total,
     reactions,
     tipCount,
     hubs: {

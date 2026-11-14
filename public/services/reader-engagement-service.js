@@ -142,24 +142,36 @@
     }
     if (eng.debate && eng.debate.motion) {
       var debTot = (eng.debate.forV || 0) + (eng.debate.agV || 0);
-      parts += accordionShell(key, 'deb', '⚖️', 'Debate' + lbl, fmtN(debTot) + ' takes · tap to expand', debateBody(key, eng.debate, ov.debateId));
+      parts += accordionShell(key, 'deb', '⚖️', 'Debate' + lbl, fmtN(debTot) + ' takes · tap to expand', debateBody(key, eng.debate, ov.debateId, ov.bookId, ov.chapterId));
     }
     return parts;
   }
 
-  function debateBody(key, debate, debateId) {
+  function debateBody(key, debate, debateId, bookId, chapterId) {
     var P = pal();
     var f = debate.forV || 0, a = debate.agV || 0, tot = (f + a) || 1;
     var voted = votedIndex(key, 'debate');
     var locked = voted >= 0;
-    var debHref = 'debate.html?id=' + encodeURIComponent(debateId || key);
+    
+    // Get bookId/chapterId from either top-level overrides OR from liveInfo (for live-loaded debates)
+    var bId = bookId;
+    var cId = chapterId;
+    if (!bId && liveInfo[key]) {
+      bId = liveInfo[key].bookId;
+      cId = liveInfo[key].chapterId;
+    }
+    
+    // For chapter-scoped debates, pass book+chapter; for post-based, pass post ID
+    var debHref = debateId && !bId ? ('debate.html?id=' + encodeURIComponent(debateId))
+      : ('debate.html?book=' + encodeURIComponent(bId || '') + '&ch=' + encodeURIComponent(cId || key));
     function sideCard(side, label, count, emoji, accent, washLight, washDark) {
       var mine = locked && ((side === 'for' && voted === 0) || (side === 'against' && voted === 1));
       var pct = Math.round(count / tot * 100);
       var bg = mine ? (darkTheme() ? washDark : washLight) : P.deb;
       var bd = mine ? accent : 'var(--bd,rgba(255,255,255,.1))';
       var dim = (locked && !mine) ? 'opacity:.55;' : '';
-      return '<div onclick="event.stopPropagation();ReaderEngagement.voteDebate(\'' + key + '\',\'' + side + '\')" style="flex:1;position:relative;background:' + bg + ';border-radius:12px;padding:10px 8px;text-align:center;cursor:' + (locked ? 'default' : 'pointer') + ';overflow:hidden;border:2px solid ' + bd + ';display:flex;flex-direction:column;' + dim + '">'
+      var sideHref = debHref + (debHref.indexOf('?') > -1 ? '&side=' : '?side=') + side;
+      return '<div onclick="event.stopPropagation();window.location.href=\'' + sideHref + '\'" style="flex:1;position:relative;background:' + bg + ';border-radius:12px;padding:10px 8px;text-align:center;cursor:' + (locked ? 'default' : 'pointer') + ';overflow:hidden;border:2px solid ' + bd + ';display:flex;flex-direction:column;' + dim + '">'
         + (mine ? '<div style="position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;background:' + accent + ';color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center"><i class="fas fa-check"></i></div>' : '')
         + '<div style="font-size:20px;margin-bottom:4px">' + emoji + '</div>'
         + '<div style="font-size:11px;font-weight:800;color:' + accent + ';margin-bottom:6px;line-height:1.35;min-height:30px;flex:1;display:flex;align-items:center;justify-content:center">' + esc(label) + '</div>'

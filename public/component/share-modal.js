@@ -835,18 +835,10 @@
 
   function _onSuccess() {
     const label = _destType === 'status' ? 'Status' : 'Profile';
-    
-    // Increment share count on backend if contentId provided
-    if (_data.contentId && _data.contentType) {
-      const endpoint = `/api/${_data.contentType}/${encodeURIComponent(_data.contentId)}/share`;
-      fetch(endpoint, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel: _destType }),
-      }).catch(() => {});
-    }
-    
+
+    // In-app post is a share too: same /api/share path, channel status|profile.
+    _recordShare(_destType);
+
     closeCompose();
     closeShareModal();
     _toast(`✅ Posted to ${label}!`);
@@ -863,6 +855,37 @@
     lbl.style.display = '';
     _posting = false;
     _toast(`❌ ${msg}`);
+  }
+
+  // One persisted share event for every surface: the client sends WHAT was
+  // shared (contentId + contentType) and HOW (channel); the server resolves
+  // that content by id and increments its own counter. Every path below funnels
+  // through here so copy, platform and in-app posts all move the same number.
+  function _recordShare(channel) {
+    if (!_data.contentId || !_data.contentType) return Promise.resolve(null);
+    return fetch('/api/share', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contentId: String(_data.contentId),
+        contentType: _data.contentType,
+        channel: channel || 'copy',
+      }),
+    })
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error((body && (body.error || (body.details && 'invalid share payload'))) || ('Share failed (' + res.status + ')'));
+        // Let the host repaint its own counter without a page reload.
+        if (body && typeof _data.onShared === 'function') {
+          try { _data.onShared(body); } catch (e) { /* repaint never breaks the share */ }
+        }
+        return body;
+      })
+      .catch((err) => {
+        _toast('❌ ' + ((err && err.message) || 'Could not record share'));
+        return null;
+      });
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -886,30 +909,12 @@
       document.getElementById('dsmCopyMsg').textContent = '✅ Link copied!';
       document.getElementById('dsmCopyBtn').textContent = '✓ Copied';
       _toast('🔗 Link copied!');
-      // Increment share count for copy/instagram
-      if (_data.contentId && _data.contentType) {
-        const endpoint = `/api/${_data.contentType}/${encodeURIComponent(_data.contentId)}/share`;
-        fetch(endpoint, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel: platform }),
-        }).catch(() => {});
-      }
+      _recordShare(platform);
       return;
     }
 
     if (routes[platform]) {
-      // Increment share count for external platform share
-      if (_data.contentId && _data.contentType) {
-        const endpoint = `/api/${_data.contentType}/${encodeURIComponent(_data.contentId)}/share`;
-        fetch(endpoint, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel: platform }),
-        }).catch(() => {});
-      }
+      _recordShare(platform);
       window.open(routes[platform], '_blank');
       closeShareModal();
     }
@@ -929,6 +934,7 @@
       document.getElementById('dsmCopyMsg').textContent = '✅ Link copied!';
       document.getElementById('dsmCopyBtn').textContent = '✓ Copied';
       _toast('🔗 Link copied!');
+      _recordShare('copy');
     });
     document.getElementById('dsmStatusBtn').addEventListener('click',  () => openCompose('status'));
     document.getElementById('dsmProfileBtn').addEventListener('click', () => openCompose('profile'));

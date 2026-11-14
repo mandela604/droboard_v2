@@ -13,12 +13,7 @@
     catch (e) { clearTimeout(t); throw e; }
   }
 
-  var STATS = [
-    { label: 'Total Reads', num: '2.3M', growth: '12.5%', icon: 'fa-eye', bg: 'var(--primary-soft)', color: 'var(--primary)' },
-    { label: 'Likes', num: '189K', growth: '8.3%', icon: 'fa-heart', bg: 'var(--purple-soft)', color: 'var(--purple)' },
-    { label: 'Earnings', num: '$3,240', growth: '15.2%', icon: 'fa-sack-dollar', bg: 'var(--warning-soft)', color: 'var(--warning)' },
-    { label: 'Comments', num: '12.4K', growth: '6.1%', icon: 'fa-comment', bg: 'var(--blue-soft)', color: 'var(--blue)' }
-  ];
+  var STATS = [];
 
   var QUICK_ACTIONS = [
     { label: 'New Chapter', icon: 'fa-plus', bg: 'var(--primary-soft)', color: 'var(--primary)', href: 'book-workspace.html' },
@@ -28,6 +23,10 @@
   ];
 
   function renderStats() {
+    if (!STATS || STATS.length === 0) {
+      document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load statistics</div>';
+      return;
+    }
     document.getElementById('statGrid').innerHTML = STATS.map(function (s) {
       return '<div class="stat-card fade"><div class="stat-icon" style="background:' + s.bg + ';color:' + s.color + '"><i class="fas ' + s.icon + '"></i></div>'
         + '<div class="stat-label">' + s.label + '</div><div class="stat-num">' + s.num + '</div>'
@@ -45,8 +44,33 @@
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 
   function init() {
-    renderStats();
     renderQA();
+    var params = new URLSearchParams(location.search);
+    var bookId = params.get('book') || '';
+    
+    // Fetch overview stats from API
+    api.getOverview(bookId)
+      .then(function(data) {
+        if (data && data.stats && Array.isArray(data.stats)) {
+          STATS.length = 0;
+          data.stats.forEach(function(s) {
+            STATS.push({
+              label: s.label || s.name || 'Unknown',
+              num: s.value || '0',
+              growth: s.growth || '0%',
+              icon: s.icon || 'fa-chart-simple',
+              bg: s.bg || 'rgba(200,200,200,.08)',
+              color: s.color || '#666'
+            });
+          });
+        }
+        renderStats();
+      })
+      .catch(function(e) {
+        console.error('Failed to load overview:', e);
+        document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load book statistics. Please refresh the page.</div>';
+      });
+    
     if (window.AuthorDrawer) { window.AuthorDrawer.render('book-overview.html'); window.AuthorDrawer.bind(); }
     else {
       document.getElementById('menuBtn').addEventListener('click', openDrawer);

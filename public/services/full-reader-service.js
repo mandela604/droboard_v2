@@ -581,7 +581,7 @@
       engMount = document.getElementById("readerEngMount");
       try {
         const live = (ch.liveId && storyIdNow()) ? { bookId: storyIdNow(), chapterId: ch.liveId } : null;
-        window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || "", live ? { live: live } : null);
+        window.ReaderEngagement.renderInto("s" + (seasonIdx + 1) + "c" + ch.n, ch.n, engMount, ch.authorNote || ch.note || "", live ? { live: live, bookId: live.bookId, chapterId: live.chapterId } : null);
       } catch (e) {}
     }
     if (locked) {
@@ -761,6 +761,16 @@
         url: "https://droboard.app/story/" + currentStoryId,
         contentId: currentStoryId,
         contentType: 'books',
+        // Server persisted the share; repaint the chapter-end counter from its
+        // response so the number moves without a reload.
+        onShared: function (res) {
+          if (!res || typeof res.sharesCount !== 'number') return;
+          FS.shares = res.sharesCount;
+          try {
+            var shEl = document.getElementById("ebShareCount");
+            if (shEl) shEl.textContent = fmtN(FS.shares || 0);
+          } catch (e) {}
+        },
       });
     }
   }

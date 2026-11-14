@@ -1,4 +1,4 @@
-mongod up: mongodb://127.0.0.1:63588/dro_counters
+mongod up: mongodb://127.0.0.1:55614/dro_counters
 PASS  every counter starts at zero and matches an empty graph  ::  cache matches collections
 PASS  POST /users/:handle/follow -> 200  ::  status=200 {"ok":true,"following":true}
 PASS  target gains one follower  ::  bob.followerCount=1
@@ -12,9 +12,9 @@ PASS  profile stats reports the stored counters  ::  {"following":1,"followers":
 PASS  GET /users/:handle/followers total = followerCount  ::  total=1
 PASS  GET /users/:handle/following total = followingCount  ::  total=1
 PASS  GET /users/me reports the same two numbers  ::  {"following":1,"followers":1}
-PASS  POST /api/posts -> 201  ::  status=201 {"authorId":"000001a1-b0a8-7840-b2d2-3a368ccac8a2","type":"post","title":"","text":"Counted post","note":"","heading":""
+PASS  POST /api/posts -> 201  ::  status=201 {"authorId":"000001a1-db49-7fcd-821c-a82bab62020f","type":"post","title":"","text":"Counted post","note":"","heading":""
 PASS  author gains a post  ::  alice.postCount=1
-PASS  POST /api/comments -> 201  ::  status=201 {"id":"000001a1-b0a8-7950-9420-1b43876bdf57","name":"bob17939652267950.26992362871815345","handle":"bob17939652267950.26992362871815345","avatar":"","verified":
+PASS  POST /api/comments -> 201  ::  status=201 {"id":"000001a1-db49-7a83-9395-d739aae6c851","name":"bob17946804043970.17034642379702047","handle":"bob17946804043970.17034642379702047","avatar":"","verified":
 PASS  commenter gains a comment  ::  bob.commentCount=1
 PASS  a reply counts as a comment too  ::  bob.commentCount=2
 PASS  posts and comments match their collections  ::  cache matches collections

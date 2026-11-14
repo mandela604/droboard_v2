@@ -8,7 +8,7 @@ const counters = require('./user-counters');
 const POST_TYPES = ['announcement', 'post', 'debate', 'shoutout', 'repost', 'poll', 'forum-poll', 'ama', 'review', 'recommendation', 'quote', 'chapter-drop'];
 
 // Share channels: must match the 8 data-platform values in share-modal.js (line 422-450).
-const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy'];
+const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy', 'status', 'profile'];
 
 function canWrite(post, user) {
   if (!user) return false;
@@ -400,10 +400,15 @@ async function reactionState({ post, userId }) {
 }
 async function sharePost({ post, channel, userId }) {
   if (!SHARE_CHANNELS.includes(channel)) { const e = new Error('bad_channel'); e.status = 400; throw e; }
-  // One share per user per hour prevents burst spam.
+  // ShareEvent keeps one row per user per post (unique index). Only collapse a
+  // double-tap on the same channel inside 10s; every genuine share increments.
   const { ShareEvent } = require('../models/social.model');
-  const recent = await ShareEvent.findOne({ userId: String(userId), targetType: 'post', targetId: String(post.id), channel, createdAt: { $gte: new Date(Date.now() - 3600000) } });
-  if (recent) { return { sharesCount: post.sharesCount || 0, byChannel: Object.fromEntries((post.sharesByChannel || new Map())) }; }
+  const prev = userId ? await ShareEvent.findOne({ userId: String(userId), targetType: 'post', targetId: String(post.id) }).select('channel createdAt').lean() : null;
+  if (prev && prev.channel === channel && prev.createdAt && new Date(prev.createdAt).getTime() >= Date.now() - 10000) {
+    const same = {};
+    (post.sharesByChannel || new Map()).forEach((v, k) => { same[k] = v; });
+    return { counted: false, sharesCount: post.sharesCount || 0, byChannel: same };
+  }
   post.sharesCount = (post.sharesCount || 0) + 1;
   const ch = post.sharesByChannel || (post.sharesByChannel = new Map());
   ch.set(channel, (ch.get(channel) || 0) + 1);
@@ -411,15 +416,15 @@ async function sharePost({ post, channel, userId }) {
   if (userId) {
     try {
       await ShareEvent.updateOne(
-        { userId: String(userId), targetType: 'post', targetId: String(post.id), channel },
-        { $setOnInsert: { userId: String(userId), targetType: 'post', targetId: String(post.id), channel: String(channel || '') } },
+        { userId: String(userId), targetType: 'post', targetId: String(post.id) },
+        { $set: { channel: String(channel || '') }, $currentDate: { createdAt: true }, $setOnInsert: { userId: String(userId), targetType: 'post', targetId: String(post.id) } },
         { upsert: true }
       );
     } catch (e) { /* analytics never break sharing */ }
   }
   const byChannel = {};
   ch.forEach((v, k) => { byChannel[k] = v; });
-  return { sharesCount: post.sharesCount, byChannel };
+  return { counted: true, sharesCount: post.sharesCount, byChannel };
 }
 
 module.exports = {

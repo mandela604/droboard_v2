@@ -316,7 +316,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
         const sec = mount.closest('[data-cid]');
         const chapterId = (sec && sec.getAttribute('data-cid')) || chN;
         const live = (LIVE && STORY_ID) ? { bookId: STORY_ID, chapterId: chapterId } : null;
-        try { window.ReaderEngagement.renderInto(key, chN, mount, note, live ? { live: live } : null); } catch (e) {}
+        try { window.ReaderEngagement.renderInto(key, chN, mount, note, live ? { live: live, bookId: live.bookId, chapterId: live.chapterId } : null); } catch (e) {}
       });
     }
   }
@@ -625,7 +625,23 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   }
 
   function doSave() { if (window.openSaveModal) window.openSaveModal({ title: DATA.title, sub: "by " + DATA.author.name, img: "", storyId: STORY_ID }); }
-  function doShare(chN) { if (window.openShareModal) window.openShareModal({ title: DATA.title, sub: "by " + DATA.author.name + " · Chapter " + chN, img: "", url: "https://droboard.app/story/" + STORY_ID + "#ch" + chN, contentId: STORY_ID, contentType: 'books' }); }
+  function doShare(chN) {
+    if (!window.openShareModal) return;
+    window.openShareModal({
+      title: DATA.title, sub: "by " + DATA.author.name + " · Chapter " + chN, img: "",
+      url: "https://droboard.app/story/" + STORY_ID + "#ch" + chN,
+      contentId: STORY_ID, contentType: 'books',
+      // Repaint every chapter-end share counter from the persisted response.
+      onShared: function (res) {
+        if (!res || typeof res.sharesCount !== 'number') return;
+        DATA.shares = res.sharesCount;
+        try {
+          var els = document.querySelectorAll('.eb-btn[onclick^="ScrollReader.doShare"] .eb-lbl');
+          for (var i = 0; i < els.length; i++) els[i].textContent = fmtN(DATA.shares);
+        } catch (e) {}
+      },
+    });
+  }
   function doTip() { if (window.DroboardTip) DroboardTip.open(STORY_ID, { id: DATA.author.id, name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }); }
 
   /* ══ CHAPTERS PANEL ══ */

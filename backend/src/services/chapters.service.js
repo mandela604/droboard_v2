@@ -231,6 +231,9 @@ async function deleteChapter({ ch }) {
   const bookId = ch.bookId;
   await ch.deleteOne();
   await Book.updateOne({ id: bookId }, { $inc: { chapterCount: -1, wordCount: -words } });
+  // The deleted chapter's reactions are gone too — recompute the book total so
+  // the bridge/Likes number never counts a chapter that no longer exists.
+  await require('./engagement.service').syncBookLikes(bookId).catch(() => {});
   return { ok: true };
 }
 

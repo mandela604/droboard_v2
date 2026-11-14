@@ -1057,6 +1057,14 @@ function openShare() {
     url: "https://droboard.app/story/" + STORY.id,
     contentId: STORY.id,
     contentType: 'books',
+    // The server persisted the share and returned the new total — repaint the
+    // stat surfaces from it instead of waiting for a reload.
+    onShared: function (res) {
+      if (!res || typeof res.sharesCount !== 'number') return;
+      STORY.stats.shares = fmtN(res.sharesCount);
+      try { paintQuickStats(); } catch (e) {}
+      try { if (document.getElementById('statsDeep')) paintStatsDeep(); } catch (e) {}
+    },
   });
 }
 

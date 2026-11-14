@@ -92,9 +92,14 @@
     const pred0 = (eng.predictions || [])[0] || null;
     const deb0  = (eng.debates || [])[0] || null;
 
-    // reactions: backend sends { counts: { love, crying, ... }, userRx }
-    const rxCounts = (s.reactions && s.reactions.counts) ? s.reactions.counts : {};
-    const userRx   = (s.reactions && s.reactions.userRx) || null;
+    // reactions: backend sends the BOOK aggregate of every chapter's reactions
+    // as `chapterReactions = { counts: { love, crying, ... }, total }`.
+    // There is no single "your reaction" at book level — a reader reacts per
+    // chapter — so the bridge grid is a pure aggregate with no highlight.
+    const agg = s.chapterReactions || null;
+    const rxCounts = (agg && agg.counts) ? agg.counts
+      : ((s.reactions && s.reactions.counts) ? s.reactions.counts : {});
+    const userRx   = agg ? null : ((s.reactions && s.reactions.userRx) || null);
 
     // continue reading from backend continueReading object
     const cr = s.continueReading || null;
@@ -143,7 +148,7 @@
         rating: stats.rating || s.rating || 0,
         ratingCount: stats.ratingCount || s.ratingCount || 0,
       },
-      likes: s.likes || stats.likes || 0,
+      likes: (agg && typeof agg.total === 'number') ? agg.total : (s.likes || stats.likes || 0),
       continue: { chapterId: continueChId, chapterTitle: continueChTitle, progress: continuePct, timeLeft: cr && cr.secondsSpent ? fmtN(cr.secondsSpent) + 's read' : '' },
       synopsis: { short: s.synopsis || '' },
       engagement: {
@@ -525,21 +530,23 @@
   }
 
   function renderReactions() {
-    const rx = DATA.reactions;
-    const items = [
-      { emoji: '❤️', label: 'Love', key: 'love', count: rx.love },
-      { emoji: '😭', label: 'Crying', key: 'crying', count: rx.crying },
-      { emoji: '😡', label: 'Angry', key: 'angry', count: rx.angry },
-      { emoji: '😱', label: 'Shocked', key: 'shocked', count: rx.shocked },
-      { emoji: '💔', label: 'Broken', key: 'broken', count: rx.broken },
-      { emoji: '🥺', label: 'Emotional', key: 'emotional', count: rx.emotional },
-      { emoji: '🔥', label: 'Savage', key: 'savage', count: rx.savage },
-      { emoji: '🤨', label: 'Sus', key: 'sus', count: rx.sus },
-    ];
+    const rx = DATA.reactions || {};
+    // Same 10 reactions as the picker/composer so the bridge can never drift
+    // from the chapter strips. Counts are the book-wide aggregate.
+    const list = (window.DroboardReactionPicker && Array.isArray(DroboardReactionPicker.REACTIONS)
+      && DroboardReactionPicker.REACTIONS.length)
+      ? DroboardReactionPicker.REACTIONS
+      : [
+        { id: 'love', emoji: '❤️', label: 'Love' }, { id: 'crying', emoji: '😭', label: 'Crying' },
+        { id: 'angry', emoji: '😡', label: 'Angry' }, { id: 'shocked', emoji: '😱', label: 'Shocked' },
+        { id: 'broken', emoji: '💔', label: 'Broken' }, { id: 'emotional', emoji: '🥹', label: 'Emotional' },
+        { id: 'savage', emoji: '🔥', label: 'Savage' }, { id: 'sus', emoji: '👀', label: 'Sus' },
+        { id: 'twist', emoji: '🫢', label: 'Twist' }, { id: 'laughing', emoji: '😂', label: 'Laughing' },
+      ];
     const el = document.getElementById('rxGrid');
     if (!el) return;
-    el.innerHTML = items.map(r =>
-      `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
+    el.innerHTML = list.map(r =>
+      `<div class="rx-card"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label || r.id}</div><div class="rx-n">${fmtN(rx[r.id] || 0)}</div></div>`
     ).join('');
   }
 
@@ -700,7 +707,18 @@
 
   function openShare() {
     if (window.DroboardShare) DroboardShare.open(STORY_ID);
-    else if (window.openShareModal) openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href, contentId: STORY_ID, contentType: 'books' });
+    else if (window.openShareModal) openShareModal({
+      title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href,
+      contentId: STORY_ID, contentType: 'books',
+      // The share was persisted by the server (POST /api/share). Repaint the
+      // stat strip from the response — no reload, no optimistic fake number.
+      onShared: function (res) {
+        if (!res || typeof res.sharesCount !== 'number') return;
+        DATA.stats.shares = res.sharesCount;
+        DATA.shares = res.sharesCount;
+        try { renderStats(); } catch (e) { /* strip not on screen */ }
+      },
+    });
     else toast('Share unavailable');
   }
 
