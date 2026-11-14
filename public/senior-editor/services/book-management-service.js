@@ -273,13 +273,13 @@ function renderTabs() {
      Per requirement: published books are automatically ongoing unless paused, flagged, or completed.
      So "All Books" = books in any of these 4 states */
   var publishedStates = books.filter(function (b) { 
-    return b.status === 'Paused' || b.status === 'Ongoing' || b.status === 'Flagged' || b.status === 'Completed';
+    return b.status === 'Paused' || b.status === 'Published' || b.status === 'Flagged' || b.status === 'Completed';
   }).length;
   
   var counts = { 
     all: publishedStates,  // All Books = Paused + Ongoing + Flagged + Completed
     Published: books.filter(function (b) { return b.status === 'Published'; }).length,
-    Ongoing: books.filter(function (b) { return b.status === 'Ongoing'; }).length,
+    Ongoing: books.filter(function (b) { return b.status === 'Published'; }).length,
     Completed: books.filter(function (b) { return b.status === 'Completed'; }).length,
     Paused: books.filter(function (b) { return b.status === 'Paused'; }).length,
     Flagged: books.filter(function (b) { return b.status === 'Flagged'; }).length,
