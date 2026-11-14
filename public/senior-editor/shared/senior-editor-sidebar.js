@@ -330,7 +330,7 @@
               <div class="ses-knob" id="${instId}-theme-icon"><i class="fas fa-sun"></i></div>
             </button>
             <div class="ses-tb-profile" id="${instId}-profile">
-              ${user.avatar ? `<img src="${_esc(user.avatar)}" alt="${_esc(user.name)}"/>` : ''}
+              ${user.avatar ? `<img src="${_esc(user.avatar)}" alt="${_esc(user.name)}"/>` : `<div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">${_esc(user.initials || user.name.split(' ')[0][0] || '?')}</div>`}
               <div class="ses-tb-profile-txt"><b>${_esc(user.name)}</b><span>${_esc(user.role)}</span></div>
               <i class="fas fa-chevron-down"></i>
             </div>

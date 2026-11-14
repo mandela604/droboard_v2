@@ -40,15 +40,17 @@ function showError(msg){
 function prose(t){ return (window.DroboardCurrency && DroboardCurrency.usdProse) ? DroboardCurrency.usdProse(t) : t; }
 
 function renderStats(s){
-  const total = s && s.stats ? s.stats.totalPending : 0;
-  const urgent = s && s.stats ? s.stats.urgentChapterEdits : 0;
-  const contracts = s && s.stats ? s.stats.contracts : 0;
+  const total = s && s.stats ? (s.stats.totalPending || 0) : 0;
+  const urgent = s && s.stats ? (s.stats.urgentChapterEdits || 0) : 0;
+  const contracts = s && s.stats ? (s.stats.contracts || 0) : 0;
+  const approvalRate = s && s.stats && s.stats.approvalRate != null ? (s.stats.approvalRate + '%') : '0%';
+  const avgTurnaround = s && s.stats ? (s.stats.avgTurnaround || '0h') : '0h';
   document.getElementById('statCards').innerHTML=[
     {n:total,l:'Pending Reviews',ico:'fa-inbox',cls:'amber'},
     {n:urgent,l:'Urgent (Chapter Edits)',ico:'fa-triangle-exclamation',cls:'red'},
     {n:contracts,l:'Contracts',ico:'fa-file-signature',cls:'blue'},
-    {n:s && s.stats ? (s.stats.approvalRate + '%') : '0%',l:'Approval Rate',ico:'fa-circle-check',cls:'green'},
-    {n:s && s.stats ? s.stats.avgTurnaround : '0h',l:'Avg Turnaround',ico:'fa-clock',cls:'purple'},
+    {n:approvalRate,l:'Approval Rate',ico:'fa-circle-check',cls:'green'},
+    {n:avgTurnaround,l:'Avg Turnaround',ico:'fa-clock',cls:'purple'},
   ].map(st=>`<div class="stat-card"><div class="stat-ico" style="background:${BG[st.cls]};color:${ICO[st.cls]}"><i class="fas ${st.ico}"></i></div><div><div class="stat-num">${st.n}</div><div class="stat-lbl">${st.l}</div></div></div>`).join('');
 }
 
@@ -115,10 +117,36 @@ function paint(d){
   renderActivity(d.activity || []);
 }
 
-function init(){
+async function init(){
+  // Load real user from session (no demo fallback)
+  let sessionUser = null;
+  try {
+    const res = await fetch('/api/senior-editor/me', { credentials: 'include' });
+    if (res.ok) {
+      sessionUser = await res.json();
+    }
+  } catch (e) { /* backend unreachable */ }
+  
+  const userName = sessionUser?.fullName || sessionUser?.name || sessionUser?.username || '';
+  const userEmail = sessionUser?.email || '';
+  const userAvatar = sessionUser?.avatar || null;
+  
+  // Generate initials fallback if no avatar
+  function getInitials(name) {
+    return (name || '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+  }
+  
+  const userDisplay = {
+    name: userName,
+    role: 'Senior Editor',
+    avatar: userAvatar,
+    initials: getInitials(userName)
+  };
+  
   shell = SeniorEditorSidebar.attach('#dashRoot',{
     activeItem:'dashboard', title:'Dashboard', subtitle:'Your editorial overview',
-    user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
+    user: userDisplay, 
+    notifCount:4,
     searchPlaceholder:'Search anything…',
   });
   loadLive().catch((err)=>{

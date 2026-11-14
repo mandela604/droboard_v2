@@ -66,9 +66,8 @@ const shell = SeniorEditorSidebar.attach('#queueRoot', {
   activeItem: 'review-queue',
   title: 'Review Queue',
   subtitle: 'Review full book submissions',
-  user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
-  notifCount: 4,
-  onSearch: v => { document.getElementById('searchInput').value = ''; currentPg = 1; applyFilters(); }
+  user: { name: 'Loading...', role: 'Senior Editor', avatar: null },
+  notifCount: 4
 });
 
 /* Cover art pulled from the Discover page's story assets */
@@ -142,6 +141,30 @@ async function loadQueue(){
 
 async function init(){
   await loadContracts();
+  
+  // Load real user from session
+  let sessionUser = null;
+  try {
+    const res = await fetch('/api/senior-editor/me', { credentials: 'include' });
+    if (res.ok) {
+      sessionUser = await res.json();
+    }
+  } catch (e) { /* backend unreachable */ }
+  
+  const userName = sessionUser?.fullName || sessionUser?.name || sessionUser?.username || 'Senior Editor';
+  const userAvatar = sessionUser?.avatar || null;
+  function getInitials(name) {
+    return (name || '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+  }
+  
+  // Update sidebar with real user
+  shell.setTitle('Review Queue', 'Review full book submissions');
+  if (shell._userDisplay) {
+    shell._userDisplay.name = userName;
+    shell._userDisplay.avatar = userAvatar;
+    shell._userDisplay.initials = getInitials(userName);
+  }
+  
   let d;
   try {
     d = await loadQueue();
