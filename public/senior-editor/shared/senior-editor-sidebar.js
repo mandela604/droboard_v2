@@ -257,9 +257,8 @@
        fake "User", no pravatar, no stale demo identity. ── */
     if (!user) {
       try {
-        const res = await fetch('/api/senior-editor/me', { credentials: 'include' });
-        if (res.ok) {
-          const u = await res.json();
+        const res = fetch('/api/senior-editor/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null);
+        res.then(u => {
           if (u && (u.id || u.handle || u.name || u.fullName || u.username || u.email)) {
             user = {
               name: u.fullName || u.name || u.handle || u.username || '',
@@ -267,7 +266,7 @@
               avatar: u.avatar || null,
             };
           }
-        }
+        });
       } catch (e) { /* backend unreachable — render no user identity */ }
     }
     user = Object.assign({ name: '', role: 'Senior Editor', avatar: null }, user || {});
