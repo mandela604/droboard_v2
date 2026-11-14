@@ -700,7 +700,7 @@
 
   function openShare() {
     if (window.DroboardShare) DroboardShare.open(STORY_ID);
-    else if (window.openShareModal) openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href, storyId: STORY_ID });
+    else if (window.openShareModal) openShareModal({ title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href, contentId: STORY_ID, contentType: 'books' });
     else toast('Share unavailable');
   }
 

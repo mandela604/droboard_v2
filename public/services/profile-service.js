@@ -590,7 +590,7 @@
     // Re-attach on every render so callbacks always close over the current profile
     DroboardCollectionCard.attach(list, {
       hrefFor: (c) => 'collection.html?id=' + encodeURIComponent(c.id),
-      onShare: (c) => { if (window.openShareModal) openShareModal({ title: c.name, sub: `${c.count} stories · ${p.name}`, img: (c.covers || [])[0], url: 'https://droboard.app/collection/' + c.id }); },
+      onShare: (c) => { if (window.openShareModal) openShareModal({ title: c.name, sub: `${c.count} stories · ${p.name}`, img: (c.covers || [])[0], url: 'https://droboard.app/collection/' + c.id, contentId: c.id, contentType: 'collections' }); },
       onCreateNew: openNewCollection,
       onManage: canSeeOwnerUI() ? handleCollAction : undefined,
       createButtonEl: document.getElementById('newCollBtn'),
@@ -785,7 +785,7 @@
           if (post && post.type === 'debate') { location.href = 'debate.html?id=' + encodeURIComponent(post.id); return; }
           location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || '');
         },
-        onShare: (post) => { if (!window.openShareModal) return; openShareModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, url: 'https://droboard.app/post/' + post.id }); },
+        onShare: (post) => { if (!window.openShareModal) return; openShareModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, url: 'https://droboard.app/post/' + post.id, contentId: post.id, contentType: 'posts' }); },
         onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id, type: 'post' }); },
         onDots: (post, anchorEl) => { try { window._lastDotsAnchor = anchorEl || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
         onJoinAma: () => toast('🎙️ Joining AMA…'),

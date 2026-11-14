@@ -273,7 +273,7 @@
 
     function doShare() {
       if (typeof openShareModal === 'function') {
-        openShareModal({ title: currentCollection.title, sub: currentCollection.sub, img: currentCollection.cover, url: location.href });
+        openShareModal({ title: currentCollection.title, sub: currentCollection.sub, img: currentCollection.cover, url: location.href, contentId: collId(), contentType: 'collections' });
       } else { showToast('Share: ' + location.href); }
       liveReq('POST', '/collections/' + encodeURIComponent(collId()) + '/share', { channel: 'page' }).catch(() => {});
     }

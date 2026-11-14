@@ -603,7 +603,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   }
 
   function doSave() { if (window.openSaveModal) window.openSaveModal({ title: DATA.title, sub: "by " + DATA.author.name, img: "", storyId: STORY_ID }); }
-  function doShare(chN) { if (window.openShareModal) window.openShareModal({ title: DATA.title, sub: "by " + DATA.author.name + " · Chapter " + chN, img: "", url: "https://droboard.app/story/" + STORY_ID + "#ch" + chN, storyId: STORY_ID }); }
+  function doShare(chN) { if (window.openShareModal) window.openShareModal({ title: DATA.title, sub: "by " + DATA.author.name + " · Chapter " + chN, img: "", url: "https://droboard.app/story/" + STORY_ID + "#ch" + chN, contentId: STORY_ID, contentType: 'books' }); }
   function doTip() { if (window.DroboardTip) DroboardTip.open(STORY_ID, { id: DATA.author.id, name: DATA.author.name, avatar: DATA.author.avatar, handle: DATA.author.handle }); }
 
   /* ══ CHAPTERS PANEL ══ */

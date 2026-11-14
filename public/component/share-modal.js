@@ -2,7 +2,15 @@
  * share-modal.js — Droboard Reusable Share Modal
  * ─────────────────────────────────────────────
  * Drop one <script src="share-modal.js"></script> in any page.
- * Then call:  openShareModal({ title, sub, img, url })
+ * Then call:  openShareModal({ title, sub, img, url, contentId, contentType })
+ *
+ * Parameters:
+ *   title (string) — content title
+ *   sub (string) — subtitle/author
+ *   img (string) — cover image URL
+ *   url (string) — share URL
+ *   contentId (string) — ID of content to increment share count for
+ *   contentType (string) — type: 'books', 'posts', 'collections'
  *
  * Exposes globals:
  *   openShareModal(data)   — opens the share modal
@@ -828,9 +836,10 @@
   function _onSuccess() {
     const label = _destType === 'status' ? 'Status' : 'Profile';
     
-    // Increment share count on backend if storyId provided
-    if (_data.storyId) {
-      fetch(`/api/books/${encodeURIComponent(_data.storyId)}/share`, {
+    // Increment share count on backend if contentId provided
+    if (_data.contentId && _data.contentType) {
+      const endpoint = `/api/${_data.contentType}/${encodeURIComponent(_data.contentId)}/share`;
+      fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -878,8 +887,9 @@
       document.getElementById('dsmCopyBtn').textContent = '✓ Copied';
       _toast('🔗 Link copied!');
       // Increment share count for copy/instagram
-      if (_data.storyId) {
-        fetch(`/api/books/${encodeURIComponent(_data.storyId)}/share`, {
+      if (_data.contentId && _data.contentType) {
+        const endpoint = `/api/${_data.contentType}/${encodeURIComponent(_data.contentId)}/share`;
+        fetch(endpoint, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -891,8 +901,9 @@
 
     if (routes[platform]) {
       // Increment share count for external platform share
-      if (_data.storyId) {
-        fetch(`/api/books/${encodeURIComponent(_data.storyId)}/share`, {
+      if (_data.contentId && _data.contentType) {
+        const endpoint = `/api/${_data.contentType}/${encodeURIComponent(_data.contentId)}/share`;
+        fetch(endpoint, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

@@ -728,7 +728,8 @@
         sub: "by " + AUTHOR.name,
         img: "",
         url: "https://droboard.app/story/" + currentStoryId,
-        storyId: currentStoryId,
+        contentId: currentStoryId,
+        contentType: 'books',
       });
     }
   }

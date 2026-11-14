@@ -229,6 +229,7 @@
     openShareModal({
       title: STORY.title, sub: STORY.author ? 'by ' + STORY.author : 'DroBoard',
       img: STORY.cover, url: 'https://droboard.app/story/' + STORY.id,
+      contentId: STORY.id, contentType: 'books',
     });
   }
 

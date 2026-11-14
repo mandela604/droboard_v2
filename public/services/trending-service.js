@@ -160,6 +160,8 @@
         sub: '@' + (post.name || '') + (post._genreName ? ' · ' + post._genreName : ''),
         img: post.avatar || '',
         url: 'https://droboard.app/hub/' + (post._genreId || 'fantasy') + '/' + post.id,
+        contentId: post.id,
+        contentType: 'posts',
       });
     } else toast('Share · ' + (post.title || ''));
   }

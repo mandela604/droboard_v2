@@ -282,6 +282,8 @@
         sub: '@' + (post.name || '') + (post._genreName ? ' · ' + post._genreName : ''),
         img: (post.story && post.story.cover) || post.avatar || '',
         url: 'https://droboard.app/hub/' + (post._genreId || 'fantasy') + '/' + post.id,
+        contentId: post.id,
+        contentType: 'posts',
       });
     } else toast('Share · ' + (post.title || ''));
   }
@@ -465,7 +467,7 @@
         if (post && post.type === 'debate') { location.href = 'debate.html?id=' + encodeURIComponent(post.id); return; }
         location.href = 'discussion.html?id=' + encodeURIComponent((post && post.id) || '');
       },
-      onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id }); },
+      onShare: (post) => { if (!window.openShareModal) { toast('Share unavailable'); return; } openShareModal({ title: (post.chapterRef && post.chapterRef.title) || (post.storyRef && post.storyRef.title) || (post.original && post.original.title) || (post.heading) || (post.amaData && post.amaData.title) || (post.text ? post.text.slice(0, 60) : post.name + "'s post"), sub: '@' + post.name, img: post.image || (post.chapterRef && post.chapterRef.cover) || (post.storyRef && post.storyRef.cover) || (post.original && post.original.cover) || post.avatar || '', url: 'https://droboard.app/post/' + post.id, contentId: post.id, contentType: 'posts' }); },
       onSave: (post) => {
         /* A post that carries a story saves the STORY (the save sheet owns
            the story/collection lists); every other post is saved as a post

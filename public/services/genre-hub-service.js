@@ -537,6 +537,8 @@
               title: post.title, sub: '@' + (post.name || '') + ' · ' + GENRE.name,
               img: post.media || (post.story && post.story.cover) || '',
               url: 'https://droboard.app/hub/' + GENRE_ID + '/' + post.id,
+              contentId: post.id,
+              contentType: 'posts',
             });
           } else toast('Share · ' + (post.title || ''));
         },
