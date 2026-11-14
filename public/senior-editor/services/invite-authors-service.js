@@ -41,11 +41,16 @@ function attachShell(){
 }
 
 function mapBackendWriter(u){
-  return {
+  const mapped = {
     id: u.id, name: u.name || u.fullName || '', email: u.email || '', avatar: u.avatar || '../assets/droboard-icon.png',
     code: u.code || '', via: u.via || 'assigned', signedUp: u.signedUp || u.createdAt || new Date().toISOString(),
     status: u.status || 'active',
   };
+  // Debug: log if via is missing
+  if (!u.via) {
+    console.warn('Backend author missing via field:', u);
+  }
+  return mapped;
 }
 
 function getLink(code){
@@ -331,7 +336,11 @@ function init(){
 async function syncFromBackend(){
   const [codeRes, authorsRes] = await Promise.all([Crud.getCode(), Crud.myAuthors()]);
   if(codeRes && codeRes.code) backendCode = codeRes.code;
-  if(authorsRes && authorsRes.items) backendAuthors = authorsRes.items;
+  if(authorsRes && authorsRes.items) {
+    backendAuthors = authorsRes.items;
+    console.log('Backend myAuthors response:', authorsRes);
+    console.log('Items received:', backendAuthors);
+  }
 }
 
 window.InviteAuthorsService = { init: init };
