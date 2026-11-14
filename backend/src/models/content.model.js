@@ -81,9 +81,9 @@ const chapterSchema = new mongoose.Schema({
   price: { type: Number, default: 0, min: 0 },
   // author's note (reader-facing, below content) + engagement (polls/predictions)
   authorNote: { type: String, default: '' },
-  poll: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } },
-  prediction: { q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } },
-  debate: { motion: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 }, expiresAt: { type: Date, default: null } },
+  poll: { id: String, q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } },
+  prediction: { id: String, q: String, opts: [{ t: String, v: { type: Number, default: 0 } }], expiresAt: { type: Date, default: null } },
+  debate: { id: String, motion: String, forText: String, againstText: String, forV: { type: Number, default: 0 }, agV: { type: Number, default: 0 }, expiresAt: { type: Date, default: null } },
 }, { timestamps: true });
 chapterSchema.index({ bookId: 1, n: 1 }, { unique: true });
 

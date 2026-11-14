@@ -13,6 +13,8 @@ function normOpts(opts) {
 function normPollLike(p) {
   if (p === undefined || p === null) return p;
   const out = p.opts !== undefined ? Object.assign({}, p, { opts: normOpts(p.opts) }) : Object.assign({}, p);
+  // Auto-generate id if missing (poll/prediction/debate)
+  if (!out.id) out.id = require('crypto').randomUUID();
   if (out.expiresAt != null) out.expiresAt = new Date(out.expiresAt);
   else if (out.expiresAt === null) out.expiresAt = null;
   return out;

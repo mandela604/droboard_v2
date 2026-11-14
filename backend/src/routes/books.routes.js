@@ -39,7 +39,7 @@ const chBody = z.object({
   // Custom ballot labels live on the model (debate.forText/againstText), so the
   // wizard must be able to send them — a plain nested z.object silently STRIPS
   // unknown keys, which is why labels used to vanish with no error.
-  debate: z.object({ motion: z.string().max(500).optional(), forText: z.string().max(60).optional(), againstText: z.string().max(60).optional(), expiresAt: z.number().nullable().optional(), question: z.string().max(300).optional() }).optional(),
+  debate: z.object({ id: z.string().min(1).max(40).optional(), motion: z.string().max(500).optional(), forText: z.string().max(60).optional(), againstText: z.string().max(60).optional(), expiresAt: z.number().nullable().optional(), question: z.string().max(300).optional() }).optional(),
 }).strict();
 const chPatch = chBody.partial();
 

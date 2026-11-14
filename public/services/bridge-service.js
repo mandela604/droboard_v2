@@ -248,7 +248,13 @@
   let myRating = 0;
   let ratingGate = null;   // last GET /rating payload: {chaptersRead, need, canRate}
   function goToDebate() {
-    location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || '');
+    const db = DATA.engagement.debate;
+    if (db && db.id) {
+      location.href = 'debate.html?debate=' + encodeURIComponent(db.id) + '&book=' + encodeURIComponent(STORY_ID || '');
+    } else {
+      // Fallback to old URL scheme
+      location.href = 'debate.html?id=' + encodeURIComponent(STORY_ID || '');
+    }
   }
   function toggleRate() {
     const box = document.getElementById('rateBox');

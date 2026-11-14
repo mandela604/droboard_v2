@@ -46,6 +46,108 @@ router.post('/:bookId/chapters/:key/reaction', requireAuth, writeLimiter, audit(
 router.delete('/:bookId/chapters/:key/reaction', requireAuth, writeLimiter, audit('engagement.chapterUnreact'),
   validate(z.object({ params: z.object({ bookId: id, key }) })), ctrl.chapterReactionDelete);
 
+// Get a single debate by debate ID (for debate page fetch)
+// Can be either chapter-level or book-level debate
+// URL: GET /api/debates/:debateId?book=<bookId>[&ch=<chapterId>]
+router.get('/debates/:debateId', attachViewer, generalLimiter,
+  validate(z.object({ 
+    params: z.object({ debateId: z.string().min(1).max(40) }),
+    query: z.object({ book: id.optional(), ch: z.string().max(40).optional() }).strict(),
+  })),
+  async (req, res) => {
+    const base = require('../controllers/base.controller');
+    return base.wrap(res, async () => {
+      const { debateId } = req.valid.params;
+      const { book: bookId, ch: chapterId } = req.valid.query;
+      
+      // Must have bookId; chapterId is optional (chapter-level vs book-level)
+      if (!bookId) { const e = new Error('book_required'); e.status = 400; throw e; }
+      
+      const { Book, Chapter } = require('../models/content.model');
+      const userId = req.user ? req.user.id : null;
+
+      // Chapter-level debate
+      if (chapterId) {
+        const chapter = await Chapter.findOne({ bookId, id: chapterId }).lean();
+        if (!chapter || !chapter.debate || chapter.debate.id !== debateId) {
+          const e = new Error('debate_not_found');
+          e.status = 404;
+          throw e;
+        }
+        const d = chapter.debate;
+        
+        // Get user's vote if authenticated
+        let userVote = null;
+        if (userId) {
+          const { EngagementVote } = require('../models/content.model');
+          const vote = await EngagementVote.findOne({
+            chapterId: chapter.id,
+            userId,
+            kind: 'debate',
+            itemId: debateId,
+          }).lean();
+          userVote = vote ? (vote.optionIdx === 0 ? 'for' : 'against') : null;
+        }
+
+        return {
+          type: 'chapter',
+          id: debateId,
+          bookId,
+          chapterId: chapter.id,
+          motion: d.motion || '',
+          forText: d.forText || 'For',
+          againstText: d.againstText || 'Against',
+          forV: d.forV || 0,
+          agV: d.agV || 0,
+          expiresAt: d.expiresAt || null,
+          userVote,
+        };
+      }
+
+      // Book-level debate
+      const book = await Book.findOne({ id: bookId }).lean();
+      if (!book || !book.debates || !book.debates.length) {
+        const e = new Error('debate_not_found');
+        e.status = 404;
+        throw e;
+      }
+
+      const debate = book.debates.find(d => d.id === debateId);
+      if (!debate) {
+        const e = new Error('debate_not_found');
+        e.status = 404;
+        throw e;
+      }
+
+      // Get user's vote if authenticated
+      let userVote = null;
+      if (userId) {
+        const { EngagementVote } = require('../models/content.model');
+        const vote = await EngagementVote.findOne({
+          bookId,
+          chapterId: '',
+          userId,
+          kind: 'debate',
+          itemId: debateId,
+        }).lean();
+        userVote = vote ? (vote.optionIdx === 0 ? 'for' : 'against') : null;
+      }
+
+      return {
+        type: 'book',
+        id: debateId,
+        bookId,
+        motion: debate.motion || '',
+        forText: debate.forText || 'For',
+        againstText: debate.againstText || 'Against',
+        forV: debate.forV || 0,
+        agV: debate.agV || 0,
+        expiresAt: debate.expiresAt || null,
+        userVote,
+      };
+    });
+  });
+
 // bridge + collection-story contract: GET /api/stories/:id (single segment, no clash)
 router.get('/:id', attachViewer, generalLimiter,
   validate(z.object({ params: z.object({ id }) })),

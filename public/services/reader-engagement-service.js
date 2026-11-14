@@ -161,9 +161,11 @@
       cId = liveInfo[key].chapterId;
     }
     
-    // For chapter-scoped debates, pass book+chapter; for post-based, pass post ID
-    var debHref = debateId && !bId ? ('debate.html?id=' + encodeURIComponent(debateId))
-      : ('debate.html?book=' + encodeURIComponent(bId || '') + '&ch=' + encodeURIComponent(cId || key));
+    // Use debate ID if available; fall back to old URL scheme
+    var debHref = debate.id && bId
+      ? ('debate.html?debate=' + encodeURIComponent(debate.id) + '&book=' + encodeURIComponent(bId) + (cId ? '&ch=' + encodeURIComponent(cId) : ''))
+      : (debateId && !bId ? ('debate.html?id=' + encodeURIComponent(debateId))
+      : ('debate.html?book=' + encodeURIComponent(bId || '') + '&ch=' + encodeURIComponent(cId || key)));
     function sideCard(side, label, count, emoji, accent, washLight, washDark) {
       var mine = locked && ((side === 'for' && voted === 0) || (side === 'against' && voted === 1));
       var pct = Math.round(count / tot * 100);
