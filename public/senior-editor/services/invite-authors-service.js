@@ -123,10 +123,13 @@ function renderCode(){
   renderQR(code);
 }
 function renderStats(){
-  const list=filteredList.length? filteredList : (backendAuthors||[]).map(mapBackendWriter);
-  const total=list.length;
-  const active=list.filter(a=>a.status==='active').length;
-  const thisMonth=list.filter(a=> new Date(a.signedUp).getMonth()===new Date().getMonth()).length;
+  // Always get the full list and filter to invited only
+  let list = (backendAuthors||[]).map(mapBackendWriter);
+  // Filter to show only invited authors (not assigned)
+  const invitedOnly = list.filter(a => a.via === 'invite' || a.via === 'link' || a.via === 'code');
+  const total=invitedOnly.length;
+  const active=invitedOnly.filter(a=>a.status==='active').length;
+  const thisMonth=invitedOnly.filter(a=> new Date(a.signedUp).getMonth()===new Date().getMonth()).length;
   document.getElementById('statCards').innerHTML=[
     {n:total, l:'Total Referred', ico:'fa-users', cls:'accent', bg:'rgba(255,0,80,.1)', fg:'var(--accent)'},
     {n:active, l:'Active Writers', ico:'fa-circle-check', cls:'green', bg:'#e2f8ea', fg:'#16a34a'},
@@ -138,6 +141,8 @@ function filterAndRender(){
   const q=(document.getElementById('searchInput').value||'').trim().toLowerCase();
   const sort=document.getElementById('sortSelect').value;
   let list=(backendAuthors||[]).map(mapBackendWriter);
+  // Filter to show only invited authors (not assigned by Chief Editor)
+  list = list.filter(a => a.via === 'invite' || a.via === 'link' || a.via === 'code');
   if(q) list=list.filter(a=> (a.name||'').toLowerCase().includes(q) || (a.email||'').toLowerCase().includes(q));
   if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name));
   else list.sort((a,b)=> new Date(b.signedUp)-new Date(a.signedUp));
