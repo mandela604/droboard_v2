@@ -43,7 +43,7 @@ function statusPillHtml(s){return'<span class="status-pill '+statusClass(s)+'"><
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 async function loadBooks(){
-  const data = await callBackend('/books?limit=200&status=published');
+  const data = await callBackend('/books?limit=200');
   books = Array.isArray(data) ? data : ((data && data.items) || []);
   // Normalise field names (backend uses camelCase, table expects certain keys)
   books = books.map(function(b){
@@ -87,12 +87,17 @@ function renderStats(){
 
 function renderTabs(){
   var counts={all:books.length};
-  ['Published','Paused','Under Review','Flagged'].forEach(function(s){counts[s]=books.filter(function(b){return b.status===s;}).length;});
+  ['Published','Paused','Under Review','Flagged'].forEach(function(s){
+    counts[s]=books.filter(function(b){return b.status===s;}).length;
+  });
   document.getElementById('countAll').textContent=counts.all;
   document.querySelectorAll('.tab-item').forEach(function(t){
     var k=t.dataset.tab;
     var c=t.querySelector('.tab-count');
-    if(c&&counts[k]!==undefined)c.textContent=counts[k];
+    if(c){
+      if(k==='all') c.textContent=counts.all;
+      else if(counts[k]!==undefined) c.textContent=counts[k];
+    }
   });
 }
 
