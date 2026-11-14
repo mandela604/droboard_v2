@@ -507,78 +507,55 @@
     document.getElementById('chCountSub').textContent = totalCh > 0 ? totalCh + ' chapters · ' + kind : kind;
   }
 
-  /* ══ REACTIONS — via shared reaction-picker component ══ */
+  /* ══ REACTIONS — static display on bridge, picker-controlled on chapters ══ */
   function initReactions() {
     if (!window.DroboardReactionPicker) return;
     
-    // Bind reaction-picker at page level with hooks for bridge stories
+    // Bind reaction-picker at page level for bridge story
     window.DroboardReactionPicker.attach(document.body, {
       getState(id) {
-        // id format: "story-{storyId}" from renderReactions
         if (!String(id).startsWith('story-')) return null;
         if (String(id) !== 'story-' + STORY_ID) return null;
-        
         return DATA.reactions || { userRx: null, love: 0, crying: 0, angry: 0, shocked: 0, broken: 0, emotional: 0, savage: 0, sus: 0 };
       },
       onReact(id, rid) {
-        if (!String(id).startsWith('story-') || String(id) !== 'story-' + STORY_ID) return;
-        if (!window.RequireAuth || RequireAuth.ensure('react to this story')) {
-          postJSON(`/api/books/${encodeURIComponent(STORY_ID)}/reaction`, 
-            DATA.reactions.userRx === rid ? {} : { rid },
-            'Reaction API',
-            DATA.reactions.userRx === rid ? 'DELETE' : 'POST'
-          ).then(res => {
-            if (res && res.reactions) {
-              DATA.reactions = res.reactions;
-              // Re-render to update counts
-              const triggerId = 'story-' + STORY_ID;
-              window.DroboardReactionPicker.update(triggerId, DATA.reactions);
-            }
-          }).catch(() => {});
-        }
+        // Reactions on bridge are read-only, no posting
       },
     });
   }
 
   function renderReactions() {
-    const id = 'story-' + STORY_ID;
+    const rx = DATA.reactions;
+    const items = [
+      { emoji: '❤️', label: 'Love', key: 'love', count: rx.love },
+      { emoji: '😭', label: 'Crying', key: 'crying', count: rx.crying },
+      { emoji: '😡', label: 'Angry', key: 'angry', count: rx.angry },
+      { emoji: '😱', label: 'Shocked', key: 'shocked', count: rx.shocked },
+      { emoji: '💔', label: 'Broken', key: 'broken', count: rx.broken },
+      { emoji: '🥺', label: 'Emotional', key: 'emotional', count: rx.emotional },
+      { emoji: '🔥', label: 'Savage', key: 'savage', count: rx.savage },
+      { emoji: '🤨', label: 'Sus', key: 'sus', count: rx.sus },
+    ];
     const el = document.getElementById('rxGrid');
     if (!el) return;
-    
-    // Use reaction-picker's renderTrigger if available, otherwise show static cards
-    if (window.DroboardReactionPicker) {
-      el.innerHTML = window.DroboardReactionPicker.renderTop(id, 8);
-    } else {
-      // Fallback: static reaction display
-      const rx = DATA.reactions;
-      const items = [
-        { emoji: '❤️', label: 'Love', key: 'love', count: rx.love },
-        { emoji: '😭', label: 'Crying', key: 'crying', count: rx.crying },
-        { emoji: '😡', label: 'Angry', key: 'angry', count: rx.angry },
-        { emoji: '😱', label: 'Shocked', key: 'shocked', count: rx.shocked },
-        { emoji: '💔', label: 'Broken', key: 'broken', count: rx.broken },
-        { emoji: '🥺', label: 'Emotional', key: 'emotional', count: rx.emotional },
-        { emoji: '🔥', label: 'Savage', key: 'savage', count: rx.savage },
-        { emoji: '🤨', label: 'Sus', key: 'sus', count: rx.sus },
-      ];
-      el.innerHTML = items.map(r =>
-        `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
-      ).join('');
-    }
+    el.innerHTML = items.map(r =>
+      `<div class="rx-card${rx.userRx === r.key ? ' picked' : ''}"><div class="rx-e">${r.emoji}</div><div class="rx-l">${r.label}</div><div class="rx-n">${fmtN(r.count)}</div></div>`
+    ).join('');
   }
 
   function renderHubs() {
     const h = (DATA.hubs || {}).genre;
     const wrap = document.getElementById('hubsWrap');
     if (!wrap) return;
-    // No backend board → no hub card. A fabricated hub promises a join the
-    // backend cannot honour.
     if (!h) { wrap.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--muted);padding:12px 0">No community board for this story yet.</div>'; return; }
     if (!window.DroboardCommunityCards) return;
+    const boardId = h.id || h.slug || '';
+    const genreHref = boardId ? `genre-hub.html?id=${encodeURIComponent(boardId)}` : '';
     DroboardCommunityCards.mount(wrap, {
       genre: h,
       circle: null,
       showCircle: false,
+      genreHref: genreHref,
       onJoin: (type, joined) => joinHub(joined),
     });
   }
@@ -907,6 +884,14 @@
     initReactions();
     wireStatusRing();
     loadRating();
+    
+    // Always refetch data fresh when page comes into focus
+    window.addEventListener('pageshow', () => {
+      fetchStory(STORY_ID).then(raw => {
+        DATA = normalizeStory(raw);
+        renderAll();
+      }).catch(() => {});
+    });
   }
 
   function showError(msg) {

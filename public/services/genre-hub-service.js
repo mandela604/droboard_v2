@@ -138,7 +138,7 @@
 
   async function loadGenre() {
     const params = new URLSearchParams(location.search);
-    const rawId = params.get('genre') || 'fantasy';
+    const rawId = params.get('id') || params.get('genre') || 'fantasy';
     GENRE_ID = rawId.toLowerCase();
 
     // Fetch genre hub info and discussions in parallel

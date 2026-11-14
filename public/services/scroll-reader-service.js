@@ -448,16 +448,20 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   function boardView() {
     const b = DATA.board || {};
     const g = window.DroboardCommunityCards.genreInfo(b.name || DATA.category);
+    const boardId = b.id || b.slug || '';
     return {
+      id: boardId,
       slug: b.slug || '',
       name: b.name || g.name,
       icon: b.icon || g.icon,
       members: Number(b.members) || 0,
       joined: !!(b.joined || COMMSTATE.genreJoined),
+      genreHref: boardId ? `genre-hub.html?id=${encodeURIComponent(boardId)}` : '',
     };
   }
-  function joinBoard(slug, wantJoin) {
-    return fetch('/api/genres/' + encodeURIComponent(slug) + '/join', {
+  function joinBoard(boardId, slug, wantJoin) {
+    const url = boardId ? `/api/categories/${encodeURIComponent(boardId)}/join` : `/api/genres/${encodeURIComponent(slug)}/join`;
+    return fetch(url, {
       method: wantJoin ? 'POST' : 'DELETE',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -465,8 +469,6 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     }).then(function (res) {
       if (res.status === 401 || res.status === 403) {
         toast('Sign in to join this board');
-        /* auth-wall.js ships the shared sign-in sheet: `wall()` opens it in
-           place and never navigates, so prefer it when the page loaded it. */
         if (window.RequireAuth) RequireAuth.wall('join this board');
         else location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search);
         return null;
@@ -486,13 +488,14 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
         perks: 'Early chapters, behind-the-scenes, live Q&As',
         joined: COMMSTATE.circleJoined, avatar: author.avatar,
       },
-      showCircle: false, // genre board only — circle lives on the bridge page
+      showCircle: false,
+      genreHref: b.genreHref,
       onJoin: (type, joined) => {
         if (type !== 'genre') return;
         if (_joinBusy) return;
-        if (!b.slug) { toast('This story has no board yet'); return; }
+        if (!b.id && !b.slug) { toast('This story has no board yet'); return; }
         _joinBusy = true;
-        joinBoard(b.slug, joined).then(function (j) {
+        joinBoard(b.id, b.slug, joined).then(function (j) {
           if (!j) return;
           COMMSTATE.genreJoined = !!j.joined;
           if (DATA.board) { DATA.board.joined = !!j.joined; DATA.board.members = j.membersCount != null ? j.membersCount : b.members; }

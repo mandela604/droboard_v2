@@ -877,10 +877,28 @@
       document.getElementById('dsmCopyMsg').textContent = '✅ Link copied!';
       document.getElementById('dsmCopyBtn').textContent = '✓ Copied';
       _toast('🔗 Link copied!');
+      // Increment share count for copy/instagram
+      if (_data.storyId) {
+        fetch(`/api/books/${encodeURIComponent(_data.storyId)}/share`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel: platform }),
+        }).catch(() => {});
+      }
       return;
     }
 
     if (routes[platform]) {
+      // Increment share count for external platform share
+      if (_data.storyId) {
+        fetch(`/api/books/${encodeURIComponent(_data.storyId)}/share`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel: platform }),
+        }).catch(() => {});
+      }
       window.open(routes[platform], '_blank');
       closeShareModal();
     }

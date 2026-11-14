@@ -762,15 +762,19 @@
     const b = FS.board || {};
     const g = DroboardCommunityCards.genreInfo(b.name || FS.category);
     const state = { joined: !!b.joined, members: Number(b.members) || 0 };
-    const slug = b.slug || '';
+    const boardId = b.id || b.slug || '';
+    // Generate board href using ID if available, otherwise use slug
+    const genreHref = boardId ? `genre-hub.html?id=${encodeURIComponent(boardId)}` : '';
     const paint = () => DroboardCommunityCards.mount(mount, {
       genre: { name: b.name || g.name, icon: b.icon || g.icon, members: state.members, joined: state.joined },
       showCircle: false, // genre board only — circle lives on the bridge page
+      genreHref: genreHref,
       onJoin: (type, joined) => {
         if (type !== 'genre' || _joinBusy) return;
-        if (!slug) { toast('This story has no board yet'); return; }
+        if (!boardId) { toast('This story has no board yet'); return; }
         _joinBusy = true;
-        fetch('/api/genres/' + encodeURIComponent(slug) + '/join', {
+        const joinUrl = b.id ? `/api/categories/${encodeURIComponent(b.id)}/join` : `/api/genres/${encodeURIComponent(b.slug)}/join`;
+        fetch(joinUrl, {
           method: joined ? 'POST' : 'DELETE',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
