@@ -269,8 +269,24 @@ function renderStats() {
 }
 
 function renderTabs() {
-  var counts = { all: books.length };
-  ['Published', 'Ongoing', 'Completed', 'Draft', 'Under Review', 'Flagged'].forEach(function (s) { counts[s] = books.filter(function (b) { return b.status === s; }).length; });
+  /* All Books count = Paused + Ongoing + Flagged + Completed (published states)
+     Per requirement: published books are automatically ongoing unless paused, flagged, or completed.
+     So "All Books" = books in any of these 4 states */
+  var publishedStates = books.filter(function (b) { 
+    return b.status === 'Paused' || b.status === 'Ongoing' || b.status === 'Flagged' || b.status === 'Completed';
+  }).length;
+  
+  var counts = { 
+    all: publishedStates,  // All Books = Paused + Ongoing + Flagged + Completed
+    Published: books.filter(function (b) { return b.status === 'Published'; }).length,
+    Ongoing: books.filter(function (b) { return b.status === 'Ongoing'; }).length,
+    Completed: books.filter(function (b) { return b.status === 'Completed'; }).length,
+    Paused: books.filter(function (b) { return b.status === 'Paused'; }).length,
+    Flagged: books.filter(function (b) { return b.status === 'Flagged'; }).length,
+    Draft: books.filter(function (b) { return b.status === 'Draft'; }).length,
+    'Under Review': books.filter(function (b) { return b.status === 'Under Review'; }).length
+  };
+  
   document.getElementById('countAll').textContent = counts.all;
   document.querySelectorAll('.tab-item').forEach(function (t) {
     var k = t.dataset.tab;
