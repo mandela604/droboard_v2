@@ -172,7 +172,8 @@ function renderThread(){
 
   var messagesHtml=conv.messages.map(function(m){
     var isOut=m.from===PERSPECTIVE;
-    var bodyHtml='';
+    var senderName=isOut?'You':conv.name;
+    var bodyHtml='<div class="msg-meta"><span class="msg-meta-name">'+senderName+'</span><span>'+m.time+'</span></div>';
     if(m.replyTo){
       var ref=conv.messages.find(function(r){return String(r.mid)===String(m.replyTo)});
       if(ref){
@@ -182,6 +183,7 @@ function renderThread(){
       }
     }
     var isImg = m.file && m.file.isImage && m.file.url;
+    bodyHtml+='<div class="msg-content">';
     if(isImg)bodyHtml+='<div class="msg-bubble"><img class="msg-img" src="'+m.file.url+'" alt=""/>'+(m.text?prose(m.text):'')+'</div>';
     else{
       if(m.text)bodyHtml+='<div class="msg-bubble">'+prose(m.text)+'</div>';
@@ -190,7 +192,7 @@ function renderThread(){
         bodyHtml+='<div class="msg-file"><i class="fas '+icon+'"></i> '+m.file.name+' <span style="opacity:.6;font-weight:400">('+m.file.size+')</span></div>';
       }
     }
-    bodyHtml+='<span class="msg-time">'+m.time+'</span>'+(m.edited?'<span class="msg-edited">edited</span>':'');
+    bodyHtml+='</div>';
     return '<div class="msg-row '+(isOut?'out':'in')+'" data-mid="'+m.mid+'"><img src="'+(isOut?AVATAR_ME:conv.avatar)+'" alt=""/><div>'+bodyHtml+'</div></div>';
   }).join('');
 
